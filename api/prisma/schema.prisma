@@ -1,0 +1,460 @@
+// Groundwork — contribution intelligence platform
+// Core unit is a "Ground" (an alignment ground): one situation, two parties,
+// building toward one defined decision. See README for the product model.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum UserRole {
+  ADMIN // manages grounds, billing activation, sees the alignment feed
+  MEMBER // a regular person who checks in
+}
+
+enum TokenType {
+  EMAIL_VERIFICATION
+  PASSWORD_SETUP
+  PASSWORD_RESET
+  PARTICIPANT_INVITE // magic link for a participant added to a ground
+}
+
+enum CareFeeStatus {
+  NONE
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+}
+
+// The six entry states collapse into the scenario the initiator selects.
+enum GroundScenario {
+  NEW_HIRE
+  NEW_COFOUNDER
+  NEW_ADVISOR
+  NEW_PROJECT
+  RECOGNITION
+  DRIFT
+}
+
+// Three moments from the conversation design.
+enum GroundMoment {
+  STARTING
+  RECOGNITION
+  RESOLUTION
+}
+
+enum GroundStatus {
+  OPEN // created, parties may not all be added
+  AWAITING_PARTIES // waiting on check-ins
+  REPORT_READY // both completed session 2, report locked behind paywall
+  ACTIVE // admin activated -> billing running
+  RESOLVED // both confirmed an end state
+  STALLED // full period elapsed with no resolution
+  CLOSED // permanent record, billing stopped
+}
+
+enum PartyType {
+  INITIATOR // opened the ground
+  PARTICIPANT // added by the initiator; never sees the initiator's record
+}
+
+enum CheckInStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  DECLINED // willingness gate answered no — itself a useful record
+}
+
+enum TurnRole {
+  AI
+  PERSON
+}
+
+// Structured data extracted from a check-in. Belongs to the person.
+enum RecordEntryType {
+  SUCCESS_DEFINITION
+  COMMITMENT
+  ASK
+  INTENT
+  TOLERANCE
+  WORRY
+  TENSION
+}
+
+// Three-period rule: CANDIDATE until observed in 3 consecutive periods.
+enum PatternStatus {
+  CANDIDATE
+  SURFACED
+}
+
+enum Cadence {
+  WEEKLY
+  FORTNIGHTLY
+  MONTHLY
+}
+
+enum BillingEventType {
+  CARE_FEE // $20/month/org
+  SCENARIO_FEE // $50/person/month while a ground is ACTIVE
+}
+
+enum BillingEventStatus {
+  PENDING
+  PAID
+  FAILED
+}
+
+// ---------------------------------------------------------------------------
+// Identity & tenancy
+// ---------------------------------------------------------------------------
+
+model Organization {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  email     String?
+
+  // Billing (Stripe, USD). Care fee is the always-on commitment device.
+  stripeCustomerId       String?       @map("stripe_customer_id")
+  careFeeStatus          CareFeeStatus @default(NONE) @map("care_fee_status")
+  careFeeSubscriptionId  String?       @map("care_fee_subscription_id")
+  defaultPaymentMethodId String?       @map("default_payment_method_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  users            User[]
+  grounds          Ground[]
+  billingEvents    BillingEvent[]
+  orgIntelligence  OrgIntelligence[]
+
+  @@map("organizations")
+}
+
+model User {
+  id              String   @id @default(uuid())
+  organizationId  String   @map("organization_id")
+  email           String   @unique
+  passwordHash    String?  @map("password_hash")
+  firstName       String   @map("first_name")
+  lastName        String   @map("last_name")
+  role            UserRole @default(MEMBER)
+  isActive        Boolean  @default(true) @map("is_active")
+  isEmailVerified Boolean  @default(false) @map("is_email_verified")
+  isPlatformAdmin Boolean  @default(false) @map("is_platform_admin")
+  googleId        String?  @unique @map("google_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization     Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  tokens           EmailVerificationToken[]
+  groundsInitiated Ground[]                 @relation("GroundInitiator")
+  participantLinks GroundParticipant[]
+
+  @@index([organizationId])
+  @@map("users")
+}
+
+model EmailVerificationToken {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  token     String    @unique
+  type      TokenType
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("email_verification_tokens")
+}
+
+// ---------------------------------------------------------------------------
+// The Ground — the core transactional unit
+// ---------------------------------------------------------------------------
+
+model Ground {
+  id             String         @id @default(uuid())
+  organizationId String         @map("organization_id")
+  initiatorId    String         @map("initiator_id")
+  scenario       GroundScenario
+  moment         GroundMoment
+  status         GroundStatus   @default(OPEN)
+  label          String
+
+  timelineDays Int     @map("timeline_days")
+  cadence      Cadence @default(FORTNIGHTLY)
+  endState     String? @map("end_state") // the decision the process worked toward
+
+  // Lifecycle / billing markers
+  billingActivatedAt DateTime? @map("billing_activated_at") // admin activated report
+  resolvedAt         DateTime? @map("resolved_at")
+  closedAt           DateTime? @map("closed_at")
+
+  promptVersionId String? @map("prompt_version_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization      Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  initiator         User                @relation("GroundInitiator", fields: [initiatorId], references: [id])
+  promptVersion     PromptVersion?      @relation(fields: [promptVersionId], references: [id])
+  participants      GroundParticipant[]
+  checkIns          CheckIn[]
+  report            Report?
+  patternDetections PatternDetection[]
+  resolution        Resolution?
+  outcome           Outcome?
+  outcomeFeedback   OutcomeFeedback[]
+  billingEvents     BillingEvent[]
+
+  @@index([organizationId])
+  @@index([status])
+  @@map("grounds")
+}
+
+model GroundParticipant {
+  id                 String    @id @default(uuid())
+  groundId           String    @map("ground_id")
+  userId             String?   @map("user_id") // null until they accept the invite
+  email              String
+  partyType          PartyType
+  roleAsDescribed    String?   @map("role_as_described") // role as the initiator described it
+  willingnessEvidence Boolean? @map("willingness_evidence") // willingness gate Q1
+  willingnessCadence  Boolean? @map("willingness_cadence") // willingness gate Q2
+  invitedAt          DateTime? @map("invited_at")
+  notifiedAt         DateTime? @map("notified_at") // never added silently
+  // Magic-link invite (cleared once accepted; userId is set on accept).
+  inviteToken          String?   @unique @map("invite_token")
+  inviteTokenExpiresAt DateTime? @map("invite_token_expires_at")
+  createdAt          DateTime  @default(now()) @map("created_at")
+
+  ground            Ground             @relation(fields: [groundId], references: [id], onDelete: Cascade)
+  user              User?              @relation(fields: [userId], references: [id])
+  checkIns          CheckIn[]
+  recordEntries     RecordEntry[]
+  patternDetections PatternDetection[]
+  outcomeFeedback   OutcomeFeedback[]
+
+  @@unique([groundId, email])
+  @@index([groundId])
+  @@map("ground_participants")
+}
+
+// ---------------------------------------------------------------------------
+// Conversation — each party checks in INDEPENDENTLY. Never cross-readable.
+// ---------------------------------------------------------------------------
+
+model CheckIn {
+  id            String        @id @default(uuid())
+  groundId      String        @map("ground_id")
+  participantId String        @map("participant_id")
+  sessionNumber Int           @map("session_number") // 1, 2, ...
+  status        CheckInStatus @default(NOT_STARTED)
+  startedAt     DateTime?     @map("started_at")
+  completedAt   DateTime?     @map("completed_at")
+  patternsAnalyzedAt DateTime? @map("patterns_analyzed_at") // pattern sweep has processed this period
+  createdAt     DateTime      @default(now()) @map("created_at")
+
+  ground        Ground            @relation(fields: [groundId], references: [id], onDelete: Cascade)
+  participant   GroundParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  turns         ConversationTurn[]
+  recordEntries RecordEntry[]
+
+  @@unique([participantId, sessionNumber])
+  @@index([groundId])
+  @@map("check_ins")
+}
+
+model ConversationTurn {
+  id        String   @id @default(uuid())
+  checkInId String   @map("check_in_id")
+  role      TurnRole
+  content   String   @db.Text
+  stage     String? // which conversation stage produced this turn
+  createdAt DateTime @default(now()) @map("created_at")
+
+  checkIn CheckIn @relation(fields: [checkInId], references: [id], onDelete: Cascade)
+
+  @@index([checkInId])
+  @@map("conversation_turns")
+}
+
+model RecordEntry {
+  id            String          @id @default(uuid())
+  participantId String          @map("participant_id")
+  checkInId     String?         @map("check_in_id")
+  type          RecordEntryType
+  text          String          @db.Text // the person's exact words where possible
+  createdAt     DateTime        @default(now()) @map("created_at")
+
+  participant GroundParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  checkIn     CheckIn?          @relation(fields: [checkInId], references: [id], onDelete: SetNull)
+
+  @@index([participantId])
+  @@map("record_entries")
+}
+
+// ---------------------------------------------------------------------------
+// The Report — the shared picture. Released to BOTH parties simultaneously.
+// ---------------------------------------------------------------------------
+
+model Report {
+  id              String    @id @default(uuid())
+  groundId        String    @unique @map("ground_id")
+  sharedPicture   String    @db.Text @map("shared_picture")
+  agreements      Json // where both accounts agree
+  divergences     Json // the gap — never framed as one side being right
+  centralQuestion String    @db.Text @map("central_question")
+  promptVersionId String?   @map("prompt_version_id")
+  releasedAt      DateTime? @map("released_at") // set once, atomically, for both
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  ground        Ground         @relation(fields: [groundId], references: [id], onDelete: Cascade)
+  promptVersion PromptVersion? @relation(fields: [promptVersionId], references: [id])
+
+  @@map("reports")
+}
+
+// ---------------------------------------------------------------------------
+// Pattern detection — behavioural signals, NEVER verdicts. Three-period rule.
+// ---------------------------------------------------------------------------
+
+model PatternDetection {
+  id              String        @id @default(uuid())
+  groundId        String        @map("ground_id")
+  participantId   String        @map("participant_id")
+  code            String // D1..D8, B1..B12, K/E/R/F codes — see Part 4
+  periodsObserved Int           @default(1) @map("periods_observed")
+  lastPeriodNumber Int?         @map("last_period_number") // session number of the most recent period; enforces consecutiveness
+  status          PatternStatus @default(CANDIDATE)
+  observationText String?       @db.Text @map("observation_text") // plain language, never a score
+  firstSeenAt     DateTime      @default(now()) @map("first_seen_at")
+  lastSeenAt      DateTime      @default(now()) @map("last_seen_at")
+  createdAt       DateTime      @default(now()) @map("created_at")
+
+  ground      Ground            @relation(fields: [groundId], references: [id], onDelete: Cascade)
+  participant GroundParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  @@unique([participantId, code])
+  @@index([groundId])
+  @@map("pattern_detections")
+}
+
+// ---------------------------------------------------------------------------
+// Resolution — a ground closes only when BOTH parties confirm an end state.
+// ---------------------------------------------------------------------------
+
+model Resolution {
+  id                     String    @id @default(uuid())
+  groundId               String    @unique @map("ground_id")
+  endState               String    @map("end_state")
+  confirmedByInitiator   Boolean   @default(false) @map("confirmed_by_initiator")
+  confirmedByParticipant Boolean   @default(false) @map("confirmed_by_participant")
+  confirmedInitiatorAt   DateTime? @map("confirmed_initiator_at")
+  confirmedParticipantAt DateTime? @map("confirmed_participant_at")
+  closedAt               DateTime? @map("closed_at")
+  createdAt              DateTime  @default(now()) @map("created_at")
+
+  ground Ground @relation(fields: [groundId], references: [id], onDelete: Cascade)
+
+  @@map("resolutions")
+}
+
+// ---------------------------------------------------------------------------
+// The moat: versioned prompts + outcome data + anonymised cross-org learning
+// ---------------------------------------------------------------------------
+
+model PromptVersion {
+  id          String    @id @default(uuid())
+  key         String // e.g. "system", "report_synthesis", "scenario.drift"
+  version     Int
+  content     String    @db.Text
+  summary     String?   @db.Text // change summary — every change is logged
+  isActive    Boolean   @default(false) @map("is_active")
+  activatedAt DateTime? @map("activated_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  grounds Ground[]
+  reports Report[]
+
+  @@unique([key, version])
+  @@map("prompt_versions")
+}
+
+model Outcome {
+  id              String        @id @default(uuid())
+  groundId        String        @unique @map("ground_id")
+  promptVersionId String?       @map("prompt_version_id")
+  resolvedState   String        @map("resolved_state")
+  moment          GroundMoment? // the data point: prompt version, moment, end state, session count
+  sessionCount    Int?          @map("session_count")
+  resolvable      Boolean? // learning signal: was this resolvable at session 1?
+  notes           String?       @db.Text
+  createdAt       DateTime      @default(now()) @map("created_at")
+
+  ground Ground @relation(fields: [groundId], references: [id], onDelete: Cascade)
+
+  @@index([promptVersionId])
+  @@map("outcomes")
+}
+
+// Post-resolution feedback from each party: did this process help you reach a
+// decision that felt fair and grounded in evidence? The seed of the learning loop.
+model OutcomeFeedback {
+  id            String   @id @default(uuid())
+  groundId      String   @map("ground_id")
+  participantId String   @map("participant_id")
+  feltFair      Boolean  @map("felt_fair")
+  note          String?  @db.Text
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  ground      Ground            @relation(fields: [groundId], references: [id], onDelete: Cascade)
+  participant GroundParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  @@unique([groundId, participantId])
+  @@index([groundId])
+  @@map("outcome_feedback")
+}
+
+model OrgIntelligence {
+  id             String   @id @default(uuid())
+  organizationId String?  @map("organization_id")
+  patternSummary Json     @map("pattern_summary") // anonymised — no PII, no names
+  anonymised     Boolean  @default(true)
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
+  @@map("org_intelligence")
+}
+
+model BillingEvent {
+  id             String             @id @default(uuid())
+  organizationId String             @map("organization_id")
+  groundId       String?            @map("ground_id")
+  type           BillingEventType
+  amountCents    Int                @map("amount_cents")
+  currency       String             @default("USD")
+  periodStart    DateTime           @map("period_start")
+  periodEnd      DateTime           @map("period_end")
+  stripeInvoiceId String?           @map("stripe_invoice_id")
+  status         BillingEventStatus @default(PENDING)
+  createdAt      DateTime           @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  ground       Ground?      @relation(fields: [groundId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@map("billing_events")
+}

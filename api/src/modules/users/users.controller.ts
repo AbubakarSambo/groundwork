@@ -1,0 +1,55 @@
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { UsersService } from './users.service';
+import { CreateUserDto, UpdateUserDto } from './dto';
+import { CurrentUser, CurrentUserData, Roles, Role, PaginationDto } from '../../common';
+
+@ApiTags('Users')
+@ApiBearerAuth()
+@Controller('users')
+export class UsersController {
+  constructor(private readonly usersService: UsersService) {}
+
+  @Get()
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'List users in the organization' })
+  async findAll(@CurrentUser('organizationId') organizationId: string, @Query() pagination: PaginationDto) {
+    return this.usersService.findAll(organizationId, pagination);
+  }
+
+  @Get(':id')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Get a single user' })
+  async findOne(@Param('id') id: string, @CurrentUser('organizationId') organizationId: string) {
+    return this.usersService.findOne(id, organizationId);
+  }
+
+  @Post()
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Invite a user to the organization' })
+  @ApiResponse({ status: 201, description: 'User invited' })
+  async create(@CurrentUser('organizationId') organizationId: string, @Body() dto: CreateUserDto) {
+    return this.usersService.create(organizationId, dto);
+  }
+
+  @Patch(':id')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Update a user' })
+  async update(@Param('id') id: string, @Body() dto: UpdateUserDto, @CurrentUser() user: CurrentUserData) {
+    return this.usersService.update(id, user.organizationId, dto, user.id);
+  }
+
+  @Post(':id/resend-invite')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Resend a pending invite' })
+  async resendInvite(@Param('id') id: string, @CurrentUser('organizationId') organizationId: string) {
+    return this.usersService.resendInvite(id, organizationId);
+  }
+
+  @Delete(':id')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Deactivate a user' })
+  async remove(@Param('id') id: string, @CurrentUser() user: CurrentUserData) {
+    return this.usersService.remove(id, user.organizationId, user.id);
+  }
+}
