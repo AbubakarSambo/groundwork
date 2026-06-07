@@ -36,7 +36,7 @@ export function CheckInPage() {
 
   const complete = useMutation({
     mutationFn: () => conversationApi.complete(checkInId!),
-    onSuccess: () => { toast.success('Check-in complete. Your record is yours.'); navigate(-1) },
+    onSuccess: (res) => { toast.success('Check-in complete. Your record is yours.'); navigate(`/grounds/${res.groundId}`) },
   })
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [data?.turns?.length])

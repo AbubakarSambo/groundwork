@@ -3,6 +3,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
 import { PromptsService } from '../prompts';
 import { AnthropicService, ChatTurn } from './anthropic.service';
+import { ConversationContextService } from './context.service';
 import { buildRuntimeContext, RECORD_EXTRACTION_PROMPT } from './prompt-library';
 import { GroundworkEvents, CheckInCompletedEvent } from '../../common';
 import { CheckInStatus, TurnRole, RecordEntryType } from '@prisma/client';
@@ -49,6 +50,7 @@ export class ConversationService {
     private prisma: PrismaService,
     private prompts: PromptsService,
     private anthropic: AnthropicService,
+    private context: ConversationContextService,
     private events: EventEmitter2,
   ) {}
 
@@ -99,7 +101,7 @@ export class ConversationService {
       throw new BadRequestException('This check-in is already complete');
     }
 
-    const fullSystem = await this.composeSystemPrompt(checkIn);
+    const fullSystem = await this.composeSystemPrompt(checkIn, message);
 
     // Persist the person's turn.
     await this.prisma.conversationTurn.create({
@@ -125,15 +127,20 @@ export class ConversationService {
 
   /**
    * Assemble the full system prompt for a check-in:
-   *   engine rules (versioned) + scenario pack (versioned) + runtime context.
+   *   engine rules (versioned) + scenario pack (versioned) + runtime framing +
+   *   per-turn dynamic context (Agent 1 intake, trust calibration, Agent 3
+   *   cross-reference). The dynamic context only runs when a message is present.
    */
-  private async composeSystemPrompt(checkIn: {
-    id: string;
-    groundId: string;
-    participantId: string;
-    sessionNumber: number;
-    participant: { partyType: any; roleAsDescribed: string | null };
-  }): Promise<string> {
+  private async composeSystemPrompt(
+    checkIn: {
+      id: string;
+      groundId: string;
+      participantId: string;
+      sessionNumber: number;
+      participant: { partyType: any; roleAsDescribed: string | null };
+    },
+    latestMessage?: string,
+  ): Promise<string> {
     const ground = await this.prisma.ground.findUnique({ where: { id: checkIn.groundId } });
     if (!ground) throw new NotFoundException('Ground not found');
 
@@ -152,7 +159,14 @@ export class ConversationService {
       groundLabel: ground.label,
     });
 
-    return [systemPrompt, scenarioPack, runtimeContext].filter(Boolean).join('\n\n');
+    const { block: dynamicContext } = await this.context.build({
+      groundId: checkIn.groundId,
+      participantId: checkIn.participantId,
+      sessionNumber: checkIn.sessionNumber,
+      latestMessage,
+    });
+
+    return [systemPrompt, scenarioPack, runtimeContext, dynamicContext].filter(Boolean).join('\n\n');
   }
 
   /**
@@ -182,7 +196,7 @@ export class ConversationService {
       sessionNumber: checkIn.sessionNumber,
     } satisfies CheckInCompletedEvent);
 
-    return { status: 'completed' };
+    return { status: 'completed', groundId: checkIn.groundId };
   }
 
   /** Create the next session for a participant if it does not already exist. */

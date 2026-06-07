@@ -38,7 +38,9 @@ export function GroundDetailPage() {
   if (isLoading || !ground) return <div className="min-h-screen bg-muted p-8 text-muted-foreground">Loading…</div>
 
   const myParticipant = ground.participants.find((p) => p.userId === user?.id)
-  const myCheckIn = ground.checkIns?.find((c) => c.participantId === myParticipant?.id)
+  const myCheckIns = ground.checkIns?.filter((c) => c.participantId === myParticipant?.id) ?? []
+  const myCheckIn = myCheckIns.find((c) => c.status === 'NOT_STARTED' || c.status === 'IN_PROGRESS')
+    ?? myCheckIns.sort((a, b) => b.sessionNumber - a.sessionNumber)[0]
 
   return (
     <div className="min-h-screen bg-muted px-4 py-8">
@@ -80,7 +82,7 @@ export function GroundDetailPage() {
           <h2 className="font-medium mb-3">Your check-in</h2>
           {myCheckIn ? (
             <Button onClick={() => navigate(`/checkin/${myCheckIn.id}`)}>
-              {myCheckIn.status === 'COMPLETED' ? 'Review your check-in' : 'Continue your check-in'}
+              {myCheckIn.status === 'COMPLETED' ? `Review session ${myCheckIn.sessionNumber}` : `Session ${myCheckIn.sessionNumber} — enter check-in`}
             </Button>
           ) : (
             <p className="text-sm text-muted-foreground">No check-in for you on this ground.</p>
@@ -101,7 +103,7 @@ export function GroundDetailPage() {
           </Card>
         )}
 
-        {(ground.participants.length >= 2 || ground.status === 'CLOSED' || ground.status === 'RESOLVED') && (
+        {(ground.status === 'ACTIVE' || ground.status === 'CLOSED' || ground.status === 'RESOLVED') && (
           <ResolutionCard groundId={ground.id} />
         )}
       </div>

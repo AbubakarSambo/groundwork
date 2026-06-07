@@ -26,9 +26,14 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 )
 
-// Response interceptor - handle errors
+// Response interceptor - unwrap envelope and handle errors
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    if (response.data?.success === true && 'data' in response.data) {
+      response.data = response.data.data
+    }
+    return response
+  },
   (error: AxiosError<{ message?: string; errors?: Record<string, string[]> }>) => {
     const message = error.response?.data?.message || 'An error occurred'
     

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import { toast } from 'sonner'
 import { authApi } from '@/api'
 import { useAuthStore } from '@/stores/auth'
 import { Button, Input, Label, Card } from '@/components/ui'
@@ -18,8 +19,9 @@ export function LoginPage() {
       const { accessToken, user } = await authApi.login(email, password)
       setAuth(user, accessToken)
       navigate('/')
-    } catch {
-      // interceptor toasts errors
+    } catch (err: any) {
+      const message = err?.response?.data?.message || 'Invalid email or password'
+      toast.error('Sign in failed', { description: message })
     } finally {
       setLoading(false)
     }

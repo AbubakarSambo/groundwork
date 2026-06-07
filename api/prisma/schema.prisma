@@ -237,6 +237,8 @@ model GroundParticipant {
   // Magic-link invite (cleared once accepted; userId is set on accept).
   inviteToken          String?   @unique @map("invite_token")
   inviteTokenExpiresAt DateTime? @map("invite_token_expires_at")
+  // Rolling specificity scores (Agent 1) used for trust calibration / tone.
+  specificityHistory   Float[]   @default([]) @map("specificity_history")
   createdAt          DateTime  @default(now()) @map("created_at")
 
   ground            Ground             @relation(fields: [groundId], references: [id], onDelete: Cascade)

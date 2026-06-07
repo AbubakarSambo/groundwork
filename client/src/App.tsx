@@ -14,6 +14,7 @@ import { InvitePage } from '@/pages/invite/InvitePage'
 import { AlignmentFeedPage } from '@/pages/alignment/AlignmentFeedPage'
 import { DashboardPage } from '@/pages/dashboard/DashboardPage'
 import { PromptVersioningPage } from '@/pages/prompts/PromptVersioningPage'
+import { VerifyEmailPage } from '@/pages/auth/VerifyEmailPage'
 import type { JSX } from 'react'
 
 const queryClient = new QueryClient({
@@ -33,6 +34,7 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
           <Route path="/invite" element={<InvitePage />} />
 
           <Route path="/" element={<RequireAuth><GroundsListPage /></RequireAuth>} />

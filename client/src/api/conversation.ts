@@ -9,5 +9,5 @@ export const conversationApi = {
   send: (checkInId: string, message: string) =>
     apiClient.post<{ reply: string }>(`/check-ins/${checkInId}/messages`, { message }).then((r) => r.data),
   complete: (checkInId: string) =>
-    apiClient.post(`/check-ins/${checkInId}/complete`).then((r) => r.data),
+    apiClient.post<{ status: string; groundId: string }>(`/check-ins/${checkInId}/complete`).then((r) => r.data),
 }

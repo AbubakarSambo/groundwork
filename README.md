@@ -84,7 +84,7 @@ npm run dev
 The full ground lifecycle is implemented end to end. Each phase is built, builds clean, and has its DI graph verified:
 
 1. ✅ Scaffold, schema, auth, module skeletons
-2. ✅ Conversation engine: versioned system + scenario prompts (exact Part 3 wording), staged sequence with runtime context, engine-opens-first, `RecordEntry` extraction
+2. ✅ Conversation engine: versioned system + scenario prompts (exact Part 3 wording), staged sequence with runtime context, engine-opens-first, `RecordEntry` extraction. Per-turn intelligence ported from the MVP edge function (`08_final_mvp_gw_chat.html`): Agent 1 intake classification + specificity scoring (`intake.ts`), trust calibration/tone from rolling specificity history, and Agent 3 tiered cross-reference injection (`context.service.ts`) — kept stricter than the MVP: cross-reference derives a signal + probe from the other party's *extracted record* and never passes their verbatim words into the model context.
 3. ✅ Report synthesis + simultaneous release, wired via domain events (synthesizes when both finish session 2; releases on activation)
 4. ✅ Stripe billing gate: care-fee Checkout, paywall on `activate()` (HTTP 402 → Checkout), scenario-fee charge on activation + monthly cron, webhook status sync
 5. ✅ Participant magic-link entry: invite token on the participant, public preview + accept (creates/links a User, drops them into their check-in)
