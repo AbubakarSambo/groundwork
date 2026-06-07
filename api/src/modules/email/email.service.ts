@@ -16,7 +16,7 @@ export class EmailService {
 
   constructor(private configService: ConfigService) {
     this.resend = new Resend(this.configService.get<string>('resend.apiKey'));
-    this.fromEmail = this.configService.get<string>('resend.fromEmail') || 'Groundwork <noreply@groundwork.app>';
+    this.fromEmail = this.configService.get<string>('resend.fromEmail') || 'Groundwork <noreply@myground.work>';
     this.frontendUrl = this.configService.get<string>('resend.frontendUrl') || 'http://localhost:5173';
   }
 
