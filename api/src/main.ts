@@ -46,6 +46,9 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
 
+  const httpAdapter = app.getHttpAdapter();
+  httpAdapter.get('/health', (_req, res) => res.status(200).send('ok'));
+
   const port = configService.get<number>('app.port') || 3000;
   await app.listen(port, '0.0.0.0');
   logger.log(`Groundwork API running on port ${port} (docs at /api/docs)`);
