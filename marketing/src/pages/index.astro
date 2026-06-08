@@ -43,52 +43,76 @@ const MOMENTS = [
 ]
 ---
 <Layout title="Groundwork — See clearly when it counts">
+  <style>
+    *,*::before,*::after{box-sizing:border-box}
+    body{margin:0;overflow-x:hidden}
+    .gw-nav{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #E2E0DB;background:#EDECEA;gap:12px}
+    .gw-nav-left{display:flex;align-items:center;gap:8px;min-width:0}
+    .gw-nav-logo{font-size:15px;font-weight:700;color:#0C447C;letter-spacing:-0.02em;white-space:nowrap}
+    .gw-nav-tag{font-size:11px;color:#9B9590;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
+    .gw-nav-sign{font-size:13px;font-weight:600;color:#0C447C;border:1px solid #B5D4F4;padding:6px 14px;border-radius:6px;text-decoration:none;white-space:nowrap;flex-shrink:0}
+    .gw-body{padding:48px 20px 48px;max-width:520px;margin:0 auto;width:100%}
+    .gw-h1{font-size:38px;font-weight:700;line-height:1.08;letter-spacing:-0.03em;color:#1A1916;margin:0 0 20px}
+    .gw-cta-row{display:flex;flex-direction:column;gap:10px;margin-bottom:48px}
+    .gw-cta-primary{display:flex;align-items:center;justify-content:space-between;width:100%;padding:15px 18px;border-radius:6px;background:#0C447C;color:white;font-size:15px;font-weight:700;text-decoration:none}
+    .gw-cta-secondary{display:flex;align-items:center;justify-content:space-between;width:100%;padding:15px 18px;border-radius:6px;background:white;color:#1A1916;font-size:15px;font-weight:600;border:1px solid #E2E0DB;text-decoration:none}
+    .gw-feature{display:flex;align-items:flex-start;gap:14px;min-width:0}
+    .gw-feature-icon{width:32px;height:32px;border-radius:6px;background:#EEF4FB;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:15px}
+    .gw-feature-text{min-width:0}
+    .gw-divider{height:1px;background:#E2E0DB;margin-bottom:28px}
+    @media(max-width:480px){
+      .gw-nav-tag{display:none}
+      .gw-h1{font-size:30px}
+      .gw-body{padding:36px 16px 48px}
+    }
+  </style>
+
   <div style="background:#EDECEA;color:#1A1916;min-height:100vh;font-family:system-ui,sans-serif;">
 
     <!-- Nav -->
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 24px;border-bottom:1px solid #E2E0DB;background:#EDECEA;">
-      <div>
-        <span style="font-size:15px;font-weight:700;color:#0C447C;letter-spacing:-0.02em;">Groundwork</span>
-        <span style="font-size:11px;font-weight:400;color:#9B9590;letter-spacing:.08em;text-transform:uppercase;margin-left:10px;">See clearly when it counts.</span>
+    <nav class="gw-nav">
+      <div class="gw-nav-left">
+        <span class="gw-nav-logo">Groundwork</span>
+        <span class="gw-nav-tag">See clearly when it counts.</span>
       </div>
-      <a href={`${APP_URL}/login`} style="font-size:13px;font-weight:600;color:#0C447C;background:none;border:1px solid #B5D4F4;padding:6px 14px;border-radius:6px;text-decoration:none;">Sign in</a>
-    </div>
+      <a href={`${APP_URL}/login`} class="gw-nav-sign">Sign in</a>
+    </nav>
 
     <!-- Body -->
-    <div style="padding:52px 24px 48px;max-width:520px;margin:0 auto;width:100%;">
+    <div class="gw-body">
 
       <!-- Hero -->
       <div style="font-size:11px;font-weight:600;color:#0C447C;text-transform:uppercase;letter-spacing:.1em;margin-bottom:16px;opacity:.65;">
         Contribution intelligence
       </div>
-      <h1 style="font-size:42px;font-weight:700;line-height:1.08;letter-spacing:-0.03em;color:#1A1916;margin:0 0 20px;">
+      <h1 class="gw-h1">
         See clearly<br><span style="color:#0C447C;">when it counts.</span>
       </h1>
-      <p style="font-size:15px;color:#6B6560;line-height:1.7;margin:0 0 36px;max-width:400px;">
+      <p style="font-size:15px;color:#6B6560;line-height:1.7;margin:0 0 36px;">
         Everyone builds an honest record of their work. Founders, managers and team members finally see the same picture.
       </p>
 
       <!-- CTAs -->
-      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:48px;">
-        <a href={`${APP_URL}/register`} style="display:flex;align-items:center;justify-content:space-between;width:100%;padding:15px 18px;border-radius:6px;background:#0C447C;color:white;font-size:15px;font-weight:700;text-decoration:none;box-sizing:border-box;">
+      <div class="gw-cta-row">
+        <a href={`${APP_URL}/register`} class="gw-cta-primary">
           <span>Set up your org</span>
           <span style="font-size:13px;font-weight:400;opacity:.7;">Get started →</span>
         </a>
-        <a href={`${APP_URL}/login`} style="display:flex;align-items:center;justify-content:space-between;width:100%;padding:15px 18px;border-radius:6px;background:white;color:#1A1916;font-size:15px;font-weight:600;border:1px solid #E2E0DB;text-decoration:none;box-sizing:border-box;">
+        <a href={`${APP_URL}/login`} class="gw-cta-secondary">
           <span>Open my chat</span>
           <span style="font-size:13px;font-weight:400;color:#9B9590;">Team members →</span>
         </a>
       </div>
 
-      <div style="height:1px;background:#E2E0DB;margin-bottom:28px;"></div>
+      <div class="gw-divider"></div>
 
       <!-- Features -->
       <div style="font-size:11px;color:#9B9590;text-transform:uppercase;letter-spacing:.1em;margin-bottom:20px;">Three things. One picture.</div>
       <div style="display:flex;flex-direction:column;gap:16px;margin-bottom:40px;">
         {FEATURES.map(f => (
-          <div style="display:flex;align-items:flex-start;gap:14px;">
-            <div style="width:32px;height:32px;border-radius:6px;background:#EEF4FB;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:15px;">{f.icon}</div>
-            <div>
+          <div class="gw-feature">
+            <div class="gw-feature-icon">{f.icon}</div>
+            <div class="gw-feature-text">
               <div style="font-size:14px;font-weight:600;color:#1A1916;margin-bottom:3px;">{f.title}</div>
               <div style="font-size:13px;color:#6B6560;line-height:1.6;">{f.desc}</div>
             </div>
@@ -96,7 +120,7 @@ const MOMENTS = [
         ))}
       </div>
 
-      <div style="height:1px;background:#E2E0DB;margin-bottom:28px;"></div>
+      <div class="gw-divider"></div>
 
       <!-- Three moments -->
       <div style="font-size:11px;color:#9B9590;text-transform:uppercase;letter-spacing:.1em;margin-bottom:20px;">Groundwork brings alignment to three moments.</div>
