@@ -1,13 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams, Link, useNavigate } from 'react-router-dom'
-
-const fired = new Set<string>()
 import { useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { CheckCircle, XCircle, Loader2 } from 'lucide-react'
 import { authApi } from '@/api'
 import { useAuthStore } from '@/stores/auth'
-import { Button, Card, Input, Label } from '@/components/ui'
+
+const fired = new Set<string>()
 
 export function VerifyEmailPage() {
   const [searchParams] = useSearchParams()
@@ -38,72 +36,57 @@ export function VerifyEmailPage() {
     }
   }, [token])
 
-  if (!token) {
-    return (
-      <Screen>
-        <XCircle className="mx-auto mb-4 h-12 w-12 text-destructive" />
-        <h1 className="text-xl font-semibold mb-1">Invalid link</h1>
-        <p className="text-muted-foreground mb-4">No verification token found in the URL.</p>
-        <Link to="/login" className="text-primary underline text-sm">Go to sign in</Link>
-      </Screen>
-    )
-  }
+  if (!token) return (
+    <CenteredCard>
+      <div style={{ fontSize: 32, marginBottom: 12 }}>✕</div>
+      <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Invalid link</div>
+      <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 16 }}>No verification token found in the URL.</div>
+      <Link to="/login" style={{ color: '#0C447C', textDecoration: 'underline', fontSize: 13 }}>Go to sign in</Link>
+    </CenteredCard>
+  )
 
-  if (verify.isPending) {
-    return (
-      <Screen>
-        <Loader2 className="mx-auto mb-4 h-12 w-12 animate-spin text-primary" />
-        <h1 className="text-xl font-semibold mb-1">Verifying your email…</h1>
-        <p className="text-muted-foreground">Just a moment.</p>
-      </Screen>
-    )
-  }
+  if (verify.isPending) return (
+    <CenteredCard>
+      <div style={{ fontSize: 32, marginBottom: 12 }}>⏳</div>
+      <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Verifying your email…</div>
+      <div style={{ fontSize: 13, color: 'var(--gw-sub)' }}>Just a moment.</div>
+    </CenteredCard>
+  )
 
   if (verify.isError) {
     const message = (verify.error as any)?.response?.data?.message || 'This link has already been used or has expired.'
     return (
-      <Screen>
-        <XCircle className="mx-auto mb-4 h-12 w-12 text-destructive" />
-        <h1 className="text-xl font-semibold mb-1">Verification failed</h1>
-        <p className="text-muted-foreground mb-6">{message}</p>
-        <div className="space-y-2 w-full">
-          <Label htmlFor="resend-email">Enter your email to get a new link</Label>
-          <Input
-            id="resend-email"
-            type="email"
-            placeholder="you@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          <Button
-            className="w-full"
-            variant="outline"
-            disabled={!email || resend.isPending}
-            onClick={() => resend.mutate(email)}
-          >
-            {resend.isPending ? 'Sending…' : 'Resend verification email'}
-          </Button>
+      <CenteredCard>
+        <div style={{ fontSize: 32, marginBottom: 12 }}>✕</div>
+        <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Verification failed</div>
+        <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 20 }}>{message}</div>
+        <div className="gw-fld" style={{ textAlign: 'left' }}>
+          <label className="gw-label">Enter your email to get a new link</label>
+          <input className="gw-input" type="email" placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} />
         </div>
-        <Link to="/login" className="text-primary underline text-sm mt-4 block">Back to sign in</Link>
-      </Screen>
+        <button className="gw-btn" disabled={!email || resend.isPending} onClick={() => resend.mutate(email)}>
+          {resend.isPending ? 'Sending…' : 'Resend verification email'}
+        </button>
+        <Link to="/login" style={{ color: '#0C447C', textDecoration: 'underline', fontSize: 12, display: 'block', marginTop: 12 }}>Back to sign in</Link>
+      </CenteredCard>
     )
   }
 
   return (
-    <Screen>
-      <CheckCircle className="mx-auto mb-4 h-12 w-12 text-green-500" />
-      <h1 className="text-xl font-semibold mb-1">Email verified!</h1>
-      <p className="text-muted-foreground">Redirecting…</p>
-    </Screen>
+    <CenteredCard>
+      <div style={{ fontSize: 32, marginBottom: 12 }}>✓</div>
+      <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Email verified!</div>
+      <div style={{ fontSize: 13, color: 'var(--gw-sub)' }}>Redirecting…</div>
+    </CenteredCard>
   )
 }
 
-function Screen({ children }: { children: React.ReactNode }) {
+function CenteredCard({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted px-4">
-      <Card className="w-full max-w-md p-8 text-center">
+    <div style={{ minHeight: '100vh', background: 'var(--gw-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+      <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 8, padding: '40px 32px', maxWidth: 420, width: '100%', textAlign: 'center' }}>
         {children}
-      </Card>
+      </div>
     </div>
   )
 }

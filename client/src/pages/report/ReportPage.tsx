@@ -1,53 +1,113 @@
-import { useParams, Link } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { reportsApi } from '@/api'
-import { Card } from '@/components/ui'
 
 export function ReportPage() {
   const { groundId } = useParams<{ groundId: string }>()
+  const navigate = useNavigate()
   const { data: report, isLoading, isError } = useQuery({
     queryKey: ['report', groundId],
     queryFn: () => reportsApi.get(groundId!),
     enabled: !!groundId,
   })
 
-  if (isLoading) return <div className="min-h-screen bg-muted p-8 text-muted-foreground">Loading…</div>
-  if (isError || !report) return <div className="min-h-screen bg-muted p-8 text-muted-foreground">This report is not available to you yet.</div>
+  if (isLoading) {
+    return (
+      <div style={{ minHeight: '100vh', background: 'var(--gw-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ fontSize: 13, color: 'var(--gw-muted)' }}>Loading report…</div>
+      </div>
+    )
+  }
+
+  if (isError || !report) {
+    return (
+      <div style={{ minHeight: '100vh', background: 'var(--gw-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 8, padding: '40px 32px', maxWidth: 400, textAlign: 'center' }}>
+          <div style={{ fontSize: 24, marginBottom: 12 }}>🔒</div>
+          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>Report not available yet</div>
+          <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 20 }}>
+            Both parties need to complete two check-ins before the report is released — simultaneously.
+          </div>
+          <button className="gw-btn-sec" style={{ display: 'inline-block', width: 'auto', padding: '9px 18px' }} onClick={() => navigate(`/grounds/${groundId}`)}>
+            ← Back to ground
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div className="min-h-screen bg-muted px-4 py-8">
-      <div className="max-w-2xl mx-auto space-y-5">
-        <Link to={`/grounds/${groundId}`} className="text-sm text-primary underline">← Back to ground</Link>
+    <div style={{ minHeight: '100vh', background: 'var(--gw-bg)', display: 'flex', flexDirection: 'column' }}>
+      <div className="gw-hdr">
+        <div className="gw-logo">The shared picture</div>
+        <button className="gw-back" onClick={() => navigate(`/grounds/${groundId}`)}>← Ground</button>
+      </div>
 
-        <Card className="p-6">
-          <h1 className="text-xl font-semibold mb-3">The shared picture</h1>
-          <p className="text-sm whitespace-pre-wrap leading-relaxed">{report.sharedPicture}</p>
-        </Card>
+      <div className="gw-bd" style={{ maxWidth: 600, margin: '0 auto', width: '100%' }}>
+        <div className="gw-box gw-box-blue" style={{ marginBottom: 16 }}>
+          This report was released to both parties at the same time. Neither side had advance access.
+        </div>
 
-        <Card className="p-6">
-          <h2 className="font-medium mb-3">Where you agree</h2>
-          <ul className="list-disc pl-5 space-y-1 text-sm">
-            {report.agreements.map((a, i) => <li key={i}>{a}</li>)}
-          </ul>
-        </Card>
+        {/* Shared picture */}
+        <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 6, padding: '16px', marginBottom: 8 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-muted)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 10 }}>
+            The shared picture
+          </div>
+          <div style={{ fontSize: 14, lineHeight: 1.6, color: '#1A1916', whiteSpace: 'pre-wrap' }}>
+            {report.sharedPicture}
+          </div>
+        </div>
 
-        <Card className="p-6">
-          <h2 className="font-medium mb-3">The gap</h2>
-          <div className="space-y-4">
-            {report.divergences.map((d, i) => (
-              <div key={i} className="text-sm">
-                <p className="font-medium">{d.topic}</p>
-                <p className="text-muted-foreground">One of you: {d.initiatorView}</p>
-                <p className="text-muted-foreground">The other: {d.participantView}</p>
+        {/* Agreements */}
+        {report.agreements?.length > 0 && (
+          <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 6, padding: '16px', marginBottom: 8 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#085041', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 10 }}>
+              Where you agree
+            </div>
+            {report.agreements.map((a: string, i: number) => (
+              <div key={i} style={{ fontSize: 13, padding: '6px 0', borderBottom: i < report.agreements.length - 1 ? '1px solid #E2E0DB' : 'none', display: 'flex', gap: 8 }}>
+                <span style={{ color: '#5DCAA5', marginTop: 1 }}>✓</span>
+                <span>{a}</span>
               </div>
             ))}
           </div>
-        </Card>
+        )}
 
-        <Card className="p-6 bg-primary/5 border-primary/20">
-          <h2 className="font-medium mb-2">The one question worth answering</h2>
-          <p className="text-sm">{report.centralQuestion}</p>
-        </Card>
+        {/* Divergences */}
+        {report.divergences?.length > 0 && (
+          <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 6, padding: '16px', marginBottom: 8 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#8A5C1A', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 10 }}>
+              The gap
+            </div>
+            {report.divergences.map((d: any, i: number) => (
+              <div key={i} style={{ marginBottom: 12, paddingBottom: 12, borderBottom: i < report.divergences.length - 1 ? '1px solid #E2E0DB' : 'none' }}>
+                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{d.topic}</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  <div style={{ background: '#EEF4FB', borderRadius: 4, padding: '8px 10px', fontSize: 12 }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: '#0C447C', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '.05em' }}>One of you</div>
+                    {d.initiatorView}
+                  </div>
+                  <div style={{ background: '#FDF3E3', borderRadius: 4, padding: '8px 10px', fontSize: 12 }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: '#8A5C1A', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '.05em' }}>The other</div>
+                    {d.participantView}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Central question */}
+        {report.centralQuestion && (
+          <div style={{ background: '#0C447C', borderRadius: 6, padding: '20px 20px', marginBottom: 8 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#B5D4F4', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 10 }}>
+              The one question worth answering
+            </div>
+            <div style={{ fontSize: 15, color: 'white', fontWeight: 500, lineHeight: 1.5 }}>
+              {report.centralQuestion}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

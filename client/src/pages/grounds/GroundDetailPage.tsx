@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import { AxiosError } from 'axios'
 import { groundsApi, resolutionApi, dashboardApi } from '@/api'
 import { useAuthStore } from '@/stores/auth'
-import { Button, Input, Label, Card, Badge } from '@/components/ui'
+import { StatusPill } from '@/components/gw'
 
 export function GroundDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -15,18 +15,25 @@ export function GroundDetailPage() {
   const [email, setEmail] = useState('')
   const [role, setRole] = useState('')
 
-  const { data: ground, isLoading } = useQuery({ queryKey: ['ground', id], queryFn: () => groundsApi.get(id!), enabled: !!id })
+  const { data: ground, isLoading } = useQuery({
+    queryKey: ['ground', id],
+    queryFn: () => groundsApi.get(id!),
+    enabled: !!id,
+  })
 
   const addParticipant = useMutation({
     mutationFn: () => groundsApi.addParticipant(id!, { email, roleAsDescribed: role || undefined }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['ground', id] }); setEmail(''); setRole(''); toast.success('Invite sent — they are notified, never added silently') },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['ground', id] })
+      setEmail(''); setRole('')
+      toast.success('Invite sent — they are notified, never added silently')
+    },
   })
 
   const activate = useMutation({
     mutationFn: () => groundsApi.activate(id!),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['ground', id] }); toast.success('Ground activated') },
     onError: (err) => {
-      // 402 Payment Required → redirect to Stripe Checkout to set up the care fee.
       const res = (err as AxiosError<{ requiresBilling?: boolean; checkoutUrl?: string }>).response
       if (res?.status === 402 && res.data?.checkoutUrl) {
         toast.info('Set up billing to activate this ground')
@@ -35,75 +42,113 @@ export function GroundDetailPage() {
     },
   })
 
-  if (isLoading || !ground) return <div className="min-h-screen bg-muted p-8 text-muted-foreground">Loading…</div>
+  if (isLoading || !ground) {
+    return (
+      <div style={{ minHeight: '100vh', background: 'var(--gw-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ fontSize: 13, color: 'var(--gw-muted)' }}>Loading…</div>
+      </div>
+    )
+  }
 
-  const myParticipant = ground.participants.find((p) => p.userId === user?.id)
-  const myCheckIns = ground.checkIns?.filter((c) => c.participantId === myParticipant?.id) ?? []
-  const myCheckIn = myCheckIns.find((c) => c.status === 'NOT_STARTED' || c.status === 'IN_PROGRESS')
-    ?? myCheckIns.sort((a, b) => b.sessionNumber - a.sessionNumber)[0]
+  const myParticipant = ground.participants?.find((p: any) => p.userId === user?.id)
+  const myCheckIns = ground.checkIns?.filter((c: any) => c.participantId === myParticipant?.id) ?? []
+  const myCheckIn = myCheckIns.find((c: any) => c.status === 'NOT_STARTED' || c.status === 'IN_PROGRESS')
+    ?? myCheckIns.sort((a: any, b: any) => b.sessionNumber - a.sessionNumber)[0]
 
   return (
-    <div className="min-h-screen bg-muted px-4 py-8">
-      <div className="max-w-2xl mx-auto space-y-6">
-        <Link to="/" className="text-sm text-primary underline">← All grounds</Link>
-
-        <Card className="p-6">
-          <div className="flex items-start justify-between">
-            <div>
-              <h1 className="text-xl font-semibold">{ground.label}</h1>
-              <p className="text-sm text-muted-foreground">{ground.scenario.replace('_', ' ').toLowerCase()} · {ground.timelineDays} days</p>
-            </div>
-            <Badge>{ground.status}</Badge>
+    <div style={{ minHeight: '100vh', background: 'var(--gw-bg)', display: 'flex', flexDirection: 'column' }}>
+      <div className="gw-hdr">
+        <div>
+          <div className="gw-logo">{ground.label}</div>
+          <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 1 }}>
+            {ground.scenario?.replace(/_/g, ' ').toLowerCase()}
           </div>
-        </Card>
+        </div>
+        <div style={{ display: 'flex', gap: 7, alignItems: 'center' }}>
+          <StatusPill status={ground.status} />
+          <button className="gw-back" onClick={() => navigate('/')}>← Grounds</button>
+        </div>
+      </div>
 
-        <Card className="p-6">
-          <h2 className="font-medium mb-3">Parties</h2>
-          <div className="space-y-2">
-            {ground.participants.map((p) => (
-              <div key={p.id} className="flex items-center justify-between text-sm">
-                <span>{p.email}</span>
-                <Badge variant="secondary">{p.partyType}</Badge>
+      <div className="gw-bd" style={{ maxWidth: 600, margin: '0 auto', width: '100%' }}>
+
+        {/* Participants */}
+        <Section title="Parties">
+          {ground.participants?.map((p: any) => (
+            <div key={p.id} className="gw-prow">
+              <div className="gw-av gw-av-0">{(p.email?.[0] ?? '?').toUpperCase()}</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 500 }}>{p.email}</div>
+                {p.roleAsDescribed && (
+                  <div style={{ fontSize: 12, color: 'var(--gw-sub)' }}>{p.roleAsDescribed}</div>
+                )}
               </div>
-            ))}
-          </div>
+              <span className="gw-pill gw-pill-blue">{p.partyType}</span>
+            </div>
+          ))}
 
-          {ground.participants.length < 2 && (
-            <form onSubmit={(e) => { e.preventDefault(); addParticipant.mutate() }} className="mt-4 space-y-3 border-t pt-4">
-              <p className="text-sm text-muted-foreground">Add the other party. They will be notified the moment they are added.</p>
-              <div><Label>Email</Label><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></div>
-              <div><Label>Role as you describe it</Label><Input value={role} onChange={(e) => setRole(e.target.value)} placeholder="e.g. Head of Engineering" /></div>
-              <Button type="submit" disabled={addParticipant.isPending}>Add party</Button>
+          {(ground.participants?.length ?? 0) < 2 && (
+            <form
+              onSubmit={(e) => { e.preventDefault(); addParticipant.mutate() }}
+              style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #E2E0DB' }}
+            >
+              <div className="gw-box gw-box-blue" style={{ marginBottom: 12 }}>
+                They will be notified the moment they are added. No one is added silently.
+              </div>
+              <div className="gw-fld">
+                <label className="gw-label">Email</label>
+                <input className="gw-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+              </div>
+              <div className="gw-fld">
+                <label className="gw-label">Role as you describe it</label>
+                <input className="gw-input" value={role} onChange={(e) => setRole(e.target.value)} placeholder="e.g. Head of Engineering" />
+              </div>
+              <button className="gw-btn" type="submit" disabled={addParticipant.isPending}>
+                {addParticipant.isPending ? 'Inviting…' : 'Send invite'}
+              </button>
             </form>
           )}
-        </Card>
+        </Section>
 
-        <Card className="p-6">
-          <h2 className="font-medium mb-3">Your check-in</h2>
+        {/* My check-in */}
+        <Section title="Your check-in">
           {myCheckIn ? (
-            <Button onClick={() => navigate(`/checkin/${myCheckIn.id}`)}>
-              {myCheckIn.status === 'COMPLETED' ? `Review session ${myCheckIn.sessionNumber}` : `Session ${myCheckIn.sessionNumber} — enter check-in`}
-            </Button>
+            <button className="gw-btn" onClick={() => navigate(`/checkin/${myCheckIn.id}`)}>
+              {myCheckIn.status === 'COMPLETED'
+                ? `Review session ${myCheckIn.sessionNumber}`
+                : `Session ${myCheckIn.sessionNumber} — enter check-in`}
+            </button>
           ) : (
-            <p className="text-sm text-muted-foreground">No check-in for you on this ground.</p>
+            <div style={{ fontSize: 13, color: 'var(--gw-muted)' }}>No check-in for you on this ground yet.</div>
           )}
-        </Card>
+        </Section>
 
+        {/* Report */}
         {ground.report?.releasedAt && (
-          <Card className="p-6">
-            <h2 className="font-medium mb-3">Report</h2>
-            <Link to={`/report/${ground.id}`}><Button variant="outline">View the shared picture</Button></Link>
-          </Card>
+          <Section title="The shared picture">
+            <Link to={`/report/${ground.id}`}>
+              <button className="gw-btn">View report →</button>
+            </Link>
+          </Section>
         )}
 
+        {/* Activate */}
         {ground.status === 'REPORT_READY' && user?.role === 'ADMIN' && (
-          <Card className="p-6">
-            <p className="text-sm text-muted-foreground mb-3">The report is ready. Activating starts billing ($20/mo + $50/person/mo).</p>
-            <Button onClick={() => activate.mutate()} disabled={activate.isPending}>Activate & read report</Button>
-          </Card>
+          <Section title="Report is ready">
+            <div className="gw-box gw-box-green" style={{ marginBottom: 12 }}>
+              Both parties have checked in twice. The report is ready to unlock.
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 12 }}>
+              Activating starts billing ($20/mo care fee + $50/person/mo).
+            </div>
+            <button className="gw-btn" onClick={() => activate.mutate()} disabled={activate.isPending}>
+              {activate.isPending ? 'Activating…' : 'Activate & read report'}
+            </button>
+          </Section>
         )}
 
-        {(ground.status === 'ACTIVE' || ground.status === 'CLOSED' || ground.status === 'RESOLVED') && (
+        {/* Resolution */}
+        {['ACTIVE', 'CLOSED', 'RESOLVED'].includes(ground.status) && (
           <ResolutionCard groundId={ground.id} />
         )}
       </div>
@@ -111,9 +156,23 @@ export function GroundDetailPage() {
   )
 }
 
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 6, padding: '16px', marginBottom: 8 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-muted)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 10 }}>
+        {title}
+      </div>
+      {children}
+    </div>
+  )
+}
+
 function ResolutionCard({ groundId }: { groundId: string }) {
   const qc = useQueryClient()
-  const { data, isLoading } = useQuery({ queryKey: ['resolution', groundId], queryFn: () => resolutionApi.get(groundId) })
+  const { data, isLoading } = useQuery({
+    queryKey: ['resolution', groundId],
+    queryFn: () => resolutionApi.get(groundId),
+  })
   const propose = useMutation({
     mutationFn: (endState: string) => resolutionApi.propose(groundId, endState),
     onSuccess: () => {
@@ -125,78 +184,99 @@ function ResolutionCard({ groundId }: { groundId: string }) {
 
   if (isLoading || !data) return null
   const { resolution, options, groundStatus } = data
-  const labelFor = (v: string) => options.find((o) => o.value === v)?.label ?? v
+  const labelFor = (v: string) => options?.find((o: any) => o.value === v)?.label ?? v
 
   if (groundStatus === 'CLOSED' || groundStatus === 'RESOLVED') {
     return (
       <>
-        <Card className="p-6">
-          <h2 className="font-medium mb-2">Resolved</h2>
-          <p className="text-sm">End state: <strong>{resolution ? labelFor(resolution.endState) : '—'}</strong></p>
-          <p className="text-sm text-muted-foreground mt-2">Billing has stopped. This record is permanent and belongs to both of you.</p>
-        </Card>
+        <Section title="Resolved">
+          <div className="gw-box gw-box-green">
+            End state: <strong>{resolution ? labelFor(resolution.endState) : '—'}</strong>
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 8 }}>
+            Billing has stopped. This record is permanent and belongs to both of you.
+          </div>
+        </Section>
         <OutcomeFeedbackCard groundId={groundId} />
       </>
     )
   }
 
   return (
-    <Card className="p-6">
-      <h2 className="font-medium mb-1">Resolution</h2>
-      <p className="text-sm text-muted-foreground mb-4">The ground closes when both parties confirm the same end state. No one decides this alone.</p>
+    <Section title="Resolution">
+      <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 12 }}>
+        The ground closes when both parties confirm the same end state. No one decides this alone.
+      </div>
 
       {resolution && (
-        <div className="text-sm mb-4 border-b pb-3">
-          <p>Current proposal: <strong>{labelFor(resolution.endState)}</strong></p>
-          <p className="text-muted-foreground mt-1">
-            Initiator {resolution.confirmedByInitiator ? '✓ confirmed' : '· not yet'} · Participant {resolution.confirmedByParticipant ? '✓ confirmed' : '· not yet'}
-          </p>
+        <div className="gw-box gw-box-amber" style={{ marginBottom: 12 }}>
+          <strong>Current proposal: {labelFor(resolution.endState)}</strong>
+          <div style={{ marginTop: 4, fontSize: 12 }}>
+            Initiator {resolution.confirmedByInitiator ? '✓ confirmed' : '· not yet'} ·
+            Participant {resolution.confirmedByParticipant ? '✓ confirmed' : '· not yet'}
+          </div>
         </div>
       )}
 
-      <div className="flex flex-wrap gap-2">
-        {options.map((o) => (
-          <Button
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
+        {options?.map((o: any) => (
+          <button
             key={o.value}
-            variant={resolution?.endState === o.value ? 'default' : 'outline'}
-            size="sm"
             onClick={() => propose.mutate(o.value)}
             disabled={propose.isPending}
+            className={resolution?.endState === o.value ? 'gw-btn' : 'gw-btn-sec'}
+            style={{ width: 'auto', padding: '8px 14px', fontSize: 13 }}
           >
             {o.label}
-          </Button>
+          </button>
         ))}
       </div>
-      <p className="text-xs text-muted-foreground mt-3">Choosing the current proposal confirms your side. Choosing a different one re-opens it for both.</p>
-    </Card>
+      <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 8 }}>
+        Choosing the current proposal confirms your side. Choosing a different one re-opens it for both.
+      </div>
+    </Section>
   )
 }
 
 function OutcomeFeedbackCard({ groundId }: { groundId: string }) {
   const qc = useQueryClient()
-  const { data: feedback, isLoading } = useQuery({ queryKey: ['outcome-feedback', groundId], queryFn: () => dashboardApi.myFeedback(groundId) })
+  const { data: feedback, isLoading } = useQuery({
+    queryKey: ['outcome-feedback', groundId],
+    queryFn: () => dashboardApi.myFeedback(groundId),
+  })
   const submit = useMutation({
     mutationFn: (feltFair: boolean) => dashboardApi.submitFeedback(groundId, feltFair),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['outcome-feedback', groundId] }); toast.success('Thank you — this helps Groundwork improve.') },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['outcome-feedback', groundId] })
+      toast.success('Thank you — this helps Groundwork improve.')
+    },
   })
 
   if (isLoading) return null
+
   if (feedback) {
     return (
-      <Card className="p-6">
-        <p className="text-sm text-muted-foreground">You answered: did this feel fair and grounded in evidence? — <strong>{feedback.feltFair ? 'Yes' : 'No'}</strong></p>
-      </Card>
+      <Section title="Your response">
+        <div style={{ fontSize: 13, color: 'var(--gw-sub)' }}>
+          Did this feel fair and grounded in evidence? — <strong>{feedback.feltFair ? 'Yes' : 'No'}</strong>
+        </div>
+      </Section>
     )
   }
 
   return (
-    <Card className="p-6">
-      <h2 className="font-medium mb-2">One question</h2>
-      <p className="text-sm mb-4">Did this process help you reach a decision that felt fair and grounded in evidence?</p>
-      <div className="flex gap-2">
-        <Button size="sm" onClick={() => submit.mutate(true)} disabled={submit.isPending}>Yes</Button>
-        <Button size="sm" variant="outline" onClick={() => submit.mutate(false)} disabled={submit.isPending}>No</Button>
+    <Section title="One question">
+      <div style={{ fontSize: 13, marginBottom: 12 }}>
+        Did this process help you reach a decision that felt fair and grounded in evidence?
       </div>
-    </Card>
+      <div style={{ display: 'flex', gap: 7 }}>
+        <button className="gw-btn" style={{ flex: 1, padding: '8px 0' }} onClick={() => submit.mutate(true)} disabled={submit.isPending}>
+          Yes
+        </button>
+        <button className="gw-btn-sec" style={{ flex: 1, padding: '8px 0' }} onClick={() => submit.mutate(false)} disabled={submit.isPending}>
+          No
+        </button>
+      </div>
+    </Section>
   )
 }

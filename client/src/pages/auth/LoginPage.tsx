@@ -3,7 +3,6 @@ import { useNavigate, Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import { authApi } from '@/api'
 import { useAuthStore } from '@/stores/auth'
-import { Button, Input, Label, Card } from '@/components/ui'
 
 export function LoginPage() {
   const navigate = useNavigate()
@@ -21,34 +20,43 @@ export function LoginPage() {
       navigate('/')
     } catch (err: any) {
       const message = err?.response?.data?.message || 'Invalid email or password'
-      toast.error('Sign in failed', { description: message })
+      toast.error(message)
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted px-4">
-      <Card className="w-full max-w-md p-8">
-        <h1 className="text-2xl font-semibold mb-1">Groundwork</h1>
-        <p className="text-muted-foreground mb-6">See clearly when it counts.</p>
-        <form onSubmit={onSubmit} className="space-y-4">
-          <div>
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+    <div style={{ minHeight: '100vh', background: 'var(--gw-bg)', display: 'flex', flexDirection: 'column' }}>
+      <div className="gw-hdr">
+        <div className="gw-logo">Groundwork</div>
+        <Link to="/" className="gw-back">← Back</Link>
+      </div>
+
+      <div className="gw-bd" style={{ maxWidth: 460, margin: '0 auto', width: '100%', paddingTop: 32 }}>
+        <div className="gw-ttl">Sign in</div>
+        <div className="gw-sub-t">Enter your email and password to continue.</div>
+
+        <form onSubmit={onSubmit}>
+          <div className="gw-fld">
+            <label className="gw-label">Email</label>
+            <input className="gw-input" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@company.com" required />
           </div>
-          <div>
-            <Label htmlFor="password">Password</Label>
-            <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+          <div className="gw-fld">
+            <label className="gw-label">Password</label>
+            <input className="gw-input" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Your password" required />
           </div>
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? 'Signing in…' : 'Sign in'}
-          </Button>
+          <button className="gw-btn" type="submit" disabled={loading}>
+            {loading ? 'Signing in…' : 'Sign in →'}
+          </button>
         </form>
-        <p className="text-sm text-muted-foreground mt-4">
-          New here? <Link to="/register" className="text-primary underline">Create a workspace</Link>
-        </p>
-      </Card>
+
+        <div style={{ height: 1, background: '#E2E0DB', margin: '20px 0' }} />
+        <div style={{ fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center' }}>
+          New here?{' '}
+          <Link to="/register" style={{ color: '#0C447C', textDecoration: 'underline' }}>Set up your org</Link>
+        </div>
+      </div>
     </div>
   )
 }

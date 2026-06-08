@@ -1,18 +1,18 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { promptsApi } from '@/api'
 import { useAuthStore } from '@/stores/auth'
-import { Button, Card, Badge, Input, Label, Textarea } from '@/components/ui'
 
 export function PromptVersioningPage() {
+  const navigate = useNavigate()
   const qc = useQueryClient()
   const user = useAuthStore((s) => s.user)
   const [key, setKey] = useState('')
   const [content, setContent] = useState('')
   const [summary, setSummary] = useState('')
-  const [open, setOpen] = useState(false)
+  const [formOpen, setFormOpen] = useState(false)
 
   const { data: versions, isLoading, isError } = useQuery({
     queryKey: ['prompts'],
@@ -23,7 +23,11 @@ export function PromptVersioningPage() {
 
   const create = useMutation({
     mutationFn: () => promptsApi.create(key, content, summary || undefined),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['prompts'] }); setKey(''); setContent(''); setSummary(''); setOpen(false); toast.success('New version created (inactive until activated)') },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['prompts'] })
+      setKey(''); setContent(''); setSummary(''); setFormOpen(false)
+      toast.success('New version created (inactive until activated)')
+    },
   })
 
   const activate = useMutation({
@@ -32,58 +36,90 @@ export function PromptVersioningPage() {
   })
 
   if (!user?.isPlatformAdmin) {
-    return <div className="min-h-screen bg-muted flex items-center justify-center text-muted-foreground">Prompt management requires platform admin access.</div>
+    return (
+      <div style={{ minHeight: '100vh', background: 'var(--gw-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ fontSize: 13, color: 'var(--gw-muted)' }}>Platform admin access required.</div>
+      </div>
+    )
   }
 
   return (
-    <div className="min-h-screen bg-muted">
-      <header className="bg-background border-b">
-        <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
-          <h1 className="text-xl font-semibold">Prompt management</h1>
-          <Link to="/" className="text-sm text-primary underline">All grounds</Link>
-        </div>
-      </header>
+    <div style={{ minHeight: '100vh', background: 'var(--gw-bg)', display: 'flex', flexDirection: 'column' }}>
+      <div className="gw-hdr">
+        <div className="gw-logo">Prompt management</div>
+        <button className="gw-back" onClick={() => navigate('/')}>← Grounds</button>
+      </div>
 
-      <main className="max-w-4xl mx-auto px-6 py-8 space-y-4">
-        <p className="text-sm text-muted-foreground">
+      <div className="gw-bd" style={{ maxWidth: 720, margin: '0 auto', width: '100%' }}>
+        <div className="gw-box gw-box-blue" style={{ marginBottom: 12 }}>
           Prompt versions are the moat. Every change is a new version, logged with a summary and versioned against outcome data. Activation is deliberate.
-        </p>
-
-        <div>
-          <Button onClick={() => setOpen((o) => !o)}>{open ? 'Cancel' : 'New version'}</Button>
         </div>
 
-        {open && (
-          <Card className="p-6">
-            <form onSubmit={(e) => { e.preventDefault(); create.mutate() }} className="space-y-3">
-              <div><Label>Key</Label><Input value={key} onChange={(e) => setKey(e.target.value)} placeholder="system · report_synthesis · scenario.drift" required /></div>
-              <div><Label>Change summary</Label><Input value={summary} onChange={(e) => setSummary(e.target.value)} placeholder="Why this change?" /></div>
-              <div><Label>Content</Label><Textarea value={content} onChange={(e) => setContent(e.target.value)} rows={10} required /></div>
-              <Button type="submit" disabled={create.isPending}>Create version</Button>
+        <button
+          className={formOpen ? 'gw-btn-sec' : 'gw-btn'}
+          style={{ width: 'auto', padding: '10px 18px', marginBottom: 12 }}
+          onClick={() => setFormOpen(o => !o)}
+        >
+          {formOpen ? 'Cancel' : '+ New version'}
+        </button>
+
+        {formOpen && (
+          <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 6, padding: '16px', marginBottom: 12 }}>
+            <form onSubmit={(e) => { e.preventDefault(); create.mutate() }}>
+              <div className="gw-fld">
+                <label className="gw-label">Key</label>
+                <input className="gw-input" value={key} onChange={(e) => setKey(e.target.value)} placeholder="system · report_synthesis · scenario.drift" required />
+              </div>
+              <div className="gw-fld">
+                <label className="gw-label">Change summary</label>
+                <input className="gw-input" value={summary} onChange={(e) => setSummary(e.target.value)} placeholder="Why this change?" />
+              </div>
+              <div className="gw-fld">
+                <label className="gw-label">Content</label>
+                <textarea className="gw-ta" value={content} onChange={(e) => setContent(e.target.value)} rows={10} required />
+              </div>
+              <button className="gw-btn" type="submit" disabled={create.isPending}>
+                {create.isPending ? 'Creating…' : 'Create version'}
+              </button>
             </form>
-          </Card>
+          </div>
         )}
 
-        {isLoading && <p className="text-muted-foreground">Loading…</p>}
-        {isError && <p className="text-muted-foreground">Could not load prompt versions.</p>}
+        {isLoading && <div style={{ fontSize: 13, color: 'var(--gw-muted)' }}>Loading…</div>}
+        {isError && <div style={{ fontSize: 13, color: 'var(--gw-muted)' }}>Could not load prompt versions.</div>}
 
-        {versions?.map((v) => (
-          <Card key={v.id} className="p-4">
-            <div className="flex items-start justify-between">
+        {versions?.map((v: any) => (
+          <div key={v.id} style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 6, padding: '14px 16px', marginBottom: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 8 }}>
               <div>
-                <p className="font-medium">{v.key} <span className="text-muted-foreground">v{v.version}</span></p>
-                {v.summary && <p className="text-sm text-muted-foreground">{v.summary}</p>}
+                <div style={{ fontSize: 14, fontWeight: 600 }}>
+                  {v.key} <span style={{ color: 'var(--gw-muted)', fontWeight: 400 }}>v{v.version}</span>
+                </div>
+                {v.summary && (
+                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 2 }}>{v.summary}</div>
+                )}
               </div>
-              <div className="flex items-center gap-2">
-                {v.isActive ? <Badge>Active</Badge> : (
-                  <Button size="sm" variant="outline" onClick={() => activate.mutate(v.id)} disabled={activate.isPending}>Activate</Button>
+              <div style={{ flexShrink: 0, marginLeft: 12 }}>
+                {v.isActive ? (
+                  <span className="gw-pill gw-pill-green">Active</span>
+                ) : (
+                  <button
+                    className="gw-btn-sec"
+                    style={{ width: 'auto', padding: '5px 12px', fontSize: 12 }}
+                    onClick={() => activate.mutate(v.id)}
+                    disabled={activate.isPending}
+                  >
+                    Activate
+                  </button>
                 )}
               </div>
             </div>
-            <pre className="mt-3 text-xs bg-muted rounded p-3 max-h-40 overflow-auto whitespace-pre-wrap">{v.content}</pre>
-          </Card>
+            <pre style={{ fontSize: 11, background: '#EDECEA', borderRadius: 4, padding: '10px 12px', maxHeight: 160, overflow: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all', fontFamily: 'monospace', color: '#1A1916', margin: 0 }}>
+              {v.content}
+            </pre>
+          </div>
         ))}
-      </main>
+      </div>
     </div>
   )
 }

@@ -4,6 +4,8 @@ import { Toaster } from 'sonner'
 import { useAuthStore } from '@/stores/auth'
 import { LoginPage } from '@/pages/auth/LoginPage'
 import { RegisterPage } from '@/pages/auth/RegisterPage'
+import { VerifyEmailPage } from '@/pages/auth/VerifyEmailPage'
+import { LandingPage } from '@/pages/LandingPage'
 import { GroundsListPage } from '@/pages/grounds/GroundsListPage'
 import { CreateGroundPage } from '@/pages/grounds/CreateGroundPage'
 import { GroundDetailPage } from '@/pages/grounds/GroundDetailPage'
@@ -14,7 +16,7 @@ import { InvitePage } from '@/pages/invite/InvitePage'
 import { AlignmentFeedPage } from '@/pages/alignment/AlignmentFeedPage'
 import { DashboardPage } from '@/pages/dashboard/DashboardPage'
 import { PromptVersioningPage } from '@/pages/prompts/PromptVersioningPage'
-import { VerifyEmailPage } from '@/pages/auth/VerifyEmailPage'
+import { DevSkipPanel } from '@/components/gw'
 import type { JSX } from 'react'
 
 const queryClient = new QueryClient({
@@ -26,18 +28,26 @@ function RequireAuth({ children }: { children: JSX.Element }) {
   return isAuthenticated ? children : <Navigate to="/login" replace />
 }
 
+function RootRoute() {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+  return isAuthenticated ? <GroundsListPage /> : <LandingPage />
+}
+
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <Toaster position="top-right" richColors />
+
         <Routes>
+          {/* Public */}
+          <Route path="/" element={<RootRoute />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/verify-email" element={<VerifyEmailPage />} />
           <Route path="/invite" element={<InvitePage />} />
 
-          <Route path="/" element={<RequireAuth><GroundsListPage /></RequireAuth>} />
+          {/* Protected */}
           <Route path="/grounds/new" element={<RequireAuth><CreateGroundPage /></RequireAuth>} />
           <Route path="/grounds/:id" element={<RequireAuth><GroundDetailPage /></RequireAuth>} />
           <Route path="/alignment-feed" element={<RequireAuth><AlignmentFeedPage /></RequireAuth>} />
@@ -49,6 +59,8 @@ export default function App() {
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+
+        {import.meta.env.DEV && <DevSkipPanel />}
       </BrowserRouter>
     </QueryClientProvider>
   )

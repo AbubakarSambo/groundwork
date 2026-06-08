@@ -1,83 +1,96 @@
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { dashboardApi } from '@/api'
-import { Card } from '@/components/ui'
-
-function Stat({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div>
-      <p className="text-2xl font-semibold">{value}</p>
-      <p className="text-xs text-muted-foreground">{label}</p>
-    </div>
-  )
-}
 
 export function DashboardPage() {
+  const navigate = useNavigate()
   const { data, isLoading } = useQuery({ queryKey: ['dashboard'], queryFn: dashboardApi.get })
 
   return (
-    <div className="min-h-screen bg-muted">
-      <header className="bg-background border-b">
-        <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
-          <h1 className="text-xl font-semibold">Dashboard</h1>
-          <Link to="/" className="text-sm text-primary underline">All grounds</Link>
-        </div>
-      </header>
+    <div style={{ minHeight: '100vh', background: 'var(--gw-bg)', display: 'flex', flexDirection: 'column' }}>
+      <div className="gw-hdr">
+        <div className="gw-logo">Dashboard</div>
+        <button className="gw-back" onClick={() => navigate('/')}>← Grounds</button>
+      </div>
 
-      <main className="max-w-4xl mx-auto px-6 py-8 space-y-6">
-        {isLoading && <p className="text-muted-foreground">Loading…</p>}
+      <div className="gw-bd" style={{ maxWidth: 640, margin: '0 auto', width: '100%' }}>
+        {isLoading && <div style={{ fontSize: 13, color: 'var(--gw-muted)', padding: '20px 0' }}>Loading…</div>}
 
         {data && (
           <>
-            <Card className="p-6">
-              <h2 className="font-medium mb-4">Ground activity</h2>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <Stat label="Active" value={data.groundActivity.active} />
-                <Stat label="Reports ready" value={data.groundActivity.reportReady} />
-                <Stat label="Resolved" value={data.groundActivity.resolved} />
-                <Stat label="Total" value={data.groundActivity.total} />
+            {/* Ground activity */}
+            <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 6, padding: '16px', marginBottom: 8 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-muted)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 14 }}>
+                Ground activity
               </div>
-              <div className="mt-4 border-t pt-4">
-                <Stat
-                  label={`Session-2 rate (${data.groundActivity.session2Completions}/${data.groundActivity.session1Completions}) — below 60% means session 1 isn't producing enough surprise`}
-                  value={data.groundActivity.session2Rate === null ? '—' : `${data.groundActivity.session2Rate}%`}
-                />
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 14 }}>
+                <StatBox label="Active" value={data.groundActivity.active} color="#0C447C" />
+                <StatBox label="Report ready" value={data.groundActivity.reportReady} color="#085041" />
+                <StatBox label="Resolved" value={data.groundActivity.resolved} color="#6B6560" />
+                <StatBox label="Total" value={data.groundActivity.total} color="#1A1916" />
               </div>
-            </Card>
+              <div style={{ borderTop: '1px solid #E2E0DB', paddingTop: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                  <div style={{ fontSize: 24, fontWeight: 700, color: '#1A1916' }}>
+                    {data.groundActivity.session2Rate === null ? '—' : `${data.groundActivity.session2Rate}%`}
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--gw-sub)' }}>
+                    session-2 rate ({data.groundActivity.session2Completions}/{data.groundActivity.session1Completions})
+                  </div>
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 4 }}>
+                  Below 60% means session 1 isn't producing enough surprise to bring people back.
+                </div>
+              </div>
+            </div>
 
-            <Card className="p-6">
-              <h2 className="font-medium mb-1">Outcome & learning</h2>
-              <p className="text-sm text-muted-foreground mb-4">
+            {/* Outcome rates */}
+            <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 6, padding: '16px', marginBottom: 8 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-muted)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 4 }}>
+                Outcome & learning
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 12 }}>
                 Outcome rate per prompt version. When a prompt changes, this shows whether it improved the rate.
-              </p>
+              </div>
+
               {data.outcomeRates.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No resolved grounds yet.</p>
+                <div style={{ fontSize: 13, color: 'var(--gw-muted)' }}>No resolved grounds yet.</div>
               ) : (
-                <table className="w-full text-sm">
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                   <thead>
-                    <tr className="text-left text-muted-foreground border-b">
-                      <th className="py-2 font-medium">Prompt version</th>
-                      <th className="py-2 font-medium">Resolved</th>
-                      <th className="py-2 font-medium">Responses</th>
-                      <th className="py-2 font-medium">Felt fair</th>
+                    <tr style={{ borderBottom: '1px solid #E2E0DB' }}>
+                      {['Prompt version', 'Resolved', 'Responses', 'Felt fair'].map(h => (
+                        <th key={h} style={{ textAlign: 'left', padding: '6px 0', fontWeight: 600, fontSize: 12, color: 'var(--gw-sub)' }}>{h}</th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody>
-                    {data.outcomeRates.map((r, i) => (
-                      <tr key={i} className="border-b last:border-0">
-                        <td className="py-2">{r.key} v{r.version}</td>
-                        <td className="py-2">{r.resolvedCount}</td>
-                        <td className="py-2">{r.responses}</td>
-                        <td className="py-2">{r.fairnessRate === null ? '—' : `${r.fairnessRate}%`}</td>
+                    {data.outcomeRates.map((r: any, i: number) => (
+                      <tr key={i} style={{ borderBottom: i < data.outcomeRates.length - 1 ? '1px solid #E2E0DB' : 'none' }}>
+                        <td style={{ padding: '8px 0' }}>{r.key} v{r.version}</td>
+                        <td style={{ padding: '8px 0' }}>{r.resolvedCount}</td>
+                        <td style={{ padding: '8px 0' }}>{r.responses}</td>
+                        <td style={{ padding: '8px 0' }}>
+                          {r.fairnessRate === null ? '—' : `${r.fairnessRate}%`}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               )}
-            </Card>
+            </div>
           </>
         )}
-      </main>
+      </div>
+    </div>
+  )
+}
+
+function StatBox({ label, value, color }: { label: string; value: number; color: string }) {
+  return (
+    <div>
+      <div style={{ fontSize: 26, fontWeight: 700, color }}>{value}</div>
+      <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 2 }}>{label}</div>
     </div>
   )
 }

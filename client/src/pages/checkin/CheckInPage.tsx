@@ -3,15 +3,19 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { conversationApi } from '@/api'
-import { Button, Textarea, Card } from '@/components/ui'
+import { useAuthStore } from '@/stores/auth'
 import type { ConversationTurn } from '@/types'
 
 export function CheckInPage() {
   const { checkInId } = useParams<{ checkInId: string }>()
   const navigate = useNavigate()
   const qc = useQueryClient()
+  const user = useAuthStore(s => s.user)
+  const logout = useAuthStore(s => s.logout)
   const [message, setMessage] = useState('')
+  const [sending, setSending] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
+  const taRef = useRef<HTMLTextAreaElement>(null)
 
   const { data, isLoading } = useQuery({
     queryKey: ['transcript', checkInId],
@@ -19,7 +23,6 @@ export function CheckInPage() {
     enabled: !!checkInId,
   })
 
-  // The engine speaks first: open the check-in when the transcript is empty.
   const opened = useRef(false)
   useEffect(() => {
     if (!checkInId || isLoading || opened.current) return
@@ -31,61 +34,118 @@ export function CheckInPage() {
 
   const send = useMutation({
     mutationFn: () => conversationApi.send(checkInId!, message),
-    onSuccess: () => { setMessage(''); qc.invalidateQueries({ queryKey: ['transcript', checkInId] }) },
+    onMutate: () => setSending(true),
+    onSettled: () => setSending(false),
+    onSuccess: () => {
+      setMessage('')
+      qc.invalidateQueries({ queryKey: ['transcript', checkInId] })
+      taRef.current?.focus()
+    },
   })
 
   const complete = useMutation({
     mutationFn: () => conversationApi.complete(checkInId!),
-    onSuccess: (res) => { toast.success('Check-in complete. Your record is yours.'); navigate(`/grounds/${res.groundId}`) },
+    onSuccess: (res) => {
+      toast.success('Check-in complete. Your record is yours.')
+      navigate(`/grounds/${res.groundId}`)
+    },
   })
 
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [data?.turns?.length])
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [data?.turns?.length, sending])
 
   const turns: ConversationTurn[] = data?.turns ?? []
+  const canSend = message.trim().length > 0 && !sending
+
+  const handleKey = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      if (canSend) send.mutate()
+    }
+  }
 
   return (
-    <div className="min-h-screen bg-muted flex flex-col">
-      <header className="bg-background border-b px-6 py-3 flex items-center justify-between">
-        <span className="font-medium">Your check-in</span>
-        <Button variant="ghost" size="sm" onClick={() => complete.mutate()} disabled={complete.isPending}>
-          Complete check-in
-        </Button>
-      </header>
-
-      <main className="flex-1 overflow-y-auto px-4 py-6">
-        <div className="max-w-2xl mx-auto space-y-3">
-          {isLoading && <p className="text-muted-foreground">Loading…</p>}
-          {turns.length === 0 && !isLoading && (
-            <Card className="p-6 text-muted-foreground text-sm">
-              This is your private check-in. The other party never sees what you write here. Say what is true — start when you're ready.
-            </Card>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
+      {/* Header */}
+      <div className="gw-hdr">
+        <div>
+          <div className="gw-logo">{user?.firstName ?? 'Check-in'}</div>
+          <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 1 }}>{user?.organizationName ?? 'Groundwork'}</div>
+        </div>
+        <div style={{ display: 'flex', gap: 7, alignItems: 'center' }}>
+          {turns.length > 2 && (
+            <button
+              className="gw-btn-sm"
+              onClick={() => complete.mutate()}
+              disabled={complete.isPending}
+            >
+              {complete.isPending ? 'Completing…' : 'Complete check-in'}
+            </button>
           )}
+          <button className="gw-back" onClick={() => { logout(); navigate('/') }}>Sign out</button>
+        </div>
+      </div>
+
+      {/* Chat */}
+      <div className="gw-chat-w">
+        <div className="gw-chat-msgs" id="chat-scroll">
+          {isLoading && (
+            <div className="gw-msg gw-msg-loading">Loading your check-in…</div>
+          )}
+
+          {!isLoading && turns.length === 0 && (
+            <div className="gw-msg gw-msg-ai">
+              Starting your check-in…
+            </div>
+          )}
+
           {turns.map((t) => (
-            <div key={t.id} className={t.role === 'PERSON' ? 'flex justify-end' : 'flex justify-start'}>
-              <div className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm ${t.role === 'PERSON' ? 'bg-primary text-primary-foreground' : 'bg-background border'}`}>
-                {t.content}
-              </div>
+            <div
+              key={t.id}
+              className={`gw-msg ${t.role === 'AI' ? 'gw-msg-ai' : 'gw-msg-user'}`}
+            >
+              {t.content}
             </div>
           ))}
+
+          {sending && <div className="gw-msg gw-msg-loading">Thinking…</div>}
           <div ref={bottomRef} />
         </div>
-      </main>
 
-      <footer className="bg-background border-t px-4 py-3">
-        <form
-          onSubmit={(e) => { e.preventDefault(); if (message.trim()) send.mutate() }}
-          className="max-w-2xl mx-auto flex gap-2"
-        >
-          <Textarea
+        {/* Context action buttons — shown after a few turns */}
+        {turns.length >= 2 && !sending && (
+          <div className="gw-chat-actions">
+            <button className="gw-btn-sm" onClick={() => setMessage('I would like to download my contribution record')}>
+              📄 Download record
+            </button>
+            <button className="gw-btn-sm" onClick={() => complete.mutate()} disabled={complete.isPending}>
+              ✓ Complete check-in
+            </button>
+          </div>
+        )}
+
+        {/* Input */}
+        <div className="gw-chat-bar">
+          <textarea
+            ref={taRef}
+            className="gw-chat-ta"
             value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder="Type your response…"
-            rows={2}
-            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (message.trim()) send.mutate() } }}
+            onChange={e => setMessage(e.target.value)}
+            onKeyDown={handleKey}
+            placeholder="Share what you have been working on."
+            rows={1}
+            style={{ minHeight: 38, maxHeight: 120 }}
           />
-          <Button type="submit" disabled={send.isPending || !message.trim()}>Send</Button>
-        </form>
-      </footer>
+          <button
+            className="gw-send-btn"
+            onClick={() => canSend && send.mutate()}
+            disabled={!canSend}
+          >
+            ↑
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
