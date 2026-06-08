@@ -154,7 +154,7 @@ export class GroundsService {
     // ground can be activated. If not, return a Checkout URL with HTTP 402 so
     // the client can redirect to set up billing, then retry activation.
     if (!(await this.billing.isBillingReady(organizationId))) {
-      const { checkoutUrl } = await this.billing.createCareFeeCheckout(organizationId);
+      const { checkoutUrl } = await this.billing.createCareFeeCheckout(organizationId, groundId);
       throw new HttpException(
         { message: 'Billing setup required before activating this ground.', requiresBilling: true, checkoutUrl },
         HttpStatus.PAYMENT_REQUIRED,

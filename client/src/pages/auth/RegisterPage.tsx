@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { toast } from 'sonner'
 import { authApi } from '@/api'
 
 type Step = 1 | 2 | 3
@@ -28,8 +27,7 @@ export function RegisterPage() {
     setLoading(true)
     try {
       await authApi.register(form)
-      toast.success('Check your email to verify your account.')
-      navigate('/login')
+      navigate(`/check-email?email=${encodeURIComponent(form.email)}`)
     } catch (err: any) {
       setEr(err?.response?.data?.message || 'Something went wrong')
     } finally {

@@ -17,6 +17,7 @@ import { PatternsModule } from './modules/patterns';
 import { ResolutionModule } from './modules/resolution';
 import { BillingModule } from './modules/billing';
 import { IntelligenceModule } from './modules/intelligence';
+import { DocumentsModule } from './modules/documents/documents.module';
 import { JwtAuthGuard, RolesGuard, GlobalExceptionFilter, TransformInterceptor } from './common';
 
 @Module({
@@ -38,6 +39,7 @@ import { JwtAuthGuard, RolesGuard, GlobalExceptionFilter, TransformInterceptor }
     ResolutionModule,
     BillingModule,
     IntelligenceModule,
+    DocumentsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

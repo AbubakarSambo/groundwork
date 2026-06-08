@@ -45,7 +45,7 @@ export function CreateGroundPage() {
 
         <form onSubmit={(e) => { e.preventDefault(); mutation.mutate() }}>
           <div className="gw-fld">
-            <label className="gw-label">What is this about?</label>
+            <label className="gw-label">Name the ground</label>
             <input
               className="gw-input"
               value={label}

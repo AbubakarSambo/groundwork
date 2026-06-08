@@ -540,23 +540,36 @@ const DRIFT_OPENING = `OPENING QUESTIONS (the second is the most important — "
 "Name the person and the area they are supposed to own."
 "What specifically are they not doing that you believe they agreed to do?"`;
 
-const DRIFT_ROLE_VARIANTS = `ROLE-SPECIFIC VARIANTS (choose the one matching what the person describes):
+const DRIFT_INITIATOR_VARIANTS = `ROLE-SPECIFIC VARIANTS (choose the one matching what the person describes):
 
 Cofounder not delivering —
-  Initiator: "Name your cofounder and the area they are supposed to own. What specifically are they not doing that you believe they agreed to do? How long has this been the case and what have you already tried?"
-  Other party: "What did you understand your role to be when you joined this founding team? What are you working on right now and what is getting in the way? What do you think the founder expects from you that you think is unrealistic or unclear?"
+  "Name your cofounder and the area they are supposed to own. What specifically are they not doing that you believe they agreed to do? How long has this been the case and what have you already tried?"
 
 Senior hire not delivering —
-  Initiator: "Name the person and the role. What did you hire them to change or build? What specifically did they commit to deliver in the first 90 days? What exists now that did not exist before they joined? What was supposed to exist that does not?"
-  Other party: "What did you understand you were being hired to do when you joined? What did you find when you arrived that made that harder than expected? What do you need that you do not currently have in order to do what you were hired to do?"
+  "Name the person and the role. What did you hire them to change or build? What specifically did they commit to deliver in the first 90 days? What exists now that did not exist before they joined? What was supposed to exist that does not?"
 
 Project not going well —
-  Initiator: "Name the project. What was supposed to exist by now that does not? Who owns the gap between what was planned and what exists?"
-  Other party: "What did you understand the project brief to be when it started? What changed after it started that made the original scope harder to deliver? What do you need that you do not have in order to deliver what was asked?"
+  "Name the project. What was supposed to exist by now that does not? Who owns the gap between what was planned and what exists?"
 
 Team misaligned / revenue pressure —
-  Initiator: "What is the actual situation — revenue, runway, what needs to change in the next 60 days?"
-  Other party: "What do you think the company's most important priority is in the next 60 days? What are you working on right now and how does that connect to that?"`;
+  "What is the actual situation — revenue, runway, what needs to change in the next 60 days?"`;
+
+const DRIFT_PARTICIPANT_VARIANTS = `ROLE-SPECIFIC VARIANTS (choose the one matching what the person describes):
+
+Cofounder situation —
+  "What did you understand your role to be when you joined this founding team? What are you working on right now and what is getting in the way? What do you think the founder expects from you that you think is unrealistic or unclear?"
+
+Senior hire situation —
+  "What did you understand you were being hired to do when you joined? What did you find when you arrived that made that harder than expected? What do you need that you do not currently have in order to do what you were hired to do?"
+
+Project not going well —
+  "What did you understand the project brief to be when it started? What changed after it started that made the original scope harder to deliver? What do you need that you do not have in order to deliver what was asked?"
+
+Team misaligned / revenue pressure —
+  "What do you think the company's most important priority is in the next 60 days? What are you working on right now and how does that connect to that?"`;
+
+// Combined variant kept only for the legacy SCENARIO_PACKS export (used by DB seed).
+const DRIFT_ROLE_VARIANTS = [DRIFT_INITIATOR_VARIANTS, DRIFT_PARTICIPANT_VARIANTS].join('\n\n');
 
 const DRIFT_WORRY_TENSION = `WORRY AND TENSION (asked after the opening, before going deeper; both answers go on record — they are the emotional context that makes everything that follows survivable):
 "What are you most worried will happen when this conversation finally occurs?"
@@ -619,6 +632,7 @@ const RECOGNITION_PACK = [
   RECOGNITION_PARTICIPANT,
 ].join('\n\n');
 
+// Legacy combined packs — used by the DB seed only. Runtime uses buildScenarioPackForParty.
 export const SCENARIO_PACKS: Record<GroundScenario, string> = {
   NEW_HIRE: composeStartingPack('NEW_HIRE'),
   NEW_COFOUNDER: composeStartingPack('NEW_COFOUNDER'),
@@ -627,6 +641,73 @@ export const SCENARIO_PACKS: Record<GroundScenario, string> = {
   DRIFT: DRIFT_PACK,
   RECOGNITION: RECOGNITION_PACK,
 };
+
+/**
+ * Returns a scenario pack pre-filtered to only the questions relevant for this
+ * party. The AI never sees the other party's opening questions, eliminating the
+ * root cause of the initiator/participant role confusion.
+ */
+export function buildScenarioPackForParty(scenario: GroundScenario, partyType: PartyType): string {
+  const isInitiator = partyType === PartyType.INITIATOR;
+
+  switch (scenario) {
+    case GroundScenario.NEW_HIRE:
+    case GroundScenario.NEW_COFOUNDER:
+    case GroundScenario.NEW_ADVISOR:
+    case GroundScenario.NEW_PROJECT: {
+      const role = STARTING_ROLE_QUESTIONS[scenario as keyof typeof STARTING_ROLE_QUESTIONS];
+      if (isInitiator) {
+        return [
+          `MOMENT: Something new is starting.`,
+          STARTING_VALIDATION,
+          STARTING_OPENING,
+          STARTING_FOLLOWUP,
+          `ROLE-SPECIFIC OPENING — initiator (founder / leader):\n${role.initiator}`,
+        ].join('\n\n');
+      }
+      return [
+        `MOMENT: Something new is starting.`,
+        PARTICIPANT_PREAMBLE,
+        `ROLE-SPECIFIC OPENING — participant (other party):\n${role.participant}`,
+      ].join('\n\n');
+    }
+
+    case GroundScenario.DRIFT: {
+      if (isInitiator) {
+        return [
+          `MOMENT: Something has drifted.`,
+          DRIFT_VALIDATION,
+          DRIFT_OPENING,
+          DRIFT_INITIATOR_VARIANTS,
+          DRIFT_WORRY_TENSION,
+        ].join('\n\n');
+      }
+      return [
+        `MOMENT: Something has drifted.`,
+        PARTICIPANT_PREAMBLE,
+        DRIFT_PARTICIPANT_VARIANTS,
+        DRIFT_WORRY_TENSION,
+      ].join('\n\n');
+    }
+
+    case GroundScenario.RECOGNITION: {
+      if (isInitiator) {
+        return [
+          `MOMENT: Someone wants recognition.`,
+          RECOGNITION_VALIDATION,
+          RECOGNITION_INITIATOR,
+        ].join('\n\n');
+      }
+      return [
+        `MOMENT: Someone wants recognition.`,
+        RECOGNITION_PARTICIPANT,
+      ].join('\n\n');
+    }
+
+    default:
+      return '';
+  }
+}
 
 // Scenarios whose first session should run the willingness gate.
 const WILLINGNESS_GATE_SCENARIOS: GroundScenario[] = [GroundScenario.DRIFT, GroundScenario.RECOGNITION];

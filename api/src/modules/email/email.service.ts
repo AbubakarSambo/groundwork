@@ -107,6 +107,20 @@ export class EmailService {
     });
   }
 
+  /** Ground activated — sent to the participant so they know to return. */
+  async sendGroundActivated(email: string, firstName: string, groundLabel: string, groundUrl: string): Promise<void> {
+    await this.sendEmail({
+      to: email,
+      subject: `Your ground "${groundLabel}" is now active`,
+      html: this.layout(
+        `<p>Hi ${firstName},</p>
+         <p>The ground <strong>${groundLabel}</strong> has been activated. Both records are in — the process continues from here.</p>
+         <p>Sign in to view the shared picture and decide your next steps together.</p>
+         <p><a href="${groundUrl}">Open ground</a></p>`,
+      ),
+    });
+  }
+
   /** Nudge — names the specific commitment that is still open. */
   async sendNudge(email: string, specificThing: string, checkInUrl: string): Promise<void> {
     await this.sendEmail({

@@ -217,6 +217,7 @@ model Ground {
   outcome           Outcome?
   outcomeFeedback   OutcomeFeedback[]
   billingEvents     BillingEvent[]
+  documents         GroundDocument[]
 
   @@index([organizationId])
   @@index([status])
@@ -247,6 +248,7 @@ model GroundParticipant {
   recordEntries     RecordEntry[]
   patternDetections PatternDetection[]
   outcomeFeedback   OutcomeFeedback[]
+  documents         GroundDocument[]
 
   @@unique([groundId, email])
   @@index([groundId])
@@ -263,6 +265,7 @@ model CheckIn {
   participantId String        @map("participant_id")
   sessionNumber Int           @map("session_number") // 1, 2, ...
   status        CheckInStatus @default(NOT_STARTED)
+  availableFrom DateTime?     @map("available_from") // cadence gate — session 2+ opens after this date
   startedAt     DateTime?     @map("started_at")
   completedAt   DateTime?     @map("completed_at")
   patternsAnalyzedAt DateTime? @map("patterns_analyzed_at") // pattern sweep has processed this period
@@ -459,4 +462,21 @@ model BillingEvent {
 
   @@index([organizationId])
   @@map("billing_events")
+}
+
+model GroundDocument {
+  id            String   @id @default(uuid())
+  groundId      String   @map("ground_id")
+  participantId String?  @map("participant_id")
+  fileName      String   @map("file_name")
+  mimeType      String   @map("mime_type")
+  content       String   @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  ground      Ground             @relation(fields: [groundId], references: [id], onDelete: Cascade)
+  participant GroundParticipant? @relation(fields: [participantId], references: [id], onDelete: SetNull)
+
+  @@index([groundId, participantId])
+  @@map("ground_documents")
 }

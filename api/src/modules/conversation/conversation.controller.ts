@@ -1,6 +1,7 @@
-import { Controller, Get, Post, Param, Body } from '@nestjs/common';
+import { Controller, Get, Post, Param, Body, Res, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { IsString, IsNotEmpty, MaxLength } from 'class-validator';
+import { Response } from 'express';
 import { ConversationService } from './conversation.service';
 import { CurrentUser } from '../../common';
 
@@ -21,6 +22,16 @@ export class ConversationController {
   @ApiOperation({ summary: "Get a check-in transcript (owner only)" })
   async transcript(@Param('id') id: string, @CurrentUser('id') userId: string) {
     return this.conversation.getTranscript(id, userId);
+  }
+
+  @Get(':id/download')
+  @ApiOperation({ summary: 'Download the contribution record as plain text (owner only)' })
+  async download(@Param('id') id: string, @CurrentUser('id') userId: string, @Res() res: Response) {
+    const text = await this.conversation.getDownload(id, userId);
+    res.status(HttpStatus.OK)
+      .setHeader('Content-Type', 'text/plain; charset=utf-8')
+      .setHeader('Content-Disposition', `attachment; filename="groundwork-record-${id.slice(0, 8)}.txt"`)
+      .send(text);
   }
 
   @Post(':id/open')

@@ -27,7 +27,7 @@ export class BillingService {
 
   /** The gate: an org is billing-ready once its care fee is active. */
   async isBillingReady(organizationId: string): Promise<boolean> {
-    if (process.env.NODE_ENV !== 'production') return true;
+    if (process.env.BILLING_ENABLED !== 'true') return true;
     const org = await this.prisma.organization.findUnique({
       where: { id: organizationId },
       select: { careFeeStatus: true, stripeCustomerId: true },
@@ -39,7 +39,7 @@ export class BillingService {
    * Create a hosted Checkout session to set up the care fee. Returns the URL the
    * admin is redirected to. Completion is confirmed via webhook.
    */
-  async createCareFeeCheckout(organizationId: string): Promise<{ checkoutUrl: string }> {
+  async createCareFeeCheckout(organizationId: string, groundId?: string): Promise<{ checkoutUrl: string }> {
     const org = await this.prisma.organization.findUnique({ where: { id: organizationId } });
     if (!org) throw new NotFoundException('Organization not found');
 
@@ -49,10 +49,13 @@ export class BillingService {
     }
 
     const base = this.config.get<string>('stripe.callbackUrl') || 'http://localhost:5173/billing/callback';
+    const successUrl = groundId
+      ? `${base}?status=success&groundId=${groundId}`
+      : `${base}?status=success`;
     const checkoutUrl = await this.stripe.createCareFeeCheckout({
       customerId,
       organizationId: org.id,
-      successUrl: `${base}?status=success`,
+      successUrl,
       cancelUrl: `${base}?status=cancelled`,
     });
     return { checkoutUrl };

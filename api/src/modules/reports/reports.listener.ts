@@ -1,9 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { GroundsService } from '../grounds';
 import { ReportsService } from './reports.service';
+import { EmailService } from '../email/email.service';
 import { GroundworkEvents, CheckInCompletedEvent, GroundActivatedEvent } from '../../common';
+import { PartyType } from '@prisma/client';
 
 /**
  * Bridges domain events to report generation. Lives in the reports module so
@@ -23,6 +26,8 @@ export class ReportsListener {
     private prisma: PrismaService,
     private grounds: GroundsService,
     private reports: ReportsService,
+    private email: EmailService,
+    private config: ConfigService,
   ) {}
 
   @OnEvent(GroundworkEvents.CHECK_IN_COMPLETED)
@@ -49,6 +54,29 @@ export class ReportsListener {
       await this.reports.release(event.groundId);
     } catch (err: any) {
       this.logger.error(`Report release on ground.activated failed for ground ${event.groundId}: ${err.message}`);
+    }
+
+    // Notify the participant(s) so they know to return.
+    try {
+      const ground = await this.prisma.ground.findUnique({
+        where: { id: event.groundId },
+        select: { label: true, participants: { include: { user: { select: { email: true, firstName: true } } } } },
+      });
+      if (!ground) return;
+
+      const frontendUrl = this.config.get<string>('resend.frontendUrl') || 'http://localhost:5173';
+      const groundUrl = `${frontendUrl}/grounds/${event.groundId}`;
+
+      const participants = ground.participants.filter((p) => p.partyType === PartyType.PARTICIPANT && p.user);
+      await Promise.all(
+        participants.map((p) =>
+          this.email
+            .sendGroundActivated(p.user!.email, p.user!.firstName, ground.label, groundUrl)
+            .catch((err: any) => this.logger.error(`Failed to notify participant ${p.user!.email} of activation: ${err.message}`)),
+        ),
+      );
+    } catch (err: any) {
+      this.logger.error(`Participant activation notification failed for ground ${event.groundId}: ${err.message}`);
     }
   }
 }

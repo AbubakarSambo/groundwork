@@ -1,7 +1,9 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
-import { CheckInStatus } from '@prisma/client';
+import { EmailService } from '../email/email.service';
+import { CheckInStatus, TokenType } from '@prisma/client';
 
 /**
  * Participant magic-link entry. A participant is added to a ground by email and
@@ -14,6 +16,7 @@ export class ParticipantsService {
   constructor(
     private prisma: PrismaService,
     private jwt: JwtService,
+    private email: EmailService,
   ) {}
 
   /** Preview an invite from its token — shown before the participant accepts. */
@@ -73,6 +76,22 @@ export class ParticipantsService {
 
       return user;
     });
+
+    // Send a password setup link so the participant can return after their
+    // initial session without being locked out. Only send when no password
+    // is set — existing accounts that already have one don't need this.
+    if (!user.passwordHash) {
+      const setupToken = crypto.randomBytes(32).toString('hex');
+      await this.prisma.emailVerificationToken.create({
+        data: {
+          userId: user.id,
+          token: setupToken,
+          type: TokenType.PASSWORD_SETUP,
+          expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000), // 72 hours
+        },
+      });
+      this.email.sendAddPasswordEmail(user.email, user.firstName, setupToken).catch(() => null);
+    }
 
     // The participant's first session to enter.
     const checkIn = await this.prisma.checkIn.findFirst({

@@ -5,6 +5,10 @@ import { useAuthStore } from '@/stores/auth'
 import { LoginPage } from '@/pages/auth/LoginPage'
 import { RegisterPage } from '@/pages/auth/RegisterPage'
 import { VerifyEmailPage } from '@/pages/auth/VerifyEmailPage'
+import { SetPasswordPage } from '@/pages/auth/SetPasswordPage'
+import { ResetPasswordPage } from '@/pages/auth/ResetPasswordPage'
+import { ForgotPasswordPage } from '@/pages/auth/ForgotPasswordPage'
+import { CheckEmailPage } from '@/pages/auth/CheckEmailPage'
 import { LandingPage } from '@/pages/LandingPage'
 import { GroundsListPage } from '@/pages/grounds/GroundsListPage'
 import { CreateGroundPage } from '@/pages/grounds/CreateGroundPage'
@@ -45,6 +49,10 @@ export default function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/verify-email" element={<VerifyEmailPage />} />
+          <Route path="/set-password" element={<SetPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/check-email" element={<CheckEmailPage />} />
           <Route path="/invite" element={<InvitePage />} />
 
           {/* Protected */}

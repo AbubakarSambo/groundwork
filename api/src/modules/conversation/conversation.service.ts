@@ -1,12 +1,14 @@
-import { Injectable, Logger, ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, ForbiddenException, NotFoundException, BadRequestException, HttpException, HttpStatus } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
 import { PromptsService } from '../prompts';
 import { AnthropicService, ChatTurn } from './anthropic.service';
 import { ConversationContextService } from './context.service';
-import { buildRuntimeContext, RECORD_EXTRACTION_PROMPT } from './prompt-library';
+import { buildRuntimeContext, buildScenarioPackForParty, RECORD_EXTRACTION_PROMPT } from './prompt-library';
 import { GroundworkEvents, CheckInCompletedEvent } from '../../common';
-import { CheckInStatus, TurnRole, RecordEntryType } from '@prisma/client';
+import { BillingService } from '../billing';
+import { DocumentsService } from '../documents/documents.service';
+import { CheckInStatus, TurnRole, RecordEntryType, Cadence } from '@prisma/client';
 
 const RECORD_EXTRACTION_SCHEMA = {
   name: 'emit_record_entries',
@@ -52,6 +54,8 @@ export class ConversationService {
     private anthropic: AnthropicService,
     private context: ConversationContextService,
     private events: EventEmitter2,
+    private billing: BillingService,
+    private documents: DocumentsService,
   ) {}
 
   /** Returns the transcript for a check-in — owner-scoped only. */
@@ -65,14 +69,72 @@ export class ConversationService {
   }
 
   /**
+   * Return the transcript formatted as plain text for download.
+   * Owner-scoped: the person can only download their own record.
+   */
+  async getDownload(checkInId: string, requestingUserId: string): Promise<string> {
+    const checkIn = await this.loadOwnedCheckIn(checkInId, requestingUserId);
+    const turns = await this.prisma.conversationTurn.findMany({
+      where: { checkInId: checkIn.id },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    const header = [
+      'Groundwork — Contribution Record',
+      `Session ${checkIn.sessionNumber}`,
+      checkIn.completedAt
+        ? `Completed: ${checkIn.completedAt.toISOString().slice(0, 10)}`
+        : `Status: ${checkIn.status}`,
+      '',
+      'This record belongs to you. It was built from your words in a private check-in.',
+      '─'.repeat(60),
+      '',
+    ].join('\n');
+
+    const body = turns
+      .map((t) => {
+        const speaker = t.role === TurnRole.AI ? 'Groundwork' : 'You';
+        return `[${speaker}]\n${t.content}`;
+      })
+      .join('\n\n');
+
+    return header + body;
+  }
+
+  /**
    * Open the check-in: the engine speaks first, delivering the moment's opening
    * per the runtime context. Idempotent — if turns already exist, returns the
    * existing first turn rather than re-opening.
+   *
+   * Gates (in order):
+   *   1. Cadence: session 2+ is not available until availableFrom date.
+   *   2. Billing: session 2+ requires the org to have an active care fee.
    */
   async open(checkInId: string, requestingUserId: string) {
     const checkIn = await this.loadOwnedCheckIn(checkInId, requestingUserId);
     if (checkIn.status === CheckInStatus.COMPLETED) {
       throw new BadRequestException('This check-in is already complete');
+    }
+
+    // Gate 1: cadence — session 2+ is not available until the scheduled date.
+    if (checkIn.availableFrom && checkIn.availableFrom > new Date()) {
+      const dateStr = checkIn.availableFrom.toISOString().slice(0, 10);
+      throw new BadRequestException(`This session opens on ${dateStr}. Come back then to continue building your record.`);
+    }
+
+    // Gate 2: billing — session 2+ requires an active care fee (Part 9 — Payment).
+    if (checkIn.sessionNumber >= 2) {
+      const user = await this.prisma.user.findUnique({
+        where: { id: requestingUserId },
+        select: { organizationId: true },
+      });
+      if (user && !(await this.billing.isBillingReady(user.organizationId))) {
+        const { checkoutUrl } = await this.billing.createCareFeeCheckout(user.organizationId, checkIn.groundId);
+        throw new HttpException(
+          { message: 'Set up billing to continue to the next session.', requiresBilling: true, checkoutUrl },
+          HttpStatus.PAYMENT_REQUIRED,
+        );
+      }
     }
 
     const existing = await this.prisma.conversationTurn.count({ where: { checkInId: checkIn.id } });
@@ -144,10 +206,18 @@ export class ConversationService {
     const ground = await this.prisma.ground.findUnique({ where: { id: checkIn.groundId } });
     if (!ground) throw new NotFoundException('Ground not found');
 
-    const [systemPrompt, scenarioPack] = await Promise.all([
+    const [systemPrompt, dbScenarioPack] = await Promise.all([
       this.prompts.getActiveContent('system'),
-      this.prompts.getActiveContent(`scenario.${ground.scenario.toLowerCase()}`).catch(() => ''),
+      // Try a party-specific DB override first (e.g. "scenario.new_project.initiator").
+      // Falls back to the code-generated party-filtered pack below.
+      this.prompts
+        .getActiveContent(`scenario.${ground.scenario.toLowerCase()}.${checkIn.participant.partyType.toLowerCase()}`)
+        .catch(() => ''),
     ]);
+    // Use DB override when present; otherwise use the code-level pack pre-filtered
+    // to this party's questions only — this prevents the AI from seeing the other
+    // party's opening questions and confusing which role it is addressing.
+    const scenarioPack = dbScenarioPack || buildScenarioPackForParty(ground.scenario, checkIn.participant.partyType);
 
     const otherPartyCheckedIn = await this.hasOtherPartyCheckedIn(checkIn.groundId, checkIn.participantId);
     const runtimeContext = buildRuntimeContext({
@@ -159,14 +229,26 @@ export class ConversationService {
       groundLabel: ground.label,
     });
 
-    const { block: dynamicContext } = await this.context.build({
-      groundId: checkIn.groundId,
-      participantId: checkIn.participantId,
-      sessionNumber: checkIn.sessionNumber,
-      latestMessage,
-    });
+    const [{ block: dynamicContext }, uploadedDocs] = await Promise.all([
+      this.context.build({
+        groundId: checkIn.groundId,
+        participantId: checkIn.participantId,
+        sessionNumber: checkIn.sessionNumber,
+        latestMessage,
+      }),
+      this.prisma.groundDocument.findMany({
+        where: { groundId: checkIn.groundId, participantId: checkIn.participantId },
+        select: { fileName: true, content: true },
+        orderBy: { createdAt: 'asc' },
+      }),
+    ]);
 
-    return [systemPrompt, scenarioPack, runtimeContext, dynamicContext].filter(Boolean).join('\n\n');
+    const docContext = uploadedDocs.length
+      ? 'SUPPORTING DOCUMENTS (uploaded by this party before the session):\n\n' +
+        uploadedDocs.map((d) => `--- ${d.fileName} ---\n${d.content}`).join('\n\n')
+      : '';
+
+    return [systemPrompt, scenarioPack, runtimeContext, dynamicContext, docContext].filter(Boolean).join('\n\n');
   }
 
   /**
@@ -199,12 +281,28 @@ export class ConversationService {
     return { status: 'completed', groundId: checkIn.groundId };
   }
 
-  /** Create the next session for a participant if it does not already exist. */
+  /**
+   * Create the next session for a participant if it does not already exist.
+   * Sets availableFrom based on the ground's cadence so session 2 respects
+   * the fortnightly / weekly / monthly schedule.
+   */
   private async ensureNextSession(groundId: string, participantId: string, sessionNumber: number) {
     const next = sessionNumber + 1;
     const existing = await this.prisma.checkIn.findUnique({ where: { participantId_sessionNumber: { participantId, sessionNumber: next } } });
     if (existing) return;
-    await this.prisma.checkIn.create({ data: { groundId, participantId, sessionNumber: next, status: CheckInStatus.NOT_STARTED } });
+
+    const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { cadence: true } });
+    const availableFrom = ground ? this.cadenceToDate(ground.cadence) : null;
+
+    await this.prisma.checkIn.create({ data: { groundId, participantId, sessionNumber: next, status: CheckInStatus.NOT_STARTED, availableFrom } });
+  }
+
+  /** Convert a cadence enum to the next available date from now. */
+  private cadenceToDate(cadence: Cadence): Date {
+    const days = cadence === Cadence.WEEKLY ? 7 : cadence === Cadence.MONTHLY ? 30 : 14; // FORTNIGHTLY = 14
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    return d;
   }
 
   /**

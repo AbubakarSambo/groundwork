@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { AxiosError } from 'axios'
-import { groundsApi, resolutionApi, dashboardApi } from '@/api'
+import { groundsApi, resolutionApi, dashboardApi, documentsApi } from '@/api'
 import { useAuthStore } from '@/stores/auth'
 import { StatusPill } from '@/components/gw'
 
@@ -123,6 +123,11 @@ export function GroundDetailPage() {
           )}
         </Section>
 
+        {/* Documents */}
+        {myParticipant && (
+          <DocumentsCard groundId={ground.id} />
+        )}
+
         {/* Report */}
         {ground.report?.releasedAt && (
           <Section title="The shared picture">
@@ -153,6 +158,82 @@ export function GroundDetailPage() {
         )}
       </div>
     </div>
+  )
+}
+
+function DocumentsCard({ groundId }: { groundId: string }) {
+  const qc = useQueryClient()
+  const fileRef = useRef<HTMLInputElement>(null)
+  const [uploading, setUploading] = useState(false)
+
+  const { data: docs = [] } = useQuery({
+    queryKey: ['documents', groundId],
+    queryFn: () => documentsApi.list(groundId),
+  })
+
+  const remove = useMutation({
+    mutationFn: (docId: string) => documentsApi.remove(groundId, docId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['documents', groundId] })
+      toast.success('Document removed')
+    },
+  })
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    try {
+      await documentsApi.upload(groundId, file)
+      qc.invalidateQueries({ queryKey: ['documents', groundId] })
+      toast.success(`"${file.name}" added to your record`)
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Upload failed')
+    } finally {
+      setUploading(false)
+      if (fileRef.current) fileRef.current.value = ''
+    }
+  }
+
+  return (
+    <Section title="Your documents">
+      <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 12 }}>
+        Upload PDF or text files — the AI reads them during your check-in and can reference them directly. Only you can see your documents.
+      </div>
+
+      {docs.length > 0 && (
+        <div style={{ marginBottom: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {docs.map((doc) => (
+            <div key={doc.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', background: '#F7F6F3', borderRadius: 5 }}>
+              <span style={{ fontSize: 12, flex: 1, color: '#1A1916' }}>{doc.fileName}</span>
+              <button
+                onClick={() => remove.mutate(doc.id)}
+                disabled={remove.isPending}
+                style={{ fontSize: 11, color: 'var(--gw-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 6px' }}
+              >
+                Remove
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <input
+        ref={fileRef}
+        type="file"
+        accept=".pdf,.txt,text/plain,application/pdf"
+        style={{ display: 'none' }}
+        onChange={handleFile}
+      />
+      <button
+        className="gw-btn-sec"
+        onClick={() => fileRef.current?.click()}
+        disabled={uploading}
+        style={{ width: '100%' }}
+      >
+        {uploading ? 'Uploading…' : '+ Add document (PDF or TXT)'}
+      </button>
+    </Section>
   )
 }
 

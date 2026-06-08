@@ -43,7 +43,10 @@ export function LoginPage() {
             <input className="gw-input" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@company.com" required />
           </div>
           <div className="gw-fld">
-            <label className="gw-label">Password</label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+              <label className="gw-label">Password</label>
+              <Link to="/forgot-password" style={{ fontSize: 11, color: '#0C447C', textDecoration: 'underline' }}>Forgot password?</Link>
+            </div>
             <input className="gw-input" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Your password" required />
           </div>
           <button className="gw-btn" type="submit" disabled={loading}>

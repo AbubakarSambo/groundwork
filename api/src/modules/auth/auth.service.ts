@@ -148,7 +148,16 @@ export class AuthService {
         );
         throw new UnauthorizedException("Your account uses Google Sign-In. We've emailed you a link to set a password.");
       }
-      throw new UnauthorizedException('Please check your email for an activation link to set your password');
+      // Participant accounts are created without a password. Auto-send a setup
+      // link so they can get back in without needing to contact anyone.
+      const token = crypto.randomBytes(32).toString('hex');
+      await this.prisma.emailVerificationToken.create({
+        data: { userId: user.id, token, type: TokenType.PASSWORD_SETUP, expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000) },
+      });
+      this.emailService.sendAddPasswordEmail(user.email, user.firstName, token).catch((err) =>
+        this.logger.error(`Failed to send password setup email to ${user.email}: ${err.message}`),
+      );
+      throw new UnauthorizedException("We've emailed you a link to set your password. Check your inbox.");
     }
 
     const isPasswordValid = await bcrypt.compare(dto.password, user.passwordHash);
