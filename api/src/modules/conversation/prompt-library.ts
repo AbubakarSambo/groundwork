@@ -357,7 +357,7 @@ Name them as facts, not as claims. "Both described the role as owning product an
 If there is very little shared picture — say so. An absence of shared ground is itself significant information.
 
 SECTION 2 — THE GAP
-Where the descriptions diverge. Be specific. Name the exact thing each party described differently. When more than two parties are involved, attribute each position to the party that holds it (by role label). Emit the gap as a list of topics; for each topic, list every diverging party's position.
+Where the descriptions diverge. Be specific. Name the exact thing each party described differently. When more than two parties are involved, attribute each position to the party that holds it (by role label). Emit the gap as a list of topics; for each topic, list every diverging party's position. For each topic, also include 1–2 short supporting references (evidence) drawn from the parties' own records — a brief paraphrase or short quote — so the gap is grounded in what was actually said, not asserted. If nothing in the records supports a point, omit the evidence rather than inventing it.
 
 Do not say "there is a gap in how they see ownership." Say "the initiator described the deliverable as shipped and usable. The participant described it as shipped but awaiting feedback from three customers."
 

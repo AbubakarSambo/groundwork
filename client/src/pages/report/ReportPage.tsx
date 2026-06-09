@@ -48,6 +48,32 @@ export function ReportPage() {
           This report was released to both parties at the same time. Neither side had advance access.
         </div>
 
+        {/* What this is built on — engagement quality + confidence + the "not verified" disclosure */}
+        {report.engagement && (
+          <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 6, padding: '14px 16px', marginBottom: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--gw-muted)' }}>What this is built on</span>
+              <span style={{
+                fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', padding: '2px 8px', borderRadius: 999,
+                background: report.engagement.coverage === 'strong' ? '#E4F3EC' : report.engagement.coverage === 'moderate' ? '#FDF3E3' : '#F7E9E6',
+                color: report.engagement.coverage === 'strong' ? '#085041' : report.engagement.coverage === 'moderate' ? '#8A5C1A' : '#9B3B2E',
+              }}>
+                {report.engagement.coverage} coverage
+              </span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 8 }}>
+              {report.engagement.parties.map((p, i) => (
+                <div key={i} style={{ fontSize: 12, color: '#1A1916' }}>
+                  {p.label}: {p.contributed
+                    ? `${p.sessions} session${p.sessions === 1 ? '' : 's'}, ${p.recordEntries} record entr${p.recordEntries === 1 ? 'y' : 'ies'}${p.documentsAttached ? `, ${p.documentsAttached} document${p.documentsAttached === 1 ? '' : 's'}` : ''}`
+                    : 'did not contribute'}
+                </div>
+              ))}
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--gw-muted)', lineHeight: 1.5 }}>{report.engagement.note}</div>
+          </div>
+        )}
+
         {/* Shared picture */}
         <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 6, padding: '16px', marginBottom: 8 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-muted)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 10 }}>
@@ -98,6 +124,11 @@ export function ReportPage() {
                       </div>
                     ))}
                   </div>
+                  {d.evidence?.length > 0 && (
+                    <div style={{ marginTop: 6, fontSize: 11, color: 'var(--gw-muted)', lineHeight: 1.5 }}>
+                      <span style={{ fontWeight: 700 }}>Grounded in:</span> {d.evidence.join(' · ')}
+                    </div>
+                  )}
                 </div>
               )
             })}

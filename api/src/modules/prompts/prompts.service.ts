@@ -1,5 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { SEED_PROMPTS } from '../conversation/prompt-library';
 
 /**
  * The moat. Every prompt is versioned; every change is versioned against
@@ -11,8 +12,37 @@ import { PrismaService } from '../prisma/prisma.service';
  *   - "scenario.<name>"    scenario-specific exact wording (Part 3)
  */
 @Injectable()
-export class PromptsService {
+export class PromptsService implements OnModuleInit {
+  private readonly logger = new Logger(PromptsService.name);
+
   constructor(private prisma: PrismaService) {}
+
+  /**
+   * Seed-on-deploy (B7): ensure every seeded prompt key has an active version.
+   * Idempotent — skips when the active content already matches; otherwise
+   * activates the matching version or creates and activates a new one (history
+   * preserved). Runs on every boot, so a deploy that changes a seed prompt
+   * (e.g. report_synthesis) takes effect without manual SQL.
+   */
+  async onModuleInit() {
+    for (const seed of SEED_PROMPTS) {
+      const active = await this.prisma.promptVersion.findFirst({ where: { key: seed.key, isActive: true } });
+      if (active && active.content === seed.content) continue;
+
+      const sameContent = await this.prisma.promptVersion.findFirst({
+        where: { key: seed.key, content: seed.content },
+        orderBy: { version: 'desc' },
+      });
+      if (sameContent) {
+        await this.activate(sameContent.id);
+        continue;
+      }
+
+      const created = await this.createVersion(seed.key, seed.content, 'Seeded on deploy');
+      await this.activate(created.id);
+    }
+    this.logger.log(`Prompt seed ensured for ${SEED_PROMPTS.length} key(s).`);
+  }
 
   async getActive(key: string) {
     const prompt = await this.prisma.promptVersion.findFirst({

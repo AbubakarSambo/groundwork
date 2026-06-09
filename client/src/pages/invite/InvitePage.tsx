@@ -91,6 +91,20 @@ export function InvitePage() {
         <div style={{ marginTop: 14, fontSize: 12, color: 'var(--gw-muted)', textAlign: 'center' }}>
           By joining, you agree that your contribution record belongs to you.
         </div>
+
+        <div style={{ marginTop: 18, paddingTop: 14, borderTop: '1px solid #E2E0DB', textAlign: 'center' }}>
+          <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 8, lineHeight: 1.6 }}>
+            You are never obligated to take part. If you would rather not, you can simply close this —
+            nothing is shared, and declining is never shown as a negative.
+          </div>
+          <button
+            className="gw-back"
+            style={{ width: 'auto', padding: '6px 14px', fontSize: 12 }}
+            onClick={() => navigate('/')}
+          >
+            Not right now
+          </button>
+        </div>
       </div>
     </div>
   )

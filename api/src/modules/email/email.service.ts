@@ -129,4 +129,17 @@ export class EmailService {
       html: this.layout(`<p>Last time you described <strong>${specificThing}</strong>.</p><p>Has anything changed?</p><p><a href="${checkInUrl}">Check in</a></p>`),
     });
   }
+
+  /** Reminder to the admin that a generated report is waiting to be activated. */
+  async sendActivationReminder(email: string, groundLabel: string, groundUrl: string): Promise<void> {
+    await this.sendEmail({
+      to: email,
+      subject: `Your report for "${groundLabel}" is ready to unlock`,
+      html: this.layout(
+        `<p>Both versions are in and the report for <strong>${groundLabel}</strong> is ready.</p>
+         <p>Activate the ground to read the shared picture — where you agree, where you differ, and the one question worth answering.</p>
+         <p><a href="${groundUrl}">Activate &amp; read</a></p>`,
+      ),
+    });
+  }
 }

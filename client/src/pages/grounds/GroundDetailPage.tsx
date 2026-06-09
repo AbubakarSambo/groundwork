@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { AxiosError } from 'axios'
-import { groundsApi, resolutionApi, dashboardApi, documentsApi } from '@/api'
+import { groundsApi, resolutionApi, dashboardApi, documentsApi, conversationApi } from '@/api'
 import { useAuthStore } from '@/stores/auth'
 import { StatusPill } from '@/components/gw'
 
@@ -57,6 +57,9 @@ export function GroundDetailPage() {
   const myCheckIns = ground.checkIns?.filter((c: any) => c.participantId === myParticipant?.id) ?? []
   const myCheckIn = myCheckIns.find((c: any) => c.status === 'NOT_STARTED' || c.status === 'IN_PROGRESS')
     ?? myCheckIns.sort((a: any, b: any) => b.sessionNumber - a.sessionNumber)[0]
+  const declinedParticipantIds = new Set<string>(
+    (ground.checkIns ?? []).filter((c: any) => c.status === 'DECLINED').map((c: any) => c.participantId),
+  )
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--gw-bg)', display: 'flex', flexDirection: 'column' }}>
@@ -84,6 +87,9 @@ export function GroundDetailPage() {
                 <div style={{ fontSize: 13, fontWeight: 500 }}>{p.email}</div>
                 {p.roleAsDescribed && (
                   <div style={{ fontSize: 12, color: 'var(--gw-sub)' }}>{p.roleAsDescribed}</div>
+                )}
+                {declinedParticipantIds.has(p.id) && (
+                  <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>Chose not to take part</div>
                 )}
               </div>
               <span className="gw-pill gw-pill-blue">{p.partyType}</span>
@@ -125,6 +131,9 @@ export function GroundDetailPage() {
             <div style={{ fontSize: 13, color: 'var(--gw-muted)' }}>No check-in for you on this ground yet.</div>
           )}
         </Section>
+
+        {/* Your single-party record so far (B2) */}
+        {myCheckIn && <SoloArtifactCard checkInId={myCheckIn.id} />}
 
         {/* Documents */}
         {myParticipant && (
@@ -236,6 +245,29 @@ function DocumentsCard({ groundId }: { groundId: string }) {
       >
         {uploading ? 'Uploading…' : '+ Add document (PDF or TXT)'}
       </button>
+    </Section>
+  )
+}
+
+function SoloArtifactCard({ checkInId }: { checkInId: string }) {
+  const { data } = useQuery({
+    queryKey: ['artifact', checkInId],
+    queryFn: () => conversationApi.artifact(checkInId),
+  })
+  if (!data?.artifact) return null
+  return (
+    <Section title="Your record so far">
+      <div style={{ fontSize: 13, lineHeight: 1.6, color: '#1A1916', whiteSpace: 'pre-wrap', marginBottom: data.artifact.whatToCarry ? 10 : 0 }}>
+        {data.artifact.summary}
+      </div>
+      {data.artifact.whatToCarry && (
+        <div className="gw-box gw-box-blue" style={{ fontSize: 12 }}>
+          <strong>To carry forward:</strong> {data.artifact.whatToCarry}
+        </div>
+      )}
+      <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 8 }}>
+        Built from your record alone — yours to use now, whether or not the other side checks in. The full shared picture comes once both of you complete two sessions.
+      </div>
     </Section>
   )
 }

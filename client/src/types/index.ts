@@ -76,7 +76,13 @@ export interface Report {
   groundId: string
   sharedPicture: string
   agreements: string[]
-  divergences: { topic: string; positions: { participantLabel: string; view: string }[] }[]
+  divergences: { topic: string; positions: { participantLabel: string; view: string }[]; evidence?: string[] }[]
   centralQuestion: string
+  engagement?: {
+    coverage: 'thin' | 'moderate' | 'strong'
+    documentBacked: boolean
+    note: string
+    parties: { label: string; sessions: number; recordEntries: number; documentsAttached: number; contributed: boolean }[]
+  } | null
   releasedAt: string | null
 }

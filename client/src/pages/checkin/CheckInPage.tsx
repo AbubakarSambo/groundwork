@@ -26,8 +26,6 @@ export function CheckInPage() {
   const logout = useAuthStore(s => s.logout)
   const [message, setMessage] = useState('')
   const [sending, setSending] = useState(false)
-  const [billingUrl, setBillingUrl] = useState<string | null>(null)
-  const [cadenceMsg, setCadenceMsg] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const taRef = useRef<HTMLTextAreaElement>(null)
 
@@ -44,13 +42,8 @@ export function CheckInPage() {
       opened.current = true
       conversationApi.open(checkInId).then(
         () => qc.invalidateQueries({ queryKey: ['transcript', checkInId] }),
-        (err: AxiosError<{ requiresBilling?: boolean; checkoutUrl?: string; message?: string }>) => {
-          const res = err.response
-          if (res?.status === 402 && res.data?.checkoutUrl) {
-            setBillingUrl(res.data.checkoutUrl)
-          } else if (res?.status === 400 && res.data?.message) {
-            setCadenceMsg(res.data.message)
-          }
+        (err: AxiosError<{ message?: string }>) => {
+          toast.error(err.response?.data?.message || 'Could not start the check-in. Please refresh to try again.')
         }
       )
     }
@@ -78,6 +71,17 @@ export function CheckInPage() {
     },
     onError: (err: AxiosError<{ message?: string }>) => {
       toast.error(err.response?.data?.message || 'Could not complete check-in.')
+    },
+  })
+
+  const decline = useMutation({
+    mutationFn: () => conversationApi.decline(checkInId!),
+    onSuccess: () => {
+      toast.success('Noted — you have chosen not to take part. That is respected, and your record stays yours.')
+      navigate('/')
+    },
+    onError: (err: AxiosError<{ message?: string }>) => {
+      toast.error(err.response?.data?.message || 'Could not record that.')
     },
   })
 
@@ -129,49 +133,6 @@ export function CheckInPage() {
     }
   }
 
-  // Cadence gate — session is not available yet.
-  if (cadenceMsg) {
-    return (
-      <div style={{ minHeight: '100vh', background: 'var(--gw-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-        <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 8, padding: '40px 32px', maxWidth: 420, width: '100%', textAlign: 'center' }}>
-          <div style={{ fontSize: 24, marginBottom: 12 }}>🗓</div>
-          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>Not available yet</div>
-          <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 20, lineHeight: 1.6 }}>{cadenceMsg}</div>
-          <button className="gw-btn-sec" style={{ display: 'inline-block', width: 'auto', padding: '9px 18px' }} onClick={() => navigate(-1)}>
-            Back to ground
-          </button>
-        </div>
-      </div>
-    )
-  }
-
-  // Billing gate — session 2 requires care fee.
-  if (billingUrl) {
-    return (
-      <div style={{ minHeight: '100vh', background: 'var(--gw-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-        <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 8, padding: '40px 32px', maxWidth: 420, width: '100%', textAlign: 'center' }}>
-          <div style={{ fontSize: 24, marginBottom: 12 }}>🔓</div>
-          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>Set up billing to continue</div>
-          <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 20, lineHeight: 1.6 }}>
-            Session 1 is free for everyone. To continue to the next session, a $20/month care fee is required.
-            It keeps the mechanism available for your whole team whether or not a ground is active.
-          </div>
-          <div className="gw-box gw-box-blue" style={{ marginBottom: 20, textAlign: 'left', fontSize: 12 }}>
-            $20/mo care fee · $50/person/month per active ground
-          </div>
-          <button className="gw-btn" onClick={() => { window.location.href = billingUrl! }}>
-            Set up billing →
-          </button>
-          <div style={{ marginTop: 12 }}>
-            <button className="gw-btn-sec" style={{ width: 'auto', padding: '8px 16px', fontSize: 12 }} onClick={() => navigate(-1)}>
-              Back
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
       {/* Header */}
@@ -194,6 +155,17 @@ export function CheckInPage() {
               {complete.isPending ? 'Completing…' : 'Complete check-in'}
             </button>
           )}
+          <button
+            className="gw-back"
+            onClick={() => {
+              if (window.confirm('Decline to take part? Your decision is respected — nothing you wrote is shared, and declining is never shown as a negative.')) {
+                decline.mutate()
+              }
+            }}
+            disabled={decline.isPending}
+          >
+            Not for me
+          </button>
           <button className="gw-back" onClick={() => { logout(); navigate('/') }}>Sign out</button>
         </div>
       </div>

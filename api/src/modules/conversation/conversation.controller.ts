@@ -51,4 +51,16 @@ export class ConversationController {
   async complete(@Param('id') id: string, @CurrentUser('id') userId: string) {
     return this.conversation.complete(id, userId);
   }
+
+  @Post(':id/decline')
+  @ApiOperation({ summary: 'Decline to take part — penalty-free (owner only)' })
+  async decline(@Param('id') id: string, @CurrentUser('id') userId: string) {
+    return this.conversation.decline(id, userId);
+  }
+
+  @Get(':id/artifact')
+  @ApiOperation({ summary: 'Get this party\'s single-party record artifact (owner only)' })
+  async artifact(@Param('id') id: string, @CurrentUser('id') userId: string) {
+    return this.conversation.getSoloArtifact(id, userId);
+  }
 }

@@ -4,7 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { PromptsService } from '../prompts';
 import { AnthropicService } from '../conversation';
 import { EmailService } from '../email/email.service';
-import { GroundStatus, PartyType } from '@prisma/client';
+import { GroundStatus, PartyType, CheckInStatus } from '@prisma/client';
 
 const REPORT_SCHEMA = {
   name: 'emit_report',
@@ -31,6 +31,11 @@ const REPORT_SCHEMA = {
                 },
                 required: ['participantLabel', 'view'],
               },
+            },
+            evidence: {
+              type: 'array',
+              items: { type: 'string' },
+              description: "1-2 short supporting references for this gap, drawn from the parties' own records (brief paraphrase or short quote). Grounds the gap in what was actually said; omit if nothing supports it.",
             },
           },
           required: ['topic', 'positions'],
@@ -109,6 +114,31 @@ export class ReportsService {
     );
     if (!result) throw new Error('Report synthesis failed to return structured output');
 
+    // Engagement-quality + confidence header (B4/B5a). Factual, not a verdict —
+    // it tells both parties what the report is built on (session counts, record
+    // depth, documents, absentees) and carries the "not independently verified"
+    // disclosure. Shown alongside the synthesis.
+    const engagementParties = await Promise.all(
+      parties.map(async (p) => {
+        const [sessions, recordEntries, documentsAttached] = await Promise.all([
+          this.prisma.checkIn.count({ where: { participantId: p.id, status: CheckInStatus.COMPLETED } }),
+          this.prisma.recordEntry.count({ where: { participantId: p.id } }),
+          this.prisma.groundDocument.count({ where: { groundId, participantId: p.id } }),
+        ]);
+        return { label: labelById.get(p.id) ?? 'a party', sessions, recordEntries, documentsAttached, contributed: contributorIds.has(p.id) };
+      }),
+    );
+    const contributing = engagementParties.filter((e) => e.contributed);
+    const minSessions = contributing.length ? Math.min(...contributing.map((e) => e.sessions)) : 0;
+    const minEntries = contributing.length ? Math.min(...contributing.map((e) => e.recordEntries)) : 0;
+    const coverage = minSessions >= 2 && minEntries >= 4 ? 'strong' : minSessions >= 1 && minEntries >= 2 ? 'moderate' : 'thin';
+    const engagement = {
+      coverage,
+      documentBacked: engagementParties.some((e) => e.documentsAttached > 0),
+      note: `This report is built from each party's self-reported account — it is not independently verified.${absent.length ? ` ${absent.length} invited part${absent.length === 1 ? 'y' : 'ies'} did not contribute, so the picture below reflects the records present.` : ''}`,
+      parties: engagementParties,
+    };
+
     const report = await this.prisma.report.upsert({
       where: { groundId },
       create: {
@@ -117,6 +147,7 @@ export class ReportsService {
         agreements: result.agreements as any,
         divergences: result.divergences as any,
         centralQuestion: result.centralQuestion,
+        engagement: engagement as any,
         releasedAt: null,
       },
       update: {
@@ -124,6 +155,7 @@ export class ReportsService {
         agreements: result.agreements as any,
         divergences: result.divergences as any,
         centralQuestion: result.centralQuestion,
+        engagement: engagement as any,
       },
     });
 

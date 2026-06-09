@@ -1,4 +1,4 @@
-import { Injectable, Logger, ForbiddenException, NotFoundException, BadRequestException, HttpException, HttpStatus } from '@nestjs/common';
+import { Injectable, Logger, ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
 import { PromptsService } from '../prompts';
@@ -6,7 +6,6 @@ import { AnthropicService, ChatTurn } from './anthropic.service';
 import { ConversationContextService } from './context.service';
 import { buildRuntimeContext, buildScenarioPackForParty, RECORD_EXTRACTION_PROMPT } from './prompt-library';
 import { GroundworkEvents, CheckInCompletedEvent } from '../../common';
-import { BillingService } from '../billing';
 import { DocumentsService } from '../documents/documents.service';
 import { CheckInStatus, TurnRole, RecordEntryType, Cadence } from '@prisma/client';
 
@@ -36,6 +35,23 @@ const RECORD_EXTRACTION_SCHEMA = {
   },
 };
 
+// Single-party artifact (B2) — gives a person standalone value from session 1
+// without waiting on the other party.
+const SOLO_ARTIFACT_SCHEMA = {
+  name: 'emit_solo_artifact',
+  description: "Emit a short single-party summary of this person's own record.",
+  input_schema: {
+    type: 'object',
+    properties: {
+      summary: { type: 'string', description: "Plain-language summary of what this person put on the record, in their own framing. No verdict, no inference about anyone else." },
+      whatToCarry: { type: 'string', description: 'One specific, forward-looking thing for them to carry into the conversation or watch for next. Not a judgement.' },
+    },
+    required: ['summary'],
+  },
+};
+
+const SOLO_ARTIFACT_PROMPT = `You are Groundwork. You are given ONE person's own record entries (their words). Produce a short artifact for them alone — they have not heard from anyone else and may never. Do not infer the other side. Do not produce a verdict or analysis of any person. Summarise what they put on the record in their own framing, and name one specific thing to carry forward. Warm, specific, brief — under 200 words.`;
+
 /**
  * The conversation engine. Drives a single party's check-in.
  *
@@ -54,7 +70,6 @@ export class ConversationService {
     private anthropic: AnthropicService,
     private context: ConversationContextService,
     private events: EventEmitter2,
-    private billing: BillingService,
     private documents: DocumentsService,
   ) {}
 
@@ -106,35 +121,17 @@ export class ConversationService {
    * per the runtime context. Idempotent — if turns already exist, returns the
    * existing first turn rather than re-opening.
    *
-   * Gates (in order):
-   *   1. Cadence: session 2+ is not available until availableFrom date.
-   *   2. Billing: session 2+ requires the org to have an active care fee.
+   * NO PAYMENT OR CADENCE WALL (B1/B3, Part 9). Check-ins are never gated on
+   * payment — "if participant sessions are ever gated, trust collapses" — and
+   * the cadence is a recommendation, not a wall, so the initiator reaches the
+   * report fast. `availableFrom` is surfaced in the UI as a suggested return
+   * date only. The paywall sits solely between REPORT_READY and ACTIVE
+   * (GroundsService.activate): the report is the conversion moment, not the session.
    */
   async open(checkInId: string, requestingUserId: string) {
     const checkIn = await this.loadOwnedCheckIn(checkInId, requestingUserId);
     if (checkIn.status === CheckInStatus.COMPLETED) {
       throw new BadRequestException('This check-in is already complete');
-    }
-
-    // Gate 1: cadence — session 2+ is not available until the scheduled date.
-    if (checkIn.availableFrom && checkIn.availableFrom > new Date()) {
-      const dateStr = checkIn.availableFrom.toISOString().slice(0, 10);
-      throw new BadRequestException(`This session opens on ${dateStr}. Come back then to continue building your record.`);
-    }
-
-    // Gate 2: billing — session 2+ requires an active care fee (Part 9 — Payment).
-    if (checkIn.sessionNumber >= 2) {
-      const user = await this.prisma.user.findUnique({
-        where: { id: requestingUserId },
-        select: { organizationId: true },
-      });
-      if (user && !(await this.billing.isBillingReady(user.organizationId))) {
-        const { checkoutUrl } = await this.billing.createCareFeeCheckout(user.organizationId, checkIn.groundId);
-        throw new HttpException(
-          { message: 'Set up billing to continue to the next session.', requiresBilling: true, checkoutUrl },
-          HttpStatus.PAYMENT_REQUIRED,
-        );
-      }
     }
 
     const existing = await this.prisma.conversationTurn.count({ where: { checkInId: checkIn.id } });
@@ -258,11 +255,32 @@ export class ConversationService {
    */
   async complete(checkInId: string, requestingUserId: string) {
     const checkIn = await this.loadOwnedCheckIn(checkInId, requestingUserId);
+    if (checkIn.status === CheckInStatus.COMPLETED) {
+      throw new BadRequestException('This check-in is already complete');
+    }
+
+    // Completion-readiness gate (B4): a check-in only closes once the person has
+    // actually built a record. Hollow completions produce thin, over-confident
+    // reports. Require at least 3 substantive answers from the person.
+    const personTurns = await this.prisma.conversationTurn.count({
+      where: { checkInId: checkIn.id, role: TurnRole.PERSON },
+    });
+    if (personTurns < 3) {
+      throw new BadRequestException(
+        'A few more exchanges are needed before this check-in can close — the record is still thin. Answer one or two more questions, then complete.',
+      );
+    }
+
     await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { status: CheckInStatus.COMPLETED, completedAt: new Date() } });
 
-    // Extract the structured record from this party's own transcript.
+    // Extract the structured record from this party's own transcript, then build
+    // a single-party artifact (B2) so the person has standalone value from this
+    // session without waiting on anyone else. Both best-effort.
     await this.extractRecord(checkIn.id, checkIn.participantId).catch((err) =>
       this.logger.error(`Record extraction failed for check-in ${checkIn.id}: ${err.message}`),
+    );
+    await this.buildSoloArtifact(checkIn.participantId).catch((err) =>
+      this.logger.error(`Solo artifact failed for participant ${checkIn.participantId}: ${err.message}`),
     );
 
     // Open the next session for this party so they have somewhere to return to.
@@ -328,6 +346,62 @@ export class ConversationService {
     await this.prisma.recordEntry.createMany({
       data: valid.map((e) => ({ participantId, checkInId, type: e.type as RecordEntryType, text: e.text.trim() })),
     });
+  }
+
+  /**
+   * Build a single-party artifact from this party's own record (B2): a short
+   * "your record so far" they can use immediately, independent of the other
+   * party. Stored on the participant; superseded by the full report once both
+   * parties finish. Owner-scoped — reads only this party's own entries.
+   */
+  private async buildSoloArtifact(participantId: string) {
+    const entries = await this.prisma.recordEntry.findMany({
+      where: { participantId },
+      orderBy: { createdAt: 'asc' },
+      select: { type: true, text: true },
+    });
+    if (entries.length === 0) return;
+
+    const corpus = entries.map((e) => `(${e.type}) ${e.text}`).join('\n');
+    const result = await this.anthropic.extract<{ summary: string; whatToCarry?: string }>(
+      SOLO_ARTIFACT_PROMPT,
+      [{ role: 'user', content: corpus }],
+      SOLO_ARTIFACT_SCHEMA,
+    );
+    if (!result?.summary) return;
+
+    await this.prisma.groundParticipant.update({
+      where: { id: participantId },
+      data: {
+        soloArtifact: JSON.stringify({ summary: result.summary, whatToCarry: result.whatToCarry ?? '' }),
+        soloArtifactAt: new Date(),
+      },
+    });
+  }
+
+  /** Fetch this party's single-party artifact (B2, owner-scoped). */
+  async getSoloArtifact(checkInId: string, requestingUserId: string) {
+    const checkIn = await this.loadOwnedCheckIn(checkInId, requestingUserId);
+    const p = await this.prisma.groundParticipant.findUnique({
+      where: { id: checkIn.participantId },
+      select: { soloArtifact: true, soloArtifactAt: true },
+    });
+    if (!p?.soloArtifact) return { artifact: null };
+    return { artifact: JSON.parse(p.soloArtifact) as { summary: string; whatToCarry: string }, generatedAt: p.soloArtifactAt };
+  }
+
+  /**
+   * Decline to take part (B8). Penalty-free — marks this party's check-in
+   * DECLINED. The record reflects that the process was offered and declined;
+   * this is shown to the admin as a neutral status, never a negative signal.
+   */
+  async decline(checkInId: string, requestingUserId: string) {
+    const checkIn = await this.loadOwnedCheckIn(checkInId, requestingUserId);
+    if (checkIn.status === CheckInStatus.COMPLETED) {
+      throw new BadRequestException('This check-in is already complete');
+    }
+    await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { status: CheckInStatus.DECLINED } });
+    return { status: 'declined' };
   }
 
   // --- helpers ---
