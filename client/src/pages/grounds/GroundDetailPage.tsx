@@ -7,6 +7,9 @@ import { groundsApi, resolutionApi, dashboardApi, documentsApi } from '@/api'
 import { useAuthStore } from '@/stores/auth'
 import { StatusPill } from '@/components/gw'
 
+// Project & team grounds may hold more than two parties; all others are two-party.
+const MULTI_PARTY_SCENARIOS = ['NEW_PROJECT', 'CRISIS_ALIGNMENT']
+
 export function GroundDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -87,7 +90,7 @@ export function GroundDetailPage() {
             </div>
           ))}
 
-          {(ground.participants?.length ?? 0) < 2 && (
+          {(MULTI_PARTY_SCENARIOS.includes(ground.scenario) || (ground.participants?.length ?? 0) < 2) && (
             <form
               onSubmit={(e) => { e.preventDefault(); addParticipant.mutate() }}
               style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #E2E0DB' }}
@@ -259,13 +262,15 @@ function ResolutionCard({ groundId }: { groundId: string }) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['resolution', groundId] })
       qc.invalidateQueries({ queryKey: ['ground', groundId] })
-      toast.success('Recorded. The ground closes once both parties confirm the same end state.')
+      toast.success('Recorded. The ground closes once every party confirms the same end state.')
     },
   })
 
   if (isLoading || !data) return null
-  const { resolution, options, groundStatus } = data
+  const { resolution, options, groundStatus, confirmations = [], confirmedCount = 0, totalActive = 0 } = data
   const labelFor = (v: string) => options?.find((o: any) => o.value === v)?.label ?? v
+  const chosenStates = new Set(confirmations.filter((c) => c.endState).map((c) => c.endState))
+  const divergent = chosenStates.size > 1
 
   if (groundStatus === 'CLOSED' || groundStatus === 'RESOLVED') {
     return (
@@ -275,7 +280,7 @@ function ResolutionCard({ groundId }: { groundId: string }) {
             End state: <strong>{resolution ? labelFor(resolution.endState) : '—'}</strong>
           </div>
           <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 8 }}>
-            Billing has stopped. This record is permanent and belongs to both of you.
+            Billing has stopped. This record is permanent and belongs to all parties.
           </div>
         </Section>
         <OutcomeFeedbackCard groundId={groundId} />
@@ -286,15 +291,19 @@ function ResolutionCard({ groundId }: { groundId: string }) {
   return (
     <Section title="Resolution">
       <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 12 }}>
-        The ground closes when both parties confirm the same end state. No one decides this alone.
+        The ground closes when every party confirms the same end state. No one decides this alone.
       </div>
 
-      {resolution && (
-        <div className="gw-box gw-box-amber" style={{ marginBottom: 12 }}>
-          <strong>Current proposal: {labelFor(resolution.endState)}</strong>
-          <div style={{ marginTop: 4, fontSize: 12 }}>
-            Initiator {resolution.confirmedByInitiator ? '✓ confirmed' : '· not yet'} ·
-            Participant {resolution.confirmedByParticipant ? '✓ confirmed' : '· not yet'}
+      {confirmations.length > 0 && (
+        <div className={`gw-box ${divergent ? 'gw-box-amber' : 'gw-box-blue'}`} style={{ marginBottom: 12 }}>
+          <strong>{confirmedCount} of {totalActive} parties confirmed</strong>
+          {divergent && <span> — parties have chosen different end states</span>}
+          <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 3 }}>
+            {confirmations.map((c) => (
+              <div key={c.participantId} style={{ fontSize: 12 }}>
+                {c.label}: {c.endState ? `${labelFor(c.endState)} ✓` : '· not yet'}
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -313,7 +322,7 @@ function ResolutionCard({ groundId }: { groundId: string }) {
         ))}
       </div>
       <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 8 }}>
-        Choosing the current proposal confirms your side. Choosing a different one re-opens it for both.
+        Choosing an end state records your confirmation. The ground closes when every party confirms the same one.
       </div>
     </Section>
   )

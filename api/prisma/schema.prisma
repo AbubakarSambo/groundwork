@@ -40,8 +40,11 @@ enum GroundScenario {
   NEW_COFOUNDER
   NEW_ADVISOR
   NEW_PROJECT
+  NEW_MANAGER
+  CONTRACT_RENEWAL
   RECOGNITION
   DRIFT
+  CRISIS_ALIGNMENT
 }
 
 // Three moments from the conversation design.
@@ -249,6 +252,7 @@ model GroundParticipant {
   patternDetections PatternDetection[]
   outcomeFeedback   OutcomeFeedback[]
   documents         GroundDocument[]
+  resolutionConfirmations ResolutionConfirmation[]
 
   @@unique([groundId, email])
   @@index([groundId])
@@ -361,19 +365,35 @@ model PatternDetection {
 // ---------------------------------------------------------------------------
 
 model Resolution {
-  id                     String    @id @default(uuid())
-  groundId               String    @unique @map("ground_id")
-  endState               String    @map("end_state")
-  confirmedByInitiator   Boolean   @default(false) @map("confirmed_by_initiator")
-  confirmedByParticipant Boolean   @default(false) @map("confirmed_by_participant")
-  confirmedInitiatorAt   DateTime? @map("confirmed_initiator_at")
-  confirmedParticipantAt DateTime? @map("confirmed_participant_at")
-  closedAt               DateTime? @map("closed_at")
-  createdAt              DateTime  @default(now()) @map("created_at")
+  id        String    @id @default(uuid())
+  groundId  String    @unique @map("ground_id")
+  endState  String    @map("end_state") // latest leading proposal; the agreed end state once closed
+  closedAt  DateTime? @map("closed_at")
+  createdAt DateTime  @default(now()) @map("created_at")
 
-  ground Ground @relation(fields: [groundId], references: [id], onDelete: Cascade)
+  ground        Ground                   @relation(fields: [groundId], references: [id], onDelete: Cascade)
+  confirmations ResolutionConfirmation[]
 
   @@map("resolutions")
+}
+
+// Per-party end-state confirmation. A ground closes only when every ACTIVE party
+// (one who accepted their invite) has confirmed the SAME end state. For two-party
+// grounds this is exactly the old "both confirm" behaviour; for project / team
+// grounds it generalises to N parties.
+model ResolutionConfirmation {
+  id            String   @id @default(uuid())
+  resolutionId  String   @map("resolution_id")
+  participantId String   @map("participant_id")
+  endState      String   @map("end_state")
+  confirmedAt   DateTime @default(now()) @map("confirmed_at")
+
+  resolution  Resolution        @relation(fields: [resolutionId], references: [id], onDelete: Cascade)
+  participant GroundParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  @@unique([resolutionId, participantId])
+  @@index([resolutionId])
+  @@map("resolution_confirmations")
 }
 
 // ---------------------------------------------------------------------------

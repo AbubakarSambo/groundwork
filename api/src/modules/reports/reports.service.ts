@@ -4,7 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { PromptsService } from '../prompts';
 import { AnthropicService } from '../conversation';
 import { EmailService } from '../email/email.service';
-import { GroundStatus } from '@prisma/client';
+import { GroundStatus, PartyType } from '@prisma/client';
 
 const REPORT_SCHEMA = {
   name: 'emit_report',
@@ -20,12 +20,22 @@ const REPORT_SCHEMA = {
           type: 'object',
           properties: {
             topic: { type: 'string' },
-            initiatorView: { type: 'string' },
-            participantView: { type: 'string' },
+            positions: {
+              type: 'array',
+              description: "Every diverging party's position on this topic. Two for a two-party ground; more for a project / team ground.",
+              items: {
+                type: 'object',
+                properties: {
+                  participantLabel: { type: 'string', description: "The party's role label (e.g. 'the initiator', 'the project owner', 'participant A') — never a personal name." },
+                  view: { type: 'string', description: 'How this party described the topic.' },
+                },
+                required: ['participantLabel', 'view'],
+              },
+            },
           },
-          required: ['topic', 'initiatorView', 'participantView'],
+          required: ['topic', 'positions'],
         },
-        description: 'The gap. Framed as two understandings of the same thing — never one side being right.',
+        description: 'The gap. For each topic, every party\'s position — never framed as one side being right.',
       },
       centralQuestion: { type: 'string', description: 'The one question that, answered honestly, moves things forward.' },
     },
@@ -52,15 +62,45 @@ export class ReportsService {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, include: { participants: true } });
     if (!ground) throw new NotFoundException('Ground not found');
 
+    // Stable, distinct label per party so the synthesis can attribute each
+    // position to a specific party (works for two-party and N-party grounds).
+    const parties = await this.prisma.groundParticipant.findMany({
+      where: { groundId },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true, partyType: true, roleAsDescribed: true },
+    });
+    let participantIdx = 0;
+    const labelById = new Map<string, string>();
+    for (const p of parties) {
+      if (p.partyType === PartyType.INITIATOR) {
+        labelById.set(p.id, p.roleAsDescribed?.trim() || 'the initiator');
+      } else {
+        const letter = String.fromCharCode(65 + participantIdx++);
+        labelById.set(p.id, p.roleAsDescribed?.trim() || `participant ${letter}`);
+      }
+    }
+
     const records = await this.prisma.recordEntry.findMany({
       where: { participant: { groundId } },
-      include: { participant: { select: { partyType: true } } },
+      include: { participant: { select: { id: true } } },
     });
 
     const systemPrompt = await this.prompts.getActiveContent('report_synthesis');
-    const corpus = records
-      .map((r) => `[${r.participant.partyType}] (${r.type}) ${r.text}`)
-      .join('\n');
+
+    // Note any invited party who contributed no record — surfaced as an absence,
+    // never inferred (decision: generate when everyone who accepted is done;
+    // note no-shows).
+    const contributorIds = new Set(records.map((r) => r.participant.id));
+    const absent = parties.filter((p) => !contributorIds.has(p.id));
+    const header = absent.length
+      ? `NOTE: ${absent.length} invited part${absent.length === 1 ? 'y' : 'ies'} did not contribute a record: ${absent
+          .map((p) => labelById.get(p.id))
+          .join(', ')}. Reflect this as an absence; do not infer their views.\n\n`
+      : '';
+
+    const corpus =
+      header +
+      records.map((r) => `[${labelById.get(r.participant.id) ?? 'a party'}] (${r.type}) ${r.text}`).join('\n');
 
     const result = await this.anthropic.extract<{ sharedPicture: string; agreements: string[]; divergences: any[]; centralQuestion: string }>(
       systemPrompt,

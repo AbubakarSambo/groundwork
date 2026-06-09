@@ -79,21 +79,28 @@ export function ReportPage() {
             <div style={{ fontSize: 11, fontWeight: 700, color: '#8A5C1A', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 10 }}>
               The gap
             </div>
-            {report.divergences.map((d: any, i: number) => (
-              <div key={i} style={{ marginBottom: 12, paddingBottom: 12, borderBottom: i < report.divergences.length - 1 ? '1px solid #E2E0DB' : 'none' }}>
-                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{d.topic}</div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                  <div style={{ background: '#EEF4FB', borderRadius: 4, padding: '8px 10px', fontSize: 12 }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: '#0C447C', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '.05em' }}>One of you</div>
-                    {d.initiatorView}
-                  </div>
-                  <div style={{ background: '#FDF3E3', borderRadius: 4, padding: '8px 10px', fontSize: 12 }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: '#8A5C1A', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '.05em' }}>The other</div>
-                    {d.participantView}
+            {report.divergences.map((d: any, i: number) => {
+              // N-party shape is `positions[]`; tolerate the legacy two-field shape.
+              const positions: { participantLabel: string; view: string }[] = d.positions ?? [
+                ...(d.initiatorView ? [{ participantLabel: 'One of you', view: d.initiatorView }] : []),
+                ...(d.participantView ? [{ participantLabel: 'The other', view: d.participantView }] : []),
+              ]
+              return (
+                <div key={i} style={{ marginBottom: 12, paddingBottom: 12, borderBottom: i < report.divergences.length - 1 ? '1px solid #E2E0DB' : 'none' }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{d.topic}</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {positions.map((p, j: number) => (
+                      <div key={j} style={{ background: '#F4F1EC', borderRadius: 4, padding: '8px 10px', fontSize: 12 }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: '#6B6862', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '.05em' }}>
+                          {p.participantLabel}
+                        </div>
+                        {p.view}
+                      </div>
+                    ))}
                   </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
 

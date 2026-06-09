@@ -30,6 +30,18 @@ export const END_STATES: Record<GroundScenario, { value: string; label: string }
     { value: 'DESCOPE', label: 'Descope' },
     { value: 'STOP', label: 'Stop the project' },
   ],
+  NEW_MANAGER: [
+    { value: 'CONTINUE', label: 'Extend the engagement' },
+    { value: 'RESTRUCTURE', label: 'Restructure the scope or terms' },
+    { value: 'END', label: 'End the engagement' },
+    { value: 'NOT_YET', label: 'Not yet — revisit with a named gap' },
+  ],
+  CONTRACT_RENEWAL: [
+    { value: 'RENEW', label: 'Renew on current terms' },
+    { value: 'RENEGOTIATE', label: 'Renew on revised terms' },
+    { value: 'EXIT', label: 'Do not renew' },
+    { value: 'NOT_YET', label: 'Extend evaluation period' },
+  ],
   RECOGNITION: [
     { value: 'YES', label: 'Grant the ask' },
     { value: 'NO', label: 'Decline' },
@@ -43,6 +55,12 @@ export const END_STATES: Record<GroundScenario, { value: string; label: string }
     { value: 'EXIT', label: 'Exit' },
     { value: 'STOP', label: 'Stop' },
     { value: 'NOT_YET', label: 'Not yet — revisit with a named gap' },
+  ],
+  CRISIS_ALIGNMENT: [
+    { value: 'ALIGNED', label: 'Shared picture established — team aligned' },
+    { value: 'RESTRUCTURE', label: 'Structure or priorities need to change' },
+    { value: 'ESCALATE', label: 'Requires external support or intervention' },
+    { value: 'NOT_YET', label: 'Not yet — revisit when more information is available' },
   ],
 };
 

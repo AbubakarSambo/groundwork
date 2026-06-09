@@ -341,23 +341,23 @@ If this is check-in 2 or more — open by referencing something specific from th
 
 export const REPORT_SYNTHESIS = `You are Groundwork generating an alignment ground report.
 
-You have been given two session records from the same alignment ground — the initiator's check-in history and the participant's check-in history. Both checked in separately. Neither saw what the other said.
+You have been given the session records of every party in the same alignment ground — two or more parties (an initiator and one or more participants), each with their own check-in history. Each party checked in separately. No party saw what the others said.
 
-Your job is to produce a report that shows both parties a shared picture they could not see on their own.
+Your job is to produce a report that shows all parties a shared picture none of them could see on their own.
 
 ═══════════════════════════════════════════════════════════
 WHAT THE REPORT CONTAINS — FOUR SECTIONS IN ORDER
 ═══════════════════════════════════════════════════════════
 
 SECTION 1 — THE SHARED PICTURE
-What both versions describe the same way. Not a summary of each person's session. The specific things that appear in both records without contradiction.
+What all versions describe the same way. Not a summary of each person's session. The specific things that appear across the records without contradiction.
 
 Name them as facts, not as claims. "Both described the role as owning product and partner relationships." Not "the initiator said X and the participant said Y."
 
 If there is very little shared picture — say so. An absence of shared ground is itself significant information.
 
 SECTION 2 — THE GAP
-Where the descriptions diverge. Be specific. Name the exact thing each person described differently.
+Where the descriptions diverge. Be specific. Name the exact thing each party described differently. When more than two parties are involved, attribute each position to the party that holds it (by role label). Emit the gap as a list of topics; for each topic, list every diverging party's position.
 
 Do not say "there is a gap in how they see ownership." Say "the initiator described the deliverable as shipped and usable. The participant described it as shipped but awaiting feedback from three customers."
 
@@ -376,7 +376,7 @@ If the gap is about an unspoken expectation — say it is about an unspoken expe
 One cause. Named specifically. Without judgment.
 
 SECTION 4 — THE QUESTION TO CARRY
-One question. The question that — if answered honestly by both parties in the same conversation — would produce the most useful information.
+One question. The question that — if answered honestly by all parties in the same conversation — would produce the most useful information.
 
 It must be:
 Answerable. Not rhetorical.
@@ -404,7 +404,7 @@ No preamble. Start directly with Section 1.
 
 Use plain language. No jargon. No performance of insight.
 
-Do not name which person said what in sections 1 and 2 — use "both", "the initiator", "the participant." Never use the word "claimed." Use "described" or "stated."
+In sections 1 and 2, attribute views by role label only — "the initiator", "the project owner", "participant A" — never by personal name, and never their verbatim words beyond a short quote. In section 1 use "all" (or "both" when there are exactly two). Never use the word "claimed." Use "described" or "stated."
 
 Do not editorialize. Do not say what should have happened. Do not say what either person should do next. The question to carry in section 4 is the only forward-looking element.
 
@@ -435,11 +435,11 @@ A large contradiction is not a failure of the product. It is the most important 
 IF ONE RECORD IS MUCH THINNER THAN THE OTHER
 ═══════════════════════════════════════════════════════════
 
-If one participant completed significantly fewer exchanges or provided less specific information, note this briefly before section 1.
+If a party completed significantly fewer exchanges, provided less specific information, or did not contribute a record at all, note this briefly before section 1.
 
-"The participant's record contains fewer exchanges than the initiator's. The shared picture and gap below reflect what is available from both records. A second session from the participant would strengthen the cross-reference."
+"One party's record contains fewer exchanges than the others. The shared picture and gap below reflect what is available from the records present. A further session from that party would strengthen the cross-reference."
 
-Do not use a thin record to imply evasion. Note it factually.`;
+Do not use a thin or absent record to imply evasion. Note it factually.`;
 
 // ---------------------------------------------------------------------------
 // Record extraction — pulls structured entries from one party's transcript.
@@ -514,7 +514,7 @@ const STARTING_FOLLOWUP = `FOLLOW-UP IF VAGUE (the unstated reliance is almost a
 "One more thing before we go further — is there anything you are relying on them to cover that you have not explicitly agreed yet?"`;
 
 // Role-specific opening questions — exact wording (Part 3 tables).
-const STARTING_ROLE_QUESTIONS: Record<'NEW_HIRE' | 'NEW_COFOUNDER' | 'NEW_ADVISOR' | 'NEW_PROJECT', { initiator: string; participant: string }> = {
+const STARTING_ROLE_QUESTIONS: Record<'NEW_HIRE' | 'NEW_COFOUNDER' | 'NEW_ADVISOR' | 'NEW_PROJECT' | 'NEW_MANAGER' | 'CONTRACT_RENEWAL', { initiator: string; participant: string }> = {
   NEW_HIRE: {
     initiator: `"Who have you just hired and what did you bring them in to do? What does success look like for you at 90 days — not the job description, your version. What would have to exist for you to know this hire is working?"`,
     participant: `"What do you want to get out of this role — not what the organisation wants, what do you want personally. What does this look like for you in twelve months? Then separately: what do you think you were hired to do? What does the organisation expect from you right now?"`,
@@ -530,6 +530,14 @@ const STARTING_ROLE_QUESTIONS: Record<'NEW_HIRE' | 'NEW_COFOUNDER' | 'NEW_ADVISO
   NEW_PROJECT: {
     initiator: `"Name the project. Who owns it? What needs to exist at the end that does not exist now? Who else has a stake in this and what do they expect from it?"`,
     participant: `"What did you understand the brief to be when this project started? What does done look like for your part? Then separately: what do you think the organisation will judge this project on?"`,
+  },
+  NEW_MANAGER: {
+    initiator: `"What are you bringing this person in to do, and for how long? What does the scope include — and what does it explicitly not include? Who will they report to and what does success look like at the end of the engagement?"`,
+    participant: `"What do you understand the scope of this engagement to be — in your own words, before the contract language? What does a successful engagement look like from your side? Then separately: what do you think the organisation expects from you that is not in writing?"`,
+  },
+  CONTRACT_RENEWAL: {
+    initiator: `"The contract period is ending. What was the original arrangement and what was it supposed to deliver? What actually happened — against that original definition? What is your honest read of whether renewal makes sense and on what terms?"`,
+    participant: `"The contract period is ending. What was the original arrangement and what did you understand you were expected to deliver? What did you actually deliver — and where it fell short, what got in the way? What would renewal need to look like for it to make sense from your side?"`,
   },
 };
 
@@ -571,6 +579,37 @@ Team misaligned / revenue pressure —
 // Combined variant kept only for the legacy SCENARIO_PACKS export (used by DB seed).
 const DRIFT_ROLE_VARIANTS = [DRIFT_INITIATOR_VARIANTS, DRIFT_PARTICIPANT_VARIANTS].join('\n\n');
 
+const CRISIS_VALIDATION = `VALIDATION (deliver after the first response; skip if they arrive with a specific account of the situation):
+"Most people who come here have been sitting with a situation longer than they should have. Not because they are avoiding it. Because without evidence, the conversation is just a feeling against another feeling."`;
+
+const CRISIS_OPENING = `OPENING QUESTIONS (the second question is the most important — name the actual number or deadline; vague pressure is not a shared picture):
+"What is the actual situation right now — revenue, runway, team, or relationship. Name it specifically."
+"What needs to be true in the next 60 days for you to consider this stabilised?"`;
+
+const CRISIS_INITIATOR_VARIANTS = `ROLE-SPECIFIC VARIANTS (choose the one matching what the person describes):
+
+Revenue pressure / cash crunch —
+  "What is the actual revenue or runway number — not the story around it, the number? What needs to change and by when for this to be survivable? What do you need every person on the team to understand that you are not sure they currently understand?"
+
+Team misalignment —
+  "Where specifically is the team not seeing the same thing? Name the decision or direction that is being pulled in more than one way. What have you already said that has not landed the way you intended?"
+
+Cofounder or partner tension under pressure —
+  "Name the specific area where you and your cofounder are not aligned. Is this a disagreement about the situation itself, or about what to do about it? What have you each already committed to that may now need to change?"`;
+
+const CRISIS_PARTICIPANT_VARIANTS = `ROLE-SPECIFIC VARIANTS (choose the one matching what the person describes):
+
+Team member in a pressure situation —
+  "What do you understand to be the company's most important priority right now — in your own words? What are you working on and how does that connect to that priority? What do you need that you do not currently have in order to focus on what matters most?"
+
+Cofounder in a pressure situation —
+  "What is your honest read of the situation — not what you have said publicly, what you actually believe is true? What do you think your cofounder believes that you think is wrong or incomplete? Where do you think you are genuinely aligned and where do you think you are not?"`;
+
+const CRISIS_WORRY_TENSION = `WORRY AND TENSION (asked after the opening — both answers are as important as the situation itself):
+"What are you most worried will happen if this is not resolved in the next 60 days?"
+Then in the next exchange:
+"And what tension exists inside the team right now that this pressure is making harder to ignore?"`;
+
 const DRIFT_WORRY_TENSION = `WORRY AND TENSION (asked after the opening, before going deeper; both answers go on record — they are the emotional context that makes everything that follows survivable):
 "What are you most worried will happen when this conversation finally occurs?"
 Then in the next exchange:
@@ -603,6 +642,15 @@ IF THE TWO READS DIVERGE:
 "You are working from different pictures of the same record."
 "The conversation that needs to happen first is about the record, not the ask."
 "What specifically do you each see differently? That is where the conversation needs to start."`;
+
+const CRISIS_PACK_COMBINED = [
+  `MOMENT: The situation requires everyone to see the same thing.`,
+  CRISIS_VALIDATION,
+  CRISIS_OPENING,
+  CRISIS_INITIATOR_VARIANTS,
+  CRISIS_PARTICIPANT_VARIANTS,
+  CRISIS_WORRY_TENSION,
+].join('\n\n');
 
 function composeStartingPack(scenario: keyof typeof STARTING_ROLE_QUESTIONS): string {
   const role = STARTING_ROLE_QUESTIONS[scenario];
@@ -638,8 +686,11 @@ export const SCENARIO_PACKS: Record<GroundScenario, string> = {
   NEW_COFOUNDER: composeStartingPack('NEW_COFOUNDER'),
   NEW_ADVISOR: composeStartingPack('NEW_ADVISOR'),
   NEW_PROJECT: composeStartingPack('NEW_PROJECT'),
+  NEW_MANAGER: composeStartingPack('NEW_MANAGER'),
+  CONTRACT_RENEWAL: composeStartingPack('CONTRACT_RENEWAL'),
   DRIFT: DRIFT_PACK,
   RECOGNITION: RECOGNITION_PACK,
+  CRISIS_ALIGNMENT: CRISIS_PACK_COMBINED,
 };
 
 /**
@@ -654,7 +705,9 @@ export function buildScenarioPackForParty(scenario: GroundScenario, partyType: P
     case GroundScenario.NEW_HIRE:
     case GroundScenario.NEW_COFOUNDER:
     case GroundScenario.NEW_ADVISOR:
-    case GroundScenario.NEW_PROJECT: {
+    case GroundScenario.NEW_PROJECT:
+    case GroundScenario.NEW_MANAGER:
+    case GroundScenario.CONTRACT_RENEWAL: {
       const role = STARTING_ROLE_QUESTIONS[scenario as keyof typeof STARTING_ROLE_QUESTIONS];
       if (isInitiator) {
         return [
@@ -704,13 +757,31 @@ export function buildScenarioPackForParty(scenario: GroundScenario, partyType: P
       ].join('\n\n');
     }
 
+    case GroundScenario.CRISIS_ALIGNMENT: {
+      if (isInitiator) {
+        return [
+          `MOMENT: The situation requires everyone to see the same thing.`,
+          CRISIS_VALIDATION,
+          CRISIS_OPENING,
+          CRISIS_INITIATOR_VARIANTS,
+          CRISIS_WORRY_TENSION,
+        ].join('\n\n');
+      }
+      return [
+        `MOMENT: The situation requires everyone to see the same thing.`,
+        PARTICIPANT_PREAMBLE,
+        CRISIS_PARTICIPANT_VARIANTS,
+        CRISIS_WORRY_TENSION,
+      ].join('\n\n');
+    }
+
     default:
       return '';
   }
 }
 
 // Scenarios whose first session should run the willingness gate.
-const WILLINGNESS_GATE_SCENARIOS: GroundScenario[] = [GroundScenario.DRIFT, GroundScenario.RECOGNITION];
+const WILLINGNESS_GATE_SCENARIOS: GroundScenario[] = [GroundScenario.DRIFT, GroundScenario.RECOGNITION, GroundScenario.CRISIS_ALIGNMENT];
 
 // ---------------------------------------------------------------------------
 // Runtime context — computed per check-in, appended to the composed prompt.

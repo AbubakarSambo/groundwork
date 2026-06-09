@@ -14,8 +14,11 @@ export type GroundScenario =
   | 'NEW_COFOUNDER'
   | 'NEW_ADVISOR'
   | 'NEW_PROJECT'
+  | 'NEW_MANAGER'
+  | 'CONTRACT_RENEWAL'
   | 'RECOGNITION'
   | 'DRIFT'
+  | 'CRISIS_ALIGNMENT'
 
 export type GroundMoment = 'STARTING' | 'RECOGNITION' | 'RESOLUTION'
 
@@ -73,7 +76,7 @@ export interface Report {
   groundId: string
   sharedPicture: string
   agreements: string[]
-  divergences: { topic: string; initiatorView: string; participantView: string }[]
+  divergences: { topic: string; positions: { participantLabel: string; view: string }[] }[]
   centralQuestion: string
   releasedAt: string | null
 }

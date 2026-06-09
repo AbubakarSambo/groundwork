@@ -14,9 +14,20 @@ const DEFAULT_TIMELINE_DAYS: Record<GroundScenario, number> = {
   NEW_COFOUNDER: 90,
   NEW_ADVISOR: 365,
   NEW_PROJECT: 90,
+  NEW_MANAGER: 90,
+  CONTRACT_RENEWAL: 60,
   RECOGNITION: 30,
   DRIFT: 90,
+  CRISIS_ALIGNMENT: 60,
 };
+
+// Multi-party scenarios can hold more than two parties (project & team grounds).
+// Every other scenario is strictly two-party — the gap between two independent
+// accounts is the mechanism, and the report/resolution are two-party there.
+const MULTI_PARTY_SCENARIOS: GroundScenario[] = [GroundScenario.NEW_PROJECT, GroundScenario.CRISIS_ALIGNMENT];
+export function isMultiPartyScenario(scenario: GroundScenario): boolean {
+  return MULTI_PARTY_SCENARIOS.includes(scenario);
+}
 
 @Injectable()
 export class GroundsService {
@@ -99,6 +110,19 @@ export class GroundsService {
     if (!ground) throw new NotFoundException('Ground not found');
     if (ground.initiatorId !== initiatorId) throw new ForbiddenException('Only the initiator can add a participant');
 
+    // Two-party scenarios may hold exactly one participant. Only project / team
+    // grounds may hold more than two parties.
+    if (!isMultiPartyScenario(ground.scenario)) {
+      const participantCount = await this.prisma.groundParticipant.count({
+        where: { groundId, partyType: PartyType.PARTICIPANT },
+      });
+      if (participantCount >= 1) {
+        throw new BadRequestException(
+          'This scenario is two-party — it already has a participant. Use a project or team-alignment ground for more than two parties.',
+        );
+      }
+    }
+
     const initiator = await this.prisma.user.findUnique({ where: { id: initiatorId } });
 
     // Magic-link invite token, persisted on the participant. They accept it to
@@ -178,14 +202,20 @@ export class GroundsService {
   }
 
   /**
-   * Returns true once BOTH parties have completed session 2 — the condition for
-   * generating the report. Called by ConversationService.complete() flow.
+   * Returns true once every ACTIVE party has completed session 2 — the
+   * condition for generating the report. "Active" = a party who accepted their
+   * invite (userId set); invited-but-never-accepted no-shows never block the
+   * report (the synthesis notes them as absent). Works for two-party and
+   * multi-party (project / team) grounds. Called by ConversationService.complete().
    */
   async isReportReady(groundId: string): Promise<boolean> {
-    const participants = await this.prisma.groundParticipant.findMany({ where: { groundId }, select: { id: true } });
-    if (participants.length < 2) return false;
+    const active = await this.prisma.groundParticipant.findMany({
+      where: { groundId, userId: { not: null } },
+      select: { id: true },
+    });
+    if (active.length < 2) return false;
 
-    for (const p of participants) {
+    for (const p of active) {
       const session2 = await this.prisma.checkIn.findFirst({ where: { participantId: p.id, sessionNumber: 2, status: CheckInStatus.COMPLETED } });
       if (!session2) return false;
     }
