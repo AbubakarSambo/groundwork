@@ -10,6 +10,10 @@ function baseConfig() {
   return { get: (k: string) => (k === 'stripe.scenarioFeeCents' ? 5000 : undefined) } as any;
 }
 
+function baseEmail() {
+  return { sendPaymentFailed: jest.fn(), sendRecordPortabilityNotice: jest.fn(), sendBillingChangeNotification: jest.fn() } as any;
+}
+
 describe('BillingService.chargeScenarioFees — rolling periods & PAST_DUE (GW-04)', () => {
   function makePrisma(grounds: any[], lastEventByGround: Record<string, any>) {
     const created: any[] = [];
@@ -41,7 +45,7 @@ describe('BillingService.chargeScenarioFees — rolling periods & PAST_DUE (GW-0
     }];
     const { prisma, created } = makePrisma(grounds, { g1: { periodEnd: new Date('2020-01-01') } });
     const stripe: any = { chargeScenarioFee: jest.fn(async () => ({})) };
-    const service = new BillingService(prisma, stripe, baseConfig());
+    const service = new BillingService(prisma, stripe, baseConfig(), baseEmail());
 
     await service.chargeScenarioFees();
 
@@ -62,7 +66,7 @@ describe('BillingService.chargeScenarioFees — rolling periods & PAST_DUE (GW-0
     }];
     const { prisma, created } = makePrisma(grounds, {});
     const stripe: any = { chargeScenarioFee: jest.fn(async () => ({})) };
-    const service = new BillingService(prisma, stripe, baseConfig());
+    const service = new BillingService(prisma, stripe, baseConfig(), baseEmail());
 
     await service.chargeScenarioFees();
 
@@ -79,7 +83,7 @@ describe('BillingService.chargeScenarioFees — rolling periods & PAST_DUE (GW-0
     }];
     const { prisma, created } = makePrisma(grounds, { g3: { periodEnd: future } });
     const stripe: any = { chargeScenarioFee: jest.fn(async () => ({})) };
-    const service = new BillingService(prisma, stripe, baseConfig());
+    const service = new BillingService(prisma, stripe, baseConfig(), baseEmail());
 
     await service.chargeScenarioFees();
     expect(created).toHaveLength(0);

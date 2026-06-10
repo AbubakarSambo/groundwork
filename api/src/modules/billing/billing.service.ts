@@ -224,7 +224,7 @@ export class BillingService {
   async cancelSubscription(organizationId: string): Promise<{ cancelled: boolean }> {
     const org = await this.prisma.organization.findUnique({
       where: { id: organizationId },
-      select: { careFeeSubscriptionId: true, email: true },
+      select: { careFeeSubscriptionId: true, email: true, name: true },
     });
     if (!org) throw new NotFoundException('Organization not found');
 
@@ -240,7 +240,7 @@ export class BillingService {
     // Send record-portability notice to the org admin email
     if (org.email) {
       await this.email
-        .sendRecordPortabilityNotice(org.email)
+        .sendRecordPortabilityNotice(org.email, org.name ?? 'there', `${this.config.get<string>('resend.frontendUrl') ?? ''}/users/me/export`)
         .catch((err: any) =>
           this.logger.warn(`Record portability notice failed for org ${organizationId}: ${err.message}`),
         );
