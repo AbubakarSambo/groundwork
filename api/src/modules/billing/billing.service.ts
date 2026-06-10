@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import type Stripe from 'stripe';
 import { PrismaService, CronLock } from '../prisma/prisma.service';
 import { StripeService } from './stripe.service';
+import { EmailService } from '../email/email.service';
 import { CareFeeStatus, GroundStatus, BillingEventType, BillingEventStatus, Ground } from '@prisma/client';
 
 const SCENARIO_PERIOD_DAYS = 30;
@@ -26,11 +27,13 @@ export class BillingService {
     private prisma: PrismaService,
     private stripe: StripeService,
     private config: ConfigService,
+    private email: EmailService,
   ) {}
 
   /** The gate: an org is billing-ready once its care fee is active. */
   async isBillingReady(organizationId: string): Promise<boolean> {
-    if (process.env.BILLING_ENABLED !== 'true') return true;
+    const BILLING_ENABLED = process.env.BILLING_ENABLED !== 'false';
+    if (!BILLING_ENABLED) return true;
     const org = await this.prisma.organization.findUnique({
       where: { id: organizationId },
       select: { careFeeStatus: true, stripeCustomerId: true },
@@ -79,7 +82,10 @@ export class BillingService {
     if (already) return;
 
     const unit = this.config.get<number>('stripe.scenarioFeeCents') || 5000;
-    await this.stripe.chargeScenarioFee(ground.organization.stripeCustomerId, personMonths, ground.label);
+    const year = periodStart.getUTCFullYear();
+    const month = periodStart.getUTCMonth() + 1;
+    const idempotencyKey = `monthly-${ground.id}-${year}-${month}`;
+    await this.stripe.chargeScenarioFee(ground.organization.stripeCustomerId, personMonths, ground.label, idempotencyKey);
     await this.prisma.billingEvent.create({
       data: {
         organizationId: ground.organizationId,
@@ -163,6 +169,88 @@ export class BillingService {
   }
 
   /**
+   * Billing status for an org: care-fee state, active grounds with their
+   * scenario fees, and an estimate of the next charge. (GW-status)
+   */
+  async getStatus(organizationId: string): Promise<{
+    careFeeActive: boolean;
+    careFeeMonthlyCost: number;
+    activeGrounds: Array<{ groundId: string; label: string; scenarioFee: number; startedAt: Date | null }>;
+    estimatedNextCharge: number;
+    nextBillingDate: string;
+  }> {
+    const org = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { careFeeStatus: true },
+    });
+    if (!org) throw new NotFoundException('Organization not found');
+
+    const activeGrounds = await this.prisma.ground.findMany({
+      where: { organizationId, status: GroundStatus.ACTIVE },
+      select: { id: true, label: true, billingActivatedAt: true },
+    });
+
+    const SCENARIO_FEE = 50;
+    const CARE_FEE = 20;
+    const careFeeActive = org.careFeeStatus === CareFeeStatus.ACTIVE;
+
+    const groundsOut = activeGrounds.map((g) => ({
+      groundId: g.id,
+      label: g.label,
+      scenarioFee: SCENARIO_FEE,
+      startedAt: g.billingActivatedAt,
+    }));
+
+    const estimatedNextCharge = (careFeeActive ? CARE_FEE : 0) + activeGrounds.length * SCENARIO_FEE;
+
+    // Next billing date: first day of next calendar month (UTC)
+    const now = new Date();
+    const nextBilling = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+
+    return {
+      careFeeActive,
+      careFeeMonthlyCost: CARE_FEE,
+      activeGrounds: groundsOut,
+      estimatedNextCharge,
+      nextBillingDate: nextBilling.toISOString().slice(0, 10),
+    };
+  }
+
+  /**
+   * Full subscription cancellation. Cancels the Stripe subscription immediately,
+   * marks the org as CANCELLED, sends a record-portability notice, and returns.
+   * Does NOT delete any Ground, RecordEntry, or User records. (GW-cancel)
+   */
+  async cancelSubscription(organizationId: string): Promise<{ cancelled: boolean }> {
+    const org = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { careFeeSubscriptionId: true, email: true },
+    });
+    if (!org) throw new NotFoundException('Organization not found');
+
+    if (org.careFeeSubscriptionId) {
+      await this.stripe.stripe.subscriptions.cancel(org.careFeeSubscriptionId);
+    }
+
+    await this.prisma.organization.update({
+      where: { id: organizationId },
+      data: { careFeeStatus: CareFeeStatus.CANCELLED },
+    });
+
+    // Send record-portability notice to the org admin email
+    if (org.email) {
+      await this.email
+        .sendRecordPortabilityNotice(org.email)
+        .catch((err: any) =>
+          this.logger.warn(`Record portability notice failed for org ${organizationId}: ${err.message}`),
+        );
+    }
+
+    this.logger.log(`Subscription cancelled for org ${organizationId}`);
+    return { cancelled: true };
+  }
+
+  /**
    * Cancel the care fee subscription (self-serve). Cancels at period end, so the
    * org keeps access through the period it has already paid for, and active
    * grounds keep running until then. Status is synced by the subscription
@@ -235,10 +323,23 @@ export class BillingService {
         const invoice = event.data.object as Stripe.Invoice;
         const customerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id;
         if (!customerId) break;
+
+        const gracePeriodUntil = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // +7 days
+        const failedOrg = await this.prisma.organization.findFirst({
+          where: { stripeCustomerId: customerId },
+          select: { id: true, name: true, email: true },
+        });
         await this.prisma.organization.updateMany({
           where: { stripeCustomerId: customerId },
-          data: { careFeeStatus: CareFeeStatus.PAST_DUE },
+          data: { careFeeStatus: CareFeeStatus.PAST_DUE, gracePeriodUntil },
         });
+        if (failedOrg?.email) {
+          await this.email
+            .sendPaymentFailed(failedOrg.email, failedOrg.name)
+            .catch((err: any) =>
+              this.logger.warn(`Payment-failed email failed for org ${failedOrg.id}: ${err.message}`),
+            );
+        }
         break;
       }
 

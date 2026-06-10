@@ -28,6 +28,7 @@ export function AlignmentFeedPage() {
           <Link to="/grounds/new">
             <button className="gw-back" style={{ color: '#0C447C', borderColor: '#B5D4F4' }}>+ New ground</button>
           </Link>
+          <button className="gw-back" onClick={() => navigate('/billing')}>Billing</button>
           <button className="gw-back" onClick={() => navigate('/')}>← Grounds</button>
           <button className="gw-back" onClick={() => { logout(); navigate('/') }}>Sign out</button>
         </div>

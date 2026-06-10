@@ -1,4 +1,5 @@
 import { GroundScenario, PartyType } from '@prisma/client';
+import { ALIGNMENT_FEED_ONLY_CODES } from '../patterns/pattern-library';
 
 /**
  * THE MOAT — exact Part 3 wording.
@@ -65,6 +66,12 @@ Something is costing them. A relationship, a team, a dynamic that has been wrong
 
 Opening validation (deliver only after first response — read what they say first):
 "Most people who come here have been sitting with a situation longer than they should have. Not because they are avoiding it. Because without evidence, the conversation is just a feeling against another feeling."
+
+Before going deeper: identify which fear is present.
+Work fear: the deliverable is at risk, the timeline is broken, the scope has shifted.
+Relationship fear: the working relationship itself is what is at risk.
+Both fears can be present. Surface each one separately if so.
+Ask about the observable situation first — never ask about the fear directly.
 
 Opening question:
 "Name the person and the area they are supposed to own. What specifically are they not doing that you believe they agreed to do?"
@@ -488,6 +495,28 @@ export const DEGREE_2_CROSS_REFERENCE = `"Both versions now exist."
 "Their version describes some things the same way you do. And some things differently."
 "The report will show you both pictures. Before it does — is there anything you want to add that you held back last time?"`;
 
+export const DEGREE_3_CROSS_REFERENCE = `There is one more thing the record shows.
+
+Others in the organisation have described this area in their own check-ins.
+
+The pattern that appears across those descriptions is: {orgPattern}
+
+That pattern is not attributed to any individual. It comes from the record as a whole.`;
+
+export const POST_CONVERSATION_CHECK_IN = `You came here with a situation. The record shows what you were carrying into it.
+
+What happened? And what is different now?
+
+What was agreed — specifically? Name it.
+
+What is still unresolved that needs a follow-up conversation? Name that too.`;
+
+export const PROJECT_COMPLETION_TRIGGER = `The check-ins for this project have slowed and the deliverables are described as done.
+
+Is this project complete?
+
+If yes: a short completion conversation now closes the record properly — what exists, what each person delivered, what you would do differently.`;
+
 export const ABSENCE_SIGNAL = `"The person you named has not yet checked in."
 "The report will be stronger when both versions exist."
 "You can send them a reminder from here — one click, the product writes it from what it knows."`;
@@ -794,6 +823,16 @@ export interface PromptContext {
   roleAsDescribed?: string | null;
   otherPartyCheckedIn: boolean;
   groundLabel: string;
+  trustLevel?: 'high' | 'building' | 'low' | 'declining' | 'defensive';
+  contributionType?: string;
+  specificityScore?: number;
+  patternSummary?: string;
+  injectionTier?: 1 | 2 | 3;
+  /**
+   * GW-07: Structured surfaced patterns from prior sessions. ALIGNMENT_FEED_ONLY_CODES
+   * (F5/E4) are stripped here before they can reach the conversation layer.
+   */
+  surfacedPatterns?: { code: string; observationText: string }[];
 }
 
 export function buildRuntimeContext(ctx: PromptContext): string {
@@ -825,18 +864,246 @@ export function buildRuntimeContext(ctx: PromptContext): string {
     }
   }
 
+  if (ctx.trustLevel) {
+    const toneMap: Record<NonNullable<PromptContext['trustLevel']>, string> = {
+      high: 'direct',
+      building: 'warm',
+      low: 'curious',
+      declining: 'reframe',
+      defensive: 'neutral',
+    };
+    lines.push(`Current trust state: ${ctx.trustLevel}. Calibrate tone: high=direct, building=warm, low=curious, declining=reframe, defensive=neutral.`);
+  }
+
+  if (ctx.contributionType) {
+    lines.push(`Current contribution classification: ${ctx.contributionType}.`);
+  }
+
+  if (ctx.specificityScore !== undefined && ctx.specificityScore < 0.4) {
+    lines.push(`Specificity is low — probe for concrete details before moving forward.`);
+  }
+
+  if (ctx.patternSummary) {
+    lines.push(`Longitudinal pattern from prior sessions: ${ctx.patternSummary}`);
+  }
+
+  if (ctx.surfacedPatterns?.length) {
+    // GW-07: strip feed-only codes (F5/E4 — cofounder/founder burden asymmetry)
+    // before they reach the conversation layer. Defense-in-depth filter: the DB
+    // query in ConversationContextService already excludes these codes; this
+    // filter ensures they cannot leak even if patterns are injected via this
+    // call path.
+    const safe = ctx.surfacedPatterns.filter((p) => !ALIGNMENT_FEED_ONLY_CODES.has(p.code));
+    if (safe.length) {
+      lines.push(`# Patterns established across prior periods (surface as a behaviour worth naming, never a verdict on the person)`);
+      for (const p of safe) lines.push(`- ${p.observationText}`);
+    }
+  }
+
+  if (ctx.injectionTier === 1) {
+    lines.push(`Cross-reference: probe softly — ask an open question that surfaces the gap.`);
+  } else if (ctx.injectionTier === 2) {
+    lines.push(`Cross-reference: probe directly — name the gap and ask for the person's account.`);
+  } else if (ctx.injectionTier === 3) {
+    lines.push(`Cross-reference: document request — the record references a document; ask them to share it.`);
+  }
+
   return lines.join('\n');
 }
+
+// ---------------------------------------------------------------------------
+// Scenario-specific report schema variants.
+// ---------------------------------------------------------------------------
+
+export const NEW_STARTING_REPORT_SCHEMA = {
+  name: 'emit_report',
+  description: 'Emit the shared picture, agreements, divergences (the gap), the one central question, and each party\'s exact words for what success looks like.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      sharedPicture: { type: 'string', description: 'Plain-language synthesis of the situation from both records.' },
+      agreements: { type: 'array', items: { type: 'string' }, description: 'Where both accounts agree.' },
+      divergences: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            topic: { type: 'string' },
+            positions: {
+              type: 'array',
+              description: "Every diverging party's position on this topic.",
+              items: {
+                type: 'object',
+                properties: {
+                  participantLabel: { type: 'string', description: "The party's role label — never a personal name." },
+                  view: { type: 'string', description: 'How this party described the topic.' },
+                },
+                required: ['participantLabel', 'view'],
+              },
+            },
+            evidence: {
+              type: 'array',
+              items: { type: 'string' },
+              description: '1-2 short supporting references drawn from the parties\' own records.',
+            },
+          },
+          required: ['topic', 'positions'],
+        },
+        description: 'The gap. For each topic, every party\'s position — never framed as one side being right.',
+      },
+      centralQuestion: { type: 'string', description: 'The one question that, answered honestly, moves things forward.' },
+      successDefinitions: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            partyLabel: { type: 'string', description: "The party's role label — never a personal name." },
+            exactWords: { type: 'string', description: "Each party's exact words for what success looks like — quote verbatim where the record permits." },
+          },
+          required: ['partyLabel', 'exactWords'],
+        },
+        description: "Each party's exact words for what success looks like — quote verbatim where the record permits.",
+      },
+    },
+    required: ['sharedPicture', 'agreements', 'divergences', 'centralQuestion', 'successDefinitions'],
+  },
+};
+
+export const RECOGNITION_REPORT_SCHEMA = {
+  name: 'emit_report',
+  description: 'Emit the shared picture, agreements, divergences (the gap), the one central question, and the ask-vs-record analysis.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      sharedPicture: { type: 'string', description: 'Plain-language synthesis of the situation from both records.' },
+      agreements: { type: 'array', items: { type: 'string' }, description: 'Where both accounts agree.' },
+      divergences: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            topic: { type: 'string' },
+            positions: {
+              type: 'array',
+              description: "Every diverging party's position on this topic.",
+              items: {
+                type: 'object',
+                properties: {
+                  participantLabel: { type: 'string', description: "The party's role label — never a personal name." },
+                  view: { type: 'string', description: 'How this party described the topic.' },
+                },
+                required: ['participantLabel', 'view'],
+              },
+            },
+            evidence: {
+              type: 'array',
+              items: { type: 'string' },
+              description: '1-2 short supporting references drawn from the parties\' own records.',
+            },
+          },
+          required: ['topic', 'positions'],
+        },
+        description: 'The gap. For each topic, every party\'s position — never framed as one side being right.',
+      },
+      centralQuestion: { type: 'string', description: 'The one question that, answered honestly, moves things forward.' },
+      askVsRecord: {
+        type: 'object',
+        properties: {
+          ask: { type: 'string', description: 'What the person explicitly asked for recognition of.' },
+          recordEvidence: { type: 'string', description: "What the check-in record actually shows about that contribution." },
+          gap: { type: 'string', description: "The difference between the ask and the record evidence. Use 'none — record supports the ask fully' when appropriate." },
+        },
+        required: ['ask', 'recordEvidence', 'gap'],
+        description: 'Comparison of the explicit ask against what the record actually evidences.',
+      },
+    },
+    required: ['sharedPicture', 'agreements', 'divergences', 'centralQuestion', 'askVsRecord'],
+  },
+};
+
+export const DRIFT_REPORT_SCHEMA = {
+  name: 'emit_report',
+  description: 'Emit the shared picture, agreements, divergences (the gap), the one central question, and the drift trace.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      sharedPicture: { type: 'string', description: 'Plain-language synthesis of the situation from both records.' },
+      agreements: { type: 'array', items: { type: 'string' }, description: 'Where both accounts agree.' },
+      divergences: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            topic: { type: 'string' },
+            positions: {
+              type: 'array',
+              description: "Every diverging party's position on this topic.",
+              items: {
+                type: 'object',
+                properties: {
+                  participantLabel: { type: 'string', description: "The party's role label — never a personal name." },
+                  view: { type: 'string', description: 'How this party described the topic.' },
+                },
+                required: ['participantLabel', 'view'],
+              },
+            },
+            evidence: {
+              type: 'array',
+              items: { type: 'string' },
+              description: '1-2 short supporting references drawn from the parties\' own records.',
+            },
+          },
+          required: ['topic', 'positions'],
+        },
+        description: 'The gap. For each topic, every party\'s position — never framed as one side being right.',
+      },
+      centralQuestion: { type: 'string', description: 'The one question that, answered honestly, moves things forward.' },
+      driftTrace: {
+        type: 'object',
+        properties: {
+          agreedAtStart: { type: 'string', description: 'What was agreed or understood at the beginning of the arrangement.' },
+          whatRecordShows: { type: 'string', description: 'What the check-in records actually show happened over time.' },
+          gapDescription: { type: 'string', description: 'The specific difference between what was agreed and what the record shows.' },
+          structuralCause: {
+            type: 'string',
+            enum: ['role clarity', 'evidence standards', 'decision authority', 'unspoken expectation'],
+            description: 'The structural cause of the drift. Must be one of the four named causes.',
+          },
+        },
+        required: ['agreedAtStart', 'whatRecordShows', 'gapDescription', 'structuralCause'],
+        description: 'A structured trace of how the drift developed from the original agreement to the current state.',
+      },
+    },
+    required: ['sharedPicture', 'agreements', 'divergences', 'centralQuestion', 'driftTrace'],
+  },
+};
 
 // ---------------------------------------------------------------------------
 // Seed payload — what gets written into the versioned PromptVersion store.
 // ---------------------------------------------------------------------------
 
+// Per-party scenario pack seeds: each scenario is seeded as two keys —
+// "scenario.<name>.initiator" and "scenario.<name>.participant" — matching
+// the lookup key format used in composeSystemPrompt (conversation.service.ts).
+// This replaces the old combined "scenario.<name>" format so the DB override
+// path never exposes one party's opening questions to the other.
+function buildPartySeeds(): { key: string; content: string }[] {
+  const seeds: { key: string; content: string }[] = [];
+  for (const scenario of Object.values(GroundScenario)) {
+    seeds.push({
+      key: `scenario.${scenario.toLowerCase()}.initiator`,
+      content: buildScenarioPackForParty(scenario, PartyType.INITIATOR),
+    });
+    seeds.push({
+      key: `scenario.${scenario.toLowerCase()}.participant`,
+      content: buildScenarioPackForParty(scenario, PartyType.PARTICIPANT),
+    });
+  }
+  return seeds;
+}
+
 export const SEED_PROMPTS: { key: string; content: string }[] = [
   { key: 'system', content: ENGINE_RULES },
   { key: 'report_synthesis', content: REPORT_SYNTHESIS },
-  ...Object.entries(SCENARIO_PACKS).map(([scenario, content]) => ({
-    key: `scenario.${scenario.toLowerCase()}`,
-    content,
-  })),
+  ...buildPartySeeds(),
 ];

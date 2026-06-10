@@ -1,8 +1,24 @@
-import { Controller, Get, Post, Body, Param } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, Param } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { IsOptional, IsInt, Min, IsEnum } from 'class-validator';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import { GroundsService } from './grounds.service';
 import { CreateGroundDto, AddParticipantDto } from './dto';
 import { CurrentUser, CurrentUserData, Roles, Role } from '../../common';
+import { Cadence } from '@prisma/client';
+
+class UpdateTimelineDto {
+  @ApiPropertyOptional({ example: 12, description: 'Timeline length in weeks' })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  timelineWeeks?: number;
+
+  @ApiPropertyOptional({ enum: Cadence, description: 'Check-in cadence' })
+  @IsOptional()
+  @IsEnum(Cadence)
+  cadence?: Cadence;
+}
 
 @ApiTags('Grounds')
 @ApiBearerAuth()
@@ -49,5 +65,17 @@ export class GroundsController {
     @CurrentUser('organizationId') organizationId: string,
   ) {
     return this.grounds.resendParticipantInvite(id, participantId, organizationId);
+  }
+
+  @Get(':id/mediator-brief')
+  @ApiOperation({ summary: 'Get a structural brief for use with a facilitator (initiator only)' })
+  async mediatorBrief(@Param('id') id: string, @CurrentUser('id') userId: string) {
+    return this.grounds.getMediatorBrief(id, userId);
+  }
+
+  @Patch(':id')
+  @ApiOperation({ summary: 'Update timeline weeks and/or cadence; change is audit-logged on the ground' })
+  async updateTimeline(@Param('id') id: string, @CurrentUser('id') userId: string, @Body() dto: UpdateTimelineDto) {
+    return this.grounds.updateTimeline(id, userId, dto);
   }
 }

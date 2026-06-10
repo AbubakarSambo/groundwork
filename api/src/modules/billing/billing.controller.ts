@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Req, Headers, HttpCode, HttpStatus, Logger } from '@nestjs/common';
+import { Controller, Delete, Get, Post, Req, Headers, HttpCode, HttpStatus, Logger } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { BillingService } from './billing.service';
 import { StripeService } from './stripe.service';
@@ -16,9 +16,17 @@ export class BillingController {
 
   @Get('status')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Whether the org is billing-ready (care fee active)' })
+  @ApiOperation({ summary: 'Billing status: care-fee state, active grounds, and estimated next charge' })
   async status(@CurrentUser('organizationId') organizationId: string) {
-    return { billingReady: await this.billing.isBillingReady(organizationId) };
+    return this.billing.getStatus(organizationId);
+  }
+
+  @Delete('subscription')
+  @ApiBearerAuth()
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Cancel the full subscription — marks org CANCELLED, sends data-portability notice' })
+  async cancelSubscription(@CurrentUser('organizationId') organizationId: string) {
+    return this.billing.cancelSubscription(organizationId);
   }
 
   @Post('care-fee/checkout')

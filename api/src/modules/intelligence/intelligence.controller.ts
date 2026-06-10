@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Param, Body } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { IsBoolean, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsBoolean, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 import { IntelligenceService } from './intelligence.service';
 import { CurrentUser, CurrentUserData, Roles, Role } from '../../common';
 
@@ -12,6 +12,26 @@ class OutcomeFeedbackDto {
   @IsString()
   @MaxLength(2000)
   note?: string;
+}
+
+class GroundFeedbackDto {
+  @IsInt()
+  @Min(1)
+  @Max(5)
+  rating: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  whatWorked?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  whatDidnt?: string;
+
+  @IsBoolean()
+  wouldUseAgain: boolean;
 }
 
 @ApiTags('Learning Loop')
@@ -30,6 +50,16 @@ export class IntelligenceController {
   @ApiOperation({ summary: 'Submit post-resolution feedback (did this feel fair and grounded in evidence?)' })
   async submitFeedback(@Param('groundId') groundId: string, @CurrentUser('id') userId: string, @Body() dto: OutcomeFeedbackDto) {
     return this.intelligence.submitFeedback(groundId, userId, dto.feltFair, dto.note);
+  }
+
+  @Post('grounds/:groundId/feedback')
+  @ApiOperation({ summary: 'Submit structured outcome feedback (rating, what worked/didn\'t, would use again) — one per party per ground' })
+  async submitGroundFeedback(
+    @Param('groundId') groundId: string,
+    @CurrentUser('id') userId: string,
+    @Body() dto: GroundFeedbackDto,
+  ) {
+    return this.intelligence.submitOutcomeFeedback(groundId, userId, dto);
   }
 
   @Get('dashboard')

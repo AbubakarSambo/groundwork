@@ -4,7 +4,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { PromptsService } from '../prompts';
 import { AnthropicService } from '../conversation';
 import { EmailService } from '../email/email.service';
-import { GroundStatus, PartyType, CheckInStatus } from '@prisma/client';
+import { GroundStatus, PartyType, CheckInStatus, GroundScenario } from '@prisma/client';
+import { NEW_STARTING_REPORT_SCHEMA, RECOGNITION_REPORT_SCHEMA, DRIFT_REPORT_SCHEMA } from '../conversation/prompt-library';
 
 const REPORT_SCHEMA = {
   name: 'emit_report',
@@ -111,10 +112,26 @@ export class ReportsService {
       header +
       records.map((r) => `[${labelById.get(r.participant.id) ?? 'a party'}] (${r.type}) ${r.text}`).join('\n');
 
+    const NEW_STARTING_SCENARIOS: GroundScenario[] = [
+      GroundScenario.NEW_HIRE,
+      GroundScenario.NEW_COFOUNDER,
+      GroundScenario.NEW_ADVISOR,
+      GroundScenario.NEW_PROJECT,
+      GroundScenario.NEW_MANAGER,
+    ];
+    const activeSchema =
+      NEW_STARTING_SCENARIOS.includes(ground.scenario as GroundScenario)
+        ? NEW_STARTING_REPORT_SCHEMA
+        : ground.scenario === GroundScenario.RECOGNITION
+        ? RECOGNITION_REPORT_SCHEMA
+        : ground.scenario === GroundScenario.DRIFT || ground.scenario === GroundScenario.CRISIS_ALIGNMENT
+        ? DRIFT_REPORT_SCHEMA
+        : REPORT_SCHEMA;
+
     const result = await this.anthropic.extract<{ sharedPicture: string; agreements: string[]; divergences: any[]; centralQuestion: string }>(
       systemPrompt,
       [{ role: 'user', content: corpus }],
-      REPORT_SCHEMA,
+      activeSchema,
     );
     if (!result) throw new Error('Report synthesis failed to return structured output');
 
@@ -122,16 +139,31 @@ export class ReportsService {
     // it tells both parties what the report is built on (session counts, record
     // depth, documents, absentees) and carries the "not independently verified"
     // disclosure. Shown alongside the synthesis.
+    const DIFFICULTY_KEYWORDS = ['struggle', 'hard', 'difficult', 'unclear', 'behind', 'worried', 'frustrated', 'failed', 'challenging'];
+
     const engagementParties = await Promise.all(
       parties.map(async (p) => {
-        const [sessions, recordEntries, documentsAttached] = await Promise.all([
+        const [sessions, allEntries, documentsAttached] = await Promise.all([
           this.prisma.checkIn.count({ where: { participantId: p.id, status: CheckInStatus.COMPLETED } }),
-          this.prisma.recordEntry.count({ where: { participantId: p.id } }),
+          this.prisma.recordEntry.findMany({ where: { participantId: p.id }, select: { text: true } }),
           this.prisma.groundDocument.count({ where: { groundId, participantId: p.id } }),
         ]);
-        return { label: labelById.get(p.id) ?? 'a party', sessions, recordEntries, documentsAttached, contributed: contributorIds.has(p.id) };
+        const recordEntries = allEntries.length;
+        const specificEntries = allEntries.filter((e) => e.text.length > 120).length;
+        const specificityRatio = recordEntries > 0 ? specificEntries / recordEntries : 0;
+        const specificityLabel: 'high' | 'moderate' | 'low' = specificityRatio > 0.65 ? 'high' : specificityRatio > 0.35 ? 'moderate' : 'low';
+        return { label: labelById.get(p.id) ?? 'a party', sessions, recordEntries, documentsAttached, contributed: contributorIds.has(p.id), specificityLabel };
       }),
     );
+
+    // difficultyDisclosures: true if any record entry for this ground contains a difficulty keyword.
+    const allGroundTexts = await this.prisma.recordEntry.findMany({
+      where: { participant: { groundId } },
+      select: { text: true },
+    });
+    const lowerTexts = allGroundTexts.map((e) => e.text.toLowerCase());
+    const difficultyDisclosures = DIFFICULTY_KEYWORDS.some((kw) => lowerTexts.some((t) => t.includes(kw)));
+
     const contributing = engagementParties.filter((e) => e.contributed);
     const minSessions = contributing.length ? Math.min(...contributing.map((e) => e.sessions)) : 0;
     const minEntries = contributing.length ? Math.min(...contributing.map((e) => e.recordEntries)) : 0;
@@ -139,6 +171,8 @@ export class ReportsService {
     const engagement = {
       coverage,
       documentBacked: engagementParties.some((e) => e.documentsAttached > 0),
+      specificitySignal: Object.fromEntries(engagementParties.map((p) => [p.label, p.specificityLabel])),
+      difficultyDisclosures,
       note: `This report is built from each party's self-reported account — it is not independently verified.${absent.length ? ` ${absent.length} invited part${absent.length === 1 ? 'y' : 'ies'} did not contribute, so the picture below reflects the records present.` : ''}`,
       parties: engagementParties,
     };

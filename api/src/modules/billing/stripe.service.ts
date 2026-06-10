@@ -50,14 +50,17 @@ export class StripeService {
   }
 
   /** Scenario fee: queue one charge ($50 x person-months) onto the next invoice. */
-  async chargeScenarioFee(customerId: string, personMonths: number, groundLabel: string) {
+  async chargeScenarioFee(customerId: string, personMonths: number, groundLabel: string, idempotencyKey?: string) {
     const unit = this.config.get<number>('stripe.scenarioFeeCents') || 5000;
-    return this.stripe.invoiceItems.create({
-      customer: customerId,
-      amount: unit * personMonths,
-      currency: 'usd',
-      description: `Scenario fee — ${groundLabel} (${personMonths} person-month${personMonths === 1 ? '' : 's'})`,
-    });
+    return this.stripe.invoiceItems.create(
+      {
+        customer: customerId,
+        amount: unit * personMonths,
+        currency: 'usd',
+        description: `Scenario fee — ${groundLabel} (${personMonths} person-month${personMonths === 1 ? '' : 's'})`,
+      },
+      idempotencyKey ? { idempotencyKey } : undefined,
+    );
   }
 
   /** Schedule a subscription to cancel at the end of the current paid period. */

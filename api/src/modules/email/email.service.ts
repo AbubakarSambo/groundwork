@@ -102,8 +102,8 @@ export class EmailService {
   async sendReportReady(email: string, groundLabel: string, reportUrl: string): Promise<void> {
     await this.sendEmail({
       to: email,
-      subject: `Your shared picture for "${groundLabel}" is ready`,
-      html: this.layout(`<p>Both versions now exist. The report shows where you agree, where you differ, and the one question worth answering.</p><p><a href="${reportUrl}">View the report</a></p>`),
+      subject: `Your shared record is ready — ${groundLabel}`,
+      html: this.layout(`<p>Both sides have checked in. The shared record is now available to both of you at the same time — it shows where you agree, where you differ, and the one question worth answering together.</p><p><a href="${reportUrl}">View the report</a></p>`),
     });
   }
 
@@ -121,12 +121,21 @@ export class EmailService {
     });
   }
 
-  /** Nudge — names the specific commitment that is still open. */
-  async sendNudge(email: string, specificThing: string, checkInUrl: string): Promise<void> {
+  /** Nudge — scenario-aware subject, names the specific ground that is still open. */
+  async sendNudge(email: string, groundLabel: string, checkInUrl: string, scenario?: string): Promise<void> {
+    const subjectMap: Record<string, string> = {
+      NEW_HIRE: 'Your 90-day check-in is waiting',
+      NEW_COFOUNDER: 'Your cofounder check-in is open',
+      RECOGNITION: 'Your recognition check-in is ready',
+      DRIFT: 'Your check-in is here when you are',
+      CRISIS_ALIGNMENT: 'Your check-in is here when you are',
+      CONTRACT_RENEWAL: 'Your renewal check-in is open',
+    };
+    const subject = (scenario && subjectMap[scenario]) || 'Your check-in is waiting';
     await this.sendEmail({
       to: email,
-      subject: 'One question before your next check-in',
-      html: this.layout(`<p>Last time you described <strong>${specificThing}</strong>.</p><p>Has anything changed?</p><p><a href="${checkInUrl}">Check in</a></p>`),
+      subject,
+      html: this.layout(`<p>Your check-in for <strong>${groundLabel}</strong> is still open.</p><p><a href="${checkInUrl}">Check in</a></p>`),
     });
   }
 
@@ -191,6 +200,78 @@ export class EmailService {
         `<p>Now that <strong>${groundLabel}</strong> has closed: did the process help you reach an outcome that felt fair and grounded in what was actually said?</p>
          <p>Your answer takes 20 seconds and helps us make every future ground better.</p>
          <p><a href="${feedbackUrl}">Share your view</a></p>`,
+      ),
+    });
+  }
+
+  // --- Billing ---
+
+  /** Payment failed notice sent to the org admin. */
+  async sendPaymentFailed(adminEmail: string, orgName: string): Promise<void> {
+    await this.sendEmail({
+      to: adminEmail,
+      subject: `Action required: payment could not be processed for ${orgName}`,
+      html: this.layout(
+        `<p>We were unable to charge the card on file. Please update your payment method within 7 days to keep your account active. Your records are safe regardless of payment status.</p>
+         <p><a href="${this.frontendUrl}/billing">Update payment method</a></p>`,
+      ),
+    });
+  }
+
+  /** Billing change notification — sent when a scenario fee starts or stops. */
+  async sendBillingChangeNotification(adminEmail: string, type: 'STARTED' | 'STOPPED', groundLabel: string): Promise<void> {
+    const subject = type === 'STARTED'
+      ? `Scenario fee started: ${groundLabel}`
+      : `Scenario fee ended: ${groundLabel}`;
+    const body = type === 'STARTED'
+      ? `<p>A new ground is active. A scenario fee of USD 50/month begins from today.</p>`
+      : `<p>The ground '${groundLabel}' has resolved. The scenario fee has stopped. No further charges for this ground.</p>`;
+    await this.sendEmail({
+      to: adminEmail,
+      subject,
+      html: this.layout(body),
+    });
+  }
+
+  /** Record-portability notice sent when an org account is cancelled — sent to the individual user. */
+  async sendRecordPortabilityNotice(userEmail: string, firstName: string, downloadUrl: string): Promise<void> {
+    await this.sendEmail({
+      to: userEmail,
+      subject: 'Your Groundwork record is yours — download it',
+      html: this.layout(
+        `<p>Hi ${firstName}. Your organisation's Groundwork account has been cancelled.</p>
+         <p>Your record does not disappear. It belongs to you. Download it here: <a href="${downloadUrl}">${downloadUrl}</a> — this link is valid for 30 days after which it expires.</p>`,
+      ),
+    });
+  }
+
+  /** Absence reminder — sent when one party has not yet checked in and the other is waiting. */
+  async sendAbsenceReminder(
+    recipientEmail: string,
+    recipientName: string,
+    groundLabel: string,
+    initiatorName: string,
+    checkInUrl: string,
+  ): Promise<void> {
+    await this.sendEmail({
+      to: recipientEmail,
+      subject: `${initiatorName} is waiting on your check-in`,
+      html: this.layout(
+        `<p>There is a ground open for you: <strong>${groundLabel}</strong>.</p>
+         <p>Your check-in is private. Nothing you write is shared with ${initiatorName} directly — only the shared picture goes to both of you after both sides are complete. Your side of the record matters.</p>
+         <p><a href="${checkInUrl}">Open your check-in</a></p>`,
+      ),
+    });
+  }
+
+  /** Care fee confirmation — sent when an org activates a Groundwork subscription. */
+  async sendCareFeeConfirmation(adminEmail: string, orgName: string): Promise<void> {
+    await this.sendEmail({
+      to: adminEmail,
+      subject: 'You are set up on Groundwork',
+      html: this.layout(
+        `<p>Groundwork is now available to ${orgName}.</p>
+         <p>The care fee of USD 20/month keeps it available whenever you need it — no separate sign-up when a situation arises. Scenario fees (USD 50/month per active ground) are added when you open a ground and stop when it resolves.</p>`,
       ),
     });
   }

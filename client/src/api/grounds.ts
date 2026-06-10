@@ -10,3 +10,16 @@ export const groundsApi = {
     apiClient.post(`/grounds/${id}/participants`, data).then((r) => r.data),
   activate: (id: string) => apiClient.post(`/grounds/${id}/activate`).then((r) => r.data),
 }
+
+export const createGroundWithExtras = (body: object) =>
+  apiClient.post<Ground>('/grounds', body).then((r) => r.data)
+
+export const uploadGroundBrief = (groundId: string, file: File) => {
+  const form = new FormData()
+  form.append('file', file)
+  return apiClient
+    .post(`/grounds/${groundId}/brief`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    .then((r) => r.data)
+}

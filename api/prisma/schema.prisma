@@ -109,6 +109,14 @@ enum BillingEventType {
   SCENARIO_FEE // $50/person/month while a ground is ACTIVE
 }
 
+enum EvidenceType {
+  DOCUMENT_AT_AGREEMENT
+  DOCUMENT_AFTER
+  CHECK_IN
+  ANCHORED_RECALL
+  UNANCHORED_RECALL
+}
+
 enum BillingEventStatus {
   PENDING
   PAID
@@ -130,6 +138,7 @@ model Organization {
   careFeeStatus          CareFeeStatus @default(NONE) @map("care_fee_status")
   careFeeSubscriptionId  String?       @map("care_fee_subscription_id")
   defaultPaymentMethodId String?       @map("default_payment_method_id")
+  gracePeriodUntil       DateTime?     @map("grace_period_until")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -195,9 +204,11 @@ model Ground {
   status         GroundStatus   @default(OPEN)
   label          String
 
-  timelineDays Int     @map("timeline_days")
-  cadence      Cadence @default(FORTNIGHTLY)
-  endState     String? @map("end_state") // the decision the process worked toward
+  timelineDays  Int     @map("timeline_days")
+  timelineWeeks Int?    @map("timeline_weeks")
+  cadence       Cadence @default(FORTNIGHTLY)
+  endState      String? @map("end_state") // the decision the process worked toward
+  groundAuditLog Json?  @map("ground_audit_log") // append-only JSON log of timeline/cadence changes
 
   // Lifecycle / billing markers
   billingActivatedAt DateTime? @map("billing_activated_at") // admin activated report
@@ -276,6 +287,7 @@ model CheckIn {
   startedAt     DateTime?     @map("started_at")
   completedAt   DateTime?     @map("completed_at")
   patternsAnalyzedAt DateTime? @map("patterns_analyzed_at") // pattern sweep has processed this period
+  nextCommitment String?       @map("next_commitment")
   createdAt     DateTime      @default(now()) @map("created_at")
 
   ground        Ground            @relation(fields: [groundId], references: [id], onDelete: Cascade)
@@ -307,6 +319,7 @@ model RecordEntry {
   participantId String          @map("participant_id")
   checkInId     String?         @map("check_in_id")
   type          RecordEntryType
+  evidenceType  EvidenceType    @default(CHECK_IN)
   text          String          @db.Text // the person's exact words where possible
   createdAt     DateTime        @default(now()) @map("created_at")
 
@@ -369,11 +382,12 @@ model PatternDetection {
 // ---------------------------------------------------------------------------
 
 model Resolution {
-  id        String    @id @default(uuid())
-  groundId  String    @unique @map("ground_id")
-  endState  String    @map("end_state") // latest leading proposal; the agreed end state once closed
-  closedAt  DateTime? @map("closed_at")
-  createdAt DateTime  @default(now()) @map("created_at")
+  id             String    @id @default(uuid())
+  groundId       String    @unique @map("ground_id")
+  endState       String    @map("end_state") // latest leading proposal; the agreed end state once closed
+  decisionRights Json?     @map("decision_rights")
+  closedAt       DateTime? @map("closed_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
 
   ground        Ground                   @relation(fields: [groundId], references: [id], onDelete: Cascade)
   confirmations ResolutionConfirmation[]

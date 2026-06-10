@@ -140,19 +140,18 @@ export class ConversationService {
       return { reply: first?.content ?? '' };
     }
 
-    // GW-41: stamp the system prompt version on the ground at session 1 open.
-    // Outcome data is attributed to the engine version active when the conversation
-    // STARTED, not the one current at resolution time — without this stamp,
-    // intelligence.service.ts recordOutcome() always writes null promptVersionId.
+    // GW-41: stamp the engine_rules prompt version on the ground at first check-in
+    // open time. Outcome data is attributed to the engine version active when the
+    // conversation STARTED, not the one current at resolution time — without this
+    // stamp, intelligence.service.ts recordOutcome() always writes null promptVersionId.
+    // updateMany with promptVersionId: null guard makes this idempotent: the first
+    // check-in to open wins; later openings on the same ground are no-ops.
     if (checkIn.sessionNumber === 1) {
-      const groundRecord = await this.prisma.ground.findUnique({
-        where: { id: checkIn.groundId },
-        select: { promptVersionId: true },
+      const engineVersion = await this.prompts.getActive('system');
+      await this.prisma.ground.updateMany({
+        where: { id: checkIn.groundId, promptVersionId: null },
+        data: { promptVersionId: engineVersion.id },
       });
-      if (!groundRecord?.promptVersionId) {
-        const sysVersion = await this.prompts.getActive('system');
-        await this.prisma.ground.update({ where: { id: checkIn.groundId }, data: { promptVersionId: sysVersion.id } });
-      }
     }
 
     const fullSystem = await this.composeSystemPrompt(checkIn);

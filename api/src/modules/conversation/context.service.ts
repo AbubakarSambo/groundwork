@@ -175,11 +175,16 @@ export class ConversationContextService {
     // Surfaced longitudinal patterns (three-period rule) — plain, never verdicts.
     // Feed-only codes (F5/E4 — cofounder/founder burden asymmetry) must NEVER be
     // named to either person directly; they surface to the alignment feed only.
-    // (Part 4 / GW-07.)
-    const surfaced = await this.prisma.patternDetection.findMany({
+    // (Part 4 / GW-07.) The WHERE clause excludes them at the DB level; the
+    // post-query filter below is a defense-in-depth guard in case the DB result
+    // set ever contains a stale or unexpected code value.
+    const surfacedRaw = await this.prisma.patternDetection.findMany({
       where: { participantId, status: 'SURFACED', code: { notIn: [...ALIGNMENT_FEED_ONLY_CODES] } },
-      select: { observationText: true },
+      select: { code: true, observationText: true },
     });
+    // GW-07 defense-in-depth: filter again in memory so a DB inconsistency
+    // cannot leak a feed-only code into the conversation context.
+    const surfaced = surfacedRaw.filter((p) => !ALIGNMENT_FEED_ONLY_CODES.has(p.code));
     if (surfaced.length) {
       block += `# Patterns established across prior periods (surface as a behaviour worth naming, never a verdict on the person)\n`;
       for (const s of surfaced) block += `- ${s.observationText}\n`;

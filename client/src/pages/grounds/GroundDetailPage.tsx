@@ -3,9 +3,10 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { AxiosError } from 'axios'
-import { groundsApi, resolutionApi, dashboardApi, documentsApi, conversationApi } from '@/api'
+import { groundsApi, resolutionApi, dashboardApi, documentsApi, conversationApi, billingApi } from '@/api'
 import { useAuthStore } from '@/stores/auth'
 import { StatusPill } from '@/components/gw'
+import type { CheckInStatus } from '@/types'
 
 // Project & team grounds may hold more than two parties; all others are two-party.
 const MULTI_PARTY_SCENARIOS = ['NEW_PROJECT', 'CRISIS_ALIGNMENT']
@@ -77,6 +78,16 @@ export function GroundDetailPage() {
       </div>
 
       <div className="gw-bd" style={{ maxWidth: 600, margin: '0 auto', width: '100%' }}>
+
+        {/* Completeness — admin only */}
+        {user?.role === 'ADMIN' && (ground.checkIns?.length ?? 0) > 0 && (
+          <CompletenessSection ground={ground} />
+        )}
+
+        {/* Resolved + no feedback banner */}
+        {(ground.status === 'RESOLVED' || ground.status === 'CLOSED') && (
+          <FeedbackBanner groundId={ground.id} />
+        )}
 
         {/* Participants */}
         <Section title="Parties">
@@ -269,6 +280,87 @@ function SoloArtifactCard({ checkInId }: { checkInId: string }) {
         Built from your record alone — yours to use now, whether or not the other side checks in. The full shared picture comes once both of you complete two sessions.
       </div>
     </Section>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Completeness section (admin view only)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function statusDot(status: CheckInStatus | undefined) {
+  if (status === 'COMPLETED') return { color: '#5DCAA5', label: 'Completed' }
+  if (status === 'IN_PROGRESS') return { color: '#E8A94A', label: 'In progress' }
+  return { color: '#C9C5BF', label: 'Not started' }
+}
+
+function CompletenessSection({ ground }: { ground: any }) {
+  const participants: any[] = ground.participants ?? []
+  const checkIns: any[] = ground.checkIns ?? []
+
+  // Find the current period (highest sessionNumber present)
+  const maxSession = checkIns.reduce((m: number, c: any) => Math.max(m, c.sessionNumber ?? 0), 0)
+  const currentPeriodCheckIns = checkIns.filter((c: any) => c.sessionNumber === maxSession)
+
+  const completedCount = currentPeriodCheckIns.filter((c: any) => c.status === 'COMPLETED').length
+
+  const statusForParticipant = (participantId: string): CheckInStatus | undefined => {
+    const c = currentPeriodCheckIns.find((ci: any) => ci.participantId === participantId)
+    return c?.status as CheckInStatus | undefined
+  }
+
+  return (
+    <Section title={`Period ${maxSession || 1} check-in completeness`}>
+      <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 12 }}>
+        <strong style={{ color: 'var(--gw-text)' }}>{completedCount} of {participants.length}</strong> people have checked in this period
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {participants.map((p: any) => {
+          const dot = statusDot(statusForParticipant(p.id))
+          return (
+            <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px', background: '#F7F6F3', borderRadius: 5 }}>
+              <span
+                style={{
+                  width: 9, height: 9, borderRadius: '50%', flexShrink: 0,
+                  background: dot.color, display: 'inline-block',
+                }}
+                title={dot.label}
+              />
+              <span style={{ fontSize: 12, color: 'var(--gw-text)', flex: 1 }}>
+                {p.roleAsDescribed || p.partyType}
+              </span>
+              <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}>{dot.label}</span>
+            </div>
+          )
+        })}
+      </div>
+    </Section>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Feedback banner — shown when ground is resolved and user hasn't given feedback
+// ─────────────────────────────────────────────────────────────────────────────
+
+function FeedbackBanner({ groundId }: { groundId: string }) {
+  const navigate = useNavigate()
+  const { data: feedback, isLoading } = useQuery({
+    queryKey: ['ground-feedback', groundId],
+    queryFn: () => billingApi.getFeedback(groundId),
+  })
+
+  if (isLoading || feedback) return null
+
+  return (
+    <div className="gw-box gw-box-amber" style={{ marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+      <span>This ground is resolved. How did it go?</span>
+      <button
+        className="gw-btn-sm"
+        style={{ flexShrink: 0, marginTop: 0 }}
+        onClick={() => navigate(`/grounds/${groundId}/feedback`)}
+      >
+        Share feedback
+      </button>
+    </div>
   )
 }
 

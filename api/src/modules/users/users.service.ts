@@ -125,45 +125,65 @@ export class UsersService {
 
   /**
    * GW-03 — GDPR Article 15 data export. Returns all personal data held for
-   * the requesting user: profile, ground participations with their own sessions,
-   * transcripts, and record entries. Never includes other parties' data.
+   * the requesting user: profile, record entries, check-in summaries, and
+   * grounds they are a party to. Never includes other parties' data.
    */
   async exportData(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, email: true, firstName: true, lastName: true, role: true, createdAt: true },
+      select: { id: true, email: true, firstName: true, lastName: true },
     });
     if (!user) throw new NotFoundException('User not found');
 
-    const participations = await this.prisma.groundParticipant.findMany({
+    // Collect all participant links for this user.
+    const participantLinks = await this.prisma.groundParticipant.findMany({
       where: { userId },
-      select: {
-        id: true,
-        groundId: true,
-        partyType: true,
-        roleAsDescribed: true,
-        invitedAt: true,
-        soloArtifact: true,
-        soloArtifactAt: true,
-        checkIns: {
-          select: {
-            id: true,
-            sessionNumber: true,
-            status: true,
-            completedAt: true,
-            turns: {
-              orderBy: { createdAt: 'asc' },
-              select: { role: true, content: true, createdAt: true },
-            },
-            recordEntries: {
-              select: { type: true, text: true, createdAt: true },
-            },
-          },
-        },
-      },
+      select: { id: true, groundId: true },
+    });
+    const participantIds = participantLinks.map((p) => p.id);
+
+    // All RecordEntry rows for this user's participants.
+    const recordEntries = await this.prisma.recordEntry.findMany({
+      where: { participantId: { in: participantIds } },
+      select: { id: true, type: true, text: true, createdAt: true, checkInId: true, participantId: true },
+      orderBy: { createdAt: 'asc' },
     });
 
-    return { exportedAt: new Date().toISOString(), profile: user, grounds: participations };
+    // All check-in summaries — include ground label via the ground relation.
+    const checkIns = await this.prisma.checkIn.findMany({
+      where: { participantId: { in: participantIds } },
+      select: {
+        id: true,
+        status: true,
+        sessionNumber: true,
+        completedAt: true,
+        ground: { select: { label: true } },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    // All grounds the user is a party to.
+    const groundIds = [...new Set(participantLinks.map((p) => p.groundId))];
+    const grounds = await this.prisma.ground.findMany({
+      where: { id: { in: groundIds } },
+      select: { id: true, label: true, scenario: true, status: true },
+    });
+
+    return {
+      userId: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      recordEntries,
+      checkIns: checkIns.map((c) => ({
+        id: c.id,
+        status: c.status,
+        sessionNumber: c.sessionNumber,
+        completedAt: c.completedAt,
+        groundLabel: c.ground.label,
+      })),
+      grounds,
+    };
   }
 
   /**
@@ -177,7 +197,7 @@ export class UsersService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('User not found');
 
-    const anonymisedEmail = `deleted-${userId}@erased.invalid`;
+    const anonymisedEmail = `deleted-${userId}@deleted`;
 
     await this.prisma.$transaction([
       this.prisma.user.update({
@@ -193,13 +213,10 @@ export class UsersService {
     for (const link of links) {
       await this.prisma.groundParticipant.update({
         where: { id: link.id },
-        data: { email: `deleted-${link.id}@erased.invalid`, roleAsDescribed: null },
+        data: { email: `deleted-${link.id}@deleted`, roleAsDescribed: null },
       });
     }
 
-    return {
-      erased: true as const,
-      note: "Identifying information has been removed. Conversation content contributed to active grounds is retained under the other party's legitimate interest in the shared record.",
-    };
+    return { deleted: true as const };
   }
 }

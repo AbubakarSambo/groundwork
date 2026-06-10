@@ -8,12 +8,14 @@ export const conversationApi = {
     apiClient.post<{ reply: string }>(`/check-ins/${checkInId}/open`).then((r) => r.data),
   send: (checkInId: string, message: string) =>
     apiClient.post<{ reply: string }>(`/check-ins/${checkInId}/messages`, { message }).then((r) => r.data),
-  complete: (checkInId: string) =>
-    apiClient.post<{ status: string; groundId: string }>(`/check-ins/${checkInId}/complete`).then((r) => r.data),
+  complete: (checkInId: string, nextCommitment?: string) =>
+    apiClient.post<{ status: string; groundId: string }>(`/check-ins/${checkInId}/complete`, nextCommitment ? { nextCommitment } : {}).then((r) => r.data),
   decline: (checkInId: string) =>
     apiClient.post<{ status: string }>(`/check-ins/${checkInId}/decline`).then((r) => r.data),
   artifact: (checkInId: string) =>
     apiClient
       .get<{ artifact: { summary: string; whatToCarry: string } | null; generatedAt?: string }>(`/check-ins/${checkInId}/artifact`)
       .then((r) => r.data),
+  remind: (checkInId: string) =>
+    apiClient.post(`/conversation/${checkInId}/remind`).then((r: { data: unknown }) => r.data),
 }

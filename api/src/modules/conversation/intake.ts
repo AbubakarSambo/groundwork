@@ -38,6 +38,7 @@ export interface IntakeResult {
   meetingScore: number;
   isAdvisoryOnly: boolean;
   hasIndependentOutput: boolean;
+  positiveSignal?: string;
 }
 
 export function runIntake(text: string): IntakeResult {
@@ -69,6 +70,13 @@ export function runIntake(text: string): IntakeResult {
   const meetingScore = Math.min(1, MEETING_VERBS.filter((v) => lower.includes(v)).length * 0.3);
   const outputScore = Math.min(1, OUTPUT_VERBS.filter((v) => lower.includes(v)).length * 0.2 + factualClaims.filter((c) => c.verifiable).length * 0.15);
 
+  let positiveSignal: string | undefined;
+  if (/(completed|shipped|delivered|finished|launched)/.test(lower) && /(i |we )/.test(lower)) positiveSignal = 'M1_PLUS';
+  else if (/(ahead of|early|beat the|exceeded)/.test(lower)) positiveSignal = 'M2_PLUS';
+  else if (/(decided|made the call|chose to|committed to)/.test(lower) && /(because|reasoning|given that)/.test(lower)) positiveSignal = 'D1_PLUS';
+  else if (/(shared with the team|changed how we|realised that)/.test(lower)) positiveSignal = 'K1_PLUS';
+  else if (/(took ownership|my fault|i was wrong|fixed it|repaired)/.test(lower)) positiveSignal = 'R1_PLUS';
+
   return {
     types,
     factualClaims,
@@ -79,6 +87,7 @@ export function runIntake(text: string): IntakeResult {
     meetingScore,
     isAdvisoryOnly: thinkingScore > 0.3 && outputScore < 0.2,
     hasIndependentOutput: outputScore > 0.3 && factualClaims.some((c) => c.verifiable),
+    positiveSignal,
   };
 }
 

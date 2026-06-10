@@ -2,7 +2,10 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AnthropicService } from '../conversation';
 import { PatternStatus, TurnRole } from '@prisma/client';
-import { PATTERN_DETECTION_PROMPT, PATTERN_DETECTION_SCHEMA, isBadFaithCode } from './pattern-library';
+import { PATTERN_DETECTION_PROMPT, PATTERN_DETECTION_SCHEMA, BAD_FAITH_CODES, isBadFaithCode } from './pattern-library';
+
+/** Lookup map from code -> description for the AI confirmation prompt. */
+const CODE_DESCRIPTIONS = new Map(BAD_FAITH_CODES.map((c) => [c.code, `${c.name}: ${c.signal}`]));
 
 const THREE_PERIOD_RULE = 3;
 
@@ -53,6 +56,14 @@ export class PatternsService {
 
       for (const d of result?.detections ?? []) {
         if (!d.observation?.trim() || !isBadFaithCode(d.code)) continue;
+        // AI confirmation gate: each candidate pattern is confirmed by a
+        // second AI call before being written to the record. This prevents
+        // false positives from the batch extraction step.
+        const confirmed = await this.confirmDetection(d.code, d.observation.trim()).catch((err) => {
+          this.logger.warn(`Pattern confirmation skipped for ${d.code}: ${err.message}`);
+          return false;
+        });
+        if (!confirmed) continue;
         await this.observe(checkIn.groundId, checkIn.participantId, d.code, d.observation.trim(), checkIn.sessionNumber);
       }
     } catch (err: any) {
@@ -116,6 +127,24 @@ export class PatternsService {
       orderBy: { lastSeenAt: 'desc' },
     });
     return surfaced.map((s) => ({ observation: s.observationText, lastSeenAt: s.lastSeenAt }));
+  }
+
+  /**
+   * Ask the AI to confirm a single candidate pattern detection before saving.
+   * Returns true only if the model answers YES. Any other response or an error
+   * is treated as rejection so we fail safely (no false positives).
+   *
+   * The excerpt is the observation text produced by the batch extraction step —
+   * a plain-language description of what the record shows, never a verdict.
+   */
+  private async confirmDetection(code: string, excerpt: string): Promise<boolean> {
+    const description = CODE_DESCRIPTIONS.get(code) ?? code;
+    const systemPrompt =
+      'You are a pattern-detection verifier. Answer only YES or NO. No explanation. No preamble.';
+    const question = `Does this text exhibit pattern ${code} (${description})?\nText: ${excerpt}\nAnswer YES or NO.`;
+
+    const reply = await this.anthropic.respond(systemPrompt, [{ role: 'user', content: question }]);
+    return reply.trim().toUpperCase().startsWith('YES');
   }
 
   private markAnalyzed(checkInId: string) {

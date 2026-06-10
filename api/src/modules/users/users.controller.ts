@@ -16,9 +16,9 @@ export class UsersController {
     return this.usersService.exportData(userId);
   }
 
-  @Delete('me')
+  @Delete('me/data')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Erase account and anonymise personal data (GDPR Article 17)' })
+  @ApiOperation({ summary: 'Soft-delete and anonymise personal data (GDPR Article 17)' })
   async eraseAccount(@CurrentUser('id') userId: string) {
     return this.usersService.eraseAccount(userId);
   }

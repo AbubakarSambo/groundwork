@@ -24,6 +24,9 @@ export function GroundsListPage() {
           {user?.role === 'ADMIN' && (
             <button className="gw-back" onClick={() => navigate('/dashboard')}>Dashboard</button>
           )}
+          {user?.role === 'ADMIN' && (
+            <button className="gw-back" onClick={() => navigate('/billing')}>Billing</button>
+          )}
           {user?.isPlatformAdmin && (
             <button className="gw-back" onClick={() => navigate('/prompts')}>Prompts</button>
           )}

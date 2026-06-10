@@ -49,4 +49,10 @@ export class PromptsController {
   async activate(@Param('id') id: string) {
     return this.prompts.activate(id);
   }
+
+  @Get('platform-dashboard')
+  @ApiOperation({ summary: 'Cross-org usage dashboard — session data, ground activity, prompt performance' })
+  async platformDashboard() {
+    return this.prompts.platformDashboard();
+  }
 }

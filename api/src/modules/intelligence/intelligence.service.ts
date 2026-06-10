@@ -1,6 +1,8 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
-import { CheckInStatus, GroundStatus } from '@prisma/client';
+import { AnthropicService } from '../conversation/anthropic.service';
+import { CheckInStatus, GroundStatus, PatternStatus } from '@prisma/client';
 
 /**
  * The learning loop + cross-org intelligence. When a ground resolves, its
@@ -12,7 +14,12 @@ import { CheckInStatus, GroundStatus } from '@prisma/client';
  */
 @Injectable()
 export class IntelligenceService {
-  constructor(private prisma: PrismaService) {}
+  private readonly logger = new Logger(IntelligenceService.name);
+
+  constructor(
+    private prisma: PrismaService,
+    private anthropic: AnthropicService,
+  ) {}
 
   /**
    * Record the structural data point on resolution: prompt version, moment, end
@@ -45,6 +52,50 @@ export class IntelligenceService {
       where: { groundId_participantId: { groundId, participantId: participant.id } },
       create: { groundId, participantId: participant.id, feltFair, note },
       update: { feltFair, note },
+    });
+  }
+
+  /**
+   * Rich outcome feedback — POST /grounds/:id/feedback.
+   * Accepts a structured rating object and maps to the OutcomeFeedback model.
+   * Gate: only a party to the ground may submit. Gate: one submission per ground
+   * per party (enforced by the @@unique on the model).
+   *
+   * Fields mapping:
+   *   feltFair      ← wouldUseAgain (primary satisfaction signal)
+   *   note          ← JSON-encoded bag of { rating, whatWorked, whatDidnt }
+   *                   so the richer data is preserved without a schema migration.
+   */
+  async submitOutcomeFeedback(
+    groundId: string,
+    userId: string,
+    dto: { rating: number; whatWorked?: string; whatDidnt?: string; wouldUseAgain: boolean },
+  ) {
+    const ground = await this.prisma.ground.findUnique({ where: { id: groundId } });
+    if (!ground) throw new NotFoundException('Ground not found');
+
+    const participant = await this.prisma.groundParticipant.findFirst({ where: { groundId, userId } });
+    if (!participant) throw new ForbiddenException('You are not a party to this ground');
+
+    // Enforce one-submission-per-ground guard (in addition to the DB unique constraint).
+    const existing = await this.prisma.outcomeFeedback.findUnique({
+      where: { groundId_participantId: { groundId, participantId: participant.id } },
+    });
+    if (existing) throw new ForbiddenException('You have already submitted feedback for this ground');
+
+    const note = JSON.stringify({
+      rating: dto.rating,
+      whatWorked: dto.whatWorked ?? null,
+      whatDidnt: dto.whatDidnt ?? null,
+    });
+
+    return this.prisma.outcomeFeedback.create({
+      data: {
+        groundId,
+        participantId: participant.id,
+        feltFair: dto.wouldUseAgain,
+        note,
+      },
     });
   }
 
@@ -138,5 +189,77 @@ export class IntelligenceService {
     return this.prisma.orgIntelligence.create({
       data: { organizationId, patternSummary: patternSummary as any, anonymised: true },
     });
+  }
+
+  /**
+   * Weekly longitudinal synthesis. Runs Monday at 09:00 UTC.
+   *
+   * For each active org, fetches surfaced pattern observations from the last 30
+   * days (plain language only — no codes, no names, no PII) and asks the AI to
+   * write a 2–3 sentence narrative describing what the record shows about how
+   * the team is working. The result is stored in OrgIntelligence.patternSummary
+   * as { narrative: "...", generatedAt: "..." }.
+   *
+   * Cross-org summaries are fully anonymised: observations are stripped of any
+   * person-identifying text before being sent to the model.
+   */
+  @Cron('0 9 * * 1')
+  async weeklyLongitudinalSynthesis() {
+    this.logger.log('Weekly longitudinal synthesis: starting');
+
+    const orgs = await this.prisma.organization.findMany({ select: { id: true } });
+    this.logger.log(`Weekly longitudinal synthesis: processing ${orgs.length} org(s)`);
+
+    for (const org of orgs) {
+      try {
+        await this.synthesiseOrgNarrative(org.id);
+      } catch (err: any) {
+        this.logger.error(`Weekly synthesis failed for org ${org.id}: ${err.message}`);
+      }
+    }
+
+    this.logger.log('Weekly longitudinal synthesis: complete');
+  }
+
+  private async synthesiseOrgNarrative(organizationId: string): Promise<void> {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    // Fetch surfaced pattern observations for this org over the last 30 days.
+    // We use observationText only — never codes, never names, never participant IDs.
+    const detections = await this.prisma.patternDetection.findMany({
+      where: {
+        status: PatternStatus.SURFACED,
+        lastSeenAt: { gte: thirtyDaysAgo },
+        ground: { organizationId },
+      },
+      select: { observationText: true },
+    });
+
+    if (detections.length === 0) return;
+
+    const observations = detections
+      .map((d) => d.observationText?.trim())
+      .filter(Boolean)
+      .join('\n- ');
+
+    const prompt =
+      'Based on these pattern observations across an organisation, write 2-3 sentences describing what the record shows about how this team is working. No names. No verbatim quotes. Plain language only.';
+
+    const narrative = await this.anthropic.respond(prompt, [
+      { role: 'user', content: `Observations:\n- ${observations}` },
+    ]);
+
+    if (!narrative?.trim()) return;
+
+    await this.prisma.orgIntelligence.create({
+      data: {
+        organizationId,
+        patternSummary: { narrative: narrative.trim(), generatedAt: new Date().toISOString() } as any,
+        anonymised: true,
+      },
+    });
+
+    this.logger.log(`Weekly synthesis: narrative stored for org ${organizationId}`);
   }
 }

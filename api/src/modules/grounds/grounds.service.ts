@@ -7,6 +7,7 @@ import { BillingService } from '../billing';
 import { CreateGroundDto, AddParticipantDto } from './dto';
 import { GroundworkEvents, GroundActivatedEvent } from '../../common';
 import { GroundScenario, GroundStatus, PartyType, CheckInStatus, Cadence } from '@prisma/client';
+import { endStatesFor } from '../resolution/end-states';
 
 // Default timelines per scenario (Part 2 — timeline and cadence).
 const DEFAULT_TIMELINE_DAYS: Record<GroundScenario, number> = {
@@ -203,7 +204,11 @@ export class GroundsService {
       token,
     );
 
-    return participant;
+    // GW-01: strip private fields (inviteToken, inviteTokenExpiresAt, soloArtifact,
+    // specificityHistory, willingnessAnswers, willingnessGateAnswers) before
+    // returning to the caller. Only fields in SAFE_PARTICIPANT_SELECT are exposed.
+    const { id, email, partyType, userId, roleAsDescribed, invitedAt, notifiedAt, soloArtifactAt, createdAt } = participant;
+    return { id, email, partyType, userId, roleAsDescribed, invitedAt, notifiedAt, soloArtifactAt, createdAt };
   }
 
   /**
@@ -274,6 +279,93 @@ export class GroundsService {
     this.events.emit(GroundworkEvents.GROUND_ACTIVATED, { groundId } satisfies GroundActivatedEvent);
 
     return activated;
+  }
+
+  /**
+   * GET /grounds/:id/mediator-brief
+   * Returns structural, non-session information for use with a facilitator.
+   * Accessible only to the initiator or an org admin.
+   */
+  async getMediatorBrief(groundId: string, requestingUserId: string) {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      include: { report: { select: { centralQuestion: true } } },
+    });
+    if (!ground) throw new NotFoundException('Ground not found');
+
+    // Only the initiator may request the mediator brief. Org admins access it
+    // via the admin surface (not this endpoint), so we check userId here.
+    const requesterLink = await this.prisma.groundParticipant.findFirst({
+      where: { groundId, userId: requestingUserId },
+    });
+    const isInitiator = ground.initiatorId === requestingUserId;
+    if (!isInitiator && !requesterLink) {
+      throw new ForbiddenException('Only the initiator or a party to this ground may request a mediator brief');
+    }
+
+    const daysOpen = Math.floor((Date.now() - ground.createdAt.getTime()) / (1000 * 60 * 60 * 24));
+    const endStateOptions = endStatesFor(ground.scenario).map((s) => s.label);
+    const gapSummary = ground.report?.centralQuestion ?? 'Not yet synthesised';
+
+    return {
+      groundLabel: ground.label,
+      scenario: ground.scenario,
+      openedAt: ground.createdAt,
+      daysOpen,
+      endStateOptions,
+      gapSummary,
+      note: 'This brief is for use with a facilitator. It contains structural information only, not session content.',
+    };
+  }
+
+  /**
+   * PATCH /grounds/:id — update timeline and/or cadence.
+   * Writes an audit entry to groundAuditLog (Json[] appended) so changes are
+   * traceable without a separate audit table.
+   */
+  async updateTimeline(
+    groundId: string,
+    requestingUserId: string,
+    dto: { timelineWeeks?: number; cadence?: string },
+  ) {
+    const ground = await this.prisma.ground.findUnique({ where: { id: groundId } });
+    if (!ground) throw new NotFoundException('Ground not found');
+
+    // Only parties to this ground may adjust its timeline / cadence.
+    const link = await this.prisma.groundParticipant.findFirst({
+      where: { groundId, userId: requestingUserId },
+    });
+    if (!link) throw new ForbiddenException('You are not a party to this ground');
+
+    // Validate cadence if provided.
+    if (dto.cadence && !Object.values(Cadence).includes(dto.cadence as Cadence)) {
+      throw new BadRequestException(`Invalid cadence. Must be one of: ${Object.values(Cadence).join(', ')}`);
+    }
+
+    const auditEntry = {
+      changedAt: new Date().toISOString(),
+      changedBy: requestingUserId,
+      changes: {
+        ...(dto.timelineWeeks !== undefined && {
+          timelineWeeks: { from: ground.timelineWeeks, to: dto.timelineWeeks },
+        }),
+        ...(dto.cadence !== undefined && {
+          cadence: { from: ground.cadence, to: dto.cadence },
+        }),
+      },
+    };
+
+    const existingLog: object[] = Array.isArray(ground.groundAuditLog) ? (ground.groundAuditLog as object[]) : [];
+    const updatedLog = [...existingLog, auditEntry];
+
+    return this.prisma.ground.update({
+      where: { id: groundId },
+      data: {
+        ...(dto.timelineWeeks !== undefined && { timelineWeeks: dto.timelineWeeks }),
+        ...(dto.cadence !== undefined && { cadence: dto.cadence as Cadence }),
+        groundAuditLog: updatedLog,
+      },
+    });
   }
 
   /**

@@ -16,10 +16,13 @@ import { GroundDetailPage } from '@/pages/grounds/GroundDetailPage'
 import { CheckInPage } from '@/pages/checkin/CheckInPage'
 import { ReportPage } from '@/pages/report/ReportPage'
 import { BillingCallbackPage } from '@/pages/billing/BillingCallbackPage'
+import { BillingPage } from '@/pages/billing/BillingPage'
+import { GroundFeedbackPage } from '@/pages/grounds/GroundFeedbackPage'
 import { InvitePage } from '@/pages/invite/InvitePage'
 import { AlignmentFeedPage } from '@/pages/alignment/AlignmentFeedPage'
 import { DashboardPage } from '@/pages/dashboard/DashboardPage'
 import { PromptVersioningPage } from '@/pages/prompts/PromptVersioningPage'
+import { PlatformDashboardPage } from '@/pages/prompts/PlatformDashboardPage'
 import { DevSkipPanel } from '@/components/gw'
 import type { JSX } from 'react'
 
@@ -61,9 +64,12 @@ export default function App() {
           <Route path="/alignment-feed" element={<RequireAuth><AlignmentFeedPage /></RequireAuth>} />
           <Route path="/dashboard" element={<RequireAuth><DashboardPage /></RequireAuth>} />
           <Route path="/prompts" element={<RequireAuth><PromptVersioningPage /></RequireAuth>} />
+          <Route path="/admin/dashboard" element={<RequireAuth><PlatformDashboardPage /></RequireAuth>} />
           <Route path="/checkin/:checkInId" element={<RequireAuth><CheckInPage /></RequireAuth>} />
           <Route path="/report/:groundId" element={<RequireAuth><ReportPage /></RequireAuth>} />
           <Route path="/billing/callback" element={<RequireAuth><BillingCallbackPage /></RequireAuth>} />
+          <Route path="/billing" element={<RequireAuth><BillingPage /></RequireAuth>} />
+          <Route path="/grounds/:groundId/feedback" element={<RequireAuth><GroundFeedbackPage /></RequireAuth>} />
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

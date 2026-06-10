@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { IsString, IsNotEmpty, MaxLength } from 'class-validator';
 import { Response } from 'express';
 import { ConversationService } from './conversation.service';
+import { RemindService } from './remind.service';
 import { CurrentUser } from '../../common';
 
 class SendMessageDto {
@@ -16,7 +17,10 @@ class SendMessageDto {
 @ApiBearerAuth()
 @Controller('check-ins')
 export class ConversationController {
-  constructor(private readonly conversation: ConversationService) {}
+  constructor(
+    private readonly conversation: ConversationService,
+    private readonly remind: RemindService,
+  ) {}
 
   @Get(':id/transcript')
   @ApiOperation({ summary: "Get a check-in transcript (owner only)" })
@@ -62,5 +66,11 @@ export class ConversationController {
   @ApiOperation({ summary: 'Get this party\'s single-party record artifact (owner only)' })
   async artifact(@Param('id') id: string, @CurrentUser('id') userId: string) {
     return this.conversation.getSoloArtifact(id, userId);
+  }
+
+  @Post(':id/remind')
+  @ApiOperation({ summary: 'Send a nudge email to parties who have not yet completed this check-in session' })
+  async sendReminder(@Param('id') checkInId: string, @CurrentUser('id') userId: string) {
+    return this.remind.sendReminder(checkInId, userId);
   }
 }
