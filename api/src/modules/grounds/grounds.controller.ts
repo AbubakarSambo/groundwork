@@ -40,4 +40,14 @@ export class GroundsController {
   async activate(@Param('id') id: string, @CurrentUser('organizationId') organizationId: string) {
     return this.grounds.activate(id, organizationId);
   }
+
+  @Post(':id/participants/:participantId/resend-invite')
+  @ApiOperation({ summary: 'Resend an expired participant invite (GW-24)' })
+  async resendParticipantInvite(
+    @Param('id') id: string,
+    @Param('participantId') participantId: string,
+    @CurrentUser('organizationId') organizationId: string,
+  ) {
+    return this.grounds.resendParticipantInvite(id, participantId, organizationId);
+  }
 }

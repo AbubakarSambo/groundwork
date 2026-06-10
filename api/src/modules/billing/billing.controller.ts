@@ -29,6 +29,22 @@ export class BillingController {
     return this.billing.createCareFeeCheckout(organizationId);
   }
 
+  @Post('care-fee/cancel')
+  @ApiBearerAuth()
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Cancel the care fee subscription (at period end) — self-serve' })
+  async cancelCareFee(@CurrentUser('organizationId') organizationId: string) {
+    return this.billing.cancelCareFee(organizationId);
+  }
+
+  @Post('portal')
+  @ApiBearerAuth()
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Create a Stripe Customer Portal session (manage card, invoices, cancellation)' })
+  async portal(@CurrentUser('organizationId') organizationId: string) {
+    return this.billing.createBillingPortalSession(organizationId);
+  }
+
   @Public()
   @Post('webhook')
   @HttpCode(HttpStatus.OK)

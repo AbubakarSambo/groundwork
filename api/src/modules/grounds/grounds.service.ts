@@ -29,6 +29,24 @@ export function isMultiPartyScenario(scenario: GroundScenario): boolean {
   return MULTI_PARTY_SCENARIOS.includes(scenario);
 }
 
+// Fields safe to expose on a participant to anyone who can view the ground.
+// Trust-critical: NEVER serialize inviteToken (magic link → account takeover),
+// soloArtifact (the AI summary of this party's PRIVATE record), specificityHistory
+// (a behavioural signal about them), or willingness answers. Those belong to the
+// participant alone — record ownership is the mechanism, enforced here, not by
+// policy. (GW-01.)
+export const SAFE_PARTICIPANT_SELECT = {
+  id: true,
+  email: true,
+  partyType: true,
+  userId: true,
+  roleAsDescribed: true,
+  invitedAt: true,
+  notifiedAt: true,
+  soloArtifactAt: true, // timestamp only — never the artifact content
+  createdAt: true,
+} as const;
+
 @Injectable()
 export class GroundsService {
   private readonly logger = new Logger(GroundsService.name);
@@ -76,7 +94,32 @@ export class GroundsService {
       return ground;
     });
 
-    return ground;
+    // GW-19: no-verdict expectation contract — set at creation so the initiator
+    // sees this before they invite anyone or pay. "Evidence both of you can stand
+    // on" is the feature; the product is symmetry, not a verdict for one side.
+    const contract = {
+      noVerdict: true,
+      message: 'Groundwork does not produce a verdict. Both parties read the same report at the same moment. The product is evidence both of you can stand on — not a ruling for one side.',
+    };
+
+    // GW-69: contraindication check for conflict-scenario grounds. If any flag is
+    // set, the ground is created but a warning is returned so the initiator can
+    // self-select out before inviting anyone or paying. Declining bad-fit revenue
+    // keeps the dataset clean.
+    const CONTRAINDICATED_SCENARIOS: GroundScenario[] = [GroundScenario.DRIFT, GroundScenario.RECOGNITION, GroundScenario.CRISIS_ALIGNMENT];
+    let contraindicationWarning: string | undefined;
+    if (CONTRAINDICATED_SCENARIOS.includes(dto.scenario) && dto.contraindicationAnswers) {
+      const { legalProceedings, fearOfRetaliation, decisionAlreadyMade } = dto.contraindicationAnswers;
+      if (legalProceedings) {
+        contraindicationWarning = 'Active legal proceedings: Groundwork is designed for alignment before formal processes begin. Where proceedings are active, the record could interact with them in ways we cannot advise on. We recommend pausing until proceedings conclude or speaking with legal counsel first.';
+      } else if (fearOfRetaliation) {
+        contraindicationWarning = 'Fear of retaliation: Groundwork works best when participation is genuinely voluntary. If anyone involved fears retaliation, the record-building process may cause harm. Consider HR mediation or external facilitation instead.';
+      } else if (decisionAlreadyMade) {
+        contraindicationWarning = 'Decision already made: Groundwork is built for before a decision is finalised. Using it after the fact risks the process feeling performative to the other party, which is the opposite of what builds trust. Consider a direct conversation instead.';
+      }
+    }
+
+    return { ...ground, contract, ...(contraindicationWarning ? { contraindicationWarning } : {}) };
   }
 
   async list(organizationId: string) {
@@ -91,7 +134,7 @@ export class GroundsService {
     const ground = await this.prisma.ground.findFirst({
       where: { id, organizationId },
       include: {
-        participants: true,
+        participants: { select: SAFE_PARTICIPANT_SELECT },
         checkIns: { select: { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true } },
         report: { select: { id: true, releasedAt: true } },
         resolution: true,
@@ -161,6 +204,38 @@ export class GroundsService {
     );
 
     return participant;
+  }
+
+  /**
+   * GW-24: Resend an expired invite to a ground participant who has not yet
+   * accepted. Generates a fresh token (invalidating the old one by overwrite),
+   * resets the expiry, and re-sends the invite email.
+   */
+  async resendParticipantInvite(groundId: string, participantId: string, organizationId: string): Promise<{ message: string }> {
+    const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId } });
+    if (!ground) throw new NotFoundException('Ground not found');
+
+    const participant = await this.prisma.groundParticipant.findFirst({ where: { id: participantId, groundId } });
+    if (!participant) throw new NotFoundException('Participant not found');
+    if (participant.userId) throw new BadRequestException('This participant has already accepted their invite');
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const inviteTokenExpiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+
+    await this.prisma.groundParticipant.update({
+      where: { id: participantId },
+      data: { inviteToken: token, inviteTokenExpiresAt, notifiedAt: new Date() },
+    });
+
+    const initiator = await this.prisma.user.findUnique({ where: { id: ground.initiatorId } });
+    await this.email.sendParticipantInvite(
+      participant.email,
+      `${initiator?.firstName ?? 'A founder'}`,
+      ground.label,
+      token,
+    );
+
+    return { message: 'Invite resent' };
   }
 
   /**

@@ -18,7 +18,7 @@ export class ReportsController {
   @Post('release')
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Release the report to both parties simultaneously' })
-  async release(@Param('groundId') groundId: string) {
-    return this.reports.release(groundId);
+  async release(@Param('groundId') groundId: string, @CurrentUser('organizationId') organizationId: string) {
+    return this.reports.release(groundId, organizationId);
   }
 }

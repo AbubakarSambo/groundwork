@@ -122,4 +122,84 @@ export class UsersService {
     await this.prisma.user.update({ where: { id }, data: { isActive: false } });
     return { message: 'User deactivated' };
   }
+
+  /**
+   * GW-03 — GDPR Article 15 data export. Returns all personal data held for
+   * the requesting user: profile, ground participations with their own sessions,
+   * transcripts, and record entries. Never includes other parties' data.
+   */
+  async exportData(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, firstName: true, lastName: true, role: true, createdAt: true },
+    });
+    if (!user) throw new NotFoundException('User not found');
+
+    const participations = await this.prisma.groundParticipant.findMany({
+      where: { userId },
+      select: {
+        id: true,
+        groundId: true,
+        partyType: true,
+        roleAsDescribed: true,
+        invitedAt: true,
+        soloArtifact: true,
+        soloArtifactAt: true,
+        checkIns: {
+          select: {
+            id: true,
+            sessionNumber: true,
+            status: true,
+            completedAt: true,
+            turns: {
+              orderBy: { createdAt: 'asc' },
+              select: { role: true, content: true, createdAt: true },
+            },
+            recordEntries: {
+              select: { type: true, text: true, createdAt: true },
+            },
+          },
+        },
+      },
+    });
+
+    return { exportedAt: new Date().toISOString(), profile: user, grounds: participations };
+  }
+
+  /**
+   * GW-03 — GDPR Article 17 erasure. Anonymises all identifying fields on the
+   * user account and participant links. Conversation content contributed to
+   * grounds is retained under the other party's legitimate interest in the
+   * shared record (Art. 17(3)(c)) — it does not contain the user's email or
+   * name post-erasure.
+   */
+  async eraseAccount(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+
+    const anonymisedEmail = `deleted-${userId}@erased.invalid`;
+
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: userId },
+        data: { email: anonymisedEmail, firstName: 'Deleted', lastName: 'User', passwordHash: null, googleId: null, isActive: false },
+      }),
+      this.prisma.emailVerificationToken.deleteMany({ where: { userId } }),
+    ]);
+
+    // Anonymise each participant link individually to avoid unique-email conflicts
+    // across multiple grounds.
+    const links = await this.prisma.groundParticipant.findMany({ where: { userId }, select: { id: true } });
+    for (const link of links) {
+      await this.prisma.groundParticipant.update({
+        where: { id: link.id },
+        data: { email: `deleted-${link.id}@erased.invalid`, roleAsDescribed: null },
+      });
+    }
+
+    return {
+      erased: true as const,
+      note: "Identifying information has been removed. Conversation content contributed to active grounds is retained under the other party's legitimate interest in the shared record.",
+    };
+  }
 }

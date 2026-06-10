@@ -140,6 +140,21 @@ export class ConversationService {
       return { reply: first?.content ?? '' };
     }
 
+    // GW-41: stamp the system prompt version on the ground at session 1 open.
+    // Outcome data is attributed to the engine version active when the conversation
+    // STARTED, not the one current at resolution time — without this stamp,
+    // intelligence.service.ts recordOutcome() always writes null promptVersionId.
+    if (checkIn.sessionNumber === 1) {
+      const groundRecord = await this.prisma.ground.findUnique({
+        where: { id: checkIn.groundId },
+        select: { promptVersionId: true },
+      });
+      if (!groundRecord?.promptVersionId) {
+        const sysVersion = await this.prompts.getActive('system');
+        await this.prisma.ground.update({ where: { id: checkIn.groundId }, data: { promptVersionId: sysVersion.id } });
+      }
+    }
+
     const fullSystem = await this.composeSystemPrompt(checkIn);
     const reply = await this.anthropic.respond(fullSystem, [
       { role: 'user', content: '<<BEGIN_CHECK_IN>> The person has just arrived. Open the check-in now per your runtime context — deliver the moment opening; do not wait for them to speak first.' },

@@ -60,6 +60,17 @@ export class StripeService {
     });
   }
 
+  /** Schedule a subscription to cancel at the end of the current paid period. */
+  async cancelSubscriptionAtPeriodEnd(subscriptionId: string): Promise<Stripe.Subscription> {
+    return this.stripe.subscriptions.update(subscriptionId, { cancel_at_period_end: true });
+  }
+
+  /** A Stripe Customer Portal session — self-serve card/invoice/cancel. */
+  async createBillingPortalSession(customerId: string, returnUrl: string): Promise<string> {
+    const session = await this.stripe.billingPortal.sessions.create({ customer: customerId, return_url: returnUrl });
+    return session.url;
+  }
+
   constructEvent(payload: Buffer, signature: string): Stripe.Event {
     const secret = this.config.get<string>('stripe.webhookSecret') || '';
     return this.stripe.webhooks.constructEvent(payload, signature, secret);

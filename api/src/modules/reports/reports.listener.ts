@@ -51,7 +51,8 @@ export class ReportsListener {
   async onGroundActivated(event: GroundActivatedEvent) {
     try {
       this.logger.log(`Ground ${event.groundId} activated — releasing report to both parties`);
-      await this.reports.release(event.groundId);
+      const g = await this.prisma.ground.findUnique({ where: { id: event.groundId }, select: { organizationId: true } });
+      if (g) await this.reports.release(event.groundId, g.organizationId);
     } catch (err: any) {
       this.logger.error(`Report release on ground.activated failed for ground ${event.groundId}: ${err.message}`);
     }

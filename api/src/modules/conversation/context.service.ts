@@ -1,13 +1,93 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { runIntake, trustFrom, COMPLETION_WORDS, PROBLEM_WORDS } from './intake';
+import { ALIGNMENT_FEED_ONLY_CODES } from '../patterns/pattern-library';
 import { CheckInStatus } from '@prisma/client';
 
+// GW-37: Specific technical terms only — excludes generic words (customer, revenue,
+// strategy, system) that fire on almost any work conversation and produce
+// fabricated contradictions. CONTRADICTION requires ≥2 overlapping terms.
 const SHARED_TERMS = [
-  'api', 'payment', 'integration', 'platform', 'onboarding', 'report', 'pipeline', 'launch', 'deploy',
-  'infrastructure', 'dashboard', 'system', 'automation', 'latency', 'database', 'strategy', 'roadmap',
-  'sprint', 'release', 'customer', 'revenue', 'hire', 'crm', 'proposal',
+  'api', 'payment', 'integration', 'onboarding', 'pipeline', 'deploy',
+  'infrastructure', 'automation', 'latency', 'database', 'roadmap',
+  'sprint', 'release', 'crm', 'proposal',
 ];
+
+// ---------------------------------------------------------------------------
+// GW-08 — Disclosure detection. When a check-in message contains signals of
+// harassment, illegal conduct, active legal proceedings, or crisis/self-harm,
+// the standard contribution-chat sequence must stop. The AI must acknowledge,
+// NOT probe for evidence, and route to appropriate support.
+// ---------------------------------------------------------------------------
+
+const DISCLOSURE_PATTERNS: Record<string, string[]> = {
+  crisis: [
+    'hurt myself', 'self-harm', 'self harm', 'suicide', 'suicidal', 'kill myself',
+    "can't go on", "don't want to be here", 'end it all', 'not worth living',
+  ],
+  legalProceedings: [
+    'lawsuit', 'filed a complaint', 'eeoc', 'grievance', 'legal proceedings',
+    'suing', 'my attorney', 'my lawyer', 'complaint filed', 'employment tribunal',
+  ],
+  harassment: [
+    'harassed', 'harassing', 'harassment', 'assaulted', 'threatened me',
+    'unsafe to speak', 'hostile work environment', 'discriminated', 'discrimination',
+    'retaliation', 'retaliating', 'sexually', 'bullying', 'bullied me',
+  ],
+};
+
+function detectDisclosure(message: string): { category: string } | null {
+  const lower = message.toLowerCase();
+  for (const [category, patterns] of Object.entries(DISCLOSURE_PATTERNS)) {
+    if (patterns.some((p) => lower.includes(p))) return { category };
+  }
+  return null;
+}
+
+const SUPPORT_RESOURCES = `SUPPORT RESOURCES (include these in your response):
+  - Employee Assistance Programme (EAP), if the org has one
+  - ACAS helpline (UK): 0300 123 1100 | SHRM (US): shrm.org
+  - Crisis Text Line: text HOME to 741741 | 988 Suicide & Crisis Lifeline (US): call or text 988`;
+
+function buildDisclosureBlock(category: string): string {
+  if (category === 'crisis') {
+    return `DISCLOSURE MODE — CRISIS / SELF-HARM SIGNAL DETECTED
+STOP the alignment-ground sequence immediately.
+
+1. Respond with genuine warmth — acknowledge what was shared in one specific sentence. Do not use generic validation language.
+2. Say: "What you have shared is important. This is not the right space for what you need right now — please reach out to someone who can support you directly."
+3. Share the support resources below.
+4. Do NOT record this as a record entry.
+5. Do NOT return to alignment-ground questions unless the person re-engages directly.
+
+${SUPPORT_RESOURCES}`;
+  }
+
+  if (category === 'legalProceedings') {
+    return `DISCLOSURE MODE — ACTIVE LEGAL PROCEEDINGS SIGNAL DETECTED
+STOP the alignment-ground sequence.
+
+1. Acknowledge what they have shared, calmly and specifically.
+2. Say: "Groundwork is designed for alignment before formal processes begin. Where legal proceedings are active, the record built here could interact with those proceedings in ways I cannot advise on. I would strongly recommend speaking with your HR team or legal counsel before we continue."
+3. Ask: "Would you like to pause this session for now?"
+4. Do NOT probe for further details about the legal situation.
+5. Do NOT log legal specifics as record entries.
+
+${SUPPORT_RESOURCES}`;
+  }
+
+  // category === 'harassment'
+  return `DISCLOSURE MODE — POTENTIAL HARASSMENT / DISCRIMINATION / RETALIATION SIGNAL DETECTED
+The standard contribution-chat sequence MUST NOT continue.
+
+1. Acknowledge what was shared — one sentence, specific to their words, not generic.
+2. Do NOT probe for evidence ("when did this happen?", "who else saw it?"). Evidence-gathering is not your role here.
+3. Say: "What you have described may go beyond what this tool is designed to handle. Your account matters, and it needs to reach the right people — not just this record."
+4. Say: "This record is currently visible only to you. If the ground is activated, the report goes to both parties — including the person you have described. Before we continue, consider where this record goes."
+5. Share support resources. Let them decide whether to pause or continue.
+
+${SUPPORT_RESOURCES}`;
+}
 
 interface Injection {
   type: 'CONTRADICTION' | 'CORROBORATION' | 'GAP';
@@ -51,6 +131,15 @@ export class ConversationContextService {
     let tone = 'affirming';
 
     if (latestMessage) {
+      // GW-08: check for disclosure signals before any other processing. A message
+      // containing harassment, crisis, or legal-proceedings signals must route to
+      // the disclosure protocol — never to the evidence-building flow.
+      const disclosure = detectDisclosure(latestMessage);
+      if (disclosure) {
+        const disclosureBlock = buildDisclosureBlock(disclosure.category);
+        return { block: disclosureBlock, tone: 'crisis' };
+      }
+
       const intake = runIntake(latestMessage);
 
       // Update rolling specificity history (cap 5) for trust calibration.
@@ -84,8 +173,11 @@ export class ConversationContextService {
     }
 
     // Surfaced longitudinal patterns (three-period rule) — plain, never verdicts.
+    // Feed-only codes (F5/E4 — cofounder/founder burden asymmetry) must NEVER be
+    // named to either person directly; they surface to the alignment feed only.
+    // (Part 4 / GW-07.)
     const surfaced = await this.prisma.patternDetection.findMany({
-      where: { participantId, status: 'SURFACED' },
+      where: { participantId, status: 'SURFACED', code: { notIn: [...ALIGNMENT_FEED_ONLY_CODES] } },
       select: { observationText: true },
     });
     if (surfaced.length) {
@@ -130,12 +222,16 @@ export class ConversationContextService {
       const theyReportProblem = PROBLEM_WORDS.some((w) => theirLower.includes(w));
       const theySayMovement = theirIntake.types.includes('movement');
 
-      if (myCompletion && theyReportProblem && overlap.length >= 1) {
-        injections.push({ type: 'CONTRADICTION', tier: 2, topic, downstream: true, probe: 'Before we close this out — has the team depending on this confirmed it works for them?' });
-      } else if (iReportProblem && theySayMovement && overlap.length >= 1) {
-        injections.push({ type: 'CONTRADICTION', tier: 2, topic, downstream: false, probe: 'The other party describes this area as resolved — is this the same blocker, or a different one?' });
-      } else if (overlap.length >= 2) {
-        injections.push({ type: 'CORROBORATION', tier: 1, topic, downstream: false, probe: 'Does the other account match yours on who owned what?' });
+      // GW-37: require ≥2 overlapping specific terms for CONTRADICTION (was 1).
+      // Probes must NOT attribute a position to the other party — only ask the
+      // person about their own record. "The other party says X" based on keyword
+      // overlap is fabricated intelligence in the trust-critical moment.
+      if (myCompletion && theyReportProblem && overlap.length >= 2) {
+        injections.push({ type: 'CONTRADICTION', tier: 2, topic, downstream: true, probe: `Before we log ${topic} as complete — has the downstream team or person depending on this confirmed it works for them?` });
+      } else if (iReportProblem && theySayMovement && overlap.length >= 2) {
+        injections.push({ type: 'CONTRADICTION', tier: 2, topic, downstream: false, probe: `You have named ${topic} as a blocker — is there a version of this that is already resolved elsewhere, or is this still open?` });
+      } else if (overlap.length >= 3) {
+        injections.push({ type: 'CORROBORATION', tier: 1, topic, downstream: false, probe: `Both versions seem to touch on ${topic} — does your description cover who specifically owned what and what the handoff looked like?` });
       }
     }
 
@@ -143,6 +239,7 @@ export class ConversationContextService {
     const surfacedCount = await this.prisma.patternDetection.count({ where: { participantId, status: 'SURFACED' } });
     if (surfacedCount >= 1) injections.forEach((i) => { if (i.type === 'CONTRADICTION') i.tier = 3; });
 
-    return injections.slice(0, 3);
+    // GW-37: cap at 2 injections (was 3) to reduce false-positive density.
+    return injections.slice(0, 2);
   }
 }

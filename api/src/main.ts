@@ -4,8 +4,30 @@ import { ConfigService } from '@nestjs/config';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 
+/**
+ * Refuse to boot in production with insecure defaults. These are trust- and
+ * money-critical; a missing secret must fail loudly, never fall back to a dev
+ * default that silently disables auth, CORS, or the paywall. (GW-05.)
+ */
+function assertProductionConfig(logger: Logger) {
+  if ((process.env.NODE_ENV || 'development') !== 'production') return;
+  const problems: string[] = [];
+  if (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'super-secret-key') problems.push('JWT_SECRET must be set to a strong, non-default value');
+  if (!process.env.CORS_ORIGINS) problems.push('CORS_ORIGINS must be an explicit allow-list (wildcard is not allowed in production)');
+  if (!process.env.DATABASE_URL) problems.push('DATABASE_URL must be set');
+  if (process.env.BILLING_ENABLED !== 'true') problems.push("BILLING_ENABLED must be 'true' in production (the paywall is disabled otherwise)");
+  if (!process.env.STRIPE_SECRET_KEY) problems.push('STRIPE_SECRET_KEY must be set');
+  if (!process.env.STRIPE_WEBHOOK_SECRET) problems.push('STRIPE_WEBHOOK_SECRET must be set (webhooks are unverified otherwise)');
+  if (!process.env.ANTHROPIC_API_KEY) problems.push('ANTHROPIC_API_KEY must be set');
+  if (problems.length) {
+    logger.error(`Refusing to start in production with insecure configuration:\n - ${problems.join('\n - ')}`);
+    process.exit(1);
+  }
+}
+
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
+  assertProductionConfig(logger);
 
   const app = await NestFactory.create(AppModule, {
     rawBody: true, // For Stripe webhook signature verification

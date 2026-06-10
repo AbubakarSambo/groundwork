@@ -1,6 +1,8 @@
 import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { IntelligenceService } from '../intelligence';
+import { EmailService } from '../email/email.service';
 import { endStatesFor, isValidEndState } from './end-states';
 import { GroundStatus } from '@prisma/client';
 
@@ -23,6 +25,8 @@ export class ResolutionService {
   constructor(
     private prisma: PrismaService,
     private intelligence: IntelligenceService,
+    private email: EmailService,
+    private config: ConfigService,
   ) {}
 
   async get(groundId: string, userId: string) {
@@ -46,6 +50,16 @@ export class ResolutionService {
       throw new BadRequestException(`"${endState}" is not a valid end state for this scenario`);
     }
 
+    // GW-16: detect a proposal change BEFORE upserting so we can clear stale
+    // confirmations. Silent stale confirmations on a superseded end state would
+    // produce a false consensus — any party that already confirmed must re-confirm
+    // the new proposal explicitly.
+    const existingResolution = await this.prisma.resolution.findUnique({
+      where: { groundId },
+      select: { id: true, endState: true },
+    });
+    const endStateIsChanging = existingResolution !== null && existingResolution.endState !== endState;
+
     // The Resolution row holds the latest leading proposal; per-party choices
     // live in ResolutionConfirmation.
     const resolution = await this.prisma.resolution.upsert({
@@ -53,6 +67,13 @@ export class ResolutionService {
       create: { groundId, endState },
       update: { endState },
     });
+
+    if (endStateIsChanging) {
+      await this.prisma.resolutionConfirmation.deleteMany({
+        where: { resolutionId: resolution.id, participantId: { not: participant.id } },
+      });
+    }
+
     await this.prisma.resolutionConfirmation.upsert({
       where: { resolutionId_participantId: { resolutionId: resolution.id, participantId: participant.id } },
       create: { resolutionId: resolution.id, participantId: participant.id, endState },
@@ -62,7 +83,7 @@ export class ResolutionService {
     // Recompute against ACTIVE parties only (accepted the invite).
     const active = await this.prisma.groundParticipant.findMany({
       where: { groundId, userId: { not: null } },
-      select: { id: true },
+      select: { id: true, email: true, roleAsDescribed: true },
     });
     const confirmations = await this.prisma.resolutionConfirmation.findMany({ where: { resolutionId: resolution.id } });
     const choiceByParticipant = new Map(confirmations.map((c) => [c.participantId, c.endState]));
@@ -72,7 +93,24 @@ export class ResolutionService {
 
     if (allConfirmed && chosenStates.size === 1) {
       await this.finalize(groundId, [...chosenStates][0]);
+    } else {
+      // GW-22: notify parties who have not yet confirmed this endState so they
+      // know a proposal is waiting. Skip the proposer (they just made it).
+      const proposerLabel = participant.roleAsDescribed?.trim() || participant.email;
+      const frontend = this.config.get<string>('resend.frontendUrl') || '';
+      const groundUrl = `${frontend}/grounds/${groundId}/resolution`;
+      const needConfirmation = active.filter(
+        (p) => p.id !== participant.id && choiceByParticipant.get(p.id) !== endState,
+      );
+      for (const p of needConfirmation) {
+        await this.email
+          .sendResolutionProposal(p.email, proposerLabel, endState, groundUrl)
+          .catch((err: any) =>
+            this.logger.error(`Resolution proposal email failed for participant ${p.id}: ${err.message}`),
+          );
+      }
     }
+
     return this.buildState(groundId);
   }
 
@@ -91,6 +129,23 @@ export class ResolutionService {
     await this.intelligence.recordOutcome(groundId, endState).catch((err) =>
       this.logger.error(`recordOutcome failed for ground ${groundId}: ${err.message}`),
     );
+
+    // GW-50: close-confirmation email to all parties simultaneously.
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { label: true, participants: { select: { email: true } } },
+    });
+    if (ground) {
+      const frontend = this.config.get<string>('resend.frontendUrl') || '';
+      const groundUrl = `${frontend}/grounds/${groundId}`;
+      await Promise.all(
+        ground.participants.map((p) =>
+          this.email
+            .sendGroundClosed(p.email, ground.label, endState, groundUrl)
+            .catch((err: any) => this.logger.error(`Close email failed for ground ${groundId}: ${err.message}`)),
+        ),
+      );
+    }
 
     this.logger.log(`Ground ${groundId} closed with end state ${endState}. Billing stopped.`);
   }

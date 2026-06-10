@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { CreateUserDto, UpdateUserDto } from './dto';
@@ -9,6 +9,19 @@ import { CurrentUser, CurrentUserData, Roles, Role, PaginationDto } from '../../
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
+
+  @Get('me/export')
+  @ApiOperation({ summary: 'Export all personal data for the current user (GDPR Article 15)' })
+  async exportData(@CurrentUser('id') userId: string) {
+    return this.usersService.exportData(userId);
+  }
+
+  @Delete('me')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Erase account and anonymise personal data (GDPR Article 17)' })
+  async eraseAccount(@CurrentUser('id') userId: string) {
+    return this.usersService.eraseAccount(userId);
+  }
 
   @Get()
   @Roles(Role.ADMIN)

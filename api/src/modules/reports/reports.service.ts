@@ -90,7 +90,11 @@ export class ReportsService {
       include: { participant: { select: { id: true } } },
     });
 
-    const systemPrompt = await this.prompts.getActiveContent('report_synthesis');
+    // GW-41: fetch the full version object so we can stamp promptVersionId on the
+    // report. Without this, Outcome records have no prompt attribution and the
+    // learning loop cannot measure per-version outcome rates.
+    const synthesisVersion = await this.prompts.getActive('report_synthesis');
+    const systemPrompt = synthesisVersion.content;
 
     // Note any invited party who contributed no record — surfaced as an absence,
     // never inferred (decision: generate when everyone who accepted is done;
@@ -148,6 +152,7 @@ export class ReportsService {
         divergences: result.divergences as any,
         centralQuestion: result.centralQuestion,
         engagement: engagement as any,
+        promptVersionId: synthesisVersion.id,
         releasedAt: null,
       },
       update: {
@@ -156,6 +161,7 @@ export class ReportsService {
         divergences: result.divergences as any,
         centralQuestion: result.centralQuestion,
         engagement: engagement as any,
+        promptVersionId: synthesisVersion.id,
       },
     });
 
@@ -168,9 +174,13 @@ export class ReportsService {
    * once, atomically — neither party reads it before the other. (Part E:
    * "why the report goes to both parties simultaneously".)
    */
-  async release(groundId: string) {
-    const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, include: { participants: true, report: true } });
-    if (!ground?.report) throw new NotFoundException('Report not generated yet');
+  async release(groundId: string, organizationId: string) {
+    const ground = await this.prisma.ground.findFirst({
+      where: { id: groundId, organizationId },
+      include: { participants: true, report: true },
+    });
+    if (!ground) throw new NotFoundException('Ground not found');
+    if (!ground.report) throw new NotFoundException('Report not generated yet');
     if (ground.report.releasedAt) return ground.report; // already released
 
     const released = await this.prisma.report.update({ where: { groundId }, data: { releasedAt: new Date() } });

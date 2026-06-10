@@ -142,4 +142,56 @@ export class EmailService {
       ),
     });
   }
+
+  /** Ground stalled — timeline elapsed without resolution. Both parties notified. (GW-06) */
+  async sendStalledNotification(email: string, groundLabel: string, groundUrl: string): Promise<void> {
+    await this.sendEmail({
+      to: email,
+      subject: `"${groundLabel}" has stalled`,
+      html: this.layout(
+        `<p>The ground <strong>${groundLabel}</strong> has reached the end of its timeline without a confirmed outcome.</p>
+         <p>Both records remain intact and accessible. If you want to continue, either party can reopen the conversation from the ground page.</p>
+         <p><a href="${groundUrl}">View ground</a></p>`,
+      ),
+    });
+  }
+
+  /** Someone proposed an end state and the recipient has not yet confirmed. (GW-22) */
+  async sendResolutionProposal(email: string, proposerLabel: string, endState: string, groundUrl: string): Promise<void> {
+    await this.sendEmail({
+      to: email,
+      subject: 'A resolution has been proposed — your confirmation is needed',
+      html: this.layout(
+        `<p><strong>${proposerLabel}</strong> has proposed the following outcome: <em>${endState}</em>.</p>
+         <p>The ground closes only when all active parties confirm the same outcome. Review the proposal and confirm — or counter-propose a different outcome.</p>
+         <p><a href="${groundUrl}">View and confirm</a></p>`,
+      ),
+    });
+  }
+
+  /** Ground closed — all parties confirmed the same end state. (GW-50) */
+  async sendGroundClosed(email: string, groundLabel: string, endState: string, groundUrl: string): Promise<void> {
+    await this.sendEmail({
+      to: email,
+      subject: `"${groundLabel}" is now closed`,
+      html: this.layout(
+        `<p>All parties have confirmed. <strong>${groundLabel}</strong> has been closed with the agreed outcome: <em>${endState}</em>.</p>
+         <p>Your record is permanent and both parties retain access to everything that was on the ground.</p>
+         <p><a href="${groundUrl}">View the ground</a></p>`,
+      ),
+    });
+  }
+
+  /** Post-resolution feedback request — sent ~24h after close. (GW-50) */
+  async sendFeedbackRequest(email: string, groundLabel: string, feedbackUrl: string): Promise<void> {
+    await this.sendEmail({
+      to: email,
+      subject: `One question about "${groundLabel}"`,
+      html: this.layout(
+        `<p>Now that <strong>${groundLabel}</strong> has closed: did the process help you reach an outcome that felt fair and grounded in what was actually said?</p>
+         <p>Your answer takes 20 seconds and helps us make every future ground better.</p>
+         <p><a href="${feedbackUrl}">Share your view</a></p>`,
+      ),
+    });
+  }
 }

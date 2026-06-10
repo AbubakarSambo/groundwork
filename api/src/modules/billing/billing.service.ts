@@ -2,9 +2,12 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 import type Stripe from 'stripe';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService, CronLock } from '../prisma/prisma.service';
 import { StripeService } from './stripe.service';
 import { CareFeeStatus, GroundStatus, BillingEventType, BillingEventStatus, Ground } from '@prisma/client';
+
+const SCENARIO_PERIOD_DAYS = 30;
+const dayMs = 24 * 60 * 60 * 1000;
 
 /**
  * Billing model (Part 1 — clinic/nurse):
@@ -62,8 +65,9 @@ export class BillingService {
   }
 
   /**
-   * Charge the scenario fee for one ground for the current month. Idempotent:
-   * skips if a SCENARIO_FEE event already exists for this ground + period.
+   * Charge the scenario fee for one ground for a specific [periodStart,
+   * periodEnd) window. Idempotent: skips if a SCENARIO_FEE event already exists
+   * for this ground + period. (GW-04.)
    */
   async chargeScenarioFeeForPeriod(ground: Ground & { organization: { stripeCustomerId: string | null }; participants: { id: string }[] }, periodStart: Date, periodEnd: Date) {
     const personMonths = ground.participants.length;
@@ -90,34 +94,106 @@ export class BillingService {
     });
   }
 
-  /** Charge the first scenario fee at activation (current calendar month). */
+  /**
+   * Charge the first scenario fee at activation. The period is a rolling 30-day
+   * window anchored to the activation moment — NOT a calendar month. This is the
+   * fix for the double-charge window (GW-04): with calendar months, a ground
+   * activated on the 28th was charged a full month, then charged again days
+   * later on the 1st. Anchoring to activation means each charge covers a full
+   * 30 days the ground was actually active.
+   */
   async chargeScenarioFeeOnActivation(groundId: string) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       include: { organization: { select: { stripeCustomerId: true } }, participants: { select: { id: true } } },
     });
     if (!ground) return;
-    const { start, end } = this.currentPeriod();
+    const start = ground.billingActivatedAt ?? new Date();
+    const end = new Date(start.getTime() + SCENARIO_PERIOD_DAYS * dayMs);
     await this.chargeScenarioFeeForPeriod(ground as any, start, end);
   }
 
-  /** Monthly: charge $50/person for every ACTIVE ground. */
-  @Cron(CronExpression.EVERY_1ST_DAY_OF_MONTH_AT_MIDNIGHT)
+  /**
+   * Daily: charge the next scenario-fee period for every ACTIVE ground whose
+   * current period has elapsed. Periods roll forward from the last charged
+   * period's end, so there is no calendar-boundary double-charge. Grounds whose
+   * org is PAST_DUE or CANCELLED are skipped — we do not keep charging an org
+   * that has failed payment. (GW-04.) Advisory-locked so only one replica runs
+   * it (GW-60).
+   */
+  @Cron(CronExpression.EVERY_DAY_AT_1AM)
   async chargeScenarioFees() {
-    const activeGrounds = await this.prisma.ground.findMany({
-      where: { status: GroundStatus.ACTIVE },
-      include: { organization: { select: { stripeCustomerId: true } }, participants: { select: { id: true } } },
-    });
+    await this.prisma.withAdvisoryLock(CronLock.SCENARIO_FEES, async () => {
+      const now = new Date();
+      const activeGrounds = await this.prisma.ground.findMany({
+        where: { status: GroundStatus.ACTIVE },
+        include: {
+          organization: { select: { stripeCustomerId: true, careFeeStatus: true } },
+          participants: { select: { id: true } },
+        },
+      });
 
-    this.logger.log(`Scenario fee run: ${activeGrounds.length} active ground(s).`);
-    const { start, end } = this.currentPeriod();
-    for (const ground of activeGrounds) {
-      try {
-        await this.chargeScenarioFeeForPeriod(ground as any, start, end);
-      } catch (err: any) {
-        this.logger.error(`Scenario fee failed for ground ${ground.id}: ${err.message}`);
+      let charged = 0;
+      let skippedPastDue = 0;
+      for (const ground of activeGrounds) {
+        // Do not keep charging an org that is behind on its care fee.
+        if (ground.organization.careFeeStatus !== CareFeeStatus.ACTIVE) {
+          skippedPastDue++;
+          continue;
+        }
+        // Find the last period we charged for this ground; charge the next one
+        // only once its end has passed.
+        const last = await this.prisma.billingEvent.findFirst({
+          where: { groundId: ground.id, type: BillingEventType.SCENARIO_FEE },
+          orderBy: { periodEnd: 'desc' },
+          select: { periodEnd: true },
+        });
+        const nextStart = last?.periodEnd ?? ground.billingActivatedAt ?? now;
+        if (nextStart > now) continue; // current period still running
+        const nextEnd = new Date(nextStart.getTime() + SCENARIO_PERIOD_DAYS * dayMs);
+        try {
+          await this.chargeScenarioFeeForPeriod(ground as any, nextStart, nextEnd);
+          charged++;
+        } catch (err: any) {
+          this.logger.error(`Scenario fee failed for ground ${ground.id}: ${err.message}`);
+        }
       }
+      this.logger.log(`Scenario fee run: ${activeGrounds.length} active, ${charged} charged, ${skippedPastDue} skipped (care fee not active).`);
+    });
+  }
+
+  /**
+   * Cancel the care fee subscription (self-serve). Cancels at period end, so the
+   * org keeps access through the period it has already paid for, and active
+   * grounds keep running until then. Status is synced by the subscription
+   * webhook. (GW-09.)
+   */
+  async cancelCareFee(organizationId: string): Promise<{ cancelled: boolean; effectiveAt: Date | null }> {
+    const org = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { careFeeSubscriptionId: true },
+    });
+    if (!org) throw new NotFoundException('Organization not found');
+    if (!org.careFeeSubscriptionId) {
+      await this.prisma.organization.update({ where: { id: organizationId }, data: { careFeeStatus: CareFeeStatus.CANCELLED } });
+      return { cancelled: true, effectiveAt: null };
     }
+    const sub = await this.stripe.cancelSubscriptionAtPeriodEnd(org.careFeeSubscriptionId);
+    const periodEnd = sub.current_period_end ? new Date(sub.current_period_end * 1000) : null;
+    this.logger.log(`Care fee cancellation scheduled for org ${organizationId} (effective ${periodEnd?.toISOString() ?? 'period end'})`);
+    return { cancelled: true, effectiveAt: periodEnd };
+  }
+
+  /**
+   * A Stripe Customer Portal session — the robust self-serve surface for
+   * updating the card, viewing invoices, and cancelling. (GW-09.)
+   */
+  async createBillingPortalSession(organizationId: string): Promise<{ portalUrl: string }> {
+    const org = await this.prisma.organization.findUnique({ where: { id: organizationId }, select: { stripeCustomerId: true } });
+    if (!org?.stripeCustomerId) throw new NotFoundException('No billing account set up for this organization');
+    const base = this.config.get<string>('stripe.callbackUrl') || 'http://localhost:5173/billing/callback';
+    const portalUrl = await this.stripe.createBillingPortalSession(org.stripeCustomerId, base);
+    return { portalUrl };
   }
 
   /** Handle Stripe webhook events — keeps care-fee status in sync. */
@@ -170,11 +246,19 @@ export class BillingService {
         const invoice = event.data.object as Stripe.Invoice;
         const customerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id;
         if (!customerId) break;
-        // Best-effort: mark this org's pending scenario-fee events as paid.
         const org = await this.prisma.organization.findFirst({ where: { stripeCustomerId: customerId }, select: { id: true } });
         if (org) {
+          // Reconcile only the events this invoice actually covers: pending
+          // scenario-fee events whose period had already started by the time the
+          // invoice was created. A period charged AFTER this invoice finalised
+          // belongs to a later invoice and must stay PENDING. (GW-04.)
+          const invoiceCreated = invoice.created ? new Date(invoice.created * 1000) : new Date();
           await this.prisma.billingEvent.updateMany({
-            where: { organizationId: org.id, status: BillingEventStatus.PENDING },
+            where: {
+              organizationId: org.id,
+              status: BillingEventStatus.PENDING,
+              periodStart: { lte: invoiceCreated },
+            },
             data: { status: BillingEventStatus.PAID, stripeInvoiceId: invoice.id },
           });
         }
@@ -197,12 +281,5 @@ export class BillingService {
       default:
         return CareFeeStatus.CANCELLED;
     }
-  }
-
-  private currentPeriod(): { start: Date; end: Date } {
-    const now = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth(), 1);
-    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-    return { start, end };
   }
 }
