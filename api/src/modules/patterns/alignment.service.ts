@@ -65,6 +65,28 @@ export class AlignmentService {
     );
   }
 
+  async narrative(organizationId: string): Promise<{ summary: string; activeGrounds: number; surfacedPatterns: number }> {
+    const activeGrounds = await this.prisma.ground.count({
+      where: { organizationId, status: GroundStatus.ACTIVE },
+    });
+    const surfacedPatterns = await this.prisma.patternDetection.count({
+      where: { ground: { organizationId }, status: 'SURFACED' },
+    });
+    const stalledGrounds = await this.prisma.ground.count({
+      where: { organizationId, status: GroundStatus.STALLED },
+    });
+
+    let summary = activeGrounds > 0
+      ? `${activeGrounds} alignment ground${activeGrounds !== 1 ? 's are' : ' is'} active.`
+      : 'No active alignment grounds.';
+    if (surfacedPatterns > 0)
+      summary += ` ${surfacedPatterns} pattern${surfacedPatterns !== 1 ? 's have' : ' has'} surfaced that may be worth naming in your next conversation.`;
+    if (stalledGrounds > 0)
+      summary += ` ${stalledGrounds} ground${stalledGrounds !== 1 ? 's have' : ' has'} stalled — timeline elapsed without resolution.`;
+
+    return { summary, activeGrounds, surfacedPatterns };
+  }
+
   /** A ground open its full period with no resolution. */
   private isStalled(ground: { status: GroundStatus; createdAt: Date; timelineDays: number; resolvedAt: Date | null }): boolean {
     const openStatuses: GroundStatus[] = [GroundStatus.AWAITING_PARTIES, GroundStatus.REPORT_READY, GroundStatus.ACTIVE];

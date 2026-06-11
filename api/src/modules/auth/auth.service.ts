@@ -133,7 +133,7 @@ export class AuthService {
       include: { organization: true },
     });
 
-    if (!user) throw new UnauthorizedException('Invalid email or password');
+    if (!user || user.deletedAt) throw new UnauthorizedException('Invalid email or password');
     if (!user.isActive) throw new UnauthorizedException('Account is deactivated');
     if (!user.isEmailVerified) throw new UnauthorizedException('Please verify your email before logging in');
 

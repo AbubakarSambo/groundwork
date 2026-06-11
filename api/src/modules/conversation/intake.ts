@@ -73,9 +73,12 @@ export function runIntake(text: string): IntakeResult {
   let positiveSignal: string | undefined;
   if (/(completed|shipped|delivered|finished|launched)/.test(lower) && /(i |we )/.test(lower)) positiveSignal = 'M1_PLUS';
   else if (/(ahead of|early|beat the|exceeded)/.test(lower)) positiveSignal = 'M2_PLUS';
+  else if (/(enabled .+ and |unblocked both|both teams can now)/.test(lower)) positiveSignal = 'M3_PLUS';
   else if (/(decided|made the call|chose to|committed to)/.test(lower) && /(because|reasoning|given that)/.test(lower)) positiveSignal = 'D1_PLUS';
-  else if (/(shared with the team|changed how we|realised that)/.test(lower)) positiveSignal = 'K1_PLUS';
-  else if (/(took ownership|my fault|i was wrong|fixed it|repaired)/.test(lower)) positiveSignal = 'R1_PLUS';
+  else if (/(flagged this before|raised this early|noticed this might)/.test(lower)) positiveSignal = 'D3_PLUS';
+  else if (/(told the founder|flagged to leadership|raised this with)/.test(lower)) positiveSignal = 'B1_PLUS';
+  else if (/(my part in this|i contributed to this|i should have)/.test(lower)) positiveSignal = 'B8_PLUS';
+  else if (/(this is on me|i own this|i will fix this)/.test(lower)) positiveSignal = 'B11_PLUS';
 
   return {
     types,

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, HttpCode, HttpStatus, BadRequestException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { CreateUserDto, UpdateUserDto } from './dto';
@@ -9,6 +9,14 @@ import { CurrentUser, CurrentUserData, Roles, Role, PaginationDto } from '../../
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
+
+  @Get('privacy-audit')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Privacy audit for a user — admin only diagnostic (GW-privacy)' })
+  async getPrivacyAudit(@Query('userId') userId: string) {
+    if (!userId) throw new BadRequestException('userId query parameter is required');
+    return this.usersService.getPrivacyAudit(userId);
+  }
 
   @Get('me/export')
   @ApiOperation({ summary: 'Export all personal data for the current user (GDPR Article 15)' })

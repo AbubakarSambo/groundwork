@@ -206,6 +206,23 @@ export class EmailService {
 
   // --- Billing ---
 
+  /**
+   * Payment request — sent to the org admin when a participant completes
+   * session 1. Primes the admin to activate billing so session 2 is not blocked.
+   */
+  async sendPaymentRequestEmail(adminEmail: string, orgName: string, groundId: string): Promise<void> {
+    const billingUrl = `${this.frontendUrl}/billing?groundId=${groundId}`;
+    await this.sendEmail({
+      to: adminEmail,
+      subject: 'Activate your workspace to unlock the next session — Groundwork',
+      html: this.layout(
+        `<p>A participant in your workspace (<strong>${orgName}</strong>) has completed their first Groundwork session.</p>
+         <p>Session 2 requires an active subscription. Activate now to keep the process running — the record you have already built is safe and waiting.</p>
+         <p><a href="${billingUrl}">Activate your workspace</a></p>`,
+      ),
+    });
+  }
+
   /** Payment failed notice sent to the org admin. */
   async sendPaymentFailed(adminEmail: string, orgName: string): Promise<void> {
     await this.sendEmail({

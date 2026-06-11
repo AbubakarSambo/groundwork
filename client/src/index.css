@@ -374,3 +374,6 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #E2E0DB; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #9B9590; }
+
+/* ── ANIMATIONS ──────────────────────────────────────────── */
+@keyframes gw-pulse { 0%, 80%, 100% { opacity: 0.3; } 40% { opacity: 1; } }

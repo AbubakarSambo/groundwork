@@ -79,6 +79,13 @@ export function GroundDetailPage() {
 
       <div className="gw-bd" style={{ maxWidth: 600, margin: '0 auto', width: '100%' }}>
 
+        {/* Stalled banner */}
+        {ground?.status === 'STALLED' && (
+          <div style={{ background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: 6, padding: '10px 14px', marginBottom: 14, fontSize: 13 }}>
+            This ground has stalled — the timeline elapsed without a confirmed outcome. Both records remain intact.
+          </div>
+        )}
+
         {/* Completeness — admin only */}
         {user?.role === 'ADMIN' && (ground.checkIns?.length ?? 0) > 0 && (
           <CompletenessSection ground={ground} />
@@ -177,7 +184,7 @@ export function GroundDetailPage() {
 
         {/* Resolution */}
         {['ACTIVE', 'CLOSED', 'RESOLVED'].includes(ground.status) && (
-          <ResolutionCard groundId={ground.id} />
+          <ResolutionCard groundId={ground.id} myParticipantId={myParticipant?.id} scenario={ground.scenario} />
         )}
       </div>
     </div>
@@ -375,7 +382,70 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   )
 }
 
-function ResolutionCard({ groundId }: { groundId: string }) {
+// ─────────────────────────────────────────────────────────────────────────────
+// Scenario end-state map (client-side constant — mirrors api/src/modules/resolution/end-states.ts)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const SCENARIO_END_STATES: Record<string, { value: string; label: string }[]> = {
+  NEW_HIRE: [
+    { value: 'KEEP', label: 'Keep the hire' },
+    { value: 'RESTRUCTURE', label: 'Restructure the role' },
+    { value: 'EXIT', label: 'Let them go' },
+    { value: 'NOT_YET', label: 'Not yet — revisit with a named gap' },
+  ],
+  NEW_COFOUNDER: [
+    { value: 'CONTINUE', label: 'Continue the partnership' },
+    { value: 'RESTRUCTURE', label: 'Restructure the arrangement' },
+    { value: 'SEPARATE', label: 'Separate' },
+    { value: 'NOT_YET', label: 'Not yet — revisit with a named gap' },
+  ],
+  NEW_ADVISOR: [
+    { value: 'RENEW', label: 'Renew the engagement' },
+    { value: 'RESTRUCTURE', label: 'Restructure the engagement' },
+    { value: 'END', label: 'End the engagement' },
+    { value: 'NOT_YET', label: 'Not yet — revisit with a named gap' },
+  ],
+  NEW_PROJECT: [
+    { value: 'COMPLETE', label: 'Mark complete' },
+    { value: 'CONTINUE', label: 'Continue' },
+    { value: 'DESCOPE', label: 'Descope' },
+    { value: 'STOP', label: 'Stop the project' },
+  ],
+  NEW_MANAGER: [
+    { value: 'CONTINUE', label: 'Extend the engagement' },
+    { value: 'RESTRUCTURE', label: 'Restructure the scope or terms' },
+    { value: 'END', label: 'End the engagement' },
+    { value: 'NOT_YET', label: 'Not yet — revisit with a named gap' },
+  ],
+  CONTRACT_RENEWAL: [
+    { value: 'RENEW', label: 'Renew on current terms' },
+    { value: 'RENEGOTIATE', label: 'Renew on revised terms' },
+    { value: 'EXIT', label: 'Do not renew' },
+    { value: 'NOT_YET', label: 'Extend evaluation period' },
+  ],
+  RECOGNITION: [
+    { value: 'YES', label: 'Grant the ask' },
+    { value: 'NO', label: 'Decline' },
+    { value: 'NOT_YET', label: 'Not yet — with a named gap and milestone' },
+  ],
+  DRIFT: [
+    { value: 'CONTINUE', label: 'Continue' },
+    { value: 'RESTRUCTURE', label: 'Restructure' },
+    { value: 'DESCOPE', label: 'Descope' },
+    { value: 'SEPARATE', label: 'Separate' },
+    { value: 'EXIT', label: 'Exit' },
+    { value: 'STOP', label: 'Stop' },
+    { value: 'NOT_YET', label: 'Not yet — revisit with a named gap' },
+  ],
+  CRISIS_ALIGNMENT: [
+    { value: 'ALIGNED', label: 'Shared picture established — team aligned' },
+    { value: 'RESTRUCTURE', label: 'Structure or priorities need to change' },
+    { value: 'ESCALATE', label: 'Requires external support or intervention' },
+    { value: 'NOT_YET', label: 'Not yet — revisit when more information is available' },
+  ],
+}
+
+function ResolutionCard({ groundId, myParticipantId, scenario }: { groundId: string; myParticipantId?: string; scenario?: string }) {
   const qc = useQueryClient()
   const { data, isLoading } = useQuery({
     queryKey: ['resolution', groundId],
@@ -388,18 +458,41 @@ function ResolutionCard({ groundId }: { groundId: string }) {
       qc.invalidateQueries({ queryKey: ['ground', groundId] })
       toast.success('Recorded. The ground closes once every party confirms the same end state.')
     },
+    onError: (err: any) => toast.error(err?.response?.data?.message || 'Could not record that.'),
   })
 
   if (isLoading || !data) return null
-  const { resolution, options, groundStatus, confirmations = [], confirmedCount = 0, totalActive = 0 } = data
-  const labelFor = (v: string) => options?.find((o: any) => o.value === v)?.label ?? v
-  const chosenStates = new Set(confirmations.filter((c) => c.endState).map((c) => c.endState))
-  const divergent = chosenStates.size > 1
 
-  if (groundStatus === 'CLOSED' || groundStatus === 'RESOLVED') {
+  const { resolution, options: apiOptions, groundStatus, confirmations = [], confirmedCount = 0, totalActive = 0 } = data
+
+  // Use API-provided options if available; fall back to client-side SCENARIO_END_STATES constant
+  const options = (apiOptions && apiOptions.length > 0)
+    ? apiOptions
+    : (scenario ? (SCENARIO_END_STATES[scenario] ?? []) : [])
+
+  const labelFor = (v: string) => options.find((o) => o.value === v)?.label ?? v
+
+  // Derive my own confirmation
+  const myConfirmation = myParticipantId
+    ? confirmations.find((c) => c.participantId === myParticipantId)
+    : undefined
+  const myChoice = myConfirmation?.endState ?? null
+  const myChoiceLabel = myChoice ? labelFor(myChoice) : null
+
+  // Divergence: other parties have chosen something different from mine (or from the leading proposal)
+  const otherChoices = new Set(
+    confirmations
+      .filter((c) => c.participantId !== myParticipantId && c.endState)
+      .map((c) => c.endState as string),
+  )
+  const allChosenStates = new Set(confirmations.filter((c) => c.endState).map((c) => c.endState as string))
+  const divergence = allChosenStates.size > 1
+  const resolved = groundStatus === 'CLOSED' || groundStatus === 'RESOLVED'
+
+  if (resolved) {
     return (
       <>
-        <Section title="Resolved">
+        <Section title="Outcome">
           <div className="gw-box gw-box-green">
             End state: <strong>{resolution ? labelFor(resolution.endState) : '—'}</strong>
           </div>
@@ -413,38 +506,73 @@ function ResolutionCard({ groundId }: { groundId: string }) {
   }
 
   return (
-    <Section title="Resolution">
-      <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 12 }}>
-        The ground closes when every party confirms the same end state. No one decides this alone.
+    <Section title="Outcome">
+      <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginBottom: 14 }}>
+        The ground closes when all parties confirm the same outcome. Your selection is private until confirmed.
       </div>
 
-      {confirmations.length > 0 && (
-        <div className={`gw-box ${divergent ? 'gw-box-amber' : 'gw-box-blue'}`} style={{ marginBottom: 12 }}>
-          <strong>{confirmedCount} of {totalActive} parties confirmed</strong>
-          {divergent && <span> — parties have chosen different end states</span>}
-          <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 3 }}>
-            {confirmations.map((c) => (
-              <div key={c.participantId} style={{ fontSize: 12 }}>
-                {c.label}: {c.endState ? `${labelFor(c.endState)} ✓` : '· not yet'}
-              </div>
-            ))}
-          </div>
+      {/* My current choice — private indicator */}
+      {myChoice && (
+        <div style={{
+          marginBottom: 12, padding: '8px 12px',
+          background: '#F0FAF4', border: '1px solid #BBF7D0',
+          borderRadius: 6, fontSize: 12,
+        }}>
+          Your current choice: <strong>{myChoiceLabel}</strong>
+          {confirmedCount >= totalActive && !divergence
+            ? ' — Confirmed by all parties.'
+            : ' — Waiting for other party.'}
         </div>
       )}
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
-        {options?.map((o: any) => (
+      {/* Conflict indicator — visible only when parties have diverged */}
+      {divergence && (
+        <div style={{
+          marginBottom: 12, padding: '8px 12px',
+          background: '#FEF9C3', border: '1px solid #FDE68A',
+          borderRadius: 6, fontSize: 12,
+        }}>
+          The other party has selected a different outcome. Both parties need to agree on the same option to close this ground.
+        </div>
+      )}
+
+      {/* Progress summary when some but not all have confirmed and no divergence */}
+      {!divergence && confirmedCount > 0 && confirmedCount < totalActive && (
+        <div className="gw-box gw-box-blue" style={{ marginBottom: 12 }}>
+          <strong>{confirmedCount} of {totalActive} parties</strong> have confirmed an outcome.
+        </div>
+      )}
+
+      {/* End state picker — always shown when not fully resolved */}
+      <div>
+        <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 8 }}>
+          {myChoice ? 'Change your outcome:' : 'Select an outcome:'}
+        </div>
+        {options.map((o) => (
           <button
             key={o.value}
             onClick={() => propose.mutate(o.value)}
             disabled={propose.isPending}
-            className={resolution?.endState === o.value ? 'gw-btn' : 'gw-btn-sec'}
-            style={{ width: 'auto', padding: '8px 14px', fontSize: 13 }}
+            style={{
+              display: 'block', width: '100%', textAlign: 'left',
+              padding: '9px 12px', marginBottom: 6, borderRadius: 6,
+              border: myChoice === o.value ? '2px solid #2563EB' : '1px solid #E2E0DB',
+              background: myChoice === o.value ? '#EFF6FF' : 'white',
+              fontSize: 13, cursor: propose.isPending ? 'not-allowed' : 'pointer',
+              fontWeight: myChoice === o.value ? 600 : 400,
+            }}
           >
             {o.label}
+            {/* Show if any other party (not me) has also chosen this */}
+            {otherChoices.has(o.value) && (
+              <span style={{ fontSize: 11, color: '#5DCAA5', marginLeft: 8, fontWeight: 400 }}>
+                (other party agrees)
+              </span>
+            )}
           </button>
         ))}
       </div>
+
       <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 8 }}>
         Choosing an end state records your confirmation. The ground closes when every party confirms the same one.
       </div>

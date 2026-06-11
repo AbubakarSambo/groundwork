@@ -6,6 +6,7 @@ import { AxiosError } from 'axios'
 import { conversationApi } from '@/api'
 import { useAuthStore } from '@/stores/auth'
 import type { ConversationTurn } from '@/types'
+import { CofounderIntakePage } from './CofounderIntakePage'
 
 /** Strip markdown formatting characters that the AI occasionally emits. */
 function stripMarkdown(text: string): string {
@@ -42,6 +43,9 @@ export function CheckInPage() {
   // Task 3 — completion note state
   const [completionNote, setCompletionNote] = useState('')
   const [showCompletionPrompt, setShowCompletionPrompt] = useState(false)
+
+  // Cofounder intake — set to true once the participant has submitted (or already had) the intake
+  const [intakeComplete, setIntakeComplete] = useState(false)
 
   const { data, isLoading } = useQuery({
     queryKey: ['transcript', checkInId],
@@ -137,7 +141,7 @@ export function CheckInPage() {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `groundwork-record-session-${checkIn?.sessionNumber ?? checkInId?.slice(0, 8)}.txt`
+      a.download = `groundwork-${(checkIn?.groundLabel ?? 'record').toLowerCase().replace(/\s+/g, '-')}-session-${checkIn?.sessionNumber ?? checkInId?.slice(0, 8)}.txt`
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
@@ -146,6 +150,13 @@ export function CheckInPage() {
       toast.error('Could not download record. Try again.')
     }
   }
+
+  useEffect(() => {
+    if (taRef.current) {
+      taRef.current.style.height = 'auto';
+      taRef.current.style.height = Math.min(taRef.current.scrollHeight, 120) + 'px';
+    }
+  }, [message])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -197,16 +208,40 @@ export function CheckInPage() {
     complete.mutate(undefined)
   }
 
+  // Determine whether the cofounder intake should be shown.
+  // Show when: scenario is NEW_COFOUNDER, it's session 1, and the participant
+  // has not yet submitted the intake (hasIntake is false on the transcript response).
+  const checkInData = data?.checkIn as any
+  const isNewCofounder = checkInData?.scenario === 'NEW_COFOUNDER'
+  const isFirstSession = checkInData?.sessionNumber === 1
+  const serverHasIntake: boolean = checkInData?.hasIntake === true
+  const showCofounderIntake =
+    !isLoading &&
+    isNewCofounder &&
+    isFirstSession &&
+    !serverHasIntake &&
+    !intakeComplete
+
+  if (showCofounderIntake && checkInId) {
+    return (
+      <CofounderIntakePage
+        checkInId={checkInId}
+        groundLabel={checkInData?.groundLabel ?? 'Groundwork'}
+        onComplete={() => setIntakeComplete(true)}
+      />
+    )
+  }
+
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
       {/* Header */}
       <div className="gw-hdr">
         <div>
-          <div className="gw-logo">{user?.firstName ?? 'Check-in'}</div>
-          <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 1 }}>{user?.organizationName ?? 'Groundwork'}</div>
+          <div className="gw-logo">{data?.checkIn?.groundLabel ?? user?.firstName ?? 'Check-in'}</div>
+          <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 1 }}>Session {data?.checkIn?.sessionNumber ?? ''} · {user?.organizationName ?? 'Groundwork'}</div>
         </div>
         <div style={{ display: 'flex', gap: 7, alignItems: 'center' }}>
-          {turns.length > 4 && (
+          {turns.length >= 6 && (
             <button
               className="gw-btn-sm"
               onClick={handleConfirmComplete}
@@ -215,13 +250,15 @@ export function CheckInPage() {
               {complete.isPending ? 'Completing…' : 'Complete check-in'}
             </button>
           )}
-          <button
-            className="gw-back"
-            onClick={handleConfirmDecline}
-            disabled={decline.isPending}
-          >
-            Not for me
-          </button>
+          {(turns.length >= 2 || confirmAction === 'decline') && (
+            <button
+              className="gw-back"
+              onClick={handleConfirmDecline}
+              disabled={decline.isPending}
+            >
+              Not for me
+            </button>
+          )}
           <button className="gw-back" onClick={() => { logout(); navigate('/') }}>Sign out</button>
         </div>
       </div>
@@ -281,7 +318,13 @@ export function CheckInPage() {
               </div>
             ))}
 
-            {sending && <div className="gw-msg gw-msg-loading">Thinking…</div>}
+            {sending && (
+              <div className="gw-msg gw-msg-ai" style={{ display: 'flex', gap: 4, alignItems: 'center', minWidth: 48 }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--gw-muted)', animation: 'gw-pulse 1.2s ease-in-out infinite' }} />
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--gw-muted)', animation: 'gw-pulse 1.2s ease-in-out 0.4s infinite' }} />
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--gw-muted)', animation: 'gw-pulse 1.2s ease-in-out 0.8s infinite' }} />
+              </div>
+            )}
             <div ref={bottomRef} />
           </div>
 
@@ -307,8 +350,8 @@ export function CheckInPage() {
             </div>
           )}
 
-          {/* Context actions — shown after a few turns */}
-          {turns.length >= 4 && !sending && (
+          {/* Context actions — shown after 6 turns */}
+          {turns.length >= 6 && !sending && (
             <div className="gw-chat-actions">
               <button className="gw-btn-sm" onClick={handleDownload}>
                 Download record
@@ -399,16 +442,19 @@ export function CheckInPage() {
 
           {/* Input */}
           <div className="gw-chat-bar">
-            <textarea
-              ref={taRef}
-              className="gw-chat-ta"
-              value={message}
-              onChange={e => setMessage(e.target.value)}
-              onKeyDown={handleKey}
-              placeholder="Share what you have been working on. Enter to send, Shift+Enter for a new line."
-              rows={1}
-              style={{ minHeight: 38, maxHeight: 120 }}
-            />
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+              <textarea
+                ref={taRef}
+                className="gw-chat-ta"
+                value={message}
+                onChange={e => setMessage(e.target.value)}
+                onKeyDown={handleKey}
+                placeholder="Share what you have been working on."
+                rows={1}
+                style={{ minHeight: 38, maxHeight: 120 }}
+              />
+              <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 3, textAlign: 'right' }}>Enter to send · Shift+Enter for new line</div>
+            </div>
             <button
               className="gw-send-btn"
               onClick={() => canSend && send.mutate()}

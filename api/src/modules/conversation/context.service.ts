@@ -90,9 +90,10 @@ ${SUPPORT_RESOURCES}`;
 }
 
 interface Injection {
-  type: 'CONTRADICTION' | 'CORROBORATION' | 'GAP';
+  type: 'CONTRADICTION' | 'CORROBORATION' | 'GAP' | 'INVISIBLE_LABOUR';
   tier: 1 | 2 | 3;
-  topic: string;
+  topic?: string;
+  text?: string;
   downstream: boolean;
   probe: string;
 }
@@ -158,14 +159,15 @@ export class ConversationContextService {
       if (intake.factualClaims.length) block += `Verifiable claims: ${intake.factualClaims.filter((c) => c.verifiable).length} of ${intake.factualClaims.length}.\n`;
       block += `\n`;
 
-      // Agent 3 — cross-reference (degree 2): only from session 2 onward, only
-      // when another party in this ground has completed a check-in.
+      // Agent 3 — cross-reference (degree 2 + degree 3): only from session 2 onward,
+      // only when another party in this ground has completed a check-in.
       if (sessionNumber >= 2) {
         const injections = await this.crossReference(groundId, participantId, latestMessage);
         if (injections.length) {
           block += `# Intelligence layer — do NOT reveal sources; the person should experience this as perceptive, not surveilled. Never quote the other party. Apply each probe at its stated tier only; do not escalate.\n`;
           for (const inj of injections) {
-            block += `[${inj.type} | TIER ${inj.tier}${inj.downstream ? ' | DOWNSTREAM — weight higher' : ''} | topic: ${inj.topic}] Recommended probe: ${inj.probe}\n`;
+            const topicPart = inj.topic ? ` | topic: ${inj.topic}` : '';
+            block += `[${inj.type} | TIER ${inj.tier}${inj.downstream ? ' | DOWNSTREAM — weight higher' : ''}${topicPart}] Recommended probe: ${inj.probe}\n`;
           }
           block += `\n`;
         }
@@ -243,6 +245,68 @@ export class ConversationContextService {
     // Escalate contradictions to tier 3 if a pattern has already surfaced for this party.
     const surfacedCount = await this.prisma.patternDetection.count({ where: { participantId, status: 'SURFACED' } });
     if (surfacedCount >= 1) injections.forEach((i) => { if (i.type === 'CONTRADICTION') i.tier = 3; });
+
+    // -------------------------------------------------------------------------
+    // Degree 3: org-wide name mentions — invisible labour detection.
+    // Looks across ALL grounds in this org for mentions of this participant by
+    // name in other parties' record entries.
+    // -------------------------------------------------------------------------
+    let degree3Injections = 0;
+
+    const participantWithOrg = await this.prisma.groundParticipant.findUnique({
+      where: { id: participantId },
+      select: {
+        user: { select: { firstName: true, lastName: true } },
+        ground: { select: { organizationId: true } },
+      },
+    });
+
+    if (participantWithOrg?.user && participantWithOrg?.ground) {
+      const firstName = participantWithOrg.user.firstName?.toLowerCase() ?? '';
+      const lastName = participantWithOrg.user.lastName?.toLowerCase() ?? '';
+
+      if (firstName || lastName) {
+        // Find RecordEntries across this org, excluding this ground and this participant.
+        const orgRecords = await this.prisma.recordEntry.findMany({
+          where: {
+            participant: {
+              ground: {
+                organizationId: participantWithOrg.ground.organizationId,
+                id: { not: groundId },
+              },
+              id: { not: participantId },
+            },
+          },
+          select: { text: true, type: true, participantId: true },
+          take: 100,
+        });
+
+        // Find entries that mention this person by name.
+        const mentioningEntries = orgRecords.filter((r) => {
+          const t = r.text.toLowerCase();
+          return (firstName && t.includes(firstName)) || (lastName && t.includes(lastName));
+        });
+
+        // Classify mentions for invisible labour.
+        const operationalWords = ['delivered', 'built', 'shipped', 'completed', 'launched', 'deployed', 'created', 'finished'];
+        const invisibleLabourMentions = mentioningEntries.filter((r) => {
+          const t = r.text.toLowerCase();
+          return operationalWords.some((w) => t.includes(w));
+        });
+
+        // If 2+ operational mentions AND person's own record doesn't already cover the topics.
+        if (invisibleLabourMentions.length >= 2 && degree3Injections < 1) {
+          injections.push({
+            type: 'INVISIBLE_LABOUR',
+            tier: 1,
+            downstream: false,
+            text: "Your name appears in other parts of the organisation's record in connection with specific work. Your own record should reflect that work explicitly.",
+            probe: 'There is work that appears connected to you in the broader record. What specifically did you contribute to that, and does your record here reflect it?',
+          });
+          degree3Injections++;
+        }
+      }
+    }
 
     // GW-37: cap at 2 injections (was 3) to reduce false-positive density.
     return injections.slice(0, 2);

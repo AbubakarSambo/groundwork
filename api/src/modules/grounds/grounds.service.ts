@@ -369,6 +369,44 @@ export class GroundsService {
   }
 
   /**
+   * Pause a ground — marks status = PAUSED, stamps pausedAt. Typically called
+   * when active legal proceedings are detected in a check-in (GW-08 / context.service.ts)
+   * and the admin or user confirms they want to pause. Billing continues to run
+   * (the ground is not RESOLVED or CLOSED); an admin can un-pause by
+   * transitioning back to the prior status.
+   *
+   * Only OPEN, AWAITING_PARTIES, ACTIVE, or REPORT_READY grounds can be paused;
+   * terminal grounds (RESOLVED, STALLED, CLOSED) are immutable.
+   */
+  async pauseGround(groundId: string, adminUserId: string, reason: string): Promise<void> {
+    const ground = await this.prisma.ground.findUnique({ where: { id: groundId } });
+    if (!ground) throw new NotFoundException('Ground not found');
+
+    const PAUSABLE_STATUSES: GroundStatus[] = [
+      GroundStatus.OPEN,
+      GroundStatus.AWAITING_PARTIES,
+      GroundStatus.REPORT_READY,
+      GroundStatus.ACTIVE,
+    ];
+    if (!PAUSABLE_STATUSES.includes(ground.status)) {
+      throw new BadRequestException(`Ground in status "${ground.status}" cannot be paused`);
+    }
+
+    // Verify the requesting user belongs to this ground's org or is the initiator.
+    const initiatorOrAdmin = await this.prisma.user.findFirst({
+      where: { id: adminUserId, organizationId: ground.organizationId },
+    });
+    if (!initiatorOrAdmin) throw new ForbiddenException('Only an org member may pause a ground');
+
+    await this.prisma.ground.update({
+      where: { id: groundId },
+      data: { status: GroundStatus.PAUSED, pausedAt: new Date() },
+    });
+
+    this.logger.warn(`Ground ${groundId} paused by user ${adminUserId}. Reason: ${reason}`);
+  }
+
+  /**
    * Returns true once every ACTIVE party has completed session 2 — the
    * condition for generating the report. "Active" = a party who accepted their
    * invite (userId set); invited-but-never-accepted no-shows never block the

@@ -116,6 +116,55 @@ export class ParticipantsService {
     };
   }
 
+  /**
+   * Save cofounder intake fields to the GroundParticipant record.
+   * Looked up by the check-in ID and the requesting user's ID so it is always
+   * owner-scoped — one party can never overwrite another party's intake.
+   */
+  async saveIntake(checkInId: string, userId: string, data: {
+    foundingIntent?: string;
+    roleIntent?: string;
+    personalIntent?: string;
+    exitIntent?: string;
+    compensationAsk?: string;
+    autonomyAsk?: string;
+    recognitionAsk?: string;
+    growthAsk?: string;
+    relationshipAsk?: string;
+    financialFloor?: string;
+    stressTolerance?: string;
+    relationalTolerance?: string;
+  }) {
+    const checkIn = await this.prisma.checkIn.findUnique({
+      where: { id: checkInId },
+      include: { participant: true },
+    });
+    if (!checkIn) throw new NotFoundException('Check-in not found');
+    if (checkIn.participant.userId !== userId) {
+      throw new NotFoundException('Check-in not found');
+    }
+
+    await this.prisma.groundParticipant.update({
+      where: { id: checkIn.participant.id },
+      data: {
+        foundingIntent:      data.foundingIntent      ?? undefined,
+        roleIntent:          data.roleIntent          ?? undefined,
+        personalIntent:      data.personalIntent      ?? undefined,
+        exitIntent:          data.exitIntent          ?? undefined,
+        compensationAsk:     data.compensationAsk     ?? undefined,
+        autonomyAsk:         data.autonomyAsk         ?? undefined,
+        recognitionAsk:      data.recognitionAsk      ?? undefined,
+        growthAsk:           data.growthAsk           ?? undefined,
+        relationshipAsk:     data.relationshipAsk     ?? undefined,
+        financialFloor:      data.financialFloor      ?? undefined,
+        stressTolerance:     data.stressTolerance     ?? undefined,
+        relationalTolerance: data.relationalTolerance ?? undefined,
+      },
+    });
+
+    return { ok: true };
+  }
+
   // --- helpers ---
 
   private async loadByToken(token: string) {

@@ -47,16 +47,12 @@ export function GroundsListPage() {
         {isLoading && <div style={{ fontSize: 13, color: 'var(--gw-muted)', padding: '12px 0' }}>Loading…</div>}
 
         {!isLoading && grounds?.length === 0 && (
-          <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 6, padding: '40px 24px', textAlign: 'center' }}>
-            <div style={{ fontSize: 14, color: 'var(--gw-muted)', marginBottom: 8 }}>No grounds yet.</div>
-            <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginBottom: 16 }}>
-              Open one when something starts — a hire, a cofounder, a project.
+          <div style={{ textAlign: 'center', padding: '40px 24px' }}>
+            <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--gw-text)', marginBottom: 8 }}>No grounds open yet</div>
+            <div style={{ fontSize: 13, color: 'var(--gw-muted)', marginBottom: 20, lineHeight: 1.6, maxWidth: 360, margin: '0 auto 20px' }}>
+              A ground is a structured process for two people to build a shared record. Start one when a situation needs clarity.
             </div>
-            <Link to="/grounds/new">
-              <button className="gw-btn" style={{ width: 'auto', display: 'inline-block', padding: '10px 20px' }}>
-                Open your first ground
-              </button>
-            </Link>
+            <Link to="/grounds/new"><button className="gw-btn" style={{ display: 'inline-block', width: 'auto', padding: '10px 24px' }}>Open a ground</button></Link>
           </div>
         )}
 
@@ -64,9 +60,16 @@ export function GroundsListPage() {
           <Link key={g.id} to={`/grounds/${g.id}`} style={{ textDecoration: 'none', display: 'block', marginBottom: 8 }}>
             <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 6, padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
-                <div style={{ fontSize: 14, fontWeight: 600, color: '#1A1916', marginBottom: 3 }}>{g.label}</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: '#1A1916', marginBottom: 3, display: 'flex', alignItems: 'center' }}>
+                  {g.label}
+                  {g.scenario && (
+                    <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gw-muted)', background: '#F5F3EF', border: '1px solid #E2E0DB', borderRadius: 4, padding: '1px 6px', marginLeft: 8 }}>
+                      {g.scenario.replace(/_/g, ' ')}
+                    </span>
+                  )}
+                </div>
                 <div style={{ fontSize: 12, color: 'var(--gw-sub)' }}>
-                  {g.scenario.replace(/_/g, ' ').toLowerCase()} · {g.participants?.length ?? 0} part{(g.participants?.length ?? 0) === 1 ? 'y' : 'ies'}
+                  {g.participants?.length ?? 0} part{(g.participants?.length ?? 0) === 1 ? 'y' : 'ies'}
                 </div>
               </div>
               <StatusPill status={g.status} />

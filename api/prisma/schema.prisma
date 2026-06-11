@@ -59,6 +59,7 @@ enum GroundStatus {
   AWAITING_PARTIES // waiting on check-ins
   REPORT_READY // both completed session 2, report locked behind paywall
   ACTIVE // admin activated -> billing running
+  PAUSED // temporarily paused (e.g. active legal proceedings detected)
   RESOLVED // both confirmed an end state
   STALLED // full period elapsed with no resolution
   CLOSED // permanent record, billing stopped
@@ -123,6 +124,13 @@ enum BillingEventStatus {
   FAILED
 }
 
+enum CompanyStage {
+  IDEA
+  PRE_REVENUE
+  EARLY_REVENUE
+  SCALING
+}
+
 // ---------------------------------------------------------------------------
 // Identity & tenancy
 // ---------------------------------------------------------------------------
@@ -139,6 +147,8 @@ model Organization {
   careFeeSubscriptionId  String?       @map("care_fee_subscription_id")
   defaultPaymentMethodId String?       @map("default_payment_method_id")
   gracePeriodUntil       DateTime?     @map("grace_period_until")
+
+  companyStage CompanyStage? @map("company_stage")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -164,10 +174,11 @@ model User {
   isPlatformAdmin Boolean  @default(false) @map("is_platform_admin")
   googleId        String?  @unique @map("google_id")
 
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
 
-  organization     Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization     Organization             @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   tokens           EmailVerificationToken[]
   groundsInitiated Ground[]                 @relation("GroundInitiator")
   participantLinks GroundParticipant[]
@@ -214,8 +225,10 @@ model Ground {
   billingActivatedAt DateTime? @map("billing_activated_at") // admin activated report
   resolvedAt         DateTime? @map("resolved_at")
   closedAt           DateTime? @map("closed_at")
+  pausedAt           DateTime? @map("paused_at") // set when status transitions to PAUSED
 
-  promptVersionId String? @map("prompt_version_id")
+  promptVersionId     String? @map("prompt_version_id")
+  stripeScenarioSubId String? @map("stripe_scenario_sub_id")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -245,8 +258,8 @@ model GroundParticipant {
   email              String
   partyType          PartyType
   roleAsDescribed    String?   @map("role_as_described") // role as the initiator described it
-  willingnessEvidence Boolean? @map("willingness_evidence") // willingness gate Q1
-  willingnessCadence  Boolean? @map("willingness_cadence") // willingness gate Q2
+  willingnessEvidence  Boolean? @map("willingness_evidence") // willingness gate Q1
+  willingnessCadence   Boolean? @map("willingness_cadence") // willingness gate Q2
   invitedAt          DateTime? @map("invited_at")
   notifiedAt         DateTime? @map("notified_at") // never added silently
   // Magic-link invite (cleared once accepted; userId is set on accept).
@@ -257,10 +270,22 @@ model GroundParticipant {
   lastNudgedAt         DateTime? @map("last_nudged_at") // throttles reminder emails (B1)
   soloArtifact         String?   @db.Text @map("solo_artifact") // single-party record summary after session 1 (B2)
   soloArtifactAt       DateTime? @map("solo_artifact_at")
+  foundingIntent      String? @db.Text @map("founding_intent")
+  roleIntent          String? @db.Text @map("role_intent")
+  personalIntent      String? @db.Text @map("personal_intent")
+  exitIntent          String? @db.Text @map("exit_intent")
+  compensationAsk     String? @db.Text @map("compensation_ask")
+  autonomyAsk         String? @db.Text @map("autonomy_ask")
+  recognitionAsk      String? @db.Text @map("recognition_ask")
+  growthAsk           String? @db.Text @map("growth_ask")
+  relationshipAsk     String? @db.Text @map("relationship_ask")
+  financialFloor      String? @db.Text @map("financial_floor")
+  stressTolerance     String? @db.Text @map("stress_tolerance")
+  relationalTolerance String? @db.Text @map("relational_tolerance")
   createdAt          DateTime  @default(now()) @map("created_at")
 
   ground            Ground             @relation(fields: [groundId], references: [id], onDelete: Cascade)
-  user              User?              @relation(fields: [userId], references: [id])
+  user              User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
   checkIns          CheckIn[]
   recordEntries     RecordEntry[]
   patternDetections PatternDetection[]
@@ -285,7 +310,8 @@ model CheckIn {
   status        CheckInStatus @default(NOT_STARTED)
   availableFrom DateTime?     @map("available_from") // cadence gate — session 2+ opens after this date
   startedAt     DateTime?     @map("started_at")
-  completedAt   DateTime?     @map("completed_at")
+  completedAt    DateTime?     @map("completed_at")
+  warningFiredAt DateTime?     @map("warning_fired_at")
   patternsAnalyzedAt DateTime? @map("patterns_analyzed_at") // pattern sweep has processed this period
   nextCommitment String?       @map("next_commitment")
   createdAt     DateTime      @default(now()) @map("created_at")
@@ -323,7 +349,7 @@ model RecordEntry {
   text          String          @db.Text // the person's exact words where possible
   createdAt     DateTime        @default(now()) @map("created_at")
 
-  participant GroundParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  participant GroundParticipant @relation(fields: [participantId], references: [id], onDelete: Restrict)
   checkIn     CheckIn?          @relation(fields: [checkInId], references: [id], onDelete: SetNull)
 
   @@index([participantId])
@@ -480,6 +506,19 @@ model OrgIntelligence {
   organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
 
   @@map("org_intelligence")
+}
+
+model PatternBenchmark {
+  id               String        @id @default(uuid())
+  code             String
+  orgStage         CompanyStage? @map("org_stage")
+  teamSizeRange    String?       @map("team_size_range")
+  outcomeType      String        @map("outcome_type")
+  periodsToOutcome Int           @map("periods_to_outcome")
+  moment           GroundMoment?
+  createdAt        DateTime      @default(now()) @map("created_at")
+
+  @@map("pattern_benchmarks")
 }
 
 model BillingEvent {

@@ -5,7 +5,12 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService, CronLock } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { GroundworkEvents, CheckInCompletedEvent } from '../../common';
-import { GroundStatus, CheckInStatus, PartyType } from '@prisma/client';
+import { GroundStatus, CheckInStatus, TurnRole, PartyType } from '@prisma/client';
+
+const INACTIVITY_AUTO_CLOSE_MS = 12 * 60 * 60 * 1000;     // 12 hours
+const MAX_SESSION_AGE_MS = 48 * 60 * 60 * 1000;            // 48 hours
+const WARNING_WINDOW_START_MS = 11 * 60 * 60 * 1000;       // 11h of inactivity
+const WARNING_WINDOW_END_MS = 11.5 * 60 * 60 * 1000;       // 11h30m of inactivity
 
 const TERMINAL: GroundStatus[] = [GroundStatus.RESOLVED, GroundStatus.CLOSED, GroundStatus.STALLED];
 const NUDGE_THROTTLE_DAYS = 3;
@@ -62,6 +67,136 @@ export class GroundsCron {
             .sendStalledNotification(p.email, g.label, `${frontend}/grounds/${g.id}`)
             .catch((err: any) => this.logger.error(`Stalled notification failed for ground ${g.id}: ${err.message}`));
         }
+      }
+    });
+  }
+
+  /**
+   * Auto-closes stale IN_PROGRESS check-ins every 30 minutes.
+   * Two triggers:
+   *   1. 12+ hours of inactivity (no conversation turn in the window)
+   *   2. Session is 48+ hours old (absolute age guard)
+   * Fires CHECK_IN_COMPLETED so the existing reports listener handles any
+   * synthesis logic — auto-close is source-transparent to downstream consumers.
+   */
+  @Cron('*/30 * * * *')
+  async autoCloseStaleCheckIns() {
+    await this.prisma.withAdvisoryLock(CronLock.AUTO_CLOSE_CHECK_INS, async () => {
+      const inProgress = await this.prisma.checkIn.findMany({
+        where: { status: CheckInStatus.IN_PROGRESS },
+        select: {
+          id: true,
+          groundId: true,
+          participantId: true,
+          sessionNumber: true,
+          startedAt: true,
+          createdAt: true,
+        },
+      });
+
+      if (inProgress.length === 0) return;
+
+      const now = new Date();
+      let closed = 0;
+
+      for (const checkIn of inProgress) {
+        const latestTurn = await this.prisma.conversationTurn.findFirst({
+          where: { checkInId: checkIn.id },
+          orderBy: { createdAt: 'desc' },
+          select: { createdAt: true },
+        });
+
+        const sessionStart = checkIn.startedAt ?? checkIn.createdAt;
+        const sessionAgeMs = now.getTime() - sessionStart.getTime();
+        const lastActivityMs = latestTurn
+          ? now.getTime() - latestTurn.createdAt.getTime()
+          : sessionAgeMs;
+
+        const inactiveStale = lastActivityMs >= INACTIVITY_AUTO_CLOSE_MS;
+        const absoluteStale = sessionAgeMs >= MAX_SESSION_AGE_MS;
+
+        if (!inactiveStale && !absoluteStale) continue;
+
+        const reason = absoluteStale
+          ? `session age ${Math.round(sessionAgeMs / 3_600_000)}h >= 48h`
+          : `inactivity ${Math.round(lastActivityMs / 3_600_000)}h >= 12h`;
+
+        await this.prisma.checkIn.update({
+          where: { id: checkIn.id },
+          data: { status: CheckInStatus.COMPLETED, completedAt: now },
+        });
+
+        this.events.emit(GroundworkEvents.CHECK_IN_COMPLETED, {
+          checkInId: checkIn.id,
+          participantId: checkIn.participantId,
+          groundId: checkIn.groundId,
+          sessionNumber: checkIn.sessionNumber,
+          source: 'auto-close',
+        } as CheckInCompletedEvent & { source: string });
+
+        this.logger.warn(`Auto-closed check-in ${checkIn.id} (session ${checkIn.sessionNumber}): ${reason}`);
+        closed++;
+      }
+
+      if (closed > 0) {
+        this.logger.log(`Auto-close sweep: closed ${closed} stale check-in(s)`);
+      }
+    });
+  }
+
+  /**
+   * Fires session-closing warnings every 15 minutes. When a session has been
+   * inactive for 11–11h30m, an AI turn is injected informing the person the
+   * session auto-closes in 30 minutes. warningFiredAt is set so the warning
+   * fires at most once per session.
+   */
+  @Cron('*/15 * * * *')
+  async fireSessionClosingWarnings() {
+    await this.prisma.withAdvisoryLock(CronLock.SESSION_CLOSING_WARNINGS, async () => {
+      const candidates = await this.prisma.checkIn.findMany({
+        where: { status: CheckInStatus.IN_PROGRESS, warningFiredAt: null },
+        select: { id: true, groundId: true, participantId: true, sessionNumber: true },
+      });
+
+      if (candidates.length === 0) return;
+
+      const now = new Date();
+      let warned = 0;
+
+      for (const checkIn of candidates) {
+        const latestTurn = await this.prisma.conversationTurn.findFirst({
+          where: { checkInId: checkIn.id },
+          orderBy: { createdAt: 'desc' },
+          select: { createdAt: true },
+        });
+
+        if (!latestTurn) continue;
+
+        const inactiveMs = now.getTime() - latestTurn.createdAt.getTime();
+
+        // Window: inactive between 11h and 11h30m
+        if (inactiveMs < WARNING_WINDOW_START_MS || inactiveMs >= WARNING_WINDOW_END_MS) continue;
+
+        await this.prisma.conversationTurn.create({
+          data: {
+            checkInId: checkIn.id,
+            role: TurnRole.AI,
+            content:
+              'This session closes automatically in 30 minutes due to inactivity. If there is anything you want to add to your record before it closes, add it now.',
+          },
+        });
+
+        await this.prisma.checkIn.update({
+          where: { id: checkIn.id },
+          data: { warningFiredAt: now },
+        });
+
+        this.logger.log(`Session-closing warning injected for check-in ${checkIn.id} (inactive ~${Math.round(inactiveMs / 3_600_000)}h)`);
+        warned++;
+      }
+
+      if (warned > 0) {
+        this.logger.log(`Session-closing warnings fired: ${warned}`);
       }
     });
   }

@@ -108,7 +108,33 @@ export class ReportsService {
           .join(', ')}. Reflect this as an absence; do not infer their views.\n\n`
       : '';
 
+    // THIN-RECORD NOTICE: compute turn counts per participant to detect parties
+    // whose record is much thinner than others, and warn the synthesis accordingly.
+    const participantsWithTurns = await this.prisma.groundParticipant.findMany({
+      where: { groundId },
+      select: {
+        id: true,
+        partyType: true,
+        checkIns: {
+          select: {
+            turns: { select: { id: true } },
+          },
+        },
+      },
+    });
+    const turnCounts = participantsWithTurns.map((p) => ({
+      label: labelById.get(p.id) ?? p.partyType,
+      turns: p.checkIns.flatMap((c) => c.turns).length,
+    }));
+    const maxTurns = Math.max(...turnCounts.map((p) => p.turns), 1);
+    const thinParties = turnCounts.filter((p) => p.turns < maxTurns * 0.4);
+    const thinNotice =
+      thinParties.length > 0
+        ? `NOTE: ${thinParties.map((p) => p.label).join(', ')}'s record contains significantly fewer exchanges. A further session from ${thinParties.length === 1 ? 'that party' : 'those parties'} would strengthen the cross-reference.\n\n`
+        : '';
+
     const corpus =
+      thinNotice +
       header +
       records.map((r) => `[${labelById.get(r.participant.id) ?? 'a party'}] (${r.type}) ${r.text}`).join('\n');
 
@@ -128,12 +154,26 @@ export class ReportsService {
         ? DRIFT_REPORT_SCHEMA
         : REPORT_SCHEMA;
 
-    const result = await this.anthropic.extract<{ sharedPicture: string; agreements: string[]; divergences: any[]; centralQuestion: string }>(
+    let result = await this.anthropic.extract<{ sharedPicture: string; agreements: string[]; divergences: any[]; centralQuestion: string }>(
       systemPrompt,
       [{ role: 'user', content: corpus }],
       activeSchema,
     );
     if (!result) throw new Error('Report synthesis failed to return structured output');
+
+    // WORD COUNT VALIDATION: if the combined text fields exceed 500 words, make
+    // one additional call asking for a shorter version. Max 2 total attempts.
+    const wordCount = Object.values(result).join(' ').split(/\s+/).filter(Boolean).length;
+    if (wordCount > 500) {
+      const brevityPrefix =
+        'The previous report was too long. Regenerate under 500 words total. Preserve all four sections and the central question. Cut explanatory language, not substance.\n\n';
+      const retry = await this.anthropic.extract<{ sharedPicture: string; agreements: string[]; divergences: any[]; centralQuestion: string }>(
+        systemPrompt,
+        [{ role: 'user', content: brevityPrefix + corpus }],
+        activeSchema,
+      );
+      if (retry) result = retry;
+    }
 
     // Engagement-quality + confidence header (B4/B5a). Factual, not a verdict —
     // it tells both parties what the report is built on (session counts, record
@@ -159,19 +199,44 @@ export class ReportsService {
     // difficultyDisclosures: true if any record entry for this ground contains a difficulty keyword.
     const allGroundTexts = await this.prisma.recordEntry.findMany({
       where: { participant: { groundId } },
-      select: { text: true },
+      select: { text: true, evidenceType: true },
     });
     const lowerTexts = allGroundTexts.map((e) => e.text.toLowerCase());
     const difficultyDisclosures = DIFFICULTY_KEYWORDS.some((kw) => lowerTexts.some((t) => t.includes(kw)));
+
+    // documentBackedPct: share of record entries that are NOT unanchored recall.
+    const totalEntries = allGroundTexts.length;
+    const documentBackedCount = allGroundTexts.filter((e) => e.evidenceType !== 'UNANCHORED_RECALL').length;
+    const documentBackedPct = totalEntries > 0 ? Math.round((documentBackedCount / totalEntries) * 100) : 0;
+
+    // sessionCounts: turns per party label (from the turnCounts computed above).
+    const sessionCounts = Object.fromEntries(turnCounts.map((p) => [p.label, p.turns]));
 
     const contributing = engagementParties.filter((e) => e.contributed);
     const minSessions = contributing.length ? Math.min(...contributing.map((e) => e.sessions)) : 0;
     const minEntries = contributing.length ? Math.min(...contributing.map((e) => e.recordEntries)) : 0;
     const coverage = minSessions >= 2 && minEntries >= 4 ? 'strong' : minSessions >= 1 && minEntries >= 2 ? 'moderate' : 'thin';
+
+    // coverageBand: strong if all contributing parties have > 6 turns AND documentBackedPct > 30;
+    // thin if any contributing party has < 3 turns; else moderate.
+    const allPartyTurns = contributing.map((ep) => {
+      const tc = turnCounts.find((t) => t.label === ep.label);
+      return tc ? tc.turns : 0;
+    });
+    const coverageBand: 'strong' | 'moderate' | 'thin' =
+      allPartyTurns.length > 0 && allPartyTurns.every((t) => t > 6) && documentBackedPct > 30
+        ? 'strong'
+        : allPartyTurns.some((t) => t < 3)
+        ? 'thin'
+        : 'moderate';
+
     const engagement = {
       coverage,
       documentBacked: engagementParties.some((e) => e.documentsAttached > 0),
       specificitySignal: Object.fromEntries(engagementParties.map((p) => [p.label, p.specificityLabel])),
+      sessionCounts,
+      documentBackedPct,
+      coverageBand,
       difficultyDisclosures,
       note: `This report is built from each party's self-reported account — it is not independently verified.${absent.length ? ` ${absent.length} invited part${absent.length === 1 ? 'y' : 'ies'} did not contribute, so the picture below reflects the records present.` : ''}`,
       parties: engagementParties,

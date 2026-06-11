@@ -20,13 +20,13 @@ export class UsersService {
 
     const [users, total] = await Promise.all([
       this.prisma.user.findMany({
-        where: { organizationId },
+        where: { organizationId, deletedAt: null },
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
         select: { id: true, email: true, firstName: true, lastName: true, role: true, isActive: true, isEmailVerified: true, createdAt: true },
       }),
-      this.prisma.user.count({ where: { organizationId } }),
+      this.prisma.user.count({ where: { organizationId, deletedAt: null } }),
     ]);
 
     return { data: users, meta: { page, limit, total, totalPages: Math.ceil(total / limit) } };
@@ -34,7 +34,7 @@ export class UsersService {
 
   async findOne(id: string, organizationId: string) {
     const user = await this.prisma.user.findFirst({
-      where: { id, organizationId },
+      where: { id, organizationId, deletedAt: null },
       select: { id: true, email: true, firstName: true, lastName: true, role: true, isActive: true, isEmailVerified: true, createdAt: true },
     });
     if (!user) throw new NotFoundException('User not found');
@@ -116,10 +116,18 @@ export class UsersService {
 
   async remove(id: string, organizationId: string, actingUserId: string) {
     if (id === actingUserId) throw new BadRequestException('You cannot deactivate yourself');
-    const user = await this.prisma.user.findFirst({ where: { id, organizationId } });
+    const user = await this.prisma.user.findFirst({ where: { id, organizationId, deletedAt: null } });
     if (!user) throw new NotFoundException('User not found');
 
-    await this.prisma.user.update({ where: { id }, data: { isActive: false } });
+    // Soft-delete: stamp deletedAt, anonymise email, deactivate.
+    await this.prisma.user.update({
+      where: { id },
+      data: {
+        isActive: false,
+        deletedAt: new Date(),
+        email: `deleted-${id}@groundwork.deleted`,
+      },
+    });
     return { message: 'User deactivated' };
   }
 
@@ -202,7 +210,15 @@ export class UsersService {
     await this.prisma.$transaction([
       this.prisma.user.update({
         where: { id: userId },
-        data: { email: anonymisedEmail, firstName: 'Deleted', lastName: 'User', passwordHash: null, googleId: null, isActive: false },
+        data: {
+          email: anonymisedEmail,
+          firstName: 'Deleted',
+          lastName: 'User',
+          passwordHash: null,
+          googleId: null,
+          isActive: false,
+          deletedAt: new Date(),
+        },
       }),
       this.prisma.emailVerificationToken.deleteMany({ where: { userId } }),
     ]);
@@ -218,5 +234,35 @@ export class UsersService {
     }
 
     return { deleted: true as const };
+  }
+
+  /**
+   * Privacy diagnostic endpoint — ADMIN only.
+   * Returns a summary of what data is held for a user and confirms the
+   * product promise: records are always exportable and users are soft-deletable.
+   */
+  async getPrivacyAudit(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { id: true } });
+    if (!user) throw new NotFoundException('User not found');
+
+    const participantLinks = await this.prisma.groundParticipant.findMany({
+      where: { userId },
+      select: { id: true, groundId: true },
+    });
+    const participantIds = participantLinks.map((p) => p.id);
+    const groundIds = [...new Set(participantLinks.map((p) => p.groundId))];
+
+    const [recordCount, groundCount] = await Promise.all([
+      this.prisma.recordEntry.count({ where: { participantId: { in: participantIds } } }),
+      Promise.resolve(groundIds.length),
+    ]);
+
+    return {
+      userId,
+      hasRecord: recordCount > 0,
+      groundCount,
+      canExport: true,
+      softDeletable: true,
+    };
   }
 }

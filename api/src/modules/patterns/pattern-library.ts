@@ -106,3 +106,420 @@ export const PATTERN_DETECTION_SCHEMA = {
     required: ['detections'],
   },
 };
+
+// ---------------------------------------------------------------------------
+// Rule-based detection infrastructure
+// ---------------------------------------------------------------------------
+
+export interface DetectionInput {
+  submissions: string[];       // raw text from each period's check-in
+  meetingScore?: number[];     // 0-1 per period (from intake)
+  outputScore?: number[];      // 0-1 per period (from intake)
+  thinkingScore?: number[];    // 0-1 per period (from intake)
+  specificityScores?: number[]; // 0-1 per period (from intake)
+  role?: string;               // participant's declared role
+}
+
+function hasWords(text: string, words: string[]): boolean {
+  const t = text.toLowerCase();
+  return words.some(w => t.includes(w));
+}
+
+function countPeriods(input: DetectionInput): number {
+  return input.submissions.length;
+}
+
+function avgScore(scores: number[] | undefined, from: number, count: number): number {
+  if (!scores || scores.length === 0) return 0;
+  const slice = scores.slice(from, from + count);
+  return slice.reduce((a, b) => a + b, 0) / Math.max(1, slice.length);
+}
+
+// ---------------------------------------------------------------------------
+// D-codes
+// ---------------------------------------------------------------------------
+
+export function detectD1(input: DetectionInput): boolean {
+  const COMPLETION = ['completed', 'done', 'finished', 'shipped', 'delivered', 'launched'];
+  const PROBLEM = ['not working', 'broken', 'failing', 'blocked', 'issue', 'bug', 'delay'];
+  let count = 0;
+  for (const sub of input.submissions) {
+    if (hasWords(sub, COMPLETION) && hasWords(sub, PROBLEM)) count++;
+  }
+  return count >= 2;
+}
+
+export function detectD2(input: DetectionInput): boolean {
+  const DEMO = ['demo', 'prototype', 'proof of concept', 'not production', 'mvp', 'mock'];
+  let count = 0;
+  for (const sub of input.submissions) {
+    if (hasWords(sub, DEMO)) count++;
+  }
+  return count >= 2;
+}
+
+export function detectD3(input: DetectionInput): boolean {
+  const SCOPE = ['originally', 'actually', 'scope changed', 'we decided to', 'pivoted', 'revised the plan'];
+  let count = 0;
+  for (const sub of input.submissions) {
+    if (hasWords(sub, SCOPE)) count++;
+  }
+  return count >= 2;
+}
+
+export function detectD4(input: DetectionInput): boolean {
+  return countPeriods(input) >= 3 &&
+    (input.outputScore ?? []).slice(-3).every(s => s < 0.25) &&
+    (input.thinkingScore ?? []).slice(-3).every(s => s > 0.5);
+}
+
+export function detectD5(input: DetectionInput): boolean {
+  const ALMOST = ['almost', 'nearly done', '80%', '90%', 'partially', 'mostly done', 'close to'];
+  let count = 0;
+  for (const sub of input.submissions) {
+    if (hasWords(sub, ALMOST)) count++;
+  }
+  return count >= 3;
+}
+
+export function detectD6(input: DetectionInput): boolean {
+  const BLOCKED = ['waiting on', 'blocked by', 'need x before', 'depends on', 'pending approval', 'held up'];
+  let count = 0;
+  for (const sub of input.submissions) {
+    if (hasWords(sub, BLOCKED)) count++;
+  }
+  return count >= 3;
+}
+
+export function detectD7(input: DetectionInput): boolean {
+  if (countPeriods(input) < 3) return false;
+  const JARGON = ['paradigm', 'synergy', 'ecosystem', 'stakeholder alignment', 'leverage', 'ideation', 'cadence'];
+  let jargonGrowing = false;
+  for (let i = 1; i < input.submissions.length; i++) {
+    const prev = input.submissions[i - 1].toLowerCase();
+    const curr = input.submissions[i].toLowerCase();
+    const prevJ = JARGON.filter(j => prev.includes(j)).length;
+    const currJ = JARGON.filter(j => curr.includes(j)).length;
+    if (currJ > prevJ) jargonGrowing = true;
+  }
+  return jargonGrowing && (input.outputScore ?? []).slice(-2).every(s => s < 0.3);
+}
+
+export function detectD8(input: DetectionInput): boolean {
+  const FRAGILE = ['only i know', "i'm the only one", 'i handle all', 'no one else can', 'i am the only', 'only me'];
+  let count = 0;
+  for (const sub of input.submissions) {
+    if (hasWords(sub, FRAGILE)) count++;
+  }
+  return count >= 2;
+}
+
+// ---------------------------------------------------------------------------
+// B-codes
+// ---------------------------------------------------------------------------
+
+export function detectB1(input: DetectionInput): boolean {
+  const CEO_POS = ['founder loves it', 'ceo is happy', 'leadership is pleased', 'great feedback from', 'very positive from'];
+  const SELF_CRIT = ['my mistake', 'i should have', 'my fault', 'i missed', 'i failed to'];
+  let ceoCount = 0;
+  let critCount = 0;
+  for (const sub of input.submissions) {
+    if (hasWords(sub, CEO_POS)) ceoCount++;
+    if (hasWords(sub, SELF_CRIT)) critCount++;
+  }
+  return ceoCount >= 3 && critCount === 0;
+}
+
+export function detectB2(input: DetectionInput): boolean {
+  return countPeriods(input) >= 3 &&
+    (input.thinkingScore ?? []).slice(-3).every(s => s > 0.6) &&
+    (input.outputScore ?? []).slice(-3).every(s => s < 0.25);
+}
+
+export function detectB3(input: DetectionInput): boolean {
+  const CLAIM = ['i led', 'i drove', 'i built', 'i created', 'i delivered'];
+  const VERIFIABLE = ['link', 'doc', 'pr', 'pull request', 'sent to', 'delivered to', 'shipped'];
+  let claimCount = 0;
+  let verCount = 0;
+  for (const sub of input.submissions) {
+    if (hasWords(sub, CLAIM)) claimCount++;
+    if (hasWords(sub, VERIFIABLE)) verCount++;
+  }
+  return claimCount >= 3 && verCount === 0;
+}
+
+export function detectB4(input: DetectionInput): boolean {
+  const RESCUE = ['founder stepped in', 'ceo had to', 'they rescued', 'founder helped', 'had to escalate to'];
+  let count = 0;
+  for (const sub of input.submissions) {
+    if (hasWords(sub, RESCUE)) count++;
+  }
+  return count >= 2;
+}
+
+export function detectB5(input: DetectionInput): boolean {
+  return countPeriods(input) >= 3 &&
+    (input.meetingScore ?? []).slice(-3).every(s => s > 0.5) &&
+    (input.outputScore ?? []).slice(-3).every(s => s < 0.2);
+}
+
+export function detectB6(input: DetectionInput): boolean {
+  const EXPLORE = ['exploring', 'researching', 'looking into', 'investigating', 'evaluating options'];
+  let count = 0;
+  for (const sub of input.submissions) {
+    if (hasWords(sub, EXPLORE)) count++;
+  }
+  return count >= 3;
+}
+
+export function detectB7(input: DetectionInput): boolean {
+  const BURN = ['long hours', 'busy week', 'lots of meetings', 'stretched', 'working late', 'non-stop'];
+  let count = 0;
+  for (const sub of input.submissions) {
+    if (hasWords(sub, BURN)) count++;
+  }
+  return count >= 3 && (input.outputScore ?? []).slice(-3).every(s => s < 0.25);
+}
+
+export function detectB8(input: DetectionInput): boolean {
+  const DEFENSIVE = ["not my responsibility", "wasn't told", 'no one told me', 'not my fault', 'they should have'];
+  let count = 0;
+  for (const sub of input.submissions) {
+    if (hasWords(sub, DEFENSIVE)) count++;
+  }
+  return count >= 2;
+}
+
+export function detectB9(input: DetectionInput): boolean {
+  const VAGUE = ['various things', 'several things', 'lots going on', 'multiple items', 'working on different'];
+  let count = 0;
+  for (const sub of input.submissions) {
+    if (hasWords(sub, VAGUE)) count++;
+  }
+  return count >= 3;
+}
+
+export function detectB10(input: DetectionInput): boolean {
+  return countPeriods(input) >= 3 &&
+    (input.meetingScore ?? []).slice(-3).every(s => s > 0.6) &&
+    (input.outputScore ?? []).slice(-3).every(s => s < 0.2);
+}
+
+export function detectB11(input: DetectionInput): boolean {
+  const BLAME = ['because of them', 'if only', 'they should have', 'because of the team', 'it was their'];
+  let count = 0;
+  for (const sub of input.submissions) {
+    if (hasWords(sub, BLAME)) count++;
+  }
+  return count >= 2;
+}
+
+export function detectB12(input: DetectionInput): boolean {
+  const STRATEGY = ['vision', 'culture', 'ecosystem', 'market position', 'thought leadership', 'brand narrative'];
+  const OPERATION = ['shipped', 'deployed', 'invoiced', 'signed', 'delivered'];
+  let stratCount = 0;
+  let opCount = 0;
+  for (const sub of input.submissions) {
+    if (hasWords(sub, STRATEGY)) stratCount++;
+    if (hasWords(sub, OPERATION)) opCount++;
+  }
+  return stratCount >= 3 && opCount === 0;
+}
+
+// ---------------------------------------------------------------------------
+// K-codes
+// ---------------------------------------------------------------------------
+
+export function detectK1(input: DetectionInput): boolean {
+  if (!['sales', 'business development', 'account executive'].includes(input.role?.toLowerCase() ?? '')) return false;
+  const NUMBERS = ['signed', 'closed', 'revenue', 'pipeline', 'deal', 'contract', 'proposal sent'];
+  let count = 0;
+  for (const sub of input.submissions) {
+    if (!hasWords(sub, NUMBERS)) count++;
+  }
+  return count >= 3;
+}
+
+export function detectK2(input: DetectionInput): boolean {
+  const PASSIVE = ['reviewing the numbers', 'tracking spend', 'monitoring', 'waiting for invoices'];
+  let count = 0;
+  for (const sub of input.submissions) {
+    if (hasWords(sub, PASSIVE)) count++;
+  }
+  return count >= 3;
+}
+
+export function detectK3(input: DetectionInput): boolean {
+  const REPORT = ['flagged', 'reported', 'raised this', 'told the team', 'mentioned it'];
+  const ACTION = ['resolved', 'fixed', 'actioned', 'addressed', 'closed out'];
+  let rCount = 0;
+  let aCount = 0;
+  for (const sub of input.submissions) {
+    if (hasWords(sub, REPORT)) rCount++;
+    if (hasWords(sub, ACTION)) aCount++;
+  }
+  return rCount >= 2 && aCount === 0;
+}
+
+export function detectK4(input: DetectionInput): boolean {
+  return countPeriods(input) >= 3 &&
+    (input.meetingScore ?? []).slice(-3).every(s => s > 0.55) &&
+    (input.outputScore ?? []).slice(-3).every(s => s < 0.25);
+}
+
+export function detectK5(input: DetectionInput): boolean {
+  const ACTIVITY = ['completed tasks', 'handled requests', 'processed', 'managed admin'];
+  const OUTCOME = ['revenue', 'growth', 'signed', 'shipped', 'hired', 'launched'];
+  let aCount = 0;
+  let oCount = 0;
+  for (const sub of input.submissions) {
+    if (hasWords(sub, ACTIVITY)) aCount++;
+    if (hasWords(sub, OUTCOME)) oCount++;
+  }
+  return aCount >= 3 && oCount === 0;
+}
+
+// ---------------------------------------------------------------------------
+// E-codes
+// ---------------------------------------------------------------------------
+
+export function detectE1(input: DetectionInput): boolean {
+  const EQUITY = ['vesting', 'equity', 'shares', 'cap table', 'cliff'];
+  const DELIVERY = ['shipped', 'built', 'launched', 'delivered', 'signed'];
+  let eCount = 0;
+  let dCount = 0;
+  for (const sub of input.submissions) {
+    if (hasWords(sub, EQUITY)) eCount++;
+    if (hasWords(sub, DELIVERY)) dCount++;
+  }
+  return eCount > 0 && dCount === 0 && countPeriods(input) >= 3;
+}
+
+export function detectE2(input: DetectionInput): boolean {
+  const INTRO = ['will introduce', 'going to connect', 'planning to reach out', 'will make the intro'];
+  const DONE = ['introduced', 'connected', 'intro made', 'sent over', 'made the connection'];
+  let futureCount = 0;
+  let doneCount = 0;
+  for (const sub of input.submissions) {
+    if (hasWords(sub, INTRO)) futureCount++;
+    if (hasWords(sub, DONE)) doneCount++;
+  }
+  return futureCount >= 3 && doneCount === 0;
+}
+
+export function detectE3(input: DetectionInput): boolean {
+  const PRESENCE = ['was around', 'available when needed', 'checked in', 'was present for'];
+  let count = 0;
+  for (const sub of input.submissions) {
+    if (hasWords(sub, PRESENCE) && (input.outputScore?.[input.submissions.indexOf(sub)] ?? 0) < 0.2) count++;
+  }
+  return count >= 3;
+}
+
+export function detectE4(input: DetectionInput): boolean {
+  const ABSORPTION = ['absorbed', 'picked up', 'covered for', 'took on their'];
+  const RESCUE = ['had to step in', 'saved the situation', 'rescued', 'bailed out'];
+  let absCount = 0;
+  let rescCount = 0;
+  for (const sub of input.submissions) {
+    if (hasWords(sub, ABSORPTION)) absCount++;
+    if (hasWords(sub, RESCUE)) rescCount++;
+  }
+  return (absCount + rescCount) >= 2;
+}
+
+export function detectE5(input: DetectionInput): boolean {
+  const ASKS = ['needs more', 'asking for', 'wants a raise', 'requested more equity', 'demanding'];
+  let count = 0;
+  for (const sub of input.submissions) {
+    if (hasWords(sub, ASKS)) count++;
+  }
+  return count >= 3;
+}
+
+// ---------------------------------------------------------------------------
+// R-codes
+// ---------------------------------------------------------------------------
+
+export function detectR1(input: DetectionInput): boolean {
+  return detectD8(input) && countPeriods(input) >= 2;
+}
+
+export function detectR2(input: DetectionInput): boolean {
+  const AMBIG = ['unclear what you meant', 'could you clarify', 'what did you mean by', 'confused by'];
+  let count = 0;
+  for (const sub of input.submissions) {
+    if (hasWords(sub, AMBIG)) count++;
+  }
+  return count >= 3;
+}
+
+export function detectR4(input: DetectionInput): boolean {
+  if (input.specificityScores && input.specificityScores.length >= 3) {
+    const last3 = input.specificityScores.slice(-3);
+    return last3[0] > last3[1] && last3[1] > last3[2];
+  }
+  return false;
+}
+
+// ---------------------------------------------------------------------------
+// F-codes
+// ---------------------------------------------------------------------------
+
+export function detectF1(input: DetectionInput): boolean {
+  return countPeriods(input) >= 2 &&
+    (input.thinkingScore ?? []).slice(-2).every(s => s > 0.6) &&
+    (input.outputScore ?? []).slice(-2).every(s => s < 0.3);
+}
+
+export function detectF2(input: DetectionInput): boolean {
+  const STRATEGY = ['strategy', 'vision', 'direction', 'positioning', 'roadmap'];
+  let count = 0;
+  for (const sub of input.submissions) {
+    if (hasWords(sub, STRATEGY)) count++;
+  }
+  return count >= 2 && (input.outputScore ?? []).slice(-2).every(s => s < 0.3);
+}
+
+export function detectF3(input: DetectionInput): boolean {
+  if (!input.specificityScores || input.specificityScores.length < 3) return false;
+  const last3 = input.specificityScores.slice(-3);
+  return last3[0] > last3[1] && last3[1] > last3[2];
+}
+
+export function detectF4(input: DetectionInput): boolean {
+  const RELATIONSHIP = ['relationship with', 'meeting with', 'coffee with', 'intro call', 'connected with'];
+  const OUTCOME = ['as a result', 'which led to', 'secured', 'closed', 'partner signed'];
+  let rCount = 0;
+  let oCount = 0;
+  for (const sub of input.submissions) {
+    if (hasWords(sub, RELATIONSHIP)) rCount++;
+    if (hasWords(sub, OUTCOME)) oCount++;
+  }
+  return rCount >= 3 && oCount === 0 && countPeriods(input) >= 6;
+}
+
+export function detectF5(input: DetectionInput): boolean {
+  return detectE4(input) && countPeriods(input) >= 2;
+}
+
+// ---------------------------------------------------------------------------
+// Master dispatcher
+// ---------------------------------------------------------------------------
+
+export const PATTERN_DETECTORS: Record<string, (input: DetectionInput) => boolean> = {
+  D1: detectD1, D2: detectD2, D3: detectD3, D4: detectD4,
+  D5: detectD5, D6: detectD6, D7: detectD7, D8: detectD8,
+  B1: detectB1, B2: detectB2, B3: detectB3, B4: detectB4,
+  B5: detectB5, B6: detectB6, B7: detectB7, B8: detectB8,
+  B9: detectB9, B10: detectB10, B11: detectB11, B12: detectB12,
+  K1: detectK1, K2: detectK2, K3: detectK3, K4: detectK4, K5: detectK5,
+  E1: detectE1, E2: detectE2, E3: detectE3, E4: detectE4, E5: detectE5,
+  R1: detectR1, R2: detectR2, R4: detectR4,
+  F1: detectF1, F2: detectF2, F3: detectF3, F4: detectF4, F5: detectF5,
+};
+
+export function detectPattern(code: string, input: DetectionInput): boolean {
+  const fn = PATTERN_DETECTORS[code];
+  return fn ? fn(input) : false;
+}

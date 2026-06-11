@@ -16,3 +16,17 @@ export class AlignmentController {
     return this.alignment.feed(organizationId);
   }
 }
+
+@ApiTags('Alignment Feed')
+@ApiBearerAuth()
+@Controller('alignment')
+export class AlignmentNarrativeController {
+  constructor(private readonly alignment: AlignmentService) {}
+
+  @Get('narrative')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'AI narrative briefing — plain-English alignment state summary for the admin' })
+  async narrative(@CurrentUser('organizationId') organizationId: string) {
+    return this.alignment.narrative(organizationId);
+  }
+}

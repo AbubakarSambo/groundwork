@@ -5,7 +5,7 @@ import type Stripe from 'stripe';
 import { PrismaService, CronLock } from '../prisma/prisma.service';
 import { StripeService } from './stripe.service';
 import { EmailService } from '../email/email.service';
-import { CareFeeStatus, GroundStatus, BillingEventType, BillingEventStatus, Ground } from '@prisma/client';
+import { CareFeeStatus, GroundStatus, BillingEventType, BillingEventStatus, Ground, UserRole } from '@prisma/client';
 
 const SCENARIO_PERIOD_DAYS = 30;
 const dayMs = 24 * 60 * 60 * 1000;
@@ -39,6 +39,38 @@ export class BillingService {
       select: { careFeeStatus: true, stripeCustomerId: true },
     });
     return !!org && org.careFeeStatus === CareFeeStatus.ACTIVE && !!org.stripeCustomerId;
+  }
+
+  /**
+   * Session-number-aware billing gate.
+   * Session 1 is always free. Session 2+ requires billing-ready status.
+   */
+  async checkSessionGate(orgId: string, sessionNumber: number): Promise<{ allowed: boolean; reason?: string }> {
+    if (sessionNumber <= 1) return { allowed: true };
+    const ready = await this.isBillingReady(orgId);
+    if (ready) return { allowed: true };
+    return {
+      allowed: false,
+      reason: 'Your workspace needs to be activated before session 2. Your admin will receive a prompt.',
+    };
+  }
+
+  /**
+   * Send a payment request email to the org admin after session 1 completes.
+   * Primes the admin to activate billing so session 2 is not blocked.
+   */
+  async requestPaymentForSession2(orgId: string, groundId: string): Promise<void> {
+    const org = await this.prisma.organization.findUnique({
+      where: { id: orgId },
+      select: { name: true, users: { where: { role: UserRole.ADMIN }, take: 1, select: { email: true } } },
+    });
+    if (!org) return;
+    const admin = org.users[0];
+    if (!admin) {
+      this.logger.warn(`requestPaymentForSession2: no ADMIN user found for org ${orgId}`);
+      return;
+    }
+    await this.email.sendPaymentRequestEmail(admin.email, org.name, groundId);
   }
 
   /**
@@ -237,16 +269,24 @@ export class BillingService {
       data: { careFeeStatus: CareFeeStatus.CANCELLED },
     });
 
-    // Send record-portability notice to the org admin email
-    if (org.email) {
+    // Send a record-portability notice to every non-deleted org user so each
+    // person knows their record is retained and can be exported. The org.email
+    // field is the workspace email but individual users are the record holders.
+    const downloadUrl = `${this.config.get<string>('resend.frontendUrl') ?? ''}/users/me/export`;
+    const orgUsers = await this.prisma.user.findMany({
+      where: { organizationId, deletedAt: null },
+      select: { id: true, email: true, firstName: true },
+    });
+
+    for (const user of orgUsers) {
       await this.email
-        .sendRecordPortabilityNotice(org.email, org.name ?? 'there', `${this.config.get<string>('resend.frontendUrl') ?? ''}/users/me/export`)
+        .sendRecordPortabilityNotice(user.email, user.firstName, downloadUrl)
         .catch((err: any) =>
-          this.logger.warn(`Record portability notice failed for org ${organizationId}: ${err.message}`),
+          this.logger.warn(`Record portability notice failed for user ${user.id} (org ${organizationId}): ${err.message}`),
         );
     }
 
-    this.logger.log(`Subscription cancelled for org ${organizationId}`);
+    this.logger.log(`Subscription cancelled for org ${organizationId}; portability notices sent to ${orgUsers.length} user(s).`);
     return { cancelled: true };
   }
 

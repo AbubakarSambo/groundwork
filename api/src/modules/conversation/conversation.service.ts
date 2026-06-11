@@ -7,6 +7,7 @@ import { ConversationContextService } from './context.service';
 import { buildRuntimeContext, buildScenarioPackForParty, RECORD_EXTRACTION_PROMPT } from './prompt-library';
 import { GroundworkEvents, CheckInCompletedEvent } from '../../common';
 import { DocumentsService } from '../documents/documents.service';
+import { BillingService } from '../billing/billing.service';
 import { CheckInStatus, TurnRole, RecordEntryType, Cadence } from '@prisma/client';
 
 const RECORD_EXTRACTION_SCHEMA = {
@@ -71,6 +72,7 @@ export class ConversationService {
     private context: ConversationContextService,
     private events: EventEmitter2,
     private documents: DocumentsService,
+    private billing: BillingService,
   ) {}
 
   /** Returns the transcript for a check-in — owner-scoped only. */
@@ -80,7 +82,21 @@ export class ConversationService {
       where: { checkInId: checkIn.id },
       orderBy: { createdAt: 'asc' },
     });
-    return { checkIn, turns };
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: checkIn.groundId },
+      select: { label: true, scenario: true },
+    });
+    // hasIntake: true when the participant has submitted the cofounder pre-check-in intake.
+    const hasIntake = !!checkIn.participant.foundingIntent;
+    return {
+      checkIn: {
+        ...checkIn,
+        groundLabel: ground?.label ?? null,
+        scenario: ground?.scenario ?? null,
+        hasIntake,
+      },
+      turns,
+    };
   }
 
   /**
@@ -138,6 +154,21 @@ export class ConversationService {
     if (existing > 0) {
       const first = await this.prisma.conversationTurn.findFirst({ where: { checkInId: checkIn.id, role: TurnRole.AI }, orderBy: { createdAt: 'asc' } });
       return { reply: first?.content ?? '' };
+    }
+
+    // Billing session gate: session 1 is always free; session 2+ requires an
+    // active care-fee subscription. If the org is not billing-ready, block the
+    // open and surface a clear message — trust must not be conditional on payment
+    // during the session itself (B1/B3), but we can gate the START of session 2+.
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: checkIn.groundId },
+      select: { organizationId: true },
+    });
+    if (ground?.organizationId) {
+      const gate = await this.billing.checkSessionGate(ground.organizationId, checkIn.sessionNumber);
+      if (!gate.allowed) {
+        throw new ForbiddenException(gate.reason);
+      }
     }
 
     // GW-41: stamp the engine_rules prompt version on the ground at first check-in
@@ -299,6 +330,26 @@ export class ConversationService {
 
     // Open the next session for this party so they have somewhere to return to.
     await this.ensureNextSession(checkIn.groundId, checkIn.participantId, checkIn.sessionNumber);
+
+    // After session 1 completes: prompt the org admin to activate billing so
+    // session 2 is not blocked. Only fires when the org is not already
+    // billing-ready — avoids duplicate emails for orgs that have already paid.
+    if (checkIn.sessionNumber === 1) {
+      const completedGround = await this.prisma.ground.findUnique({
+        where: { id: checkIn.groundId },
+        select: { organizationId: true },
+      });
+      if (completedGround?.organizationId) {
+        const alreadyReady = await this.billing.isBillingReady(completedGround.organizationId);
+        if (!alreadyReady) {
+          await this.billing
+            .requestPaymentForSession2(completedGround.organizationId, checkIn.groundId)
+            .catch((err) =>
+              this.logger.warn(`requestPaymentForSession2 failed for ground ${checkIn.groundId}: ${err.message}`),
+            );
+        }
+      }
+    }
 
     // Announce completion. The reports listener decides whether the ground is
     // now ready for synthesis (both parties through session 2). No import of

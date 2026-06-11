@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { alignmentApi } from '@/api'
+import { alignmentApi, type AlignmentNarrative } from '@/api'
 import { useAuthStore } from '@/stores/auth'
 import { StatusPill } from '@/components/gw'
 
@@ -12,6 +12,11 @@ export function AlignmentFeedPage() {
   const [teamOpen, setTeamOpen] = useState(false)
 
   const { data: feed, isLoading } = useQuery({ queryKey: ['alignment-feed'], queryFn: alignmentApi.feed })
+  const { data: narrative } = useQuery<AlignmentNarrative>({
+    queryKey: ['alignment-narrative'],
+    queryFn: alignmentApi.narrative,
+    staleTime: 5 * 60 * 1000,
+  })
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
@@ -55,6 +60,18 @@ export function AlignmentFeedPage() {
                   Awaiting: {g.completeness.awaiting.join(', ')}
                 </div>
               )}
+              {(g.completeness as any).documentBackedPct != null && (
+                <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 3 }}>
+                  Document-backed: {(g.completeness as any).documentBackedPct}%
+                </div>
+              )}
+              {(g as any).coverageBand && (
+                <div style={{ marginTop: 3 }}>
+                  <span style={{ fontSize: 11, color: (g as any).coverageBand === 'strong' ? '#16a34a' : (g as any).coverageBand === 'thin' ? '#dc2626' : 'var(--gw-muted)' }}>
+                    {(g as any).coverageBand}
+                  </span>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -66,6 +83,18 @@ export function AlignmentFeedPage() {
         <div className="gw-box gw-box-blue" style={{ marginBottom: 16 }}>
           This view never shows what anyone said. You see ground status, session completeness, and observations from the record — not content.
         </div>
+
+        {narrative && (
+          <div style={{ background: '#F5F3EF', border: '1px solid #E2E0DB', borderRadius: 8, padding: '16px 18px', marginBottom: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.07em', color: 'var(--gw-muted)', marginBottom: 8 }}>Alignment summary</div>
+            <div style={{ fontSize: 13.5, lineHeight: 1.65, color: 'var(--gw-text)', whiteSpace: 'pre-wrap' }}>{narrative.summary}</div>
+            {narrative.activeGrounds > 0 && (
+              <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 8 }}>
+                {narrative.activeGrounds} active ground{narrative.activeGrounds !== 1 ? 's' : ''} · {narrative.surfacedPatterns > 0 ? narrative.surfacedPatterns + ' pattern' + (narrative.surfacedPatterns !== 1 ? 's' : '') + ' surfaced' : 'No patterns surfaced this period'}
+              </div>
+            )}
+          </div>
+        )}
 
         {isLoading && <div style={{ fontSize: 13, color: 'var(--gw-muted)', padding: '20px 0' }}>Loading…</div>}
 

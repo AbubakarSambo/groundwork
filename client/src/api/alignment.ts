@@ -16,6 +16,13 @@ export interface AlignmentFeedItem {
   patternSignals: { observation: string; lastSeenAt: string }[]
 }
 
+export interface AlignmentNarrative {
+  summary: string
+  activeGrounds: number
+  surfacedPatterns: number
+}
+
 export const alignmentApi = {
   feed: () => apiClient.get<AlignmentFeedItem[]>('/alignment-feed').then((r) => r.data),
+  narrative: () => apiClient.get<AlignmentNarrative>('/alignment/narrative').then((r) => r.data),
 }
