@@ -313,6 +313,7 @@ export class AuthService {
       role: user.role,
       organizationId: user.organizationId,
       organizationName: user.organization.name,
+      orgCode: user.organization.slug,
       isPlatformAdmin: user.isPlatformAdmin,
       organization: {
         id: user.organization.id,
