@@ -56,9 +56,10 @@ const SUB_OPTIONS: Record<TriggerCategory, SubOption[]> = {
     { scenario: 'RECOGNITION',   moment: 'RECOGNITION', label: 'Raise, equity, or promotion', desc: 'Both sides on record before the decision is made.' },
   ],
   DRIFTED: [
-    { scenario: 'DRIFT',           moment: 'RESOLUTION', label: 'General drift',         desc: 'A relationship or dynamic that has been wrong for too long.' },
-    { scenario: 'CONTRACT_RENEWAL', moment: 'RESOLUTION', label: 'Contract renewal',     desc: 'Record-based decisioning at the end of a period.' },
-    { scenario: 'CRISIS_ALIGNMENT', moment: 'RESOLUTION', label: 'Crisis alignment',     desc: 'Cofounder tension, cash crunch, or a team not seeing the same thing.' },
+    { scenario: 'DRIFT',              moment: 'RESOLUTION', label: 'General drift',         desc: 'A relationship or dynamic that has been wrong for too long.' },
+    { scenario: 'CONTRACT_RENEWAL',   moment: 'RESOLUTION', label: 'Contract renewal',      desc: 'Record-based decisioning at the end of a period.' },
+    { scenario: 'CRISIS_ALIGNMENT',   moment: 'RESOLUTION', label: 'Crisis alignment',      desc: 'Cofounder tension, cash crunch, or a team not seeing the same thing.' },
+    { scenario: 'GENERAL_ALIGNMENT',  moment: 'RESOLUTION', label: 'General alignment',     desc: 'An open alignment session for any working relationship — not tied to a specific hire, project, or exit.' },
   ],
 }
 
@@ -75,6 +76,8 @@ function timelineDefault(scenario: GroundScenario): string {
       return 'Default: 12-month advisory period'
     case 'NEW_PROJECT':
       return 'Default: project length'
+    case 'GENERAL_ALIGNMENT':
+      return 'Duration: as needed'
     default:
       return 'Duration: as needed'
   }

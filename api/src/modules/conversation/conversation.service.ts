@@ -4,7 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { PromptsService } from '../prompts';
 import { AnthropicService, ChatTurn } from './anthropic.service';
 import { ConversationContextService } from './context.service';
-import { buildRuntimeContext, buildScenarioPackForParty, RECORD_EXTRACTION_PROMPT } from './prompt-library';
+import { buildRuntimeContext, buildScenarioPackForParty, RECORD_EXTRACTION_PROMPT, EVIDENCE_DEFINITION_STEP } from './prompt-library';
 import { GroundworkEvents, CheckInCompletedEvent } from '../../common';
 import { DocumentsService } from '../documents/documents.service';
 import { BillingService } from '../billing/billing.service';
@@ -27,8 +27,14 @@ const RECORD_EXTRACTION_SCHEMA = {
               description: 'The kind of entry.',
             },
             text: { type: 'string', description: "The entry in the person's own words." },
+            verifiability: {
+              type: 'string',
+              enum: ['HIGH', 'MEDIUM', 'LOW'],
+              description:
+                'How verifiable this entry is from external evidence. HIGH = document or concrete fact; MEDIUM = specific claim that could be checked; LOW = subjective or memory-only.',
+            },
           },
-          required: ['type', 'text'],
+          required: ['type', 'text', 'verifiability'],
         },
       },
     },
@@ -51,7 +57,7 @@ const SOLO_ARTIFACT_SCHEMA = {
   },
 };
 
-const SOLO_ARTIFACT_PROMPT = `You are Groundwork. You are given ONE person's own record entries (their words). Produce a short artifact for them alone — they have not heard from anyone else and may never. Do not infer the other side. Do not produce a verdict or analysis of any person. Summarise what they put on the record in their own framing, and name one specific thing to carry forward. Warm, specific, brief — under 200 words.`;
+const SOLO_ARTIFACT_PROMPT = `You are Groundwork. You are given ONE person's own record entries (their words). Produce a short artifact for them alone — they have not heard from anyone else and may never. Do not infer the other side. Do not produce a verdict or analysis of any person. Open with the exact phrase "Your private record shows:" then summarise what they put on the record in their own framing. Name one specific thing to carry forward. Warm, specific, brief — under 200 words total.`;
 
 /**
  * The conversation engine. Drives a single party's check-in.
@@ -271,12 +277,30 @@ export class ConversationService {
       groundLabel: ground.label,
     });
 
+    // #2 — Returning user opening protocol: for session 2+, load the most
+    // important unresolved item from the last completed check-in and inject it.
+    // Also adds a guard preventing the AI from asking "what have you been working on".
+    let returningUserContext = '';
+    if (checkIn.sessionNumber >= 2) {
+      returningUserContext = await this.buildReturningUserContext(checkIn.participantId, checkIn.sessionNumber);
+    }
+
+    // #15 — Evidence Definition enforcement: track whether EVIDENCE_DEFINITION_STEP
+    // has been completed by checking for SUCCESS_DEFINITION entries with a named
+    // artefact and a named verifier in the current session's record.
+    // If not completed by turn 3 of session 1, inject the EVIDENCE_DEFINITION_STEP prompt.
+    let evidenceDefBlock = '';
+    if (checkIn.sessionNumber === 1 && latestMessage) {
+      evidenceDefBlock = await this.buildEvidenceDefinitionBlock(checkIn.id, checkIn.participantId);
+    }
+
     const [{ block: dynamicContext }, uploadedDocs] = await Promise.all([
       this.context.build({
         groundId: checkIn.groundId,
         participantId: checkIn.participantId,
         sessionNumber: checkIn.sessionNumber,
         latestMessage,
+        checkInId: checkIn.id,
       }),
       this.prisma.groundDocument.findMany({
         where: { groundId: checkIn.groundId, participantId: checkIn.participantId },
@@ -290,13 +314,96 @@ export class ConversationService {
         uploadedDocs.map((d) => `--- ${d.fileName} ---\n${d.content}`).join('\n\n')
       : '';
 
-    return [systemPrompt, scenarioPack, runtimeContext, dynamicContext, docContext].filter(Boolean).join('\n\n');
+    return [systemPrompt, scenarioPack, runtimeContext, returningUserContext, evidenceDefBlock, dynamicContext, docContext].filter(Boolean).join('\n\n');
   }
 
   /**
-   * Complete a check-in. Triggers structured extraction of record entries.
-   * When BOTH parties finish session 2, ReportsService.synthesize() is invoked
-   * (wired in GroundsService / an event) — not here, to keep parties isolated.
+   * #2 — Build a returning-user context block for session 2+.
+   * Loads WORRY or TENSION entries from the most recent completed check-in and
+   * injects the most important unresolved one. Adds an explicit guard preventing
+   * the AI from asking "what have you been working on" to returning participants.
+   */
+  private async buildReturningUserContext(participantId: string, sessionNumber: number): Promise<string> {
+    // Find the previous completed check-in for this participant.
+    const prevCheckIn = await this.prisma.checkIn.findFirst({
+      where: {
+        participantId,
+        sessionNumber: sessionNumber - 1,
+        status: CheckInStatus.COMPLETED,
+      },
+      select: { id: true },
+    });
+    if (!prevCheckIn) return '';
+
+    // Pull unresolved items — WORRY, TENSION, and open COMMITMENTs from the last session.
+    const lastEntries = await this.prisma.recordEntry.findMany({
+      where: {
+        checkInId: prevCheckIn.id,
+        participantId,
+        type: { in: [RecordEntryType.WORRY, RecordEntryType.TENSION, RecordEntryType.COMMITMENT] },
+      },
+      orderBy: { createdAt: 'asc' },
+      select: { type: true, text: true },
+    });
+
+    if (!lastEntries.length) return '';
+
+    // Prioritise: TENSION first, then WORRY, then COMMITMENT.
+    const priority = [RecordEntryType.TENSION, RecordEntryType.WORRY, RecordEntryType.COMMITMENT];
+    const sorted = [...lastEntries].sort((a, b) => priority.indexOf(a.type as any) - priority.indexOf(b.type as any));
+    const topItem = sorted[0];
+
+    const lines: string[] = [
+      `# Returning user — session ${sessionNumber}`,
+      `GUARD: Do NOT ask "what have you been working on?" or "what has been going on?" or any equivalent generic opening. This person has been here before. Open by referencing their specific record.`,
+      `Most important unresolved item from their last check-in (${topItem.type}): "${topItem.text}"`,
+      `Open by naming this specifically. Ask what has changed since they last described it.`,
+    ];
+
+    return lines.join('\n');
+  }
+
+  /**
+   * #15 — Evidence Definition enforcement.
+   * Checks whether the EVIDENCE_DEFINITION_STEP has been completed for the
+   * current session by looking for SUCCESS_DEFINITION entries that contain
+   * both an artefact reference and a named verifier (two completions).
+   * If the person turn count has reached 3+ and these are not present,
+   * injects the EVIDENCE_DEFINITION_STEP prompt.
+   */
+  private async buildEvidenceDefinitionBlock(checkInId: string, participantId: string): Promise<string> {
+    const personTurnCount = await this.prisma.conversationTurn.count({
+      where: { checkInId, role: TurnRole.PERSON },
+    });
+
+    // Only inject after turn 3 to give the conversation time to develop.
+    if (personTurnCount < 3) return '';
+
+    // Check whether SUCCESS_DEFINITION has been established in this session.
+    const successEntries = await this.prisma.recordEntry.findMany({
+      where: { checkInId, participantId, type: RecordEntryType.SUCCESS_DEFINITION },
+      select: { text: true },
+    });
+
+    // Consider evidence definition complete if we have at least 2 SUCCESS_DEFINITION
+    // entries (artefact + verifier answers) or if any entry contains verifier language.
+    const hasArtefact = successEntries.some((e) => e.text.length > 0);
+    const hasVerifier = successEntries.some((e) =>
+      /(who|confirm|person|name|specific|told|asked|knows?|verif)/i.test(e.text),
+    );
+
+    // If both artefact and verifier are present, evidence definition is complete.
+    if (hasArtefact && hasVerifier) return '';
+
+    // If only one or neither is complete, inject the evidence definition step.
+    return `# Evidence Definition (STEP 4) — not yet completed this session\n${EVIDENCE_DEFINITION_STEP}`;
+  }
+
+  /**
+   * Complete a check-in. Triggers structured extraction of record entries and
+   * a single-party solo artifact (#93, #91). When BOTH parties finish session 1
+   * (their first check-in), ReportsService.synthesize() is invoked via the
+   * reports listener — not here, to keep parties isolated (#36).
    */
   async complete(checkInId: string, requestingUserId: string) {
     const checkIn = await this.loadOwnedCheckIn(checkInId, requestingUserId);
@@ -321,7 +428,7 @@ export class ConversationService {
     // Extract the structured record from this party's own transcript, then build
     // a single-party artifact (B2) so the person has standalone value from this
     // session without waiting on anyone else. Both best-effort.
-    await this.extractRecord(checkIn.id, checkIn.participantId).catch((err) =>
+    await this.extractRecordEntries(checkIn.id, checkIn.participantId).catch((err) =>
       this.logger.error(`Record extraction failed for check-in ${checkIn.id}: ${err.message}`),
     );
     await this.buildSoloArtifact(checkIn.participantId).catch((err) =>
@@ -352,8 +459,8 @@ export class ConversationService {
     }
 
     // Announce completion. The reports listener decides whether the ground is
-    // now ready for synthesis (both parties through session 2). No import of
-    // the reports module here — that would create a cycle.
+    // now ready for synthesis (both parties through session 1 — #36). No import
+    // of the reports module here — that would create a cycle.
     this.events.emit(GroundworkEvents.CHECK_IN_COMPLETED, {
       checkInId: checkIn.id,
       groundId: checkIn.groundId,
@@ -389,27 +496,41 @@ export class ConversationService {
   }
 
   /**
-   * Extract RecordEntry rows from one party's transcript. Owner-scoped: reads
-   * only this check-in's turns. Stores the person's own words.
+   * Extract RecordEntry rows from one party's transcript (#93). Owner-scoped:
+   * reads only this check-in's turns. Stores the person's own words plus a
+   * verifiability rating (HIGH/MEDIUM/LOW) for each entry so the synthesis can
+   * weight evidence-backed claims appropriately.
    */
-  private async extractRecord(checkInId: string, participantId: string) {
+  private async extractRecordEntries(checkInId: string, participantId: string) {
     const turns = await this.prisma.conversationTurn.findMany({ where: { checkInId }, orderBy: { createdAt: 'asc' } });
     if (turns.length === 0) return;
 
     const transcript = turns.map((t) => `${t.role === TurnRole.AI ? 'GROUNDWORK' : 'PERSON'}: ${t.content}`).join('\n');
-    const result = await this.anthropic.extract<{ entries: { type: string; text: string }[] }>(
+    const result = await this.anthropic.extract<{ entries: { type: string; text: string; verifiability: string }[] }>(
       RECORD_EXTRACTION_PROMPT,
       [{ role: 'user', content: transcript }],
       RECORD_EXTRACTION_SCHEMA,
     );
 
+    const VALID_VERIFIABILITY = ['HIGH', 'MEDIUM', 'LOW'];
     const valid = (result?.entries ?? []).filter(
       (e) => e.text?.trim() && (Object.values(RecordEntryType) as string[]).includes(e.type),
     );
     if (valid.length === 0) return;
 
+    // Store entries. The verifiability field is kept in the text as a prefix
+    // tag ([VERIFIABILITY: HIGH]) because the RecordEntry schema does not yet
+    // have a dedicated column — this preserves the signal without a migration.
     await this.prisma.recordEntry.createMany({
-      data: valid.map((e) => ({ participantId, checkInId, type: e.type as RecordEntryType, text: e.text.trim() })),
+      data: valid.map((e) => {
+        const v = VALID_VERIFIABILITY.includes(e.verifiability) ? e.verifiability : 'LOW';
+        return {
+          participantId,
+          checkInId,
+          type: e.type as RecordEntryType,
+          text: `[VERIFIABILITY:${v}] ${e.text.trim()}`,
+        };
+      }),
     });
   }
 

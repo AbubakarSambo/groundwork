@@ -19,6 +19,7 @@ export type GroundScenario =
   | 'RECOGNITION'
   | 'DRIFT'
   | 'CRISIS_ALIGNMENT'
+  | 'GENERAL_ALIGNMENT'
 
 export type GroundMoment = 'STARTING' | 'RECOGNITION' | 'RESOLUTION'
 
@@ -29,6 +30,7 @@ export type GroundStatus =
   | 'ACTIVE'
   | 'RESOLVED'
   | 'STALLED'
+  | 'PAUSED'
   | 'CLOSED'
 
 export type PartyType = 'INITIATOR' | 'PARTICIPANT'

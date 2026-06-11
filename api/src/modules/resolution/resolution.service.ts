@@ -114,6 +114,63 @@ export class ResolutionService {
     return this.buildState(groundId);
   }
 
+  /**
+   * Counter-propose an end state. The caller must be a participant. A new
+   * Resolution record is created (replacing the current leading proposal) with
+   * the counter-proposed end state, and the other party is notified. Any
+   * stale confirmations for the previous proposal are cleared so every party
+   * must re-confirm the new proposal explicitly.
+   */
+  async counterPropose(groundId: string, userId: string, proposedEndState: string, message?: string) {
+    const { ground, participant } = await this.assertParty(groundId, userId);
+
+    if (ground.status === GroundStatus.CLOSED || ground.status === GroundStatus.RESOLVED) {
+      throw new BadRequestException('This ground is already resolved');
+    }
+    if (!isValidEndState(ground.scenario, proposedEndState)) {
+      throw new BadRequestException(`"${proposedEndState}" is not a valid end state for this scenario`);
+    }
+
+    // Replace the current leading proposal and clear all existing confirmations
+    // so every party must explicitly re-confirm the counter-proposal.
+    const resolution = await this.prisma.resolution.upsert({
+      where: { groundId },
+      create: { groundId, endState: proposedEndState },
+      update: { endState: proposedEndState },
+    });
+
+    await this.prisma.resolutionConfirmation.deleteMany({
+      where: { resolutionId: resolution.id },
+    });
+
+    // Record the counter-proposer's own confirmation immediately.
+    await this.prisma.resolutionConfirmation.upsert({
+      where: { resolutionId_participantId: { resolutionId: resolution.id, participantId: participant.id } },
+      create: { resolutionId: resolution.id, participantId: participant.id, endState: proposedEndState },
+      update: { endState: proposedEndState, confirmedAt: new Date() },
+    });
+
+    // Notify the other active parties.
+    const active = await this.prisma.groundParticipant.findMany({
+      where: { groundId, userId: { not: null } },
+      select: { id: true, email: true, roleAsDescribed: true },
+    });
+    const proposerLabel = participant.roleAsDescribed?.trim() || participant.email;
+    const frontend = this.config.get<string>('resend.frontendUrl') || '';
+    const groundUrl = `${frontend}/grounds/${groundId}/resolution`;
+
+    const others = active.filter((p) => p.id !== participant.id);
+    for (const p of others) {
+      await this.email
+        .sendResolutionProposal(p.email, proposerLabel, proposedEndState, groundUrl)
+        .catch((err: any) =>
+          this.logger.error(`Counter-proposal email failed for participant ${p.id}: ${err.message}`),
+        );
+    }
+
+    return this.buildState(groundId);
+  }
+
   /** Every active party confirmed the same end state — close the ground. */
   private async finalize(groundId: string, endState: string) {
     const now = new Date();

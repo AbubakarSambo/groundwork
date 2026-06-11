@@ -15,6 +15,19 @@ export interface PatternCode {
   probe?: string;
 }
 
+// Positive patterns. R3 is a positive signal — surfaced separately, never mixed
+// with bad-faith codes and never subject to the three-period rule.
+export const POSITIVE_CODES: PatternCode[] = [
+  {
+    code: 'R3',
+    name: 'Named Collaborator',
+    signal: 'A person names another person positively in their check-in with specific evidence of that person\'s contribution.',
+  },
+];
+
+export const POSITIVE_CODE_SET = new Set(POSITIVE_CODES.map((c) => c.code));
+export const isPositiveCode = (code: string) => POSITIVE_CODE_SET.has(code);
+
 // Delivery & output (D), Behavioural (B), Commercial (K), Equity (E),
 // Relationship (R), Senior-hire composites (F). These are the longitudinal
 // bad-faith signals the three-period rule governs. (R3 is positive — excluded.)
@@ -118,6 +131,8 @@ export interface DetectionInput {
   thinkingScore?: number[];    // 0-1 per period (from intake)
   specificityScores?: number[]; // 0-1 per period (from intake)
   role?: string;               // participant's declared role
+  /** Codes that have already been SURFACED for this participant (used for F1 composite). */
+  priorSurfacedCodes?: string[];
 }
 
 function hasWords(text: string, words: string[]): boolean {
@@ -463,13 +478,50 @@ export function detectR4(input: DetectionInput): boolean {
 }
 
 // ---------------------------------------------------------------------------
+// R3 — positive signal (Named Collaborator)
+// ---------------------------------------------------------------------------
+
+export function detectR3(input: DetectionInput): boolean {
+  // Signal: another person is named with specific positive evidence — concrete
+  // contribution language referencing someone else's work in the same period.
+  const POSITIVE_COLLAB = [
+    'thanks to', 'credit to', 'great work by', 'shoutout to', 'kudos to',
+    'really helped', 'made it happen', 'without whom', 'key contribution from',
+    'supported by', 'stepped up', 'went above and beyond',
+  ];
+  let count = 0;
+  for (const sub of input.submissions) {
+    if (hasWords(sub, POSITIVE_COLLAB)) count++;
+  }
+  return count >= 1;
+}
+
+// ---------------------------------------------------------------------------
 // F-codes
 // ---------------------------------------------------------------------------
 
+/**
+ * F1 composite helper. All four conditions must hold simultaneously:
+ *   1. High thinking-language score for the last 3 periods (> 0.6).
+ *   2. Low output-language score for the last 3 periods (< 0.3).
+ *   3. Pattern sustained across at least 3 periods of data.
+ *   4. No change despite a prior F1 surfacing (pattern persists after awareness).
+ * Returns true only when all four are met.
+ */
+export function checkF1Conditions(input: DetectionInput): boolean {
+  // Condition 3: at least 3 periods of data.
+  if (countPeriods(input) < 3) return false;
+  // Condition 1: high thinking-language in all last 3 periods.
+  if (!(input.thinkingScore ?? []).slice(-3).every(s => s > 0.6)) return false;
+  // Condition 2: low output-language in all last 3 periods.
+  if (!(input.outputScore ?? []).slice(-3).every(s => s < 0.3)) return false;
+  // Condition 4: F1 was already surfaced before and the pattern persists (no change).
+  if (!(input.priorSurfacedCodes ?? []).includes('F1')) return false;
+  return true;
+}
+
 export function detectF1(input: DetectionInput): boolean {
-  return countPeriods(input) >= 2 &&
-    (input.thinkingScore ?? []).slice(-2).every(s => s > 0.6) &&
-    (input.outputScore ?? []).slice(-2).every(s => s < 0.3);
+  return checkF1Conditions(input);
 }
 
 export function detectF2(input: DetectionInput): boolean {
@@ -515,7 +567,7 @@ export const PATTERN_DETECTORS: Record<string, (input: DetectionInput) => boolea
   B9: detectB9, B10: detectB10, B11: detectB11, B12: detectB12,
   K1: detectK1, K2: detectK2, K3: detectK3, K4: detectK4, K5: detectK5,
   E1: detectE1, E2: detectE2, E3: detectE3, E4: detectE4, E5: detectE5,
-  R1: detectR1, R2: detectR2, R4: detectR4,
+  R1: detectR1, R2: detectR2, R3: detectR3, R4: detectR4,
   F1: detectF1, F2: detectF2, F3: detectF3, F4: detectF4, F5: detectF5,
 };
 

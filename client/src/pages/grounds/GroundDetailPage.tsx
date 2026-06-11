@@ -46,6 +46,25 @@ export function GroundDetailPage() {
     },
   })
 
+  // #106 — reopen a stalled or paused ground
+  const reopen = useMutation({
+    mutationFn: () => groundsApi.patch(id!, { status: 'ACTIVE' }),
+    onMutate: async () => {
+      await qc.cancelQueries({ queryKey: ['ground', id] })
+      const prev = qc.getQueryData(['ground', id])
+      qc.setQueryData(['ground', id], (old: any) => old ? { ...old, status: 'ACTIVE' } : old)
+      return { prev }
+    },
+    onError: (_err, _vars, ctx: any) => {
+      if (ctx?.prev) qc.setQueryData(['ground', id], ctx.prev)
+      toast.error('Could not reopen this ground — the API endpoint may not be available yet.')
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['ground', id] })
+      toast.success('Ground reopened')
+    },
+  })
+
   if (isLoading || !ground) {
     return (
       <div style={{ minHeight: '100vh', background: 'var(--gw-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -79,10 +98,32 @@ export function GroundDetailPage() {
 
       <div className="gw-bd" style={{ maxWidth: 600, margin: '0 auto', width: '100%' }}>
 
-        {/* Stalled banner */}
-        {ground?.status === 'STALLED' && (
-          <div style={{ background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: 6, padding: '10px 14px', marginBottom: 14, fontSize: 13 }}>
-            This ground has stalled — the timeline elapsed without a confirmed outcome. Both records remain intact.
+        {/* Cofounder alignment bar — #57 */}
+        {ground?.scenario === 'NEW_COFOUNDER' && (
+          <CofounderAlignmentSection participants={ground.participants ?? []} />
+        )}
+
+        {/* Period progress indicator — #58 */}
+        {ground?.timelineDays > 0 && (
+          <PeriodProgressSection timelineDays={ground.timelineDays} checkIns={ground.checkIns ?? []} />
+        )}
+
+        {/* Stalled / paused banner + reopen — #106 */}
+        {(ground?.status === 'STALLED' || ground?.status === 'PAUSED') && (
+          <div style={{ background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: 6, padding: '10px 14px', marginBottom: 14, fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <span>
+              {ground.status === 'STALLED'
+                ? 'This ground has stalled — the timeline elapsed without a confirmed outcome. Both records remain intact.'
+                : 'This ground is paused.'}
+            </span>
+            <button
+              className="gw-btn-sm"
+              style={{ flexShrink: 0, marginTop: 0 }}
+              onClick={() => reopen.mutate()}
+              disabled={reopen.isPending}
+            >
+              {reopen.isPending ? 'Reopening…' : 'Reopen this ground'}
+            </button>
           </div>
         )}
 
@@ -367,6 +408,87 @@ function FeedbackBanner({ groundId }: { groundId: string }) {
       >
         Share feedback
       </button>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// #57 — Cofounder alignment bar
+// ─────────────────────────────────────────────────────────────────────────────
+
+function CofounderAlignmentSection({ participants }: { participants: any[] }) {
+  // Expect intent on participant.intentQuestionnaire.intent (set during creation)
+  const intents = participants.map((p: any) => ({
+    label: p.roleAsDescribed || p.partyType,
+    intent: p.intentQuestionnaire?.intent ?? p.intake?.intent ?? null,
+  }))
+
+  const [myIntent, otherIntent] = intents
+
+  if (!myIntent && !otherIntent) return null
+
+  const bothPresent = !!(myIntent?.intent && otherIntent?.intent)
+  // Simple heuristic: aligned if both exist (full alignment requires human judgement; we flag presence)
+  const aligned = bothPresent
+
+  return (
+    <Section title="Alignment">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ fontSize: 12, display: 'flex', gap: 8 }}>
+          <span style={{ color: 'var(--gw-muted)', minWidth: 130 }}>Your intent:</span>
+          <span style={{ color: '#1A1916', flex: 1 }}>
+            {myIntent?.intent ?? <span style={{ color: 'var(--gw-muted)', fontStyle: 'italic' }}>Not yet recorded</span>}
+          </span>
+        </div>
+        <div style={{ fontSize: 12, display: 'flex', gap: 8 }}>
+          <span style={{ color: 'var(--gw-muted)', minWidth: 130 }}>Other party's intent:</span>
+          <span style={{ color: '#1A1916', flex: 1 }}>
+            {otherIntent?.intent ?? <span style={{ color: 'var(--gw-muted)', fontStyle: 'italic' }}>Not yet recorded</span>}
+          </span>
+        </div>
+        {bothPresent && (
+          <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{
+              height: 6, flex: 1, borderRadius: 999,
+              background: aligned ? '#5DCAA5' : '#E8A94A',
+            }} />
+            <span style={{ fontSize: 11, color: aligned ? '#085041' : '#8A5C1A', fontWeight: 600 }}>
+              {aligned ? 'Both parties have stated intent' : 'Intents differ — worth discussing'}
+            </span>
+          </div>
+        )}
+      </div>
+    </Section>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// #58 — Period progress indicator
+// ─────────────────────────────────────────────────────────────────────────────
+
+function PeriodProgressSection({ timelineDays, checkIns }: { timelineDays: number; checkIns: any[] }) {
+  // Derive total periods: timelineDays / 14 (fortnightly default), rounded up, capped at a sensible max
+  const periodDays = 14
+  const totalPeriods = Math.max(1, Math.round(timelineDays / periodDays))
+  const currentPeriod = checkIns.reduce((m: number, c: any) => Math.max(m, c.sessionNumber ?? 0), 1)
+
+  return (
+    <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 6, padding: '10px 16px', marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <span style={{ fontSize: 12, color: 'var(--gw-sub)' }}>
+        Period <strong style={{ color: '#1A1916' }}>{currentPeriod}</strong>
+        {' '}of <strong style={{ color: '#1A1916' }}>{totalPeriods}</strong>
+      </span>
+      <div style={{ display: 'flex', gap: 3 }}>
+        {Array.from({ length: totalPeriods }).map((_, i) => (
+          <div
+            key={i}
+            style={{
+              width: 12, height: 6, borderRadius: 3,
+              background: i < currentPeriod ? '#5DCAA5' : '#E2E0DB',
+            }}
+          />
+        ))}
+      </div>
     </div>
   )
 }

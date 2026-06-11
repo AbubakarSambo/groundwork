@@ -407,11 +407,14 @@ export class GroundsService {
   }
 
   /**
-   * Returns true once every ACTIVE party has completed session 2 — the
-   * condition for generating the report. "Active" = a party who accepted their
-   * invite (userId set); invited-but-never-accepted no-shows never block the
-   * report (the synthesis notes them as absent). Works for two-party and
-   * multi-party (project / team) grounds. Called by ConversationService.complete().
+   * Returns true once every ACTIVE party has completed their FIRST check-in
+   * (session 1) — the condition for generating the report (#36). Previously
+   * required session 2; changed so the report is released after BOTH parties
+   * complete session 1, not after a second round.
+   *
+   * "Active" = a party who accepted their invite (userId set);
+   * invited-but-never-accepted no-shows never block the report (the synthesis
+   * notes them as absent). Works for two-party and multi-party grounds.
    */
   async isReportReady(groundId: string): Promise<boolean> {
     const active = await this.prisma.groundParticipant.findMany({
@@ -421,8 +424,8 @@ export class GroundsService {
     if (active.length < 2) return false;
 
     for (const p of active) {
-      const session2 = await this.prisma.checkIn.findFirst({ where: { participantId: p.id, sessionNumber: 2, status: CheckInStatus.COMPLETED } });
-      if (!session2) return false;
+      const session1 = await this.prisma.checkIn.findFirst({ where: { participantId: p.id, sessionNumber: 1, status: CheckInStatus.COMPLETED } });
+      if (!session1) return false;
     }
     return true;
   }

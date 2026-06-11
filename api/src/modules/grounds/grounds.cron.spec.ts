@@ -28,7 +28,7 @@ describe('GroundsCron.synthesisBackstop — GW-06', () => {
       },
     };
     const events: any = { emit: jest.fn((...args: any[]) => { emitted.push(args); }) };
-    const service = new GroundsCron(prisma, {} as any, {} as any, events);
+    const service = new GroundsCron(prisma, {} as any, {} as any, {} as any, events);
     return { service, emitted };
   }
 

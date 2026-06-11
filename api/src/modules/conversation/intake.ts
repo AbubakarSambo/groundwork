@@ -11,7 +11,16 @@
 const MOVEMENT_WORDS = ['delivered', 'shipped', 'completed', 'launched', 'built', 'reduced', 'increased', 'closed', 'signed'];
 const COORDINATION_WORDS = ['unblocked', 'resolved blocker', 'enabled', 'clarified', 'brought together'];
 const ABSORPTION_WORDS = ['covered for', 'picked up', 'had to step in', 'ended up doing', 'took over'];
-const RESCUE_WORDS = ['averted', 'prevented', 'fixed before', 'saved', 'caught', 'intervened'];
+// #110 — expanded RESCUE detection: original patterns + invisible load + operational-absorption + late-notice
+const RESCUE_WORDS = [
+  'averted', 'prevented', 'fixed before', 'saved', 'caught', 'intervened',
+  // invisible load language
+  'nobody noticed', 'quietly', 'without being asked', 'while also', 'on top of', 'in addition to',
+  // operational-absorption language
+  'kept things running', 'held it together', 'covered for', 'picked up',
+  // late-notice response
+  'last minute', 'at short notice', 'dropped on me',
+];
 
 export const VAGUE_VERBS = [
   'facilitated', 'aligned', 'drove', 'led', 'managed', 'oversaw', 'supported', 'coordinated', 'championed',
@@ -94,11 +103,32 @@ export function runIntake(text: string): IntakeResult {
   };
 }
 
-export type TrustLevel = 'high' | 'declining' | 'low' | 'building';
+// #11 — Added DECLINING_ENGAGEMENT as a 5th trust state.
+// Triggered when check-in attendance rate (completed / invited) drops below 0.5
+// across the last 3 periods, regardless of specificity score.
+export type TrustLevel = 'high' | 'declining' | 'low' | 'building' | 'declining_engagement';
 export interface TrustState { level: TrustLevel; tone: string }
 
-/** Trust calibration from the rolling specificity history (ported from the MVP). */
-export function trustFrom(specificityHistory: number[], checkInNum: number): TrustState {
+/**
+ * Trust calibration from the rolling specificity history (ported from the MVP).
+ *
+ * #11 — attendanceRateHistory: optional array of (completed/invited) ratios for the
+ * last N periods. When the last 3 values are all below 0.5 the trust state becomes
+ * DECLINING_ENGAGEMENT regardless of specificity.
+ */
+export function trustFrom(
+  specificityHistory: number[],
+  checkInNum: number,
+  attendanceRateHistory?: number[],
+): TrustState {
+  // #11 — DECLINING_ENGAGEMENT check: last 3 attendance rates all below 0.5
+  if (attendanceRateHistory && attendanceRateHistory.length >= 3) {
+    const last3 = attendanceRateHistory.slice(-3);
+    if (last3.every((r) => r < 0.5)) {
+      return { level: 'declining_engagement', tone: 'warm_concerned' };
+    }
+  }
+
   const h = specificityHistory.slice(-5);
   const latest = h[h.length - 1] ?? 0;
   const trend = h.length > 2 ? (h.slice(-2).reduce((a, b) => a + b, 0) / 2) - (h.slice(0, 2).reduce((a, b) => a + b, 0) / 2) : 0;

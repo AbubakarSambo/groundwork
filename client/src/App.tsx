@@ -9,6 +9,11 @@ import { SetPasswordPage } from '@/pages/auth/SetPasswordPage'
 import { ResetPasswordPage } from '@/pages/auth/ResetPasswordPage'
 import { ForgotPasswordPage } from '@/pages/auth/ForgotPasswordPage'
 import { CheckEmailPage } from '@/pages/auth/CheckEmailPage'
+import { OrgCodeEntryPage } from '@/pages/auth/OrgCodeEntryPage'
+import { PinSetupPage } from '@/pages/auth/PinSetupPage'
+import { PinAuthPage } from '@/pages/auth/PinAuthPage'
+import { WelcomeScreen } from '@/pages/auth/WelcomeScreen'
+import { OrgSetupPage } from '@/pages/auth/OrgSetupPage'
 import { LandingPage } from '@/pages/LandingPage'
 import { GroundsListPage } from '@/pages/grounds/GroundsListPage'
 import { CreateGroundPage } from '@/pages/grounds/CreateGroundPage'
@@ -57,6 +62,11 @@ export default function App() {
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/check-email" element={<CheckEmailPage />} />
           <Route path="/invite" element={<InvitePage />} />
+          <Route path="/enter-org-code" element={<OrgCodeEntryPage />} />
+          <Route path="/set-pin" element={<PinSetupPage />} />
+          <Route path="/pin-login" element={<PinAuthPage />} />
+          <Route path="/welcome" element={<WelcomeScreen />} />
+          <Route path="/setup" element={<OrgSetupPage />} />
 
           {/* Protected */}
           <Route path="/grounds/new" element={<RequireAuth><CreateGroundPage /></RequireAuth>} />

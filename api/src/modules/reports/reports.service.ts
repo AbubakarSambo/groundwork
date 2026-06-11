@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, Logger } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { PromptsService } from '../prompts';
@@ -6,6 +7,61 @@ import { AnthropicService } from '../conversation';
 import { EmailService } from '../email/email.service';
 import { GroundStatus, PartyType, CheckInStatus, GroundScenario } from '@prisma/client';
 import { NEW_STARTING_REPORT_SCHEMA, RECOGNITION_REPORT_SCHEMA, DRIFT_REPORT_SCHEMA } from '../conversation/prompt-library';
+
+// Solo artifact — single-party "Your private record shows:" summary (#91).
+const SOLO_ARTIFACT_SCHEMA = {
+  name: 'emit_solo_artifact',
+  description: "Emit a short single-party summary of this person's own record.",
+  input_schema: {
+    type: 'object',
+    properties: {
+      summary: {
+        type: 'string',
+        description:
+          "Plain-language summary starting with 'Your private record shows:'. Summarise what this person put on the record in their own framing. No verdict, no inference about anyone else.",
+      },
+      whatToCarry: {
+        type: 'string',
+        description: 'One specific, forward-looking thing for them to carry into the conversation or watch for next. Not a judgement.',
+      },
+    },
+    required: ['summary'],
+  },
+};
+
+const SOLO_ARTIFACT_PROMPT =
+  "You are Groundwork. You are given ONE person's own record entries (their words). Produce a short artifact for them alone — they have not heard from anyone else and may never. Do not infer the other side. Do not produce a verdict or analysis of any person. Open with the exact phrase \"Your private record shows:\" then summarise what they put on the record in their own framing. Name one specific thing to carry forward. Warm, specific, brief — under 150 words total.";
+
+// Post-report conversation guide schema (#99).
+const POST_REPORT_GUIDE_SCHEMA = {
+  name: 'emit_post_report_guide',
+  description: 'Emit a short post-report guide to help each party walk into the conversation.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      openingLine: {
+        type: 'string',
+        description: "One opening line this person can use to start the conversation — grounded, not defensive.",
+      },
+      questionToCarry: {
+        type: 'string',
+        description: 'One question they should carry into the room — a genuine inquiry, not a challenge.',
+      },
+      toAcknowledge: {
+        type: 'string',
+        description: "One specific thing from the other party's record that this person should acknowledge, even if they see it differently.",
+      },
+    },
+    required: ['openingLine', 'questionToCarry', 'toAcknowledge'],
+  },
+};
+
+const POST_REPORT_GUIDE_PROMPT =
+  'You are Groundwork. A shared report has just been released to both parties. Given one party\'s record entries and the shared synthesis, produce a short, specific post-report guide for THIS party only. Three things: (1) one opening line they can use to start the real conversation — grounded, not defensive; (2) one question to carry into the room — genuine, not a challenge; (3) one concrete thing from the other side\'s record they should acknowledge, even if they see it differently. Brief, direct — no more than 3 sentences per item.';
+
+// Outcome learning — weekly prompt-version resolution-rate summary (#100).
+const OUTCOME_LEARNING_PROMPT =
+  'You are a Groundwork analyst. You are given structured data: for each active prompt version, the number of grounds resolved, the total outcomes, and the fairness rate (% of parties who said the process felt fair). Produce a 3–5 sentence summary identifying which version(s) have the highest resolution rate, any version showing decline, and a one-sentence recommendation. Data is anonymous — no names, no org identifiers.';
 
 const REPORT_SCHEMA = {
   name: 'emit_report',
@@ -51,6 +107,8 @@ const REPORT_SCHEMA = {
 
 @Injectable()
 export class ReportsService {
+  private readonly logger = new Logger(ReportsService.name);
+
   constructor(
     private prisma: PrismaService,
     private prompts: PromptsService,
@@ -284,6 +342,12 @@ export class ReportsService {
 
     const released = await this.prisma.report.update({ where: { groundId }, data: { releasedAt: new Date() } });
 
+    // Generate per-party post-report conversation guides (#99). Best-effort —
+    // a guide generation failure must never block report delivery.
+    await this.generatePostReportGuides(released, ground.participants.map((p) => p.id)).catch((err) =>
+      this.logger.error(`Post-report guide generation failed for ground ${groundId}: ${err.message}`),
+    );
+
     const frontend = this.config.get<string>('resend.frontendUrl');
     const reportUrl = `${frontend}/report/${groundId}`;
     await Promise.all(ground.participants.map((p) => this.email.sendReportReady(p.email, ground.label, reportUrl)));
@@ -291,15 +355,232 @@ export class ReportsService {
     return released;
   }
 
-  /** Fetch the report — only after release, only for a party to the ground. */
+  /** Fetch the report — only after release, only for a party to the ground.
+   * Includes the requesting party's post-report guide (#99) and solo artifact (#91).
+   */
   async get(groundId: string, requestingUserId: string) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, include: { participants: true, report: true } });
     if (!ground?.report) throw new NotFoundException('Report not found');
 
-    const isParty = ground.participants.some((p) => p.userId === requestingUserId);
-    if (!isParty) throw new ForbiddenException('You are not a party to this ground');
+    const participant = ground.participants.find((p) => p.userId === requestingUserId);
+    if (!participant) throw new ForbiddenException('You are not a party to this ground');
     if (!ground.report.releasedAt) throw new ForbiddenException('Report has not been released yet');
 
-    return ground.report;
+    // Attach this party's post-report guide (stored in engagement.postReportGuides
+    // keyed by participantId — #99) and solo artifact (#91) to the response.
+    const engagement = ground.report.engagement && typeof ground.report.engagement === 'object'
+      ? (ground.report.engagement as Record<string, any>)
+      : {};
+    const postReportGuide = engagement.postReportGuides?.[participant.id] ?? null;
+
+    const soloArtifact = participant.soloArtifact
+      ? (() => { try { return JSON.parse(participant.soloArtifact); } catch { return null; } })()
+      : null;
+
+    return { ...ground.report, postReportGuide, soloArtifact };
+  }
+
+  // ---------------------------------------------------------------------------
+  // #91 — Solo artifact: public entry point used when a report is not yet ready
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Generate (or re-generate) the single-party "Your private record shows:"
+   * artifact for a participant. Called after each check-in completes via the
+   * conversation service, and can also be called directly (e.g. if an earlier
+   * run failed). Owner-scoped — reads only this participant's own record.
+   */
+  async generateSoloArtifact(participantId: string, groundId: string): Promise<void> {
+    const entries = await this.prisma.recordEntry.findMany({
+      where: { participantId, participant: { groundId } },
+      orderBy: { createdAt: 'asc' },
+      select: { type: true, text: true },
+    });
+    if (entries.length === 0) return;
+
+    const corpus = entries.map((e) => `(${e.type}) ${e.text}`).join('\n');
+    const result = await this.anthropic.extract<{ summary: string; whatToCarry?: string }>(
+      SOLO_ARTIFACT_PROMPT,
+      [{ role: 'user', content: corpus }],
+      SOLO_ARTIFACT_SCHEMA,
+    );
+    if (!result?.summary) return;
+
+    await this.prisma.groundParticipant.update({
+      where: { id: participantId },
+      data: {
+        soloArtifact: JSON.stringify({ summary: result.summary, whatToCarry: result.whatToCarry ?? '' }),
+        soloArtifactAt: new Date(),
+      },
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // #99 — Post-report conversation guide
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Generate a personalised post-report guide for each participant in the
+   * ground: one opening line, one question to carry, one thing to acknowledge
+   * from the other side's record. Stored in the report's `engagement` JSON
+   * under key `postReportGuides` (a map of participantId → guide). No schema
+   * migration required. Called atomically after report release.
+   */
+  private async generatePostReportGuides(
+    report: { groundId: string; sharedPicture: string; agreements: any; divergences: any; centralQuestion: string; engagement: any },
+    participantIds: string[],
+  ): Promise<void> {
+    // Build the shared synthesis text so the AI can reference it.
+    const synthesisText = [
+      `Shared picture: ${report.sharedPicture}`,
+      `Agreements: ${Array.isArray(report.agreements) ? report.agreements.join('; ') : JSON.stringify(report.agreements)}`,
+      `Divergences: ${JSON.stringify(report.divergences)}`,
+      `Central question: ${report.centralQuestion}`,
+    ].join('\n');
+
+    const guides: Record<string, { openingLine: string; questionToCarry: string; toAcknowledge: string }> = {};
+
+    await Promise.all(
+      participantIds.map(async (participantId) => {
+        try {
+          const entries = await this.prisma.recordEntry.findMany({
+            where: { participantId },
+            orderBy: { createdAt: 'asc' },
+            select: { type: true, text: true },
+          });
+          if (entries.length === 0) return;
+
+          const partyRecord = entries.map((e) => `(${e.type}) ${e.text}`).join('\n');
+          const corpus = `SHARED SYNTHESIS:\n${synthesisText}\n\nTHIS PARTY'S RECORD:\n${partyRecord}`;
+
+          const result = await this.anthropic.extract<{ openingLine: string; questionToCarry: string; toAcknowledge: string }>(
+            POST_REPORT_GUIDE_PROMPT,
+            [{ role: 'user', content: corpus }],
+            POST_REPORT_GUIDE_SCHEMA,
+          );
+          if (!result) return;
+
+          guides[participantId] = result;
+        } catch (err: any) {
+          this.logger.error(`Post-report guide failed for participant ${participantId}: ${err.message}`);
+        }
+      }),
+    );
+
+    if (Object.keys(guides).length === 0) return;
+
+    // Merge guides into the existing engagement JSON and persist.
+    const existingEngagement = report.engagement && typeof report.engagement === 'object' ? report.engagement : {};
+    await this.prisma.report.update({
+      where: { groundId: report.groundId },
+      data: { engagement: { ...existingEngagement, postReportGuides: guides } as any },
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // #100 — Ground outcome learning loop
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Record outcome learning data after a ground closes. Reads the ground's
+   * outcome (prompt version, session count, resolvable flag, fairness ratings)
+   * and creates/updates an OutcomeFeedback-style aggregate record. Called from
+   * closure flows (ResolutionService, GroundsCron, etc.) — idempotent.
+   */
+  async recordOutcomeLearning(groundId: string): Promise<void> {
+    const ground = await this.prisma.ground.findUnique({ where: { id: groundId } });
+    if (!ground) return;
+
+    const sessionCount = await this.prisma.checkIn.count({
+      where: { groundId, status: CheckInStatus.COMPLETED },
+    });
+
+    const feedbackRows = await this.prisma.outcomeFeedback.findMany({
+      where: { groundId },
+      select: { feltFair: true },
+    });
+    const fairCount = feedbackRows.filter((f) => f.feltFair).length;
+    const fairnessRate = feedbackRows.length > 0 ? Math.round((fairCount / feedbackRows.length) * 100) : null;
+
+    // Upsert the Outcome record with the learning-loop fields. The Outcome table
+    // is the canonical learning record; we enrich it here so the weekly summary
+    // cron can read a single table.
+    await this.prisma.outcome.upsert({
+      where: { groundId },
+      create: {
+        groundId,
+        promptVersionId: ground.promptVersionId,
+        resolvedState: (ground as any).status ?? 'CLOSED',
+        moment: (ground as any).moment ?? null,
+        sessionCount,
+        resolvable: fairnessRate !== null ? fairnessRate >= 50 : null,
+        notes: fairnessRate !== null ? `fairnessRate=${fairnessRate}%` : null,
+      },
+      update: {
+        sessionCount,
+        resolvable: fairnessRate !== null ? fairnessRate >= 50 : undefined,
+        notes: fairnessRate !== null ? `fairnessRate=${fairnessRate}%` : undefined,
+      },
+    });
+  }
+
+  /**
+   * Weekly cron — Mondays at 08:00 UTC. Reads all Outcome records grouped by
+   * prompt version, asks the AI to summarise which versions have the highest
+   * resolution rate and any declining trend, then logs the result. A lightweight
+   * "learning loop status report" for the team; the full data is already in
+   * IntelligenceService.outcomeRates().
+   */
+  @Cron('0 8 * * 1')
+  async weeklyOutcomeLearningReport(): Promise<void> {
+    this.logger.log('Weekly outcome learning report: starting');
+    try {
+      const outcomes = await this.prisma.outcome.findMany({
+        select: { promptVersionId: true, resolvable: true, sessionCount: true, notes: true },
+      });
+      if (outcomes.length === 0) {
+        this.logger.log('Weekly outcome learning report: no outcome data yet — skipping');
+        return;
+      }
+
+      // Aggregate by prompt version.
+      const byVersion = new Map<string, { resolvedCount: number; resolvableCount: number; sessionTotal: number; fairRates: number[] }>();
+      for (const o of outcomes) {
+        const key = o.promptVersionId ?? 'unversioned';
+        const e = byVersion.get(key) ?? { resolvedCount: 0, resolvableCount: 0, sessionTotal: 0, fairRates: [] };
+        e.resolvedCount += 1;
+        if (o.resolvable) e.resolvableCount += 1;
+        if (o.sessionCount) e.sessionTotal += o.sessionCount;
+        // Parse fairnessRate from notes field if present.
+        if (o.notes) {
+          const m = o.notes.match(/fairnessRate=(\d+)%/);
+          if (m) e.fairRates.push(parseInt(m[1], 10));
+        }
+        byVersion.set(key, e);
+      }
+
+      const versionSummary = [...byVersion.entries()].map(([key, e]) => ({
+        promptVersionId: key,
+        resolvedCount: e.resolvedCount,
+        resolutionRate: e.resolvedCount > 0 ? Math.round((e.resolvableCount / e.resolvedCount) * 100) : 0,
+        avgSessionCount: e.resolvedCount > 0 ? Math.round(e.sessionTotal / e.resolvedCount) : 0,
+        avgFairnessRate: e.fairRates.length > 0 ? Math.round(e.fairRates.reduce((a, b) => a + b, 0) / e.fairRates.length) : null,
+      }));
+
+      const dataText = versionSummary
+        .map(
+          (v) =>
+            `Version ${v.promptVersionId}: ${v.resolvedCount} grounds, ${v.resolutionRate}% resolution rate, avg ${v.avgSessionCount} sessions, avg fairness ${v.avgFairnessRate ?? 'n/a'}%`,
+        )
+        .join('\n');
+
+      const result = await this.anthropic.respond(OUTCOME_LEARNING_PROMPT, [
+        { role: 'user', content: dataText },
+      ]);
+
+      this.logger.log(`Weekly outcome learning report:\n${result}`);
+    } catch (err: any) {
+      this.logger.error(`Weekly outcome learning report failed: ${err.message}`);
+    }
   }
 }

@@ -2,16 +2,61 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { runIntake, trustFrom, COMPLETION_WORDS, PROBLEM_WORDS } from './intake';
 import { ALIGNMENT_FEED_ONLY_CODES } from '../patterns/pattern-library';
-import { CheckInStatus } from '@prisma/client';
+import { CheckInStatus, RecordEntryType } from '@prisma/client';
 
-// GW-37: Specific technical terms only — excludes generic words (customer, revenue,
-// strategy, system) that fire on almost any work conversation and produce
-// fabricated contradictions. CONTRADICTION requires ≥2 overlapping terms.
-const SHARED_TERMS = [
+// ---------------------------------------------------------------------------
+// #12 — Dynamic cross-reference anchors.
+// Replace hardcoded SHARED_TERMS with a function that extracts the top 10
+// nouns / noun-phrases from each party's last check-in transcript using simple
+// word-frequency analysis. Common stop-words and short tokens are filtered out.
+// The hardcoded list is kept as a fallback when transcripts are unavailable.
+// ---------------------------------------------------------------------------
+
+const FALLBACK_SHARED_TERMS = [
   'api', 'payment', 'integration', 'onboarding', 'pipeline', 'deploy',
   'infrastructure', 'automation', 'latency', 'database', 'roadmap',
   'sprint', 'release', 'crm', 'proposal',
 ];
+
+const STOP_WORDS = new Set([
+  'the', 'and', 'for', 'that', 'this', 'with', 'from', 'have', 'had',
+  'was', 'were', 'are', 'been', 'they', 'their', 'them', 'there', 'then',
+  'when', 'what', 'which', 'will', 'would', 'could', 'should', 'about',
+  'into', 'also', 'just', 'not', 'but', 'our', 'all', 'one', 'two', 'its',
+  'has', 'did', 'out', 'we', 'us', 'it', 'he', 'she', 'you', 'i', 'a', 'an',
+  'at', 'to', 'of', 'in', 'on', 'is', 'by', 'up', 'so', 'as', 'be', 'or',
+  'do', 'if', 'my', 'me', 'no', 'go', 'get', 'got', 'let', 'can', 'how',
+  'said', 'said', 'than', 'more', 'some', 'any', 'been', 'now', 'very',
+  'well', 'back', 'still', 'through', 'over', 'made', 'make', 'before',
+  'after', 'during', 'because', 'while', 'time', 'work', 'team', 'people',
+]);
+
+/**
+ * Extract the top-N most frequent meaningful tokens from a block of text.
+ * Used to derive dynamic cross-reference anchors per party (#12).
+ */
+function extractTopNouns(text: string, n = 10): string[] {
+  const tokens = text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, ' ')
+    .split(/\s+/)
+    .filter((t) => t.length >= 4 && !STOP_WORDS.has(t));
+
+  const freq = new Map<string, number>();
+  for (const t of tokens) freq.set(t, (freq.get(t) ?? 0) + 1);
+
+  // Also collect two-word phrases (bigrams) for noun-phrase detection.
+  for (let i = 0; i < tokens.length - 1; i++) {
+    const bigram = `${tokens[i]} ${tokens[i + 1]}`;
+    freq.set(bigram, (freq.get(bigram) ?? 0) + 1);
+  }
+
+  return [...freq.entries()]
+    .filter(([, count]) => count >= 2) // only recurring terms
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, n)
+    .map(([term]) => term);
+}
 
 // ---------------------------------------------------------------------------
 // GW-08 — Disclosure detection. When a check-in message contains signals of
@@ -68,7 +113,7 @@ ${SUPPORT_RESOURCES}`;
 STOP the alignment-ground sequence.
 
 1. Acknowledge what they have shared, calmly and specifically.
-2. Say: "Groundwork is designed for alignment before formal processes begin. Where legal proceedings are active, the record built here could interact with those proceedings in ways I cannot advise on. I would strongly recommend speaking with your HR team or legal counsel before we continue."
+2. Say: "Groundwork is designed for alignment before formal processes begin. Where legal proceedings are active, the record built here could interact with those proceedings in ways I cannot advise on. I would strongly recommend speaking with your team or legal counsel before we continue."
 3. Ask: "Would you like to pause this session for now?"
 4. Do NOT probe for further details about the legal situation.
 5. Do NOT log legal specifics as record entries.
@@ -122,8 +167,9 @@ export class ConversationContextService {
     participantId: string;
     sessionNumber: number;
     latestMessage?: string;
+    checkInId?: string;
   }): Promise<{ block: string; tone: string }> {
-    const { groundId, participantId, sessionNumber, latestMessage } = params;
+    const { groundId, participantId, sessionNumber, latestMessage, checkInId } = params;
 
     const participant = await this.prisma.groundParticipant.findUnique({ where: { id: participantId } });
     const history = participant?.specificityHistory ?? [];
@@ -172,6 +218,22 @@ export class ConversationContextService {
           block += `\n`;
         }
       }
+
+      // #13 — Degree 1 cross-reference: COMMITMENT-type record entries from
+      // earlier in this same session injected as a 'Prior commitments this session'
+      // block so the AI can reference them.
+      if (checkInId) {
+        const sessionCommitments = await this.prisma.recordEntry.findMany({
+          where: { checkInId, participantId, type: RecordEntryType.COMMITMENT },
+          select: { text: true },
+          orderBy: { createdAt: 'asc' },
+        });
+        if (sessionCommitments.length) {
+          block += `# Prior commitments this session (Degree 1 cross-reference — reference these when relevant, never as accusation)\n`;
+          for (const c of sessionCommitments) block += `- ${c.text}\n`;
+          block += `\n`;
+        }
+      }
     }
 
     // Surfaced longitudinal patterns (three-period rule) — plain, never verdicts.
@@ -202,6 +264,10 @@ export class ConversationContextService {
   /**
    * Derive cross-reference signals from OTHER parties' extracted records in this
    * ground. Returns source-hidden signals + probes only.
+   *
+   * #12 — shared terms are now derived dynamically from the top nouns in each
+   * party's last check-in transcript, falling back to FALLBACK_SHARED_TERMS when
+   * transcripts are unavailable.
    */
   private async crossReference(groundId: string, participantId: string, latestMessage: string): Promise<Injection[]> {
     const others = await this.prisma.groundParticipant.findMany({
@@ -214,6 +280,9 @@ export class ConversationContextService {
     const myCompletion = me.types.includes('movement') && me.factualClaims.some((c) => COMPLETION_WORDS.some((w) => c.claim.toLowerCase().includes(w)));
     const iReportProblem = PROBLEM_WORDS.some((w) => myLower.includes(w));
 
+    // #12 — extract top nouns from the current message for dynamic anchors.
+    const myTopNouns = extractTopNouns(latestMessage, 10);
+
     const injections: Injection[] = [];
 
     for (const other of others) {
@@ -224,7 +293,17 @@ export class ConversationContextService {
       const theirLower = theirText.toLowerCase();
       const theirIntake = runIntake(theirText);
 
-      const overlap = SHARED_TERMS.filter((t) => myLower.includes(t) && theirLower.includes(t));
+      // #12 — build dynamic shared terms from their top nouns + current message nouns.
+      const theirTopNouns = extractTopNouns(theirText, 10);
+      const dynamicTerms = myTopNouns.length && theirTopNouns.length
+        ? myTopNouns.filter((t) => theirTopNouns.includes(t))
+        : FALLBACK_SHARED_TERMS.filter((t) => myLower.includes(t) && theirLower.includes(t));
+
+      // Also include fallback terms that appear in both texts as additional anchors.
+      const fallbackOverlap = FALLBACK_SHARED_TERMS.filter((t) => myLower.includes(t) && theirLower.includes(t));
+      const sharedTerms = [...new Set([...dynamicTerms, ...fallbackOverlap])];
+
+      const overlap = sharedTerms;
       const topic = overlap[0] ?? 'this work';
       const theyReportProblem = PROBLEM_WORDS.some((w) => theirLower.includes(w));
       const theySayMovement = theirIntake.types.includes('movement');

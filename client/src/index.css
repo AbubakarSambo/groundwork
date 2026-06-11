@@ -377,3 +377,17 @@ body {
 
 /* ── ANIMATIONS ──────────────────────────────────────────── */
 @keyframes gw-pulse { 0%, 80%, 100% { opacity: 0.3; } 40% { opacity: 1; } }
+
+/* ── PRINT (PDF export via window.print()) ───────────────── */
+@media print {
+  /* Show the print transcript (hidden on screen) */
+  .gw-print-transcript { display: block !important; }
+  /* Hide UI elements that should not appear in the PDF */
+  .gw-print-hidden,
+  .gw-hdr,
+  .gw-chat-msgs,
+  .gw-chat-actions,
+  .gw-chat-bar { display: none !important; }
+  /* Reset page margins */
+  @page { margin: 1.5cm 2cm; }
+}

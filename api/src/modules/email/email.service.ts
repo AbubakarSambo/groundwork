@@ -122,7 +122,7 @@ export class EmailService {
   }
 
   /** Nudge — scenario-aware subject, names the specific ground that is still open. */
-  async sendNudge(email: string, groundLabel: string, checkInUrl: string, scenario?: string): Promise<void> {
+  async sendNudge(email: string, groundLabel: string, checkInUrl: string, scenario?: string, otherPartyCompleted?: boolean): Promise<void> {
     const subjectMap: Record<string, string> = {
       NEW_HIRE: 'Your 90-day check-in is waiting',
       NEW_COFOUNDER: 'Your cofounder check-in is open',
@@ -132,10 +132,13 @@ export class EmailService {
       CONTRACT_RENEWAL: 'Your renewal check-in is open',
     };
     const subject = (scenario && subjectMap[scenario]) || 'Your check-in is waiting';
+    const otherPartyNote = otherPartyCompleted
+      ? `<p><strong>The other party has already submitted their version. Your record is the only thing missing.</strong></p>`
+      : '';
     await this.sendEmail({
       to: email,
       subject,
-      html: this.layout(`<p>Your check-in for <strong>${groundLabel}</strong> is still open.</p><p><a href="${checkInUrl}">Check in</a></p>`),
+      html: this.layout(`<p>Your check-in for <strong>${groundLabel}</strong> is still open.</p>${otherPartyNote}<p><a href="${checkInUrl}">Check in</a></p>`),
     });
   }
 
@@ -167,11 +170,20 @@ export class EmailService {
 
   /** Someone proposed an end state and the recipient has not yet confirmed. (GW-22) */
   async sendResolutionProposal(email: string, proposerLabel: string, endState: string, groundUrl: string): Promise<void> {
+    const endStateLabels: Record<string, string> = {
+      KEEP: 'Keep the hire',
+      RESTRUCTURE: 'Restructure the role',
+      EXIT: 'Part ways',
+      NOT_YET: 'Not yet — extend evaluation',
+      EXTEND: 'Extend evaluation period',
+      SEPARATE: 'Separate amicably',
+    };
+    const endStateLabel = endStateLabels[endState] ?? endState;
     await this.sendEmail({
       to: email,
       subject: 'A resolution has been proposed — your confirmation is needed',
       html: this.layout(
-        `<p><strong>${proposerLabel}</strong> has proposed the following outcome: <em>${endState}</em>.</p>
+        `<p><strong>${proposerLabel}</strong> has proposed the following outcome: <em>${endStateLabel}</em>.</p>
          <p>The ground closes only when all active parties confirm the same outcome. Review the proposal and confirm — or counter-propose a different outcome.</p>
          <p><a href="${groundUrl}">View and confirm</a></p>`,
       ),
@@ -235,18 +247,17 @@ export class EmailService {
     });
   }
 
-  /** Billing change notification — sent when a scenario fee starts or stops. */
-  async sendBillingChangeNotification(adminEmail: string, type: 'STARTED' | 'STOPPED', groundLabel: string): Promise<void> {
-    const subject = type === 'STARTED'
-      ? `Scenario fee started: ${groundLabel}`
-      : `Scenario fee ended: ${groundLabel}`;
-    const body = type === 'STARTED'
-      ? `<p>A new ground is active. A scenario fee of USD 50/month begins from today.</p>`
-      : `<p>The ground '${groundLabel}' has resolved. The scenario fee has stopped. No further charges for this ground.</p>`;
+  /** Billing change notification — sent when the plan changes (e.g. scenario fee starts/stops, tier changes). */
+  async sendBillingChangeNotification(to: string, name: string, changeDescription: string): Promise<void> {
     await this.sendEmail({
-      to: adminEmail,
-      subject,
-      html: this.layout(body),
+      to,
+      subject: 'Your Groundwork plan has changed',
+      html: this.layout(
+        `<p>Hi ${name},</p>
+         <p>${changeDescription}</p>
+         <p>Your records are unaffected by billing changes. If you have questions about your plan, visit the billing page in your workspace settings.</p>
+         <p><a href="${this.frontendUrl}/billing">View billing</a></p>`,
+      ),
     });
   }
 
@@ -262,33 +273,35 @@ export class EmailService {
     });
   }
 
-  /** Absence reminder — sent when one party has not yet checked in and the other is waiting. */
+  /** Absence reminder — sent when a participant has consecutively missed multiple check-ins. */
   async sendAbsenceReminder(
-    recipientEmail: string,
-    recipientName: string,
-    groundLabel: string,
-    initiatorName: string,
-    checkInUrl: string,
+    to: string,
+    name: string,
+    groundName: string,
+    missedCount: number,
   ): Promise<void> {
     await this.sendEmail({
-      to: recipientEmail,
-      subject: `${initiatorName} is waiting on your check-in`,
+      to,
+      subject: `Your version is still missing from ${groundName}`,
       html: this.layout(
-        `<p>There is a ground open for you: <strong>${groundLabel}</strong>.</p>
-         <p>Your check-in is private. Nothing you write is shared with ${initiatorName} directly — only the shared picture goes to both of you after both sides are complete. Your side of the record matters.</p>
-         <p><a href="${checkInUrl}">Open your check-in</a></p>`,
+        `<p>Hi ${name},</p>
+         <p>You have missed ${missedCount} check-in${missedCount !== 1 ? 's' : ''} in a row on <strong>${groundName}</strong>.</p>
+         <p>Your record is incomplete. The shared picture for this ground cannot reflect your side until you check in. Everything you write is private until both sides are in — it belongs to you, not to the org.</p>
+         <p>Sign in to Groundwork to add your version before the ground moves on without it.</p>`,
       ),
     });
   }
 
   /** Care fee confirmation — sent when an org activates a Groundwork subscription. */
-  async sendCareFeeConfirmation(adminEmail: string, orgName: string): Promise<void> {
+  async sendCareFeeConfirmation(to: string, name: string, orgName: string): Promise<void> {
     await this.sendEmail({
-      to: adminEmail,
-      subject: 'You are set up on Groundwork',
+      to,
+      subject: 'Your Groundwork care plan is active',
       html: this.layout(
-        `<p>Groundwork is now available to ${orgName}.</p>
-         <p>The care fee of USD 20/month keeps it available whenever you need it — no separate sign-up when a situation arises. Scenario fees (USD 50/month per active ground) are added when you open a ground and stop when it resolves.</p>`,
+        `<p>Hi ${name},</p>
+         <p>Your Groundwork care plan for <strong>${orgName}</strong> is now active.</p>
+         <p>The monthly care fee of USD 20/month keeps Groundwork available whenever you need it — no separate sign-up when a situation arises. Scenario fees (USD 50/month per active ground) are added when you open a ground and stop automatically when it resolves.</p>
+         <p>Your records are always yours, regardless of plan status.</p>`,
       ),
     });
   }

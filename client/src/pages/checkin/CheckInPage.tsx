@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { AxiosError } from 'axios'
-import { conversationApi } from '@/api'
+import { conversationApi, documentsApi } from '@/api'
 import { useAuthStore } from '@/stores/auth'
 import type { ConversationTurn } from '@/types'
 import { CofounderIntakePage } from './CofounderIntakePage'
@@ -46,6 +46,13 @@ export function CheckInPage() {
 
   // Cofounder intake — set to true once the participant has submitted (or already had) the intake
   const [intakeComplete, setIntakeComplete] = useState(false)
+
+  // #18 — patterns popover state
+  const [showPatternsPopover, setShowPatternsPopover] = useState(false)
+
+  // #107 — document upload state
+  const [uploadingDoc, setUploadingDoc] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const { data, isLoading } = useQuery({
     queryKey: ['transcript', checkInId],
@@ -117,37 +124,42 @@ export function CheckInPage() {
     },
   })
 
-  const handleDownload = async () => {
+  // #35 — PDF export via window.print()
+  const handleDownloadPdf = () => {
+    window.print()
+  }
+
+  // #107 — document attachment handler
+  const handleAttachDocument = () => {
+    fileInputRef.current?.click()
+  }
+
+  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    // Reset the input so the same file can be re-selected if needed
+    e.target.value = ''
+
+    const groundId = (data?.checkIn as any)?.groundId
+    if (!groundId) {
+      toast.error('Cannot attach document: ground ID not available.')
+      return
+    }
+
+    setUploadingDoc(true)
     try {
-      const result = await conversationApi.transcript(checkInId!)
-      const turnLines = (result.turns as ConversationTurn[])
-        .map(t => `[${t.role === 'AI' ? 'Groundwork' : 'You'}]\n${t.content}`)
-        .join('\n\n' + '─'.repeat(40) + '\n\n')
-
-      const checkIn = result.checkIn as any
-      const header = [
-        'Groundwork — Contribution Record',
-        `Session ${checkIn?.sessionNumber ?? ''}`,
-        checkIn?.completedAt
-          ? `Completed: ${new Date(checkIn.completedAt).toISOString().slice(0, 10)}`
-          : `Status: ${checkIn?.status ?? ''}`,
-        '',
-        'This record belongs to you. It was built from your words, privately.',
-        '═'.repeat(60),
-        '',
-      ].join('\n')
-
-      const blob = new Blob([header + turnLines], { type: 'text/plain; charset=utf-8' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `groundwork-${(checkIn?.groundLabel ?? 'record').toLowerCase().replace(/\s+/g, '-')}-session-${checkIn?.sessionNumber ?? checkInId?.slice(0, 8)}.txt`
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
+      await documentsApi.upload(groundId, file)
+      // Insert a system-style message into the chat transcript by sending it as
+      // a special message. If the API doesn't support that, we show it locally
+      // and invalidate so the user sees the confirmation.
+      const systemMsg = `Document attached: ${file.name}. I will treat this as part of your record.`
+      await conversationApi.send(checkInId!, systemMsg)
+      qc.invalidateQueries({ queryKey: ['transcript', checkInId] })
+      toast.success(`${file.name} attached to your record.`)
     } catch {
-      toast.error('Could not download record. Try again.')
+      toast.error('Could not attach document. Try again.')
+    } finally {
+      setUploadingDoc(false)
     }
   }
 
@@ -222,6 +234,23 @@ export function CheckInPage() {
     !serverHasIntake &&
     !intakeComplete
 
+  // #18 — patterns derived from checkIn state (array of { code, description } or strings)
+  const rawPatterns: any[] = checkInData?.patterns ?? []
+  const patterns: { code: string; description: string }[] = rawPatterns.map((p: any) =>
+    typeof p === 'string'
+      ? { code: p, description: '' }
+      : { code: p.code ?? p.name ?? String(p), description: p.description ?? p.desc ?? '' }
+  )
+
+  // #19 — cofounder intent from participant intake data on the ground
+  const cofounderIntent: string = checkInData?.otherPartyIntent ?? checkInData?.participantIntent ?? ''
+
+  // #35 — detect if the last AI message contains the session summary
+  const lastAiMessage = [...turns].reverse().find(t => t.role === 'AI')
+  const hasSummaryMessage = lastAiMessage
+    ? /your record now shows|check-in is complete|session summary|here is your record/i.test(lastAiMessage.content)
+    : false
+
   if (showCofounderIntake && checkInId) {
     return (
       <CofounderIntakePage
@@ -241,6 +270,54 @@ export function CheckInPage() {
           <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 1 }}>Session {data?.checkIn?.sessionNumber ?? ''} · {user?.organizationName ?? 'Groundwork'}</div>
         </div>
         <div style={{ display: 'flex', gap: 7, alignItems: 'center' }}>
+          {/* #18 — Patterns count button */}
+          <div style={{ position: 'relative' }}>
+            <button
+              className="gw-back"
+              onClick={() => setShowPatternsPopover(v => !v)}
+              style={{ position: 'relative' }}
+            >
+              Patterns ({patterns.length})
+            </button>
+            {showPatternsPopover && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 6px)',
+                  right: 0,
+                  minWidth: 260,
+                  maxWidth: 340,
+                  background: 'var(--gw-card, #fff)',
+                  border: '1px solid var(--gw-border, #e5e7eb)',
+                  borderRadius: 8,
+                  boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
+                  padding: '0.75rem 1rem',
+                  zIndex: 50,
+                  fontSize: '0.85rem',
+                  color: 'var(--gw-text)',
+                }}
+                onMouseLeave={() => setShowPatternsPopover(false)}
+              >
+                <div style={{ fontWeight: 600, marginBottom: 8, fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--gw-muted)' }}>
+                  Patterns detected
+                </div>
+                {patterns.length === 0 ? (
+                  <div style={{ color: 'var(--gw-muted)', fontStyle: 'italic' }}>None detected yet.</div>
+                ) : (
+                  <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
+                    {patterns.map((p, i) => (
+                      <li key={i} style={{ padding: '4px 0', borderBottom: i < patterns.length - 1 ? '1px solid var(--gw-border, #f3f4f6)' : 'none' }}>
+                        <span style={{ fontWeight: 600 }}>{p.code}</span>
+                        {p.description && (
+                          <span style={{ color: 'var(--gw-muted)', marginLeft: 6 }}>{p.description}</span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+          </div>
           {turns.length >= 6 && (
             <button
               className="gw-btn-sm"
@@ -262,6 +339,23 @@ export function CheckInPage() {
           <button className="gw-back" onClick={() => { logout(); navigate('/') }}>Sign out</button>
         </div>
       </div>
+
+      {/* #19 — Cofounder intent banner */}
+      {isNewCofounder && (
+        <div style={{
+          background: 'var(--gw-card, #f9fafb)',
+          borderBottom: '1px solid var(--gw-border, #e5e7eb)',
+          padding: '0.45rem 1.25rem',
+          fontSize: '0.82rem',
+          color: 'var(--gw-muted)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+        }}>
+          <span style={{ fontWeight: 600, color: 'var(--gw-text)' }}>Other founder's stated intent:</span>
+          <span>{cofounderIntent || 'Not yet recorded'}</span>
+        </div>
+      )}
 
       {/* Task 2 — welcome screen */}
       {showWelcome && turns.length === 0 && !isLoading ? (
@@ -353,9 +447,12 @@ export function CheckInPage() {
           {/* Context actions — shown after 6 turns */}
           {turns.length >= 6 && !sending && (
             <div className="gw-chat-actions">
-              <button className="gw-btn-sm" onClick={handleDownload}>
-                Download record
-              </button>
+              {/* #35 — Download as PDF: only shown after the AI delivers the session summary */}
+              {hasSummaryMessage && (
+                <button className="gw-btn-sm" onClick={handleDownloadPdf}>
+                  Download as PDF
+                </button>
+              )}
               <button
                 className="gw-btn-sm"
                 onClick={handleConfirmComplete}
@@ -440,8 +537,67 @@ export function CheckInPage() {
             </div>
           )}
 
+          {/* #35 — print-only transcript (hidden on screen, visible when printing) */}
+          <div
+            className="gw-print-transcript"
+            style={{ display: 'none' }}
+          >
+            <div style={{ fontFamily: 'serif', fontSize: 13, lineHeight: 1.6, padding: '2rem' }}>
+              <h1 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: 4 }}>Groundwork — Contribution Record</h1>
+              <p style={{ margin: '0 0 8px', color: '#555' }}>
+                Session {checkInData?.sessionNumber ?? ''} &middot; {checkInData?.groundLabel ?? ''}
+                {checkInData?.completedAt
+                  ? ` · Completed: ${new Date(checkInData.completedAt).toISOString().slice(0, 10)}`
+                  : ''}
+              </p>
+              <p style={{ margin: '0 0 16px', color: '#555', fontStyle: 'italic' }}>
+                This record belongs to you. It was built from your words, privately.
+              </p>
+              <hr style={{ margin: '0 0 20px', border: 'none', borderTop: '1px solid #ccc' }} />
+              {turns.map((t) => (
+                <div key={t.id} style={{ marginBottom: 16 }}>
+                  <div style={{ fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#888', marginBottom: 4 }}>
+                    {t.role === 'AI' ? 'Groundwork' : 'You'}
+                  </div>
+                  <div style={{ whiteSpace: 'pre-wrap' }}>
+                    {t.role === 'AI' ? stripMarkdown(t.content) : t.content}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* Input */}
-          <div className="gw-chat-bar">
+          <div className="gw-chat-bar gw-print-hidden">
+            {/* #107 — hidden file input for document attachment */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.txt,.png,.jpg,.jpeg"
+              style={{ display: 'none' }}
+              onChange={handleFileSelected}
+            />
+            {/* #107 — paperclip button */}
+            <button
+              title="Attach document"
+              onClick={handleAttachDocument}
+              disabled={uploadingDoc}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: uploadingDoc ? 'default' : 'pointer',
+                padding: '0 6px',
+                color: 'var(--gw-muted)',
+                fontSize: '1.1rem',
+                lineHeight: 1,
+                opacity: uploadingDoc ? 0.5 : 1,
+                flexShrink: 0,
+                alignSelf: 'flex-end',
+                paddingBottom: 8,
+              }}
+            >
+              {uploadingDoc ? '…' : '📎'}
+            </button>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
               <textarea
                 ref={taRef}

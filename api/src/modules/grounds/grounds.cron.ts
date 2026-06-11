@@ -6,6 +6,7 @@ import { PrismaService, CronLock } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { GroundworkEvents, CheckInCompletedEvent } from '../../common';
 import { GroundStatus, CheckInStatus, TurnRole, PartyType } from '@prisma/client';
+import { PatternsService } from '../patterns/patterns.service';
 
 const INACTIVITY_AUTO_CLOSE_MS = 12 * 60 * 60 * 1000;     // 12 hours
 const MAX_SESSION_AGE_MS = 48 * 60 * 60 * 1000;            // 48 hours
@@ -25,6 +26,7 @@ export class GroundsCron {
     private email: EmailService,
     private config: ConfigService,
     private events: EventEmitter2,
+    private patterns: PatternsService,
   ) {}
 
   /**
@@ -69,6 +71,62 @@ export class GroundsCron {
         }
       }
     });
+  }
+
+  /**
+   * Gap #22 — Weekly period boundary sweep (Monday 5 AM).
+   * Calls startNewPeriod() for every active ground so that:
+   *   - CANDIDATE detections are archived with their period tag.
+   *   - Consecutive-period counters are reset for detections that missed this period.
+   *   - Any detection that reached THREE consecutive periods is promoted to SURFACED.
+   */
+  @Cron('0 5 * * 1') // Every Monday at 05:00
+  async weeklyPeriodBoundary() {
+    const activeGrounds = await this.prisma.ground.findMany({
+      where: { status: { in: [GroundStatus.ACTIVE, GroundStatus.AWAITING_PARTIES, GroundStatus.REPORT_READY] } },
+      select: { id: true },
+    });
+
+    if (activeGrounds.length === 0) return;
+
+    this.logger.log(`Weekly period boundary: processing ${activeGrounds.length} active ground(s).`);
+    let processed = 0;
+    for (const g of activeGrounds) {
+      try {
+        await this.patterns.startNewPeriod(g.id);
+        processed++;
+      } catch (err: any) {
+        this.logger.error(`startNewPeriod failed for ground ${g.id}: ${err.message}`);
+      }
+    }
+    this.logger.log(`Weekly period boundary complete: ${processed}/${activeGrounds.length} ground(s) processed.`);
+  }
+
+  /**
+   * Gap #29 — Weekly concentration risk sweep (Monday 5:30 AM).
+   * Runs detectConcentrationRisk() for every organisation that has at least one
+   * active ground, surfacing a CONCENTRATION_RISK detection when a single person
+   * is an active party in 3 or more grounds simultaneously.
+   */
+  @Cron('30 5 * * 1') // Every Monday at 05:30
+  async weeklyConcentrationRisk() {
+    // Collect distinct org IDs from active grounds.
+    const activeGrounds = await this.prisma.ground.findMany({
+      where: { status: { in: [GroundStatus.ACTIVE, GroundStatus.AWAITING_PARTIES, GroundStatus.REPORT_READY] } },
+      select: { organizationId: true },
+      distinct: ['organizationId'],
+    });
+
+    if (activeGrounds.length === 0) return;
+
+    this.logger.log(`Concentration risk sweep: checking ${activeGrounds.length} organisation(s).`);
+    for (const g of activeGrounds) {
+      try {
+        await this.patterns.detectConcentrationRisk(g.organizationId);
+      } catch (err: any) {
+        this.logger.error(`detectConcentrationRisk failed for org ${g.organizationId}: ${err.message}`);
+      }
+    }
   }
 
   /**
@@ -323,12 +381,14 @@ export class GroundsCron {
         let allDone = true;
         let triggerCheckIn: { id: string; participantId: string } | null = null;
         for (const p of active) {
-          const s2 = await this.prisma.checkIn.findFirst({
-            where: { participantId: p.id, sessionNumber: 2, status: CheckInStatus.COMPLETED },
+          // #36: report triggers after session 1 (both parties' first check-in),
+          // not session 2. Backstop mirrors isReportReady().
+          const s1 = await this.prisma.checkIn.findFirst({
+            where: { participantId: p.id, sessionNumber: 1, status: CheckInStatus.COMPLETED },
             select: { id: true },
           });
-          if (!s2) { allDone = false; break; }
-          triggerCheckIn = { id: s2.id, participantId: p.id };
+          if (!s1) { allDone = false; break; }
+          triggerCheckIn = { id: s1.id, participantId: p.id };
         }
 
         if (!allDone || !triggerCheckIn) continue;
@@ -337,7 +397,7 @@ export class GroundsCron {
           checkInId: triggerCheckIn.id,
           groundId: g.id,
           participantId: triggerCheckIn.participantId,
-          sessionNumber: 2,
+          sessionNumber: 1,
         } satisfies CheckInCompletedEvent);
         triggered++;
       }

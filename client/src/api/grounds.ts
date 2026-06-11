@@ -9,6 +9,8 @@ export const groundsApi = {
   addParticipant: (id: string, data: { email: string; roleAsDescribed?: string }) =>
     apiClient.post(`/grounds/${id}/participants`, data).then((r) => r.data),
   activate: (id: string) => apiClient.post(`/grounds/${id}/activate`).then((r) => r.data),
+  patch: (id: string, data: Record<string, unknown>) =>
+    apiClient.patch<Ground>(`/grounds/${id}`, data).then((r) => r.data),
 }
 
 export const createGroundWithExtras = (body: object) =>

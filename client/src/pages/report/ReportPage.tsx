@@ -23,7 +23,11 @@ export function ReportPage() {
     return (
       <div style={{ minHeight: '100vh', background: 'var(--gw-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
         <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 8, padding: '40px 32px', maxWidth: 400, textAlign: 'center' }}>
-          <div style={{ fontSize: 24, marginBottom: 12 }}>🔒</div>
+          <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'center' }}>
+          <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} style={{ color: 'var(--gw-muted)' }}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+          </svg>
+        </div>
           <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>Report not available yet</div>
           <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 20 }}>
             Both parties need to complete two check-ins before the report is released — simultaneously.
@@ -146,6 +150,67 @@ export function ReportPage() {
             </div>
           </div>
         )}
+
+        {/* Before your conversation — post-report guide — #99 */}
+        <PostReportGuide guide={(report as any).postReportGuide} />
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// #99 — Post-report conversation guide
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface PostReportGuideData {
+  openWith: string
+  askThis: string
+  acknowledge: string
+}
+
+function PostReportGuide({ guide }: { guide?: PostReportGuideData | null }) {
+  const placeholder = !guide
+
+  const cards: { key: keyof PostReportGuideData; title: string; text: string }[] = [
+    {
+      key: 'openWith',
+      title: 'Open with',
+      text: guide?.openWith ?? 'Your guide is being prepared.',
+    },
+    {
+      key: 'askThis',
+      title: 'Ask this',
+      text: guide?.askThis ?? 'Your guide is being prepared.',
+    },
+    {
+      key: 'acknowledge',
+      title: 'Acknowledge',
+      text: guide?.acknowledge ?? 'Your guide is being prepared.',
+    },
+  ]
+
+  return (
+    <div style={{ marginTop: 8 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-muted)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 10 }}>
+        Before your conversation
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {cards.map((card) => (
+          <div
+            key={card.key}
+            style={{
+              background: 'white', border: '1px solid #E2E0DB', borderRadius: 6,
+              padding: '14px 16px',
+            }}
+          >
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-muted)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 6 }}>
+              {card.title}
+            </div>
+            <div style={{ fontSize: 13, lineHeight: 1.6, color: placeholder ? 'var(--gw-muted)' : '#1A1916', fontStyle: placeholder ? 'italic' : 'normal' }}>
+              {card.text}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   )
