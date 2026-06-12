@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { authApi } from '@/api'
+import { GroundworkLogo } from '@/components/gw/GroundworkLogo'
 
 type Step = 1 | 2 | 3
 
@@ -51,7 +52,7 @@ export function OrgSetupPage() {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--gw-bg)', display: 'flex', flexDirection: 'column' }}>
       <div className="gw-hdr">
-        <div className="gw-logo">Groundwork</div>
+        <GroundworkLogo />
         {step === 1 && <Link to="/" className="gw-back">← Back</Link>}
       </div>
 

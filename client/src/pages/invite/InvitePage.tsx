@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { participantsApi } from '@/api'
 import { useAuthStore } from '@/stores/auth'
+import { GroundworkLogo } from '@/components/gw/GroundworkLogo'
 
 export function InvitePage() {
   const [params] = useSearchParams()
@@ -51,7 +52,7 @@ export function InvitePage() {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--gw-bg)', display: 'flex', flexDirection: 'column' }}>
       <div className="gw-hdr">
-        <div className="gw-logo">Groundwork</div>
+        <GroundworkLogo />
       </div>
 
       <div className="gw-bd" style={{ maxWidth: 480, margin: '0 auto', width: '100%', paddingTop: 24 }}>

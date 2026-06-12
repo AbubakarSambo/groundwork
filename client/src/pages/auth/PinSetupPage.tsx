@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { authApi } from '@/api'
+import { GroundworkLogo } from '@/components/gw/GroundworkLogo'
 
 const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', '⌫']
 
@@ -120,7 +121,7 @@ export function PinSetupPage() {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--gw-bg)', display: 'flex', flexDirection: 'column' }}>
       <div className="gw-hdr">
-        <div className="gw-logo">Groundwork</div>
+        <GroundworkLogo />
         <Link to="/enter-org-code" className="gw-back">← Back</Link>
       </div>
 

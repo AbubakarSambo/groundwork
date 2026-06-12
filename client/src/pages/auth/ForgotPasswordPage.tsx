@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import { authApi } from '@/api'
+import { GroundworkLogo } from '@/components/gw/GroundworkLogo'
 
 export function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
@@ -24,7 +25,7 @@ export function ForgotPasswordPage() {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--gw-bg)', display: 'flex', flexDirection: 'column' }}>
       <div className="gw-hdr">
-        <div className="gw-logo">Groundwork</div>
+        <GroundworkLogo />
         <Link to="/login" className="gw-back">Back to sign in</Link>
       </div>
 

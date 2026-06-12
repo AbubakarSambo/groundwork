@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { GroundworkLogo } from '@/components/gw/GroundworkLogo'
 
 export function LandingPage() {
   const navigate = useNavigate()
@@ -8,6 +9,10 @@ export function LandingPage() {
   return (
     <div style={{ fontFamily: 'system-ui, sans-serif', minHeight: '100vh', background: '#fff', display: 'flex', flexDirection: 'column' }}>
       <main style={{ maxWidth: 720, margin: '0 auto', padding: '80px 24px', flex: 1 }}>
+        {/* Logo */}
+        <div style={{ marginBottom: 48 }}>
+          <GroundworkLogo height={36} />
+        </div>
         {/* Hero */}
         <h1 style={{ fontSize: '2.5rem', fontWeight: 700, lineHeight: 1.2, margin: 0 }}>
           Most people's best work never makes it into any record.

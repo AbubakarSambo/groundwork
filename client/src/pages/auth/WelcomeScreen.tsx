@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import { GroundworkLogo } from '@/components/gw/GroundworkLogo'
 
 const PRIVACY_CARDS = [
   {
@@ -21,7 +22,7 @@ export function WelcomeScreen() {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--gw-bg)', display: 'flex', flexDirection: 'column' }}>
       <div className="gw-hdr">
-        <div className="gw-logo">Groundwork</div>
+        <GroundworkLogo />
       </div>
 
       <div className="gw-bd" style={{ maxWidth: 680, margin: '0 auto', width: '100%', paddingTop: 40 }}>

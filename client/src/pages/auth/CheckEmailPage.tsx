@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import { authApi } from '@/api'
+import { GroundworkLogo } from '@/components/gw/GroundworkLogo'
 
 export function CheckEmailPage() {
   const [params] = useSearchParams()
@@ -26,7 +27,7 @@ export function CheckEmailPage() {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--gw-bg)', display: 'flex', flexDirection: 'column' }}>
       <div className="gw-hdr">
-        <div className="gw-logo">Groundwork</div>
+        <GroundworkLogo />
       </div>
 
       <div className="gw-bd" style={{ maxWidth: 460, margin: '0 auto', width: '100%', paddingTop: 48 }}>

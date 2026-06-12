@@ -1,5 +1,6 @@
 import { ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { GroundworkLogo } from '@/components/gw/GroundworkLogo'
 
 interface GwHeaderProps {
   back?: string | (() => void)
@@ -20,7 +21,7 @@ export function GwHeader({ back, backLabel = '← Back', right, sub }: GwHeaderP
   return (
     <div className="gw-hdr">
       <div>
-        <div className="gw-logo">Groundwork</div>
+        <GroundworkLogo />
         {sub && <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 1 }}>{sub}</div>}
       </div>
       <div style={{ display: 'flex', gap: 7, alignItems: 'center' }}>

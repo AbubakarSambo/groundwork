@@ -4,6 +4,7 @@ import { useQuery, useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { billingApi } from '@/api'
 import { groundsApi } from '@/api'
+import { GroundworkLogo } from '@/components/gw/GroundworkLogo'
 
 function StarRating({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   const [hovered, setHovered] = useState(0)
@@ -126,7 +127,7 @@ export function GroundFeedbackPage() {
       {/* Header */}
       <div className="gw-hdr">
         <div>
-          <div className="gw-logo">Groundwork</div>
+          <GroundworkLogo />
           <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 1 }}>Feedback</div>
         </div>
         <button className="gw-back" onClick={() => navigate(`/grounds/${groundId}`)}>← Ground</button>

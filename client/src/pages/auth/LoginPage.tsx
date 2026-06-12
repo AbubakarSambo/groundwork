@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import { authApi } from '@/api'
 import { useAuthStore } from '@/stores/auth'
+import { GroundworkLogo } from '@/components/gw/GroundworkLogo'
 
 export function LoginPage() {
   const navigate = useNavigate()
@@ -29,7 +30,7 @@ export function LoginPage() {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--gw-bg)', display: 'flex', flexDirection: 'column' }}>
       <div className="gw-hdr">
-        <div className="gw-logo">Groundwork</div>
+        <GroundworkLogo />
         <Link to="/" className="gw-back">← Back</Link>
       </div>
 

@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { billingApi } from '@/api'
+import { GroundworkLogo } from '@/components/gw/GroundworkLogo'
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -30,7 +31,7 @@ export function BillingPage() {
       {/* Header */}
       <div className="gw-hdr">
         <div>
-          <div className="gw-logo">Groundwork</div>
+          <GroundworkLogo />
           <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 1 }}>Billing</div>
         </div>
         <button className="gw-back" onClick={() => navigate('/')}>← Grounds</button>

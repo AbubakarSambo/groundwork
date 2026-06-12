@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { createGroundWithExtras, uploadGroundBrief } from '@/api/grounds'
 import type { GroundScenario, GroundMoment } from '@/types'
+import { GroundworkLogo } from '@/components/gw/GroundworkLogo'
 
 // ─── Trigger / scenario definitions ────────────────────────────────────────
 
@@ -284,7 +285,7 @@ export function CreateGroundPage() {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--gw-bg)', display: 'flex', flexDirection: 'column' }}>
       <div className="gw-hdr">
-        <div className="gw-logo">Groundwork</div>
+        <GroundworkLogo />
         <button className="gw-back" onClick={goBack}>← Back</button>
       </div>
 
