@@ -1,151 +1,473 @@
 ---
 import Layout from '../layouts/Layout.astro';
 const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
-
-const FEATURES = [
-  { icon: '💬', title: 'Everyone gets their own private chat', desc: 'Check in on goals, get honest feedback, build a record of what you actually built.' },
-  { icon: '📊', title: 'Everyone aligns on the same picture', desc: 'Not a mood update. The real thing. Who is moving, who needs support, what is actually happening.' },
-  { icon: '📄', title: 'Download your contribution record anytime.', desc: 'Your record, your goals, your period. Yours to keep and share.' },
-]
-
-const MOMENTS = [
-  {
-    icon: '+',
-    title: 'When something new is starting.',
-    desc: 'Build alignment in from the beginning. Have the renewal or review conversation with a record rather than a feeling.',
-    rows: [
-      { label: 'New senior hire', sub: 'define success in the first 90 days before interpretation drift begins' },
-      { label: 'New cofounder or partner', sub: 'agree contribution upfront so the equity conversation has something to stand on' },
-      { label: 'New board member or advisor', sub: 'set expectations and track whether the relationship returns what it costs' },
-      { label: 'New project', sub: 'set scope, ownership, and success criteria before work starts' },
-    ],
-  },
-  {
-    icon: '↑',
-    title: 'When someone wants recognition.',
-    desc: 'A raise, equity, or promotion conversation grounded in a record built over time. Both sides see the same picture.',
-    rows: [
-      { label: 'Asking for a raise', sub: 'the record makes the case — specific, evidenced, built over time' },
-      { label: 'Equity negotiation', sub: 'contribution over time is documented before the conversation happens' },
-      { label: 'Promotion or role change', sub: 'the case is built from the record, not assembled in the moment' },
-    ],
-  },
-  {
-    icon: '👁',
-    title: 'When you need everyone seeing the same thing.',
-    desc: 'Pressure, conflict, or misalignment that needs a reset. Shared facts so the team can move forward together.',
-    rows: [
-      { label: 'Cofounder or partner tension', sub: 'contribution imbalance that the relationship makes impossible to name' },
-      { label: 'A relationship that has quietly drifted', sub: 'the cost is compounding and the conversation keeps being deferred' },
-      { label: 'Team misalignment', sub: 'people working hard in different directions without realising it' },
-    ],
-  },
-]
 ---
 <Layout title="Groundwork — See clearly when it counts">
   <style>
     *,*::before,*::after{box-sizing:border-box}
     body{margin:0;overflow-x:hidden}
-    .gw-nav{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #E2E0DB;background:#EDECEA;gap:12px}
-    .gw-nav-left{display:flex;align-items:center;gap:8px;min-width:0}
-    .gw-nav-logo{font-size:15px;font-weight:700;color:#0C447C;letter-spacing:-0.02em;white-space:nowrap}
-    .gw-nav-tag{font-size:11px;color:#9B9590;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
-    .gw-nav-sign{font-size:13px;font-weight:600;color:#0C447C;border:1px solid #B5D4F4;padding:6px 14px;border-radius:6px;text-decoration:none;white-space:nowrap;flex-shrink:0}
-    .gw-body{padding:48px 20px 48px;max-width:520px;margin:0 auto;width:100%}
-    .gw-h1{font-size:38px;font-weight:700;line-height:1.08;letter-spacing:-0.03em;color:#1A1916;margin:0 0 20px}
-    .gw-cta-row{display:flex;flex-direction:column;gap:10px;margin-bottom:48px}
-    .gw-cta-primary{display:flex;align-items:center;justify-content:space-between;width:100%;padding:15px 18px;border-radius:6px;background:#0C447C;color:white;font-size:15px;font-weight:700;text-decoration:none}
-    .gw-cta-secondary{display:flex;align-items:center;justify-content:space-between;width:100%;padding:15px 18px;border-radius:6px;background:white;color:#1A1916;font-size:15px;font-weight:600;border:1px solid #E2E0DB;text-decoration:none}
-    .gw-feature{display:flex;align-items:flex-start;gap:14px;min-width:0}
-    .gw-feature-icon{width:32px;height:32px;border-radius:6px;background:#EEF4FB;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:15px}
-    .gw-feature-text{min-width:0}
-    .gw-divider{height:1px;background:#E2E0DB;margin-bottom:28px}
-    @media(max-width:480px){
-      .gw-nav-tag{display:none}
-      .gw-h1{font-size:30px}
-      .gw-body{padding:36px 16px 48px}
+
+    @keyframes gw-blink  { 0%,100%{opacity:1} 50%{opacity:0} }
+    @keyframes gw-pulse  { 0%,100%{box-shadow:0 0 0 0 rgba(93,202,165,.5)} 50%{box-shadow:0 0 0 5px rgba(93,202,165,0)} }
+    @keyframes gw-fadein { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+    .gw-cursor { color:#93C5FD; animation:gw-blink 1s step-end infinite; }
+    .gw-pulse  { animation:gw-pulse 2s ease-in-out infinite; border-radius:50%; }
+    .gw-pulse2 { animation:gw-pulse 2.5s ease-in-out infinite; border-radius:50%; }
+    .gw-feed-item { animation:gw-fadein .4s ease forwards; }
+    .gw-nav-link { font-size:13px;font-weight:500;color:#6B6560;background:none;border:none;cursor:pointer;padding:6px 11px;border-radius:6px;font-family:inherit;transition:all .15s;white-space:nowrap;text-decoration:none;display:inline-block; }
+    .gw-nav-link:hover { background:#E8E6E3;color:#1A1916; }
+    .gw-btn-ghost { font-size:13px;font-weight:600;color:#0C447C;background:none;border:1px solid #B5D4F4;cursor:pointer;padding:7px 14px;border-radius:6px;font-family:inherit;white-space:nowrap;transition:background .15s;text-decoration:none;display:inline-block; }
+    .gw-btn-ghost:hover { background:#EEF4FB; }
+    .gw-btn-solid { font-size:13px;font-weight:700;color:#fff;background:#0C447C;border:none;cursor:pointer;padding:7px 14px;border-radius:6px;font-family:inherit;white-space:nowrap;transition:background .15s;text-decoration:none;display:inline-block; }
+    .gw-btn-solid:hover { background:#1557A0 !important; }
+    .gw-hero-btn-p { padding:13px 24px;border-radius:6px;background:#0C447C;color:#fff;font-size:14px;font-weight:700;border:none;cursor:pointer;font-family:inherit;transition:background .15s;text-decoration:none;display:inline-block; }
+    .gw-hero-btn-p:hover { background:#1557A0; }
+    .gw-hero-btn-g { padding:13px 24px;border-radius:6px;background:rgba(255,255,255,.07);color:rgba(255,255,255,.8);font-size:14px;font-weight:600;border:1px solid rgba(255,255,255,.12);cursor:pointer;font-family:inherit;transition:background .15s;text-decoration:none;display:inline-block; }
+    .gw-hero-btn-g:hover { background:rgba(255,255,255,.12); }
+    .gw-prob-card { background:white;border-radius:8px;border:1px solid #E2E0DB;padding:16px 14px 16px 18px;position:relative;overflow:hidden; }
+    .gw-prob-card::before { content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:#0C447C; }
+    .gw-trust-item { display:flex;align-items:flex-start;gap:12px;padding:13px 0;border-bottom:1px solid #E8E6E3; }
+    .gw-trust-item:last-child { border-bottom:none; }
+    .gw-demo-btn { display:flex;align-items:flex-start;gap:11px;padding:13px;border-radius:8px;background:white;border:1px solid #E2E0DB;cursor:pointer;font-family:inherit;text-align:left;transition:all .15s;width:100%;text-decoration:none; }
+    .gw-demo-btn:hover { border-color:#B5D4F4;background:#EEF4FB;transform:translateY(-1px); }
+    .gw-footer-btn { font-size:12px;color:rgba(255,255,255,.38);background:none;border:none;cursor:pointer;font-family:inherit;text-decoration:none; }
+    .gw-footer-btn:hover { color:rgba(255,255,255,.65); }
+    @media(max-width:900px){
+      .gw-hero-inner  { grid-template-columns:1fr !important; }
+      .gw-prob-grid   { grid-template-columns:1fr 1fr !important; }
+      .gw-mom-grid    { grid-template-columns:1fr !important; }
+      .gw-trust-grid  { grid-template-columns:1fr !important; gap:32px !important; }
+      .gw-price-grid  { grid-template-columns:1fr !important; }
+      .gw-about-grid  { grid-template-columns:1fr !important; }
+    }
+    @media(max-width:620px){
+      .gw-nav-links  { display:none !important; }
+      .gw-hero-h1    { font-size:26px !important; min-height:auto !important; }
+      .gw-hero-btns  { flex-direction:column; }
+      .gw-hero-btns .gw-hero-btn-p,.gw-hero-btns .gw-hero-btn-g { width:100%;text-align:center;padding:16px 20px !important;font-size:15px !important; }
+      .gw-prob-grid  { grid-template-columns:1fr !important; }
+      .gw-demo-grid  { grid-template-columns:1fr !important; }
+      .gw-sec-h2     { font-size:26px !important; }
+      .gw-cta-h2     { font-size:26px !important; }
+      .gw-wrap       { padding:40px 16px !important; }
     }
   </style>
 
-  <div style="background:#EDECEA;color:#1A1916;min-height:100vh;font-family:system-ui,sans-serif;">
+  <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#EDECEA;min-height:100vh;color:#1A1916;">
 
-    <!-- Nav -->
-    <nav class="gw-nav">
-      <div class="gw-nav-left">
-        <span class="gw-nav-logo">Groundwork</span>
-        <span class="gw-nav-tag">See clearly when it counts.</span>
+    <!-- NAV -->
+    <nav style="position:sticky;top:0;z-index:100;background:rgba(237,236,234,.96);backdrop-filter:blur(8px);border-bottom:1px solid #E2E0DB;display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:56px;">
+      <a href="#home" onclick="scrollTo('home');return false;" style="display:flex;align-items:center;gap:9px;text-decoration:none;">
+        <svg width="20" height="16" viewBox="0 0 22 17" fill="none">
+          <rect x="5"  y="0"  width="12" height="3" rx="1.5" fill="#0C447C" opacity="0.45"/>
+          <rect x="2"  y="6"  width="18" height="3" rx="1.5" fill="#0C447C" opacity="0.72"/>
+          <rect x="0"  y="12" width="22" height="3" rx="1.5" fill="#0C447C"/>
+        </svg>
+        <span style="font-size:15px;font-weight:700;color:#0C447C;letter-spacing:-.02em;">Groundwork</span>
+      </a>
+      <div class="gw-nav-links" style="display:flex;align-items:center;gap:2px;">
+        <a class="gw-nav-link" href="#home"   onclick="gwScroll('home');return false;">Home</a>
+        <a class="gw-nav-link" href="#how"    onclick="gwScroll('how');return false;">How it works</a>
+        <a class="gw-nav-link" href="#pricing" onclick="gwScroll('pricing');return false;">Pricing</a>
+        <a class="gw-nav-link" href="#about"  onclick="gwScroll('about');return false;">About</a>
       </div>
-      <a href={`${APP_URL}/login`} class="gw-nav-sign">Sign in</a>
+      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+        <a class="gw-btn-ghost" href={`${APP_URL}/login`}>Sign in</a>
+        <a class="gw-btn-solid" href={`${APP_URL}/register`}>Get started free</a>
+      </div>
     </nav>
 
-    <!-- Body -->
-    <div class="gw-body">
-
-      <!-- Hero -->
-      <div style="font-size:11px;font-weight:600;color:#0C447C;text-transform:uppercase;letter-spacing:.1em;margin-bottom:16px;opacity:.65;">
-        Resolution intelligence
-      </div>
-      <h1 class="gw-h1">
-        See clearly<br><span style="color:#0C447C;">when it counts.</span>
-      </h1>
-      <p style="font-size:15px;color:#6B6560;line-height:1.7;margin:0 0 36px;">
-        Build an honest, two-sided record of a working relationship — before the hard conversation, not after. Both sides check in privately; Groundwork shows where you agree, where you differ, and the one question worth answering.
-      </p>
-
-      <!-- CTAs -->
-      <div class="gw-cta-row">
-        <a href={`${APP_URL}/register`} class="gw-cta-primary">
-          <span>Set up your org</span>
-          <span style="font-size:13px;font-weight:400;opacity:.7;">Get started →</span>
-        </a>
-        <a href={`${APP_URL}/login`} class="gw-cta-secondary">
-          <span>Open my chat</span>
-          <span style="font-size:13px;font-weight:400;color:#9B9590;">Team members →</span>
-        </a>
-      </div>
-
-      <div class="gw-divider"></div>
-
-      <!-- Features -->
-      <div style="font-size:11px;color:#9B9590;text-transform:uppercase;letter-spacing:.1em;margin-bottom:20px;">Three things. One picture.</div>
-      <div style="display:flex;flex-direction:column;gap:16px;margin-bottom:40px;">
-        {FEATURES.map(f => (
-          <div class="gw-feature">
-            <div class="gw-feature-icon">{f.icon}</div>
-            <div class="gw-feature-text">
-              <div style="font-size:14px;font-weight:600;color:#1A1916;margin-bottom:3px;">{f.title}</div>
-              <div style="font-size:13px;color:#6B6560;line-height:1.6;">{f.desc}</div>
-            </div>
+    <!-- HERO -->
+    <section id="home" style="background:#0A1628;position:relative;overflow:hidden;">
+      <svg style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:.07;" xmlns="http://www.w3.org/2000/svg">
+        <defs><pattern id="lgrid" width="48" height="48" patternUnits="userSpaceOnUse">
+          <path d="M 48 0 L 0 0 0 48" fill="none" stroke="#93C5FD" stroke-width="0.4"/>
+        </pattern></defs>
+        <rect width="100%" height="100%" fill="url(#lgrid)" opacity="0.8"/>
+        <line x1="140" y1="90" x2="300" y2="60" stroke="#93C5FD" stroke-width="0.5" opacity="0.15"/>
+        <line x1="300" y1="60" x2="480" y2="130" stroke="#93C5FD" stroke-width="0.5" opacity="0.13"/>
+        <line x1="480" y1="130" x2="640" y2="80" stroke="#5DCAA5" stroke-width="0.5" opacity="0.12"/>
+        <line x1="640" y1="80" x2="800" y2="140" stroke="#93C5FD" stroke-width="0.5" opacity="0.1"/>
+      </svg>
+      <div class="gw-hero-inner" style="position:relative;padding:56px 20px 52px;max-width:1080px;margin:0 auto;display:grid;grid-template-columns:1fr 380px;gap:44px;align-items:start;">
+        <div>
+          <div style="font-size:10px;font-weight:600;color:rgba(147,197,253,.65);text-transform:uppercase;letter-spacing:.14em;margin-bottom:20px;">Contribution intelligence</div>
+          <h1 class="gw-hero-h1" id="gw-hero-h1" style="font-size:44px;font-weight:800;line-height:1.08;letter-spacing:-.04em;color:#FFFFFF;margin:0 0 22px;min-height:160px;">
+            <span id="gw-tw"></span><span class="gw-cursor" id="gw-cursor">|</span>
+          </h1>
+          <p style="font-size:15px;color:rgba(255,255,255,.52);line-height:1.75;margin:0 0 16px;max-width:440px;">A shared record of contribution. Built from both sides. Cross referenced over time.</p>
+          <div style="margin-bottom:32px;min-height:28px;display:flex;align-items:center;gap:10px;">
+            <span class="gw-pulse" style="width:6px;height:6px;background:#5DCAA5;flex-shrink:0;display:inline-block;"></span>
+            <span id="gw-situation" style="font-size:13px;color:rgba(255,255,255,.55);font-weight:500;transition:opacity .3s ease;"></span>
           </div>
-        ))}
-      </div>
-
-      <div class="gw-divider"></div>
-
-      <!-- Three moments -->
-      <div style="font-size:11px;color:#9B9590;text-transform:uppercase;letter-spacing:.1em;margin-bottom:20px;">Groundwork brings alignment to three moments.</div>
-      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:32px;">
-        {MOMENTS.map(m => (
-          <div style="background:white;border:1px solid #E2E0DB;border-radius:8px;padding:18px 16px;">
-            <div style="font-size:14px;font-weight:700;color:#1A1916;margin-bottom:8px;">{m.icon} {m.title}</div>
-            <div style="font-size:12px;color:#6B6560;line-height:1.6;margin-bottom:12px;">{m.desc}</div>
-            <div style="display:flex;flex-direction:column;gap:5px;">
-              {m.rows.map(r => (
-                <div style="font-size:12px;color:#6B6560;padding:7px 10px;border-radius:6px;border:1px solid #E2E0DB;line-height:1.5;">
-                  <strong style="color:#1A1916;font-weight:600;">{r.label}</strong> {r.sub}
-                </div>
-              ))}
-            </div>
+          <div class="gw-hero-btns" style="display:flex;gap:10px;flex-wrap:wrap;">
+            <a class="gw-hero-btn-p" href={`${APP_URL}/register`}>Set up your org free →</a>
+            <a class="gw-hero-btn-g" href={`${APP_URL}/enter-org-code`}>Open my chat →</a>
           </div>
-        ))}
-      </div>
+        </div>
 
-      <!-- Privacy note -->
-      <div style="background:white;border:1px solid #E2E0DB;border-radius:6px;padding:14px 16px;margin-bottom:48px;">
-        <div style="font-size:12px;font-weight:700;color:#6B6560;margin-bottom:6px;">Your chat is yours. Always.</div>
-        <div style="font-size:12px;color:#9B9590;line-height:1.65;">Nothing leaves without you saying so. Your record is never shared without your explicit confirmation for a named decision chosen by you.</div>
+        <!-- Feed panel -->
+        <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:10px;overflow:hidden;">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 14px;border-bottom:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.03);">
+            <div style="display:flex;align-items:center;gap:7px;">
+              <span class="gw-pulse" style="width:7px;height:7px;background:#5DCAA5;display:inline-block;flex-shrink:0;"></span>
+              <span style="font-size:10px;font-weight:600;color:rgba(255,255,255,.55);letter-spacing:.08em;text-transform:uppercase;">Live feed</span>
+            </div>
+            <span id="gw-feed-count" style="font-size:10px;color:rgba(255,255,255,.2);">3 events</span>
+          </div>
+          <div id="gw-feed-list" style="min-height:230px;display:flex;flex-direction:column;justify-content:flex-end;"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;padding:10px 14px;border-top:1px solid rgba(255,255,255,.06);gap:4px;">
+            <div><div style="font-size:17px;font-weight:700;color:#FFFFFF;text-align:center;">12</div><div style="font-size:9px;color:rgba(255,255,255,.28);text-align:center;margin-top:2px;letter-spacing:.02em;">active grounds</div></div>
+            <div><div style="font-size:17px;font-weight:700;color:#FFFFFF;text-align:center;">3</div><div style="font-size:9px;color:rgba(255,255,255,.28);text-align:center;margin-top:2px;letter-spacing:.02em;">reports today</div></div>
+            <div><div style="font-size:17px;font-weight:700;color:#FFFFFF;text-align:center;">47</div><div style="font-size:9px;color:rgba(255,255,255,.28);text-align:center;margin-top:2px;letter-spacing:.02em;">check-ins this week</div></div>
+          </div>
+        </div>
       </div>
+    </section>
 
-    </div>
+    <!-- PROBLEM -->
+    <section style="background:#F5F3EF;border-bottom:1px solid #E2E0DB;">
+      <div class="gw-wrap" style="max-width:1080px;margin:0 auto;padding:64px 20px;text-align:center;">
+        <p style="font-size:10px;font-weight:600;color:#0C447C;text-transform:uppercase;letter-spacing:.14em;margin-bottom:18px;opacity:.65;">The problem</p>
+        <h2 class="gw-sec-h2" style="font-size:36px;font-weight:800;color:#1A1916;letter-spacing:-.03em;line-height:1.15;max-width:660px;margin:0 auto 16px;">
+          The problem is not performance.<br>It is <em style="color:#0C447C;font-style:normal;">visibility.</em>
+        </h2>
+        <p style="font-size:15px;color:#6B6560;line-height:1.75;margin:0 auto 44px;max-width:500px;">
+          Most teams do not know who is carrying critical work, where expectations diverged, who is blocked, or whether contribution matches perception. So conversations become political.
+        </p>
+        <div class="gw-prob-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;max-width:900px;margin:0 auto;">
+          <div class="gw-prob-card"><div style="font-size:13px;font-weight:700;color:#1A1916;margin-bottom:4px;">Who is carrying</div><div style="font-size:12px;color:#6B6560;line-height:1.55;">Critical work that is invisible until someone leaves</div></div>
+          <div class="gw-prob-card"><div style="font-size:13px;font-weight:700;color:#1A1916;margin-bottom:4px;">Where it diverged</div><div style="font-size:12px;color:#6B6560;line-height:1.55;">Expectations that were never the same on both sides</div></div>
+          <div class="gw-prob-card"><div style="font-size:13px;font-weight:700;color:#1A1916;margin-bottom:4px;">Who is blocked</div><div style="font-size:12px;color:#6B6560;line-height:1.55;">Progress limited by things nobody named in time</div></div>
+          <div class="gw-prob-card"><div style="font-size:13px;font-weight:700;color:#1A1916;margin-bottom:4px;">Whether it matches</div><div style="font-size:12px;color:#6B6560;line-height:1.55;">Contribution that does not match what people perceive</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- THREE MOMENTS -->
+    <section style="border-bottom:1px solid #E2E0DB;">
+      <div class="gw-wrap" style="max-width:1080px;margin:0 auto;padding:64px 20px;">
+        <p style="font-size:10px;font-weight:600;color:#0C447C;text-transform:uppercase;letter-spacing:.14em;margin-bottom:18px;opacity:.65;">Three moments</p>
+        <h2 class="gw-sec-h2" style="font-size:36px;font-weight:800;color:#1A1916;letter-spacing:-.03em;line-height:1.15;margin-bottom:14px;">Groundwork exists for three moments.</h2>
+        <p style="font-size:15px;color:#6B6560;line-height:1.75;margin-bottom:40px;max-width:500px;">Every professional relationship eventually reaches one of them. The record you built before makes each one possible.</p>
+        <div class="gw-mom-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:18px;">
+
+          <div style="background:#FFFFFF;border-radius:10px;border:1px solid #E2E0DB;padding:26px 22px;border-top:3px solid #0C447C;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+              <span class="gw-pulse2" style="width:7px;height:7px;background:#5DCAA5;flex-shrink:0;display:inline-block;"></span>
+              <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#085041;">Starting mode</span>
+            </div>
+            <h3 style="font-size:18px;font-weight:700;color:#1A1916;margin-bottom:8px;letter-spacing:-.02em;line-height:1.3;">When something new is starting.</h3>
+            <p style="font-size:13px;color:#6B6560;line-height:1.65;margin-bottom:14px;">Build alignment in from the beginning before reality gets interpreted differently by different people.</p>
+            <div style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:#6B6560;line-height:1.5;margin-bottom:5px;"><span style="width:5px;height:5px;border-radius:50%;background:#0C447C;flex-shrink:0;margin-top:5px;"></span><span><strong>New senior hire.</strong> Define success before interpretation drift begins</span></div>
+            <div style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:#6B6560;line-height:1.5;margin-bottom:5px;"><span style="width:5px;height:5px;border-radius:50%;background:#0C447C;flex-shrink:0;margin-top:5px;"></span><span><strong>New cofounder or partner.</strong> Agree contribution upfront so equity has something to stand on</span></div>
+            <div style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:#6B6560;line-height:1.5;margin-bottom:5px;"><span style="width:5px;height:5px;border-radius:50%;background:#0C447C;flex-shrink:0;margin-top:5px;"></span><span><strong>New board member or advisor.</strong> Set expectations before the relationship costs more than it returns</span></div>
+            <div style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:#6B6560;line-height:1.5;margin-bottom:5px;"><span style="width:5px;height:5px;border-radius:50%;background:#0C447C;flex-shrink:0;margin-top:5px;"></span><span><strong>New project.</strong> Scope, ownership, and success criteria before work starts</span></div>
+            <div style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:#6B6560;line-height:1.5;margin-bottom:5px;"><span style="width:5px;height:5px;border-radius:50%;background:#0C447C;flex-shrink:0;margin-top:5px;"></span><span><strong>Contract renewal.</strong> Renewal or exit based on the record, not relationship management</span></div>
+          </div>
+
+          <div style="background:#FFFFFF;border-radius:10px;border:1px solid #E2E0DB;padding:26px 22px;border-top:3px solid #E8A94A;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+              <span class="gw-pulse2" style="width:7px;height:7px;background:#E8A94A;flex-shrink:0;display:inline-block;"></span>
+              <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#8A5C1A;">Recognition</span>
+            </div>
+            <h3 style="font-size:18px;font-weight:700;color:#1A1916;margin-bottom:8px;letter-spacing:-.02em;line-height:1.3;">When someone wants recognition.</h3>
+            <p style="font-size:13px;color:#6B6560;line-height:1.65;margin-bottom:14px;">A raise, equity, or promotion conversation grounded in a record built over time. Both sides see the same picture.</p>
+            <div style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:#6B6560;line-height:1.5;margin-bottom:5px;"><span style="width:5px;height:5px;border-radius:50%;background:#E8A94A;flex-shrink:0;margin-top:5px;"></span><span><strong>Asking for a raise.</strong> The record makes the case, built over time, not assembled the night before</span></div>
+            <div style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:#6B6560;line-height:1.5;margin-bottom:5px;"><span style="width:5px;height:5px;border-radius:50%;background:#E8A94A;flex-shrink:0;margin-top:5px;"></span><span><strong>Equity negotiation.</strong> Contribution documented before the conversation happens</span></div>
+            <div style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:#6B6560;line-height:1.5;margin-bottom:5px;"><span style="width:5px;height:5px;border-radius:50%;background:#E8A94A;flex-shrink:0;margin-top:5px;"></span><span><strong>Promotion or role change.</strong> The case is built from the record, not assembled in the moment</span></div>
+          </div>
+
+          <div style="background:#FFFFFF;border-radius:10px;border:1px solid #E2E0DB;padding:26px 22px;border-top:3px solid #5DCAA5;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+              <span class="gw-pulse2" style="width:7px;height:7px;background:#5DCAA5;flex-shrink:0;display:inline-block;"></span>
+              <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#085041;">Alignment</span>
+            </div>
+            <h3 style="font-size:18px;font-weight:700;color:#1A1916;margin-bottom:8px;letter-spacing:-.02em;line-height:1.3;">When you need everyone seeing the same thing.</h3>
+            <p style="font-size:13px;color:#6B6560;line-height:1.65;margin-bottom:14px;">Pressure, conflict, or misalignment that needs a reset. Shared facts so the team can move forward together.</p>
+            <div style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:#6B6560;line-height:1.5;margin-bottom:5px;"><span style="width:5px;height:5px;border-radius:50%;background:#5DCAA5;flex-shrink:0;margin-top:5px;"></span><span><strong>Revenue pressure or cash crunch.</strong> The whole team needs to pull in the same direction now</span></div>
+            <div style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:#6B6560;line-height:1.5;margin-bottom:5px;"><span style="width:5px;height:5px;border-radius:50%;background:#5DCAA5;flex-shrink:0;margin-top:5px;"></span><span><strong>Team misalignment.</strong> People working hard in different directions without realising it</span></div>
+            <div style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:#6B6560;line-height:1.5;margin-bottom:5px;"><span style="width:5px;height:5px;border-radius:50%;background:#5DCAA5;flex-shrink:0;margin-top:5px;"></span><span><strong>Cofounder tension.</strong> Contribution imbalance that the relationship makes impossible to name</span></div>
+            <div style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:#6B6560;line-height:1.5;margin-bottom:5px;"><span style="width:5px;height:5px;border-radius:50%;background:#5DCAA5;flex-shrink:0;margin-top:5px;"></span><span><strong>A relationship that has drifted.</strong> The cost is compounding and the conversation keeps being deferred</span></div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- DEMO -->
+    <section style="background:#F5F3EF;border-bottom:1px solid #E2E0DB;">
+      <div class="gw-wrap" style="max-width:1080px;margin:0 auto;padding:64px 20px;">
+        <p style="font-size:10px;font-weight:600;color:#0C447C;text-transform:uppercase;letter-spacing:.14em;margin-bottom:18px;opacity:.65;">See it working</p>
+        <h2 class="gw-sec-h2" style="font-size:36px;font-weight:800;color:#1A1916;letter-spacing:-.03em;line-height:1.15;margin-bottom:14px;">Try a live demo.</h2>
+        <p style="font-size:15px;color:#6B6560;line-height:1.75;margin-bottom:40px;max-width:500px;">No sign-up. Real data from Northgate Ventures.</p>
+        <div class="gw-demo-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px;max-width:900px;">
+          <a class="gw-demo-btn" href={`${APP_URL}/enter-org-code`}><span style="width:8px;height:8px;border-radius:50%;background:#0C447C;flex-shrink:0;margin-top:3px;"></span><div><div style="font-size:13px;font-weight:700;color:#1A1916;margin-bottom:2px;">The founder's view</div><div style="font-size:12px;color:#9B9590;line-height:1.4;">Full team picture. Who is moving, who needs support</div></div></a>
+          <a class="gw-demo-btn" href={`${APP_URL}/enter-org-code`}><span style="width:8px;height:8px;border-radius:50%;background:#0C447C;flex-shrink:0;margin-top:3px;"></span><div><div style="font-size:13px;font-weight:700;color:#1A1916;margin-bottom:2px;">Kwame's check-in · cofounder</div><div style="font-size:12px;color:#9B9590;line-height:1.4;">Building the technical record across sessions</div></div></a>
+          <a class="gw-demo-btn" href={`${APP_URL}/enter-org-code`}><span style="width:8px;height:8px;border-radius:50%;background:#5DCAA5;flex-shrink:0;margin-top:3px;"></span><div><div style="font-size:13px;font-weight:700;color:#1A1916;margin-bottom:2px;">Priya's check-in · sales</div><div style="font-size:12px;color:#9B9590;line-height:1.4;">Strong work that was invisible until the record showed it</div></div></a>
+          <a class="gw-demo-btn" href={`${APP_URL}/enter-org-code`}><span style="width:8px;height:8px;border-radius:50%;background:#E8A94A;flex-shrink:0;margin-top:3px;"></span><div><div style="font-size:13px;font-weight:700;color:#1A1916;margin-bottom:2px;">Marcus's check-in · sales lead</div><div style="font-size:12px;color:#9B9590;line-height:1.4;">An honest conversation about what the record shows</div></div></a>
+          <a class="gw-demo-btn" href={`${APP_URL}/enter-org-code`}><span style="width:8px;height:8px;border-radius:50%;background:#5DCAA5;flex-shrink:0;margin-top:3px;"></span><div><div style="font-size:13px;font-weight:700;color:#1A1916;margin-bottom:2px;">Amara's check-in · engineering</div><div style="font-size:12px;color:#9B9590;line-height:1.4;">Specific, evidenced, and recognised</div></div></a>
+        </div>
+        <p style="font-size:11px;color:#B4B2A9;margin-top:14px;">Northgate Ventures · org code: northgate · admin PIN: 1234</p>
+      </div>
+    </section>
+
+    <!-- TRUST -->
+    <section style="border-bottom:1px solid #E2E0DB;">
+      <div class="gw-wrap" style="max-width:1080px;margin:0 auto;padding:64px 20px;">
+        <div class="gw-trust-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:center;">
+          <div>
+            <p style="font-size:10px;font-weight:600;color:#0C447C;text-transform:uppercase;letter-spacing:.14em;margin-bottom:18px;opacity:.65;">Trust</p>
+            <h2 class="gw-sec-h2" style="font-size:36px;font-weight:800;color:#1A1916;letter-spacing:-.03em;line-height:1.15;margin-bottom:14px;">Your record belongs to you.</h2>
+            <p style="font-size:15px;color:#6B6560;line-height:1.75;margin-bottom:24px;">Not the organisation. Not the platform. The person. That is what makes honesty possible and what makes every other capability in the product work.</p>
+            <a class="gw-btn-solid" href={`${APP_URL}/register`} style="padding:12px 22px;font-size:14px;font-weight:700;">Get started free</a>
+          </div>
+          <div>
+            <div class="gw-trust-item"><span style="width:6px;height:6px;border-radius:50%;background:#0C447C;flex-shrink:0;margin-top:5px;"></span><div><strong style="font-size:13px;font-weight:700;color:#1A1916;display:block;margin-bottom:2px;">No hidden monitoring</strong><p style="font-size:12px;color:#6B6560;line-height:1.55;margin:0;">Nothing is tracked that you did not submit yourself.</p></div></div>
+            <div class="gw-trust-item"><span style="width:6px;height:6px;border-radius:50%;background:#0C447C;flex-shrink:0;margin-top:5px;"></span><div><strong style="font-size:13px;font-weight:700;color:#1A1916;display:block;margin-bottom:2px;">Your record is never shared without your explicit approval</strong><p style="font-size:12px;color:#6B6560;line-height:1.55;margin:0;">For a named decision. Chosen by you. Not before.</p></div></div>
+            <div class="gw-trust-item"><span style="width:6px;height:6px;border-radius:50%;background:#0C447C;flex-shrink:0;margin-top:5px;"></span><div><strong style="font-size:13px;font-weight:700;color:#1A1916;display:block;margin-bottom:2px;">Reports require the other party to approve</strong><p style="font-size:12px;color:#6B6560;line-height:1.55;margin:0;">Both parties see the report at the same time or not at all.</p></div></div>
+            <div class="gw-trust-item"><span style="width:6px;height:6px;border-radius:50%;background:#0C447C;flex-shrink:0;margin-top:5px;"></span><div><strong style="font-size:13px;font-weight:700;color:#1A1916;display:block;margin-bottom:2px;">Built from contribution, not surveillance</strong><p style="font-size:12px;color:#6B6560;line-height:1.55;margin:0;">No keystroke tracking. No screen monitoring. No activity spying.</p></div></div>
+            <div class="gw-trust-item"><span style="width:6px;height:6px;border-radius:50%;background:#0C447C;flex-shrink:0;margin-top:5px;"></span><div><strong style="font-size:13px;font-weight:700;color:#1A1916;display:block;margin-bottom:2px;">The record survives the relationship</strong><p style="font-size:12px;color:#6B6560;line-height:1.55;margin:0;">Belongs to both parties permanently. Even after the org ends.</p></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA BANNER -->
+    <section style="background:#0A1628;text-align:center;padding:80px 20px;">
+      <h2 class="gw-cta-h2" style="font-size:40px;font-weight:800;color:#FFFFFF;letter-spacing:-.04em;line-height:1.1;margin-bottom:14px;">
+        Better decisions start<br>with better evidence.
+      </h2>
+      <p style="font-size:16px;color:rgba(255,255,255,.4);margin-bottom:32px;font-style:italic;">See clearly when it counts.</p>
+      <a class="gw-btn-solid" href={`${APP_URL}/register`} style="padding:15px 36px;font-size:15px;font-weight:700;">Set up your org free</a>
+      <p style="font-size:12px;color:rgba(255,255,255,.2);margin-top:14px;">First four sessions are free for everyone.</p>
+    </section>
+
+    <!-- HOW IT WORKS -->
+    <section id="how" style="background:#EDECEA;">
+      <div class="gw-wrap" style="max-width:720px;margin:0 auto;padding:64px 20px;">
+        <p style="font-size:10px;font-weight:600;color:#0C447C;text-transform:uppercase;letter-spacing:.14em;margin-bottom:18px;opacity:.65;">How it works</p>
+        <h2 class="gw-sec-h2" style="font-size:36px;font-weight:800;color:#1A1916;letter-spacing:-.03em;line-height:1.15;margin-bottom:14px;">The shared picture, built from both sides.</h2>
+        <p style="font-size:15px;color:#6B6560;line-height:1.75;margin-bottom:40px;max-width:500px;">Both parties check in independently. Neither sees what the other wrote. A report shows where the versions agree and where they diverge.</p>
+        <div style="margin-bottom:48px;">
+          <div style="display:flex;gap:18px;padding:26px 0;border-bottom:1px solid #E8E6E3;align-items:flex-start;"><div style="width:30px;height:30px;border-radius:50%;background:#0C447C;color:#FFFFFF;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;margin-top:1px;">1</div><div><div style="font-size:15px;font-weight:700;color:#1A1916;margin-bottom:5px;letter-spacing:-.01em;">Both parties check in before the first difficult meeting</div><div style="font-size:13px;color:#6B6560;line-height:1.65;">Each person submits independently. Neither sees what the other wrote. No performance. No politics. Sessions 1 through 4 are free for everyone.</div></div></div>
+          <div style="display:flex;gap:18px;padding:26px 0;border-bottom:1px solid #E8E6E3;align-items:flex-start;"><div style="width:30px;height:30px;border-radius:50%;background:#0C447C;color:#FFFFFF;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;margin-top:1px;">2</div><div><div style="font-size:15px;font-weight:700;color:#1A1916;margin-bottom:5px;letter-spacing:-.01em;">By session two you can see where the versions diverge</div><div style="font-size:13px;color:#6B6560;line-height:1.65;">The report shows where both accounts agree and where they split. The gap is visible early enough to act. At week two, not month four.</div></div></div>
+          <div style="display:flex;gap:18px;padding:26px 0;border-bottom:1px solid #E8E6E3;align-items:flex-start;"><div style="width:30px;height:30px;border-radius:50%;background:#0C447C;color:#FFFFFF;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;margin-top:1px;">3</div><div><div style="font-size:15px;font-weight:700;color:#1A1916;margin-bottom:5px;letter-spacing:-.01em;">The picture deepens with every session</div><div style="font-size:13px;color:#6B6560;line-height:1.65;">Cross-reference builds over time. What was said at week one is checked against week eight. A confidence score from 1 to 5 shows how strong the evidence is.</div></div></div>
+          <div style="display:flex;gap:18px;padding:26px 0;align-items:flex-start;"><div style="width:30px;height:30px;border-radius:50%;background:#0C447C;color:#FFFFFF;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;margin-top:1px;">4</div><div><div style="font-size:15px;font-weight:700;color:#1A1916;margin-bottom:5px;letter-spacing:-.01em;">You end up with a record both parties built and own</div><div style="font-size:13px;color:#6B6560;line-height:1.65;">It does not disappear when the relationship ends. It belongs to the people who built it. Permanently.</div></div></div>
+        </div>
+        <div style="background:#F5F3EF;border-radius:10px;padding:24px;border-left:3px solid #0C447C;margin-bottom:32px;">
+          <h3 style="font-size:16px;font-weight:700;color:#1A1916;margin-bottom:8px;">Ground confidence score</h3>
+          <p style="font-size:13px;color:#6B6560;line-height:1.7;margin-bottom:16px;">Every ground has a confidence score from 1 to 5. It rises as both parties check in and evidence accumulates.</p>
+          <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;">
+            <div style="text-align:center;padding:10px 6px;background:white;border-radius:6px;border:1px solid #E2E0DB;"><div style="font-size:13px;font-weight:700;color:#9B9590;">1/5</div><div style="font-size:10px;color:#B4B2A9;margin-top:3px;">One account</div></div>
+            <div style="text-align:center;padding:10px 6px;background:white;border-radius:6px;border:1px solid #E2E0DB;"><div style="font-size:13px;font-weight:700;color:#E8A94A;">2/5</div><div style="font-size:10px;color:#B4B2A9;margin-top:3px;">Both started</div></div>
+            <div style="text-align:center;padding:10px 6px;background:white;border-radius:6px;border:1px solid #E2E0DB;"><div style="font-size:13px;font-weight:700;color:#5DCAA5;">3/5</div><div style="font-size:10px;color:#B4B2A9;margin-top:3px;">Report ready</div></div>
+            <div style="text-align:center;padding:10px 6px;background:white;border-radius:6px;border:1px solid #E2E0DB;"><div style="font-size:13px;font-weight:700;color:#0C447C;">4/5</div><div style="font-size:10px;color:#B4B2A9;margin-top:3px;">Well supported</div></div>
+            <div style="text-align:center;padding:10px 6px;background:#0C447C;border-radius:6px;"><div style="font-size:13px;font-weight:700;color:white;">5/5</div><div style="font-size:10px;color:rgba(255,255,255,.6);margin-top:3px;">Comprehensive</div></div>
+          </div>
+        </div>
+        <div style="text-align:center;">
+          <a class="gw-btn-solid" href={`${APP_URL}/register`} style="padding:13px 28px;font-size:14px;font-weight:700;">Get started free</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- PRICING -->
+    <section id="pricing" style="background:#F5F3EF;border-top:1px solid #E2E0DB;">
+      <div class="gw-wrap" style="max-width:720px;margin:0 auto;padding:64px 20px;">
+        <p style="font-size:10px;font-weight:600;color:#0C447C;text-transform:uppercase;letter-spacing:.14em;margin-bottom:18px;opacity:.65;">Pricing</p>
+        <h2 class="gw-sec-h2" style="font-size:36px;font-weight:800;color:#1A1916;letter-spacing:-.03em;line-height:1.15;margin-bottom:14px;">Start free. Pay when it has delivered value.</h2>
+        <p style="font-size:15px;color:#6B6560;line-height:1.75;margin-bottom:40px;max-width:500px;">Sessions 1 through 4 are free for everyone. No card required. You only pay when the ground has produced enough evidence to be worth it.</p>
+        <div class="gw-price-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:32px;">
+          <div style="border-radius:10px;padding:26px;background:#F5F3EF;border:1px solid #E2E0DB;">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#9B9590;margin-bottom:14px;">Free tier</div>
+            <div style="font-size:34px;font-weight:800;color:#1A1916;margin-bottom:4px;">$0</div>
+            <div style="font-size:13px;color:#6B6560;margin-bottom:22px;">Sessions 1 through 4 for everyone</div>
+            <div style="display:flex;align-items:center;gap:7px;font-size:13px;color:#4A5568;margin-bottom:5px;"><span style="width:5px;height:5px;border-radius:50%;background:#5DCAA5;flex-shrink:0;"></span>Sessions 1 to 4 for all participants</div>
+            <div style="display:flex;align-items:center;gap:7px;font-size:13px;color:#4A5568;margin-bottom:5px;"><span style="width:5px;height:5px;border-radius:50%;background:#5DCAA5;flex-shrink:0;"></span>Report after every session</div>
+            <div style="display:flex;align-items:center;gap:7px;font-size:13px;color:#4A5568;margin-bottom:5px;"><span style="width:5px;height:5px;border-radius:50%;background:#5DCAA5;flex-shrink:0;"></span>Ground confidence score</div>
+            <div style="display:flex;align-items:center;gap:7px;font-size:13px;color:#4A5568;margin-bottom:5px;"><span style="width:5px;height:5px;border-radius:50%;background:#5DCAA5;flex-shrink:0;"></span>Up to 20 participants per ground</div>
+            <div style="display:flex;align-items:center;gap:7px;font-size:13px;color:#4A5568;margin-bottom:5px;"><span style="width:5px;height:5px;border-radius:50%;background:#5DCAA5;flex-shrink:0;"></span>No card required</div>
+          </div>
+          <div style="border-radius:10px;padding:26px;background:#0C447C;">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.5);margin-bottom:14px;">Paid</div>
+            <div style="font-size:34px;font-weight:800;color:white;margin-bottom:4px;">$20<span style="font-size:15px;font-weight:400;opacity:.6;">/month</span></div>
+            <div style="font-size:13px;color:rgba(255,255,255,.5);margin-bottom:22px;">Per org + $50/person/active ground</div>
+            <div style="display:flex;align-items:center;gap:7px;font-size:13px;color:rgba(255,255,255,.75);margin-bottom:5px;"><span style="width:5px;height:5px;border-radius:50%;background:#5DCAA5;flex-shrink:0;"></span>Everything in the free tier</div>
+            <div style="display:flex;align-items:center;gap:7px;font-size:13px;color:rgba(255,255,255,.75);margin-bottom:5px;"><span style="width:5px;height:5px;border-radius:50%;background:#5DCAA5;flex-shrink:0;"></span>Sessions 5 onwards</div>
+            <div style="display:flex;align-items:center;gap:7px;font-size:13px;color:rgba(255,255,255,.75);margin-bottom:5px;"><span style="width:5px;height:5px;border-radius:50%;background:#5DCAA5;flex-shrink:0;"></span>Shareable Ground Report card</div>
+            <div style="display:flex;align-items:center;gap:7px;font-size:13px;color:rgba(255,255,255,.75);margin-bottom:5px;"><span style="width:5px;height:5px;border-radius:50%;background:#5DCAA5;flex-shrink:0;"></span>Portable verified profile</div>
+            <div style="display:flex;align-items:center;gap:7px;font-size:13px;color:rgba(255,255,255,.75);margin-bottom:5px;"><span style="width:5px;height:5px;border-radius:50%;background:#5DCAA5;flex-shrink:0;"></span>Permanent resolution record</div>
+          </div>
+        </div>
+        <div style="background:#F5F3EF;border-radius:10px;padding:24px;border:1px solid #E2E0DB;margin-bottom:32px;">
+          <h3 style="font-size:15px;font-weight:700;color:#1A1916;margin-bottom:16px;">How the session model works</h3>
+          <div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:10px;"><span style="font-size:11px;font-weight:700;color:#0C447C;min-width:80px;padding-top:2px;flex-shrink:0;">At setup</span><span style="font-size:13px;color:#6B6560;line-height:1.6;">Choose your timeframe and check-in cadence. The product shows your free and paid sessions before you confirm.</span></div>
+          <div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:10px;"><span style="font-size:11px;font-weight:700;color:#0C447C;min-width:80px;padding-top:2px;flex-shrink:0;">Sessions 1 to 4</span><span style="font-size:13px;color:#6B6560;line-height:1.6;">Free for all parties. Reports generate after every session. No card required.</span></div>
+          <div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:10px;"><span style="font-size:11px;font-weight:700;color:#0C447C;min-width:80px;padding-top:2px;flex-shrink:0;">Session 5</span><span style="font-size:13px;color:#6B6560;line-height:1.6;">Payment prompt fires to the admin when anyone submits their fifth check-in. Activate to continue.</span></div>
+          <div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:10px;"><span style="font-size:11px;font-weight:700;color:#0C447C;min-width:80px;padding-top:2px;flex-shrink:0;">On close</span><span style="font-size:13px;color:#6B6560;line-height:1.6;">Billing stops automatically. The resolution record is permanent. Both parties keep it forever.</span></div>
+        </div>
+        <div style="text-align:center;">
+          <a class="gw-btn-solid" href={`${APP_URL}/register`} style="padding:13px 28px;font-size:14px;font-weight:700;">Start free</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ABOUT -->
+    <section id="about" style="background:#EDECEA;border-top:1px solid #E2E0DB;">
+      <div class="gw-wrap" style="max-width:720px;margin:0 auto;padding:64px 20px;">
+        <p style="font-size:10px;font-weight:600;color:#0C447C;text-transform:uppercase;letter-spacing:.14em;margin-bottom:18px;opacity:.65;">About</p>
+        <h2 class="gw-sec-h2" style="font-size:36px;font-weight:800;color:#1A1916;letter-spacing:-.03em;line-height:1.15;margin-bottom:32px;">Built because the conversation kept being avoided.</h2>
+        <div style="display:flex;flex-direction:column;gap:18px;margin-bottom:40px;">
+          <p style="font-size:15px;color:#4A5568;line-height:1.8;margin:0;">Groundwork was built by Coamana out of a problem we kept running into. Hires, cofounders, partners. Both sides had a completely different version of what was agreed. There was nothing to stand on when the conversation finally had to happen.</p>
+          <p style="font-size:15px;color:#4A5568;line-height:1.8;margin:0;">The product exists to build that record before it is needed. Both parties check in independently. Neither sees what the other wrote. The report shows both versions at the same time. The gap is what the conversation needs to be about.</p>
+          <p style="font-size:15px;color:#4A5568;line-height:1.8;margin:0;">The single design decision that makes everything else possible: the record belongs to the person who built it. Not the organisation. Not the platform. That is why people are honest in it.</p>
+        </div>
+        <div style="border-left:3px solid #0C447C;padding:20px;background:#EEF4FB;border-radius:0 8px 8px 0;margin-bottom:36px;">
+          <h3 style="font-size:15px;font-weight:700;color:#0C447C;margin-bottom:8px;">The founding principle</h3>
+          <p style="font-size:14px;color:#1A1916;line-height:1.75;font-style:italic;margin:0;">The record belongs to the people who built it. Not the organisation. Not the platform. The person. That is what makes honesty possible and what makes every other capability in the product work.</p>
+        </div>
+        <div class="gw-about-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:36px;">
+          <div style="padding:20px;background:#F5F3EF;border-radius:8px;border:1px solid #E2E0DB;"><h3 style="font-size:14px;font-weight:700;color:#1A1916;margin-bottom:6px;">The product</h3><p style="font-size:12px;color:#6B6560;line-height:1.6;margin:0;">Contribution intelligence for professional relationships that matter. Both versions. Cross referenced over time. For two people or twenty.</p></div>
+          <div style="padding:20px;background:#F5F3EF;border-radius:8px;border:1px solid #E2E0DB;"><h3 style="font-size:14px;font-weight:700;color:#1A1916;margin-bottom:6px;">The company</h3><p style="font-size:12px;color:#6B6560;line-height:1.6;margin:0;">Groundwork is built by Coamana, a market infrastructure and intelligence company operating across Africa.</p></div>
+        </div>
+        <div style="text-align:center;">
+          <p style="font-size:13px;color:#9B9590;margin-bottom:10px;">Questions or feedback</p>
+          <a href="mailto:hello@myground.work" style="font-size:15px;font-weight:700;color:#0C447C;text-decoration:none;">hello@myground.work</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer style="background:#091525;padding:36px 20px;">
+      <div style="max-width:1080px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;">
+        <div style="display:flex;align-items:center;gap:9px;">
+          <svg width="18" height="14" viewBox="0 0 22 17" fill="none">
+            <rect x="5"  y="0"  width="12" height="3" rx="1.5" fill="#93C5FD" opacity="0.4"/>
+            <rect x="2"  y="6"  width="18" height="3" rx="1.5" fill="#93C5FD" opacity="0.65"/>
+            <rect x="0"  y="12" width="22" height="3" rx="1.5" fill="#93C5FD"/>
+          </svg>
+          <span style="font-size:13px;font-weight:700;color:white;">Groundwork</span>
+        </div>
+        <div style="display:flex;gap:20px;">
+          <a class="gw-footer-btn" href="#how"     onclick="gwScroll('how');return false;">How it works</a>
+          <a class="gw-footer-btn" href="#pricing" onclick="gwScroll('pricing');return false;">Pricing</a>
+          <a class="gw-footer-btn" href="#about"   onclick="gwScroll('about');return false;">About</a>
+        </div>
+        <div style="font-size:11px;color:rgba(255,255,255,.22);">Powered by Coamana · 2025</div>
+      </div>
+    </footer>
+
   </div>
+
+  <script>
+    const TYPEWRITER_TEXT = "Most people decisions\nare made with\nincomplete evidence."
+    const SITUATIONS = [
+      'New hire starting soon','New project or partnership','Probation period',
+      'Performance improvement plan','Cofounder agreement','Team drift',
+      'Promotion evaluation','Equity conversation','Alignment reset','Contract renewal',
+    ]
+    const FEED_ITEMS = [
+      { t:'check-in',   c:'#5DCAA5', h:'Kwame completed session 3',    s:'Cofounder ground · technical record building' },
+      { t:'confidence', c:'#93C5FD', h:'Ground confidence 3/5 to 4/5', s:'Both parties active · cross-reference fired' },
+      { t:'new ground', c:'#E8A94A', h:'Tarini opened a new ground',    s:'Head of Growth invited · starting mode' },
+      { t:'report',     c:'#93C5FD', h:'Report generating',             s:'Both parties completed session 4' },
+      { t:'signal',     c:'#5DCAA5', h:'Specificity increasing',        s:'Pattern signal · 3 consecutive sessions' },
+      { t:'check-in',   c:'#5DCAA5', h:'Amara submitted her check-in',  s:'Contribution confirmed by downstream team' },
+      { t:'resolved',   c:'#E8A94A', h:'Ground closed',                 s:'Alignment confirmed · both parties' },
+      { t:'new ground', c:'#E8A94A', h:'New ground opened',             s:'Something new is starting · 2 parties' },
+      { t:'check-in',   c:'#5DCAA5', h:'Priya completed session 2',     s:'Invisible contribution surfaced' },
+      { t:'record',     c:'#93C5FD', h:'Resolution record written',     s:'Belongs to both parties permanently' },
+      { t:'confidence', c:'#93C5FD', h:'Ground confidence: 5/5',        s:'Comprehensive evidence · full cross-reference' },
+      { t:'check-in',   c:'#5DCAA5', h:'Ibrahim completed session 1',   s:'Cofounder ground · both accounts independent' },
+    ]
+
+    function gwScroll(id) {
+      document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
+    }
+    window.gwScroll = gwScroll
+
+    // Typewriter
+    ;(function() {
+      const el = document.getElementById('gw-tw')
+      const cursor = document.getElementById('gw-cursor')
+      if (!el) return
+      const chars = TYPEWRITER_TEXT.split('')
+      let i = 0, html = ''
+      function tick() {
+        if (i >= chars.length) {
+          cursor.style.display = 'none'
+          el.innerHTML = 'Most people decisions<br>are made with<br><em style="color:#93C5FD;font-style:normal;">incomplete evidence.</em>'
+          return
+        }
+        const ch = chars[i++]
+        html += ch === '\n' ? '<br>' : ch.replace(/&/g,'&amp;').replace(/</g,'&lt;')
+        el.innerHTML = html
+        setTimeout(tick, i < 20 ? 42 : i < 42 ? 30 : 24)
+      }
+      setTimeout(tick, 600)
+    })()
+
+    // Situations cycling
+    ;(function() {
+      const el = document.getElementById('gw-situation')
+      if (!el) return
+      let idx = 0
+      el.textContent = SITUATIONS[0]
+      setInterval(() => {
+        el.style.opacity = '0'
+        setTimeout(() => {
+          idx = (idx + 1) % SITUATIONS.length
+          el.textContent = SITUATIONS[idx]
+          el.style.opacity = '1'
+        }, 300)
+      }, 2400)
+    })()
+
+    // Live feed
+    ;(function() {
+      const list = document.getElementById('gw-feed-list')
+      const countEl = document.getElementById('gw-feed-count')
+      if (!list) return
+      let feedIdx = 3, totalEvents = 3
+      const items = []
+
+      function renderItem(id, item, age) {
+        const div = document.createElement('div')
+        div.className = 'gw-feed-item'
+        div.style.cssText = 'padding:8px 14px;border-bottom:1px solid rgba(255,255,255,.04);'
+        div.innerHTML = `
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;background:${item.c}22;color:${item.c};text-transform:uppercase;letter-spacing:.04em;">${item.t}</span>
+              <span style="font-size:12px;font-weight:600;color:rgba(255,255,255,.85);">${item.h}</span>
+            </div>
+            <span style="font-size:10px;color:rgba(255,255,255,.22);flex-shrink:0;white-space:nowrap;">${age}</span>
+          </div>
+          <div style="font-size:11px;color:rgba(255,255,255,.32);margin-top:2px;">${item.s}</div>
+        `
+        return div
+      }
+
+      // seed initial 3
+      for (let k = 0; k < 3; k++) {
+        const age = `${(3 - k) * 4}s ago`
+        items.push({ id: k + 1, item: FEED_ITEMS[k], age })
+        list.appendChild(renderItem(k + 1, FEED_ITEMS[k], age))
+      }
+
+      setInterval(() => {
+        const item = FEED_ITEMS[feedIdx % FEED_ITEMS.length]
+        feedIdx++
+        totalEvents++
+        countEl.textContent = `${totalEvents} events`
+        items.push({ id: totalEvents, item, age: 'just now' })
+        if (items.length > 4) {
+          items.shift()
+          list.removeChild(list.firstChild)
+        }
+        list.appendChild(renderItem(totalEvents, item, 'just now'))
+      }, 3800)
+    })()
+  </script>
 </Layout>
