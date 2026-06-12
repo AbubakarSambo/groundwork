@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { createGroundWithExtras, uploadGroundBrief } from '@/api/grounds'
 import type { GroundScenario, GroundMoment } from '@/types'
 import { GroundworkLogo } from '@/components/gw/GroundworkLogo'
+import { SessionModelPreview } from '@/components/gw'
 
 // ─── Trigger / scenario definitions ────────────────────────────────────────
 
@@ -84,6 +85,23 @@ function timelineDefault(scenario: GroundScenario): string {
   }
 }
 
+// ─── Resolution states ──────────────────────────────────────────────────────
+
+const RESOLUTION_STATES = [
+  'Stay and rebuild',
+  'Exit on good terms',
+  'Restructure the role',
+  'Equity adjustment',
+  'Raise or no raise',
+  'Extend or end contract',
+  'Promote or not',
+  'Vesting acceleration',
+  'Advisory to employee',
+  'Employee to advisory',
+  'Performance exit',
+  'Mutual wind-down',
+] as const
+
 // ─── Need options ───────────────────────────────────────────────────────────
 
 const NEED_OPTIONS = ['Compensation', 'Autonomy', 'Recognition', 'Growth', 'Relationship quality'] as const
@@ -101,9 +119,9 @@ const CADENCE_OPTIONS: { value: Cadence; label: string }[] = [
 // ─── Step counting ──────────────────────────────────────────────────────────
 
 function totalSteps(scenario: GroundScenario | null): number {
-  if (scenario === 'NEW_COFOUNDER') return 3
+  if (scenario === 'NEW_COFOUNDER') return 4  // name → resolution → intent → submit
   if (scenario === 'NEW_PROJECT') return 5
-  return 2
+  return 3  // name → resolution → submit
 }
 
 // ─── Shared styles ──────────────────────────────────────────────────────────
@@ -139,7 +157,10 @@ export function CreateGroundPage() {
   const [label, setLabel]       = useState('')
   const [timelineWeeks, setTimelineWeeks] = useState<string>('')
 
-  // step 3 — cofounder intent questionnaire
+  // step 3 — resolution state (all non-project scenarios)
+  const [resolutionState, setResolutionState] = useState<string>('')
+
+  // step 4 (cofounder) — intent questionnaire
   const [intent,       setIntent]       = useState('')
   const [needs,        setNeeds]        = useState<string[]>([])
   const [needsDetail,  setNeedsDetail]  = useState('')
@@ -149,6 +170,7 @@ export function CreateGroundPage() {
   const [emailInput,   setEmailInput]   = useState('')
   const [emails,       setEmails]       = useState<string[]>([])
   const [emailError,   setEmailError]   = useState('')
+  const [briefText,    setBriefText]    = useState('')
   const [briefFile,    setBriefFile]    = useState<File | null>(null)
   const [cadence,      setCadence]      = useState<Cadence>('FORTNIGHTLY')
 
@@ -211,6 +233,7 @@ export function CreateGroundPage() {
         scenario,
         moment,
         ...(timelineWeeks ? { timelineDays: parseInt(timelineWeeks, 10) * 7 } : {}),
+        ...(resolutionState ? { resolutionState } : {}),
       }
 
       if (scenario === 'NEW_COFOUNDER') {
@@ -225,6 +248,7 @@ export function CreateGroundPage() {
       if (scenario === 'NEW_PROJECT') {
         body.participants = emails
         body.cadence      = cadence
+        if (briefText.trim()) body.brief = briefText.trim()
       }
 
       const ground = await createGroundWithExtras(body)
@@ -272,8 +296,15 @@ export function CreateGroundPage() {
 
   function handleStep2Next() {
     if (!label.trim()) return
-    if (scenario === 'NEW_COFOUNDER') { setStep(3); return }
-    if (scenario === 'NEW_PROJECT')   { setStep(3); return }
+    if (scenario === 'NEW_PROJECT') { setStep(3); return }
+    // all other scenarios: go to resolution state picker
+    setStep(3)
+  }
+
+  // ── next from step 3 (resolution state) ──────────────────────────────────
+
+  function handleStep3Next() {
+    if (scenario === 'NEW_COFOUNDER') { setStep(4); return }
     mutation.mutate()
   }
 
@@ -404,8 +435,59 @@ export function CreateGroundPage() {
           </div>
         )}
 
-        {/* ── STEP 3: cofounder intent questionnaire ─────────────────────── */}
-        {step === 3 && scenario === 'NEW_COFOUNDER' && (
+        {/* ── STEP 3 (non-project): resolution state ──────────────────────── */}
+        {step === 3 && scenario !== 'NEW_PROJECT' && (
+          <div>
+            <div className="gw-ttl">What are you resolving toward?</div>
+            <div className="gw-sub-t" style={{ marginBottom: 20 }}>
+              Pre-agree the outcome before the first check-in. This becomes the frame for the report.
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginTop: 8 }}>
+              {RESOLUTION_STATES.map((rs) => (
+                <button
+                  key={rs}
+                  onClick={() => setResolutionState(rs)}
+                  style={{
+                    ...cardStyle(resolutionState === rs),
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 10,
+                  }}
+                >
+                  <span style={{
+                    width: 14, height: 14, borderRadius: '50%', flexShrink: 0,
+                    border: resolutionState === rs ? '4px solid #0C447C' : '2px solid #B5BEC6',
+                    background: resolutionState === rs ? '#EEF4FB' : 'white',
+                  }} />
+                  <span style={{ fontSize: 13, fontWeight: resolutionState === rs ? 600 : 400, color: '#1A1916' }}>
+                    {rs}
+                  </span>
+                </button>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 8, marginTop: 20 }}>
+              <button type="button" className="gw-btn-sec" style={{ flex: 0 }} onClick={goBack}>← Back</button>
+              <button
+                type="button"
+                className="gw-btn"
+                style={{ flex: 1 }}
+                disabled={mutation.isPending}
+                onClick={handleStep3Next}
+              >
+                {scenario === 'NEW_COFOUNDER'
+                  ? 'Next →'
+                  : mutation.isPending
+                    ? 'Opening…'
+                    : resolutionState
+                      ? 'Open ground →'
+                      : 'Skip and open →'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── STEP 4: cofounder intent questionnaire ──────────────────────── */}
+        {step === 4 && scenario === 'NEW_COFOUNDER' && (
           <div>
             <div className="gw-ttl">Intent check</div>
             <div className="gw-sub-t" style={{ marginBottom: 20 }}>
@@ -493,7 +575,7 @@ export function CreateGroundPage() {
         {step === 3 && scenario === 'NEW_PROJECT' && (
           <div>
             <div className="gw-ttl">Who is involved?</div>
-            <div className="gw-sub-t" style={{ marginBottom: 20 }}>Add the other party or parties by email.</div>
+            <div className="gw-sub-t" style={{ marginBottom: 20 }}>Add the other party or parties by email. At least one participant is required.</div>
 
             <div className="gw-fld">
               <label className="gw-label">Email address</label>
@@ -557,13 +639,35 @@ export function CreateGroundPage() {
         {/* ── STEP 4 (project): attach brief ──────────────────────────────── */}
         {step === 4 && scenario === 'NEW_PROJECT' && (
           <div>
-            <div className="gw-ttl">Attach a brief</div>
+            <div className="gw-ttl">Add a brief</div>
             <div className="gw-sub-t" style={{ marginBottom: 20 }}>
               Anything written down that captures what was agreed. We will read it.
             </div>
 
             <div className="gw-fld">
-              <label className="gw-label">Upload document</label>
+              <label className="gw-label">Write or paste brief</label>
+              <textarea
+                className="gw-input"
+                rows={6}
+                value={briefText}
+                onChange={(e) => setBriefText(e.target.value)}
+                placeholder="Describe scope, ownership, success criteria, timeline…"
+                style={{ resize: 'vertical' }}
+              />
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
+                <span style={{ fontSize: 11, color: 'var(--gw-sub)' }}>
+                  {briefText.trim().split(/\s+/).filter(Boolean).length} words
+                </span>
+                {briefText.trim().split(/\s+/).filter(Boolean).length < 30 && briefText.length > 0 && (
+                  <span style={{ fontSize: 11, color: '#8A5C1A' }}>
+                    Add more detail for better AI analysis
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="gw-fld" style={{ marginTop: 14 }}>
+              <label className="gw-label">Or upload document <span style={{ fontWeight: 400, color: 'var(--gw-sub)' }}>(optional)</span></label>
               <input
                 type="file"
                 accept=".pdf,.doc,.docx"
@@ -584,18 +688,19 @@ export function CreateGroundPage() {
                 type="button"
                 className="gw-btn"
                 style={{ flex: 1 }}
-                disabled={!briefFile}
                 onClick={() => setStep(5)}
               >
                 Next →
               </button>
-              <button
-                type="button"
-                onClick={() => setStep(5)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--gw-sub)', fontSize: 13, padding: '0 4px', textDecoration: 'underline' }}
-              >
-                Skip
-              </button>
+              {!briefText.trim() && !briefFile && (
+                <button
+                  type="button"
+                  onClick={() => setStep(5)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--gw-sub)', fontSize: 13, padding: '0 4px', textDecoration: 'underline' }}
+                >
+                  Skip
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -630,6 +735,16 @@ export function CreateGroundPage() {
                 ))}
               </div>
             </div>
+
+            {/* Live session model preview */}
+            {timelineWeeks && parseInt(timelineWeeks, 10) > 0 && (
+              <div style={{ marginTop: 16 }}>
+                <SessionModelPreview
+                  timelineDays={parseInt(timelineWeeks, 10) * 7}
+                  cadenceDays={cadence === 'WEEKLY' ? 7 : cadence === 'FORTNIGHTLY' ? 14 : 30}
+                />
+              </div>
+            )}
 
             <div style={{ display: 'flex', gap: 8, marginTop: 20 }}>
               <button type="button" className="gw-btn-sec" style={{ flex: 0 }} onClick={goBack}>← Back</button>

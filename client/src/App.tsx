@@ -29,7 +29,9 @@ import { DashboardPage } from '@/pages/dashboard/DashboardPage'
 import { PromptVersioningPage } from '@/pages/prompts/PromptVersioningPage'
 import { PlatformDashboardPage } from '@/pages/prompts/PlatformDashboardPage'
 import { ProfilePage } from '@/pages/profile/ProfilePage'
-import { DevSkipPanel } from '@/components/gw'
+import { GroundIntroPage } from '@/pages/invite/GroundIntroPage'
+import { PaymentActivationPage } from '@/pages/billing/PaymentActivationPage'
+import { DevSkipPanel, OnboardingModal, FeedbackWidget } from '@/components/gw'
 import { useSessionTimeout } from '@/lib/useSessionTimeout'
 import type { JSX } from 'react'
 
@@ -90,11 +92,15 @@ export default function App() {
           <Route path="/billing" element={<RequireAuth><BillingPage /></RequireAuth>} />
           <Route path="/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
           <Route path="/grounds/:groundId/feedback" element={<RequireAuth><GroundFeedbackPage /></RequireAuth>} />
+          <Route path="/invite/:token/intro" element={<GroundIntroPage />} />
+          <Route path="/billing/activate" element={<RequireAuth><PaymentActivationPage /></RequireAuth>} />
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
 
         {import.meta.env.DEV && <DevSkipPanel />}
+        <OnboardingModal />
+        <FeedbackWidget />
         </SessionTimeoutGuard>
       </BrowserRouter>
     </QueryClientProvider>

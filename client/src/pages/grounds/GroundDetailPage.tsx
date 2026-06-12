@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import { AxiosError } from 'axios'
 import { groundsApi, resolutionApi, dashboardApi, documentsApi, conversationApi, billingApi } from '@/api'
 import { useAuthStore } from '@/stores/auth'
-import { StatusPill } from '@/components/gw'
+import { StatusPill, ConfidenceDots, ConfidenceTrendChart } from '@/components/gw'
 import type { CheckInStatus } from '@/types'
 
 const MULTI_PARTY_SCENARIOS = ['NEW_PROJECT', 'CRISIS_ALIGNMENT']
@@ -14,7 +14,7 @@ const MULTI_PARTY_SCENARIOS = ['NEW_PROJECT', 'CRISIS_ALIGNMENT']
 // Tab types
 // ─────────────────────────────────────────────────────────────────────────────
 type AdminTab   = 'overview' | 'checkins' | 'documents' | 'report' | 'settings'
-type MemberTab  = 'checkin'  | 'record'   | 'report'
+type MemberTab  = 'checkin'  | 'record'   | 'report' | 'profile'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Tab bar component
@@ -159,6 +159,7 @@ export function GroundDetailPage() {
     { key: 'checkin', label: 'Check-in' },
     { key: 'record',  label: 'Record'   },
     { key: 'report',  label: 'Report'   },
+    { key: 'profile', label: 'My profile' },
   ]
 
   return (
@@ -170,13 +171,31 @@ export function GroundDetailPage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <button className="gw-back" onClick={() => navigate('/')}>← Grounds</button>
             <div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: '#1A1916', lineHeight: 1.2 }}>{ground.label}</div>
-              <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 1 }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: '#1A1916', lineHeight: 1.2, display: 'flex', alignItems: 'center', gap: 7 }}>
+                {ground.label}
+                {ground.resolutionState && (
+                  <span style={{ fontSize: 10, fontWeight: 600, color: '#0C447C', background: '#EEF4FB', border: '0.5px solid #B5D4F4', borderRadius: 20, padding: '2px 7px' }}>
+                    {ground.resolutionState}
+                  </span>
+                )}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 1, display: 'flex', alignItems: 'center', gap: 8 }}>
                 {ground.scenario?.replace(/_/g, ' ').toLowerCase()}
+                {isAdmin && (ground.daysLeft ?? 0) > 0 && (
+                  <span style={{ color: '#8A5C1A', fontWeight: 600 }}>{ground.daysLeft}d left</span>
+                )}
               </div>
             </div>
           </div>
-          <StatusPill status={ground.status} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 9, flexShrink: 0 }}>
+            {isAdmin && ground.confidence != null && ground.confidence > 0 && (
+              <div style={{ textAlign: 'center' }}>
+                <ConfidenceDots score={ground.confidence} size="sm" />
+                <div style={{ fontSize: 9, color: 'var(--gw-sub)', marginTop: 1 }}>{ground.confidence}/5</div>
+              </div>
+            )}
+            <StatusPill status={ground.status} />
+          </div>
         </div>
 
         {isAdmin
@@ -194,6 +213,17 @@ export function GroundDetailPage() {
             {/* OVERVIEW */}
             {adminTab === 'overview' && (
               <>
+                {/* AI summary blue box */}
+                {ground.brief && (
+                  <div className="gw-box gw-box-blue" style={{ marginBottom: 8, fontSize: 13, lineHeight: 1.65 }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: '#0C447C', marginBottom: 4 }}>Brief</div>
+                    {ground.brief}
+                  </div>
+                )}
+
+                {/* Dynamic nudge panel */}
+                <NudgePanel ground={ground} onRemindAll={() => groundsApi.remindAll(ground.id).then(() => toast.success('Nudges sent'))} />
+
                 {ground?.scenario === 'NEW_COFOUNDER' && (
                   <CofounderAlignmentSection participants={ground.participants ?? []} />
                 )}
@@ -225,6 +255,17 @@ export function GroundDetailPage() {
                   </Section>
                 )}
                 <CheckInsHistory ground={ground} declinedIds={declinedParticipantIds} />
+                {/* Confidence trend chart */}
+                {ground.signals && ground.signals.length > 0 && (() => {
+                  const sorted = [...ground.signals].sort((a: any, b: any) => a.sessionNum - b.sessionNum)
+                  const scores = sorted.map((s: any) => parseFloat(s.confidenceDelta ?? '0'))
+                  const labels = sorted.map((s: any) => `S${s.sessionNum}`)
+                  return scores.length > 0 ? (
+                    <Section title="Confidence trend">
+                      <ConfidenceTrendChart scores={scores} labels={labels} />
+                    </Section>
+                  ) : null
+                })()}
               </>
             )}
 
@@ -300,6 +341,28 @@ export function GroundDetailPage() {
                 {['ACTIVE', 'CLOSED', 'RESOLVED'].includes(ground.status) && (
                   <ResolutionCard groundId={ground.id} myParticipantId={myParticipant?.id} scenario={ground.scenario} />
                 )}
+
+                {/* Close ground */}
+                {ground.status === 'ACTIVE' && (
+                  <Section title="Close ground">
+                    <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginBottom: 12, lineHeight: 1.6 }}>
+                      Closing ends active check-in sessions and stops billing. All records are preserved permanently.
+                    </div>
+                    <button
+                      className="gw-btn-sec"
+                      style={{ color: '#C0392B', borderColor: '#F5C6C0' }}
+                      onClick={() => {
+                        if (window.confirm('Close this ground? This ends billing and active sessions. Records are preserved.')) {
+                          groundsApi.close(ground.id)
+                            .then(() => { qc.invalidateQueries({ queryKey: ['ground', id] }); toast.success('Ground closed') })
+                            .catch(() => toast.error('Could not close this ground'))
+                        }
+                      }}
+                    >
+                      Close ground
+                    </button>
+                  </Section>
+                )}
               </>
             )}
           </>
@@ -359,11 +422,133 @@ export function GroundDetailPage() {
                 )}
               </>
             )}
+
+            {/* MY PROFILE */}
+            {memberTab === 'profile' && myParticipant && (
+              <MemberProfileTab ground={ground} participant={myParticipant} />
+            )}
           </>
         )}
 
       </div>
     </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Nudge panel (admin overview)
+// ─────────────────────────────────────────────────────────────────────────────
+function NudgePanel({ ground, onRemindAll }: { ground: any; onRemindAll: () => void }) {
+  const confidence: number = ground.confidence ?? 0
+  const overdue: number = ground.overdue ?? 0
+  const reportReady = ground.status === 'REPORT_READY'
+
+  if (reportReady) {
+    return (
+      <div style={{ background: '#E1F5EE', border: '1px solid #A5D6C2', borderRadius: 7, padding: '10px 14px', marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#085041' }}>Report is ready</div>
+          <div style={{ fontSize: 12, color: '#1E7A5A', marginTop: 2 }}>Both parties have enough check-ins. Confirm to reveal the shared picture.</div>
+        </div>
+      </div>
+    )
+  }
+  if (overdue > 0) {
+    return (
+      <div style={{ background: '#FDF3E3', border: '1px solid #F0C97A', borderRadius: 7, padding: '10px 14px', marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#8A5C1A' }}>{overdue} {overdue === 1 ? 'person is' : 'people are'} overdue</div>
+          <div style={{ fontSize: 12, color: '#8A5C1A', marginTop: 2 }}>Send a nudge to get the ground back on track.</div>
+        </div>
+        <button className="gw-btn-sm" style={{ flexShrink: 0, marginTop: 0 }} onClick={onRemindAll}>
+          Nudge all
+        </button>
+      </div>
+    )
+  }
+  if (confidence > 0 && confidence < 3) {
+    return (
+      <div style={{ background: '#F7F6F3', border: '1px solid #E2E0DB', borderRadius: 7, padding: '10px 14px', marginBottom: 8 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: '#1A1916' }}>Confidence is low ({confidence}/5)</div>
+        <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 3, lineHeight: 1.55 }}>Check-ins are coming in but the picture is still thin. Encourage both parties to be more specific in their next session.</div>
+      </div>
+    )
+  }
+  return null
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Member profile tab
+// ─────────────────────────────────────────────────────────────────────────────
+function MemberProfileTab({ ground, participant }: { ground: any; participant: any }) {
+  const [publicOn, setPublicOn] = useState<boolean>(participant.publicOnProfile ?? false)
+  const [copied, setCopied] = useState(false)
+
+  function copyShareLink() {
+    const url = `${window.location.origin}/public/record/${participant.id}`
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }
+
+  function togglePublic() {
+    const next = !publicOn
+    setPublicOn(next)
+    groundsApi.toggleParticipantPublic(ground.id, next)
+      .catch(() => setPublicOn(!next))
+  }
+
+  return (
+    <>
+      <Section title="Your profile record">
+        <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 14 }}>
+          This ground can appear on your public profile as evidence of collaborative work. Only the outcome and scenario are shown — never your check-in text.
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#1A1916' }}>Show on public profile</div>
+            <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 1 }}>Visible to anyone with your profile link</div>
+          </div>
+          <button
+            onClick={togglePublic}
+            style={{
+              width: 42, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer',
+              background: publicOn ? '#0C447C' : '#C9C5BF', position: 'relative', transition: 'background .2s',
+            }}
+          >
+            <span style={{
+              position: 'absolute', top: 3, left: publicOn ? 20 : 3,
+              width: 18, height: 18, borderRadius: '50%', background: 'white', transition: 'left .2s',
+            }} />
+          </button>
+        </div>
+
+        <button
+          className="gw-btn-sec"
+          style={{ width: '100%' }}
+          onClick={copyShareLink}
+        >
+          {copied ? 'Link copied!' : 'Copy your record share link'}
+        </button>
+
+        {ground.status === 'RESOLVED' || ground.status === 'CLOSED' ? (
+          <div style={{ marginTop: 12 }}>
+            <button
+              className="gw-btn"
+              style={{ width: '100%' }}
+              onClick={() => groundsApi.addToProfile(ground.id).then(() => toast.success('Added to profile')).catch(() => toast.error('Could not add to profile'))}
+            >
+              Add to my Groundwork profile
+            </button>
+          </div>
+        ) : (
+          <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 10 }}>
+            "Add to profile" becomes available once this ground is resolved.
+          </div>
+        )}
+      </Section>
+    </>
   )
 }
 
@@ -401,9 +586,16 @@ function ReportTab({
   if (waitingForOther) {
     return (
       <Section title="Report">
-        <div className="gw-box gw-box-blue">
+        <div className="gw-box gw-box-blue" style={{ marginBottom: 12 }}>
           Your confirmation is recorded. The report will appear here once the other party also confirms.
         </div>
+        <button
+          className="gw-btn-sec"
+          onClick={() => groundsApi.remindAll(ground.id).then(() => toast.success('Nudge sent')).catch(() => toast.error('Could not send nudge'))}
+          style={{ width: '100%' }}
+        >
+          Resend nudge to other party
+        </button>
       </Section>
     )
   }
@@ -629,10 +821,26 @@ function CompletenessSection({ ground }: { ground: any }) {
   const maxSession = checkIns.reduce((m: number, c: any) => Math.max(m, c.sessionNumber ?? 0), 0)
   const currentPeriodCheckIns = checkIns.filter((c: any) => c.sessionNumber === maxSession)
   const completedCount = currentPeriodCheckIns.filter((c: any) => c.status === 'COMPLETED').length
+  const [reminding, setReminding] = useState<string | null>(null)
 
   const statusForParticipant = (participantId: string): CheckInStatus | undefined => {
     const c = currentPeriodCheckIns.find((ci: any) => ci.participantId === participantId)
     return c?.status as CheckInStatus | undefined
+  }
+
+  const sessionCountForParticipant = (participantId: string): number =>
+    checkIns.filter((c: any) => c.participantId === participantId && c.status === 'COMPLETED').length
+
+  async function remindParticipant(groundId: string, participantId: string) {
+    setReminding(participantId)
+    try {
+      await groundsApi.remindParticipant(groundId, participantId)
+      toast.success('Nudge sent')
+    } catch {
+      toast.error('Could not send nudge')
+    } finally {
+      setReminding(null)
+    }
   }
 
   return (
@@ -640,14 +848,34 @@ function CompletenessSection({ ground }: { ground: any }) {
       <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 12 }}>
         <strong style={{ color: 'var(--gw-text)' }}>{completedCount} of {participants.length}</strong> people have checked in this period
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {participants.map((p: any) => {
-          const dot = statusDot(statusForParticipant(p.id))
+          const status = statusForParticipant(p.id)
+          const dot = statusDot(status)
+          const sessions = sessionCountForParticipant(p.id)
+          const progressPct = Math.min(100, (sessions / Math.max(maxSession, 1)) * 100)
           return (
-            <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px', background: '#F7F6F3', borderRadius: 5 }}>
-              <span style={{ width: 9, height: 9, borderRadius: '50%', flexShrink: 0, background: dot.color, display: 'inline-block' }} title={dot.label} />
-              <span style={{ fontSize: 12, color: 'var(--gw-text)', flex: 1 }}>{p.roleAsDescribed || p.partyType}</span>
-              <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}>{dot.label}</span>
+            <div key={p.id} style={{ padding: '9px 12px', background: '#F7F6F3', borderRadius: 6 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', flexShrink: 0, background: dot.color }} />
+                <span style={{ fontSize: 12, color: 'var(--gw-text)', flex: 1, fontWeight: 500 }}>
+                  {p.roleAsDescribed || p.partyType}
+                </span>
+                <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}>{sessions} session{sessions !== 1 ? 's' : ''}</span>
+                {status !== 'COMPLETED' && (
+                  <button
+                    style={{ fontSize: 11, color: '#0C447C', background: 'none', border: '1px solid #B5D4F4', borderRadius: 20, cursor: 'pointer', padding: '2px 9px', fontFamily: 'inherit' }}
+                    onClick={() => remindParticipant(ground.id, p.id)}
+                    disabled={reminding === p.id}
+                  >
+                    {reminding === p.id ? '…' : 'Remind'}
+                  </button>
+                )}
+              </div>
+              {/* Mini progress bar */}
+              <div style={{ height: 4, background: '#E2E0DB', borderRadius: 2, overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${progressPct}%`, background: dot.color, borderRadius: 2, transition: 'width .3s' }} />
+              </div>
             </div>
           )
         })}

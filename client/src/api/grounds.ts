@@ -11,6 +11,17 @@ export const groundsApi = {
   activate: (id: string) => apiClient.post(`/grounds/${id}/activate`).then((r) => r.data),
   patch: (id: string, data: Record<string, unknown>) =>
     apiClient.patch<Ground>(`/grounds/${id}`, data).then((r) => r.data),
+  close: (id: string) => apiClient.post(`/grounds/${id}/close`).then((r) => r.data),
+  remindParticipant: (groundId: string, participantId: string) =>
+    apiClient.post(`/grounds/${groundId}/remind`, { participantId }).then((r) => r.data),
+  remindAll: (groundId: string) =>
+    apiClient.post(`/grounds/${groundId}/remind-all`).then((r) => r.data),
+  addToProfile: (id: string) =>
+    apiClient.post(`/grounds/${id}/add-to-profile`).then((r) => r.data),
+  toggleParticipantPublic: (id: string, publicOnProfile: boolean) =>
+    apiClient.patch(`/grounds/${id}/profile-visibility`, { publicOnProfile }).then((r) => r.data),
+  signals: (id: string) =>
+    apiClient.get(`/grounds/${id}/signals`).then((r) => r.data),
 }
 
 export const createGroundWithExtras = (body: object) =>

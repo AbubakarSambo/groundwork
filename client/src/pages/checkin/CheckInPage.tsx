@@ -567,6 +567,11 @@ export function CheckInPage() {
             </div>
           </div>
 
+          {/* Privacy reminder bar */}
+          <div style={{ background: '#F0F6FF', borderTop: '1px solid #D6E8FA', padding: '6px 14px', fontSize: 11, color: '#0C447C', textAlign: 'center', fontWeight: 500 }}>
+            Your words are private until you both activate the report.
+          </div>
+
           {/* Input */}
           <div className="gw-chat-bar gw-print-hidden">
             {/* #107 — hidden file input for document attachment */}

@@ -53,6 +53,16 @@ export interface CheckInSummary {
   completedAt?: string | null
 }
 
+export interface GroundSignal {
+  id: string
+  groundId: string
+  sessionNum: number
+  type: 'Convergence' | 'Divergence' | 'Pattern'
+  text: string
+  confidenceDelta: string | null
+  createdAt: string
+}
+
 export interface Ground {
   id: string
   label: string
@@ -61,8 +71,15 @@ export interface Ground {
   status: GroundStatus
   timelineDays: number
   cadence: string
+  confidence?: number
+  resolutionState?: string | null
+  brief?: string | null
+  daysLeft?: number | null
+  checkInsToday?: number
+  overdue?: number
   participants: GroundParticipant[]
   checkIns?: CheckInSummary[]
+  signals?: GroundSignal[]
   report?: { id: string; releasedAt: string | null } | null
 }
 
