@@ -41,7 +41,7 @@ export function InvitePage() {
           <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 20 }}>
             Sign in to continue your check-in for <strong>{preview.groundLabel}</strong>.
           </div>
-          <button className="gw-btn" style={{ display: 'inline-block', width: 'auto', padding: '10px 20px' }} onClick={() => navigate('/login')}>
+          <button className="gw-btn" style={{ display: 'inline-block', width: 'auto', padding: '10px 20px' }} onClick={() => navigate('/enter')}>
             Sign in →
           </button>
         </div>

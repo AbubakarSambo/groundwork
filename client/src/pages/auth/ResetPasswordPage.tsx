@@ -1,76 +1,84 @@
-import { useState, useEffect } from 'react'
-import { useSearchParams, useNavigate, Link } from 'react-router-dom'
-import { toast } from 'sonner'
-import { authApi } from '@/api'
-import { GroundworkLogo } from '@/components/gw/GroundworkLogo'
+import { useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useMutation } from '@tanstack/react-query'
+import { authApi } from '@/api/auth'
+import { useAuthStore } from '@/stores/auth'
 
 export function ResetPasswordPage() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
+  const setAuth = useAuthStore(s => s.setAuth)
   const token = params.get('token') ?? ''
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [er, setEr] = useState('')
+  const [error, setError] = useState('')
 
-  useEffect(() => {
-    if (!token) setEr('This link is missing its token. Use Forgot password again.')
-  }, [token])
+  const save = useMutation({
+    mutationFn: () => authApi.resetPassword(token, password),
+    onSuccess: res => {
+      setAuth(res.user, res.accessToken)
+      navigate('/grounds', { replace: true })
+    },
+    onError: (err: any) => {
+      const msg = err?.response?.data?.message
+      setError(Array.isArray(msg) ? msg[0] : (msg ?? 'Invalid or expired link. Request a new one.'))
+    },
+  })
 
-  const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (password.length < 8) { setEr('Password must be at least 8 characters'); return }
-    if (password !== confirm) { setEr('Passwords do not match'); return }
-    setLoading(true)
-    try {
-      await authApi.resetPassword(token, password)
-      toast.success('Password reset. Sign in with your new password.')
-      navigate('/login')
-    } catch (err: any) {
-      setEr(err?.response?.data?.message || 'This link has expired or is invalid.')
-    } finally {
-      setLoading(false)
-    }
+  function submit() {
+    setError('')
+    if (!token) { setError('Invalid link — no token.'); return }
+    if (password.length < 8) { setError('Password must be at least 8 characters.'); return }
+    if (!/[A-Z]/.test(password) || !/[a-z]/.test(password)) { setError('Password must contain at least 1 uppercase and 1 lowercase letter.'); return }
+    if (password !== confirm) { setError('Passwords do not match.'); return }
+    save.mutate()
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--gw-bg)', display: 'flex', flexDirection: 'column' }}>
-      <div className="gw-hdr">
-        <GroundworkLogo />
-        <Link to="/login" className="gw-back">Back to sign in</Link>
-      </div>
-
-      <div className="gw-bd" style={{ maxWidth: 460, margin: '0 auto', width: '100%', paddingTop: 40 }}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
+      <div className="gw-hdr"><div className="gw-logo">Groundwork</div></div>
+      <div className="gw-bd" style={{ maxWidth: 420, margin: '0 auto', width: '100%', paddingTop: 32 }}>
         <div className="gw-ttl">Reset your password</div>
-        <div className="gw-sub-t">Choose a new password for your Groundwork account.</div>
+        <div className="gw-sub-t">Choose a new password for your account.</div>
 
-        <form onSubmit={onSubmit}>
-          <div className="gw-fld">
-            <label className="gw-label">New password</label>
-            <input
-              className="gw-input"
-              type="password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              placeholder="At least 8 characters"
-              autoFocus
-            />
-          </div>
-          <div className="gw-fld">
-            <label className="gw-label">Confirm new password</label>
-            <input
-              className="gw-input"
-              type="password"
-              value={confirm}
-              onChange={e => setConfirm(e.target.value)}
-              placeholder="Same again"
-            />
-          </div>
-          {er && <div className="gw-er">{er}</div>}
-          <button className="gw-btn" type="submit" disabled={loading || !token}>
-            {loading ? 'Resetting…' : 'Reset password →'}
-          </button>
-        </form>
+        <div className="gw-fld">
+          <label className="gw-label">New password</label>
+          <input
+            className="gw-input"
+            type="password"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            placeholder="At least 8 characters"
+            autoFocus
+          />
+        </div>
+        <div className="gw-fld">
+          <label className="gw-label">Confirm password</label>
+          <input
+            className="gw-input"
+            type="password"
+            value={confirm}
+            onChange={e => setConfirm(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && submit()}
+            placeholder="Same as above"
+          />
+        </div>
+
+        <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginBottom: 12, lineHeight: 1.6 }}>
+          Must be 8+ characters with at least one uppercase and one lowercase letter.
+        </div>
+
+        {error && <div className="gw-er" style={{ marginBottom: 10 }}>{error}</div>}
+
+        <button className="gw-btn" onClick={submit} disabled={save.isPending}>
+          {save.isPending ? 'Saving…' : 'Reset password →'}
+        </button>
+
+        <div style={{ textAlign: 'center', marginTop: 14 }}>
+          <span onClick={() => navigate('/enter')} style={{ fontSize: 12, color: 'var(--gw-sub)', cursor: 'pointer' }}>
+            Back to sign in
+          </span>
+        </div>
       </div>
     </div>
   )

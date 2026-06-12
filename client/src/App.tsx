@@ -2,106 +2,91 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from 'sonner'
 import { useAuthStore } from '@/stores/auth'
-import { LoginPage } from '@/pages/auth/LoginPage'
-import { RegisterPage } from '@/pages/auth/RegisterPage'
-import { VerifyEmailPage } from '@/pages/auth/VerifyEmailPage'
+import { useSessionTimeout } from '@/lib/useSessionTimeout'
+import { LandingPage } from '@/pages/LandingPage'
+import { AuthPage } from '@/pages/auth/AuthPage'
+import { MagicSentPage } from '@/pages/auth/MagicSentPage'
+import { MagicVerifyPage } from '@/pages/auth/MagicVerifyPage'
 import { SetPasswordPage } from '@/pages/auth/SetPasswordPage'
 import { ResetPasswordPage } from '@/pages/auth/ResetPasswordPage'
-import { ForgotPasswordPage } from '@/pages/auth/ForgotPasswordPage'
-import { CheckEmailPage } from '@/pages/auth/CheckEmailPage'
-import { OrgCodeEntryPage } from '@/pages/auth/OrgCodeEntryPage'
-import { PinSetupPage } from '@/pages/auth/PinSetupPage'
-import { PinAuthPage } from '@/pages/auth/PinAuthPage'
-import { WelcomeScreen } from '@/pages/auth/WelcomeScreen'
-import { OrgSetupPage } from '@/pages/auth/OrgSetupPage'
-import { LandingPage } from '@/pages/LandingPage'
+import { SetupPage } from '@/pages/setup/SetupPage'
+import { EnterPage } from '@/pages/enter/EnterPage'
+import { PinPage } from '@/pages/enter/PinPage'
+import { WelcomePage } from '@/pages/welcome/WelcomePage'
+import { ChatPage } from '@/pages/chat/ChatPage'
+import { AlignmentFeedPage } from '@/pages/feed/AlignmentFeedPage'
 import { GroundsListPage } from '@/pages/grounds/GroundsListPage'
 import { CreateGroundPage } from '@/pages/grounds/CreateGroundPage'
-import { GroundDetailPage } from '@/pages/grounds/GroundDetailPage'
-import { CheckInPage } from '@/pages/checkin/CheckInPage'
-import { ReportPage } from '@/pages/report/ReportPage'
-import { BillingCallbackPage } from '@/pages/billing/BillingCallbackPage'
+import { GroundAdminPage } from '@/pages/grounds/GroundAdminPage'
+import { GroundParticipantPage } from '@/pages/grounds/GroundParticipantPage'
 import { BillingPage } from '@/pages/billing/BillingPage'
-import { GroundFeedbackPage } from '@/pages/grounds/GroundFeedbackPage'
-import { InvitePage } from '@/pages/invite/InvitePage'
-import { AlignmentFeedPage } from '@/pages/alignment/AlignmentFeedPage'
-import { DashboardPage } from '@/pages/dashboard/DashboardPage'
-import { PromptVersioningPage } from '@/pages/prompts/PromptVersioningPage'
-import { PlatformDashboardPage } from '@/pages/prompts/PlatformDashboardPage'
+import { PaymentPage } from '@/pages/billing/PaymentPage'
 import { ProfilePage } from '@/pages/profile/ProfilePage'
-import { GroundIntroPage } from '@/pages/invite/GroundIntroPage'
-import { PaymentActivationPage } from '@/pages/billing/PaymentActivationPage'
-import { DevSkipPanel, OnboardingModal, FeedbackWidget } from '@/components/gw'
-import { useSessionTimeout } from '@/lib/useSessionTimeout'
+import { CofounderPage } from '@/pages/cofounder/CofounderPage'
+import { InvitePage } from '@/pages/invite/InvitePage'
+import { PromptVersioningPage } from '@/pages/prompts/PromptVersioningPage'
+import { AdminPage } from '@/pages/admin/AdminPage'
 import type { JSX } from 'react'
 
-const queryClient = new QueryClient({
+const qc = new QueryClient({
   defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
 })
 
 function RequireAuth({ children }: { children: JSX.Element }) {
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
-  return isAuthenticated ? children : <Navigate to="/login" replace />
+  const isAuthenticated = useAuthStore(s => s.isAuthenticated)
+  return isAuthenticated ? children : <Navigate to="/" replace />
 }
 
 function RootRoute() {
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+  const isAuthenticated = useAuthStore(s => s.isAuthenticated)
   return isAuthenticated ? <GroundsListPage /> : <LandingPage />
 }
 
-// Mounts inside BrowserRouter so useNavigate is available
-function SessionTimeoutGuard({ children }: { children: React.ReactNode }) {
+function SessionGuard({ children }: { children: React.ReactNode }) {
   useSessionTimeout()
   return <>{children}</>
 }
 
 export default function App() {
   return (
-    <QueryClientProvider client={queryClient}>
+    <QueryClientProvider client={qc}>
       <BrowserRouter>
-        <SessionTimeoutGuard>
-        <Toaster position="top-right" richColors />
+        <SessionGuard>
+          <Toaster position="top-right" richColors />
+          <Routes>
+            {/* Public */}
+            <Route path="/" element={<RootRoute />} />
+            <Route path="/auth" element={<AuthPage />} />
+            <Route path="/auth/sent" element={<MagicSentPage />} />
+            <Route path="/verify-email" element={<MagicVerifyPage />} />
+            <Route path="/set-password" element={<SetPasswordPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
+            <Route path="/enter" element={<EnterPage />} />
+            <Route path="/pin" element={<PinPage />} />
+            <Route path="/invite" element={<InvitePage />} />
 
-        <Routes>
-          {/* Public */}
-          <Route path="/" element={<RootRoute />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/verify-email" element={<VerifyEmailPage />} />
-          <Route path="/set-password" element={<SetPasswordPage />} />
-          <Route path="/reset-password" element={<ResetPasswordPage />} />
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-          <Route path="/check-email" element={<CheckEmailPage />} />
-          <Route path="/invite" element={<InvitePage />} />
-          <Route path="/enter-org-code" element={<OrgCodeEntryPage />} />
-          <Route path="/set-pin" element={<PinSetupPage />} />
-          <Route path="/pin-login" element={<PinAuthPage />} />
-          <Route path="/welcome" element={<WelcomeScreen />} />
-          <Route path="/setup" element={<OrgSetupPage />} />
+            {/* Post-auth setup */}
+            <Route path="/setup" element={<SetupPage />} />
+            <Route path="/welcome" element={<WelcomePage />} />
 
-          {/* Protected */}
-          <Route path="/grounds/new" element={<RequireAuth><CreateGroundPage /></RequireAuth>} />
-          <Route path="/grounds/:id" element={<RequireAuth><GroundDetailPage /></RequireAuth>} />
-          <Route path="/alignment-feed" element={<RequireAuth><AlignmentFeedPage /></RequireAuth>} />
-          <Route path="/dashboard" element={<RequireAuth><DashboardPage /></RequireAuth>} />
-          <Route path="/prompts" element={<RequireAuth><PromptVersioningPage /></RequireAuth>} />
-          <Route path="/admin/dashboard" element={<RequireAuth><PlatformDashboardPage /></RequireAuth>} />
-          <Route path="/checkin/:checkInId" element={<RequireAuth><CheckInPage /></RequireAuth>} />
-          <Route path="/report/:groundId" element={<RequireAuth><ReportPage /></RequireAuth>} />
-          <Route path="/billing/callback" element={<RequireAuth><BillingCallbackPage /></RequireAuth>} />
-          <Route path="/billing" element={<RequireAuth><BillingPage /></RequireAuth>} />
-          <Route path="/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
-          <Route path="/grounds/:groundId/feedback" element={<RequireAuth><GroundFeedbackPage /></RequireAuth>} />
-          <Route path="/invite/:token/intro" element={<GroundIntroPage />} />
-          <Route path="/billing/activate" element={<RequireAuth><PaymentActivationPage /></RequireAuth>} />
+            {/* Main app — require auth */}
+            <Route path="/grounds" element={<RequireAuth><GroundsListPage /></RequireAuth>} />
+            <Route path="/grounds/new" element={<RequireAuth><CreateGroundPage /></RequireAuth>} />
+            <Route path="/grounds/:id" element={<RequireAuth><GroundAdminPage /></RequireAuth>} />
+            <Route path="/grounds/:id/p" element={<RequireAuth><GroundParticipantPage /></RequireAuth>} />
+            <Route path="/chat/:checkInId" element={<RequireAuth><ChatPage /></RequireAuth>} />
+            <Route path="/checkin/:checkInId" element={<RequireAuth><ChatPage /></RequireAuth>} />
+            <Route path="/feed" element={<RequireAuth><AlignmentFeedPage /></RequireAuth>} />
+            <Route path="/billing" element={<RequireAuth><BillingPage /></RequireAuth>} />
+            <Route path="/billing/checkout" element={<RequireAuth><PaymentPage /></RequireAuth>} />
+            <Route path="/profile/:id?" element={<ProfilePage />} />
+            <Route path="/cofounder" element={<RequireAuth><CofounderPage /></RequireAuth>} />
+            <Route path="/prompts" element={<RequireAuth><PromptVersioningPage /></RequireAuth>} />
+            <Route path="/admin" element={<RequireAuth><AdminPage /></RequireAuth>} />
 
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-
-        {import.meta.env.DEV && <DevSkipPanel />}
-        <OnboardingModal />
-        <FeedbackWidget />
-        </SessionTimeoutGuard>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </SessionGuard>
       </BrowserRouter>
     </QueryClientProvider>
   )

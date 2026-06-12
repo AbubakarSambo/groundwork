@@ -39,12 +39,12 @@ apiClient.interceptors.response.use(
     
     if (error.response?.status === 401) {
       const url = error.config?.url || ''
-      const authEndpoints = ['/auth/login', '/auth/verify-email', '/auth/set-password', '/auth/resend-verification']
+      const authEndpoints = ['/auth/register-magic-link', '/auth/login', '/auth/validate-token']
       const isAuthEndpoint = authEndpoints.some(ep => url.includes(ep))
-      // Only redirect if not on login/auth pages (to preserve form state on failed login)
-      if (!window.location.pathname.includes('/login') && !isAuthEndpoint) {
+      const onAuthPage = ['/auth', '/enter', '/pin'].some(p => window.location.pathname.startsWith(p))
+      if (!onAuthPage && !isAuthEndpoint) {
         useAuthStore.getState().logout()
-        window.location.href = '/login'
+        window.location.href = '/'
       }
       return Promise.reject(error)
     }

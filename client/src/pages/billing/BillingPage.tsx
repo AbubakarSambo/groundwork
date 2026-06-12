@@ -1,146 +1,90 @@
 import { useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
-import { billingApi, groundsApi } from '@/api'
-import { GroundworkLogo } from '@/components/gw/GroundworkLogo'
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 6, padding: '16px', marginBottom: 8 }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-muted)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 10 }}>
-        {title}
-      </div>
-      {children}
-    </div>
-  )
-}
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
-}
+import { useQuery, useMutation } from '@tanstack/react-query'
+import { billingApi } from '@/api/billing'
+import { toast } from 'sonner'
 
 export function BillingPage() {
   const navigate = useNavigate()
+  const { data: status, isLoading } = useQuery({ queryKey: ['billing'], queryFn: billingApi.status })
 
-  const { data: billing, isLoading: billingLoading } = useQuery({
-    queryKey: ['billing-status'],
-    queryFn: billingApi.status,
+  const portal = useMutation({
+    mutationFn: billingApi.portal,
+    onSuccess: r => { window.location.href = r.url },
+    onError: () => toast.error('Could not open billing portal.'),
   })
 
-  const { data: grounds = [] } = useQuery({
-    queryKey: ['grounds'],
-    queryFn: groundsApi.list,
+  const checkout = useMutation({
+    mutationFn: billingApi.createCareFeeCheckout,
+    onSuccess: r => { window.location.href = r.url },
+    onError: () => toast.error('Could not start checkout.'),
   })
-
-  // Session-5 trigger: any active ground has a check-in at session 5 or beyond
-  const hasSession5Ground = grounds.some(g =>
-    g.status !== 'CLOSED' &&
-    g.status !== 'RESOLVED' &&
-    (g.checkIns ?? []).some((c: any) => (c.sessionNumber ?? 0) >= 5),
-  )
-  const showSession5Banner = hasSession5Ground && !billing?.billingReady
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--gw-bg)', display: 'flex', flexDirection: 'column' }}>
-      {/* Header */}
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
       <div className="gw-hdr">
-        <div>
-          <GroundworkLogo />
-          <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 1 }}>Billing</div>
-        </div>
-        <button className="gw-back" onClick={() => navigate('/')}>← Grounds</button>
+        <div className="gw-logo">Groundwork</div>
+        <button className="gw-back" onClick={() => navigate('/grounds')}>← Back</button>
       </div>
 
-      <div className="gw-bd" style={{ maxWidth: 600, margin: '0 auto', width: '100%' }}>
-        <div className="gw-ttl" style={{ marginBottom: 4 }}>Billing</div>
-        <div className="gw-sub-t" style={{ marginBottom: 16 }}>Manage your plan and active grounds.</div>
+      <div className="gw-bd" style={{ maxWidth: 540, margin: '0 auto', width: '100%' }}>
+        <div className="gw-ttl">Billing</div>
+        <div className="gw-sub-t">Manage your plan, seats, and payment method.</div>
 
-        {/* Session-5 activation prompt */}
-        {showSession5Banner && (
-          <div style={{ background: '#FDF3E3', border: '1px solid #E8A94A', borderRadius: 8, padding: '14px 16px', marginBottom: 12 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#8A5C1A', marginBottom: 6 }}>Session 5 reached</div>
-            <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.65, marginBottom: 12 }}>
-              One or more of your grounds has reached session 5. Sessions 1 to 4 were free.
-              Activate billing to continue.
+        {isLoading && <div style={{ fontSize: 13, color: 'var(--gw-muted)' }}>Loading…</div>}
+
+        {status && (
+          <>
+            {/* Plan summary */}
+            <div style={{ background: 'var(--gw-blue-bg)', border: '0.5px solid var(--gw-blue-b)', borderRadius: 10, padding: 16, marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-navy)' }}>Current plan</div>
+                <span className={`gw-pill ${status.careFeeActive ? 'gw-pill-green' : 'gw-pill-gray'}`}>{status.careFeeActive ? 'Active' : 'Inactive'}</span>
+              </div>
+              <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                <div><div style={{ fontSize: 20, fontWeight: 700, color: 'var(--gw-navy)' }}>$25</div><div style={{ fontSize: 11, color: 'var(--gw-sub)' }}>per month base</div></div>
+                <div><div style={{ fontSize: 20, fontWeight: 700, color: 'var(--gw-navy)' }}>{status.activeGrounds}</div><div style={{ fontSize: 11, color: 'var(--gw-sub)' }}>active grounds</div></div>
+                <div><div style={{ fontSize: 20, fontWeight: 700, color: 'var(--gw-navy)' }}>${status.estimatedNextCharge ?? 0}</div><div style={{ fontSize: 11, color: 'var(--gw-sub)' }}>this month</div></div>
+              </div>
+              {status.nextBillingDate && (
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 10 }}>
+                  Next billing: {new Date(status.nextBillingDate).toLocaleDateString()}
+                  {status.card && ` · ${status.card.brand} ending ${status.card.last4}`}
+                </div>
+              )}
             </div>
-            <div style={{ fontSize: 12, color: '#8A5C1A', fontWeight: 600 }}>
-              $25/month per org + $25/person/month per active ground
+
+            {/* Session 5 activate */}
+            {!status.careFeeActive && (
+              <div style={{ background: 'var(--gw-amber-bg)', border: '0.5px solid var(--gw-amber-b)', borderRadius: 10, padding: 14, marginBottom: 16 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 6 }}>Activate billing</div>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 12 }}>
+                  Sessions 1–4 were free. Activate to continue past session 4.
+                </div>
+                <button onClick={() => checkout.mutate()} disabled={checkout.isPending}
+                  style={{ padding: '10px 18px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
+                  {checkout.isPending ? 'Loading…' : 'Activate billing'}
+                </button>
+              </div>
+            )}
+
+            {/* Pricing note */}
+            <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.7, background: 'var(--gw-bg)', borderRadius: 8, padding: '12px 14px', marginBottom: 20, border: '0.5px solid var(--gw-border)' }}>
+              $25/month per org + $25/person/month per active ground past session 4. Sessions 1–4 are free for all participants.
             </div>
-            <button
-              className="gw-btn"
-              style={{ marginTop: 12, width: 'auto', padding: '9px 20px' }}
-              onClick={() => billingApi.careFeeCheckout().then(r => { window.location.href = r.checkoutUrl }).catch(() => {})}
-            >
-              Activate billing
-            </button>
-          </div>
+
+            {/* Manage */}
+            {status.careFeeActive && (
+              <button onClick={() => portal.mutate()} disabled={portal.isPending} className="gw-btn-sec" style={{ margin: 0 }}>
+                {portal.isPending ? 'Loading…' : 'Manage payment method and invoices →'}
+              </button>
+            )}
+
+            <div style={{ marginTop: 20 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>Billing history</div>
+              <div style={{ fontSize: 13, color: 'var(--gw-sub)', padding: 12, background: 'var(--gw-bg)', borderRadius: 8, border: '0.5px solid var(--gw-border)', textAlign: 'center' }}>No billing history yet.</div>
+            </div>
+          </>
         )}
-
-        {/* Plan summary */}
-        <Section title="Account">
-          <div style={{ fontSize: 13, color: 'var(--gw-text)', marginBottom: 8 }}>
-            Base fee: <strong>$25/month per org</strong>
-          </div>
-          <div style={{ fontSize: 13, color: 'var(--gw-text)', marginBottom: 12 }}>
-            Per-ground fee: <strong>$25/person/month</strong> per active ground (sessions 1–4 free)
-          </div>
-          {billingLoading ? (
-            <div style={{ fontSize: 13, color: 'var(--gw-muted)' }}>Loading…</div>
-          ) : billing?.billingReady ? (
-            <div className="gw-box gw-box-green" style={{ marginBottom: 0 }}>
-              Your account is active.
-            </div>
-          ) : (
-            <div className="gw-box gw-box-amber" style={{ marginBottom: 0 }}>
-              No active subscription. Sessions 1 to 4 are free — billing starts at session 5.
-            </div>
-          )}
-        </Section>
-
-        {/* Active grounds */}
-        <Section title="Active grounds">
-          {billingLoading && (
-            <div style={{ fontSize: 13, color: 'var(--gw-muted)' }}>Loading…</div>
-          )}
-
-          {!billingLoading && (!billing?.activeGrounds || billing.activeGrounds.length === 0) && (
-            <div style={{ fontSize: 13, color: 'var(--gw-muted)' }}>
-              No grounds are currently on a paid plan. Sessions 1 to 4 are free for all parties.
-            </div>
-          )}
-
-          {billing?.activeGrounds?.map((g) => (
-            <div
-              key={g.groundId}
-              style={{ padding: '10px 12px', background: '#F7F6F3', borderRadius: 5, marginBottom: 7 }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)' }}>{g.label}</div>
-                <span style={{ fontSize: 11, color: 'var(--gw-sub)', background: '#EEF4FB', border: '1px solid #B5D4F4', borderRadius: 20, padding: '2px 8px' }}>
-                  {g.scenario.replace(/_/g, ' ').toLowerCase()}
-                </span>
-              </div>
-              <div style={{ fontSize: 12, color: 'var(--gw-sub)' }}>
-                Active since {formatDate(g.activeSince)}
-              </div>
-            </div>
-          ))}
-
-          {billing?.estimatedMonthlyTotal != null && (
-            <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #E2E0DB', fontSize: 13, color: 'var(--gw-text)' }}>
-              Estimated this month: <strong>${billing.estimatedMonthlyTotal}</strong>
-            </div>
-          )}
-        </Section>
-
-        {/* Manage */}
-        <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 6, padding: '16px', marginBottom: 8 }}>
-          <button className="gw-btn" style={{ marginTop: 0 }} onClick={() => billingApi.careFeeCheckout().then(r => { window.location.href = r.checkoutUrl }).catch(() => {})}>
-            Manage subscription
-          </button>
-          <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 12, lineHeight: 1.6 }}>
-            Your records are never deleted when a subscription changes. Records belong to the people in them.
-          </div>
-        </div>
       </div>
     </div>
   )

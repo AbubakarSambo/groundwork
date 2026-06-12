@@ -1,766 +1,261 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
+import { groundsApi, type GroundScenario, type GroundMoment, type GroundCadence } from '@/api/grounds'
 import { toast } from 'sonner'
-import { createGroundWithExtras, uploadGroundBrief } from '@/api/grounds'
-import type { GroundScenario, GroundMoment } from '@/types'
-import { GroundworkLogo } from '@/components/gw/GroundworkLogo'
-import { SessionModelPreview } from '@/components/gw'
 
-// ─── Trigger / scenario definitions ────────────────────────────────────────
-
-type TriggerCategory = 'STARTING' | 'RECOGNITION' | 'DRIFTED'
-
-interface TriggerCard {
-  value: TriggerCategory
-  symbol: string
-  label: string
-  purpose: string
-}
-
-const TRIGGER_CARDS: TriggerCard[] = [
-  {
-    value: 'STARTING',
-    symbol: '+',
-    label: 'Something new is starting',
-    purpose: 'Build alignment from the beginning. Replace assumption with explicit record.',
-  },
-  {
-    value: 'RECOGNITION',
-    symbol: '↑',
-    label: 'Someone wants recognition',
-    purpose: 'Ground a reward decision in a historical record.',
-  },
-  {
-    value: 'DRIFTED',
-    symbol: '◉',
-    label: 'Something has drifted',
-    purpose: 'Create shared reality under pressure, drift, or conflict.',
-  },
-]
-
-interface SubOption {
+interface ScenarioCard {
   scenario: GroundScenario
-  moment: GroundMoment
   label: string
   desc: string
+  tag: string
+  tagBg: string
+  tagColor: string
 }
 
-const SUB_OPTIONS: Record<TriggerCategory, SubOption[]> = {
-  STARTING: [
-    { scenario: 'NEW_HIRE',      moment: 'STARTING',    label: 'New hire',                   desc: 'Define 90-day success before day one sets in.' },
-    { scenario: 'NEW_COFOUNDER', moment: 'STARTING',    label: 'New cofounder',               desc: 'Define contribution before the equity discussion.' },
-    { scenario: 'NEW_ADVISOR',   moment: 'STARTING',    label: 'New advisor',                 desc: 'Define expected return vs cost from the start.' },
-    { scenario: 'NEW_PROJECT',   moment: 'STARTING',    label: 'New project',                 desc: 'Scope, ownership, and success criteria defined upfront.' },
-    { scenario: 'NEW_MANAGER',   moment: 'STARTING',    label: 'New manager',                 desc: 'Define scope and expectations before the engagement starts.' },
-  ],
-  RECOGNITION: [
-    { scenario: 'RECOGNITION',   moment: 'RECOGNITION', label: 'Raise, equity, or promotion', desc: 'Both sides on record before the decision is made.' },
-  ],
-  DRIFTED: [
-    { scenario: 'DRIFT',              moment: 'RESOLUTION', label: 'General drift',         desc: 'A relationship or dynamic that has been wrong for too long.' },
-    { scenario: 'CONTRACT_RENEWAL',   moment: 'RESOLUTION', label: 'Contract renewal',      desc: 'Record-based decisioning at the end of a period.' },
-    { scenario: 'CRISIS_ALIGNMENT',   moment: 'RESOLUTION', label: 'Crisis alignment',      desc: 'Cofounder tension, cash crunch, or a team not seeing the same thing.' },
-    { scenario: 'GENERAL_ALIGNMENT',  moment: 'RESOLUTION', label: 'General alignment',     desc: 'An open alignment session for any working relationship — not tied to a specific hire, project, or exit.' },
-  ],
-}
-
-// ─── Timeline helper ────────────────────────────────────────────────────────
-
-function timelineDefault(scenario: GroundScenario): string {
-  switch (scenario) {
-    case 'NEW_HIRE':
-    case 'NEW_MANAGER':
-      return 'Default: 90-day window'
-    case 'NEW_COFOUNDER':
-      return 'Default: 3-month check-in'
-    case 'NEW_ADVISOR':
-      return 'Default: 12-month advisory period'
-    case 'NEW_PROJECT':
-      return 'Default: project length'
-    case 'GENERAL_ALIGNMENT':
-      return 'Duration: as needed'
-    default:
-      return 'Duration: as needed'
-  }
-}
-
-// ─── Resolution states ──────────────────────────────────────────────────────
-
-const RESOLUTION_STATES = [
-  'Stay and rebuild',
-  'Exit on good terms',
-  'Restructure the role',
-  'Equity adjustment',
-  'Raise or no raise',
-  'Extend or end contract',
-  'Promote or not',
-  'Vesting acceleration',
-  'Advisory to employee',
-  'Employee to advisory',
-  'Performance exit',
-  'Mutual wind-down',
-] as const
-
-// ─── Need options ───────────────────────────────────────────────────────────
-
-const NEED_OPTIONS = ['Compensation', 'Autonomy', 'Recognition', 'Growth', 'Relationship quality'] as const
-
-// ─── Cadence options ────────────────────────────────────────────────────────
-
-type Cadence = 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY'
-
-const CADENCE_OPTIONS: { value: Cadence; label: string }[] = [
-  { value: 'WEEKLY',      label: 'Weekly' },
-  { value: 'FORTNIGHTLY', label: 'Fortnightly' },
-  { value: 'MONTHLY',     label: 'Monthly' },
+const SCENARIOS: ScenarioCard[] = [
+  { scenario: 'NEW_HIRE',        label: 'New hire',          desc: 'Someone just joined. Set expectations on both sides before the work starts.',           tag: 'Starting',     tagBg: '#E8F8F5', tagColor: '#085041' },
+  { scenario: 'NEW_COFOUNDER',   label: 'New co-founder',    desc: 'A partnership forming. Get the brief on record from both sides early.',                  tag: 'Starting',     tagBg: '#E8F8F5', tagColor: '#085041' },
+  { scenario: 'NEW_ADVISOR',     label: 'New advisor',       desc: 'An advisor or board member joining. Alignment before the relationship starts.',          tag: 'Starting',     tagBg: '#E8F8F5', tagColor: '#085041' },
+  { scenario: 'NEW_PROJECT',     label: 'New project',       desc: 'A project or initiative about to begin. Both sides on record before it does.',           tag: 'Starting',     tagBg: '#E8F8F5', tagColor: '#085041' },
+  { scenario: 'NEW_MANAGER',     label: 'New manager',       desc: 'A new management relationship. Expectations on record from day one.',                    tag: 'Starting',     tagBg: '#E8F8F5', tagColor: '#085041' },
+  { scenario: 'CONTRACT_RENEWAL',label: 'Contract renewal',  desc: 'Terms being renegotiated. Both versions of what was agreed, on record.',                 tag: 'Contract',     tagBg: '#F0EAF8', tagColor: '#5B2EA6' },
+  { scenario: 'RECOGNITION',     label: 'Recognition',       desc: 'Contribution that has not been acknowledged. Evidence from both sides before the talk.',  tag: 'Recognition',  tagBg: '#FDF3E3', tagColor: '#8A5C1A' },
+  { scenario: 'DRIFT',           label: 'Something not working', desc: 'A conversation that keeps being avoided. Both independent versions before it happens.', tag: 'Resolution', tagBg: '#EEF4FB', tagColor: '#0C447C' },
+  { scenario: 'CRISIS_ALIGNMENT',label: 'Crisis alignment',  desc: 'Urgent. Both sides need to be heard quickly and clearly.',                               tag: 'Urgent',       tagBg: '#FCEBEB', tagColor: '#791F1F' },
 ]
 
-// ─── Step counting ──────────────────────────────────────────────────────────
+interface MomentOption { moment: GroundMoment; label: string; sub: string }
+const MOMENTS: MomentOption[] = [
+  { moment: 'STARTING',    label: 'At the start',      sub: 'Set expectations before the work begins.' },
+  { moment: 'RECOGNITION', label: 'Mid-way',           sub: 'Acknowledge progress. Name what has changed.' },
+  { moment: 'RESOLUTION',  label: 'Reaching an end',   sub: 'Close a chapter. Agree on what happened.' },
+]
 
-function totalSteps(scenario: GroundScenario | null): number {
-  if (scenario === 'NEW_COFOUNDER') return 4  // name → resolution → intent → submit
-  if (scenario === 'NEW_PROJECT') return 5
-  return 3  // name → resolution → submit
-}
+interface CadenceOption { cadence: GroundCadence; label: string; days: number }
+const CADENCES: CadenceOption[] = [
+  { cadence: 'WEEKLY',      label: 'Weekly',       days: 7 },
+  { cadence: 'FORTNIGHTLY', label: 'Fortnightly',  days: 14 },
+  { cadence: 'MONTHLY',     label: 'Monthly',      days: 30 },
+]
 
-// ─── Shared styles ──────────────────────────────────────────────────────────
-
-const cardStyle = (selected: boolean): React.CSSProperties => ({
-  display: 'flex',
-  alignItems: 'flex-start',
-  gap: 14,
-  padding: '14px 16px',
-  borderRadius: 8,
-  cursor: 'pointer',
-  border: selected ? '1.5px solid #0C447C' : '1px solid #E2E0DB',
-  background: selected ? '#EEF4FB' : 'white',
-  textAlign: 'left',
-  width: '100%',
-})
-
-// ─── Component ──────────────────────────────────────────────────────────────
+interface Participant { email: string; role: string }
 
 export function CreateGroundPage() {
   const navigate = useNavigate()
-  const qc = useQueryClient()
-
-  // wizard position
   const [step, setStep] = useState(1)
 
-  // step 1
-  const [trigger, setTrigger] = useState<TriggerCategory | null>(null)
-
-  // step 2
   const [scenario, setScenario] = useState<GroundScenario | null>(null)
-  const [moment, setMoment]     = useState<GroundMoment | null>(null)
-  const [label, setLabel]       = useState('')
-  const [timelineWeeks, setTimelineWeeks] = useState<string>('')
+  const [moment, setMoment] = useState<GroundMoment | null>(null)
+  const [timelineDays, setTimelineDays] = useState(90)
+  const [cadence, setCadence] = useState<GroundCadence>('FORTNIGHTLY')
+  const [participants, setParticipants] = useState<Participant[]>([])
+  const [pEmail, setPEmail] = useState('')
+  const [pRole, setPRole] = useState('')
+  const [groundName, setGroundName] = useState('')
 
-  // step 3 — resolution state (all non-project scenarios)
-  const [resolutionState, setResolutionState] = useState<string>('')
+  const cadenceObj = CADENCES.find(c => c.cadence === cadence)!
+  const sessionTotal = Math.floor(timelineDays / cadenceObj.days)
+  const freeSessions = Math.min(4, sessionTotal)
+  const paidSessions = sessionTotal - freeSessions
 
-  // step 4 (cofounder) — intent questionnaire
-  const [intent,       setIntent]       = useState('')
-  const [needs,        setNeeds]        = useState<string[]>([])
-  const [needsDetail,  setNeedsDetail]  = useState('')
-  const [canAbsorb,    setCanAbsorb]    = useState('')
-
-  // step 3-5 — project
-  const [emailInput,   setEmailInput]   = useState('')
-  const [emails,       setEmails]       = useState<string[]>([])
-  const [emailError,   setEmailError]   = useState('')
-  const [briefText,    setBriefText]    = useState('')
-  const [briefFile,    setBriefFile]    = useState<File | null>(null)
-  const [cadence,      setCadence]      = useState<Cadence>('FORTNIGHTLY')
-
-  const steps = totalSteps(scenario)
-
-  // ── helpers ──────────────────────────────────────────────────────────────
-
-  function selectSubOption(sub: SubOption) {
-    setScenario(sub.scenario)
-    setMoment(sub.moment)
-    setStep(2)
-  }
-
-  function handleTriggerClick(t: TriggerCategory) {
-    setTrigger(t)
-    const opts = SUB_OPTIONS[t]
-    if (opts.length === 1) {
-      // RECOGNITION has exactly one sub-option — skip the sub-option step
-      setScenario(opts[0].scenario)
-      setMoment(opts[0].moment)
-      setStep(2)
-    }
-    // else stay on step 1 and show sub-options (handled in render)
-  }
-
-  function addEmail() {
-    const trimmed = emailInput.trim()
-    if (!trimmed) return
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
-      setEmailError('Please enter a valid email address.')
-      return
-    }
-    if (emails.includes(trimmed)) {
-      setEmailError('That email is already added.')
-      return
-    }
-    setEmails((prev) => [...prev, trimmed])
-    setEmailInput('')
-    setEmailError('')
-  }
-
-  function removeEmail(email: string) {
-    setEmails((prev) => prev.filter((e) => e !== email))
-  }
-
-  function toggleNeed(need: string) {
-    setNeeds((prev) =>
-      prev.includes(need) ? prev.filter((n) => n !== need) : [...prev, need]
-    )
-  }
-
-  // ── mutation ─────────────────────────────────────────────────────────────
-
-  const mutation = useMutation({
+  const create = useMutation({
     mutationFn: async () => {
-      if (!scenario || !moment) throw new Error('Scenario not selected')
-
-      const body: Record<string, unknown> = {
-        label: label.trim(),
-        scenario,
-        moment,
-        ...(timelineWeeks ? { timelineDays: parseInt(timelineWeeks, 10) * 7 } : {}),
-        ...(resolutionState ? { resolutionState } : {}),
-      }
-
-      if (scenario === 'NEW_COFOUNDER') {
-        body.intentQuestionnaire = {
-          intent,
-          needs,
-          needsDetail: needsDetail.trim() || undefined,
-          canAbsorb,
-        }
-      }
-
-      if (scenario === 'NEW_PROJECT') {
-        body.participants = emails
-        body.cadence      = cadence
-        if (briefText.trim()) body.brief = briefText.trim()
-      }
-
-      const ground = await createGroundWithExtras(body)
-
-      // upload brief if provided
-      if (scenario === 'NEW_PROJECT' && briefFile) {
-        try {
-          await uploadGroundBrief(ground.id, briefFile)
-        } catch {
-          toast.error('Ground created, but brief upload failed.')
-        }
-      }
-
+      const ground = await groundsApi.create({
+        label: groundName.trim() || `${scenario?.replace(/_/g, ' ')} ground`,
+        scenario: scenario!,
+        moment: moment!,
+        timelineDays,
+        cadence,
+      })
+      await Promise.all(participants.map(p =>
+        groundsApi.addParticipant(ground.id, { email: p.email, roleAsDescribed: p.role || undefined })
+      ))
       return ground
     },
-    onSuccess: (ground) => {
-      qc.invalidateQueries({ queryKey: ['grounds'] })
-      toast.success('Ground opened')
-      navigate(`/grounds/${ground.id}`)
-    },
-    onError: () => {
-      toast.error('Something went wrong. Please try again.')
-    },
+    onSuccess: g => { toast.success('Ground opened'); navigate(`/grounds/${g.id}`) },
+    onError: () => toast.error('Could not open ground. Try again.'),
   })
 
-  // ── back navigation ───────────────────────────────────────────────────────
-
-  function goBack() {
-    if (step === 1) {
-      navigate('/')
-      return
-    }
-    if (step === 2) {
-      // if RECOGNITION (no sub-option step), reset to clean step 1
-      setTrigger(null)
-      setScenario(null)
-      setMoment(null)
-      setStep(1)
-      return
-    }
-    setStep((s) => s - 1)
+  function addParticipant() {
+    const email = pEmail.trim()
+    if (!email || !email.includes('@')) return
+    if (participants.find(p => p.email === email)) return
+    setParticipants(v => [...v, { email, role: pRole.trim() }])
+    setPEmail(''); setPRole('')
   }
 
-  // ── next from step 2 ──────────────────────────────────────────────────────
-
-  function handleStep2Next() {
-    if (!label.trim()) return
-    if (scenario === 'NEW_PROJECT') { setStep(3); return }
-    // all other scenarios: go to resolution state picker
-    setStep(3)
+  function back() {
+    if (step > 1) setStep(s => s - 1)
+    else navigate('/grounds')
   }
 
-  // ── next from step 3 (resolution state) ──────────────────────────────────
-
-  function handleStep3Next() {
-    if (scenario === 'NEW_COFOUNDER') { setStep(4); return }
-    mutation.mutate()
-  }
-
-  // ── render ────────────────────────────────────────────────────────────────
-
-  const subOptions = trigger ? SUB_OPTIONS[trigger] : []
-  const showSubCards = trigger !== null && subOptions.length > 1 && scenario === null
+  const DOTS = [1,2,3,4,5]
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--gw-bg)', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
       <div className="gw-hdr">
-        <GroundworkLogo />
-        <button className="gw-back" onClick={goBack}>← Back</button>
+        <div className="gw-logo">Groundwork</div>
+        <button className="gw-back" onClick={back}>← Back</button>
       </div>
 
-      <div className="gw-bd" style={{ maxWidth: 520, margin: '0 auto', width: '100%', paddingTop: 24 }}>
+      <div className="gw-bd" style={{ maxWidth: 540, margin: '0 auto', width: '100%' }}>
+        {/* Step dots */}
+        <div style={{ display: 'flex', gap: 6, marginBottom: 24 }}>
+          {DOTS.map(n => (
+            <div key={n} className={`cg-step-dot${step === n ? ' active' : step > n ? ' done' : ''}`} />
+          ))}
+        </div>
 
-        {/* Step indicator */}
-        {step > 1 && (
-          <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginBottom: 12, letterSpacing: '0.04em' }}>
-            Step {step} of {steps}
+        {/* Step 1: Scenario */}
+        {step === 1 && (
+          <div>
+            <div className="gw-ttl">What is this ground for?</div>
+            <div className="gw-sub-t">Select the situation that fits best.</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 24 }}>
+              {SCENARIOS.map(s => (
+                <div key={s.scenario} className={`cg-sit-card${scenario === s.scenario ? ' selected' : ''}`} onClick={() => setScenario(s.scenario)}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: s.tagBg, color: s.tagColor }}>{s.tag}</span>
+                    <div className="cg-sit-check" />
+                  </div>
+                  <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 3 }}>{s.label}</div>
+                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>{s.desc}</div>
+                </div>
+              ))}
+            </div>
+            <button className="gw-btn" disabled={!scenario} onClick={() => setStep(2)} style={{ margin: 0 }}>Continue</button>
           </div>
         )}
 
-        {/* ── STEP 1: trigger / sub-option selection ─────────────────────── */}
-        {step === 1 && !showSubCards && (
-          <>
-            <div className="gw-ttl">Open a ground</div>
-            <div className="gw-sub-t">What is the situation?</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 16 }}>
-              {TRIGGER_CARDS.map((t) => (
-                <button
-                  key={t.value}
-                  onClick={() => handleTriggerClick(t.value)}
-                  style={cardStyle(false)}
-                >
-                  <span style={{ fontSize: 18, lineHeight: 1.2, paddingTop: 1, color: '#0C447C', fontWeight: 700, minWidth: 20 }}>
-                    {t.symbol}
-                  </span>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: '#1A1916' }}>{t.label}</div>
-                    <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 2 }}>{t.purpose}</div>
+        {/* Step 2: Moment */}
+        {step === 2 && (
+          <div>
+            <div className="gw-ttl">Where are you in the relationship?</div>
+            <div className="gw-sub-t">This shapes the questions both parties answer.</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 24 }}>
+              {MOMENTS.map(m => (
+                <div key={m.moment} className={`cg-sit-card${moment === m.moment ? ' selected' : ''}`} onClick={() => setMoment(m.moment)}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <div style={{ fontSize: 14, fontWeight: 700 }}>{m.label}</div>
+                    <div className="cg-sit-check" />
                   </div>
-                </button>
+                  <div style={{ fontSize: 12, color: 'var(--gw-sub)' }}>{m.sub}</div>
+                </div>
               ))}
             </div>
-          </>
+            <button className="gw-btn" disabled={!moment} onClick={() => setStep(3)} style={{ margin: 0 }}>Continue</button>
+          </div>
         )}
 
-        {/* ── STEP 1 sub-options ──────────────────────────────────────────── */}
-        {step === 1 && showSubCards && trigger && (
-          <>
-            <div className="gw-ttl">
-              {TRIGGER_CARDS.find((c) => c.value === trigger)!.label}
+        {/* Step 3: Timeframe + cadence */}
+        {step === 3 && (
+          <div>
+            <div className="gw-ttl">How long will this ground run?</div>
+            <div className="gw-sub-t">Set the timeframe and how often each party checks in.</div>
+            <div className="gw-fld">
+              <label className="gw-label">Timeframe</label>
+              <select className="gw-select" value={timelineDays} onChange={e => setTimelineDays(+e.target.value)}>
+                <option value={30}>30 days</option>
+                <option value={60}>60 days</option>
+                <option value={90}>90 days</option>
+                <option value={180}>6 months</option>
+                <option value={365}>12 months</option>
+              </select>
             </div>
-            <div className="gw-sub-t">Which situation are you in?</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 16 }}>
-              {subOptions.map((opt) => (
-                <button
-                  key={opt.scenario}
-                  onClick={() => selectSubOption(opt)}
-                  style={cardStyle(false)}
-                >
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: '#1A1916' }}>{opt.label}</div>
-                    <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 2 }}>{opt.desc}</div>
+            <div className="gw-fld">
+              <label className="gw-label">Check-in cadence</label>
+              <select className="gw-select" value={cadence} onChange={e => setCadence(e.target.value as GroundCadence)}>
+                {CADENCES.map(c => <option key={c.cadence} value={c.cadence}>{c.label}</option>)}
+              </select>
+            </div>
+            <div className="gw-box gw-box-blue" style={{ marginBottom: 24 }}>
+              <div style={{ fontWeight: 600, marginBottom: 4 }}>{sessionTotal} sessions over {timelineDays} days</div>
+              <div>Sessions 1–{freeSessions} are free for both parties.{paidSessions > 0 ? ` Sessions ${freeSessions + 1}–${sessionTotal} start billing.` : ' All sessions are free.'}</div>
+              <div style={{ marginTop: 6 }}>
+                <span style={{ fontSize: 11, fontWeight: 600, background: 'var(--gw-green-bg)', color: 'var(--gw-green-t)', borderRadius: 20, padding: '2px 8px' }}>Sessions 1–{freeSessions} free</span>
+              </div>
+            </div>
+            <button className="gw-btn" onClick={() => setStep(4)} style={{ margin: 0 }}>Continue</button>
+          </div>
+        )}
+
+        {/* Step 4: Participants */}
+        {step === 4 && (
+          <div>
+            <div className="gw-ttl">Who is in this ground?</div>
+            <div className="gw-sub-t">Add the other party by email. They receive an invite link.</div>
+
+            {participants.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginBottom: 14 }}>
+                {participants.map((p, i) => (
+                  <div key={i} className="gw-prow gw-prow-static">
+                    <div className={`gw-av gw-av-${i % 6}`}>{p.email.charAt(0).toUpperCase()}</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600 }}>{p.email}</div>
+                      {p.role && <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>{p.role}</div>}
+                    </div>
+                    <button style={{ fontSize: 11, color: 'var(--gw-muted)', background: 'none', border: 'none', cursor: 'pointer' }} onClick={() => setParticipants(v => v.filter((_, j) => j !== i))}>Remove</button>
                   </div>
-                </button>
-              ))}
+                ))}
+              </div>
+            )}
+
+            <div style={{ background: 'var(--gw-bg)', border: '0.5px solid var(--gw-border)', borderRadius: 8, padding: 12, marginBottom: 14 }}>
+              <div className="gw-fld" style={{ margin: 0 }}>
+                <label className="gw-label">Email address</label>
+                <input className="gw-input" type="email" value={pEmail} onChange={e => setPEmail(e.target.value)} placeholder="participant@company.com" />
+              </div>
+              <div className="gw-fld" style={{ marginTop: 8, marginBottom: 8 }}>
+                <label className="gw-label">Their role <span style={{ fontWeight: 400, color: 'var(--gw-muted)' }}>(optional, shown to them)</span></label>
+                <input className="gw-input" value={pRole} onChange={e => setPRole(e.target.value)} placeholder="e.g. Head of Engineering" onKeyDown={e => e.key === 'Enter' && addParticipant()} />
+              </div>
+              <button onClick={addParticipant} style={{ width: '100%', padding: 9, borderRadius: 6, background: 'none', color: 'var(--gw-navy)', fontSize: 13, fontWeight: 600, border: '1.5px dashed var(--gw-blue-b)', cursor: 'pointer', fontFamily: 'inherit' }}>+ Add to this ground</button>
             </div>
-            <button
-              type="button"
-              className="gw-btn-sec"
-              style={{ marginTop: 16 }}
-              onClick={() => { setTrigger(null); setScenario(null) }}
-            >
-              ← Back
-            </button>
-          </>
+
+            {participants.length > 0 && (
+              <div style={{ fontSize: 12, color: 'var(--gw-sub)', background: 'var(--gw-bg)', borderRadius: 7, padding: '10px 12px', marginBottom: 14, lineHeight: 1.6 }}>
+                Each person gets their own private check-in. Nobody can see what anyone else wrote until the report activates.
+              </div>
+            )}
+
+            <button className="gw-btn" disabled={participants.length === 0} onClick={() => setStep(5)} style={{ margin: 0 }}>Continue</button>
+            <div style={{ fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 10, cursor: 'pointer' }} onClick={() => setStep(5)}>
+              Skip — add participants after
+            </div>
+          </div>
         )}
 
-        {/* ── STEP 2: name the ground ──────────────────────────────────────── */}
-        {step === 2 && scenario && (
+        {/* Step 5: Label */}
+        {step === 5 && (
           <div>
             <div className="gw-ttl">Name this ground</div>
-            <div className="gw-fld" style={{ marginTop: 16 }}>
-              <label className="gw-label">Ground label</label>
+            <div className="gw-sub-t">Give it a name that makes sense to you. Both parties will see it.</div>
+            <div className="gw-fld">
+              <label className="gw-label">Ground name</label>
               <input
                 className="gw-input"
-                value={label}
-                onChange={(e) => setLabel(e.target.value)}
-                placeholder="e.g. 'Amir — first 90 days'"
+                value={groundName}
+                onChange={e => setGroundName(e.target.value)}
+                placeholder={`${(scenario ?? '').replace(/_/g, ' ')} — ${new Date().getFullYear()}`}
                 autoFocus
               />
-              <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginTop: 6 }}>
-                {timelineDefault(scenario)}
+            </div>
+
+            <div className="gw-box gw-box-blue" style={{ marginBottom: 16 }}>
+              <div style={{ fontWeight: 600, marginBottom: 4 }}>Summary</div>
+              <div style={{ fontSize: 12, lineHeight: 1.7 }}>
+                <div>{(scenario ?? '').replace(/_/g, ' ')} · {moment}</div>
+                <div>{sessionTotal} sessions · {cadence.toLowerCase()}</div>
+                {participants.length > 0 && <div>{participants.length} participant{participants.length !== 1 ? 's' : ''} invited</div>}
               </div>
             </div>
-            <div className="gw-fld" style={{ marginTop: 12 }}>
-              <label className="gw-label" style={{ display: 'block', marginBottom: 4 }}>
-                Override timeline (weeks):
-                <span style={{ fontWeight: 400, color: 'var(--gw-sub)' }}> optional</span>
-              </label>
-              <input
-                className="gw-input"
-                type="number"
-                min={1}
-                value={timelineWeeks}
-                onChange={(e) => setTimelineWeeks(e.target.value)}
-                placeholder="e.g. 12"
-                style={{ maxWidth: 120 }}
-              />
-            </div>
-            <div style={{ display: 'flex', gap: 8, marginTop: 20 }}>
-              <button type="button" className="gw-btn-sec" style={{ flex: 0 }} onClick={goBack}>← Back</button>
-              <button
-                type="button"
-                className="gw-btn"
-                style={{ flex: 1 }}
-                disabled={!label.trim() || mutation.isPending}
-                onClick={handleStep2Next}
-              >
-                {scenario === 'NEW_COFOUNDER' || scenario === 'NEW_PROJECT'
-                  ? 'Next →'
-                  : mutation.isPending ? 'Opening…' : 'Open ground →'}
-              </button>
-            </div>
+
+            <button className="gw-btn" onClick={() => create.mutate()} disabled={create.isPending} style={{ margin: 0 }}>
+              {create.isPending ? 'Opening…' : 'Open this ground →'}
+            </button>
           </div>
         )}
-
-        {/* ── STEP 3 (non-project): resolution state ──────────────────────── */}
-        {step === 3 && scenario !== 'NEW_PROJECT' && (
-          <div>
-            <div className="gw-ttl">What are you resolving toward?</div>
-            <div className="gw-sub-t" style={{ marginBottom: 20 }}>
-              Pre-agree the outcome before the first check-in. This becomes the frame for the report.
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginTop: 8 }}>
-              {RESOLUTION_STATES.map((rs) => (
-                <button
-                  key={rs}
-                  onClick={() => setResolutionState(rs)}
-                  style={{
-                    ...cardStyle(resolutionState === rs),
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 10,
-                  }}
-                >
-                  <span style={{
-                    width: 14, height: 14, borderRadius: '50%', flexShrink: 0,
-                    border: resolutionState === rs ? '4px solid #0C447C' : '2px solid #B5BEC6',
-                    background: resolutionState === rs ? '#EEF4FB' : 'white',
-                  }} />
-                  <span style={{ fontSize: 13, fontWeight: resolutionState === rs ? 600 : 400, color: '#1A1916' }}>
-                    {rs}
-                  </span>
-                </button>
-              ))}
-            </div>
-            <div style={{ display: 'flex', gap: 8, marginTop: 20 }}>
-              <button type="button" className="gw-btn-sec" style={{ flex: 0 }} onClick={goBack}>← Back</button>
-              <button
-                type="button"
-                className="gw-btn"
-                style={{ flex: 1 }}
-                disabled={mutation.isPending}
-                onClick={handleStep3Next}
-              >
-                {scenario === 'NEW_COFOUNDER'
-                  ? 'Next →'
-                  : mutation.isPending
-                    ? 'Opening…'
-                    : resolutionState
-                      ? 'Open ground →'
-                      : 'Skip and open →'}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ── STEP 4: cofounder intent questionnaire ──────────────────────── */}
-        {step === 4 && scenario === 'NEW_COFOUNDER' && (
-          <div>
-            <div className="gw-ttl">Intent check</div>
-            <div className="gw-sub-t" style={{ marginBottom: 20 }}>
-              Before the equity or role conversation, get this on record.
-            </div>
-
-            <div className="gw-fld">
-              <label className="gw-label">What is your founding intent?</label>
-              <textarea
-                className="gw-input"
-                rows={3}
-                value={intent}
-                onChange={(e) => setIntent(e.target.value)}
-                placeholder="What you are building and why"
-                style={{ resize: 'vertical' }}
-              />
-            </div>
-
-            <div className="gw-fld" style={{ marginTop: 16 }}>
-              <label className="gw-label">What do you need from this partnership?</label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
-                {NEED_OPTIONS.map((n) => (
-                  <label
-                    key={n}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 6,
-                      padding: '6px 12px', borderRadius: 6, cursor: 'pointer',
-                      border: needs.includes(n) ? '1.5px solid #0C447C' : '1px solid #E2E0DB',
-                      background: needs.includes(n) ? '#EEF4FB' : 'white',
-                      fontSize: 13,
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={needs.includes(n)}
-                      onChange={() => toggleNeed(n)}
-                      style={{ accentColor: '#0C447C' }}
-                    />
-                    {n}
-                  </label>
-                ))}
-              </div>
-              <div style={{ marginTop: 10 }}>
-                <label className="gw-label" style={{ fontSize: 12, color: 'var(--gw-sub)' }}>
-                  Say more (optional)
-                </label>
-                <textarea
-                  className="gw-input"
-                  rows={2}
-                  value={needsDetail}
-                  onChange={(e) => setNeedsDetail(e.target.value)}
-                  style={{ resize: 'vertical', marginTop: 4 }}
-                />
-              </div>
-            </div>
-
-            <div className="gw-fld" style={{ marginTop: 16 }}>
-              <label className="gw-label">What can you absorb?</label>
-              <textarea
-                className="gw-input"
-                rows={3}
-                value={canAbsorb}
-                onChange={(e) => setCanAbsorb(e.target.value)}
-                placeholder="Financial floor, how you handle pressure, what would make you walk away"
-                style={{ resize: 'vertical' }}
-              />
-            </div>
-
-            <div style={{ display: 'flex', gap: 8, marginTop: 20 }}>
-              <button type="button" className="gw-btn-sec" style={{ flex: 0 }} onClick={goBack}>← Back</button>
-              <button
-                type="button"
-                className="gw-btn"
-                style={{ flex: 1 }}
-                disabled={!intent.trim() || needs.length === 0 || !canAbsorb.trim() || mutation.isPending}
-                onClick={() => mutation.mutate()}
-              >
-                {mutation.isPending ? 'Opening…' : 'Open ground →'}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ── STEP 3 (project): who is involved ───────────────────────────── */}
-        {step === 3 && scenario === 'NEW_PROJECT' && (
-          <div>
-            <div className="gw-ttl">Who is involved?</div>
-            <div className="gw-sub-t" style={{ marginBottom: 20 }}>Add the other party or parties by email. At least one participant is required.</div>
-
-            <div className="gw-fld">
-              <label className="gw-label">Email address</label>
-              <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-                <input
-                  className="gw-input"
-                  type="email"
-                  value={emailInput}
-                  onChange={(e) => { setEmailInput(e.target.value); setEmailError('') }}
-                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addEmail() } }}
-                  placeholder="colleague@company.com"
-                  style={{ flex: 1 }}
-                />
-                <button type="button" className="gw-btn-sec" onClick={addEmail}>Add</button>
-              </div>
-              {emailError && (
-                <div style={{ fontSize: 12, color: '#C0392B', marginTop: 4 }}>{emailError}</div>
-              )}
-            </div>
-
-            {emails.length > 0 && (
-              <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {emails.map((email) => (
-                  <div
-                    key={email}
-                    style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      padding: '8px 12px', borderRadius: 6,
-                      border: '1px solid #E2E0DB', background: 'white', fontSize: 13,
-                    }}
-                  >
-                    <span style={{ color: '#1A1916' }}>{email}</span>
-                    <button
-                      type="button"
-                      onClick={() => removeEmail(email)}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--gw-sub)', fontSize: 16, lineHeight: 1, padding: '0 2px' }}
-                      aria-label={`Remove ${email}`}
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div style={{ display: 'flex', gap: 8, marginTop: 20 }}>
-              <button type="button" className="gw-btn-sec" style={{ flex: 0 }} onClick={goBack}>← Back</button>
-              <button
-                type="button"
-                className="gw-btn"
-                style={{ flex: 1 }}
-                disabled={emails.length === 0}
-                onClick={() => setStep(4)}
-              >
-                Next →
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ── STEP 4 (project): attach brief ──────────────────────────────── */}
-        {step === 4 && scenario === 'NEW_PROJECT' && (
-          <div>
-            <div className="gw-ttl">Add a brief</div>
-            <div className="gw-sub-t" style={{ marginBottom: 20 }}>
-              Anything written down that captures what was agreed. We will read it.
-            </div>
-
-            <div className="gw-fld">
-              <label className="gw-label">Write or paste brief</label>
-              <textarea
-                className="gw-input"
-                rows={6}
-                value={briefText}
-                onChange={(e) => setBriefText(e.target.value)}
-                placeholder="Describe scope, ownership, success criteria, timeline…"
-                style={{ resize: 'vertical' }}
-              />
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
-                <span style={{ fontSize: 11, color: 'var(--gw-sub)' }}>
-                  {briefText.trim().split(/\s+/).filter(Boolean).length} words
-                </span>
-                {briefText.trim().split(/\s+/).filter(Boolean).length < 30 && briefText.length > 0 && (
-                  <span style={{ fontSize: 11, color: '#8A5C1A' }}>
-                    Add more detail for better AI analysis
-                  </span>
-                )}
-              </div>
-            </div>
-
-            <div className="gw-fld" style={{ marginTop: 14 }}>
-              <label className="gw-label">Or upload document <span style={{ fontWeight: 400, color: 'var(--gw-sub)' }}>(optional)</span></label>
-              <input
-                type="file"
-                accept=".pdf,.doc,.docx"
-                className="gw-input"
-                style={{ paddingTop: 8, paddingBottom: 8 }}
-                onChange={(e) => setBriefFile(e.target.files?.[0] ?? null)}
-              />
-              {briefFile && (
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 4 }}>
-                  Selected: {briefFile.name}
-                </div>
-              )}
-            </div>
-
-            <div style={{ display: 'flex', gap: 8, marginTop: 20, alignItems: 'center' }}>
-              <button type="button" className="gw-btn-sec" style={{ flex: 0 }} onClick={goBack}>← Back</button>
-              <button
-                type="button"
-                className="gw-btn"
-                style={{ flex: 1 }}
-                onClick={() => setStep(5)}
-              >
-                Next →
-              </button>
-              {!briefText.trim() && !briefFile && (
-                <button
-                  type="button"
-                  onClick={() => setStep(5)}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--gw-sub)', fontSize: 13, padding: '0 4px', textDecoration: 'underline' }}
-                >
-                  Skip
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* ── STEP 5 (project): check-in cadence ──────────────────────────── */}
-        {step === 5 && scenario === 'NEW_PROJECT' && (
-          <div>
-            <div className="gw-ttl">Check-in cadence</div>
-            <div className="gw-sub-t" style={{ marginBottom: 20 }}>
-              How often should this ground surface for a check-in?
-            </div>
-
-            <div className="gw-fld">
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
-                {CADENCE_OPTIONS.map((opt) => (
-                  <label
-                    key={opt.value}
-                    style={cardStyle(cadence === opt.value)}
-                  >
-                    <input
-                      type="radio"
-                      name="cadence"
-                      value={opt.value}
-                      checked={cadence === opt.value}
-                      onChange={() => setCadence(opt.value)}
-                      style={{ marginTop: 2, accentColor: '#0C447C' }}
-                    />
-                    <span style={{ fontSize: 13, fontWeight: cadence === opt.value ? 600 : 400, color: '#1A1916' }}>
-                      {opt.label}
-                    </span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            {/* Live session model preview */}
-            {timelineWeeks && parseInt(timelineWeeks, 10) > 0 && (
-              <div style={{ marginTop: 16 }}>
-                <SessionModelPreview
-                  timelineDays={parseInt(timelineWeeks, 10) * 7}
-                  cadenceDays={cadence === 'WEEKLY' ? 7 : cadence === 'FORTNIGHTLY' ? 14 : 30}
-                />
-              </div>
-            )}
-
-            <div style={{ display: 'flex', gap: 8, marginTop: 20 }}>
-              <button type="button" className="gw-btn-sec" style={{ flex: 0 }} onClick={goBack}>← Back</button>
-              <button
-                type="button"
-                className="gw-btn"
-                style={{ flex: 1 }}
-                disabled={mutation.isPending}
-                onClick={() => mutation.mutate()}
-              >
-                {mutation.isPending ? 'Opening…' : 'Open ground →'}
-              </button>
-            </div>
-          </div>
-        )}
-
       </div>
     </div>
   )

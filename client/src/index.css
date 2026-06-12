@@ -375,8 +375,125 @@ body {
 ::-webkit-scrollbar-thumb { background: #E2E0DB; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #9B9590; }
 
+/* ── TABS (ground admin / participant) ───────────────────── */
+.gw-tab {
+  flex: 1;
+  padding: 10px 4px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--gw-sub);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.gw-tab.active { color: var(--gw-navy); border-bottom-color: var(--gw-navy); font-weight: 600; }
+
+/* ── CONFIDENCE DOTS ─────────────────────────────────────── */
+.gw-conf-dots { display: flex; gap: 3px; align-items: center; }
+.gw-conf-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--gw-border); transition: background 0.3s;
+}
+.gw-conf-dot.f1 { background: var(--gw-sub); }
+.gw-conf-dot.f2, .gw-conf-dot.f3 { background: var(--gw-green-b); }
+.gw-conf-dot.f4, .gw-conf-dot.f5 { background: var(--gw-navy); }
+
+/* ── GROUND CARDS ────────────────────────────────────────── */
+.gw-ground-card {
+  background: white;
+  border: 0.5px solid var(--gw-border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.gw-ground-card:hover {
+  border-color: var(--gw-blue-b);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(12,68,124,.08);
+}
+
+/* ── CREATE GROUND STEP DOTS ─────────────────────────────── */
+.cg-step-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--gw-border); transition: background 0.2s;
+}
+.cg-step-dot.active { background: var(--gw-navy); }
+.cg-step-dot.done { background: var(--gw-green-b); }
+
+/* ── SITUATION CARDS (create ground step 1) ──────────────── */
+.cg-sit-card {
+  border: 1px solid var(--gw-border);
+  border-radius: 8px;
+  padding: 14px;
+  cursor: pointer;
+  transition: all 0.15s;
+  background: white;
+}
+.cg-sit-card:hover { border-color: var(--gw-blue-b); background: var(--gw-blue-bg); }
+.cg-sit-card.selected { border-color: var(--gw-navy); background: var(--gw-blue-bg); }
+.cg-sit-check {
+  width: 18px; height: 18px; border-radius: 50%;
+  border: 1.5px solid var(--gw-border); flex-shrink: 0;
+  transition: all 0.15s;
+}
+.cg-sit-card.selected .cg-sit-check {
+  background: var(--gw-navy); border-color: var(--gw-navy);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='8' viewBox='0 0 10 8'%3E%3Cpath d='M1 4l3 3 5-6' stroke='white' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: center;
+}
+
+/* ── RESOLUTION CARDS (create ground step 4) ─────────────── */
+.cg-res-card {
+  display: flex; align-items: flex-start; gap: 12px;
+  border: 1px solid var(--gw-border); border-radius: 8px;
+  padding: 12px 14px; cursor: pointer; transition: all 0.15s; background: white;
+}
+.cg-res-card:hover { border-color: var(--gw-blue-b); background: var(--gw-blue-bg); }
+.cg-res-card.selected { border-color: var(--gw-navy); background: var(--gw-blue-bg); }
+.cg-res-check {
+  width: 18px; height: 18px; border-radius: 50%;
+  border: 1.5px solid var(--gw-border); flex-shrink: 0; margin-top: 2px;
+}
+.cg-res-card.selected .cg-res-check {
+  background: var(--gw-navy); border-color: var(--gw-navy);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='8' viewBox='0 0 10 8'%3E%3Cpath d='M1 4l3 3 5-6' stroke='white' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: center;
+}
+
+/* ── LANDING ─────────────────────────────────────────────── */
+.land-sit-card {
+  padding: 18px 16px; border-radius: 8px;
+  border: 1px solid rgba(255,255,255,.09);
+  cursor: pointer; transition: all 0.15s;
+  background: rgba(255,255,255,.04);
+}
+.land-sit-card:hover { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.18); }
+
+/* ── REPORT SECTION ACCORDION ────────────────────────────── */
+.gw-report-section { background: white; border: 0.5px solid var(--gw-border); border-radius: 8px; overflow: hidden; }
+.gw-report-section-hdr {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 14px; cursor: pointer; font-size: 13px; font-weight: 600;
+}
+.gw-report-section-body { display: none; padding: 0 14px 14px; border-top: 0.5px solid var(--gw-border); font-size: 13px; line-height: 1.65; color: var(--gw-sub); }
+.gw-report-section.open .gw-report-section-body { display: block; }
+
+/* ── PARTICIPANT ROW (ground admin) ──────────────────────── */
+.ga-participant-row {
+  display: flex; align-items: center; justify-content: space-between;
+  background: white; border: 0.5px solid var(--gw-border); border-radius: 8px; padding: 11px 14px;
+}
+.ga-status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
 /* ── ANIMATIONS ──────────────────────────────────────────── */
 @keyframes gw-pulse { 0%, 80%, 100% { opacity: 0.3; } 40% { opacity: 1; } }
+@keyframes gw-fadein { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes spin { to { transform: rotate(360deg); } }
 
 /* ── PRINT (PDF export via window.print()) ───────────────── */
 @media print {
