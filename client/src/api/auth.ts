@@ -16,8 +16,8 @@ export const authApi = {
     apiClient.post('/auth/forgot-password', { email }).then((r) => r.data),
   setPassword: (token: string, password: string) =>
     apiClient.post<AuthResponse>('/auth/set-password', { token, password }).then((r) => r.data),
-  resetPassword: (token: string, newPassword: string) =>
-    apiClient.post('/auth/reset-password', { token, newPassword }).then((r) => r.data),
+  resetPassword: (token: string, password: string) =>
+    apiClient.post('/auth/reset-password', { token, password }).then((r) => r.data),
   me: () => apiClient.get<User>('/auth/me').then((r) => r.data),
   validateOrgCode: (code: string) =>
     apiClient.get<{ valid: boolean; orgName: string }>(`/auth/org/${code}`).then((r) => r.data),

@@ -128,14 +128,6 @@ export function LandingPage() {
     return () => clearInterval(id)
   }, [])
 
-  // Scroll-fade observer
-  useEffect(() => {
-    const obs = new IntersectionObserver(entries => {
-      entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('gw-in') })
-    }, { threshold: 0.08 })
-    document.querySelectorAll('.gw-fade').forEach(el => obs.observe(el))
-    return () => obs.disconnect()
-  }, [])
 
   const scrollTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
 
@@ -149,8 +141,6 @@ export function LandingPage() {
         .gw-pulse  { animation:gw-pulse 2s ease-in-out infinite; border-radius:50%; }
         .gw-pulse2 { animation:gw-pulse 2.5s ease-in-out infinite; border-radius:50%; }
         .gw-feed-item { animation:gw-fadein .4s ease forwards; }
-        .gw-fade { opacity:0; transform:translateY(18px); transition:opacity .5s ease,transform .5s ease; }
-        .gw-fade.gw-in { opacity:1; transform:translateY(0); }
         .gw-nav-link { font-size:13px;font-weight:500;color:#6B6560;background:none;border:none;cursor:pointer;padding:6px 11px;border-radius:6px;font-family:inherit;transition:all .15s;white-space:nowrap; }
         .gw-nav-link:hover { background:#E8E6E3;color:#1A1916; }
         .gw-btn-ghost { font-size:13px;font-weight:600;color:#0C447C;background:none;border:1px solid #B5D4F4;cursor:pointer;padding:7px 14px;border-radius:6px;font-family:inherit;white-space:nowrap;transition:background .15s; }
@@ -276,7 +266,7 @@ export function LandingPage() {
       </section>
 
       {/* PROBLEM */}
-      <section className="gw-fade" style={{ background: '#F5F3EF', borderBottom: `1px solid ${C.border}` }}>
+      <section style={{ background: '#F5F3EF', borderBottom: `1px solid ${C.border}` }}>
         <div className="gw-wrap" style={{ maxWidth: 1080, margin: '0 auto', padding: '64px 20px', textAlign: 'center' }}>
           <p style={{ fontSize: 10, fontWeight: 600, color: C.navy, textTransform: 'uppercase', letterSpacing: '.14em', marginBottom: 18, opacity: .65 }}>The problem</p>
           <h2 className="gw-sec-h2" style={{ fontSize: 36, fontWeight: 800, color: C.text, letterSpacing: '-.03em', lineHeight: 1.15, maxWidth: 660, margin: '0 auto 16px' }}>
@@ -302,7 +292,7 @@ export function LandingPage() {
       </section>
 
       {/* THREE MOMENTS */}
-      <section className="gw-fade" style={{ borderBottom: `1px solid ${C.border}` }}>
+      <section style={{ borderBottom: `1px solid ${C.border}` }}>
         <div className="gw-wrap" style={{ maxWidth: 1080, margin: '0 auto', padding: '64px 20px' }}>
           <p style={{ fontSize: 10, fontWeight: 600, color: C.navy, textTransform: 'uppercase', letterSpacing: '.14em', marginBottom: 18, opacity: .65 }}>Three moments</p>
           <h2 className="gw-sec-h2" style={{ fontSize: 36, fontWeight: 800, color: C.text, letterSpacing: '-.03em', lineHeight: 1.15, marginBottom: 14 }}>Groundwork exists for three moments.</h2>
@@ -374,7 +364,7 @@ export function LandingPage() {
       </section>
 
       {/* DEMO */}
-      <section className="gw-fade" style={{ background: '#F5F3EF', borderBottom: `1px solid ${C.border}` }}>
+      <section style={{ background: '#F5F3EF', borderBottom: `1px solid ${C.border}` }}>
         <div className="gw-wrap" style={{ maxWidth: 1080, margin: '0 auto', padding: '64px 20px' }}>
           <p style={{ fontSize: 10, fontWeight: 600, color: C.navy, textTransform: 'uppercase', letterSpacing: '.14em', marginBottom: 18, opacity: .65 }}>See it working</p>
           <h2 className="gw-sec-h2" style={{ fontSize: 36, fontWeight: 800, color: C.text, letterSpacing: '-.03em', lineHeight: 1.15, marginBottom: 14 }}>Try a live demo.</h2>
@@ -401,7 +391,7 @@ export function LandingPage() {
       </section>
 
       {/* TRUST */}
-      <section className="gw-fade" style={{ borderBottom: `1px solid ${C.border}` }}>
+      <section style={{ borderBottom: `1px solid ${C.border}` }}>
         <div className="gw-wrap" style={{ maxWidth: 1080, margin: '0 auto', padding: '64px 20px' }}>
           <div className="gw-trust-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 56, alignItems: 'center' }}>
             <div>
@@ -432,7 +422,7 @@ export function LandingPage() {
       </section>
 
       {/* CTA BANNER */}
-      <section className="gw-fade" style={{ background: C.dark, textAlign: 'center', padding: '80px 20px' }}>
+      <section style={{ background: C.dark, textAlign: 'center', padding: '80px 20px' }}>
         <h2 className="gw-cta-h2" style={{ fontSize: 40, fontWeight: 800, color: C.white, letterSpacing: '-.04em', lineHeight: 1.1, marginBottom: 14 }}>
           Better decisions start<br />with better evidence.
         </h2>
