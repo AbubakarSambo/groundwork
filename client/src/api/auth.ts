@@ -21,10 +21,10 @@ export const authApi = {
   me: () => apiClient.get<User>('/auth/me').then((r) => r.data),
   validateOrgCode: (code: string) =>
     apiClient.get<{ valid: boolean; orgName: string }>(`/auth/org/${code}`).then((r) => r.data),
-  setPin: (pin: string, orgCode: string) =>
-    apiClient.post<AuthResponse>('/auth/set-pin', { pin, orgCode }).then((r) => r.data),
-  pinLogin: (pin: string, orgCode: string) =>
-    apiClient.post<AuthResponse>('/auth/pin-login', { pin, orgCode }).then((r) => r.data),
+  setPin: (data: { pin: string; orgCode: string }) =>
+    apiClient.post<AuthResponse>('/auth/set-pin', data).then((r) => r.data),
+  pinLogin: (data: { pin: string; orgCode: string }) =>
+    apiClient.post<AuthResponse>('/auth/pin-login', data).then((r) => r.data),
   createOrg: (data: { name: string; type: string }) =>
     apiClient.post<{ orgCode: string }>('/auth/create-org', data).then((r) => r.data),
 }

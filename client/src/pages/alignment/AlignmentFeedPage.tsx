@@ -465,7 +465,7 @@ export function AlignmentFeedPage() {
 
         {/* #24 — Conversation prep card */}
         {feed && feed.length > 0 && (
-          <PrepCard feed={feed} narrative={narrative} />
+          <PrepCard feed={feed} />
         )}
 
         {narrative && (
