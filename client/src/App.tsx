@@ -28,7 +28,9 @@ import { AlignmentFeedPage } from '@/pages/alignment/AlignmentFeedPage'
 import { DashboardPage } from '@/pages/dashboard/DashboardPage'
 import { PromptVersioningPage } from '@/pages/prompts/PromptVersioningPage'
 import { PlatformDashboardPage } from '@/pages/prompts/PlatformDashboardPage'
+import { ProfilePage } from '@/pages/profile/ProfilePage'
 import { DevSkipPanel } from '@/components/gw'
+import { useSessionTimeout } from '@/lib/useSessionTimeout'
 import type { JSX } from 'react'
 
 const queryClient = new QueryClient({
@@ -45,10 +47,17 @@ function RootRoute() {
   return isAuthenticated ? <GroundsListPage /> : <LandingPage />
 }
 
+// Mounts inside BrowserRouter so useNavigate is available
+function SessionTimeoutGuard({ children }: { children: React.ReactNode }) {
+  useSessionTimeout()
+  return <>{children}</>
+}
+
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
+        <SessionTimeoutGuard>
         <Toaster position="top-right" richColors />
 
         <Routes>
@@ -79,12 +88,14 @@ export default function App() {
           <Route path="/report/:groundId" element={<RequireAuth><ReportPage /></RequireAuth>} />
           <Route path="/billing/callback" element={<RequireAuth><BillingCallbackPage /></RequireAuth>} />
           <Route path="/billing" element={<RequireAuth><BillingPage /></RequireAuth>} />
+          <Route path="/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
           <Route path="/grounds/:groundId/feedback" element={<RequireAuth><GroundFeedbackPage /></RequireAuth>} />
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
 
         {import.meta.env.DEV && <DevSkipPanel />}
+        </SessionTimeoutGuard>
       </BrowserRouter>
     </QueryClientProvider>
   )

@@ -30,6 +30,7 @@ export function GroundsListPage() {
           {user?.isPlatformAdmin && (
             <button className="gw-back" onClick={() => navigate('/prompts')}>Prompts</button>
           )}
+          <button className="gw-back" onClick={() => navigate('/profile')}>Profile</button>
           <button className="gw-back" onClick={() => { logout(); navigate('/login') }}>Sign out</button>
         </div>
       </div>
