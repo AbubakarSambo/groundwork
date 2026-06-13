@@ -35,7 +35,7 @@ export function LandingPage() {
       {/* Nav */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 24px', borderBottom: '1px solid rgba(255,255,255,.06)' }}>
         <div>
-          <span style={{ fontSize: 16, fontWeight: 700, color: 'white', letterSpacing: '-.02em' }}>Groundwork</span>
+          <a href="https://myground.work" target="_blank" rel="noopener noreferrer" style={{ fontSize: 16, fontWeight: 700, color: 'white', letterSpacing: '-.02em', textDecoration: 'none' }}>Groundwork</a>
           <span style={{ fontSize: 11, fontWeight: 400, color: 'rgba(255,255,255,.28)', letterSpacing: '.1em', textTransform: 'uppercase', marginLeft: 10 }}>myground.work</span>
         </div>
         <button

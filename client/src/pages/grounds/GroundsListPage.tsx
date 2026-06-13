@@ -77,7 +77,7 @@ export function GroundsListPage() {
             <rect x="2" y="6" width="18" height="3" rx="1.5" fill="#0C447C" opacity="0.72" />
             <rect x="0" y="12" width="22" height="3" rx="1.5" fill="#0C447C" />
           </svg>
-          <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-navy)', letterSpacing: '-.02em' }}>Groundwork</span>
+          <a href="https://myground.work" target="_blank" rel="noopener noreferrer" style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-navy)', letterSpacing: '-.02em', textDecoration: 'none' }}>Groundwork</a>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-navy)', background: 'var(--gw-blue-bg)', border: '0.5px solid var(--gw-blue-b)', borderRadius: 20, padding: '3px 10px' }}>

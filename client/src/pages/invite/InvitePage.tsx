@@ -52,7 +52,7 @@ export function InvitePage() {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--gw-bg)', display: 'flex', flexDirection: 'column' }}>
       <div className="gw-hdr">
-        <GroundworkLogo />
+        <a href="https://myground.work" target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex' }}><GroundworkLogo /></a>
       </div>
 
       <div className="gw-bd" style={{ maxWidth: 480, margin: '0 auto', width: '100%', paddingTop: 24 }}>

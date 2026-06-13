@@ -7,7 +7,7 @@ export function SetupPage() {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
-      <div className="gw-hdr"><div className="gw-logo">Groundwork</div></div>
+      <div className="gw-hdr"><a href="https://myground.work" target="_blank" rel="noopener noreferrer" className="gw-logo" style={{ textDecoration: 'none', color: 'inherit' }}>Groundwork</a></div>
       <div className="gw-bd" style={{ textAlign: 'center', paddingTop: 60, maxWidth: 420, margin: '0 auto', width: '100%' }}>
         <div style={{ width: 52, height: 52, background: 'var(--gw-blue-bg)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
           <svg width="22" height="22" viewBox="0 0 22 22" fill="none">

@@ -16,7 +16,7 @@ export function ProfilePage() {
             <rect x="2" y="6" width="18" height="3" rx="1.5" fill="white" opacity="0.72" />
             <rect x="0" y="12" width="22" height="3" rx="1.5" fill="white" />
           </svg>
-          <span style={{ fontSize: 14, fontWeight: 700, color: 'white', letterSpacing: '-.02em' }}>Groundwork</span>
+          <a href="https://myground.work" target="_blank" rel="noopener noreferrer" style={{ fontSize: 14, fontWeight: 700, color: 'white', letterSpacing: '-.02em', textDecoration: 'none' }}>Groundwork</a>
         </div>
         <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'rgba(255,255,255,.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 700, color: 'white', marginBottom: 10 }}>
           {initials}

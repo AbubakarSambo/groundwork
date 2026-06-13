@@ -36,7 +36,7 @@ export function ResetPasswordPage() {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
-      <div className="gw-hdr"><div className="gw-logo">Groundwork</div></div>
+      <div className="gw-hdr"><a href="https://myground.work" target="_blank" rel="noopener noreferrer" className="gw-logo" style={{ textDecoration: 'none', color: 'inherit' }}>Groundwork</a></div>
       <div className="gw-bd" style={{ maxWidth: 420, margin: '0 auto', width: '100%', paddingTop: 32 }}>
         <div className="gw-ttl">Reset your password</div>
         <div className="gw-sub-t">Choose a new password for your account.</div>

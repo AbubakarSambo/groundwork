@@ -7,7 +7,7 @@ export function WelcomePage() {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
-      <div className="gw-hdr"><div className="gw-logo">Groundwork</div></div>
+      <div className="gw-hdr"><a href="https://myground.work" target="_blank" rel="noopener noreferrer" className="gw-logo" style={{ textDecoration: 'none', color: 'inherit' }}>Groundwork</a></div>
       <div className="gw-bd" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '80vh', maxWidth: 420, margin: '0 auto', width: '100%' }}>
         <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 8, letterSpacing: '-.01em' }}>
           Welcome{user?.firstName ? `, ${user.firstName}` : ''}

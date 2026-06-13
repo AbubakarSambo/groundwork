@@ -61,7 +61,7 @@ export function AuthPage() {
             <rect x="2" y="6" width="18" height="3" rx="1.5" fill="white" opacity="0.72" />
             <rect x="0" y="12" width="22" height="3" rx="1.5" fill="white" />
           </svg>
-          <span style={{ fontSize: 15, fontWeight: 700, color: 'white', letterSpacing: '-.02em' }}>Groundwork</span>
+          <a href="https://myground.work" target="_blank" rel="noopener noreferrer" style={{ fontSize: 15, fontWeight: 700, color: 'white', letterSpacing: '-.02em', textDecoration: 'none' }}>Groundwork</a>
         </div>
         <span onClick={() => navigate('/')} style={{ fontSize: 13, color: 'rgba(255,255,255,.55)', cursor: 'pointer' }}>Back</span>
       </div>

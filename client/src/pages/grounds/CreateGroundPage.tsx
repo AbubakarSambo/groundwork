@@ -95,7 +95,7 @@ export function CreateGroundPage() {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
       <div className="gw-hdr">
-        <div className="gw-logo">Groundwork</div>
+        <a href="https://myground.work" target="_blank" rel="noopener noreferrer" className="gw-logo" style={{ textDecoration: 'none', color: 'inherit' }}>Groundwork</a>
         <button className="gw-back" onClick={back}>← Back</button>
       </div>
 
