@@ -4,7 +4,7 @@ import { Throttle } from '@nestjs/throttler';
 import { AuthGuard } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
-import { RegisterDto, LoginDto, AuthResponseDto, VerifyEmailDto, SetPasswordDto, ResendVerificationDto, ForgotPasswordDto, ResetPasswordDto, MagicLinkRegisterDto } from './dto';
+import { RegisterDto, LoginDto, AuthResponseDto, VerifyEmailDto, SetPasswordDto, ResendVerificationDto, ForgotPasswordDto, ResetPasswordDto, MagicLinkRegisterDto, MemberSigninDto } from './dto';
 import { Public, CurrentUser, CurrentUserData } from '../../common';
 
 @ApiTags('Auth')
@@ -73,6 +73,16 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Verification email sent if account exists' })
   async resendVerification(@Body() dto: ResendVerificationDto) {
     return this.authService.resendVerification(dto);
+  }
+
+  @Public()
+  @Post('member-signin')
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ global: { limit: 5, ttl: 60000 } })
+  @ApiOperation({ summary: 'Send a magic sign-in link to an existing member' })
+  @ApiResponse({ status: 200, description: 'Sign-in link sent if account exists' })
+  async memberSignin(@Body() dto: MemberSigninDto) {
+    return this.authService.memberSignin(dto);
   }
 
   @Public()

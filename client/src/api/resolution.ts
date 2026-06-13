@@ -14,5 +14,5 @@ export const resolutionApi = {
     apiClient.post(`/grounds/${groundId}/resolution`, { endState }).then(r => r.data),
 
   counter: (groundId: string, endState: string) =>
-    apiClient.post(`/grounds/${groundId}/resolution/counter`, { endState }).then(r => r.data),
+    apiClient.post(`/grounds/${groundId}/resolution/counter`, { proposedEndState: endState }).then(r => r.data),
 }

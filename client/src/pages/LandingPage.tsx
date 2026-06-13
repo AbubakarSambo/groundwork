@@ -42,7 +42,7 @@ export function LandingPage() {
           onClick={() => navigate('/auth?mode=member')}
           style={{ fontSize: 13, color: 'rgba(255,255,255,.55)', background: 'none', border: '1px solid rgba(255,255,255,.12)', borderRadius: 6, padding: '6px 14px', cursor: 'pointer', fontFamily: 'inherit' }}
         >
-          I have an org code
+          Sign in
         </button>
       </div>
 
@@ -66,9 +66,9 @@ export function LandingPage() {
           <button
             className="gw-btn-sec"
             style={{ margin: 0, fontSize: 14, padding: '11px 16px', background: 'rgba(255,255,255,.06)', color: 'rgba(255,255,255,.6)', border: '1px solid rgba(255,255,255,.09)' }}
-            onClick={() => navigate('/enter')}
+            onClick={() => navigate('/auth?mode=member')}
           >
-            I have an org code
+            Open my check-in →
           </button>
         </div>
 

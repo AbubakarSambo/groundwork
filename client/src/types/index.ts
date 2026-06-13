@@ -19,7 +19,6 @@ export type GroundScenario =
   | 'RECOGNITION'
   | 'DRIFT'
   | 'CRISIS_ALIGNMENT'
-  | 'GENERAL_ALIGNMENT'
 
 export type GroundMoment = 'STARTING' | 'RECOGNITION' | 'RESOLUTION'
 
@@ -77,10 +76,11 @@ export interface Ground {
   daysLeft?: number | null
   checkInsToday?: number
   overdue?: number
+  contextNotes?: string[]
   participants: GroundParticipant[]
   checkIns?: CheckInSummary[]
   signals?: GroundSignal[]
-  report?: { id: string; releasedAt: string | null } | null
+  report?: { id: string; releasedAt: string | null; createdAt?: string } | null
 }
 
 export interface ConversationTurn {
@@ -104,4 +104,5 @@ export interface Report {
     parties: { label: string; sessions: number; recordEntries: number; documentsAttached: number; contributed: boolean }[]
   } | null
   releasedAt: string | null
+  createdAt: string
 }

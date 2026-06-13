@@ -355,25 +355,35 @@ export class ReportsService {
     return released;
   }
 
-  /** Fetch the report — only after release, only for a party to the ground.
-   * Includes the requesting party's post-report guide (#99) and solo artifact (#91).
+  /** Fetch the report. If released, returns full content for any party or the
+   * initiator. If not yet released, returns a locked stub { id, groundId,
+   * createdAt, releasedAt: null } for the initiator only so the admin page can
+   * show the release button — no content is included before release.
    */
   async get(groundId: string, requestingUserId: string) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, include: { participants: true, report: true } });
     if (!ground?.report) throw new NotFoundException('Report not found');
 
+    const isInitiator = ground.initiatorId === requestingUserId;
     const participant = ground.participants.find((p) => p.userId === requestingUserId);
-    if (!participant) throw new ForbiddenException('You are not a party to this ground');
-    if (!ground.report.releasedAt) throw new ForbiddenException('Report has not been released yet');
+    if (!participant && !isInitiator) throw new ForbiddenException('You are not a party to this ground');
+
+    if (!ground.report.releasedAt) {
+      if (isInitiator) {
+        // Return locked stub — admin sees the release button, no content exposed.
+        return { id: ground.report.id, groundId, createdAt: ground.report.createdAt, releasedAt: null };
+      }
+      throw new ForbiddenException('Report has not been released yet');
+    }
 
     // Attach this party's post-report guide (stored in engagement.postReportGuides
     // keyed by participantId — #99) and solo artifact (#91) to the response.
     const engagement = ground.report.engagement && typeof ground.report.engagement === 'object'
       ? (ground.report.engagement as Record<string, any>)
       : {};
-    const postReportGuide = engagement.postReportGuides?.[participant.id] ?? null;
+    const postReportGuide = participant ? (engagement.postReportGuides?.[participant.id] ?? null) : null;
 
-    const soloArtifact = participant.soloArtifact
+    const soloArtifact = participant?.soloArtifact
       ? (() => { try { return JSON.parse(participant.soloArtifact); } catch { return null; } })()
       : null;
 

@@ -3,8 +3,7 @@ import { apiClient } from './client'
 export interface GroundDocument {
   id: string
   name: string
-  size: number
-  type: string
+  mimeType: string
   uploadedAt: string
 }
 

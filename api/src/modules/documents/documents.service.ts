@@ -3,8 +3,23 @@ import { Injectable, NotFoundException, ForbiddenException, BadRequestException 
 const pdfParse = require('pdf-parse') as (buf: Buffer) => Promise<{ text: string }>;
 import { PrismaService } from '../prisma/prisma.service';
 
-const ALLOWED_MIME = ['application/pdf', 'text/plain'];
+const ALLOWED_MIME = [
+  'application/pdf',
+  'text/plain',
+  'text/csv',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+];
+const TEXT_EXTRACTABLE = ['application/pdf', 'text/plain', 'text/csv'];
 const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
+
+function toDocShape(doc: { id: string; fileName: string; mimeType: string; createdAt: Date }) {
+  return { id: doc.id, name: doc.fileName, mimeType: doc.mimeType, uploadedAt: doc.createdAt };
+}
 
 @Injectable()
 export class DocumentsService {
@@ -14,7 +29,7 @@ export class DocumentsService {
     if (!file) throw new BadRequestException('No file provided');
     if (file.size > MAX_BYTES) throw new BadRequestException('File must be under 10 MB');
     if (!ALLOWED_MIME.includes(file.mimetype)) {
-      throw new BadRequestException('Only PDF and plain-text files are accepted');
+      throw new BadRequestException('Unsupported file type. Accepted: PDF, TXT, CSV, DOCX, XLSX, JPEG, PNG.');
     }
 
     const participant = await this.assertParticipant(groundId, userId);
@@ -24,11 +39,13 @@ export class DocumentsService {
       const result = await pdfParse(file.buffer);
       content = result.text?.trim() ?? '';
       if (!content) throw new BadRequestException('Could not extract text from this PDF. Make sure it is not a scanned image.');
-    } else {
+    } else if (TEXT_EXTRACTABLE.includes(file.mimetype)) {
       content = file.buffer.toString('utf-8').trim();
+    } else {
+      content = `[Attached: ${file.originalname} — text not extractable from this file type. The document is on record.]`;
     }
 
-    return this.prisma.groundDocument.create({
+    const doc = await this.prisma.groundDocument.create({
       data: {
         groundId,
         participantId: participant.id,
@@ -38,15 +55,17 @@ export class DocumentsService {
       },
       select: { id: true, fileName: true, mimeType: true, createdAt: true },
     });
+    return toDocShape(doc);
   }
 
   async list(groundId: string, userId: string) {
     const participant = await this.assertParticipant(groundId, userId);
-    return this.prisma.groundDocument.findMany({
+    const docs = await this.prisma.groundDocument.findMany({
       where: { groundId, participantId: participant.id },
       select: { id: true, fileName: true, mimeType: true, createdAt: true },
       orderBy: { createdAt: 'asc' },
     });
+    return docs.map(toDocShape);
   }
 
   async remove(groundId: string, docId: string, userId: string) {

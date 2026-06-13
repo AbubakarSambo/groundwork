@@ -23,7 +23,6 @@ export function GroundParticipantPage() {
   const navigate = useNavigate()
   const qc = useQueryClient()
   const [tab, setTab] = useState<Tab>('checkin')
-  const [reportActivated, setReportActivated] = useState(false)
 
   const user = useAuthStore(s => s.user)
 
@@ -46,11 +45,6 @@ export function GroundParticipantPage() {
     enabled: !!id && tab === 'docs',
   })
 
-  const releaseReport = useMutation({
-    mutationFn: () => reportsApi.release(id!),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['report', id] }); setReportActivated(true) },
-    onError: () => toast.error('Could not activate report.'),
-  })
 
   const uploadDoc = useMutation({
     mutationFn: (file: File) => documentsApi.upload(id!, file),
@@ -114,7 +108,7 @@ export function GroundParticipantPage() {
                   Session {myCheckIn.sessionNumber} is open.
                 </div>
                 <button
-                  onClick={() => navigate(`/checkin/${myCheckIn.id}`, { state: { sessionNumber: myCheckIn.sessionNumber, groundLabel: ground.label } })}
+                  onClick={() => navigate(`/checkin/${myCheckIn.id}`, { state: { sessionNumber: myCheckIn.sessionNumber, groundLabel: ground.label, groundId: id } })}
                   style={{ width: '100%', padding: 16, borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 15, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', marginBottom: 12 }}
                 >
                   Start session {myCheckIn.sessionNumber}
@@ -124,7 +118,7 @@ export function GroundParticipantPage() {
             ) : (
               <div style={{ background: 'var(--gw-green-bg)', border: '0.5px solid var(--gw-green-b)', borderRadius: 8, padding: 14 }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-green-t)', marginBottom: 5 }}>Session complete</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6 }}>Your contribution has been recorded. Both parties need to activate the report to see the shared picture.</div>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6 }}>Your contribution has been recorded. The administrator releases the report once both parties complete session 2.</div>
               </div>
             )}
           </div>
@@ -209,21 +203,9 @@ export function GroundParticipantPage() {
                 </div>
               </div>
             ) : (
-              <div>
-                <div style={{ background: 'var(--gw-bg)', border: '0.5px solid var(--gw-border)', borderRadius: 10, padding: 16, marginBottom: 14 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Activate the report</div>
-                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 14 }}>Both parties must activate. Neither sees the report until both confirm.</div>
-                  <button onClick={() => releaseReport.mutate()} disabled={releaseReport.isPending}
-                    style={{ width: '100%', padding: 12, borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
-                    {releaseReport.isPending ? 'Activating…' : 'Activate my report'}
-                  </button>
-                </div>
-                {reportActivated && (
-                  <div style={{ background: 'var(--gw-amber-bg)', border: '0.5px solid var(--gw-amber-b)', borderRadius: 8, padding: '12px 14px' }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--gw-amber-t)', marginBottom: 4 }}>Waiting for the other party</div>
-                    <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6 }}>A nudge has been sent. The report will appear here when both parties confirm.</div>
-                  </div>
-                )}
+              <div style={{ background: 'var(--gw-bg)', border: '0.5px solid var(--gw-border)', borderRadius: 10, padding: 16, marginBottom: 14 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Report not yet released</div>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6 }}>The report is released by the ground administrator once both parties have completed session 2. You will both see it at the same time — neither party reads it before the other.</div>
               </div>
             )}
           </div>

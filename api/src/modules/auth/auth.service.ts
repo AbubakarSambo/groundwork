@@ -21,6 +21,7 @@ import {
   ForgotPasswordDto,
   ResetPasswordDto,
   MagicLinkRegisterDto,
+  MemberSigninDto,
 } from './dto';
 import { TokenType } from '@prisma/client';
 
@@ -213,6 +214,28 @@ export class AuthService {
 
     this.emailService.sendVerificationEmail(user.email, user.firstName, token);
     return { message };
+  }
+
+  async memberSignin(dto: MemberSigninDto): Promise<{ message: string; email: string }> {
+    const message = 'If an account with that email exists, a sign-in link has been sent.';
+    const email = dto.email.toLowerCase();
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    if (!user || user.deletedAt || !user.isActive) return { message, email };
+
+    await this.prisma.emailVerificationToken.updateMany({
+      where: { userId: user.id, type: TokenType.EMAIL_VERIFICATION, usedAt: null },
+      data: { usedAt: new Date() },
+    });
+
+    const token = crypto.randomBytes(32).toString('hex');
+    await this.prisma.emailVerificationToken.create({
+      data: { userId: user.id, token, type: TokenType.EMAIL_VERIFICATION, expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) },
+    });
+
+    this.emailService.sendMagicLinkEmail(email, user.firstName, token).catch((err) =>
+      this.logger.error(`Failed to send member sign-in email to ${email}: ${err.message}`),
+    );
+    return { message, email };
   }
 
   async forgotPassword(dto: ForgotPasswordDto): Promise<{ message: string }> {

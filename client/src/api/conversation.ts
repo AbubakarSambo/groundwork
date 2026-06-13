@@ -1,7 +1,7 @@
 import { apiClient } from './client'
 
 export interface OpenCheckInResponse { reply: string }
-export interface SendMessageResponse { reply: string }
+export interface SendMessageResponse { reply: string; sessionComplete?: boolean }
 
 export const conversationApi = {
   open: (checkInId: string) =>

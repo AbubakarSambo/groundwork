@@ -232,7 +232,13 @@ export class ConversationService {
       await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { status: CheckInStatus.IN_PROGRESS, startedAt: new Date() } });
     }
 
-    return { reply: aiTurn.content };
+    // Signal the frontend that the AI has delivered the session-closing elements
+    // so the "Complete session" button can appear. Detected by the mandatory
+    // SESSION CLOSE phrase defined in ENGINE_RULES.
+    const sessionComplete = reply.includes('Here is what is now in your record:') ||
+      (reply.includes('now in your record') && reply.includes('next steps'));
+
+    return { reply: aiTurn.content, sessionComplete };
   }
 
   /**

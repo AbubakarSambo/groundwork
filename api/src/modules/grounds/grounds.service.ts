@@ -131,18 +131,76 @@ export class GroundsService {
     });
   }
 
-  async get(id: string, organizationId: string) {
-    const ground = await this.prisma.ground.findFirst({
+  async get(id: string, organizationId: string, requestingUserId?: string) {
+    // Primary lookup by org — works for org members and the initiator.
+    let ground = await this.prisma.ground.findFirst({
       where: { id, organizationId },
       include: {
         participants: { select: SAFE_PARTICIPANT_SELECT },
         checkIns: { select: { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true } },
-        report: { select: { id: true, releasedAt: true } },
+        report: { select: { id: true, releasedAt: true, sharedPicture: true, createdAt: true } },
         resolution: true,
+        patternDetections: {
+          select: { id: true, code: true, periodsObserved: true, status: true, observationText: true, createdAt: true },
+          orderBy: { createdAt: 'desc' },
+          take: 10,
+        },
       },
     });
+
+    // External participant (different org): fall back to participant membership check.
+    if (!ground && requestingUserId) {
+      const link = await this.prisma.groundParticipant.findFirst({ where: { groundId: id, userId: requestingUserId } });
+      if (link) {
+        ground = await this.prisma.ground.findUnique({
+          where: { id },
+          include: {
+            participants: { select: SAFE_PARTICIPANT_SELECT },
+            checkIns: { select: { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true } },
+            report: { select: { id: true, releasedAt: true, sharedPicture: true, createdAt: true } },
+            resolution: true,
+            patternDetections: {
+              select: { id: true, code: true, periodsObserved: true, status: true, observationText: true, createdAt: true },
+              orderBy: { createdAt: 'desc' },
+              take: 10,
+            },
+          },
+        });
+      }
+    }
+
     if (!ground) throw new NotFoundException('Ground not found');
-    return ground;
+
+    // Computed display fields — derived here so the client never needs to repeat the logic.
+    const completedCount = (ground.checkIns ?? []).filter((ci) => ci.status === CheckInStatus.COMPLETED).length;
+    const confidence = Math.min(5, Math.max(1, completedCount || 1));
+
+    const daysLeft =
+      ground.timelineDays != null
+        ? Math.max(0, Math.round((ground.createdAt.getTime() + ground.timelineDays * 86_400_000 - Date.now()) / 86_400_000))
+        : null;
+
+    const brief = ground.report?.releasedAt ? (ground.report as any).sharedPicture ?? null : null;
+
+    const signals = (ground.patternDetections ?? [])
+      .filter((pd) => pd.observationText)
+      .map((pd) => ({
+        id: pd.id,
+        groundId: id,
+        sessionNum: pd.periodsObserved,
+        type: 'Pattern' as const,
+        text: pd.observationText!,
+        confidenceDelta: null,
+        createdAt: pd.createdAt.toISOString(),
+      }));
+
+    // Extract context notes from groundAuditLog (stored under key contextNotes).
+    const rawLog = (ground as any).groundAuditLog;
+    const contextNotes: string[] =
+      rawLog && !Array.isArray(rawLog) && typeof rawLog === 'object' ? (rawLog as any).contextNotes ?? [] : [];
+
+    const { patternDetections: _pd, ...rest } = ground as any;
+    return { ...rest, confidence, daysLeft, brief, signals, contextNotes };
   }
 
   /**
@@ -326,44 +384,50 @@ export class GroundsService {
   async updateTimeline(
     groundId: string,
     requestingUserId: string,
-    dto: { timelineWeeks?: number; cadence?: string },
+    dto: { timelineWeeks?: number; cadence?: string; contextNote?: string },
   ) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId } });
     if (!ground) throw new NotFoundException('Ground not found');
 
-    // Only parties to this ground may adjust its timeline / cadence.
+    // Only parties to this ground may adjust its timeline / cadence or add notes.
     const link = await this.prisma.groundParticipant.findFirst({
       where: { groundId, userId: requestingUserId },
     });
-    if (!link) throw new ForbiddenException('You are not a party to this ground');
+    if (!link && ground.initiatorId !== requestingUserId) throw new ForbiddenException('You are not a party to this ground');
 
     // Validate cadence if provided.
     if (dto.cadence && !Object.values(Cadence).includes(dto.cadence as Cadence)) {
       throw new BadRequestException(`Invalid cadence. Must be one of: ${Object.values(Cadence).join(', ')}`);
     }
 
-    const auditEntry = {
-      changedAt: new Date().toISOString(),
-      changedBy: requestingUserId,
-      changes: {
-        ...(dto.timelineWeeks !== undefined && {
-          timelineWeeks: { from: ground.timelineWeeks, to: dto.timelineWeeks },
-        }),
-        ...(dto.cadence !== undefined && {
-          cadence: { from: ground.cadence, to: dto.cadence },
-        }),
-      },
-    };
+    // Parse existing audit log — migrate legacy array format to structured object.
+    const rawLog = ground.groundAuditLog;
+    const auditData: { timeline: object[]; contextNotes: string[] } =
+      rawLog && !Array.isArray(rawLog) && typeof rawLog === 'object'
+        ? { timeline: (rawLog as any).timeline ?? [], contextNotes: (rawLog as any).contextNotes ?? [] }
+        : { timeline: Array.isArray(rawLog) ? (rawLog as object[]) : [], contextNotes: [] };
 
-    const existingLog: object[] = Array.isArray(ground.groundAuditLog) ? (ground.groundAuditLog as object[]) : [];
-    const updatedLog = [...existingLog, auditEntry];
+    if (dto.timelineWeeks !== undefined || dto.cadence !== undefined) {
+      auditData.timeline.push({
+        changedAt: new Date().toISOString(),
+        changedBy: requestingUserId,
+        changes: {
+          ...(dto.timelineWeeks !== undefined && { timelineWeeks: { from: ground.timelineWeeks, to: dto.timelineWeeks } }),
+          ...(dto.cadence !== undefined && { cadence: { from: ground.cadence, to: dto.cadence } }),
+        },
+      });
+    }
+
+    if (dto.contextNote?.trim()) {
+      auditData.contextNotes.push(dto.contextNote.trim());
+    }
 
     return this.prisma.ground.update({
       where: { id: groundId },
       data: {
         ...(dto.timelineWeeks !== undefined && { timelineWeeks: dto.timelineWeeks }),
         ...(dto.cadence !== undefined && { cadence: dto.cadence as Cadence }),
-        groundAuditLog: updatedLog,
+        groundAuditLog: auditData,
       },
     });
   }

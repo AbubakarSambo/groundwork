@@ -35,8 +35,6 @@ export function GroundAdminPage() {
   const qc = useQueryClient()
   const [tab, setTab] = useState<Tab>('overview')
   const [ctxNote, setCtxNote] = useState('')
-  const [ctxNotes, setCtxNotes] = useState<string[]>([])
-  const [reportActivated, setReportActivated] = useState(false)
 
   const { data: ground, isLoading } = useQuery({
     queryKey: ['ground', id],
@@ -59,7 +57,7 @@ export function GroundAdminPage() {
 
   const releaseReport = useMutation({
     mutationFn: () => reportsApi.release(id!),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['report', id] }); setReportActivated(true) },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['report', id] }),
     onError: () => toast.error('Could not release report.'),
   })
 
@@ -77,6 +75,12 @@ export function GroundAdminPage() {
   const remind = useMutation({
     mutationFn: (checkInId: string) => conversationApi.remind(checkInId),
     onSuccess: () => toast.success('Reminder sent'),
+  })
+
+  const addNote = useMutation({
+    mutationFn: (note: string) => groundsApi.update(id!, { contextNote: note }),
+    onSuccess: () => { setCtxNote(''); qc.invalidateQueries({ queryKey: ['ground', id] }) },
+    onError: () => toast.error('Could not save note.'),
   })
 
   if (isLoading) return <Shell><div style={{ padding: 24, fontSize: 13, color: 'var(--gw-muted)' }}>Loading…</div></Shell>
@@ -229,11 +233,12 @@ export function GroundAdminPage() {
               <div className="gw-fld">
                 <textarea className="gw-ta" rows={3} value={ctxNote} onChange={e => setCtxNote(e.target.value)} placeholder="Add a context note: changed scope, revised goal, new constraint…" />
               </div>
-              <button onClick={() => { if (ctxNote.trim()) { setCtxNotes(v => [...v, ctxNote.trim()]); setCtxNote('') } }}
+              <button onClick={() => { if (ctxNote.trim()) addNote.mutate(ctxNote.trim()) }}
+                disabled={addNote.isPending}
                 style={{ padding: '8px 16px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', fontFamily: 'inherit', marginBottom: 14 }}>
-                Add note
+                {addNote.isPending ? 'Saving…' : 'Add note'}
               </button>
-              {ctxNotes.map((n, i) => (
+              {(ground.contextNotes ?? []).map((n, i) => (
                 <div key={i} style={{ background: 'white', border: '0.5px solid var(--gw-border)', borderRadius: 8, padding: '10px 12px', fontSize: 13, color: 'var(--gw-sub)', marginBottom: 8, lineHeight: 1.6 }}>{n}</div>
               ))}
             </div>
@@ -279,22 +284,21 @@ export function GroundAdminPage() {
                   </ReportSection>
                 )}
               </div>
-            ) : (
+            ) : report?.createdAt ? (
               <div>
                 <div style={{ background: 'var(--gw-bg)', border: '0.5px solid var(--gw-border)', borderRadius: 10, padding: 16, marginBottom: 14 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Both parties must activate</div>
-                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 14 }}>Neither sees the report until both confirm. Reports require mutual consent.</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Report is ready</div>
+                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 14 }}>Both parties have completed session 2. When you release the report, both parties see it simultaneously — neither reads it before the other. Billing activates on release.</div>
                   <button onClick={() => releaseReport.mutate()} disabled={releaseReport.isPending}
                     style={{ width: '100%', padding: 12, borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
-                    {releaseReport.isPending ? 'Activating…' : 'Activate report'}
+                    {releaseReport.isPending ? 'Releasing…' : 'Release report to both parties'}
                   </button>
                 </div>
-                {reportActivated && (
-                  <div style={{ background: 'var(--gw-amber-bg)', border: '0.5px solid var(--gw-amber-b)', borderRadius: 8, padding: '12px 14px' }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--gw-amber-t)', marginBottom: 4 }}>Report is waiting</div>
-                    <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6 }}>Waiting for the other party to activate. A nudge has been sent.</div>
-                  </div>
-                )}
+              </div>
+            ) : (
+              <div style={{ background: 'var(--gw-bg)', border: '0.5px solid var(--gw-border)', borderRadius: 10, padding: 16, marginBottom: 14 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Waiting for sessions</div>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6 }}>The report generates after both parties complete session 2. Check the Check-ins tab to see progress.</div>
               </div>
             )}
           </div>

@@ -2,17 +2,16 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
 import { conversationApi } from '@/api/conversation'
+import { documentsApi } from '@/api/documents'
 import { useAuthStore } from '@/stores/auth'
 import { toast } from 'sonner'
 
 interface Msg { id: string; role: 'AI' | 'PERSON'; content: string }
 
 const QUICK_ACTIONS = [
-  { label: 'Check in',             msg: 'I want to check in on my goals' },
-  { label: 'My report',            msg: 'Generate my contribution report' },
-  { label: 'What am I missing?',   msg: 'What is missing from my record that would make it stronger?' },
-  { label: 'Review my goals',      msg: 'Review my goals' },
-  { label: 'Team cross-reference', msg: 'How does my contribution compare to what my team is describing?' },
+  { label: 'What am I missing?', msg: 'What is missing from my record that would make it stronger?' },
+  { label: 'Is there a document?', msg: 'Is there anything written down that we should look at for this?' },
+  { label: 'What do I carry forward?', msg: 'What is the one thing I should carry into the next conversation?' },
 ]
 
 export function ChatPage() {
@@ -24,12 +23,13 @@ export function ChatPage() {
   // Session info passed from GroundParticipantPage
   const sessionNumber: number = (location.state as any)?.sessionNumber ?? 1
   const groundLabel: string = (location.state as any)?.groundLabel ?? ''
+  const groundId: string | undefined = (location.state as any)?.groundId
 
   const [msgs, setMsgs] = useState<Msg[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [opened, setOpened] = useState(false)
-  const [done] = useState(false)
+  const [done, setDone] = useState(false)
   const msgsRef = useRef<HTMLDivElement>(null)
   const taRef = useRef<HTMLTextAreaElement>(null)
 
@@ -57,6 +57,7 @@ export function ChatPage() {
     onSuccess: res => {
       setMsgs(v => v.filter(m => m.id !== 'loading').concat({ id: Date.now().toString(), role: 'AI', content: res.reply }))
       setLoading(false)
+      if (res.sessionComplete) setDone(true)
     },
     onError: () => {
       setMsgs(v => v.filter(m => m.id !== 'loading'))
@@ -68,6 +69,14 @@ export function ChatPage() {
   const complete = useMutation({
     mutationFn: () => conversationApi.complete(checkInId!),
     onSuccess: () => navigate('/grounds'),
+  })
+
+  const uploadDoc = useMutation({
+    mutationFn: (file: File) => documentsApi.upload(groundId!, file),
+    onSuccess: (doc) => {
+      setMsgs(v => [...v, { id: `doc-${doc.id}`, role: 'AI', content: `Document received: "${doc.name}". Let me ask you a few things about it.` }])
+    },
+    onError: () => toast.error('Upload failed.'),
   })
 
   useEffect(() => {
@@ -184,12 +193,13 @@ export function ChatPage() {
           <div style={{ padding: '10px 14px', display: 'flex', gap: 8, alignItems: 'flex-end' }}>
             <label
               htmlFor="doc-upload"
-              title="Upload a document to cross-reference with your check-in"
-              style={{ padding: '0 10px', borderRadius: 6, background: 'var(--gw-bg)', color: 'var(--gw-sub)', border: '0.5px solid var(--gw-border)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, flexShrink: 0, whiteSpace: 'nowrap', height: 38 }}
+              title="Upload a document — written agreements, messages, briefs"
+              style={{ padding: '0 10px', borderRadius: 6, background: 'var(--gw-bg)', color: 'var(--gw-sub)', border: '0.5px solid var(--gw-border)', cursor: groundId ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, flexShrink: 0, whiteSpace: 'nowrap', height: 38, opacity: groundId ? 1 : 0.4 }}
             >
-              📎 <span style={{ fontSize: 11 }}>Upload doc</span>
+              + <span style={{ fontSize: 11 }}>Upload doc</span>
             </label>
-            <input type="file" id="doc-upload" accept=".pdf,.doc,.docx,.txt,.csv,.xlsx,.png,.jpg,.jpeg" style={{ display: 'none' }} />
+            <input type="file" id="doc-upload" accept=".pdf,.doc,.docx,.txt,.csv,.xlsx,.png,.jpg,.jpeg" style={{ display: 'none' }}
+              onChange={e => { const f = e.target.files?.[0]; if (f && groundId) uploadDoc.mutate(f); e.currentTarget.value = '' }} />
 
             <textarea
               ref={taRef}

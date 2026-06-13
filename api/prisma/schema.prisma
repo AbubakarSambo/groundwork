@@ -178,10 +178,11 @@ model User {
   updatedAt DateTime  @updatedAt @map("updated_at")
   deletedAt DateTime? @map("deleted_at")
 
-  organization     Organization             @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  tokens           EmailVerificationToken[]
-  groundsInitiated Ground[]                 @relation("GroundInitiator")
-  participantLinks GroundParticipant[]
+  organization             Organization               @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  tokens                   EmailVerificationToken[]
+  groundsInitiated         Ground[]                   @relation("GroundInitiator")
+  participantLinks         GroundParticipant[]
+  disclaimerAcknowledgements DisclaimerAcknowledgement[]
 
   @@index([organizationId])
   @@map("users")
@@ -222,10 +223,12 @@ model Ground {
   groundAuditLog Json?  @map("ground_audit_log") // append-only JSON log of timeline/cadence changes
 
   // Lifecycle / billing markers
-  billingActivatedAt DateTime? @map("billing_activated_at") // admin activated report
-  resolvedAt         DateTime? @map("resolved_at")
-  closedAt           DateTime? @map("closed_at")
-  pausedAt           DateTime? @map("paused_at") // set when status transitions to PAUSED
+  billingActivatedAt  DateTime? @map("billing_activated_at") // admin activated report
+  billingEnabled      Boolean   @default(false) @map("billing_enabled")
+  paymentConfirmed    Boolean   @default(false) @map("payment_confirmed")
+  resolvedAt          DateTime? @map("resolved_at")
+  closedAt            DateTime? @map("closed_at")
+  pausedAt            DateTime? @map("paused_at") // set when status transitions to PAUSED
 
   promptVersionId     String? @map("prompt_version_id")
   stripeScenarioSubId String? @map("stripe_scenario_sub_id")
@@ -233,18 +236,19 @@ model Ground {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  organization      Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  initiator         User                @relation("GroundInitiator", fields: [initiatorId], references: [id])
-  promptVersion     PromptVersion?      @relation(fields: [promptVersionId], references: [id])
-  participants      GroundParticipant[]
-  checkIns          CheckIn[]
-  report            Report?
-  patternDetections PatternDetection[]
-  resolution        Resolution?
-  outcome           Outcome?
-  outcomeFeedback   OutcomeFeedback[]
-  billingEvents     BillingEvent[]
-  documents         GroundDocument[]
+  organization             Organization               @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  initiator                User                       @relation("GroundInitiator", fields: [initiatorId], references: [id])
+  promptVersion            PromptVersion?             @relation(fields: [promptVersionId], references: [id])
+  participants             GroundParticipant[]
+  checkIns                 CheckIn[]
+  report                   Report?
+  patternDetections        PatternDetection[]
+  resolution               Resolution?
+  outcome                  Outcome?
+  outcomeFeedback          OutcomeFeedback[]
+  billingEvents            BillingEvent[]
+  documents                GroundDocument[]
+  disclaimerAcknowledgements DisclaimerAcknowledgement[]
 
   @@index([organizationId])
   @@index([status])
@@ -314,6 +318,8 @@ model CheckIn {
   warningFiredAt DateTime?     @map("warning_fired_at")
   patternsAnalyzedAt DateTime? @map("patterns_analyzed_at") // pattern sweep has processed this period
   nextCommitment String?       @map("next_commitment")
+  closedReason  String?        @map("closed_reason") // e.g. "willingness_declined"
+  willingnessConfirmed Boolean @default(true) @map("willingness_confirmed") // willingness gate result
   createdAt     DateTime      @default(now()) @map("created_at")
 
   ground        Ground            @relation(fields: [groundId], references: [id], onDelete: Cascade)
@@ -347,6 +353,9 @@ model RecordEntry {
   type          RecordEntryType
   evidenceType  EvidenceType    @default(CHECK_IN)
   text          String          @db.Text // the person's exact words where possible
+  recallBased   Boolean         @default(true) @map("recall_based") // false = anchored to a document
+  dimensionThreadKey String?    @map("dimension_thread_key") // groups entries across sessions by theme
+  anchored_question_id String?  @map("anchored_question_id") // which verbatim question produced this entry
   createdAt     DateTime        @default(now()) @map("created_at")
 
   participant GroundParticipant @relation(fields: [participantId], references: [id], onDelete: Restrict)
@@ -556,4 +565,23 @@ model GroundDocument {
 
   @@index([groundId, participantId])
   @@map("ground_documents")
+}
+
+// ---------------------------------------------------------------------------
+// Compliance — disclaimer acknowledgement gate before first session.
+// ---------------------------------------------------------------------------
+
+model DisclaimerAcknowledgement {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  groundId    String   @map("ground_id")
+  textVersion String   @map("text_version") // slug of the disclaimer text version shown
+  acknowledgedAt DateTime @default(now()) @map("acknowledged_at")
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ground Ground @relation(fields: [groundId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, groundId])
+  @@index([groundId])
+  @@map("disclaimer_acknowledgements")
 }

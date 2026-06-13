@@ -18,6 +18,10 @@ class UpdateTimelineDto {
   @IsOptional()
   @IsEnum(Cadence)
   cadence?: Cadence;
+
+  @ApiPropertyOptional({ description: 'Append a context note to this ground' })
+  @IsOptional()
+  contextNote?: string;
 }
 
 @ApiTags('Grounds')
@@ -34,8 +38,8 @@ export class GroundsController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a ground (status, participants, check-ins)' })
-  async get(@Param('id') id: string, @CurrentUser('organizationId') organizationId: string) {
-    return this.grounds.get(id, organizationId);
+  async get(@Param('id') id: string, @CurrentUser() user: CurrentUserData) {
+    return this.grounds.get(id, user.organizationId, user.id);
   }
 
   @Post()
