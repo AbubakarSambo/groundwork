@@ -56,6 +56,7 @@ export default function App() {
           <Routes>
             {/* Public */}
             <Route path="/" element={<RootRoute />} />
+            <Route path="/login" element={<Navigate to="/auth" replace />} />
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/auth/sent" element={<MagicSentPage />} />
             <Route path="/verify-email" element={<MagicVerifyPage />} />
