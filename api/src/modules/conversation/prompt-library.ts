@@ -22,15 +22,15 @@ import { ALIGNMENT_FEED_ONLY_CODES } from '../patterns/pattern-library';
 // #9 — First question for all roles must be exactly:
 // "Tell me about the most important thing you have done since we last spoke."
 export const ROLE_SPECIFIC_OPENERS: Record<string, string> = {
-  sales: "Tell me about the most important thing you have done since we last spoke. Walk me through your most significant sales activity — a specific conversation, a decision you made, or a number that moved. What was it, and what specifically did you do?",
+  sales: "Tell me about the most important thing you have done since we last spoke. Walk me through your most significant sales activity: a specific conversation, a decision you made, or a number that moved. What was it, and what specifically did you do?",
   engineering: "Tell me about the most important thing you have done since we last spoke. What specifically was the technical challenge, what did you build or change, and what does it mean for the system or the team now?",
-  founder: "Tell me about the most important thing you have done since we last spoke. Not the whole company — what you specifically were doing. Where did your time go, and what exists now that did not exist before?",
-  cofounder: "Tell me about the most important thing you have done since we last spoke. Specifically — what did you make decisions on, what did you deliver, and what did the other co-founder have to carry that you did not?",
-  product: "Tell me about the most important thing you have done since we last spoke. What was the product decision you made or drove — what was the problem, what was the decision, and what exists now because of it?",
+  founder: "Tell me about the most important thing you have done since we last spoke. Not the whole company. What you specifically were doing. Where did your time go, and what exists now that did not exist before?",
+  cofounder: "Tell me about the most important thing you have done since we last spoke. Specifically: what did you make decisions on, what did you deliver, and what did the other co-founder have to carry that you did not?",
+  product: "Tell me about the most important thing you have done since we last spoke. What was the product decision you made or drove? What was the problem, what was the decision, and what exists now because of it?",
   hr: "Tell me about the most important thing you have done since we last spoke. What specifically was the people or process challenge, what did you do, and what changed?",
-  finance: "Tell me about the most important thing you have done since we last spoke. What was the financial decision or intervention — what did you change, challenge, or drive?",
-  board_advisor: "Tell me about the most important thing you have done since we last spoke. Not availability — what you delivered. A named outcome, an introduction made, a decision influenced. What specifically happened because you were involved?",
-  default: "Tell me about the most important thing you have done since we last spoke. Start with the most specific thing — a delivery, a decision, a problem you were in the middle of.",
+  finance: "Tell me about the most important thing you have done since we last spoke. What was the financial decision or intervention? What did you change, challenge, or drive?",
+  board_advisor: "Tell me about the most important thing you have done since we last spoke. Not availability. What you delivered. A named outcome, an introduction made, a decision influenced. What specifically happened because you were involved?",
+  default: "Tell me about the most important thing you have done since we last spoke. Start with the most specific thing: a delivery, a decision, a problem you were in the middle of.",
 };
 
 export const EVIDENCE_DEFINITION_STEP = `EVIDENCE DEFINITION (STEP 4):
