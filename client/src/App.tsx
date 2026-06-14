@@ -26,6 +26,7 @@ import { CofounderPage } from '@/pages/cofounder/CofounderPage'
 import { InvitePage } from '@/pages/invite/InvitePage'
 import { PromptVersioningPage } from '@/pages/prompts/PromptVersioningPage'
 import { AdminPage } from '@/pages/admin/AdminPage'
+import { DemoConversationPage } from '@/pages/demo/DemoConversationPage'
 import type { JSX } from 'react'
 
 const qc = new QueryClient({
@@ -65,6 +66,7 @@ export default function App() {
             <Route path="/enter" element={<EnterPage />} />
             <Route path="/pin" element={<PinPage />} />
             <Route path="/invite" element={<InvitePage />} />
+            <Route path="/demo/:persona" element={<DemoConversationPage />} />
 
             {/* Post-auth setup */}
             <Route path="/setup" element={<SetupPage />} />
