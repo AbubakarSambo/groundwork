@@ -444,10 +444,10 @@ export class ConversationService {
     // Open the next session for this party so they have somewhere to return to.
     await this.ensureNextSession(checkIn.groundId, checkIn.participantId, checkIn.sessionNumber);
 
-    // After session 1 completes: prompt the org admin to activate billing so
-    // session 2 is not blocked. Only fires when the org is not already
+    // After session 4 completes: prompt the org admin to activate billing so
+    // session 5 is not blocked. Only fires when the org is not already
     // billing-ready — avoids duplicate emails for orgs that have already paid.
-    if (checkIn.sessionNumber === 1) {
+    if (checkIn.sessionNumber === 4) {
       const completedGround = await this.prisma.ground.findUnique({
         where: { id: checkIn.groundId },
         select: { organizationId: true },
@@ -456,9 +456,9 @@ export class ConversationService {
         const alreadyReady = await this.billing.isBillingReady(completedGround.organizationId);
         if (!alreadyReady) {
           await this.billing
-            .requestPaymentForSession2(completedGround.organizationId, checkIn.groundId)
+            .requestPaymentForSession5(completedGround.organizationId, checkIn.groundId)
             .catch((err) =>
-              this.logger.warn(`requestPaymentForSession2 failed for ground ${checkIn.groundId}: ${err.message}`),
+              this.logger.warn(`requestPaymentForSession5 failed for ground ${checkIn.groundId}: ${err.message}`),
             );
         }
       }

@@ -41,7 +41,7 @@ export function BillingPage() {
                 <span className={`gw-pill ${status.careFeeActive ? 'gw-pill-green' : 'gw-pill-gray'}`}>{status.careFeeActive ? 'Active' : 'Inactive'}</span>
               </div>
               <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-                <div><div style={{ fontSize: 20, fontWeight: 700, color: 'var(--gw-navy)' }}>$25</div><div style={{ fontSize: 11, color: 'var(--gw-sub)' }}>per month base</div></div>
+                <div><div style={{ fontSize: 20, fontWeight: 700, color: 'var(--gw-navy)' }}>$20</div><div style={{ fontSize: 11, color: 'var(--gw-sub)' }}>per month base</div></div>
                 <div><div style={{ fontSize: 20, fontWeight: 700, color: 'var(--gw-navy)' }}>{status.activeGrounds}</div><div style={{ fontSize: 11, color: 'var(--gw-sub)' }}>active grounds</div></div>
                 <div><div style={{ fontSize: 20, fontWeight: 700, color: 'var(--gw-navy)' }}>${status.estimatedNextCharge ?? 0}</div><div style={{ fontSize: 11, color: 'var(--gw-sub)' }}>this month</div></div>
               </div>
@@ -58,7 +58,7 @@ export function BillingPage() {
               <div style={{ background: 'var(--gw-amber-bg)', border: '0.5px solid var(--gw-amber-b)', borderRadius: 10, padding: 14, marginBottom: 16 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 6 }}>Activate billing</div>
                 <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 12 }}>
-                  Sessions 1–4 were free. Activate to continue past session 4.
+                  Sessions 1–4 are free. Activate to unlock session 5 and beyond.
                 </div>
                 <button onClick={() => checkout.mutate()} disabled={checkout.isPending}
                   style={{ padding: '10px 18px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
@@ -69,7 +69,7 @@ export function BillingPage() {
 
             {/* Pricing note */}
             <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.7, background: 'var(--gw-bg)', borderRadius: 8, padding: '12px 14px', marginBottom: 20, border: '0.5px solid var(--gw-border)' }}>
-              $25/month per org + $25/person/month per active ground past session 4. Sessions 1–4 are free for all participants.
+              $20/month per org + $50/person/month per active ground from session 5. Sessions 1–4 are free for all participants.
             </div>
 
             {/* Manage */}

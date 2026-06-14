@@ -43,23 +43,23 @@ export class BillingService {
 
   /**
    * Session-number-aware billing gate.
-   * Session 1 is always free. Session 2+ requires billing-ready status.
+   * Sessions 1–4 are free. Session 5+ requires billing-ready status.
    */
   async checkSessionGate(orgId: string, sessionNumber: number): Promise<{ allowed: boolean; reason?: string }> {
-    if (sessionNumber <= 1) return { allowed: true };
+    if (sessionNumber <= 4) return { allowed: true };
     const ready = await this.isBillingReady(orgId);
     if (ready) return { allowed: true };
     return {
       allowed: false,
-      reason: 'Your workspace needs to be activated before session 2. Your admin will receive a prompt.',
+      reason: 'Sessions 1–4 are free. Activate billing to continue to session 5. Your admin will receive a prompt.',
     };
   }
 
   /**
-   * Send a payment request email to the org admin after session 1 completes.
-   * Primes the admin to activate billing so session 2 is not blocked.
+   * Send a payment request email to the org admin after session 4 completes.
+   * Primes the admin to activate billing so session 5 is not blocked.
    */
-  async requestPaymentForSession2(orgId: string, groundId: string): Promise<void> {
+  async requestPaymentForSession5(orgId: string, groundId: string): Promise<void> {
     const org = await this.prisma.organization.findUnique({
       where: { id: orgId },
       select: { name: true, users: { where: { role: UserRole.ADMIN }, take: 1, select: { email: true } } },
@@ -67,7 +67,7 @@ export class BillingService {
     if (!org) return;
     const admin = org.users[0];
     if (!admin) {
-      this.logger.warn(`requestPaymentForSession2: no ADMIN user found for org ${orgId}`);
+      this.logger.warn(`requestPaymentForSession5: no ADMIN user found for org ${orgId}`);
       return;
     }
     await this.email.sendPaymentRequestEmail(admin.email, org.name, groundId);
