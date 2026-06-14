@@ -50,11 +50,27 @@ export interface PlatformDashboardData {
   }[]
 }
 
+export interface UsageFunnelData {
+  funnelBySession: { session: number; completed: number; dropOffRate: number | null }[]
+  avgSessionMinutes: { session: number; avgMinutes: number }[]
+  byScenario: { scenario: string; count: number; pct: number }[]
+  byMoment: { moment: string; count: number }[]
+  byStatus: { status: string; count: number }[]
+  bothEngaged: number
+  oneEngaged: number
+  stalledCheckIns: number
+  session5Count: number
+  avgDaysToFirstCheckin: number | null
+}
+
 export const promptsApi = {
   list: () => apiClient.get<PromptVersion[]>('/prompts').then((r) => r.data),
+  byKey: (key: string) => apiClient.get<PromptVersion[]>(`/prompts/by-key/${encodeURIComponent(key)}`).then((r) => r.data),
   create: (key: string, content: string, summary?: string) =>
     apiClient.post<PromptVersion>('/prompts', { key, content, summary }).then((r) => r.data),
   activate: (id: string) => apiClient.post<PromptVersion>(`/prompts/${id}/activate`).then((r) => r.data),
   platformDashboard: () =>
     apiClient.get<PlatformDashboardData>('/prompts/platform-dashboard').then((r) => r.data),
+  platformFunnel: () =>
+    apiClient.get<UsageFunnelData>('/prompts/platform-funnel').then((r) => r.data),
 }

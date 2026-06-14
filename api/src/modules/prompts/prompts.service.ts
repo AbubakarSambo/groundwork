@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { SEED_PROMPTS } from '../conversation/prompt-library';
 
@@ -67,9 +67,156 @@ export class PromptsService implements OnModuleInit {
 
   /** Create a new version. Does not activate it — activation is deliberate. */
   async createVersion(key: string, content: string, summary?: string) {
+    if (key === 'system') {
+      const INVARIANTS = [
+        'Record sharing requires explicit consent from both parties separately.',
+        "This is held separately from the other party's version.",
+        'BANNED WORDS — HARD RULE:',
+        'SEVEN-STAGE SEQUENCE — MANDATORY ORDER:',
+        'THE WILLINGNESS GATE',
+      ];
+      const missing = INVARIANTS.filter((inv) => !content.includes(inv));
+      if (missing.length > 0) {
+        throw new BadRequestException({ error: 'invariant_violation', missing });
+      }
+    }
+
     const latest = await this.prisma.promptVersion.findFirst({ where: { key }, orderBy: { version: 'desc' } });
     const version = (latest?.version ?? 0) + 1;
     return this.prisma.promptVersion.create({ data: { key, version, content, summary, isActive: false } });
+  }
+
+  /** All versions for a single prompt key, newest first with full content. */
+  async getByKey(key: string) {
+    return this.prisma.promptVersion.findMany({
+      where: { key },
+      orderBy: { version: 'desc' },
+      select: { id: true, key: true, version: true, summary: true, isActive: true, activatedAt: true, createdAt: true, content: true },
+    });
+  }
+
+  /** Usage funnel — session drop-off, scenario/moment/status breakdowns, engagement stats. */
+  async usageFunnel() {
+    const now = new Date();
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    const [
+      sessionCounts,
+      avgSessionMinutesRaw,
+      scenarioBreakdown,
+      momentBreakdown,
+      statusBreakdown,
+      bothEngaged,
+      anyCompletedGrounds,
+      stalledCheckIns,
+      session5Count,
+      avgDaysRaw,
+    ] = await Promise.all([
+      // 1. Completed check-ins per session (sessions 1-7)
+      Promise.all(
+        [1, 2, 3, 4, 5, 6, 7].map((n) =>
+          this.prisma.checkIn.count({ where: { status: 'COMPLETED', sessionNumber: n } }).then((count) => ({ session: n, completed: count })),
+        ),
+      ),
+
+      // 2. Avg session duration in minutes (raw SQL)
+      this.prisma.$queryRaw<{ session_number: number; avg_minutes: number }[]>`
+        SELECT session_number, ROUND(AVG(EXTRACT(EPOCH FROM (completed_at - started_at)) / 60))::int as avg_minutes
+        FROM check_ins
+        WHERE status = 'COMPLETED' AND started_at IS NOT NULL AND completed_at IS NOT NULL
+        GROUP BY session_number
+        ORDER BY session_number
+      `,
+
+      // 3. Scenario breakdown
+      this.prisma.ground.groupBy({ by: ['scenario'], _count: { id: true }, orderBy: { _count: { id: 'desc' } } }),
+
+      // 4. Moment breakdown
+      this.prisma.ground.groupBy({ by: ['moment'], _count: { id: true }, orderBy: { _count: { id: 'desc' } } }),
+
+      // 5. Status breakdown
+      this.prisma.ground.groupBy({ by: ['status'], _count: { id: true }, orderBy: { _count: { id: 'desc' } } }),
+
+      // 6. Grounds where both initiator AND at least one participant have a COMPLETED check-in
+      this.prisma.ground.count({
+        where: {
+          checkIns: {
+            some: { status: 'COMPLETED', participant: { partyType: 'INITIATOR' } },
+          },
+          AND: [
+            {
+              checkIns: {
+                some: { status: 'COMPLETED', participant: { partyType: 'PARTICIPANT' } },
+              },
+            },
+          ],
+        },
+      }),
+
+      // 7. Grounds with any COMPLETED check-in (to compute one-sided)
+      this.prisma.ground.count({
+        where: { checkIns: { some: { status: 'COMPLETED' } } },
+      }),
+
+      // 8. Stalled check-ins: IN_PROGRESS and startedAt > 7 days ago
+      this.prisma.checkIn.count({
+        where: { status: 'IN_PROGRESS', startedAt: { lt: sevenDaysAgo } },
+      }),
+
+      // 9. Session 5 completed count
+      this.prisma.checkIn.count({ where: { status: 'COMPLETED', sessionNumber: 5 } }),
+
+      // 10. Avg days from ground creation to first check-in (raw SQL)
+      this.prisma.$queryRaw<{ avg_days: number | null }[]>`
+        SELECT ROUND(AVG(EXTRACT(EPOCH FROM (ci.started_at - g.created_at)) / 86400))::int as avg_days
+        FROM grounds g
+        JOIN check_ins ci ON ci.ground_id = g.id
+        WHERE ci.session_number = 1 AND ci.started_at IS NOT NULL
+      `,
+    ]);
+
+    // Build funnel with drop-off rates
+    const funnelBySession = sessionCounts.map((row, idx) => ({
+      session: row.session,
+      completed: row.completed,
+      dropOffRate: idx === 0 ? null : sessionCounts[idx - 1].completed > 0
+        ? Math.round((1 - row.completed / sessionCounts[idx - 1].completed) * 100) / 100
+        : null,
+    }));
+
+    // Scenario breakdown with pct
+    const totalScenario = scenarioBreakdown.reduce((sum, r) => sum + r._count.id, 0);
+    const byScenario = scenarioBreakdown.map((r) => ({
+      scenario: r.scenario,
+      count: r._count.id,
+      pct: totalScenario > 0 ? Math.round((r._count.id / totalScenario) * 1000) / 10 : 0,
+    }));
+
+    const byMoment = momentBreakdown.map((r) => ({ moment: r.moment, count: r._count.id }));
+    const byStatus = statusBreakdown.map((r) => ({ status: r.status, count: r._count.id }));
+
+    const oneEngaged = anyCompletedGrounds - bothEngaged;
+
+    const avgDaysRow = avgDaysRaw[0];
+    const avgDaysToFirstCheckin = avgDaysRow?.avg_days != null ? Number(avgDaysRow.avg_days) : null;
+
+    const avgSessionMinutes = avgSessionMinutesRaw.map((r) => ({
+      session: Number(r.session_number),
+      avgMinutes: Number(r.avg_minutes),
+    }));
+
+    return {
+      funnelBySession,
+      avgSessionMinutes,
+      byScenario,
+      byMoment,
+      byStatus,
+      bothEngaged,
+      oneEngaged,
+      stalledCheckIns,
+      session5Count,
+      avgDaysToFirstCheckin,
+    };
   }
 
   /** Cross-org usage dashboard — platform admin only. */

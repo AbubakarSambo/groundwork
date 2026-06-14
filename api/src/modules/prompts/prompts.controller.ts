@@ -50,6 +50,18 @@ export class PromptsController {
     return this.prompts.activate(id);
   }
 
+  @Get('platform-funnel')
+  @ApiOperation({ summary: 'Usage funnel data — session drop-off, scenario breakdown, engagement' })
+  async platformFunnel() {
+    return this.prompts.usageFunnel();
+  }
+
+  @Get('by-key/:key')
+  @ApiOperation({ summary: 'All versions for a single prompt key' })
+  async byKey(@Param('key') key: string) {
+    return this.prompts.getByKey(key);
+  }
+
   @Get('platform-dashboard')
   @ApiOperation({ summary: 'Cross-org usage dashboard — session data, ground activity, prompt performance' })
   async platformDashboard() {
