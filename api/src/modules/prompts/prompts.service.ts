@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, Logger, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { SEED_PROMPTS } from '../conversation/prompt-library';
+import { AnthropicService, ChatTurn } from '../conversation/anthropic.service';
 
 /**
  * The moat. Every prompt is versioned; every change is versioned against
@@ -15,7 +16,7 @@ import { SEED_PROMPTS } from '../conversation/prompt-library';
 export class PromptsService implements OnModuleInit {
   private readonly logger = new Logger(PromptsService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private anthropic: AnthropicService) {}
 
   /**
    * Seed-on-deploy (B7): ensure every seeded prompt key has an active version.
@@ -61,8 +62,51 @@ export class PromptsService implements OnModuleInit {
   async list() {
     return this.prisma.promptVersion.findMany({
       orderBy: [{ key: 'asc' }, { version: 'desc' }],
-      select: { id: true, key: true, version: true, summary: true, isActive: true, activatedAt: true, createdAt: true, content: true },
+      select: { id: true, key: true, version: true, summary: true, isActive: true, isDraft: true, activatedAt: true, activatedBy: true, createdAt: true, content: true },
     });
+  }
+
+  /** Get the current draft for a key, if one exists. */
+  async getDraft(key: string) {
+    return this.prisma.promptVersion.findFirst({
+      where: { key, isDraft: true },
+      select: { id: true, key: true, version: true, summary: true, isActive: true, isDraft: true, activatedAt: true, activatedBy: true, createdAt: true, content: true },
+    });
+  }
+
+  /** Create or update the draft for a key. Only one draft per key at a time. */
+  async upsertDraft(key: string, content: string, summary?: string) {
+    const existing = await this.prisma.promptVersion.findFirst({ where: { key, isDraft: true } });
+    if (existing) {
+      return this.prisma.promptVersion.update({
+        where: { id: existing.id },
+        data: { content, summary: summary ?? existing.summary },
+        select: { id: true, key: true, version: true, summary: true, isActive: true, isDraft: true, activatedAt: true, activatedBy: true, createdAt: true, content: true },
+      });
+    }
+    const latest = await this.prisma.promptVersion.findFirst({ where: { key }, orderBy: { version: 'desc' } });
+    const version = (latest?.version ?? 0) + 1;
+    return this.prisma.promptVersion.create({
+      data: { key, version, content, summary, isActive: false, isDraft: true },
+      select: { id: true, key: true, version: true, summary: true, isActive: true, isDraft: true, activatedAt: true, activatedBy: true, createdAt: true, content: true },
+    });
+  }
+
+  /** Discard (delete) the current draft for a key. */
+  async discardDraft(key: string) {
+    const draft = await this.prisma.promptVersion.findFirst({ where: { key, isDraft: true } });
+    if (!draft) throw new NotFoundException(`No draft for key "${key}"`);
+    await this.prisma.promptVersion.delete({ where: { id: draft.id } });
+    return { discarded: true };
+  }
+
+  /** Run a test message against a specific prompt version. No DB writes. */
+  async testChat(versionId: string, messages: ChatTurn[]): Promise<{ reply: string }> {
+    const version = await this.prisma.promptVersion.findUnique({ where: { id: versionId } });
+    if (!version) throw new NotFoundException('Prompt version not found');
+    const testPrefix = '[TEST MODE — this is a simulated conversation using a draft prompt. No real data.]\n\n';
+    const reply = await this.anthropic.respond(testPrefix + version.content, messages);
+    return { reply };
   }
 
   /** Create a new version. Does not activate it — activation is deliberate. */
@@ -91,7 +135,7 @@ export class PromptsService implements OnModuleInit {
     return this.prisma.promptVersion.findMany({
       where: { key },
       orderBy: { version: 'desc' },
-      select: { id: true, key: true, version: true, summary: true, isActive: true, activatedAt: true, createdAt: true, content: true },
+      select: { id: true, key: true, version: true, summary: true, isActive: true, isDraft: true, activatedAt: true, activatedBy: true, createdAt: true, content: true },
     });
   }
 
@@ -357,14 +401,17 @@ export class PromptsService implements OnModuleInit {
     };
   }
 
-  /** Activate a version (deactivates other versions of the same key). */
-  async activate(id: string) {
+  /** Activate a version (deactivates other versions of the same key). Logs who activated. */
+  async activate(id: string, activatedByName?: string) {
     const target = await this.prisma.promptVersion.findUnique({ where: { id } });
     if (!target) throw new NotFoundException('Prompt version not found');
 
     await this.prisma.$transaction([
       this.prisma.promptVersion.updateMany({ where: { key: target.key }, data: { isActive: false } }),
-      this.prisma.promptVersion.update({ where: { id }, data: { isActive: true, activatedAt: new Date() } }),
+      this.prisma.promptVersion.update({
+        where: { id },
+        data: { isActive: true, isDraft: false, activatedAt: new Date(), activatedBy: activatedByName ?? null },
+      }),
     ]);
     return this.prisma.promptVersion.findUnique({ where: { id } });
   }

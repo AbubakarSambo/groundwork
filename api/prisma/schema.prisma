@@ -460,7 +460,9 @@ model PromptVersion {
   content     String    @db.Text
   summary     String?   @db.Text // change summary — every change is logged
   isActive    Boolean   @default(false) @map("is_active")
+  isDraft     Boolean   @default(false) @map("is_draft")
   activatedAt DateTime? @map("activated_at")
+  activatedBy String?   @map("activated_by") // display name of who activated
   createdAt   DateTime  @default(now()) @map("created_at")
 
   grounds Ground[]

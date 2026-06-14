@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { promptsApi, PromptVersion } from '@/api/prompts'
+import { promptsApi, PromptVersion, ChatTurn } from '@/api/prompts'
 import { useAuthStore } from '@/stores/auth'
 
 // ─── Protected-section detection ────────────────────────────────────────────
@@ -17,7 +17,7 @@ const PROTECTED_HEADERS = [
 ]
 
 const PROTECTED_CONTENT_STRINGS = [
-  'This is held separately from the other party\'s version.',
+  "This is held separately from the other party's version.",
 ]
 
 const SCENARIO_PROTECTED_PHRASE = 'Tell me about the most important thing you have done'
@@ -30,9 +30,7 @@ function isSectionProtected(headerLine: string, bodyText: string, promptKey: str
   for (const ps of PROTECTED_CONTENT_STRINGS) {
     if (bodyText.includes(ps)) return true
   }
-  if (promptKey.startsWith('scenario.') && bodyText.includes(SCENARIO_PROTECTED_PHRASE)) {
-    return true
-  }
+  if (promptKey.startsWith('scenario.') && bodyText.includes(SCENARIO_PROTECTED_PHRASE)) return true
   return false
 }
 
@@ -40,23 +38,20 @@ function isSectionProtected(headerLine: string, bodyText: string, promptKey: str
 
 interface ContentBlock {
   type: 'protected' | 'editable'
-  header: string      // the ═══ separator line that precedes this block (empty for first)
+  header: string
   body: string
 }
 
 const SEP_RE = /^═{3,}.*═{3,}$/m
 
 function parseContentBlocks(content: string, promptKey: string): ContentBlock[] {
-  // Split on separator lines (═══ … ═══), keeping the separators
   const lines = content.split('\n')
   const blocks: ContentBlock[] = []
-
   let currentHeader = ''
   let currentLines: string[] = []
 
   for (const line of lines) {
     if (SEP_RE.test(line.trim())) {
-      // Flush previous block
       const body = currentLines.join('\n')
       if (currentLines.length > 0 || currentHeader !== '') {
         blocks.push({
@@ -71,14 +66,12 @@ function parseContentBlocks(content: string, promptKey: string): ContentBlock[] 
       currentLines.push(line)
     }
   }
-  // Flush last block
   const body = currentLines.join('\n')
   blocks.push({
     type: isSectionProtected(currentHeader, body, promptKey) ? 'protected' : 'editable',
     header: currentHeader,
     body,
   })
-
   return blocks
 }
 
@@ -86,9 +79,7 @@ function reassembleContent(blocks: ContentBlock[], editableValues: string[]): st
   let editIdx = 0
   const parts: string[] = []
   for (const block of blocks) {
-    if (block.header !== '') {
-      parts.push(block.header)
-    }
+    if (block.header !== '') parts.push(block.header)
     if (block.type === 'protected') {
       parts.push(block.body)
     } else {
@@ -118,51 +109,54 @@ function fmtDate(iso: string | null): string {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-// ─── Sub-components ──────────────────────────────────────────────────────────
+// ─── Simple line diff ────────────────────────────────────────────────────────
+
+interface DiffLine { type: 'same' | 'removed' | 'added'; text: string }
+
+function diffLines(oldContent: string, newContent: string): DiffLine[] {
+  const oldLines = oldContent.split('\n')
+  const newLines = newContent.split('\n')
+  const result: DiffLine[] = []
+
+  // LCS-based diff
+  const m = oldLines.length
+  const n = newLines.length
+  const dp: number[][] = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0))
+  for (let i = m - 1; i >= 0; i--) {
+    for (let j = n - 1; j >= 0; j--) {
+      if (oldLines[i] === newLines[j]) dp[i][j] = dp[i + 1][j + 1] + 1
+      else dp[i][j] = Math.max(dp[i + 1][j], dp[i][j + 1])
+    }
+  }
+
+  let i = 0, j = 0
+  while (i < m || j < n) {
+    if (i < m && j < n && oldLines[i] === newLines[j]) {
+      result.push({ type: 'same', text: oldLines[i] })
+      i++; j++
+    } else if (j < n && (i >= m || dp[i + 1][j] <= dp[i][j + 1])) {
+      result.push({ type: 'added', text: newLines[j] })
+      j++
+    } else {
+      result.push({ type: 'removed', text: oldLines[i] })
+      i++
+    }
+  }
+  return result
+}
+
+// ─── Protected block display ─────────────────────────────────────────────────
 
 function ProtectedBlock({ header, body }: { header: string; body: string }) {
   return (
     <div style={{ marginBottom: 6 }}>
       {header && (
-        <pre style={{
-          fontFamily: 'monospace', fontSize: 11, whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-          background: '#FFF8E7', border: '1px solid #F0C040', borderRadius: 4,
-          padding: '4px 10px', margin: '0 0 2px 0', color: '#8A6C00',
-        }}>
+        <pre style={{ fontFamily: 'monospace', fontSize: 11, whiteSpace: 'pre-wrap', wordBreak: 'break-word', background: '#FFF8E7', border: '1px solid #F0C040', borderRadius: 4, padding: '4px 10px', margin: '0 0 2px 0', color: '#8A6C00' }}>
           {header}
         </pre>
       )}
-      <div style={{ fontSize: 10, color: '#8A6C00', fontWeight: 600, marginBottom: 2, paddingLeft: 2 }}>
-        🔒 Protected
-      </div>
-      <pre style={{
-        fontFamily: 'monospace', fontSize: 11, whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-        background: '#FFF8E7', border: '1px solid #F0C040', borderRadius: 4,
-        padding: '8px 10px', marginBottom: 0, margin: 0,
-      }}>
-        {body}
-      </pre>
-    </div>
-  )
-}
-
-function EditableBlock({ header, body }: { header: string; body: string }) {
-  return (
-    <div style={{ marginBottom: 6 }}>
-      {header && (
-        <pre style={{
-          fontFamily: 'monospace', fontSize: 11, whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-          background: '#F5F3EF', borderRadius: 4,
-          padding: '4px 10px', margin: '0 0 2px 0',
-        }}>
-          {header}
-        </pre>
-      )}
-      <pre style={{
-        fontFamily: 'monospace', fontSize: 11, whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-        background: '#F5F3EF', borderRadius: 4,
-        padding: '8px 10px', marginBottom: 0, margin: 0,
-      }}>
+      <div style={{ fontSize: 10, color: '#8A6C00', fontWeight: 600, marginBottom: 2, paddingLeft: 2 }}>🔒 Protected</div>
+      <pre style={{ fontFamily: 'monospace', fontSize: 11, whiteSpace: 'pre-wrap', wordBreak: 'break-word', background: '#FFF8E7', border: '1px solid #F0C040', borderRadius: 4, padding: '8px 10px', margin: 0 }}>
         {body}
       </pre>
     </div>
@@ -174,10 +168,52 @@ function ParsedContentView({ content, promptKey }: { content: string; promptKey:
   return (
     <div>
       {blocks.map((block, i) =>
-        block.type === 'protected'
-          ? <ProtectedBlock key={i} header={block.header} body={block.body} />
-          : <EditableBlock key={i} header={block.header} body={block.body} />
+        block.type === 'protected' ? (
+          <ProtectedBlock key={i} header={block.header} body={block.body} />
+        ) : (
+          <div key={i} style={{ marginBottom: 6 }}>
+            {block.header && (
+              <pre style={{ fontFamily: 'monospace', fontSize: 11, whiteSpace: 'pre-wrap', wordBreak: 'break-word', background: '#F5F3EF', borderRadius: 4, padding: '4px 10px', margin: '0 0 2px 0' }}>
+                {block.header}
+              </pre>
+            )}
+            <pre style={{ fontFamily: 'monospace', fontSize: 11, whiteSpace: 'pre-wrap', wordBreak: 'break-word', background: '#F5F3EF', borderRadius: 4, padding: '8px 10px', margin: 0 }}>
+              {block.body}
+            </pre>
+          </div>
+        )
       )}
+    </div>
+  )
+}
+
+// ─── Diff view ───────────────────────────────────────────────────────────────
+
+function DiffView({ oldContent, newContent }: { oldContent: string; newContent: string }) {
+  const lines = diffLines(oldContent, newContent)
+  const hasChanges = lines.some(l => l.type !== 'same')
+  if (!hasChanges) return <div style={{ fontSize: 12, color: 'var(--gw-muted)', padding: '8px 0' }}>No changes from active version.</div>
+
+  return (
+    <div style={{ fontFamily: 'monospace', fontSize: 11, lineHeight: 1.5, borderRadius: 4, overflow: 'hidden', border: '1px solid #E2E0DB' }}>
+      {lines.map((line, i) => (
+        <div
+          key={i}
+          style={{
+            padding: '1px 10px',
+            background: line.type === 'added' ? '#E8F7EF' : line.type === 'removed' ? '#FEECEC' : 'white',
+            color: line.type === 'added' ? '#1A7A4A' : line.type === 'removed' ? '#991B1B' : '#1A1916',
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-word',
+            borderLeft: `3px solid ${line.type === 'added' ? '#5DCAA5' : line.type === 'removed' ? '#F87171' : 'transparent'}`,
+          }}
+        >
+          <span style={{ userSelect: 'none', opacity: 0.5, marginRight: 8 }}>
+            {line.type === 'added' ? '+' : line.type === 'removed' ? '−' : ' '}
+          </span>
+          {line.text}
+        </div>
+      ))}
     </div>
   )
 }
@@ -186,6 +222,7 @@ function ParsedContentView({ content, promptKey }: { content: string; promptKey:
 
 function VersionRow({
   v,
+  activeContent,
   confirmActivateId,
   onActivateClick,
   onConfirm,
@@ -195,6 +232,7 @@ function VersionRow({
   onToggle,
 }: {
   v: PromptVersion
+  activeContent: string | null
   confirmActivateId: string | null
   onActivateClick: (id: string) => void
   onConfirm: (id: string) => void
@@ -203,40 +241,36 @@ function VersionRow({
   expanded: boolean
   onToggle: () => void
 }) {
+  const [showDiff, setShowDiff] = useState(false)
+
   return (
-    <div style={{
-      border: '1px solid #E2E0DB', borderRadius: 6, marginBottom: 6, overflow: 'hidden',
-      background: 'white',
-    }}>
+    <div style={{ border: '1px solid #E2E0DB', borderRadius: 6, marginBottom: 6, overflow: 'hidden', background: 'white' }}>
       <div
-        style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '10px 14px', cursor: 'pointer',
-        }}
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', cursor: 'pointer' }}
         onClick={onToggle}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: 13, fontWeight: 600, color: '#1A1916' }}>v{v.version}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: '#1A1916', flexShrink: 0 }}>v{v.version}</span>
           {v.isActive && (
-            <span style={{
-              fontSize: 11, fontWeight: 600, color: '#1A7A4A', background: '#E8F7EF',
-              borderRadius: 10, padding: '2px 8px',
-            }}>Active</span>
+            <span style={{ fontSize: 11, fontWeight: 600, color: '#1A7A4A', background: '#E8F7EF', borderRadius: 10, padding: '2px 8px', flexShrink: 0 }}>Active</span>
           )}
-          <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}>{fmtDate(v.activatedAt ?? v.createdAt)}</span>
+          {v.isDraft && (
+            <span style={{ fontSize: 11, fontWeight: 600, color: '#8A5C1A', background: '#FDF3E3', borderRadius: 10, padding: '2px 8px', flexShrink: 0 }}>Draft</span>
+          )}
+          <span style={{ fontSize: 11, color: 'var(--gw-muted)', flexShrink: 0 }}>{fmtDate(v.activatedAt ?? v.createdAt)}</span>
+          {v.activatedBy && (
+            <span style={{ fontSize: 11, color: 'var(--gw-muted)', flexShrink: 0 }}>by {v.activatedBy}</span>
+          )}
           {v.summary && (
-            <span style={{ fontSize: 11, color: 'var(--gw-sub)', maxWidth: 320, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <span style={{ fontSize: 11, color: 'var(--gw-sub)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               — {v.summary}
             </span>
           )}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }} onClick={(e) => e.stopPropagation()}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
           {!v.isActive && confirmActivateId !== v.id && (
             <button
-              style={{
-                fontSize: 11, padding: '4px 10px', borderRadius: 4, border: '1px solid #0C447C',
-                background: 'white', color: '#0C447C', cursor: 'pointer', fontWeight: 500,
-              }}
+              style={{ fontSize: 11, padding: '4px 10px', borderRadius: 4, border: '1px solid #0C447C', background: 'white', color: '#0C447C', cursor: 'pointer', fontWeight: 500 }}
               onClick={() => onActivateClick(v.id)}
               disabled={activating}
             >
@@ -246,219 +280,363 @@ function VersionRow({
           {confirmActivateId === v.id && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={{ fontSize: 11, color: '#1A1916' }}>
-                Activate v{v.version} for {v.key}? In-progress grounds keep their current version.
+                Activate v{v.version}? In-progress grounds keep their version.
               </span>
               <button
-                style={{
-                  fontSize: 11, padding: '4px 10px', borderRadius: 4, border: 'none',
-                  background: '#0C447C', color: 'white', cursor: 'pointer', fontWeight: 600,
-                }}
+                style={{ fontSize: 11, padding: '4px 10px', borderRadius: 4, border: 'none', background: '#0C447C', color: 'white', cursor: 'pointer', fontWeight: 600 }}
                 onClick={() => onConfirm(v.id)}
                 disabled={activating}
               >
                 Confirm
               </button>
               <button
-                style={{
-                  fontSize: 11, padding: '4px 10px', borderRadius: 4, border: '1px solid #E2E0DB',
-                  background: 'white', color: '#666', cursor: 'pointer',
-                }}
+                style={{ fontSize: 11, padding: '4px 10px', borderRadius: 4, border: '1px solid #E2E0DB', background: 'white', color: '#666', cursor: 'pointer' }}
                 onClick={onCancel}
               >
                 Cancel
               </button>
             </div>
           )}
-          <span style={{ fontSize: 12, color: 'var(--gw-muted)', userSelect: 'none' }}>
-            {expanded ? '▲' : '▼'}
-          </span>
+          <span style={{ fontSize: 12, color: 'var(--gw-muted)', userSelect: 'none' }}>{expanded ? '▲' : '▼'}</span>
         </div>
       </div>
+
       {expanded && (
         <div style={{ padding: '0 14px 14px' }}>
-          <pre style={{
-            fontFamily: 'monospace', fontSize: 11, whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-            background: '#F5F3EF', borderRadius: 4, padding: '10px 12px', margin: 0, maxHeight: 400, overflowY: 'auto',
-          }}>
-            {v.content}
-          </pre>
+          {/* Diff toggle — only show for non-active versions when there's an active to compare to */}
+          {!v.isActive && activeContent && (
+            <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+              <button
+                style={{ fontSize: 11, padding: '3px 10px', borderRadius: 4, border: '1px solid #E2E0DB', background: showDiff ? '#0C447C' : 'white', color: showDiff ? 'white' : '#666', cursor: 'pointer' }}
+                onClick={() => setShowDiff(false)}
+              >
+                Content
+              </button>
+              <button
+                style={{ fontSize: 11, padding: '3px 10px', borderRadius: 4, border: '1px solid #E2E0DB', background: showDiff ? 'white' : 'white', color: !showDiff ? '#666' : '#0C447C', cursor: 'pointer', borderColor: showDiff ? '#0C447C' : '#E2E0DB' }}
+                onClick={() => setShowDiff(true)}
+              >
+                Diff vs active
+              </button>
+            </div>
+          )}
+          {showDiff && activeContent ? (
+            <DiffView oldContent={activeContent} newContent={v.content} />
+          ) : (
+            <pre style={{ fontFamily: 'monospace', fontSize: 11, whiteSpace: 'pre-wrap', wordBreak: 'break-word', background: '#F5F3EF', borderRadius: 4, padding: '10px 12px', margin: 0, maxHeight: 400, overflowY: 'auto' }}>
+              {v.content}
+            </pre>
+          )}
         </div>
       )}
     </div>
   )
 }
 
-// ─── Draft form ──────────────────────────────────────────────────────────────
+// ─── Draft editor ─────────────────────────────────────────────────────────────
 
-function DraftForm({
+function DraftEditor({
+  draft,
   activeVersion,
   promptKey,
-  onClose,
-  onSuccess,
+  onPublish,
+  onDiscard,
 }: {
-  activeVersion: PromptVersion
+  draft: PromptVersion
+  activeVersion: PromptVersion | null
   promptKey: string
-  onClose: () => void
-  onSuccess: () => void
+  onPublish: () => void
+  onDiscard: () => void
 }) {
   const qc = useQueryClient()
-  const blocks = parseContentBlocks(activeVersion.content, promptKey)
+  const blocks = parseContentBlocks(activeVersion?.content ?? draft.content, promptKey)
+  const draftBlocks = parseContentBlocks(draft.content, promptKey)
 
-  const editableBlocks = blocks.filter((b) => b.type === 'editable')
+  const draftEditableBlocks = draftBlocks.filter((b) => b.type === 'editable')
+
   const [editableValues, setEditableValues] = useState<string[]>(
-    editableBlocks.map((b) => b.body)
+    draftEditableBlocks.map((b) => b.body)
   )
-  const [summary, setSummary] = useState('')
+  const [summary, setSummary] = useState(draft.summary ?? '')
+  const [confirmPublish, setConfirmPublish] = useState(false)
   const [invariantError, setInvariantError] = useState<string[] | null>(null)
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved')
 
-  const create = useMutation({
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const save = useMutation({
     mutationFn: () => {
       const assembled = reassembleContent(blocks, editableValues)
-      return promptsApi.create(promptKey, assembled, summary || undefined)
+      return promptsApi.upsertDraft(promptKey, assembled, summary || undefined)
     },
+    onMutate: () => setSaveStatus('saving'),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['prompts'] })
+      qc.invalidateQueries({ queryKey: ['prompts', 'draft', promptKey] })
       qc.invalidateQueries({ queryKey: ['prompts', 'by-key', promptKey] })
-      toast.success('Draft created — activate it when ready.')
-      onSuccess()
+      setSaveStatus('saved')
+      setInvariantError(null)
     },
     onError: (err: any) => {
+      setSaveStatus('unsaved')
       const data = err?.response?.data
       if (data?.error === 'invariant_violation' && Array.isArray(data?.missing)) {
         setInvariantError(data.missing as string[])
       } else {
-        toast.error('Failed to create draft.')
+        toast.error('Failed to save draft.')
       }
     },
   })
 
+  const activate = useMutation({
+    mutationFn: () => promptsApi.activate(draft.id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['prompts'] })
+      qc.invalidateQueries({ queryKey: ['prompts', 'by-key', promptKey] })
+      qc.invalidateQueries({ queryKey: ['prompts', 'draft', promptKey] })
+      toast.success('Draft published — live for new conversations.')
+      setConfirmPublish(false)
+      onPublish()
+    },
+    onError: () => toast.error('Failed to publish draft.'),
+  })
+
+  const discard = useMutation({
+    mutationFn: () => promptsApi.discardDraft(promptKey),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['prompts', 'by-key', promptKey] })
+      qc.invalidateQueries({ queryKey: ['prompts', 'draft', promptKey] })
+      toast.success('Draft discarded.')
+      onDiscard()
+    },
+    onError: () => toast.error('Failed to discard draft.'),
+  })
+
+  // Auto-save on change with debounce
+  const scheduleAutoSave = useCallback(() => {
+    setSaveStatus('unsaved')
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    saveTimer.current = setTimeout(() => save.mutate(), 1200)
+  }, [save])
+
+  useEffect(() => () => { if (saveTimer.current) clearTimeout(saveTimer.current) }, [])
+
   let editIdx = 0
 
   return (
-    <div style={{
-      background: 'white', border: '1px solid #E2E0DB', borderRadius: 6,
-      padding: '18px 20px', marginBottom: 16,
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-        <span style={{ fontSize: 14, fontWeight: 700, color: '#1A1916' }}>Draft new version</span>
-        <button
-          style={{ fontSize: 12, color: 'var(--gw-muted)', background: 'none', border: 'none', cursor: 'pointer' }}
-          onClick={onClose}
-        >
-          ✕ Cancel
-        </button>
+    <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 6, padding: '18px 20px', marginBottom: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 14, fontWeight: 700, color: '#1A1916' }}>Draft — v{draft.version}</span>
+          <span style={{ fontSize: 11, color: saveStatus === 'saved' ? '#1A7A4A' : saveStatus === 'saving' ? '#8A6C00' : '#991B1B' }}>
+            {saveStatus === 'saved' ? '● Saved' : saveStatus === 'saving' ? '○ Saving…' : '○ Unsaved'}
+          </span>
+        </div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {!confirmPublish ? (
+            <>
+              <button
+                style={{ fontSize: 12, padding: '5px 12px', borderRadius: 4, border: '1px solid #E2E0DB', background: 'white', color: '#991B1B', cursor: 'pointer' }}
+                onClick={() => discard.mutate()}
+                disabled={discard.isPending}
+              >
+                {discard.isPending ? 'Discarding…' : 'Discard draft'}
+              </button>
+              <button
+                style={{ fontSize: 12, fontWeight: 600, padding: '5px 14px', borderRadius: 4, border: 'none', background: '#0C447C', color: 'white', cursor: 'pointer', opacity: saveStatus === 'unsaved' ? 0.6 : 1 }}
+                onClick={() => setConfirmPublish(true)}
+                disabled={saveStatus === 'unsaved' || save.isPending}
+                title={saveStatus === 'unsaved' ? 'Save changes before publishing' : ''}
+              >
+                Publish draft →
+              </button>
+            </>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#FEF9EC', border: '1px solid #F0C040', borderRadius: 4, padding: '6px 12px' }}>
+              <span style={{ fontSize: 12, color: '#8A6C00' }}>Publish v{draft.version} live for new conversations?</span>
+              <button
+                style={{ fontSize: 12, fontWeight: 600, padding: '4px 12px', borderRadius: 4, border: 'none', background: '#0C447C', color: 'white', cursor: 'pointer' }}
+                onClick={() => activate.mutate()}
+                disabled={activate.isPending}
+              >
+                {activate.isPending ? 'Publishing…' : 'Confirm'}
+              </button>
+              <button
+                style={{ fontSize: 12, padding: '4px 10px', borderRadius: 4, border: '1px solid #E2E0DB', background: 'white', color: '#666', cursor: 'pointer' }}
+                onClick={() => setConfirmPublish(false)}
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
-      <form onSubmit={(e) => { e.preventDefault(); setInvariantError(null); create.mutate() }}>
-        {/* Change summary */}
-        <div style={{ marginBottom: 14 }}>
-          <label style={{ fontSize: 12, fontWeight: 600, color: '#1A1916', display: 'block', marginBottom: 4 }}>
-            Change summary <span style={{ color: '#E03' }}>*</span>
-          </label>
-          <input
-            style={{
-              width: '100%', boxSizing: 'border-box', fontSize: 13,
-              border: '1px solid var(--gw-border)', borderRadius: 4, padding: '8px 10px',
-              fontFamily: 'inherit',
-            }}
-            value={summary}
-            onChange={(e) => setSummary(e.target.value)}
-            placeholder="What changed and why?"
-            required
-          />
-        </div>
+      {/* Change summary */}
+      <div style={{ marginBottom: 14 }}>
+        <label style={{ fontSize: 12, fontWeight: 600, color: '#1A1916', display: 'block', marginBottom: 4 }}>
+          Change summary
+        </label>
+        <input
+          style={{ width: '100%', boxSizing: 'border-box', fontSize: 13, border: '1px solid var(--gw-border)', borderRadius: 4, padding: '8px 10px', fontFamily: 'inherit' }}
+          value={summary}
+          onChange={(e) => { setSummary(e.target.value); scheduleAutoSave() }}
+          placeholder="What changed and why?"
+        />
+      </div>
 
-        {/* Content editor — block by block */}
-        <div style={{ marginBottom: 14 }}>
-          <label style={{ fontSize: 12, fontWeight: 600, color: '#1A1916', display: 'block', marginBottom: 6 }}>
-            Content
-          </label>
-          {blocks.map((block, i) => {
-            if (block.type === 'protected') {
-              return (
-                <div key={i} style={{ marginBottom: 6 }}>
-                  {block.header && (
-                    <pre style={{
-                      fontFamily: 'monospace', fontSize: 11, whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-                      background: '#FFF8E7', border: '1px solid #F0C040', borderRadius: 4,
-                      padding: '4px 10px', margin: '0 0 2px 0', color: '#8A6C00',
-                    }}>
-                      {block.header}
-                    </pre>
-                  )}
-                  <div style={{ fontSize: 10, color: '#8A6C00', fontWeight: 600, marginBottom: 2, paddingLeft: 2 }}>
-                    🔒 Protected — This section is protected and cannot be edited.
-                  </div>
-                  <pre style={{
-                    fontFamily: 'monospace', fontSize: 11, whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-                    background: '#FFF8E7', border: '1px solid #F0C040', borderRadius: 4,
-                    padding: '8px 10px', margin: 0,
-                  }}>
-                    {block.body}
+      {/* Block editor */}
+      <div>
+        {blocks.map((block, i) => {
+          if (block.type === 'protected') {
+            return (
+              <div key={i} style={{ marginBottom: 6 }}>
+                {block.header && (
+                  <pre style={{ fontFamily: 'monospace', fontSize: 11, whiteSpace: 'pre-wrap', wordBreak: 'break-word', background: '#FFF8E7', border: '1px solid #F0C040', borderRadius: 4, padding: '4px 10px', margin: '0 0 2px 0', color: '#8A6C00' }}>
+                    {block.header}
                   </pre>
+                )}
+                <div style={{ fontSize: 10, color: '#8A6C00', fontWeight: 600, marginBottom: 2, paddingLeft: 2 }}>
+                  🔒 Protected — cannot be edited here.
                 </div>
-              )
-            } else {
-              const idx = editIdx++
-              const lines = (editableValues[idx] ?? '').split('\n').length
-              return (
-                <div key={i} style={{ marginBottom: 6 }}>
-                  {block.header && (
-                    <pre style={{
-                      fontFamily: 'monospace', fontSize: 11, whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-                      background: '#F5F3EF', borderRadius: 4, padding: '4px 10px', margin: '0 0 2px 0',
-                    }}>
-                      {block.header}
-                    </pre>
-                  )}
-                  <textarea
-                    style={{
-                      width: '100%', boxSizing: 'border-box', fontFamily: 'monospace', fontSize: 11,
-                      border: '1px solid var(--gw-border)', borderRadius: 4, padding: '8px 10px',
-                      resize: 'vertical',
-                    }}
-                    rows={Math.max(3, lines)}
-                    value={editableValues[idx] ?? ''}
-                    onChange={(e) => {
-                      setEditableValues((prev) => {
-                        const next = [...prev]
-                        next[idx] = e.target.value
-                        return next
-                      })
-                    }}
-                  />
-                </div>
-              )
-            }
-          })}
-        </div>
+                <pre style={{ fontFamily: 'monospace', fontSize: 11, whiteSpace: 'pre-wrap', wordBreak: 'break-word', background: '#FFF8E7', border: '1px solid #F0C040', borderRadius: 4, padding: '8px 10px', margin: 0 }}>
+                  {block.body}
+                </pre>
+              </div>
+            )
+          } else {
+            const idx = editIdx++
+            const lines = (editableValues[idx] ?? '').split('\n').length
+            return (
+              <div key={i} style={{ marginBottom: 6 }}>
+                {block.header && (
+                  <pre style={{ fontFamily: 'monospace', fontSize: 11, whiteSpace: 'pre-wrap', wordBreak: 'break-word', background: '#F5F3EF', borderRadius: 4, padding: '4px 10px', margin: '0 0 2px 0' }}>
+                    {block.header}
+                  </pre>
+                )}
+                <textarea
+                  style={{ width: '100%', boxSizing: 'border-box', fontFamily: 'monospace', fontSize: 11, border: '1px solid var(--gw-border)', borderRadius: 4, padding: '8px 10px', resize: 'vertical' }}
+                  rows={Math.max(3, lines)}
+                  value={editableValues[idx] ?? ''}
+                  onChange={(e) => {
+                    setEditableValues((prev) => {
+                      const next = [...prev]
+                      next[idx] = e.target.value
+                      return next
+                    })
+                    scheduleAutoSave()
+                  }}
+                />
+              </div>
+            )
+          }
+        })}
+      </div>
 
-        {invariantError && (
-          <div style={{
-            background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: 4,
-            padding: '10px 14px', marginBottom: 12, fontSize: 12, color: '#991B1B',
-          }}>
-            <div style={{ fontWeight: 600, marginBottom: 4 }}>
-              These protected strings must be present:
-            </div>
-            <ul style={{ margin: 0, paddingLeft: 18 }}>
-              {invariantError.map((s, i) => <li key={i}>{s}</li>)}
-            </ul>
+      {invariantError && (
+        <div style={{ background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: 4, padding: '10px 14px', marginTop: 12, fontSize: 12, color: '#991B1B' }}>
+          <div style={{ fontWeight: 600, marginBottom: 4 }}>These protected strings must be present:</div>
+          <ul style={{ margin: 0, paddingLeft: 18 }}>
+            {invariantError.map((s, i) => <li key={i}>{s}</li>)}
+          </ul>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Test runner ─────────────────────────────────────────────────────────────
+
+function TestRunner({ version, promptKey }: { version: PromptVersion; promptKey: string }) {
+  const [messages, setMessages] = useState<ChatTurn[]>([])
+  const [input, setInput] = useState('')
+  const [loading, setLoading] = useState(false)
+  const msgsRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (msgsRef.current) msgsRef.current.scrollTop = msgsRef.current.scrollHeight
+  }, [messages])
+
+  async function send() {
+    const content = input.trim()
+    if (!content || loading) return
+    setInput('')
+    const next: ChatTurn[] = [...messages, { role: 'user', content }]
+    setMessages(next)
+    setLoading(true)
+    try {
+      const res = await promptsApi.testChat(version.id, next)
+      setMessages([...next, { role: 'assistant', content: res.reply }])
+    } catch {
+      toast.error('Test chat failed.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 6, overflow: 'hidden', display: 'flex', flexDirection: 'column', height: 500 }}>
+      {/* Banner */}
+      <div style={{ background: '#FDF3E3', borderBottom: '1px solid #F0C040', padding: '8px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: '#8A6C00' }}>
+          TEST MODE — {version.isDraft ? `Draft v${version.version}` : `v${version.version} (active)`} · {promptKey}
+        </span>
+        <span style={{ fontSize: 11, color: '#8A6C00' }}>Not a real conversation · No data written</span>
+      </div>
+
+      {/* Messages */}
+      <div ref={msgsRef} style={{ flex: 1, overflowY: 'auto', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {messages.length === 0 && (
+          <div style={{ fontSize: 13, color: 'var(--gw-muted)', textAlign: 'center', padding: '20px 0' }}>
+            Send a message to test this prompt version.
           </div>
         )}
+        {messages.map((m, i) => (
+          <div
+            key={i}
+            style={{
+              maxWidth: '80%',
+              alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start',
+              background: m.role === 'user' ? 'var(--gw-navy)' : '#F5F3EF',
+              color: m.role === 'user' ? 'white' : 'var(--gw-text)',
+              borderRadius: m.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+              padding: '8px 12px',
+              fontSize: 13,
+              lineHeight: 1.6,
+              whiteSpace: 'pre-wrap',
+            }}
+          >
+            {m.content}
+          </div>
+        ))}
+        {loading && (
+          <div style={{ alignSelf: 'flex-start', background: '#F5F3EF', borderRadius: '16px 16px 16px 4px', padding: '8px 12px', fontSize: 13, color: 'var(--gw-muted)' }}>…</div>
+        )}
+      </div>
 
+      {/* Input */}
+      <div style={{ borderTop: '1px solid var(--gw-border)', padding: '10px 14px', display: 'flex', gap: 8 }}>
+        <textarea
+          style={{ flex: 1, resize: 'none', height: 36, padding: '6px 10px', fontSize: 13, border: '1px solid var(--gw-border)', borderRadius: 6, fontFamily: 'inherit', outline: 'none' }}
+          placeholder="Type a test message…"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
+          disabled={loading}
+        />
         <button
-          type="submit"
-          disabled={create.isPending || !summary.trim()}
-          style={{
-            fontSize: 13, fontWeight: 600, padding: '10px 20px', borderRadius: 4,
-            border: 'none', background: '#0C447C', color: 'white', cursor: 'pointer',
-            opacity: create.isPending || !summary.trim() ? 0.6 : 1,
-          }}
+          onClick={send}
+          disabled={loading || !input.trim()}
+          style={{ padding: '0 14px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 16, height: 36, opacity: loading || !input.trim() ? 0.5 : 1 }}
         >
-          {create.isPending ? 'Creating…' : 'Create draft'}
+          ↑
         </button>
-      </form>
+        <button
+          onClick={() => setMessages([])}
+          style={{ padding: '0 10px', borderRadius: 6, background: 'white', color: 'var(--gw-muted)', border: '1px solid var(--gw-border)', cursor: 'pointer', fontSize: 11, height: 36 }}
+        >
+          Clear
+        </button>
+      </div>
     </div>
   )
 }
@@ -471,11 +649,10 @@ export function PromptVersioningPage() {
   const user = useAuthStore((s) => s.user)
 
   const [selectedKey, setSelectedKey] = useState<string>('system')
-  const [draftOpen, setDraftOpen] = useState(false)
   const [expandedVersionId, setExpandedVersionId] = useState<string | null>(null)
   const [confirmActivateId, setConfirmActivateId] = useState<string | null>(null)
+  const [activePanel, setActivePanel] = useState<'view' | 'draft' | 'test'>('view')
 
-  // Fetch all versions to populate sidebar
   const { data: allVersions, isLoading: allLoading } = useQuery({
     queryKey: ['prompts'],
     queryFn: promptsApi.list,
@@ -483,10 +660,16 @@ export function PromptVersioningPage() {
     retry: false,
   })
 
-  // Fetch versions for the selected key
   const { data: keyVersions, isLoading: keyLoading } = useQuery({
     queryKey: ['prompts', 'by-key', selectedKey],
     queryFn: () => promptsApi.byKey(selectedKey),
+    enabled: !!user?.isPlatformAdmin && !!selectedKey,
+    retry: false,
+  })
+
+  const { data: draft, isLoading: draftLoading } = useQuery({
+    queryKey: ['prompts', 'draft', selectedKey],
+    queryFn: () => promptsApi.getDraft(selectedKey),
     enabled: !!user?.isPlatformAdmin && !!selectedKey,
     retry: false,
   })
@@ -496,45 +679,63 @@ export function PromptVersioningPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['prompts'] })
       qc.invalidateQueries({ queryKey: ['prompts', 'by-key', selectedKey] })
+      qc.invalidateQueries({ queryKey: ['prompts', 'draft', selectedKey] })
       setConfirmActivateId(null)
       toast.success('Version activated')
     },
     onError: () => toast.error('Failed to activate version'),
   })
 
-  // Derive unique sorted keys from all versions
+  const startDraft = useMutation({
+    mutationFn: () => promptsApi.upsertDraft(selectedKey, activeVersion?.content ?? '', 'Draft started'),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['prompts', 'draft', selectedKey] })
+      qc.invalidateQueries({ queryKey: ['prompts', 'by-key', selectedKey] })
+      setActivePanel('draft')
+    },
+    onError: () => toast.error('Failed to start draft.'),
+  })
+
   const uniqueKeys: string[] = allVersions
     ? sortKeys([...new Set(allVersions.map((v) => v.key))])
     : []
 
-  // Get active version badge number per key
   function activeVersionForKey(k: string): number | null {
     if (!allVersions) return null
     const active = allVersions.find((v) => v.key === k && v.isActive)
-    if (active) return active.version
-    const all = allVersions.filter((v) => v.key === k)
-    if (all.length === 0) return null
-    return Math.max(...all.map((v) => v.version))
+    return active?.version ?? null
   }
 
-  // Active or latest version in the selected key's list
+  function hasDraftForKey(k: string): boolean {
+    if (!allVersions) return false
+    return allVersions.some((v) => v.key === k && v.isDraft)
+  }
+
   const activeVersion = keyVersions
-    ? (keyVersions.find((v) => v.isActive) ?? keyVersions[0])
+    ? (keyVersions.find((v) => v.isActive) ?? null)
     : null
 
-  // Close draft when key changes
+  const historyVersions = keyVersions
+    ? keyVersions.filter((v) => !v.isDraft)
+    : []
+
   useEffect(() => {
-    setDraftOpen(false)
     setExpandedVersionId(null)
     setConfirmActivateId(null)
+    setActivePanel('view')
   }, [selectedKey])
+
+  // Switch to draft panel when draft exists and panel is view
+  useEffect(() => {
+    if (draft && activePanel === 'view') setActivePanel('draft')
+    if (!draft && activePanel === 'draft') setActivePanel('view')
+  }, [draft])
+
+  const testVersion = draft ?? activeVersion
 
   if (!user?.isPlatformAdmin) {
     return (
-      <div style={{
-        minHeight: '100vh', background: 'var(--gw-bg)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}>
+      <div style={{ minHeight: '100vh', background: 'var(--gw-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ fontSize: 13, color: 'var(--gw-muted)' }}>Platform admin access required.</div>
       </div>
     )
@@ -542,7 +743,6 @@ export function PromptVersioningPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--gw-bg)', display: 'flex', flexDirection: 'column' }}>
-      {/* Nav header */}
       <div className="gw-hdr">
         <div className="gw-logo">Prompt management</div>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -551,50 +751,35 @@ export function PromptVersioningPage() {
         </div>
       </div>
 
-      {/* Two-column body */}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
         {/* Sidebar */}
-        <div style={{
-          width: 220, flexShrink: 0, borderRight: '1px solid #E2E0DB',
-          background: 'var(--gw-bg)', overflowY: 'auto', paddingTop: 12,
-        }}>
-          {allLoading && (
-            <div style={{ fontSize: 12, color: 'var(--gw-muted)', padding: '10px 16px' }}>Loading…</div>
-          )}
+        <div style={{ width: 220, flexShrink: 0, borderRight: '1px solid #E2E0DB', background: 'var(--gw-bg)', overflowY: 'auto', paddingTop: 12 }}>
+          {allLoading && <div style={{ fontSize: 12, color: 'var(--gw-muted)', padding: '10px 16px' }}>Loading…</div>}
           {uniqueKeys.map((k) => {
             const isSelected = k === selectedKey
             const activeVer = activeVersionForKey(k)
+            const hasDraft = hasDraftForKey(k)
             return (
               <div
                 key={k}
                 onClick={() => setSelectedKey(k)}
                 style={{
-                  padding: '9px 14px',
-                  cursor: 'pointer',
+                  padding: '9px 14px', cursor: 'pointer',
                   background: isSelected ? 'white' : 'transparent',
                   borderLeft: isSelected ? '2px solid #0C447C' : '2px solid transparent',
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  gap: 6,
-                  transition: 'background 0.1s',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6,
                 }}
               >
-                <span style={{
-                  fontSize: 12, fontWeight: isSelected ? 600 : 400,
-                  color: isSelected ? '#0C447C' : '#1A1916',
-                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                  flex: 1,
-                }}>
+                <span style={{ fontSize: 12, fontWeight: isSelected ? 600 : 400, color: isSelected ? '#0C447C' : '#1A1916', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
                   {k}
                 </span>
-                {activeVer !== null && (
-                  <span style={{
-                    fontSize: 10, color: 'var(--gw-muted)', background: '#EDECEA',
-                    borderRadius: 8, padding: '1px 6px', flexShrink: 0, fontWeight: 500,
-                  }}>
-                    v{activeVer}
-                  </span>
-                )}
+                <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                  {hasDraft && <span style={{ fontSize: 9, fontWeight: 700, color: '#8A6C00', background: '#FDF3E3', borderRadius: 6, padding: '1px 5px' }}>draft</span>}
+                  {activeVer !== null && (
+                    <span style={{ fontSize: 10, color: 'var(--gw-muted)', background: '#EDECEA', borderRadius: 8, padding: '1px 6px', fontWeight: 500 }}>v{activeVer}</span>
+                  )}
+                </div>
               </div>
             )
           })}
@@ -602,93 +787,104 @@ export function PromptVersioningPage() {
 
         {/* Main panel */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '20px 28px' }}>
-          {keyLoading && (
-            <div style={{ fontSize: 13, color: 'var(--gw-muted)' }}>Loading versions…</div>
-          )}
+          {(keyLoading || draftLoading) && <div style={{ fontSize: 13, color: 'var(--gw-muted)' }}>Loading…</div>}
 
-          {!keyLoading && keyVersions && (
+          {!keyLoading && !draftLoading && (
             <>
               {/* Panel header */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18, flexWrap: 'wrap', gap: 8 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <span style={{ fontSize: 18, fontWeight: 700, color: '#1A1916' }}>{selectedKey}</span>
                   {activeVersion && (
-                    <span style={{
-                      fontSize: 12, fontWeight: 600, color: '#1A7A4A', background: '#E8F7EF',
-                      borderRadius: 10, padding: '3px 10px',
-                    }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: '#1A7A4A', background: '#E8F7EF', borderRadius: 10, padding: '3px 10px' }}>
                       v{activeVersion.version} active
                     </span>
                   )}
+                  {draft && (
+                    <span style={{ fontSize: 12, fontWeight: 600, color: '#8A5C1A', background: '#FDF3E3', borderRadius: 10, padding: '3px 10px' }}>
+                      draft v{draft.version}
+                    </span>
+                  )}
                 </div>
-                <button
-                  style={{
-                    fontSize: 13, fontWeight: 600, padding: '8px 16px', borderRadius: 4,
-                    border: draftOpen ? '1px solid #E2E0DB' : 'none',
-                    background: draftOpen ? 'white' : '#0C447C',
-                    color: draftOpen ? '#666' : 'white',
-                    cursor: 'pointer',
-                  }}
-                  onClick={() => setDraftOpen((o) => !o)}
-                >
-                  {draftOpen ? 'Cancel draft' : 'Draft new version'}
-                </button>
+
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {/* Panel tabs */}
+                  {(['view', 'draft', 'test'] as const).map((tab) => {
+                    if (tab === 'draft' && !draft) return null
+                    if (tab === 'test' && !testVersion) return null
+                    const labels = { view: 'Active', draft: 'Edit draft', test: 'Test' }
+                    return (
+                      <button
+                        key={tab}
+                        onClick={() => setActivePanel(tab)}
+                        style={{
+                          fontSize: 12, fontWeight: 500, padding: '6px 14px', borderRadius: 4, border: '1px solid #E2E0DB', cursor: 'pointer',
+                          background: activePanel === tab ? '#0C447C' : 'white',
+                          color: activePanel === tab ? 'white' : '#666',
+                        }}
+                      >
+                        {labels[tab]}
+                      </button>
+                    )
+                  })}
+                  {!draft && activeVersion && (
+                    <button
+                      onClick={() => startDraft.mutate()}
+                      disabled={startDraft.isPending}
+                      style={{ fontSize: 12, fontWeight: 600, padding: '6px 14px', borderRadius: 4, border: 'none', background: '#0C447C', color: 'white', cursor: 'pointer' }}
+                    >
+                      {startDraft.isPending ? 'Starting…' : 'Start draft'}
+                    </button>
+                  )}
+                </div>
               </div>
 
-              {/* Section 1 — Active version content */}
-              {activeVersion && !draftOpen && (
-                <div style={{
-                  background: 'white', border: '1px solid #E2E0DB', borderRadius: 6,
-                  padding: '16px 18px', marginBottom: 20,
-                }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: '#1A1916', marginBottom: 10 }}>
-                    Active version content
-                  </div>
+              {/* Active version view */}
+              {activePanel === 'view' && activeVersion && (
+                <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 6, padding: '16px 18px', marginBottom: 20 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#1A1916', marginBottom: 10 }}>Active version content</div>
                   <ParsedContentView content={activeVersion.content} promptKey={selectedKey} />
                 </div>
               )}
 
-              {/* Section 3 — Draft form (shown above history when open) */}
-              {draftOpen && activeVersion && (
-                <DraftForm
+              {/* Draft editor */}
+              {activePanel === 'draft' && draft && (
+                <DraftEditor
+                  draft={draft}
                   activeVersion={activeVersion}
                   promptKey={selectedKey}
-                  onClose={() => setDraftOpen(false)}
-                  onSuccess={() => setDraftOpen(false)}
+                  onPublish={() => setActivePanel('view')}
+                  onDiscard={() => setActivePanel('view')}
                 />
               )}
 
-              {/* Section 2 — Version history */}
-              <div style={{ marginBottom: 20 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: '#1A1916', marginBottom: 10 }}>
-                  Version history
-                </div>
-                {keyVersions.length === 0 && (
+              {/* Test runner */}
+              {activePanel === 'test' && testVersion && (
+                <TestRunner version={testVersion} promptKey={selectedKey} />
+              )}
+
+              {/* Version history — always shown below the active panel */}
+              <div style={{ marginTop: activePanel === 'view' ? 0 : 20 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#1A1916', marginBottom: 10 }}>Version history</div>
+                {historyVersions.length === 0 && (
                   <div style={{ fontSize: 13, color: 'var(--gw-muted)' }}>No versions found.</div>
                 )}
-                {keyVersions.map((v) => (
+                {historyVersions.map((v) => (
                   <VersionRow
                     key={v.id}
                     v={v}
+                    activeContent={activeVersion?.content ?? null}
                     confirmActivateId={confirmActivateId}
                     onActivateClick={(id) => setConfirmActivateId(id)}
                     onConfirm={(id) => activate.mutate(id)}
                     onCancel={() => setConfirmActivateId(null)}
                     activating={activate.isPending}
                     expanded={expandedVersionId === v.id}
-                    onToggle={() =>
-                      setExpandedVersionId((prev) => (prev === v.id ? null : v.id))
-                    }
+                    onToggle={() => setExpandedVersionId((prev) => (prev === v.id ? null : v.id))}
                   />
                 ))}
               </div>
             </>
-          )}
-
-          {!keyLoading && !keyVersions && selectedKey && (
-            <div style={{ fontSize: 13, color: 'var(--gw-muted)' }}>
-              No versions found for <strong>{selectedKey}</strong>.
-            </div>
           )}
         </div>
       </div>
