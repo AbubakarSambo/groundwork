@@ -202,11 +202,11 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
         <h2 class="gw-sec-h2" style="font-size:36px;font-weight:800;color:#1A1916;letter-spacing:-.03em;line-height:1.15;margin-bottom:14px;">Try a live demo.</h2>
         <p style="font-size:15px;color:#6B6560;line-height:1.75;margin-bottom:40px;max-width:500px;">No sign-up. Real data from Northgate Ventures.</p>
         <div class="gw-demo-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px;max-width:900px;">
-          <a class="gw-demo-btn" href={`${APP_URL}/enter-org-code`}><span style="width:8px;height:8px;border-radius:50%;background:#0C447C;flex-shrink:0;margin-top:3px;"></span><div><div style="font-size:13px;font-weight:700;color:#1A1916;margin-bottom:2px;">The founder's view</div><div style="font-size:12px;color:#9B9590;line-height:1.4;">Full team picture. Who is moving, who needs support</div></div></a>
-          <a class="gw-demo-btn" href={`${APP_URL}/enter-org-code`}><span style="width:8px;height:8px;border-radius:50%;background:#0C447C;flex-shrink:0;margin-top:3px;"></span><div><div style="font-size:13px;font-weight:700;color:#1A1916;margin-bottom:2px;">Kwame's check-in · cofounder</div><div style="font-size:12px;color:#9B9590;line-height:1.4;">Building the technical record across sessions</div></div></a>
-          <a class="gw-demo-btn" href={`${APP_URL}/enter-org-code`}><span style="width:8px;height:8px;border-radius:50%;background:#5DCAA5;flex-shrink:0;margin-top:3px;"></span><div><div style="font-size:13px;font-weight:700;color:#1A1916;margin-bottom:2px;">Priya's check-in · sales</div><div style="font-size:12px;color:#9B9590;line-height:1.4;">Strong work that was invisible until the record showed it</div></div></a>
-          <a class="gw-demo-btn" href={`${APP_URL}/enter-org-code`}><span style="width:8px;height:8px;border-radius:50%;background:#E8A94A;flex-shrink:0;margin-top:3px;"></span><div><div style="font-size:13px;font-weight:700;color:#1A1916;margin-bottom:2px;">Marcus's check-in · sales lead</div><div style="font-size:12px;color:#9B9590;line-height:1.4;">An honest conversation about what the record shows</div></div></a>
-          <a class="gw-demo-btn" href={`${APP_URL}/enter-org-code`}><span style="width:8px;height:8px;border-radius:50%;background:#5DCAA5;flex-shrink:0;margin-top:3px;"></span><div><div style="font-size:13px;font-weight:700;color:#1A1916;margin-bottom:2px;">Amara's check-in · engineering</div><div style="font-size:12px;color:#9B9590;line-height:1.4;">Specific, evidenced, and recognised</div></div></a>
+          <a class="gw-demo-btn" href={`${APP_URL}/pin?org=northgate`}><span style="width:8px;height:8px;border-radius:50%;background:#0C447C;flex-shrink:0;margin-top:3px;"></span><div><div style="font-size:13px;font-weight:700;color:#1A1916;margin-bottom:2px;">The founder's view</div><div style="font-size:12px;color:#9B9590;line-height:1.4;">Full team picture. Who is moving, who needs support</div></div></a>
+          <a class="gw-demo-btn" href={`${APP_URL}/pin?org=northgate`}><span style="width:8px;height:8px;border-radius:50%;background:#0C447C;flex-shrink:0;margin-top:3px;"></span><div><div style="font-size:13px;font-weight:700;color:#1A1916;margin-bottom:2px;">Kwame's check-in · cofounder</div><div style="font-size:12px;color:#9B9590;line-height:1.4;">Building the technical record across sessions</div></div></a>
+          <a class="gw-demo-btn" href={`${APP_URL}/pin?org=northgate`}><span style="width:8px;height:8px;border-radius:50%;background:#5DCAA5;flex-shrink:0;margin-top:3px;"></span><div><div style="font-size:13px;font-weight:700;color:#1A1916;margin-bottom:2px;">Priya's check-in · sales</div><div style="font-size:12px;color:#9B9590;line-height:1.4;">Strong work that was invisible until the record showed it</div></div></a>
+          <a class="gw-demo-btn" href={`${APP_URL}/pin?org=northgate`}><span style="width:8px;height:8px;border-radius:50%;background:#E8A94A;flex-shrink:0;margin-top:3px;"></span><div><div style="font-size:13px;font-weight:700;color:#1A1916;margin-bottom:2px;">Marcus's check-in · sales lead</div><div style="font-size:12px;color:#9B9590;line-height:1.4;">An honest conversation about what the record shows</div></div></a>
+          <a class="gw-demo-btn" href={`${APP_URL}/pin?org=northgate`}><span style="width:8px;height:8px;border-radius:50%;background:#5DCAA5;flex-shrink:0;margin-top:3px;"></span><div><div style="font-size:13px;font-weight:700;color:#1A1916;margin-bottom:2px;">Amara's check-in · engineering</div><div style="font-size:12px;color:#9B9590;line-height:1.4;">Specific, evidenced, and recognised</div></div></a>
         </div>
         <p style="font-size:11px;color:#B4B2A9;margin-top:14px;">Northgate Ventures · org code: northgate · admin PIN: 1234</p>
       </div>
@@ -331,6 +331,26 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
           <div style="padding:20px;background:#F5F3EF;border-radius:8px;border:1px solid #E2E0DB;"><h3 style="font-size:14px;font-weight:700;color:#1A1916;margin-bottom:6px;">The product</h3><p style="font-size:12px;color:#6B6560;line-height:1.6;margin:0;">Contribution intelligence for professional relationships that matter. Both versions. Cross referenced over time. For two people or twenty.</p></div>
           <div style="padding:20px;background:#F5F3EF;border-radius:8px;border:1px solid #E2E0DB;"><h3 style="font-size:14px;font-weight:700;color:#1A1916;margin-bottom:6px;">The company</h3><p style="font-size:12px;color:#6B6560;line-height:1.6;margin:0;">Groundwork is an independent product built to bring clarity to professional relationships and help teams make better decisions based on evidence.</p></div>
         </div>
+        <div style="height:1px;background:#E2E0DB;margin:8px 0 36px;"></div>
+
+        <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:36px;">
+          <p style="font-size:15px;color:#4A5568;line-height:1.8;margin:0;">Built for teams operating in Africa, in the moments you need a read on how contribution and alignment are going.</p>
+          <p style="font-size:15px;color:#4A5568;line-height:1.8;margin:0;">Built for the critical periods, and for the teams who lead through the toughest environments.</p>
+          <p style="font-size:15px;color:#4A5568;line-height:1.8;margin:0;">Groundwork is built for African leaders: the managers, founders, and companies making hard decisions about people and partnerships.</p>
+        </div>
+
+        <div class="gw-about-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:36px;">
+          <div style="padding:20px;background:#F5F3EF;border-radius:8px;border:1px solid #E2E0DB;">
+            <div style="font-size:10px;font-weight:600;color:#0C447C;text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px;opacity:.65;">Our headquarters</div>
+            <div style="font-size:13px;font-weight:700;color:#1A1916;margin-bottom:4px;">Groundwork</div>
+            <div style="font-size:12px;color:#6B6560;line-height:1.8;">9 Wendy Court, David Osieli Road<br>Westlands, Nairobi, Kenya</div>
+          </div>
+          <div style="padding:20px;background:#F5F3EF;border-radius:8px;border:1px solid #E2E0DB;">
+            <div style="font-size:10px;font-weight:600;color:#0C447C;text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px;opacity:.65;">Incubated by</div>
+            <div style="font-size:13px;font-weight:700;color:#1A1916;">CoAmana</div>
+          </div>
+        </div>
+
         <div style="text-align:center;">
           <p style="font-size:13px;color:#9B9590;margin-bottom:10px;">Questions or feedback</p>
           <a href="mailto:hello@myground.work" style="font-size:15px;font-weight:700;color:#0C447C;text-decoration:none;">hello@myground.work</a>
