@@ -3,7 +3,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from 'sonner'
 import { useAuthStore } from '@/stores/auth'
 import { useSessionTimeout } from '@/lib/useSessionTimeout'
-import { LandingPage } from '@/pages/LandingPage'
 import { AuthPage } from '@/pages/auth/AuthPage'
 import { MagicSentPage } from '@/pages/auth/MagicSentPage'
 import { MagicVerifyPage } from '@/pages/auth/MagicVerifyPage'
@@ -40,7 +39,7 @@ function RequireAuth({ children }: { children: JSX.Element }) {
 
 function RootRoute() {
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
-  return isAuthenticated ? <GroundsListPage /> : <LandingPage />
+  return isAuthenticated ? <GroundsListPage /> : <Navigate to="/auth?mode=signin" replace />
 }
 
 function SessionGuard({ children }: { children: React.ReactNode }) {
