@@ -6,16 +6,17 @@ import { GroundsService } from '../grounds';
 import { ReportsService } from './reports.service';
 import { EmailService } from '../email/email.service';
 import { GroundworkEvents, CheckInCompletedEvent, GroundActivatedEvent } from '../../common';
-import { PartyType } from '@prisma/client';
+import { GroundStatus, PartyType } from '@prisma/client';
 
 /**
  * Bridges domain events to report generation. Lives in the reports module so
  * the emitters (conversation, grounds) never import reports — no cycle.
  *
  * Flow:
- *   checkin.completed  -> if both parties are through session 2, synthesize the
- *                         report (it LOCKS at REPORT_READY behind the paywall).
- *   ground.activated   -> admin has activated and billing has started; release
+ *   checkin.completed  -> when ALL parties finish a session:
+ *                           sessions 1–4: auto-synthesize and auto-release the report.
+ *                           session 5:    request payment from admin; no report generated.
+ *   ground.activated   -> billing has started; synthesize if needed then release
  *                         the report to both parties simultaneously.
  */
 @Injectable()
@@ -33,26 +34,42 @@ export class ReportsListener {
   @OnEvent(GroundworkEvents.CHECK_IN_COMPLETED)
   async onCheckInCompleted(event: CheckInCompletedEvent) {
     try {
-      const ready = await this.grounds.isReportReady(event.groundId);
-      if (!ready) return;
+      const sessionNumber = event.sessionNumber;
+      const allDone = await this.grounds.isSessionReadyForReport(event.groundId, sessionNumber);
+      if (!allDone) return;
 
-      // Idempotency: only synthesize once. If a report already exists, skip.
-      const existing = await this.prisma.report.findUnique({ where: { groundId: event.groundId } });
-      if (existing) return;
-
-      this.logger.log(`Both parties through session 2 — synthesizing report for ground ${event.groundId}`);
-      await this.reports.synthesize(event.groundId);
+      if (sessionNumber <= 4) {
+        this.logger.log(`All parties through session ${sessionNumber} — synthesizing and auto-releasing report for ground ${event.groundId}`);
+        await this.reports.synthesize(event.groundId);
+        const g = await this.prisma.ground.findUnique({ where: { id: event.groundId }, select: { organizationId: true } });
+        if (g) await this.reports.release(event.groundId, g.organizationId);
+      } else if (sessionNumber === 5) {
+        this.logger.log(`All parties through session 5 — requesting payment for ground ${event.groundId}`);
+        const g = await this.prisma.ground.findUnique({ where: { id: event.groundId }, select: { organizationId: true } });
+        if (g?.organizationId) {
+          await this.grounds
+            .requestPaymentForSession5(g.organizationId, event.groundId)
+            .catch((err) => this.logger.warn(`requestPaymentForSession5 failed for ground ${event.groundId}: ${err.message}`));
+          await this.prisma.ground.update({ where: { id: event.groundId }, data: { status: GroundStatus.REPORT_READY } });
+        }
+      }
     } catch (err: any) {
-      this.logger.error(`Report synthesis on checkin.completed failed for ground ${event.groundId}: ${err.message}`);
+      this.logger.error(`Report handling on checkin.completed failed for ground ${event.groundId}: ${err.message}`);
     }
   }
 
   @OnEvent(GroundworkEvents.GROUND_ACTIVATED)
   async onGroundActivated(event: GroundActivatedEvent) {
     try {
-      this.logger.log(`Ground ${event.groundId} activated — releasing report to both parties`);
+      this.logger.log(`Ground ${event.groundId} activated — synthesizing (if needed) and releasing report`);
       const g = await this.prisma.ground.findUnique({ where: { id: event.groundId }, select: { organizationId: true } });
-      if (g) await this.reports.release(event.groundId, g.organizationId);
+      if (!g) return;
+      // For session 5+, the report hasn't been synthesized yet — do it now on activation.
+      const existing = await this.prisma.report.findUnique({ where: { groundId: event.groundId } });
+      if (!existing || !existing.releasedAt) {
+        await this.reports.synthesize(event.groundId);
+      }
+      await this.reports.release(event.groundId, g.organizationId);
     } catch (err: any) {
       this.logger.error(`Report release on ground.activated failed for ground ${event.groundId}: ${err.message}`);
     }

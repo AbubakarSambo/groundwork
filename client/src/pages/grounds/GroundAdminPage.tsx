@@ -5,6 +5,7 @@ import { groundsApi } from '@/api/grounds'
 import { reportsApi } from '@/api/reports'
 import { documentsApi } from '@/api/documents'
 import { conversationApi } from '@/api/conversation'
+import { billingApi } from '@/api/billing'
 import { useAuthStore } from '@/stores/auth'
 import { toast } from 'sonner'
 
@@ -51,16 +52,16 @@ export function GroundAdminPage() {
     retry: false,
   })
 
+  const { data: billingStatus } = useQuery({
+    queryKey: ['billing'],
+    queryFn: billingApi.status,
+    enabled: tab === 'report',
+  })
+
   const { data: docs = [] } = useQuery({
     queryKey: ['docs', id],
     queryFn: () => documentsApi.list(id!),
     enabled: !!id && tab === 'docs',
-  })
-
-  const releaseReport = useMutation({
-    mutationFn: () => reportsApi.release(id!),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['report', id] }),
-    onError: () => toast.error('Could not release report.'),
   })
 
   const uploadDoc = useMutation({
@@ -94,6 +95,11 @@ export function GroundAdminPage() {
   const myOpenCheckIn = myParticipant
     ? (ground.checkIns ?? []).find((ci: any) => ci.participantId === myParticipant.id && ci.status !== 'COMPLETED')
     : null
+
+  // Paywall: all active parties have completed session 5 but billing isn't active.
+  const activeParties = (ground.participants ?? []).filter((p: any) => p.userId)
+  const session5Completions = (ground.checkIns ?? []).filter((ci: any) => ci.sessionNumber === 5 && ci.status === 'COMPLETED')
+  const paywallActive = activeParties.length >= 2 && session5Completions.length >= activeParties.length && !billingStatus?.careFeeActive
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
@@ -274,6 +280,17 @@ export function GroundAdminPage() {
               <div style={{ fontSize: 13, color: 'var(--gw-sub)' }}>{CONF_DESC[conf] ?? ''}</div>
             </div>
 
+            {paywallActive && (
+              <div style={{ background: 'var(--gw-amber-bg)', border: '0.5px solid var(--gw-amber-b)', borderRadius: 10, padding: 16, marginBottom: 14 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 6 }}>Session 5 complete — activate billing to continue</div>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 12 }}>Both parties have completed session 5. Sessions 1–5 are free. Activate billing to unlock the session 5 report and continue to session 6+.</div>
+                <button onClick={() => navigate('/billing')}
+                  style={{ padding: '10px 18px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
+                  Activate billing →
+                </button>
+              </div>
+            )}
+
             {report?.releasedAt ? (
               <div>
                 <div style={{ background: 'var(--gw-navy)', color: 'white', borderRadius: 10, padding: 16, marginBottom: 14 }}>
@@ -304,23 +321,12 @@ export function GroundAdminPage() {
                   </ReportSection>
                 )}
               </div>
-            ) : report?.createdAt ? (
-              <div>
-                <div style={{ background: 'var(--gw-bg)', border: '0.5px solid var(--gw-border)', borderRadius: 10, padding: 16, marginBottom: 14 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Report is ready</div>
-                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 14 }}>Both parties have completed session 2. When you release the report, both parties see it simultaneously — neither reads it before the other. Billing activates on release.</div>
-                  <button onClick={() => releaseReport.mutate()} disabled={releaseReport.isPending}
-                    style={{ width: '100%', padding: 12, borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
-                    {releaseReport.isPending ? 'Releasing…' : 'Release report to both parties'}
-                  </button>
-                </div>
-              </div>
-            ) : (
+            ) : !paywallActive ? (
               <div style={{ background: 'var(--gw-bg)', border: '0.5px solid var(--gw-border)', borderRadius: 10, padding: 16, marginBottom: 14 }}>
                 <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Waiting for sessions</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6 }}>The report generates after both parties complete session 2. Check the Check-ins tab to see progress.</div>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6 }}>The report generates automatically after both parties complete each session. Check the Check-ins tab to see progress.</div>
               </div>
-            )}
+            ) : null}
           </div>
         )}
 

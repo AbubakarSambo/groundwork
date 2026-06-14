@@ -444,25 +444,6 @@ export class ConversationService {
     // Open the next session for this party so they have somewhere to return to.
     await this.ensureNextSession(checkIn.groundId, checkIn.participantId, checkIn.sessionNumber);
 
-    // After session 4 completes: prompt the org admin to activate billing so
-    // session 5 is not blocked. Only fires when the org is not already
-    // billing-ready — avoids duplicate emails for orgs that have already paid.
-    if (checkIn.sessionNumber === 4) {
-      const completedGround = await this.prisma.ground.findUnique({
-        where: { id: checkIn.groundId },
-        select: { organizationId: true },
-      });
-      if (completedGround?.organizationId) {
-        const alreadyReady = await this.billing.isBillingReady(completedGround.organizationId);
-        if (!alreadyReady) {
-          await this.billing
-            .requestPaymentForSession5(completedGround.organizationId, checkIn.groundId)
-            .catch((err) =>
-              this.logger.warn(`requestPaymentForSession5 failed for ground ${checkIn.groundId}: ${err.message}`),
-            );
-        }
-      }
-    }
 
     // Announce completion. The reports listener decides whether the ground is
     // now ready for synthesis (both parties through session 1 — #36). No import

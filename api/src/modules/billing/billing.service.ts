@@ -43,15 +43,16 @@ export class BillingService {
 
   /**
    * Session-number-aware billing gate.
-   * Sessions 1–4 are free. Session 5+ requires billing-ready status.
+   * Sessions 1–5 are free to run. Session 6+ requires billing-ready status.
+   * The paywall fires at the END of session 5 (no report generated until payment).
    */
   async checkSessionGate(orgId: string, sessionNumber: number): Promise<{ allowed: boolean; reason?: string }> {
-    if (sessionNumber <= 4) return { allowed: true };
+    if (sessionNumber <= 5) return { allowed: true };
     const ready = await this.isBillingReady(orgId);
     if (ready) return { allowed: true };
     return {
       allowed: false,
-      reason: 'Sessions 1–4 are free. Activate billing to continue to session 5. Your admin will receive a prompt.',
+      reason: 'Sessions 1–5 are free. Activate billing to continue to session 6. Your admin will receive a prompt.',
     };
   }
 
