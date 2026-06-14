@@ -48,8 +48,8 @@ export class EmailService {
     const url = `${this.frontendUrl}/verify-email?token=${token}`;
     await this.sendEmail({
       to: email,
-      subject: 'Activate your Groundwork account',
-      html: this.layout(`<p>Hi ${firstName},</p><p>Activate your account and set a password.</p><p><a href="${url}">Activate</a></p>`),
+      subject: 'Your Groundwork sign-in link',
+      html: this.layout(`<p>Hi ${firstName},</p><p>Click below to sign in to Groundwork. This link expires in 24 hours.</p><p><a href="${url}">Sign in to Groundwork</a></p>`),
     });
   }
 
