@@ -6,7 +6,9 @@ import { authApi } from '@/api/auth'
 export function AuthPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const isMember = searchParams.get('mode') === 'member'
+  const mode = searchParams.get('mode') // 'member' | 'signin' | null (= new founder)
+  const isMember = mode === 'member'
+  const isSignIn = mode === 'signin'
 
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
@@ -34,6 +36,13 @@ export function AuthPage() {
     onError: () => setError('Could not send link. Please try again.'),
   })
 
+  // Sign-in reuses member-signin endpoint — it's role-agnostic (finds any user by email)
+  const sendSignIn = useMutation({
+    mutationFn: () => authApi.memberSignin(email.trim()),
+    onSuccess: () => navigate(`/auth/sent?email=${encodeURIComponent(email.trim())}`),
+    onError: () => setError('Could not send link. Please try again.'),
+  })
+
   function submitFounder() {
     setError('')
     if (!firstName.trim()) { setError('Enter your first name.'); return }
@@ -47,6 +56,12 @@ export function AuthPage() {
     setError('')
     if (!email.trim() || !email.includes('@')) { setError('Enter a valid email address.'); return }
     sendMember.mutate()
+  }
+
+  function submitSignIn() {
+    setError('')
+    if (!email.trim() || !email.includes('@')) { setError('Enter a valid email address.'); return }
+    sendSignIn.mutate()
   }
 
   const bandColor = isMember ? '#085041' : 'var(--gw-navy)'
@@ -67,7 +82,43 @@ export function AuthPage() {
       </div>
 
       <div className="gw-bd" style={{ maxWidth: 480, margin: '0 auto', width: '100%', paddingTop: 28 }}>
-        {isMember ? (
+        {isSignIn ? (
+          <>
+            <div className="gw-ttl">Welcome back</div>
+            <div className="gw-sub-t">Enter your email and we'll send you a link to your account.</div>
+
+            <div className="gw-fld">
+              <label className="gw-label">Your email</label>
+              <input
+                className="gw-input"
+                type="email"
+                placeholder="you@company.com"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && submitSignIn()}
+                autoFocus
+              />
+            </div>
+
+            <button className="gw-btn" onClick={submitSignIn} disabled={sendSignIn.isPending}>
+              {sendSignIn.isPending ? 'Sending…' : 'Send link'}
+            </button>
+            {error && <div className="gw-er" style={{ marginTop: 8 }}>{error}</div>}
+
+            <div style={{ fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 20 }}>
+              New to Groundwork?{' '}
+              <span style={{ color: 'var(--gw-navy)', textDecoration: 'underline', cursor: 'pointer' }} onClick={() => navigate('/auth')}>
+                Set up your org
+              </span>
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 10 }}>
+              Team member?{' '}
+              <span style={{ color: 'var(--gw-navy)', textDecoration: 'underline', cursor: 'pointer' }} onClick={() => navigate('/enter')}>
+                Enter your org code
+              </span>
+            </div>
+          </>
+        ) : isMember ? (
           <>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--gw-green-bg)', border: '0.5px solid var(--gw-green-b)', borderRadius: 20, padding: '4px 12px', fontSize: 11, fontWeight: 600, color: 'var(--gw-green-t)', marginBottom: 20, letterSpacing: '.02em' }}>
               Team member
