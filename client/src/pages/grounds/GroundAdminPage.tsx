@@ -5,6 +5,7 @@ import { groundsApi } from '@/api/grounds'
 import { reportsApi } from '@/api/reports'
 import { documentsApi } from '@/api/documents'
 import { conversationApi } from '@/api/conversation'
+import { useAuthStore } from '@/stores/auth'
 import { toast } from 'sonner'
 
 function ConfDots({ score, large }: { score?: number; large?: boolean }) {
@@ -35,6 +36,7 @@ export function GroundAdminPage() {
   const qc = useQueryClient()
   const [tab, setTab] = useState<Tab>('overview')
   const [ctxNote, setCtxNote] = useState('')
+  const user = useAuthStore(s => s.user)
 
   const { data: ground, isLoading } = useQuery({
     queryKey: ['ground', id],
@@ -88,8 +90,26 @@ export function GroundAdminPage() {
 
   const conf = ground.confidence ?? 1
 
+  const myParticipant = (ground.participants ?? []).find((p: any) => p.userId === user?.id)
+  const myOpenCheckIn = myParticipant
+    ? (ground.checkIns ?? []).find((ci: any) => ci.participantId === myParticipant.id && ci.status !== 'COMPLETED')
+    : null
+
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
+      {myOpenCheckIn && (
+        <div style={{ background: 'var(--gw-navy)', padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <div style={{ fontSize: 13, color: 'rgba(255,255,255,.85)', lineHeight: 1.4 }}>
+            Your session {myOpenCheckIn.sessionNumber} is waiting.
+          </div>
+          <button
+            onClick={() => navigate(`/checkin/${myOpenCheckIn.id}`, { state: { sessionNumber: myOpenCheckIn.sessionNumber, groundLabel: ground.label, groundId: id } })}
+            style={{ flexShrink: 0, fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', background: 'white', border: 'none', borderRadius: 6, padding: '7px 14px', cursor: 'pointer', fontFamily: 'inherit' }}
+          >
+            Start check-in
+          </button>
+        </div>
+      )}
       {/* Sticky header */}
       <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'var(--gw-bg)', borderBottom: '0.5px solid var(--gw-border)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px' }}>

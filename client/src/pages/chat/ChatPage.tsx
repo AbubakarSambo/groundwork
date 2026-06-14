@@ -80,7 +80,18 @@ export function ChatPage() {
   })
 
   useEffect(() => {
-    if (checkInId && !opened) openSession.mutate()
+    if (!checkInId) return
+    conversationApi.transcript(checkInId).then(({ checkIn, turns }) => {
+      if (turns.length > 0) {
+        setMsgs(turns.map(t => ({ id: t.id, role: t.role, content: t.content })))
+        setOpened(true)
+        if (checkIn.status === 'COMPLETED') setDone(true)
+      } else {
+        openSession.mutate()
+      }
+    }).catch(() => {
+      openSession.mutate()
+    })
   }, [checkInId])
 
   useEffect(() => {

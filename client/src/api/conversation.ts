@@ -2,6 +2,8 @@ import { apiClient } from './client'
 
 export interface OpenCheckInResponse { reply: string }
 export interface SendMessageResponse { reply: string; sessionComplete?: boolean }
+export interface TranscriptTurn { id: string; role: 'AI' | 'PERSON'; content: string }
+export interface TranscriptResponse { checkIn: { status: string; sessionNumber: number }; turns: TranscriptTurn[] }
 
 export const conversationApi = {
   open: (checkInId: string) =>
@@ -17,7 +19,7 @@ export const conversationApi = {
     apiClient.post(`/check-ins/${checkInId}/decline`).then(r => r.data),
 
   transcript: (checkInId: string) =>
-    apiClient.get(`/check-ins/${checkInId}/transcript`).then(r => r.data),
+    apiClient.get<TranscriptResponse>(`/check-ins/${checkInId}/transcript`).then(r => r.data),
 
   artifact: (checkInId: string) =>
     apiClient.get(`/check-ins/${checkInId}/artifact`).then(r => r.data),
