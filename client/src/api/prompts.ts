@@ -65,6 +65,21 @@ export interface UsageFunnelData {
   avgDaysToFirstCheckin: number | null
 }
 
+export interface OrgCohortRow {
+  id: string
+  name: string
+  slug: string
+  adminName: string | null
+  adminEmail: string | null
+  createdAt: string
+  careFeeStatus: string
+  userCount: number
+  groundCount: number
+  maxSession: number
+  lastActivity: string | null
+  stage: string
+}
+
 export interface ChatTurn { role: 'user' | 'assistant'; content: string }
 
 export const promptsApi = {
@@ -98,4 +113,7 @@ export const promptsApi = {
 
   platformFunnel: () =>
     apiClient.get<UsageFunnelData>('/prompts/platform-funnel').then((r) => r.data),
+
+  orgCohorts: () =>
+    apiClient.get<OrgCohortRow[]>('/prompts/org-cohorts').then((r) => r.data),
 }

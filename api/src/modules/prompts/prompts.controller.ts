@@ -87,6 +87,12 @@ export class PromptsController {
     return this.prompts.platformDashboard();
   }
 
+  @Get('org-cohorts')
+  @ApiOperation({ summary: 'Per-org signup and engagement cohort view' })
+  async orgCohorts() {
+    return this.prompts.orgCohorts();
+  }
+
   @Post('test-chat')
   @ApiOperation({ summary: 'Run a test message against a specific prompt version (no DB writes)' })
   async testChat(@Body() dto: TestChatDto) {

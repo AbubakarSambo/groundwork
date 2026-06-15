@@ -401,6 +401,81 @@ export class PromptsService implements OnModuleInit {
     };
   }
 
+  async orgCohorts() {
+    const orgs = await this.prisma.organization.findMany({
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        email: true,
+        createdAt: true,
+        careFeeStatus: true,
+        _count: { select: { users: true } },
+        users: {
+          select: { firstName: true, lastName: true, email: true },
+          take: 1,
+          orderBy: { createdAt: 'asc' },
+        },
+        grounds: {
+          select: {
+            status: true,
+            checkIns: {
+              where: { status: 'COMPLETED' },
+              select: { sessionNumber: true, completedAt: true },
+            },
+          },
+        },
+      },
+    });
+
+    return orgs.map((org) => {
+      const allCheckIns = org.grounds.flatMap((g) => g.checkIns);
+      const completedDates = allCheckIns
+        .map((c) => c.completedAt)
+        .filter((d): d is Date => d != null);
+      const maxSession =
+        allCheckIns.length > 0
+          ? Math.max(...allCheckIns.map((c) => c.sessionNumber))
+          : 0;
+      const lastActivity =
+        completedDates.length > 0
+          ? completedDates.reduce((max, d) => (d > max ? d : max))
+          : null;
+      const primary = org.users[0] ?? null;
+
+      let stage: string;
+      if (org.careFeeStatus === 'ACTIVE') {
+        stage = 'paid';
+      } else if (maxSession >= 4) {
+        stage = 's4_plus';
+      } else if (maxSession === 3) {
+        stage = 's3';
+      } else if (maxSession === 2) {
+        stage = 's2';
+      } else if (maxSession === 1) {
+        stage = 's1_only';
+      } else {
+        stage = 'no_activity';
+      }
+
+      return {
+        id: org.id,
+        name: org.name,
+        slug: org.slug,
+        adminName: primary ? `${primary.firstName} ${primary.lastName}` : null,
+        adminEmail: primary?.email ?? null,
+        createdAt: org.createdAt,
+        careFeeStatus: org.careFeeStatus,
+        userCount: org._count.users,
+        groundCount: org.grounds.length,
+        maxSession,
+        lastActivity,
+        stage,
+      };
+    });
+  }
+
   /** Activate a version (deactivates other versions of the same key). Logs who activated. */
   async activate(id: string, activatedByName?: string) {
     const target = await this.prisma.promptVersion.findUnique({ where: { id } });

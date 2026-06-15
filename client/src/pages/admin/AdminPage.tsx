@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { promptsApi, UsageFunnelData, PlatformDashboardData } from '@/api/prompts'
+import { promptsApi, UsageFunnelData, PlatformDashboardData, OrgCohortRow } from '@/api/prompts'
 import { useAuthStore } from '@/stores/auth'
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -416,6 +416,110 @@ function FunnelTab({ data }: { data: UsageFunnelData }) {
   )
 }
 
+// ─── Orgs tab ─────────────────────────────────────────────────────────────────
+
+function OrgsTab({ rows }: { rows: OrgCohortRow[] }) {
+  const STAGE_STYLE: Record<string, React.CSSProperties> = {
+    paid:        { background: '#D1FAE5', color: '#065F46' },
+    s4_plus:     { background: '#DBEAFE', color: '#1E40AF' },
+    s3:          { background: '#EDE9FE', color: '#5B21B6' },
+    s2:          { background: '#FEF3C7', color: '#92400E' },
+    s1_only:     { background: '#FEE2E2', color: '#991B1B' },
+    no_activity: { background: '#F3F4F6', color: '#6B7280' },
+  }
+  const STAGE_LABEL: Record<string, string> = {
+    paid:        'Paid',
+    s4_plus:     'S4+',
+    s3:          'S3',
+    s2:          'S2',
+    s1_only:     'S1 only',
+    no_activity: 'No activity',
+  }
+
+  if (rows.length === 0) {
+    return <div style={{ fontSize: 13, color: 'var(--gw-muted)' }}>No orgs yet.</div>
+  }
+
+  const TH: React.CSSProperties = {
+    fontSize: 10,
+    fontWeight: 700,
+    color: 'var(--gw-muted)',
+    textAlign: 'left',
+    padding: '0 12px 8px 0',
+    textTransform: 'uppercase',
+    letterSpacing: '.06em',
+    whiteSpace: 'nowrap',
+    borderBottom: '1px solid var(--gw-border)',
+  }
+  const TD: React.CSSProperties = {
+    padding: '10px 12px 10px 0',
+    verticalAlign: 'top',
+    borderBottom: '0.5px solid var(--gw-border)',
+  }
+
+  return (
+    <div style={{ overflowX: 'auto' }}>
+      <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 12 }}>
+        <thead>
+          <tr>
+            <th style={TH}>Org</th>
+            <th style={TH}>Admin</th>
+            <th style={{ ...TH, textAlign: 'right' }}>Signed up</th>
+            <th style={{ ...TH, textAlign: 'right' }}>Users</th>
+            <th style={{ ...TH, textAlign: 'right' }}>Grounds</th>
+            <th style={{ ...TH, textAlign: 'right' }}>Max S</th>
+            <th style={{ ...TH, textAlign: 'right' }}>Last activity</th>
+            <th style={TH}>Stage</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.id}>
+              <td style={TD}>
+                <div style={{ fontWeight: 600, color: 'var(--gw-navy)' }}>{row.name}</div>
+                <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>{row.slug}</div>
+              </td>
+              <td style={TD}>
+                <div>{row.adminName ?? '—'}</div>
+                <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>{row.adminEmail ?? ''}</div>
+              </td>
+              <td style={{ ...TD, textAlign: 'right', color: 'var(--gw-text)', whiteSpace: 'nowrap' }}>
+                {new Date(row.createdAt).toLocaleDateString()}
+              </td>
+              <td style={{ ...TD, textAlign: 'right', fontWeight: 600, color: 'var(--gw-navy)' }}>
+                {row.userCount}
+              </td>
+              <td style={{ ...TD, textAlign: 'right', fontWeight: 600, color: 'var(--gw-navy)' }}>
+                {row.groundCount}
+              </td>
+              <td style={{ ...TD, textAlign: 'right', fontWeight: 600, color: 'var(--gw-navy)' }}>
+                {row.maxSession > 0 ? `S${row.maxSession}` : '—'}
+              </td>
+              <td style={{ ...TD, textAlign: 'right', color: 'var(--gw-muted)', whiteSpace: 'nowrap' }}>
+                {row.lastActivity ? new Date(row.lastActivity).toLocaleDateString() : '—'}
+              </td>
+              <td style={{ ...TD, paddingRight: 0 }}>
+                <span
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    padding: '2px 7px',
+                    borderRadius: 4,
+                    whiteSpace: 'nowrap',
+                    ...(STAGE_STYLE[row.stage] ?? {}),
+                  }}
+                >
+                  {STAGE_LABEL[row.stage] ?? row.stage}
+                </span>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
 // ─── Overview tab (unchanged content) ────────────────────────────────────────
 
 function OverviewTab({ dash }: { dash: PlatformDashboardData }) {
@@ -528,7 +632,7 @@ function OverviewTab({ dash }: { dash: PlatformDashboardData }) {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-type Tab = 'overview' | 'funnel'
+type Tab = 'overview' | 'funnel' | 'orgs'
 
 export function AdminPage() {
   const navigate = useNavigate()
@@ -545,6 +649,13 @@ export function AdminPage() {
     queryKey: ['platform-funnel'],
     queryFn: promptsApi.platformFunnel,
     enabled: !!user?.isPlatformAdmin && activeTab === 'funnel',
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const { data: orgRows } = useQuery({
+    queryKey: ['platform-org-cohorts'],
+    queryFn: promptsApi.orgCohorts,
+    enabled: !!user?.isPlatformAdmin && activeTab === 'orgs',
     staleTime: 5 * 60 * 1000,
   })
 
@@ -594,7 +705,7 @@ export function AdminPage() {
             marginBottom: 24,
           }}
         >
-          {(['overview', 'funnel'] as Tab[]).map((tab) => {
+          {(['overview', 'funnel', 'orgs'] as Tab[]).map((tab) => {
             const active = activeTab === tab
             return (
               <button
@@ -635,6 +746,15 @@ export function AdminPage() {
               <div style={{ fontSize: 13, color: 'var(--gw-muted)' }}>Loading…</div>
             )}
             {funnel && <FunnelTab data={funnel} />}
+          </>
+        )}
+
+        {activeTab === 'orgs' && (
+          <>
+            {!orgRows && (
+              <div style={{ fontSize: 13, color: 'var(--gw-muted)' }}>Loading…</div>
+            )}
+            {orgRows && <OrgsTab rows={orgRows} />}
           </>
         )}
       </div>
