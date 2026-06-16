@@ -69,32 +69,17 @@ export function GroundsListPage() {
   const reportsReady = grounds.filter(g => g.status === 'REPORT_READY').length
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
-      <div className="gw-hdr">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-          <svg width="18" height="14" viewBox="0 0 22 17" fill="none">
-            <rect x="5" y="0" width="12" height="3" rx="1.5" fill="#0C447C" opacity="0.45" />
-            <rect x="2" y="6" width="18" height="3" rx="1.5" fill="#0C447C" opacity="0.72" />
-            <rect x="0" y="12" width="22" height="3" rx="1.5" fill="#0C447C" />
-          </svg>
-          <a href="https://myground.work" target="_blank" rel="noopener noreferrer" style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-navy)', letterSpacing: '-.02em', textDecoration: 'none' }}>Groundwork</a>
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, background: 'var(--gw-bg)' }}>
+      <div style={{ padding: '14px 20px', borderBottom: '0.5px solid var(--gw-border)', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)' }}>
+          {isAdmin ? 'Grounds' : 'My grounds'}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-navy)', background: 'var(--gw-blue-bg)', border: '0.5px solid var(--gw-blue-b)', borderRadius: 20, padding: '3px 10px' }}>
-            {isAdmin ? 'Admin' : 'Team member'}
-          </span>
-          {user?.isPlatformAdmin && (
-            <>
-              <span onClick={() => navigate('/admin')} style={{ fontSize: 13, color: 'var(--gw-sub)', cursor: 'pointer' }}>Platform</span>
-              <span onClick={() => navigate('/prompts')} style={{ fontSize: 13, color: 'var(--gw-sub)', cursor: 'pointer' }}>Prompts</span>
-            </>
-          )}
-          <span onClick={() => navigate('/billing')} style={{ fontSize: 13, color: 'var(--gw-sub)', cursor: 'pointer' }}>Settings</span>
-          <span onClick={() => { useAuthStore.getState().logout(); navigate('/') }} style={{ fontSize: 13, color: 'var(--gw-sub)', cursor: 'pointer' }}>Sign out</span>
-        </div>
+        <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-navy)', background: 'var(--gw-blue-bg)', border: '0.5px solid var(--gw-blue-b)', borderRadius: 20, padding: '3px 10px' }}>
+          {isAdmin ? 'Admin' : 'Member'}
+        </span>
       </div>
 
-      <div className="gw-bd" style={{ paddingTop: 8, maxWidth: 600, margin: '0 auto', width: '100%' }}>
+      <div className="gw-bd" style={{ paddingTop: 8, maxWidth: 640, margin: '0 auto', width: '100%' }}>
         {isAdmin ? (
           <>
             {/* Stats */}

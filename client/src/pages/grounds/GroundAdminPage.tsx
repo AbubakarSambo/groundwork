@@ -102,7 +102,7 @@ export function GroundAdminPage() {
   const paywallActive = activeParties.length >= 2 && session5Completions.length >= activeParties.length && !billingStatus?.careFeeActive
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)', minHeight: 0, overflow: 'hidden' }}>
       {myOpenCheckIn && (
         <div style={{ background: 'var(--gw-navy)', padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
           <div style={{ fontSize: 13, color: 'rgba(255,255,255,.85)', lineHeight: 1.4 }}>
@@ -356,7 +356,7 @@ export function GroundAdminPage() {
 }
 
 function Shell({ children }: { children: React.ReactNode }) {
-  return <div style={{ minHeight: '100vh', background: 'var(--gw-bg)' }}>{children}</div>
+  return <div style={{ flex: 1, background: 'var(--gw-bg)' }}>{children}</div>
 }
 
 function ReportSection({ title, children, open: initialOpen = false }: { title: string; children: React.ReactNode; open?: boolean }) {

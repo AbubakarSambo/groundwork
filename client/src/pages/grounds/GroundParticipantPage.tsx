@@ -52,8 +52,8 @@ export function GroundParticipantPage() {
     onError: () => toast.error('Upload failed.'),
   })
 
-  if (isLoading) return <div style={{ minHeight: '100vh', background: 'var(--gw-bg)', padding: 24, fontSize: 13, color: 'var(--gw-muted)' }}>Loading…</div>
-  if (!ground) return <div style={{ minHeight: '100vh', background: 'var(--gw-bg)', padding: 24, fontSize: 13, color: 'var(--gw-muted)' }}>Ground not found.</div>
+  if (isLoading) return <div style={{ flex: 1, background: 'var(--gw-bg)', padding: 24, fontSize: 13, color: 'var(--gw-muted)' }}>Loading…</div>
+  if (!ground) return <div style={{ flex: 1, background: 'var(--gw-bg)', padding: 24, fontSize: 13, color: 'var(--gw-muted)' }}>Ground not found.</div>
 
   const conf = ground.confidence ?? 1
 
@@ -65,7 +65,7 @@ export function GroundParticipantPage() {
   const sessionOpen = myCheckIn && myCheckIn.status !== 'COMPLETED'
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)', minHeight: 0, overflow: 'hidden' }}>
       {/* Sticky header */}
       <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'var(--gw-bg)', borderBottom: '0.5px solid var(--gw-border)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px' }}>

@@ -1,17 +1,33 @@
-import { useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { participantsApi } from '@/api'
 import { useAuthStore } from '@/stores/auth'
-import { GroundworkLogo } from '@/components/gw/GroundworkLogo'
+
+function Shell({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ minHeight: '100vh', background: 'var(--gw-bg)', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ background: 'var(--gw-navy)', padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 9 }}>
+        <svg width="18" height="14" viewBox="0 0 22 17" fill="none">
+          <rect x="5" y="0" width="12" height="3" rx="1.5" fill="white" opacity="0.45" />
+          <rect x="2" y="6" width="18" height="3" rx="1.5" fill="white" opacity="0.72" />
+          <rect x="0" y="12" width="22" height="3" rx="1.5" fill="white" />
+        </svg>
+        <span style={{ fontSize: 14, fontWeight: 700, color: 'white', letterSpacing: '-.02em' }}>Groundwork</span>
+      </div>
+      <div style={{ flex: 1, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 20px' }}>
+        <div style={{ width: '100%', maxWidth: 440 }}>
+          {children}
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export function InvitePage() {
   const [params] = useSearchParams()
   const token = params.get('token') ?? ''
   const navigate = useNavigate()
   const setAuth = useAuthStore((s) => s.setAuth)
-  const [firstName, setFirstName] = useState('')
-  const [lastName, setLastName] = useState('')
 
   const { data: preview, isLoading, isError } = useQuery({
     queryKey: ['invite', token],
@@ -21,118 +37,106 @@ export function InvitePage() {
   })
 
   const accept = useMutation({
-    mutationFn: () => participantsApi.accept(token, { firstName: firstName || undefined, lastName: lastName || undefined }),
+    mutationFn: () => participantsApi.accept(token, {}),
     onSuccess: (res) => {
       setAuth(res.user, res.accessToken)
       navigate(res.checkInId ? `/checkin/${res.checkInId}` : `/grounds/${res.groundId}`)
     },
   })
 
-  if (!token) return <InviteShell><ErrorCard msg="This invite link is missing its token." /></InviteShell>
-  if (isLoading) return <InviteShell><LoadingCard /></InviteShell>
-  if (isError || !preview) return <InviteShell><ErrorCard msg="This invite link is invalid or has already been used." /></InviteShell>
+  if (!token) {
+    return (
+      <Shell>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>Invalid invite</div>
+          <div style={{ fontSize: 13, color: 'var(--gw-sub)' }}>This invite link is missing its token.</div>
+        </div>
+      </Shell>
+    )
+  }
+
+  if (isLoading) {
+    return (
+      <Shell>
+        <div style={{ fontSize: 13, color: 'var(--gw-muted)', textAlign: 'center' }}>Loading…</div>
+      </Shell>
+    )
+  }
+
+  if (isError || !preview) {
+    return (
+      <Shell>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>Invite not found</div>
+          <div style={{ fontSize: 13, color: 'var(--gw-sub)' }}>This invite link is invalid or has already been used.</div>
+        </div>
+      </Shell>
+    )
+  }
 
   if (preview.alreadyAccepted) {
     return (
-      <InviteShell>
+      <Shell>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 28, marginBottom: 12 }}>👋</div>
-          <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>You've already joined</div>
-          <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 20 }}>
+          <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>You have already joined</div>
+          <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 24, lineHeight: 1.6 }}>
             Sign in to continue your check-in for <strong>{preview.groundLabel}</strong>.
           </div>
-          <button className="gw-btn" style={{ display: 'inline-block', width: 'auto', padding: '10px 20px' }} onClick={() => navigate('/enter')}>
-            Sign in →
+          <button className="gw-btn" style={{ display: 'inline-block', width: 'auto', padding: '10px 24px' }} onClick={() => navigate('/auth?mode=signin')}>
+            Sign in
           </button>
         </div>
-      </InviteShell>
+      </Shell>
     )
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--gw-bg)', display: 'flex', flexDirection: 'column' }}>
-      <div className="gw-hdr">
-        <a href="https://myground.work" target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex' }}><GroundworkLogo /></a>
+    <Shell>
+      <div style={{ marginBottom: 8, fontSize: 11, fontWeight: 600, color: 'var(--gw-muted)', textTransform: 'uppercase', letterSpacing: '.06em' }}>
+        You have been invited
       </div>
 
-      <div className="gw-bd" style={{ maxWidth: 480, margin: '0 auto', width: '100%', paddingTop: 24 }}>
-        <div className="gw-ttl">{preview.initiatorName} wants to hear your version</div>
-        <div className="gw-sub-t">
-          A Groundwork session about: <strong>{preview.groundLabel}</strong>.
-        </div>
-
-        {preview.roleAsDescribed && (
-          <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 12 }}>
-            Your role as described: <strong>{preview.roleAsDescribed}</strong>
-          </div>
-        )}
-
-        <div className="gw-box gw-box-blue" style={{ marginBottom: 16 }}>
-          Both sides check in separately and privately. Your version is yours —{' '}
-          <strong>{preview.initiatorName} never sees what you write.</strong>{' '}
-          A shared picture releases only after both of you complete two sessions.
-        </div>
-
-        <form onSubmit={(e) => { e.preventDefault(); accept.mutate() }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 4 }}>
-            <div className="gw-fld" style={{ margin: 0 }}>
-              <label className="gw-label">First name</label>
-              <input className="gw-input" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Optional" />
-            </div>
-            <div className="gw-fld" style={{ margin: 0 }}>
-              <label className="gw-label">Last name</label>
-              <input className="gw-input" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Optional" />
-            </div>
-          </div>
-          <button className="gw-btn" type="submit" style={{ marginTop: 12 }} disabled={accept.isPending}>
-            {accept.isPending ? 'Joining…' : 'Add my version →'}
-          </button>
-        </form>
-
-        <div style={{ marginTop: 14, fontSize: 12, color: 'var(--gw-muted)', textAlign: 'center' }}>
-          By joining, you agree that your contribution record belongs to you.
-        </div>
-
-        <div style={{ marginTop: 18, paddingTop: 14, borderTop: '1px solid #E2E0DB', textAlign: 'center' }}>
-          <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 8, lineHeight: 1.6 }}>
-            You are never obligated to take part. If you would rather not, you can simply close this —
-            nothing is shared, and declining is never shown as a negative.
-          </div>
-          <button
-            className="gw-back"
-            style={{ width: 'auto', padding: '6px 14px', fontSize: 12 }}
-            onClick={() => navigate('/')}
-          >
-            Not right now
-          </button>
-        </div>
+      <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: '-.02em', color: 'var(--gw-text)', marginBottom: 6, lineHeight: 1.2 }}>
+        {preview.groundLabel}
       </div>
-    </div>
-  )
-}
 
-function InviteShell({ children }: { children: React.ReactNode }) {
-  return (
-    <div style={{ minHeight: '100vh', background: 'var(--gw-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-      <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 8, padding: '40px 32px', maxWidth: 400, width: '100%' }}>
-        {children}
+      <div style={{ fontSize: 14, color: 'var(--gw-sub)', marginBottom: 24, lineHeight: 1.6 }}>
+        {preview.initiatorName} opened a ground and wants your version.
       </div>
-    </div>
-  )
-}
 
-function ErrorCard({ msg }: { msg: string }) {
-  return (
-    <div style={{ textAlign: 'center' }}>
-      <div style={{ fontSize: 28, marginBottom: 12 }}>✕</div>
-      <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>Invalid invite</div>
-      <div style={{ fontSize: 13, color: 'var(--gw-sub)' }}>{msg}</div>
-    </div>
-  )
-}
+      <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.75, marginBottom: 24 }}>
+        <p style={{ marginBottom: 8 }}>Your check-in is private. {preview.initiatorName} does not see what you write until you both activate the report together.</p>
+        <p style={{ marginBottom: 8 }}>You give your account first, in your own words, before seeing any other version.</p>
+        <p>You can leave at any time. Declining is never shown as a negative.</p>
+      </div>
 
-function LoadingCard() {
-  return (
-    <div style={{ textAlign: 'center', color: 'var(--gw-muted)', fontSize: 13 }}>Loading invite…</div>
+      {preview.roleAsDescribed && (
+        <div className="gw-box gw-box-blue" style={{ marginBottom: 20 }}>
+          Your role as described: <strong>{preview.roleAsDescribed}</strong>
+        </div>
+      )}
+
+      <button
+        className="gw-btn"
+        onClick={() => accept.mutate()}
+        disabled={accept.isPending}
+        style={{ marginTop: 0 }}
+      >
+        {accept.isPending ? 'Opening your check-in…' : 'Submit my account'}
+      </button>
+
+      {accept.isError && (
+        <div className="gw-er" style={{ textAlign: 'center', marginTop: 8 }}>
+          Something went wrong. Try again.
+        </div>
+      )}
+
+      <button
+        onClick={() => navigate('/')}
+        style={{ marginTop: 12, background: 'none', border: 'none', fontSize: 12, color: 'var(--gw-muted)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline', padding: 0, width: '100%', textAlign: 'center', display: 'block' }}
+      >
+        Not right now
+      </button>
+    </Shell>
   )
 }

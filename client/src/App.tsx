@@ -27,6 +27,9 @@ import { InvitePage } from '@/pages/invite/InvitePage'
 import { PromptVersioningPage } from '@/pages/prompts/PromptVersioningPage'
 import { AdminPage } from '@/pages/admin/AdminPage'
 import { DemoConversationPage } from '@/pages/demo/DemoConversationPage'
+import { HomePage } from '@/pages/home/HomePage'
+import { EntryChat } from '@/pages/home/EntryChat'
+import { AppShell } from '@/components/layout/AppShell'
 import type { JSX } from 'react'
 
 const qc = new QueryClient({
@@ -40,7 +43,14 @@ function RequireAuth({ children }: { children: JSX.Element }) {
 
 function RootRoute() {
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
-  return isAuthenticated ? <GroundsListPage /> : <Navigate to="/auth?mode=signin" replace />
+  if (isAuthenticated) {
+    return (
+      <AppShell>
+        <GroundsListPage />
+      </AppShell>
+    )
+  }
+  return <HomePage />
 }
 
 function SessionGuard({ children }: { children: React.ReactNode }) {
@@ -63,6 +73,7 @@ export default function App() {
             <Route path="/verify-email" element={<MagicVerifyPage />} />
             <Route path="/set-password" element={<SetPasswordPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
+            <Route path="/entry-chat" element={<EntryChat />} />
             <Route path="/enter" element={<EnterPage />} />
             <Route path="/pin" element={<PinPage />} />
             <Route path="/invite" element={<InvitePage />} />
@@ -73,20 +84,20 @@ export default function App() {
             <Route path="/welcome" element={<WelcomePage />} />
 
             {/* Main app — require auth */}
-            <Route path="/grounds" element={<RequireAuth><GroundsListPage /></RequireAuth>} />
-            <Route path="/grounds/new" element={<RequireAuth><CreateGroundPage /></RequireAuth>} />
-            <Route path="/grounds/:id" element={<RequireAuth><GroundAdminPage /></RequireAuth>} />
-            <Route path="/grounds/:id/p" element={<RequireAuth><GroundParticipantPage /></RequireAuth>} />
+            <Route path="/grounds" element={<RequireAuth><AppShell><GroundsListPage /></AppShell></RequireAuth>} />
+            <Route path="/grounds/new" element={<RequireAuth><AppShell><CreateGroundPage /></AppShell></RequireAuth>} />
+            <Route path="/grounds/:id" element={<RequireAuth><AppShell><GroundAdminPage /></AppShell></RequireAuth>} />
+            <Route path="/grounds/:id/p" element={<RequireAuth><AppShell><GroundParticipantPage /></AppShell></RequireAuth>} />
             <Route path="/chat/:checkInId" element={<RequireAuth><ChatPage /></RequireAuth>} />
             <Route path="/checkin/:checkInId" element={<RequireAuth><ChatPage /></RequireAuth>} />
-            <Route path="/feed" element={<RequireAuth><AlignmentFeedPage /></RequireAuth>} />
-            <Route path="/billing" element={<RequireAuth><BillingPage /></RequireAuth>} />
+            <Route path="/feed" element={<RequireAuth><AppShell><AlignmentFeedPage /></AppShell></RequireAuth>} />
+            <Route path="/billing" element={<RequireAuth><AppShell><BillingPage /></AppShell></RequireAuth>} />
             <Route path="/billing/checkout" element={<RequireAuth><PaymentPage /></RequireAuth>} />
             <Route path="/billing/callback" element={<RequireAuth><BillingCallbackPage /></RequireAuth>} />
-            <Route path="/profile/:id?" element={<ProfilePage />} />
-            <Route path="/cofounder" element={<RequireAuth><CofounderPage /></RequireAuth>} />
-            <Route path="/prompts" element={<RequireAuth><PromptVersioningPage /></RequireAuth>} />
-            <Route path="/admin" element={<RequireAuth><AdminPage /></RequireAuth>} />
+            <Route path="/profile/:id?" element={<AppShell><ProfilePage /></AppShell>} />
+            <Route path="/cofounder" element={<RequireAuth><AppShell><CofounderPage /></AppShell></RequireAuth>} />
+            <Route path="/prompts" element={<RequireAuth><AppShell><PromptVersioningPage /></AppShell></RequireAuth>} />
+            <Route path="/admin" element={<RequireAuth><AppShell><AdminPage /></AppShell></RequireAuth>} />
 
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
