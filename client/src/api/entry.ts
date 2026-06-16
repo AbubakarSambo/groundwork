@@ -15,6 +15,8 @@ export interface EntryChatResponse {
 export const entryApi = {
   chat: (mode: EntryMode, messages: EntryMessage[]) =>
     apiClient.post<EntryChatResponse>('/entry/chat', { mode, messages }).then(r => r.data),
+  faq: (question: string) =>
+    apiClient.post<EntryChatResponse>('/entry/chat', { mode: 'faq', messages: [{ role: 'user', content: question }] }).then(r => r.data),
 }
 
 const STORAGE_KEY = 'gw-entry-session'
