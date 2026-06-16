@@ -4,7 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { PromptsService } from '../prompts';
 import { AnthropicService, ChatTurn } from './anthropic.service';
 import { ConversationContextService } from './context.service';
-import { buildRuntimeContext, buildScenarioPackForParty, RECORD_EXTRACTION_PROMPT, EVIDENCE_DEFINITION_STEP } from './prompt-library';
+import { buildIntakeBlock, RECORD_EXTRACTION_PROMPT } from './prompt-library';
 import { GroundworkEvents, CheckInCompletedEvent } from '../../common';
 import { DocumentsService } from '../documents/documents.service';
 import { BillingService } from '../billing/billing.service';
@@ -249,8 +249,13 @@ export class ConversationService {
     // Signal the frontend that the AI has delivered the session-closing elements
     // so the "Complete session" button can appear. Detected by the mandatory
     // SESSION CLOSE phrase defined in ENGINE_RULES.
-    const sessionComplete = reply.includes('Here is what is now in your record:') ||
-      (reply.includes('now in your record') && reply.includes('next steps'));
+    // The new spec's CHECK-IN ENDING always contains ELEMENT 1 (record summary) and
+    // ELEMENT 3 (next step options). Detect either the old phrase or the new ones.
+    const sessionComplete =
+      reply.includes('Here is what is now in your record:') ||
+      reply.includes('What is in your record from today') ||
+      reply.includes('in your record from today') ||
+      (reply.includes('now in your record') && (reply.includes('next step') || reply.includes('come back when')));
 
     return { reply: aiTurn.content, sessionComplete };
   }
@@ -274,62 +279,46 @@ export class ConversationService {
     const ground = await this.prisma.ground.findUnique({ where: { id: checkIn.groundId } });
     if (!ground) throw new NotFoundException('Ground not found');
 
-    const [systemPrompt, dbScenarioPack] = await Promise.all([
-      this.prompts.getActiveContent('system'),
-      // Try a party-specific DB override first (e.g. "scenario.new_project.initiator").
-      // Falls back to the code-generated party-filtered pack below.
-      this.prompts
-        .getActiveContent(`scenario.${ground.scenario.toLowerCase()}.${checkIn.participant.partyType.toLowerCase()}`)
-        .catch(() => ''),
-    ]);
-    // Use DB override when present; otherwise use the code-level pack pre-filtered
-    // to this party's questions only — this prevents the AI from seeing the other
-    // party's opening questions and confusing which role it is addressing.
-    const scenarioPack = dbScenarioPack || buildScenarioPackForParty(ground.scenario, checkIn.participant.partyType);
+    const systemPrompt = await this.prompts.getActiveContent('system');
+
+    // Load the prior session summary for PRIOR_SESSION in the intake block (max 500 chars).
+    let priorSession: string | undefined;
+    if (checkIn.sessionNumber >= 2) {
+      const prevCheckIn = await this.prisma.checkIn.findFirst({
+        where: { participantId: checkIn.participantId, sessionNumber: checkIn.sessionNumber - 1, status: CheckInStatus.COMPLETED },
+        select: { id: true },
+      });
+      if (prevCheckIn) {
+        const entries = await this.prisma.recordEntry.findMany({
+          where: { checkInId: prevCheckIn.id, participantId: checkIn.participantId },
+          orderBy: { createdAt: 'asc' },
+          select: { type: true, text: true },
+          take: 6,
+        });
+        if (entries.length) {
+          priorSession = entries.map(e => `(${e.type}) ${e.text.replace(/^\[VERIFIABILITY:\w+\] /, '')}`).join(' | ').slice(0, 500);
+        }
+      }
+    }
 
     const otherPartyCheckedIn = await this.hasOtherPartyCheckedIn(checkIn.groundId, checkIn.participantId);
-    const runtimeContext = buildRuntimeContext({
+    const intakeBlock = buildIntakeBlock({
       scenario: ground.scenario,
       partyType: checkIn.participant.partyType,
       sessionNumber: checkIn.sessionNumber,
       roleAsDescribed: checkIn.participant.roleAsDescribed,
       otherPartyCheckedIn,
       groundLabel: ground.label,
+      adminBrief: (ground as any).description ?? null,
+      priorContext: checkIn.participant.roleAsDescribed ?? null,
+      priorSession,
     });
 
-    // #2 — Returning user opening protocol: for session 2+, load the most
-    // important unresolved item from the last completed check-in and inject it.
-    // Also adds a guard preventing the AI from asking "what have you been working on".
+    // Returning user protocol: for session 2+, inject the most important unresolved
+    // item from the prior session so the AI opens with it specifically.
     let returningUserContext = '';
     if (checkIn.sessionNumber >= 2) {
       returningUserContext = await this.buildReturningUserContext(checkIn.participantId, checkIn.sessionNumber);
-    }
-
-    // #15 — Evidence Definition enforcement: track whether EVIDENCE_DEFINITION_STEP
-    // has been completed by checking for SUCCESS_DEFINITION entries with a named
-    // artefact and a named verifier in the current session's record.
-    // If not completed by turn 3 of session 1, inject the EVIDENCE_DEFINITION_STEP prompt.
-    let evidenceDefBlock = '';
-    if (checkIn.sessionNumber === 1 && latestMessage) {
-      evidenceDefBlock = await this.buildEvidenceDefinitionBlock(checkIn.id, checkIn.participantId);
-    }
-
-    // #11 — Document prompt: naturally surface the document question after the
-    // 2nd/3rd exchange if no documents have been uploaded yet. Follows conversation
-    // style: "there is probably something in writing that shows the current state of this."
-    let documentPromptBlock = '';
-    if (latestMessage && checkIn.sessionNumber === 1) {
-      const personTurnCount = await this.prisma.conversationTurn.count({
-        where: { checkInId: checkIn.id, role: TurnRole.PERSON },
-      });
-      const hasUploadedDocs = await this.prisma.groundDocument.count({
-        where: { groundId: checkIn.groundId, participantId: checkIn.participantId },
-      });
-      if (personTurnCount >= 2 && !hasUploadedDocs) {
-        documentPromptBlock = `# Document check (raise naturally after this response if not yet raised)
-There is probably something in writing that shows the current state of this: a message thread, a brief, an email, a contract, a proposal. Ask about it in one plain sentence, woven into the conversation rather than as a separate step.
-When a document is shared: ask what it confirms about what they said, and whether anything in it complicates or changes what they described. If it contradicts something they said, name the gap in plain conversational language and ask about it directly.`;
-      }
     }
 
     const [{ block: dynamicContext }, uploadedDocs] = await Promise.all([
@@ -352,7 +341,7 @@ When a document is shared: ask what it confirms about what they said, and whethe
         uploadedDocs.map((d) => `--- ${d.fileName} ---\n${d.content}`).join('\n\n')
       : '';
 
-    return [systemPrompt, scenarioPack, runtimeContext, returningUserContext, evidenceDefBlock, documentPromptBlock, dynamicContext, docContext].filter(Boolean).join('\n\n');
+    return [systemPrompt, intakeBlock, returningUserContext, dynamicContext, docContext].filter(Boolean).join('\n\n');
   }
 
   /**
@@ -444,7 +433,7 @@ When a document is shared: ask what it confirms about what they said, and whethe
     if (hasArtefact && hasVerifier) return '';
 
     // If only one or neither is complete, inject the evidence definition step.
-    return `# Evidence Definition (STEP 4) — not yet completed this session\n${EVIDENCE_DEFINITION_STEP}`;
+    return '';
   }
 
   /**

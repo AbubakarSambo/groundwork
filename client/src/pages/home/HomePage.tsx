@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
 import type { EntryMode } from '@/api/entry'
@@ -35,6 +35,7 @@ export function HomePage() {
     if (!trimmed || faqMutation.isPending) return
     setText('')
     setFaqAnswer('')
+    if (taRef.current) { taRef.current.style.height = 'auto' }
 
     if (trimmed.endsWith('?')) {
       faqMutation.mutate(trimmed)
@@ -50,8 +51,16 @@ export function HomePage() {
     navigate(`/entry-chat?mode=${mode}`)
   }
 
-  function handleKey(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === 'Enter') { e.preventDefault(); handleSubmit() }
+  const taRef = useRef<HTMLTextAreaElement>(null)
+
+  function handleKey(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit() }
+  }
+
+  function autoResize(e: React.ChangeEvent<HTMLTextAreaElement>) {
+    setText(e.target.value)
+    e.target.style.height = 'auto'
+    e.target.style.height = Math.min(e.target.scrollHeight, 180) + 'px'
   }
 
   return (
@@ -108,13 +117,14 @@ export function HomePage() {
             ))}
           </div>
 
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <input
-              type="text"
+          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+            <textarea
+              ref={taRef}
               value={text}
-              onChange={e => setText(e.target.value)}
+              onChange={autoResize}
               onKeyDown={handleKey}
               placeholder={PLACEHOLDERS[mode]}
+              rows={2}
               style={{
                 flex: 1,
                 padding: '10px 12px',
@@ -127,6 +137,8 @@ export function HomePage() {
                 fontFamily: 'inherit',
                 outline: 'none',
                 transition: 'border-color 0.1s',
+                resize: 'none',
+                overflow: 'hidden',
               }}
               onFocus={e => { e.target.style.borderColor = 'var(--gw-navy)' }}
               onBlur={e => { e.target.style.borderColor = 'var(--gw-border)' }}

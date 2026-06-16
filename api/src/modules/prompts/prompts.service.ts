@@ -113,11 +113,11 @@ export class PromptsService implements OnModuleInit {
   async createVersion(key: string, content: string, summary?: string) {
     if (key === 'system') {
       const INVARIANTS = [
-        'Record sharing requires explicit consent from both parties separately.',
-        "This is held separately from the other party's version.",
-        'BANNED WORDS — HARD RULE:',
-        'SEVEN-STAGE SEQUENCE — MANDATORY ORDER:',
         'THE WILLINGNESS GATE',
+        'CONSENT ARCHITECTURE',
+        'FAILING RELATIONSHIP PROTOCOL',
+        'SIMULTANEOUS REPORT REVEAL',
+        'BANNED WORDS AND PHRASES:',
       ];
       const missing = INVARIANTS.filter((inv) => !content.includes(inv));
       if (missing.length > 0) {
