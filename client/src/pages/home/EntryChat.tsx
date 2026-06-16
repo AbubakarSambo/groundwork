@@ -24,13 +24,14 @@ export function EntryChat() {
   const [opened, setOpened] = useState(false)
   const msgsRef = useRef<HTMLDivElement>(null)
   const taRef = useRef<HTMLTextAreaElement>(null)
+  const firstMessage = useRef('')
 
   const callApi = useMutation({
     mutationFn: (messages: EntryMessage[]) => entryApi.chat(mode, messages),
     onSuccess: res => {
       setMsgs(prev => {
         const next = [...prev.filter(m => m.role !== 'loading' as any), { role: 'assistant' as const, content: res.reply }]
-        entryStorage.save({ mode, messages: next, completed: res.sessionComplete, firstMessage: next[0]?.content ?? '' })
+        entryStorage.save({ mode, messages: next, completed: res.sessionComplete, firstMessage: firstMessage.current })
         return next
       })
       setLoading(false)
@@ -45,6 +46,7 @@ export function EntryChat() {
   useEffect(() => {
     const saved = entryStorage.load()
     if (saved && saved.mode === mode && saved.messages.length > 0) {
+      firstMessage.current = saved.firstMessage ?? ''
       setMsgs(saved.messages)
       setOpened(true)
       if (saved.completed) setDone(true)
@@ -54,10 +56,9 @@ export function EntryChat() {
       setMsgs(prev => [...prev, { role: 'loading' as any, content: '…' }])
       callApi.mutate(toSend)
     } else {
-      const initialMessages: EntryMessage[] = []
       setLoading(true)
       setMsgs([{ role: 'loading' as any, content: '…' }])
-      callApi.mutate(initialMessages)
+      callApi.mutate([])
       setOpened(true)
     }
   }, [])
@@ -74,7 +75,7 @@ export function EntryChat() {
 
     const next: EntryMessage[] = [...msgs.filter(m => m.role !== 'loading' as any), { role: 'user', content }]
     setMsgs([...next, { role: 'loading' as any, content: '…' }])
-    entryStorage.save({ mode, messages: next, completed: false, firstMessage: next[0]?.content ?? '' })
+    entryStorage.save({ mode, messages: next, completed: false, firstMessage: firstMessage.current })
     setLoading(true)
     callApi.mutate(next)
   }
@@ -98,31 +99,28 @@ export function EntryChat() {
           <div className="gw-logo">Groundwork</div>
           <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>{MODE_LABEL[mode]} · Entry session</div>
         </div>
-        <button className="gw-back" onClick={() => navigate('/')}>← Back</button>
+        <button className="gw-back" onClick={() => navigate('/')}>Back</button>
       </div>
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+      <div className="gw-chat-w">
         <div
           ref={msgsRef}
-          style={{ flex: 1, overflowY: 'auto', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 680, width: '100%', margin: '0 auto', alignSelf: 'center', boxSizing: 'border-box' }}
+          className="gw-chat-msgs"
+          style={{ maxWidth: 680, width: '100%', margin: '0 auto', alignSelf: 'center', boxSizing: 'border-box' }}
         >
+          {firstMessage.current && (
+            <div style={{ fontSize: 12, color: 'var(--gw-muted)', paddingBottom: 8, borderBottom: '0.5px solid var(--gw-border)', marginBottom: 4 }}>
+              {MODE_LABEL[mode]} · {firstMessage.current}
+            </div>
+          )}
+
           {visibleMsgs.map((m, i) => (
             <div
               key={i}
-              style={{
-                maxWidth: '82%',
-                alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start',
-                background: m.role === 'user' ? 'var(--gw-navy)' : 'white',
-                color: m.role === 'user' ? 'white' : 'var(--gw-text)',
-                border: m.role !== 'user' ? '0.5px solid var(--gw-border)' : 'none',
-                borderRadius: m.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                padding: '10px 14px',
-                fontSize: 14,
-                lineHeight: 1.65,
-                whiteSpace: 'pre-wrap',
-                opacity: (m.role as any) === 'loading' ? 0.5 : 1,
-                fontStyle: (m.role as any) === 'loading' ? 'italic' : 'normal',
-              }}
+              className={`gw-msg ${
+                (m.role as any) === 'loading' ? 'gw-msg-loading' :
+                m.role === 'user' ? 'gw-msg-user' : 'gw-msg-ai'
+              }`}
             >
               {m.content}
             </div>
@@ -140,7 +138,7 @@ export function EntryChat() {
             <div style={{ padding: '4px 14px', borderTop: '0.5px solid var(--gw-border)', fontSize: 11, color: 'var(--gw-sub)', background: 'var(--gw-bg)', lineHeight: 1.4 }}>
               Your words are private. Nothing is saved until you choose to save it.
             </div>
-            <div style={{ borderTop: '1px solid var(--gw-border)', background: 'white', padding: '10px 14px', display: 'flex', gap: 8, alignItems: 'flex-end', flexShrink: 0 }}>
+            <div className="gw-chat-bar">
               <textarea
                 ref={taRef}
                 placeholder="Share what is happening."
@@ -148,43 +146,16 @@ export function EntryChat() {
                 onChange={autoResize}
                 onKeyDown={handleKey}
                 disabled={loading || !opened}
-                style={{
-                  flex: 1,
-                  resize: 'none',
-                  height: 38,
-                  maxHeight: 120,
-                  padding: '8px 10px',
-                  fontSize: 13,
-                  lineHeight: 1.4,
-                  border: '1px solid var(--gw-border)',
-                  borderRadius: 6,
-                  background: opened && !loading ? 'white' : 'var(--gw-bg)',
-                  fontFamily: 'inherit',
-                  outline: 'none',
-                  color: 'var(--gw-text)',
-                }}
+                className="gw-chat-ta"
+                style={{ background: opened && !loading ? 'white' : 'var(--gw-bg)', maxHeight: 120 }}
               />
               <button
                 onClick={send}
                 disabled={loading || !opened}
-                style={{
-                  padding: '0 14px',
-                  borderRadius: 6,
-                  background: 'var(--gw-navy)',
-                  color: 'white',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: 18,
-                  flexShrink: 0,
-                  height: 38,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  opacity: (!opened || loading) ? 0.5 : 1,
-                  fontFamily: 'inherit',
-                }}
+                className="gw-send-btn"
+                style={{ height: 38 }}
               >
-                ↑
+                &#8593;
               </button>
             </div>
           </>

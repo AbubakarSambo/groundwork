@@ -85,7 +85,7 @@ export function HomePage() {
             Name the situation and the person involved. Groundwork builds a record from both sides.
           </p>
 
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
+          <div className="gw-mode-pills">
             {MODES.map(m => (
               <button
                 key={m.id}

@@ -1,9 +1,59 @@
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useMutation } from '@tanstack/react-query'
+import { authApi } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
 
 export function WelcomePage() {
   const navigate = useNavigate()
+  const [params] = useSearchParams()
   const user = useAuthStore(s => s.user)
+  const nextUrl = params.get('next') ?? '/grounds'
+  const isSecondSignin = params.has('next')
+
+  const requestToken = useMutation({
+    mutationFn: () => authApi.requestPasswordSetup(),
+    onSuccess: res => {
+      navigate(`/set-password?token=${res.token}&next=${encodeURIComponent(nextUrl)}`)
+    },
+    onError: () => navigate(nextUrl),
+  })
+
+  if (isSecondSignin) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
+        <div className="gw-hdr">
+          <a href="/" className="gw-logo" style={{ textDecoration: 'none', color: 'inherit' }}>Groundwork</a>
+        </div>
+        <div className="gw-bd" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '70vh', maxWidth: 420, margin: '0 auto', width: '100%' }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-muted)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 12 }}>
+            Welcome back{user?.firstName ? `, ${user.firstName}` : ''}
+          </div>
+          <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 8, letterSpacing: '-.01em', lineHeight: 1.2 }}>
+            Set a password to sign in directly next time.
+          </div>
+          <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 28, lineHeight: 1.65 }}>
+            You have been signing in with email links. A password lets you sign in directly from any device without waiting for an email.
+          </div>
+
+          <button
+            className="gw-btn"
+            onClick={() => requestToken.mutate()}
+            disabled={requestToken.isPending}
+            style={{ margin: 0 }}
+          >
+            {requestToken.isPending ? 'Setting up…' : 'Set a password'}
+          </button>
+
+          <button
+            onClick={() => navigate(nextUrl)}
+            style={{ marginTop: 12, background: 'none', border: 'none', fontSize: 13, color: 'var(--gw-muted)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline', padding: 0, textAlign: 'center' }}
+          >
+            Skip for now
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
@@ -12,40 +62,8 @@ export function WelcomePage() {
         <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 8, letterSpacing: '-.01em' }}>
           Welcome{user?.firstName ? `, ${user.firstName}` : ''}
         </div>
-        <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 28, lineHeight: 1.65 }}>
-          {user?.role === 'ADMIN' ? 'Founder / Admin' : 'Team member'}
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
-          {[
-            {
-              n: 1,
-              title: 'Your check-in is private',
-              body: 'Your words belong to you. Nobody reads your sessions. Your record is never shared without your explicit approval for a named decision chosen by you.',
-            },
-            {
-              n: 2,
-              title: 'Both sides build the picture',
-              body: "Each party checks in independently. Neither sees what the other wrote. A report shows both versions at the same time.",
-            },
-            {
-              n: 3,
-              title: 'The record builds over time',
-              body: "Each session deepens the picture. A confidence score shows how strong the evidence is. At 4/5 the recommendation is defensible.",
-            },
-          ].map(item => (
-            <div key={item.n} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '13px 14px', background: 'var(--gw-bg)', borderRadius: 'var(--gw-radius)', border: '0.5px solid var(--gw-border)' }}>
-              <div style={{ width: 22, height: 22, background: 'var(--gw-navy)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1, fontSize: 11, fontWeight: 700, color: 'white' }}>{item.n}</div>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 3 }}>{item.title}</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6 }}>{item.body}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-
         <button className="gw-btn" onClick={() => navigate('/grounds')} style={{ margin: 0 }}>
-          Open Groundwork →
+          Open Groundwork
         </button>
       </div>
     </div>

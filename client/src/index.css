@@ -499,6 +499,87 @@ body {
 .gw-sidebar { flex-shrink: 0; }
 @media (max-width: 640px) { .gw-sidebar { display: none !important; } }
 
+/* ── HOMEPAGE MODE PILLS (mobile) ───────────────────────── */
+.gw-mode-pills { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+@media (max-width: 400px) {
+  .gw-mode-pills { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+}
+
+/* ── MOBILE BOTTOM TAB BAR ───────────────────────────────── */
+.gw-mobile-tabs {
+  display: none;
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  background: white;
+  border-top: 0.5px solid #E2E0DB;
+  z-index: 100;
+  padding: 0 8px;
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+@media (max-width: 640px) {
+  .gw-mobile-tabs { display: flex; }
+}
+.gw-mobile-tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 8px 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 10px;
+  color: var(--gw-muted);
+  transition: color 0.1s;
+}
+.gw-mobile-tab.active { color: var(--gw-navy); }
+@media (max-width: 640px) {
+  .gw-bd { padding-bottom: 72px; }
+}
+
+/* ── THREE-PANEL GROUND VIEW ─────────────────────────────── */
+.gw-three-col {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  overflow: hidden;
+}
+.gw-panel {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+.gw-panel-left {
+  flex: 0 0 270px;
+  border-right: 0.5px solid var(--gw-border);
+  background: var(--gw-bg);
+}
+.gw-panel-center {
+  flex: 1;
+  min-width: 0;
+  border-right: 0.5px solid var(--gw-border);
+  padding: 14px 16px;
+  overflow-y: auto;
+}
+.gw-panel-right {
+  flex: 0 0 270px;
+  padding: 14px 16px;
+  overflow-y: auto;
+}
+@media (max-width: 768px) {
+  .gw-panel-left, .gw-panel-center, .gw-panel-right { flex: 1; border: none; width: 100%; }
+  .gw-panel-hide { display: none !important; }
+  .gw-panel-center { padding: 14px 14px 80px; }
+  .gw-panel-right { padding: 14px 14px 80px; }
+  .gw-panel-left { padding-bottom: 72px; }
+}
+@media (min-width: 769px) {
+  .gw-panel-hide { display: flex !important; }
+}
+
 /* ── PRINT (PDF export via window.print()) ───────────────── */
 @media print {
   /* Show the print transcript (hidden on screen) */

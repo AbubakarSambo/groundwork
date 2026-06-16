@@ -61,6 +61,16 @@ export class GroundsController {
     return this.grounds.activate(id, organizationId);
   }
 
+  @Get(':id/participants/:participantId/invite-url')
+  @ApiOperation({ summary: 'Get the current invite URL for a pending participant (initiator only)' })
+  async getParticipantInviteUrl(
+    @Param('id') id: string,
+    @Param('participantId') participantId: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.grounds.getParticipantInviteUrl(id, participantId, userId);
+  }
+
   @Post(':id/participants/:participantId/resend-invite')
   @ApiOperation({ summary: 'Resend an expired participant invite (GW-24)' })
   async resendParticipantInvite(

@@ -238,6 +238,18 @@ export class AuthService {
     return { message, email };
   }
 
+  async requestPasswordSetupForUser(userId: string): Promise<{ token: string }> {
+    await this.prisma.emailVerificationToken.updateMany({
+      where: { userId, type: TokenType.PASSWORD_SETUP, usedAt: null },
+      data: { usedAt: new Date() },
+    });
+    const token = crypto.randomBytes(32).toString('hex');
+    await this.prisma.emailVerificationToken.create({
+      data: { userId, token, type: TokenType.PASSWORD_SETUP, expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) },
+    });
+    return { token };
+  }
+
   async forgotPassword(dto: ForgotPasswordDto): Promise<{ message: string }> {
     const message = 'If an account with that email exists, a password reset link has been sent.';
     const user = await this.prisma.user.findUnique({ where: { email: dto.email.toLowerCase() } });

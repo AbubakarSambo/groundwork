@@ -187,25 +187,75 @@ export function GroundParticipantPage() {
 
             {report?.releasedAt ? (
               <div>
-                <div style={{ background: 'var(--gw-navy)', color: 'white', borderRadius: 10, padding: 16, marginBottom: 14 }}>
-                  <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,.55)', marginBottom: 8 }}>Resolution summary</div>
-                  <div style={{ fontSize: 14, lineHeight: 1.65 }}>{report.sharedPicture}</div>
+                {/* 1. Synthesis */}
+                <div style={{ background: 'var(--gw-navy)', color: 'white', borderRadius: 10, padding: 16, marginBottom: 12 }}>
+                  <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,.55)', marginBottom: 6 }}>Synthesis</div>
+                  <div style={{ fontSize: 13, lineHeight: 1.65 }}>{report.sharedPicture}</div>
                   <button onClick={() => navigator.clipboard?.writeText(report.sharedPicture).then(() => toast.success('Copied'))}
-                    style={{ marginTop: 12, fontSize: 12, fontWeight: 600, color: 'white', background: 'rgba(255,255,255,.15)', border: 'none', cursor: 'pointer', padding: '7px 12px', borderRadius: 6, fontFamily: 'inherit' }}>
+                    style={{ marginTop: 10, fontSize: 11, fontWeight: 600, color: 'white', background: 'rgba(255,255,255,.15)', border: 'none', cursor: 'pointer', padding: '6px 10px', borderRadius: 5, fontFamily: 'inherit' }}>
                     Copy
                   </button>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <button onClick={() => navigate('/grounds/new')}
-                    style={{ width: '100%', padding: 12, borderRadius: 7, background: 'none', color: 'var(--gw-navy)', fontSize: 14, fontWeight: 600, border: '1px solid var(--gw-blue-b)', cursor: 'pointer', fontFamily: 'inherit' }}>
-                    Open your own ground
-                  </button>
+
+                {/* 2. Ground confidence */}
+                <div style={{ background: 'white', border: '0.5px solid var(--gw-border)', borderRadius: 8, padding: '12px 14px', marginBottom: 12 }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-muted)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 6 }}>Ground confidence</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <ConfDots score={conf} />
+                    <div style={{ fontSize: 13, color: 'var(--gw-text)' }}>{conf}/5 sessions recorded</div>
+                  </div>
                 </div>
+
+                {/* 3. Probing observations */}
+                {myCheckIns.some((ci: any) => ci.specificityLevel || ci.recallConfidence) && (
+                  <div style={{ background: 'white', border: '0.5px solid var(--gw-border)', borderRadius: 8, padding: '12px 14px', marginBottom: 12 }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-muted)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 8 }}>Things to consider before session 2</div>
+                    {myCheckIns.filter((ci: any) => ci.specificityLevel).map((ci: any) => (
+                      <div key={ci.id} style={{ marginBottom: 6 }}>
+                        {ci.specificityLevel === 'vague' || ci.specificityLevel === 'managed' ? (
+                          <div style={{ fontSize: 12, color: 'var(--gw-text)', lineHeight: 1.6 }}>Your session {ci.sessionNumber} record stayed general. Think of a specific moment you could name in the next session.</div>
+                        ) : ci.specificityLevel === 'directional' ? (
+                          <div style={{ fontSize: 12, color: 'var(--gw-text)', lineHeight: 1.6 }}>You named themes in session {ci.sessionNumber}. Next session, try to name the exact event or conversation behind each one.</div>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* 4. Privacy reminder */}
+                <div style={{ background: 'var(--gw-bg)', border: '0.5px solid var(--gw-border)', borderRadius: 8, padding: '12px 14px', marginBottom: 12 }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-muted)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 6 }}>Privacy reminder</div>
+                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.65 }}>The other party cannot read your session words. They see only what appears in the shared report above. Your record is yours alone.</div>
+                </div>
+
+                <button onClick={() => navigate('/grounds/new')}
+                  style={{ width: '100%', padding: 11, borderRadius: 7, background: 'none', color: 'var(--gw-navy)', fontSize: 13, fontWeight: 600, border: '1px solid var(--gw-blue-b)', cursor: 'pointer', fontFamily: 'inherit' }}>
+                  Open your own ground
+                </button>
               </div>
             ) : (
-              <div style={{ background: 'var(--gw-bg)', border: '0.5px solid var(--gw-border)', borderRadius: 10, padding: 16, marginBottom: 14 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Report not yet released</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6 }}>The report is released by the ground administrator once both parties have completed session 2. You will both see it at the same time — neither party reads it before the other.</div>
+              <div>
+                {/* Even before report release, show what participant knows about their own sessions */}
+                {myCheckIns.length > 0 && myCheckIns.some((ci: any) => ci.status === 'COMPLETED') && (
+                  <div style={{ background: 'white', border: '0.5px solid var(--gw-border)', borderRadius: 8, padding: '12px 14px', marginBottom: 12 }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-muted)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 6 }}>Your sessions so far</div>
+                    {myCheckIns.filter((ci: any) => ci.status === 'COMPLETED').map((ci: any) => (
+                      <div key={ci.id} style={{ fontSize: 12, color: 'var(--gw-text)', lineHeight: 1.6, marginBottom: 4 }}>
+                        Session {ci.sessionNumber} complete{ci.completedAt ? ` · ${new Date(ci.completedAt).toLocaleDateString()}` : ''}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div style={{ background: 'var(--gw-bg)', border: '0.5px solid var(--gw-border)', borderRadius: 10, padding: 16, marginBottom: 12 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 5 }}>Report not yet released</div>
+                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6 }}>The report is released by the ground administrator once both parties have completed session 2. You will both see it at the same time.</div>
+                </div>
+
+                <div style={{ background: 'var(--gw-bg)', border: '0.5px solid var(--gw-border)', borderRadius: 8, padding: '12px 14px' }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-muted)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 5 }}>Privacy reminder</div>
+                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.65 }}>The other party cannot read your session words. Your record is yours alone until the report is released.</div>
+                </div>
               </div>
             )}
           </div>

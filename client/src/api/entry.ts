@@ -26,6 +26,7 @@ export interface EntrySession {
   messages: EntryMessage[]
   completed: boolean
   firstMessage: string
+  participantEmail?: string
 }
 
 export const entryStorage = {

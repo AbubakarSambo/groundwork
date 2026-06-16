@@ -20,6 +20,10 @@ export class EmailService {
     this.frontendUrl = this.configService.get<string>('resend.frontendUrl') || 'http://localhost:5173';
   }
 
+  buildInviteUrl(token: string): string {
+    return `${this.frontendUrl}/invite?token=${token}`;
+  }
+
   private async sendEmail(options: { to: string; subject: string; html: string }): Promise<void> {
     const { data, error } = await this.resend.emails.send({ from: this.fromEmail, ...options });
     if (error) {

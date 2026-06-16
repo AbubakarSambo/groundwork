@@ -146,4 +146,11 @@ export class AuthController {
   async getProfile(@CurrentUser() user: CurrentUserData) {
     return this.authService.getProfile(user.id);
   }
+
+  @Post('request-password-setup')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Generate a set-password token for the authenticated user (for password-optional offer)' })
+  async requestPasswordSetup(@CurrentUser('id') userId: string) {
+    return this.authService.requestPasswordSetupForUser(userId);
+  }
 }

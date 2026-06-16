@@ -133,11 +133,13 @@ export class GroundsService {
 
   async get(id: string, organizationId: string, requestingUserId?: string) {
     // Primary lookup by org — works for org members and the initiator.
+    const CHECKIN_SELECT = { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, specificityLevel: true, recallConfidence: true } as const;
+
     let ground = await this.prisma.ground.findFirst({
       where: { id, organizationId },
       include: {
         participants: { select: SAFE_PARTICIPANT_SELECT },
-        checkIns: { select: { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true } },
+        checkIns: { select: CHECKIN_SELECT },
         report: { select: { id: true, releasedAt: true, sharedPicture: true, createdAt: true } },
         resolution: true,
         patternDetections: {
@@ -156,7 +158,7 @@ export class GroundsService {
           where: { id },
           include: {
             participants: { select: SAFE_PARTICIPANT_SELECT },
-            checkIns: { select: { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true } },
+            checkIns: { select: CHECKIN_SELECT },
             report: { select: { id: true, releasedAt: true, sharedPicture: true, createdAt: true } },
             resolution: true,
             patternDetections: {
@@ -299,6 +301,26 @@ export class GroundsService {
     );
 
     return { message: 'Invite resent' };
+  }
+
+  /**
+   * Return the current invite URL for a participant who has not yet accepted.
+   * Only accessible to the initiator — they may need to share the link manually
+   * if the invite email was missed.
+   */
+  async getParticipantInviteUrl(groundId: string, participantId: string, initiatorId: string): Promise<{ inviteUrl: string }> {
+    const ground = await this.prisma.ground.findFirst({ where: { id: groundId, initiatorId } });
+    if (!ground) throw new ForbiddenException('Not the initiator of this ground');
+
+    const participant = await this.prisma.groundParticipant.findFirst({
+      where: { id: participantId, groundId },
+      select: { inviteToken: true, userId: true },
+    });
+    if (!participant) throw new NotFoundException('Participant not found');
+    if (participant.userId) throw new BadRequestException('This participant has already accepted their invite');
+    if (!participant.inviteToken) throw new BadRequestException('No active invite token');
+
+    return { inviteUrl: this.email.buildInviteUrl(participant.inviteToken) };
   }
 
   /**

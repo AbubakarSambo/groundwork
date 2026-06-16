@@ -9,6 +9,20 @@ import { GroundworkEvents, CheckInCompletedEvent } from '../../common';
 import { DocumentsService } from '../documents/documents.service';
 import { BillingService } from '../billing/billing.service';
 import { CheckInStatus, TurnRole, RecordEntryType, Cadence } from '@prisma/client';
+import { runIntake } from './intake';
+
+function mapSpecificityLevel(avgScore: number): string {
+  if (avgScore >= 0.6) return 'specific';
+  if (avgScore >= 0.35) return 'directional';
+  if (avgScore >= 0.15) return 'vague';
+  return 'managed';
+}
+
+function mapRecallConfidence(avgScore: number): string {
+  if (avgScore >= 0.5) return 'certain';
+  if (avgScore >= 0.25) return 'mostly_certain';
+  return 'uncertain';
+}
 
 const RECORD_EXTRACTION_SCHEMA = {
   name: 'emit_record_entries',
@@ -300,6 +314,24 @@ export class ConversationService {
       evidenceDefBlock = await this.buildEvidenceDefinitionBlock(checkIn.id, checkIn.participantId);
     }
 
+    // #11 — Document prompt: naturally surface the document question after the
+    // 2nd/3rd exchange if no documents have been uploaded yet. Follows conversation
+    // style: "there is probably something in writing that shows the current state of this."
+    let documentPromptBlock = '';
+    if (latestMessage && checkIn.sessionNumber === 1) {
+      const personTurnCount = await this.prisma.conversationTurn.count({
+        where: { checkInId: checkIn.id, role: TurnRole.PERSON },
+      });
+      const hasUploadedDocs = await this.prisma.groundDocument.count({
+        where: { groundId: checkIn.groundId, participantId: checkIn.participantId },
+      });
+      if (personTurnCount >= 2 && !hasUploadedDocs) {
+        documentPromptBlock = `# Document check (raise naturally after this response if not yet raised)
+There is probably something in writing that shows the current state of this: a message thread, a brief, an email, a contract, a proposal. Ask about it in one plain sentence, woven into the conversation rather than as a separate step.
+When a document is shared: ask what it confirms about what they said, and whether anything in it complicates or changes what they described. If it contradicts something they said, name the gap in plain conversational language and ask about it directly.`;
+      }
+    }
+
     const [{ block: dynamicContext }, uploadedDocs] = await Promise.all([
       this.context.build({
         groundId: checkIn.groundId,
@@ -320,7 +352,7 @@ export class ConversationService {
         uploadedDocs.map((d) => `--- ${d.fileName} ---\n${d.content}`).join('\n\n')
       : '';
 
-    return [systemPrompt, scenarioPack, runtimeContext, returningUserContext, evidenceDefBlock, dynamicContext, docContext].filter(Boolean).join('\n\n');
+    return [systemPrompt, scenarioPack, runtimeContext, returningUserContext, evidenceDefBlock, documentPromptBlock, dynamicContext, docContext].filter(Boolean).join('\n\n');
   }
 
   /**
@@ -337,7 +369,7 @@ export class ConversationService {
         sessionNumber: sessionNumber - 1,
         status: CheckInStatus.COMPLETED,
       },
-      select: { id: true },
+      select: { id: true, specificityLevel: true },
     });
     if (!prevCheckIn) return '';
 
@@ -359,12 +391,22 @@ export class ConversationService {
     const sorted = [...lastEntries].sort((a, b) => priority.indexOf(a.type as any) - priority.indexOf(b.type as any));
     const topItem = sorted[0];
 
+    const priorSpecificity = prevCheckIn.specificityLevel ?? 'unknown';
+    const lowSpecificity = priorSpecificity === 'vague' || priorSpecificity === 'managed';
+
     const lines: string[] = [
       `# Returning user — session ${sessionNumber}`,
       `GUARD: Do NOT ask "what have you been working on?" or "what has been going on?" or any equivalent generic opening. This person has been here before. Open by referencing their specific record.`,
       `Most important unresolved item from their last check-in (${topItem.type}): "${topItem.text}"`,
-      `Open by naming this specifically. Ask what has changed since they last described it.`,
     ];
+
+    if (lowSpecificity) {
+      lines.push(
+        `SPECIFICITY NOTE: Their last session produced ${priorSpecificity} specificity. Do not open with the same framing as last time. Ask about one unexpected angle: what almost went wrong, what they wish had gone differently, or what they held back last time. Push for something concrete they can name.`,
+      );
+    } else {
+      lines.push(`Open by naming this specifically. Ask what has changed since they last described it.`);
+    }
 
     return lines.join('\n');
   }
@@ -429,7 +471,18 @@ export class ConversationService {
       );
     }
 
-    await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { status: CheckInStatus.COMPLETED, completedAt: new Date() } });
+    // Score session specificity from person's turns before marking complete
+    const specificityData = await this.scoreSessionSpecificity(checkIn.id).catch(() => null);
+
+    await this.prisma.checkIn.update({
+      where: { id: checkIn.id },
+      data: {
+        status: CheckInStatus.COMPLETED,
+        completedAt: new Date(),
+        specificityLevel: specificityData?.level ?? null,
+        recallConfidence: specificityData?.recallConfidence ?? null,
+      },
+    });
 
     // Extract the structured record from this party's own transcript, then build
     // a single-party artifact (B2) so the person has standalone value from this
@@ -480,6 +533,27 @@ export class ConversationService {
     const d = new Date();
     d.setDate(d.getDate() + days);
     return d;
+  }
+
+  /**
+   * Score the specificity level for the session from person's turns.
+   * Returns mapped level (specific/directional/vague/managed) and recall confidence.
+   */
+  private async scoreSessionSpecificity(checkInId: string): Promise<{ level: string; recallConfidence: string }> {
+    const personTurns = await this.prisma.conversationTurn.findMany({
+      where: { checkInId, role: TurnRole.PERSON },
+      orderBy: { createdAt: 'asc' },
+      select: { content: true },
+    });
+    if (personTurns.length === 0) return { level: 'vague', recallConfidence: 'uncertain' };
+
+    const scores = personTurns.map(t => runIntake(t.content).specificity);
+    const avgScore = scores.reduce((a, b) => a + b, 0) / scores.length;
+
+    return {
+      level: mapSpecificityLevel(avgScore),
+      recallConfidence: mapRecallConfidence(avgScore),
+    };
   }
 
   /**

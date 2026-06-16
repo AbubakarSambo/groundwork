@@ -41,6 +41,9 @@ export const groundsApi = {
   resendParticipantInvite: (groundId: string, participantId: string) =>
     apiClient.post(`/grounds/${groundId}/participants/${participantId}/resend-invite`).then(r => r.data),
 
+  getParticipantInviteUrl: (groundId: string, participantId: string) =>
+    apiClient.get<{ inviteUrl: string }>(`/grounds/${groundId}/participants/${participantId}/invite-url`).then(r => r.data),
+
   getMediatorBrief: (groundId: string) =>
     apiClient.get(`/grounds/${groundId}/mediator-brief`).then(r => r.data),
 

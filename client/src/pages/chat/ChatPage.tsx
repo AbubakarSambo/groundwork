@@ -68,7 +68,7 @@ export function ChatPage() {
 
   const complete = useMutation({
     mutationFn: () => conversationApi.complete(checkInId!),
-    onSuccess: () => navigate('/grounds'),
+    onSuccess: () => navigate(groundId ? `/grounds/${groundId}/p` : '/grounds'),
   })
 
   const uploadDoc = useMutation({
@@ -137,11 +137,11 @@ export function ChatPage() {
       </div>
 
       {/* Chat area */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+      <div className="gw-chat-w">
         {/* Messages */}
         <div
           ref={msgsRef}
-          style={{ flex: 1, overflowY: 'auto', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}
+          className="gw-chat-msgs"
         >
           {openSession.isPending && (
             <div style={{ fontSize: 13, color: 'var(--gw-muted)', textAlign: 'center', padding: 16 }}>Opening your session…</div>
@@ -149,19 +149,10 @@ export function ChatPage() {
           {msgs.map(m => (
             <div
               key={m.id}
-              style={{
-                maxWidth: '80%',
-                alignSelf: m.role === 'PERSON' ? 'flex-end' : 'flex-start',
-                background: m.role === 'PERSON' ? 'var(--gw-navy)' : 'white',
-                color: m.role === 'PERSON' ? 'white' : 'var(--gw-text)',
-                border: m.role === 'AI' ? '0.5px solid var(--gw-border)' : 'none',
-                borderRadius: m.role === 'PERSON' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                padding: '10px 14px',
-                fontSize: 14,
-                lineHeight: 1.6,
-                whiteSpace: 'pre-wrap',
-                opacity: m.id === 'loading' ? 0.5 : 1,
-              }}
+              className={`gw-msg ${
+                m.id === 'loading' ? 'gw-msg-loading' :
+                m.role === 'PERSON' ? 'gw-msg-user' : 'gw-msg-ai'
+              }`}
             >
               {m.content}
             </div>
@@ -180,13 +171,14 @@ export function ChatPage() {
         </div>
 
         {/* Quick action chips */}
-        <div style={{ padding: '8px 14px', background: 'white', borderTop: '1px solid var(--gw-border)', display: 'flex', gap: 7, flexWrap: 'wrap', flexShrink: 0 }}>
+        <div className="gw-chat-actions">
           {QUICK_ACTIONS.map(a => (
             <button
               key={a.label}
               onClick={() => quickSend(a.msg)}
               disabled={loading || done || !opened}
-              style={{ padding: '5px 12px', borderRadius: 20, fontSize: 12, border: '1px solid var(--gw-border)', background: 'var(--gw-bg)', color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit', opacity: (!opened || done) ? 0.5 : 1 }}
+              className="gw-btn-sm"
+              style={{ opacity: (!opened || done) ? 0.5 : 1 }}
             >
               {a.label}
             </button>
@@ -201,13 +193,13 @@ export function ChatPage() {
           </div>
 
           {/* Input row: upload · textarea · send */}
-          <div style={{ padding: '10px 14px', display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+          <div className="gw-chat-bar">
             <label
               htmlFor="doc-upload"
-              title="Upload a document — written agreements, messages, briefs"
+              title="Upload a document"
               style={{ padding: '0 10px', borderRadius: 6, background: 'var(--gw-bg)', color: 'var(--gw-sub)', border: '0.5px solid var(--gw-border)', cursor: groundId ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, flexShrink: 0, whiteSpace: 'nowrap', height: 38, opacity: groundId ? 1 : 0.4 }}
             >
-              + <span style={{ fontSize: 11 }}>Upload doc</span>
+              + <span style={{ fontSize: 11 }}>Doc</span>
             </label>
             <input type="file" id="doc-upload" accept=".pdf,.doc,.docx,.txt,.csv,.xlsx,.png,.jpg,.jpeg" style={{ display: 'none' }}
               onChange={e => { const f = e.target.files?.[0]; if (f && groundId) uploadDoc.mutate(f); e.currentTarget.value = '' }} />
@@ -219,15 +211,17 @@ export function ChatPage() {
               onChange={autoResize}
               onKeyDown={handleKeyDown}
               disabled={loading || done || !opened}
-              style={{ flex: 1, resize: 'none', height: 38, maxHeight: 120, padding: '8px 10px', fontSize: 13, lineHeight: 1.4, border: '1px solid var(--gw-border)', borderRadius: 6, background: opened ? 'white' : 'var(--gw-bg)', fontFamily: 'inherit', outline: 'none' }}
+              className="gw-chat-ta"
+              style={{ background: opened && !loading ? 'white' : 'var(--gw-bg)', maxHeight: 120 }}
             />
 
             <button
               onClick={send}
               disabled={loading || done || !opened}
-              style={{ padding: '0 14px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 18, flexShrink: 0, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: (!opened || done) ? 0.5 : 1 }}
+              className="gw-send-btn"
+              style={{ height: 38 }}
             >
-              ↑
+              &#8593;
             </button>
           </div>
         </div>

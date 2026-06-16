@@ -50,6 +50,8 @@ export interface CheckInSummary {
   sessionNumber: number
   status: CheckInStatus
   completedAt?: string | null
+  specificityLevel?: string | null
+  recallConfidence?: string | null
 }
 
 export interface GroundSignal {

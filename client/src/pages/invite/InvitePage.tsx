@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { participantsApi } from '@/api'
+import { entryApi } from '@/api/entry'
 import { useAuthStore } from '@/stores/auth'
 
 function Shell({ children }: { children: React.ReactNode }) {
@@ -28,6 +30,8 @@ export function InvitePage() {
   const token = params.get('token') ?? ''
   const navigate = useNavigate()
   const setAuth = useAuthStore((s) => s.setAuth)
+  const [faqInput, setFaqInput] = useState('')
+  const [faqAnswer, setFaqAnswer] = useState('')
 
   const { data: preview, isLoading, isError } = useQuery({
     queryKey: ['invite', token],
@@ -43,6 +47,19 @@ export function InvitePage() {
       navigate(res.checkInId ? `/checkin/${res.checkInId}` : `/grounds/${res.groundId}`)
     },
   })
+
+  const faqMutation = useMutation({
+    mutationFn: (q: string) => entryApi.faq(q),
+    onSuccess: res => setFaqAnswer(res.reply),
+    onError: () => setFaqAnswer('That is something the team can answer. hello@myground.work'),
+  })
+
+  function handleFaqKey(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter') {
+      const q = faqInput.trim()
+      if (q) { faqMutation.mutate(q); setFaqInput('') }
+    }
+  }
 
   if (!token) {
     return (
@@ -92,22 +109,14 @@ export function InvitePage() {
 
   return (
     <Shell>
-      <div style={{ marginBottom: 8, fontSize: 11, fontWeight: 600, color: 'var(--gw-muted)', textTransform: 'uppercase', letterSpacing: '.06em' }}>
-        You have been invited
-      </div>
-
-      <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: '-.02em', color: 'var(--gw-text)', marginBottom: 6, lineHeight: 1.2 }}>
+      <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-.02em', color: 'var(--gw-text)', marginBottom: 6, lineHeight: 1.2 }}>
         {preview.groundLabel}
       </div>
 
-      <div style={{ fontSize: 14, color: 'var(--gw-sub)', marginBottom: 24, lineHeight: 1.6 }}>
-        {preview.initiatorName} opened a ground and wants your version.
-      </div>
-
-      <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.75, marginBottom: 24 }}>
-        <p style={{ marginBottom: 8 }}>Your check-in is private. {preview.initiatorName} does not see what you write until you both activate the report together.</p>
-        <p style={{ marginBottom: 8 }}>You give your account first, in your own words, before seeing any other version.</p>
-        <p>You can leave at any time. Declining is never shown as a negative.</p>
+      <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 24, lineHeight: 1.7 }}>
+        <p style={{ marginBottom: 6 }}>{preview.initiatorName} opened a ground and wants your version of what happened.</p>
+        <p style={{ marginBottom: 6 }}>Your check-in is private. {preview.initiatorName} does not see what you write until you both activate the report together.</p>
+        <p>You give your account first, in your own words, before seeing any other version.</p>
       </div>
 
       {preview.roleAsDescribed && (
@@ -137,6 +146,35 @@ export function InvitePage() {
       >
         Not right now
       </button>
+
+      {/* Inline FAQ */}
+      <div style={{ marginTop: 28, paddingTop: 18, borderTop: '0.5px solid var(--gw-border)' }}>
+        <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginBottom: 8 }}>Have a question? Ask here.</div>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <input
+            type="text"
+            value={faqInput}
+            onChange={e => { setFaqInput(e.target.value); setFaqAnswer('') }}
+            onKeyDown={handleFaqKey}
+            placeholder="What does this cost? Is my account private?"
+            style={{ flex: 1, padding: '7px 10px', fontSize: 12, border: '1px solid var(--gw-border)', borderRadius: 6, background: 'white', color: 'var(--gw-text)', fontFamily: 'inherit', outline: 'none' }}
+            onFocus={e => { e.target.style.borderColor = 'var(--gw-navy)' }}
+            onBlur={e => { e.target.style.borderColor = 'var(--gw-border)' }}
+          />
+          <button
+            onClick={() => { const q = faqInput.trim(); if (q) { faqMutation.mutate(q); setFaqInput('') } }}
+            disabled={faqMutation.isPending || !faqInput.trim()}
+            style={{ padding: '0 12px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 14, opacity: faqMutation.isPending ? 0.6 : 1, fontFamily: 'inherit' }}
+          >
+            &#8593;
+          </button>
+        </div>
+        {faqAnswer && (
+          <div style={{ marginTop: 8, padding: '10px 12px', background: 'white', border: '0.5px solid var(--gw-border)', borderRadius: 6, fontSize: 12, color: 'var(--gw-text)', lineHeight: 1.65 }}>
+            {faqAnswer}
+          </div>
+        )}
+      </div>
     </Shell>
   )
 }

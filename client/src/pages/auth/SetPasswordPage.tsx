@@ -13,11 +13,13 @@ export function SetPasswordPage() {
   const [confirm, setConfirm] = useState('')
   const [error, setError] = useState('')
 
+  const next = params.get('next') ?? '/grounds'
+
   const save = useMutation({
     mutationFn: () => authApi.setPassword(token, password),
     onSuccess: res => {
       setAuth(res.user, res.accessToken)
-      navigate('/grounds', { replace: true })
+      navigate(next, { replace: true })
     },
     onError: (err: any) => {
       const msg = err?.response?.data?.message

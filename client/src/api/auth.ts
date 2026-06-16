@@ -30,4 +30,7 @@ export const authApi = {
 
   me: () =>
     apiClient.get<User>('/auth/me').then(r => r.data),
+
+  requestPasswordSetup: () =>
+    apiClient.post<{ token: string }>('/auth/request-password-setup').then(r => r.data),
 }
