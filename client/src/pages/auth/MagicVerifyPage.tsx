@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useMutation } from '@tanstack/react-query'
 import { authApi } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
 import { entryStorage, participantStorage } from '@/api/entry'
@@ -20,6 +21,17 @@ export function MagicVerifyPage() {
   const navigate = useNavigate()
   const setAuth = useAuthStore(s => s.setAuth)
   const [error, setError] = useState('')
+  const [resendEmail, setResendEmail] = useState(() => sessionStorage.getItem('gw_magic_email') ?? '')
+  const [resendSent, setResendSent] = useState(false)
+
+  const resend = useMutation({
+    mutationFn: () => authApi.entrySave(resendEmail.trim()),
+    onSuccess: () => {
+      sessionStorage.setItem('gw_magic_type', 'entry')
+      sessionStorage.setItem('gw_magic_email', resendEmail.trim())
+      setResendSent(true)
+    },
+  })
 
   useEffect(() => {
     const token = params.get('token')
@@ -106,12 +118,42 @@ export function MagicVerifyPage() {
           <div style={{ fontSize: 14, color: 'var(--gw-sub)' }}>Signing you in…</div>
         </div>
       ) : (
-        <div style={{ textAlign: 'center', maxWidth: 340, padding: '0 20px' }}>
-          <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>Link invalid</div>
-          <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 20, lineHeight: 1.6 }}>{error}</div>
-          <button className="gw-btn" style={{ display: 'inline-block', width: 'auto', padding: '10px 24px' }} onClick={() => navigate('/auth')}>
-            Get a new link
-          </button>
+        <div style={{ maxWidth: 360, width: '100%', padding: '0 20px' }}>
+          <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 8, textAlign: 'center' }}>Link expired</div>
+          <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 20, lineHeight: 1.6, textAlign: 'center' }}>
+            This link has expired or has already been used. Enter your email and we will send a fresh one.
+          </div>
+          {resendSent ? (
+            <div style={{ textAlign: 'center', fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+              A new link is on its way to <strong>{resendEmail.trim()}</strong>. Check your inbox and follow it on this device.
+            </div>
+          ) : (
+            <>
+              <input
+                type="email"
+                value={resendEmail}
+                onChange={e => setResendEmail(e.target.value)}
+                placeholder="your@email.com"
+                style={{ width: '100%', padding: '10px 12px', fontSize: 13, fontFamily: 'inherit', border: '1px solid var(--gw-border)', borderRadius: 7, background: 'white', color: 'var(--gw-text)', outline: 'none', boxSizing: 'border-box', marginBottom: 10 }}
+              />
+              <button
+                className="gw-btn"
+                style={{ margin: 0 }}
+                disabled={!resendEmail.trim() || resend.isPending}
+                onClick={() => resend.mutate()}
+              >
+                {resend.isPending ? 'Sending…' : 'Send a new link'}
+              </button>
+              {resend.isError && (
+                <div style={{ fontSize: 12, color: '#c0392b', marginTop: 8, textAlign: 'center' }}>Could not send. Try again.</div>
+              )}
+              <div style={{ marginTop: 16, textAlign: 'center' }}>
+                <span onClick={() => navigate('/auth')} style={{ fontSize: 12, color: 'var(--gw-sub)', cursor: 'pointer', textDecoration: 'underline' }}>
+                  Sign in with a different email
+                </span>
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>

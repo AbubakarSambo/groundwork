@@ -32,6 +32,7 @@ import { OnboardingChat } from '@/pages/home/OnboardingChat'
 import { ParticipantOnboardingChat } from '@/pages/home/ParticipantOnboardingChat'
 import { LeadOnboardingChat } from '@/pages/home/LeadOnboardingChat'
 import { AppShell } from '@/components/layout/AppShell'
+import { FeedbackWidget } from '@/components/FeedbackWidget'
 import type { JSX } from 'react'
 
 const qc = new QueryClient({
@@ -66,6 +67,7 @@ export default function App() {
       <BrowserRouter>
         <SessionGuard>
           <Toaster position="top-right" richColors />
+          <FeedbackWidget />
           <Routes>
             {/* Public */}
             <Route path="/" element={<RootRoute />} />

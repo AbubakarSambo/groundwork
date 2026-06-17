@@ -43,9 +43,14 @@ export function MagicSentPage() {
     return () => window.removeEventListener('storage', handleStorage)
   }, [])
 
-  // Resend re-uses whatever body was cached in sessionStorage from the sign-up form
+  // Resend: entry-save flow (participant/anonymous) uses entrySave; founder flow uses requestMagicLink
   const resend = useMutation({
     mutationFn: () => {
+      const flowType = sessionStorage.getItem('gw_magic_type')
+      if (flowType === 'entry') {
+        const resendEmail = sessionStorage.getItem('gw_magic_email') || email
+        return authApi.entrySave(resendEmail)
+      }
       const cached = sessionStorage.getItem('gw_magic_body')
       const body: MagicLinkBody = cached ? JSON.parse(cached) : { email, firstName: '', lastName: '', organizationName: '' }
       return authApi.requestMagicLink(body)

@@ -30,15 +30,30 @@ export class BillingService {
     private email: EmailService,
   ) {}
 
-  /** The gate: an org is billing-ready once its care fee is active. */
+  /** The gate: an org is billing-ready once its care fee is active (or contributor bypass is set). */
   async isBillingReady(organizationId: string): Promise<boolean> {
     const BILLING_ENABLED = process.env.BILLING_ENABLED !== 'false';
     if (!BILLING_ENABLED) return true;
     const org = await this.prisma.organization.findUnique({
       where: { id: organizationId },
-      select: { careFeeStatus: true, stripeCustomerId: true },
+      select: { careFeeStatus: true, stripeCustomerId: true, contributorBypass: true },
     });
-    return !!org && org.careFeeStatus === CareFeeStatus.ACTIVE && !!org.stripeCustomerId;
+    if (!org) return false;
+    if (org.contributorBypass) return true;
+    return org.careFeeStatus === CareFeeStatus.ACTIVE && !!org.stripeCustomerId;
+  }
+
+  /** Apply a contributor code to bypass payment for platform reviewers. */
+  async applyContributorCode(organizationId: string, code: string): Promise<{ applied: boolean }> {
+    const VALID_CODES = (process.env.CONTRIBUTOR_CODES ?? 'GWCONTRIB2026').split(',').map(c => c.trim());
+    if (!VALID_CODES.includes(code)) {
+      return { applied: false };
+    }
+    await this.prisma.organization.update({
+      where: { id: organizationId },
+      data: { contributorBypass: true },
+    });
+    return { applied: true };
   }
 
   /**
@@ -214,7 +229,7 @@ export class BillingService {
   }> {
     const org = await this.prisma.organization.findUnique({
       where: { id: organizationId },
-      select: { careFeeStatus: true },
+      select: { careFeeStatus: true, contributorBypass: true },
     });
     if (!org) throw new NotFoundException('Organization not found');
 
@@ -225,7 +240,7 @@ export class BillingService {
 
     const SCENARIO_FEE = 50;
     const CARE_FEE = 20;
-    const careFeeActive = org.careFeeStatus === CareFeeStatus.ACTIVE;
+    const careFeeActive = org.contributorBypass || org.careFeeStatus === CareFeeStatus.ACTIVE;
 
     const groundsOut = activeGrounds.map((g) => ({
       groundId: g.id,

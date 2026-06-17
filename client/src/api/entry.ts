@@ -22,6 +22,16 @@ export const entryApi = {
 export const participantApi = {
   chat: (token: string, messages: EntryMessage[]) =>
     apiClient.post<EntryChatResponse>('/entry/participant-chat', { token, messages }).then(r => r.data),
+
+  uploadDocument: (token: string, file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    return apiClient.post<{ id: string; name: string; mimeType: string; uploadedAt: string }>(
+      `/entry/participant-document?token=${encodeURIComponent(token)}`,
+      form,
+      { headers: { 'Content-Type': 'multipart/form-data' } },
+    ).then(r => r.data)
+  },
 }
 
 const STORAGE_KEY = 'gw-entry-session'

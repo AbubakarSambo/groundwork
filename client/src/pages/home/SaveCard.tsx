@@ -50,22 +50,49 @@ export function SaveCard({ mode, variant = 'admin', onClear }: Props) {
   const saveSession = useMutation({
     mutationFn: (emailVal: string) => authApi.entrySave(emailVal),
     onSuccess: () => {
-      navigate(`/auth/sent?email=${encodeURIComponent(email.trim())}`)
+      const trimmed = email.trim()
+      sessionStorage.setItem('gw_magic_type', 'entry')
+      sessionStorage.setItem('gw_magic_email', trimmed)
+      navigate(`/auth/sent?email=${encodeURIComponent(trimmed)}`)
     },
     onError: () => {
-      navigate(`/auth/sent?email=${encodeURIComponent(email.trim())}`)
+      const trimmed = email.trim()
+      sessionStorage.setItem('gw_magic_type', 'entry')
+      sessionStorage.setItem('gw_magic_email', trimmed)
+      navigate(`/auth/sent?email=${encodeURIComponent(trimmed)}`)
     },
   })
 
   if (variant === 'participant') {
     return (
       <div style={{ background: 'white', border: '0.5px solid var(--gw-border)', borderRadius: 12, overflow: 'hidden' }}>
+        {/* What happens next */}
+        <div style={{ padding: '14px 16px', background: 'var(--gw-green-bg)', borderBottom: '0.5px solid var(--gw-green-b)' }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-green-t)', marginBottom: 8 }}>
+            Session 1 is on record.
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>
+              <span style={{ color: 'var(--gw-green-t)', fontWeight: 700, flexShrink: 0 }}>✓</span>
+              <span>Your account is saved and private. No one else can read it.</span>
+            </div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>
+              <span style={{ color: 'var(--gw-muted)', fontWeight: 700, flexShrink: 0 }}>2</span>
+              <span>The other parties will submit their accounts independently, without seeing what you wrote.</span>
+            </div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>
+              <span style={{ color: 'var(--gw-muted)', fontWeight: 700, flexShrink: 0 }}>3</span>
+              <span>Once all accounts are in, everyone sees the report at the same moment. The report shows where accounts agree, where they differ, and what the gaps mean.</span>
+            </div>
+          </div>
+        </div>
+        {/* Save account */}
         <div style={{ padding: '14px 16px', background: 'var(--gw-blue-bg)', borderBottom: '0.5px solid var(--gw-blue-b)' }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 3 }}>
-            Your conversation is ready to save.
+          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 3 }}>
+            Save your account to receive the report.
           </div>
           <div style={{ fontSize: 12, color: 'var(--gw-blue-t)', lineHeight: 1.5 }}>
-            Enter the email where you received this invite. A link lands in your inbox to confirm your account and see the report when it is ready.
+            Enter the email where you received this invite. We will send you a link when the report is ready.
           </div>
         </div>
         <div style={{ padding: '16px' }}>
@@ -91,9 +118,6 @@ export function SaveCard({ mode, variant = 'admin', onClear }: Props) {
               {saveSession.isPending ? 'Sending…' : 'Save my account'}
             </button>
           </form>
-          <div style={{ marginTop: 10, fontSize: 11, color: 'var(--gw-muted)', textAlign: 'center', lineHeight: 1.5 }}>
-            A link lands in your inbox. Follow it to see the report when both parties have submitted.
-          </div>
         </div>
         <div style={{ padding: '0 16px 14px', textAlign: 'center' }}>
           <button

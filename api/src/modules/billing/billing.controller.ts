@@ -1,4 +1,4 @@
-import { Controller, Delete, Get, Post, Req, Headers, HttpCode, HttpStatus, Logger } from '@nestjs/common';
+import { Controller, Delete, Get, Post, Body, Req, Headers, HttpCode, HttpStatus, Logger } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { BillingService } from './billing.service';
 import { StripeService } from './stripe.service';
@@ -43,6 +43,17 @@ export class BillingController {
   @ApiOperation({ summary: 'Cancel the care fee subscription (at period end) — self-serve' })
   async cancelCareFee(@CurrentUser('organizationId') organizationId: string) {
     return this.billing.cancelCareFee(organizationId);
+  }
+
+  @Post('contributor-code')
+  @ApiBearerAuth()
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Apply a contributor bypass code to skip payment for platform reviewers' })
+  async applyContributorCode(
+    @CurrentUser('organizationId') organizationId: string,
+    @Body('code') code: string,
+  ) {
+    return this.billing.applyContributorCode(organizationId, code);
   }
 
   @Post('portal')

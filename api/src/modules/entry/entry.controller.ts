@@ -1,5 +1,6 @@
-import { Controller, Post, Body } from '@nestjs/common';
-import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { Controller, Post, Body, Query, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiTags, ApiOperation, ApiConsumes } from '@nestjs/swagger';
 import { IsString, IsNotEmpty, IsArray, MaxLength, IsIn } from 'class-validator';
 import { Type } from 'class-transformer';
 import { Public } from '../../common';
@@ -56,5 +57,17 @@ export class EntryController {
   @ApiOperation({ summary: 'Anonymous participant check-in conversation (no auth required)' })
   async participantChat(@Body() dto: ParticipantChatDto) {
     return this.entry.participantChat(dto.token, dto.messages);
+  }
+
+  @Public()
+  @Post('participant-document')
+  @ApiOperation({ summary: 'Upload a document during pre-auth participant check-in (token-based)' })
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
+  async participantDocument(
+    @Query('token') token: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.entry.uploadParticipantDocument(token, file);
   }
 }

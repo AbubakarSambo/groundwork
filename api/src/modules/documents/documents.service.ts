@@ -68,6 +68,43 @@ export class DocumentsService {
     return docs.map(toDocShape);
   }
 
+  /** Upload a document from a pre-auth participant identified by invite token. */
+  async uploadByInviteToken(token: string, file: Express.Multer.File) {
+    if (!file) throw new BadRequestException('No file provided');
+    if (file.size > MAX_BYTES) throw new BadRequestException('File must be under 10 MB');
+    if (!ALLOWED_MIME.includes(file.mimetype)) {
+      throw new BadRequestException('Unsupported file type. Accepted: PDF, TXT, CSV, DOCX, XLSX, JPEG, PNG.');
+    }
+
+    const participant = await this.prisma.groundParticipant.findUnique({
+      where: { inviteToken: token },
+    });
+    if (!participant) throw new NotFoundException('Invite not found');
+
+    let content: string;
+    if (file.mimetype === 'application/pdf') {
+      const result = await pdfParse(file.buffer);
+      content = result.text?.trim() ?? '';
+      if (!content) throw new BadRequestException('Could not extract text from this PDF. Make sure it is not a scanned image.');
+    } else if (TEXT_EXTRACTABLE.includes(file.mimetype)) {
+      content = file.buffer.toString('utf-8').trim();
+    } else {
+      content = `[Attached: ${file.originalname} — text not extractable from this file type. The document is on record.]`;
+    }
+
+    const doc = await this.prisma.groundDocument.create({
+      data: {
+        groundId: participant.groundId,
+        participantId: participant.id,
+        fileName: file.originalname,
+        mimeType: file.mimetype,
+        content,
+      },
+      select: { id: true, fileName: true, mimeType: true, createdAt: true },
+    });
+    return toDocShape(doc);
+  }
+
   async remove(groundId: string, docId: string, userId: string) {
     const participant = await this.assertParticipant(groundId, userId);
     const doc = await this.prisma.groundDocument.findFirst({

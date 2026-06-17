@@ -147,6 +147,7 @@ model Organization {
   careFeeSubscriptionId  String?       @map("care_fee_subscription_id")
   defaultPaymentMethodId String?       @map("default_payment_method_id")
   gracePeriodUntil       DateTime?     @map("grace_period_until")
+  contributorBypass      Boolean       @default(false) @map("contributor_bypass")
 
   companyStage CompanyStage? @map("company_stage")
 

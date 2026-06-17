@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useMutation } from '@tanstack/react-query'
 import { participantApi, participantStorage, entryApi } from '@/api/entry'
 import type { EntryMessage, ParticipantSession } from '@/api/entry'
 import { SaveCard } from './SaveCard'
+import { toast } from 'sonner'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -88,6 +90,12 @@ function stepButtons(step: number, multiParty: boolean): { options: string[]; la
   return null
 }
 
+const QUICK_ACTIONS = [
+  { label: 'What am I missing?', msg: 'What is missing from my record that would make it stronger?' },
+  { label: 'Is there a document?', msg: 'Is there anything written down that we should look at for this?' },
+  { label: 'What do I carry forward?', msg: 'What is the one thing I should carry into the next conversation?' },
+]
+
 // ── Component ──────────────────────────────────────────────────────────────
 
 export function ParticipantOnboardingChat() {
@@ -110,6 +118,15 @@ export function ParticipantOnboardingChat() {
   const taRef = useRef<HTMLTextAreaElement>(null)
   const historyRef = useRef<EntryMessage[]>([])
   const purposeRef = useRef('')
+
+  const uploadDoc = useMutation({
+    mutationFn: (file: File) => participantApi.uploadDocument(token, file),
+    onSuccess: (doc) => {
+      const ackMsg: DMsg = { id: `doc-${doc.id}`, from: 'ai', content: `Document received: "${doc.name}". Tell me what it shows and why it is relevant.` }
+      setMsgs(v => [...v, ackMsg])
+    },
+    onError: () => toast.error('Upload failed. Please try again.'),
+  })
 
   // ── Mount ─────────────────────────────────────────────────────────────────
 
@@ -315,6 +332,28 @@ export function ParticipantOnboardingChat() {
     })
   }
 
+  function quickSend(msg: string) {
+    if (loading || done || phase !== 'checkin') return
+    const userEntry: EntryMessage = { role: 'user', content: msg }
+    const nextH = [...historyRef.current, userEntry]
+    historyRef.current = nextH
+    const userDMsg: DMsg = { id: `qs-${Date.now()}`, from: 'user', content: msg }
+    const loadDMsg: DMsg = { id: 'ci-load-qs', from: 'ai', content: '…', isLoading: true }
+    setMsgs(v => [...v, userDMsg, loadDMsg])
+    setLoading(true)
+    participantApi.chat(token, nextH).then(res => {
+      const aiEntry: EntryMessage = { role: 'assistant', content: res.reply }
+      historyRef.current = [...nextH, aiEntry]
+      const aiDMsg: DMsg = { id: `ci-ai-qs-${Date.now()}`, from: 'ai', content: res.reply }
+      setMsgs(v => [...v.filter(m => m.id !== 'ci-load-qs'), aiDMsg])
+      setLoading(false)
+      if (res.sessionComplete) setDone(true)
+    }).catch(() => {
+      setMsgs(v => v.filter(m => m.id !== 'ci-load-qs'))
+      setLoading(false)
+    })
+  }
+
   // ── Input routing ─────────────────────────────────────────────────────────
 
   function handleSubmit() {
@@ -425,31 +464,62 @@ export function ParticipantOnboardingChat() {
 
         {!done && (
           <>
-            <div style={{ padding: '4px 14px', borderTop: '0.5px solid var(--gw-border)', fontSize: 11, color: 'var(--gw-sub)', background: 'var(--gw-bg)', lineHeight: 1.4 }}>
-              Your words are private. {adminName} will not see what you write until both parties activate the report.
-            </div>
-            {showInput && (
-              <div className="gw-chat-bar">
-                <textarea
-                  ref={taRef}
-                  placeholder={inputPlaceholder}
-                  value={input}
-                  onChange={autoResize}
-                  onKeyDown={handleKey}
-                  disabled={loading}
-                  className="gw-chat-ta"
-                  style={{ background: loading ? 'var(--gw-bg)' : 'white', maxHeight: 120 }}
-                />
-                <button
-                  onClick={handleSubmit}
-                  disabled={loading || !input.trim()}
-                  className="gw-send-btn"
-                  style={{ height: 38 }}
-                >
-                  &#8593;
-                </button>
+            {/* Quick action chips — check-in phase only */}
+            {phase === 'checkin' && !loading && (
+              <div className="gw-chat-actions">
+                {QUICK_ACTIONS.map(a => (
+                  <button
+                    key={a.label}
+                    onClick={() => quickSend(a.msg)}
+                    disabled={loading || done}
+                    className="gw-btn-sm"
+                  >
+                    {a.label}
+                  </button>
+                ))}
               </div>
             )}
+
+            <div style={{ borderTop: '0.5px solid var(--gw-border)', background: 'white', flexShrink: 0 }}>
+              <div style={{ padding: '4px 14px', borderBottom: '0.5px solid var(--gw-border)', fontSize: 11, color: 'var(--gw-sub)', background: 'var(--gw-bg)', lineHeight: 1.4 }}>
+                Your words are private. {adminName} will not see what you write until all parties activate the report.
+              </div>
+              {showInput && (
+                <div className="gw-chat-bar">
+                  {phase === 'checkin' && (
+                    <>
+                      <label
+                        htmlFor="poc-doc-upload"
+                        title="Upload a document"
+                        style={{ padding: '0 10px', borderRadius: 6, background: 'var(--gw-bg)', color: 'var(--gw-sub)', border: '0.5px solid var(--gw-border)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, flexShrink: 0, whiteSpace: 'nowrap', height: 38 }}
+                      >
+                        + <span style={{ fontSize: 11 }}>Doc</span>
+                      </label>
+                      <input type="file" id="poc-doc-upload" accept=".pdf,.doc,.docx,.txt,.csv,.xlsx,.png,.jpg,.jpeg" style={{ display: 'none' }}
+                        onChange={e => { const f = e.target.files?.[0]; if (f) uploadDoc.mutate(f); e.currentTarget.value = '' }} />
+                    </>
+                  )}
+                  <textarea
+                    ref={taRef}
+                    placeholder={inputPlaceholder}
+                    value={input}
+                    onChange={autoResize}
+                    onKeyDown={handleKey}
+                    disabled={loading}
+                    className="gw-chat-ta"
+                    style={{ background: loading ? 'var(--gw-bg)' : 'white', maxHeight: 120 }}
+                  />
+                  <button
+                    onClick={handleSubmit}
+                    disabled={loading || !input.trim()}
+                    className="gw-send-btn"
+                    style={{ height: 38 }}
+                  >
+                    &#8593;
+                  </button>
+                </div>
+              )}
+            </div>
           </>
         )}
       </div>

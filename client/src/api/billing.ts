@@ -23,4 +23,7 @@ export const billingApi = {
 
   cancelSubscription: () =>
     apiClient.delete('/billing/subscription').then(r => r.data),
+
+  applyContributorCode: (code: string) =>
+    apiClient.post<{ applied: boolean }>('/billing/contributor-code', { code }).then(r => r.data),
 }

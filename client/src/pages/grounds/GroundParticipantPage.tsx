@@ -105,12 +105,12 @@ export function GroundParticipantPage() {
                 >
                   Start session {myCheckIn.sessionNumber}
                 </button>
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', lineHeight: 1.6 }}>Your answers are private. The other party cannot see what you write until you both activate the report.</div>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', lineHeight: 1.6 }}>Your answers are private. Other parties cannot see what you write until all parties activate the report.</div>
               </div>
             ) : (
               <div style={{ background: 'var(--gw-green-bg)', border: '0.5px solid var(--gw-green-b)', borderRadius: 8, padding: 14 }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-green-t)', marginBottom: 5 }}>Session complete</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6 }}>Your contribution has been recorded. The administrator releases the report once both parties complete session 2.</div>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6 }}>Your contribution has been recorded. The administrator releases the report once all parties complete their most recent session.</div>
               </div>
             )}
           </div>
@@ -174,7 +174,7 @@ export function GroundParticipantPage() {
             <div style={{ textAlign: 'center', padding: '20px 0 16px' }}>
               <ConfDots score={conf} />
               <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--gw-navy)', margin: '8px 0 4px' }}>{conf}/5</div>
-              <div style={{ fontSize: 13, color: 'var(--gw-sub)' }}>{conf < 3 ? 'One account only. The other party is needed.' : 'Evidence building.'}</div>
+              <div style={{ fontSize: 13, color: 'var(--gw-sub)' }}>{conf < 3 ? 'One account only. Other accounts are needed.' : 'Evidence building.'}</div>
             </div>
 
             {report?.releasedAt ? (
@@ -217,7 +217,7 @@ export function GroundParticipantPage() {
                 {/* 4. Privacy reminder */}
                 <div style={{ background: 'var(--gw-bg)', border: '0.5px solid var(--gw-border)', borderRadius: 8, padding: '12px 14px', marginBottom: 12 }}>
                   <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-muted)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 6 }}>Privacy reminder</div>
-                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.65 }}>Your account is private. The other party cannot see what you wrote. Neither party sees the other's sessions until both parties activate the report.</div>
+                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.65 }}>Your account is private. Other parties cannot see what you wrote. No party sees the others' sessions until all parties activate the report.</div>
                 </div>
 
                 <button onClick={() => navigate('/grounds/new')}
@@ -241,12 +241,12 @@ export function GroundParticipantPage() {
 
                 <div style={{ background: 'var(--gw-bg)', border: '0.5px solid var(--gw-border)', borderRadius: 10, padding: 16, marginBottom: 12 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 5 }}>Report not yet released</div>
-                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6 }}>The report is released by the ground administrator once both parties have completed session 2. You will both see it at the same time.</div>
+                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6 }}>The report is released by the ground administrator once all parties have completed their most recent session. All parties see it at the same time.</div>
                 </div>
 
                 <div style={{ background: 'var(--gw-bg)', border: '0.5px solid var(--gw-border)', borderRadius: 8, padding: '12px 14px' }}>
                   <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-muted)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 5 }}>Privacy reminder</div>
-                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.65 }}>The other party cannot read your session words. Your record is yours alone until the report is released.</div>
+                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.65 }}>Other parties cannot read your session words. Your record is yours alone until the report is released.</div>
                 </div>
               </div>
             )}
