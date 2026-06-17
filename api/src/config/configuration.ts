@@ -39,15 +39,15 @@ export const anthropicConfig = registerAs("anthropic", () => ({
   maxTokens: parseInt(process.env.ANTHROPIC_MAX_TOKENS || "2048", 10),
 }));
 
-// Stripe, USD. Care fee = recurring subscription. Scenario fee = usage billing
-// charged per active person-month while a ground is ACTIVE.
+// Stripe, USD. Care fee = $25/mo recurring platform fee per account.
+// Participant fee = $25/mo per unique active participant across all active grounds.
 export const stripeConfig = registerAs("stripe", () => ({
   secretKey: process.env.STRIPE_SECRET_KEY,
   publishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
   webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
-  careFeePriceId: process.env.STRIPE_CARE_FEE_PRICE_ID, // $20/mo recurring
-  scenarioFeeCents: parseInt(process.env.STRIPE_SCENARIO_FEE_CENTS || "5000", 10), // $50/person/mo
-  careFeeCents: parseInt(process.env.STRIPE_CARE_FEE_CENTS || "2000", 10), // $20/mo
+  careFeePriceId: process.env.STRIPE_CARE_FEE_PRICE_ID, // $25/mo recurring
+  scenarioFeeCents: parseInt(process.env.STRIPE_SCENARIO_FEE_CENTS || "2500", 10), // $25/unique participant/mo
+  careFeeCents: parseInt(process.env.STRIPE_CARE_FEE_CENTS || "2500", 10), // $25/mo
   callbackUrl:
     process.env.STRIPE_CALLBACK_URL || "http://localhost:5173/billing/callback",
 }));

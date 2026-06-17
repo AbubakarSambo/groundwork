@@ -451,6 +451,59 @@ function AlignmentMap({
   )
 }
 
+// Inline paywall notice shown on session 2 when billing is not yet active.
+// Lets evaluators bypass with a contributor code without leaving the page.
+function PaywallNotice({ onUnlocked }: { onUnlocked: () => void }) {
+  const qc = useQueryClient()
+  const [code, setCode] = useState('')
+  const [error, setError] = useState('')
+
+  const applyCode = useMutation({
+    mutationFn: () => billingApi.applyContributorCode(code.trim().toUpperCase()),
+    onSuccess: r => {
+      if (r.applied) {
+        qc.invalidateQueries({ queryKey: ['billing'] })
+        qc.invalidateQueries({ queryKey: ['ground'] })
+        toast.success('Code applied. Activating report…')
+        onUnlocked()
+      } else {
+        setError('Code not recognised.')
+      }
+    },
+    onError: () => setError('Something went wrong. Try again.'),
+  })
+
+  return (
+    <div style={{ padding: '0 14px 12px' }}>
+      <div style={{ background: 'var(--gw-amber-bg)', border: '0.5px solid var(--gw-amber-b)', borderRadius: 6, padding: '10px 12px' }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 4 }}>Billing required</div>
+        <div style={{ fontSize: 11, color: 'var(--gw-sub)', lineHeight: 1.55, marginBottom: 10 }}>
+          Sessions 1–2 are free. Activate billing or enter a contributor code to release the session 2 report.
+        </div>
+        <div style={{ display: 'flex', gap: 6, marginBottom: error ? 6 : 0 }}>
+          <input
+            type="text"
+            value={code}
+            onChange={e => { setCode(e.target.value); setError('') }}
+            onKeyDown={e => { if (e.key === 'Enter' && code.trim()) applyCode.mutate() }}
+            placeholder="Contributor code"
+            style={{ flex: 1, padding: '6px 9px', fontSize: 12, fontFamily: 'inherit', border: `1px solid ${error ? '#c0392b' : 'var(--gw-border)'}`, borderRadius: 5, background: 'white', color: 'var(--gw-text)', outline: 'none' }}
+          />
+          <button
+            onClick={() => applyCode.mutate()}
+            disabled={!code.trim() || applyCode.isPending}
+            style={{ padding: '6px 12px', borderRadius: 5, background: 'var(--gw-navy)', color: 'white', fontSize: 12, fontWeight: 600, border: 'none', cursor: !code.trim() ? 'not-allowed' : 'pointer', opacity: !code.trim() ? 0.45 : 1, fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+          >
+            {applyCode.isPending ? '…' : 'Apply'}
+          </button>
+        </div>
+        {error && <div style={{ fontSize: 11, color: '#c0392b', marginBottom: 6 }}>{error}</div>}
+        <a href="/billing/checkout" style={{ fontSize: 11, color: 'var(--gw-navy)', textDecoration: 'none', fontWeight: 600 }}>Set up billing instead →</a>
+      </div>
+    </div>
+  )
+}
+
 // Right panel: chronological session periods, each with date range, parties, report status.
 // Tapping a period expands the report inline.
 function SessionHistory({
@@ -507,7 +560,7 @@ function SessionHistory({
         // Report status for this session
         let reportStatus: string
         let reportStatusColor: string
-        if (paywallActive && sNum === 5) {
+        if (paywallActive && sNum === 2) {
           reportStatus = 'billing required'
           reportStatusColor = 'var(--gw-amber-t)'
         } else if (!allSubmitted) {
@@ -573,12 +626,8 @@ function SessionHistory({
             )}
 
             {/* Paywall notice */}
-            {paywallActive && sNum === 5 && (
-              <div style={{ padding: '0 14px 12px' }}>
-                <div style={{ fontSize: 11, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', border: '0.5px solid var(--gw-amber-b)', borderRadius: 6, padding: '8px 10px', lineHeight: 1.55 }}>
-                  Activate billing to unlock the session 5 report and continue.
-                </div>
-              </div>
+            {paywallActive && sNum === 2 && (
+              <PaywallNotice onUnlocked={onRelease} />
             )}
 
             {/* Inline report */}
@@ -835,8 +884,8 @@ export function GroundAdminPage() {
     : 0
 
   const activeParties = (ground.participants ?? []).filter((p: any) => p.userId)
-  const session5Completions = (ground.checkIns ?? []).filter((ci: any) => ci.sessionNumber === 5 && ci.status === 'COMPLETED')
-  const paywallActive = activeParties.length >= 2 && session5Completions.length >= activeParties.length && !billingStatus?.careFeeActive
+  const session2Completions = (ground.checkIns ?? []).filter((ci: any) => ci.sessionNumber === 2 && ci.status === 'COMPLETED')
+  const paywallActive = activeParties.length >= 2 && session2Completions.length >= activeParties.length && !billingStatus?.careFeeActive
 
   const showInviteSection = isSetup || ground.participants.filter((p: any) => p.partyType === 'PARTICIPANT').length === 0
 

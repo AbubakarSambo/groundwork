@@ -2,7 +2,10 @@ import { apiClient } from './client'
 
 export interface BillingStatus {
   careFeeActive: boolean
-  activeGrounds: number
+  careFeeMonthlyCost: number
+  participantFeeMonthlyCost: number
+  activeGrounds: Array<{ groundId: string; label: string; startedAt: string | null }>
+  activeParticipantCount: number
   estimatedNextCharge: number | null
   nextBillingDate: string | null
   card?: { brand: string; last4: string } | null

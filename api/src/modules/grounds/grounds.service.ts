@@ -377,9 +377,9 @@ export class GroundsService {
       data: { status: GroundStatus.ACTIVE, billingActivatedAt: new Date() },
     });
 
-    // Billing has started — charge the first scenario fee for this period.
-    await this.billing.chargeScenarioFeeOnActivation(groundId).catch((err) =>
-      this.logger.error(`Scenario fee on activation failed for ground ${groundId}: ${err.message}`),
+    // Billing has started — charge the first participant fee for this period.
+    await this.billing.chargeParticipantFeeOnActivation(organizationId).catch((err: any) =>
+      this.logger.error(`Participant fee on activation failed for ground ${groundId}: ${err.message}`),
     );
 
     // Release the report to both parties simultaneously.
@@ -547,7 +547,7 @@ export class GroundsService {
   }
 
   /** Passthrough so the reports listener can request payment without a direct billing import. */
-  async requestPaymentForSession5(orgId: string, groundId: string): Promise<void> {
-    return this.billing.requestPaymentForSession5(orgId, groundId);
+  async requestPaymentAfterSession2(orgId: string, groundId: string): Promise<void> {
+    return this.billing.requestPaymentAfterSession2(orgId, groundId);
   }
 }

@@ -21,15 +21,21 @@ export function MagicVerifyPage() {
   const navigate = useNavigate()
   const setAuth = useAuthStore(s => s.setAuth)
   const [error, setError] = useState('')
-  const [resendEmail, setResendEmail] = useState(() => sessionStorage.getItem('gw_magic_email') ?? '')
-  const [resendSent, setResendSent] = useState(false)
+  const [resendEmail, setResendEmail] = useState(() =>
+    sessionStorage.getItem('gw_magic_email') ||
+    localStorage.getItem('gw_magic_email') ||
+    params.get('email') ||
+    ''
+  )
 
   const resend = useMutation({
     mutationFn: () => authApi.entrySave(resendEmail.trim()),
     onSuccess: () => {
+      const trimmed = resendEmail.trim()
       sessionStorage.setItem('gw_magic_type', 'entry')
-      sessionStorage.setItem('gw_magic_email', resendEmail.trim())
-      setResendSent(true)
+      sessionStorage.setItem('gw_magic_email', trimmed)
+      localStorage.setItem('gw_magic_email', trimmed)
+      navigate(`/auth/sent?email=${encodeURIComponent(trimmed)}`, { replace: true })
     },
   })
 
@@ -87,6 +93,7 @@ export function MagicVerifyPage() {
               }).catch(() => {})
             }
             entryStorage.clear()
+            localStorage.removeItem('gw_magic_email')
             // Second signin: offer password setup before ground
             if (count === 2) {
               navigate(`/welcome?next=${encodeURIComponent(`/grounds/${ground.id}?setup=1`)}`, { replace: true })
@@ -95,7 +102,8 @@ export function MagicVerifyPage() {
             }
             return
           } catch {
-            entryStorage.clear()
+            // Don't clear entryStorage — session is preserved so the next sign-in retries ground creation
+            navigate('/grounds', { replace: true })
           }
         }
 
@@ -123,37 +131,29 @@ export function MagicVerifyPage() {
           <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 20, lineHeight: 1.6, textAlign: 'center' }}>
             This link has expired or has already been used. Enter your email and we will send a fresh one.
           </div>
-          {resendSent ? (
-            <div style={{ textAlign: 'center', fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-              A new link is on its way to <strong>{resendEmail.trim()}</strong>. Check your inbox and follow it on this device.
-            </div>
-          ) : (
-            <>
-              <input
-                type="email"
-                value={resendEmail}
-                onChange={e => setResendEmail(e.target.value)}
-                placeholder="your@email.com"
-                style={{ width: '100%', padding: '10px 12px', fontSize: 13, fontFamily: 'inherit', border: '1px solid var(--gw-border)', borderRadius: 7, background: 'white', color: 'var(--gw-text)', outline: 'none', boxSizing: 'border-box', marginBottom: 10 }}
-              />
-              <button
-                className="gw-btn"
-                style={{ margin: 0 }}
-                disabled={!resendEmail.trim() || resend.isPending}
-                onClick={() => resend.mutate()}
-              >
-                {resend.isPending ? 'Sending…' : 'Send a new link'}
-              </button>
-              {resend.isError && (
-                <div style={{ fontSize: 12, color: '#c0392b', marginTop: 8, textAlign: 'center' }}>Could not send. Try again.</div>
-              )}
-              <div style={{ marginTop: 16, textAlign: 'center' }}>
-                <span onClick={() => navigate('/auth')} style={{ fontSize: 12, color: 'var(--gw-sub)', cursor: 'pointer', textDecoration: 'underline' }}>
-                  Sign in with a different email
-                </span>
-              </div>
-            </>
+          <input
+            type="email"
+            value={resendEmail}
+            onChange={e => setResendEmail(e.target.value)}
+            placeholder="your@email.com"
+            style={{ width: '100%', padding: '10px 12px', fontSize: 13, fontFamily: 'inherit', border: '1px solid var(--gw-border)', borderRadius: 7, background: 'white', color: 'var(--gw-text)', outline: 'none', boxSizing: 'border-box', marginBottom: 10 }}
+          />
+          <button
+            className="gw-btn"
+            style={{ margin: 0 }}
+            disabled={!resendEmail.trim() || resend.isPending}
+            onClick={() => resend.mutate()}
+          >
+            {resend.isPending ? 'Sending…' : 'Send a new link'}
+          </button>
+          {resend.isError && (
+            <div style={{ fontSize: 12, color: '#c0392b', marginTop: 8, textAlign: 'center' }}>Could not send. Try again.</div>
           )}
+          <div style={{ marginTop: 16, textAlign: 'center' }}>
+            <span onClick={() => navigate('/auth')} style={{ fontSize: 12, color: 'var(--gw-sub)', cursor: 'pointer', textDecoration: 'underline' }}>
+              Sign in with a different email
+            </span>
+          </div>
         </div>
       )}
     </div>

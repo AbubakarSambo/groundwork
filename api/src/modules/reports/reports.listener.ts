@@ -14,10 +14,11 @@ import { GroundStatus, PartyType } from '@prisma/client';
  *
  * Flow:
  *   checkin.completed  -> when ALL parties finish a session:
- *                           sessions 1–4: auto-synthesize and auto-release the report.
- *                           session 5:    request payment from admin; no report generated.
- *   ground.activated   -> billing has started; synthesize if needed then release
- *                         the report to both parties simultaneously.
+ *                           session 1:  auto-synthesize and auto-release (free).
+ *                           session 2:  request payment from admin; ground → REPORT_READY.
+ *                                       Report is NOT released until payment confirmed.
+ *                           session 3+: handled by checkSessionGate (billing required to start).
+ *   ground.activated   -> payment confirmed; synthesize if needed, then release report.
  */
 @Injectable()
 export class ReportsListener {
@@ -38,18 +39,18 @@ export class ReportsListener {
       const allDone = await this.grounds.isSessionReadyForReport(event.groundId, sessionNumber);
       if (!allDone) return;
 
-      if (sessionNumber <= 4) {
-        this.logger.log(`All parties through session ${sessionNumber} — synthesizing and auto-releasing report for ground ${event.groundId}`);
+      if (sessionNumber === 1) {
+        this.logger.log(`All parties through session 1 — synthesizing and auto-releasing report for ground ${event.groundId}`);
         await this.reports.synthesize(event.groundId);
         const g = await this.prisma.ground.findUnique({ where: { id: event.groundId }, select: { organizationId: true } });
         if (g) await this.reports.release(event.groundId, g.organizationId);
-      } else if (sessionNumber === 5) {
-        this.logger.log(`All parties through session 5 — requesting payment for ground ${event.groundId}`);
+      } else if (sessionNumber === 2) {
+        this.logger.log(`All parties through session 2 — requesting payment for ground ${event.groundId}`);
         const g = await this.prisma.ground.findUnique({ where: { id: event.groundId }, select: { organizationId: true } });
         if (g?.organizationId) {
           await this.grounds
-            .requestPaymentForSession5(g.organizationId, event.groundId)
-            .catch((err) => this.logger.warn(`requestPaymentForSession5 failed for ground ${event.groundId}: ${err.message}`));
+            .requestPaymentAfterSession2(g.organizationId, event.groundId)
+            .catch((err) => this.logger.warn(`requestPaymentAfterSession2 failed for ground ${event.groundId}: ${err.message}`));
           await this.prisma.ground.update({ where: { id: event.groundId }, data: { status: GroundStatus.REPORT_READY } });
         }
       }
@@ -64,7 +65,7 @@ export class ReportsListener {
       this.logger.log(`Ground ${event.groundId} activated — synthesizing (if needed) and releasing report`);
       const g = await this.prisma.ground.findUnique({ where: { id: event.groundId }, select: { organizationId: true } });
       if (!g) return;
-      // For session 5+, the report hasn't been synthesized yet — do it now on activation.
+      // For session 2+, the report hasn't been synthesized yet — do it now on activation.
       const existing = await this.prisma.report.findUnique({ where: { groundId: event.groundId } });
       if (!existing || !existing.releasedAt) {
         await this.reports.synthesize(event.groundId);

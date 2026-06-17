@@ -106,8 +106,8 @@ enum Cadence {
 }
 
 enum BillingEventType {
-  CARE_FEE // $20/month/org
-  SCENARIO_FEE // $50/person/month while a ground is ACTIVE
+  CARE_FEE      // $25/month/account (platform fee)
+  PARTICIPANT_FEE // $25/unique participant/month across active grounds
 }
 
 enum EvidenceType {

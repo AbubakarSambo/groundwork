@@ -49,15 +49,15 @@ export class StripeService {
     return typeof pm === 'string' ? pm : pm.id;
   }
 
-  /** Scenario fee: queue one charge ($50 x person-months) onto the next invoice. */
-  async chargeScenarioFee(customerId: string, personMonths: number, groundLabel: string, idempotencyKey?: string) {
-    const unit = this.config.get<number>('stripe.scenarioFeeCents') || 5000;
+  /** Participant fee: queue one charge ($25 x unique active participants) onto the next invoice. */
+  async chargeParticipantFee(customerId: string, participantCount: number, idempotencyKey?: string) {
+    const unit = this.config.get<number>('stripe.scenarioFeeCents') || 2500;
     return this.stripe.invoiceItems.create(
       {
         customer: customerId,
-        amount: unit * personMonths,
+        amount: unit * participantCount,
         currency: 'usd',
-        description: `Scenario fee — ${groundLabel} (${personMonths} person-month${personMonths === 1 ? '' : 's'})`,
+        description: `Participant fee — ${participantCount} active participant${participantCount === 1 ? '' : 's'}`,
       },
       idempotencyKey ? { idempotencyKey } : undefined,
     );

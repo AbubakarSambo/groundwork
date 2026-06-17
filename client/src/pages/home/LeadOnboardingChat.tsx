@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { entryApi } from '@/api/entry'
+import { useMutation } from '@tanstack/react-query'
+import { entryApi, participantApi } from '@/api/entry'
+import { toast } from 'sonner'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -78,6 +80,15 @@ export function LeadOnboardingChat() {
   const msgsRef = useRef<HTMLDivElement>(null)
   const taRef = useRef<HTMLTextAreaElement>(null)
   const isAlsoParticipantRef = useRef(false)
+
+  const uploadDoc = useMutation({
+    mutationFn: (file: File) => participantApi.uploadDocument(token, file),
+    onSuccess: (doc) => {
+      const ackMsg: DMsg = { id: `doc-${doc.id}`, from: 'ai', content: `Document received: "${doc.name}". Tell me what it shows and why it is relevant.` }
+      setMsgs(v => [...v, ackMsg])
+    },
+    onError: () => toast.error('Upload failed. Please try again.'),
+  })
 
   function save(patch: Partial<LState> = {}) {
     lStore.save({
@@ -353,6 +364,15 @@ export function LeadOnboardingChat() {
 
         {showInput && (
           <div className="gw-chat-bar">
+            <label
+              htmlFor="lead-doc-upload"
+              title="Upload a document"
+              style={{ padding: '0 10px', borderRadius: 6, background: 'var(--gw-bg)', color: 'var(--gw-sub)', border: '0.5px solid var(--gw-border)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, flexShrink: 0, whiteSpace: 'nowrap', height: 38 }}
+            >
+              + <span style={{ fontSize: 11 }}>Doc</span>
+            </label>
+            <input type="file" id="lead-doc-upload" accept=".pdf,.doc,.docx,.txt,.csv,.xlsx,.png,.jpg,.jpeg" style={{ display: 'none' }}
+              onChange={e => { const f = e.target.files?.[0]; if (f) uploadDoc.mutate(f); e.currentTarget.value = '' }} />
             <textarea
               ref={taRef}
               placeholder={inputPlaceholder}

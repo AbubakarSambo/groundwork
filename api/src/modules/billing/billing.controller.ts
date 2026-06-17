@@ -32,7 +32,7 @@ export class BillingController {
   @Post('care-fee/checkout')
   @ApiBearerAuth()
   @Roles(Role.ADMIN)
-  @ApiOperation({ summary: 'Create a Stripe Checkout session for the $20/mo care fee' })
+  @ApiOperation({ summary: 'Create a Stripe Checkout session for the $25/mo platform fee' })
   async careFeeCheckout(@CurrentUser('organizationId') organizationId: string) {
     return this.billing.createCareFeeCheckout(organizationId);
   }

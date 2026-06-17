@@ -53,12 +53,14 @@ export function SaveCard({ mode, variant = 'admin', onClear }: Props) {
       const trimmed = email.trim()
       sessionStorage.setItem('gw_magic_type', 'entry')
       sessionStorage.setItem('gw_magic_email', trimmed)
+      localStorage.setItem('gw_magic_email', trimmed)
       navigate(`/auth/sent?email=${encodeURIComponent(trimmed)}`)
     },
     onError: () => {
       const trimmed = email.trim()
       sessionStorage.setItem('gw_magic_type', 'entry')
       sessionStorage.setItem('gw_magic_email', trimmed)
+      localStorage.setItem('gw_magic_email', trimmed)
       navigate(`/auth/sent?email=${encodeURIComponent(trimmed)}`)
     },
   })
@@ -178,7 +180,7 @@ export function SaveCard({ mode, variant = 'admin', onClear }: Props) {
           Your first session is on record.
         </div>
         <div style={{ fontSize: 12, color: 'var(--gw-blue-t)', lineHeight: 1.5 }}>
-          {mode ? `${MODE_LABEL[mode]}. ` : ''}Enter your email to save it and come back for session 2.
+          {mode ? `${MODE_LABEL[mode]}. ` : ''}Enter your email to save it. When the people you invite check in, you will all see the report at the same time.
         </div>
       </div>
 

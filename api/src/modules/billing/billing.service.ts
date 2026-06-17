@@ -5,19 +5,24 @@ import type Stripe from 'stripe';
 import { PrismaService, CronLock } from '../prisma/prisma.service';
 import { StripeService } from './stripe.service';
 import { EmailService } from '../email/email.service';
-import { CareFeeStatus, GroundStatus, BillingEventType, BillingEventStatus, Ground, UserRole } from '@prisma/client';
+import { CareFeeStatus, GroundStatus, BillingEventType, BillingEventStatus, UserRole } from '@prisma/client';
 
-const SCENARIO_PERIOD_DAYS = 30;
+const PARTICIPANT_PERIOD_DAYS = 30;
 const dayMs = 24 * 60 * 60 * 1000;
 
 /**
- * Billing model (Part 1 — clinic/nurse):
- *   - Care fee:     $20/mo per org. Recurring subscription. The commitment device.
- *   - Scenario fee: $50/person/month while a ground is ACTIVE. Usage-billed.
+ * Billing model:
+ *   - Platform fee:     $25/mo per account. Recurring subscription.
+ *   - Participant fee:  $25/unique participant/month. Participants in multiple
+ *                       active Grounds are billed once, not once per Ground.
+ *                       Ground leads and the org account itself are never charged
+ *                       as participants.
  *
- * Session 1 is free. The paywall sits between REPORT_READY and ACTIVE: the org
- * must have an active care-fee subscription (card on file) before a ground can
- * be activated. Scenario fees ride on the care-fee subscription's invoice.
+ * Session rule:
+ *   Sessions 1–2 per participant per Ground are free.
+ *   After both parties complete session 2 the report is locked (REPORT_READY)
+ *   and the admin is nudged to add a payment method. The report is released
+ *   only after payment. Session 3+ also requires billing-ready status.
  */
 @Injectable()
 export class BillingService {
@@ -57,25 +62,24 @@ export class BillingService {
   }
 
   /**
-   * Session-number-aware billing gate.
-   * Sessions 1–5 are free to run. Session 6+ requires billing-ready status.
-   * The paywall fires at the END of session 5 (no report generated until payment).
+   * Session gate. Sessions 1–2 are free per participant per Ground.
+   * Session 3 and beyond require a billing-ready account.
    */
   async checkSessionGate(orgId: string, sessionNumber: number): Promise<{ allowed: boolean; reason?: string }> {
-    if (sessionNumber <= 5) return { allowed: true };
+    if (sessionNumber <= 2) return { allowed: true };
     const ready = await this.isBillingReady(orgId);
     if (ready) return { allowed: true };
     return {
       allowed: false,
-      reason: 'Sessions 1–5 are free. Activate billing to continue to session 6. Your admin will receive a prompt.',
+      reason: 'Sessions 1–2 are free. Activate billing to continue. Your admin will receive a prompt.',
     };
   }
 
   /**
-   * Send a payment request email to the org admin after session 4 completes.
-   * Primes the admin to activate billing so session 5 is not blocked.
+   * Nudge the org admin after both parties complete session 2.
+   * The report is locked until payment is confirmed.
    */
-  async requestPaymentForSession5(orgId: string, groundId: string): Promise<void> {
+  async requestPaymentAfterSession2(orgId: string, groundId: string): Promise<void> {
     const org = await this.prisma.organization.findUnique({
       where: { id: orgId },
       select: { name: true, users: { where: { role: UserRole.ADMIN }, take: 1, select: { email: true } } },
@@ -83,14 +87,14 @@ export class BillingService {
     if (!org) return;
     const admin = org.users[0];
     if (!admin) {
-      this.logger.warn(`requestPaymentForSession5: no ADMIN user found for org ${orgId}`);
+      this.logger.warn(`requestPaymentAfterSession2: no ADMIN user found for org ${orgId}`);
       return;
     }
     await this.email.sendPaymentRequestEmail(admin.email, org.name, groundId);
   }
 
   /**
-   * Create a hosted Checkout session to set up the care fee. Returns the URL the
+   * Create a hosted Checkout session to set up the platform fee. Returns the URL the
    * admin is redirected to. Completion is confirmed via webhook.
    */
   async createCareFeeCheckout(organizationId: string, groundId?: string): Promise<{ checkoutUrl: string }> {
@@ -116,30 +120,37 @@ export class BillingService {
   }
 
   /**
-   * Charge the scenario fee for one ground for a specific [periodStart,
-   * periodEnd) window. Idempotent: skips if a SCENARIO_FEE event already exists
-   * for this ground + period. (GW-04.)
+   * Charge the participant fee for one org for a specific period.
+   * Counts unique active participants across ALL active grounds in the org —
+   * a participant in multiple grounds is billed once.
+   * Idempotent: skips if a PARTICIPANT_FEE event already exists for this org + period.
    */
-  async chargeScenarioFeeForPeriod(ground: Ground & { organization: { stripeCustomerId: string | null }; participants: { id: string }[] }, periodStart: Date, periodEnd: Date) {
-    const personMonths = ground.participants.length;
-    if (!ground.organization.stripeCustomerId || personMonths === 0) return;
-
+  async chargeParticipantFeeForPeriod(
+    orgId: string,
+    stripeCustomerId: string,
+    periodStart: Date,
+    periodEnd: Date,
+  ): Promise<void> {
     const already = await this.prisma.billingEvent.findFirst({
-      where: { groundId: ground.id, type: BillingEventType.SCENARIO_FEE, periodStart, periodEnd },
+      where: { organizationId: orgId, type: BillingEventType.PARTICIPANT_FEE, periodStart, periodEnd },
     });
     if (already) return;
 
-    const unit = this.config.get<number>('stripe.scenarioFeeCents') || 5000;
+    const activeParticipants = await this.getUniqueActiveParticipantCount(orgId);
+    if (activeParticipants === 0) return;
+
+    const unit = this.config.get<number>('stripe.scenarioFeeCents') || 2500;
     const year = periodStart.getUTCFullYear();
     const month = periodStart.getUTCMonth() + 1;
-    const idempotencyKey = `monthly-${ground.id}-${year}-${month}`;
-    await this.stripe.chargeScenarioFee(ground.organization.stripeCustomerId, personMonths, ground.label, idempotencyKey);
+    const idempotencyKey = `participant-fee-${orgId}-${year}-${month}`;
+
+    await this.stripe.chargeParticipantFee(stripeCustomerId, activeParticipants, idempotencyKey);
     await this.prisma.billingEvent.create({
       data: {
-        organizationId: ground.organizationId,
-        groundId: ground.id,
-        type: BillingEventType.SCENARIO_FEE,
-        amountCents: unit * personMonths,
+        organizationId: orgId,
+        groundId: null,
+        type: BillingEventType.PARTICIPANT_FEE,
+        amountCents: unit * activeParticipants,
         currency: 'USD',
         periodStart,
         periodEnd,
@@ -149,81 +160,102 @@ export class BillingService {
   }
 
   /**
-   * Charge the first scenario fee at activation. The period is a rolling 30-day
-   * window anchored to the activation moment — NOT a calendar month. This is the
-   * fix for the double-charge window (GW-04): with calendar months, a ground
-   * activated on the 28th was charged a full month, then charged again days
-   * later on the 1st. Anchoring to activation means each charge covers a full
-   * 30 days the ground was actually active.
+   * Count unique active participants across all ACTIVE grounds in an org.
+   * Deduplication is by email (always present and unique per person).
    */
-  async chargeScenarioFeeOnActivation(groundId: string) {
-    const ground = await this.prisma.ground.findUnique({
-      where: { id: groundId },
-      include: { organization: { select: { stripeCustomerId: true } }, participants: { select: { id: true } } },
+  private async getUniqueActiveParticipantCount(orgId: string): Promise<number> {
+    const activeGrounds = await this.prisma.ground.findMany({
+      where: { organizationId: orgId, status: GroundStatus.ACTIVE },
+      select: { participants: { select: { email: true } } },
     });
-    if (!ground) return;
-    const start = ground.billingActivatedAt ?? new Date();
-    const end = new Date(start.getTime() + SCENARIO_PERIOD_DAYS * dayMs);
-    await this.chargeScenarioFeeForPeriod(ground as any, start, end);
+    const emails = new Set<string>();
+    for (const g of activeGrounds) {
+      for (const p of g.participants) {
+        emails.add(p.email.toLowerCase());
+      }
+    }
+    return emails.size;
   }
 
   /**
-   * Daily: charge the next scenario-fee period for every ACTIVE ground whose
-   * current period has elapsed. Periods roll forward from the last charged
-   * period's end, so there is no calendar-boundary double-charge. Grounds whose
-   * org is PAST_DUE or CANCELLED are skipped — we do not keep charging an org
-   * that has failed payment. (GW-04.) Advisory-locked so only one replica runs
-   * it (GW-60).
+   * Charge the first participant fee at the moment a ground is activated.
+   * Period is a rolling 30-day window from activation.
+   */
+  async chargeParticipantFeeOnActivation(orgId: string): Promise<void> {
+    const org = await this.prisma.organization.findUnique({
+      where: { id: orgId },
+      select: { stripeCustomerId: true },
+    });
+    if (!org?.stripeCustomerId) return;
+
+    const start = new Date();
+    const end = new Date(start.getTime() + PARTICIPANT_PERIOD_DAYS * dayMs);
+    await this.chargeParticipantFeeForPeriod(orgId, org.stripeCustomerId, start, end);
+  }
+
+  /**
+   * Daily: charge the next participant-fee period for every org with at least one
+   * ACTIVE ground whose last-charged period has elapsed.
+   * One event per org per period — participants are deduplicated across grounds.
+   * Orgs with PAST_DUE or CANCELLED care fee are skipped.
    */
   @Cron(CronExpression.EVERY_DAY_AT_1AM)
-  async chargeScenarioFees() {
+  async chargeParticipantFees() {
     await this.prisma.withAdvisoryLock(CronLock.SCENARIO_FEES, async () => {
       const now = new Date();
-      const activeGrounds = await this.prisma.ground.findMany({
-        where: { status: GroundStatus.ACTIVE },
-        include: {
-          organization: { select: { stripeCustomerId: true, careFeeStatus: true } },
-          participants: { select: { id: true } },
+
+      // Find orgs with at least one ACTIVE ground and a Stripe customer.
+      const orgsWithActiveGrounds = await this.prisma.organization.findMany({
+        where: {
+          grounds: { some: { status: GroundStatus.ACTIVE } },
+          stripeCustomerId: { not: null },
+        },
+        select: {
+          id: true,
+          stripeCustomerId: true,
+          careFeeStatus: true,
         },
       });
 
       let charged = 0;
-      let skippedPastDue = 0;
-      for (const ground of activeGrounds) {
-        // Do not keep charging an org that is behind on its care fee.
-        if (ground.organization.careFeeStatus !== CareFeeStatus.ACTIVE) {
-          skippedPastDue++;
-          continue;
-        }
-        // Find the last period we charged for this ground; charge the next one
-        // only once its end has passed.
+      let skipped = 0;
+
+      for (const org of orgsWithActiveGrounds) {
+        if (org.careFeeStatus !== CareFeeStatus.ACTIVE) { skipped++; continue; }
+        if (!org.stripeCustomerId) { skipped++; continue; }
+
         const last = await this.prisma.billingEvent.findFirst({
-          where: { groundId: ground.id, type: BillingEventType.SCENARIO_FEE },
+          where: { organizationId: org.id, type: BillingEventType.PARTICIPANT_FEE },
           orderBy: { periodEnd: 'desc' },
           select: { periodEnd: true },
         });
-        const nextStart = last?.periodEnd ?? ground.billingActivatedAt ?? now;
-        if (nextStart > now) continue; // current period still running
-        const nextEnd = new Date(nextStart.getTime() + SCENARIO_PERIOD_DAYS * dayMs);
+
+        const nextStart = last?.periodEnd ?? now;
+        if (nextStart > now) continue;
+        const nextEnd = new Date(nextStart.getTime() + PARTICIPANT_PERIOD_DAYS * dayMs);
+
         try {
-          await this.chargeScenarioFeeForPeriod(ground as any, nextStart, nextEnd);
+          await this.chargeParticipantFeeForPeriod(org.id, org.stripeCustomerId, nextStart, nextEnd);
           charged++;
         } catch (err: any) {
-          this.logger.error(`Scenario fee failed for ground ${ground.id}: ${err.message}`);
+          this.logger.error(`Participant fee failed for org ${org.id}: ${err.message}`);
         }
       }
-      this.logger.log(`Scenario fee run: ${activeGrounds.length} active, ${charged} charged, ${skippedPastDue} skipped (care fee not active).`);
+
+      this.logger.log(`Participant fee run: ${orgsWithActiveGrounds.length} orgs checked, ${charged} charged, ${skipped} skipped.`);
     });
   }
 
   /**
-   * Billing status for an org: care-fee state, active grounds with their
-   * scenario fees, and an estimate of the next charge. (GW-status)
+   * Billing status for an org: platform fee state, active grounds, unique active
+   * participant count, and estimated next charge.
    */
   async getStatus(organizationId: string): Promise<{
     careFeeActive: boolean;
     careFeeMonthlyCost: number;
-    activeGrounds: Array<{ groundId: string; label: string; scenarioFee: number; startedAt: Date | null }>;
+    participantFeeMonthlyCost: number;
+    activeGrounds: Array<{ groundId: string; label: string; startedAt: Date | null }>;
+    activeParticipantCount: number;
     estimatedNextCharge: number;
     nextBillingDate: string;
   }> {
@@ -233,32 +265,34 @@ export class BillingService {
     });
     if (!org) throw new NotFoundException('Organization not found');
 
-    const activeGrounds = await this.prisma.ground.findMany({
+    const activeGroundRecords = await this.prisma.ground.findMany({
       where: { organizationId, status: GroundStatus.ACTIVE },
       select: { id: true, label: true, billingActivatedAt: true },
     });
 
-    const SCENARIO_FEE = 50;
-    const CARE_FEE = 20;
+    const PLATFORM_FEE = 25;
+    const PARTICIPANT_FEE = 25;
     const careFeeActive = org.contributorBypass || org.careFeeStatus === CareFeeStatus.ACTIVE;
+    const activeParticipantCount = await this.getUniqueActiveParticipantCount(organizationId);
 
-    const groundsOut = activeGrounds.map((g) => ({
+    const activeGrounds = activeGroundRecords.map((g) => ({
       groundId: g.id,
       label: g.label,
-      scenarioFee: SCENARIO_FEE,
       startedAt: g.billingActivatedAt,
     }));
 
-    const estimatedNextCharge = (careFeeActive ? CARE_FEE : 0) + activeGrounds.length * SCENARIO_FEE;
+    const estimatedNextCharge =
+      (careFeeActive ? PLATFORM_FEE : 0) + activeParticipantCount * PARTICIPANT_FEE;
 
-    // Next billing date: first day of next calendar month (UTC)
     const now = new Date();
     const nextBilling = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
 
     return {
       careFeeActive,
-      careFeeMonthlyCost: CARE_FEE,
-      activeGrounds: groundsOut,
+      careFeeMonthlyCost: PLATFORM_FEE,
+      participantFeeMonthlyCost: PARTICIPANT_FEE,
+      activeGrounds,
+      activeParticipantCount,
       estimatedNextCharge,
       nextBillingDate: nextBilling.toISOString().slice(0, 10),
     };
@@ -266,8 +300,7 @@ export class BillingService {
 
   /**
    * Full subscription cancellation. Cancels the Stripe subscription immediately,
-   * marks the org as CANCELLED, sends a record-portability notice, and returns.
-   * Does NOT delete any Ground, RecordEntry, or User records. (GW-cancel)
+   * marks the org as CANCELLED, sends a record-portability notice.
    */
   async cancelSubscription(organizationId: string): Promise<{ cancelled: boolean }> {
     const org = await this.prisma.organization.findUnique({
@@ -285,9 +318,6 @@ export class BillingService {
       data: { careFeeStatus: CareFeeStatus.CANCELLED },
     });
 
-    // Send a record-portability notice to every non-deleted org user so each
-    // person knows their record is retained and can be exported. The org.email
-    // field is the workspace email but individual users are the record holders.
     const downloadUrl = `${this.config.get<string>('resend.frontendUrl') ?? ''}/users/me/export`;
     const orgUsers = await this.prisma.user.findMany({
       where: { organizationId, deletedAt: null },
@@ -298,7 +328,7 @@ export class BillingService {
       await this.email
         .sendRecordPortabilityNotice(user.email, user.firstName, downloadUrl)
         .catch((err: any) =>
-          this.logger.warn(`Record portability notice failed for user ${user.id} (org ${organizationId}): ${err.message}`),
+          this.logger.warn(`Record portability notice failed for user ${user.id}: ${err.message}`),
         );
     }
 
@@ -307,10 +337,7 @@ export class BillingService {
   }
 
   /**
-   * Cancel the care fee subscription (self-serve). Cancels at period end, so the
-   * org keeps access through the period it has already paid for, and active
-   * grounds keep running until then. Status is synced by the subscription
-   * webhook. (GW-09.)
+   * Cancel the platform fee subscription at period end.
    */
   async cancelCareFee(organizationId: string): Promise<{ cancelled: boolean; effectiveAt: Date | null }> {
     const org = await this.prisma.organization.findUnique({
@@ -324,14 +351,11 @@ export class BillingService {
     }
     const sub = await this.stripe.cancelSubscriptionAtPeriodEnd(org.careFeeSubscriptionId);
     const periodEnd = sub.current_period_end ? new Date(sub.current_period_end * 1000) : null;
-    this.logger.log(`Care fee cancellation scheduled for org ${organizationId} (effective ${periodEnd?.toISOString() ?? 'period end'})`);
+    this.logger.log(`Platform fee cancellation scheduled for org ${organizationId} (effective ${periodEnd?.toISOString() ?? 'period end'})`);
     return { cancelled: true, effectiveAt: periodEnd };
   }
 
-  /**
-   * A Stripe Customer Portal session — the robust self-serve surface for
-   * updating the card, viewing invoices, and cancelling. (GW-09.)
-   */
+  /** A Stripe Customer Portal session. */
   async createBillingPortalSession(organizationId: string): Promise<{ portalUrl: string }> {
     const org = await this.prisma.organization.findUnique({ where: { id: organizationId }, select: { stripeCustomerId: true } });
     if (!org?.stripeCustomerId) throw new NotFoundException('No billing account set up for this organization');
@@ -340,7 +364,7 @@ export class BillingService {
     return { portalUrl };
   }
 
-  /** Handle Stripe webhook events — keeps care-fee status in sync. */
+  /** Handle Stripe webhook events — keeps platform fee status in sync. */
   async handleStripeEvent(event: Stripe.Event) {
     switch (event.type) {
       case 'checkout.session.completed': {
@@ -359,7 +383,7 @@ export class BillingService {
             stripeCustomerId: typeof session.customer === 'string' ? session.customer : session.customer?.id,
           },
         });
-        this.logger.log(`Care fee active for org ${organizationId}`);
+        this.logger.log(`Platform fee active for org ${organizationId}`);
         break;
       }
 
@@ -380,7 +404,7 @@ export class BillingService {
         const customerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id;
         if (!customerId) break;
 
-        const gracePeriodUntil = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // +7 days
+        const gracePeriodUntil = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
         const failedOrg = await this.prisma.organization.findFirst({
           where: { stripeCustomerId: customerId },
           select: { id: true, name: true, email: true },
@@ -405,10 +429,6 @@ export class BillingService {
         if (!customerId) break;
         const org = await this.prisma.organization.findFirst({ where: { stripeCustomerId: customerId }, select: { id: true } });
         if (org) {
-          // Reconcile only the events this invoice actually covers: pending
-          // scenario-fee events whose period had already started by the time the
-          // invoice was created. A period charged AFTER this invoice finalised
-          // belongs to a later invoice and must stay PENDING. (GW-04.)
           const invoiceCreated = invoice.created ? new Date(invoice.created * 1000) : new Date();
           await this.prisma.billingEvent.updateMany({
             where: {

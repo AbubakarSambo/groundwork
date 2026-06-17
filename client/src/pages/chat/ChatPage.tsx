@@ -164,14 +164,29 @@ export function ChatPage() {
             </div>
           ))}
           {done && (
-            <div style={{ textAlign: 'center', padding: '10px 0' }}>
-              <button
-                onClick={() => complete.mutate()}
-                disabled={complete.isPending}
-                style={{ padding: '10px 24px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
-              >
-                {complete.isPending ? 'Saving…' : 'Complete session ✓'}
-              </button>
+            <div style={{ padding: '10px 0' }}>
+              <div style={{ background: 'var(--gw-green-bg)', border: '0.5px solid var(--gw-green-b)', borderRadius: 8, padding: '12px 14px', marginBottom: 10 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-green-t)', marginBottom: 6 }}>Session {sessionNumber} is on record.</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>
+                    <span style={{ color: 'var(--gw-green-t)', fontWeight: 700, flexShrink: 0 }}>✓</span>
+                    <span>Your account is saved. No one can read it until the report is released.</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>
+                    <span style={{ color: 'var(--gw-muted)', fontWeight: 700, flexShrink: 0 }}>→</span>
+                    <span>The other parties will check in independently. When all parties have submitted, you will all see the report at the same time.</span>
+                  </div>
+                </div>
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <button
+                  onClick={() => complete.mutate()}
+                  disabled={complete.isPending}
+                  style={{ padding: '10px 24px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                >
+                  {complete.isPending ? 'Saving…' : 'Done ✓'}
+                </button>
+              </div>
             </div>
           )}
         </div>
