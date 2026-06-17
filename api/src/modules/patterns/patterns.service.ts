@@ -46,7 +46,13 @@ export class PatternsService {
    * the three-period rule. Idempotent: skips already-analysed check-ins.
    */
   async analyzeCheckIn(checkInId: string): Promise<void> {
-    const checkIn = await this.prisma.checkIn.findUnique({ where: { id: checkInId } });
+    const checkIn = await this.prisma.checkIn.findUnique({
+      where: { id: checkInId },
+      select: {
+        id: true, groundId: true, participantId: true, sessionNumber: true,
+        patternsAnalyzedAt: true, specificityDimensions: true,
+      },
+    });
     if (!checkIn || checkIn.patternsAnalyzedAt) return;
 
     const [turns, records] = await Promise.all([
@@ -111,6 +117,21 @@ export class PatternsService {
       }
     } catch (err: any) {
       this.logger.error(`Pattern extraction failed for check-in ${checkInId}: ${err.message}`);
+    }
+
+    // LOW_SPEC_MULTI_DIM: alignment-feed-only flag when 3+ dimensions were vague/managed.
+    // Surfaces immediately (observePositive) so the admin sees it in the current period.
+    // Never surfaces to the participant in conversation (filtered by ALIGNMENT_FEED_ONLY_CODES).
+    if (checkIn.specificityDimensions) {
+      const dims = checkIn.specificityDimensions as Record<string, string>;
+      const lowCount = Object.values(dims).filter((v) => v === 'vague' || v === 'managed').length;
+      if (lowCount >= 3) {
+        const next = checkIn.sessionNumber + 1;
+        const obsText =
+          `Session ${checkIn.sessionNumber} produced limited specificity across multiple dimensions. ` +
+          `Session ${next} will use a different approach.`;
+        await this.observePositive(checkIn.groundId, checkIn.participantId, 'LOW_SPEC_MULTI_DIM', obsText, checkIn.sessionNumber);
+      }
     }
 
     await this.markAnalyzed(checkInId);

@@ -16,6 +16,9 @@ export const authApi = {
   requestMagicLink: (body: MagicLinkBody) =>
     apiClient.post<MagicLinkResponse>('/auth/register-magic-link', body).then(r => r.data),
 
+  entrySave: (email: string) =>
+    apiClient.post<MagicLinkResponse>('/auth/entry-save', { email }).then(r => r.data),
+
   memberSignin: (email: string) =>
     apiClient.post<MagicLinkResponse>('/auth/member-signin', { email }).then(r => r.data),
 

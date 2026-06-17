@@ -322,6 +322,7 @@ model CheckIn {
   willingnessConfirmed Boolean @default(true) @map("willingness_confirmed") // willingness gate result
   specificityLevel String?    @map("specificity_level") // session-end specificity: specific/directional/vague/managed
   recallConfidence String?    @map("recall_confidence") // certain/mostly_certain/uncertain
+  specificityDimensions Json? @map("specificity_dimensions") // per-dimension scores: {delivery, evidence, enablement, coverage, commitment}
   createdAt     DateTime      @default(now()) @map("created_at")
 
   ground        Ground            @relation(fields: [groundId], references: [id], onDelete: Cascade)
@@ -588,4 +589,20 @@ model DisclaimerAcknowledgement {
   @@unique([userId, groundId])
   @@index([groundId])
   @@map("disclaimer_acknowledgements")
+}
+
+// ---------------------------------------------------------------------------
+// Feedback widget submissions.
+// ---------------------------------------------------------------------------
+
+model FeedbackSubmission {
+  id        String   @id @default(uuid())
+  tab       String   // "reaction" | "build_request" | "something_went_wrong"
+  pill      String
+  text      String?  @db.Text
+  status    String   @default("new") // for bug reports: "new" | "reviewed" | "resolved"
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([tab, createdAt])
+  @@map("feedback_submissions")
 }

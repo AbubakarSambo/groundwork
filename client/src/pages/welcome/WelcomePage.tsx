@@ -28,11 +28,11 @@ export function WelcomePage() {
           <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-muted)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 12 }}>
             Welcome back{user?.firstName ? `, ${user.firstName}` : ''}
           </div>
-          <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 8, letterSpacing: '-.01em', lineHeight: 1.2 }}>
-            Set a password to sign in directly next time.
+          <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 8, letterSpacing: '-.01em', lineHeight: 1.25 }}>
+            You have been signing in with email links.
           </div>
-          <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 28, lineHeight: 1.65 }}>
-            You have been signing in with email links. A password lets you sign in directly from any device without waiting for an email.
+          <div style={{ fontSize: 14, color: 'var(--gw-sub)', marginBottom: 28, lineHeight: 1.65 }}>
+            Would you like to set a password so you can sign in directly next time?
           </div>
 
           <button

@@ -20,6 +20,8 @@ export interface CreateGroundBody {
 export interface AddParticipantBody {
   email: string
   roleAsDescribed?: string
+  inviteToken?: string
+  note?: string
 }
 
 export const groundsApi = {

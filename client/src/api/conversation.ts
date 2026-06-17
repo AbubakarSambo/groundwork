@@ -24,6 +24,9 @@ export const conversationApi = {
   artifact: (checkInId: string) =>
     apiClient.get(`/check-ins/${checkInId}/artifact`).then(r => r.data),
 
+  documentReceived: (checkInId: string) =>
+    apiClient.post<{ reply: string }>(`/check-ins/${checkInId}/document-received`).then(r => r.data),
+
   remind: (checkInId: string) =>
     apiClient.post(`/check-ins/${checkInId}/remind`).then(r => r.data),
 }

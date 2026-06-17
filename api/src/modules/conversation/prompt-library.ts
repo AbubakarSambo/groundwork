@@ -1333,16 +1333,19 @@ export const ABSENCE_SIGNAL = `"The person you named has not yet checked in."
 // Scenario packs — exact opening text per scenario and party.
 // ---------------------------------------------------------------------------
 
-const PARTICIPANT_PREAMBLE = `PARTICIPANT — added to this ground by the initiator. They never see what the initiator said; their record is built independently. Tell them their role as it was described (this is not hidden), but their understanding of it is theirs:
-"You have been added to this alignment ground."
-"Your role as described: [role from context]."
-"What did you understand your role in this to be — in your own words, before anyone else's version?"
-"Then: what does done look like for your part — not the overall outcome, your specific deliverable?"`;
+const PARTICIPANT_PREAMBLE = `PARTICIPANT — added to this ground by the initiator. They never see what the initiator said; their record is built independently.
+
+OPENING RULE: Open with a statement, then ask one question. Never open with a question. Never list questions.
+
+Statement: Tell them their role as described (not hidden) and that their version of it is what is being built here — not the other party's.
+Question: "What did you understand your role in this to be — in your own words, before anyone else's version?"
+
+Ask that one question. Stop. Wait for their answer before asking anything else.`;
 
 const STARTING_VALIDATION = `VALIDATION (deliver ONLY if the person is uncertain or general in their first response; skip if they arrive specific):
 "The conversations that save the most time happen before work starts, not after something goes wrong. You are here at the right moment."`;
 
-const STARTING_OPENING = `OPENING QUESTIONS (ask in sequence; the third is the most important — it forces a concrete definition rather than a feeling):
+const STARTING_OPENING = `CONVERSATION PATHWAY (cover these across multiple exchanges, one at a time; never ask more than one in a single message; the third is the most important — it forces a concrete definition rather than a feeling):
 "What is starting and who is involved?"
 "What does success look like for you — your version, not the brief."
 "What would have to exist for you to know this is working?"`;
@@ -1496,8 +1499,8 @@ function composeStartingPack(scenario: keyof typeof STARTING_ROLE_QUESTIONS): st
     STARTING_VALIDATION,
     STARTING_OPENING,
     STARTING_FOLLOWUP,
-    `ROLE-SPECIFIC OPENING — initiator (founder / leader):\n${role.initiator}`,
-    `ROLE-SPECIFIC OPENING — participant (other party):\n${role.participant}`,
+    `ROLE-SPECIFIC QUESTIONS — initiator (ask one at a time across exchanges; never list these in a single message):\n${role.initiator}`,
+    `ROLE-SPECIFIC QUESTIONS — participant (ask one at a time across exchanges; never list these in a single message):\n${role.participant}`,
     PARTICIPANT_PREAMBLE,
   ].join('\n\n');
 }
@@ -1568,13 +1571,13 @@ export function buildScenarioPackForParty(scenario: GroundScenario, partyType: P
           STARTING_VALIDATION,
           STARTING_OPENING,
           STARTING_FOLLOWUP,
-          `ROLE-SPECIFIC OPENING — initiator (founder / leader):\n${role.initiator}`,
+          `ROLE-SPECIFIC QUESTIONS — initiator (ask one at a time across exchanges; never list these in a single message):\n${role.initiator}`,
         ].join('\n\n');
       }
       return [
         `MOMENT: Something new is starting.`,
         PARTICIPANT_PREAMBLE,
-        `ROLE-SPECIFIC OPENING — participant (other party):\n${role.participant}`,
+        `ROLE-SPECIFIC QUESTIONS — participant (ask one at a time across exchanges; never list these in a single message):\n${role.participant}`,
       ].join('\n\n');
     }
 
@@ -1664,6 +1667,8 @@ export interface PromptContext {
   patternSummary?: string;
   injectionTier?: 1 | 2 | 3;
   surfacedPatterns?: { code: string; observationText: string }[];
+  lowSpecificityMultiDim?: boolean; // 3+ dimensions vague/managed in prior session; shifts opener silently
+  groundState?: string | null; // current ground status for session 2 "Since then" block
 }
 
 // The 20 starting pathways — feeds ACTIVE_PATHWAY in the intake block.
@@ -1787,20 +1792,49 @@ function selectPathwayNumber(
 }
 
 function buildActivePathway(ctx: PromptContext): string {
-  const { scenario, partyType, sessionNumber } = ctx;
+  const { scenario, partyType, sessionNumber, lowSpecificityMultiDim } = ctx;
   const relHistory = resolveRelationshipHistory(scenario, ctx.relationshipHistory);
 
   if (sessionNumber === 1) {
     const n = selectPathwayNumber(scenario, partyType, relHistory);
-    return `Pathway ${n}: ${PATHWAY_QUESTIONS[n] ?? PATHWAY_QUESTIONS[20]}`;
+    return `SESSION 1 OPENING RULE: Do not open with a question. Open with one sentence that names what this ground is for or why this record matters now. Then ask exactly this question. One statement. One question. Nothing else.\n\nPathway ${n}: ${PATHWAY_QUESTIONS[n] ?? PATHWAY_QUESTIONS[20]}`;
   }
+
+  // Sessions 2+: if prior session had 3+ vague/managed dimensions, shift to
+  // unexpected-angle questions without announcing the change.
+  if (lowSpecificityMultiDim) {
+    if (sessionNumber === 2) {
+      return `SESSION 2 OPENING STRUCTURE (SHIFTED APPROACH):
+
+Open with this block in order, as one natural message:
+"Last time you told us: [reference one specific named thing from their record by the exact word or phrase they used, not a paraphrase]"
+"Since then: [use GROUND_STATE if provided; otherwise draw from context — who has submitted, confidence score, alignment map, documents]"
+"Today we are going to: [focus on an unexpected angle — session 1 produced thin specificity, so this session goes to what almost went wrong, what they wish had been different, or what they held back]"
+
+Then ask one question from an unexpected angle. Do not explain the shift. Do not announce that you are approaching differently. One opening block. One question. Wait.`;
+    }
+    if (sessionNumber === 3) {
+      return `SESSION 3 CONTINUITY (SHIFTED APPROACH): Open with one statement naming the most specific thing in their record from sessions 1 and 2. Then ask one question: what has been hardest to talk about in this process — not the situation itself, what has been hard to say. One statement. One question. Wait.`;
+    }
+    return `SESSION ${sessionNumber} CONTINUITY (SHIFTED APPROACH): Open with one statement naming one thing in the record that was vague last time. Then ask one question: what specifically happened with it. One statement. One question. Do not ask follow-ups in the same message.`;
+  }
+
   if (sessionNumber === 2) {
-    return `SESSION 2 CONTINUITY: Open with the most specific unresolved thing from session 1 — use PRIOR_SESSION for context. Never ask "what have you been working on." If the prior session named a specific commitment, tension, or gap: name it and ask what happened to it.`;
+    return `SESSION 2 OPENING STRUCTURE:
+
+Open with this block in order, as one natural message:
+"Last time you told us: [one specific named thing from session 1 in plain language — a synthesis of the most important thing they said, not a quote]"
+"Since then: [use GROUND_STATE if provided; otherwise use what is available in PRIOR_SESSION and context — who has submitted, what the confidence score is, whether the alignment map has updated, whether documents have been added]"
+"Today we are going to: [what session 2 will focus on — drawn from the gaps and specificity levels in session 1]"
+
+Then ask the first question of session 2. Draw it directly from a gap or a vague answer in session 1. It must be specific to what this person said. Never ask "what have you been working on." Never ask "welcome back." Never open with a question.
+
+One opening block. One question. Wait for a response before asking anything else.`;
   }
   if (sessionNumber === 3) {
-    return `SESSION 3 CONTINUITY: Measure against the specific evidence baseline from session 1. Name the baseline from PRIOR_SESSION. Ask what exists in the record against it now. If nothing exists: ask about the blocker, not the failure.`;
+    return `SESSION 3 CONTINUITY: Open with one statement — name the specific evidence baseline from session 1 (use PRIOR_SESSION). Then ask one question: what exists in the record against it now. If nothing exists: ask about the blocker, not the failure. One statement. One question.`;
   }
-  return `SESSION ${sessionNumber} CONTINUITY: Name what is in the record and what is not. Then: "Before the report is prepared — is there anything in your record that is not fully captured yet that you want to name now?"`;
+  return `SESSION ${sessionNumber} CONTINUITY: Open with one statement naming what is in the record and what is not. Then ask one question: "Before the report is prepared — is there anything in your record that is not fully captured yet that you want to name now?" One statement. One question.`;
 }
 
 export function buildIntakeBlock(ctx: PromptContext): string {
@@ -1828,11 +1862,19 @@ export function buildIntakeBlock(ctx: PromptContext): string {
     `ADMIN_BRIEF: ${ctx.adminBrief ?? 'none provided'}`,
     `PRIOR_CONTEXT: ${ctx.priorContext ?? 'none provided'}`,
     `PRIOR_SESSION: ${ctx.priorSession ? ctx.priorSession.slice(0, 500) : 'first session'}`,
+    `GROUND_STATE: ${ctx.groundState ?? 'unknown'}`,
     `ACTIVE_PATHWAY: ${activePathway}`,
   ];
 
   if (isDrifted) lines.push(`PROTOCOL: FAILING_RELATIONSHIP`);
-  if (isRecall) lines.push(`PROTOCOL: RECALL_SESSION`);
+  if (isRecall) {
+    lines.push(`PROTOCOL: RECALL_SESSION`);
+    // Ask for recall confidence at the natural moment — once per session, not clinically.
+    lines.push(`RECALL_CONFIDENCE_INSTRUCTION: When the person finishes describing a past event or situation from memory, ask at the natural break: "How certain are you about that — certain, mostly certain, or uncertain on key points?" Ask at most once per session. Do not announce it as a separate step. Weave it in.`);
+  }
+  if (ctx.lowSpecificityMultiDim) {
+    lines.push(`LOW_SPECIFICITY_APPROACH: Prior session produced thin specificity across multiple dimensions. Shift approach this session without announcing it. Focus on concrete named things. Ask about failure, unexpected difficulty, or what was held back. Never reference this instruction to the person.`);
+  }
 
   if (ctx.trustLevel) {
     lines.push(`TRUST_STATE: ${ctx.trustLevel}`);

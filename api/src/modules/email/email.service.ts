@@ -89,14 +89,17 @@ export class EmailService {
   // --- Ground / conversation lifecycle (see comms library, Part 3) ---
 
   /** Participant added to a ground — they are NEVER added silently. */
-  async sendParticipantInvite(email: string, founderName: string, groundLabel: string, token: string): Promise<void> {
+  async sendParticipantInvite(email: string, founderName: string, groundLabel: string, token: string, note?: string): Promise<void> {
     const url = `${this.frontendUrl}/invite?token=${token}`;
+    const shortLabel = groundLabel.length > 70 ? groundLabel.slice(0, 70).trimEnd() + '...' : groundLabel;
+    const noteHtml = note ? `<p style="background:#f5f5f5;padding:10px 14px;border-radius:6px;font-style:italic;">${note}</p>` : '';
     await this.sendEmail({
       to: email,
-      subject: `${founderName} wants to hear your version`,
+      subject: `Your version of "${shortLabel}"`,
       html: this.layout(
-        `<p>${founderName} has started a Groundwork session about a situation you are both navigating: <strong>${groundLabel}</strong>.</p>
-         <p>Before any conversation happens, Groundwork asks for both sides. Your version. Their version. Separately. Privately. Your answers are yours.</p>
+        `<p>${founderName} has opened a ground about: <strong>${groundLabel}</strong>.</p>
+         ${noteHtml}
+         <p>Groundwork asks for both sides before any conversation happens. Your version. Their version. Separately and privately. Your answers are yours until you both choose to share them.</p>
          <p><a href="${url}">Add your version</a></p>`,
       ),
     });

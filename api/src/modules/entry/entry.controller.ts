@@ -5,7 +5,7 @@ import { Type } from 'class-transformer';
 import { Public } from '../../common';
 import { EntryService } from './entry.service';
 
-const VALID_MODES = ['something_new', 'look_back', 'look_forward', 'both'];
+const VALID_MODES = ['something_new', 'look_back', 'look_forward', 'both', 'faq'];
 
 class MessageDto {
   @IsString()
@@ -28,6 +28,17 @@ class EntryChatDto {
   messages: MessageDto[];
 }
 
+class ParticipantChatDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(200)
+  token: string;
+
+  @IsArray()
+  @Type(() => MessageDto)
+  messages: MessageDto[];
+}
+
 @ApiTags('Entry')
 @Controller('entry')
 export class EntryController {
@@ -38,5 +49,12 @@ export class EntryController {
   @ApiOperation({ summary: 'Anonymous entry conversation (no auth required)' })
   async chat(@Body() dto: EntryChatDto) {
     return this.entry.chat(dto.mode, dto.messages);
+  }
+
+  @Public()
+  @Post('participant-chat')
+  @ApiOperation({ summary: 'Anonymous participant check-in conversation (no auth required)' })
+  async participantChat(@Body() dto: ParticipantChatDto) {
+    return this.entry.participantChat(dto.token, dto.messages);
   }
 }

@@ -282,11 +282,13 @@ export class ConversationService {
     const systemPrompt = await this.prompts.getActiveContent('system');
 
     // Load the prior session summary for PRIOR_SESSION in the intake block (max 500 chars).
+    // Also read specificityDimensions to detect multi-dim low specificity for session builder.
     let priorSession: string | undefined;
+    let lowSpecificityMultiDim = false;
     if (checkIn.sessionNumber >= 2) {
       const prevCheckIn = await this.prisma.checkIn.findFirst({
         where: { participantId: checkIn.participantId, sessionNumber: checkIn.sessionNumber - 1, status: CheckInStatus.COMPLETED },
-        select: { id: true },
+        select: { id: true, specificityDimensions: true },
       });
       if (prevCheckIn) {
         const entries = await this.prisma.recordEntry.findMany({
@@ -298,10 +300,16 @@ export class ConversationService {
         if (entries.length) {
           priorSession = entries.map(e => `(${e.type}) ${e.text.replace(/^\[VERIFIABILITY:\w+\] /, '')}`).join(' | ').slice(0, 500);
         }
+        if (prevCheckIn.specificityDimensions) {
+          const dims = prevCheckIn.specificityDimensions as Record<string, string>;
+          const lowCount = Object.values(dims).filter((v) => v === 'vague' || v === 'managed').length;
+          lowSpecificityMultiDim = lowCount >= 3;
+        }
       }
     }
 
     const otherPartyCheckedIn = await this.hasOtherPartyCheckedIn(checkIn.groundId, checkIn.participantId);
+    const groundState = await this.buildGroundState(checkIn.groundId, otherPartyCheckedIn);
     const intakeBlock = buildIntakeBlock({
       scenario: ground.scenario,
       partyType: checkIn.participant.partyType,
@@ -312,6 +320,8 @@ export class ConversationService {
       adminBrief: (ground as any).description ?? null,
       priorContext: checkIn.participant.roleAsDescribed ?? null,
       priorSession,
+      lowSpecificityMultiDim,
+      groundState,
     });
 
     // Returning user protocol: for session 2+, inject the most important unresolved
@@ -321,7 +331,7 @@ export class ConversationService {
       returningUserContext = await this.buildReturningUserContext(checkIn.participantId, checkIn.sessionNumber);
     }
 
-    const [{ block: dynamicContext }, uploadedDocs] = await Promise.all([
+    const [{ block: dynamicContext }, uploadedDocs, personTurnCount] = await Promise.all([
       this.context.build({
         groundId: checkIn.groundId,
         participantId: checkIn.participantId,
@@ -334,6 +344,7 @@ export class ConversationService {
         select: { fileName: true, content: true },
         orderBy: { createdAt: 'asc' },
       }),
+      this.prisma.conversationTurn.count({ where: { checkInId: checkIn.id, role: TurnRole.PERSON } }),
     ]);
 
     const docContext = uploadedDocs.length
@@ -341,7 +352,12 @@ export class ConversationService {
         uploadedDocs.map((d) => `--- ${d.fileName} ---\n${d.content}`).join('\n\n')
       : '';
 
-    return [systemPrompt, intakeBlock, returningUserContext, dynamicContext, docContext].filter(Boolean).join('\n\n');
+    const docPromptHint =
+      personTurnCount >= 2 && uploadedDocs.length === 0
+        ? `DOC_PROMPT_HINT: At a natural moment in your next response — when the conversation has reached a point where something is described but not evidenced — say something like: "There is probably something in writing that captures this. A brief, a plan, an email exchange. If you have it, attach it using the button at the bottom — I want to know what it shows." Weave it in as one sentence. Do not make it an agenda item or a request. Only if it fits naturally.`
+        : '';
+
+    return [systemPrompt, intakeBlock, returningUserContext, dynamicContext, docContext, docPromptHint].filter(Boolean).join('\n\n');
   }
 
   /**
@@ -358,7 +374,7 @@ export class ConversationService {
         sessionNumber: sessionNumber - 1,
         status: CheckInStatus.COMPLETED,
       },
-      select: { id: true, specificityLevel: true },
+      select: { id: true, specificityLevel: true, specificityDimensions: true },
     });
     if (!prevCheckIn) return '';
 
@@ -381,7 +397,9 @@ export class ConversationService {
     const topItem = sorted[0];
 
     const priorSpecificity = prevCheckIn.specificityLevel ?? 'unknown';
-    const lowSpecificity = priorSpecificity === 'vague' || priorSpecificity === 'managed';
+    const dims = prevCheckIn.specificityDimensions as Record<string, string> | null ?? null;
+    const lowDimCount = dims ? Object.values(dims).filter((v) => v === 'vague' || v === 'managed').length : 0;
+    const lowSpecificity = priorSpecificity === 'vague' || priorSpecificity === 'managed' || lowDimCount >= 3;
 
     const lines: string[] = [
       `# Returning user — session ${sessionNumber}`,
@@ -390,8 +408,12 @@ export class ConversationService {
     ];
 
     if (lowSpecificity) {
+      const weakDims = dims
+        ? Object.entries(dims).filter(([, v]) => v === 'vague' || v === 'managed').map(([k]) => k)
+        : [];
+      const dimNote = weakDims.length >= 3 ? ` Dimensions that were thin: ${weakDims.join(', ')}.` : '';
       lines.push(
-        `SPECIFICITY NOTE: Their last session produced ${priorSpecificity} specificity. Do not open with the same framing as last time. Ask about one unexpected angle: what almost went wrong, what they wish had gone differently, or what they held back last time. Push for something concrete they can name.`,
+        `SPECIFICITY NOTE: Their last session produced ${priorSpecificity} specificity.${dimNote} Do not open with the same framing as last time. Ask about one unexpected angle — what almost went wrong, what they wish had happened differently, or what they held back last time. Do not announce the change. Push for something concrete they can name.`,
       );
     } else {
       lines.push(`Open by naming this specifically. Ask what has changed since they last described it.`);
@@ -470,6 +492,7 @@ export class ConversationService {
         completedAt: new Date(),
         specificityLevel: specificityData?.level ?? null,
         recallConfidence: specificityData?.recallConfidence ?? null,
+        specificityDimensions: specificityData?.dimensions ?? undefined,
       },
     });
 
@@ -528,20 +551,43 @@ export class ConversationService {
    * Score the specificity level for the session from person's turns.
    * Returns mapped level (specific/directional/vague/managed) and recall confidence.
    */
-  private async scoreSessionSpecificity(checkInId: string): Promise<{ level: string; recallConfidence: string }> {
+  private async scoreSessionSpecificity(checkInId: string): Promise<{
+    level: string;
+    recallConfidence: string;
+    dimensions: Record<string, string>;
+  }> {
     const personTurns = await this.prisma.conversationTurn.findMany({
       where: { checkInId, role: TurnRole.PERSON },
       orderBy: { createdAt: 'asc' },
       select: { content: true },
     });
-    if (personTurns.length === 0) return { level: 'vague', recallConfidence: 'uncertain' };
+    if (personTurns.length === 0) {
+      const dims = { delivery: 'managed', evidence: 'managed', enablement: 'managed', coverage: 'managed', commitment: 'managed' };
+      return { level: 'vague', recallConfidence: 'uncertain', dimensions: dims };
+    }
 
-    const scores = personTurns.map(t => runIntake(t.content).specificity);
-    const avgScore = scores.reduce((a, b) => a + b, 0) / scores.length;
+    const intakes = personTurns.map(t => runIntake(t.content));
+    const n = intakes.length;
+    const avgSpecificity = intakes.reduce((s, r) => s + r.specificity, 0) / n;
+
+    // Five dimensions derived from runIntake() aggregates.
+    const avgDelivery   = intakes.reduce((s, r) => s + r.outputScore, 0) / n;
+    const avgEnablement = intakes.reduce((s, r) => s + r.thinkingScore, 0) / n;
+    const coverageScore = Math.min(1, (intakes.filter(r => r.types.includes('absorption') || r.types.includes('rescue')).length / n) * 1.5);
+    const commitScore   = intakes.filter(r => r.types.includes('movement')).length / n;
+
+    const dimensions: Record<string, string> = {
+      delivery:   mapSpecificityLevel(avgDelivery),
+      evidence:   mapSpecificityLevel(avgSpecificity),
+      enablement: mapSpecificityLevel(avgEnablement),
+      coverage:   mapSpecificityLevel(coverageScore),
+      commitment: mapSpecificityLevel(commitScore),
+    };
 
     return {
-      level: mapSpecificityLevel(avgScore),
-      recallConfidence: mapRecallConfidence(avgScore),
+      level: mapSpecificityLevel(avgSpecificity),
+      recallConfidence: mapRecallConfidence(avgSpecificity),
+      dimensions,
     };
   }
 
@@ -627,6 +673,35 @@ export class ConversationService {
   }
 
   /**
+   * Called immediately after a document is uploaded during an active check-in.
+   * Generates a focused AI response acknowledging the document and asking what
+   * it confirms. Owner-scoped: reads only this participant's documents.
+   */
+  async documentReceived(checkInId: string, requestingUserId: string) {
+    const checkIn = await this.loadOwnedCheckIn(checkInId, requestingUserId);
+
+    const doc = await this.prisma.groundDocument.findFirst({
+      where: { groundId: checkIn.groundId, participantId: checkIn.participantId },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const systemPrompt =
+      'You are Groundwork. A supporting document has just been attached to this check-in session. Acknowledge it by name in one sentence. Then ask one question: what does this document confirm about what you have described? Wait for their answer before asking about complications. Warm, direct, brief. Do not summarise the document. Do not make a judgement. Do not list questions.';
+
+    const docContext = doc
+      ? `[Document attached: "${doc.fileName}"]\n${doc.content.slice(0, 1000)}`
+      : '[A document was attached but could not be read.]';
+
+    const reply = await this.anthropic.respond(systemPrompt, [{ role: 'user', content: docContext }]);
+
+    await this.prisma.conversationTurn.create({
+      data: { checkInId: checkIn.id, role: TurnRole.AI, content: reply },
+    });
+
+    return { reply };
+  }
+
+  /**
    * Decline to take part (B8). Penalty-free — marks this party's check-in
    * DECLINED. The record reflects that the process was offered and declined;
    * this is shown to the admin as a neutral status, never a negative signal.
@@ -651,6 +726,20 @@ export class ConversationService {
       where: { groundId, participantId: { not: participantId }, status: CheckInStatus.COMPLETED },
     });
     return count > 0;
+  }
+
+  private async buildGroundState(groundId: string, otherPartyCheckedIn: boolean): Promise<string> {
+    const submittedCount = await this.prisma.checkIn.count({
+      where: { groundId, status: CheckInStatus.COMPLETED },
+    });
+    const totalCount = await this.prisma.groundParticipant.count({ where: { groundId } });
+    const parts: string[] = [];
+    if (otherPartyCheckedIn) {
+      parts.push(`${submittedCount} of ${totalCount} parties have submitted their accounts.`);
+    } else {
+      parts.push(`${submittedCount} of ${totalCount} parties have submitted so far. The other party has not yet submitted.`);
+    }
+    return parts.join(' ');
   }
 
   /** Loads a check-in only if the requesting user owns the participant side. */

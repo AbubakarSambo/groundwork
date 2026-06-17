@@ -76,6 +76,15 @@ export class AuthController {
   }
 
   @Public()
+  @Post('entry-save')
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ global: { limit: 5, ttl: 60000 } })
+  @ApiOperation({ summary: 'Save an entry session — creates account if new, sends magic link' })
+  async entrySave(@Body('email') email: string) {
+    return this.authService.entrySave(email);
+  }
+
+  @Public()
   @Post('member-signin')
   @HttpCode(HttpStatus.OK)
   @Throttle({ global: { limit: 5, ttl: 60000 } })

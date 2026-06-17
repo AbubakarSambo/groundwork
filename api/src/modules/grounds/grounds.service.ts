@@ -124,16 +124,40 @@ export class GroundsService {
   }
 
   async list(organizationId: string) {
-    return this.prisma.ground.findMany({
+    const now = new Date();
+    const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    const grounds = await this.prisma.ground.findMany({
       where: { organizationId },
-      orderBy: { createdAt: 'desc' },
-      include: { participants: { select: { id: true, email: true, partyType: true, userId: true } } },
+      include: {
+        participants: { select: { id: true, email: true, partyType: true, userId: true } },
+        checkIns: {
+          select: { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, createdAt: true },
+        },
+      },
     });
+
+    return grounds
+      .map(g => {
+        const checkIns = g.checkIns;
+        const completedCount = checkIns.filter(ci => ci.status === CheckInStatus.COMPLETED).length;
+        const confidence = completedCount > 0 ? Math.min(5, Math.max(1, completedCount)) : undefined;
+        const overdue = checkIns.filter(ci => ci.status === CheckInStatus.NOT_STARTED && ci.createdAt < threeDaysAgo).length;
+        const checkInsToday = checkIns.filter(ci => ci.status === CheckInStatus.COMPLETED && ci.completedAt != null && ci.completedAt >= todayStart).length;
+        const lastCompletion = checkIns
+          .map(ci => ci.completedAt)
+          .filter((d): d is Date => d !== null)
+          .sort((a, b) => b.getTime() - a.getTime())[0];
+        const lastActivity = lastCompletion ?? g.updatedAt;
+        return { ...g, confidence, overdue, checkInsToday, lastActivity };
+      })
+      .sort((a, b) => new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime());
   }
 
   async get(id: string, organizationId: string, requestingUserId?: string) {
     // Primary lookup by org — works for org members and the initiator.
-    const CHECKIN_SELECT = { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, specificityLevel: true, recallConfidence: true } as const;
+    const CHECKIN_SELECT = { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, specificityLevel: true, recallConfidence: true, specificityDimensions: true } as const;
 
     let ground = await this.prisma.ground.findFirst({
       where: { id, organizationId },
@@ -231,7 +255,9 @@ export class GroundsService {
 
     // Magic-link invite token, persisted on the participant. They accept it to
     // create/link a user, set userId, and enter their private check-in.
-    const token = crypto.randomBytes(32).toString('hex');
+    // If the entry flow pre-generated a token (so the share link could be shown
+    // immediately before auth), honour it here — no separate lookup needed.
+    const token = dto.inviteToken ?? crypto.randomBytes(32).toString('hex');
     const inviteTokenExpiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000); // 14 days
 
     const participant = await this.prisma.$transaction(async (tx) => {
@@ -262,6 +288,7 @@ export class GroundsService {
       `${initiator?.firstName ?? 'A founder'}`,
       ground.label,
       token,
+      dto.note,
     );
 
     // GW-01: strip private fields (inviteToken, inviteTokenExpiresAt, soloArtifact,

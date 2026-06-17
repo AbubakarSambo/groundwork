@@ -52,6 +52,7 @@ export interface CheckInSummary {
   completedAt?: string | null
   specificityLevel?: string | null
   recallConfidence?: string | null
+  specificityDimensions?: Record<string, string> | null
 }
 
 export interface GroundSignal {
@@ -99,12 +100,8 @@ export interface Report {
   agreements: string[]
   divergences: { topic: string; positions: { participantLabel: string; view: string }[]; evidence?: string[] }[]
   centralQuestion: string
-  engagement?: {
-    coverage: 'thin' | 'moderate' | 'strong'
-    documentBacked: boolean
-    note: string
-    parties: { label: string; sessions: number; recordEntries: number; documentsAttached: number; contributed: boolean }[]
-  } | null
+  engagement?: Record<string, any> | null
+  soloArtifact?: { summary: string; whatToCarry?: string } | null
   releasedAt: string | null
   createdAt: string
 }

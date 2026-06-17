@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { authApi } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
-import { entryStorage } from '@/api/entry'
+import { entryStorage, participantStorage } from '@/api/entry'
 import { groundsApi } from '@/api/grounds'
+import { participantsApi } from '@/api'
 
 const MODE_TO_SCENARIO: Record<string, string> = {
   something_new: 'NEW_PROJECT',
@@ -32,19 +33,46 @@ export function MagicVerifyPage() {
         const count = parseInt(localStorage.getItem(SIGNIN_COUNT_KEY) ?? '0', 10) + 1
         localStorage.setItem(SIGNIN_COUNT_KEY, String(count))
 
+        // If there is a completed participant session, link account via accept()
+        const participantSession = participantStorage.load()
+        if (participantSession?.inviteToken) {
+          try {
+            const acceptRes = await participantsApi.accept(participantSession.inviteToken)
+            setAuth(acceptRes.user, acceptRes.accessToken)
+            const pGroundLabel = participantSession.groundLabel
+            participantStorage.clear()
+            if (acceptRes.checkInId) {
+              navigate(`/checkin/${acceptRes.checkInId}`, { state: { sessionNumber: 1, groundLabel: pGroundLabel, groundId: acceptRes.groundId }, replace: true })
+            } else {
+              navigate(`/grounds/${acceptRes.groundId}/p`, { replace: true })
+            }
+            return
+          } catch {
+            participantStorage.clear()
+          }
+        }
+
         // If there is a completed entry session, create a ground from it
         const session = entryStorage.load()
         if (session?.completed) {
           try {
             const scenario = MODE_TO_SCENARIO[session.mode] ?? 'NEW_PROJECT'
-            const label = session.firstMessage.slice(0, 60).trim() || 'New ground'
+            const lastAiMsg = [...session.messages].reverse().find(m => m.role === 'assistant')
+            const summaryMatch = lastAiMsg?.content.match(/Here is what you have described:\s*(.+?)(?:\n\n|\n(?=[A-Z]))/s)
+            const label = summaryMatch
+              ? summaryMatch[1].replace(/\[.*?\]/g, '').trim().slice(0, 120) || session.firstMessage.slice(0, 80).trim() || 'New ground'
+              : session.firstMessage.slice(0, 80).trim() || 'New ground'
             const ground = await groundsApi.create({
               label,
               scenario: scenario as any,
               moment: 'STARTING',
             })
             if (session.participantEmail) {
-              await groundsApi.addParticipant(ground.id, { email: session.participantEmail }).catch(() => {})
+              await groundsApi.addParticipant(ground.id, {
+                email: session.participantEmail,
+                inviteToken: session.inviteToken,
+                note: session.inviteNote,
+              }).catch(() => {})
             }
             entryStorage.clear()
             // Second signin: offer password setup before ground

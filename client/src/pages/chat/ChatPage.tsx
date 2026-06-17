@@ -73,8 +73,14 @@ export function ChatPage() {
 
   const uploadDoc = useMutation({
     mutationFn: (file: File) => documentsApi.upload(groundId!, file),
-    onSuccess: (doc) => {
-      setMsgs(v => [...v, { id: `doc-${doc.id}`, role: 'AI', content: `Document received: "${doc.name}". Let me ask you a few things about it.` }])
+    onSuccess: async (doc) => {
+      if (!checkInId) return
+      try {
+        const res = await conversationApi.documentReceived(checkInId)
+        setMsgs(v => [...v, { id: `doc-ai-${doc.id}`, role: 'AI', content: res.reply }])
+      } catch {
+        setMsgs(v => [...v, { id: `doc-${doc.id}`, role: 'AI', content: `Document received: "${doc.name}". Tell me what it shows.` }])
+      }
     },
     onError: () => toast.error('Upload failed.'),
   })
@@ -124,7 +130,7 @@ export function ChatPage() {
   const privacyLabel = `Session ${sessionNumber} · Your words are private until you both activate the report.`
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)', overflow: 'hidden' }}>
       {/* Header */}
       <div className="gw-hdr">
         <div>
@@ -146,13 +152,13 @@ export function ChatPage() {
           {openSession.isPending && (
             <div style={{ fontSize: 13, color: 'var(--gw-muted)', textAlign: 'center', padding: 16 }}>Opening your session…</div>
           )}
-          {msgs.map(m => (
+          {msgs.map((m, i) => (
             <div
               key={m.id}
               className={`gw-msg ${
                 m.id === 'loading' ? 'gw-msg-loading' :
                 m.role === 'PERSON' ? 'gw-msg-user' : 'gw-msg-ai'
-              }`}
+              } ${i === msgs.length - 1 ? 'gw-msg-active' : 'gw-msg-back'}`}
             >
               {m.content}
             </div>

@@ -68,6 +68,12 @@ export class ConversationController {
     return this.conversation.getSoloArtifact(id, userId);
   }
 
+  @Post(':id/document-received')
+  @ApiOperation({ summary: 'Handle a newly attached document — generates AI response asking what it confirms' })
+  async documentReceived(@Param('id') id: string, @CurrentUser('id') userId: string) {
+    return this.conversation.documentReceived(id, userId);
+  }
+
   @Post(':id/remind')
   @ApiOperation({ summary: 'Send a nudge email to parties who have not yet completed this check-in session' })
   async sendReminder(@Param('id') checkInId: string, @CurrentUser('id') userId: string) {

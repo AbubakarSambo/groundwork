@@ -1,8 +1,9 @@
-import { useState, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useRef, useEffect } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
 import type { EntryMode } from '@/api/entry'
-import { entryApi, entryStorage } from '@/api/entry'
+import { entryApi } from '@/api/entry'
+import { FeedbackWidget } from '@/components/FeedbackWidget'
 
 const MODES: { id: EntryMode; label: string }[] = [
   { id: 'something_new', label: 'Something new' },
@@ -20,6 +21,7 @@ const PLACEHOLDERS: Record<EntryMode, string> = {
 
 export function HomePage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [mode, setMode] = useState<EntryMode>('something_new')
   const [text, setText] = useState('')
   const [faqAnswer, setFaqAnswer] = useState('')
@@ -42,14 +44,15 @@ export function HomePage() {
       return
     }
 
-    entryStorage.save({
-      mode,
-      messages: [{ role: 'user', content: trimmed }],
-      completed: false,
-      firstMessage: trimmed,
-    })
-    navigate(`/entry-chat?mode=${mode}`)
+    navigate(`/entry-chat?mode=${mode}&q=${encodeURIComponent(trimmed)}`)
   }
+
+  useEffect(() => {
+    const faqParam = searchParams.get('faq')
+    const modeParam = searchParams.get('mode') as EntryMode | null
+    if (modeParam && MODES.some(m => m.id === modeParam)) setMode(modeParam)
+    if (faqParam) faqMutation.mutate(faqParam)
+  }, [])
 
   const taRef = useRef<HTMLTextAreaElement>(null)
 
@@ -194,6 +197,7 @@ export function HomePage() {
           </div>
         </div>
       </div>
+      <FeedbackWidget />
     </div>
   )
 }

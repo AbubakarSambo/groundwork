@@ -2,10 +2,13 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
 import { authApi, type MagicLinkBody } from '@/api/auth'
+import { useAuthStore } from '@/stores/auth'
+import { entryStorage, participantStorage } from '@/api/entry'
 
 export function MagicSentPage() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
+  const setAuth = useAuthStore(s => s.setAuth)
   const email = params.get('email') ?? ''
   const [countdown, setCountdown] = useState(30)
   const [canResend, setCanResend] = useState(false)
@@ -15,6 +18,30 @@ export function MagicSentPage() {
     const t = setTimeout(() => setCountdown(c => c - 1), 1000)
     return () => clearTimeout(t)
   }, [countdown])
+
+  // Detect when the magic link is confirmed in another tab on the same device.
+  // The auth store persists to localStorage; the storage event fires in every
+  // tab except the one that wrote the data, so Tab A (this page) gets notified
+  // when Tab B (the verify page) authenticates.
+  useEffect(() => {
+    function handleStorage(e: StorageEvent) {
+      if (e.key !== 'token' || !e.newValue) return
+      try {
+        const raw = localStorage.getItem('auth-storage-v2')
+        if (!raw) return
+        const parsed = JSON.parse(raw)
+        const { user, token } = parsed?.state ?? {}
+        if (user && token) {
+          setAuth(user, token)
+          entryStorage.clear()
+          participantStorage.clear()
+          navigate('/grounds', { replace: true })
+        }
+      } catch {}
+    }
+    window.addEventListener('storage', handleStorage)
+    return () => window.removeEventListener('storage', handleStorage)
+  }, [])
 
   // Resend re-uses whatever body was cached in sessionStorage from the sign-up form
   const resend = useMutation({

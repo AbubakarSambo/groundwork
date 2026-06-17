@@ -79,7 +79,9 @@ export const BAD_FAITH_CODES: PatternCode[] = [
 
 // Patterns that may surface to the alignment feed but must NEVER be named to
 // either person directly (Part 4 / alignment feed).
-export const ALIGNMENT_FEED_ONLY_CODES = new Set(['F5', 'E4']);
+// LOW_SPEC_MULTI_DIM: 3+ dimensions vague/managed in one session — admin-only flag;
+// participant is never told. Session builder reads it and shifts approach silently.
+export const ALIGNMENT_FEED_ONLY_CODES = new Set(['F5', 'E4', 'LOW_SPEC_MULTI_DIM']);
 
 const KNOWN_CODES = new Set(BAD_FAITH_CODES.map((c) => c.code));
 export const isBadFaithCode = (code: string) => KNOWN_CODES.has(code);

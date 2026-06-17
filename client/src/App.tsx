@@ -28,7 +28,9 @@ import { PromptVersioningPage } from '@/pages/prompts/PromptVersioningPage'
 import { AdminPage } from '@/pages/admin/AdminPage'
 import { DemoConversationPage } from '@/pages/demo/DemoConversationPage'
 import { HomePage } from '@/pages/home/HomePage'
-import { EntryChat } from '@/pages/home/EntryChat'
+import { OnboardingChat } from '@/pages/home/OnboardingChat'
+import { ParticipantOnboardingChat } from '@/pages/home/ParticipantOnboardingChat'
+import { LeadOnboardingChat } from '@/pages/home/LeadOnboardingChat'
 import { AppShell } from '@/components/layout/AppShell'
 import type { JSX } from 'react'
 
@@ -73,7 +75,9 @@ export default function App() {
             <Route path="/verify-email" element={<MagicVerifyPage />} />
             <Route path="/set-password" element={<SetPasswordPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
-            <Route path="/entry-chat" element={<EntryChat />} />
+            <Route path="/entry-chat" element={<OnboardingChat />} />
+            <Route path="/participant-chat" element={<ParticipantOnboardingChat />} />
+            <Route path="/lead-onboarding" element={<LeadOnboardingChat />} />
             <Route path="/enter" element={<EnterPage />} />
             <Route path="/pin" element={<PinPage />} />
             <Route path="/invite" element={<InvitePage />} />
@@ -88,8 +92,8 @@ export default function App() {
             <Route path="/grounds/new" element={<RequireAuth><AppShell><CreateGroundPage /></AppShell></RequireAuth>} />
             <Route path="/grounds/:id" element={<RequireAuth><AppShell><GroundAdminPage /></AppShell></RequireAuth>} />
             <Route path="/grounds/:id/p" element={<RequireAuth><AppShell><GroundParticipantPage /></AppShell></RequireAuth>} />
-            <Route path="/chat/:checkInId" element={<RequireAuth><ChatPage /></RequireAuth>} />
-            <Route path="/checkin/:checkInId" element={<RequireAuth><ChatPage /></RequireAuth>} />
+            <Route path="/chat/:checkInId" element={<RequireAuth><AppShell><ChatPage /></AppShell></RequireAuth>} />
+            <Route path="/checkin/:checkInId" element={<RequireAuth><AppShell><ChatPage /></AppShell></RequireAuth>} />
             <Route path="/feed" element={<RequireAuth><AppShell><AlignmentFeedPage /></AppShell></RequireAuth>} />
             <Route path="/billing" element={<RequireAuth><AppShell><BillingPage /></AppShell></RequireAuth>} />
             <Route path="/billing/checkout" element={<RequireAuth><PaymentPage /></RequireAuth>} />

@@ -216,6 +216,46 @@ export class AuthService {
     return { message };
   }
 
+  async entrySave(email: string): Promise<{ message: string; email: string }> {
+    const lower = email.toLowerCase();
+    const message = 'Check your email for your sign-in link.';
+
+    let user = await this.prisma.user.findUnique({ where: { email: lower } });
+
+    if (!user) {
+      const localPart = lower.split('@')[0].replace(/[._\-+]/g, ' ').trim();
+      const firstName = (localPart.charAt(0).toUpperCase() + localPart.slice(1).split(' ')[0]).slice(0, 40) || 'User';
+      const domainBase = lower.split('@')[1]?.split('.')[0] ?? 'workspace';
+      const slug = await this.generateUniqueSlug(domainBase);
+
+      const result = await this.prisma.$transaction(async (tx) => {
+        const org = await tx.organization.create({ data: { name: `${firstName}'s workspace`, slug } });
+        const u = await tx.user.create({
+          data: { organizationId: org.id, email: lower, firstName, lastName: '', role: 'ADMIN', isEmailVerified: false },
+        });
+        const token = crypto.randomBytes(32).toString('hex');
+        await tx.emailVerificationToken.create({
+          data: { userId: u.id, token, type: TokenType.EMAIL_VERIFICATION, expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) },
+        });
+        return { user: u, token };
+      });
+
+      await this.emailService.sendMagicLinkEmail(lower, firstName, result.token);
+    } else {
+      await this.prisma.emailVerificationToken.updateMany({
+        where: { userId: user.id, type: TokenType.EMAIL_VERIFICATION, usedAt: null },
+        data: { usedAt: new Date() },
+      });
+      const token = crypto.randomBytes(32).toString('hex');
+      await this.prisma.emailVerificationToken.create({
+        data: { userId: user.id, token, type: TokenType.EMAIL_VERIFICATION, expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) },
+      });
+      await this.emailService.sendMagicLinkEmail(lower, user.firstName, token);
+    }
+
+    return { message, email: lower };
+  }
+
   async memberSignin(dto: MemberSigninDto): Promise<{ message: string; email: string }> {
     const message = 'If an account with that email exists, a sign-in link has been sent.';
     const email = dto.email.toLowerCase();

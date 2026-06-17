@@ -5,16 +5,8 @@ import { groundsApi } from '@/api/grounds'
 import { useAuthStore } from '@/stores/auth'
 import { reportsApi } from '@/api/reports'
 import { documentsApi } from '@/api/documents'
+import { ConfDots } from '@/components/ConfDots'
 import { toast } from 'sonner'
-
-function ConfDots({ score }: { score?: number }) {
-  const n = score ?? 0
-  return (
-    <div className="gw-conf-dots">
-      {[1,2,3,4,5].map(i => <div key={i} className={`gw-conf-dot${n >= i ? ` f${i}` : ''}`} />)}
-    </div>
-  )
-}
 
 type Tab = 'checkin' | 'record' | 'docs' | 'report' | 'profile'
 
@@ -69,10 +61,10 @@ export function GroundParticipantPage() {
       {/* Sticky header */}
       <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'var(--gw-bg)', borderBottom: '0.5px solid var(--gw-border)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span onClick={() => navigate('/grounds')} style={{ fontSize: 13, color: 'var(--gw-sub)', cursor: 'pointer' }}>← Grounds</span>
-            <div>
-              <div style={{ fontSize: 15, fontWeight: 700 }}>{ground.label}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
+            <span onClick={() => navigate('/grounds')} style={{ fontSize: 13, color: 'var(--gw-sub)', cursor: 'pointer', flexShrink: 0 }}>← Grounds</span>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ fontSize: 15, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ground.label}</div>
               <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 1 }}>Your words are private.</div>
             </div>
           </div>
@@ -88,7 +80,7 @@ export function GroundParticipantPage() {
           </div>
         )}
 
-        <div style={{ display: 'flex', borderTop: '0.5px solid var(--gw-border)' }}>
+        <div className="gw-tabs-scroll" style={{ display: 'flex', borderTop: '0.5px solid var(--gw-border)' }}>
           {(['checkin','record','docs','report','profile'] as Tab[]).map(t => (
             <button key={t} className={`gw-tab${tab === t ? ' active' : ''}`} onClick={() => setTab(t)}>
               {({ checkin: 'My check-in', record: 'My record', docs: 'Documents', report: 'Report', profile: 'My profile' })[t]}
@@ -187,45 +179,45 @@ export function GroundParticipantPage() {
 
             {report?.releasedAt ? (
               <div>
-                {/* 1. Synthesis */}
+                {/* 1. Your account, confirmed */}
                 <div style={{ background: 'var(--gw-navy)', color: 'white', borderRadius: 10, padding: 16, marginBottom: 12 }}>
-                  <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,.55)', marginBottom: 6 }}>Synthesis</div>
-                  <div style={{ fontSize: 13, lineHeight: 1.65 }}>{report.sharedPicture}</div>
-                  <button onClick={() => navigator.clipboard?.writeText(report.sharedPicture).then(() => toast.success('Copied'))}
-                    style={{ marginTop: 10, fontSize: 11, fontWeight: 600, color: 'white', background: 'rgba(255,255,255,.15)', border: 'none', cursor: 'pointer', padding: '6px 10px', borderRadius: 5, fontFamily: 'inherit' }}>
-                    Copy
-                  </button>
+                  <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,.55)', marginBottom: 6 }}>Your account, confirmed</div>
+                  <div style={{ fontSize: 13, lineHeight: 1.65 }}>
+                    {report.soloArtifact?.summary ?? report.sharedPicture}
+                  </div>
                 </div>
 
                 {/* 2. Ground confidence */}
                 <div style={{ background: 'white', border: '0.5px solid var(--gw-border)', borderRadius: 8, padding: '12px 14px', marginBottom: 12 }}>
                   <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-muted)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 6 }}>Ground confidence</div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
                     <ConfDots score={conf} />
-                    <div style={{ fontSize: 13, color: 'var(--gw-text)' }}>{conf}/5 sessions recorded</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)' }}>{conf}/5</div>
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>
+                    {conf <= 2 ? 'Two sessions recorded. The picture is forming. Session 2 will test whether both accounts hold.' : conf <= 3 ? 'Three sessions. A pattern is visible.' : 'Strong evidence base.'}
                   </div>
                 </div>
 
-                {/* 3. Probing observations */}
-                {myCheckIns.some((ci: any) => ci.specificityLevel || ci.recallConfidence) && (
+                {/* 3. What session 2 will probe */}
+                {((report.divergences ?? []).length > 0 || report.soloArtifact?.whatToCarry) && (
                   <div style={{ background: 'white', border: '0.5px solid var(--gw-border)', borderRadius: 8, padding: '12px 14px', marginBottom: 12 }}>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-muted)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 8 }}>Things to consider before session 2</div>
-                    {myCheckIns.filter((ci: any) => ci.specificityLevel).map((ci: any) => (
-                      <div key={ci.id} style={{ marginBottom: 6 }}>
-                        {ci.specificityLevel === 'vague' || ci.specificityLevel === 'managed' ? (
-                          <div style={{ fontSize: 12, color: 'var(--gw-text)', lineHeight: 1.6 }}>Your session {ci.sessionNumber} record stayed general. Think of a specific moment you could name in the next session.</div>
-                        ) : ci.specificityLevel === 'directional' ? (
-                          <div style={{ fontSize: 12, color: 'var(--gw-text)', lineHeight: 1.6 }}>You named themes in session {ci.sessionNumber}. Next session, try to name the exact event or conversation behind each one.</div>
-                        ) : null}
+                    <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-muted)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 8 }}>What session 2 will probe</div>
+                    {report.divergences?.slice(0, 3).map((d, i) => (
+                      <div key={i} style={{ fontSize: 12, color: 'var(--gw-text)', lineHeight: 1.6, marginBottom: 5, paddingLeft: 10, borderLeft: '2px solid var(--gw-border)' }}>
+                        {d.topic}
                       </div>
                     ))}
+                    {report.soloArtifact?.whatToCarry && (report.divergences?.length ?? 0) === 0 && (
+                      <div style={{ fontSize: 12, color: 'var(--gw-text)', lineHeight: 1.6 }}>{report.soloArtifact.whatToCarry}</div>
+                    )}
                   </div>
                 )}
 
                 {/* 4. Privacy reminder */}
                 <div style={{ background: 'var(--gw-bg)', border: '0.5px solid var(--gw-border)', borderRadius: 8, padding: '12px 14px', marginBottom: 12 }}>
                   <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-muted)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 6 }}>Privacy reminder</div>
-                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.65 }}>The other party cannot read your session words. They see only what appears in the shared report above. Your record is yours alone.</div>
+                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.65 }}>Your account is private. The other party cannot see what you wrote. Neither party sees the other's sessions until both parties activate the report.</div>
                 </div>
 
                 <button onClick={() => navigate('/grounds/new')}

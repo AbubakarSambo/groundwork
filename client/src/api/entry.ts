@@ -19,6 +19,11 @@ export const entryApi = {
     apiClient.post<EntryChatResponse>('/entry/chat', { mode: 'faq', messages: [{ role: 'user', content: question }] }).then(r => r.data),
 }
 
+export const participantApi = {
+  chat: (token: string, messages: EntryMessage[]) =>
+    apiClient.post<EntryChatResponse>('/entry/participant-chat', { token, messages }).then(r => r.data),
+}
+
 const STORAGE_KEY = 'gw-entry-session'
 
 export interface EntrySession {
@@ -27,6 +32,8 @@ export interface EntrySession {
   completed: boolean
   firstMessage: string
   participantEmail?: string
+  inviteToken?: string
+  inviteNote?: string
 }
 
 export const entryStorage = {
@@ -43,5 +50,32 @@ export const entryStorage = {
   },
   clear: () => {
     localStorage.removeItem(STORAGE_KEY)
+  },
+}
+
+const PARTICIPANT_STORAGE_KEY = 'gw-participant-session'
+
+export interface ParticipantSession {
+  inviteToken: string
+  groundLabel: string
+  initiatorName: string
+  messages: EntryMessage[]
+  completed: boolean
+}
+
+export const participantStorage = {
+  save: (session: ParticipantSession) => {
+    localStorage.setItem(PARTICIPANT_STORAGE_KEY, JSON.stringify(session))
+  },
+  load: (): ParticipantSession | null => {
+    try {
+      const raw = localStorage.getItem(PARTICIPANT_STORAGE_KEY)
+      return raw ? JSON.parse(raw) : null
+    } catch {
+      return null
+    }
+  },
+  clear: () => {
+    localStorage.removeItem(PARTICIPANT_STORAGE_KEY)
   },
 }

@@ -1,21 +1,16 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
-import { entryApi, entryStorage } from '@/api/entry'
-import type { EntryMessage, EntryMode } from '@/api/entry'
+import { participantApi, participantStorage } from '@/api/entry'
+import type { EntryMessage, ParticipantSession } from '@/api/entry'
 import { SaveCard } from './SaveCard'
 
-const MODE_LABEL: Record<string, string> = {
-  something_new: 'Something new',
-  look_back: 'Look back',
-  look_forward: 'Look forward',
-  both: 'Both',
-}
-
-export function EntryChat() {
+export function ParticipantChat() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
-  const mode = (params.get('mode') ?? 'both') as EntryMode
+  const token = params.get('token') ?? ''
+  const groundLabel = params.get('groundLabel') ?? ''
+  const initiatorName = params.get('initiatorName') ?? ''
 
   const [msgs, setMsgs] = useState<EntryMessage[]>([])
   const [input, setInput] = useState('')
@@ -25,14 +20,21 @@ export function EntryChat() {
   const [resumed, setResumed] = useState(false)
   const msgsRef = useRef<HTMLDivElement>(null)
   const taRef = useRef<HTMLTextAreaElement>(null)
-  const firstMessage = useRef('')
+  const contextRef = useRef({ groundLabel, initiatorName, token })
 
   const callApi = useMutation({
-    mutationFn: (messages: EntryMessage[]) => entryApi.chat(mode, messages),
+    mutationFn: (messages: EntryMessage[]) => participantApi.chat(contextRef.current.token, messages),
     onSuccess: res => {
       setMsgs(prev => {
         const next = [...prev.filter(m => m.role !== 'loading' as any), { role: 'assistant' as const, content: res.reply }]
-        entryStorage.save({ mode, messages: next, completed: res.sessionComplete, firstMessage: firstMessage.current })
+        const session: ParticipantSession = {
+          inviteToken: contextRef.current.token,
+          groundLabel: contextRef.current.groundLabel,
+          initiatorName: contextRef.current.initiatorName,
+          messages: next,
+          completed: res.sessionComplete,
+        }
+        participantStorage.save(session)
         return next
       })
       setLoading(false)
@@ -45,28 +47,20 @@ export function EntryChat() {
   })
 
   useEffect(() => {
-    const saved = entryStorage.load()
-    const qParam = params.get('q')
-    if (saved && saved.mode === mode && saved.messages.length > 0) {
-      firstMessage.current = saved.firstMessage ?? ''
+    if (!token) { navigate('/'); return }
+    const saved = participantStorage.load()
+    if (saved && saved.inviteToken === token && saved.messages.length > 0) {
+      contextRef.current = { groundLabel: saved.groundLabel, initiatorName: saved.initiatorName, token: saved.inviteToken }
       setMsgs(saved.messages)
       setOpened(true)
       if (!saved.completed) setResumed(true)
       if (saved.completed) setDone(true)
       if (saved.messages[saved.messages.length - 1]?.role === 'assistant') return
-      const toSend = saved.messages
       setLoading(true)
       setMsgs(prev => [...prev, { role: 'loading' as any, content: '…' }])
-      callApi.mutate(toSend)
-    } else if (qParam) {
-      firstMessage.current = qParam
-      const first: EntryMessage[] = [{ role: 'user', content: qParam }]
-      entryStorage.save({ mode, messages: first, completed: false, firstMessage: qParam })
-      setLoading(true)
-      setMsgs([...first, { role: 'loading' as any, content: '…' }])
-      setOpened(true)
-      callApi.mutate(first)
+      callApi.mutate(saved.messages)
     } else {
+      participantStorage.save({ inviteToken: token, groundLabel, initiatorName, messages: [], completed: false })
       setLoading(true)
       setMsgs([{ role: 'loading' as any, content: '…' }])
       callApi.mutate([])
@@ -86,7 +80,8 @@ export function EntryChat() {
 
     const next: EntryMessage[] = [...msgs.filter(m => m.role !== 'loading' as any), { role: 'user', content }]
     setMsgs([...next, { role: 'loading' as any, content: '…' }])
-    entryStorage.save({ mode, messages: next, completed: false, firstMessage: firstMessage.current })
+    const saved = participantStorage.load()
+    if (saved) participantStorage.save({ ...saved, messages: next })
     setLoading(true)
     callApi.mutate(next)
   }
@@ -101,6 +96,8 @@ export function EntryChat() {
     e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px'
   }
 
+  const gl = contextRef.current.groundLabel || groundLabel
+  const iname = contextRef.current.initiatorName || initiatorName
   const visibleMsgs = msgs.filter(m => m.role !== 'loading' as any || loading)
 
   return (
@@ -108,9 +105,8 @@ export function EntryChat() {
       <div className="gw-hdr">
         <div>
           <div className="gw-logo">Groundwork</div>
-          <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>{MODE_LABEL[mode]} · Entry session</div>
+          <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>Your account</div>
         </div>
-        <button className="gw-back" onClick={() => navigate('/')}>Back</button>
       </div>
 
       <div className="gw-chat-w">
@@ -120,13 +116,13 @@ export function EntryChat() {
           style={{ maxWidth: 680, width: '100%', margin: '0 auto', alignSelf: 'center', boxSizing: 'border-box' }}
         >
           {resumed && (
-            <div style={{ fontSize: 12, color: 'var(--gw-muted)', paddingBottom: firstMessage.current ? 4 : 8, borderBottom: firstMessage.current ? 'none' : '0.5px solid var(--gw-border)', marginBottom: firstMessage.current ? 0 : 4 }}>
+            <div style={{ fontSize: 12, color: 'var(--gw-muted)', paddingBottom: gl ? 4 : 8, borderBottom: gl ? 'none' : '0.5px solid var(--gw-border)', marginBottom: gl ? 0 : 4 }}>
               You were here. Continue when you are ready.
             </div>
           )}
-          {firstMessage.current && (
+          {gl && (
             <div style={{ fontSize: 12, color: 'var(--gw-muted)', paddingBottom: 8, borderBottom: '0.5px solid var(--gw-border)', marginBottom: 4 }}>
-              {MODE_LABEL[mode]} · {firstMessage.current}
+              {iname} · {gl}
             </div>
           )}
 
@@ -146,7 +142,7 @@ export function EntryChat() {
         {!done && (
           <>
             <div style={{ padding: '4px 14px', borderTop: '0.5px solid var(--gw-border)', fontSize: 11, color: 'var(--gw-sub)', background: 'var(--gw-bg)', lineHeight: 1.4 }}>
-              Your words are private. Nothing is saved until you choose to save it.
+              Your words are private. {iname} will not see what you write until both parties activate the report.
             </div>
             <div className="gw-chat-bar">
               <textarea
@@ -175,7 +171,7 @@ export function EntryChat() {
       {done && !loading && (
         <div style={{ borderTop: '0.5px solid var(--gw-border)', background: 'white', overflowY: 'auto', maxHeight: '65vh', animation: 'gw-slideup 0.35s ease', flexShrink: 0 }}>
           <div style={{ maxWidth: 680, width: '100%', margin: '0 auto', padding: '16px' }}>
-            <SaveCard mode={mode} onClear={() => { entryStorage.clear(); navigate('/') }} />
+            <SaveCard variant="participant" onClear={() => { participantStorage.clear(); navigate('/') }} />
           </div>
         </div>
       )}

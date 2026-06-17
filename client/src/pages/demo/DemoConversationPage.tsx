@@ -57,23 +57,13 @@ export function DemoConversationPage() {
       {/* Messages */}
       <div
         ref={msgsRef}
-        style={{ flex: 1, overflowY: 'auto', padding: '16px 16px 32px', display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 680, width: '100%', margin: '0 auto', alignSelf: 'center', boxSizing: 'border-box' }}
+        className="gw-chat-msgs"
+        style={{ maxWidth: 680, width: '100%', margin: '0 auto', alignSelf: 'center', boxSizing: 'border-box', paddingBottom: 32 }}
       >
         {demo.history.map((m, idx) => (
           <div
             key={idx}
-            style={{
-              maxWidth: '82%',
-              alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start',
-              background: m.role === 'user' ? 'var(--gw-navy)' : 'white',
-              color: m.role === 'user' ? 'white' : 'var(--gw-text)',
-              border: m.role === 'assistant' ? '0.5px solid var(--gw-border)' : 'none',
-              borderRadius: m.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-              padding: '10px 14px',
-              fontSize: 14,
-              lineHeight: 1.65,
-              whiteSpace: 'pre-wrap',
-            }}
+            className={`gw-msg ${m.role === 'user' ? 'gw-msg-user' : 'gw-msg-ai'}`}
           >
             {m.content}
           </div>

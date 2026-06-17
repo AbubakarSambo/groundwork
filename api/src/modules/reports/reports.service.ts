@@ -300,6 +300,76 @@ export class ReportsService {
       parties: engagementParties,
     };
 
+    const specificityNotes: { label: string; dimensions: { dim: string; level: string; note: string }[] }[] = [];
+    for (const p of parties) {
+      const lastCheckIn = await this.prisma.checkIn.findFirst({
+        where: { participantId: p.id, status: CheckInStatus.COMPLETED },
+        orderBy: { sessionNumber: 'desc' },
+        select: { specificityDimensions: true, sessionNumber: true },
+      });
+      if (!lastCheckIn) continue;
+      const dims = lastCheckIn.specificityDimensions as Record<string, string> | null;
+      if (!dims) continue;
+      const label = labelById.get(p.id) ?? 'a party';
+      specificityNotes.push({
+        label,
+        dimensions: Object.entries(dims).map(([dim, level]) => ({
+          dim,
+          level,
+          note: `${label} was ${level} on ${dim} in session ${lastCheckIn.sessionNumber}.`,
+        })),
+      });
+    }
+
+    const recallNotes: { label: string; recallConfidence: string; note: string }[] = [];
+    for (const p of parties) {
+      const lastCheckIn = await this.prisma.checkIn.findFirst({
+        where: { participantId: p.id, status: CheckInStatus.COMPLETED },
+        orderBy: { sessionNumber: 'desc' },
+        select: { recallConfidence: true, sessionNumber: true },
+      });
+      if (!lastCheckIn?.recallConfidence) continue;
+      const label = labelById.get(p.id) ?? 'a party';
+      const rcLabel: Record<string, string> = {
+        certain: 'certain',
+        mostly_certain: 'mostly certain',
+        uncertain: 'uncertain on key points',
+      };
+      recallNotes.push({
+        label,
+        recallConfidence: lastCheckIn.recallConfidence,
+        note: `${label} was ${rcLabel[lastCheckIn.recallConfidence] ?? lastCheckIn.recallConfidence} about their account in session ${lastCheckIn.sessionNumber}.`,
+      });
+    }
+
+    const [groundDocsAll, annotatedEntries, tensionEntries] = await Promise.all([
+      this.prisma.groundDocument.findMany({ where: { groundId }, select: { id: true } }),
+      this.prisma.recordEntry.findMany({ where: { participant: { groundId }, recallBased: false }, select: { id: true } }),
+      this.prisma.recordEntry.findMany({
+        where: { participant: { groundId }, recallBased: false, type: { in: ['TENSION', 'WORRY'] } },
+        select: { text: true, participant: { select: { id: true } } },
+      }),
+    ]);
+    const discrepancyFlags: string[] = tensionEntries.map((e) => {
+      const label = labelById.get(e.participant.id) ?? 'a party';
+      return `Document annotation from ${label} flagged a tension or concern.`;
+    });
+    const docStatus = {
+      total: groundDocsAll.length,
+      withAnnotations: annotatedEntries.length,
+      discrepancyFlags,
+    };
+
+    const session2Focus = (result.divergences ?? []).slice(0, 3).map((d: any) => d.topic as string);
+
+    const enrichedEngagement = {
+      ...engagement,
+      specificityNotes,
+      recallNotes,
+      docStatus,
+      session2Focus,
+    };
+
     const report = await this.prisma.report.upsert({
       where: { groundId },
       create: {
@@ -308,7 +378,7 @@ export class ReportsService {
         agreements: result.agreements as any,
         divergences: result.divergences as any,
         centralQuestion: result.centralQuestion,
-        engagement: engagement as any,
+        engagement: enrichedEngagement as any,
         promptVersionId: synthesisVersion.id,
         releasedAt: null,
       },
@@ -317,7 +387,7 @@ export class ReportsService {
         agreements: result.agreements as any,
         divergences: result.divergences as any,
         centralQuestion: result.centralQuestion,
-        engagement: engagement as any,
+        engagement: enrichedEngagement as any,
         promptVersionId: synthesisVersion.id,
       },
     });

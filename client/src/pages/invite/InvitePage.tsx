@@ -3,7 +3,6 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { participantsApi } from '@/api'
 import { entryApi } from '@/api/entry'
-import { useAuthStore } from '@/stores/auth'
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
@@ -16,7 +15,7 @@ function Shell({ children }: { children: React.ReactNode }) {
         </svg>
         <span style={{ fontSize: 14, fontWeight: 700, color: 'white', letterSpacing: '-.02em' }}>Groundwork</span>
       </div>
-      <div style={{ flex: 1, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 20px' }}>
+      <div style={{ flex: 1, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: 'clamp(20px, 5vh, 40px) 20px' }}>
         <div style={{ width: '100%', maxWidth: 440 }}>
           {children}
         </div>
@@ -28,8 +27,10 @@ function Shell({ children }: { children: React.ReactNode }) {
 export function InvitePage() {
   const [params] = useSearchParams()
   const token = params.get('token') ?? ''
+  const role = params.get('role') ?? ''
+  const isLead = role === 'lead'
+  const multiParty = params.get('multiParty') === 'true'
   const navigate = useNavigate()
-  const setAuth = useAuthStore((s) => s.setAuth)
   const [faqInput, setFaqInput] = useState('')
   const [faqAnswer, setFaqAnswer] = useState('')
 
@@ -40,24 +41,26 @@ export function InvitePage() {
     retry: false,
   })
 
-  const accept = useMutation({
-    mutationFn: () => participantsApi.accept(token, {}),
-    onSuccess: (res) => {
-      setAuth(res.user, res.accessToken)
-      navigate(res.checkInId ? `/checkin/${res.checkInId}` : `/grounds/${res.groundId}`)
-    },
-  })
-
   const faqMutation = useMutation({
     mutationFn: (q: string) => entryApi.faq(q),
     onSuccess: res => setFaqAnswer(res.reply),
-    onError: () => setFaqAnswer('That is something the team can answer. hello@myground.work'),
+    onError: () => setFaqAnswer('That is something the team can answer directly. hello@myground.work'),
   })
 
   function handleFaqKey(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'Enter') {
       const q = faqInput.trim()
       if (q) { faqMutation.mutate(q); setFaqInput('') }
+    }
+  }
+
+  function submit() {
+    if (!preview) return
+    if (isLead) {
+      navigate(`/lead-onboarding?token=${encodeURIComponent(token)}&groundLabel=${encodeURIComponent(preview.groundLabel)}&initiatorName=${encodeURIComponent(preview.initiatorName)}`)
+    } else {
+      const mpParam = multiParty ? '&multiParty=true' : ''
+      navigate(`/participant-chat?token=${encodeURIComponent(token)}&groundLabel=${encodeURIComponent(preview.groundLabel)}&initiatorName=${encodeURIComponent(preview.initiatorName)}${mpParam}`)
     }
   }
 
@@ -95,11 +98,13 @@ export function InvitePage() {
     return (
       <Shell>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>You have already joined</div>
-          <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 24, lineHeight: 1.6 }}>
-            Sign in to continue your check-in for <strong>{preview.groundLabel}</strong>.
+          <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>
+            {isLead ? 'You are already set up to manage this ground' : 'You have already submitted'}
           </div>
-          <button className="gw-btn" style={{ display: 'inline-block', width: 'auto', padding: '10px 24px' }} onClick={() => navigate('/auth?mode=signin')}>
+          <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 24, lineHeight: 1.6 }}>
+            Sign in to {isLead ? 'access' : 'see the status of your record for'} <strong>{preview.groundLabel}</strong>.
+          </div>
+          <button className="gw-btn" style={{ display: 'inline-block', width: 'auto', padding: '10px 24px' }} onClick={() => navigate('/auth')}>
             Sign in
           </button>
         </div>
@@ -113,41 +118,24 @@ export function InvitePage() {
         {preview.groundLabel}
       </div>
 
-      <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 24, lineHeight: 1.7 }}>
-        <p style={{ marginBottom: 6 }}>{preview.initiatorName} opened a ground and wants your version of what happened.</p>
-        <p style={{ marginBottom: 6 }}>Your check-in is private. {preview.initiatorName} does not see what you write until you both activate the report together.</p>
-        <p>You give your account first, in your own words, before seeing any other version.</p>
-      </div>
-
-      {preview.roleAsDescribed && (
-        <div className="gw-box gw-box-blue" style={{ marginBottom: 20 }}>
-          Your role as described: <strong>{preview.roleAsDescribed}</strong>
+      {isLead ? (
+        <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 28, lineHeight: 1.8 }}>
+          <p style={{ margin: '0 0 8px' }}>{preview.initiatorName} has opened this ground and assigned you to manage it.</p>
+          <p style={{ margin: '0 0 8px' }}>As the manager you can see submission status and activate the report when both sides are ready. You do not see what participants write until the report is activated together.</p>
+          <p style={{ margin: 0 }}>This takes about three minutes to set up.</p>
+        </div>
+      ) : (
+        <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 28, lineHeight: 1.8 }}>
+          <p style={{ margin: '0 0 8px' }}>{preview.initiatorName} has opened a record for this situation and wants your account of it.</p>
+          <p style={{ margin: '0 0 8px' }}>Your check-in is private. {preview.initiatorName} does not see what you write until both parties activate the report together.</p>
+          <p style={{ margin: 0 }}>You give your account first, in your own words, without seeing any other version.</p>
         </div>
       )}
 
-      <button
-        className="gw-btn"
-        onClick={() => accept.mutate()}
-        disabled={accept.isPending}
-        style={{ marginTop: 0 }}
-      >
-        {accept.isPending ? 'Opening your check-in…' : 'Submit my account'}
+      <button className="gw-btn" onClick={submit} style={{ marginTop: 0, minHeight: 48, fontSize: 14 }}>
+        {isLead ? 'Set up management' : 'Submit my account'}
       </button>
 
-      {accept.isError && (
-        <div className="gw-er" style={{ textAlign: 'center', marginTop: 8 }}>
-          Something went wrong. Try again.
-        </div>
-      )}
-
-      <button
-        onClick={() => navigate('/')}
-        style={{ marginTop: 12, background: 'none', border: 'none', fontSize: 12, color: 'var(--gw-muted)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline', padding: 0, width: '100%', textAlign: 'center', display: 'block' }}
-      >
-        Not right now
-      </button>
-
-      {/* Inline FAQ */}
       <div style={{ marginTop: 28, paddingTop: 18, borderTop: '0.5px solid var(--gw-border)' }}>
         <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginBottom: 8 }}>Have a question? Ask here.</div>
         <div style={{ display: 'flex', gap: 6 }}>
@@ -157,14 +145,14 @@ export function InvitePage() {
             onChange={e => { setFaqInput(e.target.value); setFaqAnswer('') }}
             onKeyDown={handleFaqKey}
             placeholder="What does this cost? Is my account private?"
-            style={{ flex: 1, padding: '7px 10px', fontSize: 12, border: '1px solid var(--gw-border)', borderRadius: 6, background: 'white', color: 'var(--gw-text)', fontFamily: 'inherit', outline: 'none' }}
+            style={{ flex: 1, padding: '7px 10px', fontSize: 13, border: '1px solid var(--gw-border)', borderRadius: 6, background: 'white', color: 'var(--gw-text)', fontFamily: 'inherit', outline: 'none', minHeight: 44 }}
             onFocus={e => { e.target.style.borderColor = 'var(--gw-navy)' }}
             onBlur={e => { e.target.style.borderColor = 'var(--gw-border)' }}
           />
           <button
             onClick={() => { const q = faqInput.trim(); if (q) { faqMutation.mutate(q); setFaqInput('') } }}
             disabled={faqMutation.isPending || !faqInput.trim()}
-            style={{ padding: '0 12px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 14, opacity: faqMutation.isPending ? 0.6 : 1, fontFamily: 'inherit' }}
+            style={{ minHeight: 44, width: 44, borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 16, opacity: faqMutation.isPending ? 0.6 : 1, fontFamily: 'inherit', flexShrink: 0 }}
           >
             &#8593;
           </button>

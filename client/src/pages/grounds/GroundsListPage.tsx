@@ -2,16 +2,8 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { groundsApi } from '@/api/grounds'
 import { useAuthStore } from '@/stores/auth'
+import { ConfDots } from '@/components/ConfDots'
 import type { Ground } from '@/types'
-
-function ConfDots({ score }: { score?: number }) {
-  const n = score ?? 0
-  return (
-    <div className="gw-conf-dots">
-      {[1,2,3,4,5].map(i => <div key={i} className={`gw-conf-dot${n >= i ? ` f${i}` : ''}`} />)}
-    </div>
-  )
-}
 
 const MODE_COLORS: Record<string, { bg: string; color: string }> = {
   Starting:       { bg: '#E8F8F5', color: '#085041' },
