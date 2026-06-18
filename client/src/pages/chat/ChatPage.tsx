@@ -4,6 +4,7 @@ import { useMutation } from '@tanstack/react-query'
 import { conversationApi } from '@/api/conversation'
 import { documentsApi } from '@/api/documents'
 import { useAuthStore } from '@/stores/auth'
+import { SessionReportCard } from '@/components/gw/SessionReportCard'
 import { toast } from 'sonner'
 
 interface Msg { id: string; role: 'AI' | 'PERSON'; content: string }
@@ -24,12 +25,14 @@ export function ChatPage() {
   const sessionNumber: number = (location.state as any)?.sessionNumber ?? 1
   const groundLabel: string = (location.state as any)?.groundLabel ?? ''
   const groundId: string | undefined = (location.state as any)?.groundId
+  const isInitiator: boolean = (location.state as any)?.isInitiator ?? false
 
   const [msgs, setMsgs] = useState<Msg[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [opened, setOpened] = useState(false)
   const [done, setDone] = useState(false)
+  const [completed, setCompleted] = useState(false)
   const msgsRef = useRef<HTMLDivElement>(null)
   const taRef = useRef<HTMLTextAreaElement>(null)
 
@@ -68,7 +71,7 @@ export function ChatPage() {
 
   const complete = useMutation({
     mutationFn: () => conversationApi.complete(checkInId!),
-    onSuccess: () => navigate(groundId ? `/grounds/${groundId}/p` : '/grounds'),
+    onSuccess: () => setCompleted(true),
   })
 
   const uploadDoc = useMutation({
@@ -163,7 +166,7 @@ export function ChatPage() {
               {m.content}
             </div>
           ))}
-          {done && (
+          {done && !completed && (
             <div style={{ padding: '10px 0' }}>
               <div style={{ background: 'var(--gw-green-bg)', border: '0.5px solid var(--gw-green-b)', borderRadius: 8, padding: '12px 14px', marginBottom: 10 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-green-t)', marginBottom: 6 }}>Session {sessionNumber} is on record.</div>
@@ -185,6 +188,25 @@ export function ChatPage() {
                   style={{ padding: '10px 24px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
                 >
                   {complete.isPending ? 'Saving…' : 'Done ✓'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {completed && groundId && checkInId && (
+            <div style={{ padding: '4px 0 16px' }}>
+              <SessionReportCard
+                checkInId={checkInId}
+                groundId={groundId}
+                sessionNumber={sessionNumber}
+                isInitiator={isInitiator}
+              />
+              <div style={{ textAlign: 'center', paddingTop: 8 }}>
+                <button
+                  onClick={() => navigate('/grounds')}
+                  style={{ fontSize: 13, color: 'var(--gw-sub)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit' }}
+                >
+                  ← Back to grounds
                 </button>
               </div>
             </div>
