@@ -268,7 +268,6 @@ export class GroundsService {
           partyType: PartyType.PARTICIPANT,
           roleAsDescribed: dto.roleAsDescribed,
           invitedAt: new Date(),
-          notifiedAt: new Date(),
           inviteToken: token,
           inviteTokenExpiresAt,
         },
@@ -290,6 +289,12 @@ export class GroundsService {
       token,
       dto.note,
     );
+
+    // Stamp notifiedAt only after the email succeeds (Rule 3 — nobody added silently).
+    await this.prisma.groundParticipant.update({
+      where: { id: participant.id },
+      data: { notifiedAt: new Date() },
+    });
 
     // GW-01: strip private fields (inviteToken, inviteTokenExpiresAt, soloArtifact,
     // specificityHistory, willingnessAnswers, willingnessGateAnswers) before
@@ -316,7 +321,7 @@ export class GroundsService {
 
     await this.prisma.groundParticipant.update({
       where: { id: participantId },
-      data: { inviteToken: token, inviteTokenExpiresAt, notifiedAt: new Date() },
+      data: { inviteToken: token, inviteTokenExpiresAt },
     });
 
     const initiator = await this.prisma.user.findUnique({ where: { id: ground.initiatorId } });
@@ -326,6 +331,13 @@ export class GroundsService {
       ground.label,
       token,
     );
+
+    // Stamp notifiedAt only after the email succeeds so the field reliably
+    // reflects actual notification, not just intent to notify.
+    await this.prisma.groundParticipant.update({
+      where: { id: participantId },
+      data: { notifiedAt: new Date() },
+    });
 
     return { message: 'Invite resent' };
   }

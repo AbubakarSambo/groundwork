@@ -410,6 +410,23 @@ export class ReportsService {
     if (!ground.report) throw new NotFoundException('Report not generated yet');
     if (ground.report.releasedAt) return ground.report; // already released
 
+    // Send notification emails before stamping releasedAt so that if delivery
+    // fails entirely, the report is not marked released without anyone being
+    // notified. Partial failure (one email bounces) is still logged but does
+    // not block the release — a hard stop would be worse than a logged gap.
+    const frontend = this.config.get<string>('resend.frontendUrl');
+    const reportUrl = `${frontend}/report/${groundId}`;
+    const emailResults = await Promise.allSettled(
+      ground.participants.map((p) => this.email.sendReportReady(p.email, ground.label, reportUrl)),
+    );
+    const failures = emailResults.filter((r) => r.status === 'rejected');
+    if (failures.length) {
+      failures.forEach((r) => this.logger.error(`Report release email failed for ground ${groundId}: ${(r as PromiseRejectedResult).reason}`));
+      if (failures.length === ground.participants.length) {
+        throw new Error('All report notification emails failed — report not released. Retry to send notifications.');
+      }
+    }
+
     const released = await this.prisma.report.update({ where: { groundId }, data: { releasedAt: new Date() } });
 
     // Generate per-party post-report conversation guides (#99). Best-effort —
@@ -417,10 +434,6 @@ export class ReportsService {
     await this.generatePostReportGuides(released, ground.participants.map((p) => p.id)).catch((err) =>
       this.logger.error(`Post-report guide generation failed for ground ${groundId}: ${err.message}`),
     );
-
-    const frontend = this.config.get<string>('resend.frontendUrl');
-    const reportUrl = `${frontend}/report/${groundId}`;
-    await Promise.all(ground.participants.map((p) => this.email.sendReportReady(p.email, ground.label, reportUrl)));
 
     return released;
   }

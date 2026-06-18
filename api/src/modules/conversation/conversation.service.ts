@@ -8,7 +8,7 @@ import { buildIntakeBlock, RECORD_EXTRACTION_PROMPT } from './prompt-library';
 import { GroundworkEvents, CheckInCompletedEvent } from '../../common';
 import { DocumentsService } from '../documents/documents.service';
 import { BillingService } from '../billing/billing.service';
-import { CheckInStatus, TurnRole, RecordEntryType, Cadence } from '@prisma/client';
+import { CheckInStatus, TurnRole, RecordEntryType, Cadence, GroundStatus } from '@prisma/client';
 import { runIntake } from './intake';
 
 function mapSpecificityLevel(avgScore: number): string {
@@ -170,6 +170,12 @@ export class ConversationService {
       throw new BadRequestException('This check-in is already complete');
     }
 
+    const ground = await this.prisma.ground.findUnique({ where: { id: checkIn.groundId }, select: { status: true, organizationId: true } });
+    const OPEN_STATUSES: GroundStatus[] = [GroundStatus.OPEN, GroundStatus.AWAITING_PARTIES, GroundStatus.ACTIVE, GroundStatus.REPORT_READY];
+    if (ground && !OPEN_STATUSES.includes(ground.status)) {
+      throw new BadRequestException('This ground is no longer accepting check-ins');
+    }
+
     const existing = await this.prisma.conversationTurn.count({ where: { checkInId: checkIn.id } });
     if (existing > 0) {
       const first = await this.prisma.conversationTurn.findFirst({ where: { checkInId: checkIn.id, role: TurnRole.AI }, orderBy: { createdAt: 'asc' } });
@@ -180,10 +186,6 @@ export class ConversationService {
     // active care-fee subscription. If the org is not billing-ready, block the
     // open and surface a clear message — trust must not be conditional on payment
     // during the session itself (B1/B3), but we can gate the START of session 2+.
-    const ground = await this.prisma.ground.findUnique({
-      where: { id: checkIn.groundId },
-      select: { organizationId: true },
-    });
     if (ground?.organizationId) {
       const gate = await this.billing.checkSessionGate(ground.organizationId, checkIn.sessionNumber);
       if (!gate.allowed) {
@@ -502,7 +504,7 @@ export class ConversationService {
     await this.extractRecordEntries(checkIn.id, checkIn.participantId).catch((err) =>
       this.logger.error(`Record extraction failed for check-in ${checkIn.id}: ${err.message}`),
     );
-    await this.buildSoloArtifact(checkIn.participantId).catch((err) =>
+    await this.buildSoloArtifact(checkIn.participantId, checkIn.groundId).catch((err) =>
       this.logger.error(`Solo artifact failed for participant ${checkIn.participantId}: ${err.message}`),
     );
 
@@ -636,9 +638,9 @@ export class ConversationService {
    * party. Stored on the participant; superseded by the full report once both
    * parties finish. Owner-scoped — reads only this party's own entries.
    */
-  private async buildSoloArtifact(participantId: string) {
+  private async buildSoloArtifact(participantId: string, groundId: string) {
     const entries = await this.prisma.recordEntry.findMany({
-      where: { participantId },
+      where: { participantId, participant: { groundId } },
       orderBy: { createdAt: 'asc' },
       select: { type: true, text: true },
     });
