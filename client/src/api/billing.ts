@@ -9,6 +9,7 @@ export interface BillingStatus {
   estimatedNextCharge: number | null
   nextBillingDate: string | null
   card?: { brand: string; last4: string } | null
+  activeParticipants?: { email: string; name?: string }[]
 }
 
 export const billingApi = {

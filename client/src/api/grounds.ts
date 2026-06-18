@@ -15,6 +15,8 @@ export interface CreateGroundBody {
   moment: GroundMoment
   timelineDays?: number
   cadence?: GroundCadence
+  resolutionState?: string
+  brief?: string
 }
 
 export interface AddParticipantBody {

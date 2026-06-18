@@ -74,6 +74,8 @@ export class GroundsService {
           timelineDays: dto.timelineDays ?? DEFAULT_TIMELINE_DAYS[dto.scenario],
           cadence: dto.cadence ?? Cadence.FORTNIGHTLY,
           status: GroundStatus.OPEN,
+          resolutionState: dto.resolutionState ?? null,
+          brief: dto.brief ?? null,
         },
       });
 
@@ -206,7 +208,8 @@ export class GroundsService {
         ? Math.max(0, Math.round((ground.createdAt.getTime() + ground.timelineDays * 86_400_000 - Date.now()) / 86_400_000))
         : null;
 
-    const brief = ground.report?.releasedAt ? (ground.report as any).sharedPicture ?? null : null;
+    // brief: prefer the ground's own opening brief; fall back to the released report summary
+    const brief = (ground as any).brief ?? (ground.report?.releasedAt ? (ground.report as any).sharedPicture ?? null : null);
 
     const signals = (ground.patternDetections ?? [])
       .filter((pd) => pd.observationText)

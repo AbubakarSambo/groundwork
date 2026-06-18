@@ -47,6 +47,18 @@ export class CreateGroundDto {
   @IsEnum(Cadence)
   cadence?: Cadence;
 
+  @ApiPropertyOptional({ example: 'Alignment confirmed', description: 'Pre-agreed intended outcome, shown to both parties before session 1' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  resolutionState?: string;
+
+  @ApiPropertyOptional({ example: 'We are three months into a new cofounder relationship...', description: "Initiator's opening brief written at ground creation" })
+  @IsOptional()
+  @IsString()
+  @MaxLength(4000)
+  brief?: string;
+
   /** GW-69: contraindication screening for DRIFT / RECOGNITION / CRISIS_ALIGNMENT. */
   @ApiPropertyOptional({ type: ContraindicationAnswersDto })
   @IsOptional()
