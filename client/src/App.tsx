@@ -77,9 +77,9 @@ export default function App() {
             <Route path="/verify-email" element={<MagicVerifyPage />} />
             <Route path="/set-password" element={<SetPasswordPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
-            <Route path="/entry-chat" element={<OnboardingChat />} />
-            <Route path="/participant-chat" element={<ParticipantOnboardingChat />} />
-            <Route path="/lead-onboarding" element={<LeadOnboardingChat />} />
+            <Route path="/entry-chat" element={<AppShell><OnboardingChat /></AppShell>} />
+            <Route path="/participant-chat" element={<AppShell><ParticipantOnboardingChat /></AppShell>} />
+            <Route path="/lead-onboarding" element={<AppShell><LeadOnboardingChat /></AppShell>} />
             <Route path="/enter" element={<EnterPage />} />
             <Route path="/pin" element={<PinPage />} />
             <Route path="/invite" element={<InvitePage />} />

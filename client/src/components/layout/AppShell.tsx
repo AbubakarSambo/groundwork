@@ -66,6 +66,7 @@ export function AppShell({ children }: AppShellProps) {
   const { data: grounds = [] } = useQuery<Ground[]>({
     queryKey: ['grounds'],
     queryFn: groundsApi.list,
+    enabled: !!user,
   })
 
   const path = location.pathname
@@ -212,8 +213,9 @@ export function AppShell({ children }: AppShellProps) {
           )}
         </nav>
 
-        {/* Profile footer — links to billing */}
+        {/* Profile footer */}
         <div style={{ padding: '10px 12px', borderTop: '0.5px solid var(--gw-border)', flexShrink: 0 }}>
+          {user ? (
           <button
             onClick={() => navigate('/billing')}
             style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0, marginBottom: 8, textAlign: 'left' }}
@@ -237,7 +239,7 @@ export function AppShell({ children }: AppShellProps) {
             </div>
             <div style={{ overflow: 'hidden', minWidth: 0, flex: 1 }}>
               <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--gw-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {user?.firstName} {user?.lastName}
+                {user.firstName} {user.lastName}
               </div>
               <div style={{ fontSize: 10, color: 'var(--gw-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {roleLabel}
@@ -247,12 +249,22 @@ export function AppShell({ children }: AppShellProps) {
               <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--gw-amber-b)', flexShrink: 0 }} />
             )}
           </button>
+          ) : (
+            <button
+              onClick={() => navigate('/auth')}
+              style={{ width: '100%', padding: '8px 10px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'center', marginBottom: 8 }}
+            >
+              Sign in
+            </button>
+          )}
+          {user && (
           <button
             onClick={() => { useAuthStore.getState().logout(); navigate('/') }}
             style={{ width: '100%', padding: '6px 8px', borderRadius: 6, background: 'transparent', color: 'var(--gw-sub)', fontSize: 12, border: '0.5px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'center' }}
           >
             Sign out
           </button>
+          )}
         </div>
       </div>
 
