@@ -153,4 +153,21 @@ export class AuthController {
   async updateProfile(@CurrentUser() user: CurrentUserData, @Body() dto: UpdateProfileDto) {
     return this.authService.updateProfile(user.id, dto);
   }
+
+  @Public()
+  @Post('entry-save')
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ global: { limit: 10, ttl: 60000 } })
+  @ApiOperation({ summary: 'Save an entry session and send a magic link' })
+  async entrySave(@Body() body: { email: string }) {
+    return this.authService.entrySave(body.email);
+  }
+
+  @Post('request-password-setup')
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Generate a password-setup token for the current user' })
+  async requestPasswordSetup(@CurrentUser() user: CurrentUserData) {
+    return this.authService.requestPasswordSetupForUser(user.id);
+  }
 }

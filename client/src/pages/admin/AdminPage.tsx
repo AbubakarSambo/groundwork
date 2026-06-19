@@ -44,11 +44,6 @@ function Bar({ pct, color = '#0C447C' }: { pct: number; color?: string }) {
 // ── System tab ────────────────────────────────────────────────────────────────
 
 function SystemTab({ dash }: { dash: PlatformDashboardData }) {
-  const env = {
-    'Anthropic key': !!(import.meta.env.VITE_ANTHROPIC_KEY ?? true), // never in browser — always true from env audit
-    'BILLING_ENABLED': true,
-  }
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
 

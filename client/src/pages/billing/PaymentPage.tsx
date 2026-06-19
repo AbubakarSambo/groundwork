@@ -12,14 +12,14 @@ export function PaymentPage() {
 
   const checkout = useMutation({
     mutationFn: billingApi.createCareFeeCheckout,
-    onSuccess: r => { window.location.href = r.url },
+    onSuccess: r => { window.location.href = r },
     onError: () => { toast.error('Could not start checkout.'); navigate('/billing') },
   })
 
   const applyCode = useMutation({
     mutationFn: () => billingApi.applyContributorCode(code.trim().toUpperCase()),
     onSuccess: r => {
-      if (r.applied) {
+      if (r.ok) {
         qc.invalidateQueries({ queryKey: ['billing'] })
         toast.success('Contributor code applied. You are all set.')
         navigate('/grounds')
@@ -69,7 +69,7 @@ export function PaymentPage() {
             $25/month platform fee. $25/month per active participant from session 3.
           </div>
           <button
-            onClick={() => checkout.mutate()}
+            onClick={() => checkout.mutate(undefined)}
             disabled={checkout.isPending}
             style={{ width: '100%', padding: '9px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
           >

@@ -27,12 +27,6 @@ interface Lane {
   loading: boolean
 }
 
-const LANE_DEFAULTS: Record<LaneKey, { label: string }> = {
-  admin:  { label: 'Admin' },
-  p1:     { label: 'Participant 1' },
-  p2:     { label: 'Participant 2' },
-}
-
 function makeLane(label: string): Lane {
   return { label, messages: [], input: '', doc: null, docName: null, loading: false }
 }

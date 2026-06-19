@@ -38,4 +38,10 @@ export const authApi = {
 
   inviteUser: (body: { firstName: string; lastName: string; email: string }) =>
     apiClient.post<User>('/users', body).then(r => r.data),
+
+  entrySave: (email: string) =>
+    apiClient.post<MagicLinkResponse>('/auth/entry-save', { email }).then(r => r.data),
+
+  requestPasswordSetup: () =>
+    apiClient.post<{ token: string }>('/auth/request-password-setup').then(r => r.data),
 }

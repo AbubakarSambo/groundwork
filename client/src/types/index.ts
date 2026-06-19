@@ -114,6 +114,10 @@ export interface Report {
   close?: { aligned?: string; open?: string; revisit?: string; risk?: string }
   docline?: string
   permanence?: string
+  // Cross-reference report fields (EntryReport shape)
+  alignmentReached?: { title: string; note: string }[]
+  areasRequiringAlignment?: { title: string; observation: string; whyItMatters?: string; recommendedMove?: string }[]
+  soloArtifact?: { summary: string; whatToCarry?: string } | null
   // Participant report fields
   assumptions?: string[]
   clarity?: string[]

@@ -1,12 +1,16 @@
 import { apiClient } from './client'
 
+export type ChatTurn = { role: 'user' | 'assistant'; content: string }
+
 export interface PromptVersion {
   id: string
   key: string
   version: number
   summary: string | null
   isActive: boolean
+  isDraft?: boolean
   activatedAt: string | null
+  activatedBy?: string | null
   createdAt: string
   content: string
 }
@@ -112,4 +116,13 @@ export const promptsApi = {
 
   testReport: (systemPrompt: string, adminMessages: { role: 'user' | 'assistant'; content: string }[], p1Messages: { role: 'user' | 'assistant'; content: string }[], p2Messages: { role: 'user' | 'assistant'; content: string }[]) =>
     apiClient.post<{ crossReference: string; p1Report: string; p2Report: string }>('/prompts/test-report', { systemPrompt, adminMessages, p1Messages, p2Messages }).then((r) => r.data),
+
+  upsertDraft: (key: string, content: string, summary?: string) =>
+    apiClient.post<PromptVersion>('/prompts/draft', { key, content, summary }).then((r) => r.data),
+
+  discardDraft: (key: string) =>
+    apiClient.delete<{ ok: boolean }>(`/prompts/draft/${encodeURIComponent(key)}`).then((r) => r.data),
+
+  getDraft: (key: string) =>
+    apiClient.get<PromptVersion | null>(`/prompts/draft/${encodeURIComponent(key)}`).then((r) => r.data),
 }

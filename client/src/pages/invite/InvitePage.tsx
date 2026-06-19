@@ -8,6 +8,7 @@ import { GroundworkLogo } from '@/components/gw/GroundworkLogo'
 import { entryApi } from '@/api/entry'
 import type { EntryReport, ChatTurn } from '@/api/entry'
 import { authApi } from '@/api/auth'
+import { toast } from 'sonner'
 
 type Phase = 'landing' | 'checkin' | 'report'
 
@@ -41,7 +42,7 @@ export function InvitePage() {
   // Report state
   const [sessionReport, setSessionReport] = useState<EntryReport | null>(null)
   const [generatingReport, setGeneratingReport] = useState(false)
-  const [sharePrefs, setSharePrefs] = useState<SharePrefs>({
+  const [_sharePrefs, _setSharePrefs] = useState<SharePrefs>({
     areasRequiringAlignment: true,
     alignmentReached: true,
     honestClose: false,
