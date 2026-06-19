@@ -106,8 +106,8 @@ enum Cadence {
 }
 
 enum BillingEventType {
-  CARE_FEE      // $25/month/account (platform fee)
-  PARTICIPANT_FEE // $25/unique participant/month across active grounds
+  CARE_FEE // $20/month/org
+  SCENARIO_FEE // $50/person/month while a ground is ACTIVE
 }
 
 enum EvidenceType {
@@ -147,7 +147,6 @@ model Organization {
   careFeeSubscriptionId  String?       @map("care_fee_subscription_id")
   defaultPaymentMethodId String?       @map("default_payment_method_id")
   gracePeriodUntil       DateTime?     @map("grace_period_until")
-  contributorBypass      Boolean       @default(false) @map("contributor_bypass")
 
   companyStage CompanyStage? @map("company_stage")
 
@@ -169,6 +168,7 @@ model User {
   passwordHash    String?  @map("password_hash")
   firstName       String   @map("first_name")
   lastName        String   @map("last_name")
+  jobTitle        String?  @map("job_title")
   role            UserRole @default(MEMBER)
   isActive        Boolean  @default(true) @map("is_active")
   isEmailVerified Boolean  @default(false) @map("is_email_verified")
@@ -252,6 +252,8 @@ model Ground {
   billingEvents            BillingEvent[]
   documents                GroundDocument[]
   disclaimerAcknowledgements DisclaimerAcknowledgement[]
+  reportActivations          ReportActivation[]
+  participantRequests        ParticipantRequest[]
 
   @@index([organizationId])
   @@index([status])
@@ -299,6 +301,7 @@ model GroundParticipant {
   outcomeFeedback   OutcomeFeedback[]
   documents         GroundDocument[]
   resolutionConfirmations ResolutionConfirmation[]
+  reportActivations       ReportActivation[]
 
   @@unique([groundId, email])
   @@index([groundId])
@@ -323,9 +326,6 @@ model CheckIn {
   nextCommitment String?       @map("next_commitment")
   closedReason  String?        @map("closed_reason") // e.g. "willingness_declined"
   willingnessConfirmed Boolean @default(true) @map("willingness_confirmed") // willingness gate result
-  specificityLevel String?    @map("specificity_level") // session-end specificity: specific/directional/vague/managed
-  recallConfidence String?    @map("recall_confidence") // certain/mostly_certain/uncertain
-  specificityDimensions Json? @map("specificity_dimensions") // per-dimension scores: {delivery, evidence, enablement, coverage, commitment}
   createdAt     DateTime      @default(now()) @map("created_at")
 
   ground        Ground            @relation(fields: [groundId], references: [id], onDelete: Cascade)
@@ -394,6 +394,32 @@ model Report {
 }
 
 // ---------------------------------------------------------------------------
+// Participant requests — suggested by existing participants to the initiator
+// ---------------------------------------------------------------------------
+
+enum ParticipantRequestStatus {
+  PENDING
+  APPROVED
+  DISMISSED
+}
+
+model ParticipantRequest {
+  id               String                   @id @default(uuid())
+  groundId         String                   @map("ground_id")
+  requestedByEmail String                   @map("requested_by_email")
+  requestedEmail   String                   @map("requested_email")
+  requestedName    String?                  @map("requested_name")
+  reason           String                   @db.Text
+  status           ParticipantRequestStatus @default(PENDING)
+  createdAt        DateTime                 @default(now()) @map("created_at")
+
+  ground Ground @relation(fields: [groundId], references: [id], onDelete: Cascade)
+
+  @@index([groundId])
+  @@map("participant_requests")
+}
+
+// ---------------------------------------------------------------------------
 // Pattern detection — behavioural signals, NEVER verdicts. Three-period rule.
 // ---------------------------------------------------------------------------
 
@@ -406,6 +432,10 @@ model PatternDetection {
   lastPeriodNumber Int?         @map("last_period_number") // session number of the most recent period; enforces consecutiveness
   status          PatternStatus @default(CANDIDATE)
   observationText String?       @db.Text @map("observation_text") // plain language, never a score
+  // Accuracy feedback: did the admin or participant confirm this was accurate?
+  accuracyRating  Boolean?      @map("accuracy_rating") // true = accurate, false = inaccurate, null = not yet rated
+  ratedAt         DateTime?     @map("rated_at")
+  ratedBy         String?       @map("rated_by") // userId of rater
   firstSeenAt     DateTime      @default(now()) @map("first_seen_at")
   lastSeenAt      DateTime      @default(now()) @map("last_seen_at")
   createdAt       DateTime      @default(now()) @map("created_at")
@@ -415,6 +445,7 @@ model PatternDetection {
 
   @@unique([participantId, code])
   @@index([groundId])
+  @@index([code, accuracyRating]) // for per-code accuracy aggregation
   @@map("pattern_detections")
 }
 
@@ -466,9 +497,7 @@ model PromptVersion {
   content     String    @db.Text
   summary     String?   @db.Text // change summary — every change is logged
   isActive    Boolean   @default(false) @map("is_active")
-  isDraft     Boolean   @default(false) @map("is_draft")
   activatedAt DateTime? @map("activated_at")
-  activatedBy String?   @map("activated_by") // display name of who activated
   createdAt   DateTime  @default(now()) @map("created_at")
 
   grounds Ground[]
@@ -595,17 +624,86 @@ model DisclaimerAcknowledgement {
 }
 
 // ---------------------------------------------------------------------------
-// Feedback widget submissions.
+// Report activation — mutual reveal gate. Both parties must activate before
+// the report is released. Prevents one-sided reads.
 // ---------------------------------------------------------------------------
 
-model FeedbackSubmission {
-  id        String   @id @default(uuid())
-  tab       String   // "reaction" | "build_request" | "something_went_wrong"
-  pill      String
-  text      String?  @db.Text
-  status    String   @default("new") // for bug reports: "new" | "reviewed" | "resolved"
-  createdAt DateTime @default(now()) @map("created_at")
+enum ReportActivationStatus {
+  PENDING   // party has not yet activated
+  ACTIVATED // party pressed "release report"
+}
 
-  @@index([tab, createdAt])
-  @@map("feedback_submissions")
+model ReportActivation {
+  id            String                 @id @default(uuid())
+  groundId      String                 @map("ground_id")
+  participantId String                 @map("participant_id")
+  status        ReportActivationStatus @default(PENDING)
+  activatedAt   DateTime?              @map("activated_at")
+  createdAt     DateTime               @default(now()) @map("created_at")
+
+  ground      Ground            @relation(fields: [groundId], references: [id], onDelete: Cascade)
+  participant GroundParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  @@unique([groundId, participantId])
+  @@index([groundId])
+  @@map("report_activations")
+}
+
+// ---------------------------------------------------------------------------
+// Usage events — append-only ops log. Never updated, never deleted.
+// Drives the ops dashboard and billing audit trail.
+// ---------------------------------------------------------------------------
+
+enum UsageEventType {
+  GROUND_CREATED
+  CHECK_IN_STARTED
+  CHECK_IN_COMPLETED
+  REPORT_REQUESTED       // party triggers mutual reveal
+  REPORT_RELEASED        // both activated; releasedAt stamped on Report
+  BILLING_ACTIVATED
+  PARTICIPANT_INVITED
+  PARTICIPANT_ACCEPTED
+  ORG_CREATED
+  SUBSCRIPTION_STARTED
+  SUBSCRIPTION_CANCELLED
+}
+
+model UsageEvent {
+  id             String         @id @default(uuid())
+  organizationId String?        @map("organization_id")
+  groundId       String?        @map("ground_id")
+  participantId  String?        @map("participant_id")
+  userId         String?        @map("user_id")
+  type           UsageEventType
+  meta           Json?          // arbitrary key-value for event-specific detail
+  createdAt      DateTime       @default(now()) @map("created_at")
+
+  @@index([organizationId])
+  @@index([groundId])
+  @@index([type, createdAt])
+  @@map("usage_events")
+}
+
+// ---------------------------------------------------------------------------
+// Pattern thresholds — tunable per code without a deploy.
+// One row per pattern code. Missing rows fall back to hardcoded defaults.
+// ---------------------------------------------------------------------------
+
+model PatternConfig {
+  id                   String   @id @default(uuid())
+  code                 String   @unique // e.g. "D4", "B2", "F1"
+  consecutivePeriods   Int      @default(3) @map("consecutive_periods") // three-period gate
+  outputScoreMax       Float?   @map("output_score_max")   // detector fires when outputScore < this
+  outputScoreMin       Float?   @map("output_score_min")   // detector fires when outputScore > this
+  thinkingScoreMax     Float?   @map("thinking_score_max")
+  thinkingScoreMin     Float?   @map("thinking_score_min") // detector fires when thinkingScore > this
+  meetingScoreMax      Float?   @map("meeting_score_max")
+  meetingScoreMin      Float?   @map("meeting_score_min")
+  specificityScoreMax  Float?   @map("specificity_score_max")
+  keywordCountMin      Int?     @map("keyword_count_min")  // for keyword-based detectors
+  enabled              Boolean  @default(true)
+  updatedAt            DateTime @updatedAt @map("updated_at")
+  updatedBy            String?  @map("updated_by") // userId of last editor
+
+  @@map("pattern_configs")
 }

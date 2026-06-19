@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
 import { groundsApi, type GroundScenario, type GroundMoment, type GroundCadence } from '@/api/grounds'
 import { toast } from 'sonner'
@@ -70,24 +70,42 @@ const RESOLUTION_GROUPS: ResolutionGroup[] = [
   },
 ]
 
-interface Participant { email: string; role: string }
+interface Participant { email: string; role: string; note: string }
+
+const SCENARIO_FROM_LABEL: Record<string, GroundScenario> = {
+  'new hire':        'NEW_HIRE',
+  'new project':     'NEW_PROJECT',
+  'new board member':'NEW_ADVISOR',
+  'new partner':     'NEW_COFOUNDER',
+  'contract renewal':'CONTRACT_RENEWAL',
+  'new direction':   'DRIFT',
+}
+
+function scenarioFromParam(param: string | null): GroundScenario | null {
+  if (!param) return null
+  return SCENARIO_FROM_LABEL[param.toLowerCase().replace(/\+/g, ' ')] ?? null
+}
 
 export function CreateGroundPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [step, setStep] = useState(1)
 
-  const [scenario, setScenario] = useState<GroundScenario | null>(null)
+  const [scenario, setScenario] = useState<GroundScenario | null>(
+    () => scenarioFromParam(searchParams.get('scenario'))
+  )
   const [moment, setMoment] = useState<GroundMoment | null>(null)
   const [timelineDays, setTimelineDays] = useState(90)
   const [cadence, setCadence] = useState<GroundCadence>('FORTNIGHTLY')
   const [participants, setParticipants] = useState<Participant[]>([])
   const [pEmail, setPEmail] = useState('')
   const [pRole, setPRole] = useState('')
+  const [pNote, setPNote] = useState('')
   const [resolutionState, setResolutionState] = useState<string | null>(null)
   const [brief, setBrief] = useState('')
   const [groundName, setGroundName] = useState('')
 
-  const cadenceObj = CADENCES.find(c => c.cadence === cadence)!
+  const cadenceObj = CADENCES.find(c => c.cadence === cadence) ?? CADENCES[1]
   const sessionTotal = Math.floor(timelineDays / cadenceObj.days)
   const freeSessions = Math.min(2, sessionTotal)
   const paidSessions = sessionTotal - freeSessions
@@ -107,7 +125,7 @@ export function CreateGroundPage() {
         brief: brief.trim() || undefined,
       })
       await Promise.all(participants.map(p =>
-        groundsApi.addParticipant(ground.id, { email: p.email, roleAsDescribed: p.role || undefined })
+        groundsApi.addParticipant(ground.id, { email: p.email, roleAsDescribed: p.role || undefined, note: p.note || undefined })
       ))
       return ground
     },
@@ -119,8 +137,8 @@ export function CreateGroundPage() {
     const email = pEmail.trim()
     if (!email || !email.includes('@')) return
     if (participants.find(p => p.email === email)) return
-    setParticipants(v => [...v, { email, role: pRole.trim() }])
-    setPEmail(''); setPRole('')
+    setParticipants(v => [...v, { email, role: pRole.trim(), note: pNote.trim() }])
+    setPEmail(''); setPRole(''); setPNote('')
   }
 
   function back() {
@@ -128,7 +146,7 @@ export function CreateGroundPage() {
     else navigate('/grounds')
   }
 
-  const TOTAL_STEPS = 6
+  const TOTAL_STEPS = 5
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
@@ -145,7 +163,7 @@ export function CreateGroundPage() {
           ))}
         </div>
 
-        {/* Step 1: Scenario */}
+        {/* Step 1: Scenario + Moment */}
         {step === 1 && (
           <div>
             <div className="gw-ttl">What is this ground for?</div>
@@ -162,32 +180,31 @@ export function CreateGroundPage() {
                 </div>
               ))}
             </div>
-            <button className="gw-btn" disabled={!scenario} onClick={() => setStep(2)} style={{ margin: 0 }}>Continue</button>
-          </div>
-        )}
 
-        {/* Step 2: Moment */}
-        {step === 2 && (
-          <div>
-            <div className="gw-ttl">Where are you in the relationship?</div>
-            <div className="gw-sub-t">This shapes the questions both parties answer.</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 24 }}>
-              {MOMENTS.map(m => (
-                <div key={m.moment} className={`cg-sit-card${moment === m.moment ? ' selected' : ''}`} onClick={() => setMoment(m.moment)}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <div style={{ fontSize: 14, fontWeight: 700 }}>{m.label}</div>
-                    <div className="cg-sit-check" />
-                  </div>
-                  <div style={{ fontSize: 12, color: 'var(--gw-sub)' }}>{m.sub}</div>
+            {scenario && (
+              <>
+                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Where are you in the relationship?</div>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 10 }}>This shapes the questions both parties answer.</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
+                  {MOMENTS.map(m => (
+                    <div key={m.moment} className={`cg-sit-card${moment === m.moment ? ' selected' : ''}`} onClick={() => setMoment(m.moment)}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700 }}>{m.label}</div>
+                        <div className="cg-sit-check" />
+                      </div>
+                      <div style={{ fontSize: 12, color: 'var(--gw-sub)' }}>{m.sub}</div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            <button className="gw-btn" disabled={!moment} onClick={() => setStep(3)} style={{ margin: 0 }}>Continue</button>
+              </>
+            )}
+
+            <button className="gw-btn" disabled={!scenario || !moment} onClick={() => setStep(2)} style={{ margin: 0 }}>Continue</button>
           </div>
         )}
 
-        {/* Step 3: Timeframe + cadence */}
-        {step === 3 && (
+        {/* Step 2: Timeframe + cadence */}
+        {step === 2 && (
           <div>
             <div className="gw-ttl">How long will this ground run?</div>
             <div className="gw-sub-t">Set the timeframe and how often each party checks in.</div>
@@ -212,18 +229,18 @@ export function CreateGroundPage() {
             <div className="gw-box gw-box-blue" style={{ marginBottom: 24 }}>
               <div style={{ fontWeight: 600, marginBottom: 4 }}>{sessionTotal} sessions over {timelineDays} days</div>
               <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-                Sessions 1–{freeSessions} are free for both parties.{paidSessions > 0 ? ` Sessions ${freeSessions + 1}–${sessionTotal} start billing.` : ' All sessions are free.'}
+                Sessions 1 and 2 are free. A card is required before both parties can release the session 2 report.{paidSessions > 0 ? ` Sessions 3–${sessionTotal} are billed.` : ''}
               </div>
               <div style={{ marginTop: 6 }}>
-                <span style={{ fontSize: 11, fontWeight: 600, background: 'var(--gw-green-bg)', color: 'var(--gw-green-t)', borderRadius: 20, padding: '2px 8px' }}>Sessions 1–{freeSessions} free</span>
+                <span style={{ fontSize: 11, fontWeight: 600, background: 'var(--gw-green-bg)', color: 'var(--gw-green-t)', borderRadius: 20, padding: '2px 8px' }}>Sessions 1–2 free</span>
               </div>
             </div>
-            <button className="gw-btn" onClick={() => setStep(4)} style={{ margin: 0 }}>Continue</button>
+            <button className="gw-btn" onClick={() => setStep(3)} style={{ margin: 0 }}>Continue</button>
           </div>
         )}
 
-        {/* Step 4: Participants */}
-        {step === 4 && (
+        {/* Step 3: Participants */}
+        {step === 3 && (
           <div>
             <div className="gw-ttl">Who is in this ground?</div>
             <div className="gw-sub-t">Add everyone who will check in. You can add people already in your org or invite someone new.</div>
@@ -252,8 +269,12 @@ export function CreateGroundPage() {
                 </div>
                 <div className="gw-fld" style={{ margin: 0 }}>
                   <label className="gw-label">Their role <span style={{ fontWeight: 400, color: 'var(--gw-muted)' }}>(optional)</span></label>
-                  <input className="gw-input" value={pRole} onChange={e => setPRole(e.target.value)} placeholder="e.g. Head of Engineering" onKeyDown={e => e.key === 'Enter' && addParticipant()} />
+                  <input className="gw-input" value={pRole} onChange={e => setPRole(e.target.value)} placeholder="e.g. Head of Engineering" />
                 </div>
+              </div>
+              <div className="gw-fld" style={{ margin: '0 0 8px' }}>
+                <label className="gw-label">Personal note in the invite email <span style={{ fontWeight: 400, color: 'var(--gw-muted)' }}>(optional)</span></label>
+                <input className="gw-input" value={pNote} onChange={e => setPNote(e.target.value)} placeholder="e.g. Looking forward to building this together." onKeyDown={e => e.key === 'Enter' && addParticipant()} />
               </div>
               <button onClick={addParticipant} style={{ width: '100%', padding: 9, borderRadius: 6, background: 'none', color: 'var(--gw-navy)', fontSize: 13, fontWeight: 600, border: '1.5px dashed var(--gw-blue-b)', cursor: 'pointer', fontFamily: 'inherit' }}>+ Add to this ground</button>
             </div>
@@ -270,15 +291,15 @@ export function CreateGroundPage() {
               </div>
             )}
 
-            <button className="gw-btn" disabled={participants.length === 0} onClick={() => setStep(5)} style={{ margin: 0 }}>Continue</button>
-            <div style={{ fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 10, cursor: 'pointer' }} onClick={() => setStep(5)}>
+            <button className="gw-btn" disabled={participants.length === 0} onClick={() => setStep(4)} style={{ margin: 0 }}>Continue</button>
+            <div style={{ fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 10, cursor: 'pointer' }} onClick={() => setStep(4)}>
               Skip — add participants after
             </div>
           </div>
         )}
 
-        {/* Step 5: Resolution state */}
-        {step === 5 && (
+        {/* Step 4: Resolution state */}
+        {step === 4 && (
           <div>
             <div className="gw-ttl">What does a successful outcome look like?</div>
             <div className="gw-sub-t">Both parties see this before the first session. You are not locked in — the state can be updated if the ground reveals something different.</div>
@@ -304,12 +325,12 @@ export function CreateGroundPage() {
               ))}
             </div>
 
-            <button className="gw-btn" disabled={!resolutionState} onClick={() => setStep(6)} style={{ margin: 0 }}>Continue</button>
+            <button className="gw-btn" disabled={!resolutionState} onClick={() => setStep(5)} style={{ margin: 0 }}>Continue</button>
           </div>
         )}
 
-        {/* Step 6: Opening brief + ground name */}
-        {step === 6 && (
+        {/* Step 5: Opening brief + ground name */}
+        {step === 5 && (
           <div>
             <div className="gw-ttl">What is this ground about?</div>
             <div className="gw-sub-t">Your version of the brief. The other party writes theirs in their first session. You will both see the comparison in the report.</div>

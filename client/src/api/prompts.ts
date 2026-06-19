@@ -6,9 +6,7 @@ export interface PromptVersion {
   version: number
   summary: string | null
   isActive: boolean
-  isDraft: boolean
   activatedAt: string | null
-  activatedBy: string | null
   createdAt: string
   content: string
 }
@@ -65,55 +63,53 @@ export interface UsageFunnelData {
   avgDaysToFirstCheckin: number | null
 }
 
-export interface OrgCohortRow {
+export interface OrgListItem {
   id: string
   name: string
   slug: string
-  adminName: string | null
-  adminEmail: string | null
-  createdAt: string
+  email: string
+  billingActive: boolean
   careFeeStatus: string
-  userCount: number
   groundCount: number
-  maxSession: number
+  userCount: number
   lastActivity: string | null
-  stage: string
+  createdAt: string
 }
 
-export interface ChatTurn { role: 'user' | 'assistant'; content: string }
+export interface UsageStatsData {
+  checkInsLast14Days: { date: string; count: number }[]
+  totalCheckIns: number
+  groundsCreated: number
+  reportsGenerated: number
+  eventTotals: Record<string, number>
+}
+
+export interface FeedbackSummaryData {
+  total: number
+  fairRate: number | null
+  recent: { id: string; feltFair: boolean; note: string | null; groundLabel: string; orgSlug: string; createdAt: string }[]
+}
 
 export const promptsApi = {
   list: () => apiClient.get<PromptVersion[]>('/prompts').then((r) => r.data),
-
-  byKey: (key: string) =>
-    apiClient.get<PromptVersion[]>(`/prompts/by-key/${encodeURIComponent(key)}`).then((r) => r.data),
-
+  byKey: (key: string) => apiClient.get<PromptVersion[]>(`/prompts/by-key/${encodeURIComponent(key)}`).then((r) => r.data),
   create: (key: string, content: string, summary?: string) =>
     apiClient.post<PromptVersion>('/prompts', { key, content, summary }).then((r) => r.data),
-
-  activate: (id: string) =>
-    apiClient.post<PromptVersion>(`/prompts/${id}/activate`).then((r) => r.data),
-
-  // Draft management
-  getDraft: (key: string) =>
-    apiClient.get<PromptVersion | null>(`/prompts/draft/${encodeURIComponent(key)}`).then((r) => r.data),
-
-  upsertDraft: (key: string, content: string, summary?: string) =>
-    apiClient.put<PromptVersion>(`/prompts/draft/${encodeURIComponent(key)}`, { content, summary }).then((r) => r.data),
-
-  discardDraft: (key: string) =>
-    apiClient.delete(`/prompts/draft/${encodeURIComponent(key)}`).then((r) => r.data),
-
-  // Test runner
-  testChat: (versionId: string, messages: ChatTurn[]) =>
-    apiClient.post<{ reply: string }>('/prompts/test-chat', { versionId, messages }).then((r) => r.data),
-
+  activate: (id: string) => apiClient.post<PromptVersion>(`/prompts/${id}/activate`).then((r) => r.data),
   platformDashboard: () =>
     apiClient.get<PlatformDashboardData>('/prompts/platform-dashboard').then((r) => r.data),
-
   platformFunnel: () =>
     apiClient.get<UsageFunnelData>('/prompts/platform-funnel').then((r) => r.data),
+  orgList: () =>
+    apiClient.get<OrgListItem[]>('/prompts/org-list').then((r) => r.data),
+  usageStats: () =>
+    apiClient.get<UsageStatsData>('/prompts/usage-stats').then((r) => r.data),
+  feedbackSummary: () =>
+    apiClient.get<FeedbackSummaryData>('/prompts/feedback-summary').then((r) => r.data),
 
-  orgCohorts: () =>
-    apiClient.get<OrgCohortRow[]>('/prompts/org-cohorts').then((r) => r.data),
+  testChat: (systemPrompt: string, messages: { role: 'user' | 'assistant'; content: string }[]) =>
+    apiClient.post<{ reply: string }>('/prompts/test-chat', { systemPrompt, messages }).then((r) => r.data),
+
+  testReport: (systemPrompt: string, adminMessages: { role: 'user' | 'assistant'; content: string }[], p1Messages: { role: 'user' | 'assistant'; content: string }[], p2Messages: { role: 'user' | 'assistant'; content: string }[]) =>
+    apiClient.post<{ crossReference: string; p1Report: string; p2Report: string }>('/prompts/test-report', { systemPrompt, adminMessages, p1Messages, p2Messages }).then((r) => r.data),
 }

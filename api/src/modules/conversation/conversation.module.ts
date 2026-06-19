@@ -6,9 +6,10 @@ import { ConversationContextService } from './context.service';
 import { RemindService } from './remind.service';
 import { BillingModule } from '../billing';
 import { DocumentsModule } from '../documents/documents.module';
+import { UsageModule } from '../usage/usage.module';
 
 @Module({
-  imports: [BillingModule, DocumentsModule],
+  imports: [BillingModule, DocumentsModule, UsageModule],
   controllers: [ConversationController],
   providers: [ConversationService, AnthropicService, ConversationContextService, RemindService],
   exports: [ConversationService, AnthropicService],

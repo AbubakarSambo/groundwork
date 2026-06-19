@@ -100,17 +100,23 @@ export class AuthService {
     const existingUser = await this.prisma.user.findUnique({ where: { email: dto.email.toLowerCase() } });
     if (existingUser) throw new ConflictException('Email already registered');
 
-    const slug = await this.generateUniqueSlug(dto.organizationName);
+    const emailLocal = dto.email.toLowerCase().split('@')[0];
+    const emailDomain = dto.email.toLowerCase().split('@')[1]?.split('.')[0] ?? 'org';
+    const firstName = dto.firstName?.trim() || emailLocal.charAt(0).toUpperCase() + emailLocal.slice(1);
+    const lastName = dto.lastName?.trim() || '';
+    const organizationName = dto.organizationName?.trim() || emailDomain.charAt(0).toUpperCase() + emailDomain.slice(1);
+
+    const slug = await this.generateUniqueSlug(organizationName);
 
     const result = await this.prisma.$transaction(async (tx) => {
-      const organization = await tx.organization.create({ data: { name: dto.organizationName, slug } });
+      const organization = await tx.organization.create({ data: { name: organizationName, slug } });
       const user = await tx.user.create({
         data: {
           organizationId: organization.id,
           email: dto.email.toLowerCase(),
           passwordHash: null,
-          firstName: dto.firstName,
-          lastName: dto.lastName,
+          firstName,
+          lastName,
           role: 'ADMIN',
           isEmailVerified: false,
         },
@@ -124,7 +130,7 @@ export class AuthService {
       return { user, token };
     });
 
-    await this.emailService.sendMagicLinkEmail(dto.email.toLowerCase(), dto.firstName, result.token);
+    await this.emailService.sendMagicLinkEmail(dto.email.toLowerCase(), firstName, result.token);
     return { message: 'Account created. Please check your email to activate your account.', email: dto.email.toLowerCase() };
   }
 
@@ -261,6 +267,11 @@ export class AuthService {
     const email = dto.email.toLowerCase();
     const user = await this.prisma.user.findUnique({ where: { email } });
     if (!user || user.deletedAt || !user.isActive) return { message, email };
+
+    const recentToken = await this.prisma.emailVerificationToken.findFirst({
+      where: { userId: user.id, type: TokenType.EMAIL_VERIFICATION, usedAt: null, createdAt: { gte: new Date(Date.now() - 2 * 60 * 1000) } },
+    });
+    if (recentToken) return { message, email };
 
     await this.prisma.emailVerificationToken.updateMany({
       where: { userId: user.id, type: TokenType.EMAIL_VERIFICATION, usedAt: null },
@@ -427,6 +438,32 @@ export class AuthService {
     if (tokenRecord.expiresAt < new Date()) throw new BadRequestException(opts.allowExpiredMessage);
     if (tokenRecord.type !== expectedType) throw new BadRequestException('Invalid token type');
     return tokenRecord;
+  }
+
+  async updateProfile(userId: string, dto: import('./dto').UpdateProfileDto) {
+    const userUpdate: Record<string, unknown> = {};
+    if (dto.firstName !== undefined) userUpdate.firstName = dto.firstName.trim();
+    if (dto.lastName !== undefined) userUpdate.lastName = dto.lastName.trim();
+    if (dto.jobTitle !== undefined) userUpdate.jobTitle = dto.jobTitle.trim();
+
+    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
+
+    const orgUpdate: Record<string, unknown> = {};
+    if (dto.orgName !== undefined) orgUpdate.name = dto.orgName.trim();
+    if (dto.orgSlug !== undefined) {
+      const slug = dto.orgSlug.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      const existing = await this.prisma.organization.findUnique({ where: { slug } });
+      if (existing && existing.id !== user.organizationId) throw new ConflictException('Org code already taken');
+      orgUpdate.slug = slug;
+    }
+    if (dto.companyStage !== undefined) orgUpdate.companyStage = dto.companyStage;
+
+    await this.prisma.$transaction([
+      ...(Object.keys(userUpdate).length ? [this.prisma.user.update({ where: { id: userId }, data: userUpdate })] : []),
+      ...(Object.keys(orgUpdate).length ? [this.prisma.organization.update({ where: { id: user.organizationId }, data: orgUpdate })] : []),
+    ]);
+
+    return this.getProfile(userId);
   }
 
   private generateToken(user: { id: string; email: string; organizationId: string; role: string }) {

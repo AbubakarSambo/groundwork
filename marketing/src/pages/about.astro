@@ -1,0 +1,117 @@
+---
+import Layout from '../layouts/Layout.astro';
+const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
+---
+<Layout title="About — Groundwork">
+  <style>
+    *,*::before,*::after{box-sizing:border-box}
+    body{margin:0;overflow-x:hidden}
+    .gw-nav-link{font-size:13px;font-weight:500;color:#6B6560;background:none;border:none;cursor:pointer;padding:6px 11px;border-radius:6px;font-family:inherit;transition:all .15s;white-space:nowrap;text-decoration:none;display:inline-block;}
+    .gw-nav-link:hover{background:#E8E6E3;color:#1A1916;}
+    .gw-btn-ghost{font-size:13px;font-weight:600;color:#0C447C;background:none;border:1px solid #B5D4F4;cursor:pointer;padding:7px 14px;border-radius:6px;font-family:inherit;white-space:nowrap;transition:background .15s;text-decoration:none;display:inline-block;}
+    .gw-btn-ghost:hover{background:#EEF4FB;}
+    .gw-btn-solid{font-size:13px;font-weight:700;color:#fff;background:#0C447C;border:none;cursor:pointer;padding:7px 14px;border-radius:6px;font-family:inherit;white-space:nowrap;transition:background .15s;text-decoration:none;display:inline-block;}
+    .gw-btn-solid:hover{background:#1557A0;}
+    .gw-about-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:36px;}
+    .gw-about-card{padding:20px;background:#F5F3EF;border-radius:8px;border:1px solid #E2E0DB;}
+    .gw-footer-btn{font-size:12px;color:rgba(255,255,255,.38);background:none;border:none;cursor:pointer;font-family:inherit;text-decoration:none;}
+    .gw-footer-btn:hover{color:rgba(255,255,255,.65);}
+    @media(max-width:620px){
+      .gw-nav-links{display:none !important;}
+      .gw-about-grid{grid-template-columns:1fr;}
+    }
+  </style>
+
+  <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#EDECEA;min-height:100vh;color:#1A1916;">
+
+    <nav style="position:sticky;top:0;z-index:100;background:rgba(237,236,234,.96);backdrop-filter:blur(8px);border-bottom:1px solid #E2E0DB;display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:56px;">
+      <a href="/" style="display:flex;align-items:center;gap:9px;text-decoration:none;">
+        <svg width="20" height="16" viewBox="0 0 22 17" fill="none">
+          <rect x="5"  y="0"  width="12" height="3" rx="1.5" fill="#0C447C" opacity="0.45"/>
+          <rect x="2"  y="6"  width="18" height="3" rx="1.5" fill="#0C447C" opacity="0.72"/>
+          <rect x="0"  y="12" width="22" height="3" rx="1.5" fill="#0C447C"/>
+        </svg>
+        <span style="font-size:15px;font-weight:700;color:#0C447C;letter-spacing:-.02em;">Groundwork</span>
+      </a>
+      <div class="gw-nav-links" style="display:flex;align-items:center;gap:2px;">
+        <a class="gw-nav-link" href="/">Home</a>
+        <a class="gw-nav-link" href="/how-it-works">How it works</a>
+        <a class="gw-nav-link" href="/pricing">Pricing</a>
+        <a class="gw-nav-link" href="/about" style="background:#E8E6E3;color:#1A1916;">About</a>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+        <a class="gw-btn-ghost" href={`${APP_URL}/login`}>Sign in</a>
+        <a class="gw-btn-solid" href={`${APP_URL}/register`}>Get started free</a>
+      </div>
+    </nav>
+
+    <main style="max-width:600px;margin:0 auto;padding:56px 24px 80px;">
+      <p style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#0C447C;font-weight:700;margin-bottom:12px;">About</p>
+      <h1 style="font-size:32px;font-weight:800;color:#1A1916;line-height:1.2;margin-bottom:32px;">Built by people who kept running into the same problem.</h1>
+
+      <div style="display:flex;flex-direction:column;gap:18px;margin-bottom:40px;">
+        <p style="font-size:15px;color:#4A5568;line-height:1.8;margin:0;">Groundwork was created by people who built and ran companies and kept hitting the same wall. Not open conflict, but quiet misalignment. Different expectations, different assumptions, different ideas of what success looked like, none of it said out loud until it had already become expensive.</p>
+        <p style="font-size:15px;color:#4A5568;line-height:1.8;margin:0;">They watched real contribution go unseen and real disagreements go unnamed, because there was no neutral place for each person to set down their own account and see where it actually met everyone else's.</p>
+        <p style="font-size:15px;color:#4A5568;line-height:1.8;margin:0;">Groundwork was built to be that place. A neutral companion that holds each person's view and shows where you align, where you differ, and what the gap means, so you can get the start right and keep the picture shared as things change.</p>
+      </div>
+
+      <div style="border-left:3px solid #0C447C;padding:20px;background:#EEF4FB;border-radius:0 8px 8px 0;margin-bottom:36px;">
+        <h3 style="font-size:15px;font-weight:700;color:#0C447C;margin-bottom:8px;">The founding principle</h3>
+        <p style="font-size:14px;color:#1A1916;line-height:1.75;font-style:italic;margin:0;">The record belongs to the people who built it. Not the organisation. Not the platform. The person. That is what makes honesty possible and what makes every other capability in the product work.</p>
+      </div>
+
+      <div class="gw-about-grid">
+        <div class="gw-about-card">
+          <h3 style="font-size:14px;font-weight:700;color:#1A1916;margin-bottom:6px;">The product</h3>
+          <p style="font-size:12px;color:#6B6560;line-height:1.6;margin:0;">Alignment intelligence for professional relationships that matter. Both versions. Cross referenced over time. For two people or twenty.</p>
+        </div>
+        <div class="gw-about-card">
+          <h3 style="font-size:14px;font-weight:700;color:#1A1916;margin-bottom:6px;">The company</h3>
+          <p style="font-size:12px;color:#6B6560;line-height:1.6;margin:0;">Groundwork is an independent product built to bring clarity to professional relationships and help teams make better decisions based on evidence.</p>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:36px;">
+        <p style="font-size:15px;color:#4A5568;line-height:1.8;margin:0;">Built for the moments that matter most. Something starting. Someone stepping up. A team that needs to see the same picture again.</p>
+        <p style="font-size:15px;color:#4A5568;line-height:1.8;margin:0;">Built for founders, managers, partners, and teams who would rather get aligned early than manage the fallout later.</p>
+        <p style="font-size:15px;color:#4A5568;line-height:1.8;margin:0;">Built first for African leaders and the companies they run, and useful anywhere people start things together.</p>
+      </div>
+
+      <div class="gw-about-grid">
+        <div class="gw-about-card">
+          <h3 style="font-size:14px;font-weight:700;color:#1A1916;margin-bottom:6px;">Our headquarters</h3>
+          <p style="font-size:12px;color:#6B6560;line-height:1.6;margin:0;">Groundwork<br>9 Wendy Court, David Osieli Road<br>Westlands, Nairobi, Kenya</p>
+        </div>
+        <div class="gw-about-card">
+          <h3 style="font-size:14px;font-weight:700;color:#1A1916;margin-bottom:6px;">Incubated by</h3>
+          <p style="font-size:12px;color:#6B6560;line-height:1.6;margin:0;">Coamana</p>
+        </div>
+      </div>
+
+      <div style="text-align:center;">
+        <p style="font-size:13px;color:#9B9590;margin-bottom:10px;">Questions or feedback</p>
+        <a href="mailto:hello@myground.work" style="font-size:15px;font-weight:700;color:#0C447C;text-decoration:none;">hello@myground.work</a>
+      </div>
+    </main>
+
+    <footer style="background:#0A1628;padding:32px 24px;text-align:center;">
+      <div style="display:flex;align-items:center;justify-content:center;gap:9px;margin-bottom:16px;">
+        <svg width="18" height="14" viewBox="0 0 22 17" fill="none">
+          <rect x="5"  y="0"  width="12" height="3" rx="1.5" fill="white" opacity="0.45"/>
+          <rect x="2"  y="6"  width="18" height="3" rx="1.5" fill="white" opacity="0.72"/>
+          <rect x="0"  y="12" width="22" height="3" rx="1.5" fill="white"/>
+        </svg>
+        <span style="font-size:14px;font-weight:700;color:rgba(255,255,255,.85);">Groundwork</span>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap;margin-bottom:20px;">
+        <a class="gw-footer-btn" href="/">Home</a>
+        <a class="gw-footer-btn" href="/how-it-works">How it works</a>
+        <a class="gw-footer-btn" href="/use-cases">Use cases</a>
+        <a class="gw-footer-btn" href="/pricing">Pricing</a>
+        <a class="gw-footer-btn" href="/about">About</a>
+      </div>
+      <p style="font-size:11px;color:rgba(255,255,255,.2);margin:0;">&#169; 2025 Groundwork. Incubated by Coamana.</p>
+    </footer>
+
+  </div>
+</Layout>

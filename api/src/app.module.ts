@@ -19,7 +19,6 @@ import { BillingModule } from './modules/billing';
 import { IntelligenceModule } from './modules/intelligence';
 import { DocumentsModule } from './modules/documents/documents.module';
 import { EntryModule } from './modules/entry/entry.module';
-import { FeedbackModule } from './modules/feedback/feedback.module';
 import { JwtAuthGuard, RolesGuard, GlobalExceptionFilter, TransformInterceptor } from './common';
 
 @Module({
@@ -43,7 +42,6 @@ import { JwtAuthGuard, RolesGuard, GlobalExceptionFilter, TransformInterceptor }
     IntelligenceModule,
     DocumentsModule,
     EntryModule,
-    FeedbackModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

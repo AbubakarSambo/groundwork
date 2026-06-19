@@ -1,10 +1,13 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useAuthStore } from '@/stores/auth'
 import { groundsApi } from '@/api/grounds'
 import { reportsApi } from '@/api/reports'
 import { documentsApi } from '@/api/documents'
 import { conversationApi } from '@/api/conversation'
+import { participantRequestsApi } from '@/api/participantRequests'
+import type { ParticipantRequest } from '@/api/participantRequests'
 import { toast } from 'sonner'
 
 const BANDS = ['', 'Unresolved', 'Mixed', 'Emerging', 'Clear', 'Aligned']
@@ -25,9 +28,12 @@ export function GroundAdminPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const qc = useQueryClient()
+  const user = useAuthStore(s => s.user)
   const [tab, setTab] = useState<Tab>('overview')
   const [reportSession, setReportSession] = useState<ReportSession>('s1')
   const [ctxNote, setCtxNote] = useState('')
+  const [groundLabel, setGroundLabel] = useState('')
+  const [showReleaseConfirm, setShowReleaseConfirm] = useState(false)
 
   const { data: ground, isLoading } = useQuery({
     queryKey: ['ground', id],
@@ -39,6 +45,13 @@ export function GroundAdminPage() {
     queryKey: ['report', id],
     queryFn: () => reportsApi.get(id!),
     enabled: !!id && tab === 'report',
+    retry: false,
+  })
+
+  const { data: activationStatus } = useQuery({
+    queryKey: ['report-activation', id],
+    queryFn: () => reportsApi.activationStatus(id!),
+    enabled: !!id && tab === 'report' && !!report?.releasedAt,
     retry: false,
   })
 
@@ -65,6 +78,31 @@ export function GroundAdminPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['docs', id] }),
   })
 
+  const { data: pendingRequests = [] } = useQuery({
+    queryKey: ['participant-requests', id],
+    queryFn: () => participantRequestsApi.list(id!),
+    enabled: !!id,
+    retry: false,
+  })
+
+  const approveRequest = useMutation({
+    mutationFn: async (req: ParticipantRequest) => {
+      await participantRequestsApi.update(id!, req.id, 'APPROVED')
+      await groundsApi.addParticipant(id!, { email: req.requestedEmail })
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['participant-requests', id] })
+      qc.invalidateQueries({ queryKey: ['ground', id] })
+      toast.success('Participant added')
+    },
+    onError: () => toast.error('Could not add participant.'),
+  })
+
+  const dismissRequest = useMutation({
+    mutationFn: (reqId: string) => participantRequestsApi.update(id!, reqId, 'DISMISSED'),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['participant-requests', id] }),
+  })
+
   const remind = useMutation({
     mutationFn: (checkInId: string) => conversationApi.remind(checkInId),
     onSuccess: () => toast.success('Reminder sent'),
@@ -75,6 +113,10 @@ export function GroundAdminPage() {
     onSuccess: () => { setCtxNote(''); qc.invalidateQueries({ queryKey: ['ground', id] }) },
     onError: () => toast.error('Could not save note.'),
   })
+
+  useEffect(() => {
+    if (ground?.label) setGroundLabel(prev => prev || ground.label)
+  }, [ground?.label])
 
   if (isLoading) return <Shell><div style={{ padding: 24, fontSize: 13, color: 'var(--gw-muted)' }}>Loading…</div></Shell>
   if (!ground) return <Shell><div style={{ padding: 24, fontSize: 13, color: 'var(--gw-muted)' }}>Ground not found.</div></Shell>
@@ -130,6 +172,32 @@ export function GroundAdminPage() {
               <div style={{ fontSize: 13, lineHeight: 1.65 }}>{ground.brief ?? 'Waiting for first session pair to complete.'}</div>
             </div>
 
+            {(() => {
+              const myParticipant = ground.participants.find((p: any) => p.userId === user?.id)
+              const myOpenCheckIn = myParticipant
+                ? ground.checkIns?.find((c: any) => c.participantId === myParticipant.id && c.status !== 'COMPLETED')
+                : null
+              if (!myOpenCheckIn) return null
+              return (
+                <div style={{ background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 10, padding: '13px 16px', marginBottom: 16 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#085041', marginBottom: 4 }}>
+                    Session {myOpenCheckIn.sessionNumber} is ready for you
+                  </div>
+                  <div style={{ fontSize: 12, color: '#3A7A60', lineHeight: 1.6, marginBottom: 10 }}>
+                    Your check-in is open. Start when you are ready.
+                  </div>
+                  <button
+                    onClick={() => navigate(`/checkin/${myOpenCheckIn.id}`, {
+                      state: { sessionNumber: myOpenCheckIn.sessionNumber, groundLabel: ground.label, groundId: id, isInitiator: true }
+                    })}
+                    style={{ width: '100%', padding: '11px 16px', borderRadius: 8, background: '#5DCAA5', color: '#0A1628', fontSize: 14, fontWeight: 800, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                  >
+                    Start session {myOpenCheckIn.sessionNumber}
+                  </button>
+                </div>
+              )
+            })()}
+
             <div style={{ marginBottom: 16 }}>
               <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>Participants</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -137,9 +205,10 @@ export function GroundAdminPage() {
                   const myCheckIn = ground.checkIns?.find(c => c.participantId === p.id)
                   const status = myCheckIn?.status ?? 'NOT_STARTED'
                   const statusColor = status === 'COMPLETED' ? 'var(--gw-green-b)' : status === 'IN_PROGRESS' ? 'var(--gw-amber-b)' : 'var(--gw-border)'
+                  const statusLabel = status === 'COMPLETED' ? 'Completed' : status === 'IN_PROGRESS' ? 'In progress' : 'Not started'
                   return (
                     <div key={p.id} className="ga-participant-row">
-                      <div className="ga-status-dot" style={{ background: statusColor }} />
+                      <div className="ga-status-dot" style={{ background: statusColor }} title={statusLabel} />
                       <div className={`gw-av gw-av-${i % 6}`}>{(p.email || '?').charAt(0).toUpperCase()}</div>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: 13, fontWeight: 600 }}>{p.email}</div>
@@ -153,6 +222,42 @@ export function GroundAdminPage() {
                 })}
               </div>
             </div>
+
+            {pendingRequests.length > 0 && (
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#8A5C1A', background: '#FDF3E3', border: '1px solid #E8A94A', borderRadius: 8, padding: '8px 12px', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#E8A94A', flexShrink: 0, display: 'inline-block' }} />
+                  Pending participant requests ({pendingRequests.length})
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {pendingRequests.map(req => (
+                    <div key={req.id} style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '13px 14px' }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: '#1A1916', marginBottom: 2 }}>
+                        {req.requestedName ? `${req.requestedName} (${req.requestedEmail})` : req.requestedEmail}
+                      </div>
+                      <div style={{ fontSize: 11, color: '#6B6560', marginBottom: 8 }}>Requested by {req.requestedByEmail}</div>
+                      <div style={{ fontSize: 13, color: '#1A1916', lineHeight: 1.55, marginBottom: 12 }}>{req.reason}</div>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button
+                          onClick={() => approveRequest.mutate(req)}
+                          disabled={approveRequest.isPending}
+                          style={{ flex: 1, padding: '8px 12px', borderRadius: 7, background: '#0A1628', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: approveRequest.isPending ? 0.6 : 1 }}
+                        >
+                          Add participant
+                        </button>
+                        <button
+                          onClick={() => dismissRequest.mutate(req.id)}
+                          disabled={dismissRequest.isPending}
+                          style={{ padding: '8px 14px', borderRadius: 7, background: 'none', color: '#6B6560', fontSize: 12, fontWeight: 600, border: '1px solid #E2E0DB', cursor: 'pointer', fontFamily: 'inherit', opacity: dismissRequest.isPending ? 0.6 : 1 }}
+                        >
+                          Dismiss
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {(ground.signals ?? []).length > 0 && (
               <div>
@@ -264,6 +369,24 @@ export function GroundAdminPage() {
               </div>
             )}
 
+            {report?.releasedAt && activationStatus && (
+              <div style={{ background: 'var(--gw-bg)', border: '0.5px solid var(--gw-border)', borderRadius: 9, padding: '12px 14px', marginBottom: 14 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-sub)', textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 8 }}>
+                  Report reveal status {activationStatus.allActivated ? '· Both activated' : '· Waiting'}
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {activationStatus.parties.map((p, i) => (
+                    <div key={p.participantId} style={{ flex: 1, padding: '8px 10px', borderRadius: 7, background: p.activated ? 'rgba(8,80,65,0.07)' : 'white', border: `1px solid ${p.activated ? '#085041' : 'var(--gw-border)'}`, textAlign: 'center' }}>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: p.activated ? '#085041' : 'var(--gw-sub)' }}>
+                        {p.activated ? 'Revealed' : 'Not yet'}
+                      </div>
+                      <div style={{ fontSize: 10, color: 'var(--gw-sub)', marginTop: 2 }}>Party {i + 1}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {report?.releasedAt ? (
               <div>
                 {/* Pattern */}
@@ -354,16 +477,36 @@ export function GroundAdminPage() {
                 <div style={{ background: 'var(--gw-bg)', border: '0.5px solid var(--gw-border)', borderRadius: 10, padding: 16, marginBottom: 14 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Report is ready</div>
                   <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 14 }}>Both parties have completed their sessions. When you release the report, both parties see it simultaneously — neither reads it before the other. Billing activates on release.</div>
-                  <button onClick={() => releaseReport.mutate()} disabled={releaseReport.isPending}
-                    style={{ width: '100%', padding: 12, borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
-                    {releaseReport.isPending ? 'Releasing…' : 'Release report to both parties'}
-                  </button>
+                  {!showReleaseConfirm ? (
+                    <button onClick={() => setShowReleaseConfirm(true)}
+                      style={{ width: '100%', padding: 12, borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
+                      Release report to both parties
+                    </button>
+                  ) : (
+                    <div style={{ background: '#FDF3E3', border: '1px solid #E8A94A', borderRadius: 8, padding: '14px 16px' }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: '#8A5C1A', marginBottom: 6 }}>Release report?</div>
+                      <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.6, marginBottom: 14 }}>Both parties will see the report simultaneously. This cannot be undone. Billing activates on release.</div>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button onClick={() => setShowReleaseConfirm(false)}
+                          style={{ flex: 1, padding: '9px 12px', borderRadius: 7, background: 'none', border: '1px solid #E2E0DB', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', color: 'var(--gw-sub)' }}>
+                          Cancel
+                        </button>
+                        <button onClick={() => { releaseReport.mutate(); setShowReleaseConfirm(false) }} disabled={releaseReport.isPending}
+                          style={{ flex: 1, padding: '9px 12px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
+                          {releaseReport.isPending ? 'Releasing…' : 'Confirm release'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             ) : (
               <div style={{ background: 'var(--gw-bg)', border: '0.5px solid var(--gw-border)', borderRadius: 10, padding: 16, marginBottom: 14 }}>
                 <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Waiting for sessions</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6 }}>The report generates after both parties complete their sessions. Check the Check-ins tab to see progress.</div>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 12 }}>The report generates after both parties complete their sessions.</div>
+                <button onClick={() => setTab('checkins')} style={{ fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit', fontWeight: 600, textDecoration: 'underline' }}>
+                  View check-in progress
+                </button>
               </div>
             )}
           </div>
@@ -374,7 +517,14 @@ export function GroundAdminPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div className="gw-fld">
               <label className="gw-label">Ground name</label>
-              <input className="gw-input" defaultValue={ground.label} />
+              <input className="gw-input" value={groundLabel} onChange={e => setGroundLabel(e.target.value)} />
+              <button
+                disabled={!groundLabel.trim() || groundLabel === ground.label}
+                onClick={() => { if (groundLabel.trim() && groundLabel !== ground.label) groundsApi.update(id!, { label: groundLabel.trim() }).then(() => qc.invalidateQueries({ queryKey: ['ground', id] })).catch(() => toast.error('Could not update name.')) }}
+                style={{ marginTop: 6, fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: '0.5px solid var(--gw-blue-b)', borderRadius: 5, padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit', opacity: (groundLabel.trim() && groundLabel !== ground.label) ? 1 : 0.4 }}
+              >
+                Save name
+              </button>
             </div>
             <button onClick={() => navigate('/billing')}
               style={{ width: '100%', padding: 11, borderRadius: 7, background: 'none', color: 'var(--gw-navy)', fontSize: 13, fontWeight: 600, border: '1px solid var(--gw-blue-b)', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Param } from '@nestjs/common';
+import { Controller, Get, Post, Param, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ReportsService } from './reports.service';
 import { CurrentUser, Roles, Role } from '../../common';
@@ -20,5 +20,17 @@ export class ReportsController {
   @ApiOperation({ summary: 'Release the report to both parties simultaneously' })
   async release(@Param('groundId') groundId: string, @CurrentUser('organizationId') organizationId: string) {
     return this.reports.release(groundId, organizationId);
+  }
+
+  @Post('activate')
+  @ApiOperation({ summary: 'Participant confirms they are ready to see the report (mutual reveal gate)' })
+  async activate(@Param('groundId') groundId: string, @CurrentUser('id') userId: string) {
+    return this.reports.activate(groundId, userId);
+  }
+
+  @Get('activation-status')
+  @ApiOperation({ summary: 'Check which parties have activated their report view' })
+  async activationStatus(@Param('groundId') groundId: string, @CurrentUser('id') userId: string) {
+    return this.reports.getActivationStatusForUser(groundId, userId);
   }
 }

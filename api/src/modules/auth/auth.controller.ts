@@ -1,10 +1,10 @@
-import { Controller, Post, Get, Body, Query, HttpCode, HttpStatus, UseGuards, Req, Res } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Body, Query, HttpCode, HttpStatus, UseGuards, Req, Res } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { AuthGuard } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
-import { RegisterDto, LoginDto, AuthResponseDto, VerifyEmailDto, SetPasswordDto, ResendVerificationDto, ForgotPasswordDto, ResetPasswordDto, MagicLinkRegisterDto, MemberSigninDto } from './dto';
+import { RegisterDto, LoginDto, AuthResponseDto, VerifyEmailDto, SetPasswordDto, ResendVerificationDto, ForgotPasswordDto, ResetPasswordDto, MagicLinkRegisterDto, MemberSigninDto, UpdateProfileDto } from './dto';
 import { Public, CurrentUser, CurrentUserData } from '../../common';
 
 @ApiTags('Auth')
@@ -73,15 +73,6 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Verification email sent if account exists' })
   async resendVerification(@Body() dto: ResendVerificationDto) {
     return this.authService.resendVerification(dto);
-  }
-
-  @Public()
-  @Post('entry-save')
-  @HttpCode(HttpStatus.OK)
-  @Throttle({ global: { limit: 5, ttl: 60000 } })
-  @ApiOperation({ summary: 'Save an entry session — creates account if new, sends magic link' })
-  async entrySave(@Body('email') email: string) {
-    return this.authService.entrySave(email);
   }
 
   @Public()
@@ -156,10 +147,10 @@ export class AuthController {
     return this.authService.getProfile(user.id);
   }
 
-  @Post('request-password-setup')
+  @Patch('me')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Generate a set-password token for the authenticated user (for password-optional offer)' })
-  async requestPasswordSetup(@CurrentUser('id') userId: string) {
-    return this.authService.requestPasswordSetupForUser(userId);
+  @ApiOperation({ summary: 'Update own profile and org details' })
+  async updateProfile(@CurrentUser() user: CurrentUserData, @Body() dto: UpdateProfileDto) {
+    return this.authService.updateProfile(user.id, dto);
   }
 }

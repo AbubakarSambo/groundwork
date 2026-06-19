@@ -8,7 +8,8 @@ import { buildIntakeBlock, RECORD_EXTRACTION_PROMPT } from './prompt-library';
 import { GroundworkEvents, CheckInCompletedEvent } from '../../common';
 import { DocumentsService } from '../documents/documents.service';
 import { BillingService } from '../billing/billing.service';
-import { CheckInStatus, TurnRole, RecordEntryType, Cadence, GroundStatus } from '@prisma/client';
+import { UsageService } from '../usage/usage.service';
+import { CheckInStatus, TurnRole, RecordEntryType, Cadence, GroundStatus, UsageEventType } from '@prisma/client';
 import { runIntake } from './intake';
 
 function mapSpecificityLevel(avgScore: number): string {
@@ -93,6 +94,7 @@ export class ConversationService {
     private events: EventEmitter2,
     private documents: DocumentsService,
     private billing: BillingService,
+    private usage: UsageService,
   ) {}
 
   /** Returns the transcript for a check-in — owner-scoped only. */
@@ -251,13 +253,16 @@ export class ConversationService {
     // Signal the frontend that the AI has delivered the session-closing elements
     // so the "Complete session" button can appear. Detected by the mandatory
     // SESSION CLOSE phrase defined in ENGINE_RULES.
-    // The new spec's CHECK-IN ENDING always contains ELEMENT 1 (record summary) and
-    // ELEMENT 3 (next step options). Detect either the old phrase or the new ones.
+    const replyLower = reply.toLowerCase();
     const sessionComplete =
       reply.includes('Here is what is now in your record:') ||
+      reply.includes('Here is what is now in your record.') ||
       reply.includes('What is in your record from today') ||
       reply.includes('in your record from today') ||
-      (reply.includes('now in your record') && (reply.includes('next step') || reply.includes('come back when')));
+      (replyLower.includes('now in your record') && replyLower.includes('next steps')) ||
+      (replyLower.includes('now in your record') && replyLower.includes('carry forward')) ||
+      (replyLower.includes('now in your record') && (reply.includes('next step') || reply.includes('come back when'))) ||
+      (replyLower.includes('your record now') && replyLower.includes('session'));
 
     return { reply: aiTurn.content, sessionComplete };
   }
@@ -497,6 +502,7 @@ export class ConversationService {
         specificityDimensions: specificityData?.dimensions ?? undefined,
       },
     });
+    this.usage.emit(UsageEventType.CHECK_IN_COMPLETED, { groundId: checkIn.groundId, participantId: checkIn.participantId }).catch(() => undefined);
 
     // Extract the structured record from this party's own transcript, then build
     // a single-party artifact (B2) so the person has standalone value from this

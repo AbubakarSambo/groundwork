@@ -6,6 +6,7 @@ export interface User {
   role: 'ADMIN' | 'MEMBER'
   organizationId: string
   organizationName?: string
+  jobTitle?: string
   isPlatformAdmin?: boolean
 }
 

@@ -1,73 +1,69 @@
-import { Controller, Post, Body, Query, UploadedFile, UseInterceptors } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiTags, ApiOperation, ApiConsumes } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsArray, MaxLength, IsIn } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Controller, Post, Body } from '@nestjs/common';
 import { Public } from '../../common';
 import { EntryService } from './entry.service';
+import { IsArray, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
 
-const VALID_MODES = ['something_new', 'look_back', 'look_forward', 'both', 'faq'];
-
-class MessageDto {
-  @IsString()
-  @IsIn(['user', 'assistant'])
-  role: 'user' | 'assistant';
-
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(8000)
-  content: string;
+class TurnDto {
+  @IsString() role: 'user' | 'assistant';
+  @IsString() content: string;
 }
 
 class EntryChatDto {
-  @IsString()
-  @IsIn(VALID_MODES)
-  mode: string;
-
   @IsArray()
-  @Type(() => MessageDto)
-  messages: MessageDto[];
+  @ValidateNested({ each: true })
+  @Type(() => TurnDto)
+  messages: TurnDto[];
+
+  @IsOptional()
+  @IsString()
+  scenario?: string;
+
+  @IsOptional()
+  @IsString()
+  groundLabel?: string;
 }
 
-class ParticipantChatDto {
+class EntryOpenerDto {
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  @MaxLength(200)
-  token: string;
-
-  @IsArray()
-  @Type(() => MessageDto)
-  messages: MessageDto[];
+  scenario?: string;
 }
 
-@ApiTags('Entry')
+class EntryReportDto {
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => TurnDto)
+  messages: TurnDto[];
+
+  @IsOptional()
+  @IsString()
+  scenario?: string;
+
+  @IsOptional()
+  @IsString()
+  groundLabel?: string;
+}
+
+@Public()
 @Controller('entry')
 export class EntryController {
-  constructor(private readonly entry: EntryService) {}
+  constructor(private service: EntryService) {}
 
-  @Public()
+  @Post('opener')
+  opener(@Body() dto: EntryOpenerDto) {
+    return { reply: this.service.opener(dto.scenario) };
+  }
+
   @Post('chat')
-  @ApiOperation({ summary: 'Anonymous entry conversation (no auth required)' })
   async chat(@Body() dto: EntryChatDto) {
-    return this.entry.chat(dto.mode, dto.messages);
+    const reply = await this.service.chat(dto.messages, dto.scenario, dto.groundLabel);
+    return { reply };
   }
 
-  @Public()
-  @Post('participant-chat')
-  @ApiOperation({ summary: 'Anonymous participant check-in conversation (no auth required)' })
-  async participantChat(@Body() dto: ParticipantChatDto) {
-    return this.entry.participantChat(dto.token, dto.messages);
-  }
-
-  @Public()
-  @Post('participant-document')
-  @ApiOperation({ summary: 'Upload a document during pre-auth participant check-in (token-based)' })
-  @ApiConsumes('multipart/form-data')
-  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
-  async participantDocument(
-    @Query('token') token: string,
-    @UploadedFile() file: Express.Multer.File,
-  ) {
-    return this.entry.uploadParticipantDocument(token, file);
+  @Post('report')
+  async report(@Body() dto: EntryReportDto) {
+    const report = await this.service.report(dto.messages, dto.scenario, dto.groundLabel);
+    return { report };
   }
 }

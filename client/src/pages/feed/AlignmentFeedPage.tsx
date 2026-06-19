@@ -1,10 +1,26 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { apiClient } from '@/api/client'
+import { groundsApi } from '@/api/grounds'
 import { useAuthStore } from '@/stores/auth'
 
 interface Msg { id: string; role: 'AI' | 'ADMIN'; content: string }
+
+interface PersonEngagement {
+  id: string
+  name: string
+  initials: string
+  status: 'active' | 'overdue' | 'pending'
+  sessionsDone: number
+  lastCheckin?: string
+}
+
+function statusColor(s: PersonEngagement['status']) {
+  if (s === 'active') return 'var(--gw-green-b)'
+  if (s === 'overdue') return 'var(--gw-amber-b)'
+  return 'var(--gw-border)'
+}
 
 export function AlignmentFeedPage() {
   const navigate = useNavigate()
@@ -14,7 +30,25 @@ export function AlignmentFeedPage() {
   ])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const [showTeam, setShowTeam] = useState(false)
   const msgsRef = useRef<HTMLDivElement>(null)
+
+  const { data: grounds = [] } = useQuery({
+    queryKey: ['grounds'],
+    queryFn: groundsApi.list,
+    enabled: !!user,
+  })
+
+  // Build a flat list of participants across all grounds for the team panel
+  const people: PersonEngagement[] = grounds.flatMap(g =>
+    g.participants.map((p, i) => ({
+      id: `${g.id}-${i}`,
+      name: typeof p === 'string' ? p : (p as any).name ?? 'Participant',
+      initials: (typeof p === 'string' ? p : (p as any).name ?? 'P').slice(0, 2).toUpperCase(),
+      status: (g.overdue ?? 0) > 0 ? 'overdue' : g.status === 'ACTIVE' ? 'active' : 'pending',
+      sessionsDone: (p as any).sessionsDone ?? 0,
+    }))
+  )
 
   const send = useMutation({
     mutationFn: (content: string) =>
@@ -45,16 +79,63 @@ export function AlignmentFeedPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)', position: 'relative' }}>
       <div className="gw-hdr">
         <div>
           <div className="gw-logo">{user?.organizationName ?? 'Alignment feed'}</div>
-          <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>Admin view</div>
+          <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>Engagement overview · {user?.role === 'ADMIN' ? 'Admin' : 'Read-only'}</div>
         </div>
         <div style={{ display: 'flex', gap: 7, alignItems: 'center' }}>
-          <button className="gw-back" onClick={() => navigate('/grounds')}>← Grounds</button>
+          <button
+            style={{ fontSize: 11, color: 'var(--gw-sub)', background: 'none', border: '1px solid var(--gw-border)', borderRadius: 'var(--gw-radius)', padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit' }}
+            onClick={() => navigate('/grounds')}
+          >
+            Feedback
+          </button>
+          <button
+            style={{ fontSize: 11, color: 'var(--gw-navy)', background: 'none', border: '1px solid var(--gw-blue-b)', borderRadius: 'var(--gw-radius)', padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit' }}
+            onClick={() => navigate('/grounds/new')}
+          >
+            + Invite
+          </button>
+          <button
+            className="gw-back"
+            onClick={() => setShowTeam(v => !v)}
+            title="Team engagement view"
+          >
+            👥 Team
+          </button>
+          <button className="gw-back" onClick={() => navigate('/grounds')}>← Back</button>
         </div>
       </div>
+
+      {/* Team panel — slides in from right */}
+      {showTeam && (
+        <div style={{ position: 'absolute', top: 0, right: 0, width: '100%', maxWidth: 340, height: '100%', minHeight: '100vh', background: 'white', borderLeft: '0.5px solid var(--gw-border)', zIndex: 20, overflowY: 'auto', padding: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+            <div style={{ fontSize: 14, fontWeight: 700 }}>Team engagement</div>
+            <button className="gw-back" onClick={() => setShowTeam(false)}>Close</button>
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--gw-blue-t)', background: 'var(--gw-blue-bg)', borderRadius: 'var(--gw-radius)', padding: '8px 10px', marginBottom: 12, lineHeight: 1.55 }}>
+            This shows session completion and timing only. Individual check-in content is private. Reports are released only when both parties activate them together.
+          </div>
+          {people.length === 0 && (
+            <div style={{ fontSize: 13, color: 'var(--gw-muted)', textAlign: 'center', padding: 24 }}>No participants yet.</div>
+          )}
+          {people.map(p => (
+            <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: '0.5px solid var(--gw-border)' }}>
+              <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--gw-blue-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: 'var(--gw-navy)', flexShrink: 0 }}>
+                {p.initials}
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 600 }}>{p.name}</div>
+                <div style={{ fontSize: 11, color: 'var(--gw-sub)' }}>{p.sessionsDone} session{p.sessionsDone !== 1 ? 's' : ''}</div>
+              </div>
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: statusColor(p.status), flexShrink: 0 }} />
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="gw-chat-w" style={{ flex: 1 }}>
         <div className="gw-chat-msgs" ref={msgsRef}>

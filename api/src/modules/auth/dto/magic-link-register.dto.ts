@@ -2,23 +2,23 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsEmail, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class MagicLinkRegisterDto {
-  @ApiProperty({ example: 'CleanTex' })
-  @IsNotEmpty()
+  @ApiPropertyOptional({ example: 'CleanTex' })
+  @IsOptional()
   @IsString()
   @MaxLength(255)
-  organizationName: string;
+  organizationName?: string;
 
-  @ApiProperty({ example: 'Amina' })
-  @IsNotEmpty()
+  @ApiPropertyOptional({ example: 'Amina' })
+  @IsOptional()
   @IsString()
   @MaxLength(100)
-  firstName: string;
+  firstName?: string;
 
-  @ApiProperty({ example: 'Abdullahi' })
-  @IsNotEmpty()
+  @ApiPropertyOptional({ example: 'Abdullahi' })
+  @IsOptional()
   @IsString()
   @MaxLength(100)
-  lastName: string;
+  lastName?: string;
 
   @ApiProperty({ example: 'amina@cleantex.com' })
   @IsNotEmpty()

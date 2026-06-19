@@ -1,4 +1,4 @@
-import { Controller, Delete, Get, Post, Body, Req, Headers, HttpCode, HttpStatus, Logger } from '@nestjs/common';
+import { Controller, Delete, Get, Post, Req, Headers, HttpCode, HttpStatus, Logger, Body } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { BillingService } from './billing.service';
 import { StripeService } from './stripe.service';
@@ -32,9 +32,9 @@ export class BillingController {
   @Post('care-fee/checkout')
   @ApiBearerAuth()
   @Roles(Role.ADMIN)
-  @ApiOperation({ summary: 'Create a Stripe Checkout session for the $25/mo platform fee' })
-  async careFeeCheckout(@CurrentUser('organizationId') organizationId: string) {
-    return this.billing.createCareFeeCheckout(organizationId);
+  @ApiOperation({ summary: 'Create a Stripe Checkout session for the $20/mo care fee' })
+  async careFeeCheckout(@CurrentUser('organizationId') organizationId: string, @Body() body?: { groundId?: string }) {
+    return this.billing.createCareFeeCheckout(organizationId, body?.groundId);
   }
 
   @Post('care-fee/cancel')
@@ -48,12 +48,9 @@ export class BillingController {
   @Post('contributor-code')
   @ApiBearerAuth()
   @Roles(Role.ADMIN)
-  @ApiOperation({ summary: 'Apply a contributor bypass code to skip payment for platform reviewers' })
-  async applyContributorCode(
-    @CurrentUser('organizationId') organizationId: string,
-    @Body('code') code: string,
-  ) {
-    return this.billing.applyContributorCode(organizationId, code);
+  @ApiOperation({ summary: 'Apply a contributor code to activate billing without payment' })
+  async applyContributorCode(@CurrentUser('organizationId') organizationId: string, @Body() body: { code: string }) {
+    return this.billing.applyContributorCode(organizationId, body.code);
   }
 
   @Post('portal')

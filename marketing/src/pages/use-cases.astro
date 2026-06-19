@@ -1,0 +1,97 @@
+---
+import Layout from '../layouts/Layout.astro';
+const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
+---
+<Layout title="Use cases — Groundwork">
+  <style>
+    *,*::before,*::after{box-sizing:border-box}
+    body{margin:0;overflow-x:hidden}
+    .gw-nav-link{font-size:13px;font-weight:500;color:#6B6560;background:none;border:none;cursor:pointer;padding:6px 11px;border-radius:6px;font-family:inherit;transition:all .15s;white-space:nowrap;text-decoration:none;display:inline-block;}
+    .gw-nav-link:hover{background:#E8E6E3;color:#1A1916;}
+    .gw-btn-ghost{font-size:13px;font-weight:600;color:#0C447C;background:none;border:1px solid #B5D4F4;cursor:pointer;padding:7px 14px;border-radius:6px;font-family:inherit;white-space:nowrap;transition:background .15s;text-decoration:none;display:inline-block;}
+    .gw-btn-ghost:hover{background:#EEF4FB;}
+    .gw-btn-solid{font-size:13px;font-weight:700;color:#fff;background:#0C447C;border:none;cursor:pointer;padding:7px 14px;border-radius:6px;font-family:inherit;white-space:nowrap;transition:background .15s;text-decoration:none;display:inline-block;}
+    .gw-btn-solid:hover{background:#1557A0;}
+    .gw-case-card{border:1px solid #E2E0DB;border-radius:10px;padding:18px 20px;margin-bottom:12px;background:#fff;}
+    .gw-case-title{font-size:15px;font-weight:700;color:#1A1916;margin-bottom:6px;}
+    .gw-case-body{font-size:13.5px;color:#4A5568;line-height:1.7;margin:0;}
+    .gw-section-label{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:#9B9590;font-weight:700;margin:32px 0 14px;}
+    .gw-footer-btn{font-size:12px;color:rgba(255,255,255,.38);background:none;border:none;cursor:pointer;font-family:inherit;text-decoration:none;}
+    .gw-footer-btn:hover{color:rgba(255,255,255,.65);}
+    @media(max-width:620px){
+      .gw-nav-links{display:none !important;}
+    }
+  </style>
+
+  <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#EDECEA;min-height:100vh;color:#1A1916;">
+
+    <nav style="position:sticky;top:0;z-index:100;background:rgba(237,236,234,.96);backdrop-filter:blur(8px);border-bottom:1px solid #E2E0DB;display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:56px;">
+      <a href="/" style="display:flex;align-items:center;gap:9px;text-decoration:none;">
+        <svg width="20" height="16" viewBox="0 0 22 17" fill="none">
+          <rect x="5"  y="0"  width="12" height="3" rx="1.5" fill="#0C447C" opacity="0.45"/>
+          <rect x="2"  y="6"  width="18" height="3" rx="1.5" fill="#0C447C" opacity="0.72"/>
+          <rect x="0"  y="12" width="22" height="3" rx="1.5" fill="#0C447C"/>
+        </svg>
+        <span style="font-size:15px;font-weight:700;color:#0C447C;letter-spacing:-.02em;">Groundwork</span>
+      </a>
+      <div class="gw-nav-links" style="display:flex;align-items:center;gap:2px;">
+        <a class="gw-nav-link" href="/">Home</a>
+        <a class="gw-nav-link" href="/how-it-works">How it works</a>
+        <a class="gw-nav-link" href="/pricing">Pricing</a>
+        <a class="gw-nav-link" href="/about">About</a>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+        <a class="gw-btn-ghost" href={`${APP_URL}/login`}>Sign in</a>
+        <a class="gw-btn-solid" href={`${APP_URL}/register`}>Get started free</a>
+      </div>
+    </nav>
+
+    <main style="max-width:600px;margin:0 auto;padding:56px 24px 80px;">
+      <p style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#0C447C;font-weight:700;margin-bottom:12px;">Use cases</p>
+      <h1 style="font-size:32px;font-weight:800;color:#1A1916;line-height:1.2;margin-bottom:16px;">Where Groundwork earns its place.</h1>
+      <p style="font-size:16px;color:#6B6560;line-height:1.7;margin-bottom:8px;">The shape is the same every time. Each person gives their own account, independently. Groundwork shows where they match, where they differ, and what to do about it. Here is what that looks like across the moments it helps most.</p>
+
+      <h3 class="gw-section-label" style="margin-top:36px;">Starting something</h3>
+      <div class="gw-case-card"><div class="gw-case-title">New hire</div><p class="gw-case-body">A new hire and their manager each describe what success looks like in the first ninety days, independently. Groundwork shows where the two pictures match and where they quietly differ, before month three turns a small gap into a hard review conversation.</p></div>
+      <div class="gw-case-card"><div class="gw-case-title">New project</div><p class="gw-case-body">Everyone joining a new project sets out scope, ownership, and what done looks like, on their own. Groundwork surfaces the assumptions that do not line up, so the project starts on agreed ground rather than discovering the mismatch at delivery.</p></div>
+      <div class="gw-case-card"><div class="gw-case-title">New board member or advisor</div><p class="gw-case-body">A new board member and the team each set out what the role is for and what good looks like. Groundwork shows where expectations diverge, so the relationship is defined before it starts costing more than it returns.</p></div>
+      <div class="gw-case-card"><div class="gw-case-title">New partner or cofounder</div><p class="gw-case-body">Each founder records their own account of roles, contribution, and what success means. Groundwork shows where they agree and where they differ, so equity and authority rest on something written, not on memory.</p></div>
+      <div class="gw-case-card"><div class="gw-case-title">Contract renewal</div><p class="gw-case-body">Both sides of a contract describe what was delivered against what was expected, independently. Groundwork builds the record the renewal or exit decision rests on, rather than leaving it to relationship management.</p></div>
+      <div class="gw-case-card"><div class="gw-case-title">New direction</div><p class="gw-case-body">Before a pivot, each person sets out the goals, responsibilities, and risks as they see them. Groundwork surfaces where the new direction is understood differently, so the team commits to the same plan.</p></div>
+
+      <h3 class="gw-section-label">Recognition</h3>
+      <div class="gw-case-card"><div class="gw-case-title">Asking for a raise</div><p class="gw-case-body">The person and their manager each account for what was contributed over the period, independently. Groundwork builds the case from a record made over time, not assembled the night before the conversation.</p></div>
+      <div class="gw-case-card"><div class="gw-case-title">Promotion or role change</div><p class="gw-case-body">Both sides describe the scope and impact of the role as it actually ran. Groundwork shows where the accounts agree, so the case is built from the record rather than from who argues best in the moment.</p></div>
+      <div class="gw-case-card"><div class="gw-case-title">Equity negotiation</div><p class="gw-case-body">Each party documents contribution and expectation before the negotiation. Groundwork puts both accounts side by side, so the conversation starts from a shared picture instead of two competing memories.</p></div>
+
+      <h3 class="gw-section-label">When you need everyone seeing the same thing</h3>
+      <div class="gw-case-card"><div class="gw-case-title">Team realignment</div><p class="gw-case-body">Each person checks in on where the team is and what matters most, independently. Groundwork shows where people are pulling in different directions without realising it, so the team can reset to one outcome.</p></div>
+      <div class="gw-case-card"><div class="gw-case-title">Multi-stakeholder programme</div><p class="gw-case-body">Teams, partners, funders, and implementers each give their own account, with no one seeing the others. Groundwork builds one shared picture across all of them, so a programme with many parties moves on the same facts.</p></div>
+      <div class="gw-case-card"><div class="gw-case-title">Progress review</div><p class="gw-case-body">Everyone records what was agreed, what was delivered, and what should happen next. Groundwork shows where those accounts line up and where they do not, so the review produces decisions rather than debate.</p></div>
+
+      <div style="text-align:center;margin-top:40px;">
+        <a class="gw-btn-solid" href={`${APP_URL}/register`} style="padding:13px 28px;font-size:14px;">Start a Ground</a>
+      </div>
+    </main>
+
+    <footer style="background:#0A1628;padding:32px 24px;text-align:center;">
+      <div style="display:flex;align-items:center;justify-content:center;gap:9px;margin-bottom:16px;">
+        <svg width="18" height="14" viewBox="0 0 22 17" fill="none">
+          <rect x="5"  y="0"  width="12" height="3" rx="1.5" fill="white" opacity="0.45"/>
+          <rect x="2"  y="6"  width="18" height="3" rx="1.5" fill="white" opacity="0.72"/>
+          <rect x="0"  y="12" width="22" height="3" rx="1.5" fill="white"/>
+        </svg>
+        <span style="font-size:14px;font-weight:700;color:rgba(255,255,255,.85);">Groundwork</span>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap;margin-bottom:20px;">
+        <a class="gw-footer-btn" href="/">Home</a>
+        <a class="gw-footer-btn" href="/how-it-works">How it works</a>
+        <a class="gw-footer-btn" href="/use-cases">Use cases</a>
+        <a class="gw-footer-btn" href="/pricing">Pricing</a>
+        <a class="gw-footer-btn" href="/about">About</a>
+      </div>
+      <p style="font-size:11px;color:rgba(255,255,255,.2);margin:0;">&#169; 2025 Groundwork.</p>
+    </footer>
+
+  </div>
+</Layout>

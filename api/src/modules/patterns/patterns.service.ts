@@ -11,12 +11,17 @@ import {
   detectR3,
   checkF1Conditions,
   DetectionInput,
+  PatternConfigMap,
 } from './pattern-library';
 
 /** Lookup map from code -> description for the AI confirmation prompt. */
 const CODE_DESCRIPTIONS = new Map(BAD_FAITH_CODES.map((c) => [c.code, `${c.name}: ${c.signal}`]));
 
 const THREE_PERIOD_RULE = 3;
+
+/** Cache pattern configs for 5 minutes to avoid per-check-in DB roundtrips. */
+let configCache: { map: PatternConfigMap; expiresAt: number } | null = null;
+const CONFIG_CACHE_TTL_MS = 5 * 60 * 1000;
 
 // Grounds still in motion.
 const ACTIVE_STATUSES: GroundStatus[] = [
@@ -476,7 +481,33 @@ export class PatternsService {
     });
     const priorSurfacedCodes = surfaced.map((s) => s.code);
 
-    return { submissions, thinkingScore, outputScore, priorSurfacedCodes };
+    const config = await this.loadPatternConfig();
+    return { submissions, thinkingScore, outputScore, priorSurfacedCodes, config };
+  }
+
+  /** Load pattern thresholds from DB, cached for 5 minutes. */
+  private async loadPatternConfig(): Promise<PatternConfigMap> {
+    const now = Date.now();
+    if (configCache && configCache.expiresAt > now) return configCache.map;
+
+    const rows = await this.prisma.patternConfig.findMany({ where: { enabled: true } });
+    const map: PatternConfigMap = {};
+    for (const row of rows) {
+      map[row.code] = {
+        consecutivePeriods: row.consecutivePeriods,
+        outputScoreMax: row.outputScoreMax ?? undefined,
+        outputScoreMin: row.outputScoreMin ?? undefined,
+        thinkingScoreMax: row.thinkingScoreMax ?? undefined,
+        thinkingScoreMin: row.thinkingScoreMin ?? undefined,
+        meetingScoreMax: row.meetingScoreMax ?? undefined,
+        meetingScoreMin: row.meetingScoreMin ?? undefined,
+        specificityScoreMax: row.specificityScoreMax ?? undefined,
+        keywordCountMin: row.keywordCountMin ?? undefined,
+        enabled: row.enabled,
+      };
+    }
+    configCache = { map, expiresAt: now + CONFIG_CACHE_TTL_MS };
+    return map;
   }
 
   /**
@@ -499,5 +530,46 @@ export class PatternsService {
 
   private markAnalyzed(checkInId: string) {
     return this.prisma.checkIn.update({ where: { id: checkInId }, data: { patternsAnalyzedAt: new Date() } });
+  }
+
+  /**
+   * Record an accuracy rating for a surfaced pattern detection.
+   * Only platform admins can rate; raters see the observation text, not the code directly.
+   */
+  async rateAccuracy(detectionId: string, accurate: boolean, ratedByUserId: string): Promise<void> {
+    await this.prisma.patternDetection.update({
+      where: { id: detectionId },
+      data: { accuracyRating: accurate, ratedAt: new Date(), ratedBy: ratedByUserId },
+    });
+  }
+
+  /**
+   * Per-code accuracy summary for the prompts dashboard.
+   * Returns each code with surfaced count, rated count, and accuracy rate.
+   */
+  async codeAccuracySummary(): Promise<{ code: string; surfaced: number; rated: number; accuracyRate: number | null }[]> {
+    const detections = await this.prisma.patternDetection.findMany({
+      where: { status: PatternStatus.SURFACED },
+      select: { code: true, accuracyRating: true },
+    });
+
+    const byCode: Record<string, { surfaced: number; accurate: number; rated: number }> = {};
+    for (const d of detections) {
+      if (!byCode[d.code]) byCode[d.code] = { surfaced: 0, accurate: 0, rated: 0 };
+      byCode[d.code].surfaced++;
+      if (d.accuracyRating !== null) {
+        byCode[d.code].rated++;
+        if (d.accuracyRating) byCode[d.code].accurate++;
+      }
+    }
+
+    return Object.entries(byCode)
+      .map(([code, stats]) => ({
+        code,
+        surfaced: stats.surfaced,
+        rated: stats.rated,
+        accuracyRate: stats.rated > 0 ? Math.round((stats.accurate / stats.rated) * 100) / 100 : null,
+      }))
+      .sort((a, b) => b.surfaced - a.surfaced);
   }
 }

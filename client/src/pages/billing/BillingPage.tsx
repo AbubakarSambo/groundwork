@@ -1,11 +1,39 @@
-import { useNavigate } from 'react-router-dom'
-import { useQuery, useMutation } from '@tanstack/react-query'
+import { useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { billingApi } from '@/api/billing'
+import { groundsApi } from '@/api/grounds'
+import { useAuthStore } from '@/stores/auth'
 import { toast } from 'sonner'
 
 export function BillingPage() {
   const navigate = useNavigate()
-  const { data: status, isLoading } = useQuery({ queryKey: ['billing'], queryFn: billingApi.status })
+  const [params] = useSearchParams()
+  const qc = useQueryClient()
+  const user = useAuthStore(s => s.user)
+
+  const groundId = params.get('groundId') ?? undefined
+  const returned = params.get('status') === 'success'
+
+  const [contribCode, setContribCode] = useState('')
+  const [showContrib, setShowContrib] = useState(false)
+
+  const { data: status, isLoading } = useQuery({
+    queryKey: ['billing'],
+    queryFn: billingApi.status,
+  })
+
+  const { data: ground } = useQuery({
+    queryKey: ['ground', groundId],
+    queryFn: () => groundsApi.get(groundId!),
+    enabled: !!groundId,
+  })
+
+  const checkout = useMutation({
+    mutationFn: () => billingApi.createCareFeeCheckout(groundId),
+    onSuccess: url => { if (url) window.location.href = url },
+    onError: () => toast.error('Could not start checkout. Try again.'),
+  })
 
   const portal = useMutation({
     mutationFn: billingApi.portal,
@@ -13,99 +41,217 @@ export function BillingPage() {
     onError: () => toast.error('Could not open billing portal.'),
   })
 
-  const checkout = useMutation({
-    mutationFn: billingApi.createCareFeeCheckout,
-    onSuccess: r => { window.location.href = r.url },
-    onError: () => toast.error('Could not start checkout.'),
+  const applyCode = useMutation({
+    mutationFn: () => billingApi.applyContributorCode(contribCode.trim()),
+    onSuccess: r => {
+      if (r.ok) {
+        toast.success(r.message)
+        qc.invalidateQueries({ queryKey: ['billing'] })
+        if (groundId) setTimeout(() => navigate(`/grounds/${groundId}`), 800)
+      } else {
+        toast.error(r.message)
+      }
+    },
+    onError: () => toast.error('Could not apply code. Try again.'),
   })
 
-  const activeParticipants: any[] = status?.activeParticipants ?? []
-  const participantCharge = activeParticipants.length * 25
-  const totalCharge = 25 + participantCharge
+  const activeParticipants = status?.activeParticipants ?? []
+  const threshold = status?.participantsAtThreshold ?? []
+  const participantCount = Math.max(activeParticipants.length, threshold.length, 1)
+  const monthlyTotal = 25 + participantCount * 25
 
-  return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
-      <div className="gw-hdr">
-        <a href="https://myground.work" target="_blank" rel="noopener noreferrer" className="gw-logo" style={{ textDecoration: 'none', color: 'inherit' }}>Groundwork</a>
-        <button className="gw-back" onClick={() => navigate('/grounds')}>← Back</button>
+  // Name to show in heading: from threshold participant, ground label, or ground participants
+  const triggerName = threshold[0]?.name ?? threshold[0]?.email?.split('@')[0]
+    ?? (ground as any)?.participants?.find((p: any) => p.partyType === 'PARTICIPANT')?.email?.split('@')[0]
+
+  const heading = triggerName
+    ? `${triggerName.charAt(0).toUpperCase()}${triggerName.slice(1)} is done with session 2.`
+    : ground?.label
+    ? `Session 2 is complete for ${ground.label}.`
+    : 'Sessions 1 and 2 are complete.'
+
+  if (isLoading) {
+    return (
+      <div style={{ minHeight: '100vh', background: '#F5F3EF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ fontSize: 13, color: '#9B9590' }}>Loading…</div>
       </div>
+    )
+  }
 
-      <div className="gw-bd" style={{ maxWidth: 540, margin: '0 auto', width: '100%' }}>
-        <div className="gw-ttl">Billing</div>
-        <div className="gw-sub-t">Manage your plan, seats, and payment method.</div>
+  // Already active — show management view
+  if (status?.careFeeActive) {
+    return (
+      <div style={{ minHeight: '100vh', background: '#F5F3EF' }}>
+        <div style={{ maxWidth: 520, margin: '0 auto', padding: '32px 16px 64px' }}>
+          <div style={{ fontSize: 11, color: '#9B9590', marginBottom: 20, cursor: 'pointer' }} onClick={() => navigate(groundId ? `/grounds/${groundId}` : '/grounds')}>
+            ← {returned ? 'Back to ground' : 'Back'}
+          </div>
 
-        {isLoading && <div style={{ fontSize: 13, color: 'var(--gw-muted)' }}>Loading…</div>}
-
-        {status && (
-          <>
-            {/* Plan summary */}
-            <div style={{ background: 'var(--gw-blue-bg)', border: '0.5px solid var(--gw-blue-b)', borderRadius: 10, padding: 16, marginBottom: 16 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-navy)' }}>Current plan</div>
-                <span className={`gw-pill ${status.careFeeActive ? 'gw-pill-green' : 'gw-pill-gray'}`}>{status.careFeeActive ? 'Active' : 'Inactive'}</span>
+          {returned && (
+            <div style={{ background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 10, padding: '13px 16px', marginBottom: 20 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#085041', marginBottom: 3 }}>Billing is active.</div>
+              <div style={{ fontSize: 12, color: '#3A7A60', lineHeight: 1.6 }}>
+                You can now release the session 2 report from the ground page and continue to session 3.
               </div>
-
-              {/* Pricing breakdown */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ fontSize: 13, color: 'var(--gw-sub)' }}>Organisation</div>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--gw-navy)' }}>$25/mo</div>
-                </div>
-                {activeParticipants.map((p: any, i: number) => (
-                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ fontSize: 13, color: 'var(--gw-sub)' }}>{p.name ?? p.email} <span style={{ fontSize: 11, background: 'var(--gw-green-bg)', color: 'var(--gw-green-t)', borderRadius: 20, padding: '1px 6px', fontWeight: 600 }}>active</span></div>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--gw-navy)' }}>$25/mo</div>
-                  </div>
-                ))}
-                {activeParticipants.length === 0 && (
-                  <div style={{ fontSize: 12, color: 'var(--gw-sub)' }}>No active participants yet. First 2 sessions per participant are free.</div>
-                )}
-                <div style={{ borderTop: '0.5px solid var(--gw-blue-b)', paddingTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)' }}>Total</div>
-                  <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--gw-navy)' }}>${status.careFeeActive ? totalCharge : 0}/mo</div>
-                </div>
-              </div>
-
-              {status.nextBillingDate && (
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)' }}>
-                  Next billing: {new Date(status.nextBillingDate).toLocaleDateString()}
-                  {status.card && ` · ${status.card.brand} ending ${status.card.last4}`}
-                </div>
-              )}
             </div>
+          )}
 
-            {/* Activate billing */}
-            {!status.careFeeActive && (
-              <div style={{ background: 'var(--gw-amber-bg)', border: '0.5px solid var(--gw-amber-b)', borderRadius: 10, padding: 14, marginBottom: 16 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 6 }}>Activate billing</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 12 }}>
-                  Sessions 1–2 are free per participant. Activate to continue past session 2.
-                </div>
-                <button onClick={() => checkout.mutate()} disabled={checkout.isPending}
-                  style={{ padding: '10px 18px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
-                  {checkout.isPending ? 'Loading…' : 'Activate billing'}
+          <div style={{ fontSize: 22, fontWeight: 800, color: '#0A1628', marginBottom: 6, lineHeight: 1.3 }}>
+            Your plan is active.
+          </div>
+          <div style={{ fontSize: 13, color: '#6B6560', lineHeight: 1.65, marginBottom: 24 }}>
+            Sessions 1 and 2 are always free. You are billed from session 3 onward.
+          </div>
+
+          {/* Pricing summary */}
+          <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 12, overflow: 'hidden', marginBottom: 16 }}>
+            <div style={{ padding: '14px 16px', borderBottom: '1px solid #F0EEE9', display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 13, color: '#6B6560' }}>Platform fee (per account)</span>
+              <span style={{ fontSize: 14, fontWeight: 700, color: '#0A1628' }}>$25/month</span>
+            </div>
+            {activeParticipants.map((p: any, i: number) => (
+              <div key={i} style={{ padding: '12px 16px', borderBottom: '1px solid #F0EEE9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: 13, color: '#6B6560' }}>{p.name ?? p.email}</span>
+                <span style={{ fontSize: 14, fontWeight: 700, color: '#0A1628' }}>$25/month</span>
+              </div>
+            ))}
+            <div style={{ padding: '14px 16px', background: '#F5F3EF', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#0A1628' }}>Monthly total</span>
+              <span style={{ fontSize: 18, fontWeight: 800, color: '#0C447C' }}>${status.careFeeActive ? monthlyTotal : 0}/mo</span>
+            </div>
+          </div>
+
+          {status.nextBillingDate && (
+            <div style={{ fontSize: 12, color: '#9B9590', marginBottom: 20 }}>
+              Next billing: {new Date(status.nextBillingDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+              {status.card && ` · ${status.card.brand} ···· ${status.card.last4}`}
+            </div>
+          )}
+
+          <button
+            onClick={() => portal.mutate()}
+            disabled={portal.isPending}
+            style={{ width: '100%', padding: '13px 16px', borderRadius: 8, background: '#0A1628', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: portal.isPending ? 0.6 : 1 }}
+          >
+            {portal.isPending ? 'Loading…' : 'Manage payment method and invoices →'}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // Gate view — needs to add card
+  return (
+    <div style={{ minHeight: '100vh', background: '#F5F3EF' }}>
+      <div style={{ maxWidth: 520, margin: '0 auto', padding: '32px 16px 64px' }}>
+        <div style={{ fontSize: 11, color: '#9B9590', marginBottom: 24, cursor: 'pointer' }} onClick={() => navigate(groundId ? `/grounds/${groundId}` : '/grounds')}>
+          ← Back
+        </div>
+
+        {/* Heading */}
+        <div style={{ fontSize: 22, fontWeight: 800, color: '#0A1628', lineHeight: 1.3, marginBottom: 8 }}>
+          {heading}
+        </div>
+        <div style={{ fontSize: 14, color: '#6B6560', lineHeight: 1.65, marginBottom: 28 }}>
+          Sessions 1 and 2 were free. Add a card to release the session 2 report and continue.
+        </div>
+
+        {/* Pricing breakdown */}
+        <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 12, overflow: 'hidden', marginBottom: 16 }}>
+          <div style={{ padding: '14px 16px', borderBottom: '1px solid #F0EEE9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <div style={{ fontSize: 13, color: '#6B6560' }}>Platform fee (per account)</div>
+            </div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#0A1628' }}>$25/month</div>
+          </div>
+          <div style={{ padding: '14px 16px', borderBottom: '1px solid #F0EEE9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <div style={{ fontSize: 13, color: '#6B6560' }}>Per active participant</div>
+              <div style={{ fontSize: 11, color: '#9B9590' }}>{participantCount} participant{participantCount !== 1 ? 's' : ''} in this ground</div>
+            </div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#0A1628' }}>$25/person/month</div>
+          </div>
+          <div style={{ padding: '14px 16px', background: '#F5F3EF', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#0A1628' }}>Monthly total</div>
+            <div style={{ fontSize: 20, fontWeight: 800, color: '#0C447C' }}>${monthlyTotal}/mo</div>
+          </div>
+        </div>
+
+        {/* Guarantees */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginBottom: 28 }}>
+          {[
+            'Sessions 1 and 2 were free for everyone in this ground',
+            'Participants in several Grounds are billed once',
+            'Unlimited Grounds and Ground leads at no extra cost',
+            'Participants never see a payment screen',
+            'Cancel any time. Your records are always yours.',
+          ].map((text, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+              <span style={{ color: '#5DCAA5', fontWeight: 800, fontSize: 14, flexShrink: 0, marginTop: 1 }}>✓</span>
+              <span style={{ fontSize: 13, color: '#4A4540', lineHeight: 1.5 }}>{text}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Email field */}
+        <div style={{ marginBottom: 14 }}>
+          <label style={{ fontSize: 12, fontWeight: 600, color: '#6B6560', display: 'block', marginBottom: 5 }}>
+            Your email (for billing notifications)
+          </label>
+          <input
+            type="email"
+            defaultValue={user?.email ?? ''}
+            readOnly
+            style={{ width: '100%', padding: '10px 12px', borderRadius: 7, border: '1px solid #E2E0DB', background: '#F5F3EF', fontSize: 13, color: '#6B6560', fontFamily: 'inherit', boxSizing: 'border-box' }}
+          />
+        </div>
+
+        {/* Primary CTA */}
+        <button
+          onClick={() => checkout.mutate()}
+          disabled={checkout.isPending}
+          style={{ width: '100%', padding: '15px 16px', borderRadius: 9, background: '#0A1628', color: 'white', fontSize: 15, fontWeight: 800, border: 'none', cursor: checkout.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: checkout.isPending ? 0.7 : 1, marginBottom: 10 }}
+        >
+          {checkout.isPending ? 'Redirecting to Stripe…' : 'Add card and release report →'}
+        </button>
+        <div style={{ textAlign: 'center', fontSize: 11, color: '#9B9590', marginBottom: 28 }}>
+          Secured by Stripe. Cancel any time.
+        </div>
+
+        {/* Contributor code */}
+        <div style={{ borderTop: '1px solid #E2E0DB', paddingTop: 20 }}>
+          {!showContrib ? (
+            <button
+              onClick={() => setShowContrib(true)}
+              style={{ background: 'none', border: 'none', fontSize: 12, color: '#9B9590', cursor: 'pointer', fontFamily: 'inherit', padding: 0, textDecoration: 'underline' }}
+            >
+              Have a contributor code?
+            </button>
+          ) : (
+            <div>
+              <div style={{ fontSize: 12, color: '#6B6560', marginBottom: 10, lineHeight: 1.6 }}>
+                Enter your contributor code to continue without payment.
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  type="text"
+                  placeholder="Contributor code"
+                  value={contribCode}
+                  onChange={e => setContribCode(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && contribCode.trim() && applyCode.mutate()}
+                  style={{ flex: 1, padding: '10px 12px', borderRadius: 7, border: '1px solid #E2E0DB', background: 'white', fontSize: 13, fontFamily: 'inherit' }}
+                />
+                <button
+                  onClick={() => applyCode.mutate()}
+                  disabled={applyCode.isPending || !contribCode.trim()}
+                  style={{ padding: '10px 16px', borderRadius: 7, background: '#0C447C', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: (applyCode.isPending || !contribCode.trim()) ? 0.6 : 1 }}
+                >
+                  {applyCode.isPending ? 'Checking…' : 'Apply'}
                 </button>
               </div>
-            )}
-
-            {/* Pricing note */}
-            <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.7, background: 'var(--gw-bg)', borderRadius: 8, padding: '12px 14px', marginBottom: 20, border: '0.5px solid var(--gw-border)' }}>
-              <strong style={{ color: 'var(--gw-text)' }}>$25/month</strong> per organisation + <strong style={{ color: 'var(--gw-text)' }}>$25/month</strong> per active participant. A participant becomes active after session 2. Billed once per participant across all grounds. First 2 sessions are always free.
             </div>
-
-            {/* Manage */}
-            {status.careFeeActive && (
-              <button onClick={() => portal.mutate()} disabled={portal.isPending} className="gw-btn-sec" style={{ margin: 0 }}>
-                {portal.isPending ? 'Loading…' : 'Manage payment method and invoices →'}
-              </button>
-            )}
-
-            <div style={{ marginTop: 20 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>Billing history</div>
-              <div style={{ fontSize: 13, color: 'var(--gw-sub)', padding: 12, background: 'var(--gw-bg)', borderRadius: 8, border: '0.5px solid var(--gw-border)', textAlign: 'center' }}>No billing history yet.</div>
-            </div>
-          </>
-        )}
+          )}
+        </div>
       </div>
     </div>
   )

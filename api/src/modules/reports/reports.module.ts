@@ -5,9 +5,10 @@ import { ReportsListener } from './reports.listener';
 import { ConversationModule } from '../conversation';
 import { GroundsModule } from '../grounds';
 import { EmailModule } from '../email';
+import { UsageModule } from '../usage/usage.module';
 
 @Module({
-  imports: [ConversationModule, GroundsModule, EmailModule],
+  imports: [ConversationModule, GroundsModule, EmailModule, UsageModule],
   controllers: [ReportsController],
   providers: [ReportsService, ReportsListener],
   exports: [ReportsService],

@@ -1,10 +1,8 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Param, Body, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsOptional, MaxLength, IsArray, ValidateNested } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsString, IsNotEmpty, IsOptional, MaxLength } from 'class-validator';
 import { PromptsService } from './prompts.service';
 import { PlatformAdminGuard } from '../../common';
-import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
 class CreatePromptVersionDto {
   @IsString()
@@ -22,39 +20,10 @@ class CreatePromptVersionDto {
   summary?: string;
 }
 
-class UpsertDraftDto {
-  @IsString()
-  @IsNotEmpty()
-  content: string;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(2000)
-  summary?: string;
-}
-
-class ChatTurnDto {
-  @IsString()
-  role: 'user' | 'assistant';
-
-  @IsString()
-  content: string;
-}
-
-class TestChatDto {
-  @IsString()
-  @IsNotEmpty()
-  versionId: string;
-
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => ChatTurnDto)
-  messages: ChatTurnDto[];
-}
-
 /**
- * Prompt management — platform-admin-only. Prompt versions are global
- * infrastructure; changes are versioned, activation is deliberate.
+ * Prompt management — a restricted, platform-admin-only interface. Prompt
+ * versions are global infrastructure (the moat); changes are versioned and
+ * logged with a summary, and activation is deliberate. Not in the main product UI.
  */
 @ApiTags('Prompt Management')
 @ApiBearerAuth()
@@ -75,46 +44,16 @@ export class PromptsController {
     return this.prompts.createVersion(dto.key, dto.content, dto.summary);
   }
 
+  @Post(':id/activate')
+  @ApiOperation({ summary: 'Activate a prompt version (versioned against outcome data)' })
+  async activate(@Param('id') id: string) {
+    return this.prompts.activate(id);
+  }
+
   @Get('platform-funnel')
-  @ApiOperation({ summary: 'Usage funnel data' })
+  @ApiOperation({ summary: 'Usage funnel data — session drop-off, scenario breakdown, engagement' })
   async platformFunnel() {
     return this.prompts.usageFunnel();
-  }
-
-  @Get('platform-dashboard')
-  @ApiOperation({ summary: 'Cross-org usage dashboard' })
-  async platformDashboard() {
-    return this.prompts.platformDashboard();
-  }
-
-  @Get('org-cohorts')
-  @ApiOperation({ summary: 'Per-org signup and engagement cohort view' })
-  async orgCohorts() {
-    return this.prompts.orgCohorts();
-  }
-
-  @Post('test-chat')
-  @ApiOperation({ summary: 'Run a test message against a specific prompt version (no DB writes)' })
-  async testChat(@Body() dto: TestChatDto) {
-    return this.prompts.testChat(dto.versionId, dto.messages);
-  }
-
-  @Get('draft/:key')
-  @ApiOperation({ summary: 'Get the current draft for a prompt key' })
-  async getDraft(@Param('key') key: string) {
-    return this.prompts.getDraft(key);
-  }
-
-  @Put('draft/:key')
-  @ApiOperation({ summary: 'Create or update the draft for a prompt key (upsert)' })
-  async upsertDraft(@Param('key') key: string, @Body() dto: UpsertDraftDto) {
-    return this.prompts.upsertDraft(key, dto.content, dto.summary);
-  }
-
-  @Delete('draft/:key')
-  @ApiOperation({ summary: 'Discard the draft for a prompt key' })
-  async discardDraft(@Param('key') key: string) {
-    return this.prompts.discardDraft(key);
   }
 
   @Get('by-key/:key')
@@ -123,10 +62,46 @@ export class PromptsController {
     return this.prompts.getByKey(key);
   }
 
-  @Post(':id/activate')
-  @ApiOperation({ summary: 'Activate a prompt version' })
-  async activate(@Param('id') id: string, @CurrentUser() user: any) {
-    const name = user ? `${user.firstName} ${user.lastName}`.trim() : undefined;
-    return this.prompts.activate(id, name);
+  @Get('platform-dashboard')
+  @ApiOperation({ summary: 'Cross-org usage dashboard — session data, ground activity, prompt performance' })
+  async platformDashboard() {
+    return this.prompts.platformDashboard();
+  }
+
+  @Get('org-list')
+  @ApiOperation({ summary: 'All orgs with ground counts, billing status, and last activity' })
+  async orgList() {
+    return this.prompts.orgList();
+  }
+
+  @Get('usage-stats')
+  @ApiOperation({ summary: '14-day check-in trend and event totals' })
+  async usageStats() {
+    return this.prompts.usageStats();
+  }
+
+  @Get('feedback-summary')
+  @ApiOperation({ summary: 'Outcome feedback responses — fairness rate and recent notes' })
+  async feedbackSummary() {
+    return this.prompts.feedbackSummary();
+  }
+
+  @Post('test-chat')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Sandbox: one chat turn with a custom system prompt. Never persisted.' })
+  async testChat(@Body() body: { systemPrompt: string; messages: { role: 'user' | 'assistant'; content: string }[] }) {
+    return this.prompts.testChat(body.systemPrompt, body.messages);
+  }
+
+  @Post('test-report')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Sandbox: generate cross-reference and participant reports from test conversations. Never persisted.' })
+  async testReport(@Body() body: {
+    systemPrompt: string;
+    adminMessages: { role: 'user' | 'assistant'; content: string }[];
+    p1Messages: { role: 'user' | 'assistant'; content: string }[];
+    p2Messages: { role: 'user' | 'assistant'; content: string }[];
+  }) {
+    return this.prompts.testReport(body.systemPrompt, body.adminMessages, body.p1Messages, body.p2Messages);
   }
 }

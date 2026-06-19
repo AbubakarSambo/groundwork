@@ -1,0 +1,25 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "prototype",
+      "runtimeExecutable": "/opt/homebrew/bin/node",
+      "runtimeArgs": ["-e", "const h=require('http'),fs=require('fs'),p=require('path');h.createServer((q,r)=>{let f=p.join('/Users/hafsahjumare/Downloads',q.url==='/'?'groundwork_frontend.html':q.url);try{const d=fs.readFileSync(f);const m={'html':'text/html','js':'application/javascript','css':'text/css','png':'image/png','jpg':'image/jpeg','svg':'image/svg+xml','ico':'image/x-icon'};const e=p.extname(f).slice(1);r.writeHead(200,{'Content-Type':m[e]||'text/plain'});r.end(d);}catch(e){r.writeHead(404);r.end('Not found');}}).listen(7070,'127.0.0.1');"],
+      "port": 7070
+    },
+    {
+      "name": "client",
+      "runtimeExecutable": "/opt/homebrew/bin/node",
+      "runtimeArgs": ["-e", "// attaches to existing vite dev server"],
+      "port": 5173,
+      "autoPort": false
+    },
+    {
+      "name": "marketing",
+      "runtimeExecutable": "/opt/homebrew/bin/node",
+      "runtimeArgs": ["-e", "// attaches to existing astro dev server"],
+      "port": 4321,
+      "autoPort": false
+    }
+  ]
+}
