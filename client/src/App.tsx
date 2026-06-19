@@ -32,6 +32,7 @@ import { OnboardingChat } from '@/pages/home/OnboardingChat'
 import { ParticipantOnboardingChat } from '@/pages/home/ParticipantOnboardingChat'
 import { LeadOnboardingChat } from '@/pages/home/LeadOnboardingChat'
 import { AppShell } from '@/components/layout/AppShell'
+import { ReportPage } from '@/pages/report/ReportPage'
 import { FeedbackWidget } from '@/components/FeedbackWidget'
 import type { JSX } from 'react'
 
@@ -93,6 +94,7 @@ export default function App() {
             <Route path="/grounds" element={<RequireAuth><AppShell><GroundsListPage /></AppShell></RequireAuth>} />
             <Route path="/grounds/new" element={<RequireAuth><AppShell><CreateGroundPage /></AppShell></RequireAuth>} />
             <Route path="/grounds/:id" element={<RequireAuth><AppShell><GroundAdminPage /></AppShell></RequireAuth>} />
+            <Route path="/grounds/:id/report" element={<RequireAuth><AppShell><ReportPage /></AppShell></RequireAuth>} />
             <Route path="/grounds/:id/p" element={<RequireAuth><AppShell><GroundParticipantPage /></AppShell></RequireAuth>} />
             <Route path="/chat/:checkInId" element={<RequireAuth><AppShell><ChatPage /></AppShell></RequireAuth>} />
             <Route path="/checkin/:checkInId" element={<RequireAuth><AppShell><ChatPage /></AppShell></RequireAuth>} />

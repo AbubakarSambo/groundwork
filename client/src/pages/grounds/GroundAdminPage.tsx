@@ -519,6 +519,7 @@ function SessionHistory({
   onRelease: () => void
   releasing: boolean
 }) {
+  const navigate = useNavigate()
   const [openSession, setOpenSession] = useState<number | null>(null)
 
   const checkIns: any[] = ground.checkIns ?? []
@@ -628,6 +629,18 @@ function SessionHistory({
             {/* Paywall notice */}
             {paywallActive && sNum === 2 && (
               <PaywallNotice onUnlocked={onRelease} />
+            )}
+
+            {/* View report link — visible once released */}
+            {report?.releasedAt && allSubmitted && (
+              <div style={{ padding: '0 14px 12px' }}>
+                <button
+                  onClick={() => navigate(`/grounds/${ground.id}/report`)}
+                  style={{ width: '100%', padding: '8px 0', borderRadius: 6, background: 'var(--gw-dark)', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                >
+                  View report →
+                </button>
+              </div>
             )}
 
             {/* Inline report */}

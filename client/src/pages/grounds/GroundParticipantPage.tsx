@@ -179,6 +179,12 @@ export function GroundParticipantPage() {
 
             {report?.releasedAt ? (
               <div>
+                <button
+                  onClick={() => navigate(`/grounds/${id}/report`)}
+                  style={{ width: '100%', padding: '11px 0', borderRadius: 8, background: '#0A1628', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', marginBottom: 16 }}
+                >
+                  View full report →
+                </button>
                 {/* 1. Your account, confirmed */}
                 <div style={{ background: 'var(--gw-navy)', color: 'white', borderRadius: 10, padding: 16, marginBottom: 12 }}>
                   <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,.55)', marginBottom: 6 }}>Your account, confirmed</div>
