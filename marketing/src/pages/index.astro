@@ -173,19 +173,17 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
     <!-- PROBLEM -->
     <section style="background:#F5F3EF;border-bottom:1px solid #E2E0DB;">
       <div class="gw-wrap" style="max-width:1080px;margin:0 auto;padding:64px 20px;text-align:center;">
-        <p style="font-size:10px;font-weight:600;color:#0C447C;text-transform:uppercase;letter-spacing:.14em;margin-bottom:18px;opacity:.65;">The problem</p>
-        <h2 class="gw-sec-h2" style="font-size:36px;font-weight:800;color:#1A1916;letter-spacing:-.03em;line-height:1.15;max-width:660px;margin:0 auto 16px;">
-          The problem is not performance.<br>It is <em style="color:#0C447C;font-style:normal;">visibility.</em>
+        <p style="font-size:10px;font-weight:600;color:#0C447C;text-transform:uppercase;letter-spacing:.14em;margin-bottom:18px;opacity:.65;">The real problem</p>
+        <h2 class="gw-sec-h2" style="font-size:36px;font-weight:800;color:#1A1916;letter-spacing:-.03em;line-height:1.15;max-width:680px;margin:0 auto 28px;">
+          Most work problems do not begin as conflicts.<br>They begin as <em style="color:#0C447C;font-style:normal;">small gaps in understanding.</em>
         </h2>
-        <p style="font-size:15px;color:#6B6560;line-height:1.75;margin:0 auto 44px;max-width:500px;">
-          Most teams do not know who is carrying critical work, where expectations diverged, who is blocked, or whether contribution matches perception. So conversations become political.
-        </p>
-        <div class="gw-prob-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;max-width:900px;margin:0 auto;">
-          <div class="gw-prob-card"><div style="font-size:13px;font-weight:700;color:#1A1916;margin-bottom:4px;">Who is carrying</div><div style="font-size:12px;color:#6B6560;line-height:1.55;">Critical work that is invisible until someone leaves</div></div>
-          <div class="gw-prob-card"><div style="font-size:13px;font-weight:700;color:#1A1916;margin-bottom:4px;">Where it diverged</div><div style="font-size:12px;color:#6B6560;line-height:1.55;">Expectations that were never the same on both sides</div></div>
-          <div class="gw-prob-card"><div style="font-size:13px;font-weight:700;color:#1A1916;margin-bottom:4px;">Who is blocked</div><div style="font-size:12px;color:#6B6560;line-height:1.55;">Progress limited by things nobody named in time</div></div>
-          <div class="gw-prob-card"><div style="font-size:13px;font-weight:700;color:#1A1916;margin-bottom:4px;">Whether it matches</div><div style="font-size:12px;color:#6B6560;line-height:1.55;">Contribution that does not match what people perceive</div></div>
+        <div class="gw-prob-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;max-width:900px;margin:0 auto 28px;">
+          <div class="gw-prob-card"><div style="font-size:13px;font-weight:700;color:#1A1916;margin-bottom:4px;">Different expectations</div><div style="font-size:12px;color:#6B6560;line-height:1.55;">Each person assumed something the others never agreed to</div></div>
+          <div class="gw-prob-card"><div style="font-size:13px;font-weight:700;color:#1A1916;margin-bottom:4px;">Different assumptions</div><div style="font-size:12px;color:#6B6560;line-height:1.55;">The starting facts were never the same on every side</div></div>
+          <div class="gw-prob-card"><div style="font-size:13px;font-weight:700;color:#1A1916;margin-bottom:4px;">Different constraints</div><div style="font-size:12px;color:#6B6560;line-height:1.55;">What each person is up against stays invisible to the rest</div></div>
+          <div class="gw-prob-card"><div style="font-size:13px;font-weight:700;color:#1A1916;margin-bottom:4px;">Different ideas of success</div><div style="font-size:12px;color:#6B6560;line-height:1.55;">Everyone is working hard toward a slightly different finish line</div></div>
         </div>
+        <p style="font-size:15px;color:#6B6560;line-height:1.75;margin:0 auto;max-width:560px;">Groundwork helps people surface those differences early, build a shared record of what matters, and move forward with clarity instead of guesswork.</p>
       </div>
     </section>
 
@@ -262,6 +260,7 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
           <a class="gw-demo-btn" href={`${APP_URL}/demo/priya`}><span style="width:8px;height:8px;border-radius:50%;background:#5DCAA5;flex-shrink:0;margin-top:3px;"></span><div><div style="font-size:13px;font-weight:700;color:#1A1916;margin-bottom:2px;">Priya's check-in · sales</div><div style="font-size:12px;color:#9B9590;line-height:1.4;">Strong work that was invisible until the record showed it</div></div></a>
           <a class="gw-demo-btn" href={`${APP_URL}/demo/marcus`}><span style="width:8px;height:8px;border-radius:50%;background:#E8A94A;flex-shrink:0;margin-top:3px;"></span><div><div style="font-size:13px;font-weight:700;color:#1A1916;margin-bottom:2px;">Marcus's check-in · sales lead</div><div style="font-size:12px;color:#9B9590;line-height:1.4;">An honest conversation about what the record shows</div></div></a>
           <a class="gw-demo-btn" href={`${APP_URL}/demo/amara`}><span style="width:8px;height:8px;border-radius:50%;background:#5DCAA5;flex-shrink:0;margin-top:3px;"></span><div><div style="font-size:13px;font-weight:700;color:#1A1916;margin-bottom:2px;">Amara's check-in · engineering</div><div style="font-size:12px;color:#9B9590;line-height:1.4;">Specific, evidenced, and recognised</div></div></a>
+          <a class="gw-demo-btn" href={`${APP_URL}/auth`}><span style="width:8px;height:8px;border-radius:50%;background:#0C447C;flex-shrink:0;margin-top:3px;"></span><div><div style="font-size:13px;font-weight:700;color:#1A1916;margin-bottom:2px;">I manage a team</div><div style="font-size:12px;color:#9B9590;line-height:1.4;">Set up contribution records before promotion and raise conversations</div></div></a>
         </div>
         <p style="font-size:11px;color:#B4B2A9;margin-top:14px;">Northgate Ventures · org code: northgate · admin PIN: 1234</p>
       </div>
@@ -320,10 +319,10 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
     <!-- CTA BANNER -->
     <section style="background:#0A1628;text-align:center;padding:80px 20px;">
       <h2 class="gw-cta-h2" style="font-size:40px;font-weight:800;color:#FFFFFF;letter-spacing:-.04em;line-height:1.1;margin-bottom:14px;">
-        Better decisions start<br>with better evidence.
+        Build alignment.<br>Move forward.
       </h2>
-      <p style="font-size:16px;color:rgba(255,255,255,.4);margin-bottom:32px;font-style:italic;">See clearly when it counts.</p>
-      <a class="gw-btn-solid" href={`${APP_URL}/`} style="padding:15px 36px;font-size:15px;font-weight:700;">Get started free</a>
+      <p style="font-size:16px;color:rgba(255,255,255,.4);margin-bottom:32px;max-width:500px;margin-left:auto;margin-right:auto;">When expectations drift, uncertainty grows. Groundwork helps people see where they are, what matters, and what should happen next.</p>
+      <a class="gw-btn-solid" href={`${APP_URL}/`} style="padding:15px 36px;font-size:15px;font-weight:700;">Start a Ground</a>
       <p style="font-size:12px;color:rgba(255,255,255,.2);margin-top:14px;">First two sessions are free for everyone.</p>
     </section>
 
@@ -387,8 +386,8 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
         <div style="background:#F5F3EF;border-radius:10px;padding:24px;border:1px solid #E2E0DB;margin-bottom:32px;">
           <h3 style="font-size:15px;font-weight:700;color:#1A1916;margin-bottom:16px;">How the session model works</h3>
           <div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:10px;"><span style="font-size:11px;font-weight:700;color:#0C447C;min-width:80px;padding-top:2px;flex-shrink:0;">At setup</span><span style="font-size:13px;color:#6B6560;line-height:1.6;">Choose your timeframe and check-in cadence. The product shows your free and paid sessions before you confirm.</span></div>
-          <div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:10px;"><span style="font-size:11px;font-weight:700;color:#0C447C;min-width:80px;padding-top:2px;flex-shrink:0;">Sessions 1–2</span><span style="font-size:13px;color:#6B6560;line-height:1.6;">Free for all parties. Session 1 report is included. No card required.</span></div>
-          <div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:10px;"><span style="font-size:11px;font-weight:700;color:#0C447C;min-width:80px;padding-top:2px;flex-shrink:0;">After session 2</span><span style="font-size:13px;color:#6B6560;line-height:1.6;">Payment prompt fires to the admin. The session 2 report is released once billing is active. Session 3 onwards requires an active account.</span></div>
+          <div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:10px;"><span style="font-size:11px;font-weight:700;color:#0C447C;min-width:80px;padding-top:2px;flex-shrink:0;">Sessions 1–2</span><span style="font-size:13px;color:#6B6560;line-height:1.6;">Free for all parties. Sessions 1 and 2 reports are included. No card required.</span></div>
+          <div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:10px;"><span style="font-size:11px;font-weight:700;color:#0C447C;min-width:80px;padding-top:2px;flex-shrink:0;">After session 2</span><span style="font-size:13px;color:#6B6560;line-height:1.6;">Payment prompt fires to the admin. The session 3 report releases once billing is active. Sessions 3 onwards require an active account.</span></div>
           <div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:10px;"><span style="font-size:11px;font-weight:700;color:#0C447C;min-width:80px;padding-top:2px;flex-shrink:0;">On close</span><span style="font-size:13px;color:#6B6560;line-height:1.6;">Billing stops automatically. The resolution record is permanent. Both parties keep it forever.</span></div>
         </div>
         <div style="text-align:center;">
