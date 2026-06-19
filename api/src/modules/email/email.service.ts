@@ -20,6 +20,10 @@ export class EmailService {
     this.frontendUrl = this.configService.get<string>('resend.frontendUrl') || 'http://localhost:5173';
   }
 
+  buildInviteUrl(inviteToken: string): string {
+    return `${this.frontendUrl}/invite?token=${inviteToken}`;
+  }
+
   private async sendEmail(options: { to: string; subject: string; html: string }): Promise<void> {
     const apiKey = this.configService.get<string>('resend.apiKey') ?? '';
     if (!apiKey || apiKey.startsWith('re_...') || apiKey === 're_test') {

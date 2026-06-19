@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Logger, Inject, forwardRef } from '@nestjs/common';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const pdfParse = require('pdf-parse') as (buf: Buffer) => Promise<{ text: string }>;
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -71,6 +71,7 @@ export class DocumentsService {
 
   constructor(
     private prisma: PrismaService,
+    @Inject(forwardRef(() => AnthropicService))
     private anthropic: AnthropicService,
     private config: ConfigService,
   ) {

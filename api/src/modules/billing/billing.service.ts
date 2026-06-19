@@ -5,20 +5,20 @@ import type Stripe from 'stripe';
 import { PrismaService, CronLock } from '../prisma/prisma.service';
 import { StripeService } from './stripe.service';
 import { EmailService } from '../email/email.service';
-import { CareFeeStatus, GroundStatus, BillingEventType, BillingEventStatus, Ground, UserRole, UsageEventType } from '@prisma/client';
+import { CareFeeStatus, GroundStatus, BillingEventType, BillingEventStatus, UserRole, UsageEventType } from '@prisma/client';
 import { UsageService } from '../usage/usage.service';
 
-const SCENARIO_PERIOD_DAYS = 30;
+const PARTICIPANT_PERIOD_DAYS = 30;
 const dayMs = 24 * 60 * 60 * 1000;
 
 /**
- * Billing model (Part 1 — clinic/nurse):
- *   - Care fee:     $20/mo per org. Recurring subscription. The commitment device.
- *   - Scenario fee: $50/person/month while a ground is ACTIVE. Usage-billed.
+ * Billing model:
+ *   - Care fee:        $25/mo per org. Recurring subscription.
+ *   - Participant fee: $25/unique participant/month across all ACTIVE grounds.
+ *                      Deduplicated by email — a person in N grounds pays once.
  *
- * Session 1 is free. The paywall sits between REPORT_READY and ACTIVE: the org
- * must have an active care-fee subscription (card on file) before a ground can
- * be activated. Scenario fees ride on the care-fee subscription's invoice.
+ * Sessions 1–2 are free. Paywall fires after both parties complete session 2:
+ * ground moves to REPORT_READY, admin is nudged, report held until payment.
  */
 @Injectable()
 export class BillingService {
@@ -45,23 +45,23 @@ export class BillingService {
 
   /**
    * Session-number-aware billing gate.
-   * Session 1 is always free. Session 2+ requires billing-ready status.
+   * Sessions 1–2 are always free. Session 3+ requires billing-ready status.
    */
   async checkSessionGate(orgId: string, sessionNumber: number): Promise<{ allowed: boolean; reason?: string }> {
-    if (sessionNumber <= 1) return { allowed: true };
+    if (sessionNumber <= 2) return { allowed: true };
     const ready = await this.isBillingReady(orgId);
     if (ready) return { allowed: true };
     return {
       allowed: false,
-      reason: 'Your workspace needs to be activated before session 2. Your admin will receive a prompt.',
+      reason: 'Your workspace needs to be activated before session 3. Your admin will receive a prompt.',
     };
   }
 
   /**
-   * Send a payment request email to the org admin after session 1 completes.
-   * Primes the admin to activate billing so session 2 is not blocked.
+   * Send a payment request email to the org admin after session 2 completes.
+   * Report is held in REPORT_READY state until payment is confirmed.
    */
-  async requestPaymentForSession2(orgId: string, groundId: string): Promise<void> {
+  async requestPaymentAfterSession2(orgId: string, groundId: string): Promise<void> {
     const org = await this.prisma.organization.findUnique({
       where: { id: orgId },
       select: { name: true, users: { where: { role: UserRole.ADMIN }, take: 1, select: { email: true } } },
@@ -101,31 +101,45 @@ export class BillingService {
     return { checkoutUrl };
   }
 
+  /** Count unique participant emails across all ACTIVE grounds for an org. */
+  async getUniqueActiveParticipantCount(orgId: string): Promise<number> {
+    const grounds = await this.prisma.ground.findMany({
+      where: { organizationId: orgId, status: GroundStatus.ACTIVE },
+      include: { participants: { select: { user: { select: { email: true } } } } },
+    });
+    const emails = new Set<string>();
+    for (const g of grounds) {
+      for (const p of g.participants) {
+        if (p.user?.email) emails.add(p.user.email.toLowerCase());
+      }
+    }
+    return emails.size;
+  }
+
   /**
-   * Charge the scenario fee for one ground for a specific [periodStart,
-   * periodEnd) window. Idempotent: skips if a SCENARIO_FEE event already exists
-   * for this ground + period. (GW-04.)
+   * Charge the participant fee for one org for a [periodStart, periodEnd) window.
+   * One event per org per period (groundId = null). Idempotent. (GW-04.)
    */
-  async chargeScenarioFeeForPeriod(ground: Ground & { organization: { stripeCustomerId: string | null }; participants: { id: string }[] }, periodStart: Date, periodEnd: Date) {
-    const personMonths = ground.participants.length;
-    if (!ground.organization.stripeCustomerId || personMonths === 0) return;
+  async chargeParticipantFeeForPeriod(orgId: string, stripeCustomerId: string, periodStart: Date, periodEnd: Date) {
+    const participantCount = await this.getUniqueActiveParticipantCount(orgId);
+    if (participantCount === 0) return;
 
     const already = await this.prisma.billingEvent.findFirst({
-      where: { groundId: ground.id, type: BillingEventType.SCENARIO_FEE, periodStart, periodEnd },
+      where: { organizationId: orgId, groundId: null, type: BillingEventType.PARTICIPANT_FEE, periodStart, periodEnd },
     });
     if (already) return;
 
-    const unit = this.config.get<number>('stripe.scenarioFeeCents') || 5000;
+    const unit = this.config.get<number>('stripe.scenarioFeeCents') || 2500;
     const year = periodStart.getUTCFullYear();
     const month = periodStart.getUTCMonth() + 1;
-    const idempotencyKey = `monthly-${ground.id}-${year}-${month}`;
-    await this.stripe.chargeScenarioFee(ground.organization.stripeCustomerId, personMonths, ground.label, idempotencyKey);
+    const idempotencyKey = `participant-${orgId}-${year}-${month}`;
+    await this.stripe.chargeParticipantFee(stripeCustomerId, participantCount, idempotencyKey);
     await this.prisma.billingEvent.create({
       data: {
-        organizationId: ground.organizationId,
-        groundId: ground.id,
-        type: BillingEventType.SCENARIO_FEE,
-        amountCents: unit * personMonths,
+        organizationId: orgId,
+        groundId: null,
+        type: BillingEventType.PARTICIPANT_FEE,
+        amountCents: unit * participantCount,
         currency: 'USD',
         periodStart,
         periodEnd,
@@ -135,87 +149,77 @@ export class BillingService {
   }
 
   /**
-   * Charge the first scenario fee at activation. The period is a rolling 30-day
-   * window anchored to the activation moment — NOT a calendar month. This is the
-   * fix for the double-charge window (GW-04): with calendar months, a ground
-   * activated on the 28th was charged a full month, then charged again days
-   * later on the 1st. Anchoring to activation means each charge covers a full
-   * 30 days the ground was actually active.
+   * Charge the first participant fee when a ground is activated. Rolling 30-day
+   * period anchored to activation — avoids the calendar double-charge (GW-04).
    */
-  async chargeScenarioFeeOnActivation(groundId: string) {
-    const ground = await this.prisma.ground.findUnique({
-      where: { id: groundId },
-      include: { organization: { select: { stripeCustomerId: true } }, participants: { select: { id: true } } },
+  async chargeParticipantFeeOnActivation(orgId: string) {
+    const org = await this.prisma.organization.findUnique({
+      where: { id: orgId },
+      select: { stripeCustomerId: true },
     });
-    if (!ground) return;
-    const start = ground.billingActivatedAt ?? new Date();
-    const end = new Date(start.getTime() + SCENARIO_PERIOD_DAYS * dayMs);
-    await this.chargeScenarioFeeForPeriod(ground as any, start, end);
+    if (!org?.stripeCustomerId) return;
+    const start = new Date();
+    const end = new Date(start.getTime() + PARTICIPANT_PERIOD_DAYS * dayMs);
+    await this.chargeParticipantFeeForPeriod(orgId, org.stripeCustomerId, start, end);
   }
 
   /**
-   * Daily: charge the next scenario-fee period for every ACTIVE ground whose
-   * current period has elapsed. Periods roll forward from the last charged
-   * period's end, so there is no calendar-boundary double-charge. Grounds whose
-   * org is PAST_DUE or CANCELLED are skipped — we do not keep charging an org
-   * that has failed payment. (GW-04.) Advisory-locked so only one replica runs
-   * it (GW-60).
+   * Daily: charge the next participant-fee period for every org with ACTIVE
+   * grounds. One event per org per period, deduplicated by email across grounds.
+   * Skips orgs that are PAST_DUE. Advisory-locked (GW-60).
    */
   @Cron(CronExpression.EVERY_DAY_AT_1AM)
-  async chargeScenarioFees() {
+  async chargeParticipantFees() {
     await this.prisma.withAdvisoryLock(CronLock.SCENARIO_FEES, async () => {
       const now = new Date();
-      const activeGrounds = await this.prisma.ground.findMany({
-        where: { status: GroundStatus.ACTIVE },
-        include: {
-          organization: { select: { stripeCustomerId: true, careFeeStatus: true } },
-          participants: { select: { id: true } },
-        },
+      const orgsWithActiveGrounds = await this.prisma.organization.findMany({
+        where: { grounds: { some: { status: GroundStatus.ACTIVE } } },
+        select: { id: true, stripeCustomerId: true, careFeeStatus: true },
       });
 
       let charged = 0;
       let skippedPastDue = 0;
-      for (const ground of activeGrounds) {
-        // Do not keep charging an org that is behind on its care fee.
-        if (ground.organization.careFeeStatus !== CareFeeStatus.ACTIVE) {
+      for (const org of orgsWithActiveGrounds) {
+        if (org.careFeeStatus !== CareFeeStatus.ACTIVE || !org.stripeCustomerId) {
           skippedPastDue++;
           continue;
         }
-        // Find the last period we charged for this ground; charge the next one
-        // only once its end has passed.
         const last = await this.prisma.billingEvent.findFirst({
-          where: { groundId: ground.id, type: BillingEventType.SCENARIO_FEE },
+          where: { organizationId: org.id, groundId: null, type: BillingEventType.PARTICIPANT_FEE },
           orderBy: { periodEnd: 'desc' },
           select: { periodEnd: true },
         });
-        const nextStart = last?.periodEnd ?? ground.billingActivatedAt ?? now;
-        if (nextStart > now) continue; // current period still running
-        const nextEnd = new Date(nextStart.getTime() + SCENARIO_PERIOD_DAYS * dayMs);
+        const nextStart = last?.periodEnd ?? now;
+        if (nextStart > now) continue;
+        const nextEnd = new Date(nextStart.getTime() + PARTICIPANT_PERIOD_DAYS * dayMs);
         try {
-          await this.chargeScenarioFeeForPeriod(ground as any, nextStart, nextEnd);
+          await this.chargeParticipantFeeForPeriod(org.id, org.stripeCustomerId, nextStart, nextEnd);
           charged++;
         } catch (err: any) {
-          this.logger.error(`Scenario fee failed for ground ${ground.id}: ${err.message}`);
+          this.logger.error(`Participant fee failed for org ${org.id}: ${err.message}`);
         }
       }
-      this.logger.log(`Scenario fee run: ${activeGrounds.length} active, ${charged} charged, ${skippedPastDue} skipped (care fee not active).`);
+      this.logger.log(`Participant fee run: ${orgsWithActiveGrounds.length} orgs, ${charged} charged, ${skippedPastDue} skipped.`);
     });
   }
 
   /**
-   * Billing status for an org: care-fee state, active grounds with their
-   * scenario fees, and an estimate of the next charge. (GW-status)
+   * Billing status for an org: care-fee state, active participant count, active
+   * grounds list, and next charge estimate. (GW-status)
    */
   async getStatus(organizationId: string): Promise<{
     careFeeActive: boolean;
     careFeeMonthlyCost: number;
-    activeGrounds: Array<{ groundId: string; label: string; scenarioFee: number; startedAt: Date | null }>;
-    estimatedNextCharge: number;
-    nextBillingDate: string;
+    participantFeeMonthlyCost: number;
+    activeGrounds: Array<{ groundId: string; label: string; startedAt: Date | null }>;
+    activeParticipantCount: number;
+    estimatedNextCharge: number | null;
+    nextBillingDate: string | null;
+    card?: { brand: string; last4: string } | null;
   }> {
     const org = await this.prisma.organization.findUnique({
       where: { id: organizationId },
-      select: { careFeeStatus: true },
+      select: { careFeeStatus: true, stripeCustomerId: true, defaultPaymentMethodId: true },
     });
     if (!org) throw new NotFoundException('Organization not found');
 
@@ -224,29 +228,45 @@ export class BillingService {
       select: { id: true, label: true, billingActivatedAt: true },
     });
 
-    const SCENARIO_FEE = 50;
-    const CARE_FEE = 20;
+    const CARE_FEE = this.config.get<number>('stripe.careFeeCents') ?? 2500;
+    const PARTICIPANT_FEE = this.config.get<number>('stripe.scenarioFeeCents') ?? 2500;
     const careFeeActive = org.careFeeStatus === CareFeeStatus.ACTIVE;
+    const activeParticipantCount = await this.getUniqueActiveParticipantCount(organizationId);
 
     const groundsOut = activeGrounds.map((g) => ({
       groundId: g.id,
       label: g.label,
-      scenarioFee: SCENARIO_FEE,
       startedAt: g.billingActivatedAt,
     }));
 
-    const estimatedNextCharge = (careFeeActive ? CARE_FEE : 0) + activeGrounds.length * SCENARIO_FEE;
+    const estimatedNextCharge = careFeeActive
+      ? Math.round((CARE_FEE + activeParticipantCount * PARTICIPANT_FEE) / 100)
+      : null;
 
-    // Next billing date: first day of next calendar month (UTC)
     const now = new Date();
-    const nextBilling = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+    const nextBilling = careFeeActive
+      ? new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)).toISOString().slice(0, 10)
+      : null;
+
+    let card: { brand: string; last4: string } | null = null;
+    if (org.stripeCustomerId && org.defaultPaymentMethodId) {
+      try {
+        const pm = await this.stripe.stripe.paymentMethods.retrieve(org.defaultPaymentMethodId);
+        if (pm.card) card = { brand: pm.card.brand, last4: pm.card.last4 };
+      } catch {
+        // non-fatal
+      }
+    }
 
     return {
       careFeeActive,
-      careFeeMonthlyCost: CARE_FEE,
+      careFeeMonthlyCost: Math.round(CARE_FEE / 100),
+      participantFeeMonthlyCost: Math.round(PARTICIPANT_FEE / 100),
       activeGrounds: groundsOut,
+      activeParticipantCount,
       estimatedNextCharge,
-      nextBillingDate: nextBilling.toISOString().slice(0, 10),
+      nextBillingDate: nextBilling,
+      card,
     };
   }
 

@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { ConversationService } from './conversation.service';
 import { ConversationController } from './conversation.controller';
 import { AnthropicService } from './anthropic.service';
@@ -9,7 +9,7 @@ import { DocumentsModule } from '../documents/documents.module';
 import { UsageModule } from '../usage/usage.module';
 
 @Module({
-  imports: [BillingModule, DocumentsModule, UsageModule],
+  imports: [BillingModule, forwardRef(() => DocumentsModule), UsageModule],
   controllers: [ConversationController],
   providers: [ConversationService, AnthropicService, ConversationContextService, RemindService],
   exports: [ConversationService, AnthropicService],

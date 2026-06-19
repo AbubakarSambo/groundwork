@@ -18,4 +18,9 @@ export class AddParticipantDto {
   @IsString()
   @MaxLength(500)
   note?: string;
+
+  @ApiPropertyOptional({ description: 'Pre-generated invite token from the anonymous entry flow. If absent, a new token is generated.' })
+  @IsOptional()
+  @IsString()
+  inviteToken?: string;
 }

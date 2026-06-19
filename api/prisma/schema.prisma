@@ -106,8 +106,8 @@ enum Cadence {
 }
 
 enum BillingEventType {
-  CARE_FEE // $20/month/org
-  SCENARIO_FEE // $50/person/month while a ground is ACTIVE
+  CARE_FEE       // $25/month/account (platform fee)
+  PARTICIPANT_FEE // $25/unique participant/month across active grounds
 }
 
 enum EvidenceType {
@@ -691,6 +691,18 @@ model UsageEvent {
 // Pattern thresholds — tunable per code without a deploy.
 // One row per pattern code. Missing rows fall back to hardcoded defaults.
 // ---------------------------------------------------------------------------
+
+model FeedbackSubmission {
+  id        String   @id @default(uuid())
+  tab       String
+  pill      String
+  text      String?
+  status    String   @default("new")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([tab, createdAt])
+  @@map("feedback_submissions")
+}
 
 model PatternConfig {
   id                   String   @id @default(uuid())
