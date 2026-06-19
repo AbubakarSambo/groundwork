@@ -73,80 +73,51 @@ const MODE_PLACEHOLDERS: Record<string, string> = {
   both: 'What happened and what needs to happen next?',
 }
 
-// Scripted onboarding messages 1-14
+// Scripted onboarding messages — ONBOARDING_STEPS total
+const ONBOARDING_STEPS = 6
+
 function buildOnboardingMessages(sels: OnboardingSelections): { text: string; buttons?: string[] }[] {
   const modeOpener = MODE_OPENERS[sels.mode] || MODE_OPENERS.new
   return [
-    // Message 1 — what this is
+    // Step 1 — brief intro
     {
-      text: `${modeOpener}\n\nGetting two people genuinely aligned is harder than it looks. This tool builds the record that makes alignment real. Good working relationships do not happen by accident. They are built on clarity.\n\nGroundwork is a contribution and alignment record. It captures both sides of a professional relationship independently, cross-references them against documents, performance reviews, and what was actually agreed, and produces a report that shows where both sides see the same thing and where they do not.\n\nIt takes about ten minutes to get started. Type okay or proceed when you are ready.`,
+      text: `${modeOpener}\n\nThis builds a private two-sided record. Both of you answer separately — neither sees the other's account until you both unlock the report together. Sessions take about ten minutes. Type okay or proceed when you are ready.`,
     },
-    // Message 2 — what we will ask first
+    // Step 2 — how long (buttons)
     {
-      text: `First we will ask you to name what this is about.\n\nSomething like: Kwame, my cofounder. Or Q2 sales targets. Or the Lagos project handover. Or Priya, new head of product, first 90 days.\n\nJust enough for both of you to know what this record is about. Type okay or proceed when you are ready.`,
+      text: `How long does this record need to run?`,
+      buttons: ['1 week', '2 weeks', '1 month', '3 months', '6 months or more'],
     },
-    // Message 3 — the people involved
+    // Step 3 — check-in frequency (buttons)
     {
-      text: `Then we will ask you about the people involved.\n\nSomething like: Kwame was supposed to own the fundraising deck and the investor meetings. He has missed three deadlines and the Series A is in six weeks.\n\nOr: Priya joins next Monday. I want both of us to agree on what her first 90 days look like before she starts.\n\nJust names, what they were supposed to do or what you need from them, and what you believe is happening or needs to happen. Type okay or proceed when you are ready.`,
+      text: `How often should both of you check in?`,
+      buttons: ['Daily', 'Weekly', 'Fortnightly', 'Monthly'],
     },
-    // Message 4 — situation type and honesty
+    // Step 4 — what kind of situation (buttons)
     {
-      text: `Then we will ask you to pick what kind of situation this is.\n\nSomething went wrong and you need it on record. You need to get on the same page before things get worse. Or you are starting something and want both sides clear from day one.\n\nOne of those will fit.\n\nSome of what we ask might feel direct. That is the point. The record is only useful if it is honest. You are not being asked to be fair to the other person. You are being asked to be honest about your own version. Type okay or proceed when you are ready.`,
-    },
-    // Message 5 — documents
-    {
-      text: `We will ask for documents at the right moment.\n\nEmails where something was agreed. Work plans. Contracts. Performance reviews. Messages. Call transcripts. Project briefs.\n\nYou do not need all of them and you do not need any of them right now. But when you attach a document the product cross-references it against what you and the other party said. That cross-reference is where the most important gaps in a record are usually found. Type okay or proceed when you are ready.`,
-    },
-    // Message 6 — the other party
-    {
-      text: `The other person gets a link. They submit their own account separately. They cannot see what you wrote. You cannot see what they wrote. When both accounts are in you both see the report at the same time.\n\nNeither of you shapes the other's story. Type okay or proceed when you are ready.`,
-    },
-    // Message 7 — what the other party experiences
-    {
-      text: `Here is what happens when the other person opens their link.\n\nThey will see your name and the name of this ground. They will be told that their account is completely private and that you cannot see what they write until both of you activate the report together. They will go through their own short onboarding conversation before they answer any questions. They will be asked what they want the record to show from their side before the first question is asked.\n\nThey are not being ambushed. They are being given the same process you are going through right now. Type okay or proceed when you are ready.`,
-    },
-    // Message 8 — what the record produces
-    {
-      text: `When both sides have submitted their accounts the report is generated. It shows where you agree, where you differ, and what the gap between your two versions actually is. Documents you attached are cross-referenced against what you both said. Performance records, emails, and agreements are referenced where they are relevant.\n\nNo one decides who is right. The record shows both sides of the truth in the same place, checked against the evidence both parties provided.\n\nYou can use it to have a conversation that is grounded in something real. Take it into a performance review. Use it before a mediation. Show it to a lawyer or a board. Use it to reset a relationship before it breaks. Or just have it there so no one can rewrite history later.\n\nThe report belongs to both of you. Nothing leaves this system without both parties agreeing to it. Type okay or proceed when you are ready.`,
-    },
-    // Message 9 — confidence score
-    {
-      text: `After each session you will see your confidence score update. Watch it.\n\nA score of 1 means the record is just starting. A score of 3 means both sides have submitted and the picture is forming. A score of 5 means the record is strong enough to stand on its own in any room.\n\nIf the score is not moving it means the record needs more depth. More specifics. More names. More dates. More documents.\n\nThe sessions are short. About ten minutes each. You can do one today and come back next week. The record waits for you. Type okay or proceed when you are ready.`,
-    },
-    // Message 10 — timeframe (buttons)
-    {
-      text: `How long do you need this record for?\n\nUse this to decide. If you need a quick resolution and both parties are willing, one month. If this needs time to play out with multiple check-ins, three months. If this could end up in front of a board, a lawyer, or an external party, six months or more. If you just need both sides on record right now and you are done, one session only.`,
-      buttons: ['One session only', 'One month', 'Three months', 'Six months or more'],
-    },
-    // Message 11 — cadence (buttons)
-    {
-      text: `How often should both of you check in?\n\nIf things are moving fast and the situation is changing week to week, every week. If you need regular check-ins but there is no immediate urgency, every two weeks. If this is a slow-moving situation or a long-term record, once a month. If the situation is unpredictable and you need flexibility, at key moments only.`,
-      buttons: ['Every week', 'Every two weeks', 'Once a month', 'At key moments only'],
-    },
-    // Message 12 — decision (buttons)
-    {
-      text: `What do you need this ground to produce?`,
+      text: `What kind of situation is this?`,
       buttons: [
-        'Keep this person in their role or not',
-        'Support a decision to let this person go',
-        'Realign on what we both agreed to',
-        'Resolve a dispute before it goes further',
-        'Document what happened so the record exists',
-        'Close out a project and capture what each side delivered',
-        'Get both sides clear before we start something new',
-        'Build an alignment record from day one',
-        'Set expectations and make them stick',
+        'Starting something new — get both sides clear from day one',
+        'Something went wrong — needs to be on record',
+        'Need to realign — things have drifted',
+        'Building an ongoing record — no specific issue yet',
       ],
     },
-    // Message 13 — confirmation (buttons)
+    // Step 5 — what to produce (buttons)
     {
-      text: `Got it. You are building a ${sels.timeframe || 'one month'} record with ${sels.cadence || 'monthly'} check-ins. You need to ${sels.decision || 'build an alignment record'}.\n\nThe first four sessions are free. No card required.\n\nYour first question will be about what specifically you were expecting from the other person and what you believe has or has not happened. Be as specific as you can. Names, dates, and concrete examples make the record strong.\n\nDoes that look right or do you want to change something?`,
-      buttons: ['That is right. Let us go.', 'I want to change something.'],
+      text: `What do you need this record to produce?`,
+      buttons: [
+        'A decision on whether this person stays in their role',
+        'Evidence to support letting someone go',
+        'A reset on what we both agreed to',
+        'A document both sides can stand on',
+        'Clarity before something new starts',
+      ],
     },
-    // Message 14 — questions before we begin (buttons)
+    // Step 6 — confirmation (buttons)
     {
-      text: `One last thing before your first question. Do you have anything you want to ask about how this works?`,
-      buttons: ['No questions. Let us begin.', 'Yes I have a question.'],
+      text: `Got it.\n\n${sels.timeframe || '1 month'} · ${sels.cadence || 'weekly'} check-ins · ${sels.decision || 'alignment record'}.\n\nSessions 1 and 2 are free. A card is required before the session 2 report releases. Ready?`,
+      buttons: ['Let us begin.', 'Change something.'],
     },
   ]
 }
@@ -155,10 +126,9 @@ function buildOnboardingMessages(sels: OnboardingSelections): { text: string; bu
 const QUICK_ACTIONS = [
   { label: 'Check in', msg: 'I want to keep going with my check-in.' },
   { label: 'My report', msg: 'Give me a summary of what my record shows so far.' },
-  { label: 'Patterns', msg: 'What patterns are you noticing in what I have shared so far?' },
   { label: 'What am I missing?', msg: 'What is missing from my record that would make it stronger?' },
-  { label: 'The other side', msg: 'What does the record suggest about how the other person sees this?' },
-  { label: 'Next steps', msg: 'What does the record suggest I should do next?' },
+  { label: 'Review my goals', msg: 'Review the goals I set at the start of this ground and tell me where I stand against each one.' },
+  { label: 'Team cross-reference', msg: 'Cross-reference what I have shared with what you know about how the other party sees this situation.' },
 ]
 
 export function EntryChatPage() {
@@ -236,9 +206,9 @@ export function EntryChatPage() {
         setOnboardingMessages(buildOnboardingMessages(saved.onboardingSelections))
       }
       const step = saved.onboardingStep ?? 0
-      if (step >= 14 && saved.history.length > 0) {
+      if (step >= ONBOARDING_STEPS && saved.history.length > 0) {
         setPhase('checkin')
-        setOnboardingStep(14)
+        setOnboardingStep(ONBOARDING_STEPS)
       } else if (step > 0) {
         setPhase('onboarding')
         setOnboardingStep(step)
@@ -259,7 +229,7 @@ export function EntryChatPage() {
   }
 
   function persistCheckin(h: Turn[], cl = false, rep = '') {
-    saveSession({ scenario, history: h, closed: cl, report: rep, onboardingStep: 14, onboardingSelections })
+    saveSession({ scenario, history: h, closed: cl, report: rep, onboardingStep: ONBOARDING_STEPS, onboardingSelections })
   }
 
   // Typewriter streaming effect for check-in phase
@@ -300,10 +270,10 @@ export function EntryChatPage() {
   const startCheckin = useMutation({
     mutationFn: () => {
       const ctx = [
-        `Mode: ${MODE_LABELS[onboardingSelections.mode] || 'Something new'}`,
+        onboardingSelections.mode ? `Situation type: ${onboardingSelections.mode}` : '',
         onboardingSelections.initial ? `Situation they described: ${onboardingSelections.initial}` : '',
         onboardingSelections.timeframe ? `Timeframe: ${onboardingSelections.timeframe}` : '',
-        onboardingSelections.cadence ? `Cadence: ${onboardingSelections.cadence}` : '',
+        onboardingSelections.cadence ? `Check-in frequency: ${onboardingSelections.cadence}` : '',
         onboardingSelections.decision ? `What they need this ground to produce: ${onboardingSelections.decision}` : '',
       ].filter(Boolean).join('. ')
       return entryApi.chat([{
@@ -369,32 +339,24 @@ export function EntryChatPage() {
 
     // Store selections for steps with buttons
     if (buttonChoice) {
-      if (currentStep === 10) newSels = { ...newSels, timeframe: buttonChoice }
-      if (currentStep === 11) newSels = { ...newSels, cadence: buttonChoice }
-      if (currentStep === 12) newSels = { ...newSels, decision: buttonChoice }
-      if (currentStep === 13 && buttonChoice.startsWith('I want to change')) {
-        // Reset to step 10
-        setOnboardingStep(10)
+      if (currentStep === 2) newSels = { ...newSels, timeframe: buttonChoice }
+      if (currentStep === 3) newSels = { ...newSels, cadence: buttonChoice }
+      if (currentStep === 4) newSels = { ...newSels, mode: buttonChoice }
+      if (currentStep === 5) newSels = { ...newSels, decision: buttonChoice }
+      if (currentStep === 6 && buttonChoice.startsWith('Change')) {
+        // Reset to step 2
+        setOnboardingStep(2)
         setOnboardingSelections(newSels)
-        return
-      }
-      if (currentStep === 14 && buttonChoice.startsWith('Yes I have')) {
-        // Let them type a question — just advance to checkin (FAQ handled by AI)
-        setOnboardingSelections(newSels)
-        setOnboardingMessages(buildOnboardingMessages(newSels))
-        setOnboardingStep(15)
-        startCheckin.mutate()
         return
       }
       setOnboardingSelections(newSels)
-      // Rebuild message 13 with updated selections
       setOnboardingMessages(buildOnboardingMessages(newSels))
     }
 
-    if (currentStep >= 14) {
+    if (currentStep >= ONBOARDING_STEPS) {
       // Done with onboarding — start AI check-in
-      setOnboardingStep(15)
-      persistOnboarding([], newSels, 14)
+      setOnboardingStep(ONBOARDING_STEPS + 1)
+      persistOnboarding([], newSels, ONBOARDING_STEPS)
       startCheckin.mutate()
       return
     }
@@ -597,7 +559,7 @@ export function EntryChatPage() {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
 
         {/* PHASE: MODE SELECTION */}
-        {/* PHASE: ONBOARDING (messages 1-14) */}
+        {/* PHASE: ONBOARDING */}
         {phase === 'onboarding' && (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
             {/* Messages */}
@@ -677,35 +639,45 @@ export function EntryChatPage() {
 
             {/* Input for "okay / proceed" — only shown when current step has no buttons */}
             {!startCheckin.isPending && currentOnboardingMsg && !currentOnboardingMsg.buttons && (
-              <div style={{ borderTop: '1px solid var(--gw-border)', background: 'white', flexShrink: 0, padding: '10px 16px' }}>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center', maxWidth: 680, margin: '0 auto' }}>
-                  <input
-                    type="text"
-                    placeholder="Type okay or proceed when you are ready."
-                    value={input}
-                    onChange={e => setInput(e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter') {
-                        const val = input.trim().toLowerCase()
-                        if (val) {
-                          setInput('')
-                          advanceOnboarding()
+              <div style={{ borderTop: '1px solid var(--gw-border)', background: 'white', flexShrink: 0 }}>
+                {/* Chip row */}
+                <div style={{ padding: '6px 16px', borderBottom: '1px solid var(--gw-border)', display: 'flex', gap: 7, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <label htmlFor="onboarding-doc-upload" title="Upload a document"
+                    style={{ padding: '4px 10px', borderRadius: 20, fontSize: 13, border: '1px solid var(--gw-border)', background: 'transparent', color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit' }}>
+                    📎 Upload doc
+                  </label>
+                  <input ref={fileRef} type="file" id="onboarding-doc-upload" accept=".pdf,.doc,.docx,.txt,.csv,.xlsx,.png,.jpg,.jpeg,.md" style={{ display: 'none' }} onChange={handleFileChange} />
+                </div>
+                <div style={{ padding: '10px 16px' }}>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', maxWidth: 680, margin: '0 auto' }}>
+                    <input
+                      type="text"
+                      placeholder="Type okay or proceed when you are ready."
+                      value={input}
+                      onChange={e => setInput(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          const val = input.trim().toLowerCase()
+                          if (val) {
+                            setInput('')
+                            advanceOnboarding()
+                          }
                         }
-                      }
-                    }}
-                    style={{
-                      flex: 1, padding: '10px 12px', fontSize: 13, border: '1px solid var(--gw-border)',
-                      borderRadius: 6, fontFamily: 'inherit', outline: 'none', background: 'white',
-                      color: 'var(--gw-text)',
-                    }}
-                    autoFocus
-                  />
-                  <button
-                    onClick={() => { if (input.trim()) { setInput(''); advanceOnboarding() } }}
-                    style={{ padding: '0 14px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 18, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                  >
-                    ↑
-                  </button>
+                      }}
+                      style={{
+                        flex: 1, padding: '10px 12px', fontSize: 13, border: '1px solid var(--gw-border)',
+                        borderRadius: 6, fontFamily: 'inherit', outline: 'none', background: 'white',
+                        color: 'var(--gw-text)',
+                      }}
+                      autoFocus
+                    />
+                    <button
+                      onClick={() => { if (input.trim()) { setInput(''); advanceOnboarding() } }}
+                      style={{ padding: '0 14px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 18, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    >
+                      ↑
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -751,14 +723,24 @@ export function EntryChatPage() {
             </div>
 
             {/* Quick action chips */}
-            {!closed && displayedHistory.length > 1 && (
-              <div style={{ padding: '8px 16px', borderTop: '1px solid var(--gw-border)', display: 'flex', gap: 7, flexWrap: 'wrap', flexShrink: 0, background: 'white' }}>
+            {!closed && displayedHistory.length >= 1 && (
+              <div style={{ padding: '8px 16px', borderTop: '1px solid var(--gw-border)', display: 'flex', gap: 7, flexWrap: 'wrap', flexShrink: 0, background: 'white', alignItems: 'center' }}>
                 {QUICK_ACTIONS.map(a => (
                   <button key={a.label} onClick={() => send(a.msg)} disabled={loading}
                     style={{ padding: '5px 12px', borderRadius: 20, fontSize: 12, border: '1px solid var(--gw-border)', background: 'transparent', color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit', opacity: loading ? 0.5 : 1 }}>
                     {a.label}
                   </button>
                 ))}
+                <button onClick={() => send('What patterns are you noticing in what I have shared so far?')} disabled={loading}
+                  style={{ padding: '5px 12px', borderRadius: 20, fontSize: 12, border: '1px solid var(--gw-border)', background: 'transparent', color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit', opacity: loading ? 0.5 : 1, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  Patterns
+                  <span style={{ background: 'var(--gw-navy)', color: 'white', borderRadius: 10, fontSize: 10, fontWeight: 700, padding: '0px 5px', lineHeight: '16px' }}>1</span>
+                </button>
+                <label htmlFor="entry-doc-upload-chip" title="Upload a document"
+                  style={{ padding: '5px 10px', borderRadius: 20, fontSize: 13, border: '1px solid var(--gw-border)', background: 'transparent', color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit', opacity: loading ? 0.5 : 1 }}>
+                  📎
+                </label>
+                <input ref={fileRef} type="file" id="entry-doc-upload-chip" accept=".pdf,.doc,.docx,.txt,.csv,.xlsx,.png,.jpg,.jpeg,.md" style={{ display: 'none' }} onChange={handleFileChange} />
               </div>
             )}
 
@@ -773,11 +755,6 @@ export function EntryChatPage() {
             {/* Input bar */}
             <div style={{ borderTop: '1px solid var(--gw-border)', background: 'white', flexShrink: 0 }}>
               <div style={{ padding: '10px 16px', display: 'flex', gap: 8, alignItems: 'flex-end', maxWidth: 680, margin: '0 auto' }}>
-                <label htmlFor="entry-doc-upload" title="Upload a document"
-                  style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '9px 10px', borderRadius: 8, border: '1px solid var(--gw-border)', cursor: 'pointer', flexShrink: 0, color: 'var(--gw-sub)', fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap', background: 'var(--gw-bg)' }}>
-                  📎 <span>Upload doc</span>
-                </label>
-                <input ref={fileRef} type="file" id="entry-doc-upload" accept=".pdf,.doc,.docx,.txt,.csv,.xlsx,.png,.jpg,.jpeg,.md" style={{ display: 'none' }} onChange={handleFileChange} />
                 <textarea
                   ref={taRef}
                   placeholder={closed ? 'Your session is on record.' : 'Share what you have been working on.'}

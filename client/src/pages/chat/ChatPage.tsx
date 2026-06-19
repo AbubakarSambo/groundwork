@@ -23,7 +23,7 @@ export function ChatPage() {
 
   const sessionNumber: number = (location.state as any)?.sessionNumber ?? 1
   const groundLabel: string   = (location.state as any)?.groundLabel ?? ''
-  const groundId: string | undefined = (location.state as any)?.groundId
+  const [groundId, setGroundId] = useState<string | undefined>((location.state as any)?.groundId)
   const isInitiator: boolean  = (location.state as any)?.isInitiator ?? false
 
   const [msgs, setMsgs]               = useState<Msg[]>([])
@@ -78,6 +78,7 @@ export function ChatPage() {
     mutationFn: () => conversationApi.open(checkInId!),
     onSuccess: res => {
       setMsgs([{ id: 'ai-open', role: 'AI', content: res.reply }])
+      if (res.groundId && !groundId) setGroundId(res.groundId)
       setOpened(true)
     },
     onError: (err: any) => {

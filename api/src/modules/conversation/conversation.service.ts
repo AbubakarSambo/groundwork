@@ -181,7 +181,7 @@ export class ConversationService {
     const existing = await this.prisma.conversationTurn.count({ where: { checkInId: checkIn.id } });
     if (existing > 0) {
       const first = await this.prisma.conversationTurn.findFirst({ where: { checkInId: checkIn.id, role: TurnRole.AI }, orderBy: { createdAt: 'asc' } });
-      return { reply: first?.content ?? '' };
+      return { reply: first?.content ?? '', groundId: checkIn.groundId };
     }
 
     // Billing session gate: session 1 is always free; session 2+ requires an
@@ -216,7 +216,7 @@ export class ConversationService {
 
     const aiTurn = await this.prisma.conversationTurn.create({ data: { checkInId: checkIn.id, role: TurnRole.AI, content: reply } });
     await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { status: CheckInStatus.IN_PROGRESS, startedAt: new Date() } });
-    return { reply: aiTurn.content };
+    return { reply: aiTurn.content, groundId: checkIn.groundId };
   }
 
   /**
