@@ -326,6 +326,9 @@ model CheckIn {
   nextCommitment String?       @map("next_commitment")
   closedReason  String?        @map("closed_reason") // e.g. "willingness_declined"
   willingnessConfirmed Boolean @default(true) @map("willingness_confirmed") // willingness gate result
+  specificityLevel     String?  @map("specificity_level")
+  specificityDimensions Json?   @map("specificity_dimensions")
+  recallConfidence     String?  @map("recall_confidence")
   createdAt     DateTime      @default(now()) @map("created_at")
 
   ground        Ground            @relation(fields: [groundId], references: [id], onDelete: Cascade)

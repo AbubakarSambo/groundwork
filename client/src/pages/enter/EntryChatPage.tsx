@@ -66,12 +66,6 @@ const MODE_LABELS: Record<string, string> = {
   both: 'Both',
 }
 
-const MODE_PLACEHOLDERS: Record<string, string> = {
-  new: 'Who is involved and what are you trying to get right from the start?',
-  back: 'What happened, with whom, and what needs to be on record?',
-  forward: 'What needs to be agreed before the work begins?',
-  both: 'What happened and what needs to happen next?',
-}
 
 // Scripted onboarding messages — ONBOARDING_STEPS total
 const ONBOARDING_STEPS = 6
@@ -332,8 +326,6 @@ export function EntryChatPage() {
   // Advance onboarding step
   function advanceOnboarding(buttonChoice?: string) {
     const currentStep = onboardingStep
-    const msgs = onboardingMessages
-    const msg = msgs[currentStep - 1]
 
     let newSels = { ...onboardingSelections }
 
@@ -371,18 +363,7 @@ export function EntryChatPage() {
     }, 50)
   }
 
-  // Handle text input during onboarding
-  function handleOnboardingInput(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key !== 'Enter') return
-    const val = (e.target as HTMLInputElement).value.trim().toLowerCase()
-    if (!val) return
-    if (['okay', 'ok', 'proceed', 'next', 'yes', 'y', 'sure', 'go', 'ready'].some(t => val.includes(t))) {
-      setInput('')
-      advanceOnboarding()
-    }
-  }
-
-  // Check-in send
+// Check-in send
   function send(text?: string) {
     const content = (text ?? input).trim()
     if (!content || loading || closed) return
@@ -474,7 +455,6 @@ export function EntryChatPage() {
     setInviteContext('')
   }
 
-  const isCheckinLoading = startCheckin.isPending || (phase === 'checkin' && loading)
   const currentOnboardingMsg = onboardingMessages[onboardingStep - 1]
 
   return (

@@ -114,7 +114,7 @@ export function ChatPage() {
   })
 
   const uploadDoc = useMutation({
-    mutationFn: ({ file, ctx }: { file: File; ctx: string }) => documentsApi.upload(groundId!, file),
+    mutationFn: ({ file }: { file: File; ctx: string }) => documentsApi.upload(groundId!, file),
     onSuccess: (doc, { ctx }) => {
       const id = Date.now().toString()
       const contextLine = ctx.trim() ? `\n\nContext: ${ctx.trim()}` : ''
