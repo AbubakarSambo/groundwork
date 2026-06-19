@@ -126,6 +126,27 @@ export const PATTERN_DETECTION_SCHEMA = {
 // Rule-based detection infrastructure
 // ---------------------------------------------------------------------------
 
+/**
+ * Per-code thresholds loaded from PatternConfig DB rows.
+ * All fields are optional — missing values fall back to the hardcoded defaults
+ * that were correct at launch so detectors never break on a sparse config.
+ */
+export interface PatternThresholds {
+  consecutivePeriods?: number;
+  outputScoreMax?: number | null;
+  outputScoreMin?: number | null;
+  thinkingScoreMax?: number | null;
+  thinkingScoreMin?: number | null;
+  meetingScoreMax?: number | null;
+  meetingScoreMin?: number | null;
+  specificityScoreMax?: number | null;
+  keywordCountMin?: number | null;
+  enabled?: boolean;
+}
+
+/** Map of pattern code → thresholds, populated from DB at detection time. */
+export type PatternConfigMap = Record<string, PatternThresholds>;
+
 export interface DetectionInput {
   submissions: string[];       // raw text from each period's check-in
   meetingScore?: number[];     // 0-1 per period (from intake)
@@ -135,11 +156,17 @@ export interface DetectionInput {
   role?: string;               // participant's declared role
   /** Codes that have already been SURFACED for this participant (used for F1 composite). */
   priorSurfacedCodes?: string[];
+  /** Live thresholds loaded from DB. Detectors fall back to hardcoded defaults when absent. */
+  config?: PatternConfigMap;
 }
 
 function hasWords(text: string, words: string[]): boolean {
   const t = text.toLowerCase();
   return words.some(w => t.includes(w));
+}
+
+function cfg(input: DetectionInput, code: string): PatternThresholds {
+  return input.config?.[code] ?? {};
 }
 
 function countPeriods(input: DetectionInput): number {
@@ -185,9 +212,13 @@ export function detectD3(input: DetectionInput): boolean {
 }
 
 export function detectD4(input: DetectionInput): boolean {
-  return countPeriods(input) >= 3 &&
-    (input.outputScore ?? []).slice(-3).every(s => s < 0.25) &&
-    (input.thinkingScore ?? []).slice(-3).every(s => s > 0.5);
+  const t = cfg(input, 'D4');
+  const periods = t.consecutivePeriods ?? 3;
+  const outMax = t.outputScoreMax ?? 0.25;
+  const thinkMin = t.thinkingScoreMin ?? 0.5;
+  return countPeriods(input) >= periods &&
+    (input.outputScore ?? []).slice(-periods).every(s => s < outMax) &&
+    (input.thinkingScore ?? []).slice(-periods).every(s => s > thinkMin);
 }
 
 export function detectD5(input: DetectionInput): boolean {
@@ -248,9 +279,13 @@ export function detectB1(input: DetectionInput): boolean {
 }
 
 export function detectB2(input: DetectionInput): boolean {
-  return countPeriods(input) >= 3 &&
-    (input.thinkingScore ?? []).slice(-3).every(s => s > 0.6) &&
-    (input.outputScore ?? []).slice(-3).every(s => s < 0.25);
+  const t = cfg(input, 'B2');
+  const periods = t.consecutivePeriods ?? 3;
+  const thinkMin = t.thinkingScoreMin ?? 0.6;
+  const outMax = t.outputScoreMax ?? 0.25;
+  return countPeriods(input) >= periods &&
+    (input.thinkingScore ?? []).slice(-periods).every(s => s > thinkMin) &&
+    (input.outputScore ?? []).slice(-periods).every(s => s < outMax);
 }
 
 export function detectB3(input: DetectionInput): boolean {
@@ -275,9 +310,13 @@ export function detectB4(input: DetectionInput): boolean {
 }
 
 export function detectB5(input: DetectionInput): boolean {
-  return countPeriods(input) >= 3 &&
-    (input.meetingScore ?? []).slice(-3).every(s => s > 0.5) &&
-    (input.outputScore ?? []).slice(-3).every(s => s < 0.2);
+  const t = cfg(input, 'B5');
+  const periods = t.consecutivePeriods ?? 3;
+  const meetMin = t.meetingScoreMin ?? 0.5;
+  const outMax = t.outputScoreMax ?? 0.2;
+  return countPeriods(input) >= periods &&
+    (input.meetingScore ?? []).slice(-periods).every(s => s > meetMin) &&
+    (input.outputScore ?? []).slice(-periods).every(s => s < outMax);
 }
 
 export function detectB6(input: DetectionInput): boolean {
@@ -317,9 +356,13 @@ export function detectB9(input: DetectionInput): boolean {
 }
 
 export function detectB10(input: DetectionInput): boolean {
-  return countPeriods(input) >= 3 &&
-    (input.meetingScore ?? []).slice(-3).every(s => s > 0.6) &&
-    (input.outputScore ?? []).slice(-3).every(s => s < 0.2);
+  const t = cfg(input, 'B10');
+  const periods = t.consecutivePeriods ?? 3;
+  const meetMin = t.meetingScoreMin ?? 0.6;
+  const outMax = t.outputScoreMax ?? 0.2;
+  return countPeriods(input) >= periods &&
+    (input.meetingScore ?? []).slice(-periods).every(s => s > meetMin) &&
+    (input.outputScore ?? []).slice(-periods).every(s => s < outMax);
 }
 
 export function detectB11(input: DetectionInput): boolean {
@@ -511,12 +554,16 @@ export function detectR3(input: DetectionInput): boolean {
  * Returns true only when all four are met.
  */
 export function checkF1Conditions(input: DetectionInput): boolean {
+  const t = cfg(input, 'F1');
+  const periods = t.consecutivePeriods ?? 3;
+  const thinkMin = t.thinkingScoreMin ?? 0.6;
+  const outMax = t.outputScoreMax ?? 0.3;
   // Condition 3: at least 3 periods of data.
-  if (countPeriods(input) < 3) return false;
-  // Condition 1: high thinking-language in all last 3 periods.
-  if (!(input.thinkingScore ?? []).slice(-3).every(s => s > 0.6)) return false;
-  // Condition 2: low output-language in all last 3 periods.
-  if (!(input.outputScore ?? []).slice(-3).every(s => s < 0.3)) return false;
+  if (countPeriods(input) < periods) return false;
+  // Condition 1: high thinking-language in all last N periods.
+  if (!(input.thinkingScore ?? []).slice(-periods).every(s => s > thinkMin)) return false;
+  // Condition 2: low output-language in all last N periods.
+  if (!(input.outputScore ?? []).slice(-periods).every(s => s < outMax)) return false;
   // Condition 4: F1 was already surfaced before and the pattern persists (no change).
   if (!(input.priorSurfacedCodes ?? []).includes('F1')) return false;
   return true;

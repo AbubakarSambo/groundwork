@@ -746,6 +746,7 @@ export function PromptVersioningPage() {
       <div className="gw-hdr">
         <div className="gw-logo">Prompt management</div>
         <div style={{ display: 'flex', gap: 8 }}>
+          <button className="gw-back" onClick={() => navigate('/prompts/test')}>Test panel →</button>
           <button className="gw-back" onClick={() => navigate('/admin')}>Usage dashboard</button>
           <button className="gw-back" onClick={() => navigate('/')}>← Grounds</button>
         </div>

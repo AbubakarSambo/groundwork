@@ -1,10 +1,22 @@
 import { apiClient } from './client'
 import type { Report } from '@/types'
 
+export type ActivationStatus = {
+  groundId: string
+  parties: { participantId: string; activated: boolean }[]
+  allActivated: boolean
+}
+
 export const reportsApi = {
   get: (groundId: string) =>
-    apiClient.get<Report>(`/grounds/${groundId}/report`).then(r => r.data),
+    apiClient.get<Report & { activated?: boolean }>(`/grounds/${groundId}/report`).then(r => r.data),
 
   release: (groundId: string) =>
     apiClient.post<Report>(`/grounds/${groundId}/report/release`).then(r => r.data),
+
+  activate: (groundId: string) =>
+    apiClient.post<ActivationStatus>(`/grounds/${groundId}/report/activate`).then(r => r.data),
+
+  activationStatus: (groundId: string) =>
+    apiClient.get<ActivationStatus>(`/grounds/${groundId}/report/activation-status`).then(r => r.data),
 }

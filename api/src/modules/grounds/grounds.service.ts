@@ -4,9 +4,10 @@ import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { BillingService } from '../billing';
+import { UsageService } from '../usage/usage.service';
 import { CreateGroundDto, AddParticipantDto } from './dto';
 import { GroundworkEvents, GroundActivatedEvent } from '../../common';
-import { GroundScenario, GroundStatus, PartyType, CheckInStatus, Cadence } from '@prisma/client';
+import { GroundScenario, GroundStatus, PartyType, CheckInStatus, Cadence, UsageEventType } from '@prisma/client';
 import { endStatesFor } from '../resolution/end-states';
 
 // Default timelines per scenario (Part 2 — timeline and cadence).
@@ -57,6 +58,7 @@ export class GroundsService {
     private email: EmailService,
     private billing: BillingService,
     private events: EventEmitter2,
+    private usage: UsageService,
   ) {}
 
   async create(organizationId: string, initiatorId: string, dto: CreateGroundDto) {
@@ -74,6 +76,8 @@ export class GroundsService {
           timelineDays: dto.timelineDays ?? DEFAULT_TIMELINE_DAYS[dto.scenario],
           cadence: dto.cadence ?? Cadence.FORTNIGHTLY,
           status: GroundStatus.OPEN,
+          resolutionState: dto.resolutionState ?? null,
+          brief: dto.brief ?? null,
         },
       });
 
@@ -119,6 +123,9 @@ export class GroundsService {
         contraindicationWarning = 'Decision already made: Groundwork is built for before a decision is finalised. Using it after the fact risks the process feeling performative to the other party, which is the opposite of what builds trust. Consider a direct conversation instead.';
       }
     }
+
+    // Best-effort — event log failure must never block ground creation.
+    this.usage.emit(UsageEventType.GROUND_CREATED, { organizationId, groundId: ground.id, userId: initiatorId }).catch(() => undefined);
 
     return { ...ground, contract, ...(contraindicationWarning ? { contraindicationWarning } : {}) };
   }
@@ -206,7 +213,8 @@ export class GroundsService {
         ? Math.max(0, Math.round((ground.createdAt.getTime() + ground.timelineDays * 86_400_000 - Date.now()) / 86_400_000))
         : null;
 
-    const brief = ground.report?.releasedAt ? (ground.report as any).sharedPicture ?? null : null;
+    // brief: prefer the ground's own opening brief; fall back to the released report summary
+    const brief = (ground as any).brief ?? (ground.report?.releasedAt ? (ground.report as any).sharedPicture ?? null : null);
 
     const signals = (ground.patternDetections ?? [])
       .filter((pd) => pd.observationText)
@@ -268,7 +276,6 @@ export class GroundsService {
           partyType: PartyType.PARTICIPANT,
           roleAsDescribed: dto.roleAsDescribed,
           invitedAt: new Date(),
-          notifiedAt: new Date(),
           inviteToken: token,
           inviteTokenExpiresAt,
         },
@@ -290,6 +297,14 @@ export class GroundsService {
       token,
       dto.note,
     );
+
+    // Stamp notifiedAt only after the email succeeds (Rule 3 — nobody added silently).
+    await this.prisma.groundParticipant.update({
+      where: { id: participant.id },
+      data: { notifiedAt: new Date() },
+    });
+
+    this.usage.emit(UsageEventType.PARTICIPANT_INVITED, { organizationId, groundId, participantId: participant.id }).catch(() => undefined);
 
     // GW-01: strip private fields (inviteToken, inviteTokenExpiresAt, soloArtifact,
     // specificityHistory, willingnessAnswers, willingnessGateAnswers) before
@@ -316,7 +331,7 @@ export class GroundsService {
 
     await this.prisma.groundParticipant.update({
       where: { id: participantId },
-      data: { inviteToken: token, inviteTokenExpiresAt, notifiedAt: new Date() },
+      data: { inviteToken: token, inviteTokenExpiresAt },
     });
 
     const initiator = await this.prisma.user.findUnique({ where: { id: ground.initiatorId } });
@@ -326,6 +341,13 @@ export class GroundsService {
       ground.label,
       token,
     );
+
+    // Stamp notifiedAt only after the email succeeds so the field reliably
+    // reflects actual notification, not just intent to notify.
+    await this.prisma.groundParticipant.update({
+      where: { id: participantId },
+      data: { notifiedAt: new Date() },
+    });
 
     return { message: 'Invite resent' };
   }
@@ -479,6 +501,19 @@ export class GroundsService {
         groundAuditLog: auditData,
       },
     });
+  }
+
+  async getMySpecificity(groundId: string, userId: string): Promise<{ scores: number[]; label: string }> {
+    const participant = await this.prisma.groundParticipant.findFirst({
+      where: { groundId, userId },
+      select: { specificityHistory: true },
+    });
+    if (!participant) throw new ForbiddenException('You are not a party to this ground');
+    const raw: number[] = (participant.specificityHistory as number[]) ?? [];
+    const scores = raw.filter(n => typeof n === 'number' && isFinite(n));
+    const avg = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
+    const label = avg >= 0.65 ? 'high' : avg >= 0.35 ? 'moderate' : 'low';
+    return { scores, label };
   }
 
   /**

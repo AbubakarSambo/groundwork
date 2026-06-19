@@ -5,7 +5,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { PromptsService } from '../prompts';
 import { AnthropicService } from '../conversation';
 import { EmailService } from '../email/email.service';
-import { GroundStatus, PartyType, CheckInStatus, GroundScenario } from '@prisma/client';
+import { UsageService } from '../usage/usage.service';
+import { GroundStatus, PartyType, CheckInStatus, GroundScenario, UsageEventType, ReportActivationStatus } from '@prisma/client';
 import { NEW_STARTING_REPORT_SCHEMA, RECOGNITION_REPORT_SCHEMA, DRIFT_REPORT_SCHEMA } from '../conversation/prompt-library';
 
 // Solo artifact — single-party "Your private record shows:" summary (#91).
@@ -115,6 +116,7 @@ export class ReportsService {
     private anthropic: AnthropicService,
     private email: EmailService,
     private config: ConfigService,
+    private usage: UsageService,
   ) {}
 
   /**
@@ -125,6 +127,20 @@ export class ReportsService {
   async synthesize(groundId: string) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, include: { participants: true } });
     if (!ground) throw new NotFoundException('Ground not found');
+
+    // Build context preamble from the ground's pre-agreed resolution state and
+    // initiator brief. These tell the AI what outcome was agreed before the first
+    // session and what situation was described at setup — both sharpen the synthesis.
+    const groundContextLines: string[] = [];
+    if ((ground as any).resolutionState) {
+      groundContextLines.push(`PRE-AGREED RESOLUTION STATE: ${(ground as any).resolutionState}`);
+    }
+    if ((ground as any).brief) {
+      groundContextLines.push(`INITIATOR'S OPENING BRIEF: ${(ground as any).brief}`);
+    }
+    const groundContextHeader = groundContextLines.length
+      ? `GROUND CONTEXT (set before any check-in — use to frame the synthesis):\n${groundContextLines.join('\n')}\n\n`
+      : '';
 
     // Stable, distinct label per party so the synthesis can attribute each
     // position to a specific party (works for two-party and N-party grounds).
@@ -192,6 +208,7 @@ export class ReportsService {
         : '';
 
     const corpus =
+      groundContextHeader +
       thinNotice +
       header +
       records.map((r) => `[${labelById.get(r.participant.id) ?? 'a party'}] (${r.type}) ${r.text}`).join('\n');
@@ -212,11 +229,17 @@ export class ReportsService {
         ? DRIFT_REPORT_SCHEMA
         : REPORT_SCHEMA;
 
-    let result = await this.anthropic.extract<{ sharedPicture: string; agreements: string[]; divergences: any[]; centralQuestion: string }>(
-      systemPrompt,
-      [{ role: 'user', content: corpus }],
-      activeSchema,
-    );
+    let result: { sharedPicture: string; agreements: string[]; divergences: any[]; centralQuestion: string } | null;
+    try {
+      result = await this.anthropic.extract<{ sharedPicture: string; agreements: string[]; divergences: any[]; centralQuestion: string }>(
+        systemPrompt,
+        [{ role: 'user', content: corpus }],
+        activeSchema,
+      );
+    } catch (err: any) {
+      this.logger?.error?.('Report synthesis extract failed', err?.message);
+      throw new Error('Report synthesis failed — AI response could not be parsed. Please try again.');
+    }
     if (!result) throw new Error('Report synthesis failed to return structured output');
 
     // WORD COUNT VALIDATION: if the combined text fields exceed 500 words, make
@@ -410,17 +433,31 @@ export class ReportsService {
     if (!ground.report) throw new NotFoundException('Report not generated yet');
     if (ground.report.releasedAt) return ground.report; // already released
 
+    // Send notification emails before stamping releasedAt so that if delivery
+    // fails entirely, the report is not marked released without anyone being
+    // notified. Partial failure (one email bounces) is still logged but does
+    // not block the release — a hard stop would be worse than a logged gap.
+    const frontend = this.config.get<string>('resend.frontendUrl');
+    const reportUrl = `${frontend}/report/${groundId}`;
+    const emailResults = await Promise.allSettled(
+      ground.participants.map((p) => this.email.sendReportReady(p.email, ground.label, reportUrl)),
+    );
+    const failures = emailResults.filter((r) => r.status === 'rejected');
+    if (failures.length) {
+      failures.forEach((r) => this.logger.error(`Report release email failed for ground ${groundId}: ${(r as PromiseRejectedResult).reason}`));
+      if (failures.length === ground.participants.length) {
+        throw new Error('All report notification emails failed — report not released. Retry to send notifications.');
+      }
+    }
+
     const released = await this.prisma.report.update({ where: { groundId }, data: { releasedAt: new Date() } });
+    this.usage.emit(UsageEventType.REPORT_RELEASED, { groundId, organizationId }).catch(() => undefined);
 
     // Generate per-party post-report conversation guides (#99). Best-effort —
     // a guide generation failure must never block report delivery.
     await this.generatePostReportGuides(released, ground.participants.map((p) => p.id)).catch((err) =>
       this.logger.error(`Post-report guide generation failed for ground ${groundId}: ${err.message}`),
     );
-
-    const frontend = this.config.get<string>('resend.frontendUrl');
-    const reportUrl = `${frontend}/report/${groundId}`;
-    await Promise.all(ground.participants.map((p) => this.email.sendReportReady(p.email, ground.label, reportUrl)));
 
     return released;
   }
@@ -429,9 +466,16 @@ export class ReportsService {
    * initiator. If not yet released, returns a locked stub { id, groundId,
    * createdAt, releasedAt: null } for the initiator only so the admin page can
    * show the release button — no content is included before release.
+   *
+   * After release, each participant must activate their own ReportActivation
+   * before full content is returned to them (mutual reveal gate). The initiator
+   * always sees the full report once released — they are the one who released it.
    */
   async get(groundId: string, requestingUserId: string) {
-    const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, include: { participants: true, report: true } });
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      include: { participants: true, report: true },
+    });
     if (!ground?.report) throw new NotFoundException('Report not found');
 
     const isInitiator = ground.initiatorId === requestingUserId;
@@ -440,14 +484,28 @@ export class ReportsService {
 
     if (!ground.report.releasedAt) {
       if (isInitiator) {
-        // Return locked stub — admin sees the release button, no content exposed.
         return { id: ground.report.id, groundId, createdAt: ground.report.createdAt, releasedAt: null };
       }
       throw new ForbiddenException('Report has not been released yet');
     }
 
-    // Attach this party's post-report guide (stored in engagement.postReportGuides
-    // keyed by participantId — #99) and solo artifact (#91) to the response.
+    // Mutual reveal gate: participants must activate before seeing content.
+    if (participant) {
+      const activation = await this.prisma.reportActivation.findUnique({
+        where: { groundId_participantId: { groundId, participantId: participant.id } },
+      });
+      if (!activation || activation.status !== ReportActivationStatus.ACTIVATED) {
+        // Return a pre-activation stub — client shows the "Reveal" button.
+        return {
+          id: ground.report.id,
+          groundId,
+          createdAt: ground.report.createdAt,
+          releasedAt: ground.report.releasedAt,
+          activated: false,
+        };
+      }
+    }
+
     const engagement = ground.report.engagement && typeof ground.report.engagement === 'object'
       ? (ground.report.engagement as Record<string, any>)
       : {};
@@ -457,7 +515,69 @@ export class ReportsService {
       ? (() => { try { return JSON.parse(participant.soloArtifact); } catch { return null; } })()
       : null;
 
-    return { ...ground.report, postReportGuide, soloArtifact };
+    return { ...ground.report, activated: true, postReportGuide, soloArtifact };
+  }
+
+  /**
+   * Each participant calls this once to confirm they are ready to see the
+   * report. Creates or updates their ReportActivation row to ACTIVATED.
+   * Returns the activation status for both parties so the client can show
+   * whether the other side has also revealed.
+   */
+  async activate(groundId: string, requestingUserId: string) {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      include: { participants: true, report: true },
+    });
+    if (!ground?.report?.releasedAt) throw new ForbiddenException('Report has not been released yet');
+
+    const participant = ground.participants.find((p) => p.userId === requestingUserId);
+    if (!participant) throw new ForbiddenException('You are not a participant on this ground');
+
+    await this.prisma.reportActivation.upsert({
+      where: { groundId_participantId: { groundId, participantId: participant.id } },
+      create: {
+        groundId,
+        participantId: participant.id,
+        status: ReportActivationStatus.ACTIVATED,
+        activatedAt: new Date(),
+      },
+      update: {
+        status: ReportActivationStatus.ACTIVATED,
+        activatedAt: new Date(),
+      },
+    });
+
+    return this.getActivationStatus(groundId, ground.participants.map((p) => p.id));
+  }
+
+  /** Guard-checked version for the controller — verifies caller is a party first. */
+  async getActivationStatusForUser(groundId: string, requestingUserId: string) {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      include: { participants: true },
+    });
+    if (!ground) throw new NotFoundException('Ground not found');
+    const isParty = ground.initiatorId === requestingUserId ||
+      ground.participants.some((p) => p.userId === requestingUserId);
+    if (!isParty) throw new ForbiddenException('Not a party to this ground');
+    return this.getActivationStatus(groundId, ground.participants.map((p) => p.id));
+  }
+
+  /** Returns activation status for all participants on a ground. */
+  async getActivationStatus(groundId: string, participantIds: string[]) {
+    const activations = await this.prisma.reportActivation.findMany({
+      where: { groundId },
+    });
+    const statusMap = Object.fromEntries(activations.map((a) => [a.participantId, a.status]));
+    return {
+      groundId,
+      parties: participantIds.map((id) => ({
+        participantId: id,
+        activated: statusMap[id] === ReportActivationStatus.ACTIVATED,
+      })),
+      allActivated: participantIds.every((id) => statusMap[id] === ReportActivationStatus.ACTIVATED),
+    };
   }
 
   // ---------------------------------------------------------------------------

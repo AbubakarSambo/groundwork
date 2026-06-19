@@ -345,8 +345,14 @@ export class ConversationContextService {
       const lastName = participantWithOrg.user.lastName?.toLowerCase() ?? '';
 
       if (firstName || lastName) {
-        // Find RecordEntries across this org, excluding this ground and this participant.
-        const orgRecords = await this.prisma.recordEntry.findMany({
+        // Count RecordEntries across this org that mention this person by name
+        // alongside operational words — invisible labour signal. We only read the
+        // count, never the verbatim text, so other parties' words never enter
+        // this party's context (Rule 1).
+        const operationalWords = ['delivered', 'built', 'shipped', 'completed', 'launched', 'deployed', 'created', 'finished'];
+        const nameVariants = [firstName, lastName].filter(Boolean);
+
+        const invisibleLabourCount = await this.prisma.recordEntry.count({
           where: {
             participant: {
               ground: {
@@ -355,23 +361,14 @@ export class ConversationContextService {
               },
               id: { not: participantId },
             },
+            AND: [
+              { OR: nameVariants.map((n) => ({ text: { contains: n, mode: 'insensitive' as const } })) },
+              { OR: operationalWords.map((w) => ({ text: { contains: w, mode: 'insensitive' as const } })) },
+            ],
           },
-          select: { text: true, type: true, participantId: true },
-          take: 100,
         });
 
-        // Find entries that mention this person by name.
-        const mentioningEntries = orgRecords.filter((r) => {
-          const t = r.text.toLowerCase();
-          return (firstName && t.includes(firstName)) || (lastName && t.includes(lastName));
-        });
-
-        // Classify mentions for invisible labour.
-        const operationalWords = ['delivered', 'built', 'shipped', 'completed', 'launched', 'deployed', 'created', 'finished'];
-        const invisibleLabourMentions = mentioningEntries.filter((r) => {
-          const t = r.text.toLowerCase();
-          return operationalWords.some((w) => t.includes(w));
-        });
+        const invisibleLabourMentions = Array.from({ length: invisibleLabourCount });
 
         // If 2+ operational mentions AND person's own record doesn't already cover the topics.
         if (invisibleLabourMentions.length >= 2 && degree3Injections < 1) {

@@ -4,7 +4,7 @@ import { Resend } from 'resend';
 
 /**
  * Groundwork email library. Per the product rules, every message names
- * something specific and ends with a reason the record matters to THEM —
+ * something specific and ends with a reason the record matters to THEM,
  * not to the org, not to the founder. Keep that voice when filling these in.
  */
 @Injectable()
@@ -20,11 +20,18 @@ export class EmailService {
     this.frontendUrl = this.configService.get<string>('resend.frontendUrl') || 'http://localhost:5173';
   }
 
-  buildInviteUrl(token: string): string {
-    return `${this.frontendUrl}/invite?token=${token}`;
+  buildInviteUrl(inviteToken: string): string {
+    return `${this.frontendUrl}/invite?token=${inviteToken}`;
   }
 
   private async sendEmail(options: { to: string; subject: string; html: string }): Promise<void> {
+    const apiKey = this.configService.get<string>('resend.apiKey') ?? '';
+    if (!apiKey || apiKey.startsWith('re_...') || apiKey === 're_test') {
+      this.logger.warn(`[DEV EMAIL] To: ${options.to} | Subject: ${options.subject}`);
+      const text = options.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+      this.logger.warn(`[DEV EMAIL] Body: ${text}`);
+      return;
+    }
     const { data, error } = await this.resend.emails.send({ from: this.fromEmail, ...options });
     if (error) {
       this.logger.error(`Failed to send email to ${options.to}: ${error.name} - ${error.message}`);
@@ -43,7 +50,7 @@ export class EmailService {
     const url = `${this.frontendUrl}/verify-email?token=${token}`;
     await this.sendEmail({
       to: email,
-      subject: 'Verify your email — Groundwork',
+      subject: 'Verify your email to get started on Groundwork',
       html: this.layout(`<p>Hi ${firstName},</p><p>Confirm your email to get started.</p><p><a href="${url}">Verify email</a></p>`),
     });
   }
@@ -52,8 +59,8 @@ export class EmailService {
     const url = `${this.frontendUrl}/verify-email?token=${token}`;
     await this.sendEmail({
       to: email,
-      subject: 'Your Groundwork sign-in link',
-      html: this.layout(`<p>Hi ${firstName},</p><p>Click below to sign in to Groundwork. This link expires in 24 hours.</p><p><a href="${url}">Sign in to Groundwork</a></p>`),
+      subject: 'Activate your Groundwork account',
+      html: this.layout(`<p>Hi ${firstName},</p><p>Activate your account and set a password.</p><p><a href="${url}">Activate</a></p>`),
     });
   }
 
@@ -88,47 +95,48 @@ export class EmailService {
 
   // --- Ground / conversation lifecycle (see comms library, Part 3) ---
 
-  /** Participant added to a ground — they are NEVER added silently. */
+  /** Participant added to a ground. They are NEVER added silently. */
   async sendParticipantInvite(email: string, founderName: string, groundLabel: string, token: string, note?: string): Promise<void> {
     const url = `${this.frontendUrl}/invite?token=${token}`;
-    const shortLabel = groundLabel.length > 70 ? groundLabel.slice(0, 70).trimEnd() + '...' : groundLabel;
-    const noteHtml = note ? `<p style="background:#f5f5f5;padding:10px 14px;border-radius:6px;font-style:italic;">${note}</p>` : '';
+    const noteHtml = note ? `<p style="border-left:3px solid #E2E0DB;padding:8px 14px;margin:20px 0;color:#4A4540;font-style:italic;">${note}</p>` : '';
     await this.sendEmail({
       to: email,
-      subject: `Your version of "${shortLabel}"`,
+      subject: `${founderName} wants to build this with you`,
       html: this.layout(
-        `<p>${founderName} has opened a ground about: <strong>${groundLabel}</strong>.</p>
+        `<p>Strong working relationships are built on alignment that both people helped shape. Not assumed. Not hoped for. Actually built.</p>
+         <p>${founderName} has opened a shared record with you on Groundwork. They have shared their account of <strong>${groundLabel}</strong>. Now they need yours.</p>
+         <p>Here is how it works: you each give your honest view of the situation, separately. Neither of you sees what the other wrote until both accounts are in. Groundwork then cross-references them, showing where you are already aligned, where your pictures differ, and what to address before it becomes drift.</p>
+         <p>It takes about ten minutes.</p>
          ${noteHtml}
-         <p>Groundwork asks for both sides before any conversation happens. Your version. Their version. Separately and privately. Your answers are yours until you both choose to share them.</p>
-         <p><a href="${url}">Add your version</a></p>`,
+         <p><a href="${url}">Add your account</a></p>`,
       ),
     });
   }
 
-  /** Report released — sent to BOTH parties at the same time. */
+  /** Report released. Sent to BOTH parties at the same time. */
   async sendReportReady(email: string, groundLabel: string, reportUrl: string): Promise<void> {
     await this.sendEmail({
       to: email,
-      subject: `Your shared record is ready — ${groundLabel}`,
-      html: this.layout(`<p>Both sides have checked in. The shared record is now available to both of you at the same time — it shows where you agree, where you differ, and the one question worth answering together.</p><p><a href="${reportUrl}">View the report</a></p>`),
+      subject: `Your shared record is ready: ${groundLabel}`,
+      html: this.layout(`<p>Both sides have checked in. The shared record is now available to both of you at the same time. It shows where you agree, where you differ, and the one question worth answering together.</p><p><a href="${reportUrl}">View the report</a></p>`),
     });
   }
 
-  /** Ground activated — sent to the participant so they know to return. */
+  /** Ground activated. Sent to the participant so they know to return. */
   async sendGroundActivated(email: string, firstName: string, groundLabel: string, groundUrl: string): Promise<void> {
     await this.sendEmail({
       to: email,
       subject: `Your ground "${groundLabel}" is now active`,
       html: this.layout(
         `<p>Hi ${firstName},</p>
-         <p>The ground <strong>${groundLabel}</strong> has been activated. Both records are in — the process continues from here.</p>
+         <p>The ground <strong>${groundLabel}</strong> has been activated. Both records are in. The process continues from here.</p>
          <p>Sign in to view the shared picture and decide your next steps together.</p>
          <p><a href="${groundUrl}">Open ground</a></p>`,
       ),
     });
   }
 
-  /** Nudge — scenario-aware subject, names the specific ground that is still open. */
+  /** Nudge. Scenario-aware subject, names the specific ground that is still open. */
   async sendNudge(email: string, groundLabel: string, checkInUrl: string, scenario?: string, otherPartyCompleted?: boolean): Promise<void> {
     const subjectMap: Record<string, string> = {
       NEW_HIRE: 'Your 90-day check-in is waiting',
@@ -156,13 +164,13 @@ export class EmailService {
       subject: `Your report for "${groundLabel}" is ready to unlock`,
       html: this.layout(
         `<p>Both versions are in and the report for <strong>${groundLabel}</strong> is ready.</p>
-         <p>Activate the ground to read the shared picture — where you agree, where you differ, and the one question worth answering.</p>
-         <p><a href="${groundUrl}">Activate &amp; read</a></p>`,
+         <p>Activate the ground to read the shared picture: where you agree, where you differ, and the one question worth answering.</p>
+         <p><a href="${groundUrl}">Activate and read</a></p>`,
       ),
     });
   }
 
-  /** Ground stalled — timeline elapsed without resolution. Both parties notified. (GW-06) */
+  /** Ground stalled. Timeline elapsed without resolution. Both parties notified. (GW-06) */
   async sendStalledNotification(email: string, groundLabel: string, groundUrl: string): Promise<void> {
     await this.sendEmail({
       to: email,
@@ -181,23 +189,23 @@ export class EmailService {
       KEEP: 'Keep the hire',
       RESTRUCTURE: 'Restructure the role',
       EXIT: 'Part ways',
-      NOT_YET: 'Not yet — extend evaluation',
+      NOT_YET: 'Not yet. Extend evaluation',
       EXTEND: 'Extend evaluation period',
       SEPARATE: 'Separate amicably',
     };
     const endStateLabel = endStateLabels[endState] ?? endState;
     await this.sendEmail({
       to: email,
-      subject: 'A resolution has been proposed — your confirmation is needed',
+      subject: 'A resolution has been proposed. Your confirmation is needed',
       html: this.layout(
         `<p><strong>${proposerLabel}</strong> has proposed the following outcome: <em>${endStateLabel}</em>.</p>
-         <p>The ground closes only when all active parties confirm the same outcome. Review the proposal and confirm — or counter-propose a different outcome.</p>
+         <p>The ground closes only when all active parties confirm the same outcome. Review the proposal and confirm, or counter-propose a different outcome.</p>
          <p><a href="${groundUrl}">View and confirm</a></p>`,
       ),
     });
   }
 
-  /** Ground closed — all parties confirmed the same end state. (GW-50) */
+  /** Ground closed. All parties confirmed the same end state. (GW-50) */
   async sendGroundClosed(email: string, groundLabel: string, endState: string, groundUrl: string): Promise<void> {
     await this.sendEmail({
       to: email,
@@ -210,7 +218,7 @@ export class EmailService {
     });
   }
 
-  /** Post-resolution feedback request — sent ~24h after close. (GW-50) */
+  /** Post-resolution feedback request. Sent ~24h after close. (GW-50) */
   async sendFeedbackRequest(email: string, groundLabel: string, feedbackUrl: string): Promise<void> {
     await this.sendEmail({
       to: email,
@@ -226,18 +234,18 @@ export class EmailService {
   // --- Billing ---
 
   /**
-   * Payment request — sent to the org admin when a participant completes
-   * session 1. Primes the admin to activate billing so session 2 is not blocked.
+   * Payment request. Sent to the org admin when a participant completes
+   * session 2. Primes the admin to activate billing so session 3 is not blocked.
    */
   async sendPaymentRequestEmail(adminEmail: string, orgName: string, groundId: string): Promise<void> {
     const billingUrl = `${this.frontendUrl}/billing?groundId=${groundId}`;
     await this.sendEmail({
       to: adminEmail,
-      subject: 'Activate your workspace to unlock the next session — Groundwork',
+      subject: 'Add a card to unlock session 3 on Groundwork',
       html: this.layout(
-        `<p>A participant in your workspace (<strong>${orgName}</strong>) has completed their first Groundwork session.</p>
-         <p>Session 2 requires an active subscription. Activate now to keep the process running — the record you have already built is safe and waiting.</p>
-         <p><a href="${billingUrl}">Activate your workspace</a></p>`,
+        `<p>A participant in your workspace (<strong>${orgName}</strong>) has completed their second Groundwork session.</p>
+         <p>Sessions 1 and 2 are free. Session 3 requires an active subscription. Add a card now to keep the process running. The record you have already built is safe and waiting.</p>
+         <p><a href="${billingUrl}">Add a card</a></p>`,
       ),
     });
   }
@@ -254,7 +262,7 @@ export class EmailService {
     });
   }
 
-  /** Billing change notification — sent when the plan changes (e.g. scenario fee starts/stops, tier changes). */
+  /** Billing change notification. Sent when the plan changes. */
   async sendBillingChangeNotification(to: string, name: string, changeDescription: string): Promise<void> {
     await this.sendEmail({
       to,
@@ -268,19 +276,19 @@ export class EmailService {
     });
   }
 
-  /** Record-portability notice sent when an org account is cancelled — sent to the individual user. */
+  /** Record-portability notice sent when an org account is cancelled. Sent to the individual user. */
   async sendRecordPortabilityNotice(userEmail: string, firstName: string, downloadUrl: string): Promise<void> {
     await this.sendEmail({
       to: userEmail,
-      subject: 'Your Groundwork record is yours — download it',
+      subject: 'Your Groundwork record is yours to keep',
       html: this.layout(
         `<p>Hi ${firstName}. Your organisation's Groundwork account has been cancelled.</p>
-         <p>Your record does not disappear. It belongs to you. Download it here: <a href="${downloadUrl}">${downloadUrl}</a> — this link is valid for 30 days after which it expires.</p>`,
+         <p>Your record does not disappear. It belongs to you. Download it here: <a href="${downloadUrl}">${downloadUrl}</a>. This link is valid for 30 days.</p>`,
       ),
     });
   }
 
-  /** Absence reminder — sent when a participant has consecutively missed multiple check-ins. */
+  /** Absence reminder. Sent when a participant has consecutively missed multiple check-ins. */
   async sendAbsenceReminder(
     to: string,
     name: string,
@@ -293,21 +301,21 @@ export class EmailService {
       html: this.layout(
         `<p>Hi ${name},</p>
          <p>You have missed ${missedCount} check-in${missedCount !== 1 ? 's' : ''} in a row on <strong>${groundName}</strong>.</p>
-         <p>Your record is incomplete. The shared picture for this ground cannot reflect your side until you check in. Everything you write is private until both sides are in — it belongs to you, not to the org.</p>
+         <p>Your record is incomplete. The shared picture for this ground cannot reflect your side until you check in. Everything you write is private until both sides are in. It belongs to you, not to the org.</p>
          <p>Sign in to Groundwork to add your version before the ground moves on without it.</p>`,
       ),
     });
   }
 
-  /** Care fee confirmation — sent when an org activates a Groundwork subscription. */
+  /** Care fee confirmation. Sent when an org activates a Groundwork subscription. */
   async sendCareFeeConfirmation(to: string, name: string, orgName: string): Promise<void> {
     await this.sendEmail({
       to,
-      subject: 'Your Groundwork care plan is active',
+      subject: 'Your Groundwork subscription is active',
       html: this.layout(
         `<p>Hi ${name},</p>
-         <p>Your Groundwork care plan for <strong>${orgName}</strong> is now active.</p>
-         <p>The monthly care fee of USD 20/month keeps Groundwork available whenever you need it — no separate sign-up when a situation arises. Scenario fees (USD 50/month per active ground) are added when you open a ground and stop automatically when it resolves.</p>
+         <p>Your Groundwork subscription for <strong>${orgName}</strong> is now active.</p>
+         <p>You pay $25/month for your account, plus $25/month per active participant (each person checking in on a live ground). Someone not in any active ground is not billed. The first two sessions per person are always free.</p>
          <p>Your records are always yours, regardless of plan status.</p>`,
       ),
     });

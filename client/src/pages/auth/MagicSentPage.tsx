@@ -1,14 +1,12 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
-import { authApi, type MagicLinkBody } from '@/api/auth'
-import { useAuthStore } from '@/stores/auth'
-import { entryStorage, participantStorage } from '@/api/entry'
+import { authApi } from '@/api/auth'
+
+const MARKETING_URL = import.meta.env.VITE_MARKETING_URL ?? 'https://myground.work'
 
 export function MagicSentPage() {
   const [params] = useSearchParams()
-  const navigate = useNavigate()
-  const setAuth = useAuthStore(s => s.setAuth)
   const email = params.get('email') ?? ''
   const [countdown, setCountdown] = useState(30)
   const [canResend, setCanResend] = useState(false)
@@ -19,51 +17,18 @@ export function MagicSentPage() {
     return () => clearTimeout(t)
   }, [countdown])
 
-  // Detect when the magic link is confirmed in another tab on the same device.
-  // The auth store persists to localStorage; the storage event fires in every
-  // tab except the one that wrote the data, so Tab A (this page) gets notified
-  // when Tab B (the verify page) authenticates.
-  useEffect(() => {
-    function handleStorage(e: StorageEvent) {
-      if (e.key !== 'token' || !e.newValue) return
-      try {
-        const raw = localStorage.getItem('auth-storage-v2')
-        if (!raw) return
-        const parsed = JSON.parse(raw)
-        const { user, token } = parsed?.state ?? {}
-        if (user && token) {
-          setAuth(user, token)
-          entryStorage.clear()
-          participantStorage.clear()
-          navigate('/grounds', { replace: true })
-        }
-      } catch {}
-    }
-    window.addEventListener('storage', handleStorage)
-    return () => window.removeEventListener('storage', handleStorage)
-  }, [])
-
-  // Resend: entry-save flow (participant/anonymous) uses entrySave; founder flow uses requestMagicLink
   const resend = useMutation({
-    mutationFn: () => {
-      const flowType = sessionStorage.getItem('gw_magic_type')
-      if (flowType === 'entry') {
-        const resendEmail = sessionStorage.getItem('gw_magic_email') || email
-        return authApi.entrySave(resendEmail)
-      }
-      const cached = sessionStorage.getItem('gw_magic_body')
-      const body: MagicLinkBody = cached ? JSON.parse(cached) : { email, firstName: '', lastName: '', organizationName: '' }
-      return authApi.requestMagicLink(body)
-    },
+    mutationFn: () => authApi.requestMagicLink({ email }),
     onSuccess: () => { setCountdown(30); setCanResend(false) },
   })
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
       <div className="gw-hdr">
-        <a href="https://myground.work" target="_blank" rel="noopener noreferrer" className="gw-logo" style={{ textDecoration: 'none', color: 'inherit' }}>Groundwork</a>
+        <span className="gw-logo">Groundwork</span>
       </div>
       <div className="gw-bd" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '70vh', textAlign: 'center' }}>
+
         <div style={{ width: 52, height: 52, background: 'var(--gw-blue-bg)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
           <svg width="22" height="18" viewBox="0 0 22 18" fill="none">
             <rect x="1" y="1" width="20" height="16" rx="2" stroke="#0C447C" strokeWidth="1.5" />
@@ -81,12 +46,11 @@ export function MagicSentPage() {
 
         <div style={{ fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center' }}>No email? Check your spam folder.</div>
 
-        {!canResend && (
+        {!canResend ? (
           <div style={{ fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 8 }}>
-            Resend available in {countdown}s
+            Resend available in <span>{countdown}</span>s
           </div>
-        )}
-        {canResend && (
+        ) : (
           <div style={{ textAlign: 'center', marginTop: 8 }}>
             <span
               style={{ color: 'var(--gw-navy)', cursor: 'pointer', textDecoration: 'underline', fontSize: 12 }}
@@ -98,8 +62,9 @@ export function MagicSentPage() {
         )}
 
         <div style={{ marginTop: 28, paddingTop: 20, borderTop: '0.5px solid var(--gw-border)' }}>
-          <span onClick={() => navigate('/')} style={{ fontSize: 12, color: 'var(--gw-sub)', cursor: 'pointer' }}>Back to Groundwork</span>
+          <a href={MARKETING_URL} style={{ fontSize: 12, color: 'var(--gw-sub)', textDecoration: 'none' }}>Back to Groundwork</a>
         </div>
+
       </div>
     </div>
   )

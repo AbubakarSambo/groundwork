@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, Logger, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { SEED_PROMPTS } from '../conversation/prompt-library';
 import { AnthropicService, ChatTurn } from '../conversation/anthropic.service';
+import { SEED_PROMPTS } from '../conversation/prompt-library';
 
 /**
  * The moat. Every prompt is versioned; every change is versioned against
@@ -16,7 +16,10 @@ import { AnthropicService, ChatTurn } from '../conversation/anthropic.service';
 export class PromptsService implements OnModuleInit {
   private readonly logger = new Logger(PromptsService.name);
 
-  constructor(private prisma: PrismaService, private anthropic: AnthropicService) {}
+  constructor(
+    private prisma: PrismaService,
+    private anthropic: AnthropicService,
+  ) {}
 
   /**
    * Seed-on-deploy (B7): ensure every seeded prompt key has an active version.
@@ -62,62 +65,19 @@ export class PromptsService implements OnModuleInit {
   async list() {
     return this.prisma.promptVersion.findMany({
       orderBy: [{ key: 'asc' }, { version: 'desc' }],
-      select: { id: true, key: true, version: true, summary: true, isActive: true, isDraft: true, activatedAt: true, activatedBy: true, createdAt: true, content: true },
+      select: { id: true, key: true, version: true, summary: true, isActive: true, activatedAt: true, createdAt: true, content: true },
     });
-  }
-
-  /** Get the current draft for a key, if one exists. */
-  async getDraft(key: string) {
-    return this.prisma.promptVersion.findFirst({
-      where: { key, isDraft: true },
-      select: { id: true, key: true, version: true, summary: true, isActive: true, isDraft: true, activatedAt: true, activatedBy: true, createdAt: true, content: true },
-    });
-  }
-
-  /** Create or update the draft for a key. Only one draft per key at a time. */
-  async upsertDraft(key: string, content: string, summary?: string) {
-    const existing = await this.prisma.promptVersion.findFirst({ where: { key, isDraft: true } });
-    if (existing) {
-      return this.prisma.promptVersion.update({
-        where: { id: existing.id },
-        data: { content, summary: summary ?? existing.summary },
-        select: { id: true, key: true, version: true, summary: true, isActive: true, isDraft: true, activatedAt: true, activatedBy: true, createdAt: true, content: true },
-      });
-    }
-    const latest = await this.prisma.promptVersion.findFirst({ where: { key }, orderBy: { version: 'desc' } });
-    const version = (latest?.version ?? 0) + 1;
-    return this.prisma.promptVersion.create({
-      data: { key, version, content, summary, isActive: false, isDraft: true },
-      select: { id: true, key: true, version: true, summary: true, isActive: true, isDraft: true, activatedAt: true, activatedBy: true, createdAt: true, content: true },
-    });
-  }
-
-  /** Discard (delete) the current draft for a key. */
-  async discardDraft(key: string) {
-    const draft = await this.prisma.promptVersion.findFirst({ where: { key, isDraft: true } });
-    if (!draft) throw new NotFoundException(`No draft for key "${key}"`);
-    await this.prisma.promptVersion.delete({ where: { id: draft.id } });
-    return { discarded: true };
-  }
-
-  /** Run a test message against a specific prompt version. No DB writes. */
-  async testChat(versionId: string, messages: ChatTurn[]): Promise<{ reply: string }> {
-    const version = await this.prisma.promptVersion.findUnique({ where: { id: versionId } });
-    if (!version) throw new NotFoundException('Prompt version not found');
-    const testPrefix = '[TEST MODE — this is a simulated conversation using a draft prompt. No real data.]\n\n';
-    const reply = await this.anthropic.respond(testPrefix + version.content, messages);
-    return { reply };
   }
 
   /** Create a new version. Does not activate it — activation is deliberate. */
   async createVersion(key: string, content: string, summary?: string) {
     if (key === 'system') {
       const INVARIANTS = [
+        'Record sharing requires explicit consent from both parties separately.',
+        "This is held separately from the other party's version.",
+        'BANNED WORDS — HARD RULE:',
+        'SEVEN-STAGE SEQUENCE — MANDATORY ORDER:',
         'THE WILLINGNESS GATE',
-        'CONSENT ARCHITECTURE',
-        'FAILING RELATIONSHIP PROTOCOL',
-        'SIMULTANEOUS REPORT REVEAL',
-        'BANNED WORDS AND PHRASES:',
       ];
       const missing = INVARIANTS.filter((inv) => !content.includes(inv));
       if (missing.length > 0) {
@@ -135,7 +95,7 @@ export class PromptsService implements OnModuleInit {
     return this.prisma.promptVersion.findMany({
       where: { key },
       orderBy: { version: 'desc' },
-      select: { id: true, key: true, version: true, summary: true, isActive: true, isDraft: true, activatedAt: true, activatedBy: true, createdAt: true, content: true },
+      select: { id: true, key: true, version: true, summary: true, isActive: true, activatedAt: true, createdAt: true, content: true },
     });
   }
 
@@ -401,7 +361,19 @@ export class PromptsService implements OnModuleInit {
     };
   }
 
-  async orgCohorts() {
+  /** Activate a version (deactivates other versions of the same key). */
+  async activate(id: string) {
+    const target = await this.prisma.promptVersion.findUnique({ where: { id } });
+    if (!target) throw new NotFoundException('Prompt version not found');
+
+    await this.prisma.$transaction([
+      this.prisma.promptVersion.updateMany({ where: { key: target.key }, data: { isActive: false } }),
+      this.prisma.promptVersion.update({ where: { id }, data: { isActive: true, activatedAt: new Date() } }),
+    ]);
+    return this.prisma.promptVersion.findUnique({ where: { id } });
+  }
+
+  async orgList() {
     const orgs = await this.prisma.organization.findMany({
       orderBy: { createdAt: 'desc' },
       select: {
@@ -409,85 +381,165 @@ export class PromptsService implements OnModuleInit {
         name: true,
         slug: true,
         email: true,
-        createdAt: true,
         careFeeStatus: true,
-        _count: { select: { users: true } },
-        users: {
-          select: { firstName: true, lastName: true, email: true },
-          take: 1,
-          orderBy: { createdAt: 'asc' },
-        },
-        grounds: {
-          select: {
-            status: true,
-            checkIns: {
-              where: { status: 'COMPLETED' },
-              select: { sessionNumber: true, completedAt: true },
-            },
-          },
-        },
+        createdAt: true,
+        _count: { select: { grounds: true, users: true } },
       },
     });
 
-    return orgs.map((org) => {
-      const allCheckIns = org.grounds.flatMap((g) => g.checkIns);
-      const completedDates = allCheckIns
-        .map((c) => c.completedAt)
-        .filter((d): d is Date => d != null);
-      const maxSession =
-        allCheckIns.length > 0
-          ? Math.max(...allCheckIns.map((c) => c.sessionNumber))
-          : 0;
-      const lastActivity =
-        completedDates.length > 0
-          ? completedDates.reduce((max, d) => (d > max ? d : max))
-          : null;
-      const primary = org.users[0] ?? null;
-
-      let stage: string;
-      if (org.careFeeStatus === 'ACTIVE') {
-        stage = 'paid';
-      } else if (maxSession >= 4) {
-        stage = 's4_plus';
-      } else if (maxSession === 3) {
-        stage = 's3';
-      } else if (maxSession === 2) {
-        stage = 's2';
-      } else if (maxSession === 1) {
-        stage = 's1_only';
-      } else {
-        stage = 'no_activity';
-      }
-
-      return {
-        id: org.id,
-        name: org.name,
-        slug: org.slug,
-        adminName: primary ? `${primary.firstName} ${primary.lastName}` : null,
-        adminEmail: primary?.email ?? null,
-        createdAt: org.createdAt,
-        careFeeStatus: org.careFeeStatus,
-        userCount: org._count.users,
-        groundCount: org.grounds.length,
-        maxSession,
-        lastActivity,
-        stage,
-      };
+    const groundCounts = await this.prisma.ground.groupBy({
+      by: ['organizationId'],
+      _count: { id: true },
     });
+    const participantCounts = await this.prisma.groundParticipant.groupBy({
+      by: ['groundId'],
+      _count: { id: true },
+    });
+
+    const groundCountMap = Object.fromEntries(groundCounts.map(r => [r.organizationId, r._count.id]));
+
+    const checkInsByOrg = await this.prisma.checkIn.findMany({
+      where: { status: 'COMPLETED' },
+      orderBy: { completedAt: 'desc' },
+      select: { completedAt: true, ground: { select: { organizationId: true } } },
+    });
+
+    const lastActivityMap: Record<string, Date> = {};
+    for (const ci of checkInsByOrg) {
+      const orgId = ci.ground.organizationId;
+      if (!lastActivityMap[orgId] && ci.completedAt) lastActivityMap[orgId] = ci.completedAt;
+    }
+
+    return orgs.map(org => ({
+      id: org.id,
+      name: org.name,
+      slug: org.slug,
+      email: org.email,
+      billingActive: org.careFeeStatus === 'ACTIVE',
+      careFeeStatus: org.careFeeStatus,
+      groundCount: groundCountMap[org.id] ?? 0,
+      userCount: org._count.users,
+      lastActivity: lastActivityMap[org.id] ?? null,
+      createdAt: org.createdAt,
+    }));
   }
 
-  /** Activate a version (deactivates other versions of the same key). Logs who activated. */
-  async activate(id: string, activatedByName?: string) {
-    const target = await this.prisma.promptVersion.findUnique({ where: { id } });
-    if (!target) throw new NotFoundException('Prompt version not found');
+  async usageStats() {
+    const now = new Date();
+    const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
 
-    await this.prisma.$transaction([
-      this.prisma.promptVersion.updateMany({ where: { key: target.key }, data: { isActive: false } }),
-      this.prisma.promptVersion.update({
-        where: { id },
-        data: { isActive: true, isDraft: false, activatedAt: new Date(), activatedBy: activatedByName ?? null },
+    const [checkInsByDay, usageEvents, totalCheckIns, reportsGenerated, groundsCreated] = await Promise.all([
+      this.prisma.checkIn.findMany({
+        where: { status: 'COMPLETED', completedAt: { gte: fourteenDaysAgo } },
+        select: { completedAt: true, sessionNumber: true },
       }),
+      this.prisma.usageEvent.groupBy({
+        by: ['type'],
+        _count: { id: true },
+      }),
+      this.prisma.checkIn.count({ where: { status: 'COMPLETED' } }),
+      this.prisma.ground.count({ where: { report: { releasedAt: { not: null } } } }),
+      this.prisma.ground.count(),
     ]);
-    return this.prisma.promptVersion.findUnique({ where: { id } });
+
+    // Bucket check-ins by day label
+    const dayBuckets: Record<string, number> = {};
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+      const key = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+      dayBuckets[key] = 0;
+    }
+    for (const ci of checkInsByDay) {
+      if (!ci.completedAt) continue;
+      const key = new Date(ci.completedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+      if (key in dayBuckets) dayBuckets[key]++;
+    }
+
+    const usageMap = Object.fromEntries(usageEvents.map(e => [e.type, e._count.id]));
+
+    return {
+      checkInsLast14Days: Object.entries(dayBuckets).map(([date, count]) => ({ date, count })),
+      totalCheckIns,
+      groundsCreated,
+      reportsGenerated,
+      eventTotals: usageMap,
+    };
+  }
+
+  /** Sandbox: send one message turn using a custom system prompt. Never persisted. */
+  async testChat(systemPrompt: string, messages: ChatTurn[]): Promise<{ reply: string }> {
+    if (!messages || messages.length === 0) throw new BadRequestException('messages required');
+    const reply = await this.anthropic.respond(systemPrompt, messages);
+    return { reply };
+  }
+
+  /** Sandbox: generate cross-reference + per-lane reports from test conversations. Never persisted. */
+  async testReport(
+    systemPrompt: string,
+    adminMessages: ChatTurn[],
+    p1Messages: ChatTurn[],
+    p2Messages: ChatTurn[],
+  ): Promise<{ crossReference: string; p1Report: string; p2Report: string }> {
+    const REPORT_PROMPT = `You are Groundwork. You have been given conversation transcripts from three parties (admin, participant 1, participant 2). Generate:
+1. A cross-reference report for the admin showing where accounts agree, where they differ, and the most important gap to address.
+2. A participant 1 report — speaks only to participant 1's own account, in second person.
+3. A participant 2 report — speaks only to participant 2's own account, in second person.
+
+Format your response as three labelled sections:
+--- CROSS REFERENCE ---
+[cross reference text]
+--- PARTICIPANT 1 ---
+[participant 1 report]
+--- PARTICIPANT 2 ---
+[participant 2 report]
+
+Rules: No verdicts. No judgements of any person. No em dashes. Straight quotes. Sentence case headings.`;
+
+    const combinedTranscript = [
+      `ADMIN ACCOUNT:\n${adminMessages.map(m => `${m.role}: ${m.content}`).join('\n')}`,
+      `PARTICIPANT 1 ACCOUNT:\n${p1Messages.map(m => `${m.role}: ${m.content}`).join('\n')}`,
+      `PARTICIPANT 2 ACCOUNT:\n${p2Messages.map(m => `${m.role}: ${m.content}`).join('\n')}`,
+    ].join('\n\n---\n\n');
+
+    const reply = await this.anthropic.respond(
+      REPORT_PROMPT + '\n\n' + systemPrompt,
+      [{ role: 'user', content: combinedTranscript }],
+    );
+
+    const crossRef = reply.match(/--- CROSS REFERENCE ---([\s\S]*?)(?=--- PARTICIPANT 1 ---|$)/)?.[1]?.trim() ?? reply;
+    const p1 = reply.match(/--- PARTICIPANT 1 ---([\s\S]*?)(?=--- PARTICIPANT 2 ---|$)/)?.[1]?.trim() ?? '';
+    const p2 = reply.match(/--- PARTICIPANT 2 ---([\s\S]*?)$/)?.[1]?.trim() ?? '';
+
+    return { crossReference: crossRef, p1Report: p1, p2Report: p2 };
+  }
+
+  async feedbackSummary() {
+    const feedback = await this.prisma.outcomeFeedback.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+      select: {
+        id: true,
+        feltFair: true,
+        note: true,
+        createdAt: true,
+        ground: { select: { label: true, organization: { select: { slug: true } } } },
+      },
+    });
+
+    const total = feedback.length;
+    const fairCount = feedback.filter(f => f.feltFair).length;
+
+    return {
+      total,
+      fairRate: total > 0 ? Math.round((fairCount / total) * 100) : null,
+      recent: feedback.map(f => ({
+        id: f.id,
+        feltFair: f.feltFair,
+        note: f.note,
+        groundLabel: f.ground.label,
+        orgSlug: f.ground.organization.slug,
+        createdAt: f.createdAt,
+      })),
+    };
   }
 }

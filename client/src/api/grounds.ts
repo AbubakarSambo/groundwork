@@ -15,12 +15,13 @@ export interface CreateGroundBody {
   moment: GroundMoment
   timelineDays?: number
   cadence?: GroundCadence
+  resolutionState?: string
+  brief?: string
 }
 
 export interface AddParticipantBody {
   email: string
   roleAsDescribed?: string
-  inviteToken?: string
   note?: string
 }
 
@@ -43,12 +44,12 @@ export const groundsApi = {
   resendParticipantInvite: (groundId: string, participantId: string) =>
     apiClient.post(`/grounds/${groundId}/participants/${participantId}/resend-invite`).then(r => r.data),
 
-  getParticipantInviteUrl: (groundId: string, participantId: string) =>
-    apiClient.get<{ inviteUrl: string }>(`/grounds/${groundId}/participants/${participantId}/invite-url`).then(r => r.data),
-
   getMediatorBrief: (groundId: string) =>
     apiClient.get(`/grounds/${groundId}/mediator-brief`).then(r => r.data),
 
-  update: (groundId: string, body: { timelineWeeks?: number; cadence?: GroundCadence; contextNote?: string }) =>
+  update: (groundId: string, body: { label?: string; timelineWeeks?: number; cadence?: GroundCadence; contextNote?: string }) =>
     apiClient.patch<Ground>(`/grounds/${groundId}`, body).then(r => r.data),
+
+  getMySpecificity: (groundId: string) =>
+    apiClient.get<{ scores: number[]; label: string }>(`/grounds/${groundId}/my-specificity`).then(r => r.data),
 }

@@ -13,15 +13,14 @@ export class AddParticipantDto {
   @MaxLength(300)
   roleAsDescribed?: string;
 
-  @ApiPropertyOptional({ description: 'Pre-generated invite token from the entry flow. If provided, used as the invite token instead of a freshly generated one.' })
-  @IsOptional()
-  @IsString()
-  @MaxLength(128)
-  inviteToken?: string;
-
-  @ApiPropertyOptional({ description: 'A personal note from the initiator included in the invite email.' })
+  @ApiPropertyOptional({ example: 'Looking forward to aligning on the roadmap with you.', description: 'Optional personal note included in the invite email' })
   @IsOptional()
   @IsString()
   @MaxLength(500)
   note?: string;
+
+  @ApiPropertyOptional({ description: 'Pre-generated invite token from the anonymous entry flow. If absent, a new token is generated.' })
+  @IsOptional()
+  @IsString()
+  inviteToken?: string;
 }

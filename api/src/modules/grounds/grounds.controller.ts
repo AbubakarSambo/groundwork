@@ -8,6 +8,10 @@ import { CurrentUser, CurrentUserData, Roles, Role } from '../../common';
 import { Cadence } from '@prisma/client';
 
 class UpdateTimelineDto {
+  @ApiPropertyOptional({ description: 'Rename the ground' })
+  @IsOptional()
+  label?: string;
+
   @ApiPropertyOptional({ example: 12, description: 'Timeline length in weeks' })
   @IsOptional()
   @IsInt()
@@ -85,6 +89,12 @@ export class GroundsController {
   @ApiOperation({ summary: 'Get a structural brief for use with a facilitator (initiator only)' })
   async mediatorBrief(@Param('id') id: string, @CurrentUser('id') userId: string) {
     return this.grounds.getMediatorBrief(id, userId);
+  }
+
+  @Get(':id/my-specificity')
+  @ApiOperation({ summary: "Return the requesting user's own specificity history for this ground (private, owner only)" })
+  async mySpecificity(@Param('id') id: string, @CurrentUser('id') userId: string) {
+    return this.grounds.getMySpecificity(id, userId);
   }
 
   @Patch(':id')

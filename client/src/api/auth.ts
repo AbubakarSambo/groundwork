@@ -6,18 +6,15 @@ export interface VerifyEmailResponse { accessToken: string; user: User }
 export interface ValidateTokenResponse { valid: boolean; email?: string; firstName?: string }
 
 export interface MagicLinkBody {
-  organizationName: string
-  firstName: string
-  lastName: string
   email: string
+  organizationName?: string
+  firstName?: string
+  lastName?: string
 }
 
 export const authApi = {
   requestMagicLink: (body: MagicLinkBody) =>
     apiClient.post<MagicLinkResponse>('/auth/register-magic-link', body).then(r => r.data),
-
-  entrySave: (email: string) =>
-    apiClient.post<MagicLinkResponse>('/auth/entry-save', { email }).then(r => r.data),
 
   memberSignin: (email: string) =>
     apiClient.post<MagicLinkResponse>('/auth/member-signin', { email }).then(r => r.data),
@@ -33,6 +30,17 @@ export const authApi = {
 
   me: () =>
     apiClient.get<User>('/auth/me').then(r => r.data),
+
+  updateProfile: (body: {
+    firstName?: string; lastName?: string; jobTitle?: string;
+    orgName?: string; orgSlug?: string; companyStage?: string;
+  }) => apiClient.patch<User>('/auth/me', body).then(r => r.data),
+
+  inviteUser: (body: { firstName: string; lastName: string; email: string }) =>
+    apiClient.post<User>('/users', body).then(r => r.data),
+
+  entrySave: (email: string) =>
+    apiClient.post<MagicLinkResponse>('/auth/entry-save', { email }).then(r => r.data),
 
   requestPasswordSetup: () =>
     apiClient.post<{ token: string }>('/auth/request-password-setup').then(r => r.data),
