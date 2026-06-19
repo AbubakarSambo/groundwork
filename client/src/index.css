@@ -502,8 +502,72 @@ body {
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ── APP SHELL SIDEBAR ───────────────────────────────────── */
-.gw-sidebar { flex-shrink: 0; }
-@media (max-width: 640px) { .gw-sidebar { display: none !important; } }
+.gw-sidebar {
+  position: fixed;
+  left: 0; top: 0; bottom: 0;
+  z-index: 50;
+  width: 248px;
+  transition: transform 0.22s cubic-bezier(.4,0,.2,1);
+}
+body.gw-sb-collapsed .gw-sidebar { transform: translateX(-248px); }
+
+.gw-main {
+  margin-left: 248px;
+  height: 100vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  transition: margin-left 0.22s cubic-bezier(.4,0,.2,1);
+}
+body.gw-sb-collapsed .gw-main { margin-left: 0; }
+
+@media (max-width: 640px) {
+  .gw-sidebar { display: none !important; transform: none !important; }
+  .gw-main { margin-left: 0 !important; }
+}
+
+.gw-sb-collapse {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--gw-muted);
+  padding: 4px 6px;
+  border-radius: 4px;
+  line-height: 1;
+  font-family: inherit;
+  transition: color 0.1s, background 0.1s;
+}
+.gw-sb-collapse:hover { color: var(--gw-navy); background: var(--gw-bg); }
+
+.gw-sb-reopen {
+  position: fixed;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 60;
+  background: white;
+  border: 0.5px solid var(--gw-border);
+  border-left: none;
+  border-radius: 0 6px 6px 0;
+  width: 22px;
+  height: 44px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--gw-sub);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  font-family: inherit;
+  box-shadow: 2px 0 6px rgba(0,0,0,.06);
+  opacity: 0;
+  pointer-events: none;
+  transition: color 0.1s, background 0.1s, opacity 0.22s;
+}
+body.gw-sb-collapsed .gw-sb-reopen { opacity: 1; pointer-events: auto; }
+.gw-sb-reopen:hover { color: var(--gw-navy); background: var(--gw-bg); }
+@media (max-width: 640px) { .gw-sb-reopen { display: none; } }
 
 /* ── HOMEPAGE MODE PILLS (mobile) ───────────────────────── */
 .gw-mode-pills { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }

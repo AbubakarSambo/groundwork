@@ -59,7 +59,7 @@ export function BillingPage() {
               <div style={{ background: 'var(--gw-amber-bg)', border: '0.5px solid var(--gw-amber-b)', borderRadius: 10, padding: 14, marginBottom: 16 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 6 }}>Activate billing</div>
                 <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 12 }}>
-                  Sessions 1–2 are free. Activate to release the session 2 report and unlock further sessions. Pricing: $25/month platform fee plus $25/month per active participant.
+                  Sessions 1–2 are free. Activate to unlock session 3 and beyond — the session 3 report releases once billing is active. Pricing: $25/month platform fee plus $25/month per active participant.
                 </div>
                 <button onClick={() => checkout.mutate()} disabled={checkout.isPending}
                   style={{ padding: '10px 18px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>

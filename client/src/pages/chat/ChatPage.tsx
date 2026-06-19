@@ -220,7 +220,7 @@ export function ChatPage() {
               title="Upload a document"
               style={{ padding: '0 10px', borderRadius: 6, background: 'var(--gw-bg)', color: 'var(--gw-sub)', border: '0.5px solid var(--gw-border)', cursor: groundId ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, flexShrink: 0, whiteSpace: 'nowrap', height: 38, opacity: groundId ? 1 : 0.4 }}
             >
-              + <span style={{ fontSize: 11 }}>Doc</span>
+              📎 Upload doc
             </label>
             <input type="file" id="doc-upload" accept=".pdf,.doc,.docx,.txt,.csv,.xlsx,.png,.jpg,.jpeg" style={{ display: 'none' }}
               onChange={e => { const f = e.target.files?.[0]; if (f && groundId) uploadDoc.mutate(f); e.currentTarget.value = '' }} />

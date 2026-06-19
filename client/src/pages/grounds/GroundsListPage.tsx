@@ -67,7 +67,7 @@ export function GroundsListPage() {
           {isAdmin ? 'Grounds' : 'My grounds'}
         </div>
         <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-navy)', background: 'var(--gw-blue-bg)', border: '0.5px solid var(--gw-blue-b)', borderRadius: 20, padding: '3px 10px' }}>
-          {isAdmin ? 'Admin' : 'Member'}
+          {isAdmin ? 'Admin' : 'Contributor'}
         </span>
       </div>
 

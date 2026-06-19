@@ -32,12 +32,8 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
     .gw-demo-btn:hover { border-color:#B5D4F4;background:#EEF4FB;transform:translateY(-1px); }
     .gw-footer-btn { font-size:12px;color:rgba(255,255,255,.38);background:none;border:none;cursor:pointer;font-family:inherit;text-decoration:none; }
     .gw-footer-btn:hover { color:rgba(255,255,255,.65); }
-    .gw-mpill { font-size:12px;font-weight:600;color:rgba(255,255,255,.5);background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);cursor:pointer;padding:7px 13px;border-radius:20px;font-family:inherit;transition:all .12s;white-space:nowrap; }
-    .gw-mpill:hover { color:rgba(255,255,255,.8);background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.2); }
-    .gw-mpill.active { color:#fff;background:#0C447C;border-color:#0C447C; }
-    #gw-entry-ta::placeholder { color:rgba(255,255,255,.28); }
-    #gw-entry-ta:focus { border-color:rgba(255,255,255,.35);background:rgba(255,255,255,.11); }
-    #gw-entry-send:hover { background:#1557A0; }
+    .gw-chip { font-size:12px;font-weight:600;color:rgba(255,255,255,.65);background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.13);cursor:pointer;padding:6px 13px;border-radius:20px;font-family:inherit;transition:all .12s;white-space:nowrap;text-decoration:none;display:inline-block; }
+    .gw-chip:hover { color:#fff;background:rgba(255,255,255,.13);border-color:rgba(255,255,255,.24); }
     @media(max-width:900px){
       .gw-hero-inner  { grid-template-columns:1fr !important; }
       .gw-prob-grid   { grid-template-columns:1fr 1fr !important; }
@@ -99,13 +95,14 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
       </a>
       <div class="gw-nav-links" style="display:flex;align-items:center;gap:2px;">
         <a class="gw-nav-link" href="#home"   onclick="gwScroll('home');return false;">Home</a>
-        <a class="gw-nav-link" href="#how"    onclick="gwScroll('how');return false;">How it works</a>
-        <a class="gw-nav-link" href="#pricing" onclick="gwScroll('pricing');return false;">Pricing</a>
+        <a class="gw-nav-link" href="#how"      onclick="gwScroll('how');return false;">How it works</a>
+        <a class="gw-nav-link" href="#usecases" onclick="gwScroll('usecases');return false;">Use cases</a>
+        <a class="gw-nav-link" href="#pricing"  onclick="gwScroll('pricing');return false;">Pricing</a>
         <a class="gw-nav-link" href="#about"  onclick="gwScroll('about');return false;">About</a>
       </div>
       <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
         <a class="gw-btn-ghost" href={`${APP_URL}/auth?mode=signin`}>Sign in</a>
-        <a class="gw-btn-solid" href={`${APP_URL}/auth`}>Get started free</a>
+        <a class="gw-btn-solid" href={`${APP_URL}/auth`}>Get started</a>
       </div>
     </nav>
 
@@ -123,37 +120,30 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
       </svg>
       <div class="gw-hero-inner" style="position:relative;padding:56px 20px 52px;max-width:1080px;margin:0 auto;display:grid;grid-template-columns:1fr 380px;gap:44px;align-items:start;">
         <div>
-          <div style="font-size:10px;font-weight:600;color:rgba(147,197,253,.65);text-transform:uppercase;letter-spacing:.14em;margin-bottom:20px;">Contribution intelligence</div>
+          <div style="font-size:10px;font-weight:600;color:rgba(147,197,253,.65);text-transform:uppercase;letter-spacing:.14em;margin-bottom:20px;">Alignment intelligence</div>
           <h1 class="gw-hero-h1" id="gw-hero-h1" style="font-size:44px;font-weight:800;line-height:1.08;letter-spacing:-.04em;color:#FFFFFF;margin:0 0 22px;min-height:160px;">
             <span id="gw-tw"></span><span class="gw-cursor" id="gw-cursor">|</span>
           </h1>
-          <p style="font-size:15px;color:rgba(255,255,255,.52);line-height:1.75;margin:0 0 16px;max-width:440px;">A shared record of contribution. Built from both sides. Cross referenced over time.</p>
-          <div id="gw-para-wrap" style="margin-bottom:32px;min-height:100px;max-width:480px;">
-            <p id="gw-para" style="font-size:15px;color:rgba(255,255,255,.58);line-height:1.78;margin:0;transition:opacity .55s ease;opacity:0;"></p>
+          <div id="gw-para-wrap" style="margin-bottom:28px;min-height:32px;max-width:480px;">
+            <p id="gw-para" style="font-size:17px;font-weight:600;color:rgba(255,255,255,.72);line-height:1.45;margin:0;letter-spacing:-.01em;transition:opacity .55s ease;opacity:0;"></p>
           </div>
-          <!-- ENTRY BOX -->
-          <div style="margin-bottom:24px;">
-            <div id="gw-mpills" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:11px;">
-              <button class="gw-mpill active" data-mode="something_new" data-ph="Who is involved and what are you trying to get right from the start?">Something new</button>
-              <button class="gw-mpill" data-mode="look_back" data-ph="What happened, with whom, and what needs to be on record?">Look back</button>
-              <button class="gw-mpill" data-mode="look_forward" data-ph="What needs to be agreed before the work begins?">Look forward</button>
-              <button class="gw-mpill" data-mode="both" data-ph="What happened and what needs to happen next?">Both</button>
+          <!-- SCENARIO CHIPS -->
+          <div style="margin-bottom:28px;">
+            <div style="font-size:10px;font-weight:600;color:rgba(255,255,255,.28);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px;">What are you starting?</div>
+            <div style="display:flex;gap:7px;flex-wrap:wrap;">
+              <a class="gw-chip" href={`${APP_URL}/entry-chat?mode=something_new&q=New+hire`}>New hire</a>
+              <a class="gw-chip" href={`${APP_URL}/entry-chat?mode=something_new&q=New+project`}>New project</a>
+              <a class="gw-chip" href={`${APP_URL}/entry-chat?mode=something_new&q=New+board+member`}>New board member</a>
+              <a class="gw-chip" href={`${APP_URL}/entry-chat?mode=something_new&q=New+partner`}>New partner</a>
+              <a class="gw-chip" href={`${APP_URL}/entry-chat?mode=something_new&q=Contract+renewal`}>Contract renewal</a>
+              <a class="gw-chip" href={`${APP_URL}/entry-chat?mode=something_new&q=New+direction`}>New direction</a>
+              <a class="gw-chip" href={`${APP_URL}/entry-chat?mode=something_new&q=Other`}>Other</a>
             </div>
-            <div style="display:flex;gap:8px;align-items:flex-end;">
-              <textarea id="gw-entry-ta" rows="2"
-                placeholder="Who is involved and what are you trying to get right from the start?"
-                style="flex:1;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);border-radius:8px;padding:10px 12px;font-size:14px;color:rgba(255,255,255,.88);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;resize:none;outline:none;line-height:1.55;overflow:hidden;transition:border-color .15s,background .15s;"
-              ></textarea>
-              <button id="gw-entry-send"
-                style="width:42px;height:44px;border-radius:8px;background:#0C447C;color:#fff;border:none;cursor:pointer;font-size:18px;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:background .15s;"
-              >&#8593;</button>
-            </div>
-            <div id="gw-entry-faq" style="display:none;margin-top:10px;padding:12px 14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;font-size:13px;color:rgba(255,255,255,.72);line-height:1.65;"></div>
           </div>
 
           <div class="gw-hero-btns" style="display:flex;gap:10px;flex-wrap:wrap;">
-            <a class="gw-hero-btn-p" href={`${APP_URL}/`}>Get started free →</a>
-            <a class="gw-hero-btn-g" href={`${APP_URL}/auth?mode=signin`}>Open my check-in →</a>
+            <a class="gw-hero-btn-p" href={`${APP_URL}/`}>Start a Ground →</a>
+            <a class="gw-hero-btn-g" href={`${APP_URL}/enter`}>Check in →</a>
           </div>
           <div style="margin-top:14px;">
             <span style="font-size:11px;color:rgba(255,255,255,.28);">Not sure what this is?</span>
@@ -196,6 +186,16 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
           <div class="gw-prob-card"><div style="font-size:13px;font-weight:700;color:#1A1916;margin-bottom:4px;">Who is blocked</div><div style="font-size:12px;color:#6B6560;line-height:1.55;">Progress limited by things nobody named in time</div></div>
           <div class="gw-prob-card"><div style="font-size:13px;font-weight:700;color:#1A1916;margin-bottom:4px;">Whether it matches</div><div style="font-size:12px;color:#6B6560;line-height:1.55;">Contribution that does not match what people perceive</div></div>
         </div>
+      </div>
+    </section>
+
+    <!-- WHAT GROUNDWORK IS -->
+    <section style="background:#F5F3EF;border-bottom:1px solid #E2E0DB;">
+      <div class="gw-wrap" style="max-width:680px;margin:0 auto;padding:64px 20px;text-align:center;">
+        <p style="font-size:10px;font-weight:600;color:#0C447C;text-transform:uppercase;letter-spacing:.14em;margin-bottom:18px;opacity:.65;">What Groundwork is</p>
+        <h2 class="gw-sec-h2" style="font-size:36px;font-weight:800;color:#1A1916;letter-spacing:-.03em;line-height:1.15;margin-bottom:16px;">A structured way to build shared understanding.</h2>
+        <p style="font-size:15px;color:#6B6560;line-height:1.75;margin:0 auto 16px;max-width:560px;">Groundwork builds shared understanding around goals, expectations, challenges, opportunities, and next steps. What makes it different is how it gets there.</p>
+        <p style="font-size:15px;color:#6B6560;line-height:1.75;margin:0 auto;max-width:560px;">Each person answers on their own, privately, without seeing anyone else's account. Groundwork then cross references every account and shows where they line up and where they quietly diverge. It is a neutral companion for alignment. It never takes a side, and nobody has to take anyone's word for it.</p>
       </div>
     </section>
 
@@ -285,6 +285,35 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
             <div class="gw-trust-item"><span style="width:6px;height:6px;border-radius:50%;background:#0C447C;flex-shrink:0;margin-top:5px;"></span><div><strong style="font-size:13px;font-weight:700;color:#1A1916;display:block;margin-bottom:2px;">The record survives the relationship</strong><p style="font-size:12px;color:#6B6560;line-height:1.55;margin:0;">Belongs to both parties permanently. Even after the org ends.</p></div></div>
           </div>
         </div>
+      </div>
+    </section>
+
+    <!-- PEOPLE TEAMS -->
+    <section id="usecases" style="background:#F5F3EF;border-bottom:1px solid #E2E0DB;">
+      <div class="gw-wrap" style="max-width:740px;margin:0 auto;padding:64px 20px;text-align:center;">
+        <p style="font-size:10px;font-weight:600;color:#0C447C;text-transform:uppercase;letter-spacing:.14em;margin-bottom:18px;opacity:.65;">For anyone starting something with others</p>
+        <h2 class="gw-sec-h2" style="font-size:36px;font-weight:800;color:#1A1916;letter-spacing:-.03em;line-height:1.15;margin-bottom:16px;">Not a performance review.<br>A contribution record.</h2>
+        <p style="font-size:15px;color:#6B6560;line-height:1.75;margin:0 auto 40px;max-width:520px;">Founders, managers, people teams, and partners use Groundwork to build a contribution record from the start, not the night before a hard conversation. Everyone checks in independently. The report shows each version at the same time.</p>
+        <div class="gw-price-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:700px;margin:0 auto 32px;text-align:left;">
+          <div style="background:white;border:1px solid #E2E0DB;border-radius:8px;padding:18px 16px;border-top:3px solid #0C447C;">
+            <div style="font-size:13px;font-weight:700;color:#1A1916;margin-bottom:6px;">New hire and probation</div>
+            <div style="font-size:12px;color:#6B6560;line-height:1.6;">Both sides agree what success looks like in the first 90 days. The record exists before the review conversation happens.</div>
+          </div>
+          <div style="background:white;border:1px solid #E2E0DB;border-radius:8px;padding:18px 16px;border-top:3px solid #5DCAA5;">
+            <div style="font-size:13px;font-weight:700;color:#1A1916;margin-bottom:6px;">Promotion and recognition</div>
+            <div style="font-size:12px;color:#6B6560;line-height:1.6;">The person builds their record over time. The manager builds theirs. The recommendation is based on a shared record, not a self-assessment.</div>
+          </div>
+          <div style="background:white;border:1px solid #E2E0DB;border-radius:8px;padding:18px 16px;border-top:3px solid #E8A94A;">
+            <div style="font-size:13px;font-weight:700;color:#1A1916;margin-bottom:6px;">Staff-initiated grounds</div>
+            <div style="font-size:12px;color:#6B6560;line-height:1.6;">A person who wants their contribution on record can open a ground and invite their manager. They do not have to wait for the organisation to start.</div>
+          </div>
+          <div style="background:white;border:1px solid #E2E0DB;border-radius:8px;padding:18px 16px;border-top:3px solid #0C447C;">
+            <div style="font-size:13px;font-weight:700;color:#1A1916;margin-bottom:6px;">Team restructure or pivot</div>
+            <div style="font-size:12px;color:#6B6560;line-height:1.6;">Each person checks in independently before an announcement. No one performs for the group. The alignment feed shows the real picture before it becomes public.</div>
+          </div>
+        </div>
+        <p style="font-size:12px;color:#9B9590;margin-bottom:20px;">Never a performance review. Never surveillance. The record belongs to the person who built it.</p>
+        <a class="gw-btn-solid" style="padding:12px 22px;font-size:14px;" href={`${APP_URL}/`}>Start a Ground</a>
       </div>
     </section>
 
@@ -463,13 +492,12 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
   </div>
 
   <script>
-    const TYPEWRITER_TEXT = "Most people decisions\nare made with\nincomplete evidence."
+    const TYPEWRITER_TEXT = "Build alignment\nbefore you build\nanything else."
     const PARAS = [
-      'People work differently. Different styles, different schedules, different constraints. One person works intensely for an hour. Another works steadily for a week. Both produce the same result.',
-      'Some people use AI well and achieve more with less visible effort. Some are balancing responsibilities nobody else can see. Remote work makes all of this harder to read. Bias makes it harder still.',
-      'The problem is that people judge each other by how they work rather than what they deliver.',
-      'Groundwork is not about how you work. It is about whether you are meeting what you agreed to.',
-      'It is most useful when the risk of misalignment is highest: when something is new and expectations are at risk of becoming unclear; when emotions have entered the picture and people cannot evaluate each other\'s work without bias; or when demands are being made and people need to feel that the process is fair.',
+      "Clarity before commitment.",
+      "Turn assumptions into agreements.",
+      "Build alignment before complexity.",
+      "Better decisions start with better ground.",
     ]
     const FEED_ITEMS = [
       { t:'check-in',   c:'#5DCAA5', h:'Kwame completed session 3',    s:'Cofounder ground · technical record building' },
@@ -501,7 +529,7 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
       function tick() {
         if (i >= chars.length) {
           cursor.style.display = 'none'
-          el.innerHTML = 'Most people decisions<br>are made with<br><em style="color:#93C5FD;font-style:normal;">incomplete evidence.</em>'
+          el.innerHTML = 'Build alignment<br>before you build<br><em style="color:#93C5FD;font-style:normal;">anything else.</em>'
           return
         }
         const ch = chars[i++]
@@ -575,48 +603,6 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
       }, 3800)
     })()
 
-    // Entry mode selector + input
-    ;(function() {
-      const APP = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work'
-      const pills = document.querySelectorAll('.gw-mpill')
-      const ta = document.getElementById('gw-entry-ta')
-      const btn = document.getElementById('gw-entry-send')
-      const faqEl = document.getElementById('gw-entry-faq')
-      if (!ta || !btn) return
-
-      let mode = 'something_new'
-
-      pills.forEach(function(p) {
-        p.addEventListener('click', function() {
-          pills.forEach(function(pp) { pp.classList.remove('active') })
-          p.classList.add('active')
-          mode = p.dataset.mode
-          ta.placeholder = p.dataset.ph
-          faqEl.style.display = 'none'
-          ta.focus()
-        })
-      })
-
-      ta.addEventListener('input', function() {
-        this.style.height = 'auto'
-        this.style.height = Math.min(this.scrollHeight, 180) + 'px'
-      })
-
-      function submit() {
-        const text = ta.value.trim()
-        if (!text) return
-        if (text.endsWith('?')) {
-          window.location.href = APP + '/?faq=' + encodeURIComponent(text) + '&mode=' + mode
-        } else {
-          window.location.href = APP + '/entry-chat?mode=' + mode + '&q=' + encodeURIComponent(text)
-        }
-      }
-
-      btn.addEventListener('click', submit)
-      ta.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit() }
-      })
-    })()
 
     // Feedback widget
     ;(function() {

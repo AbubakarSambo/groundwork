@@ -112,7 +112,7 @@ export function AuthPage() {
               </span>
             </div>
             <div style={{ fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 10 }}>
-              Team member?{' '}
+              Contributor?{' '}
               <span style={{ color: 'var(--gw-navy)', textDecoration: 'underline', cursor: 'pointer' }} onClick={() => navigate('/enter')}>
                 Enter your org code
               </span>
@@ -121,7 +121,7 @@ export function AuthPage() {
         ) : isMember ? (
           <>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--gw-green-bg)', border: '0.5px solid var(--gw-green-b)', borderRadius: 20, padding: '4px 12px', fontSize: 11, fontWeight: 600, color: 'var(--gw-green-t)', marginBottom: 20, letterSpacing: '.02em' }}>
-              Team member
+              Contributor
             </div>
 
             <div className="gw-ttl">Open my check-in</div>
@@ -225,7 +225,7 @@ export function AuthPage() {
             </div>
 
             <div style={{ fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 12 }}>
-              Team member?{' '}
+              Contributor?{' '}
               <span style={{ color: 'var(--gw-navy)', textDecoration: 'underline', cursor: 'pointer' }} onClick={() => navigate('/enter')}>
                 Enter your org code instead
               </span>

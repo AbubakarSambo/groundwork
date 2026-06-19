@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/auth'
@@ -31,9 +32,6 @@ const STATUS_WORD: Record<string, string> = {
   CLOSED: 'closed',
 }
 
-// Notification indicator derived from the existing reminder logic fields:
-// overdue (NOT_STARTED past 3-day nudge threshold), REPORT_READY status,
-// and participant submission (non-initiator COMPLETED check-in).
 function groundNotif(g: Ground): 'report-ready' | 'overdue' | 'submitted' | null {
   if (g.status === 'REPORT_READY') return 'report-ready'
   if ((g.overdue ?? 0) > 0) return 'overdue'
@@ -58,6 +56,12 @@ export function AppShell({ children }: AppShellProps) {
   const user = useAuthStore(s => s.user)
   const isAdmin = user?.role === 'ADMIN'
   const isPlatformAdmin = user?.isPlatformAdmin
+  const [collapsed, setCollapsed] = useState(false)
+
+  useEffect(() => {
+    document.body.classList.toggle('gw-sb-collapsed', collapsed)
+    return () => document.body.classList.remove('gw-sb-collapsed')
+  }, [collapsed])
 
   const { data: grounds = [] } = useQuery<Ground[]>({
     queryKey: ['grounds'],
@@ -66,7 +70,6 @@ export function AppShell({ children }: AppShellProps) {
 
   const path = location.pathname
 
-  // Suppress mobile tab bar on screens that have their own tab-level nav
   const suppressMobileTabs =
     /^\/grounds\/[^/]+$/.test(path) || /^\/(chat|checkin)\//.test(path)
 
@@ -74,37 +77,32 @@ export function AppShell({ children }: AppShellProps) {
     ? `${user.firstName?.[0] ?? ''}${user.lastName?.[0] ?? ''}`.toUpperCase() || '?'
     : '?'
 
+  const roleLabel = isAdmin ? 'Admin' : 'Contributor'
+
   const parties = (g: Ground) => {
     const emails = g.participants
       .filter(p => p.partyType !== 'INITIATOR')
       .map(p => p.email.split('@')[0])
     if (emails.length === 0) {
-      // fall back to all participants if no non-initiator yet
       return g.participants.map(p => p.email.split('@')[0]).slice(0, 2).join(' + ')
     }
     return emails.slice(0, 2).join(' + ')
   }
 
   return (
-    // height: 100vh + overflow: hidden keeps the sidebar from scrolling with content.
-    // Each column manages its own overflow.
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--gw-bg)' }}>
+    <div style={{ height: '100vh', background: 'var(--gw-bg)' }}>
 
-      {/* Sidebar — never hides on desktop, fixed height = viewport */}
+      {/* Sidebar — fixed, slides off-screen when collapsed */}
       <div
         className="gw-sidebar"
         style={{
-          width: 220,
-          minWidth: 220,
-          height: '100%',
           background: 'white',
           borderRight: '0.5px solid var(--gw-border)',
           display: 'flex',
           flexDirection: 'column',
-          flexShrink: 0,
         }}
       >
-        {/* Logo */}
+        {/* Logo + collapse toggle */}
         <div style={{ padding: '16px 14px 12px', borderBottom: '0.5px solid var(--gw-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
           <button
             onClick={() => navigate('/grounds')}
@@ -113,6 +111,7 @@ export function AppShell({ children }: AppShellProps) {
             <GroundworkMark size={18} />
             <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-navy)', letterSpacing: '-.02em' }}>Groundwork</span>
           </button>
+          <button className="gw-sb-collapse" onClick={() => setCollapsed(true)} title="Collapse sidebar">«</button>
         </div>
 
         {/* New ground button */}
@@ -120,9 +119,10 @@ export function AppShell({ children }: AppShellProps) {
           <div style={{ padding: '10px 10px 6px', flexShrink: 0 }}>
             <button
               onClick={() => navigate('/grounds/new')}
-              style={{ width: '100%', padding: '7px 12px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'center' }}
+              style={{ width: '100%', padding: '7px 12px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
             >
-              + New ground
+              <span>New ground</span>
+              <span>+</span>
             </button>
           </div>
         )}
@@ -179,45 +179,43 @@ export function AppShell({ children }: AppShellProps) {
             )
           })}
 
-          {/* Secondary nav */}
-          <div style={{ marginTop: 8, paddingTop: 8, borderTop: '0.5px solid var(--gw-border)' }}>
-            {[
-              { label: 'Billing', href: '/billing' },
-              { label: 'Profile', href: '/profile' },
-              ...(isPlatformAdmin ? [{ label: 'Platform', href: '/admin' }, { label: 'Prompts', href: '/prompts' }] : []),
-            ].map(item => {
-              const itemActive = path.startsWith(item.href)
-              return (
-                <button
-                  key={item.href}
-                  onClick={() => navigate(item.href)}
-                  style={{
-                    display: 'block',
-                    width: '100%',
-                    padding: '7px 10px',
-                    borderRadius: 6,
-                    background: itemActive ? 'var(--gw-blue-bg)' : 'transparent',
-                    color: itemActive ? 'var(--gw-navy)' : 'var(--gw-sub)',
-                    fontSize: 12,
-                    fontWeight: itemActive ? 600 : 400,
-                    border: 'none',
-                    cursor: 'pointer',
-                    fontFamily: 'inherit',
-                    textAlign: 'left',
-                    transition: 'all 0.12s',
-                  }}
-                >
-                  {item.label}
-                </button>
-              )
-            })}
-          </div>
+          {/* Platform admin tools */}
+          {isPlatformAdmin && (
+            <div style={{ marginTop: 8, paddingTop: 8, borderTop: '0.5px solid var(--gw-border)' }}>
+              {[{ label: 'Platform', href: '/admin' }, { label: 'Prompts', href: '/prompts' }].map(item => {
+                const itemActive = path.startsWith(item.href)
+                return (
+                  <button
+                    key={item.href}
+                    onClick={() => navigate(item.href)}
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      padding: '7px 10px',
+                      borderRadius: 6,
+                      background: itemActive ? 'var(--gw-blue-bg)' : 'transparent',
+                      color: itemActive ? 'var(--gw-navy)' : 'var(--gw-sub)',
+                      fontSize: 12,
+                      fontWeight: itemActive ? 600 : 400,
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontFamily: 'inherit',
+                      textAlign: 'left',
+                      transition: 'all 0.12s',
+                    }}
+                  >
+                    {item.label}
+                  </button>
+                )
+              })}
+            </div>
+          )}
         </nav>
 
-        {/* Profile footer */}
+        {/* Profile footer — links to billing */}
         <div style={{ padding: '10px 12px', borderTop: '0.5px solid var(--gw-border)', flexShrink: 0 }}>
           <button
-            onClick={() => navigate('/profile')}
+            onClick={() => navigate('/billing')}
             style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0, marginBottom: 8, textAlign: 'left' }}
           >
             <div
@@ -225,8 +223,8 @@ export function AppShell({ children }: AppShellProps) {
                 width: 28,
                 height: 28,
                 borderRadius: '50%',
-                background: 'var(--gw-blue-bg)',
-                color: 'var(--gw-navy)',
+                background: 'var(--gw-navy)',
+                color: 'white',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -237,14 +235,17 @@ export function AppShell({ children }: AppShellProps) {
             >
               {initials}
             </div>
-            <div style={{ overflow: 'hidden', minWidth: 0 }}>
+            <div style={{ overflow: 'hidden', minWidth: 0, flex: 1 }}>
               <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--gw-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {user?.firstName} {user?.lastName}
               </div>
               <div style={{ fontSize: 10, color: 'var(--gw-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {user?.email}
+                {roleLabel}
               </div>
             </div>
+            {isAdmin && (
+              <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--gw-amber-b)', flexShrink: 0 }} />
+            )}
           </button>
           <button
             onClick={() => { useAuthStore.getState().logout(); navigate('/') }}
@@ -255,8 +256,11 @@ export function AppShell({ children }: AppShellProps) {
         </div>
       </div>
 
-      {/* Right column: scrollable for normal pages; ChatPage fills 100% and self-scrolls. */}
-      <div style={{ flex: 1, minWidth: 0, height: '100%', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+      {/* Reopen button — fades in when sidebar is collapsed */}
+      <button className="gw-sb-reopen" onClick={() => setCollapsed(false)} title="Open sidebar">»</button>
+
+      {/* Main content */}
+      <div className="gw-main">
         {children}
       </div>
 
