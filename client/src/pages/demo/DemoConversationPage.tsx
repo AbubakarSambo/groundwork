@@ -44,7 +44,7 @@ export function DemoConversationPage() {
       {/* Demo banner */}
       <div style={{ background: '#EEF4FB', borderBottom: '1px solid #C5D9EF', padding: '8px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
         <div style={{ fontSize: 12, color: '#0C447C', lineHeight: 1.4 }}>
-          <strong>Demo:</strong> {demo.name}'s {isFounder ? 'alignment feed' : 'contribution chat'} — {isFounder ? 'founder view' : `${checkInCount} check-in${checkInCount !== 1 ? 's' : ''} shown`}. Add an account to continue live.
+          <strong>Demo:</strong> {demo.name}'s {isFounder ? 'alignment feed' : 'contribution chat'} — {isFounder ? `${checkInCount} check-in${checkInCount !== 1 ? 's' : ''} on record` : `${checkInCount} check-in${checkInCount !== 1 ? 's' : ''} shown`}. Add an account to continue live.
         </div>
         <a
           href={`${MARKETING_URL}#demo`}
@@ -73,13 +73,13 @@ export function DemoConversationPage() {
       {/* Frozen input bar */}
       <div style={{ borderTop: '1px solid var(--gw-border)', background: 'white', flexShrink: 0 }}>
         <div style={{ padding: '4px 14px', borderBottom: '0.5px solid var(--gw-border)', fontSize: 11, color: 'var(--gw-sub)', background: 'var(--gw-bg)', lineHeight: 1.4 }}>
-          Demo mode · {isFounder ? 'Admin view · Northgate Ventures' : `Session ${checkInCount} · Your words are private until you both activate the report.`}
+          Demo mode · {isFounder ? `Northgate Ventures · ${checkInCount} check-in${checkInCount !== 1 ? 's' : ''} on record` : `Session ${checkInCount} · Your words are private until you both activate the report.`}
         </div>
         <div style={{ padding: '10px 14px', display: 'flex', gap: 8, alignItems: 'flex-end' }}>
           <div
             style={{ flex: 1, height: 38, padding: '0 10px', fontSize: 13, border: '1px solid var(--gw-border)', borderRadius: 6, background: '#F7F6F4', display: 'flex', alignItems: 'center', color: 'var(--gw-muted)' }}
           >
-            {isFounder ? 'Ask about your team…' : 'Share what you have been working on.'}
+            {isFounder ? 'Ask about this ground…' : 'Type your response.'}
           </div>
           <a
             href={`${MARKETING_URL}#demo`}

@@ -52,4 +52,13 @@ export const groundsApi = {
 
   getMySpecificity: (groundId: string) =>
     apiClient.get<{ scores: number[]; label: string }>(`/grounds/${groundId}/my-specificity`).then(r => r.data),
+
+  getMyRecord: (groundId: string) =>
+    apiClient.get<{
+      sessions: { sessionNumber: number; completedAt: string | null; status: string }[]
+      specificity: { scores: number[]; avg: number; label: string } | null
+      confidence: { score: number; label: string; description: string } | null
+      patterns: { observation: string; sessionNumber: number | null }[] | null
+      insightsLocked: boolean
+    }>(`/grounds/${groundId}/my-record`).then(r => r.data),
 }

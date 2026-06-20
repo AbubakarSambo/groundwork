@@ -1,5 +1,7 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
-import { GroundScenario, PartyType } from '@prisma/client';
+import { GroundScenario, GroundMoment, TurnRole, CheckInStatus, PartyType } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
+import { GroundsService } from '../grounds/grounds.service';
 import { AnthropicService, ChatTurn } from '../conversation/anthropic.service';
 import {
   ENGINE_RULES,
@@ -52,7 +54,7 @@ const ENTRY_REPORT_SCHEMA = {
       },
       alignmentStatus: {
         type: 'string',
-        enum: ['Unresolved', 'Mixed', 'Emerging', 'Clear'],
+        enum: ['Unresolved', 'Mixed', 'Emerging', 'Clear', 'Aligned'],
         description: 'Where the account stands after session 1.',
       },
       alignmentBasis: {
@@ -100,7 +102,7 @@ const ENTRY_REPORT_SCHEMA = {
 
 export interface EntryReport {
   whatGroundworkSaw: string;
-  alignmentStatus: 'Unresolved' | 'Mixed' | 'Emerging' | 'Clear';
+  alignmentStatus: 'Unresolved' | 'Mixed' | 'Emerging' | 'Clear' | 'Aligned';
   alignmentBasis: string;
   areasRequiringAlignment: { title: string; observation: string; whyItMatters: string; recommendedMove: string }[];
   alignmentReached: { title: string; note: string }[];
@@ -143,7 +145,11 @@ function buildEntrySystemPrompt(scenario: GroundScenario, groundLabel: string): 
 export class EntryService {
   private readonly logger = new Logger(EntryService.name);
 
-  constructor(private anthropic: AnthropicService) {}
+  constructor(
+    private anthropic: AnthropicService,
+    private prisma: PrismaService,
+    private grounds: GroundsService,
+  ) {}
 
   opener(scenario?: string): string {
     if (scenario && SCENARIO_OPENERS[scenario]) return SCENARIO_OPENERS[scenario];
@@ -173,5 +179,103 @@ export class EntryService {
       messages,
       ENTRY_REPORT_SCHEMA,
     );
+  }
+
+  /**
+   * Commit an anonymous entry session to a real ground after account creation.
+   * Called from MagicVerifyPage once the user has a JWT. Creates the ground,
+   * marks session 1 complete with the full transcript, stores the solo report,
+   * and fires invite emails for any contributors the admin queued.
+   */
+  async commit(
+    organizationId: string,
+    initiatorId: string,
+    dto: {
+      groundLabel: string;
+      orgName?: string;
+      scenario?: string;
+      history: ChatTurn[];
+      report?: EntryReport | null;
+      contributors: { email: string; context?: string; inviteToken?: string; note?: string }[];
+    },
+  ): Promise<{ groundId: string }> {
+    const label = dto.groundLabel.trim() || 'My first ground';
+    const scenario = (dto.scenario && SCENARIO_MAP[dto.scenario]) ? SCENARIO_MAP[dto.scenario] : DEFAULT_SCENARIO;
+
+    // Update org name if the admin filled it in.
+    if (dto.orgName?.trim()) {
+      await this.prisma.organization.update({
+        where: { id: organizationId },
+        data: { name: dto.orgName.trim() },
+      });
+    }
+
+    // Create the ground. This also creates session 1 check-in (NOT_STARTED) and
+    // the initiator participant in one transaction.
+    const ground = await this.grounds.create(organizationId, initiatorId, {
+      label,
+      scenario,
+      moment: GroundMoment.STARTING,
+    });
+
+    // Find the session 1 check-in and the initiator participant just created.
+    const participant = await this.prisma.groundParticipant.findFirst({
+      where: { groundId: ground.id, userId: initiatorId },
+    });
+    if (!participant) throw new BadRequestException('Participant not found after ground creation');
+
+    const checkIn = await this.prisma.checkIn.findFirst({
+      where: { groundId: ground.id, participantId: participant.id, sessionNumber: 1 },
+    });
+    if (!checkIn) throw new BadRequestException('Session 1 check-in not found');
+
+    // Bulk-insert the conversation turns from the anonymous session.
+    if (dto.history.length > 0) {
+      await this.prisma.conversationTurn.createMany({
+        data: dto.history.map(t => ({
+          checkInId: checkIn.id,
+          role: t.role === 'user' ? TurnRole.PERSON : TurnRole.AI,
+          content: t.content,
+        })),
+      });
+    }
+
+    // Mark session 1 complete.
+    await this.prisma.checkIn.update({
+      where: { id: checkIn.id },
+      data: {
+        status: CheckInStatus.COMPLETED,
+        completedAt: new Date(),
+      },
+    });
+
+    // Store the solo report on the participant record (soloArtifact lives there, not on CheckIn).
+    if (dto.report) {
+      await this.prisma.groundParticipant.update({
+        where: { id: participant.id },
+        data: {
+          soloArtifact: JSON.stringify(dto.report),
+          soloArtifactAt: new Date(),
+        },
+      });
+    }
+
+    // Invite each contributor. addParticipant handles token generation, DB write,
+    // and the invite email in one call.
+    for (const c of dto.contributors) {
+      try {
+        await this.grounds.addParticipant(ground.id, organizationId, initiatorId, {
+          email: c.email,
+          roleAsDescribed: c.context,
+          note: c.note,
+          inviteToken: c.inviteToken,
+        });
+      } catch (err: any) {
+        // Log but don't fail the commit — the ground is already created.
+        this.logger.error(`entry commit: failed to invite ${c.email}: ${err.message}`);
+      }
+    }
+
+    return { groundId: ground.id };
   }
 }

@@ -2,48 +2,71 @@ import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
 import { authApi } from '@/api/auth'
+import { useAuthStore } from '@/stores/auth'
 
 const MARKETING_URL = import.meta.env.VITE_MARKETING_URL ?? 'https://myground.work'
+
+type View = 'password' | 'link'
 
 export function AuthPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const isMember = searchParams.get('mode') === 'member'
+  const setAuth = useAuthStore((s) => s.setAuth)
 
+  // Contributors arriving via ?mode=member go straight to the link view
+  // since they may not have set a password yet
+  const defaultView: View = searchParams.get('mode') === 'member' ? 'link' : 'password'
+
+  const [view, setView] = useState<View>(defaultView)
   const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [linkSent, setLinkSent] = useState(false)
 
-  const sendFounder = useMutation({
-    mutationFn: () => authApi.requestMagicLink({ email: email.trim() }),
-    onSuccess: () => navigate(`/auth/sent?email=${encodeURIComponent(email.trim())}`),
+  const signIn = useMutation({
+    mutationFn: () => authApi.login(email.trim().toLowerCase(), password),
+    onSuccess: (data) => {
+      setAuth(data.user, data.accessToken)
+      navigate('/home')
+    },
     onError: (err: any) => {
       const msg = err?.response?.data?.message
       if (Array.isArray(msg)) setError(msg[0])
-      else setError(msg ?? 'Could not send link. Please try again.')
+      else setError(msg ?? 'Incorrect email or password.')
     },
   })
 
-  const sendMember = useMutation({
-    mutationFn: () => authApi.memberSignin(email.trim()),
-    onSuccess: () => navigate(`/auth/sent?email=${encodeURIComponent(email.trim())}`),
-    onError: () => setError('Could not send link. Please try again.'),
+  const sendLink = useMutation({
+    mutationFn: () => authApi.memberSignin(email.trim().toLowerCase()),
+    onSuccess: () => setLinkSent(true),
+    onError: () => {
+      // memberSignin may fail if the account doesn't exist yet
+      // fall through to show a generic message
+      setLinkSent(true)
+    },
   })
 
-  function submit() {
+  function submitPassword(e: React.FormEvent) {
+    e.preventDefault()
     setError('')
-    const e = email.trim()
-    if (!e || !e.includes('@') || !e.split('@')[1]?.includes('.') || e.endsWith('.')) { setError('Enter a valid email address.'); return }
-    isMember ? sendMember.mutate() : sendFounder.mutate()
+    const e2 = email.trim()
+    if (!e2 || !e2.includes('@')) { setError('Enter a valid email address.'); return }
+    if (!password) { setError('Enter your password.'); return }
+    signIn.mutate()
   }
 
-  const isPending = sendFounder.isPending || sendMember.isPending
-  const bandColor = isMember ? '#085041' : 'var(--gw-navy)'
+  function submitLink(e: React.FormEvent) {
+    e.preventDefault()
+    setError('')
+    const e2 = email.trim()
+    if (!e2 || !e2.includes('@')) { setError('Enter a valid email address.'); return }
+    sendLink.mutate()
+  }
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
 
-      {/* Header band — navy for founder, teal for member */}
-      <div style={{ background: bandColor, padding: '20px 20px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ background: 'var(--gw-navy)', padding: '20px 20px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
           <svg width="18" height="14" viewBox="0 0 22 17" fill="none">
             <rect x="5" y="0" width="12" height="3" rx="1.5" fill="white" opacity="0.45" />
@@ -57,70 +80,111 @@ export function AuthPage() {
 
       <div className="gw-bd" style={{ maxWidth: 480, margin: '0 auto', width: '100%', paddingTop: 28 }}>
 
-        {/* Mode pill */}
-        <div style={{
-          display: 'inline-flex', alignItems: 'center', gap: 6,
-          background: isMember ? 'var(--gw-green-bg)' : 'var(--gw-blue-bg)',
-          border: `0.5px solid ${isMember ? 'var(--gw-green-b)' : 'var(--gw-blue-b)'}`,
-          borderRadius: 20, padding: '4px 12px', fontSize: 11, fontWeight: 600,
-          color: isMember ? 'var(--gw-green-t)' : 'var(--gw-navy)',
-          marginBottom: 20, letterSpacing: '.02em',
-        }}>
-          {isMember ? 'Team member' : 'Founder / Admin'}
-        </div>
+        <div className="gw-ttl">Sign in</div>
 
-        <div className="gw-ttl">{isMember ? 'Open my check-in' : 'Set up your org'}</div>
-        <div className="gw-sub-t" style={{ marginBottom: 20 }}>
-          {isMember
-            ? 'Enter your email. We will send you a link to your contribution chat.'
-            : 'Enter your email. We will send you a link to get started.'}
-        </div>
+        {view === 'password' && (
+          <>
+            <div className="gw-sub-t" style={{ marginBottom: 20 }}>
+              Enter your email and password.
+            </div>
 
-        <div className="gw-fld">
-          <label className="gw-label">Your email</label>
-          <input
-            className="gw-input"
-            type="email"
-            placeholder="you@company.com"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && submit()}
-            autoFocus
-          />
-        </div>
+            <form onSubmit={submitPassword}>
+              <div className="gw-fld">
+                <label className="gw-label">Email</label>
+                <input
+                  className="gw-input"
+                  type="email"
+                  placeholder="you@company.com"
+                  value={email}
+                  onChange={e => { setEmail(e.target.value); setError('') }}
+                  autoFocus
+                />
+              </div>
+              <div className="gw-fld">
+                <label className="gw-label">Password</label>
+                <input
+                  className="gw-input"
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={e => { setPassword(e.target.value); setError('') }}
+                />
+              </div>
 
-        <button
-          className="gw-btn"
-          style={isMember ? { background: '#085041' } : undefined}
-          onClick={submit}
-          disabled={isPending}
-        >
-          {isPending ? 'Sending…' : 'Send link'}
-        </button>
-        {error && <div className="gw-er" style={{ marginTop: 8 }}>{error}</div>}
+              <button className="gw-btn" type="submit" disabled={signIn.isPending}>
+                {signIn.isPending ? 'Signing in…' : 'Sign in'}
+              </button>
+              {error && <div className="gw-er" style={{ marginTop: 8 }}>{error}</div>}
+            </form>
 
-        {/* Mode toggle */}
-        <div style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 16, lineHeight: 1.6 }}>
-          {isMember ? (
-            <>
-              Opening a ground?{' '}
-              <span style={{ color: 'var(--gw-navy)', textDecoration: 'underline', cursor: 'pointer' }} onClick={() => navigate('/auth')}>
-                Set it up as admin
+            <div style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 14, lineHeight: 1.6 }}>
+              Forgot your password?{' '}
+              <span
+                style={{ color: 'var(--gw-navy)', textDecoration: 'underline', cursor: 'pointer' }}
+                onClick={() => { setError(''); setView('link') }}
+              >
+                Send me a sign-in link
               </span>
-            </>
-          ) : (
-            <>
-              Team member?{' '}
-              <span style={{ color: 'var(--gw-navy)', textDecoration: 'underline', cursor: 'pointer' }} onClick={() => navigate('/enter')}>
-                Enter your org code instead
-              </span>
-            </>
-          )}
-        </div>
+            </div>
+          </>
+        )}
 
-        {/* Trust line */}
-        <div style={{ fontSize: 11, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 20, paddingTop: 16, borderTop: '0.5px solid var(--gw-border)', lineHeight: 1.6 }}>
-          Your record belongs to you. We never share it without your explicit approval.
+        {view === 'link' && !linkSent && (
+          <>
+            <div className="gw-sub-t" style={{ marginBottom: 20 }}>
+              Enter your email and we will send you a sign-in link.
+            </div>
+
+            <form onSubmit={submitLink}>
+              <div className="gw-fld">
+                <label className="gw-label">Email</label>
+                <input
+                  className="gw-input"
+                  type="email"
+                  placeholder="you@company.com"
+                  value={email}
+                  onChange={e => { setEmail(e.target.value); setError('') }}
+                  autoFocus
+                />
+              </div>
+
+              <button className="gw-btn" type="submit" disabled={sendLink.isPending}>
+                {sendLink.isPending ? 'Sending…' : 'Send link'}
+              </button>
+              {error && <div className="gw-er" style={{ marginTop: 8 }}>{error}</div>}
+            </form>
+
+            <div style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 14 }}>
+              <span
+                style={{ color: 'var(--gw-navy)', textDecoration: 'underline', cursor: 'pointer' }}
+                onClick={() => { setError(''); setView('password') }}
+              >
+                Sign in with password instead
+              </span>
+            </div>
+          </>
+        )}
+
+        {view === 'link' && linkSent && (
+          <div style={{ textAlign: 'center', paddingTop: 12 }}>
+            <div style={{ fontSize: 22, marginBottom: 8 }}>✓</div>
+            <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 6 }}>Check your email</div>
+            <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+              If an account exists for <strong>{email}</strong>, a sign-in link is on its way.
+            </div>
+            <div style={{ marginTop: 16 }}>
+              <span
+                style={{ fontSize: 13, color: 'var(--gw-navy)', textDecoration: 'underline', cursor: 'pointer' }}
+                onClick={() => { setLinkSent(false); setView('password') }}
+              >
+                Back to sign in
+              </span>
+            </div>
+          </div>
+        )}
+
+        <div style={{ fontSize: 11, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 24, paddingTop: 16, borderTop: '0.5px solid var(--gw-border)', lineHeight: 1.6 }}>
+          Your contributions stay private from other contributors. Alignment, gaps, and confidence emerge from everyone's check-ins together.
         </div>
 
       </div>

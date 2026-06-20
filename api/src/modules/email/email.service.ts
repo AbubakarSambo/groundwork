@@ -101,14 +101,15 @@ export class EmailService {
     const noteHtml = note ? `<p style="border-left:3px solid #E2E0DB;padding:8px 14px;margin:20px 0;color:#4A4540;font-style:italic;">${note}</p>` : '';
     await this.sendEmail({
       to: email,
-      subject: `${founderName} wants to build this with you`,
+      subject: `${founderName} invited you to add your update on ${groundLabel}`,
       html: this.layout(
-        `<p>Strong working relationships are built on alignment that both people helped shape. Not assumed. Not hoped for. Actually built.</p>
-         <p>${founderName} has opened a shared record with you on Groundwork. They have shared their account of <strong>${groundLabel}</strong>. Now they need yours.</p>
-         <p>Here is how it works: you each give your honest view of the situation, separately. Neither of you sees what the other wrote until both accounts are in. Groundwork then cross-references them, showing where you are already aligned, where your pictures differ, and what to address before it becomes drift.</p>
-         <p>It takes about ten minutes.</p>
+        `<p>Hi,</p>
+         <p>${founderName} set up a Groundwork record, <strong>${groundLabel}</strong>, and would value your update. It is a short, independent check in where you give your own account of how things are going from where you sit, so everyone involved is working from the same picture.</p>
+         <p>You are one of the people closest to this, so your update is part of what makes the record complete and keeps everyone aligned. Nobody can speak for you here, and what you contribute becomes part of the record, cross referenced with other updates and documents as things move forward.</p>
+         <p>It takes about ten minutes, and your update goes straight into building that shared picture.</p>
          ${noteHtml}
-         <p><a href="${url}">Add your account</a></p>`,
+         <p>When you are ready: <a href="${url}">add your update</a></p>
+         <p>Thank you for contributing.</p>`,
       ),
     });
   }

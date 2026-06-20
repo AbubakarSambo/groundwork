@@ -293,7 +293,7 @@ export function LeadOnboardingChat() {
   const inputPlaceholder =
     phase === 'faq' ? 'Type your question.' :
     incorrectMode ? 'Describe what is missing or incorrect.' :
-    'Type okay or proceed.'
+    'Type your response.'
 
   const visibleMsgs = msgs.filter(m => !m.isLoading || loading)
 

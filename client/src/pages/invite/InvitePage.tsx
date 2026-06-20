@@ -366,7 +366,7 @@ export function InvitePage() {
           <div style={{ padding: '10px 16px', display: 'flex', gap: 8, alignItems: 'flex-end', maxWidth: 680, margin: '0 auto' }}>
             <textarea
               ref={taRef}
-              placeholder={sessionEnded ? 'Your session is on record.' : inOnboarding ? 'Type okay or proceed when you are ready.' : 'Share what you have been working on.'}
+              placeholder={sessionEnded ? 'Your session is on record.' : 'Type your response.'}
               value={input}
               onChange={(e) => {
                 setInput(e.target.value)
@@ -443,8 +443,8 @@ export function InvitePage() {
         {/* Cross-reference notice */}
         <div style={{ background: '#E0F5EF', border: '1px solid #5DCAA5', borderRadius: 10, padding: '12px 14px', marginBottom: 20, fontSize: 13, color: '#085041', lineHeight: 1.6 }}>
           {(preview as InvitePreviewWithGround).initiatorCheckedIn
-            ? `${preview.initiatorName} has already checked in. Your report has been cross-referenced — you will both see the shared picture now.`
-            : `Your account is private until ${preview.initiatorName} completes their session. Once both are in, you will both see the shared picture — where you agree, where you differ, and what that means.`}
+            ? `${preview.initiatorName} has already checked in. Your accounts have been cross-referenced — you will both see the shared picture now.`
+            : `Your full account stays private from ${preview.initiatorName}. Once everyone has checked in, their accounts are cross-referenced and you all see the shared picture together.`}
         </div>
 
         {generatingReport && !sessionReport && (
@@ -557,10 +557,10 @@ export function InvitePage() {
           </div>
         )}
 
-        {/* Suggest more participants */}
+        {/* Suggest more contributors */}
         {groundId && (
           <div style={{ borderTop: '1px solid #E2E0DB', paddingTop: 18 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: '#1A1916', marginBottom: 6 }}>Are there others who should be part of this ground?</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#1A1916', marginBottom: 6 }}>Are there other contributors who should be part of this ground?</div>
             <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.55, marginBottom: 14 }}>
               If someone else should have their account heard, request them here. {preview.initiatorName} will see the request and decide whether to add them.
             </div>

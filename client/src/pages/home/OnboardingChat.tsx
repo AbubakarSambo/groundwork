@@ -380,7 +380,7 @@ export function OnboardingChat() {
     phase === 'checkin' ? 'Share what you have been working on.' :
     phase === 'faq' ? 'Type your question.' :
     step === 12 ? 'Or type it in your own words.' :
-    'Type okay or proceed.'
+    'Type your response.'
 
   const visibleMsgs = msgs.filter(m => !m.isLoading || loading)
 

@@ -97,6 +97,12 @@ export class GroundsController {
     return this.grounds.getMySpecificity(id, userId);
   }
 
+  @Get(':id/my-record')
+  @ApiOperation({ summary: "Return the requesting contributor's full private longitudinal record (specificity, confidence, patterns — gated by billing)" })
+  async myRecord(@Param('id') id: string, @CurrentUser('id') userId: string) {
+    return this.grounds.getMyRecord(id, userId);
+  }
+
   @Patch(':id')
   @ApiOperation({ summary: 'Update timeline weeks and/or cadence; change is audit-logged on the ground' })
   async updateTimeline(@Param('id') id: string, @CurrentUser('id') userId: string, @Body() dto: UpdateTimelineDto) {
