@@ -21,6 +21,7 @@ import { GroundAdminPage } from '@/pages/grounds/GroundAdminPage'
 import { GroundParticipantPage } from '@/pages/grounds/GroundParticipantPage'
 import { BillingPage } from '@/pages/billing/BillingPage'
 import { PaymentPage } from '@/pages/billing/PaymentPage'
+import { BillingCallbackPage } from '@/pages/billing/BillingCallbackPage'
 import { ProfilePage } from '@/pages/profile/ProfilePage'
 import { InvitePage } from '@/pages/invite/InvitePage'
 import { PromptVersioningPage } from '@/pages/prompts/PromptVersioningPage'
@@ -96,6 +97,7 @@ export default function App() {
             <Route path="/feed" element={<RequireAuth><AlignmentFeedPage /></RequireAuth>} />
             <Route path="/billing" element={<RequireAuth><BillingPage /></RequireAuth>} />
             <Route path="/billing/checkout" element={<RequireAuth><PaymentPage /></RequireAuth>} />
+            <Route path="/billing/callback" element={<RequireAuth><BillingCallbackPage /></RequireAuth>} />
             <Route path="/profile/:id?" element={<ProfilePage />} />
             <Route path="/prompts" element={<RequireAuth><PromptVersioningPage /></RequireAuth>} />
             <Route path="/prompts/test" element={<RequireAuth><PromptTestPage /></RequireAuth>} />
