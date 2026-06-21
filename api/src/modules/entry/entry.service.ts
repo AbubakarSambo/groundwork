@@ -174,9 +174,14 @@ export class EntryService {
     const mapped = (scenario && SCENARIO_MAP[scenario]) ? SCENARIO_MAP[scenario] : DEFAULT_SCENARIO;
     const systemPrompt = buildEntrySystemPrompt(mapped, groundLabel || scenario || '');
 
+    // Anthropic requires the conversation to end with a user message
+    const trimmed = [...messages];
+    while (trimmed.length && trimmed[trimmed.length - 1].role === 'assistant') trimmed.pop();
+    if (!trimmed.length) throw new BadRequestException('no user messages in history');
+
     return this.anthropic.extract<EntryReport>(
       ENTRY_REPORT_PROMPT + '\n\n' + systemPrompt,
-      messages,
+      trimmed,
       ENTRY_REPORT_SCHEMA,
     );
   }

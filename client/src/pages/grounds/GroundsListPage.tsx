@@ -131,7 +131,7 @@ export function GroundsListPage() {
                   disabled={checkoutMut.isPending}
                   style={{ padding: '8px 16px', borderRadius: 7, background: '#0C447C', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}
                 >
-                  {checkoutMut.isPending ? 'Opening…' : 'Subscribe — £25/mo'}
+                  {checkoutMut.isPending ? 'Opening…' : 'Subscribe — $25/mo'}
                 </button>
               </div>
             )}
@@ -180,7 +180,7 @@ export function GroundsListPage() {
                   disabled={checkoutMut.isPending}
                   style={{ padding: '8px 16px', borderRadius: 7, background: '#0C447C', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}
                 >
-                  {checkoutMut.isPending ? 'Opening…' : 'Unlock — £25/mo'}
+                  {checkoutMut.isPending ? 'Opening…' : 'Unlock — $25/mo'}
                 </button>
               </div>
             )}

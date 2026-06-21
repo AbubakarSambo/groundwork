@@ -446,7 +446,7 @@ export function GroundParticipantPage() {
                   disabled={checkoutMut.isPending}
                   style={{ padding: '9px 18px', borderRadius: 7, background: 'white', color: '#0C447C', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
                 >
-                  {checkoutMut.isPending ? 'Opening…' : 'Unlock insights — £25/mo'}
+                  {checkoutMut.isPending ? 'Opening…' : 'Unlock insights — $25/mo'}
                 </button>
               </div>
             )}

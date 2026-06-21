@@ -27,6 +27,7 @@ export class StripeService {
    */
   async createCareFeeCheckout(params: { customerId: string; organizationId: string; successUrl: string; cancelUrl: string }): Promise<string> {
     const priceId = this.config.get<string>('stripe.careFeePriceId');
+    if (!priceId || priceId.startsWith('price_...')) throw new Error('STRIPE_CARE_FEE_PRICE_ID is not configured');
     const session = await this.stripe.checkout.sessions.create({
       mode: 'subscription',
       customer: params.customerId,
