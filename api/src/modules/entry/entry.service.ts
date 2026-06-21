@@ -1,5 +1,5 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
-import { GroundScenario, GroundMoment, TurnRole, CheckInStatus, PartyType } from '@prisma/client';
+import { GroundScenario, GroundMoment, TurnRole, CheckInStatus, PartyType, Cadence } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { GroundsService } from '../grounds/grounds.service';
 import { AnthropicService, ChatTurn } from '../conversation/anthropic.service';
@@ -194,6 +194,8 @@ export class EntryService {
       groundLabel: string;
       orgName?: string;
       scenario?: string;
+      cadence?: string;
+      checkInBy?: string;
       history: ChatTurn[];
       report?: EntryReport | null;
       contributors: { email: string; context?: string; inviteToken?: string; note?: string }[];
@@ -212,10 +214,16 @@ export class EntryService {
 
     // Create the ground. This also creates session 1 check-in (NOT_STARTED) and
     // the initiator participant in one transaction.
+    const cadenceMap: Record<string, Cadence> = {
+      WEEKLY: Cadence.WEEKLY,
+      FORTNIGHTLY: Cadence.FORTNIGHTLY,
+      MONTHLY: Cadence.MONTHLY,
+    };
     const ground = await this.grounds.create(organizationId, initiatorId, {
       label,
       scenario,
       moment: GroundMoment.STARTING,
+      cadence: (dto.cadence && cadenceMap[dto.cadence]) ? cadenceMap[dto.cadence] : Cadence.FORTNIGHTLY,
     });
 
     // Find the session 1 check-in and the initiator participant just created.

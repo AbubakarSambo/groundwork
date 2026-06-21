@@ -72,6 +72,7 @@ const MODE_BUTTON_DESCRIPTIONS: Record<string, string> = {
 
 const GOAL_OPTIONS = [
   'Verify readiness before we proceed',
+  'Verify that what was agreed is being delivered',
   'Get everyone aligned before we begin',
   'Make sure expectations are clear on all sides',
   'Understand what happened and move forward',
@@ -95,19 +96,19 @@ const SESSION_END_PATTERNS = [
 
 const MODE_INTROS: Record<string, { prefix: string; examples: string }> = {
   something_new: {
-    prefix: 'Good.\n\nThe strongest records are usually built before assumptions have a chance to form.',
+    prefix: 'Good.\n\nThe best time to set expectations is before anyone has had a chance to assume.',
     examples: 'A new hire\'s first 90 days.\nA new project.\nA partnership.\nA leadership transition.\nA programme launch.',
   },
   already_underway: {
-    prefix: 'Good.\n\nChecking alignment while something is in motion is what keeps it on track.',
-    examples: 'A delivery in progress.\nA team preparing for a meeting or presentation.\nA working relationship.\nA decision being made.',
+    prefix: 'Good.\n\nChecking in while something is moving is what keeps it on track.',
+    examples: 'A delivery in progress.\nA team preparing for a meeting.\nA working relationship.\nA decision being made.',
   },
   look_back: {
-    prefix: 'Good.\n\nThe purpose of this record is to understand what happened while the details are still available.',
+    prefix: 'Good.\n\nGetting this on record while the details are still fresh is the right call.',
     examples: 'A project that completed.\nA delivery.\nA decision that needs reviewing.\nA conversation that needs to be on record.',
   },
   both: {
-    prefix: 'Good.\n\nSometimes the only way forward is to first understand where things started to diverge.',
+    prefix: 'Good.\n\nSometimes you need to understand what happened before you can agree what comes next.',
     examples: 'Something that needs reviewing and a clear path forward.',
   },
 }
@@ -127,7 +128,7 @@ function buildOnboardingMessages(sels: OnboardingSelections): OnboardingMessage[
   return [
     // Step 1: situation type — card buttons with descriptions
     {
-      text: `Groundwork builds a record from what each person has experienced, observed, and agreed — cross-referenced across contributors over time.\n\nWhat kind of situation are we dealing with?`,
+      text: `Groundwork builds a picture from what everyone involved has seen, experienced, and agreed. Each person adds their own account — nobody sees what anyone else wrote.\n\nWhat kind of situation are we dealing with?`,
       buttons: ['Starting something', 'Already underway', 'Already happened', 'Both'],
       buttonDescriptions: MODE_BUTTON_DESCRIPTIONS,
     },
@@ -138,24 +139,24 @@ function buildOnboardingMessages(sels: OnboardingSelections): OnboardingMessage[
     },
     // Step 3: who is involved
     {
-      text: 'Who is involved?',
-      placeholder: 'Name who is part of this and their role.',
+      text: 'Who else is involved?',
+      placeholder: 'Name who is part of this and what their role is.',
     },
     // Step 4: why now
     {
-      text: 'What made you decide to open this record today?',
+      text: "What's making this important to get on record right now?",
       placeholder: 'What prompted this.',
     },
     // Step 5: goals
     {
-      text: 'What do you hope this record helps you understand, decide, improve, or establish?',
+      text: 'What do you need from this?',
       buttons: GOAL_OPTIONS,
       multiSelect: true,
-      placeholder: 'Or describe it in your own words.',
+      placeholder: 'Or say it in your own words.',
     },
     // Step 6: ready to begin — admin checks in first, then invites contributors
     {
-      text: 'Thank you.\n\nYou are contributing your account first. Once your session is done you will be able to invite contributors — they each check in independently without seeing what you wrote.\n\nAs accounts come in, the record is cross-referenced and the report updates.',
+      text: "Good. You go first — your view, in your words.\n\nOnce you're done, you can invite others to add theirs. Nobody sees what anyone else wrote.\n\nLet's begin.",
       buttons: ["Let's begin."],
     },
   ]
@@ -218,6 +219,7 @@ export function EntryChatPage() {
   const [inviteContext, setInviteContext] = useState('')
   const [copiedLink, setCopiedLink] = useState(false)
   const [checkInBy, setCheckInBy] = useState('')
+  const [cadence, setCadence] = useState<'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY'>('FORTNIGHTLY')
 
   // Stable invite token — generated once and stored in entryStorage
   const [inviteToken] = useState<string>(() => {
@@ -519,6 +521,7 @@ export function EntryChatPage() {
         groundLabel: groundName || scenario || 'My first ground',
         orgName: orgName.trim() || undefined,
         scenario: scenario || undefined,
+        cadence,
         checkInBy: checkInBy.trim() || undefined,
         history,
         report: sessionReport,
@@ -622,7 +625,7 @@ export function EntryChatPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={{ fontSize: 11, color: 'var(--gw-sub)' }}>sessions:</span>
               <input
-                type="number" min={1} max={12}
+                type="number" min={1}
                 value={sessionsInput}
                 onChange={e => setSessionsInput(e.target.value)}
                 onBlur={() => {
@@ -657,7 +660,7 @@ export function EntryChatPage() {
       {showSessionsUpgrade && (
         <div style={{ background: 'var(--gw-blue-bg)', borderBottom: '1px solid var(--gw-blue-b)', padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
           <div style={{ flex: 1, fontSize: 13, color: 'var(--gw-navy)', lineHeight: 1.5 }}>
-            <strong>{sessions} sessions</strong> needs an account. Save your session below, set up your org and payment, then continue.
+            <strong>{sessions} sessions</strong> needs an account. $25/month per organisation + $25 per contributor per month. Save your session below to get set up.
           </div>
           <button onClick={() => { setShowSessionsUpgrade(false); setShowSave(true) }}
             style={{ flexShrink: 0, background: 'var(--gw-navy)', color: 'white', border: 'none', borderRadius: 7, padding: '7px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
@@ -1057,7 +1060,20 @@ export function EntryChatPage() {
                 onChange={e => setOrgName(e.target.value)}
                 style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #E2E0DB', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none', marginBottom: 8 }}
               />
-              <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 4 }}>Contributors check in by <span style={{ fontWeight: 400 }}>(optional)</span></div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 4 }}>How often do contributors check in?</div>
+              <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+                {(['WEEKLY', 'FORTNIGHTLY', 'MONTHLY'] as const).map(c => (
+                  <button key={c} onClick={() => setCadence(c)} style={{
+                    flex: 1, padding: '9px 0', borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                    border: `1px solid ${cadence === c ? '#0C447C' : '#E2E0DB'}`,
+                    background: cadence === c ? '#EEF4FB' : 'white',
+                    color: cadence === c ? '#0C447C' : '#6B6560',
+                  }}>
+                    {c === 'FORTNIGHTLY' ? 'Every 2 weeks' : c.charAt(0) + c.slice(1).toLowerCase()}
+                  </button>
+                ))}
+              </div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 4 }}>First check-in deadline <span style={{ fontWeight: 400 }}>(optional)</span></div>
               <input
                 type="date" value={checkInBy}
                 onChange={e => setCheckInBy(e.target.value)}
@@ -1087,14 +1103,14 @@ export function EntryChatPage() {
               </div>
             )}
 
-            {/* Invite participants */}
+            {/* Invite contributors */}
             <div style={{ borderTop: '1px solid #E2E0DB', paddingTop: 16, marginBottom: 14 }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 6 }}>Invite contributors</div>
               <div style={{ fontSize: 12, color: '#9B9590', lineHeight: 1.55, marginBottom: 10 }}>
-                Each contributor checks in independently without seeing what you wrote. Their account is cross-referenced against yours to show where there is alignment and where there are gaps.
+                The more people who check in, the clearer the picture gets. Everyone adds their own account — nobody sees what anyone else wrote. When accounts come in, you see where everyone agrees, where they don't, and what the gap means.
               </div>
               <div style={{ background: '#F5F3EF', border: '1px solid #E2E0DB', borderRadius: 8, padding: '10px 12px', marginBottom: 12, fontSize: 12, color: '#6B6560', lineHeight: 1.55 }}>
-                The confidence score and full cross-referenced report build as contributors check in. You can unlock deeper insights — including specificity scores and pattern observations — from your account once it is set up.
+                You can add a note for each person when you invite them — useful if different people are looking at different things. The confidence score and full picture build as accounts come in.
               </div>
 
               {inviteAdded.length > 0 && (

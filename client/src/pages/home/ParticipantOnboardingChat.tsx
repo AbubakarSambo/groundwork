@@ -56,16 +56,16 @@ const PARTICIPANT_ONBOARDING_STEPS = 4
 function stepContent(step: number, adminName: string, groundLabel: string, _multiParty: boolean, matchAnswer?: string): string {
   switch (step) {
     case 1:
-      return `${adminName} has invited you to contribute to a Groundwork record.\n\nMost situations look different depending on who is describing them.\n\nGroundwork creates a record using what people have experienced, observed, documented, and agreed. As people contribute, the record is cross referenced and becomes more complete over time.\n\nThis record is about:\n${groundLabel}\n\nBefore we begin, does this description broadly match your understanding?`
+      return `${adminName} has opened a record and wants your view on it.\n\nEveryone adds their own account — you write what you've seen, what you know, what you've experienced. Nobody sees what anyone else wrote.\n\nThe record is about:\n${groundLabel}\n\nDoes this description match your understanding of the situation?`
     case 2:
       if (matchAnswer === 'yes') {
-        return `Good.\n\nYou are not answering for ${adminName}.\nYou are adding your own account.\nNobody can edit it.\nNobody can speak for you.\n\nWhat role do you have in this situation?`
+        return `Good.\n\nYou're not here to respond to what ${adminName} said — you haven't seen it. Just your own account, as you saw it happen.\n\nWhat's your role in this?`
       }
-      return `Good.\n\nDifferences in understanding are often why a record is useful.\n\nHow would you describe what this situation is about?`
+      return `Good — that difference is exactly why your account matters.\n\nHow would you describe what this situation is about?`
     case 3:
-      return `What would you most like this record to establish from your side?`
+      return `What do you most want on record from your side?`
     case 4:
-      return `What have you experienced, observed, or documented that makes that important to you?`
+      return `What have you seen, done, or been part of that makes that matter?`
     default:
       return ''
   }
