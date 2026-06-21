@@ -1,5 +1,5 @@
 import { Controller, Post, Body } from '@nestjs/common';
-import { Public } from '../../common';
+import { Public, CurrentUser, CurrentUserData } from '../../common';
 import { EntryService } from './entry.service';
 import { IsArray, IsOptional, IsString, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -45,6 +45,32 @@ class EntryReportDto {
   groundLabel?: string;
 }
 
+class ContributorDto {
+  @IsString() email: string;
+  @IsOptional() @IsString() context?: string;
+  @IsOptional() @IsString() inviteToken?: string;
+  @IsOptional() @IsString() note?: string;
+}
+
+class EntryCommitDto {
+  @IsString() groundLabel: string;
+  @IsOptional() @IsString() orgName?: string;
+  @IsOptional() @IsString() scenario?: string;
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => TurnDto)
+  history: TurnDto[];
+
+  @IsOptional()
+  report?: any;
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ContributorDto)
+  contributors: ContributorDto[];
+}
+
 @Public()
 @Controller('entry')
 export class EntryController {
@@ -65,5 +91,15 @@ export class EntryController {
   async report(@Body() dto: EntryReportDto) {
     const report = await this.service.report(dto.messages, dto.scenario, dto.groundLabel);
     return { report };
+  }
+}
+
+@Controller('entry')
+export class EntryCommitController {
+  constructor(private service: EntryService) {}
+
+  @Post('commit')
+  async commit(@CurrentUser() user: CurrentUserData, @Body() dto: EntryCommitDto) {
+    return this.service.commit(user.organizationId, user.id, dto);
   }
 }

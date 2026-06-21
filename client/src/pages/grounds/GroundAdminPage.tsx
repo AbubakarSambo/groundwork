@@ -212,7 +212,7 @@ export function GroundAdminPage() {
                       <div className={`gw-av gw-av-${i % 6}`}>{(p.email || '?').charAt(0).toUpperCase()}</div>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: 13, fontWeight: 600 }}>{p.email}</div>
-                        <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>{p.partyType === 'INITIATOR' ? 'Initiator' : 'Participant'} · {status.replace(/_/g, ' ').toLowerCase()}</div>
+                        <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>{status.replace(/_/g, ' ').toLowerCase()}</div>
                       </div>
                       {myCheckIn && status !== 'COMPLETED' && (
                         <button onClick={() => remind.mutate(myCheckIn.id)} style={{ fontSize: 11, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer' }}>Remind</button>

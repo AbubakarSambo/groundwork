@@ -1,17 +1,16 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { authApi } from '@/api/auth'
+import { entryApi } from '@/api/entry'
 import { useAuthStore } from '@/stores/auth'
 
-const ENTRY_KEY = 'gw_entry_session'
+const COMMIT_KEY = 'gw_commit_payload'
 
-function hasPendingEntry(): boolean {
+function loadCommitPayload(): any | null {
   try {
-    const raw = localStorage.getItem(ENTRY_KEY)
-    if (!raw) return false
-    const p = JSON.parse(raw)
-    return !!(p?.history?.length)
-  } catch { return false }
+    const raw = localStorage.getItem(COMMIT_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch { return null }
 }
 
 export function MagicVerifyPage() {
@@ -25,15 +24,26 @@ export function MagicVerifyPage() {
     if (!token) { setError('Invalid link — no token found.'); return }
 
     authApi.verifyEmail(token)
-      .then(res => {
+      .then(async res => {
         setAuth(res.user, res.accessToken)
-        const isNew = !res.user.jobTitle && res.user.role === 'ADMIN'
         const from = params.get('from')
         if (from && from.startsWith('/')) {
           navigate(from, { replace: true })
-        } else if (hasPendingEntry()) {
-          navigate('/grounds', { replace: true })
+          return
+        }
+        const payload = loadCommitPayload()
+        if (payload?.history?.length) {
+          try {
+            const { groundId } = await entryApi.commit(payload)
+            localStorage.removeItem(COMMIT_KEY)
+            localStorage.removeItem('gw_entry_session')
+            navigate(`/grounds/${groundId}`, { replace: true })
+          } catch {
+            // Commit failed — send them to grounds list, the ground wasn't created
+            navigate('/grounds', { replace: true })
+          }
         } else {
+          const isNew = !res.user.jobTitle && res.user.role === 'ADMIN'
           navigate(isNew ? '/setup' : '/grounds', { replace: true })
         }
       })

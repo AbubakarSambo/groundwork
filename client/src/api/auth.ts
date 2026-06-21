@@ -44,4 +44,10 @@ export const authApi = {
 
   requestPasswordSetup: () =>
     apiClient.post<{ token: string }>('/auth/request-password-setup').then(r => r.data),
+
+  login: (email: string, password: string) =>
+    apiClient.post<VerifyEmailResponse>('/auth/login', { email, password }).then(r => r.data),
+
+  forgotPassword: (email: string) =>
+    apiClient.post<MagicLinkResponse>('/auth/forgot-password', { email }).then(r => r.data),
 }

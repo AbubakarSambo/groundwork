@@ -22,6 +22,9 @@ interface EntrySession {
 interface OnboardingSelections {
   mode: string
   initial: string
+  whoInvolved?: string
+  goals?: string[]
+  checkinTiming?: string
   timeframe?: string
   cadence?: string
   decision?: string
@@ -51,67 +54,60 @@ export function hasPendingEntry(): boolean {
   } catch { return false }
 }
 
-// Mode-specific opening lines
-const MODE_OPENERS: Record<string, string> = {
-  new: 'The best time to get both sides of a working relationship on record is before anything goes wrong. This tool builds that record from day one.',
-  back: 'Some situations need more than a conversation. They need a record of what actually happened, cross-referenced against what was agreed and what each side delivered.',
-  forward: 'Good working relationships do not happen by accident. They are built on clarity. This tool builds that clarity before it is needed.',
-  both: 'Whether you need to get something on record or build a clear picture of what comes next, this tool handles both in one place.',
-}
+const ONBOARDING_STEPS = 5
 
-const MODE_LABELS: Record<string, string> = {
-  new: 'Something new',
-  back: 'Look back',
-  forward: 'Look forward',
-  both: 'Both',
-}
+const GOAL_OPTIONS = [
+  'Get everyone aligned before we begin',
+  'Make sure expectations are clear on all sides',
+  'Understand what happened and move forward',
+  'Get everyone on the same page before a decision',
+  'Make sure what was agreed is reflected in what was delivered',
+  'Something else',
+]
 
+const TIMING_OPTIONS = [
+  'Before a specific date or event',
+  'On a recurring schedule',
+  'At key moments I will define',
+  'One session only',
+]
 
-// Scripted onboarding messages — ONBOARDING_STEPS total
-const ONBOARDING_STEPS = 6
+const SESSION_END_PATTERNS = [
+  'here is what is now in your record',
+  'now in your record from today',
+  'your record from today',
+  'come back when',
+  'the record is here and',
+  'your record is here',
+  'next step options',
+  'here is what is now in the record',
+  'option to not have',
+]
 
-function buildOnboardingMessages(sels: OnboardingSelections): { text: string; buttons?: string[] }[] {
-  const modeOpener = MODE_OPENERS[sels.mode] || MODE_OPENERS.new
+function buildOnboardingMessages(_sels: OnboardingSelections): { text: string; buttons?: string[]; multiSelect?: boolean; placeholder?: string }[] {
   return [
-    // Step 1 — brief intro
     {
-      text: `${modeOpener}\n\nThis builds a private two-sided record. Both of you answer separately — neither sees the other's account until you both unlock the report together. Sessions take about ten minutes. Type okay or proceed when you are ready.`,
+      text: `Groundwork helps everyone working on something together see it clearly from all sides. Each person checks in on what they have done, what they have observed, and how they understand things from their position. As people contribute, the picture builds and shows where there is alignment and where there is more to work through together. Their full accounts stay private from each other.\n\nBring whatever you have: emails, work plans, agreements, messages, anything written down. You can also describe what you have seen and experienced. You do not need documents to start.\n\nWhat is this ground for?\n\nSome examples:\nA new hire's first 90 days.\nA project we are about to start.\nA partnership or collaboration.\nA leadership transition.\nA decision we need everyone aligned on before we move forward.`,
+      placeholder: 'Describe what this ground is for.',
     },
-    // Step 2 — how long (buttons)
     {
-      text: `How long does this record need to run?`,
-      buttons: ['1 week', '2 weeks', '1 month', '3 months', '6 months or more'],
+      text: `Who else is part of this ground and what does each person bring to it?`,
+      placeholder: 'Name who is involved and their role.',
     },
-    // Step 3 — check-in frequency (buttons)
     {
-      text: `How often should both of you check in?`,
-      buttons: ['Daily', 'Weekly', 'Fortnightly', 'Monthly'],
+      text: `What do you want this ground to get right?`,
+      buttons: GOAL_OPTIONS,
+      multiSelect: true,
+      placeholder: 'Or describe it in your own words.',
     },
-    // Step 4 — what kind of situation (buttons)
     {
-      text: `What kind of situation is this?`,
-      buttons: [
-        'Starting something new — get both sides clear from day one',
-        'Something went wrong — needs to be on record',
-        'Need to realign — things have drifted',
-        'Building an ongoing record — no specific issue yet',
-      ],
+      text: `When do you want contributors to check in?`,
+      buttons: TIMING_OPTIONS,
+      placeholder: 'Or describe when you need them to check in.',
     },
-    // Step 5 — what to produce (buttons)
     {
-      text: `What do you need this record to produce?`,
-      buttons: [
-        'A decision on whether this person stays in their role',
-        'Evidence to support letting someone go',
-        'A reset on what we both agreed to',
-        'A document both sides can stand on',
-        'Clarity before something new starts',
-      ],
-    },
-    // Step 6 — confirmation (buttons)
-    {
-      text: `Got it.\n\n${sels.timeframe || '1 month'} · ${sels.cadence || 'weekly'} check-ins · ${sels.decision || 'alignment record'}.\n\nSessions 1 and 2 are free. A card is required before the session 2 report releases. Ready?`,
-      buttons: ['Let us begin.', 'Change something.'],
+      text: `Good. Everyone will check in against what you have set here. As people contribute, the picture shows where there is alignment and where there are gaps. Their full accounts stay private from each other throughout.\n\nLet us begin.`,
+      buttons: ['Let us begin.'],
     },
   ]
 }
@@ -122,7 +118,7 @@ const QUICK_ACTIONS = [
   { label: 'My report', msg: 'Give me a summary of what my record shows so far.' },
   { label: 'What am I missing?', msg: 'What is missing from my record that would make it stronger?' },
   { label: 'Review my goals', msg: 'Review the goals I set at the start of this ground and tell me where I stand against each one.' },
-  { label: 'Team cross-reference', msg: 'Cross-reference what I have shared with what you know about how the other party sees this situation.' },
+  { label: 'Cross-reference', msg: 'Cross-reference what I have shared with what you know about how the other party sees this situation.' },
 ]
 
 export function EntryChatPage() {
@@ -143,7 +139,7 @@ export function EntryChatPage() {
   const defaultSels: OnboardingSelections = { mode: urlMode || 'new', initial: urlInitial || '' }
   const [onboardingStep, setOnboardingStep] = useState(1)
   const [onboardingSelections, setOnboardingSelections] = useState<OnboardingSelections>(defaultSels)
-  const [onboardingMessages, setOnboardingMessages] = useState<{ text: string; buttons?: string[] }[]>(
+  const [onboardingMessages, setOnboardingMessages] = useState<{ text: string; buttons?: string[]; multiSelect?: boolean; placeholder?: string }[]>(
     () => buildOnboardingMessages(defaultSels)
   )
 
@@ -155,6 +151,8 @@ export function EntryChatPage() {
   const [loading, setLoading] = useState(false)
   const [closed, setClosed] = useState(false)
   const [phase, setPhase] = useState<'onboarding' | 'checkin'>('onboarding')
+  const [selectedGoals, setSelectedGoals] = useState<string[]>([])
+  const [showEndPrompt, setShowEndPrompt] = useState(false)
 
   // Save card
   const [showSave, setShowSave] = useState(false)
@@ -170,6 +168,15 @@ export function EntryChatPage() {
   const [inviteContextFor, setInviteContextFor] = useState<string | null>(null)
   const [inviteContext, setInviteContext] = useState('')
   const [copiedLink, setCopiedLink] = useState(false)
+
+  // Stable invite token — generated once and stored in entryStorage
+  const [inviteToken] = useState<string>(() => {
+    const session = loadSession()
+    if ((session as any)?.inviteToken) return (session as any).inviteToken
+    const arr = new Uint8Array(24)
+    crypto.getRandomValues(arr)
+    return Array.from(arr, b => b.toString(16).padStart(2, '0')).join('')
+  })
 
   // Doc upload
   const [uploadedDoc, setUploadedDoc] = useState<{ name: string; content: string } | null>(null)
@@ -264,11 +271,10 @@ export function EntryChatPage() {
   const startCheckin = useMutation({
     mutationFn: () => {
       const ctx = [
-        onboardingSelections.mode ? `Situation type: ${onboardingSelections.mode}` : '',
-        onboardingSelections.initial ? `Situation they described: ${onboardingSelections.initial}` : '',
-        onboardingSelections.timeframe ? `Timeframe: ${onboardingSelections.timeframe}` : '',
-        onboardingSelections.cadence ? `Check-in frequency: ${onboardingSelections.cadence}` : '',
-        onboardingSelections.decision ? `What they need this ground to produce: ${onboardingSelections.decision}` : '',
+        onboardingSelections.initial ? `What this ground is for: ${onboardingSelections.initial}` : '',
+        onboardingSelections.whoInvolved ? `Who is part of this: ${onboardingSelections.whoInvolved}` : '',
+        onboardingSelections.goals?.length ? `What they want this ground to get right: ${onboardingSelections.goals.join(', ')}` : '',
+        onboardingSelections.checkinTiming ? `When contributors check in: ${onboardingSelections.checkinTiming}` : '',
       ].filter(Boolean).join('. ')
       return entryApi.chat([{
         role: 'user',
@@ -292,15 +298,12 @@ export function EntryChatPage() {
       const updated = [...msgs, newTurn]
       setHistory(updated)
       setLoading(false)
-      const engineClosed = res.reply.includes('Here is what is now in your record:') ||
-        (res.reply.includes('now in your record') && res.reply.includes('next steps'))
-      if (engineClosed && !closed) {
-        setClosed(true)
-        persistCheckin(updated, true)
-        generateSessionReport(updated).then(() => setTimeout(() => setShowSave(true), 400))
-      } else {
-        persistCheckin(updated)
+      const replyLower = res.reply.toLowerCase()
+      const isNaturalClose = SESSION_END_PATTERNS.some(p => replyLower.includes(p))
+      if (isNaturalClose && !closed) {
+        setShowEndPrompt(true)
       }
+      persistCheckin(updated)
     },
     onError: () => {
       setLoading(false)
@@ -323,41 +326,71 @@ export function EntryChatPage() {
     }
   }
 
+  function handleEndSession() {
+    setShowEndPrompt(false)
+    setClosed(true)
+    setShowSave(true)
+    generateSessionReport(history)
+  }
+
   // Advance onboarding step
   function advanceOnboarding(buttonChoice?: string) {
     const currentStep = onboardingStep
-
     let newSels = { ...onboardingSelections }
 
-    // Store selections for steps with buttons
-    if (buttonChoice) {
-      if (currentStep === 2) newSels = { ...newSels, timeframe: buttonChoice }
-      if (currentStep === 3) newSels = { ...newSels, cadence: buttonChoice }
-      if (currentStep === 4) newSels = { ...newSels, mode: buttonChoice }
-      if (currentStep === 5) newSels = { ...newSels, decision: buttonChoice }
-      if (currentStep === 6 && buttonChoice.startsWith('Change')) {
-        // Reset to step 2
-        setOnboardingStep(2)
-        setOnboardingSelections(newSels)
-        return
-      }
-      setOnboardingSelections(newSels)
-      setOnboardingMessages(buildOnboardingMessages(newSels))
-    }
-
-    if (currentStep >= ONBOARDING_STEPS) {
-      // Done with onboarding — start AI check-in
+    // Step 5 begin button
+    if (buttonChoice === 'Let us begin.') {
       setOnboardingStep(ONBOARDING_STEPS + 1)
       persistOnboarding([], newSels, ONBOARDING_STEPS)
       startCheckin.mutate()
       return
     }
 
+    // Step 3 multi-select: toggle goal without advancing
+    if (currentStep === 3 && buttonChoice && GOAL_OPTIONS.includes(buttonChoice)) {
+      setSelectedGoals(prev =>
+        prev.includes(buttonChoice) ? prev.filter(g => g !== buttonChoice) : [...prev, buttonChoice]
+      )
+      return
+    }
+
+    // Capture inputs per step
+    if (currentStep === 1) {
+      const val = input.trim()
+      if (!val) return
+      newSels = { ...newSels, initial: val }
+      setInput('')
+    } else if (currentStep === 2) {
+      const val = input.trim()
+      if (!val) return
+      newSels = { ...newSels, whoInvolved: val }
+      setInput('')
+    } else if (currentStep === 3) {
+      const goals = selectedGoals.length > 0 ? selectedGoals : (input.trim() ? [input.trim()] : [])
+      if (goals.length === 0) return
+      newSels = { ...newSels, goals, decision: goals.join(', ') }
+      setInput('')
+      setSelectedGoals([])
+    } else if (currentStep === 4) {
+      const val = buttonChoice ?? input.trim()
+      if (!val) return
+      if (!buttonChoice) setInput('')
+      newSels = { ...newSels, checkinTiming: val, timeframe: val }
+    }
+
+    setOnboardingSelections(newSels)
+    setOnboardingMessages(buildOnboardingMessages(newSels))
+
     const nextStep = currentStep + 1
+    if (nextStep > ONBOARDING_STEPS) {
+      setOnboardingStep(ONBOARDING_STEPS + 1)
+      persistOnboarding([], newSels, ONBOARDING_STEPS)
+      startCheckin.mutate()
+      return
+    }
+
     setOnboardingStep(nextStep)
     persistOnboarding([], newSels, nextStep)
-
-    // Auto-scroll
     setTimeout(() => {
       if (msgsRef.current) msgsRef.current.scrollTop = msgsRef.current.scrollHeight
     }, 50)
@@ -423,16 +456,31 @@ export function EntryChatPage() {
     if (!trimmed || !trimmed.includes('@')) { setEmailError('Please enter a valid email address.'); return }
     setEmailError('')
     try {
-      await authApi.requestMagicLink({ email: trimmed, firstName: trimmed.split('@')[0] })
+      await authApi.entrySave(trimmed)
       setEmailSent(true)
-      try { localStorage.setItem('gw_pending_email', trimmed) } catch { /* */ }
+      // Persist everything needed for the post-auth commit call
+      const commitPayload = {
+        groundLabel: groundName || scenario || 'My first ground',
+        orgName: orgName.trim() || undefined,
+        scenario: scenario || undefined,
+        history,
+        report: sessionReport,
+        inviteToken,
+        inviteNote: inviteNote.trim() || undefined,
+        contributors: inviteAdded.map(entry => {
+          const dashIdx = entry.indexOf(' — ')
+          if (dashIdx === -1) return { email: entry, inviteToken }
+          return { email: entry.slice(0, dashIdx), context: entry.slice(dashIdx + 3), inviteToken }
+        }),
+      }
+      try { localStorage.setItem('gw_commit_payload', JSON.stringify(commitPayload)) } catch { /* */ }
     } catch (err: any) {
       setEmailError(err?.response?.data?.message ?? 'Could not send link. Please try again.')
     }
   }
 
   function copyInviteLink() {
-    const link = `${window.location.origin}/invite?from=entry`
+    const link = `${window.location.origin}/invite?token=${inviteToken}`
     navigator.clipboard.writeText(link).then(() => {
       setCopiedLink(true)
       setTimeout(() => setCopiedLink(false), 2000)
@@ -480,7 +528,12 @@ export function EntryChatPage() {
             </div>
           )}
           <div style={{ fontSize: 11, color: 'var(--gw-sub)', display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-            Getting started · session is about 10 minutes
+            {phase === 'checkin' ? (
+              <>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#34d399', display: 'inline-block', flexShrink: 0 }} />
+                Session 1 in progress
+              </>
+            ) : 'Getting started · session is about 10 minutes'}
           </div>
         </div>
 
@@ -538,31 +591,19 @@ export function EntryChatPage() {
       {/* Main content area */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
 
-        {/* PHASE: MODE SELECTION */}
         {/* PHASE: ONBOARDING */}
         {phase === 'onboarding' && (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-            {/* Messages */}
             <div
               ref={msgsRef}
               style={{ flex: 1, overflowY: 'auto', padding: '24px 20px', display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 680, width: '100%', margin: '0 auto', boxSizing: 'border-box' }}
             >
-              {/* Context line */}
-              {onboardingSelections.initial && (
-                <div style={{ fontSize: 12, color: 'var(--gw-muted)', textAlign: 'center', paddingBottom: 8 }}>
-                  {MODE_LABELS[onboardingSelections.mode] || 'Something new'} · {onboardingSelections.initial}
-                </div>
-              )}
-
-              {/* Show all messages up to current step, with message focus rule */}
               {onboardingMessages.slice(0, onboardingStep).map((msg, idx) => {
                 const isActive = idx === onboardingStep - 1
                 return (
                   <div key={idx} style={{ transition: 'opacity .3s', opacity: isActive ? 1 : 0.42 }}>
-                    {/* AI message bubble */}
                     <div style={{
                       maxWidth: '88%',
-                      alignSelf: 'flex-start',
                       background: 'white',
                       color: 'var(--gw-text)',
                       border: '1px solid var(--gw-border)',
@@ -576,40 +617,44 @@ export function EntryChatPage() {
                       {msg.text}
                     </div>
 
-                    {/* Buttons for this step (only shown when active) */}
                     {isActive && msg.buttons && (
                       <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                        {msg.buttons.map(btn => (
+                        {msg.buttons.map(btn => {
+                          const isSelected = msg.multiSelect && selectedGoals.includes(btn)
+                          return (
+                            <button
+                              key={btn}
+                              onClick={() => advanceOnboarding(btn)}
+                              style={{
+                                padding: '8px 14px', borderRadius: 20, fontSize: 12, fontWeight: 500,
+                                border: `1px solid ${isSelected ? 'var(--gw-navy)' : 'var(--gw-border)'}`,
+                                background: isSelected ? 'var(--gw-navy)' : 'white',
+                                color: isSelected ? 'white' : 'var(--gw-text)',
+                                cursor: 'pointer', fontFamily: 'inherit', transition: 'all .15s',
+                              }}
+                            >
+                              {btn}
+                            </button>
+                          )
+                        })}
+                        {msg.multiSelect && selectedGoals.length > 0 && (
                           <button
-                            key={btn}
-                            onClick={() => advanceOnboarding(btn)}
+                            onClick={() => advanceOnboarding()}
                             style={{
-                              padding: '8px 14px', borderRadius: 20, fontSize: 12, fontWeight: 500,
-                              border: '1px solid var(--gw-border)', background: 'white',
-                              color: 'var(--gw-text)', cursor: 'pointer', fontFamily: 'inherit',
-                              transition: 'all .15s',
-                            }}
-                            onMouseEnter={e => {
-                              (e.target as HTMLButtonElement).style.background = 'var(--gw-navy)'
-                              ;(e.target as HTMLButtonElement).style.color = 'white'
-                              ;(e.target as HTMLButtonElement).style.borderColor = 'var(--gw-navy)'
-                            }}
-                            onMouseLeave={e => {
-                              (e.target as HTMLButtonElement).style.background = 'white'
-                              ;(e.target as HTMLButtonElement).style.color = 'var(--gw-text)'
-                              ;(e.target as HTMLButtonElement).style.borderColor = 'var(--gw-border)'
+                              padding: '8px 16px', borderRadius: 20, fontSize: 12, fontWeight: 700,
+                              background: 'var(--gw-navy)', color: 'white',
+                              border: '1px solid var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit',
                             }}
                           >
-                            {btn}
+                            Confirm →
                           </button>
-                        ))}
+                        )}
                       </div>
                     )}
                   </div>
                 )
               })}
 
-              {/* Loading state when transitioning to check-in */}
               {startCheckin.isPending && (
                 <div style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', padding: 16 }}>
                   Starting your check-in…
@@ -617,33 +662,17 @@ export function EntryChatPage() {
               )}
             </div>
 
-            {/* Input for "okay / proceed" — only shown when current step has no buttons */}
-            {!startCheckin.isPending && currentOnboardingMsg && !currentOnboardingMsg.buttons && (
+            {/* Text input — steps 1–4; step 5 uses only the "Let us begin." button */}
+            {!startCheckin.isPending && currentOnboardingMsg && onboardingStep < ONBOARDING_STEPS && (
               <div style={{ borderTop: '1px solid var(--gw-border)', background: 'white', flexShrink: 0 }}>
-                {/* Chip row */}
-                <div style={{ padding: '6px 16px', borderBottom: '1px solid var(--gw-border)', display: 'flex', gap: 7, flexWrap: 'wrap', alignItems: 'center' }}>
-                  <label htmlFor="onboarding-doc-upload" title="Upload a document"
-                    style={{ padding: '4px 10px', borderRadius: 20, fontSize: 13, border: '1px solid var(--gw-border)', background: 'transparent', color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit' }}>
-                    📎 Upload doc
-                  </label>
-                  <input ref={fileRef} type="file" id="onboarding-doc-upload" accept=".pdf,.doc,.docx,.txt,.csv,.xlsx,.png,.jpg,.jpeg,.md" style={{ display: 'none' }} onChange={handleFileChange} />
-                </div>
                 <div style={{ padding: '10px 16px' }}>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center', maxWidth: 680, margin: '0 auto' }}>
                     <input
                       type="text"
-                      placeholder="Type okay or proceed when you are ready."
+                      placeholder={currentOnboardingMsg.placeholder ?? 'Type your response.'}
                       value={input}
                       onChange={e => setInput(e.target.value)}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter') {
-                          const val = input.trim().toLowerCase()
-                          if (val) {
-                            setInput('')
-                            advanceOnboarding()
-                          }
-                        }
-                      }}
+                      onKeyDown={e => { if (e.key === 'Enter' && input.trim()) advanceOnboarding() }}
                       style={{
                         flex: 1, padding: '10px 12px', fontSize: 13, border: '1px solid var(--gw-border)',
                         borderRadius: 6, fontFamily: 'inherit', outline: 'none', background: 'white',
@@ -652,8 +681,9 @@ export function EntryChatPage() {
                       autoFocus
                     />
                     <button
-                      onClick={() => { if (input.trim()) { setInput(''); advanceOnboarding() } }}
-                      style={{ padding: '0 14px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 18, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      onClick={() => { if (input.trim()) advanceOnboarding() }}
+                      disabled={!input.trim()}
+                      style={{ padding: '0 14px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 18, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: input.trim() ? 1 : 0.35 }}
                     >
                       ↑
                     </button>
@@ -702,6 +732,27 @@ export function EntryChatPage() {
               })}
             </div>
 
+            {/* Natural close prompt */}
+            {showEndPrompt && !closed && (
+              <div style={{ padding: '12px 20px', background: '#EEF4FB', borderTop: '1px solid #BFDBFE', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ flex: 1, fontSize: 13, color: 'var(--gw-navy)', lineHeight: 1.5 }}>
+                  This session has reached a natural close. Would you like to end and see your report?
+                </div>
+                <button
+                  onClick={() => setShowEndPrompt(false)}
+                  style={{ padding: '7px 12px', borderRadius: 6, background: 'none', border: '1px solid var(--gw-border)', color: 'var(--gw-sub)', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}
+                >
+                  Keep going
+                </button>
+                <button
+                  onClick={handleEndSession}
+                  style={{ padding: '7px 14px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}
+                >
+                  End session
+                </button>
+              </div>
+            )}
+
             {/* Quick action chips */}
             {!closed && displayedHistory.length >= 1 && (
               <div style={{ padding: '8px 16px', borderTop: '1px solid var(--gw-border)', display: 'flex', gap: 7, flexWrap: 'wrap', flexShrink: 0, background: 'white', alignItems: 'center' }}>
@@ -737,7 +788,7 @@ export function EntryChatPage() {
               <div style={{ padding: '10px 16px', display: 'flex', gap: 8, alignItems: 'flex-end', maxWidth: 680, margin: '0 auto' }}>
                 <textarea
                   ref={taRef}
-                  placeholder={closed ? 'Your session is on record.' : 'Share what you have been working on.'}
+                  placeholder={closed ? 'Your session is on record.' : 'Type your response.'}
                   value={input}
                   onChange={autoResize}
                   onKeyDown={handleCheckinKey}
@@ -790,7 +841,7 @@ export function EntryChatPage() {
           <div style={{ background: '#0A1628', color: 'white', padding: '20px 22px 16px' }}>
             <div style={{ fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: '#5DCAA5', fontWeight: 700, marginBottom: 6 }}>Session 1 · your account</div>
             <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-.01em', lineHeight: 1.2 }}>{groundName || 'Your session is on record.'}</div>
-            <div style={{ fontSize: 12, color: 'rgba(255,255,255,.5)', marginTop: 4 }}>The other side appears when your participant checks in.</div>
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,.5)', marginTop: 4 }}>Alignment and gaps build as contributors check in.</div>
           </div>
 
           <div style={{ padding: '18px 20px 28px' }}>
@@ -820,8 +871,10 @@ export function EntryChatPage() {
                     {(['Unresolved','Mixed','Emerging','Clear','Aligned'] as const).map(s => {
                       const order = ['Unresolved','Mixed','Emerging','Clear','Aligned']
                       const on = order.indexOf(s) <= order.indexOf(sessionReport.alignmentStatus)
+                      const fullyAligned = sessionReport.alignmentStatus === 'Aligned'
+                      const bg = on ? (fullyAligned ? '#085041' : '#0C447C') : '#EFEDE8'
                       return (
-                        <div key={s} style={{ flex: 1, textAlign: 'center', fontSize: 9, letterSpacing: '.03em', textTransform: 'uppercase', padding: '5px 2px', borderRadius: 5, fontWeight: 700, background: on ? '#0C447C' : '#EFEDE8', color: on ? 'white' : '#9B9590' }}>{s}</div>
+                        <div key={s} style={{ flex: 1, textAlign: 'center', fontSize: 9, letterSpacing: '.03em', textTransform: 'uppercase', padding: '5px 2px', borderRadius: 5, fontWeight: 700, background: bg, color: on ? 'white' : '#9B9590' }}>{s}</div>
                       )
                     })}
                   </div>
@@ -856,7 +909,7 @@ export function EntryChatPage() {
                 )}
 
                 {/* Honest close */}
-                <div style={{ marginBottom: 20 }}>
+                <div style={{ marginBottom: 16 }}>
                   <div style={{ fontSize: 10, letterSpacing: '.09em', textTransform: 'uppercase', color: '#9B9590', fontWeight: 700, marginBottom: 8 }}>An honest close</div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                     {[
@@ -870,6 +923,11 @@ export function EntryChatPage() {
                         {v}
                       </div>
                     ))}
+                  </div>
+                  <div style={{ fontSize: 11.5, color: '#9B9590', marginTop: 8 }}>
+                    {uploadedDoc
+                      ? `On record: ${uploadedDoc.name}. No contributor documents yet.`
+                      : 'On record: your account. No documents uploaded yet.'}
                   </div>
                 </div>
               </>
@@ -893,32 +951,33 @@ export function EntryChatPage() {
               />
             </div>
 
-            {/* Save / email */}
+            {/* Create account */}
             {!emailSent ? (
               <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 6 }}>Save your session</div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 4 }}>Create your account</div>
+                <div style={{ fontSize: 12, color: '#9B9590', marginBottom: 8, lineHeight: 1.5 }}>Your session is saved here. Add your email to keep access and invite contributors.</div>
                 <input type="email" placeholder="you@company.com" value={email} onChange={e => setEmail(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleSave()}
                   style={{ width: '100%', padding: '11px 13px', borderRadius: 8, border: '1px solid #E2E0DB', fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8, outline: 'none' }}
                 />
                 {emailError && <div style={{ fontSize: 12, color: '#791F1F', marginBottom: 6 }}>{emailError}</div>}
                 <button onClick={handleSave} style={{ width: '100%', padding: '12px 16px', borderRadius: 8, background: '#0C447C', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
-                  Save my session →
+                  Create account →
                 </button>
               </div>
             ) : (
               <div style={{ textAlign: 'center', padding: '10px 0', marginBottom: 16 }}>
                 <div style={{ fontSize: 22, marginBottom: 6 }}>✓</div>
                 <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>Check your email</div>
-                <div style={{ fontSize: 13, color: '#6B6560', lineHeight: 1.6 }}>We sent a link to <strong>{email}</strong>. Click it to finish setting up your account.</div>
+                <div style={{ fontSize: 13, color: '#6B6560', lineHeight: 1.6 }}>We sent a link to <strong>{email}</strong>. Click it to finish setting up your account and set a password.</div>
               </div>
             )}
 
             {/* Invite participants */}
             <div style={{ borderTop: '1px solid #E2E0DB', paddingTop: 16, marginBottom: 14 }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 6 }}>Invite the other party</div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 6 }}>Invite contributors</div>
               <div style={{ fontSize: 12, color: '#9B9590', lineHeight: 1.55, marginBottom: 10 }}>
-                They submit their own account independently — without seeing yours. Both accounts are cross-referenced to produce the report.
+                Each contributor checks in independently without seeing what you wrote. Their account is cross-referenced against yours to show where there is alignment and where there are gaps.
               </div>
 
               {inviteAdded.length > 0 && (
@@ -932,15 +991,15 @@ export function EntryChatPage() {
               {inviteContextFor ? (
                 <div style={{ background: '#F5F3EF', border: '1px solid #E2E0DB', borderRadius: 10, padding: '12px 14px' }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: '#1A1916', marginBottom: 4 }}>{inviteContextFor}</div>
-                  <div style={{ fontSize: 12, color: '#6B6560', marginBottom: 8, lineHeight: 1.5 }}>How is this person connected to what you shared?</div>
-                  <textarea autoFocus placeholder="e.g. This is the person I mentioned…"
+                  <div style={{ fontSize: 12, color: '#6B6560', marginBottom: 8, lineHeight: 1.5 }}>What is their role and what do they see that you do not?</div>
+                  <textarea autoFocus placeholder="e.g. They are the other side of this — they own the delivery timeline."
                     value={inviteContext} onChange={e => setInviteContext(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitInviteContext() } }}
                     style={{ width: '100%', resize: 'none', minHeight: 60, padding: '8px 10px', fontSize: 13, lineHeight: 1.5, border: '1px solid #E2E0DB', borderRadius: 7, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 8 }}
                   />
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button onClick={() => { setInviteContextFor(null); setInviteContext('') }} style={{ padding: '8px 14px', borderRadius: 7, background: 'none', border: '1px solid #E2E0DB', color: '#6B6560', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Skip</button>
-                    <button onClick={submitInviteContext} style={{ flex: 1, padding: '8px 14px', borderRadius: 7, background: '#0C447C', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Add participant</button>
+                    <button onClick={submitInviteContext} style={{ flex: 1, padding: '8px 14px', borderRadius: 7, background: '#0C447C', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Add contributor</button>
                   </div>
                 </div>
               ) : (
@@ -954,7 +1013,7 @@ export function EntryChatPage() {
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <div style={{ flex: 1, fontSize: 12, color: '#0C447C', background: '#EEF4FB', border: '0.5px solid #BFDBFE', borderRadius: 7, padding: '8px 10px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {window.location.origin}/invite?from=entry
+                      {window.location.origin}/invite?token={inviteToken}
                     </div>
                     <button onClick={copyInviteLink} style={{ flexShrink: 0, padding: '8px 12px', borderRadius: 7, background: '#F5F3EF', color: '#1A1916', fontSize: 12, fontWeight: 600, border: '0.5px solid #E2E0DB', cursor: 'pointer', fontFamily: 'inherit' }}>
                       {copiedLink ? 'Copied!' : 'Copy link'}

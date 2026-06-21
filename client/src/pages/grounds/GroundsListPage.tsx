@@ -1,8 +1,10 @@
 import { useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation } from '@tanstack/react-query'
 import { groundsApi } from '@/api/grounds'
+import { billingApi } from '@/api/billing'
 import { useAuthStore } from '@/stores/auth'
 import type { Ground } from '@/types'
+import { toast } from 'sonner'
 
 const BANDS = ['', 'Unresolved', 'Mixed', 'Emerging', 'Clear', 'Aligned']
 function bandLabel(score?: number) { return BANDS[score ?? 1] ?? 'Unresolved' }
@@ -62,9 +64,23 @@ export function GroundsListPage() {
     enabled: !!user,
   })
 
+  const { data: billing } = useQuery({
+    queryKey: ['billing-status'],
+    queryFn: billingApi.status,
+    enabled: !!user,
+    retry: false,
+  })
+
+  const checkoutMut = useMutation({
+    mutationFn: () => billingApi.createCareFeeCheckout(),
+    onSuccess: (url) => { window.location.href = url },
+    onError: () => toast.error('Could not start checkout — please try again.'),
+  })
+
   const active = grounds.filter(g => g.status !== 'CLOSED' && g.status !== 'RESOLVED')
   const checkInsToday = grounds.reduce((n, g) => n + (g.checkInsToday ?? 0), 0)
   const reportsReady = grounds.filter(g => g.status === 'REPORT_READY').length
+  const billingActive = billing?.careFeeActive ?? false
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
@@ -103,6 +119,23 @@ export function GroundsListPage() {
               ))}
             </div>
 
+            {/* Unlock insights CTA — only if not yet subscribed */}
+            {!billingActive && (
+              <div style={{ background: '#EEF4FB', border: '1px solid #C5D9EF', borderRadius: 10, padding: '14px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#0C447C', marginBottom: 2 }}>Unlock full insights</div>
+                  <div style={{ fontSize: 12, color: '#3A6090', lineHeight: 1.5 }}>Specificity trends, confidence scores, and pattern observations across every ground.</div>
+                </div>
+                <button
+                  onClick={() => checkoutMut.mutate()}
+                  disabled={checkoutMut.isPending}
+                  style={{ padding: '8px 16px', borderRadius: 7, background: '#0C447C', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}
+                >
+                  {checkoutMut.isPending ? 'Opening…' : 'Subscribe — £25/mo'}
+                </button>
+              </div>
+            )}
+
             {/* Open ground CTA */}
             <button
               onClick={() => navigate('/grounds/new')}
@@ -134,6 +167,24 @@ export function GroundsListPage() {
         ) : (
           <>
             <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>Your grounds</div>
+
+            {/* Unlock insights CTA for contributors */}
+            {!billingActive && (
+              <div style={{ background: '#EEF4FB', border: '1px solid #C5D9EF', borderRadius: 10, padding: '14px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#0C447C', marginBottom: 2 }}>See your full record</div>
+                  <div style={{ fontSize: 12, color: '#3A6090', lineHeight: 1.5 }}>Specificity trend, confidence score, and observations from your account over time.</div>
+                </div>
+                <button
+                  onClick={() => checkoutMut.mutate()}
+                  disabled={checkoutMut.isPending}
+                  style={{ padding: '8px 16px', borderRadius: 7, background: '#0C447C', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}
+                >
+                  {checkoutMut.isPending ? 'Opening…' : 'Unlock — £25/mo'}
+                </button>
+              </div>
+            )}
+
             {isLoading && <div style={{ fontSize: 13, color: 'var(--gw-muted)', textAlign: 'center', padding: 24 }}>Loading…</div>}
             {!isLoading && grounds.length === 0 && (
               <div style={{ textAlign: 'center', padding: '48px 20px' }}>

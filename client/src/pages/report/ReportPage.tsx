@@ -237,8 +237,8 @@ export function ReportPage() {
           <div style={{ marginTop: 20, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {[
               ground.label,
-              `Admin: ${adminHandle}`,
-              partParty ? `Participant: ${partHandle}` : null,
+              adminHandle,
+              partParty ? partHandle : null,
               `Released ${releasedDate}`,
             ].filter(Boolean).map(pill => (
               <span key={pill as string} style={{ fontSize: 12, background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.16)', borderRadius: 20, padding: '5px 12px', color: 'rgba(255,255,255,.9)' }}>
@@ -357,7 +357,7 @@ export function ReportPage() {
           {solo && (
             <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 12, overflow: 'hidden' }}>
               <div style={{ padding: '13px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#085041', color: '#fff' }}>
-                <span style={{ fontSize: 13, fontWeight: 800 }}>Participant report</span>
+                <span style={{ fontSize: 13, fontWeight: 800 }}>Contributor report</span>
                 <span style={{ fontSize: 11, opacity: 0.82 }}>for {partHandle}</span>
               </div>
               <div style={{ padding: '16px 18px 18px' }}>

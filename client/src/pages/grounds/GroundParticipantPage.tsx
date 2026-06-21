@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { groundsApi } from '@/api/grounds'
+import { billingApi } from '@/api/billing'
 import { useAuthStore } from '@/stores/auth'
 import { reportsApi } from '@/api/reports'
 import { documentsApi } from '@/api/documents'
@@ -35,7 +36,7 @@ function specificityQualityLabel(score: number): { label: string; color: string;
   return { label: 'Building', color: '#6B6560', bg: '#F0EEE9' }
 }
 
-type Tab = 'checkin' | 'history' | 'report' | 'docs' | 'settings'
+type Tab = 'checkin' | 'history' | 'record' | 'report' | 'docs' | 'settings'
 
 function SoloArtifactBlock({ checkInId }: { checkInId: string }) {
   const [open, setOpen] = useState(false)
@@ -101,6 +102,19 @@ export function GroundParticipantPage() {
     retry: false,
   })
 
+  const { data: myRecord } = useQuery({
+    queryKey: ['my-record', id],
+    queryFn: () => groundsApi.getMyRecord(id!),
+    enabled: !!id && tab === 'record',
+    retry: false,
+  })
+
+  const checkoutMut = useMutation({
+    mutationFn: () => billingApi.createCareFeeCheckout(id),
+    onSuccess: (url) => { window.location.href = url },
+    onError: () => toast.error('Could not start checkout — please try again.'),
+  })
+
   const activateMutation = useMutation({
     mutationFn: () => reportsApi.activate(id!),
     onSuccess: () => {
@@ -150,6 +164,7 @@ export function GroundParticipantPage() {
   const tabs: { key: Tab; label: string }[] = [
     { key: 'checkin', label: 'Check-in' },
     { key: 'history', label: 'Session history' },
+    { key: 'record', label: 'My record' },
     { key: 'report', label: 'Report' },
     { key: 'docs', label: 'Documents' },
     { key: 'settings', label: 'Settings' },
@@ -415,6 +430,101 @@ export function GroundParticipantPage() {
           </div>
         )}
 
+        {/* MY RECORD TAB */}
+        {tab === 'record' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+            {/* Unlock CTA — shown whether locked or not, but changes state */}
+            {myRecord?.insightsLocked !== false && (
+              <div style={{ background: '#0C447C', borderRadius: 10, padding: '18px 20px' }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'white', marginBottom: 6 }}>Unlock your full record</div>
+                <div style={{ fontSize: 12, color: 'rgba(255,255,255,.75)', lineHeight: 1.6, marginBottom: 14 }}>
+                  See how your record has built over time — specificity trend, confidence score, and observations from your account across sessions. Unlocks for your whole organisation.
+                </div>
+                <button
+                  onClick={() => checkoutMut.mutate()}
+                  disabled={checkoutMut.isPending}
+                  style={{ padding: '9px 18px', borderRadius: 7, background: 'white', color: '#0C447C', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                >
+                  {checkoutMut.isPending ? 'Opening…' : 'Unlock insights — £25/mo'}
+                </button>
+              </div>
+            )}
+
+            {/* Session history summary — always visible */}
+            {(myRecord?.sessions ?? []).length > 0 && (
+              <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '14px 16px' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: '#9B9590', marginBottom: 10 }}>Sessions on record</div>
+                {(myRecord?.sessions ?? []).map(s => (
+                  <div key={s.sessionNumber} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderTop: '1px solid #F0EEE9' }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#1A1916' }}>Session {s.sessionNumber}</div>
+                    <div style={{ fontSize: 11, color: s.status === 'COMPLETED' ? '#085041' : '#9B9590', fontWeight: s.status === 'COMPLETED' ? 700 : 500 }}>
+                      {s.status === 'COMPLETED' ? (s.completedAt ? new Date(s.completedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Complete') : 'In progress'}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Specificity trend — unlocked only */}
+            {myRecord && !myRecord.insightsLocked && myRecord.specificity && (
+              <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '14px 16px' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: '#9B9590', marginBottom: 8 }}>Specificity across sessions</div>
+                <div style={{ display: 'flex', gap: 3, marginBottom: 8 }}>
+                  {myRecord.specificity.scores.map((s, i) => (
+                    <div key={i} title={`Session ${i + 1}`} style={{ flex: 1, height: 6, borderRadius: 3, background: s >= 0.65 ? '#5DCAA5' : s >= 0.35 ? '#E8A94A' : '#E2E0DB' }} />
+                  ))}
+                </div>
+                <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.5 }}>
+                  {myRecord.specificity.label === 'high'
+                    ? 'Your record is consistently specific and evidenced. It carries strong weight.'
+                    : myRecord.specificity.label === 'moderate'
+                      ? 'Good detail in places. Adding specific examples in your next session strengthens the picture.'
+                      : 'Your record is building. Specificity grows with each check-in.'}
+                </div>
+              </div>
+            )}
+
+            {/* Confidence score — unlocked only */}
+            {myRecord && !myRecord.insightsLocked && myRecord.confidence && (
+              <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '14px 16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: '#9B9590' }}>Record confidence</div>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: '#0C447C' }}>{myRecord.confidence.label}</div>
+                </div>
+                <div style={{ display: 'flex', gap: 3, marginBottom: 8 }}>
+                  {[1,2,3,4,5].map(i => (
+                    <div key={i} style={{ flex: 1, height: 4, borderRadius: 2, background: i <= myRecord.confidence!.score ? '#0C447C' : '#E2E0DB' }} />
+                  ))}
+                </div>
+                <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.5 }}>{myRecord.confidence.description}</div>
+              </div>
+            )}
+
+            {/* Pattern observations — unlocked, diplomatic */}
+            {myRecord && !myRecord.insightsLocked && myRecord.patterns && myRecord.patterns.length > 0 && (
+              <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '14px 16px' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: '#9B9590', marginBottom: 4 }}>Observations from your record</div>
+                <div style={{ fontSize: 12, color: '#9B9590', marginBottom: 10, lineHeight: 1.5 }}>
+                  These are patterns Groundwork has noticed across your check-ins. They are observations, not verdicts — worth being aware of as your record builds.
+                </div>
+                {myRecord.patterns.map((p, i) => (
+                  <div key={i} style={{ padding: '10px 0', borderTop: i === 0 ? '1px solid #F0EEE9' : '1px solid #F0EEE9', fontSize: 13, color: '#3A3630', lineHeight: 1.6 }}>
+                    {p.observation}
+                    {p.sessionNumber && <span style={{ display: 'block', fontSize: 11, color: '#9B9590', marginTop: 3 }}>First noticed — Session {p.sessionNumber}</span>}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {myRecord && !myRecord.insightsLocked && (!myRecord.patterns || myRecord.patterns.length === 0) && (
+              <div style={{ background: '#F5F3EF', border: '1px solid #E2E0DB', borderRadius: 10, padding: '14px 16px', fontSize: 12, color: '#9B9590', lineHeight: 1.6 }}>
+                No patterns have surfaced yet. Patterns appear after they have been observed across multiple sessions — this is intentional.
+              </div>
+            )}
+          </div>
+        )}
+
         {/* REPORT TAB */}
         {tab === 'report' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -577,7 +687,7 @@ export function GroundParticipantPage() {
               </div>
               <div style={{ padding: '13px 16px', borderBottom: '1px solid #F0EEE9' }}>
                 <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Your role</div>
-                <div style={{ fontSize: 12, color: '#9B9590' }}>{myParticipant?.roleAsDescribed ?? (isInitiator ? 'Initiator' : 'Participant')}</div>
+                <div style={{ fontSize: 12, color: '#9B9590' }}>{myParticipant?.roleAsDescribed ?? 'Contributor'}</div>
               </div>
               <div style={{ padding: '13px 16px', borderBottom: '1px solid #F0EEE9' }}>
                 <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Status</div>

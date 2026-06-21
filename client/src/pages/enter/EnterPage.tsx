@@ -31,8 +31,8 @@ export function EnterPage() {
           Contributor
         </div>
 
-        <div className="gw-ttl">Open my chat</div>
-        <div className="gw-sub-t">Enter your org code to open your contribution chat.</div>
+        <div className="gw-ttl">Check in</div>
+        <div className="gw-sub-t">Enter your org code to open your ground.</div>
 
         <div className="gw-fld">
           <label className="gw-label">Org code</label>
@@ -51,12 +51,12 @@ export function EnterPage() {
         {error && <div className="gw-er" style={{ marginTop: 8 }}>{error}</div>}
 
         <div style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 16 }}>
-          Have an email invite?{' '}
-          <span style={{ color: 'var(--gw-navy)', textDecoration: 'underline', cursor: 'pointer' }} onClick={() => navigate('/auth?mode=member')}>Sign in with email instead</span>
+          Have an account already?{' '}
+          <span style={{ color: 'var(--gw-navy)', textDecoration: 'underline', cursor: 'pointer' }} onClick={() => navigate('/auth')}>Sign in</span>
         </div>
 
         <div style={{ fontSize: 11, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 20, paddingTop: 16, borderTop: '0.5px solid var(--gw-border)' }}>
-          Your record belongs to you. Nobody sees your check-ins without your approval.
+          Your full account stays private from other contributors. Alignment and gaps emerge as everyone checks in.
         </div>
       </div>
     </div>

@@ -76,15 +76,15 @@ export function SaveCard({ mode, variant = 'admin', onClear }: Props) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>
               <span style={{ color: 'var(--gw-green-t)', fontWeight: 700, flexShrink: 0 }}>✓</span>
-              <span>Your account is saved and private. No one else can read it.</span>
+              <span>Your check-in is saved. Your full account stays private from other contributors.</span>
             </div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>
               <span style={{ color: 'var(--gw-muted)', fontWeight: 700, flexShrink: 0 }}>2</span>
-              <span>The other parties will submit their accounts independently, without seeing what you wrote.</span>
+              <span>Other contributors check in independently. Their accounts are cross-referenced to show where there is alignment and where there are gaps.</span>
             </div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>
               <span style={{ color: 'var(--gw-muted)', fontWeight: 700, flexShrink: 0 }}>3</span>
-              <span>Once all accounts are in, everyone sees the report at the same moment. The report shows where accounts agree, where they differ, and what the gaps mean.</span>
+              <span>The report shows where everyone sees the same thing, where they do not, and what the gaps between them mean.</span>
             </div>
           </div>
         </div>
@@ -180,7 +180,7 @@ export function SaveCard({ mode, variant = 'admin', onClear }: Props) {
           Your first session is on record.
         </div>
         <div style={{ fontSize: 12, color: 'var(--gw-blue-t)', lineHeight: 1.5 }}>
-          {mode ? `${MODE_LABEL[mode]}. ` : ''}Enter your email to save it. When the people you invite check in, you will all see the report at the same time.
+          {mode ? `${MODE_LABEL[mode]}. ` : ''}Enter your email to save it. The report builds as contributors check in — you will see alignment and gaps emerge over time.
         </div>
       </div>
 
@@ -205,11 +205,11 @@ export function SaveCard({ mode, variant = 'admin', onClear }: Props) {
             disabled={saveSession.isPending}
             style={{ marginTop: 4 }}
           >
-            {saveSession.isPending ? 'Sending…' : 'Save my session'}
+            {saveSession.isPending ? 'Sending…' : 'Create your account'}
           </button>
         </form>
         <div style={{ marginTop: 10, fontSize: 11, color: 'var(--gw-muted)', textAlign: 'center', lineHeight: 1.5 }}>
-          A link lands in your inbox. Follow it on this device and your session is waiting.
+          A link lands in your inbox. Click it to finish setting up your account and set a password.
         </div>
       </div>
 
@@ -235,7 +235,7 @@ export function SaveCard({ mode, variant = 'admin', onClear }: Props) {
         </div>
 
         <div style={{ fontSize: 11, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 12 }}>
-          The people you share this with will submit their own account of the same situation, independently, without seeing what you wrote. Their version and yours will be cross-referenced to show where you agree, where you differ, and what the gap means. That is the report.
+          Each person checks in independently without seeing what you wrote. Their account is cross-referenced against yours to show where you agree, where you differ, and what the gap means.
         </div>
 
         <div className="gw-fld" style={{ marginBottom: 0 }}>
@@ -253,14 +253,14 @@ export function SaveCard({ mode, variant = 'admin', onClear }: Props) {
       {/* Section 3: send directly by email */}
       <div style={{ padding: '14px 16px' }}>
         <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-muted)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 8 }}>
-          Add participant email
+          Invite a contributor
         </div>
         <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5, marginBottom: 10 }}>
-          Add their email and we will send them directly. Each participant gets an invitation email with a subject drawn from what you described.
+          Add their email and we will send them an invite once your account is set up.
         </div>
         {participantAdded ? (
           <div style={{ fontSize: 12, color: 'var(--gw-green-t)', lineHeight: 1.5 }}>
-            Saved. They will receive an invite when your ground opens.
+            Saved. They will receive an invite once your account is created.
           </div>
         ) : (
           <div style={{ display: 'flex', gap: 7, alignItems: 'center' }}>

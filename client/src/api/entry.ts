@@ -15,7 +15,7 @@ export interface ParticipantSession {
 
 export interface EntryReport {
   whatGroundworkSaw: string
-  alignmentStatus: 'Unresolved' | 'Mixed' | 'Emerging' | 'Clear'
+  alignmentStatus: 'Unresolved' | 'Mixed' | 'Emerging' | 'Clear' | 'Aligned'
   alignmentBasis: string
   areasRequiringAlignment: { title: string; observation: string; whyItMatters: string; recommendedMove: string }[]
   alignmentReached: { title: string; note: string }[]
@@ -89,6 +89,16 @@ export const entryApi = {
 
   report: (messages: ChatTurn[], scenario?: string, groundLabel?: string) =>
     apiClient.post<{ report: EntryReport | null }>('/entry/report', { messages, scenario, groundLabel }).then(r => r.data),
+
+  commit: (payload: {
+    groundLabel: string
+    orgName?: string
+    scenario?: string
+    history: ChatTurn[]
+    report?: EntryReport | null
+    contributors: { email: string; context?: string; inviteToken?: string; note?: string }[]
+  }) =>
+    apiClient.post<{ groundId: string }>('/entry/commit', payload).then(r => r.data),
 }
 
 // ── Participant API ───────────────────────────────────────────────────────────

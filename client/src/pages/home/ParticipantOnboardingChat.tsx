@@ -22,6 +22,8 @@ interface PState {
   multiParty: boolean
   step: number
   purpose: string
+  matchAnswer?: string
+  selectedGoals?: string[]
   msgs: DMsg[]
   history: EntryMessage[]
   phase: 'onboarding' | 'faq' | 'checkin' | 'done'
@@ -37,56 +39,39 @@ const pStore = {
 
 // ── Message content ────────────────────────────────────────────────────────
 
-function purposeOptions(multiParty: boolean): string[] {
-  return [
-    'That I delivered what was agreed.',
-    'That the expectations were not clear or were not fair.',
-    multiParty
-      ? 'That I need this situation to be reset on honest terms.'
-      : 'That I need this relationship to be reset on honest terms.',
-    multiParty
-      ? 'That I want my version on record alongside everyone else\'s before any decision is made.'
-      : 'That I want both sides of the story in the same place before any decision is made.',
-    'That I just want my version on record regardless of what happens next.',
-  ]
-}
+const PARTICIPANT_GOAL_OPTIONS = [
+  'That my contribution is clear and visible',
+  'That we are all starting from the same understanding',
+  'That expectations are clear on all sides going forward',
+  'That I want to understand where I have gaps and get better aligned as we go',
+  'That my perspective is part of the picture before any decisions are made',
+  'Something else',
+]
 
-function stepContent(step: number, adminName: string, groundLabel: string, multiParty: boolean): string {
+const PARTICIPANT_ONBOARDING_STEPS = 4
+
+function stepContent(step: number, adminName: string, groundLabel: string, _multiParty: boolean, matchAnswer?: string): string {
   switch (step) {
     case 1:
-      if (multiParty) {
-        return `${adminName} has asked you to submit your account of a situation involving ${groundLabel}.\n\nGroundwork is a contribution and alignment record. It captures multiple independent accounts of the same situation, cross-references them against documents, performance reviews, and what was actually agreed, and produces a report that shows where all accounts agree, where they differ, and what the gaps between them are.\n\nYour version is one of several. It is as important as any other. Nobody can see what anyone else wrote until all parties activate the report together. Type okay or proceed when you are ready.`
-      }
-      return `${adminName} has asked you to submit your account of a situation involving ${groundLabel}.\n\nBefore you do, here is what this actually is.\n\nGroundwork is a contribution and alignment record. It captures both sides of a professional relationship independently, cross-references them against documents, performance reviews, and what was actually agreed, and produces a report that shows where both sides see the same thing and where they do not.\n\nYour version matters as much as theirs. Neither version is treated as more accurate than the other. The cross-reference is what finds the truth between them. Type okay or proceed when you are ready.`
+      return `${adminName} has invited you to be part of a Groundwork ground.\n\nGroundwork helps everyone working on something together see it clearly from all sides. You will check in on what you have done, what you have observed, and how you understand things from your position. As people contribute, the picture builds and shows where there is alignment and where there is more to work through together. Your full account stays private from other contributors — they see the picture, not your words.\n\nThis ground is about: ${groundLabel}\n\nDoes that sound right to you?`
     case 2:
-      if (multiParty) {
-        return `The most important thing to know before you write anything.\n\nYour account is completely private. Nobody in this ground can see what you write here until all parties activate the report together.\n\nYou are not writing to them. You are writing for the record. Type okay or proceed when you are ready.`
+      if (matchAnswer === 'yes') {
+        return `Good. Nobody can speak for you here. What you share is entirely your own perspective, and it matters.\n\nWhat is your role in this?`
       }
-      return `The most important thing to know before you write anything.\n\nYour account is completely private. ${adminName} cannot see what you write here. Nobody can see what you write here until both of you have chosen to activate the report together.\n\nYou are not writing to them. You are writing for the record. Type okay or proceed when you are ready.`
+      return `That is okay. How would you describe what this is about from where you stand?\n\nOnce you share that, we will make sure your check-in reflects your view.`
     case 3:
-      return `Here is how this works.\n\nYou will answer a few questions about the situation, one at a time. Some will be straightforward. Some might catch you off guard. Answer what you know. If you are not sure about something say so. Uncertainty is as useful as certainty in a record like this.\n\nYour session takes about ten minutes. You can stop and come back if you need to. This conversation is saved on this device. Type okay or proceed when you are ready.`
+      return `What do you want this ground to get right from your side?`
     case 4:
-      if (multiParty) {
-        return `After your session you will see a confidence score. It runs from 1 to 5.\n\nThe score goes up as more parties submit and as the record gets more specific. A score of 2 after your first session is normal. It means your account is in and the record is building.\n\nThe score is not a judgment of you. It is a measure of how complete the collective picture is. Type okay or proceed when you are ready.`
-      }
-      return `After your session you will see a confidence score. It runs from 1 to 5.\n\nA score of 2 after your first session is normal. It means your account is in and the record is waiting for the other side. The score goes up as both parties submit and as the record gets more specific.\n\nThe score is not a judgment of you. It is a measure of how complete the picture is. Type okay or proceed when you are ready.`
-    case 5:
-      return `We might ask for documents at the right moment.\n\nAn email where something was agreed. A message. A work plan. A contract. A performance review.\n\nYou do not need them. You do not have to share them. But if you have something that shows what was agreed or what happened it makes your account stronger. Type okay or proceed when you are ready.`
-    case 6:
-      return `One thing before we begin.\n\nWhat do you want this record to show from your side? This is your moment to name it before the questions start.`
-    case 7:
-      return multiParty
-        ? `Your account is yours. What you write here is independent and private until all parties activate the report together.\n\nDo you have any questions before we begin?`
-        : `Your account is yours. What you write here is independent and private until both parties activate the report together.\n\nDo you have any questions before we begin?`
+      return `What have you done, observed, or documented that makes that important to you? Share whatever comes to mind — work done, conversations you have had, decisions that were made, things you have noticed.`
     default:
       return ''
   }
 }
 
 type Layout = 'list' | 'row'
-function stepButtons(step: number, multiParty: boolean): { options: string[]; layout: Layout } | null {
-  if (step === 6) return { options: purposeOptions(multiParty), layout: 'list' }
-  if (step === 7) return { options: ['No questions. Let us begin.', 'Yes I have a question.'], layout: 'row' }
+function stepButtons(step: number, _multiParty: boolean, _matchAnswer?: string): { options: string[]; layout: Layout; multiSelect?: boolean } | null {
+  if (step === 1) return { options: ['Yes, that sounds right', 'Partly', 'Not quite'], layout: 'row' }
+  if (step === 3) return { options: PARTICIPANT_GOAL_OPTIONS, layout: 'list', multiSelect: true }
   return null
 }
 
@@ -113,6 +98,8 @@ export function ParticipantOnboardingChat() {
   const [phase, setPhase] = useState<'onboarding' | 'faq' | 'checkin' | 'done'>('onboarding')
   const [faqState, setFaqState] = useState<'input' | 'next'>('input')
   const [done, setDone] = useState(false)
+  const [matchAnswer, setMatchAnswer] = useState<string>('')
+  const [selectedGoals, setSelectedGoals] = useState<string[]>([])
 
   const msgsRef = useRef<HTMLDivElement>(null)
   const taRef = useRef<HTMLTextAreaElement>(null)
@@ -136,6 +123,7 @@ export function ParticipantOnboardingChat() {
     if (saved && saved.token === token) {
       setStep(saved.step)
       purposeRef.current = saved.purpose
+      if (saved.matchAnswer) setMatchAnswer(saved.matchAnswer)
       setMsgs(saved.msgs.filter(m => !m.isLoading))
       historyRef.current = saved.history
       setPhase(saved.phase)
@@ -155,16 +143,16 @@ export function ParticipantOnboardingChat() {
 
   // ── Onboarding advancement ────────────────────────────────────────────────
 
-  function pushStep(nextStep: number, p: string, base: DMsg[]) {
-    if (nextStep > 7) {
+  function pushStep(nextStep: number, p: string, base: DMsg[], ma?: string) {
+    if (nextStep > PARTICIPANT_ONBOARDING_STEPS) {
       triggerCheckIn(p, base)
       return
     }
-    const content = stepContent(nextStep, adminName, groundLabel, multiParty)
+    const content = stepContent(nextStep, adminName, groundLabel, multiParty, ma ?? matchAnswer)
     const next = [...base, { id: `ai-${nextStep}-${Date.now()}`, from: 'ai' as const, content }]
     setMsgs(next)
     setStep(nextStep)
-    pStore.save({ token, groundLabel, adminName, multiParty, step: nextStep, purpose: p, msgs: next, history: [], phase: 'onboarding', faqState: 'input' })
+    pStore.save({ token, groundLabel, adminName, multiParty, step: nextStep, purpose: p, matchAnswer: ma ?? matchAnswer, msgs: next, history: [], phase: 'onboarding', faqState: 'input' })
   }
 
   function handleTextSubmit() {
@@ -173,12 +161,25 @@ export function ParticipantOnboardingChat() {
     setInput('')
     if (taRef.current) taRef.current.style.height = '38px'
 
-    if (step === 6) {
-      purposeRef.current = val
-      const userMsg: DMsg = { id: `u-6-${Date.now()}`, from: 'user', content: val }
+    if (step === 3) {
+      // Free text goal
+      const goals = selectedGoals.length > 0 ? [...selectedGoals, val] : [val]
+      const combined = goals.join(', ')
+      purposeRef.current = combined
+      setSelectedGoals([])
+      const userMsg: DMsg = { id: `u-3-${Date.now()}`, from: 'user', content: val }
       const withUser = [...msgs, userMsg]
       setMsgs(withUser)
-      pushStep(7, val, withUser)
+      pushStep(4, combined, withUser)
+      return
+    }
+
+    if (step === 4) {
+      purposeRef.current = purposeRef.current + `. Initial context: ${val}`
+      const userMsg: DMsg = { id: `u-4-${Date.now()}`, from: 'user', content: val }
+      const withUser = [...msgs, userMsg]
+      setMsgs(withUser)
+      triggerCheckIn(purposeRef.current, withUser)
       return
     }
 
@@ -189,26 +190,41 @@ export function ParticipantOnboardingChat() {
   }
 
   function handleButton(btn: string) {
-    if (step === 6) {
-      purposeRef.current = btn
+    // Step 1: match answer buttons
+    if (step === 1) {
+      const ma = btn.toLowerCase().startsWith('yes') ? 'yes' : btn.toLowerCase() === 'partly' ? 'partly' : 'no'
+      setMatchAnswer(ma)
+      const userMsg: DMsg = { id: `u-btn-1-${Date.now()}`, from: 'user', content: btn }
+      const withUser = [...msgs, userMsg]
+      setMsgs(withUser)
+      pushStep(2, purposeRef.current, withUser, ma)
+      return
+    }
+
+    // Step 3: multi-select goal toggle
+    if (step === 3 && PARTICIPANT_GOAL_OPTIONS.includes(btn)) {
+      setSelectedGoals(prev =>
+        prev.includes(btn) ? prev.filter(g => g !== btn) : [...prev, btn]
+      )
+      return
     }
 
     const userMsg: DMsg = { id: `u-btn-${step}-${Date.now()}`, from: 'user', content: btn }
     const withUser = [...msgs, userMsg]
     setMsgs(withUser)
 
-    if (step === 7) {
-      if (btn === 'No questions. Let us begin.') {
-        triggerCheckIn(purposeRef.current, withUser)
-      } else {
-        setPhase('faq')
-        setFaqState('input')
-        pStore.save({ token, groundLabel, adminName, multiParty, step: 7, purpose: purposeRef.current, msgs: withUser, history: [], phase: 'faq', faqState: 'input' })
-      }
-      return
-    }
-
     pushStep(step + 1, purposeRef.current, withUser)
+  }
+
+  function confirmGoals() {
+    if (selectedGoals.length === 0) return
+    const combined = selectedGoals.join(', ')
+    purposeRef.current = combined
+    setSelectedGoals([])
+    const userMsg: DMsg = { id: `u-goals-${Date.now()}`, from: 'user', content: selectedGoals.join('\n') }
+    const withUser = [...msgs, userMsg]
+    setMsgs(withUser)
+    pushStep(4, combined, withUser)
   }
 
   // ── FAQ interlude ─────────────────────────────────────────────────────────
@@ -255,7 +271,7 @@ export function ParticipantOnboardingChat() {
 
   function triggerCheckIn(p: string, base: DMsg[]) {
     const groundType = multiParty ? 'multi-party' : 'two-party'
-    const seedContent = `[PARTICIPANT ONBOARDING COMPLETE]\nGround: ${groundLabel}\nInitiator: ${adminName}\nGround type: ${groundType}\nParticipant's stated purpose: ${p}\n\nBegin the check-in.`
+    const seedContent = `[PARTICIPANT ONBOARDING COMPLETE]\nGround: ${groundLabel}\nInitiator: ${adminName}\nGround type: ${groundType}\nParticipant's match answer: ${matchAnswer || 'yes'}\nWhat participant wants this ground to get right: ${p}\n\nBegin the check-in. Ask one direct specific question based on what they shared. Do not open generically.`
     const seedMsg: EntryMessage = { role: 'user', content: seedContent }
     const h: EntryMessage[] = [seedMsg]
     historyRef.current = h
@@ -378,21 +394,22 @@ export function ParticipantOnboardingChat() {
     if (phase === 'faq' && faqState === 'next' && !loading)
       return { options: ['Nothing else. Let us begin.', 'I have another question.'], layout: 'row' as Layout }
     if (phase === 'onboarding' && !loading)
-      return stepButtons(step, multiParty)
+      return stepButtons(step, multiParty, matchAnswer)
     return null
   })()
 
   const showInput = !done && !loading && (
-    (phase === 'onboarding' && (step <= 5 || step === 6)) ||
+    (phase === 'onboarding' && step >= 2) ||
     (phase === 'faq' && faqState === 'input') ||
     phase === 'checkin'
   )
 
   const inputPlaceholder =
-    phase === 'checkin' ? 'Share what you have been working on.' :
+    phase === 'checkin' ? 'Type your response.' :
     phase === 'faq' ? 'Type your question.' :
-    step === 6 ? 'Or type it in your own words.' :
-    'Type okay or proceed.'
+    step === 3 ? 'Or describe it in your own words.' :
+    step === 4 ? 'Type your response.' :
+    'Type your response.'
 
   const visibleMsgs = msgs.filter(m => !m.isLoading || loading)
 
@@ -433,31 +450,45 @@ export function ParticipantOnboardingChat() {
               flexDirection: currentButtons.layout === 'list' ? 'column' : 'row',
               gap: 7,
               padding: '10px 0 4px',
+              flexWrap: currentButtons.layout === 'row' ? 'wrap' : undefined,
             }}>
-              {currentButtons.options.map(opt => (
+              {currentButtons.options.map(opt => {
+                const isSelected = currentButtons.multiSelect && selectedGoals.includes(opt)
+                return (
+                  <button
+                    key={opt}
+                    onClick={() => phase === 'faq' ? handleFaqNext(opt) : handleButton(opt)}
+                    style={{
+                      padding: '10px 14px',
+                      borderRadius: 8,
+                      border: `1px solid ${isSelected ? 'var(--gw-navy)' : 'var(--gw-border)'}`,
+                      background: isSelected ? 'var(--gw-navy)' : 'white',
+                      color: isSelected ? 'white' : 'var(--gw-text)',
+                      fontSize: 13,
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      fontFamily: 'inherit',
+                      textAlign: 'left',
+                      lineHeight: 1.4,
+                      transition: 'all 0.12s',
+                    }}
+                  >
+                    {opt}
+                  </button>
+                )
+              })}
+              {currentButtons.multiSelect && selectedGoals.length > 0 && (
                 <button
-                  key={opt}
-                  onClick={() => phase === 'faq' ? handleFaqNext(opt) : handleButton(opt)}
+                  onClick={confirmGoals}
                   style={{
-                    padding: '10px 14px',
-                    borderRadius: 8,
-                    border: '1px solid var(--gw-border)',
-                    background: 'white',
-                    color: 'var(--gw-text)',
-                    fontSize: 13,
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                    fontFamily: 'inherit',
-                    textAlign: 'left',
-                    lineHeight: 1.4,
-                    transition: 'border-color 0.12s, color 0.12s',
+                    padding: '10px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700,
+                    background: 'var(--gw-navy)', color: 'white', border: '1px solid var(--gw-navy)',
+                    cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
                   }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--gw-navy)'; e.currentTarget.style.color = 'var(--gw-navy)' }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--gw-border)'; e.currentTarget.style.color = 'var(--gw-text)' }}
                 >
-                  {opt}
+                  Confirm →
                 </button>
-              ))}
+              )}
             </div>
           )}
         </div>
@@ -482,7 +513,7 @@ export function ParticipantOnboardingChat() {
 
             <div style={{ borderTop: '0.5px solid var(--gw-border)', background: 'white', flexShrink: 0 }}>
               <div style={{ padding: '4px 14px', borderBottom: '0.5px solid var(--gw-border)', fontSize: 11, color: 'var(--gw-sub)', background: 'var(--gw-bg)', lineHeight: 1.4 }}>
-                Your words are private. {adminName} will not see what you write until all parties activate the report.
+                Your full account stays private from other contributors. The picture builds as people check in.
               </div>
               {showInput && (
                 <div className="gw-chat-bar">

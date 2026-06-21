@@ -585,4 +585,96 @@ export class GroundsService {
   async requestPaymentAfterSession2(orgId: string, groundId: string): Promise<void> {
     return this.billing.requestPaymentAfterSession2(orgId, groundId);
   }
+
+  /**
+   * Return the authenticated contributor's private longitudinal record for a ground.
+   * Specificity trend and pattern observations are gated behind billing — they
+   * require careFeeStatus === ACTIVE. Without billing, only session history is returned.
+   */
+  async getMyRecord(groundId: string, userId: string): Promise<{
+    sessions: { sessionNumber: number; completedAt: Date | null; status: string }[];
+    specificity: { scores: number[]; avg: number; label: string } | null;
+    confidence: { score: number; label: string; description: string } | null;
+    patterns: { observation: string; sessionNumber: number | null }[] | null;
+    insightsLocked: boolean;
+  }> {
+    const participant = await this.prisma.groundParticipant.findFirst({
+      where: { groundId, userId },
+      select: {
+        id: true,
+        specificityHistory: true,
+        patternDetections: {
+          where: { status: 'SURFACED' },
+          select: { observationText: true, lastPeriodNumber: true, code: true },
+          orderBy: { lastSeenAt: 'desc' },
+        },
+        checkIns: {
+          select: { sessionNumber: true, completedAt: true, status: true },
+          orderBy: { sessionNumber: 'asc' },
+        },
+      },
+    });
+    if (!participant) throw new ForbiddenException('You are not a party to this ground');
+
+    const org = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { organization: { select: { careFeeStatus: true } } },
+    });
+    const billingActive = org?.organization?.careFeeStatus === 'ACTIVE';
+
+    const sessions = (participant.checkIns ?? []).map(ci => ({
+      sessionNumber: ci.sessionNumber,
+      completedAt: ci.completedAt,
+      status: ci.status,
+    }));
+
+    if (!billingActive) {
+      return { sessions, specificity: null, confidence: null, patterns: null, insightsLocked: true };
+    }
+
+    // Specificity trend
+    const raw: number[] = (participant.specificityHistory as number[]) ?? [];
+    const scores = raw.filter(n => typeof n === 'number' && isFinite(n));
+    const avg = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
+    const specLabel = avg >= 0.65 ? 'high' : avg >= 0.35 ? 'moderate' : 'low';
+
+    // Confidence score — how many completed sessions cross-referenced against specificity
+    const completedCount = sessions.filter(s => s.status === 'COMPLETED').length;
+    const confScore = Math.min(5, completedCount + (avg >= 0.5 ? 1 : 0));
+    const confLabel = confScore >= 4 ? 'High' : confScore >= 2 ? 'Building' : 'Early';
+    const confDesc = confScore >= 4
+      ? 'Multiple sessions cross-referenced. Your record carries strong evidential weight.'
+      : confScore >= 2
+        ? 'Your record is taking shape. Each session adds depth and specificity to the picture.'
+        : 'Your record is just beginning. One more session will start to show the full picture.';
+
+    // Diplomatic pattern observations — never name the code, never frame as a verdict
+    const POSITIVE_CODES = new Set(['R3']);
+    const patterns = (participant.patternDetections ?? []).map(d => ({
+      observation: POSITIVE_CODES.has(d.code)
+        ? d.observationText ?? ''
+        : diplomaticObservation(d.observationText ?? ''),
+      sessionNumber: d.lastPeriodNumber,
+    })).filter(p => p.observation.length > 0);
+
+    return {
+      sessions,
+      specificity: { scores, avg, label: specLabel },
+      confidence: { score: confScore, label: confLabel, description: confDesc },
+      patterns,
+      insightsLocked: false,
+    };
+  }
+}
+
+/**
+ * Rewrites a raw pattern observation into a diplomatic first-person reflection.
+ * The original observation describes a behaviour; this wraps it so the contributor
+ * reads it as something worth noticing in their own record — not a verdict.
+ */
+function diplomaticObservation(raw: string): string {
+  if (!raw.trim()) return '';
+  // Strip any period tags from the three-period rule bookkeeping
+  const cleaned = raw.replace(/^\[period=\d+\]\s*/i, '').trim();
+  return `Your record across sessions shows something worth noticing: ${cleaned.charAt(0).toLowerCase()}${cleaned.slice(1)} It is worth being aware of as your record builds.`;
 }
