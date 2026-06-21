@@ -187,6 +187,7 @@ export function ParticipantOnboardingChat() {
       return
     }
 
+    purposeRef.current = purposeRef.current || val
     const userMsg: DMsg = { id: `u-${step}-${Date.now()}`, from: 'user', content: val }
     const withUser = [...msgs.filter(m => !m.isLoading), userMsg]
     setMsgs(withUser)

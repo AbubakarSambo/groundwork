@@ -305,8 +305,8 @@ export function EntryChatPage() {
       const ctx = [
         onboardingSelections.initial ? `What this ground is for: ${onboardingSelections.initial}` : '',
         onboardingSelections.whoInvolved ? `Who is part of this: ${onboardingSelections.whoInvolved}` : '',
+        onboardingSelections.decision ? `What made them open this record today: ${onboardingSelections.decision}` : '',
         onboardingSelections.goals?.length ? `What they want this ground to get right: ${onboardingSelections.goals.join(', ')}` : '',
-        onboardingSelections.checkinTiming ? `When contributors check in: ${onboardingSelections.checkinTiming}` : '',
       ].filter(Boolean).join('. ')
       return entryApi.chat([{
         role: 'user',
@@ -699,8 +699,8 @@ export function EntryChatPage() {
               )}
             </div>
 
-            {/* Text input — steps 1–4; step 5 uses only the "Let us begin." button */}
-            {!startCheckin.isPending && currentOnboardingMsg && onboardingStep < ONBOARDING_STEPS && (
+            {/* Text input — steps with a text placeholder only; button-only steps (1 and 6) hide the bar */}
+            {!startCheckin.isPending && currentOnboardingMsg && onboardingStep < ONBOARDING_STEPS && !!currentOnboardingMsg.placeholder && (
               <div style={{ borderTop: '1px solid var(--gw-border)', background: 'white', flexShrink: 0 }}>
                 <div style={{ padding: '10px 16px' }}>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center', maxWidth: 680, margin: '0 auto' }}>
