@@ -54,7 +54,14 @@ export function hasPendingEntry(): boolean {
   } catch { return false }
 }
 
-const ONBOARDING_STEPS = 5
+const ONBOARDING_STEPS = 6
+
+const MODE_BUTTON_MAP: Record<string, string> = {
+  'Something new': 'something_new',
+  'Looking back': 'look_back',
+  'Looking forward': 'look_forward',
+  'Both': 'both',
+}
 
 const GOAL_OPTIONS = [
   'Get everyone aligned before we begin',
@@ -65,12 +72,6 @@ const GOAL_OPTIONS = [
   'Something else',
 ]
 
-const TIMING_OPTIONS = [
-  'Before a specific date or event',
-  'On a recurring schedule',
-  'At key moments I will define',
-  'One session only',
-]
 
 const SESSION_END_PATTERNS = [
   'here is what is now in your record',
@@ -84,30 +85,61 @@ const SESSION_END_PATTERNS = [
   'option to not have',
 ]
 
-function buildOnboardingMessages(_sels: OnboardingSelections): { text: string; buttons?: string[]; multiSelect?: boolean; placeholder?: string }[] {
+const MODE_INTROS: Record<string, { prefix: string; examples: string }> = {
+  something_new: {
+    prefix: 'Good.\n\nThe strongest records are usually built before assumptions have a chance to form.',
+    examples: 'A new hire\'s first 90 days.\nA new project.\nA partnership.\nA leadership transition.\nA programme launch.',
+  },
+  look_back: {
+    prefix: 'Good.\n\nThe purpose of this record is to understand what happened while the details are still available.',
+    examples: 'A missed deadline.\nA project that finished.\nA working relationship that drifted.\nA decision that needs reviewing.',
+  },
+  look_forward: {
+    prefix: 'Good.\n\nThe purpose of this record is to create clarity about what comes next.',
+    examples: 'The next phase of a project.\nA role change.\nA promotion.\nA restructure.\nA partnership renewal.',
+  },
+  both: {
+    prefix: 'Good.\n\nSometimes the only way forward is to first understand where things started to diverge.',
+    examples: 'A project that needs a reset.\nA working relationship under strain.\nA team that needs realignment.\nA partnership that needs review before continuing.',
+  },
+}
+
+function buildOnboardingMessages(sels: OnboardingSelections): { text: string; buttons?: string[]; multiSelect?: boolean; placeholder?: string }[] {
+  const modeKey = sels.mode || 'something_new'
+  const intro = MODE_INTROS[modeKey] || MODE_INTROS['something_new']
+
   return [
+    // Message 1: situation type selection
     {
-      text: `Groundwork helps everyone working on something together see it clearly from all sides. Each person checks in on what they have done, what they have observed, and how they understand things from their position. As people contribute, the picture builds and shows where there is alignment and where there is more to work through together. Their full accounts stay private from each other.\n\nBring whatever you have: emails, work plans, agreements, messages, anything written down. You can also describe what you have seen and experienced. You do not need documents to start.\n\nWhat is this ground for?\n\nSome examples:\nA new hire's first 90 days.\nA project we are about to start.\nA partnership or collaboration.\nA leadership transition.\nA decision we need everyone aligned on before we move forward.`,
-      placeholder: 'Describe what this ground is for.',
+      text: `Most execution delivery fails due to different understanding and you understand this gap depending on who is describing them.\n\nGroundwork creates a record using what people have experienced, understood, observed, delivered, documented, and agreed. As people contribute, the record is cross referenced across contributors and over time and becomes more complete. It tells you where gaps are and where alignment is needed.\n\nBefore we begin, what kind of situation are we dealing with?`,
+      buttons: ['Something new', 'Looking back', 'Looking forward', 'Both'],
     },
+    // Message 2: what is this about (mode-aware)
     {
-      text: `Who else is part of this ground and what does each person bring to it?`,
-      placeholder: 'Name who is involved and their role.',
+      text: `${intro.prefix}\n\nWhat is this about?\n\nExamples:\n${intro.examples}`,
+      placeholder: 'Describe the situation.',
     },
+    // Message 3: who is involved
     {
-      text: `What do you want this ground to get right?`,
+      text: 'Who is involved?',
+      placeholder: 'Name who is part of this and their role.',
+    },
+    // Message 4: why now
+    {
+      text: 'What made you decide to open this record today?',
+      placeholder: 'What prompted this.',
+    },
+    // Message 5: what you hope this achieves
+    {
+      text: 'What do you hope this record helps you understand, decide, improve, or establish?',
       buttons: GOAL_OPTIONS,
       multiSelect: true,
       placeholder: 'Or describe it in your own words.',
     },
+    // Message 6: ready to begin
     {
-      text: `When do you want contributors to check in?`,
-      buttons: TIMING_OPTIONS,
-      placeholder: 'Or describe when you need them to check in.',
-    },
-    {
-      text: `Good. Everyone will check in against what you have set here. As people contribute, the picture shows where there is alignment and where there are gaps. Their full accounts stay private from each other throughout.\n\nLet us begin.`,
-      buttons: ['Let us begin.'],
+      text: 'Thank you.\n\nEveryone involved contributes independently. As people contribute, the record is continuously cross referenced against other accounts, documents, updates, commitments, and observations.\n\nThe report updates as the record grows.\n\nLet\'s begin.',
+      buttons: ['Let\'s begin.'],
     },
   ]
 }
@@ -338,16 +370,16 @@ export function EntryChatPage() {
     const currentStep = onboardingStep
     let newSels = { ...onboardingSelections }
 
-    // Step 5 begin button
-    if (buttonChoice === 'Let us begin.') {
+    // Step 6 begin button
+    if (buttonChoice === "Let's begin.") {
       setOnboardingStep(ONBOARDING_STEPS + 1)
       persistOnboarding([], newSels, ONBOARDING_STEPS)
       startCheckin.mutate()
       return
     }
 
-    // Step 3 multi-select: toggle goal without advancing
-    if (currentStep === 3 && buttonChoice && GOAL_OPTIONS.includes(buttonChoice)) {
+    // Step 5 multi-select: toggle goal without advancing
+    if (currentStep === 5 && buttonChoice && GOAL_OPTIONS.includes(buttonChoice)) {
       setSelectedGoals(prev =>
         prev.includes(buttonChoice) ? prev.filter(g => g !== buttonChoice) : [...prev, buttonChoice]
       )
@@ -356,26 +388,31 @@ export function EntryChatPage() {
 
     // Capture inputs per step
     if (currentStep === 1) {
+      // Mode selection buttons
+      if (buttonChoice && MODE_BUTTON_MAP[buttonChoice]) {
+        newSels = { ...newSels, mode: MODE_BUTTON_MAP[buttonChoice] }
+      }
+    } else if (currentStep === 2) {
       const val = input.trim()
       if (!val) return
       newSels = { ...newSels, initial: val }
       setInput('')
-    } else if (currentStep === 2) {
+    } else if (currentStep === 3) {
       const val = input.trim()
       if (!val) return
       newSels = { ...newSels, whoInvolved: val }
       setInput('')
-    } else if (currentStep === 3) {
+    } else if (currentStep === 4) {
+      const val = input.trim()
+      if (!val) return
+      newSels = { ...newSels, decision: val }
+      setInput('')
+    } else if (currentStep === 5) {
       const goals = selectedGoals.length > 0 ? selectedGoals : (input.trim() ? [input.trim()] : [])
       if (goals.length === 0) return
-      newSels = { ...newSels, goals, decision: goals.join(', ') }
+      newSels = { ...newSels, goals, checkinTiming: goals.join(', ') }
       setInput('')
       setSelectedGoals([])
-    } else if (currentStep === 4) {
-      const val = buttonChoice ?? input.trim()
-      if (!val) return
-      if (!buttonChoice) setInput('')
-      newSels = { ...newSels, checkinTiming: val, timeframe: val }
     }
 
     setOnboardingSelections(newSels)

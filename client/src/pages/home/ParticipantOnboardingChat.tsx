@@ -40,29 +40,32 @@ const pStore = {
 // ── Message content ────────────────────────────────────────────────────────
 
 const PARTICIPANT_GOAL_OPTIONS = [
-  'That my contribution is clear and visible',
-  'That we are all starting from the same understanding',
-  'That expectations are clear on all sides going forward',
-  'That I want to understand where I have gaps and get better aligned as we go',
-  'That my perspective is part of the picture before any decisions are made',
+  'I delivered what was agreed',
+  'Expectations were unclear',
+  'Important context is missing',
+  'The situation needs to be reset',
+  'I want my account on record',
+  'I want a clearer understanding of what happened',
   'Something else',
 ]
+
+const ROLE_OPTIONS = ['Project lead', 'Manager', 'Team member', 'Cofounder', 'Partner', 'Client']
 
 const PARTICIPANT_ONBOARDING_STEPS = 4
 
 function stepContent(step: number, adminName: string, groundLabel: string, _multiParty: boolean, matchAnswer?: string): string {
   switch (step) {
     case 1:
-      return `${adminName} has invited you to be part of a Groundwork ground.\n\nGroundwork helps everyone working on something together see it clearly from all sides. You will check in on what you have done, what you have observed, and how you understand things from your position. As people contribute, the picture builds and shows where there is alignment and where there is more to work through together. Your full account stays private from other contributors — they see the picture, not your words.\n\nThis ground is about: ${groundLabel}\n\nDoes that sound right to you?`
+      return `${adminName} has invited you to contribute to a Groundwork record.\n\nMost situations look different depending on who is describing them.\n\nGroundwork creates a record using what people have experienced, observed, documented, and agreed. As people contribute, the record is cross referenced and becomes more complete over time.\n\nThis record is about:\n${groundLabel}\n\nBefore we begin, does this description broadly match your understanding?`
     case 2:
       if (matchAnswer === 'yes') {
-        return `Good. Nobody can speak for you here. What you share is entirely your own perspective, and it matters.\n\nWhat is your role in this?`
+        return `Good.\n\nYou are not answering for ${adminName}.\nYou are adding your own account.\nNobody can edit it.\nNobody can speak for you.\n\nWhat role do you have in this situation?`
       }
-      return `That is okay. How would you describe what this is about from where you stand?\n\nOnce you share that, we will make sure your check-in reflects your view.`
+      return `Good.\n\nDifferences in understanding are often why a record is useful.\n\nHow would you describe what this situation is about?`
     case 3:
-      return `What do you want this ground to get right from your side?`
+      return `What would you most like this record to establish from your side?`
     case 4:
-      return `What have you done, observed, or documented that makes that important to you? Share whatever comes to mind — work done, conversations you have had, decisions that were made, things you have noticed.`
+      return `What have you experienced, observed, or documented that makes that important to you?`
     default:
       return ''
   }
@@ -70,7 +73,8 @@ function stepContent(step: number, adminName: string, groundLabel: string, _mult
 
 type Layout = 'list' | 'row'
 function stepButtons(step: number, _multiParty: boolean, _matchAnswer?: string): { options: string[]; layout: Layout; multiSelect?: boolean } | null {
-  if (step === 1) return { options: ['Yes, that sounds right', 'Partly', 'Not quite'], layout: 'row' }
+  if (step === 1) return { options: ['Yes', 'Partly', 'No'], layout: 'row' }
+  if (step === 2 && _matchAnswer === 'yes') return { options: ROLE_OPTIONS, layout: 'list' }
   if (step === 3) return { options: PARTICIPANT_GOAL_OPTIONS, layout: 'list', multiSelect: true }
   return null
 }
@@ -190,14 +194,24 @@ export function ParticipantOnboardingChat() {
   }
 
   function handleButton(btn: string) {
-    // Step 1: match answer buttons
+    // Step 1: match answer — Yes / Partly / No
     if (step === 1) {
-      const ma = btn.toLowerCase().startsWith('yes') ? 'yes' : btn.toLowerCase() === 'partly' ? 'partly' : 'no'
+      const ma = btn.toLowerCase() === 'yes' ? 'yes' : btn.toLowerCase() === 'partly' ? 'partly' : 'no'
       setMatchAnswer(ma)
       const userMsg: DMsg = { id: `u-btn-1-${Date.now()}`, from: 'user', content: btn }
       const withUser = [...msgs, userMsg]
       setMsgs(withUser)
       pushStep(2, purposeRef.current, withUser, ma)
+      return
+    }
+
+    // Step 2 (Yes path): role option selected
+    if (step === 2 && matchAnswer === 'yes' && ROLE_OPTIONS.includes(btn)) {
+      purposeRef.current = `Role: ${btn}`
+      const userMsg: DMsg = { id: `u-btn-2-${Date.now()}`, from: 'user', content: btn }
+      const withUser = [...msgs, userMsg]
+      setMsgs(withUser)
+      pushStep(3, purposeRef.current, withUser)
       return
     }
 
@@ -212,7 +226,6 @@ export function ParticipantOnboardingChat() {
     const userMsg: DMsg = { id: `u-btn-${step}-${Date.now()}`, from: 'user', content: btn }
     const withUser = [...msgs, userMsg]
     setMsgs(withUser)
-
     pushStep(step + 1, purposeRef.current, withUser)
   }
 
