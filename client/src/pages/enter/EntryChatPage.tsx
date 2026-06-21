@@ -111,7 +111,7 @@ function buildOnboardingMessages(sels: OnboardingSelections): { text: string; bu
   return [
     // Message 1: situation type selection
     {
-      text: `Most execution delivery fails due to different understanding and you understand this gap depending on who is describing them.\n\nGroundwork creates a record using what people have experienced, understood, observed, delivered, documented, and agreed. As people contribute, the record is cross referenced across contributors and over time and becomes more complete. It tells you where gaps are and where alignment is needed.\n\nBefore we begin, what kind of situation are we dealing with?`,
+      text: `Groundwork builds a record from what each person has experienced, observed, and agreed — cross-referenced across contributors over time.\n\nWhat kind of situation are we dealing with?`,
       buttons: ['Something new', 'Looking back', 'Looking forward', 'Both'],
     },
     // Message 2: what is this about (mode-aware)
@@ -221,7 +221,7 @@ export function EntryChatPage() {
 
   // Seed ground name
   useEffect(() => {
-    const defaultName = scenario ? scenario.replace(/\+/g, ' ') : 'Entry session'
+    const defaultName = scenario ? scenario.replace(/\+/g, ' ') : ''
     setGroundName(defaultName)
     setSessions(1)
   }, [])
@@ -408,9 +408,10 @@ export function EntryChatPage() {
       newSels = { ...newSels, decision: val }
       setInput('')
     } else if (currentStep === 5) {
-      const goals = selectedGoals.length > 0 ? selectedGoals : (input.trim() ? [input.trim()] : [])
+      const textGoal = input.trim()
+      const goals = [...selectedGoals, ...(textGoal ? [textGoal] : [])]
       if (goals.length === 0) return
-      newSels = { ...newSels, goals, checkinTiming: goals.join(', ') }
+      newSels = { ...newSels, goals }
       setInput('')
       setSelectedGoals([])
     }
@@ -535,9 +536,23 @@ export function EntryChatPage() {
   function submitInviteContext() {
     if (!inviteContextFor) return
     const entry = inviteContextFor + (inviteContext.trim() ? ` — ${inviteContext.trim()}` : '')
-    if (!inviteAdded.includes(inviteContextFor)) setInviteAdded(prev => [...prev, entry])
+    const newAdded = inviteAdded.includes(inviteContextFor) ? inviteAdded : [...inviteAdded, entry]
+    setInviteAdded(newAdded)
     setInviteContextFor(null)
     setInviteContext('')
+    // Keep commit payload in sync if account already created
+    try {
+      const raw = localStorage.getItem('gw_commit_payload')
+      if (raw) {
+        const payload = JSON.parse(raw)
+        payload.contributors = newAdded.map(e => {
+          const dashIdx = e.indexOf(' — ')
+          if (dashIdx === -1) return { email: e, inviteToken }
+          return { email: e.slice(0, dashIdx), context: e.slice(dashIdx + 3), inviteToken }
+        })
+        localStorage.setItem('gw_commit_payload', JSON.stringify(payload))
+      }
+    } catch { /* */ }
   }
 
   const currentOnboardingMsg = onboardingMessages[onboardingStep - 1]
@@ -560,8 +575,16 @@ export function EntryChatPage() {
             />
           ) : (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)' }}>{groundName}</span>
-              <button onClick={() => { setRenameInput(groundName); setRenamingGround(true) }} style={{ background: 'none', border: 'none', color: 'var(--gw-muted)', cursor: 'pointer', fontSize: 12, padding: 0, fontFamily: 'inherit' }} title="Rename">✎</button>
+              {groundName ? (
+                <>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)' }}>{groundName}</span>
+                  <button onClick={() => { setRenameInput(groundName); setRenamingGround(true) }} style={{ background: 'none', border: 'none', color: 'var(--gw-muted)', cursor: 'pointer', fontSize: 12, padding: 0, fontFamily: 'inherit' }} title="Rename">✎</button>
+                </>
+              ) : (
+                <button onClick={() => { setRenameInput(''); setRenamingGround(true) }} style={{ background: 'none', border: '1px dashed var(--gw-border)', borderRadius: 5, color: 'var(--gw-sub)', cursor: 'pointer', fontSize: 12, padding: '2px 10px', fontFamily: 'inherit', fontWeight: 500 }}>
+                  Name this ground ✎
+                </button>
+              )}
             </div>
           )}
           <div style={{ fontSize: 11, color: 'var(--gw-sub)', display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
@@ -809,6 +832,12 @@ export function EntryChatPage() {
                   📎
                 </label>
                 <input ref={fileRef} type="file" id="entry-doc-upload-chip" accept=".pdf,.doc,.docx,.txt,.csv,.xlsx,.png,.jpg,.jpeg,.md" style={{ display: 'none' }} onChange={handleFileChange} />
+                <div style={{ marginLeft: 'auto' }}>
+                  <button onClick={handleEndSession} disabled={loading}
+                    style={{ padding: '5px 12px', borderRadius: 20, fontSize: 12, border: '1px solid var(--gw-border)', background: 'transparent', color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600, opacity: loading ? 0.5 : 1 }}>
+                    End session →
+                  </button>
+                </div>
               </div>
             )}
 
@@ -820,24 +849,36 @@ export function EntryChatPage() {
               </div>
             )}
 
-            {/* Input bar */}
-            <div style={{ borderTop: '1px solid var(--gw-border)', background: 'white', flexShrink: 0 }}>
-              <div style={{ padding: '10px 16px', display: 'flex', gap: 8, alignItems: 'flex-end', maxWidth: 680, margin: '0 auto' }}>
-                <textarea
-                  ref={taRef}
-                  placeholder={closed ? 'Your session is on record.' : 'Type your response.'}
-                  value={input}
-                  onChange={autoResize}
-                  onKeyDown={handleCheckinKey}
-                  disabled={loading || closed}
-                  style={{ flex: 1, resize: 'none', height: 38, maxHeight: 120, padding: '8px 10px', fontSize: 13, lineHeight: 1.4, border: '1px solid var(--gw-border)', borderRadius: 6, background: closed ? 'var(--gw-bg)' : 'white', fontFamily: 'inherit', outline: 'none', color: 'var(--gw-text)' }}
-                />
-                <button onClick={() => send()} disabled={loading || closed || !input.trim()}
-                  style={{ padding: '0 14px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 18, flexShrink: 0, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: (loading || closed || !input.trim()) ? 0.35 : 1 }}>
-                  ↑
+            {/* Input bar / save CTA */}
+            {closed && !showSave ? (
+              <div style={{ borderTop: '1px solid var(--gw-border)', background: 'white', flexShrink: 0, padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ flex: 1, fontSize: 13, color: 'var(--gw-sub)' }}>Your session is on record.</div>
+                <button
+                  onClick={() => setShowSave(true)}
+                  style={{ flexShrink: 0, padding: '8px 16px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', border: 'none', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+                >
+                  Save &amp; invite →
                 </button>
               </div>
-            </div>
+            ) : !closed && (
+              <div style={{ borderTop: '1px solid var(--gw-border)', background: 'white', flexShrink: 0 }}>
+                <div style={{ padding: '10px 16px', display: 'flex', gap: 8, alignItems: 'flex-end', maxWidth: 680, margin: '0 auto' }}>
+                  <textarea
+                    ref={taRef}
+                    placeholder="Type your response."
+                    value={input}
+                    onChange={autoResize}
+                    onKeyDown={handleCheckinKey}
+                    disabled={loading}
+                    style={{ flex: 1, resize: 'none', height: 38, maxHeight: 120, padding: '8px 10px', fontSize: 13, lineHeight: 1.4, border: '1px solid var(--gw-border)', borderRadius: 6, background: 'white', fontFamily: 'inherit', outline: 'none', color: 'var(--gw-text)' }}
+                  />
+                  <button onClick={() => send()} disabled={loading || !input.trim()}
+                    style={{ padding: '0 14px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 18, flexShrink: 0, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: (loading || !input.trim()) ? 0.35 : 1 }}>
+                    ↑
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -1064,7 +1105,7 @@ export function EntryChatPage() {
             </div>
 
             <div onClick={() => setShowSave(false)} style={{ textAlign: 'center', fontSize: 12, color: '#9B9590', cursor: 'pointer', paddingTop: 4 }}>
-              Later
+              {closed ? 'Close — you can reopen this from the bar below' : 'Later'}
             </div>
           </div>
         </div>
