@@ -57,13 +57,21 @@ export function hasPendingEntry(): boolean {
 const ONBOARDING_STEPS = 6
 
 const MODE_BUTTON_MAP: Record<string, string> = {
-  'Something new': 'something_new',
-  'Looking back': 'look_back',
-  'Looking forward': 'look_forward',
+  'Starting something': 'something_new',
+  'Already underway': 'already_underway',
+  'Already happened': 'look_back',
   'Both': 'both',
 }
 
+const MODE_BUTTON_DESCRIPTIONS: Record<string, string> = {
+  'Starting something': 'A new hire. A new project. A new contract. A partnership kicking off.',
+  'Already underway': 'A delivery in progress. A working relationship. A decision being made.',
+  'Already happened': 'A project that completed. A delivery. A conversation that needs to be on record.',
+  'Both': 'Something that needs reviewing and a clear path forward.',
+}
+
 const GOAL_OPTIONS = [
+  'Verify readiness before we proceed',
   'Get everyone aligned before we begin',
   'Make sure expectations are clear on all sides',
   'Understand what happened and move forward',
@@ -90,56 +98,65 @@ const MODE_INTROS: Record<string, { prefix: string; examples: string }> = {
     prefix: 'Good.\n\nThe strongest records are usually built before assumptions have a chance to form.',
     examples: 'A new hire\'s first 90 days.\nA new project.\nA partnership.\nA leadership transition.\nA programme launch.',
   },
+  already_underway: {
+    prefix: 'Good.\n\nChecking alignment while something is in motion is what keeps it on track.',
+    examples: 'A delivery in progress.\nA team preparing for a meeting or presentation.\nA working relationship.\nA decision being made.',
+  },
   look_back: {
     prefix: 'Good.\n\nThe purpose of this record is to understand what happened while the details are still available.',
-    examples: 'A missed deadline.\nA project that finished.\nA working relationship that drifted.\nA decision that needs reviewing.',
-  },
-  look_forward: {
-    prefix: 'Good.\n\nThe purpose of this record is to create clarity about what comes next.',
-    examples: 'The next phase of a project.\nA role change.\nA promotion.\nA restructure.\nA partnership renewal.',
+    examples: 'A project that completed.\nA delivery.\nA decision that needs reviewing.\nA conversation that needs to be on record.',
   },
   both: {
     prefix: 'Good.\n\nSometimes the only way forward is to first understand where things started to diverge.',
-    examples: 'A project that needs a reset.\nA working relationship under strain.\nA team that needs realignment.\nA partnership that needs review before continuing.',
+    examples: 'Something that needs reviewing and a clear path forward.',
   },
 }
 
-function buildOnboardingMessages(sels: OnboardingSelections): { text: string; buttons?: string[]; multiSelect?: boolean; placeholder?: string }[] {
+interface OnboardingMessage {
+  text: string
+  buttons?: string[]
+  buttonDescriptions?: Record<string, string>
+  multiSelect?: boolean
+  placeholder?: string
+}
+
+function buildOnboardingMessages(sels: OnboardingSelections): OnboardingMessage[] {
   const modeKey = sels.mode || 'something_new'
   const intro = MODE_INTROS[modeKey] || MODE_INTROS['something_new']
 
   return [
-    // Message 1: situation type selection
+    // Step 1: situation type — card buttons with descriptions
     {
       text: `Groundwork builds a record from what each person has experienced, observed, and agreed — cross-referenced across contributors over time.\n\nWhat kind of situation are we dealing with?`,
-      buttons: ['Something new', 'Looking back', 'Looking forward', 'Both'],
+      buttons: ['Starting something', 'Already underway', 'Already happened', 'Both'],
+      buttonDescriptions: MODE_BUTTON_DESCRIPTIONS,
     },
-    // Message 2: what is this about (mode-aware)
+    // Step 2: what is this about (mode-aware)
     {
       text: `${intro.prefix}\n\nWhat is this about?\n\nExamples:\n${intro.examples}`,
       placeholder: 'Describe the situation.',
     },
-    // Message 3: who is involved
+    // Step 3: who is involved
     {
       text: 'Who is involved?',
       placeholder: 'Name who is part of this and their role.',
     },
-    // Message 4: why now
+    // Step 4: why now
     {
       text: 'What made you decide to open this record today?',
       placeholder: 'What prompted this.',
     },
-    // Message 5: what you hope this achieves
+    // Step 5: goals
     {
       text: 'What do you hope this record helps you understand, decide, improve, or establish?',
       buttons: GOAL_OPTIONS,
       multiSelect: true,
       placeholder: 'Or describe it in your own words.',
     },
-    // Message 6: ready to begin
+    // Step 6: ready to begin — admin checks in first, then invites contributors
     {
-      text: 'Thank you.\n\nEveryone involved contributes independently. As people contribute, the record is continuously cross referenced against other accounts, documents, updates, commitments, and observations.\n\nThe report updates as the record grows.\n\nLet\'s begin.',
-      buttons: ['Let\'s begin.'],
+      text: 'Thank you.\n\nYou are contributing your account first. Once your session is done you will be able to invite contributors — they each check in independently without seeing what you wrote.\n\nAs accounts come in, the record is cross-referenced and the report updates.',
+      buttons: ["Let's begin."],
     },
   ]
 }
@@ -171,7 +188,7 @@ export function EntryChatPage() {
   const defaultSels: OnboardingSelections = { mode: urlMode || 'new', initial: urlInitial || '' }
   const [onboardingStep, setOnboardingStep] = useState(1)
   const [onboardingSelections, setOnboardingSelections] = useState<OnboardingSelections>(defaultSels)
-  const [onboardingMessages, setOnboardingMessages] = useState<{ text: string; buttons?: string[]; multiSelect?: boolean; placeholder?: string }[]>(
+  const [onboardingMessages, setOnboardingMessages] = useState<OnboardingMessage[]>(
     () => buildOnboardingMessages(defaultSels)
   )
 
@@ -200,6 +217,7 @@ export function EntryChatPage() {
   const [inviteContextFor, setInviteContextFor] = useState<string | null>(null)
   const [inviteContext, setInviteContext] = useState('')
   const [copiedLink, setCopiedLink] = useState(false)
+  const [checkInBy, setCheckInBy] = useState('')
 
   // Stable invite token — generated once and stored in entryStorage
   const [inviteToken] = useState<string>(() => {
@@ -501,6 +519,7 @@ export function EntryChatPage() {
         groundLabel: groundName || scenario || 'My first ground',
         orgName: orgName.trim() || undefined,
         scenario: scenario || undefined,
+        checkInBy: checkInBy.trim() || undefined,
         history,
         report: sessionReport,
         inviteToken,
@@ -678,14 +697,20 @@ export function EntryChatPage() {
                     </div>
 
                     {isActive && msg.buttons && (
-                      <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap', flexDirection: msg.buttonDescriptions ? 'column' : 'row', maxWidth: '88%' }}>
                         {msg.buttons.map(btn => {
                           const isSelected = msg.multiSelect && selectedGoals.includes(btn)
+                          const desc = msg.buttonDescriptions?.[btn]
                           return (
                             <button
                               key={btn}
                               onClick={() => advanceOnboarding(btn)}
-                              style={{
+                              style={desc ? {
+                                padding: '12px 14px', borderRadius: 10, fontSize: 13, fontWeight: 700,
+                                border: '1px solid var(--gw-border)', background: 'white',
+                                color: 'var(--gw-text)', cursor: 'pointer', fontFamily: 'inherit',
+                                textAlign: 'left', transition: 'border-color .15s',
+                              } : {
                                 padding: '8px 14px', borderRadius: 20, fontSize: 12, fontWeight: 500,
                                 border: `1px solid ${isSelected ? 'var(--gw-navy)' : 'var(--gw-border)'}`,
                                 background: isSelected ? 'var(--gw-navy)' : 'white',
@@ -693,7 +718,12 @@ export function EntryChatPage() {
                                 cursor: 'pointer', fontFamily: 'inherit', transition: 'all .15s',
                               }}
                             >
-                              {btn}
+                              {desc ? (
+                                <>
+                                  <div style={{ fontWeight: 700, marginBottom: 3 }}>{btn}</div>
+                                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', fontWeight: 400, lineHeight: 1.45 }}>{desc}</div>
+                                </>
+                              ) : btn}
                             </button>
                           )
                         })}
@@ -1025,7 +1055,13 @@ export function EntryChatPage() {
               <input
                 type="text" placeholder="Organisation name (optional)" value={orgName}
                 onChange={e => setOrgName(e.target.value)}
-                style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #E2E0DB', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none' }}
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #E2E0DB', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none', marginBottom: 8 }}
+              />
+              <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 4 }}>Contributors check in by <span style={{ fontWeight: 400 }}>(optional)</span></div>
+              <input
+                type="date" value={checkInBy}
+                onChange={e => setCheckInBy(e.target.value)}
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #E2E0DB', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none', color: checkInBy ? '#1A1916' : '#9B9590' }}
               />
             </div>
 
@@ -1056,6 +1092,9 @@ export function EntryChatPage() {
               <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 6 }}>Invite contributors</div>
               <div style={{ fontSize: 12, color: '#9B9590', lineHeight: 1.55, marginBottom: 10 }}>
                 Each contributor checks in independently without seeing what you wrote. Their account is cross-referenced against yours to show where there is alignment and where there are gaps.
+              </div>
+              <div style={{ background: '#F5F3EF', border: '1px solid #E2E0DB', borderRadius: 8, padding: '10px 12px', marginBottom: 12, fontSize: 12, color: '#6B6560', lineHeight: 1.55 }}>
+                The confidence score and full cross-referenced report build as contributors check in. You can unlock deeper insights — including specificity scores and pattern observations — from your account once it is set up.
               </div>
 
               {inviteAdded.length > 0 && (
