@@ -171,6 +171,20 @@ export class EmailService {
     });
   }
 
+  /** Participant checked in. Admin notified so they know to come back. */
+  async sendParticipantCheckedIn(adminEmail: string, participantEmail: string, groundLabel: string, groundUrl: string): Promise<void> {
+    await this.sendEmail({
+      to: adminEmail,
+      subject: `${participantEmail} has checked in on ${groundLabel}`,
+      html: this.layout(
+        `<p>A participant has submitted their account on <strong>${groundLabel}</strong>.</p>
+         <p>${participantEmail} has completed their check-in. Their account is now on record.</p>
+         <p>When all parties have checked in, you will be able to view the full picture and release the report.</p>
+         <p><a href="${groundUrl}">View ground</a></p>`,
+      ),
+    });
+  }
+
   /** Ground stalled. Timeline elapsed without resolution. Both parties notified. (GW-06) */
   async sendStalledNotification(email: string, groundLabel: string, groundUrl: string): Promise<void> {
     await this.sendEmail({

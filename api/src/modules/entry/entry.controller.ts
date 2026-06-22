@@ -30,6 +30,19 @@ class EntryOpenerDto {
   scenario?: string;
 }
 
+class EntryFaqDto {
+  @IsString() question: string;
+}
+
+class ParticipantChatDto {
+  @IsString() token: string;
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => TurnDto)
+  messages: TurnDto[];
+}
+
 class EntryReportDto {
   @IsArray()
   @ValidateNested({ each: true })
@@ -85,6 +98,17 @@ export class EntryController {
   async chat(@Body() dto: EntryChatDto) {
     const reply = await this.service.chat(dto.messages, dto.scenario, dto.groundLabel);
     return { reply };
+  }
+
+  @Post('faq')
+  async faq(@Body() dto: EntryFaqDto) {
+    const reply = await this.service.faq(dto.question);
+    return { reply };
+  }
+
+  @Post('participant-chat')
+  async participantChat(@Body() dto: ParticipantChatDto) {
+    return this.service.participantChat(dto.token, dto.messages);
   }
 
   @Post('report')

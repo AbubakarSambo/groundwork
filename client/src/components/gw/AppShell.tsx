@@ -478,6 +478,33 @@ export function AppSidebar() {
           </nav>
         )}
 
+        {/* Nav items — always visible in expanded sidebar */}
+        {!collapsed && (
+          <nav style={{ padding: '6px 8px', borderTop: '1px solid rgba(255,255,255,.07)', flexShrink: 0 }}>
+            {NAV_ITEMS.filter(item => !item.adminOnly).map(item => {
+              const active = location.pathname.startsWith(item.to)
+              const canNav = isAuthenticated
+              return (
+                <NavLink
+                  key={item.to}
+                  to={canNav ? item.to : '/auth'}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    padding: '8px 10px', borderRadius: 8, textDecoration: 'none',
+                    color: active ? '#93C5FD' : canNav ? 'rgba(255,255,255,.55)' : 'rgba(255,255,255,.25)',
+                    background: active ? 'rgba(147,197,253,.08)' : 'transparent',
+                    fontSize: 13, fontWeight: active ? 600 : 400,
+                    pointerEvents: canNav ? 'auto' : 'none',
+                  }}
+                >
+                  {item.icon(active)}
+                  <span>{item.label}</span>
+                </NavLink>
+              )
+            })}
+          </nav>
+        )}
+
         {/* User profile / sign in */}
         <div style={{ padding: collapsed ? '10px 8px' : '10px 12px', borderTop: '1px solid rgba(255,255,255,.07)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
           {isAuthenticated ? (

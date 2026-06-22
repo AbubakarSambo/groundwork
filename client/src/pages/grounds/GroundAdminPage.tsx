@@ -34,6 +34,9 @@ export function GroundAdminPage() {
   const [ctxNote, setCtxNote] = useState('')
   const [groundLabel, setGroundLabel] = useState('')
   const [showReleaseConfirm, setShowReleaseConfirm] = useState(false)
+  const [addingParticipant, setAddingParticipant] = useState(false)
+  const [newParticipantEmail, setNewParticipantEmail] = useState('')
+  const [newParticipantNote, setNewParticipantNote] = useState('')
 
   const { data: ground, isLoading } = useQuery({
     queryKey: ['ground', id],
@@ -114,6 +117,18 @@ export function GroundAdminPage() {
     onError: () => toast.error('Could not save note.'),
   })
 
+  const addParticipantMut = useMutation({
+    mutationFn: () => groundsApi.addParticipant(id!, { email: newParticipantEmail.trim(), note: newParticipantNote.trim() || undefined }),
+    onSuccess: () => {
+      setAddingParticipant(false)
+      setNewParticipantEmail('')
+      setNewParticipantNote('')
+      qc.invalidateQueries({ queryKey: ['ground', id] })
+      toast.success('Contributor invited')
+    },
+    onError: () => toast.error('Could not add contributor.'),
+  })
+
   useEffect(() => {
     if (ground?.label) setGroundLabel(prev => prev || ground.label)
   }, [ground?.label])
@@ -167,6 +182,26 @@ export function GroundAdminPage() {
         {/* OVERVIEW */}
         {tab === 'overview' && (
           <div>
+            {/* Fix 10: Report ready CTA */}
+            {ground.status === 'REPORT_READY' && (
+              <div style={{ background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 10, padding: '14px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#085041', marginBottom: 3 }}>Report is ready to release</div>
+                  <div style={{ fontSize: 12, color: '#3A7A60', lineHeight: 1.5 }}>Both accounts are in. You can now release the report to both parties simultaneously.</div>
+                </div>
+                <button onClick={() => setTab('report')} style={{ flexShrink: 0, padding: '8px 14px', borderRadius: 7, background: '#085041', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
+                  Release →
+                </button>
+              </div>
+            )}
+
+            {/* Fix 8: Cadence miss recovery */}
+            {(ground.overdue ?? 0) > 0 && (
+              <div style={{ fontSize: 12, color: '#0C447C', background: '#EEF4FB', border: '1px solid #C5D9EF', borderRadius: 8, padding: '10px 12px', marginBottom: 14, lineHeight: 1.5 }}>
+                <strong>{ground.overdue} {ground.overdue === 1 ? 'participant is' : 'participants are'} overdue.</strong> A missed session is not a lost session — use Remind to get them back on track. Their next check-in picks up where they left off.
+              </div>
+            )}
+
             <div style={{ background: 'var(--gw-blue-bg)', border: '0.5px solid var(--gw-blue-b)', borderRadius: 10, padding: '14px 16px', marginBottom: 14 }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-navy)', letterSpacing: '.04em', textTransform: 'uppercase', marginBottom: 8 }}>Ground summary</div>
               <div style={{ fontSize: 13, lineHeight: 1.65 }}>{ground.brief ?? 'Waiting for first session pair to complete.'}</div>
@@ -212,6 +247,7 @@ export function GroundAdminPage() {
                       <div className={`gw-av gw-av-${i % 6}`}>{(p.email || '?').charAt(0).toUpperCase()}</div>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: 13, fontWeight: 600 }}>{p.email}</div>
+                        {p.roleAsDescribed && <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginTop: 1 }}>{p.roleAsDescribed}</div>}
                         <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>{status.replace(/_/g, ' ').toLowerCase()}</div>
                       </div>
                       {myCheckIn && status !== 'COMPLETED' && (
@@ -222,6 +258,21 @@ export function GroundAdminPage() {
                 })}
               </div>
             </div>
+
+            {(() => {
+              const pending = ground.participants.filter((p: any) => {
+                const ci = ground.checkIns?.find((c: any) => c.participantId === p.id)
+                return !ci || ci.status !== 'COMPLETED'
+              })
+              return pending.length > 0 ? (
+                <div style={{ fontSize: 12, color: '#8A5C1A', background: '#FDF3E3', border: '1px solid #E8A94A', borderRadius: 8, padding: '8px 12px', marginBottom: 16, lineHeight: 1.5 }}>
+                  {pending.length === 1
+                    ? `1 participant has not yet checked in. Your report cannot cross-reference accounts until their account is in.`
+                    : `${pending.length} participants have not yet checked in. Your report cannot cross-reference accounts until all accounts are in.`}
+                  <span style={{ marginLeft: 6, fontWeight: 600 }}>Use Remind to chase them.</span>
+                </div>
+              ) : null
+            })()}
 
             {pendingRequests.length > 0 && (
               <div style={{ marginBottom: 16 }}>
@@ -259,25 +310,58 @@ export function GroundAdminPage() {
               </div>
             )}
 
-            {(ground.signals ?? []).length > 0 && (
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 10 }}>
-                  <span style={{ fontSize: 13, fontWeight: 600 }}>Alignment feed</span>
-                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--gw-green-b)', display: 'inline-block' }} />
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {ground.signals?.map(sig => (
-                    <div key={sig.id} style={{ background: 'var(--gw-bg)', border: '0.5px solid var(--gw-border)', borderRadius: 8, padding: '11px 13px' }}>
-                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}>
-                        <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: sig.type === 'Convergence' ? 'var(--gw-green-bg)' : sig.type === 'Divergence' ? 'var(--gw-red-bg)' : 'var(--gw-amber-bg)', color: sig.type === 'Convergence' ? 'var(--gw-green-t)' : sig.type === 'Divergence' ? 'var(--gw-red-t)' : 'var(--gw-amber-t)' }}>{sig.type}</span>
-                        <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}>Session {sig.sessionNum}</span>
+            {(ground.signals ?? []).length > 0 && (() => {
+              const sigs = ground.signals ?? []
+              const convergences = sigs.filter(s => s.type === 'Convergence').length
+              const divergences = sigs.filter(s => s.type === 'Divergence').length
+              const trendLabel = convergences > divergences ? 'Trending toward alignment' : divergences > convergences ? 'Active divergence — needs attention' : 'Mixed signals'
+              const trendColor = convergences > divergences ? '#085041' : divergences > convergences ? '#791F1F' : '#8A5C1A'
+              const trendBg = convergences > divergences ? '#E7F6EF' : divergences > convergences ? '#FCEBEB' : '#FDF3E3'
+              return (
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 10 }}>
+                    <span style={{ fontSize: 13, fontWeight: 600 }}>Alignment feed</span>
+                    <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: trendBg, color: trendColor }}>{trendLabel}</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {sigs.map(sig => (
+                      <div key={sig.id} style={{ background: 'var(--gw-bg)', border: '0.5px solid var(--gw-border)', borderRadius: 8, padding: '11px 13px' }}>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}>
+                          <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: sig.type === 'Convergence' ? 'var(--gw-green-bg)' : sig.type === 'Divergence' ? 'var(--gw-red-bg)' : 'var(--gw-amber-bg)', color: sig.type === 'Convergence' ? 'var(--gw-green-t)' : sig.type === 'Divergence' ? 'var(--gw-red-t)' : 'var(--gw-amber-t)' }}>{sig.type}</span>
+                          <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}>Session {sig.sessionNum}</span>
+                        </div>
+                        <div style={{ fontSize: 12, color: 'var(--gw-text)', lineHeight: 1.55 }}>{sig.text}</div>
                       </div>
-                      <div style={{ fontSize: 12, color: 'var(--gw-text)', lineHeight: 1.55 }}>{sig.text}</div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )
+            })()}
+
+            {/* Fix 12: Add contributor */}
+            <div style={{ marginTop: 20 }}>
+              {!addingParticipant ? (
+                <button onClick={() => setAddingParticipant(true)} style={{ width: '100%', padding: '11px 16px', borderRadius: 8, background: 'none', color: 'var(--gw-navy)', fontSize: 13, fontWeight: 600, border: '1px dashed var(--gw-blue-b)', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 16, fontWeight: 300 }}>+</span> Add a contributor
+                </button>
+              ) : (
+                <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px' }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>Add a contributor</div>
+                  <input type="email" placeholder="name@company.com" value={newParticipantEmail} onChange={e => setNewParticipantEmail(e.target.value)}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8, outline: 'none' }} />
+                  <input type="text" placeholder="What do you want them to account for? (optional)" value={newParticipantNote} onChange={e => setNewParticipantNote(e.target.value)}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 10, outline: 'none' }} />
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={() => { setAddingParticipant(false); setNewParticipantEmail(''); setNewParticipantNote('') }}
+                      style={{ padding: '9px 14px', borderRadius: 7, background: 'none', border: '1px solid var(--gw-border)', color: 'var(--gw-sub)', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
+                    <button onClick={() => addParticipantMut.mutate()} disabled={!newParticipantEmail.includes('@') || addParticipantMut.isPending}
+                      style={{ flex: 1, padding: '9px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: newParticipantEmail.includes('@') ? 1 : 0.4 }}>
+                      {addParticipantMut.isPending ? 'Inviting…' : 'Send invite'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -471,6 +555,24 @@ export function GroundAdminPage() {
                     ))}
                   </ReportSection>
                 )}
+
+                {/* Fix 17: Post-report offboarding */}
+                <div style={{ marginTop: 16, background: 'var(--gw-bg)', border: '0.5px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--gw-sub)', marginBottom: 10 }}>What now?</div>
+                  {[
+                    { title: 'Share the report', body: 'Both parties can now view the full report. Use the report link or a shared doc to talk through it together.' },
+                    { title: 'Act on the areas requiring alignment', body: 'Pick the highest-priority gap and set a concrete next step. Name who owns it and by when.' },
+                    { title: 'Open a follow-up ground', body: 'If there is ongoing work to track, open a new ground to keep the record current as things develop.' },
+                  ].map(s => (
+                    <div key={s.title} style={{ marginBottom: 10 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>{s.title}</div>
+                      <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55 }}>{s.body}</div>
+                    </div>
+                  ))}
+                  <button onClick={() => navigate('/grounds/new')} style={{ marginTop: 4, fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', background: 'none', border: '1px solid var(--gw-blue-b)', borderRadius: 7, padding: '8px 14px', cursor: 'pointer', fontFamily: 'inherit' }}>
+                    Open a follow-up ground →
+                  </button>
+                </div>
               </div>
             ) : report?.createdAt ? (
               <div>

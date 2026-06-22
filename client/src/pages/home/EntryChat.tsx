@@ -107,7 +107,7 @@ export function EntryChat() {
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
       <div className="gw-hdr">
         <div>
-          <div className="gw-logo">Groundwork</div>
+          <a href="https://myground.work" target="_blank" rel="noopener noreferrer" className="gw-logo" style={{ textDecoration: 'none', color: 'inherit' }}>Groundwork</a>
           <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>{MODE_LABEL[mode]} · Entry session</div>
         </div>
         <button className="gw-back" onClick={() => navigate('/')}>Back</button>

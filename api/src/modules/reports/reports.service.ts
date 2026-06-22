@@ -207,10 +207,90 @@ export class ReportsService {
         ? `NOTE: ${thinParties.map((p) => p.label).join(', ')}'s record contains significantly fewer exchanges. A further session from ${thinParties.length === 1 ? 'that party' : 'those parties'} would strengthen the cross-reference.\n\n`
         : '';
 
+    // Fix 6: Longitudinal vagueness — flag participants whose accounts across
+    // sessions contain no distinct concrete claims (same progress language, nothing closes).
+    const sessionTextsPerParty = await Promise.all(
+      parties.map(async (p) => {
+        const sessions = await this.prisma.checkIn.findMany({
+          where: { participantId: p.id, status: CheckInStatus.COMPLETED },
+          orderBy: { sessionNumber: 'asc' },
+          include: { turns: { where: { role: 'PERSON' }, select: { content: true } } },
+        });
+        return { label: labelById.get(p.id) ?? 'a party', sessions };
+      }),
+    );
+
+    const MOTION_PHRASES = ['working on', 'making progress', 'moving forward', 'in progress', 'setting up', 'building', 'been focusing', 'getting there', 'in motion', 'underway'];
+    const OWNERSHIP_PHRASES = ['i own', 'i am responsible', 'my role is', 'i lead', 'i manage', 'i handle', 'i deliver', 'i run', 'i oversee', 'i cover', 'that is mine', "that's mine"];
+    const longitudinalNotices: string[] = [];
+    for (const { label, sessions } of sessionTextsPerParty) {
+      if (sessions.length < 2) continue;
+      const sessionTexts = sessions.map(s => s.turns.map(t => t.content).join(' ').toLowerCase());
+
+      // Pattern 1: motion language across all sessions with no deliverable ever closed.
+      const motionOnly = sessionTexts.filter(t => {
+        const hasMotion = MOTION_PHRASES.some(p => t.includes(p));
+        const hasDeliverable = /\b(completed|shipped|delivered|finished|launched|submitted|signed|approved|merged|closed|deployed|confirmed|released)\b/.test(t);
+        return hasMotion && !hasDeliverable;
+      });
+      if (motionOnly.length === sessions.length) {
+        longitudinalNotices.push(`NOTE [longitudinal — no deliverable]: ${label} has submitted ${sessions.length} sessions. No session contains a concrete deliverable or closed outcome — only progress or activity language. Flag this pattern in the report explicitly.`);
+      }
+
+      // Pattern 2: perpetual ambiguity — no ownership or responsibility claimed across
+      // any session, while other parties on the same ground have named theirs.
+      const allText = sessionTexts.join(' ');
+      const hasAnyOwnership = OWNERSHIP_PHRASES.some(p => allText.includes(p));
+      const otherPartiesNamed = sessionTextsPerParty
+        .filter(other => other.label !== label && other.sessions.length >= 1)
+        .some(other => OWNERSHIP_PHRASES.some(p => other.sessions.map(s => s.turns.map(t => t.content).join(' ').toLowerCase()).join(' ').includes(p)));
+      if (!hasAnyOwnership && sessions.length >= 2 && otherPartiesNamed) {
+        longitudinalNotices.push(`NOTE [longitudinal — perpetual ambiguity]: ${label} has submitted ${sessions.length} sessions with no claimed responsibility, ownership, or defined role across any session. Other parties on this ground have named their roles. Sustained ambiguity across all sessions is itself a pattern worth naming in the report.`);
+      }
+    }
+    const longitudinalNotice = longitudinalNotices.length ? longitudinalNotices.join('\n') + '\n\n' : '';
+
+    // Fix 7: Implausible over-agreement — flag when two accounts match too precisely
+    // on specific numbers or dates (a signal of coordination outside the system).
+    const NUMBER_RE = /\b(\d+(?:\.\d+)?)\s*(%|percent|equity|shares?|basis points?)\b/gi;
+    const DATE_RE = /\b(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}|\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]* \d{1,2}(?:st|nd|rd|th)?,? \d{4})\b/gi;
+    const allTexts = records.map(r => r.text);
+    const extractMatches = (re: RegExp, texts: string[]) => texts.flatMap(t => [...t.matchAll(re)].map(m => m[0].toLowerCase().trim()));
+    const allNumbers = extractMatches(NUMBER_RE, allTexts);
+    const allDates = extractMatches(DATE_RE, allTexts);
+    const duplicateNumbers = allNumbers.filter((n, i) => allNumbers.indexOf(n) !== i);
+    const duplicateDates = allDates.filter((d, i) => allDates.indexOf(d) !== i);
+    const overAgreementNotice = (duplicateNumbers.length >= 2 || duplicateDates.length >= 2) && parties.length >= 2
+      ? `NOTE [Fix 7 — over-agreement signal]: Multiple parties used identical specific figures or dates (${[...new Set([...duplicateNumbers, ...duplicateDates])].slice(0, 5).join(', ')}). Independent accounts rarely match on exact specifics by chance. Note in the report that these figures appear in multiple accounts and their source should be confirmed.\n\n`
+      : '';
+
+    // Fix 8: Evidence absence — flag participants who submitted multiple sessions
+    // with no supporting documents in a ground where others attached documents.
+    const docCounts = await this.prisma.groundDocument.groupBy({
+      by: ['participantId'],
+      _count: { id: true },
+      where: { groundId },
+    });
+    const totalDocCount = docCounts.reduce((s, r) => s + r._count.id, 0);
+    const evidenceAbsenceNotices: string[] = [];
+    if (totalDocCount > 0) {
+      for (const p of parties) {
+        const pDocs = docCounts.find(d => d.participantId === p.id)?._count.id ?? 0;
+        const pSessions = sessionTextsPerParty.find(s => s.label === (labelById.get(p.id) ?? 'a party'))?.sessions.length ?? 0;
+        if (pDocs === 0 && pSessions >= 2) {
+          evidenceAbsenceNotices.push(`NOTE [Fix 8 — evidence absence]: ${labelById.get(p.id) ?? 'a party'} submitted ${pSessions} sessions with no supporting documents attached, in a ground where at least one other party did attach documents. Surface this as an observation in the report — not an accusation, but a factual note about the record.`);
+        }
+      }
+    }
+    const evidenceAbsenceNotice = evidenceAbsenceNotices.length ? evidenceAbsenceNotices.join('\n') + '\n\n' : '';
+
     const corpus =
       groundContextHeader +
       thinNotice +
       header +
+      longitudinalNotice +
+      overAgreementNotice +
+      evidenceAbsenceNotice +
       records.map((r) => `[${labelById.get(r.participant.id) ?? 'a party'}] (${r.type}) ${r.text}`).join('\n');
 
     const NEW_STARTING_SCENARIOS: GroundScenario[] = [

@@ -170,4 +170,14 @@ export class AuthController {
   async requestPasswordSetup(@CurrentUser() user: CurrentUserData) {
     return this.authService.requestPasswordSetupForUser(user.id);
   }
+
+  @Post('team-invite')
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ global: { limit: 10, ttl: 60000 } })
+  @ApiOperation({ summary: 'Invite a colleague to Groundwork as an admin' })
+  async teamInvite(@CurrentUser() user: CurrentUserData, @Body() body: { email: string }) {
+    const orgName = (user as any).organizationName ?? 'Groundwork';
+    return this.authService.teamInvite(orgName, body.email);
+  }
 }

@@ -50,4 +50,7 @@ export const authApi = {
 
   forgotPassword: (email: string) =>
     apiClient.post<MagicLinkResponse>('/auth/forgot-password', { email }).then(r => r.data),
+
+  teamInvite: (email: string) =>
+    apiClient.post<{ message: string }>('/auth/team-invite', { email }).then(r => r.data),
 }

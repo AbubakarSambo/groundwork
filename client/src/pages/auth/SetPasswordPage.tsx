@@ -13,7 +13,7 @@ export function SetPasswordPage() {
   const [confirm, setConfirm] = useState('')
   const [error, setError] = useState('')
 
-  const next = params.get('next') ?? '/grounds'
+  const next = params.get('next') ?? '/grounds?welcome=1'
 
   const save = useMutation({
     mutationFn: () => authApi.setPassword(token, password),
@@ -40,8 +40,11 @@ export function SetPasswordPage() {
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
       <div className="gw-hdr"><a href="https://myground.work" target="_blank" rel="noopener noreferrer" className="gw-logo" style={{ textDecoration: 'none', color: 'inherit' }}>Groundwork</a></div>
       <div className="gw-bd" style={{ maxWidth: 420, margin: '0 auto', width: '100%', paddingTop: 32 }}>
-        <div className="gw-ttl">Set your password</div>
-        <div className="gw-sub-t">Choose a password so you can sign back in later.</div>
+        <div className="gw-ttl">One last step</div>
+        <div className="gw-sub-t" style={{ marginBottom: 6 }}>Set a password so you can sign back in to see your record and receive the report when it is ready.</div>
+        <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 20, padding: '10px 12px', background: 'var(--gw-blue-bg)', borderRadius: 8, border: '0.5px solid var(--gw-blue-b)' }}>
+          Your account and check-in are already saved. This password secures your access to Groundwork going forward.
+        </div>
 
         <div className="gw-fld">
           <label className="gw-label">Password</label>

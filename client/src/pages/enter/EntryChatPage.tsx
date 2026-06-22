@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
 import { entryApi } from '@/api/entry'
 import { authApi } from '@/api/auth'
 import { useEntryStore } from '@/stores/entry'
+import { useAuthStore } from '@/stores/auth'
 import { toast } from 'sonner'
 
 const STORAGE_KEY = 'gw_entry_session'
@@ -54,9 +55,25 @@ export function hasPendingEntry(): boolean {
   } catch { return false }
 }
 
-const ONBOARDING_STEPS = 5
+const ONBOARDING_STEPS = 6
+
+const MODE_BUTTON_MAP: Record<string, string> = {
+  'Starting something': 'something_new',
+  'Already underway': 'already_underway',
+  'Already happened': 'look_back',
+  'Both': 'both',
+}
+
+const MODE_BUTTON_DESCRIPTIONS: Record<string, string> = {
+  'Starting something': 'A new hire. A new project. A new contract. A partnership kicking off.',
+  'Already underway': 'A delivery in progress. A working relationship. A decision being made.',
+  'Already happened': 'A project that completed. A delivery. A conversation that needs to be on record.',
+  'Both': 'Something that needs reviewing and a clear path forward.',
+}
 
 const GOAL_OPTIONS = [
+  'Verify readiness before we proceed',
+  'Verify that what was agreed is being delivered',
   'Get everyone aligned before we begin',
   'Make sure expectations are clear on all sides',
   'Understand what happened and move forward',
@@ -65,12 +82,6 @@ const GOAL_OPTIONS = [
   'Something else',
 ]
 
-const TIMING_OPTIONS = [
-  'Before a specific date or event',
-  'On a recurring schedule',
-  'At key moments I will define',
-  'One session only',
-]
 
 const SESSION_END_PATTERNS = [
   'here is what is now in your record',
@@ -84,30 +95,70 @@ const SESSION_END_PATTERNS = [
   'option to not have',
 ]
 
-function buildOnboardingMessages(_sels: OnboardingSelections): { text: string; buttons?: string[]; multiSelect?: boolean; placeholder?: string }[] {
+const MODE_INTROS: Record<string, { prefix: string; examples: string }> = {
+  something_new: {
+    prefix: 'Good.\n\nThe best time to set expectations is before anyone has had a chance to assume.',
+    examples: 'A new hire\'s first 90 days.\nA new project.\nA partnership.\nA leadership transition.\nA programme launch.',
+  },
+  already_underway: {
+    prefix: 'Good.\n\nChecking in while something is moving is what keeps it on track.',
+    examples: 'A delivery in progress.\nA team preparing for a meeting.\nA working relationship.\nA decision being made.',
+  },
+  look_back: {
+    prefix: 'Good.\n\nGetting this on record while the details are still fresh is the right call.',
+    examples: 'A project that completed.\nA delivery.\nA decision that needs reviewing.\nA conversation that needs to be on record.',
+  },
+  both: {
+    prefix: 'Good.\n\nSometimes you need to understand what happened before you can agree what comes next.',
+    examples: 'Something that needs reviewing and a clear path forward.',
+  },
+}
+
+interface OnboardingMessage {
+  text: string
+  buttons?: string[]
+  buttonDescriptions?: Record<string, string>
+  multiSelect?: boolean
+  placeholder?: string
+}
+
+function buildOnboardingMessages(sels: OnboardingSelections): OnboardingMessage[] {
+  const modeKey = sels.mode || 'something_new'
+  const intro = MODE_INTROS[modeKey] || MODE_INTROS['something_new']
+
   return [
+    // Step 1: situation type — card buttons with descriptions
     {
-      text: `Groundwork helps everyone working on something together see it clearly from all sides. Each person checks in on what they have done, what they have observed, and how they understand things from their position. As people contribute, the picture builds and shows where there is alignment and where there is more to work through together. Their full accounts stay private from each other.\n\nBring whatever you have: emails, work plans, agreements, messages, anything written down. You can also describe what you have seen and experienced. You do not need documents to start.\n\nWhat is this ground for?\n\nSome examples:\nA new hire's first 90 days.\nA project we are about to start.\nA partnership or collaboration.\nA leadership transition.\nA decision we need everyone aligned on before we move forward.`,
-      placeholder: 'Describe what this ground is for.',
+      text: `Groundwork builds a picture from what everyone involved has seen, experienced, and agreed. Each person adds their own account. Nobody reads anyone else's words directly. The report shows where accounts agree and where they differ.\n\nWhat kind of situation are we dealing with?`,
+      buttons: ['Starting something', 'Already underway', 'Already happened', 'Both'],
+      buttonDescriptions: MODE_BUTTON_DESCRIPTIONS,
     },
+    // Step 2: what is this about (mode-aware)
     {
-      text: `Who else is part of this ground and what does each person bring to it?`,
-      placeholder: 'Name who is involved and their role.',
+      text: `${intro.prefix}\n\nWhat is this about?\n\nExamples:\n${intro.examples}`,
+      placeholder: 'Describe the situation.',
     },
+    // Step 3: who is involved
     {
-      text: `What do you want this ground to get right?`,
+      text: 'Who else is involved?',
+      placeholder: 'Name who is part of this and what their role is.',
+    },
+    // Step 4: why now
+    {
+      text: "What's making this important to get on record right now?",
+      placeholder: 'What prompted this.',
+    },
+    // Step 5: goals
+    {
+      text: 'What do you need from this?',
       buttons: GOAL_OPTIONS,
       multiSelect: true,
-      placeholder: 'Or describe it in your own words.',
+      placeholder: 'Or say it in your own words.',
     },
+    // Step 6: party or manager choice
     {
-      text: `When do you want contributors to check in?`,
-      buttons: TIMING_OPTIONS,
-      placeholder: 'Or describe when you need them to check in.',
-    },
-    {
-      text: `Good. Everyone will check in against what you have set here. As people contribute, the picture shows where there is alignment and where there are gaps. Their full accounts stay private from each other throughout.\n\nLet us begin.`,
-      buttons: ['Let us begin.'],
+      text: "Last thing. Are you personally involved in this situation, or are you setting it up for others?\n\nIf you are involved, you go first. You add your account, then invite the others. If you are setting it up on their behalf, you can skip straight to inviting them.",
+      buttons: ["I am involved. Let's begin.", "I am setting this up for others"],
     },
   ]
 }
@@ -123,10 +174,12 @@ const QUICK_ACTIONS = [
 
 export function EntryChatPage() {
   const [params] = useSearchParams()
+  const navigate = useNavigate()
   const scenario = params.get('scenario') ?? ''
   const urlMode = params.get('mode') ?? ''
   const urlInitial = params.get('initial') ?? ''
 
+  const user = useAuthStore(s => s.user)
   const { groundName, setGroundName, sessions, setSessions } = useEntryStore()
   const [renamingGround, setRenamingGround] = useState(false)
   const [renameInput, setRenameInput] = useState('')
@@ -139,7 +192,7 @@ export function EntryChatPage() {
   const defaultSels: OnboardingSelections = { mode: urlMode || 'new', initial: urlInitial || '' }
   const [onboardingStep, setOnboardingStep] = useState(1)
   const [onboardingSelections, setOnboardingSelections] = useState<OnboardingSelections>(defaultSels)
-  const [onboardingMessages, setOnboardingMessages] = useState<{ text: string; buttons?: string[]; multiSelect?: boolean; placeholder?: string }[]>(
+  const [onboardingMessages, setOnboardingMessages] = useState<OnboardingMessage[]>(
     () => buildOnboardingMessages(defaultSels)
   )
 
@@ -153,6 +206,13 @@ export function EntryChatPage() {
   const [phase, setPhase] = useState<'onboarding' | 'checkin'>('onboarding')
   const [selectedGoals, setSelectedGoals] = useState<string[]>([])
   const [showEndPrompt, setShowEndPrompt] = useState(false)
+
+  const [confirmClear, setConfirmClear] = useState(false)
+
+  function handleClearSession() {
+    clearEntrySession()
+    window.location.reload()
+  }
 
   // Save card
   const [showSave, setShowSave] = useState(false)
@@ -168,6 +228,13 @@ export function EntryChatPage() {
   const [inviteContextFor, setInviteContextFor] = useState<string | null>(null)
   const [inviteContext, setInviteContext] = useState('')
   const [copiedLink, setCopiedLink] = useState(false)
+  const [skippedCheckin] = useState(false)
+  const [checkInBy, setCheckInBy] = useState('')
+  const [lastCheckInBy, setLastCheckInBy] = useState('')
+  const [cadence, setCadence] = useState<'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'ONE_TIME'>('FORTNIGHTLY')
+  const [bulkInviteMode, setBulkInviteMode] = useState(false)
+  const [bulkInviteText, setBulkInviteText] = useState('')
+  const [bulkQueue, setBulkQueue] = useState<string[]>([])
 
   // Stable invite token — generated once and stored in entryStorage
   const [inviteToken] = useState<string>(() => {
@@ -189,7 +256,7 @@ export function EntryChatPage() {
 
   // Seed ground name
   useEffect(() => {
-    const defaultName = scenario ? scenario.replace(/\+/g, ' ') : 'Entry session'
+    const defaultName = scenario ? scenario.replace(/\+/g, ' ') : ''
     setGroundName(defaultName)
     setSessions(1)
   }, [])
@@ -273,8 +340,8 @@ export function EntryChatPage() {
       const ctx = [
         onboardingSelections.initial ? `What this ground is for: ${onboardingSelections.initial}` : '',
         onboardingSelections.whoInvolved ? `Who is part of this: ${onboardingSelections.whoInvolved}` : '',
+        onboardingSelections.decision ? `What made them open this record today: ${onboardingSelections.decision}` : '',
         onboardingSelections.goals?.length ? `What they want this ground to get right: ${onboardingSelections.goals.join(', ')}` : '',
-        onboardingSelections.checkinTiming ? `When contributors check in: ${onboardingSelections.checkinTiming}` : '',
       ].filter(Boolean).join('. ')
       return entryApi.chat([{
         role: 'user',
@@ -338,16 +405,37 @@ export function EntryChatPage() {
     const currentStep = onboardingStep
     let newSels = { ...onboardingSelections }
 
-    // Step 5 begin button
-    if (buttonChoice === 'Let us begin.') {
+    // Step 6: party path — admin checks in first
+    if (buttonChoice === "I am involved. Let's begin.") {
       setOnboardingStep(ONBOARDING_STEPS + 1)
       persistOnboarding([], newSels, ONBOARDING_STEPS)
       startCheckin.mutate()
       return
     }
 
-    // Step 3 multi-select: toggle goal without advancing
-    if (currentStep === 3 && buttonChoice && GOAL_OPTIONS.includes(buttonChoice)) {
+    // Step 6: manager path — skip check-in, go straight to save card
+    if (buttonChoice === "I am setting this up for others") {
+      setOnboardingStep(ONBOARDING_STEPS + 1)
+      persistOnboarding([], newSels, ONBOARDING_STEPS)
+      const ctx = [
+        newSels.initial ? `What this ground is for: ${newSels.initial}` : '',
+        newSels.whoInvolved ? `Who is part of this: ${newSels.whoInvolved}` : '',
+        newSels.goals?.length ? `Goals: ${newSels.goals.join(', ')}` : '',
+      ].filter(Boolean).join('. ')
+      const managerHistory: Turn[] = [
+        { role: 'user', content: `[MANAGER MODE] This ground was set up by a coordinator who is not a party to the situation. Context: ${ctx || 'No additional context provided.'}` },
+        { role: 'assistant', content: 'Your ground is set up. Invite the people involved to add their accounts.' },
+      ]
+      setHistory(managerHistory)
+      setPhase('checkin')
+      setClosed(true)
+      setShowSave(true)
+      persistCheckin(managerHistory, true)
+      return
+    }
+
+    // Step 5 multi-select: toggle goal without advancing
+    if (currentStep === 5 && buttonChoice && GOAL_OPTIONS.includes(buttonChoice)) {
       setSelectedGoals(prev =>
         prev.includes(buttonChoice) ? prev.filter(g => g !== buttonChoice) : [...prev, buttonChoice]
       )
@@ -356,26 +444,32 @@ export function EntryChatPage() {
 
     // Capture inputs per step
     if (currentStep === 1) {
+      // Mode selection buttons
+      if (buttonChoice && MODE_BUTTON_MAP[buttonChoice]) {
+        newSels = { ...newSels, mode: MODE_BUTTON_MAP[buttonChoice] }
+      }
+    } else if (currentStep === 2) {
       const val = input.trim()
       if (!val) return
       newSels = { ...newSels, initial: val }
       setInput('')
-    } else if (currentStep === 2) {
+    } else if (currentStep === 3) {
       const val = input.trim()
       if (!val) return
       newSels = { ...newSels, whoInvolved: val }
       setInput('')
-    } else if (currentStep === 3) {
-      const goals = selectedGoals.length > 0 ? selectedGoals : (input.trim() ? [input.trim()] : [])
+    } else if (currentStep === 4) {
+      const val = input.trim()
+      if (!val) return
+      newSels = { ...newSels, decision: val }
+      setInput('')
+    } else if (currentStep === 5) {
+      const textGoal = input.trim()
+      const goals = [...selectedGoals, ...(textGoal ? [textGoal] : [])]
       if (goals.length === 0) return
-      newSels = { ...newSels, goals, decision: goals.join(', ') }
+      newSels = { ...newSels, goals }
       setInput('')
       setSelectedGoals([])
-    } else if (currentStep === 4) {
-      const val = buttonChoice ?? input.trim()
-      if (!val) return
-      if (!buttonChoice) setInput('')
-      newSels = { ...newSels, checkinTiming: val, timeframe: val }
     }
 
     setOnboardingSelections(newSels)
@@ -454,6 +548,7 @@ export function EntryChatPage() {
   async function handleSave() {
     const trimmed = email.trim()
     if (!trimmed || !trimmed.includes('@')) { setEmailError('Please enter a valid email address.'); return }
+    if (!checkInBy.trim()) { setEmailError('Please set a date for the first check-in.'); return }
     setEmailError('')
     try {
       await authApi.entrySave(trimmed)
@@ -463,6 +558,9 @@ export function EntryChatPage() {
         groundLabel: groundName || scenario || 'My first ground',
         orgName: orgName.trim() || undefined,
         scenario: scenario || undefined,
+        cadence: cadence === 'ONE_TIME' ? 'FORTNIGHTLY' : cadence,
+        checkInBy: checkInBy.trim() || undefined,
+        lastCheckInBy: lastCheckInBy.trim() || undefined,
         history,
         report: sessionReport,
         inviteToken,
@@ -498,9 +596,30 @@ export function EntryChatPage() {
   function submitInviteContext() {
     if (!inviteContextFor) return
     const entry = inviteContextFor + (inviteContext.trim() ? ` — ${inviteContext.trim()}` : '')
-    if (!inviteAdded.includes(inviteContextFor)) setInviteAdded(prev => [...prev, entry])
-    setInviteContextFor(null)
+    const newAdded = inviteAdded.includes(inviteContextFor) ? inviteAdded : [...inviteAdded, entry]
+    setInviteAdded(newAdded)
     setInviteContext('')
+    // Drain bulk queue: advance to next email if one is waiting
+    const [next, ...rest] = bulkQueue
+    if (next) {
+      setBulkQueue(rest)
+      setInviteContextFor(next)
+    } else {
+      setInviteContextFor(null)
+    }
+    // Keep commit payload in sync if account already created
+    try {
+      const raw = localStorage.getItem('gw_commit_payload')
+      if (raw) {
+        const payload = JSON.parse(raw)
+        payload.contributors = newAdded.map(e => {
+          const dashIdx = e.indexOf(' — ')
+          if (dashIdx === -1) return { email: e, inviteToken }
+          return { email: e.slice(0, dashIdx), context: e.slice(dashIdx + 3), inviteToken }
+        })
+        localStorage.setItem('gw_commit_payload', JSON.stringify(payload))
+      }
+    } catch { /* */ }
   }
 
   const currentOnboardingMsg = onboardingMessages[onboardingStep - 1]
@@ -510,6 +629,9 @@ export function EntryChatPage() {
 
       {/* Session header */}
       <div style={{ padding: '10px 20px', borderBottom: '1px solid var(--gw-border)', flexShrink: 0, background: 'white', display: 'flex', alignItems: 'center', gap: 8 }}>
+        {user && (
+          <span onClick={() => navigate('/grounds')} style={{ fontSize: 12, color: 'var(--gw-sub)', cursor: 'pointer', flexShrink: 0, userSelect: 'none' }}>← Grounds</span>
+        )}
         <div style={{ flex: 1 }}>
           {renamingGround ? (
             <input
@@ -523,8 +645,16 @@ export function EntryChatPage() {
             />
           ) : (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)' }}>{groundName}</span>
-              <button onClick={() => { setRenameInput(groundName); setRenamingGround(true) }} style={{ background: 'none', border: 'none', color: 'var(--gw-muted)', cursor: 'pointer', fontSize: 12, padding: 0, fontFamily: 'inherit' }} title="Rename">✎</button>
+              {groundName ? (
+                <>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)' }}>{groundName}</span>
+                  <button onClick={() => { setRenameInput(groundName); setRenamingGround(true) }} style={{ background: 'none', border: 'none', color: 'var(--gw-muted)', cursor: 'pointer', fontSize: 12, padding: 0, fontFamily: 'inherit' }} title="Rename">✎</button>
+                </>
+              ) : (
+                <button onClick={() => { setRenameInput(''); setRenamingGround(true) }} style={{ background: 'none', border: '1px dashed var(--gw-border)', borderRadius: 5, color: 'var(--gw-sub)', cursor: 'pointer', fontSize: 12, padding: '2px 10px', fontFamily: 'inherit', fontWeight: 500 }}>
+                  Name this ground ✎
+                </button>
+              )}
             </div>
           )}
           <div style={{ fontSize: 11, color: 'var(--gw-sub)', display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
@@ -543,7 +673,7 @@ export function EntryChatPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={{ fontSize: 11, color: 'var(--gw-sub)' }}>sessions:</span>
               <input
-                type="number" min={1} max={12}
+                type="number" min={1}
                 value={sessionsInput}
                 onChange={e => setSessionsInput(e.target.value)}
                 onBlur={() => {
@@ -574,11 +704,31 @@ export function EntryChatPage() {
         </div>
       </div>
 
+      {/* Start over / clear check-in — hidden once session is closed */}
+      {!closed && (
+        <div style={{ padding: '6px 20px', borderBottom: '1px solid var(--gw-border)', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', flexShrink: 0 }}>
+          {confirmClear ? (
+            <span style={{ fontSize: 12, color: 'var(--gw-sub)', display: 'flex', alignItems: 'center', gap: 10 }}>
+              {phase === 'checkin' ? 'This will clear your check-in. Are you sure?' : 'This will start over. Are you sure?'}
+              <button onClick={handleClearSession} style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', fontSize: 12, fontWeight: 600, padding: 0, fontFamily: 'inherit' }}>Yes, clear</button>
+              <button onClick={() => setConfirmClear(false)} style={{ background: 'none', border: 'none', color: 'var(--gw-sub)', cursor: 'pointer', fontSize: 12, padding: 0, fontFamily: 'inherit' }}>Cancel</button>
+            </span>
+          ) : (
+            <button
+              onClick={() => phase === 'checkin' ? setConfirmClear(true) : handleClearSession()}
+              style={{ background: 'none', border: 'none', color: 'var(--gw-muted)', cursor: 'pointer', fontSize: 11, padding: 0, fontFamily: 'inherit', textDecoration: 'underline' }}
+            >
+              {phase === 'checkin' ? 'Clear check-in' : 'Start over'}
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Sessions upgrade prompt */}
       {showSessionsUpgrade && (
         <div style={{ background: 'var(--gw-blue-bg)', borderBottom: '1px solid var(--gw-blue-b)', padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
           <div style={{ flex: 1, fontSize: 13, color: 'var(--gw-navy)', lineHeight: 1.5 }}>
-            <strong>{sessions} sessions</strong> needs an account. Save your session below, set up your org and payment, then continue.
+            <strong>{sessions} sessions</strong> needs an account. ${25 + inviteAdded.length * 25}/month — $25 per organisation + $25 per contributor ({inviteAdded.length > 0 ? `${inviteAdded.length} added so far` : 'add contributors below to see your total'}). Save your session below to get set up.
           </div>
           <button onClick={() => { setShowSessionsUpgrade(false); setShowSave(true) }}
             style={{ flexShrink: 0, background: 'var(--gw-navy)', color: 'white', border: 'none', borderRadius: 7, padding: '7px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
@@ -618,14 +768,20 @@ export function EntryChatPage() {
                     </div>
 
                     {isActive && msg.buttons && (
-                      <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap', flexDirection: msg.buttonDescriptions ? 'column' : 'row', maxWidth: '88%' }}>
                         {msg.buttons.map(btn => {
                           const isSelected = msg.multiSelect && selectedGoals.includes(btn)
+                          const desc = msg.buttonDescriptions?.[btn]
                           return (
                             <button
                               key={btn}
                               onClick={() => advanceOnboarding(btn)}
-                              style={{
+                              style={desc ? {
+                                padding: '12px 14px', borderRadius: 10, fontSize: 13, fontWeight: 700,
+                                border: '1px solid var(--gw-border)', background: 'white',
+                                color: 'var(--gw-text)', cursor: 'pointer', fontFamily: 'inherit',
+                                textAlign: 'left', transition: 'border-color .15s',
+                              } : {
                                 padding: '8px 14px', borderRadius: 20, fontSize: 12, fontWeight: 500,
                                 border: `1px solid ${isSelected ? 'var(--gw-navy)' : 'var(--gw-border)'}`,
                                 background: isSelected ? 'var(--gw-navy)' : 'white',
@@ -633,7 +789,12 @@ export function EntryChatPage() {
                                 cursor: 'pointer', fontFamily: 'inherit', transition: 'all .15s',
                               }}
                             >
-                              {btn}
+                              {desc ? (
+                                <>
+                                  <div style={{ fontWeight: 700, marginBottom: 3 }}>{btn}</div>
+                                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', fontWeight: 400, lineHeight: 1.45 }}>{desc}</div>
+                                </>
+                              ) : btn}
                             </button>
                           )
                         })}
@@ -662,8 +823,8 @@ export function EntryChatPage() {
               )}
             </div>
 
-            {/* Text input — steps 1–4; step 5 uses only the "Let us begin." button */}
-            {!startCheckin.isPending && currentOnboardingMsg && onboardingStep < ONBOARDING_STEPS && (
+            {/* Text input — steps with a text placeholder only; button-only steps (1 and 6) hide the bar */}
+            {!startCheckin.isPending && currentOnboardingMsg && onboardingStep < ONBOARDING_STEPS && !!currentOnboardingMsg.placeholder && (
               <div style={{ borderTop: '1px solid var(--gw-border)', background: 'white', flexShrink: 0 }}>
                 <div style={{ padding: '10px 16px' }}>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center', maxWidth: 680, margin: '0 auto' }}>
@@ -772,6 +933,12 @@ export function EntryChatPage() {
                   📎
                 </label>
                 <input ref={fileRef} type="file" id="entry-doc-upload-chip" accept=".pdf,.doc,.docx,.txt,.csv,.xlsx,.png,.jpg,.jpeg,.md" style={{ display: 'none' }} onChange={handleFileChange} />
+                <div style={{ marginLeft: 'auto' }}>
+                  <button onClick={handleEndSession} disabled={loading}
+                    style={{ padding: '5px 12px', borderRadius: 20, fontSize: 12, border: '1px solid var(--gw-border)', background: 'transparent', color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600, opacity: loading ? 0.5 : 1 }}>
+                    End session →
+                  </button>
+                </div>
               </div>
             )}
 
@@ -783,24 +950,36 @@ export function EntryChatPage() {
               </div>
             )}
 
-            {/* Input bar */}
-            <div style={{ borderTop: '1px solid var(--gw-border)', background: 'white', flexShrink: 0 }}>
-              <div style={{ padding: '10px 16px', display: 'flex', gap: 8, alignItems: 'flex-end', maxWidth: 680, margin: '0 auto' }}>
-                <textarea
-                  ref={taRef}
-                  placeholder={closed ? 'Your session is on record.' : 'Type your response.'}
-                  value={input}
-                  onChange={autoResize}
-                  onKeyDown={handleCheckinKey}
-                  disabled={loading || closed}
-                  style={{ flex: 1, resize: 'none', height: 38, maxHeight: 120, padding: '8px 10px', fontSize: 13, lineHeight: 1.4, border: '1px solid var(--gw-border)', borderRadius: 6, background: closed ? 'var(--gw-bg)' : 'white', fontFamily: 'inherit', outline: 'none', color: 'var(--gw-text)' }}
-                />
-                <button onClick={() => send()} disabled={loading || closed || !input.trim()}
-                  style={{ padding: '0 14px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 18, flexShrink: 0, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: (loading || closed || !input.trim()) ? 0.35 : 1 }}>
-                  ↑
+            {/* Input bar / save CTA */}
+            {closed && !showSave ? (
+              <div style={{ borderTop: '1px solid var(--gw-border)', background: 'white', flexShrink: 0, padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ flex: 1, fontSize: 13, color: 'var(--gw-sub)' }}>Your session is on record.</div>
+                <button
+                  onClick={() => setShowSave(true)}
+                  style={{ flexShrink: 0, padding: '8px 16px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', border: 'none', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+                >
+                  Save &amp; invite →
                 </button>
               </div>
-            </div>
+            ) : !closed && (
+              <div style={{ borderTop: '1px solid var(--gw-border)', background: 'white', flexShrink: 0 }}>
+                <div style={{ padding: '10px 16px', display: 'flex', gap: 8, alignItems: 'flex-end', maxWidth: 680, margin: '0 auto' }}>
+                  <textarea
+                    ref={taRef}
+                    placeholder="Type your response."
+                    value={input}
+                    onChange={autoResize}
+                    onKeyDown={handleCheckinKey}
+                    disabled={loading}
+                    style={{ flex: 1, resize: 'none', height: 38, maxHeight: 120, padding: '8px 10px', fontSize: 13, lineHeight: 1.4, border: '1px solid var(--gw-border)', borderRadius: 6, background: 'white', fontFamily: 'inherit', outline: 'none', color: 'var(--gw-text)' }}
+                  />
+                  <button onClick={() => send()} disabled={loading || !input.trim()}
+                    style={{ padding: '0 14px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 18, flexShrink: 0, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: (loading || !input.trim()) ? 0.35 : 1 }}>
+                    ↑
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -839,9 +1018,20 @@ export function EntryChatPage() {
 
           {/* Report header */}
           <div style={{ background: '#0A1628', color: 'white', padding: '20px 22px 16px' }}>
-            <div style={{ fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: '#5DCAA5', fontWeight: 700, marginBottom: 6 }}>Session 1 · your account</div>
-            <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-.01em', lineHeight: 1.2 }}>{groundName || 'Your session is on record.'}</div>
+            <div style={{ fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: '#5DCAA5', fontWeight: 700, marginBottom: 6 }}>{skippedCheckin ? 'New ground' : 'Session 1 · your account'}</div>
+            <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-.01em', lineHeight: 1.2 }}>{groundName || (skippedCheckin ? 'Set up your ground.' : 'Your session is on record.')}</div>
             <div style={{ fontSize: 12, color: 'rgba(255,255,255,.5)', marginTop: 4 }}>Alignment and gaps build as contributors check in.</div>
+            {history.filter(m => m.role === 'user').length > 0 && (() => {
+              const turns = history.filter(m => m.role === 'user').length
+              const depth = turns < 4 ? 1 : turns < 8 ? 2 : turns < 12 ? 3 : turns < 16 ? 4 : 5
+              const label = depth <= 1 ? 'Thin · more exchanges strengthen the report' : depth <= 2 ? 'Moderate · a solid start' : depth <= 3 ? 'Good' : depth <= 4 ? 'Strong' : 'Rich'
+              return (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
+                  {[1,2,3,4,5].map(n => <div key={n} style={{ width: 7, height: 7, borderRadius: 2, background: n <= depth ? '#5DCAA5' : 'rgba(255,255,255,.18)' }} />)}
+                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,.55)' }}>Session depth: {label}</span>
+                </div>
+              )
+            })()}
           </div>
 
           <div style={{ padding: '18px 20px 28px' }}>
@@ -947,16 +1137,167 @@ export function EntryChatPage() {
               <input
                 type="text" placeholder="Organisation name (optional)" value={orgName}
                 onChange={e => setOrgName(e.target.value)}
-                style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #E2E0DB', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none' }}
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #E2E0DB', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none', marginBottom: 8 }}
               />
+              <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 4 }}>How often do contributors check in?</div>
+              <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+                {(['ONE_TIME', 'WEEKLY', 'FORTNIGHTLY', 'MONTHLY'] as const).map(c => (
+                  <button key={c} onClick={() => setCadence(c)} style={{
+                    flex: 1, padding: '9px 0', borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                    border: `1px solid ${cadence === c ? '#0C447C' : '#E2E0DB'}`,
+                    background: cadence === c ? '#EEF4FB' : 'white',
+                    color: cadence === c ? '#0C447C' : '#6B6560',
+                  }}>
+                    {c === 'FORTNIGHTLY' ? 'Every 2 weeks' : c === 'ONE_TIME' ? 'One time' : c.charAt(0) + c.slice(1).toLowerCase()}
+                  </button>
+                ))}
+              </div>
+              <div style={{ fontSize: 11, color: '#9B9590', marginBottom: 10, lineHeight: 1.5 }}>
+                {cadence === 'ONE_TIME' ? 'Single session · one account per party, no follow-up cadence.' :
+                 cadence === 'WEEKLY' ? 'Weekly · typical resolution in 4–6 weeks.' :
+                 cadence === 'MONTHLY' ? 'Monthly · typical resolution in 3–4 months.' :
+                 'Every 2 weeks · typical resolution in 6–8 weeks.'}
+              </div>
+              {cadence === 'ONE_TIME' ? (
+                <>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 4 }}>Complete by</div>
+                  <input
+                    type="date" value={checkInBy}
+                    onChange={e => setCheckInBy(e.target.value)}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: `1px solid ${emailError && !checkInBy ? '#C0392B' : '#E2E0DB'}`, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none', color: checkInBy ? '#1A1916' : '#9B9590' }}
+                  />
+                </>
+              ) : (
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 4 }}>First check-in</div>
+                    <input
+                      type="date" value={checkInBy}
+                      onChange={e => setCheckInBy(e.target.value)}
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: `1px solid ${emailError && !checkInBy ? '#C0392B' : '#E2E0DB'}`, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none', color: checkInBy ? '#1A1916' : '#9B9590' }}
+                    />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 4 }}>Last check-in <span style={{ fontWeight: 400 }}>(optional)</span></div>
+                    <input
+                      type="date" value={lastCheckInBy}
+                      onChange={e => setLastCheckInBy(e.target.value)}
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #E2E0DB', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none', color: lastCheckInBy ? '#1A1916' : '#9B9590' }}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Create account */}
+            {/* Invite contributors — before create account */}
+            <div style={{ borderBottom: '1px solid #E2E0DB', marginBottom: 16, paddingBottom: 16 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 4 }}>Invite contributors</div>
+              <div style={{ fontSize: 12, color: '#9B9590', lineHeight: 1.55, marginBottom: 10 }}>
+                Add one now and more any time after your account is set up. Everyone checks in independently. Nobody reads anyone else's words directly. When accounts come in, you see where everyone agrees, where they differ, and what the gap means.
+              </div>
+
+              {inviteAdded.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8 }}>
+                  {inviteAdded.map(e => (
+                    <div key={e} style={{ fontSize: 12, color: '#085041', background: '#E7F6EF', borderRadius: 6, padding: '5px 10px' }}>✓ {e}</div>
+                  ))}
+                </div>
+              )}
+
+              {inviteContextFor ? (
+                <div style={{ background: '#F5F3EF', border: '1px solid #E2E0DB', borderRadius: 10, padding: '12px 14px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#1A1916' }}>{inviteContextFor}</div>
+                    {bulkQueue.length > 0 && (
+                      <div style={{ fontSize: 11, color: '#9B9590' }}>{bulkQueue.length} more after this</div>
+                    )}
+                  </div>
+                  <div style={{ fontSize: 12, color: '#6B6560', marginBottom: 8, lineHeight: 1.5 }}>What do you want them to focus on or account for?</div>
+                  <textarea autoFocus placeholder="e.g. They are the other side of this — they own the delivery timeline."
+                    value={inviteContext} onChange={e => setInviteContext(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitInviteContext() } }}
+                    style={{ width: '100%', resize: 'none', minHeight: 60, padding: '8px 10px', fontSize: 13, lineHeight: 1.5, border: '1px solid #E2E0DB', borderRadius: 7, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 8 }}
+                  />
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={() => {
+                      // Add without context, then advance queue
+                      const newAdded = inviteAdded.includes(inviteContextFor) ? inviteAdded : [...inviteAdded, inviteContextFor]
+                      setInviteAdded(newAdded)
+                      setInviteContext('')
+                      const [next, ...rest] = bulkQueue
+                      if (next) { setBulkQueue(rest); setInviteContextFor(next) } else { setInviteContextFor(null) }
+                    }} style={{ padding: '8px 14px', borderRadius: 7, background: 'none', border: '1px solid #E2E0DB', color: '#6B6560', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Skip</button>
+                    <button onClick={submitInviteContext} style={{ flex: 1, padding: '8px 14px', borderRadius: 7, background: '#0C447C', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Add contributor</button>
+                  </div>
+                </div>
+              ) : bulkInviteMode ? (
+                <div>
+                  <textarea
+                    autoFocus
+                    placeholder="Paste emails separated by commas or line breaks&#10;e.g. alice@co.com, bob@co.com"
+                    value={bulkInviteText}
+                    onChange={e => setBulkInviteText(e.target.value)}
+                    style={{ width: '100%', resize: 'none', minHeight: 80, padding: '10px 12px', fontSize: 13, lineHeight: 1.5, border: '1px solid #E2E0DB', borderRadius: 8, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 8 }}
+                  />
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={() => { setBulkInviteMode(false); setBulkInviteText('') }} style={{ padding: '9px 14px', borderRadius: 7, background: 'none', border: '1px solid #E2E0DB', color: '#6B6560', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
+                    <button
+                      onClick={() => {
+                        const emails = bulkInviteText
+                          .split(/[\n,]+/)
+                          .map(e => e.trim().toLowerCase())
+                          .filter(e => e.includes('@') && !inviteAdded.some(a => a.startsWith(e)))
+                        if (emails.length === 0) return
+                        setBulkInviteText('')
+                        setBulkInviteMode(false)
+                        // Queue all emails through the per-contributor context prompt
+                        const [first, ...rest] = emails
+                        setBulkQueue(rest)
+                        setInviteContextFor(first)
+                        setInviteContext('')
+                      }}
+                      style={{ flex: 1, padding: '9px 14px', borderRadius: 7, background: '#0C447C', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                    >
+                      Add all
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                    <input type="email" placeholder="name@company.com" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && addInviteEmail()}
+                      style={{ flex: 1, padding: '10px 12px', borderRadius: 8, border: '1px solid #E2E0DB', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none' }}
+                    />
+                    <button onClick={addInviteEmail} style={{ flexShrink: 0, padding: '10px 16px', borderRadius: 8, background: '#0C447C', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Add</button>
+                  </div>
+                  <button
+                    onClick={() => setBulkInviteMode(true)}
+                    style={{ background: 'none', border: 'none', fontSize: 12, color: '#0C447C', cursor: 'pointer', fontFamily: 'inherit', padding: 0, textDecoration: 'underline', marginBottom: 10 }}
+                  >
+                    Paste multiple emails
+                  </button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ flex: 1, fontSize: 12, color: '#0C447C', background: '#EEF4FB', border: '0.5px solid #BFDBFE', borderRadius: 7, padding: '8px 10px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {window.location.origin}/invite?token={inviteToken}
+                    </div>
+                    <button onClick={copyInviteLink} style={{ flexShrink: 0, padding: '8px 12px', borderRadius: 7, background: '#F5F3EF', color: '#1A1916', fontSize: 12, fontWeight: 600, border: '0.5px solid #E2E0DB', cursor: 'pointer', fontFamily: 'inherit' }}>
+                      {copiedLink ? 'Copied!' : 'Copy link'}
+                    </button>
+                  </div>
+                  <input type="text" placeholder="Add a note to send with your link (optional)" value={inviteNote} onChange={e => setInviteNote(e.target.value)}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #E2E0DB', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none', marginTop: 8 }}
+                  />
+                </>
+              )}
+            </div>
+
+            {/* Create account — after invite so ground is fully configured first */}
             {!emailSent ? (
               <div style={{ marginBottom: 16 }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 4 }}>Create your account</div>
-                <div style={{ fontSize: 12, color: '#9B9590', marginBottom: 8, lineHeight: 1.5 }}>Your session is saved here. Add your email to keep access and invite contributors.</div>
-                <input type="email" placeholder="you@company.com" value={email} onChange={e => setEmail(e.target.value)}
+                <div style={{ fontSize: 12, color: '#9B9590', marginBottom: 8, lineHeight: 1.5 }}>Enter your email to save this ground and send invites. You can add more contributors any time after.</div>
+                <input type="email" placeholder="you@company.com" value={email} onChange={e => { setEmail(e.target.value); setEmailError('') }}
                   onKeyDown={e => e.key === 'Enter' && handleSave()}
                   style={{ width: '100%', padding: '11px 13px', borderRadius: 8, border: '1px solid #E2E0DB', fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8, outline: 'none' }}
                 />
@@ -973,61 +1314,8 @@ export function EntryChatPage() {
               </div>
             )}
 
-            {/* Invite participants */}
-            <div style={{ borderTop: '1px solid #E2E0DB', paddingTop: 16, marginBottom: 14 }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 6 }}>Invite contributors</div>
-              <div style={{ fontSize: 12, color: '#9B9590', lineHeight: 1.55, marginBottom: 10 }}>
-                Each contributor checks in independently without seeing what you wrote. Their account is cross-referenced against yours to show where there is alignment and where there are gaps.
-              </div>
-
-              {inviteAdded.length > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8 }}>
-                  {inviteAdded.map(e => (
-                    <div key={e} style={{ fontSize: 12, color: '#085041', background: '#E7F6EF', borderRadius: 6, padding: '5px 10px' }}>✓ {e}</div>
-                  ))}
-                </div>
-              )}
-
-              {inviteContextFor ? (
-                <div style={{ background: '#F5F3EF', border: '1px solid #E2E0DB', borderRadius: 10, padding: '12px 14px' }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#1A1916', marginBottom: 4 }}>{inviteContextFor}</div>
-                  <div style={{ fontSize: 12, color: '#6B6560', marginBottom: 8, lineHeight: 1.5 }}>What is their role and what do they see that you do not?</div>
-                  <textarea autoFocus placeholder="e.g. They are the other side of this — they own the delivery timeline."
-                    value={inviteContext} onChange={e => setInviteContext(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitInviteContext() } }}
-                    style={{ width: '100%', resize: 'none', minHeight: 60, padding: '8px 10px', fontSize: 13, lineHeight: 1.5, border: '1px solid #E2E0DB', borderRadius: 7, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 8 }}
-                  />
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button onClick={() => { setInviteContextFor(null); setInviteContext('') }} style={{ padding: '8px 14px', borderRadius: 7, background: 'none', border: '1px solid #E2E0DB', color: '#6B6560', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Skip</button>
-                    <button onClick={submitInviteContext} style={{ flex: 1, padding: '8px 14px', borderRadius: 7, background: '#0C447C', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Add contributor</button>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                    <input type="email" placeholder="name@company.com" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)}
-                      onKeyDown={e => e.key === 'Enter' && addInviteEmail()}
-                      style={{ flex: 1, padding: '10px 12px', borderRadius: 8, border: '1px solid #E2E0DB', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none' }}
-                    />
-                    <button onClick={addInviteEmail} style={{ flexShrink: 0, padding: '10px 16px', borderRadius: 8, background: '#0C447C', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Add</button>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div style={{ flex: 1, fontSize: 12, color: '#0C447C', background: '#EEF4FB', border: '0.5px solid #BFDBFE', borderRadius: 7, padding: '8px 10px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {window.location.origin}/invite?token={inviteToken}
-                    </div>
-                    <button onClick={copyInviteLink} style={{ flexShrink: 0, padding: '8px 12px', borderRadius: 7, background: '#F5F3EF', color: '#1A1916', fontSize: 12, fontWeight: 600, border: '0.5px solid #E2E0DB', cursor: 'pointer', fontFamily: 'inherit' }}>
-                      {copiedLink ? 'Copied!' : 'Copy link'}
-                    </button>
-                  </div>
-                  <input type="text" placeholder="Add a note to send with your link (optional)" value={inviteNote} onChange={e => setInviteNote(e.target.value)}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #E2E0DB', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none', marginTop: 8 }}
-                  />
-                </>
-              )}
-            </div>
-
             <div onClick={() => setShowSave(false)} style={{ textAlign: 'center', fontSize: 12, color: '#9B9590', cursor: 'pointer', paddingTop: 4 }}>
-              Later
+              {closed ? 'Close — you can reopen this from the bar below' : 'Later'}
             </div>
           </div>
         </div>
