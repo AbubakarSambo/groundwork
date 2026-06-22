@@ -208,6 +208,7 @@ export function EntryChatPage() {
   const [showEndPrompt, setShowEndPrompt] = useState(false)
 
   const [confirmClear, setConfirmClear] = useState(false)
+  const [showAdminBriefing, setShowAdminBriefing] = useState(false)
 
   function handleClearSession() {
     clearEntrySession()
@@ -405,11 +406,11 @@ export function EntryChatPage() {
     const currentStep = onboardingStep
     let newSels = { ...onboardingSelections }
 
-    // Step 6: party path — admin checks in first
+    // Step 6: party path — show briefing before check-in starts
     if (buttonChoice === "I am involved. Let's begin.") {
       setOnboardingStep(ONBOARDING_STEPS + 1)
       persistOnboarding([], newSels, ONBOARDING_STEPS)
-      startCheckin.mutate()
+      setShowAdminBriefing(true)
       return
     }
 
@@ -623,6 +624,51 @@ export function EntryChatPage() {
   }
 
   const currentOnboardingMsg = onboardingMessages[onboardingStep - 1]
+
+  if (showAdminBriefing) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--gw-bg)', padding: '24px 20px' }}>
+        <div style={{ maxWidth: 480, width: '100%' }}>
+          <div style={{ marginBottom: 24 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', letterSpacing: '-.01em' }}>Groundwork</span>
+          </div>
+          <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-text)', lineHeight: 1.2, marginBottom: 8 }}>You're up first.</h1>
+          <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.7, marginBottom: 24 }}>
+            Your check-in is the first account on this ground. Here is what to expect.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 28 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '13px 16px', background: 'white', borderRadius: 10, border: '1px solid var(--gw-border)' }}>
+              <span style={{ fontSize: 16, flexShrink: 0 }}>⏱</span>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 2 }}>About 10 minutes</div>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55 }}>Answer in your own words. The questions are based on what you just described. There are no right answers.</div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '13px 16px', background: 'white', borderRadius: 10, border: '1px solid var(--gw-border)' }}>
+              <span style={{ fontSize: 16, flexShrink: 0 }}>📨</span>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 2 }}>Invite links come after</div>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55 }}>Once you finish, you will get invite links to send to the other people involved. They check in independently.</div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '13px 16px', background: 'white', borderRadius: 10, border: '1px solid var(--gw-border)' }}>
+              <span style={{ fontSize: 16, flexShrink: 0 }}>📄</span>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 2 }}>The report appears when everyone is in</div>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55 }}>It shows where accounts agree and where they differ. Everyone sees it at the same time.</div>
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={() => { setShowAdminBriefing(false); startCheckin.mutate() }}
+            style={{ width: '100%', padding: '14px 20px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+          >
+            Start my check-in
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)', position: 'relative', overflow: 'hidden' }}>

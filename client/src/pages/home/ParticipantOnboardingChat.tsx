@@ -113,6 +113,7 @@ export function ParticipantOnboardingChat() {
   const [phase, setPhase] = useState<'onboarding' | 'email' | 'faq' | 'checkin' | 'done'>('onboarding')
   const [faqState, setFaqState] = useState<'input' | 'next'>('input')
   const [done, setDone] = useState(false)
+  const [showIntro, setShowIntro] = useState(true)
   const [matchAnswer, setMatchAnswer] = useState<string>('')
   const [selectedGoals, setSelectedGoals] = useState<string[]>([])
   const [emailCapture, setEmailCapture] = useState('')
@@ -148,6 +149,7 @@ export function ParticipantOnboardingChat() {
       setPhase(saved.phase)
       setFaqState(saved.faqState)
       if (saved.phase === 'done') setDone(true)
+      setShowIntro(false)
     } else {
       pStore.clear()
       const first: DMsg = { id: 'ai-1', from: 'ai', content: stepContent(1, adminName, groundLabel, multiParty) }
@@ -472,6 +474,53 @@ export function ParticipantOnboardingChat() {
   const visibleMsgs = msgs.filter(m => !m.isLoading || loading)
 
   // ── Render ────────────────────────────────────────────────────────────────
+
+  if (showIntro) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--gw-bg)', padding: '24px 20px' }}>
+        <div style={{ maxWidth: 480, width: '100%' }}>
+          <div style={{ marginBottom: 24 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', letterSpacing: '-.01em' }}>Groundwork</span>
+          </div>
+          <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-text)', lineHeight: 1.2, marginBottom: 8 }}>
+            {adminName} has asked for your account.
+          </h1>
+          <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.7, marginBottom: 24 }}>
+            The record is about: <strong style={{ color: 'var(--gw-text)' }}>{groundLabel}</strong>
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 28 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '13px 16px', background: 'white', borderRadius: 10, border: '1px solid var(--gw-border)' }}>
+              <span style={{ fontSize: 16, flexShrink: 0 }}>🔒</span>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 2 }}>Your words stay private</div>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55 }}>What you write is not shared directly. The report shows where accounts agree and where they differ, without quoting anyone.</div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '13px 16px', background: 'white', borderRadius: 10, border: '1px solid var(--gw-border)' }}>
+              <span style={{ fontSize: 16, flexShrink: 0 }}>⏱</span>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 2 }}>About 10 minutes</div>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55 }}>You will be asked a few questions about the situation. Answer in your own words. There are no right answers.</div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '13px 16px', background: 'white', borderRadius: 10, border: '1px solid var(--gw-border)' }}>
+              <span style={{ fontSize: 16, flexShrink: 0 }}>📄</span>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 2 }}>You get the report too</div>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55 }}>When everyone has checked in, the report is released to all parties at the same time.</div>
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowIntro(false)}
+            style={{ width: '100%', padding: '14px 20px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+          >
+            Start my check-in
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
