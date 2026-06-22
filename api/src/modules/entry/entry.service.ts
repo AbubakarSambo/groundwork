@@ -27,20 +27,26 @@ This is the person's first session. They have not yet created an account.
 There is no prior check-in data, no longitudinal patterns, no other-party record yet.
 Do not reference prior sessions or the other party's account.
 Do not mention saving or payment unless the person asks.
-The first two sessions are free.`.trim();
+The first two sessions are free.
+
+# Formatting
+Do not use dashes of any kind — no em dashes, no en dashes, no hyphens in prose.
+Use straight quotes only. Keep questions short. One question at a time.`.trim();
 
 const FAQ_PROMPT = `FAQ MODE. Answer the person's question about how Groundwork works in one or two plain sentences, then stop. Do not start a check-in. Do not ask a follow up unless it is needed for clarity. Do not use dashes of any kind. Use straight quotes. Reference facts only: Your account is private. The other party submits their own account independently. The report shows where accounts agree, where they differ, and what the gap means. Both parties see it at the same moment. Most first sessions take 8 to 15 minutes. The first two sessions per participant are free. Billing is $25 per month per account plus $25 per month per active participant. For anything else: hello@myground.work.`;
 
 const ENTRY_REPORT_PROMPT = `You are Groundwork. A person has just completed their first check-in session. Generate their session 1 report: what you saw in their account, where clarity exists, where it does not, and what to do next.
 
 Rules:
+- Begin the report with a single framing line, exactly: "This is your private record from session 1. It reflects what you put on record. It has not been cross-referenced with any other account yet."
 - No verdicts. No judgements of any person.
 - Never name the other party personally. Use "the other party" or their role.
 - Be specific to what was actually said. Do not invent.
 - The alignment status reflects THIS session only. No cross-reference yet since the other party has not checked in.
 - Areas requiring alignment are things still unclear or unstated, not failures.
 - The recommended move is practical, not prescriptive.
-- Honest close must name what is settled, what is open, what to revisit, and what the risk is if things stay as they are.`;
+- Honest close must name what is settled, what is open, what to revisit, and what the risk is if things stay as they are.
+- In areasRequiringAlignment, always include at least one entry for any significant topic raised in the conversation but not addressed directly — name it explicitly as an unaddressed area with observation "This topic came up but was not fully explored in this session."`;
 
 const ENTRY_REPORT_SCHEMA = {
   name: 'emit_entry_report',
@@ -154,6 +160,103 @@ export class EntryService {
   opener(scenario?: string): string {
     if (scenario && SCENARIO_OPENERS[scenario]) return SCENARIO_OPENERS[scenario];
     return DEFAULT_OPENER;
+  }
+
+  faq(question: string): Promise<string> {
+    return this.anthropic.respond(FAQ_PROMPT, [{ role: 'user', content: question }]);
+  }
+
+  async participantChat(token: string, messages: ChatTurn[]): Promise<{ reply: string; sessionComplete: boolean }> {
+    if (!messages || messages.length === 0) throw new BadRequestException('messages required');
+
+    // Load ground + participant context from the invite token.
+    const participant = await this.prisma.groundParticipant.findUnique({
+      where: { inviteToken: token },
+      include: {
+        ground: {
+          include: {
+            initiator: { select: { firstName: true, lastName: true } },
+          },
+        },
+      },
+    });
+    if (!participant) throw new BadRequestException('Invalid or expired invite token');
+
+    const ground = participant.ground;
+    const initiatorName = `${ground.initiator.firstName} ${ground.initiator.lastName}`.trim();
+
+    // Determine session number from this participant's check-in history.
+    const completedSessions = await this.prisma.checkIn.findMany({
+      where: { participantId: participant.id, status: 'COMPLETED' },
+      orderBy: { sessionNumber: 'asc' },
+    });
+    const sessionNumber = completedSessions.length + 1;
+
+    // Fix 1: For session 2+, load key claims from the prior completed session.
+    let priorSessionContext = '';
+    if (sessionNumber > 1) {
+      const lastSession = completedSessions[completedSessions.length - 1];
+      const priorTurns = await this.prisma.conversationTurn.findMany({
+        where: { checkInId: lastSession.id },
+        orderBy: { createdAt: 'asc' },
+      });
+      const priorPersonTurns = priorTurns
+        .filter(t => t.role === 'PERSON')
+        .map(t => t.content)
+        .join(' | ');
+      if (priorPersonTurns) {
+        priorSessionContext = `\n\n# Prior session context (session ${sessionNumber - 1})\nWhat this participant said last session: ${priorPersonTurns.slice(0, 1200)}\n\nWhen asking what moved forward, reference specifically what they said last session. If the same goal appears with no new evidence, name that directly.`;
+      }
+    }
+
+    // Fix 5: Load specific claims from other completed accounts on this ground.
+    const otherCompletedCheckIns = await this.prisma.checkIn.findMany({
+      where: {
+        groundId: ground.id,
+        status: 'COMPLETED',
+        participantId: { not: participant.id },
+      },
+      include: {
+        turns: { where: { role: 'PERSON' }, orderBy: { createdAt: 'asc' }, take: 10 },
+        participant: { select: { partyType: true } },
+      },
+    });
+
+    let crossClaimsContext = '';
+    if (otherCompletedCheckIns.length > 0) {
+      const claims = otherCompletedCheckIns.flatMap(ci =>
+        ci.turns.map(t => t.content)
+      ).join(' | ').slice(0, 800);
+      if (claims) {
+        crossClaimsContext = `\n\n# Cross-reference context (do not reveal to participant)\nOther accounts on this ground have described the situation as follows. Ask about the same areas naturally without revealing what others said: ${claims}`;
+      }
+    }
+
+    // Fix 2: vagueness pushback + Fix 3: evidence invitation — baked into system prompt.
+    const participantSystemPrompt = buildEntrySystemPrompt(
+      (SCENARIO_MAP[ground.scenario] ?? DEFAULT_SCENARIO) as any,
+      ground.label,
+    ) + `\n\n# Participant check-in rules
+This is a participant (not the admin/initiator). They are giving their own independent account.
+Session number: ${sessionNumber}
+Ground: ${ground.label}
+Opened by: ${initiatorName}
+
+# Vagueness pushback (Fix 2)
+If a response uses activity or framing language ("I have been working on", "we are making progress", "things are moving forward") without naming a concrete output, deliverable, or observable change — ask once: "What is actually in place now that was not there before?" Maximum one pushback per topic. Do not push a third time.
+
+# Evidence invitation (Fix 3)
+Once per session, at a natural moment, ask: "Is there anything you can point to that shows how this went — a note, a log, a message, a record?" Accept whatever they share. If nothing: note it as no supporting evidence for this session and move on. Do not press.
+${priorSessionContext}${crossClaimsContext}`;
+
+    const reply = await this.anthropic.respond(participantSystemPrompt, messages);
+
+    // Detect session completion (AI signals done).
+    const sessionComplete = reply.toLowerCase().includes('[session complete]') ||
+      reply.toLowerCase().includes('your account is now on record') ||
+      messages.length > 20;
+
+    return { reply, sessionComplete };
   }
 
   async chat(messages: ChatTurn[], scenario?: string, groundLabel?: string): Promise<string> {

@@ -82,8 +82,9 @@ export function AlignmentFeedPage() {
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)', position: 'relative' }}>
       <div className="gw-hdr">
         <div>
-          <div className="gw-logo">{user?.organizationName ?? 'Alignment feed'}</div>
-          <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>Engagement overview · {user?.role === 'ADMIN' ? 'Admin' : 'Read-only'}</div>
+          <span onClick={() => navigate('/grounds')} style={{ cursor: 'pointer', fontSize: 13, color: 'var(--gw-sub)' }}>← Grounds</span>
+          <div className="gw-logo" style={{ marginTop: 2 }}>{user?.organizationName ?? 'Alignment feed'}</div>
+          <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>Engagement overview · {user?.role === 'ADMIN' ? 'Admin' : 'Read only'}</div>
         </div>
         <div style={{ display: 'flex', gap: 7, alignItems: 'center' }}>
           <button

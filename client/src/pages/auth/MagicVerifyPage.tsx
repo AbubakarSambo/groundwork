@@ -18,6 +18,7 @@ export function MagicVerifyPage() {
   const navigate = useNavigate()
   const setAuth = useAuthStore(s => s.setAuth)
   const [error, setError] = useState('')
+  const [nextGroundId, setNextGroundId] = useState<string | null>(null)
 
   useEffect(() => {
     const token = params.get('token')
@@ -37,7 +38,7 @@ export function MagicVerifyPage() {
             const { groundId } = await entryApi.commit(payload)
             localStorage.removeItem(COMMIT_KEY)
             localStorage.removeItem('gw_entry_session')
-            navigate(`/grounds/${groundId}`, { replace: true })
+            setNextGroundId(groundId)
           } catch {
             // Commit failed — send them to grounds list, the ground wasn't created
             navigate('/grounds', { replace: true })
@@ -59,12 +60,48 @@ export function MagicVerifyPage() {
       })
   }, [])
 
+  if (nextGroundId) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--gw-bg)', padding: '0 20px' }}>
+        <div style={{ maxWidth: 380, width: '100%' }}>
+          <div style={{ background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 12, padding: '20px 22px', marginBottom: 20, textAlign: 'center' }}>
+            <div style={{ fontSize: 22, marginBottom: 8 }}>✓</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: '#085041', marginBottom: 4 }}>Your ground is set up.</div>
+            <div style={{ fontSize: 13, color: '#3A7A60', lineHeight: 1.6 }}>Your session is on record and your account is live.</div>
+          </div>
+          <div style={{ background: 'white', border: '0.5px solid var(--gw-border)', borderRadius: 12, padding: '18px 20px', marginBottom: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gw-sub)', marginBottom: 14 }}>What happens next</div>
+            {[
+              { n: '1', title: 'Contributors get their invite', body: 'Anyone you added will receive an email with a private link. They check in independently — they never see your account.' },
+              { n: '2', title: 'Their account comes in', body: 'Once they submit, Groundwork builds a picture across accounts. Nobody reads anyone else\'s words directly. The report shows where accounts agree and where they differ.' },
+              { n: '3', title: 'You release the report', body: 'When you are ready, you release the report to both parties at the same time. Neither sees it before the other.' },
+            ].map(s => (
+              <div key={s.n} style={{ display: 'flex', gap: 12, marginBottom: 14 }}>
+                <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--gw-navy)', color: 'white', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>{s.n}</div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 2 }}>{s.title}</div>
+                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55 }}>{s.body}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <button
+            onClick={() => navigate(`/grounds/${nextGroundId}`, { replace: true })}
+            style={{ width: '100%', padding: '13px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+          >
+            Go to your ground →
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--gw-bg)' }}>
       {!error ? (
         <div style={{ textAlign: 'center' }}>
           <div style={{ width: 40, height: 40, border: '3px solid var(--gw-navy)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 16px' }} />
-          <div style={{ fontSize: 14, color: 'var(--gw-sub)' }}>Signing you in…</div>
+          <div style={{ fontSize: 14, color: 'var(--gw-sub)' }}>Setting up your ground…</div>
         </div>
       ) : (
         <div style={{ textAlign: 'center', maxWidth: 340, padding: '0 20px' }}>

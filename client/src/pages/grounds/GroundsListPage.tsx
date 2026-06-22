@@ -1,7 +1,9 @@
-import { useNavigate } from 'react-router-dom'
+import { useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { groundsApi } from '@/api/grounds'
 import { billingApi } from '@/api/billing'
+import { authApi } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
 import type { Ground } from '@/types'
 import { toast } from 'sonner'
@@ -55,8 +57,22 @@ function GroundCard({ g, onClick }: { g: Ground; onClick: () => void }) {
 
 export function GroundsListPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const user = useAuthStore(s => s.user)
   const isAdmin = user?.role === 'ADMIN'
+  const justSetUp = searchParams.get('welcome') === '1'
+  const [showInviteColleague, setShowInviteColleague] = useState(false)
+  const [colleagueEmail, setColleagueEmail] = useState('')
+
+  const teamInviteMut = useMutation({
+    mutationFn: (email: string) => authApi.teamInvite(email),
+    onSuccess: () => {
+      toast.success('Invite sent.')
+      setColleagueEmail('')
+      setShowInviteColleague(false)
+    },
+    onError: () => toast.error('Could not send invite. Please try again.'),
+  })
 
   const { data: grounds = [], isLoading } = useQuery({
     queryKey: ['grounds'],
@@ -81,6 +97,11 @@ export function GroundsListPage() {
   const checkInsToday = grounds.reduce((n, g) => n + (g.checkInsToday ?? 0), 0)
   const reportsReady = grounds.filter(g => g.status === 'REPORT_READY').length
   const billingActive = billing?.careFeeActive ?? false
+  const needsAttention = grounds.filter(g => g.status === 'REPORT_READY' || (g.overdue ?? 0) > 0)
+  const sortedGrounds = [...grounds].sort((a, b) => {
+    const urgency = (g: typeof a) => (g.status === 'REPORT_READY' ? 10 : (g.overdue ?? 0) > 0 ? 5 : 0)
+    return urgency(b) - urgency(a)
+  })
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
@@ -139,11 +160,69 @@ export function GroundsListPage() {
             {/* Open ground CTA */}
             <button
               onClick={() => navigate('/grounds/new')}
-              style={{ width: '100%', padding: '13px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+              style={{ width: '100%', padding: '13px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
             >
               <span>Open a new ground</span>
               <span style={{ fontSize: 18, fontWeight: 300 }}>+</span>
             </button>
+
+            {/* Invite a colleague */}
+            {!showInviteColleague ? (
+              <button
+                onClick={() => setShowInviteColleague(true)}
+                style={{ width: '100%', padding: '10px 16px', borderRadius: 8, background: 'white', color: 'var(--gw-navy)', fontSize: 13, fontWeight: 600, border: '1px solid var(--gw-blue-b)', cursor: 'pointer', fontFamily: 'inherit', marginBottom: 20, textAlign: 'left' }}
+              >
+                Invite a colleague to create grounds →
+              </button>
+            ) : (
+              <div style={{ background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 10, padding: '14px 16px', marginBottom: 20 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 4 }}>Invite a colleague</div>
+                <div style={{ fontSize: 12, color: 'var(--gw-blue-t)', lineHeight: 1.5, marginBottom: 12 }}>
+                  They will receive an email with a link to set up their own Groundwork account. They can then open and manage their own grounds.
+                </div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <input
+                    type="email"
+                    placeholder="colleague@company.com"
+                    value={colleagueEmail}
+                    onChange={e => setColleagueEmail(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter' && colleagueEmail.includes('@')) teamInviteMut.mutate(colleagueEmail.trim()) }}
+                    style={{ flex: 1, padding: '9px 12px', fontSize: 13, border: '1px solid var(--gw-blue-b)', borderRadius: 6, fontFamily: 'inherit', outline: 'none', background: 'white' }}
+                    autoFocus
+                  />
+                  <button
+                    onClick={() => { if (colleagueEmail.includes('@')) teamInviteMut.mutate(colleagueEmail.trim()) }}
+                    disabled={teamInviteMut.isPending || !colleagueEmail.includes('@')}
+                    style={{ padding: '9px 16px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, fontFamily: 'inherit', flexShrink: 0 }}
+                  >
+                    {teamInviteMut.isPending ? 'Sending…' : 'Send invite'}
+                  </button>
+                  <button
+                    onClick={() => { setShowInviteColleague(false); setColleagueEmail('') }}
+                    style={{ padding: '9px 10px', borderRadius: 6, background: 'none', color: 'var(--gw-sub)', border: '1px solid var(--gw-border)', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit', flexShrink: 0 }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Needs attention banner */}
+            {!isLoading && needsAttention.length > 0 && (
+              <div style={{ background: '#FDF3E3', border: '1px solid #E8A94A', borderRadius: 10, padding: '12px 14px', marginBottom: 16 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#8A5C1A', marginBottom: 6 }}>Needs your attention</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {needsAttention.map(g => (
+                    <div key={g.id} onClick={() => navigate(`/grounds/${g.id}`)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', padding: '4px 0' }}>
+                      <span style={{ fontSize: 13, color: '#1A1916', fontWeight: 600 }}>{g.label}</span>
+                      <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: g.status === 'REPORT_READY' ? 'var(--gw-green-bg)' : 'var(--gw-amber-bg)', color: g.status === 'REPORT_READY' ? 'var(--gw-green-t)' : 'var(--gw-amber-t)' }}>
+                        {g.status === 'REPORT_READY' ? 'Report ready' : `${g.overdue} overdue`}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {isLoading && <div style={{ fontSize: 13, color: 'var(--gw-muted)', textAlign: 'center', padding: 24 }}>Loading…</div>}
 
@@ -161,15 +240,33 @@ export function GroundsListPage() {
             )}
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {grounds.map(g => <GroundCard key={g.id} g={g} onClick={() => navigate(`/grounds/${g.id}`)} />)}
+              {sortedGrounds.map(g => <GroundCard key={g.id} g={g} onClick={() => navigate(`/grounds/${g.id}`)} />)}
             </div>
           </>
         ) : (
           <>
-            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>Your grounds</div>
+            {/* Welcome banner after password setup */}
+            {justSetUp && (
+              <div style={{ background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#085041', marginBottom: 3 }}>Your account is live.</div>
+                <div style={{ fontSize: 12, color: '#3A7A60', lineHeight: 1.5 }}>Your check-in is on record. You will receive the report here when it is ready.</div>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <div style={{ fontSize: 16, fontWeight: 700 }}>
+                {grounds.length > 0 ? `Your grounds (${grounds.length})` : 'Your grounds'}
+              </div>
+              <button
+                onClick={() => navigate('/start')}
+                style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                + Open a ground
+              </button>
+            </div>
 
             {/* Unlock insights CTA for contributors */}
-            {!billingActive && (
+            {!billingActive && grounds.length > 0 && (
               <div style={{ background: '#EEF4FB', border: '1px solid #C5D9EF', borderRadius: 10, padding: '14px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 700, color: '#0C447C', marginBottom: 2 }}>See your full record</div>
@@ -188,8 +285,16 @@ export function GroundsListPage() {
             {isLoading && <div style={{ fontSize: 13, color: 'var(--gw-muted)', textAlign: 'center', padding: 24 }}>Loading…</div>}
             {!isLoading && grounds.length === 0 && (
               <div style={{ textAlign: 'center', padding: '48px 20px' }}>
-                <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>No active grounds yet.</div>
-                <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, maxWidth: 280, margin: '0 auto' }}>When someone opens a ground with you, it will appear here.</div>
+                <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>No grounds yet.</div>
+                <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, maxWidth: 280, margin: '0 auto 24px' }}>
+                  Grounds you are invited to will appear here. You can also open your own.
+                </div>
+                <button
+                  onClick={() => navigate('/start')}
+                  style={{ padding: '12px 24px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                >
+                  Open a ground
+                </button>
               </div>
             )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

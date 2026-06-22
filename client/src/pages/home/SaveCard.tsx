@@ -26,11 +26,12 @@ interface Props {
   mode?: EntryMode
   variant?: Variant
   onClear: () => void
+  email?: string
 }
 
-export function SaveCard({ mode, variant = 'admin', onClear }: Props) {
+export function SaveCard({ mode, variant = 'admin', onClear, email: initialEmail }: Props) {
   const navigate = useNavigate()
-  const [email, setEmail] = useState('')
+  const [email, setEmail] = useState(initialEmail ?? '')
   const [emailError, setEmailError] = useState('')
   const [copied, setCopied] = useState(false)
   const [note, setNote] = useState('')
@@ -76,7 +77,7 @@ export function SaveCard({ mode, variant = 'admin', onClear }: Props) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>
               <span style={{ color: 'var(--gw-green-t)', fontWeight: 700, flexShrink: 0 }}>✓</span>
-              <span>Your check-in is saved. Your full account stays private from other contributors.</span>
+              <span>Your check-in is saved. Nobody reads your words directly. The report shows where accounts agree and where they differ.</span>
             </div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>
               <span style={{ color: 'var(--gw-muted)', fontWeight: 700, flexShrink: 0 }}>2</span>
@@ -117,7 +118,7 @@ export function SaveCard({ mode, variant = 'admin', onClear }: Props) {
               disabled={saveSession.isPending}
               style={{ marginTop: 4 }}
             >
-              {saveSession.isPending ? 'Sending…' : 'Save my account'}
+              {saveSession.isPending ? 'Sending…' : 'Send me my account link'}
             </button>
           </form>
         </div>

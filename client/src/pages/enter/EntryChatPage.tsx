@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
 import { entryApi } from '@/api/entry'
 import { authApi } from '@/api/auth'
 import { useEntryStore } from '@/stores/entry'
+import { useAuthStore } from '@/stores/auth'
 import { toast } from 'sonner'
 
 const STORAGE_KEY = 'gw_entry_session'
@@ -128,7 +129,7 @@ function buildOnboardingMessages(sels: OnboardingSelections): OnboardingMessage[
   return [
     // Step 1: situation type — card buttons with descriptions
     {
-      text: `Groundwork builds a picture from what everyone involved has seen, experienced, and agreed. Each person adds their own account — nobody sees what anyone else wrote.\n\nWhat kind of situation are we dealing with?`,
+      text: `Groundwork builds a picture from what everyone involved has seen, experienced, and agreed. Each person adds their own account. Nobody reads anyone else's words directly. The report shows where accounts agree and where they differ.\n\nWhat kind of situation are we dealing with?`,
       buttons: ['Starting something', 'Already underway', 'Already happened', 'Both'],
       buttonDescriptions: MODE_BUTTON_DESCRIPTIONS,
     },
@@ -154,10 +155,10 @@ function buildOnboardingMessages(sels: OnboardingSelections): OnboardingMessage[
       multiSelect: true,
       placeholder: 'Or say it in your own words.',
     },
-    // Step 6: ready to begin — admin checks in first, then invites contributors
+    // Step 6: party or manager choice
     {
-      text: "Good. You go first — your view, in your words.\n\nOnce you're done, you can invite others to add theirs. Nobody sees what anyone else wrote.\n\nLet's begin.",
-      buttons: ["Let's begin."],
+      text: "Last thing. Are you personally involved in this situation, or are you setting it up for others?\n\nIf you are involved, you go first. You add your account, then invite the others. If you are setting it up on their behalf, you can skip straight to inviting them.",
+      buttons: ["I am involved. Let's begin.", "I am setting this up for others"],
     },
   ]
 }
@@ -173,10 +174,12 @@ const QUICK_ACTIONS = [
 
 export function EntryChatPage() {
   const [params] = useSearchParams()
+  const navigate = useNavigate()
   const scenario = params.get('scenario') ?? ''
   const urlMode = params.get('mode') ?? ''
   const urlInitial = params.get('initial') ?? ''
 
+  const user = useAuthStore(s => s.user)
   const { groundName, setGroundName, sessions, setSessions } = useEntryStore()
   const [renamingGround, setRenamingGround] = useState(false)
   const [renameInput, setRenameInput] = useState('')
@@ -218,8 +221,13 @@ export function EntryChatPage() {
   const [inviteContextFor, setInviteContextFor] = useState<string | null>(null)
   const [inviteContext, setInviteContext] = useState('')
   const [copiedLink, setCopiedLink] = useState(false)
+  const [skippedCheckin] = useState(false)
   const [checkInBy, setCheckInBy] = useState('')
-  const [cadence, setCadence] = useState<'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY'>('FORTNIGHTLY')
+  const [lastCheckInBy, setLastCheckInBy] = useState('')
+  const [cadence, setCadence] = useState<'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'ONE_TIME'>('FORTNIGHTLY')
+  const [bulkInviteMode, setBulkInviteMode] = useState(false)
+  const [bulkInviteText, setBulkInviteText] = useState('')
+  const [bulkQueue, setBulkQueue] = useState<string[]>([])
 
   // Stable invite token — generated once and stored in entryStorage
   const [inviteToken] = useState<string>(() => {
@@ -390,11 +398,32 @@ export function EntryChatPage() {
     const currentStep = onboardingStep
     let newSels = { ...onboardingSelections }
 
-    // Step 6 begin button
-    if (buttonChoice === "Let's begin.") {
+    // Step 6: party path — admin checks in first
+    if (buttonChoice === "I am involved. Let's begin.") {
       setOnboardingStep(ONBOARDING_STEPS + 1)
       persistOnboarding([], newSels, ONBOARDING_STEPS)
       startCheckin.mutate()
+      return
+    }
+
+    // Step 6: manager path — skip check-in, go straight to save card
+    if (buttonChoice === "I am setting this up for others") {
+      setOnboardingStep(ONBOARDING_STEPS + 1)
+      persistOnboarding([], newSels, ONBOARDING_STEPS)
+      const ctx = [
+        newSels.initial ? `What this ground is for: ${newSels.initial}` : '',
+        newSels.whoInvolved ? `Who is part of this: ${newSels.whoInvolved}` : '',
+        newSels.goals?.length ? `Goals: ${newSels.goals.join(', ')}` : '',
+      ].filter(Boolean).join('. ')
+      const managerHistory: Turn[] = [
+        { role: 'user', content: `[MANAGER MODE] This ground was set up by a coordinator who is not a party to the situation. Context: ${ctx || 'No additional context provided.'}` },
+        { role: 'assistant', content: 'Your ground is set up. Invite the people involved to add their accounts.' },
+      ]
+      setHistory(managerHistory)
+      setPhase('checkin')
+      setClosed(true)
+      setShowSave(true)
+      persistCheckin(managerHistory, true)
       return
     }
 
@@ -512,6 +541,7 @@ export function EntryChatPage() {
   async function handleSave() {
     const trimmed = email.trim()
     if (!trimmed || !trimmed.includes('@')) { setEmailError('Please enter a valid email address.'); return }
+    if (!checkInBy.trim()) { setEmailError('Please set a date for the first check-in.'); return }
     setEmailError('')
     try {
       await authApi.entrySave(trimmed)
@@ -521,8 +551,9 @@ export function EntryChatPage() {
         groundLabel: groundName || scenario || 'My first ground',
         orgName: orgName.trim() || undefined,
         scenario: scenario || undefined,
-        cadence,
+        cadence: cadence === 'ONE_TIME' ? 'FORTNIGHTLY' : cadence,
         checkInBy: checkInBy.trim() || undefined,
+        lastCheckInBy: lastCheckInBy.trim() || undefined,
         history,
         report: sessionReport,
         inviteToken,
@@ -560,8 +591,15 @@ export function EntryChatPage() {
     const entry = inviteContextFor + (inviteContext.trim() ? ` — ${inviteContext.trim()}` : '')
     const newAdded = inviteAdded.includes(inviteContextFor) ? inviteAdded : [...inviteAdded, entry]
     setInviteAdded(newAdded)
-    setInviteContextFor(null)
     setInviteContext('')
+    // Drain bulk queue: advance to next email if one is waiting
+    const [next, ...rest] = bulkQueue
+    if (next) {
+      setBulkQueue(rest)
+      setInviteContextFor(next)
+    } else {
+      setInviteContextFor(null)
+    }
     // Keep commit payload in sync if account already created
     try {
       const raw = localStorage.getItem('gw_commit_payload')
@@ -584,6 +622,9 @@ export function EntryChatPage() {
 
       {/* Session header */}
       <div style={{ padding: '10px 20px', borderBottom: '1px solid var(--gw-border)', flexShrink: 0, background: 'white', display: 'flex', alignItems: 'center', gap: 8 }}>
+        {user && (
+          <span onClick={() => navigate('/grounds')} style={{ fontSize: 12, color: 'var(--gw-sub)', cursor: 'pointer', flexShrink: 0, userSelect: 'none' }}>← Grounds</span>
+        )}
         <div style={{ flex: 1 }}>
           {renamingGround ? (
             <input
@@ -660,7 +701,7 @@ export function EntryChatPage() {
       {showSessionsUpgrade && (
         <div style={{ background: 'var(--gw-blue-bg)', borderBottom: '1px solid var(--gw-blue-b)', padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
           <div style={{ flex: 1, fontSize: 13, color: 'var(--gw-navy)', lineHeight: 1.5 }}>
-            <strong>{sessions} sessions</strong> needs an account. $25/month per organisation + $25 per contributor per month. Save your session below to get set up.
+            <strong>{sessions} sessions</strong> needs an account. ${25 + inviteAdded.length * 25}/month — $25 per organisation + $25 per contributor ({inviteAdded.length > 0 ? `${inviteAdded.length} added so far` : 'add contributors below to see your total'}). Save your session below to get set up.
           </div>
           <button onClick={() => { setShowSessionsUpgrade(false); setShowSave(true) }}
             style={{ flexShrink: 0, background: 'var(--gw-navy)', color: 'white', border: 'none', borderRadius: 7, padding: '7px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
@@ -950,9 +991,20 @@ export function EntryChatPage() {
 
           {/* Report header */}
           <div style={{ background: '#0A1628', color: 'white', padding: '20px 22px 16px' }}>
-            <div style={{ fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: '#5DCAA5', fontWeight: 700, marginBottom: 6 }}>Session 1 · your account</div>
-            <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-.01em', lineHeight: 1.2 }}>{groundName || 'Your session is on record.'}</div>
+            <div style={{ fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: '#5DCAA5', fontWeight: 700, marginBottom: 6 }}>{skippedCheckin ? 'New ground' : 'Session 1 · your account'}</div>
+            <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-.01em', lineHeight: 1.2 }}>{groundName || (skippedCheckin ? 'Set up your ground.' : 'Your session is on record.')}</div>
             <div style={{ fontSize: 12, color: 'rgba(255,255,255,.5)', marginTop: 4 }}>Alignment and gaps build as contributors check in.</div>
+            {history.filter(m => m.role === 'user').length > 0 && (() => {
+              const turns = history.filter(m => m.role === 'user').length
+              const depth = turns < 4 ? 1 : turns < 8 ? 2 : turns < 12 ? 3 : turns < 16 ? 4 : 5
+              const label = depth <= 1 ? 'Thin · more exchanges strengthen the report' : depth <= 2 ? 'Moderate · a solid start' : depth <= 3 ? 'Good' : depth <= 4 ? 'Strong' : 'Rich'
+              return (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
+                  {[1,2,3,4,5].map(n => <div key={n} style={{ width: 7, height: 7, borderRadius: 2, background: n <= depth ? '#5DCAA5' : 'rgba(255,255,255,.18)' }} />)}
+                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,.55)' }}>Session depth: {label}</span>
+                </div>
+              )
+            })()}
           </div>
 
           <div style={{ padding: '18px 20px 28px' }}>
@@ -1062,31 +1114,163 @@ export function EntryChatPage() {
               />
               <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 4 }}>How often do contributors check in?</div>
               <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
-                {(['WEEKLY', 'FORTNIGHTLY', 'MONTHLY'] as const).map(c => (
+                {(['ONE_TIME', 'WEEKLY', 'FORTNIGHTLY', 'MONTHLY'] as const).map(c => (
                   <button key={c} onClick={() => setCadence(c)} style={{
                     flex: 1, padding: '9px 0', borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
                     border: `1px solid ${cadence === c ? '#0C447C' : '#E2E0DB'}`,
                     background: cadence === c ? '#EEF4FB' : 'white',
                     color: cadence === c ? '#0C447C' : '#6B6560',
                   }}>
-                    {c === 'FORTNIGHTLY' ? 'Every 2 weeks' : c.charAt(0) + c.slice(1).toLowerCase()}
+                    {c === 'FORTNIGHTLY' ? 'Every 2 weeks' : c === 'ONE_TIME' ? 'One time' : c.charAt(0) + c.slice(1).toLowerCase()}
                   </button>
                 ))}
               </div>
-              <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 4 }}>First check-in deadline <span style={{ fontWeight: 400 }}>(optional)</span></div>
-              <input
-                type="date" value={checkInBy}
-                onChange={e => setCheckInBy(e.target.value)}
-                style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #E2E0DB', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none', color: checkInBy ? '#1A1916' : '#9B9590' }}
-              />
+              <div style={{ fontSize: 11, color: '#9B9590', marginBottom: 10, lineHeight: 1.5 }}>
+                {cadence === 'ONE_TIME' ? 'Single session · one account per party, no follow-up cadence.' :
+                 cadence === 'WEEKLY' ? 'Weekly · typical resolution in 4–6 weeks.' :
+                 cadence === 'MONTHLY' ? 'Monthly · typical resolution in 3–4 months.' :
+                 'Every 2 weeks · typical resolution in 6–8 weeks.'}
+              </div>
+              {cadence === 'ONE_TIME' ? (
+                <>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 4 }}>Complete by</div>
+                  <input
+                    type="date" value={checkInBy}
+                    onChange={e => setCheckInBy(e.target.value)}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: `1px solid ${emailError && !checkInBy ? '#C0392B' : '#E2E0DB'}`, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none', color: checkInBy ? '#1A1916' : '#9B9590' }}
+                  />
+                </>
+              ) : (
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 4 }}>First check-in</div>
+                    <input
+                      type="date" value={checkInBy}
+                      onChange={e => setCheckInBy(e.target.value)}
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: `1px solid ${emailError && !checkInBy ? '#C0392B' : '#E2E0DB'}`, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none', color: checkInBy ? '#1A1916' : '#9B9590' }}
+                    />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 4 }}>Last check-in <span style={{ fontWeight: 400 }}>(optional)</span></div>
+                    <input
+                      type="date" value={lastCheckInBy}
+                      onChange={e => setLastCheckInBy(e.target.value)}
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #E2E0DB', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none', color: lastCheckInBy ? '#1A1916' : '#9B9590' }}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Create account */}
+            {/* Invite contributors — before create account */}
+            <div style={{ borderBottom: '1px solid #E2E0DB', marginBottom: 16, paddingBottom: 16 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 4 }}>Invite contributors</div>
+              <div style={{ fontSize: 12, color: '#9B9590', lineHeight: 1.55, marginBottom: 10 }}>
+                Add one now and more any time after your account is set up. Everyone checks in independently. Nobody reads anyone else's words directly. When accounts come in, you see where everyone agrees, where they differ, and what the gap means.
+              </div>
+
+              {inviteAdded.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8 }}>
+                  {inviteAdded.map(e => (
+                    <div key={e} style={{ fontSize: 12, color: '#085041', background: '#E7F6EF', borderRadius: 6, padding: '5px 10px' }}>✓ {e}</div>
+                  ))}
+                </div>
+              )}
+
+              {inviteContextFor ? (
+                <div style={{ background: '#F5F3EF', border: '1px solid #E2E0DB', borderRadius: 10, padding: '12px 14px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#1A1916' }}>{inviteContextFor}</div>
+                    {bulkQueue.length > 0 && (
+                      <div style={{ fontSize: 11, color: '#9B9590' }}>{bulkQueue.length} more after this</div>
+                    )}
+                  </div>
+                  <div style={{ fontSize: 12, color: '#6B6560', marginBottom: 8, lineHeight: 1.5 }}>What do you want them to focus on or account for?</div>
+                  <textarea autoFocus placeholder="e.g. They are the other side of this — they own the delivery timeline."
+                    value={inviteContext} onChange={e => setInviteContext(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitInviteContext() } }}
+                    style={{ width: '100%', resize: 'none', minHeight: 60, padding: '8px 10px', fontSize: 13, lineHeight: 1.5, border: '1px solid #E2E0DB', borderRadius: 7, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 8 }}
+                  />
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={() => {
+                      // Add without context, then advance queue
+                      const newAdded = inviteAdded.includes(inviteContextFor) ? inviteAdded : [...inviteAdded, inviteContextFor]
+                      setInviteAdded(newAdded)
+                      setInviteContext('')
+                      const [next, ...rest] = bulkQueue
+                      if (next) { setBulkQueue(rest); setInviteContextFor(next) } else { setInviteContextFor(null) }
+                    }} style={{ padding: '8px 14px', borderRadius: 7, background: 'none', border: '1px solid #E2E0DB', color: '#6B6560', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Skip</button>
+                    <button onClick={submitInviteContext} style={{ flex: 1, padding: '8px 14px', borderRadius: 7, background: '#0C447C', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Add contributor</button>
+                  </div>
+                </div>
+              ) : bulkInviteMode ? (
+                <div>
+                  <textarea
+                    autoFocus
+                    placeholder="Paste emails separated by commas or line breaks&#10;e.g. alice@co.com, bob@co.com"
+                    value={bulkInviteText}
+                    onChange={e => setBulkInviteText(e.target.value)}
+                    style={{ width: '100%', resize: 'none', minHeight: 80, padding: '10px 12px', fontSize: 13, lineHeight: 1.5, border: '1px solid #E2E0DB', borderRadius: 8, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 8 }}
+                  />
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={() => { setBulkInviteMode(false); setBulkInviteText('') }} style={{ padding: '9px 14px', borderRadius: 7, background: 'none', border: '1px solid #E2E0DB', color: '#6B6560', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
+                    <button
+                      onClick={() => {
+                        const emails = bulkInviteText
+                          .split(/[\n,]+/)
+                          .map(e => e.trim().toLowerCase())
+                          .filter(e => e.includes('@') && !inviteAdded.some(a => a.startsWith(e)))
+                        if (emails.length === 0) return
+                        setBulkInviteText('')
+                        setBulkInviteMode(false)
+                        // Queue all emails through the per-contributor context prompt
+                        const [first, ...rest] = emails
+                        setBulkQueue(rest)
+                        setInviteContextFor(first)
+                        setInviteContext('')
+                      }}
+                      style={{ flex: 1, padding: '9px 14px', borderRadius: 7, background: '#0C447C', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                    >
+                      Add all
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                    <input type="email" placeholder="name@company.com" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && addInviteEmail()}
+                      style={{ flex: 1, padding: '10px 12px', borderRadius: 8, border: '1px solid #E2E0DB', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none' }}
+                    />
+                    <button onClick={addInviteEmail} style={{ flexShrink: 0, padding: '10px 16px', borderRadius: 8, background: '#0C447C', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Add</button>
+                  </div>
+                  <button
+                    onClick={() => setBulkInviteMode(true)}
+                    style={{ background: 'none', border: 'none', fontSize: 12, color: '#0C447C', cursor: 'pointer', fontFamily: 'inherit', padding: 0, textDecoration: 'underline', marginBottom: 10 }}
+                  >
+                    Paste multiple emails
+                  </button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ flex: 1, fontSize: 12, color: '#0C447C', background: '#EEF4FB', border: '0.5px solid #BFDBFE', borderRadius: 7, padding: '8px 10px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {window.location.origin}/invite?token={inviteToken}
+                    </div>
+                    <button onClick={copyInviteLink} style={{ flexShrink: 0, padding: '8px 12px', borderRadius: 7, background: '#F5F3EF', color: '#1A1916', fontSize: 12, fontWeight: 600, border: '0.5px solid #E2E0DB', cursor: 'pointer', fontFamily: 'inherit' }}>
+                      {copiedLink ? 'Copied!' : 'Copy link'}
+                    </button>
+                  </div>
+                  <input type="text" placeholder="Add a note to send with your link (optional)" value={inviteNote} onChange={e => setInviteNote(e.target.value)}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #E2E0DB', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none', marginTop: 8 }}
+                  />
+                </>
+              )}
+            </div>
+
+            {/* Create account — after invite so ground is fully configured first */}
             {!emailSent ? (
               <div style={{ marginBottom: 16 }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 4 }}>Create your account</div>
-                <div style={{ fontSize: 12, color: '#9B9590', marginBottom: 8, lineHeight: 1.5 }}>Your session is saved here. Add your email to keep access and invite contributors.</div>
-                <input type="email" placeholder="you@company.com" value={email} onChange={e => setEmail(e.target.value)}
+                <div style={{ fontSize: 12, color: '#9B9590', marginBottom: 8, lineHeight: 1.5 }}>Enter your email to save this ground and send invites. You can add more contributors any time after.</div>
+                <input type="email" placeholder="you@company.com" value={email} onChange={e => { setEmail(e.target.value); setEmailError('') }}
                   onKeyDown={e => e.key === 'Enter' && handleSave()}
                   style={{ width: '100%', padding: '11px 13px', borderRadius: 8, border: '1px solid #E2E0DB', fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8, outline: 'none' }}
                 />
@@ -1102,62 +1286,6 @@ export function EntryChatPage() {
                 <div style={{ fontSize: 13, color: '#6B6560', lineHeight: 1.6 }}>We sent a link to <strong>{email}</strong>. Click it to finish setting up your account and set a password.</div>
               </div>
             )}
-
-            {/* Invite contributors */}
-            <div style={{ borderTop: '1px solid #E2E0DB', paddingTop: 16, marginBottom: 14 }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 6 }}>Invite contributors</div>
-              <div style={{ fontSize: 12, color: '#9B9590', lineHeight: 1.55, marginBottom: 10 }}>
-                The more people who check in, the clearer the picture gets. Everyone adds their own account — nobody sees what anyone else wrote. When accounts come in, you see where everyone agrees, where they don't, and what the gap means.
-              </div>
-              <div style={{ background: '#F5F3EF', border: '1px solid #E2E0DB', borderRadius: 8, padding: '10px 12px', marginBottom: 12, fontSize: 12, color: '#6B6560', lineHeight: 1.55 }}>
-                You can add a note for each person when you invite them — useful if different people are looking at different things. The confidence score and full picture build as accounts come in.
-              </div>
-
-              {inviteAdded.length > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8 }}>
-                  {inviteAdded.map(e => (
-                    <div key={e} style={{ fontSize: 12, color: '#085041', background: '#E7F6EF', borderRadius: 6, padding: '5px 10px' }}>✓ {e}</div>
-                  ))}
-                </div>
-              )}
-
-              {inviteContextFor ? (
-                <div style={{ background: '#F5F3EF', border: '1px solid #E2E0DB', borderRadius: 10, padding: '12px 14px' }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#1A1916', marginBottom: 4 }}>{inviteContextFor}</div>
-                  <div style={{ fontSize: 12, color: '#6B6560', marginBottom: 8, lineHeight: 1.5 }}>What is their role and what do they see that you do not?</div>
-                  <textarea autoFocus placeholder="e.g. They are the other side of this — they own the delivery timeline."
-                    value={inviteContext} onChange={e => setInviteContext(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitInviteContext() } }}
-                    style={{ width: '100%', resize: 'none', minHeight: 60, padding: '8px 10px', fontSize: 13, lineHeight: 1.5, border: '1px solid #E2E0DB', borderRadius: 7, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 8 }}
-                  />
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button onClick={() => { setInviteContextFor(null); setInviteContext('') }} style={{ padding: '8px 14px', borderRadius: 7, background: 'none', border: '1px solid #E2E0DB', color: '#6B6560', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Skip</button>
-                    <button onClick={submitInviteContext} style={{ flex: 1, padding: '8px 14px', borderRadius: 7, background: '#0C447C', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Add contributor</button>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                    <input type="email" placeholder="name@company.com" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)}
-                      onKeyDown={e => e.key === 'Enter' && addInviteEmail()}
-                      style={{ flex: 1, padding: '10px 12px', borderRadius: 8, border: '1px solid #E2E0DB', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none' }}
-                    />
-                    <button onClick={addInviteEmail} style={{ flexShrink: 0, padding: '10px 16px', borderRadius: 8, background: '#0C447C', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Add</button>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div style={{ flex: 1, fontSize: 12, color: '#0C447C', background: '#EEF4FB', border: '0.5px solid #BFDBFE', borderRadius: 7, padding: '8px 10px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {window.location.origin}/invite?token={inviteToken}
-                    </div>
-                    <button onClick={copyInviteLink} style={{ flexShrink: 0, padding: '8px 12px', borderRadius: 7, background: '#F5F3EF', color: '#1A1916', fontSize: 12, fontWeight: 600, border: '0.5px solid #E2E0DB', cursor: 'pointer', fontFamily: 'inherit' }}>
-                      {copiedLink ? 'Copied!' : 'Copy link'}
-                    </button>
-                  </div>
-                  <input type="text" placeholder="Add a note to send with your link (optional)" value={inviteNote} onChange={e => setInviteNote(e.target.value)}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #E2E0DB', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none', marginTop: 8 }}
-                  />
-                </>
-              )}
-            </div>
 
             <div onClick={() => setShowSave(false)} style={{ textAlign: 'center', fontSize: 12, color: '#9B9590', cursor: 'pointer', paddingTop: 4 }}>
               {closed ? 'Close — you can reopen this from the bar below' : 'Later'}

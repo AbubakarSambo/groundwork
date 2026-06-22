@@ -25,7 +25,7 @@ export function MagicSentPage() {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
       <div className="gw-hdr">
-        <span className="gw-logo">Groundwork</span>
+        <a href="https://myground.work" target="_blank" rel="noopener noreferrer" className="gw-logo" style={{ textDecoration: 'none', color: 'inherit' }}>Groundwork</a>
       </div>
       <div className="gw-bd" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '70vh', textAlign: 'center' }}>
 
@@ -37,11 +37,22 @@ export function MagicSentPage() {
         </div>
 
         <div className="gw-ttl" style={{ textAlign: 'center' }}>Check your email</div>
-        <div className="gw-sub-t" style={{ textAlign: 'center', maxWidth: 300, margin: '8px auto 6px' }}>
+        <div className="gw-sub-t" style={{ textAlign: 'center', maxWidth: 300, margin: '8px auto 10px' }}>
           We sent a secure link to <strong>{email}</strong>.
         </div>
-        <div style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', maxWidth: 300, margin: '0 auto 24px' }}>
-          Click it to open Groundwork.
+
+        <div style={{ background: 'var(--gw-bg)', border: '0.5px solid var(--gw-border)', borderRadius: 8, padding: '12px 16px', maxWidth: 300, margin: '0 auto 20px', textAlign: 'left' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gw-sub)', marginBottom: 8 }}>What to expect</div>
+          {[
+            'Click the link in the email.',
+            'You will be asked to set a password to secure your account.',
+            'Your Groundwork account is live.',
+          ].map((t, i) => (
+            <div key={i} style={{ display: 'flex', gap: 8, marginBottom: i < 2 ? 6 : 0, fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>
+              <span style={{ fontWeight: 700, color: 'var(--gw-navy)', flexShrink: 0 }}>{i + 1}.</span>
+              <span>{t}</span>
+            </div>
+          ))}
         </div>
 
         <div style={{ fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center' }}>No email? Check your spam folder.</div>

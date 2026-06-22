@@ -34,6 +34,11 @@ export class ReportsListener {
 
   @OnEvent(GroundworkEvents.CHECK_IN_COMPLETED)
   async onCheckInCompleted(event: CheckInCompletedEvent) {
+    // Notify the admin when any participant checks in (best-effort, never blocks report flow)
+    this.notifyAdminOnCheckIn(event).catch((err: any) =>
+      this.logger.warn(`Admin check-in notification failed for ground ${event.groundId}: ${err.message}`),
+    );
+
     try {
       const sessionNumber = event.sessionNumber;
       const allDone = await this.grounds.isSessionReadyForReport(event.groundId, sessionNumber);
@@ -97,5 +102,24 @@ export class ReportsListener {
     } catch (err: any) {
       this.logger.error(`Participant activation notification failed for ground ${event.groundId}: ${err.message}`);
     }
+  }
+
+  private async notifyAdminOnCheckIn(event: CheckInCompletedEvent): Promise<void> {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: event.groundId },
+      select: {
+        label: true,
+        initiator: { select: { email: true } },
+        participants: { where: { id: event.participantId }, select: { user: { select: { email: true } } } },
+      },
+    });
+    if (!ground?.initiator?.email) return;
+
+    const participantEmail = ground.participants[0]?.user?.email;
+    if (!participantEmail || participantEmail === ground.initiator.email) return;
+
+    const frontendUrl = this.config.get<string>('resend.frontendUrl') || 'http://localhost:5173';
+    const groundUrl = `${frontendUrl}/grounds/${event.groundId}`;
+    await this.email.sendParticipantCheckedIn(ground.initiator.email, participantEmail, ground.label, groundUrl);
   }
 }
