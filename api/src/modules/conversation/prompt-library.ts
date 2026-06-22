@@ -1172,11 +1172,11 @@ Name them as facts, not as claims. "Both described the role as owning product an
 If there is very little shared picture — say so. An absence of shared ground is itself significant information.
 
 SECTION 2 — THE GAP
-Where the descriptions diverge. Be specific. Name the exact thing each party described differently. When more than two parties are involved, attribute each position to the party that holds it (by role label). Emit the gap as a list of topics; for each topic, list every diverging party's position. For each topic, also include 1–2 short supporting references (evidence) drawn from the parties' own records — a brief paraphrase or short quote — so the gap is grounded in what was actually said, not asserted. If nothing in the records supports a point, omit the evidence rather than inventing it.
+Where the descriptions explicitly diverge. Be specific. Name the exact thing each party described differently. When more than two parties are involved, attribute each position to the party that holds it (by role label). Emit the gap as a list of topics; for each topic, list every diverging party's position. For each topic, you must include 1–2 short supporting references (evidence) drawn directly from the parties' own records — a brief paraphrase or short quote that shows the divergence. If you cannot find direct evidence in the records that two parties described the same thing differently, do not list it as a gap. A gap requires evidence from both sides. Absence of mention on one side is not a gap. Agreement with hedging language ("I think we're mostly aligned", "generally yes") is not a gap. Only list a divergence if both records contain a direct contradiction about the same specific topic.
 
 Do not say "there is a gap in how they see ownership." Say "the initiator described the deliverable as shipped and usable. The participant described it as shipped but awaiting feedback from three customers."
 
-The gap is the most important part of the report. It is what neither person could see without the other's record. Name it directly.
+The gap is the most important part of the report. It is what neither person could see without the other's record. Name it directly. But an empty gap section — where accounts genuinely align — is a valid and useful result. Do not manufacture gaps to fill the section.
 
 SECTION 3 — WHAT THE GAP REVEALS
 One or two sentences. What the gap suggests about the setup of this situation — not about either person's character, intentions, or feelings.
