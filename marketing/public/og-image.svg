@@ -1,0 +1,41 @@
+<svg viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg" width="1200" height="630">
+  <rect width="1200" height="630" fill="#0D1A2B"/>
+  <defs>
+    <pattern id="grid" width="60" height="60" patternUnits="userSpaceOnUse">
+      <path d="M 60 0 L 0 0 0 60" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+    </pattern>
+  </defs>
+  <rect width="1200" height="630" fill="url(#grid)"/>
+  <rect x="80" y="200" width="4" height="120" rx="2" fill="#1A56DB"/>
+  <text x="104" y="172" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="26" font-weight="800" fill="rgba(255,255,255,0.45)" letter-spacing="-0.3">GROUNDWORK</text>
+  <text x="100" y="262" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="66" font-weight="800" fill="rgba(255,255,255,0.95)" letter-spacing="-2">Build alignment</text>
+  <text x="100" y="340" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="66" font-weight="800" fill="#93C5FD" letter-spacing="-2">before you build</text>
+  <text x="100" y="418" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="66" font-weight="800" fill="rgba(255,255,255,0.95)" letter-spacing="-2">anything else.</text>
+  <text x="100" y="468" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="20" fill="rgba(255,255,255,0.4)">Each person checks in independently. The report shows where you align.</text>
+  <rect x="100" y="500" width="118" height="32" rx="16" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.14)" stroke-width="1"/>
+  <text x="159" y="521" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="13" fill="rgba(255,255,255,0.65)" text-anchor="middle">New hire</text>
+  <rect x="228" y="500" width="126" height="32" rx="16" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.14)" stroke-width="1"/>
+  <text x="291" y="521" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="13" fill="rgba(255,255,255,0.65)" text-anchor="middle">New project</text>
+  <rect x="364" y="500" width="178" height="32" rx="16" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.14)" stroke-width="1"/>
+  <text x="453" y="521" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="13" fill="rgba(255,255,255,0.65)" text-anchor="middle">New board member</text>
+  <rect x="552" y="500" width="124" height="32" rx="16" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.14)" stroke-width="1"/>
+  <text x="614" y="521" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="13" fill="rgba(255,255,255,0.65)" text-anchor="middle">New partner</text>
+  <rect x="686" y="500" width="160" height="32" rx="16" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.14)" stroke-width="1"/>
+  <text x="766" y="521" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="13" fill="rgba(255,255,255,0.65)" text-anchor="middle">Contract renewal</text>
+  <rect x="856" y="500" width="140" height="32" rx="16" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.14)" stroke-width="1"/>
+  <text x="926" y="521" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="13" fill="rgba(255,255,255,0.65)" text-anchor="middle">New direction</text>
+  <rect x="1006" y="500" width="80" height="32" rx="16" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.14)" stroke-width="1"/>
+  <text x="1046" y="521" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="13" fill="rgba(255,255,255,0.65)" text-anchor="middle">Other</text>
+  <rect x="820" y="150" width="300" height="86" rx="10" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+  <circle cx="850" cy="183" r="7" fill="#34d399"/>
+  <text x="868" y="180" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="14" fill="rgba(255,255,255,0.55)">Session 1 complete</text>
+  <text x="850" y="206" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="12" fill="rgba(255,255,255,0.3)">3 accounts · 2 aligned · 1 gap</text>
+  <rect x="860" y="260" width="260" height="86" rx="10" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+  <circle cx="890" cy="293" r="7" fill="#93C5FD"/>
+  <text x="908" y="290" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="14" fill="rgba(255,255,255,0.55)">New hire · 90 days</text>
+  <text x="890" y="316" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="12" fill="rgba(255,255,255,0.3)">4/5 · Emerging alignment</text>
+  <rect x="900" y="370" width="220" height="86" rx="10" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+  <circle cx="928" cy="403" r="7" fill="#F59E0B"/>
+  <text x="946" y="400" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="14" fill="rgba(255,255,255,0.55)">Partnership</text>
+  <text x="928" y="426" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="12" fill="rgba(255,255,255,0.3)">2/4 · Mixed signals</text>
+</svg>

@@ -2,7 +2,7 @@
 import Layout from '../layouts/Layout.astro';
 const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
 ---
-<Layout title="How it works — Groundwork">
+<Layout title="How it works · Groundwork" description="Define the situation. Everyone checks in privately. Groundwork shows where accounts agree and where they differ. No meetings, no bias, no guesswork." canonicalPath="/how-it-works">
   <style>
     *,*::before,*::after{box-sizing:border-box}
     body{margin:0;overflow-x:hidden}
@@ -80,27 +80,27 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
 
       <div style="background:#F5F3EF;border-radius:10px;padding:24px;border-left:3px solid #0C447C;margin-bottom:40px;">
         <h3 style="font-size:16px;font-weight:700;color:#1A1916;margin-bottom:8px;">Alignment status</h3>
-        <p style="font-size:13px;color:#6B6560;line-height:1.7;margin-bottom:16px;">Every ground carries an alignment status. It is not a grade out of five. It is a plain summary of how many areas are aligned, how many are partly there, and how many are still open, so you can always see exactly what it is based on.</p>
+        <p style="font-size:13px;color:#6B6560;line-height:1.7;margin-bottom:16px;">Each ground shows where things stand across all accounts. As more people check in, the status updates automatically.</p>
         <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;">
           <div style="text-align:center;padding:10px 6px;background:white;border-radius:6px;border:1px solid #E2E0DB;">
             <div style="font-size:12px;font-weight:700;color:#8A5C1A;">Unresolved</div>
-            <div style="font-size:10px;color:#B4B2A9;margin-top:3px;">Little common ground yet</div>
+            <div style="font-size:10px;color:#B4B2A9;margin-top:3px;">Accounts still coming in</div>
           </div>
           <div style="text-align:center;padding:10px 6px;background:white;border-radius:6px;border:1px solid #E2E0DB;">
             <div style="font-size:12px;font-weight:700;color:#9B9590;">Mixed</div>
-            <div style="font-size:10px;color:#B4B2A9;margin-top:3px;">Some aligned, several open</div>
+            <div style="font-size:10px;color:#B4B2A9;margin-top:3px;">Clear gaps between accounts</div>
           </div>
           <div style="text-align:center;padding:10px 6px;background:white;border-radius:6px;border:1px solid #E2E0DB;">
             <div style="font-size:12px;font-weight:700;color:#0C447C;">Emerging</div>
-            <div style="font-size:10px;color:#B4B2A9;margin-top:3px;">Alignment forming</div>
+            <div style="font-size:10px;color:#B4B2A9;margin-top:3px;">More agreement than not</div>
           </div>
           <div style="text-align:center;padding:10px 6px;background:white;border-radius:6px;border:1px solid #E2E0DB;">
             <div style="font-size:12px;font-weight:700;color:#0C447C;">Clear</div>
-            <div style="font-size:10px;color:#B4B2A9;margin-top:3px;">Substance settled</div>
+            <div style="font-size:10px;color:#B4B2A9;margin-top:3px;">Accounts largely agree</div>
           </div>
           <div style="text-align:center;padding:10px 6px;background:#085041;border-radius:6px;">
             <div style="font-size:12px;font-weight:700;color:white;">Aligned</div>
-            <div style="font-size:10px;color:rgba(255,255,255,.6);margin-top:3px;">Agreed and recorded</div>
+            <div style="font-size:10px;color:rgba(255,255,255,.6);margin-top:3px;">Agreement on record</div>
           </div>
         </div>
       </div>
