@@ -184,9 +184,25 @@ model User {
   groundsInitiated         Ground[]                   @relation("GroundInitiator")
   participantLinks         GroundParticipant[]
   disclaimerAcknowledgements DisclaimerAcknowledgement[]
+  adminProfile             AdminProfile?
 
   @@index([organizationId])
   @@map("users")
+}
+
+// ---------------------------------------------------------------------------
+// Per-admin preference profile — built from past grounds, used to deepen
+// probing on new grounds. Never used to skip questions.
+// ---------------------------------------------------------------------------
+model AdminProfile {
+  id        String   @id @default(uuid())
+  userId    String   @unique @map("user_id")
+  signals   Json     @default("[]") // string[] of observed preference signals
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("admin_profiles")
 }
 
 model EmailVerificationToken {

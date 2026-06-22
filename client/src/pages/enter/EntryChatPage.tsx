@@ -29,6 +29,7 @@ interface OnboardingSelections {
   timeframe?: string
   cadence?: string
   decision?: string
+  brief?: string
 }
 
 function saveSession(s: EntrySession) {
@@ -55,20 +56,20 @@ export function hasPendingEntry(): boolean {
   } catch { return false }
 }
 
-const ONBOARDING_STEPS = 6
+const ONBOARDING_STEPS = 7
 
 const MODE_BUTTON_MAP: Record<string, string> = {
   'Starting something': 'something_new',
   'Already underway': 'already_underway',
   'Already happened': 'look_back',
-  'Both': 'both',
+  'Regular check-in': 'recurring',
 }
 
 const MODE_BUTTON_DESCRIPTIONS: Record<string, string> = {
-  'Starting something': 'A new hire. A new project. A new contract. A partnership kicking off.',
-  'Already underway': 'A delivery in progress. A working relationship. A decision being made.',
-  'Already happened': 'A project that completed. A delivery. A conversation that needs to be on record.',
-  'Both': 'Something that needs reviewing and a clear path forward.',
+  'Starting something': 'A new hire, project, partnership, handover, or role starting now.',
+  'Already underway': 'Something in motion — a delivery, a team, a working relationship, a process.',
+  'Already happened': 'A decision, project, or conversation that needs to go on record.',
+  'Regular check-in': 'A recurring ritual — weekly, fortnightly, or monthly — for a team or group.',
 }
 
 const GOAL_OPTIONS = [
@@ -95,23 +96,11 @@ const SESSION_END_PATTERNS = [
   'option to not have',
 ]
 
-const MODE_INTROS: Record<string, { prefix: string; examples: string }> = {
-  something_new: {
-    prefix: 'Good.\n\nThe best time to set expectations is before anyone has had a chance to assume.',
-    examples: 'A new hire\'s first 90 days.\nA new project.\nA partnership.\nA leadership transition.\nA programme launch.',
-  },
-  already_underway: {
-    prefix: 'Good.\n\nChecking in while something is moving is what keeps it on track.',
-    examples: 'A delivery in progress.\nA team preparing for a meeting.\nA working relationship.\nA decision being made.',
-  },
-  look_back: {
-    prefix: 'Good.\n\nGetting this on record while the details are still fresh is the right call.',
-    examples: 'A project that completed.\nA delivery.\nA decision that needs reviewing.\nA conversation that needs to be on record.',
-  },
-  both: {
-    prefix: 'Good.\n\nSometimes you need to understand what happened before you can agree what comes next.',
-    examples: 'Something that needs reviewing and a clear path forward.',
-  },
+const MODE_INTROS: Record<string, string> = {
+  something_new: 'Good.\n\nThe best time to set expectations is before anyone has had a chance to assume.',
+  already_underway: 'Good.\n\nChecking in while something is moving is what keeps it on track.',
+  look_back: 'Good.\n\nGetting this on record while the details are still fresh is the right call.',
+  recurring: 'Good.\n\nA regular check-in builds the kind of record that actually shows what is happening over time.',
 }
 
 interface OnboardingMessage {
@@ -127,15 +116,15 @@ function buildOnboardingMessages(sels: OnboardingSelections): OnboardingMessage[
   const intro = MODE_INTROS[modeKey] || MODE_INTROS['something_new']
 
   return [
-    // Step 1: situation type — card buttons with descriptions
+    // Step 1: situation type
     {
       text: `Groundwork builds a picture from what everyone involved has seen, experienced, and agreed. Each person adds their own account. Nobody reads anyone else's words directly. The report shows where accounts agree and where they differ.\n\nWhat kind of situation are we dealing with?`,
-      buttons: ['Starting something', 'Already underway', 'Already happened', 'Both'],
+      buttons: ['Starting something', 'Already underway', 'Already happened', 'Regular check-in'],
       buttonDescriptions: MODE_BUTTON_DESCRIPTIONS,
     },
-    // Step 2: what is this about (mode-aware)
+    // Step 2: what is this about
     {
-      text: `${intro.prefix}\n\nWhat is this about?\n\nExamples:\n${intro.examples}`,
+      text: `${intro}\n\nWhat is this about?`,
       placeholder: 'Describe the situation.',
     },
     // Step 3: who is involved
@@ -155,7 +144,13 @@ function buildOnboardingMessages(sels: OnboardingSelections): OnboardingMessage[
       multiSelect: true,
       placeholder: 'Or say it in your own words.',
     },
-    // Step 6: party or manager choice
+    // Step 6: brief — what to focus on, probe, or watch for
+    {
+      text: "Is there anything specific you want the tool to focus on or ask about?\n\nThis could be a topic you know matters, something you want people to be specific about, or context the tool should use to ask sharper questions. You can skip this if nothing comes to mind.",
+      placeholder: 'What to focus on, probe, or watch for.',
+      buttons: ['Skip'],
+    },
+    // Step 7: party or manager choice
     {
       text: "Last thing. Are you personally involved in this situation, or are you setting it up for others?\n\nIf you are involved, you go first. You add your account, then invite the others. If you are setting it up on their behalf, you can skip straight to inviting them.",
       buttons: ["I am involved. Let's begin.", "I am setting this up for others"],
@@ -343,6 +338,7 @@ export function EntryChatPage() {
         onboardingSelections.whoInvolved ? `Who is part of this: ${onboardingSelections.whoInvolved}` : '',
         onboardingSelections.decision ? `What made them open this record today: ${onboardingSelections.decision}` : '',
         onboardingSelections.goals?.length ? `What they want this ground to get right: ${onboardingSelections.goals.join(', ')}` : '',
+        onboardingSelections.brief ? `What to focus on or probe: ${onboardingSelections.brief}` : '',
       ].filter(Boolean).join('. ')
       return entryApi.chat([{
         role: 'user',
@@ -406,7 +402,7 @@ export function EntryChatPage() {
     const currentStep = onboardingStep
     let newSels = { ...onboardingSelections }
 
-    // Step 6: party path — show briefing before check-in starts
+    // Step 7: party path — show briefing before check-in starts
     if (buttonChoice === "I am involved. Let's begin.") {
       setOnboardingStep(ONBOARDING_STEPS + 1)
       persistOnboarding([], newSels, ONBOARDING_STEPS)
@@ -414,7 +410,7 @@ export function EntryChatPage() {
       return
     }
 
-    // Step 6: manager path — skip check-in, go straight to save card
+    // Step 7: manager path — skip check-in, go straight to save card
     if (buttonChoice === "I am setting this up for others") {
       setOnboardingStep(ONBOARDING_STEPS + 1)
       persistOnboarding([], newSels, ONBOARDING_STEPS)
@@ -471,6 +467,14 @@ export function EntryChatPage() {
       newSels = { ...newSels, goals }
       setInput('')
       setSelectedGoals([])
+    } else if (currentStep === 6) {
+      if (buttonChoice === 'Skip') {
+        newSels = { ...newSels, brief: '' }
+      } else {
+        const val = input.trim()
+        newSels = { ...newSels, brief: val }
+        setInput('')
+      }
     }
 
     setOnboardingSelections(newSels)

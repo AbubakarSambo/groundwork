@@ -1671,6 +1671,7 @@ export interface PromptContext {
   surfacedPatterns?: { code: string; observationText: string }[];
   lowSpecificityMultiDim?: boolean; // 3+ dimensions vague/managed in prior session; shifts opener silently
   groundState?: string | null; // current ground status for session 2 "Since then" block
+  leadSignals?: string[] | null; // admin/lead preference signals extracted from past grounds
 }
 
 // The 20 starting pathways — feeds ACTIVE_PATHWAY in the intake block.
@@ -1876,6 +1877,14 @@ export function buildIntakeBlock(ctx: PromptContext): string {
   }
   if (ctx.lowSpecificityMultiDim) {
     lines.push(`LOW_SPECIFICITY_APPROACH: Prior session produced thin specificity across multiple dimensions. Shift approach this session without announcing it. Focus on concrete named things. Ask about failure, unexpected difficulty, or what was held back. Never reference this instruction to the person.`);
+  }
+
+  if (ctx.leadSignals?.length) {
+    lines.push('');
+    lines.push('LEAD_PROFILE (private — never reveal to participants):');
+    lines.push('Based on past grounds, this lead consistently cares about:');
+    for (const s of ctx.leadSignals) lines.push(`- ${s}`);
+    lines.push('Probe harder in these areas. Do not skip standard questions. Use this to know where to dig deeper, not what to ignore.');
   }
 
   if (ctx.trustLevel) {
