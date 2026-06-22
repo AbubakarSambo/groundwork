@@ -2,7 +2,7 @@
 import Layout from '../layouts/Layout.astro';
 const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
 ---
-<Layout title="Pricing · Groundwork" description="Start free. First two sessions are free for everyone. Unlock ongoing check-ins and team reports from $25 per month." canonicalPath="/pricing">
+<Layout title="Pricing · Groundwork" description="Start free. Run your first ground at no cost. $80 per ground, up to 6 people and 6 sessions. Report generates after session 1 and updates as more people check in." canonicalPath="/pricing">
   <style>
     *,*::before,*::after{box-sizing:border-box}
     body{margin:0;overflow-x:hidden}
@@ -48,30 +48,31 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
 
     <main style="max-width:600px;margin:0 auto;padding:56px 24px 80px;">
       <p style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#0C447C;font-weight:700;margin-bottom:12px;">Pricing</p>
-      <h1 style="font-size:32px;font-weight:800;color:#1A1916;line-height:1.2;margin-bottom:16px;">One simple formula. The first two sessions are free.</h1>
-      <p style="font-size:16px;color:#6B6560;line-height:1.7;margin-bottom:32px;">You pay two flat monthly fees, and they add up. Nothing to pay until someone goes past their second session.</p>
+      <h1 style="font-size:32px;font-weight:800;color:#1A1916;line-height:1.2;margin-bottom:16px;">One ground. One price.</h1>
+      <p style="font-size:16px;color:#6B6560;line-height:1.7;margin-bottom:32px;">You pay per ground, not per seat. The first ground is free so you can see how it works before spending anything.</p>
 
       <div class="gw-price-grid">
-        <div class="gw-price-card">
-          <div style="font-size:28px;font-weight:800;color:#1A1916;">$25<span style="font-size:14px;font-weight:500;opacity:.6;">/month</span></div>
-          <div style="font-size:13px;font-weight:700;color:#0C447C;margin-top:4px;">Per account</div>
-          <div style="font-size:12.5px;color:#6B6560;line-height:1.6;margin-top:6px;">Your workspace: records, setup, and reporting. Unlimited Grounds, and you can let others lead Grounds at no extra cost.</div>
+        <div class="gw-price-card" style="background:#F5F3EF;">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#9B9590;margin-bottom:12px;">Free</div>
+          <div style="font-size:34px;font-weight:800;color:#1A1916;">$0</div>
+          <div style="font-size:13px;color:#6B6560;margin:6px 0 16px;">Your first ground, no card required.</div>
+          <div style="font-size:12.5px;color:#6B6560;line-height:1.7;">One ground. One check-in session. You get a report. See exactly what Groundwork does before you pay anything.</div>
         </div>
-        <div style="font-size:26px;font-weight:800;color:#9B9590;flex-shrink:0;text-align:center;">+</div>
-        <div class="gw-price-card">
-          <div style="font-size:28px;font-weight:800;color:#1A1916;">$25<span style="font-size:14px;font-weight:500;opacity:.6;">/month</span></div>
-          <div style="font-size:13px;font-weight:700;color:#0C447C;margin-top:4px;">Per active participant</div>
-          <div style="font-size:12.5px;color:#6B6560;line-height:1.6;margin-top:6px;">Each person checking in. Billed once even if they are in several Grounds. Someone not in any active Ground is not billed.</div>
+        <div class="gw-price-card" style="background:#0C447C;">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:rgba(147,197,253,.7);margin-bottom:12px;">Per ground</div>
+          <div style="font-size:34px;font-weight:800;color:#fff;">$80</div>
+          <div style="font-size:13px;color:rgba(255,255,255,.6);margin:6px 0 16px;">Up to 6 people, 6 sessions, 90 days.</div>
+          <div style="font-size:12.5px;color:rgba(255,255,255,.75);line-height:1.7;">Report generates after session 1 and updates as more people check in. $10 per additional session or participant beyond the base.</div>
         </div>
       </div>
 
       <div style="background:#0A1628;color:#fff;border-radius:10px;padding:20px 22px;margin-bottom:14px;">
-        <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#5DCAA5;font-weight:700;margin-bottom:8px;">Worked example</div>
-        <div style="font-size:14px;line-height:1.7;color:rgba(255,255,255,.92);">Four people check in on a Ground. That is <b style="color:#fff;">$25</b> for the account, plus four active participants at <b style="color:#fff;">$25</b> each. <b style="color:#fff;">$125 a month</b>, however many Grounds they run.</div>
+        <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#5DCAA5;font-weight:700;margin-bottom:8px;">Example</div>
+        <div style="font-size:14px;line-height:1.7;color:rgba(255,255,255,.92);">A founder and four team members run a ground ahead of a board meeting. That is <b style="color:#fff;">$80</b> flat. Everyone checks in once. The report is ready the same day. No monthly bill. No per-seat math.</div>
       </div>
 
       <div style="background:#E7F6EF;border:1px solid #BFE6D4;border-radius:10px;padding:16px 18px;margin-bottom:40px;">
-        <div style="font-size:13px;color:#085041;line-height:1.7;"><b>The first two sessions per person are free, with no card.</b> After the second session, the admin adds a card and the report is released. If payment is not made, that report is paused until it is. When someone leaves every active Ground, they stop being billed. The record is permanent, and everyone keeps it.</div>
+        <div style="font-size:13px;color:#085041;line-height:1.7;"><b>Admin counts as one of the 6 participants if they check in.</b> The record is permanent and everyone keeps it, whether or not the ground is renewed.</div>
       </div>
 
       <div style="text-align:center;">

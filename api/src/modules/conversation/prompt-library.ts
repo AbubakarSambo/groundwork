@@ -1688,7 +1688,7 @@ const PATHWAY_QUESTIONS: Record<number, string> = {
   11: '"This ground has already been running. What is your role in this, and what were you asked to do when you were brought in?"',
   12: '"What have you done in the last period that you believe is not currently reflected in your compensation? Not what you think you should earn — what exists in your record that justifies it?"',
   13: '"What do you feel is out of alignment right now? Not what they are doing wrong. What is true right now that is not matching what you expected or agreed?"',
-  14: '"What decision have you made this week or this period that you cannot easily reverse? Not a plan — a decision. What did you commit to?"',
+  14: '"Describe the situation. What is happening, from your point of view?"',
   15: '"What has changed in this working relationship from how it was at the beginning, or from how you expected it to be?"',
   16: '"Before we build this new ground — what did you take away from the last one as the most important thing the record showed?"',
   17: 'Safety framing first: "This is a private space. The other party cannot read what you write until you both activate the report." Then: "What do you feel is not working — not the diplomatic version. Your honest version."',
