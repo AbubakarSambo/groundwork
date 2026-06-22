@@ -207,6 +207,13 @@ export function EntryChatPage() {
   const [selectedGoals, setSelectedGoals] = useState<string[]>([])
   const [showEndPrompt, setShowEndPrompt] = useState(false)
 
+  const [confirmClear, setConfirmClear] = useState(false)
+
+  function handleClearSession() {
+    clearEntrySession()
+    window.location.reload()
+  }
+
   // Save card
   const [showSave, setShowSave] = useState(false)
   const [sessionReport, setSessionReport] = useState<import('@/api/entry').EntryReport | null>(null)
@@ -696,6 +703,26 @@ export function EntryChatPage() {
           )}
         </div>
       </div>
+
+      {/* Start over / clear check-in — hidden once session is closed */}
+      {!closed && (
+        <div style={{ padding: '6px 20px', borderBottom: '1px solid var(--gw-border)', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', flexShrink: 0 }}>
+          {confirmClear ? (
+            <span style={{ fontSize: 12, color: 'var(--gw-sub)', display: 'flex', alignItems: 'center', gap: 10 }}>
+              {phase === 'checkin' ? 'This will clear your check-in. Are you sure?' : 'This will start over. Are you sure?'}
+              <button onClick={handleClearSession} style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', fontSize: 12, fontWeight: 600, padding: 0, fontFamily: 'inherit' }}>Yes, clear</button>
+              <button onClick={() => setConfirmClear(false)} style={{ background: 'none', border: 'none', color: 'var(--gw-sub)', cursor: 'pointer', fontSize: 12, padding: 0, fontFamily: 'inherit' }}>Cancel</button>
+            </span>
+          ) : (
+            <button
+              onClick={() => phase === 'checkin' ? setConfirmClear(true) : handleClearSession()}
+              style={{ background: 'none', border: 'none', color: 'var(--gw-muted)', cursor: 'pointer', fontSize: 11, padding: 0, fontFamily: 'inherit', textDecoration: 'underline' }}
+            >
+              {phase === 'checkin' ? 'Clear check-in' : 'Start over'}
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Sessions upgrade prompt */}
       {showSessionsUpgrade && (
