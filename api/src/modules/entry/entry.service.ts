@@ -262,8 +262,11 @@ ${priorSessionContext}${crossClaimsContext}`;
   async chat(messages: ChatTurn[], scenario?: string, groundLabel?: string): Promise<string> {
     if (!messages || messages.length === 0) throw new BadRequestException('messages required');
 
+    // FAQ detection only fires when the conversation hasn't started yet (single standalone user message).
+    // Once the AI has spoken, any user reply ending with "?" is part of the check-in, not an FAQ.
     const lastUser = [...messages].reverse().find(m => m.role === 'user');
-    if (lastUser && isLikelyQuestion(lastUser.content)) {
+    const conversationStarted = messages.some(m => m.role === 'assistant');
+    if (!conversationStarted && lastUser && isLikelyQuestion(lastUser.content)) {
       return this.anthropic.respond(FAQ_PROMPT, messages);
     }
 
