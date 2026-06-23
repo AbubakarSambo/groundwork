@@ -40,6 +40,11 @@ export function ChatPage() {
   const [docContext, setDocContext]   = useState('')
   const [docContextMode, setDocContextMode] = useState(false)
 
+  // Paste text
+  const [pasteMode, setPasteMode]     = useState(false)
+  const [pasteText, setPasteText]     = useState('')
+  const [pasteLabel, setPasteLabel]   = useState('')
+
   const msgsRef = useRef<HTMLDivElement>(null)
   const taRef   = useRef<HTMLTextAreaElement>(null)
 
@@ -171,6 +176,18 @@ export function ChatPage() {
     setDocContext('')
   }
 
+  function submitPaste() {
+    const text = pasteText.trim()
+    if (!text || !groundId) return
+    const label = pasteLabel.trim() || 'pasted-note.txt'
+    const fileName = label.endsWith('.txt') ? label : label + '.txt'
+    const file = new File([text], fileName, { type: 'text/plain' })
+    uploadDoc.mutate({ file, ctx: '' })
+    setPasteMode(false)
+    setPasteText('')
+    setPasteLabel('')
+  }
+
   const privacyLabel = `Session ${sessionNumber} · Your words are private until you both activate the report.`
 
   return (
@@ -264,6 +281,14 @@ export function ChatPage() {
             >
               📎 <span style={{ fontSize: 11 }}>Upload doc</span>
             </label>
+            <button
+              onClick={() => { if (groundId) setPasteMode(true) }}
+              disabled={!groundId || done}
+              title="Paste an email, Slack message, meeting notes, or any text"
+              style={{ padding: '0 10px', borderRadius: 6, background: 'var(--gw-bg)', color: 'var(--gw-sub)', border: '0.5px solid var(--gw-border)', cursor: groundId && !done ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, flexShrink: 0, whiteSpace: 'nowrap', height: 38, opacity: groundId && !done ? 1 : 0.4, fontFamily: 'inherit' }}
+            >
+              📋 <span style={{ fontSize: 11 }}>Paste text</span>
+            </button>
             <input type="file" id="doc-upload" accept=".pdf,.doc,.docx,.txt,.csv,.xlsx,.png,.jpg,.jpeg,.md" style={{ display: 'none' }} onChange={e => {
               const f = e.target.files?.[0]
               if (f) {
@@ -287,6 +312,41 @@ export function ChatPage() {
           </div>
         </div>
       </div>
+
+      {/* Paste text overlay */}
+      {pasteMode && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)', zIndex: 50, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+          <div style={{ background: 'white', borderRadius: '14px 14px 0 0', padding: '20px 20px 32px', width: '100%', maxWidth: 560 }}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--gw-border)', margin: '0 auto 16px' }} />
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)', marginBottom: 4 }}>📋 Paste text</div>
+            <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 12, lineHeight: 1.55 }}>
+              Paste an email, Slack thread, meeting notes, or any text that supports what you are describing. The tool will use it to ask sharper questions.
+            </div>
+            <input
+              placeholder="Label (optional) — e.g. Q2 update email, project brief"
+              value={pasteLabel}
+              onChange={e => setPasteLabel(e.target.value)}
+              style={{ width: '100%', padding: '8px 12px', fontSize: 13, border: '1px solid var(--gw-border)', borderRadius: 8, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 8 }}
+            />
+            <textarea autoFocus
+              placeholder="Paste your text here…"
+              value={pasteText}
+              onChange={e => setPasteText(e.target.value)}
+              style={{ width: '100%', resize: 'none', minHeight: 140, padding: '10px 12px', fontSize: 13, lineHeight: 1.55, border: '1px solid var(--gw-border)', borderRadius: 8, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 10 }}
+            />
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={() => { setPasteMode(false); setPasteText(''); setPasteLabel('') }}
+                style={{ padding: '10px 16px', borderRadius: 8, background: 'none', border: '1px solid var(--gw-border)', color: 'var(--gw-sub)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
+                Cancel
+              </button>
+              <button onClick={submitPaste} disabled={!pasteText.trim()}
+                style={{ flex: 1, padding: '10px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: pasteText.trim() ? 'pointer' : 'not-allowed', fontFamily: 'inherit', opacity: pasteText.trim() ? 1 : 0.5 }}>
+                Add to session
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Doc context overlay */}
       {docContextMode && pendingDoc && (

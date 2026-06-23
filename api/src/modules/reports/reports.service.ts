@@ -60,6 +60,28 @@ const POST_REPORT_GUIDE_SCHEMA = {
 const POST_REPORT_GUIDE_PROMPT =
   'You are Groundwork. A shared report has just been released to both parties. Given one party\'s record entries and the shared synthesis, produce a short, specific post-report guide for THIS party only. Three things: (1) one opening line they can use to start the real conversation — grounded, not defensive; (2) one question to carry into the room — genuine, not a challenge; (3) one concrete thing from the other side\'s record they should acknowledge, even if they see it differently. Brief, direct — no more than 3 sentences per item.';
 
+// Admin profile — extract preference signals from an initiator's check-in records.
+const SIGNAL_EXTRACTION_PROMPT =
+  'You are analysing the check-in record of the person who opened this ground (the initiator/lead). Identify 3 to 5 recurring preference signals — things they consistently probed on, pushed back on, or returned to across the session. Write each signal as a plain one-sentence observation that would help an AI know where to dig deeper on a future ground. Focus on probe patterns, not opinions. Do not include personal opinions, judgements, or anything that could embarrass the person if read back. Do not invent signals — only extract what is clearly present in the record.';
+
+const SIGNAL_EXTRACTION_SCHEMA = {
+  name: 'emit_lead_signals',
+  description: 'Extract 3-5 preference signals from an initiator check-in record.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      signals: {
+        type: 'array',
+        items: { type: 'string' },
+        description: 'Each signal is one plain sentence describing a recurring probe or focus pattern.',
+        minItems: 1,
+        maxItems: 5,
+      },
+    },
+    required: ['signals'],
+  },
+};
+
 // Outcome learning — weekly prompt-version resolution-rate summary (#100).
 const OUTCOME_LEARNING_PROMPT =
   'You are a Groundwork analyst. You are given structured data: for each active prompt version, the number of grounds resolved, the total outcomes, and the fairness rate (% of parties who said the process felt fair). Produce a 3–5 sentence summary identifying which version(s) have the highest resolution rate, any version showing decline, and a one-sentence recommendation. Data is anonymous — no names, no org identifiers.';
@@ -128,15 +150,21 @@ export class ReportsService {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, include: { participants: true } });
     if (!ground) throw new NotFoundException('Ground not found');
 
-    // Build context preamble from the ground's pre-agreed resolution state and
-    // initiator brief. These tell the AI what outcome was agreed before the first
-    // session and what situation was described at setup — both sharpen the synthesis.
+    // Build context preamble from the ground's pre-agreed resolution state,
+    // initiator brief, and the initiator's persistent profile signals (if any).
+    const [initiatorProfile] = await Promise.all([
+      this.prisma.adminProfile.findUnique({ where: { userId: ground.initiatorId }, select: { signals: true } }).catch(() => null),
+    ]);
     const groundContextLines: string[] = [];
     if ((ground as any).resolutionState) {
       groundContextLines.push(`PRE-AGREED RESOLUTION STATE: ${(ground as any).resolutionState}`);
     }
     if ((ground as any).brief) {
       groundContextLines.push(`INITIATOR'S OPENING BRIEF: ${(ground as any).brief}`);
+    }
+    const leadSignals = Array.isArray(initiatorProfile?.signals) ? (initiatorProfile!.signals as string[]) : [];
+    if (leadSignals.length) {
+      groundContextLines.push(`LEAD PROFILE (from past grounds — use to add alignment recommendations at the end of the report):\n${leadSignals.map(s => `- ${s}`).join('\n')}`);
     }
     const groundContextHeader = groundContextLines.length
       ? `GROUND CONTEXT (set before any check-in — use to frame the synthesis):\n${groundContextLines.join('\n')}\n\n`
@@ -496,7 +524,53 @@ export class ReportsService {
     });
 
     await this.prisma.ground.update({ where: { id: groundId }, data: { status: GroundStatus.REPORT_READY } });
+
+    // Fire-and-forget: extract preference signals from the initiator's records and
+    // upsert into their AdminProfile. Runs after the report is saved so it never
+    // blocks report delivery. Errors are swallowed — a failed extraction just means
+    // the profile stays as-is.
+    this.extractAndStoreLeadSignals(groundId, ground.initiatorId).catch(() => null);
+
     return report;
+  }
+
+  /**
+   * Extract preference signals from the initiator's check-in records and upsert
+   * into their AdminProfile. Called fire-and-forget after each synthesis.
+   */
+  private async extractAndStoreLeadSignals(groundId: string, initiatorUserId: string): Promise<void> {
+    const initiatorParticipant = await this.prisma.groundParticipant.findFirst({
+      where: { groundId, partyType: PartyType.INITIATOR },
+      select: { id: true },
+    });
+    if (!initiatorParticipant) return;
+
+    const entries = await this.prisma.recordEntry.findMany({
+      where: { participantId: initiatorParticipant.id },
+      select: { type: true, text: true },
+      orderBy: { createdAt: 'asc' },
+      take: 30,
+    });
+    if (!entries.length) return;
+
+    const corpus = entries.map(e => `(${e.type}) ${e.text.replace(/^\[VERIFIABILITY:\w+\] /, '')}`).join('\n');
+    const extracted = await this.anthropic.extract<{ signals: string[] }>(
+      SIGNAL_EXTRACTION_PROMPT,
+      [{ role: 'user', content: corpus }],
+      SIGNAL_EXTRACTION_SCHEMA,
+    );
+    if (!extracted?.signals?.length) return;
+
+    // Merge with existing signals, dedup, cap at 10.
+    const existing = await this.prisma.adminProfile.findUnique({ where: { userId: initiatorUserId }, select: { signals: true } });
+    const existingSignals = Array.isArray(existing?.signals) ? (existing!.signals as string[]) : [];
+    const merged = [...new Set([...existingSignals, ...extracted.signals])].slice(0, 10);
+
+    await this.prisma.adminProfile.upsert({
+      where: { userId: initiatorUserId },
+      create: { userId: initiatorUserId, signals: merged },
+      update: { signals: merged },
+    });
   }
 
   /**

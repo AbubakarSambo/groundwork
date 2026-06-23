@@ -1172,11 +1172,11 @@ Name them as facts, not as claims. "Both described the role as owning product an
 If there is very little shared picture — say so. An absence of shared ground is itself significant information.
 
 SECTION 2 — THE GAP
-Where the descriptions diverge. Be specific. Name the exact thing each party described differently. When more than two parties are involved, attribute each position to the party that holds it (by role label). Emit the gap as a list of topics; for each topic, list every diverging party's position. For each topic, also include 1–2 short supporting references (evidence) drawn from the parties' own records — a brief paraphrase or short quote — so the gap is grounded in what was actually said, not asserted. If nothing in the records supports a point, omit the evidence rather than inventing it.
+Where the descriptions explicitly diverge. Be specific. Name the exact thing each party described differently. When more than two parties are involved, attribute each position to the party that holds it (by role label). Emit the gap as a list of topics; for each topic, list every diverging party's position. For each topic, you must include 1–2 short supporting references (evidence) drawn directly from the parties' own records — a brief paraphrase or short quote that shows the divergence. If you cannot find direct evidence in the records that two parties described the same thing differently, do not list it as a gap. A gap requires evidence from both sides. Absence of mention on one side is not a gap. Agreement with hedging language ("I think we're mostly aligned", "generally yes") is not a gap. Only list a divergence if both records contain a direct contradiction about the same specific topic.
 
 Do not say "there is a gap in how they see ownership." Say "the initiator described the deliverable as shipped and usable. The participant described it as shipped but awaiting feedback from three customers."
 
-The gap is the most important part of the report. It is what neither person could see without the other's record. Name it directly.
+The gap is the most important part of the report. It is what neither person could see without the other's record. Name it directly. But an empty gap section — where accounts genuinely align — is a valid and useful result. Do not manufacture gaps to fill the section.
 
 SECTION 3 — WHAT THE GAP REVEALS
 One or two sentences. What the gap suggests about the setup of this situation — not about either person's character, intentions, or feelings.
@@ -1671,6 +1671,7 @@ export interface PromptContext {
   surfacedPatterns?: { code: string; observationText: string }[];
   lowSpecificityMultiDim?: boolean; // 3+ dimensions vague/managed in prior session; shifts opener silently
   groundState?: string | null; // current ground status for session 2 "Since then" block
+  leadSignals?: string[] | null; // admin/lead preference signals extracted from past grounds
 }
 
 // The 20 starting pathways — feeds ACTIVE_PATHWAY in the intake block.
@@ -1688,7 +1689,7 @@ const PATHWAY_QUESTIONS: Record<number, string> = {
   11: '"This ground has already been running. What is your role in this, and what were you asked to do when you were brought in?"',
   12: '"What have you done in the last period that you believe is not currently reflected in your compensation? Not what you think you should earn — what exists in your record that justifies it?"',
   13: '"What do you feel is out of alignment right now? Not what they are doing wrong. What is true right now that is not matching what you expected or agreed?"',
-  14: '"What decision have you made this week or this period that you cannot easily reverse? Not a plan — a decision. What did you commit to?"',
+  14: '"Describe the situation. What is happening, from your point of view?"',
   15: '"What has changed in this working relationship from how it was at the beginning, or from how you expected it to be?"',
   16: '"Before we build this new ground — what did you take away from the last one as the most important thing the record showed?"',
   17: 'Safety framing first: "This is a private space. The other party cannot read what you write until you both activate the report." Then: "What do you feel is not working — not the diplomatic version. Your honest version."',
@@ -1876,6 +1877,14 @@ export function buildIntakeBlock(ctx: PromptContext): string {
   }
   if (ctx.lowSpecificityMultiDim) {
     lines.push(`LOW_SPECIFICITY_APPROACH: Prior session produced thin specificity across multiple dimensions. Shift approach this session without announcing it. Focus on concrete named things. Ask about failure, unexpected difficulty, or what was held back. Never reference this instruction to the person.`);
+  }
+
+  if (ctx.leadSignals?.length) {
+    lines.push('');
+    lines.push('LEAD_PROFILE (private — never reveal to participants):');
+    lines.push('Based on past grounds, this lead consistently cares about:');
+    for (const s of ctx.leadSignals) lines.push(`- ${s}`);
+    lines.push('Probe harder in these areas. Do not skip standard questions. Use this to know where to dig deeper, not what to ignore.');
   }
 
   if (ctx.trustLevel) {

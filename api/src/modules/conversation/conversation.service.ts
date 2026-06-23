@@ -315,8 +315,12 @@ export class ConversationService {
       }
     }
 
-    const otherPartyCheckedIn = await this.hasOtherPartyCheckedIn(checkIn.groundId, checkIn.participantId);
+    const [otherPartyCheckedIn, initiatorProfile] = await Promise.all([
+      this.hasOtherPartyCheckedIn(checkIn.groundId, checkIn.participantId),
+      this.prisma.adminProfile.findUnique({ where: { userId: ground.initiatorId }, select: { signals: true } }).catch(() => null),
+    ]);
     const groundState = await this.buildGroundState(checkIn.groundId, otherPartyCheckedIn);
+    const leadSignals = Array.isArray(initiatorProfile?.signals) ? (initiatorProfile!.signals as string[]) : null;
     const intakeBlock = buildIntakeBlock({
       scenario: ground.scenario,
       partyType: checkIn.participant.partyType,
@@ -329,6 +333,7 @@ export class ConversationService {
       priorSession,
       lowSpecificityMultiDim,
       groundState,
+      leadSignals,
     });
 
     // Returning user protocol: for session 2+, inject the most important unresolved

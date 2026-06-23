@@ -29,6 +29,7 @@ interface OnboardingSelections {
   timeframe?: string
   cadence?: string
   decision?: string
+  brief?: string
 }
 
 function saveSession(s: EntrySession) {
@@ -55,20 +56,20 @@ export function hasPendingEntry(): boolean {
   } catch { return false }
 }
 
-const ONBOARDING_STEPS = 6
+const ONBOARDING_STEPS = 7
 
 const MODE_BUTTON_MAP: Record<string, string> = {
   'Starting something': 'something_new',
   'Already underway': 'already_underway',
   'Already happened': 'look_back',
-  'Both': 'both',
+  'Regular check-in': 'recurring',
 }
 
 const MODE_BUTTON_DESCRIPTIONS: Record<string, string> = {
-  'Starting something': 'A new hire. A new project. A new contract. A partnership kicking off.',
-  'Already underway': 'A delivery in progress. A working relationship. A decision being made.',
-  'Already happened': 'A project that completed. A delivery. A conversation that needs to be on record.',
-  'Both': 'Something that needs reviewing and a clear path forward.',
+  'Starting something': 'A new hire, project, partnership, handover, or role starting now.',
+  'Already underway': 'Something in motion — a delivery, a team, a working relationship, a process.',
+  'Already happened': 'A decision, project, or conversation that needs to go on record.',
+  'Regular check-in': 'A recurring ritual — weekly, fortnightly, or monthly — for a team or group.',
 }
 
 const GOAL_OPTIONS = [
@@ -95,23 +96,11 @@ const SESSION_END_PATTERNS = [
   'option to not have',
 ]
 
-const MODE_INTROS: Record<string, { prefix: string; examples: string }> = {
-  something_new: {
-    prefix: 'Good.\n\nThe best time to set expectations is before anyone has had a chance to assume.',
-    examples: 'A new hire\'s first 90 days.\nA new project.\nA partnership.\nA leadership transition.\nA programme launch.',
-  },
-  already_underway: {
-    prefix: 'Good.\n\nChecking in while something is moving is what keeps it on track.',
-    examples: 'A delivery in progress.\nA team preparing for a meeting.\nA working relationship.\nA decision being made.',
-  },
-  look_back: {
-    prefix: 'Good.\n\nGetting this on record while the details are still fresh is the right call.',
-    examples: 'A project that completed.\nA delivery.\nA decision that needs reviewing.\nA conversation that needs to be on record.',
-  },
-  both: {
-    prefix: 'Good.\n\nSometimes you need to understand what happened before you can agree what comes next.',
-    examples: 'Something that needs reviewing and a clear path forward.',
-  },
+const MODE_INTROS: Record<string, string> = {
+  something_new: 'Good.\n\nThe best time to set expectations is before anyone has had a chance to assume.',
+  already_underway: 'Good.\n\nChecking in while something is moving is what keeps it on track.',
+  look_back: 'Good.\n\nGetting this on record while the details are still fresh is the right call.',
+  recurring: 'Good.\n\nA regular check-in builds the kind of record that actually shows what is happening over time.',
 }
 
 interface OnboardingMessage {
@@ -127,15 +116,15 @@ function buildOnboardingMessages(sels: OnboardingSelections): OnboardingMessage[
   const intro = MODE_INTROS[modeKey] || MODE_INTROS['something_new']
 
   return [
-    // Step 1: situation type — card buttons with descriptions
+    // Step 1: situation type
     {
       text: `Groundwork builds a picture from what everyone involved has seen, experienced, and agreed. Each person adds their own account. Nobody reads anyone else's words directly. The report shows where accounts agree and where they differ.\n\nWhat kind of situation are we dealing with?`,
-      buttons: ['Starting something', 'Already underway', 'Already happened', 'Both'],
+      buttons: ['Starting something', 'Already underway', 'Already happened', 'Regular check-in'],
       buttonDescriptions: MODE_BUTTON_DESCRIPTIONS,
     },
-    // Step 2: what is this about (mode-aware)
+    // Step 2: what is this about
     {
-      text: `${intro.prefix}\n\nWhat is this about?\n\nExamples:\n${intro.examples}`,
+      text: `${intro}\n\nWhat is this about?`,
       placeholder: 'Describe the situation.',
     },
     // Step 3: who is involved
@@ -155,7 +144,13 @@ function buildOnboardingMessages(sels: OnboardingSelections): OnboardingMessage[
       multiSelect: true,
       placeholder: 'Or say it in your own words.',
     },
-    // Step 6: party or manager choice
+    // Step 6: brief — what to focus on, probe, or watch for
+    {
+      text: "Is there anything specific you want the tool to focus on or ask about?\n\nThis could be a topic you know matters, something you want people to be specific about, or context the tool should use to ask sharper questions. You can skip this if nothing comes to mind.",
+      placeholder: 'What to focus on, probe, or watch for.',
+      buttons: ['Skip'],
+    },
+    // Step 7: party or manager choice
     {
       text: "Last thing. Are you personally involved in this situation, or are you setting it up for others?\n\nIf you are involved, you go first. You add your account, then invite the others. If you are setting it up on their behalf, you can skip straight to inviting them.",
       buttons: ["I am involved. Let's begin.", "I am setting this up for others"],
@@ -208,6 +203,7 @@ export function EntryChatPage() {
   const [showEndPrompt, setShowEndPrompt] = useState(false)
 
   const [confirmClear, setConfirmClear] = useState(false)
+  const [showAdminBriefing, setShowAdminBriefing] = useState(false)
 
   function handleClearSession() {
     clearEntrySession()
@@ -342,6 +338,7 @@ export function EntryChatPage() {
         onboardingSelections.whoInvolved ? `Who is part of this: ${onboardingSelections.whoInvolved}` : '',
         onboardingSelections.decision ? `What made them open this record today: ${onboardingSelections.decision}` : '',
         onboardingSelections.goals?.length ? `What they want this ground to get right: ${onboardingSelections.goals.join(', ')}` : '',
+        onboardingSelections.brief ? `What to focus on or probe: ${onboardingSelections.brief}` : '',
       ].filter(Boolean).join('. ')
       return entryApi.chat([{
         role: 'user',
@@ -405,15 +402,15 @@ export function EntryChatPage() {
     const currentStep = onboardingStep
     let newSels = { ...onboardingSelections }
 
-    // Step 6: party path — admin checks in first
+    // Step 7: party path — show briefing before check-in starts
     if (buttonChoice === "I am involved. Let's begin.") {
       setOnboardingStep(ONBOARDING_STEPS + 1)
       persistOnboarding([], newSels, ONBOARDING_STEPS)
-      startCheckin.mutate()
+      setShowAdminBriefing(true)
       return
     }
 
-    // Step 6: manager path — skip check-in, go straight to save card
+    // Step 7: manager path — skip check-in, go straight to save card
     if (buttonChoice === "I am setting this up for others") {
       setOnboardingStep(ONBOARDING_STEPS + 1)
       persistOnboarding([], newSels, ONBOARDING_STEPS)
@@ -470,6 +467,14 @@ export function EntryChatPage() {
       newSels = { ...newSels, goals }
       setInput('')
       setSelectedGoals([])
+    } else if (currentStep === 6) {
+      if (buttonChoice === 'Skip') {
+        newSels = { ...newSels, brief: '' }
+      } else {
+        const val = input.trim()
+        newSels = { ...newSels, brief: val }
+        setInput('')
+      }
     }
 
     setOnboardingSelections(newSels)
@@ -623,6 +628,51 @@ export function EntryChatPage() {
   }
 
   const currentOnboardingMsg = onboardingMessages[onboardingStep - 1]
+
+  if (showAdminBriefing) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--gw-bg)', padding: '24px 20px' }}>
+        <div style={{ maxWidth: 480, width: '100%' }}>
+          <div style={{ marginBottom: 24 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', letterSpacing: '-.01em' }}>Groundwork</span>
+          </div>
+          <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-text)', lineHeight: 1.2, marginBottom: 8 }}>You're up first.</h1>
+          <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.7, marginBottom: 24 }}>
+            Your check-in is the first account on this ground. Here is what to expect.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 28 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '13px 16px', background: 'white', borderRadius: 10, border: '1px solid var(--gw-border)' }}>
+              <span style={{ fontSize: 16, flexShrink: 0 }}>⏱</span>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 2 }}>About 10 minutes</div>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55 }}>Answer in your own words. The questions are based on what you just described. There are no right answers.</div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '13px 16px', background: 'white', borderRadius: 10, border: '1px solid var(--gw-border)' }}>
+              <span style={{ fontSize: 16, flexShrink: 0 }}>📨</span>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 2 }}>Invite links come after</div>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55 }}>Once you finish, you will get invite links to send to the other people involved. They check in independently.</div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '13px 16px', background: 'white', borderRadius: 10, border: '1px solid var(--gw-border)' }}>
+              <span style={{ fontSize: 16, flexShrink: 0 }}>📄</span>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 2 }}>The report appears when everyone is in</div>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55 }}>It shows where accounts agree and where they differ. Everyone sees it at the same time.</div>
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={() => { setShowAdminBriefing(false); startCheckin.mutate() }}
+            style={{ width: '100%', padding: '14px 20px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+          >
+            Start my check-in
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)', position: 'relative', overflow: 'hidden' }}>
