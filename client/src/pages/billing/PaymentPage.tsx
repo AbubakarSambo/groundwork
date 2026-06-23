@@ -36,7 +36,7 @@ export function PaymentPage() {
         {/* Header */}
         <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 6 }}>Activate billing</div>
         <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 28 }}>
-          Sessions 1–2 are free. From session 3, the platform costs $25/month plus $25/month per active participant. Participants in multiple Grounds are billed once. You can activate billing now or use a contributor code if you have one.
+          Your first two sessions are free. Each ground costs $80, covering up to 6 participants, 6 sessions, and 90 days. Additional participants are $10 each. You can activate billing now or use a contributor code if you have one.
         </div>
 
         {/* Contributor code */}
@@ -66,7 +66,7 @@ export function PaymentPage() {
         <div style={{ background: 'white', border: '0.5px solid var(--gw-border)', borderRadius: 10, padding: 18, marginBottom: 16 }}>
           <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6, color: 'var(--gw-text)' }}>Activate with payment</div>
           <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5, marginBottom: 12 }}>
-            $25/month platform fee. $25/month per active participant from session 3.
+            $80 per ground. Covers 6 participants, 6 sessions, 90 days. $10 per additional participant.
           </div>
           <button
             onClick={() => checkout.mutate(undefined)}

@@ -30,13 +30,13 @@ export const googleConfig = registerAs("google", () => ({
   frontendUrl: process.env.FRONTEND_URL || "http://localhost:5173",
 }));
 
-// Anthropic Claude powers the conversation engine, report synthesis, and
-// pattern detection. The system prompt is large + static — enable prompt
-// caching on it (see conversation module).
-export const anthropicConfig = registerAs("anthropic", () => ({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-  model: process.env.ANTHROPIC_MODEL || "claude-opus-4-8",
-  maxTokens: parseInt(process.env.ANTHROPIC_MAX_TOKENS || "2048", 10),
+// Google Gemini powers the conversation engine, report synthesis, and
+// pattern detection.
+export const geminiConfig = registerAs("gemini", () => ({
+  projectId: process.env.GEMINI_PROJECT_ID || "groundwork-500011",
+  location: process.env.GEMINI_LOCATION || "us-central1",
+  model: process.env.GEMINI_MODEL || "gemini-2.5-pro",
+  maxTokens: parseInt(process.env.GEMINI_MAX_TOKENS || "2048", 10),
 }));
 
 // Stripe, USD. Care fee = $25/mo recurring platform fee per account.

@@ -106,13 +106,13 @@ export function BillingPage() {
           {/* Pricing summary */}
           <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 12, overflow: 'hidden', marginBottom: 16 }}>
             <div style={{ padding: '14px 16px', borderBottom: '1px solid #F0EEE9', display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: 13, color: '#6B6560' }}>Platform fee (per account)</span>
-              <span style={{ fontSize: 14, fontWeight: 700, color: '#0A1628' }}>$25/month</span>
+              <span style={{ fontSize: 13, color: '#6B6560' }}>Platform fee (per ground)</span>
+              <span style={{ fontSize: 14, fontWeight: 700, color: '#0A1628' }}>$80/ground</span>
             </div>
             {activeParticipants.map((p: any, i: number) => (
               <div key={i} style={{ padding: '12px 16px', borderBottom: '1px solid #F0EEE9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: 13, color: '#6B6560' }}>{p.name ?? p.email}</span>
-                <span style={{ fontSize: 14, fontWeight: 700, color: '#0A1628' }}>$25/month</span>
+                <span style={{ fontSize: 14, fontWeight: 700, color: '#0A1628' }}>$10/person</span>
               </div>
             ))}
             <div style={{ padding: '14px 16px', background: '#F5F3EF', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -160,16 +160,16 @@ export function BillingPage() {
         <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 12, overflow: 'hidden', marginBottom: 16 }}>
           <div style={{ padding: '14px 16px', borderBottom: '1px solid #F0EEE9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <div style={{ fontSize: 13, color: '#6B6560' }}>Platform fee (per account)</div>
+              <div style={{ fontSize: 13, color: '#6B6560' }}>Platform fee (per ground)</div>
             </div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#0A1628' }}>$25/month</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#0A1628' }}>$80/ground</div>
           </div>
           <div style={{ padding: '14px 16px', borderBottom: '1px solid #F0EEE9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <div style={{ fontSize: 13, color: '#6B6560' }}>Per active participant</div>
               <div style={{ fontSize: 11, color: '#9B9590' }}>{participantCount} participant{participantCount !== 1 ? 's' : ''} in this ground</div>
             </div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#0A1628' }}>$25/person/month</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#0A1628' }}>$10/person</div>
           </div>
           <div style={{ padding: '14px 16px', background: '#F5F3EF', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: '#0A1628' }}>Monthly total</div>

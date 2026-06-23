@@ -9,11 +9,6 @@ import { toast } from 'sonner'
 
 interface Msg { id: string; role: 'AI' | 'PERSON'; content: string }
 
-const QUICK_ACTIONS = [
-  { label: 'What am I missing?',        msg: 'What is missing from my record that would make it stronger?' },
-  { label: 'Is there a document?',      msg: 'Is there anything written down that we should look at for this?' },
-  { label: 'What do I carry forward?',  msg: 'What is the one thing I should carry into the next conversation?' },
-]
 
 export function ChatPage() {
   const { checkInId } = useParams<{ checkInId: string }>()
@@ -144,11 +139,6 @@ export function ChatPage() {
     sendMsg.mutate(content)
   }
 
-  function quickSend(msg: string) {
-    if (loading || done || !opened) return
-    sendMsg.mutate(msg)
-  }
-
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() }
   }
@@ -257,18 +247,6 @@ export function ChatPage() {
           )}
         </div>
 
-        {/* Quick action chips */}
-        <div style={{ padding: '8px 14px', background: 'white', borderTop: '1px solid var(--gw-border)', display: 'flex', gap: 7, flexWrap: 'wrap', flexShrink: 0 }}>
-          {QUICK_ACTIONS.map(a => (
-            <button key={a.label} onClick={() => quickSend(a.msg)} disabled={loading || done || !opened}
-              title={!opened ? 'Available once your session is open' : done ? 'Session is complete' : undefined}
-              style={{ padding: '5px 12px', borderRadius: 20, fontSize: 12, border: '1px solid var(--gw-border)', background: 'var(--gw-bg)', color: 'var(--gw-sub)', cursor: (!opened || done) ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: (!opened || done) ? 0.5 : 1 }}
-            >
-              {a.label}
-            </button>
-          ))}
-        </div>
-
         {/* Bottom bar */}
         <div style={{ borderTop: '1px solid var(--gw-border)', background: 'white', flexShrink: 0 }}>
           <div style={{ padding: '4px 14px', borderBottom: '0.5px solid var(--gw-border)', fontSize: 11, color: 'var(--gw-sub)', background: 'var(--gw-bg)', lineHeight: 1.4 }}>
@@ -323,7 +301,7 @@ export function ChatPage() {
               Paste an email, Slack thread, meeting notes, or any text that supports what you are describing. The tool will use it to ask sharper questions.
             </div>
             <input
-              placeholder="Label (optional) — e.g. Q2 update email, project brief"
+              placeholder="Label (optional, e.g. Q2 update email, project brief)"
               value={pasteLabel}
               onChange={e => setPasteLabel(e.target.value)}
               style={{ width: '100%', padding: '8px 12px', fontSize: 13, border: '1px solid var(--gw-border)', borderRadius: 8, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 8 }}

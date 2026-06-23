@@ -67,19 +67,15 @@ const MODE_BUTTON_MAP: Record<string, string> = {
 
 const MODE_BUTTON_DESCRIPTIONS: Record<string, string> = {
   'Starting something': 'A new hire, project, partnership, handover, or role starting now.',
-  'Already underway': 'Something in motion — a delivery, a team, a working relationship, a process.',
+  'Already underway': 'Something in motion. A delivery, a team, a working relationship, a process.',
   'Already happened': 'A decision, project, or conversation that needs to go on record.',
-  'Regular check-in': 'A recurring ritual — weekly, fortnightly, or monthly — for a team or group.',
+  'Regular check-in': 'A recurring ritual for a team or group. Weekly, every two weeks, or monthly.',
 }
 
 const GOAL_OPTIONS = [
   'Verify readiness before we proceed',
-  'Verify that what was agreed is being delivered',
-  'Get everyone aligned before we begin',
-  'Make sure expectations are clear on all sides',
-  'Understand what happened and move forward',
-  'Get everyone on the same page before a decision',
-  'Make sure what was agreed is reflected in what was delivered',
+  'Get everyone aligned before a decision',
+  'Make sure what was agreed is being delivered',
   'Something else',
 ]
 
@@ -118,7 +114,7 @@ function buildOnboardingMessages(sels: OnboardingSelections): OnboardingMessage[
   return [
     // Step 1: situation type
     {
-      text: `Groundwork builds a picture from what everyone involved has seen, experienced, and agreed. Each person adds their own account. Nobody reads anyone else's words directly. The report shows where accounts agree and where they differ.\n\nWhat kind of situation are we dealing with?`,
+      text: `Groundwork builds a picture from what everyone involved has seen, experienced, and agreed. Each person adds their own account independently. Nobody reads anyone else's words directly. The report shows where accounts agree and where they differ.\n\nWhat kind of situation are we dealing with?`,
       buttons: ['Starting something', 'Already underway', 'Already happened', 'Regular check-in'],
       buttonDescriptions: MODE_BUTTON_DESCRIPTIONS,
     },
@@ -144,7 +140,7 @@ function buildOnboardingMessages(sels: OnboardingSelections): OnboardingMessage[
       multiSelect: true,
       placeholder: 'Or say it in your own words.',
     },
-    // Step 6: brief — what to focus on, probe, or watch for
+    // Step 6: brief |what to focus on, probe, or watch for
     {
       text: "Is there anything specific you want the tool to focus on or ask about?\n\nThis could be a topic you know matters, something you want people to be specific about, or context the tool should use to ask sharper questions. You can skip this if nothing comes to mind.",
       placeholder: 'What to focus on, probe, or watch for.',
@@ -232,7 +228,7 @@ export function EntryChatPage() {
   const [bulkInviteText, setBulkInviteText] = useState('')
   const [bulkQueue, setBulkQueue] = useState<string[]>([])
 
-  // Stable invite token — generated once and stored in entryStorage
+  // Stable invite token |generated once and stored in entryStorage
   const [inviteToken] = useState<string>(() => {
     const session = loadSession()
     if ((session as any)?.inviteToken) return (session as any).inviteToken
@@ -263,7 +259,7 @@ export function EntryChatPage() {
     if (saved && !saved.closed && !scenario) {
       // Restore existing session
       setHistory(saved.history)
-      if (saved.report) { try { setSessionReport(JSON.parse(saved.report)) } catch { /* legacy plain text — discard */ } }
+      if (saved.report) { try { setSessionReport(JSON.parse(saved.report)) } catch { /* legacy plain text |discard */ } }
       if (saved.email) setEmail(saved.email)
       if (saved.onboardingSelections) {
         setOnboardingSelections(saved.onboardingSelections)
@@ -402,7 +398,7 @@ export function EntryChatPage() {
     const currentStep = onboardingStep
     let newSels = { ...onboardingSelections }
 
-    // Step 7: party path — show briefing before check-in starts
+    // Step 7: party path |show briefing before check-in starts
     if (buttonChoice === "I am involved. Let's begin.") {
       setOnboardingStep(ONBOARDING_STEPS + 1)
       persistOnboarding([], newSels, ONBOARDING_STEPS)
@@ -410,7 +406,7 @@ export function EntryChatPage() {
       return
     }
 
-    // Step 7: manager path — skip check-in, go straight to save card
+    // Step 7: manager path |skip check-in, go straight to save card
     if (buttonChoice === "I am setting this up for others") {
       setOnboardingStep(ONBOARDING_STEPS + 1)
       persistOnboarding([], newSels, ONBOARDING_STEPS)
@@ -571,7 +567,7 @@ export function EntryChatPage() {
         inviteToken,
         inviteNote: inviteNote.trim() || undefined,
         contributors: inviteAdded.map(entry => {
-          const dashIdx = entry.indexOf(' — ')
+          const dashIdx = entry.indexOf(' | ')
           if (dashIdx === -1) return { email: entry, inviteToken }
           return { email: entry.slice(0, dashIdx), context: entry.slice(dashIdx + 3), inviteToken }
         }),
@@ -600,7 +596,7 @@ export function EntryChatPage() {
 
   function submitInviteContext() {
     if (!inviteContextFor) return
-    const entry = inviteContextFor + (inviteContext.trim() ? ` — ${inviteContext.trim()}` : '')
+    const entry = inviteContextFor + (inviteContext.trim() ? ` | ${inviteContext.trim()}` : '')
     const newAdded = inviteAdded.includes(inviteContextFor) ? inviteAdded : [...inviteAdded, entry]
     setInviteAdded(newAdded)
     setInviteContext('')
@@ -618,7 +614,7 @@ export function EntryChatPage() {
       if (raw) {
         const payload = JSON.parse(raw)
         payload.contributors = newAdded.map(e => {
-          const dashIdx = e.indexOf(' — ')
+          const dashIdx = e.indexOf(' |')
           if (dashIdx === -1) return { email: e, inviteToken }
           return { email: e.slice(0, dashIdx), context: e.slice(dashIdx + 3), inviteToken }
         })
@@ -754,7 +750,7 @@ export function EntryChatPage() {
         </div>
       </div>
 
-      {/* Start over / clear check-in — hidden once session is closed */}
+      {/* Start over / clear check-in |hidden once session is closed */}
       {!closed && (
         <div style={{ padding: '6px 20px', borderBottom: '1px solid var(--gw-border)', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', flexShrink: 0 }}>
           {confirmClear ? (
@@ -778,7 +774,7 @@ export function EntryChatPage() {
       {showSessionsUpgrade && (
         <div style={{ background: 'var(--gw-blue-bg)', borderBottom: '1px solid var(--gw-blue-b)', padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
           <div style={{ flex: 1, fontSize: 13, color: 'var(--gw-navy)', lineHeight: 1.5 }}>
-            <strong>{sessions} sessions</strong> needs an account. ${25 + inviteAdded.length * 25}/month — $25 per organisation + $25 per contributor ({inviteAdded.length > 0 ? `${inviteAdded.length} added so far` : 'add contributors below to see your total'}). Save your session below to get set up.
+            <strong>{sessions} sessions</strong> needs an account. Each ground is $80, covering 6 participants for 6 sessions over 90 days. Save your session below to get set up.
           </div>
           <button onClick={() => { setShowSessionsUpgrade(false); setShowSave(true) }}
             style={{ flexShrink: 0, background: 'var(--gw-navy)', color: 'white', border: 'none', borderRadius: 7, padding: '7px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
@@ -873,7 +869,7 @@ export function EntryChatPage() {
               )}
             </div>
 
-            {/* Text input — steps with a text placeholder only; button-only steps (1 and 6) hide the bar */}
+            {/* Text input |steps with a text placeholder only; button-only steps (1 and 6) hide the bar */}
             {!startCheckin.isPending && currentOnboardingMsg && onboardingStep < ONBOARDING_STEPS && !!currentOnboardingMsg.placeholder && (
               <div style={{ borderTop: '1px solid var(--gw-border)', background: 'white', flexShrink: 0 }}>
                 <div style={{ padding: '10px 16px' }}>
@@ -1180,7 +1176,7 @@ export function EntryChatPage() {
             <div style={{ marginBottom: 14 }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 6 }}>Name this ground</div>
               <input
-                type="text" placeholder="e.g. Kwame — first 90 days" value={groundName}
+                type="text" placeholder="e.g. Kwame, first 90 days" value={groundName}
                 onChange={e => setGroundName(e.target.value)}
                 style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #E2E0DB', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none', marginBottom: 8 }}
               />
@@ -1239,7 +1235,7 @@ export function EntryChatPage() {
               )}
             </div>
 
-            {/* Invite contributors — before create account */}
+            {/* Invite contributors |before create account */}
             <div style={{ borderBottom: '1px solid #E2E0DB', marginBottom: 16, paddingBottom: 16 }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 4 }}>Invite contributors</div>
               <div style={{ fontSize: 12, color: '#9B9590', lineHeight: 1.55, marginBottom: 10 }}>
@@ -1263,7 +1259,7 @@ export function EntryChatPage() {
                     )}
                   </div>
                   <div style={{ fontSize: 12, color: '#6B6560', marginBottom: 8, lineHeight: 1.5 }}>What do you want them to focus on or account for?</div>
-                  <textarea autoFocus placeholder="e.g. They are the other side of this — they own the delivery timeline."
+                  <textarea autoFocus placeholder="e.g. They own the delivery timeline and are accountable for what was agreed."
                     value={inviteContext} onChange={e => setInviteContext(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitInviteContext() } }}
                     style={{ width: '100%', resize: 'none', minHeight: 60, padding: '8px 10px', fontSize: 13, lineHeight: 1.5, border: '1px solid #E2E0DB', borderRadius: 7, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 8 }}
@@ -1342,7 +1338,7 @@ export function EntryChatPage() {
               )}
             </div>
 
-            {/* Create account — after invite so ground is fully configured first */}
+            {/* Create account |after invite so ground is fully configured first */}
             {!emailSent ? (
               <div style={{ marginBottom: 16 }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 4 }}>Create your account</div>
@@ -1365,7 +1361,7 @@ export function EntryChatPage() {
             )}
 
             <div onClick={() => setShowSave(false)} style={{ textAlign: 'center', fontSize: 12, color: '#9B9590', cursor: 'pointer', paddingTop: 4 }}>
-              {closed ? 'Close — you can reopen this from the bar below' : 'Later'}
+              {closed ? 'Close (you can reopen from the bar below)' : 'Later'}
             </div>
           </div>
         </div>
