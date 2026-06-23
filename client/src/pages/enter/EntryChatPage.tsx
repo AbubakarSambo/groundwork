@@ -338,7 +338,7 @@ export function EntryChatPage() {
       ].filter(Boolean).join('. ')
       return entryApi.chat([{
         role: 'user',
-        content: `I have completed the onboarding. Here is my context. ${ctx}. Please ask me your first specific check-in question based on what I told you. Reference my situation and what I said I need. Do not open generically. Do not ask what my role is. Ask one direct specific question drawn from what I have shared.`,
+        content: `I have completed the onboarding. Here is my context. ${ctx}. Now open my check-in. You already know the situation. Do NOT ask me to describe it again. Ask ONE question that could only be asked to someone in exactly this situation. Make it specific to the tension, gap, or risk I have described. The question must name something concrete from what I shared. Do not use the phrase "describe the situation". Do not ask what my role is. One question only.`,
       }], scenario || undefined, groundName || undefined)
     },
     onSuccess: (res) => {
