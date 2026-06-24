@@ -190,15 +190,21 @@ export class ConversationService {
       return { reply: existingAiTurn.content, groundId: checkIn.groundId };
     }
 
-    // Billing session gate: session 1 is always free; session 2+ requires an
-    // active care-fee subscription. If the org is not billing-ready, block the
-    // open and surface a clear message — trust must not be conditional on payment
-    // during the session itself (B1/B3), but we can gate the START of session 2+.
-    if (ground?.organizationId) {
-      const gate = await this.billing.checkSessionGate(ground.organizationId, checkIn.sessionNumber);
+    // Session balance gate: consume one session from the ground's balance the
+    // first time this check-in is opened (idempotent: re-opens are caught above
+    // by the existingAiTurn guard). If balance is 0, block with a clear message.
+    if (checkIn.groundId) {
+      const gate = await this.billing.canStartSession(checkIn.groundId);
       if (!gate.allowed) {
         throw new ForbiddenException(gate.reason);
       }
+      // Decrement balance atomically before calling the AI so a failure after
+      // this point does not leave the session unconsumed on a retry (the retry
+      // hits the existingAiTurn guard instead).
+      await this.prisma.ground.update({
+        where: { id: checkIn.groundId },
+        data: { sessionsBalance: { decrement: 1 } },
+      });
     }
 
     // GW-41: stamp the engine_rules prompt version on the ground at first check-in

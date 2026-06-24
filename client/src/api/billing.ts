@@ -10,6 +10,14 @@ export interface BillingStatus {
   participantsAtThreshold?: { email: string; name?: string; sessionNumber?: number }[]
 }
 
+export interface ContributorCode {
+  code: string
+  sessionsGranted: number
+  sessionsUsed: number
+  note?: string
+  createdAt?: string
+}
+
 export const billingApi = {
   status: () =>
     apiClient.get<BillingStatus>('/billing/status').then(r => r.data),
@@ -32,4 +40,16 @@ export const billingApi = {
 
   applyContributorCode: (code: string) =>
     apiClient.post<{ ok: boolean; message: string }>('/billing/contributor-code', { code }).then(r => r.data),
+
+  purchaseSession: (groundId: string) =>
+    apiClient.post<{ checkoutUrl: string }>('/billing/purchase-session', { groundId }).then(r => r.data),
+
+  generateContributorCode: (sessionsGranted: number, note?: string) =>
+    apiClient.post<{ code: string }>('/billing/contributor-codes', { sessionsGranted, note }).then(r => r.data),
+
+  redeemContributorCode: (code: string, groundId: string) =>
+    apiClient.post<{ ok: boolean; message: string; sessionsAdded?: number }>('/billing/contributor-codes/redeem', { code, groundId }).then(r => r.data),
+
+  getContributorCodes: () =>
+    apiClient.get<ContributorCode[]>('/billing/contributor-codes').then(r => r.data),
 }

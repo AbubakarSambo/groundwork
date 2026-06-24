@@ -7,6 +7,7 @@ import { useAuthStore } from '@/stores/auth'
 import { reportsApi } from '@/api/reports'
 import { documentsApi } from '@/api/documents'
 import { conversationApi } from '@/api/conversation'
+import { apiClient } from '@/api/client'
 import { toast } from 'sonner'
 
 const BANDS = ['', 'Unresolved', 'Mixed', 'Emerging', 'Clear', 'Aligned']
@@ -79,6 +80,9 @@ export function GroundParticipantPage() {
   const navigate = useNavigate()
   const qc = useQueryClient()
   const [tab, setTab] = useState<Tab>('checkin')
+  const [showPaywall, setShowPaywall] = useState(false)
+  const [paywallCode, setPaywallCode] = useState('')
+  const [paywallCodeMsg, setPaywallCodeMsg] = useState<{ ok: boolean; text: string } | null>(null)
 
   const user = useAuthStore(s => s.user)
 
@@ -113,6 +117,47 @@ export function GroundParticipantPage() {
     mutationFn: () => billingApi.createCareFeeCheckout(id),
     onSuccess: (url) => { window.location.href = url },
     onError: () => toast.error('Could not start checkout. Please try again.'),
+  })
+
+  const probeSession = useMutation({
+    mutationFn: async (checkIn: any) => {
+      const res = await apiClient.post(
+        `/check-ins/${checkIn.id}/open`,
+        {},
+        { validateStatus: () => true }
+      )
+      if (res.status === 403) return { blocked: true, checkIn }
+      return { blocked: false, checkIn }
+    },
+    onSuccess: ({ blocked, checkIn }) => {
+      if (blocked) {
+        setShowPaywall(true)
+      } else {
+        navigate(`/checkin/${checkIn.id}`, {
+          state: { sessionNumber: checkIn.sessionNumber, groundLabel: ground?.label, groundId: id, isInitiator: (ground?.participants ?? []).find((p: any) => p.userId === user?.id)?.partyType === 'INITIATOR' }
+        })
+      }
+    },
+    onError: () => toast.error('Could not start session. Try again.'),
+  })
+
+  const redeemPaywallCode = useMutation({
+    mutationFn: () => billingApi.redeemContributorCode(paywallCode.trim().toUpperCase(), id!),
+    onSuccess: r => {
+      qc.invalidateQueries({ queryKey: ['ground', id] })
+      setPaywallCodeMsg({ ok: r.ok, text: r.message })
+      if (r.ok) {
+        setShowPaywall(false)
+        setPaywallCode('')
+      }
+    },
+    onError: () => setPaywallCodeMsg({ ok: false, text: 'Something went wrong. Try again.' }),
+  })
+
+  const purchaseSessionMut = useMutation({
+    mutationFn: () => billingApi.purchaseSession(id!),
+    onSuccess: r => { if (r.checkoutUrl) window.location.href = r.checkoutUrl },
+    onError: () => toast.error('Could not start checkout. Try again.'),
   })
 
   const activateMutation = useMutation({
@@ -159,7 +204,6 @@ export function GroundParticipantPage() {
       </div>
     )
   }
-  const isInitiator = myParticipant?.partyType === 'INITIATOR'
   const myCheckIns: any[] = (ground.checkIns ?? []).filter((ci: any) => ci.participantId === myParticipant?.id)
   const openCheckIn = myCheckIns.find((ci: any) => ci.status !== 'COMPLETED')
   const completedCheckIns = myCheckIns.filter((ci: any) => ci.status === 'COMPLETED').sort((a: any, b: any) => b.sessionNumber - a.sessionNumber)
@@ -289,12 +333,11 @@ export function GroundParticipantPage() {
                 </div>
 
                 <button
-                  onClick={() => navigate(`/checkin/${openCheckIn.id}`, {
-                    state: { sessionNumber: openCheckIn.sessionNumber, groundLabel: ground.label, groundId: id, isInitiator }
-                  })}
-                  style={{ width: '100%', padding: '13px 16px', borderRadius: 8, background: '#5DCAA5', color: '#0A1628', fontSize: 14, fontWeight: 800, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                  onClick={() => probeSession.mutate(openCheckIn)}
+                  disabled={probeSession.isPending}
+                  style={{ width: '100%', padding: '13px 16px', borderRadius: 8, background: '#5DCAA5', color: '#0A1628', fontSize: 14, fontWeight: 800, border: 'none', cursor: probeSession.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: probeSession.isPending ? 0.7 : 1 }}
                 >
-                  Start session {openCheckIn.sessionNumber}
+                  {probeSession.isPending ? 'Opening...' : `Start session ${openCheckIn.sessionNumber}`}
                 </button>
               </div>
             ) : (
@@ -735,6 +778,64 @@ export function GroundParticipantPage() {
           </div>
         )}
       </div>
+
+      {/* Paywall overlay */}
+      {showPaywall && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.55)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px' }}>
+          <div style={{ background: 'white', borderRadius: 12, padding: 24, maxWidth: 380, width: '100%' }}>
+            <div style={{ fontSize: 16, fontWeight: 800, color: '#0A1628', marginBottom: 8 }}>This ground needs a session to continue.</div>
+            {(ground as any).sessionsBalance !== undefined && (
+              <div style={{ fontSize: 13, color: '#6B6560', marginBottom: 14 }}>
+                Sessions remaining: {(ground as any).sessionsBalance}
+              </div>
+            )}
+            <button
+              onClick={() => purchaseSessionMut.mutate()}
+              disabled={purchaseSessionMut.isPending}
+              style={{ width: '100%', padding: '12px', borderRadius: 8, background: '#0A1628', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: purchaseSessionMut.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: purchaseSessionMut.isPending ? 0.7 : 1, marginBottom: 14 }}
+            >
+              {purchaseSessionMut.isPending ? 'Redirecting...' : 'Add a session ($5)'}
+            </button>
+
+            <div style={{ borderTop: '1px solid #E2E0DB', paddingTop: 14 }}>
+              <button
+                onClick={() => setShowPaywall(false)}
+                style={{ background: 'none', border: 'none', fontSize: 12, color: '#9B9590', cursor: 'pointer', fontFamily: 'inherit', padding: 0, marginBottom: 10 }}
+              >
+                Cancel
+              </button>
+              <div style={{ marginTop: 4 }}>
+                <button
+                  onClick={() => {}}
+                  style={{ background: 'none', border: 'none', fontSize: 12, color: '#9B9590', cursor: 'pointer', fontFamily: 'inherit', padding: 0, textDecoration: 'underline' }}
+                  aria-label="toggle contributor code"
+                >
+                  Have a contributor code?
+                </button>
+              </div>
+              <div style={{ marginTop: 10 }}>
+                <input
+                  type="text"
+                  value={paywallCode}
+                  onChange={e => { setPaywallCode(e.target.value); setPaywallCodeMsg(null) }}
+                  placeholder="Enter code"
+                  style={{ width: '100%', padding: '9px 11px', fontSize: 13, fontFamily: 'inherit', border: `1px solid ${paywallCodeMsg && !paywallCodeMsg.ok ? '#c0392b' : '#E2E0DB'}`, borderRadius: 7, background: '#F5F3EF', color: '#0A1628', outline: 'none', boxSizing: 'border-box', marginBottom: 8 }}
+                />
+                {paywallCodeMsg && (
+                  <div style={{ fontSize: 12, color: paywallCodeMsg.ok ? '#085041' : '#c0392b', marginBottom: 8 }}>{paywallCodeMsg.text}</div>
+                )}
+                <button
+                  onClick={() => redeemPaywallCode.mutate()}
+                  disabled={!paywallCode.trim() || redeemPaywallCode.isPending}
+                  style={{ width: '100%', padding: '9px', borderRadius: 7, background: '#0C447C', color: 'white', fontSize: 13, fontWeight: 600, border: 'none', cursor: !paywallCode.trim() ? 'not-allowed' : 'pointer', opacity: !paywallCode.trim() ? 0.45 : 1, fontFamily: 'inherit' }}
+                >
+                  {redeemPaywallCode.isPending ? 'Checking...' : 'Apply'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

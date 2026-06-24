@@ -108,6 +108,7 @@ enum Cadence {
 enum BillingEventType {
   CARE_FEE       // $25/month/account (platform fee)
   PARTICIPANT_FEE // $25/unique participant/month across active grounds
+  SESSION_FEE    // $5 per additional session
 }
 
 enum EvidenceType {
@@ -147,6 +148,7 @@ model Organization {
   careFeeSubscriptionId  String?       @map("care_fee_subscription_id")
   defaultPaymentMethodId String?       @map("default_payment_method_id")
   gracePeriodUntil       DateTime?     @map("grace_period_until")
+  freeSessionsUsed  Int  @default(0) @map("free_sessions_used")
 
   companyStage CompanyStage? @map("company_stage")
 
@@ -157,6 +159,7 @@ model Organization {
   grounds          Ground[]
   billingEvents    BillingEvent[]
   orgIntelligence  OrgIntelligence[]
+  contributorCodes ContributorCode[]
 
   @@map("organizations")
 }
@@ -185,6 +188,7 @@ model User {
   participantLinks         GroundParticipant[]
   disclaimerAcknowledgements DisclaimerAcknowledgement[]
   adminProfile             AdminProfile?
+  contributorCodes         ContributorCode[]          @relation("ContributorCodes")
 
   @@index([organizationId])
   @@map("users")
@@ -249,6 +253,10 @@ model Ground {
   closedAt            DateTime? @map("closed_at")
   pausedAt            DateTime? @map("paused_at") // set when status transitions to PAUSED
 
+  sessionsBalance     Int     @default(1) @map("sessions_balance")
+  isFreeGround        Boolean @default(true) @map("is_free_ground")
+  freeParticipantCap  Int     @default(4) @map("free_participant_cap")
+
   promptVersionId     String? @map("prompt_version_id")
   stripeScenarioSubId String? @map("stripe_scenario_sub_id")
 
@@ -270,6 +278,7 @@ model Ground {
   disclaimerAcknowledgements DisclaimerAcknowledgement[]
   reportActivations          ReportActivation[]
   participantRequests        ParticipantRequest[]
+  contributorCodeRedemptions ContributorCodeRedemption[]
 
   @@index([organizationId])
   @@index([status])
@@ -604,6 +613,37 @@ model BillingEvent {
 
   @@index([organizationId])
   @@map("billing_events")
+}
+
+model ContributorCode {
+  id              String    @id @default(uuid())
+  organizationId  String    @map("organization_id")
+  code            String    @unique
+  sessionsGranted Int       @default(1) @map("sessions_granted")
+  sessionsUsed    Int       @default(0) @map("sessions_used")
+  createdByUserId String    @map("created_by_user_id")
+  note            String?   // optional label for the admin (e.g. "for the marketing team")
+  expiresAt       DateTime? @map("expires_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  organization Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy    User                      @relation("ContributorCodes", fields: [createdByUserId], references: [id])
+  redemptions  ContributorCodeRedemption[]
+
+  @@index([organizationId])
+  @@map("contributor_codes")
+}
+
+model ContributorCodeRedemption {
+  id         String   @id @default(uuid())
+  codeId     String   @map("code_id")
+  groundId   String   @map("ground_id")
+  redeemedAt DateTime @default(now()) @map("redeemed_at")
+
+  code   ContributorCode @relation(fields: [codeId], references: [id])
+  ground Ground          @relation(fields: [groundId], references: [id], onDelete: Cascade)
+
+  @@map("contributor_code_redemptions")
 }
 
 model GroundDocument {

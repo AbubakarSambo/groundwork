@@ -1,4 +1,4 @@
-import { Controller, Delete, Get, Post, Req, Headers, HttpCode, HttpStatus, Logger, Body } from '@nestjs/common';
+import { Controller, Delete, Get, Post, Req, Headers, HttpCode, HttpStatus, Logger, Body, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { BillingService } from './billing.service';
 import { StripeService } from './stripe.service';
@@ -48,9 +48,47 @@ export class BillingController {
   @Post('contributor-code')
   @ApiBearerAuth()
   @Roles(Role.ADMIN)
-  @ApiOperation({ summary: 'Apply a contributor code to activate billing without payment' })
+  @ApiOperation({ summary: 'Apply a contributor code to activate billing without payment (legacy)' })
   async applyContributorCode(@CurrentUser('organizationId') organizationId: string, @Body() body: { code: string }) {
     return this.billing.applyContributorCode(organizationId, body.code);
+  }
+
+  @Post('purchase-session')
+  @ApiBearerAuth()
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Create a Stripe Checkout session to purchase one check-in session for $5' })
+  async purchaseSession(
+    @CurrentUser('organizationId') organizationId: string,
+    @Body() body: { groundId: string },
+  ) {
+    return this.billing.purchaseSession(organizationId, body.groundId);
+  }
+
+  @Post('contributor-codes')
+  @ApiBearerAuth()
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Generate a contributor code that grants sessions to a ground' })
+  async generateContributorCode(
+    @CurrentUser('organizationId') organizationId: string,
+    @CurrentUser('id') userId: string,
+    @Body() body: { sessionsGranted: number; note?: string },
+  ) {
+    return this.billing.generateContributorCode(organizationId, userId, body.sessionsGranted, body.note);
+  }
+
+  @Post('contributor-codes/redeem')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Redeem a contributor code to add sessions to a ground' })
+  async redeemContributorCode(@Body() body: { code: string; groundId: string }) {
+    return this.billing.redeemContributorCode(body.code, body.groundId);
+  }
+
+  @Get('contributor-codes')
+  @ApiBearerAuth()
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'List all contributor codes for the requesting organization' })
+  async listContributorCodes(@CurrentUser('organizationId') organizationId: string) {
+    return this.billing.listContributorCodes(organizationId);
   }
 
   @Post('portal')
