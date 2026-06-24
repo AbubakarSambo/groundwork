@@ -1,109 +1,122 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import Anthropic from '@anthropic-ai/sdk';
+import { GoogleGenAI } from '@google/genai';
+import * as path from 'path';
 
 export interface ChatTurn {
   role: 'user' | 'assistant';
   content: string;
 }
 
-/**
- * Thin wrapper around the Anthropic SDK. The system prompt is large and static
- * across a session, so we mark it with cache_control to get prompt caching —
- * the single biggest cost/latency win for this product.
- */
 @Injectable()
 export class AnthropicService {
   private readonly logger = new Logger(AnthropicService.name);
-  private client: Anthropic;
+  private client: GoogleGenAI;
   private model: string;
   private maxTokens: number;
 
   constructor(private config: ConfigService) {
-    this.client = new Anthropic({ apiKey: this.config.get<string>('anthropic.apiKey') });
-    this.model = this.config.get<string>('anthropic.model') || 'claude-opus-4-8';
-    this.maxTokens = this.config.get<number>('anthropic.maxTokens') || 2048;
+    const keyPath = path.resolve(process.cwd(), 'credentials/service-account.json');
+    process.env.GOOGLE_APPLICATION_CREDENTIALS = keyPath;
+
+    this.client = new GoogleGenAI({
+      vertexai: true,
+      project: this.config.get<string>('gemini.projectId') || 'groundwork-500011',
+      location: this.config.get<string>('gemini.location') || 'us-central1',
+    });
+    this.model = this.config.get<string>('gemini.model') || 'gemini-2.5-pro';
+    this.maxTokens = this.config.get<number>('gemini.maxTokens') || 2048;
   }
 
-  /**
-   * Run one assistant turn given the (cached) system prompt and the transcript.
-   * Returns the assistant's text.
-   */
   async respond(systemPrompt: string, history: ChatTurn[]): Promise<string> {
-    let res: Awaited<ReturnType<typeof this.client.messages.create>>;
+    const contents = history.map((t) => ({
+      role: t.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: t.content }],
+    }));
+
+    let res: Awaited<ReturnType<typeof this.client.models.generateContent>>;
     try {
-      res = await this.client.messages.create({
+      res = await this.client.models.generateContent({
         model: this.model,
-        max_tokens: this.maxTokens,
-        system: [
-          {
-            type: 'text',
-            text: systemPrompt,
-            // Prompt caching — the system prompt rarely changes within a session.
-            cache_control: { type: 'ephemeral' },
-          } as any,
-        ],
-        messages: history.map((t) => ({ role: t.role, content: t.content })),
+        contents,
+        config: { systemInstruction: systemPrompt, maxOutputTokens: this.maxTokens },
       });
-    } catch (err) {
-      this.logger.error('respond(): Anthropic generateContent failed', err);
+    } catch (err: any) {
+      this.logger.error(`respond() Gemini call failed: ${err.message}`);
       throw err;
     }
 
-    // ISSUE 1: guard against safety blocks or empty responses
-    const textBlocks = res.content.filter((b): b is Anthropic.TextBlock => b.type === 'text');
-    if (res.content.length === 0 || textBlocks.length === 0) {
-      throw new Error('AI returned an empty response');
-    }
-
-    const text = textBlocks
-      .map((b) => b.text)
-      .join('\n')
-      .trim();
-
+    const text = res.candidates?.[0]?.content?.parts?.map((p: any) => p.text ?? '').join('').trim() ?? '';
     if (!text) {
       throw new Error('AI returned an empty response');
     }
-
     return text;
   }
 
-  /**
-   * Structured extraction. Forces a tool call so we get validated JSON back
-   * (used to extract record entries and pattern signals from a transcript).
-   */
   async extract<T = any>(systemPrompt: string, history: ChatTurn[], tool: { name: string; description: string; input_schema: any }): Promise<T | null> {
-    let res: Awaited<ReturnType<typeof this.client.messages.create>>;
+    const contents = history.map((t) => ({
+      role: t.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: t.content }],
+    }));
+
+    let res: Awaited<ReturnType<typeof this.client.models.generateContent>>;
     try {
-      res = await this.client.messages.create({
+      res = await this.client.models.generateContent({
         model: this.model,
-        max_tokens: this.maxTokens,
-        system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } } as any],
-        messages: history.map((t) => ({ role: t.role, content: t.content })),
-        tools: [tool as any],
-        tool_choice: { type: 'tool', name: tool.name } as any,
+        contents,
+        config: {
+          systemInstruction: systemPrompt,
+          maxOutputTokens: this.maxTokens,
+          tools: [{ functionDeclarations: [this.convertTool(tool)] }],
+          toolConfig: {
+            functionCallingConfig: {
+              mode: 'ANY' as any,
+              allowedFunctionNames: [tool.name],
+            },
+          },
+        },
       });
-    } catch (err) {
-      this.logger.error(`extract(): Anthropic generateContent failed for tool ${tool.name}`, err);
+    } catch (err: any) {
+      this.logger.error(`extract() Gemini call failed: ${err.message}`);
       throw err;
     }
 
-    const toolUse = res.content.find((b) => b.type === 'tool_use') as Anthropic.ToolUseBlock | undefined;
-    if (!toolUse) {
+    const fnCall = res.candidates?.[0]?.content?.parts?.find((p: any) => p.functionCall);
+    if (!fnCall?.functionCall) {
       this.logger.warn(`extract(): model did not call tool ${tool.name}`);
       return null;
     }
-
-    // ISSUE 4: guard against null/undefined args before casting
-    const args = toolUse.input;
+    // Enum values are passed through untouched — only schema.type is uppercased.
+    const args = fnCall.functionCall.args;
     if (args === null || args === undefined) {
       this.logger.warn(`extract(): tool ${tool.name} returned null/undefined args`);
       return null;
     }
-
-    // NOTE (ISSUE 3): enum values inside input_schema are passed through to the
-    // Anthropic API as-is and must NOT be uppercased. Only schema.type is uppercased
-    // by convertSchema() elsewhere; enum values are left untouched intentionally.
     return args as T;
+  }
+
+  private convertTool(tool: { name: string; description: string; input_schema: any }) {
+    return {
+      name: tool.name,
+      description: tool.description,
+      parameters: this.convertSchema(tool.input_schema),
+    };
+  }
+
+  private convertSchema(schema: any): any {
+    if (!schema || typeof schema !== 'object') return schema;
+    const out: any = {};
+    if (schema.type) out.type = schema.type.toUpperCase();
+    if (schema.description) out.description = schema.description;
+    if (schema.enum) out.enum = schema.enum;
+    if (schema.required) out.required = schema.required;
+    if (schema.properties) {
+      out.properties = {};
+      for (const [k, v] of Object.entries(schema.properties)) {
+        out.properties[k] = this.convertSchema(v);
+      }
+    }
+    if (schema.items) out.items = this.convertSchema(schema.items);
+    return out;
   }
 }
