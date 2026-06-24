@@ -14,12 +14,10 @@ const dayMs = 24 * 60 * 60 * 1000;
 
 /**
  * Billing model:
- *   - Care fee:        $25/mo per org. Recurring subscription.
- *   - Participant fee: $25/unique participant/month across all ACTIVE grounds.
- *                      Deduplicated by email — a person in N grounds pays once.
- *
- * Sessions 1–2 are free. Paywall fires after both parties complete session 2:
- * ground moves to REPORT_READY, admin is nudged, report held until payment.
+ *   Per-session billing. First session on each ground is free (sessionsBalance starts at 1).
+ *   Each additional session costs $5, purchased via Stripe one-time checkout.
+ *   Free tier capped at 3 free grounds per org (freeSessionsUsed counter).
+ *   Contributor codes allow admins to grant sessions to other grounds.
  */
 @Injectable()
 export class BillingService {
@@ -165,38 +163,6 @@ export class BillingService {
       select: { careFeeStatus: true, stripeCustomerId: true },
     });
     return !!org && org.careFeeStatus === CareFeeStatus.ACTIVE && !!org.stripeCustomerId;
-  }
-
-  /**
-   * Session-number-aware billing gate.
-   * Sessions 1–2 are always free. Session 3+ requires billing-ready status.
-   */
-  async checkSessionGate(orgId: string, sessionNumber: number): Promise<{ allowed: boolean; reason?: string }> {
-    if (sessionNumber <= 2) return { allowed: true };
-    const ready = await this.isBillingReady(orgId);
-    if (ready) return { allowed: true };
-    return {
-      allowed: false,
-      reason: 'Your workspace needs to be activated before session 3. Your admin will receive a prompt.',
-    };
-  }
-
-  /**
-   * Send a payment request email to the org admin after session 2 completes.
-   * Report is held in REPORT_READY state until payment is confirmed.
-   */
-  async requestPaymentAfterSession2(orgId: string, groundId: string): Promise<void> {
-    const org = await this.prisma.organization.findUnique({
-      where: { id: orgId },
-      select: { name: true, users: { where: { role: UserRole.ADMIN }, take: 1, select: { email: true } } },
-    });
-    if (!org) return;
-    const admin = org.users[0];
-    if (!admin) {
-      this.logger.warn(`requestPaymentForSession2: no ADMIN user found for org ${orgId}`);
-      return;
-    }
-    await this.email.sendPaymentRequestEmail(admin.email, org.name, groundId);
   }
 
   /**

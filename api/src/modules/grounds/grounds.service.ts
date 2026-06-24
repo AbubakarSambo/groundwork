@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException, HttpException, HttpStatus } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
@@ -373,38 +373,18 @@ export class GroundsService {
   }
 
   /**
-   * Admin activates the ground after the report is ready — billing starts here.
-   * Session 1 is free; the paywall sits between REPORT_READY and ACTIVE.
+   * Activate a ground. Moves status directly to ACTIVE with no payment gate.
+   * Reports are generated and released automatically after each session completes.
    */
   async activate(groundId: string, organizationId: string) {
     const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId }, include: { report: true } });
     if (!ground) throw new NotFoundException('Ground not found');
-    if (ground.status !== GroundStatus.REPORT_READY) {
-      throw new BadRequestException('Ground is not ready to activate (report not generated yet)');
-    }
-
-    // The paywall. The org must have an active care fee (card on file) before a
-    // ground can be activated. If not, return a Checkout URL with HTTP 402 so
-    // the client can redirect to set up billing, then retry activation.
-    if (!(await this.billing.isBillingReady(organizationId))) {
-      const { checkoutUrl } = await this.billing.createCareFeeCheckout(organizationId, groundId);
-      throw new HttpException(
-        { message: 'Billing setup required before activating this ground.', requiresBilling: true, checkoutUrl },
-        HttpStatus.PAYMENT_REQUIRED,
-      );
-    }
 
     const activated = await this.prisma.ground.update({
       where: { id: groundId },
       data: { status: GroundStatus.ACTIVE, billingActivatedAt: new Date() },
     });
 
-    // Billing has started — charge the first participant fee for this period.
-    await this.billing.chargeParticipantFeeOnActivation(organizationId).catch((err: any) =>
-      this.logger.error(`Participant fee on activation failed for ground ${groundId}: ${err.message}`),
-    );
-
-    // Release the report to both parties simultaneously.
     this.events.emit(GroundworkEvents.GROUND_ACTIVATED, { groundId } satisfies GroundActivatedEvent);
 
     return activated;
@@ -579,11 +559,6 @@ export class GroundsService {
   /** Backward-compat alias — checks session 1 readiness. */
   async isReportReady(groundId: string): Promise<boolean> {
     return this.isSessionReadyForReport(groundId, 1);
-  }
-
-  /** Passthrough so the reports listener can request payment without a direct billing import. */
-  async requestPaymentAfterSession2(orgId: string, groundId: string): Promise<void> {
-    return this.billing.requestPaymentAfterSession2(orgId, groundId);
   }
 
   /**

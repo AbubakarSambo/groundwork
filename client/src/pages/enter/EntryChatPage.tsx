@@ -796,7 +796,7 @@ export function EntryChatPage() {
       {showSessionsUpgrade && (
         <div style={{ background: 'var(--gw-blue-bg)', borderBottom: '1px solid var(--gw-blue-b)', padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
           <div style={{ flex: 1, fontSize: 13, color: 'var(--gw-navy)', lineHeight: 1.5 }}>
-            <strong>{sessions} sessions</strong> needs an account. ${25 + inviteAdded.length * 25}/month ($25 per organisation + $25 per contributor{inviteAdded.length > 0 ? `, ${inviteAdded.length} added so far` : ', add contributors below to see your total'}). Save your session below to get set up.
+            <strong>{sessions} sessions</strong> needs an account. First session is free. Additional sessions are $5 each. Save your session below to get set up.
           </div>
           <button onClick={() => { setShowSessionsUpgrade(false); setShowSave(true) }}
             style={{ flexShrink: 0, background: 'var(--gw-navy)', color: 'white', border: 'none', borderRadius: 7, padding: '7px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
