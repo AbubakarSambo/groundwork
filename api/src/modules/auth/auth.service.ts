@@ -280,14 +280,14 @@ export class AuthService {
         });
         const token = crypto.randomBytes(32).toString('hex');
         await tx.emailVerificationToken.create({
-          data: { userId: u.id, token, type: TokenType.EMAIL_VERIFICATION, expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) },
+          data: { userId: u.id, token, type: TokenType.PASSWORD_SETUP, expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) },
         });
         return { firstName, token };
       });
 
       await this.emailService.sendUserInvite(lower, result.firstName, result.token, inviterOrgName);
     } else {
-      // User exists — send them a sign-in link
+      // User exists — send them a magic sign-in link (EMAIL_VERIFICATION consumed by verifyEmail)
       await this.prisma.emailVerificationToken.updateMany({
         where: { userId: user.id, type: TokenType.EMAIL_VERIFICATION, usedAt: null },
         data: { usedAt: new Date() },

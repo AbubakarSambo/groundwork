@@ -71,7 +71,7 @@ export class ParticipantsService {
 
       await tx.groundParticipant.update({
         where: { id: participant.id },
-        data: { userId: user.id, inviteToken: null, inviteTokenExpiresAt: null },
+        data: { userId: user.id },
       });
 
       return user;
@@ -170,10 +170,11 @@ export class ParticipantsService {
   private async loadByToken(token: string) {
     const participant = await this.prisma.groundParticipant.findUnique({ where: { inviteToken: token } });
     if (!participant) {
-      // Already-accepted invites have their token cleared; surface a clear error.
       throw new NotFoundException('This invite link is invalid or has already been used');
     }
-    if (participant.inviteTokenExpiresAt && participant.inviteTokenExpiresAt < new Date()) {
+    // Skip expiry for participants who already accepted — they can always return via their link.
+    const alreadyAccepted = !!participant.userId;
+    if (!alreadyAccepted && participant.inviteTokenExpiresAt && participant.inviteTokenExpiresAt < new Date()) {
       throw new BadRequestException('This invite link has expired. Ask the person who added you to resend it.');
     }
     return participant;

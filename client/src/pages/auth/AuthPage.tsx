@@ -6,7 +6,7 @@ import { useAuthStore } from '@/stores/auth'
 
 const MARKETING_URL = import.meta.env.VITE_MARKETING_URL ?? 'https://myground.work'
 
-type View = 'password' | 'link'
+type View = 'password' | 'link' | 'forgot'
 
 export function AuthPage() {
   const navigate = useNavigate()
@@ -22,6 +22,7 @@ export function AuthPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [linkSent, setLinkSent] = useState(false)
+  const [resetSent, setResetSent] = useState(false)
 
   const signIn = useMutation({
     mutationFn: () => authApi.login(email.trim().toLowerCase(), password),
@@ -44,6 +45,12 @@ export function AuthPage() {
       // fall through to show a generic message
       setLinkSent(true)
     },
+  })
+
+  const sendReset = useMutation({
+    mutationFn: () => authApi.forgotPassword(email.trim().toLowerCase()),
+    onSuccess: () => setResetSent(true),
+    onError: () => setResetSent(true), // generic message regardless
   })
 
   function submitPassword(e: React.FormEvent) {
@@ -117,8 +124,14 @@ export function AuthPage() {
               {error && <div className="gw-er" style={{ marginTop: 8 }}>{error}</div>}
             </form>
 
-            <div style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 14, lineHeight: 1.6 }}>
-              Forgot your password?{' '}
+            <div style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 14, lineHeight: 1.8 }}>
+              <span
+                style={{ color: 'var(--gw-navy)', textDecoration: 'underline', cursor: 'pointer' }}
+                onClick={() => { setError(''); setView('forgot') }}
+              >
+                Forgot your password?
+              </span>
+              {' · '}
               <span
                 style={{ color: 'var(--gw-navy)', textDecoration: 'underline', cursor: 'pointer' }}
                 onClick={() => { setError(''); setView('link') }}
@@ -163,6 +176,60 @@ export function AuthPage() {
               </span>
             </div>
           </>
+        )}
+
+        {view === 'forgot' && !resetSent && (
+          <>
+            <div className="gw-sub-t" style={{ marginBottom: 20 }}>
+              Enter your email and we will send you a link to reset your password.
+            </div>
+
+            <form onSubmit={(e) => { e.preventDefault(); setError(''); const e2 = email.trim(); if (!e2 || !e2.includes('@')) { setError('Enter a valid email address.'); return } sendReset.mutate() }}>
+              <div className="gw-fld">
+                <label className="gw-label">Email</label>
+                <input
+                  className="gw-input"
+                  type="email"
+                  placeholder="you@company.com"
+                  value={email}
+                  onChange={e => { setEmail(e.target.value); setError('') }}
+                  autoFocus
+                />
+              </div>
+
+              <button className="gw-btn" type="submit" disabled={sendReset.isPending}>
+                {sendReset.isPending ? 'Sending…' : 'Send reset link'}
+              </button>
+              {error && <div className="gw-er" style={{ marginTop: 8 }}>{error}</div>}
+            </form>
+
+            <div style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 14 }}>
+              <span
+                style={{ color: 'var(--gw-navy)', textDecoration: 'underline', cursor: 'pointer' }}
+                onClick={() => { setError(''); setView('password') }}
+              >
+                Back to sign in
+              </span>
+            </div>
+          </>
+        )}
+
+        {view === 'forgot' && resetSent && (
+          <div style={{ textAlign: 'center', paddingTop: 12 }}>
+            <div style={{ fontSize: 22, marginBottom: 8 }}>✓</div>
+            <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 6 }}>Check your email</div>
+            <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+              If an account exists for <strong>{email}</strong>, a password reset link is on its way. It expires in 1 hour.
+            </div>
+            <div style={{ marginTop: 16 }}>
+              <span
+                style={{ fontSize: 13, color: 'var(--gw-navy)', textDecoration: 'underline', cursor: 'pointer' }}
+                onClick={() => { setResetSent(false); setView('password') }}
+              >
+                Back to sign in
+              </span>
+            </div>
+          </div>
         )}
 
         {view === 'link' && linkSent && (
