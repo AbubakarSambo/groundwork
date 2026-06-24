@@ -9,6 +9,11 @@ import { toast } from 'sonner'
 
 interface Msg { id: string; role: 'AI' | 'PERSON'; content: string }
 
+const QUICK_ACTIONS = [
+  { label: 'What am I missing?',        msg: 'What is missing from my record that would make it stronger?' },
+  { label: 'Is there a document?',      msg: 'Is there anything written down that we should look at for this?' },
+  { label: 'What do I carry forward?',  msg: 'What is the one thing I should carry into the next conversation?' },
+]
 
 export function ChatPage() {
   const { checkInId } = useParams<{ checkInId: string }>()
@@ -29,6 +34,8 @@ export function ChatPage() {
   const [opened, setOpened]           = useState(false)
   const [done, setDone]               = useState(false)
   const [completed, setCompleted]     = useState(false)
+  const [openFailed, setOpenFailed]   = useState(false)
+  const openedRef = useRef(false)
 
   // Doc context
   const [pendingDoc, setPendingDoc]   = useState<File | null>(null)
@@ -80,9 +87,11 @@ export function ChatPage() {
       setMsgs([{ id: 'ai-open', role: 'AI', content: res.reply }])
       if (res.groundId && !groundId) setGroundId(res.groundId)
       setOpened(true)
+      setOpenFailed(false)
     },
     onError: (err: any) => {
       toast.error(err?.response?.data?.message ?? 'Could not open session.')
+      setOpenFailed(true)
     },
   })
 
@@ -114,7 +123,10 @@ export function ChatPage() {
   })
 
   const uploadDoc = useMutation({
-    mutationFn: ({ file }: { file: File; ctx: string }) => documentsApi.upload(groundId!, file),
+    mutationFn: ({ file }: { file: File; ctx: string }) => {
+      if (!groundId) throw new Error('groundId missing')
+      return documentsApi.upload(groundId, file)
+    },
     onSuccess: (doc, { ctx }) => {
       const id = Date.now().toString()
       const contextLine = ctx.trim() ? `\n\nContext: ${ctx.trim()}` : ''
@@ -128,8 +140,11 @@ export function ChatPage() {
   })
 
   useEffect(() => {
-    if (checkInId && !opened) openSession.mutate()
-  }, [checkInId])
+    if (checkInId && !opened && !openedRef.current) {
+      openedRef.current = true
+      openSession.mutate()
+    }
+  }, [checkInId, opened])
 
   function send() {
     const content = input.trim()
@@ -137,6 +152,11 @@ export function ChatPage() {
     setInput('')
     if (taRef.current) { try { taRef.current.style.height = '38px' } catch { /* ref detached */ } }
     sendMsg.mutate(content)
+  }
+
+  function quickSend(msg: string) {
+    if (loading || done || !opened) return
+    sendMsg.mutate(msg)
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -160,6 +180,7 @@ export function ChatPage() {
 
   function submitDocWithContext() {
     if (!pendingDoc) return
+    if (!groundId) { toast.error('Ground context missing. Please open this session from your ground page.'); return }
     uploadDoc.mutate({ file: pendingDoc, ctx: docContext })
     setDocContextMode(false)
     setPendingDoc(null)
@@ -247,6 +268,32 @@ export function ChatPage() {
           )}
         </div>
 
+        {/* Quick action chips */}
+        <div style={{ padding: '8px 14px', background: 'white', borderTop: '1px solid var(--gw-border)', display: 'flex', gap: 7, flexWrap: 'wrap', flexShrink: 0 }}>
+          {QUICK_ACTIONS.map(a => (
+            <button key={a.label} onClick={() => quickSend(a.msg)} disabled={loading || done || !opened}
+              title={!opened ? 'Available once your session is open' : done ? 'Session is complete' : undefined}
+              style={{ padding: '5px 12px', borderRadius: 20, fontSize: 12, border: '1px solid var(--gw-border)', background: 'var(--gw-bg)', color: 'var(--gw-sub)', cursor: (!opened || done) ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: (!opened || done) ? 0.5 : 1 }}
+            >
+              {a.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Session open failure */}
+        {openFailed && (
+          <div style={{ padding: '10px 14px', background: '#FDF3E3', borderTop: '1px solid #E8A94A', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexShrink: 0 }}>
+            <span style={{ fontSize: 13, color: '#8A5C1A' }}>Could not open your session.</span>
+            <button
+              onClick={() => { setOpenFailed(false); openedRef.current = false; openSession.mutate() }}
+              disabled={openSession.isPending}
+              style={{ padding: '6px 14px', borderRadius: 6, background: '#8A5C1A', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0, opacity: openSession.isPending ? 0.6 : 1 }}
+            >
+              {openSession.isPending ? 'Opening…' : 'Try again'}
+            </button>
+          </div>
+        )}
+
         {/* Bottom bar */}
         <div style={{ borderTop: '1px solid var(--gw-border)', background: 'white', flexShrink: 0 }}>
           <div style={{ padding: '4px 14px', borderBottom: '0.5px solid var(--gw-border)', fontSize: 11, color: 'var(--gw-sub)', background: 'var(--gw-bg)', lineHeight: 1.4 }}>
@@ -301,7 +348,7 @@ export function ChatPage() {
               Paste an email, Slack thread, meeting notes, or any text that supports what you are describing. The tool will use it to ask sharper questions.
             </div>
             <input
-              placeholder="Label (optional, e.g. Q2 update email, project brief)"
+              placeholder="Label (optional) e.g. Q2 update email, project brief"
               value={pasteLabel}
               onChange={e => setPasteLabel(e.target.value)}
               style={{ width: '100%', padding: '8px 12px', fontSize: 13, border: '1px solid var(--gw-border)', borderRadius: 8, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 8 }}

@@ -1,10 +1,10 @@
-import { Controller, Get, Post, Param, Body, Res, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Param, Body, Res, HttpStatus, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { IsString, IsNotEmpty, MaxLength } from 'class-validator';
 import { Response } from 'express';
 import { ConversationService } from './conversation.service';
 import { RemindService } from './remind.service';
-import { CurrentUser } from '../../common';
+import { CurrentUser, JwtAuthGuard } from '../../common';
 
 class SendMessageDto {
   @IsString()
@@ -15,6 +15,9 @@ class SendMessageDto {
 
 @ApiTags('Conversation')
 @ApiBearerAuth()
+// JwtAuthGuard is also applied globally via APP_GUARD in app.module.ts.
+// The explicit decorator here makes the requirement visible at the controller level.
+@UseGuards(JwtAuthGuard)
 @Controller('check-ins')
 export class ConversationController {
   constructor(

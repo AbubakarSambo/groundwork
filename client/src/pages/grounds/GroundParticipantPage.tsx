@@ -112,7 +112,7 @@ export function GroundParticipantPage() {
   const checkoutMut = useMutation({
     mutationFn: () => billingApi.createCareFeeCheckout(id),
     onSuccess: (url) => { window.location.href = url },
-    onError: () => toast.error('Could not start checkout — please try again.'),
+    onError: () => toast.error('Could not start checkout. Please try again.'),
   })
 
   const activateMutation = useMutation({
@@ -122,7 +122,7 @@ export function GroundParticipantPage() {
       toast.success('Report revealed')
       setTab('report')
     },
-    onError: () => toast.error('Could not activate — try again'),
+    onError: () => toast.error('Could not activate. Try again.'),
   })
 
   const { data: docs = [] } = useQuery({
@@ -143,6 +143,22 @@ export function GroundParticipantPage() {
   const conf = ground.confidence ?? 1
   const bl = bandLabel(conf)
   const myParticipant = (ground.participants ?? []).find((p: any) => p.userId === user?.id)
+
+  if (!myParticipant) {
+    return (
+      <div style={{ minHeight: '100vh', background: '#F5F3EF', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <div style={{ maxWidth: 400, textAlign: 'center' }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: '#1A1916', marginBottom: 8 }}>Account not linked</div>
+          <div style={{ fontSize: 13, color: '#6B6560', lineHeight: 1.65, marginBottom: 20 }}>
+            Your account is not linked to this ground. Please contact the ground admin.
+          </div>
+          <button onClick={() => navigate('/grounds')} style={{ fontSize: 13, color: '#0C447C', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit' }}>
+            Back to grounds
+          </button>
+        </div>
+      </div>
+    )
+  }
   const isInitiator = myParticipant?.partyType === 'INITIATOR'
   const myCheckIns: any[] = (ground.checkIns ?? []).filter((ci: any) => ci.participantId === myParticipant?.id)
   const openCheckIn = myCheckIns.find((ci: any) => ci.status !== 'COMPLETED')
@@ -439,14 +455,14 @@ export function GroundParticipantPage() {
               <div style={{ background: '#0C447C', borderRadius: 10, padding: '18px 20px' }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: 'white', marginBottom: 6 }}>Unlock your full record</div>
                 <div style={{ fontSize: 12, color: 'rgba(255,255,255,.75)', lineHeight: 1.6, marginBottom: 14 }}>
-                  See how your record has built over time — specificity trend, confidence score, and observations from your account across sessions. Unlocks for your whole organisation.
+                  See how your record has built over time: specificity trend, confidence score, and observations from your account across sessions. Unlocks for your whole organisation.
                 </div>
                 <button
                   onClick={() => checkoutMut.mutate()}
                   disabled={checkoutMut.isPending}
                   style={{ padding: '9px 18px', borderRadius: 7, background: 'white', color: '#0C447C', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
                 >
-                  {checkoutMut.isPending ? 'Opening…' : 'Unlock insights'}
+                  {checkoutMut.isPending ? 'Opening…' : 'Unlock insights for $25/mo'}
                 </button>
               </div>
             )}
@@ -506,12 +522,12 @@ export function GroundParticipantPage() {
               <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '14px 16px' }}>
                 <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: '#9B9590', marginBottom: 4 }}>Observations from your record</div>
                 <div style={{ fontSize: 12, color: '#9B9590', marginBottom: 10, lineHeight: 1.5 }}>
-                  These are patterns Groundwork has noticed across your check-ins. They are observations, not verdicts — worth being aware of as your record builds.
+                  These are patterns Groundwork has noticed across your check-ins. They are observations, not verdicts. Worth being aware of as your record builds.
                 </div>
                 {myRecord.patterns.map((p, i) => (
                   <div key={i} style={{ padding: '10px 0', borderTop: i === 0 ? '1px solid #F0EEE9' : '1px solid #F0EEE9', fontSize: 13, color: '#3A3630', lineHeight: 1.6 }}>
                     {p.observation}
-                    {p.sessionNumber && <span style={{ display: 'block', fontSize: 11, color: '#9B9590', marginTop: 3 }}>First noticed — Session {p.sessionNumber}</span>}
+                    {p.sessionNumber && <span style={{ display: 'block', fontSize: 11, color: '#9B9590', marginTop: 3 }}>First noticed in Session {p.sessionNumber}</span>}
                   </div>
                 ))}
               </div>
@@ -519,7 +535,7 @@ export function GroundParticipantPage() {
 
             {myRecord && !myRecord.insightsLocked && (!myRecord.patterns || myRecord.patterns.length === 0) && (
               <div style={{ background: '#F5F3EF', border: '1px solid #E2E0DB', borderRadius: 10, padding: '14px 16px', fontSize: 12, color: '#9B9590', lineHeight: 1.6 }}>
-                No patterns have surfaced yet. Patterns appear after they have been observed across multiple sessions — this is intentional.
+                No patterns have surfaced yet. Patterns appear after they have been observed across multiple sessions. This is intentional.
               </div>
             )}
           </div>
@@ -600,7 +616,7 @@ export function GroundParticipantPage() {
                 {(report.areasRequiringAlignment ?? []).length > 0 && (
                   <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '13px 16px' }}>
                     <div style={{ fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', color: '#9B9590', fontWeight: 700, marginBottom: 10 }}>Shared picture: still to resolve</div>
-                    <div style={{ fontSize: 11, color: '#9B9590', marginBottom: 10, lineHeight: 1.5 }}>These gaps appear in the cross-reference — where your account and the other party's account differ. Neither side's raw words are shown here.</div>
+                    <div style={{ fontSize: 11, color: '#9B9590', marginBottom: 10, lineHeight: 1.5 }}>These gaps appear in the cross-reference. They show where your account and the other party's account differ. Neither side's raw words are shown here.</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                       {(report.areasRequiringAlignment ?? []).map((a: any, i: number) => (
                         <div key={i} style={{ borderLeft: '3px solid #E8A94A', paddingLeft: 10 }}>

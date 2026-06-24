@@ -1,19 +1,28 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { billingApi } from '@/api/billing'
 import { toast } from 'sonner'
 
 export function PaymentPage() {
   const navigate = useNavigate()
+  const [params] = useSearchParams()
   const qc = useQueryClient()
   const [code, setCode] = useState('')
   const [codeError, setCodeError] = useState('')
 
+  const groundId = params.get('groundId') ?? undefined
+
   const checkout = useMutation({
-    mutationFn: billingApi.createCareFeeCheckout,
-    onSuccess: r => { window.location.href = r },
-    onError: () => { toast.error('Could not start checkout.'); navigate('/billing') },
+    mutationFn: () => {
+      if (!groundId) {
+        toast.error('Ground not found. Please return to your ground and try again.')
+        return Promise.reject(new Error('groundId missing'))
+      }
+      return billingApi.createCareFeeCheckout(groundId)
+    },
+    onSuccess: r => { if (r) window.location.href = r },
+    onError: (err: any) => { if (err?.message !== 'groundId missing') { toast.error('Could not start checkout.'); navigate('/billing') } },
   })
 
   const applyCode = useMutation({
@@ -36,7 +45,7 @@ export function PaymentPage() {
         {/* Header */}
         <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 6 }}>Activate billing</div>
         <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 28 }}>
-          Your first two sessions are free. Each ground costs $80, covering up to 6 participants, 6 sessions, and 90 days. Additional participants are $10 each. You can activate billing now or use a contributor code if you have one.
+          Sessions 1 and 2 are free. From session 3, the platform costs $25/month plus $25/month per active participant. Participants in multiple Grounds are billed once. You can activate billing now or use a contributor code if you have one.
         </div>
 
         {/* Contributor code */}
@@ -66,10 +75,10 @@ export function PaymentPage() {
         <div style={{ background: 'white', border: '0.5px solid var(--gw-border)', borderRadius: 10, padding: 18, marginBottom: 16 }}>
           <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6, color: 'var(--gw-text)' }}>Activate with payment</div>
           <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5, marginBottom: 12 }}>
-            $80 per ground. Covers 6 participants, 6 sessions, 90 days. $10 per additional participant.
+            $25/month platform fee. $25/month per active participant from session 3.
           </div>
           <button
-            onClick={() => checkout.mutate(undefined)}
+            onClick={() => checkout.mutate()}
             disabled={checkout.isPending}
             style={{ width: '100%', padding: '9px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
           >
