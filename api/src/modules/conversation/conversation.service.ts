@@ -235,6 +235,13 @@ export class ConversationService {
       throw new BadRequestException('This check-in is already complete');
     }
 
+    const personTurnCount = await this.prisma.conversationTurn.count({
+      where: { checkInId: checkIn.id, role: TurnRole.PERSON },
+    });
+    if (personTurnCount >= 20) {
+      throw new BadRequestException('Session turn limit reached. Please complete your session.');
+    }
+
     const fullSystem = await this.composeSystemPrompt(checkIn, message);
 
     // Persist the person's turn.

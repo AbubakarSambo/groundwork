@@ -142,7 +142,9 @@ export function ChatPage() {
   useEffect(() => {
     if (checkInId && !opened && !openedRef.current) {
       openedRef.current = true
-      openSession.mutate()
+      const jitter = Math.random() * 2000
+      const t = setTimeout(() => openSession.mutate(), jitter)
+      return () => clearTimeout(t)
     }
   }, [checkInId, opened])
 
