@@ -117,7 +117,7 @@ export function CreateGroundPage() {
   const cadenceObj = CADENCES.find(c => c.cadence === cadence) ?? CADENCES[1]
   const sessionTotal = Math.floor(timelineDays / cadenceObj.days)
   const freeSessions = Math.min(2, sessionTotal)
-  const paidSessions = sessionTotal - freeSessions
+
 
   const briefWords = brief.trim() ? brief.trim().split(/\s+/).length : 0
   const briefShort = briefWords > 0 && briefWords < 20

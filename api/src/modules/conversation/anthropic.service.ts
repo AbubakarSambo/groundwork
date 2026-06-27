@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { GoogleGenAI } from '@google/genai';
+import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 
 export interface ChatTurn {
@@ -16,8 +18,14 @@ export class AnthropicService {
   private maxTokens: number;
 
   constructor(private config: ConfigService) {
-    const keyPath = path.resolve(process.cwd(), 'credentials/service-account.json');
-    process.env.GOOGLE_APPLICATION_CREDENTIALS = keyPath;
+    const inlineJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+    if (inlineJson) {
+      const keyPath = path.join(os.tmpdir(), 'gcp-service-account.json');
+      fs.writeFileSync(keyPath, inlineJson, { encoding: 'utf8' });
+      process.env.GOOGLE_APPLICATION_CREDENTIALS = keyPath;
+    } else {
+      process.env.GOOGLE_APPLICATION_CREDENTIALS = path.resolve(process.cwd(), 'credentials/service-account.json');
+    }
 
     this.client = new GoogleGenAI({
       vertexai: true,
