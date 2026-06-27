@@ -126,8 +126,8 @@ export class EmailService {
       html: this.layout(
         `<p>Hi,</p>
          <p><strong>${founderName}</strong> has invited you to share your account of <strong>${groundLabel}</strong> using Groundwork.</p>
-         <p>What this means: you will get a short, private check-in — about 10 minutes — where you give your own version of how things are going. Nobody sees what you write until everyone has checked in and the report is released to all parties at the same time.</p>
-         <p>You are not being asked to be fair or balanced. You are being asked to be honest about your own version. What you put on record belongs to you.</p>
+         <p>What this means: a short private check-in, about 10 minutes, where you give your own version of what is going on. Nobody reads what you write. The shared report shows where your account and theirs agree or differ. It does not quote you.</p>
+         <p>You are not being asked to be fair or balanced. You are being asked to be honest. What you put on record belongs to you.</p>
          ${noteHtml}
          <p><a href="${url}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Add my account →</a></p>
          <p style="font-size:12px;color:#9B9590;">You are never obligated to take part. If you would rather not, you can simply ignore this — declining is never shown as a negative.</p>`,
