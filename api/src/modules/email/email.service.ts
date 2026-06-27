@@ -24,13 +24,22 @@ export class EmailService {
     return `${this.frontendUrl}/invite?token=${inviteToken}`;
   }
 
-  private async sendEmail(options: { to: string; subject: string; html: string }): Promise<void> {
+  private isDev(): boolean {
+    const nodeEnv = process.env.NODE_ENV ?? 'development';
+    if (nodeEnv === 'production') return false;
+    // Secondary guard: also treat placeholder/test keys as dev mode.
     const apiKey = this.configService.get<string>('resend.apiKey') ?? '';
-    if (!apiKey || apiKey.startsWith('re_...') || apiKey === 're_test') {
+    return !apiKey || apiKey.startsWith('re_...') || apiKey === 're_test';
+  }
+
+  private async sendEmail(options: { to: string; subject: string; html: string }): Promise<string | undefined> {
+    if (this.isDev()) {
       this.logger.warn(`[DEV EMAIL] To: ${options.to} | Subject: ${options.subject}`);
       const text = options.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
       this.logger.warn(`[DEV EMAIL] Body: ${text}`);
-      return;
+      // Extract first href for easy local testing
+      const match = options.html.match(/href="([^"]+)"/);
+      return match?.[1];
     }
     const { data, error } = await this.resend.emails.send({ from: this.fromEmail, ...options });
     if (error) {
@@ -38,6 +47,7 @@ export class EmailService {
       throw new Error(`Failed to send email: ${error.message}`);
     }
     this.logger.log(`Email sent to ${options.to} (id: ${data?.id})`);
+    return undefined;
   }
 
   private layout(body: string): string {
@@ -60,8 +70,18 @@ export class EmailService {
     await this.sendEmail({
       to: email,
       subject: 'Activate your Groundwork account',
-      html: this.layout(`<p>Hi ${firstName},</p><p>Activate your account and set a password.</p><p><a href="${url}">Activate</a></p>`),
+      html: this.layout(`<p>Hi ${firstName},</p><p>Click the link below to activate your account. You will be able to set a password once you are in.</p><p><a href="${url}">Activate account</a></p><p>This link expires in 24 hours.</p>`),
     });
+  }
+
+  async sendSignInLinkEmail(email: string, firstName: string, token: string): Promise<{ devUrl?: string }> {
+    const url = `${this.frontendUrl}/verify-email?token=${token}`;
+    const devUrl = await this.sendEmail({
+      to: email,
+      subject: 'Your Groundwork sign-in link',
+      html: this.layout(`<p>Hi ${firstName},</p><p>Click the link below to sign in to Groundwork. No password needed.</p><p><a href="${url}">Sign in</a></p><p>This link expires in 24 hours and can only be used once.</p>`),
+    });
+    return { devUrl };
   }
 
   async sendAddPasswordEmail(email: string, firstName: string, token: string): Promise<void> {
@@ -73,13 +93,14 @@ export class EmailService {
     });
   }
 
-  async sendPasswordResetEmail(email: string, firstName: string, token: string): Promise<void> {
+  async sendPasswordResetEmail(email: string, firstName: string, token: string): Promise<{ devUrl?: string }> {
     const url = `${this.frontendUrl}/reset-password?token=${token}`;
-    await this.sendEmail({
+    const devUrl = await this.sendEmail({
       to: email,
       subject: 'Reset your Groundwork password',
       html: this.layout(`<p>Hi ${firstName},</p><p>Reset your password (link expires in 1 hour).</p><p><a href="${url}">Reset password</a></p>`),
     });
+    return { devUrl };
   }
 
   // --- Team invites ---
@@ -96,22 +117,23 @@ export class EmailService {
   // --- Ground / conversation lifecycle (see comms library, Part 3) ---
 
   /** Participant added to a ground. They are NEVER added silently. */
-  async sendParticipantInvite(email: string, founderName: string, groundLabel: string, token: string, note?: string): Promise<void> {
+  async sendParticipantInvite(email: string, founderName: string, groundLabel: string, token: string, note?: string): Promise<{ devUrl?: string }> {
     const url = `${this.frontendUrl}/invite?token=${token}`;
-    const noteHtml = note ? `<p style="border-left:3px solid #E2E0DB;padding:8px 14px;margin:20px 0;color:#4A4540;font-style:italic;">${note}</p>` : '';
-    await this.sendEmail({
+    const noteHtml = note ? `<p style="border-left:3px solid #5DCAA5;padding:8px 14px;margin:20px 0;color:#4A4540;font-style:italic;">${note}</p>` : '';
+    const devUrl = await this.sendEmail({
       to: email,
-      subject: `${founderName} invited you to add your update on ${groundLabel}`,
+      subject: `${founderName} invited you to check in on: ${groundLabel}`,
       html: this.layout(
         `<p>Hi,</p>
-         <p>${founderName} set up a Groundwork record, <strong>${groundLabel}</strong>, and would value your update. It is a short, independent check in where you give your own account of how things are going from where you sit, so everyone involved is working from the same picture.</p>
-         <p>You are one of the people closest to this, so your update is part of what makes the record complete and keeps everyone aligned. Nobody can speak for you here, and what you contribute becomes part of the record, cross referenced with other updates and documents as things move forward.</p>
-         <p>It takes about ten minutes, and your update goes straight into building that shared picture.</p>
+         <p><strong>${founderName}</strong> has invited you to share your account of <strong>${groundLabel}</strong> using Groundwork.</p>
+         <p>What this means: you will get a short, private check-in — about 10 minutes — where you give your own version of how things are going. Nobody sees what you write until everyone has checked in and the report is released to all parties at the same time.</p>
+         <p>You are not being asked to be fair or balanced. You are being asked to be honest about your own version. What you put on record belongs to you.</p>
          ${noteHtml}
-         <p>When you are ready: <a href="${url}">add your update</a></p>
-         <p>Thank you for contributing.</p>`,
+         <p><a href="${url}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Add my account →</a></p>
+         <p style="font-size:12px;color:#9B9590;">You are never obligated to take part. If you would rather not, you can simply ignore this — declining is never shown as a negative.</p>`,
       ),
     });
+    return { devUrl };
   }
 
   /** Report released. Sent to BOTH parties at the same time. */
@@ -146,6 +168,11 @@ export class EmailService {
       DRIFT: 'Your check-in is here when you are',
       CRISIS_ALIGNMENT: 'Your check-in is here when you are',
       CONTRACT_RENEWAL: 'Your renewal check-in is open',
+      OKR_ALIGNMENT: 'Your OKR alignment check-in is open',
+      WORKPLAN_BUDGET: 'Your workplan and budget check-in is waiting',
+      PULSE_CHECK: 'Your alignment pulse check is ready',
+      REALIGN_TEAM: 'Your team realignment check-in is open',
+      PIP: 'Your performance plan check-in is waiting',
     };
     const subject = (scenario && subjectMap[scenario]) || 'Your check-in is waiting';
     const otherPartyNote = otherPartyCompleted
@@ -200,15 +227,7 @@ export class EmailService {
 
   /** Someone proposed an end state and the recipient has not yet confirmed. (GW-22) */
   async sendResolutionProposal(email: string, proposerLabel: string, endState: string, groundUrl: string): Promise<void> {
-    const endStateLabels: Record<string, string> = {
-      KEEP: 'Keep the hire',
-      RESTRUCTURE: 'Restructure the role',
-      EXIT: 'Part ways',
-      NOT_YET: 'Not yet. Extend evaluation',
-      EXTEND: 'Extend evaluation period',
-      SEPARATE: 'Separate amicably',
-    };
-    const endStateLabel = endStateLabels[endState] ?? endState;
+    const endStateLabel = this.endStateLabel(endState);
     await this.sendEmail({
       to: email,
       subject: 'A resolution has been proposed. Your confirmation is needed',
@@ -222,11 +241,12 @@ export class EmailService {
 
   /** Ground closed. All parties confirmed the same end state. (GW-50) */
   async sendGroundClosed(email: string, groundLabel: string, endState: string, groundUrl: string): Promise<void> {
+    const endStateLabel = this.endStateLabel(endState);
     await this.sendEmail({
       to: email,
       subject: `"${groundLabel}" is now closed`,
       html: this.layout(
-        `<p>All parties have confirmed. <strong>${groundLabel}</strong> has been closed with the agreed outcome: <em>${endState}</em>.</p>
+        `<p>All parties have confirmed. <strong>${groundLabel}</strong> has been closed with the agreed outcome: <em>${endStateLabel}</em>.</p>
          <p>Your record is permanent and both parties retain access to everything that was on the ground.</p>
          <p><a href="${groundUrl}">View the ground</a></p>`,
       ),
@@ -249,17 +269,17 @@ export class EmailService {
   // --- Billing ---
 
   /**
-   * Payment request. Sent to the org admin when a participant completes
-   * session 2. Primes the admin to activate billing so session 3 is not blocked.
+   * Payment request. Sent to the org admin when a ground's first (free) session
+   * is complete and the next session requires payment.
    */
   async sendPaymentRequestEmail(adminEmail: string, orgName: string, groundId: string): Promise<void> {
     const billingUrl = `${this.frontendUrl}/billing?groundId=${groundId}`;
     await this.sendEmail({
       to: adminEmail,
-      subject: 'Add a card to unlock session 3 on Groundwork',
+      subject: 'Add a card to continue on Groundwork',
       html: this.layout(
-        `<p>A participant in your workspace (<strong>${orgName}</strong>) has completed their second Groundwork session.</p>
-         <p>Sessions 1 and 2 are free. Session 3 requires an active subscription. Add a card now to keep the process running. The record you have already built is safe and waiting.</p>
+        `<p>A ground in your workspace (<strong>${orgName}</strong>) has used its free session.</p>
+         <p>The first session on every ground is free. Each additional session is $5. Add a card now to keep the process running — the record you have already built is safe and waiting.</p>
          <p><a href="${billingUrl}">Add a card</a></p>`,
       ),
     });
@@ -322,6 +342,71 @@ export class EmailService {
     });
   }
 
+  private endStateLabel(value: string): string {
+    const labels: Record<string, string> = {
+      KEEP: 'Keep the hire',
+      EXTEND: 'Extend evaluation period',
+      RESTRUCTURE: 'Restructure',
+      EXIT: 'Part ways',
+      NOT_YET: 'Not yet — revisit with a named gap',
+      SEPARATE: 'Separate',
+      CONTINUE: 'Continue',
+      END: 'End the engagement',
+      RENEW: 'Renew',
+      RENEGOTIATE: 'Renew on revised terms',
+      COMPLETE: 'Mark complete',
+      DESCOPE: 'Descope',
+      STOP: 'Stop',
+      YES: 'Grant the ask',
+      NO: 'Decline',
+      ALIGNED: 'Shared picture established — aligned',
+      ESCALATE: 'Requires escalation or external decision',
+      GAPS_IDENTIFIED: 'Gaps identified — revision needed',
+      APPROVED: 'Workplan and budget approved',
+      REVISION_NEEDED: 'Revision needed before approval',
+      ON_TRACK: 'On track',
+      ATTENTION_NEEDED: 'Attention needed on named items',
+      REALIGNED: 'Team realigned on shared direction',
+      GAPS_REMAIN: 'Gaps remain — further conversation needed',
+      RESOLVED: 'Performance concern resolved',
+      EXTENDED: 'Plan extended with named conditions',
+      SEPARATED: 'Separation agreed',
+    };
+    return labels[value] ?? value;
+  }
+
+  async sendCodeExpiryReminder(
+    email: string,
+    firstName: string,
+    code: string,
+    daysRemaining: number,
+    groundsCreated: number,
+  ): Promise<void> {
+    const isCreateNudge = groundsCreated === 1 && daysRemaining === 14;
+    const subject = isCreateNudge
+      ? `Your contributor code expires in ${daysRemaining} days — create another ground`
+      : `Your contributor code expires in ${daysRemaining} day${daysRemaining !== 1 ? 's' : ''}`;
+
+    const urgencyNote =
+      daysRemaining <= 3
+        ? `<p style="color:#c0392b;font-weight:bold;">Your code expires in ${daysRemaining} day${daysRemaining !== 1 ? 's' : ''}. Act now to avoid losing access.</p>`
+        : `<p>Your code expires in <strong>${daysRemaining} day${daysRemaining !== 1 ? 's' : ''}</strong>.</p>`;
+
+    const bodyHtml = isCreateNudge
+      ? `<p>Hi ${firstName},</p>
+         ${urgencyNote}
+         <p>You have used your contributor code (<strong>${code}</strong>) to create one ground so far. You still have time to create another ground with it before it expires.</p>
+         <p>Every ground you create is a record that belongs to the people involved — start another before the code runs out.</p>
+         <p><a href="${this.frontendUrl}/grounds/new">Create another ground</a></p>`
+      : `<p>Hi ${firstName},</p>
+         ${urgencyNote}
+         <p>Your contributor code <strong>${code}</strong> has been used on ${groundsCreated} ground${groundsCreated !== 1 ? 's' : ''} so far.</p>
+         <p>Once it expires, the code can no longer be redeemed. Any grounds already created with it are unaffected — their records remain intact.</p>
+         <p><a href="${this.frontendUrl}/billing">View your codes</a></p>`;
+
+    await this.sendEmail({ to: email, subject, html: this.layout(bodyHtml) });
+  }
+
   /** Care fee confirmation. Sent when an org activates a Groundwork subscription. */
   async sendCareFeeConfirmation(to: string, name: string, orgName: string): Promise<void> {
     await this.sendEmail({
@@ -330,7 +415,7 @@ export class EmailService {
       html: this.layout(
         `<p>Hi ${name},</p>
          <p>Your Groundwork subscription for <strong>${orgName}</strong> is now active.</p>
-         <p>You pay $25/month for your account, plus $25/month per active participant (each person checking in on a live ground). Someone not in any active ground is not billed. The first two sessions per person are always free.</p>
+         <p>The first session on every ground is free. Each additional session is $5, charged per ground — not per participant. You are only billed when a ground moves past its first session.</p>
          <p>Your records are always yours, regardless of plan status.</p>`,
       ),
     });

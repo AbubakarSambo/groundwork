@@ -36,18 +36,23 @@ export const geminiConfig = registerAs("gemini", () => ({
   projectId: process.env.GEMINI_PROJECT_ID || "groundwork-500011",
   location: process.env.GEMINI_LOCATION || "us-central1",
   model: process.env.GEMINI_MODEL || "gemini-2.5-pro",
-  maxTokens: parseInt(process.env.GEMINI_MAX_TOKENS || "2048", 10),
+  maxTokens: parseInt(process.env.GEMINI_MAX_TOKENS || "8192", 10),
 }));
 
-// Stripe, USD. Care fee = $25/mo recurring platform fee per account.
-// Participant fee = $25/mo per unique active participant across all active grounds.
+// Stripe, USD. Per-session billing: first session per ground is free, each additional is $5.
 export const stripeConfig = registerAs("stripe", () => ({
   secretKey: process.env.STRIPE_SECRET_KEY,
   publishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
   webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
-  careFeePriceId: process.env.STRIPE_CARE_FEE_PRICE_ID, // $25/mo recurring
-  scenarioFeeCents: parseInt(process.env.STRIPE_SCENARIO_FEE_CENTS || "2500", 10), // $25/unique participant/mo
-  careFeeCents: parseInt(process.env.STRIPE_CARE_FEE_CENTS || "2500", 10), // $25/mo
   callbackUrl:
     process.env.STRIPE_CALLBACK_URL || "http://localhost:5173/billing/callback",
 }));
+
+// Fail fast in production if critical URL env vars are absent.
+if (process.env.NODE_ENV === "production") {
+  const required: string[] = ["FRONTEND_URL", "STRIPE_CALLBACK_URL"];
+  const missing = required.filter((k) => !process.env[k]);
+  if (missing.length) {
+    throw new Error(`Missing required env vars in production: ${missing.join(", ")}`);
+  }
+}

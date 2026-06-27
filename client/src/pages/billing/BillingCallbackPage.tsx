@@ -23,7 +23,7 @@ export function BillingCallbackPage() {
         <>
           <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--gw-green-bg)', border: '1.5px solid var(--gw-green-b)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>✓</div>
           <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--gw-navy)', letterSpacing: '-.01em' }}>Billing activated</div>
-          <div style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', maxWidth: 300, lineHeight: 1.6 }}>Session 5 and beyond are now unlocked. Redirecting you back…</div>
+          <div style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', maxWidth: 300, lineHeight: 1.6 }}>Session added to your ground. Redirecting you back…</div>
         </>
       ) : (
         <>

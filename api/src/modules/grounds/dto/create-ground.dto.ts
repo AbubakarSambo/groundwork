@@ -59,10 +59,23 @@ export class CreateGroundDto {
   @MaxLength(4000)
   brief?: string;
 
+  @ApiPropertyOptional({ example: 50, description: 'Max participants via join link. Defaults to 4 for invite-only grounds, 100 for broadcast grounds.' })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  freeParticipantCap?: number;
+
   /** GW-69: contraindication screening for DRIFT / RECOGNITION / CRISIS_ALIGNMENT. */
   @ApiPropertyOptional({ type: ContraindicationAnswersDto })
   @IsOptional()
   @ValidateNested()
   @Type(() => ContraindicationAnswersDto)
   contraindicationAnswers?: ContraindicationAnswersDto;
+
+  /** Optional contributor access code — grants a free ground when valid. */
+  @ApiPropertyOptional({ example: 'COAMANA-2026', description: 'Contributor access code granting a free ground creation' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  accessCode?: string;
 }

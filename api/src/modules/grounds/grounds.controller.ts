@@ -35,9 +35,9 @@ export class GroundsController {
   constructor(private readonly grounds: GroundsService) {}
 
   @Get()
-  @ApiOperation({ summary: 'List grounds in the organization' })
-  async list(@CurrentUser('organizationId') organizationId: string) {
-    return this.grounds.list(organizationId);
+  @ApiOperation({ summary: 'List grounds in the organization, including grounds as a participant' })
+  async list(@CurrentUser() user: CurrentUserData) {
+    return this.grounds.list(user.organizationId, user.id);
   }
 
   @Get(':id')
@@ -101,6 +101,18 @@ export class GroundsController {
   @ApiOperation({ summary: "Return the requesting contributor's full private longitudinal record (specificity, confidence, patterns — gated by billing)" })
   async myRecord(@Param('id') id: string, @CurrentUser('id') userId: string) {
     return this.grounds.getMyRecord(id, userId);
+  }
+
+  @Get(':id/my-checkin-status')
+  @ApiOperation({ summary: 'Return the requesting user\'s own check-in status for this ground' })
+  async myCheckinStatus(@Param('id') id: string, @CurrentUser('id') userId: string) {
+    return this.grounds.getMyCheckinStatus(id, userId);
+  }
+
+  @Get(':id/conversation')
+  @ApiOperation({ summary: 'Get participant conversation transcripts grouped by party (initiator only)' })
+  async getConversation(@Param('id') id: string, @CurrentUser('id') userId: string) {
+    return this.grounds.getConversation(id, userId);
   }
 
   @Patch(':id')

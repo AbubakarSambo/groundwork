@@ -45,6 +45,11 @@ enum GroundScenario {
   RECOGNITION
   DRIFT
   CRISIS_ALIGNMENT
+  OKR_ALIGNMENT
+  WORKPLAN_BUDGET
+  PULSE_CHECK
+  REALIGN_TEAM
+  PIP
 }
 
 // Three moments from the conversation design.
@@ -149,6 +154,8 @@ model Organization {
   defaultPaymentMethodId String?       @map("default_payment_method_id")
   gracePeriodUntil       DateTime?     @map("grace_period_until")
   freeSessionsUsed  Int  @default(0) @map("free_sessions_used")
+  firstGroundUsed   Boolean @default(false) @map("first_ground_used")
+  allowCodeCreation Boolean @default(false) @map("allow_code_creation")
 
   companyStage CompanyStage? @map("company_stage")
 
@@ -189,6 +196,8 @@ model User {
   disclaimerAcknowledgements DisclaimerAcknowledgement[]
   adminProfile             AdminProfile?
   contributorCodes         ContributorCode[]          @relation("ContributorCodes")
+  redeemedCodes            ContributorCode[]          @relation("RedeemedCodes")
+  codeRedemptions          ContributorCodeRedemption[] @relation("CodeRedemptions")
 
   @@index([organizationId])
   @@map("users")
@@ -255,7 +264,10 @@ model Ground {
 
   sessionsBalance     Int     @default(1) @map("sessions_balance")
   isFreeGround        Boolean @default(true) @map("is_free_ground")
+  accessCodeId        String? @map("access_code_id")
+  freeReason          String? @map("free_reason")  // "FIRST_GROUND" | "ACCESS_CODE"
   freeParticipantCap  Int     @default(4) @map("free_participant_cap")
+  joinToken           String? @unique @map("join_token")
 
   promptVersionId     String? @map("prompt_version_id")
   stripeScenarioSubId String? @map("stripe_scenario_sub_id")
@@ -266,6 +278,7 @@ model Ground {
   organization             Organization               @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   initiator                User                       @relation("GroundInitiator", fields: [initiatorId], references: [id])
   promptVersion            PromptVersion?             @relation(fields: [promptVersionId], references: [id])
+  accessCode               ContributorCode?           @relation("GroundAccessCode", fields: [accessCodeId], references: [id])
   participants             GroundParticipant[]
   checkIns                 CheckIn[]
   report                   Report?
@@ -621,27 +634,38 @@ model ContributorCode {
   code            String    @unique
   sessionsGranted Int       @default(1) @map("sessions_granted")
   sessionsUsed    Int       @default(0) @map("sessions_used")
-  createdByUserId String    @map("created_by_user_id")
-  note            String?   // optional label for the admin (e.g. "for the marketing team")
-  expiresAt       DateTime? @map("expires_at")
-  createdAt       DateTime  @default(now()) @map("created_at")
+  createdByUserId  String    @map("created_by_user_id")
+  note             String?   // optional label for the admin (e.g. "for the marketing team")
+  allowCodeCreation Boolean  @default(false) @map("allow_code_creation")
+  isActive          Boolean  @default(true)  @map("is_active")
+  parentCodeId      String?  @map("parent_code_id")
+  redeemedByUserId  String?  @map("redeemed_by_user_id")
+  expiresAt         DateTime @default(dbgenerated("NOW() + INTERVAL '90 days'")) @map("expires_at")
+  createdAt         DateTime @default(now()) @map("created_at")
 
-  organization Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  createdBy    User                      @relation("ContributorCodes", fields: [createdByUserId], references: [id])
-  redemptions  ContributorCodeRedemption[]
+  organization   Organization               @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy      User                       @relation("ContributorCodes", fields: [createdByUserId], references: [id])
+  redemptions    ContributorCodeRedemption[]
+  parentCode     ContributorCode?           @relation("CodeHierarchy", fields: [parentCodeId], references: [id])
+  childCodes     ContributorCode[]          @relation("CodeHierarchy")
+  redeemedBy     User?                      @relation("RedeemedCodes", fields: [redeemedByUserId], references: [id])
+  groundsCreated Ground[]                   @relation("GroundAccessCode")
 
   @@index([organizationId])
   @@map("contributor_codes")
 }
 
 model ContributorCodeRedemption {
-  id         String   @id @default(uuid())
-  codeId     String   @map("code_id")
-  groundId   String   @map("ground_id")
-  redeemedAt DateTime @default(now()) @map("redeemed_at")
+  id               String   @id @default(uuid())
+  codeId           String   @map("code_id")
+  groundId         String   @map("ground_id")
+  redeemedAt       DateTime @default(now()) @map("redeemed_at")
+  redeemedByUserId String?  @map("redeemed_by_user_id")
+  freeReason       String?  @map("free_reason")
 
-  code   ContributorCode @relation(fields: [codeId], references: [id])
-  ground Ground          @relation(fields: [groundId], references: [id], onDelete: Cascade)
+  code       ContributorCode @relation(fields: [codeId], references: [id])
+  ground     Ground          @relation(fields: [groundId], references: [id], onDelete: Cascade)
+  redeemedBy User?           @relation("CodeRedemptions", fields: [redeemedByUserId], references: [id])
 
   @@map("contributor_code_redemptions")
 }

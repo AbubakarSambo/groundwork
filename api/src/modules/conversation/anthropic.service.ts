@@ -74,7 +74,7 @@ export class AnthropicService {
         contents,
         config: {
           systemInstruction: systemPrompt,
-          maxOutputTokens: this.maxTokens,
+          maxOutputTokens: 8192,
           tools: [{ functionDeclarations: [this.convertTool(tool)] }],
           toolConfig: {
             functionCallingConfig: {

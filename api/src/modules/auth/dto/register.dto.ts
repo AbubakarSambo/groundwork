@@ -10,11 +10,11 @@ import {
 } from 'class-validator';
 
 export class RegisterDto {
-  @ApiProperty({ example: 'CleanTex' })
-  @IsNotEmpty()
+  @ApiPropertyOptional({ example: 'CleanTex' })
+  @IsOptional()
   @IsString()
   @MaxLength(255)
-  organizationName: string;
+  organizationName?: string;
 
   @ApiProperty({ example: 'amina@cleantex.com' })
   @IsNotEmpty()

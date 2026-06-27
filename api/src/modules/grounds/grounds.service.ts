@@ -21,14 +21,17 @@ const DEFAULT_TIMELINE_DAYS: Record<GroundScenario, number> = {
   RECOGNITION: 30,
   DRIFT: 90,
   CRISIS_ALIGNMENT: 60,
+  OKR_ALIGNMENT: 90,
+  WORKPLAN_BUDGET: 90,
+  PULSE_CHECK: 30,
+  REALIGN_TEAM: 60,
+  PIP: 90,
 };
 
-// Multi-party scenarios can hold more than two parties (project & team grounds).
-// Every other scenario is strictly two-party — the gap between two independent
-// accounts is the mechanism, and the report/resolution are two-party there.
-const MULTI_PARTY_SCENARIOS: GroundScenario[] = [GroundScenario.NEW_PROJECT, GroundScenario.CRISIS_ALIGNMENT];
-export function isMultiPartyScenario(scenario: GroundScenario): boolean {
-  return MULTI_PARTY_SCENARIOS.includes(scenario);
+// All scenarios support any number of participants — the initiator decides who
+// needs to be in the ground. No hard-coded per-scenario cap.
+export function isMultiPartyScenario(_scenario: GroundScenario): boolean {
+  return true;
 }
 
 // Fields safe to expose on a participant to anyone who can view the ground.
@@ -62,24 +65,67 @@ export class GroundsService {
   ) {}
 
   async create(organizationId: string, initiatorId: string, dto: CreateGroundDto) {
+    // --- Billing gate ---
+    // Resolve whether this org may create a ground right now, and how.
+    const canCreate = await this.billing.canCreateGround(organizationId, dto.accessCode);
+    if (!canCreate.allowed) {
+      throw new BadRequestException(canCreate.reason ?? 'Ground creation not allowed');
+    }
+
     const ground = await this.prisma.$transaction(async (tx) => {
       const initiator = await tx.user.findUnique({ where: { id: initiatorId } });
       if (!initiator) throw new NotFoundException('Initiator not found');
 
-      const ground = await tx.ground.create({
-        data: {
-          organizationId,
-          initiatorId,
-          label: dto.label,
-          scenario: dto.scenario,
-          moment: dto.moment,
-          timelineDays: dto.timelineDays ?? DEFAULT_TIMELINE_DAYS[dto.scenario],
-          cadence: dto.cadence ?? Cadence.FORTNIGHTLY,
-          status: GroundStatus.OPEN,
-          resolutionState: dto.resolutionState ?? null,
-          brief: dto.brief ?? null,
-        },
-      });
+      // Determine free-ground fields from the billing gate result.
+      const isFreeGround = canCreate.freeReason !== undefined;
+      const groundData: Record<string, unknown> = {
+        organizationId,
+        initiatorId,
+        label: dto.label,
+        scenario: dto.scenario,
+        moment: dto.moment,
+        timelineDays: dto.timelineDays ?? DEFAULT_TIMELINE_DAYS[dto.scenario],
+        cadence: dto.cadence ?? Cadence.FORTNIGHTLY,
+        status: GroundStatus.OPEN,
+        resolutionState: dto.resolutionState ?? null,
+        brief: dto.brief ?? null,
+        joinToken: crypto.randomBytes(24).toString('hex'),
+        freeParticipantCap: dto.freeParticipantCap ?? 4,
+        isFreeGround,
+        sessionsBalance: 1,
+        ...(canCreate.freeReason === 'ACCESS_CODE' && canCreate.codeId
+          ? { accessCodeId: canCreate.codeId, freeReason: 'ACCESS_CODE' }
+          : canCreate.freeReason === 'FIRST_GROUND'
+            ? { freeReason: 'FIRST_GROUND' }
+            : {}),
+      };
+
+      const ground = await tx.ground.create({ data: groundData as any });
+
+      // Mark org.firstGroundUsed atomically when this is the first free ground.
+      if (canCreate.freeReason === 'FIRST_GROUND') {
+        await tx.organization.update({
+          where: { id: organizationId },
+          data: { firstGroundUsed: true },
+        });
+      }
+
+      // Record access-code redemption atomically.
+      if (canCreate.freeReason === 'ACCESS_CODE' && canCreate.codeId) {
+        await tx.contributorCodeRedemption.create({
+          data: {
+            codeId: canCreate.codeId,
+            groundId: ground.id,
+            redeemedByUserId: initiatorId,
+            freeReason: 'ACCESS_CODE',
+          },
+        });
+        // Increment sessionsUsed on the code.
+        await tx.contributorCode.update({
+          where: { id: canCreate.codeId },
+          data: { sessionsUsed: { increment: 1 } },
+        });
+      }
 
       // The initiator is the first party.
       const participant = await tx.groundParticipant.create({
@@ -130,12 +176,27 @@ export class GroundsService {
     return { ...ground, contract, ...(contraindicationWarning ? { contraindicationWarning } : {}) };
   }
 
-  async list(organizationId: string) {
+  /** Public: resolve a ground-level join token → name + scenario for the join page. */
+  async getJoinPreview(joinToken: string) {
+    const ground = await this.prisma.ground.findUnique({
+      where: { joinToken },
+      include: { initiator: { select: { firstName: true } } },
+    });
+    if (!ground) throw new NotFoundException('Join link not found or has expired');
+    return {
+      groundId: ground.id,
+      groundLabel: ground.label,
+      scenario: ground.scenario,
+      initiatorName: ground.initiator.firstName,
+    };
+  }
+
+  async list(organizationId: string, userId?: string) {
     const now = new Date();
     const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-    const grounds = await this.prisma.ground.findMany({
+    const orgGrounds = await this.prisma.ground.findMany({
       where: { organizationId },
       include: {
         participants: { select: { id: true, email: true, partyType: true, userId: true } },
@@ -145,7 +206,27 @@ export class GroundsService {
       },
     });
 
-    return grounds
+    // Also include grounds from other orgs where this user is a participant.
+    let participantGrounds: typeof orgGrounds = [];
+    if (userId) {
+      const links = await this.prisma.groundParticipant.findMany({
+        where: { userId, ground: { organizationId: { not: organizationId } } },
+        select: { groundId: true },
+      });
+      if (links.length) {
+        participantGrounds = await this.prisma.ground.findMany({
+          where: { id: { in: links.map(l => l.groundId) } },
+          include: {
+            participants: { select: { id: true, email: true, partyType: true, userId: true } },
+            checkIns: {
+              select: { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, createdAt: true },
+            },
+          },
+        });
+      }
+    }
+
+    return [...orgGrounds, ...participantGrounds]
       .map(g => {
         const checkIns = g.checkIns;
         const completedCount = checkIns.filter(ci => ci.status === CheckInStatus.COMPLETED).length;
@@ -233,8 +314,20 @@ export class GroundsService {
     const contextNotes: string[] =
       rawLog && !Array.isArray(rawLog) && typeof rawLog === 'object' ? (rawLog as any).contextNotes ?? [] : [];
 
+    // Nest checkIns under each participant so the client can show per-party status.
+    const checkInsByParticipant = new Map<string, typeof ground.checkIns>();
+    for (const ci of ground.checkIns ?? []) {
+      const list = checkInsByParticipant.get(ci.participantId) ?? [];
+      list.push(ci);
+      checkInsByParticipant.set(ci.participantId, list);
+    }
+    const participantsWithCheckIns = (ground.participants ?? []).map((p) => ({
+      ...p,
+      checkIns: checkInsByParticipant.get(p.id) ?? [],
+    }));
+
     const { patternDetections: _pd, ...rest } = ground as any;
-    return { ...rest, confidence, daysLeft, brief, signals, contextNotes };
+    return { ...rest, participants: participantsWithCheckIns, confidence, daysLeft, brief, signals, contextNotes };
   }
 
   /**
@@ -246,19 +339,6 @@ export class GroundsService {
     if (!ground) throw new NotFoundException('Ground not found');
     if (ground.initiatorId !== initiatorId) throw new ForbiddenException('Only the initiator can add a participant');
 
-    // Two-party scenarios may hold exactly one participant. Only project / team
-    // grounds may hold more than two parties.
-    if (!isMultiPartyScenario(ground.scenario)) {
-      const participantCount = await this.prisma.groundParticipant.count({
-        where: { groundId, partyType: PartyType.PARTICIPANT },
-      });
-      if (participantCount >= 1) {
-        throw new BadRequestException(
-          'This scenario is two-party — it already has a participant. Use a project or team-alignment ground for more than two parties.',
-        );
-      }
-    }
-
     const initiator = await this.prisma.user.findUnique({ where: { id: initiatorId } });
 
     // Magic-link invite token, persisted on the participant. They accept it to
@@ -267,6 +347,32 @@ export class GroundsService {
     // immediately before auth), honour it here — no separate lookup needed.
     const token = dto.inviteToken ?? crypto.randomBytes(32).toString('hex');
     const inviteTokenExpiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000); // 14 days
+
+    // Prevent duplicate participant — surface a clean 400 instead of a Prisma constraint error.
+    // Exception: if the existing record was never accepted (userId=null), refresh the token and
+    // re-send the invite rather than permanently blocking the address.
+    const existing = await this.prisma.groundParticipant.findFirst({
+      where: { groundId, email: dto.email.toLowerCase() },
+    });
+    if (existing) {
+      if (existing.userId !== null) throw new BadRequestException('This email is already a participant on this ground');
+      // Unaccepted invite — refresh token and re-send.
+      const freshToken = crypto.randomBytes(32).toString('hex');
+      const freshExpiry = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+      await this.prisma.groundParticipant.update({
+        where: { id: existing.id },
+        data: { inviteToken: freshToken, inviteTokenExpiresAt: freshExpiry, notifiedAt: null },
+      });
+      const emailResult = await this.email.sendParticipantInvite(
+        dto.email.toLowerCase(),
+        `${initiator?.firstName ?? 'A founder'}`,
+        ground.label,
+        freshToken,
+        dto.note,
+      );
+      await this.prisma.groundParticipant.update({ where: { id: existing.id }, data: { notifiedAt: new Date() } });
+      return { ...existing, inviteToken: undefined, devUrl: emailResult?.devUrl };
+    }
 
     const participant = await this.prisma.$transaction(async (tx) => {
       const participant = await tx.groundParticipant.create({
@@ -290,13 +396,20 @@ export class GroundsService {
       return participant;
     });
 
-    await this.email.sendParticipantInvite(
-      dto.email.toLowerCase(),
-      `${initiator?.firstName ?? 'A founder'}`,
-      ground.label,
-      token,
-      dto.note,
-    );
+    let emailResult: { devUrl?: string } | undefined;
+    try {
+      emailResult = await this.email.sendParticipantInvite(
+        dto.email.toLowerCase(),
+        `${initiator?.firstName ?? 'A founder'}`,
+        ground.label,
+        token,
+        dto.note,
+      );
+    } catch (err: any) {
+      // Roll back the participant row so the caller can retry cleanly.
+      await this.prisma.groundParticipant.delete({ where: { id: participant.id } }).catch(() => undefined);
+      throw err;
+    }
 
     // Stamp notifiedAt only after the email succeeds (Rule 3 — nobody added silently).
     await this.prisma.groundParticipant.update({
@@ -310,7 +423,7 @@ export class GroundsService {
     // specificityHistory, willingnessAnswers, willingnessGateAnswers) before
     // returning to the caller. Only fields in SAFE_PARTICIPANT_SELECT are exposed.
     const { id, email, partyType, userId, roleAsDescribed, invitedAt, notifiedAt, soloArtifactAt, createdAt } = participant;
-    return { id, email, partyType, userId, roleAsDescribed, invitedAt, notifiedAt, soloArtifactAt, createdAt };
+    return { id, email, partyType, userId, roleAsDescribed, invitedAt, notifiedAt, soloArtifactAt, createdAt, devUrl: emailResult?.devUrl };
   }
 
   /**
@@ -325,6 +438,12 @@ export class GroundsService {
     const participant = await this.prisma.groundParticipant.findFirst({ where: { id: participantId, groundId } });
     if (!participant) throw new NotFoundException('Participant not found');
     if (participant.userId) throw new BadRequestException('This participant has already accepted their invite');
+
+    // Block resend if the participant has already completed a check-in via the invite flow.
+    const completedCheckIn = await this.prisma.checkIn.findFirst({
+      where: { participantId, status: CheckInStatus.COMPLETED },
+    });
+    if (completedCheckIn) throw new BadRequestException('This participant has already completed their check-in');
 
     const token = crypto.randomBytes(32).toString('hex');
     const inviteTokenExpiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
@@ -446,9 +565,12 @@ export class GroundsService {
     });
     if (!link && ground.initiatorId !== requestingUserId) throw new ForbiddenException('You are not a party to this ground');
 
-    // Validate cadence if provided.
-    if (dto.cadence && !Object.values(Cadence).includes(dto.cadence as Cadence)) {
-      throw new BadRequestException(`Invalid cadence. Must be one of: ${Object.values(Cadence).join(', ')}`);
+    // Normalize and validate cadence if provided.
+    if (dto.cadence) {
+      (dto as any).cadence = (dto.cadence as string).toUpperCase();
+      if (!Object.values(Cadence).includes(dto.cadence as Cadence)) {
+        throw new BadRequestException(`Invalid cadence. Must be one of: ${Object.values(Cadence).join(', ')}`);
+      }
     }
 
     // Parse existing audit log — migrate legacy array format to structured object.
@@ -506,6 +628,66 @@ export class GroundsService {
    * Only OPEN, AWAITING_PARTIES, ACTIVE, or REPORT_READY grounds can be paused;
    * terminal grounds (RESOLVED, STALLED, CLOSED) are immutable.
    */
+  async getMyCheckinStatus(groundId: string, userId: string) {
+    const participant = await this.prisma.groundParticipant.findFirst({ where: { groundId, userId } });
+    if (!participant) throw new ForbiddenException('You are not a party to this ground');
+
+    const checkIns = await this.prisma.checkIn.findMany({
+      where: { participantId: participant.id },
+      orderBy: { sessionNumber: 'asc' },
+      select: { id: true, sessionNumber: true, status: true, completedAt: true },
+    });
+
+    const latest = checkIns[checkIns.length - 1];
+    return {
+      participantId: participant.id,
+      partyType: participant.partyType,
+      checkIns,
+      latestStatus: latest?.status ?? null,
+      latestSessionNumber: latest?.sessionNumber ?? null,
+    };
+  }
+
+  /**
+   * GET /grounds/:id/conversation — returns all participant conversation transcripts
+   * grouped by participant. Accessible to the ground initiator only.
+   */
+  async getConversation(groundId: string, requestingUserId: string) {
+    const ground = await this.prisma.ground.findFirst({
+      where: { id: groundId, initiatorId: requestingUserId },
+      select: { id: true, label: true },
+    });
+    if (!ground) throw new ForbiddenException('Only the initiator can view conversation transcripts');
+
+    const participants = await this.prisma.groundParticipant.findMany({
+      where: { groundId },
+      select: { id: true, email: true, partyType: true },
+    });
+
+    const results = await Promise.all(
+      participants.map(async (p) => {
+        const checkIns = await this.prisma.checkIn.findMany({
+          where: { participantId: p.id },
+          orderBy: { sessionNumber: 'asc' },
+          select: { id: true, sessionNumber: true, status: true, completedAt: true },
+        });
+        const sessions = await Promise.all(
+          checkIns.map(async (ci) => {
+            const turns = await this.prisma.conversationTurn.findMany({
+              where: { checkInId: ci.id },
+              orderBy: { createdAt: 'asc' },
+              select: { id: true, role: true, content: true, createdAt: true },
+            });
+            return { ...ci, turns };
+          }),
+        );
+        return { participantId: p.id, email: p.email, partyType: p.partyType, sessions };
+      }),
+    );
+
+    return { groundId, groundLabel: ground.label, participants: results };
+  }
+
   async pauseGround(groundId: string, adminUserId: string, reason: string): Promise<void> {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId } });
     if (!ground) throw new NotFoundException('Ground not found');
@@ -541,8 +723,17 @@ export class GroundsService {
    * Works for two-party and multi-party grounds.
    */
   async isSessionReadyForReport(groundId: string, sessionNumber: number): Promise<boolean> {
+    // A participant is "active" if they accepted the invite (userId set) OR if
+    // they already completed a check-in for this session (participant-chat flow
+    // can complete a session before the user registers a full account).
     const active = await this.prisma.groundParticipant.findMany({
-      where: { groundId, userId: { not: null } },
+      where: {
+        groundId,
+        OR: [
+          { userId: { not: null } },
+          { checkIns: { some: { sessionNumber, status: CheckInStatus.COMPLETED } } },
+        ],
+      },
       select: { id: true },
     });
     if (active.length < 2) return false;
@@ -591,19 +782,16 @@ export class GroundsService {
     });
     if (!participant) throw new ForbiddenException('You are not a party to this ground');
 
-    const org = await this.prisma.ground.findUnique({
-      where: { id: groundId },
-      select: { organization: { select: { careFeeStatus: true } } },
-    });
-    const billingActive = org?.organization?.careFeeStatus === 'ACTIVE';
-
     const sessions = (participant.checkIns ?? []).map(ci => ({
       sessionNumber: ci.sessionNumber,
       completedAt: ci.completedAt,
       status: ci.status,
     }));
 
-    if (!billingActive) {
+    // Insights unlock once the participant has at least one completed session.
+    // First session per ground is always free, so no separate billing gate needed.
+    const hasCompleted = sessions.some(s => s.status === 'COMPLETED');
+    if (!hasCompleted) {
       return { sessions, specificity: null, confidence: null, patterns: null, insightsLocked: true };
     }
 

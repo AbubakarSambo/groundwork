@@ -25,7 +25,6 @@ export const useAuthStore = create<AuthState>()(
       setHasHydrated: (hydrated) => set({ _hasHydrated: hydrated }),
 
       setAuth: (user, token) => {
-        localStorage.setItem('token', token)
         posthog.identify(user.id, {
           email: user.email,
           firstName: user.firstName,

@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
 import { groundsApi, type GroundScenario, type GroundMoment, type GroundCadence } from '@/api/grounds'
+import { billingApi } from '@/api/billing'
 import { toast } from 'sonner'
 
 interface ScenarioCard {
@@ -27,8 +28,13 @@ const SCENARIOS: ScenarioCard[] = [
   { scenario: 'CONTRACT_RENEWAL', label: 'Contract or agreement',      desc: 'Terms being negotiated or renegotiated. All versions of what was agreed, on record.',             tag: 'Contract',     tagBg: '#F0EAF8', tagColor: '#5B2EA6' },
   { scenario: 'RECOGNITION',      label: 'Recognition or contribution', desc: 'Contribution that has not been acknowledged. Independent accounts from all parties before the talk.', tag: 'Recognition', tagBg: '#FDF3E3', tagColor: '#8A5C1A' },
   { scenario: 'DRIFT',            label: 'Something not working',      desc: 'A conversation that keeps being avoided. Independent accounts from everyone before it happens.',   tag: 'Resolution',   tagBg: '#FCEBEB', tagColor: '#791F1F' },
-  { scenario: 'CRISIS_ALIGNMENT', label: 'Crisis alignment',           desc: 'Urgent. Everyone involved needs to be heard quickly and clearly.',                                tag: 'Urgent',       tagBg: '#FCEBEB', tagColor: '#791F1F' },
-  { scenario: 'NEW_PROJECT',      label: 'Personal or family',         desc: 'A handover, agreement, or shared plan outside of work. Put everyone\'s understanding on record.',  tag: 'Personal',    tagBg: '#FDF3E3', tagColor: '#8A5C1A' },
+  { scenario: 'CRISIS_ALIGNMENT', label: 'Crisis alignment',              desc: 'Urgent. Everyone involved needs to be heard quickly and clearly.',                                  tag: 'Urgent',      tagBg: '#FCEBEB', tagColor: '#791F1F' },
+  { scenario: 'NEW_PROJECT',      label: 'Personal or family',            desc: 'A handover, agreement, or shared plan outside of work. Put everyone\'s understanding on record.',    tag: 'Personal',    tagBg: '#FDF3E3', tagColor: '#8A5C1A' },
+  { scenario: 'OKR_ALIGNMENT',    label: 'Align OKRs across teams',       desc: 'Each person submits their OKRs independently. The ground shows where they connect to company direction and where they do not.', tag: 'Planning', tagBg: '#EEF4FB', tagColor: '#0C447C' },
+  { scenario: 'WORKPLAN_BUDGET',  label: 'Build aligned workplan & budgets', desc: 'Each person builds their own workplan and budget. The session checks whether the plan is real and coherent with the org direction.', tag: 'Planning', tagBg: '#EEF4FB', tagColor: '#0C447C' },
+  { scenario: 'PULSE_CHECK',      label: 'Alignment pulse check',         desc: 'A quick independent read from each person. What is moving, what is stuck, what has changed. No meeting required.', tag: 'Recurring', tagBg: '#E8F8F5', tagColor: '#085041' },
+  { scenario: 'REALIGN_TEAM',     label: 'Realign team',                  desc: 'Something has shifted. Each person gives their own account of where things stand before the group discusses it.', tag: 'Resolution', tagBg: '#FCEBEB', tagColor: '#791F1F' },
+  { scenario: 'PIP',              label: 'PIP',                           desc: 'A performance improvement plan with both accounts on record. The concern, the support available, and what success looks like.', tag: 'Accountability', tagBg: '#EEF4FB', tagColor: '#0C447C' },
 ]
 
 interface MomentOption { moment: GroundMoment; label: string; sub: string }
@@ -93,6 +99,10 @@ function scenarioFromParam(param: string | null): GroundScenario | null {
   return SCENARIO_FROM_LABEL[param.toLowerCase().replace(/\+/g, ' ')] ?? null
 }
 
+// Step numbering: 1=scenario, 1.5=billing (stored as step=2 internally), 2=timeframe (step=3), 3=participants (step=4), 4=resolution (step=5), 5=brief (step=6)
+// We use integer steps internally: 1,2,3,4,5,6
+const TOTAL_STEPS = 6
+
 export function CreateGroundPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -114,13 +124,76 @@ export function CreateGroundPage() {
   const [brief, setBrief] = useState('')
   const [groundName, setGroundName] = useState('')
 
+  // Billing step state
+  const [billingChecked, setBillingChecked] = useState(false)
+  const [billingFree, setBillingFree] = useState(false)
+  const [billingFreeReason, setBillingFreeReason] = useState<string | null>(null)
+  const [showCodeInput, setShowCodeInput] = useState(false)
+  const [codeInput, setCodeInput] = useState('')
+  const [codeApplied, setCodeApplied] = useState(false)
+  const [codeError, setCodeError] = useState<string | null>(null)
+  const [codeChecking, setCodeChecking] = useState(false)
+  const [appliedAccessCode, setAppliedAccessCode] = useState<string | null>(null)
+  const [billingLoading, setBillingLoading] = useState(false)
+
   const cadenceObj = CADENCES.find(c => c.cadence === cadence) ?? CADENCES[1]
   const sessionTotal = Math.floor(timelineDays / cadenceObj.days)
 
-
-
   const briefWords = brief.trim() ? brief.trim().split(/\s+/).length : 0
   const briefShort = briefWords > 0 && briefWords < 20
+
+  // When entering step 2 (billing), auto-check
+  useEffect(() => {
+    if (step === 2 && !billingChecked) {
+      setBillingLoading(true)
+      billingApi.checkCanCreateGround().then(res => {
+        setBillingChecked(true)
+        setBillingLoading(false)
+        if (res.freeReason === 'FIRST_GROUND') {
+          setBillingFree(true)
+          setBillingFreeReason('FIRST_GROUND')
+          // Auto-advance after brief pause
+          setTimeout(() => setStep(3), 1800)
+        } else {
+          setBillingFree(false)
+        }
+      }).catch(() => {
+        setBillingChecked(true)
+        setBillingLoading(false)
+        setBillingFree(false)
+      })
+    }
+  }, [step, billingChecked])
+
+  async function applyCode() {
+    if (!codeInput.trim()) return
+    setCodeChecking(true)
+    setCodeError(null)
+    try {
+      const res = await billingApi.checkCanCreateGround(codeInput.trim())
+      if (res.allowed && res.freeReason) {
+        setCodeApplied(true)
+        setAppliedAccessCode(codeInput.trim())
+        setCodeError(null)
+      } else {
+        setCodeError('This code is not valid or has already been used.')
+      }
+    } catch {
+      setCodeError('Could not validate the code. Try again.')
+    } finally {
+      setCodeChecking(false)
+    }
+  }
+
+  async function startStripeCheckout() {
+    try {
+      // We use a placeholder groundId sentinel — the backend will create a pending checkout
+      const res = await billingApi.purchaseSession('__new__')
+      if (res.checkoutUrl) window.location.href = res.checkoutUrl
+    } catch {
+      toast.error('Could not start checkout. Try again.')
+    }
+  }
 
   const create = useMutation({
     mutationFn: async () => {
@@ -132,7 +205,8 @@ export function CreateGroundPage() {
         cadence,
         resolutionState: resolutionState ?? undefined,
         brief: brief.trim() || undefined,
-      })
+        ...(appliedAccessCode ? { accessCode: appliedAccessCode } : {}),
+      } as Parameters<typeof groundsApi.create>[0] & { accessCode?: string })
       await Promise.all(participants.map(p =>
         groundsApi.addParticipant(ground.id, { email: p.email, roleAsDescribed: p.role || undefined, note: p.note || undefined })
       ))
@@ -163,7 +237,9 @@ export function CreateGroundPage() {
     else navigate('/grounds')
   }
 
-  const TOTAL_STEPS = 5
+  // Display dot index: step 1 → dot 1, step 2 (billing) → dot 2, steps 3-6 → dots 3-6
+  // We show TOTAL_STEPS dots (6), mapping internal step directly
+  const displayStep = step
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
@@ -176,7 +252,7 @@ export function CreateGroundPage() {
         {/* Step dots */}
         <div style={{ display: 'flex', gap: 6, marginBottom: 24 }}>
           {Array.from({ length: TOTAL_STEPS }, (_, i) => i + 1).map(n => (
-            <div key={n} className={`cg-step-dot${step === n ? ' active' : step > n ? ' done' : ''}`} />
+            <div key={n} className={`cg-step-dot${displayStep === n ? ' active' : displayStep > n ? ' done' : ''}`} />
           ))}
         </div>
 
@@ -220,8 +296,103 @@ export function CreateGroundPage() {
           </div>
         )}
 
-        {/* Step 2: Timeframe + cadence */}
+        {/* Step 2 (1.5): Billing check */}
         {step === 2 && (
+          <div>
+            <div className="gw-ttl">Before you continue</div>
+
+            {billingLoading && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '32px 0', color: 'var(--gw-sub)', fontSize: 14 }}>
+                <div style={{ width: 18, height: 18, border: '2px solid var(--gw-border)', borderTopColor: 'var(--gw-navy)', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+                Checking your account…
+              </div>
+            )}
+
+            {!billingLoading && billingChecked && billingFreeReason === 'FIRST_GROUND' && (
+              <div>
+                <div style={{ background: 'var(--gw-green-bg, #E8F8F5)', border: '1px solid var(--gw-green-b, #A7D9CC)', borderRadius: 10, padding: '20px 18px', marginBottom: 20 }}>
+                  <div style={{ fontSize: 22, marginBottom: 8 }}>🎉</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: '#085041', marginBottom: 6 }}>Your first Ground is free — no payment needed</div>
+                  <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+                    No card required. Open your first ground and see how it works.
+                  </div>
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center' }}>Taking you to the next step…</div>
+              </div>
+            )}
+
+            {!billingLoading && billingChecked && !billingFree && billingFreeReason !== 'FIRST_GROUND' && (
+              <div>
+                <div className="gw-sub-t" style={{ marginBottom: 20 }}>
+                  Each Ground costs $5 to open. You can apply an access code if you have one.
+                </div>
+
+                {codeApplied ? (
+                  <div style={{ background: 'var(--gw-green-bg, #E8F8F5)', border: '1px solid var(--gw-green-b, #A7D9CC)', borderRadius: 10, padding: '16px 18px', marginBottom: 20 }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: '#085041', marginBottom: 4 }}>Code applied — this Ground is free</div>
+                    <div style={{ fontSize: 12, color: 'var(--gw-sub)' }}>Your access code has been validated and will be used when the Ground is created.</div>
+                  </div>
+                ) : (
+                  <>
+                    <button
+                      className="gw-btn"
+                      onClick={startStripeCheckout}
+                      style={{ margin: '0 0 12px', background: 'var(--gw-navy)', color: 'white' }}
+                    >
+                      Pay $5 to create this Ground
+                    </button>
+
+                    {!showCodeInput && (
+                      <div style={{ textAlign: 'center' }}>
+                        <button
+                          onClick={() => setShowCodeInput(true)}
+                          style={{ fontSize: 12, color: 'var(--gw-sub)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit' }}
+                        >
+                          I have an access code
+                        </button>
+                      </div>
+                    )}
+
+                    {showCodeInput && (
+                      <div style={{ background: 'var(--gw-bg)', border: '0.5px solid var(--gw-border)', borderRadius: 8, padding: 14, marginTop: 8 }}>
+                        <label className="gw-label">Access code (optional)</label>
+                        <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                          <input
+                            className="gw-input"
+                            value={codeInput}
+                            onChange={e => { setCodeInput(e.target.value); setCodeError(null) }}
+                            placeholder="Enter your code"
+                            style={{ flex: 1 }}
+                            onKeyDown={e => e.key === 'Enter' && applyCode()}
+                          />
+                          <button
+                            onClick={applyCode}
+                            disabled={codeChecking || !codeInput.trim()}
+                            style={{ padding: '0 16px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: codeChecking || !codeInput.trim() ? 0.6 : 1 }}
+                          >
+                            {codeChecking ? 'Checking…' : 'Apply code'}
+                          </button>
+                        </div>
+                        {codeError && (
+                          <div style={{ fontSize: 12, color: '#791F1F', marginTop: 8 }}>{codeError}</div>
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {codeApplied && (
+                  <button className="gw-btn" onClick={() => setStep(3)} style={{ margin: '16px 0 0' }}>
+                    Continue
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Step 3 (was 2): Timeframe + cadence */}
+        {step === 3 && (
           <div>
             <div className="gw-ttl">How long will this ground run?</div>
             <div className="gw-sub-t">Set the timeframe and how often each party checks in.</div>
@@ -252,12 +423,12 @@ export function CreateGroundPage() {
                 <span style={{ fontSize: 11, fontWeight: 600, background: 'var(--gw-green-bg)', color: 'var(--gw-green-t)', borderRadius: 20, padding: '2px 8px' }}>First session free</span>
               </div>
             </div>
-            <button className="gw-btn" onClick={() => setStep(3)} style={{ margin: 0 }}>Continue</button>
+            <button className="gw-btn" onClick={() => setStep(4)} style={{ margin: 0 }}>Continue</button>
           </div>
         )}
 
-        {/* Step 3: Participants */}
-        {step === 3 && (
+        {/* Step 4 (was 3): Participants */}
+        {step === 4 && (
           <div>
             <div className="gw-ttl">Who is in this ground?</div>
             <div className="gw-sub-t">Add everyone who will check in. Contributors can be from different organisations. You can add more at any time.</div>
@@ -335,15 +506,15 @@ export function CreateGroundPage() {
               </div>
             )}
 
-            <button className="gw-btn" disabled={participants.length === 0} onClick={() => setStep(4)} style={{ margin: 0 }}>Continue</button>
-            <div style={{ fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 10, cursor: 'pointer' }} onClick={() => setStep(4)}>
+            <button className="gw-btn" disabled={participants.length === 0} onClick={() => setStep(5)} style={{ margin: 0 }}>Continue</button>
+            <div style={{ fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 10, cursor: 'pointer' }} onClick={() => setStep(5)}>
               Skip — add participants after
             </div>
           </div>
         )}
 
-        {/* Step 4: Resolution state */}
-        {step === 4 && (
+        {/* Step 5 (was 4): Resolution state */}
+        {step === 5 && (
           <div>
             <div className="gw-ttl">What does a successful outcome look like?</div>
             <div className="gw-sub-t">Everyone involved sees this before the first session. You are not locked in — the state can be updated if the ground reveals something different.</div>
@@ -369,12 +540,12 @@ export function CreateGroundPage() {
               ))}
             </div>
 
-            <button className="gw-btn" disabled={!resolutionState} onClick={() => setStep(5)} style={{ margin: 0 }}>Continue</button>
+            <button className="gw-btn" disabled={!resolutionState} onClick={() => setStep(6)} style={{ margin: 0 }}>Continue</button>
           </div>
         )}
 
-        {/* Step 5: Opening brief + ground name */}
-        {step === 5 && (
+        {/* Step 6 (was 5): Opening brief + ground name */}
+        {step === 6 && (
           <div>
             <div className="gw-ttl">What is this ground about?</div>
             <div className="gw-sub-t">Your version of the brief. Each contributor writes their own in their first session. The report shows where accounts agree and where they differ.</div>
@@ -413,6 +584,7 @@ export function CreateGroundPage() {
                 <div>{sessionTotal} sessions · {cadence.toLowerCase()}</div>
                 {resolutionState && <div>Resolution: {resolutionState}</div>}
                 {participants.length > 0 && <div>{participants.length} participant{participants.length !== 1 ? 's' : ''} invited</div>}
+                {appliedAccessCode && <div style={{ color: '#085041', fontWeight: 600 }}>Access code applied</div>}
               </div>
             </div>
 

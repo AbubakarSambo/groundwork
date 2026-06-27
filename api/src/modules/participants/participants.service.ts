@@ -51,6 +51,7 @@ export class ParticipantsService {
     const email = participant.email.toLowerCase();
     const [firstName, lastName] = this.resolveName(email, names);
 
+    let existingAccount = false;
     const user = await this.prisma.$transaction(async (tx) => {
       // Reuse an existing account for this email, else create one in the
       // ground's organization. Email is globally unique.
@@ -67,7 +68,13 @@ export class ParticipantsService {
             passwordHash: null,
           },
         });
+      } else {
+        // Pre-existing account — let the client know so it can surface a message.
+        existingAccount = true;
       }
+      // Cross-org participation: user keeps their home org. The JWT carries their
+      // real orgId so their own grounds remain accessible. Only the participant
+      // record is linked here.
 
       await tx.groundParticipant.update({
         where: { id: participant.id },
@@ -113,6 +120,7 @@ export class ParticipantsService {
       },
       groundId: ground.id,
       checkInId: checkIn?.id ?? null,
+      existingAccount,
     };
   }
 

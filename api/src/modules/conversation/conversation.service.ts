@@ -198,13 +198,24 @@ export class ConversationService {
       if (!gate.allowed) {
         throw new ForbiddenException(gate.reason);
       }
-      // Decrement balance atomically before calling the AI so a failure after
-      // this point does not leave the session unconsumed on a retry (the retry
-      // hits the existingAiTurn guard instead).
-      await this.prisma.ground.update({
-        where: { id: checkIn.groundId },
+      // Atomic check-and-decrement: only succeeds when balance is still > 0,
+      // preventing two concurrent requests from both passing canStartSession and
+      // both decrementing into negative territory.
+      const decremented = await this.prisma.ground.updateMany({
+        where: { id: checkIn.groundId, sessionsBalance: { gt: 0 } },
         data: { sessionsBalance: { decrement: 1 } },
       });
+      if (decremented.count === 0) {
+        throw new ForbiddenException('No sessions remaining. Add a session for $5 to continue.');
+      }
+      // Increment the free-sessions counter so the per-org cap is enforced.
+      const ground = await this.prisma.ground.findUnique({ where: { id: checkIn.groundId }, select: { isFreeGround: true, organizationId: true } });
+      if (ground?.isFreeGround) {
+        await this.prisma.organization.update({
+          where: { id: ground.organizationId },
+          data: { freeSessionsUsed: { increment: 1 } },
+        });
+      }
     }
 
     // GW-41: stamp the engine_rules prompt version on the ground at first check-in
@@ -641,7 +652,7 @@ export class ConversationService {
    * verifiability rating (HIGH/MEDIUM/LOW) for each entry so the synthesis can
    * weight evidence-backed claims appropriately.
    */
-  private async extractRecordEntries(checkInId: string, participantId: string) {
+  async extractRecordEntries(checkInId: string, participantId: string) {
     const turns = await this.prisma.conversationTurn.findMany({ where: { checkInId }, orderBy: { createdAt: 'asc' } });
     if (turns.length === 0) return;
 
@@ -680,7 +691,7 @@ export class ConversationService {
    * party. Stored on the participant; superseded by the full report once both
    * parties finish. Owner-scoped — reads only this party's own entries.
    */
-  private async buildSoloArtifact(participantId: string, groundId: string) {
+  async buildSoloArtifact(participantId: string, groundId: string) {
     const entries = await this.prisma.recordEntry.findMany({
       where: { participantId, participant: { groundId } },
       orderBy: { createdAt: 'asc' },
