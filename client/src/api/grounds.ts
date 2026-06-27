@@ -63,4 +63,10 @@ export const groundsApi = {
       patterns: { observation: string; sessionNumber: number | null }[] | null
       insightsLocked: boolean
     }>(`/grounds/${groundId}/my-record`).then(r => r.data),
+
+  getMySoloReport: (groundId: string) =>
+    apiClient.get<{ report: Record<string, unknown> | null; shared: boolean }>(`/grounds/${groundId}/my-solo-report`).then(r => r.data),
+
+  setMySoloReportShared: (groundId: string, shared: boolean) =>
+    apiClient.patch<{ shared: boolean }>(`/grounds/${groundId}/my-solo-report/share`, { shared }).then(r => r.data),
 }

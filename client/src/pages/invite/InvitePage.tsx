@@ -89,7 +89,7 @@ export function InvitePage() {
 
   function buildParticipantOnboardingMessages(initiatorName: string, groundLabel: string): string[] {
     return [
-      `Welcome. ${initiatorName} has invited you to add your account of: ${groundLabel}.\n\nThis is your private space. ${initiatorName} never sees what you write. Once everyone has checked in, you both see the shared picture at the same time — no one shapes the other's story.\n\nType anything to continue.`,
+      `Welcome. ${initiatorName} has invited you to add your account of: ${groundLabel}.\n\nThis is your private space. Nobody reads what you write. The shared report will show where your account and theirs agree or differ. It will not quote you.\n\nType anything to continue.`,
       `Your session takes about 10 minutes. There are no right answers.\n\nBe as specific as you can — names, dates, what you saw or experienced. Specifics are what make a record strong. You can be direct.\n\nType anything to continue.`,
       `Ready? Your first question is coming now.`,
     ]
@@ -241,9 +241,9 @@ export function InvitePage() {
           )}
 
           <div className="gw-box gw-box-blue" style={{ marginBottom: 16 }}>
-            Both sides check in separately and privately. Your version is yours —{' '}
-            <strong>{preview.initiatorName} never sees what you write.</strong>{' '}
-            A shared picture releases only after both of you complete two sessions.
+            Nobody ever reads what you write — not {preview.initiatorName}, not anyone.{' '}
+            The shared report shows <strong>where your account and theirs agree or differ</strong>. It does not quote you.
+            Your account stays private. Always.
           </div>
 
           <form onSubmit={(e) => {
@@ -426,8 +426,8 @@ export function InvitePage() {
         {/* Cross-reference notice */}
         <div style={{ background: '#E0F5EF', border: '1px solid #5DCAA5', borderRadius: 10, padding: '12px 14px', marginBottom: 20, fontSize: 13, color: '#085041', lineHeight: 1.6 }}>
           {(preview as InvitePreviewWithGround).initiatorCheckedIn
-            ? `${preview.initiatorName} has already checked in. Your accounts have been cross-referenced — you will both see the shared picture now.`
-            : `Your full account stays private from ${preview.initiatorName}. Once everyone has checked in, their accounts are cross-referenced and you all see the shared picture together.`}
+            ? `${preview.initiatorName} has already checked in. The shared report is ready — it shows where your accounts agree or differ. It does not quote anyone.`
+            : `Your account stays private. Nobody reads what you wrote — not ${preview.initiatorName}, not anyone. The shared report shows where your accounts agree or differ. It does not quote you.`}
         </div>
 
         {generatingReport && !sessionReport && (
@@ -522,7 +522,7 @@ export function InvitePage() {
           <div style={{ background: '#F0F7FF', border: '1px solid #C7DEFF', borderRadius: 10, padding: '14px 16px', marginBottom: 20 }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: '#0C447C', marginBottom: 4 }}>Your session is saved.</div>
             <div style={{ fontSize: 13, color: '#4A5568', lineHeight: 1.6, marginBottom: 12 }}>
-              You will receive an email when the report is ready — once all parties have checked in, you both see the shared picture at the same time.
+              You will get an email when the report is ready. It shows where your accounts agree or differ. It does not quote anyone. Your account stays private.
             </div>
             <button onClick={handleSave} style={{ padding: '9px 16px', borderRadius: 8, background: '#0C447C', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
               Got it →

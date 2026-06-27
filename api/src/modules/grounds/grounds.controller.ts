@@ -1,4 +1,5 @@
 import { Controller, Get, Post, Patch, Body, Param } from '@nestjs/common';
+import { IsBoolean } from 'class-validator';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { IsOptional, IsInt, Min, IsEnum } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
@@ -113,6 +114,18 @@ export class GroundsController {
   @ApiOperation({ summary: 'Get participant conversation transcripts grouped by party (initiator only)' })
   async getConversation(@Param('id') id: string, @CurrentUser('id') userId: string) {
     return this.grounds.getConversation(id, userId);
+  }
+
+  @Get(':id/my-solo-report')
+  @ApiOperation({ summary: "Return the requesting user's own individual session report (private)" })
+  async getMySoloReport(@Param('id') id: string, @CurrentUser('id') userId: string) {
+    return this.grounds.getMySoloReport(id, userId);
+  }
+
+  @Patch(':id/my-solo-report/share')
+  @ApiOperation({ summary: "Set whether the requesting user shares their individual report with other parties" })
+  async setMySoloReportShared(@Param('id') id: string, @CurrentUser('id') userId: string, @Body() dto: { shared: boolean }) {
+    return this.grounds.setMySoloReportShared(id, userId, dto.shared);
   }
 
   @Patch(':id')

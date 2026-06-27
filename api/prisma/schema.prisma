@@ -317,6 +317,7 @@ model GroundParticipant {
   lastNudgedAt         DateTime? @map("last_nudged_at") // throttles reminder emails (B1)
   soloArtifact         String?   @db.Text @map("solo_artifact") // single-party record summary after session 1 (B2)
   soloArtifactAt       DateTime? @map("solo_artifact_at")
+  soloArtifactShared   Boolean   @default(false) @map("solo_artifact_shared") // whether participant chose to share their individual report
   foundingIntent      String? @db.Text @map("founding_intent")
   roleIntent          String? @db.Text @map("role_intent")
   personalIntent      String? @db.Text @map("personal_intent")

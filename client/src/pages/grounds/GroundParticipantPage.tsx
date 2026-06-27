@@ -83,6 +83,7 @@ export function GroundParticipantPage() {
   const [showPaywall, setShowPaywall] = useState(false)
   const [paywallCode, setPaywallCode] = useState('')
   const [paywallCodeMsg, setPaywallCodeMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const [showShareConfirm, setShowShareConfirm] = useState(false)
 
   const user = useAuthStore(s => s.user)
 
@@ -111,6 +112,22 @@ export function GroundParticipantPage() {
     queryFn: () => groundsApi.getMyRecord(id!),
     enabled: !!id && tab === 'record',
     retry: false,
+  })
+
+  const { data: mySoloReport, refetch: refetchSoloReport } = useQuery({
+    queryKey: ['my-solo-report', id],
+    queryFn: () => groundsApi.getMySoloReport(id!),
+    enabled: !!id && tab === 'report',
+    retry: false,
+  })
+
+  const setSoloSharedMut = useMutation({
+    mutationFn: (shared: boolean) => groundsApi.setMySoloReportShared(id!, shared),
+    onSuccess: () => {
+      refetchSoloReport()
+      setShowShareConfirm(false)
+    },
+    onError: () => toast.error('Could not update. Try again.'),
   })
 
   const checkoutMut = useMutation({
@@ -603,9 +620,54 @@ export function GroundParticipantPage() {
         {/* REPORT TAB */}
         {tab === 'report' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#1A1916', marginBottom: 2 }}>Your report</div>
+
+            {/* Individual report section */}
+            <div style={{ fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: '#9B9590', fontWeight: 700, marginBottom: 2 }}>Your private report</div>
+            <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.6, marginBottom: 4 }}>
+              This is from your own check-in only. Only you can see it unless you choose to share it.
+            </div>
+            {mySoloReport?.report ? (
+              <div style={{ background: '#0A1628', color: 'white', borderRadius: 10, padding: '16px 18px', marginBottom: 6 }}>
+                {Object.entries(mySoloReport.report as Record<string, unknown>).map(([key, val]) => {
+                  if (!val || (Array.isArray(val) && val.length === 0)) return null
+                  const label = key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase())
+                  return (
+                    <div key={key} style={{ marginBottom: 12 }}>
+                      <div style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,.45)', fontWeight: 700, marginBottom: 4 }}>{label}</div>
+                      {Array.isArray(val)
+                        ? <ul style={{ margin: 0, paddingLeft: 16 }}>{(val as string[]).map((v, i) => <li key={i} style={{ fontSize: 13, lineHeight: 1.6, marginBottom: 3 }}>{v}</li>)}</ul>
+                        : <div style={{ fontSize: 13, lineHeight: 1.65 }}>{String(val)}</div>
+                      }
+                    </div>
+                  )
+                })}
+                <div style={{ borderTop: '1px solid rgba(255,255,255,.1)', paddingTop: 12, marginTop: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,.4)' }}>
+                    {mySoloReport.shared
+                      ? 'Shared with all parties on this ground'
+                      : 'Private — only you can see this'}
+                  </div>
+                  <button
+                    onClick={() => mySoloReport.shared ? setSoloSharedMut.mutate(false) : setShowShareConfirm(true)}
+                    disabled={setSoloSharedMut.isPending}
+                    style={{ padding: '6px 14px', borderRadius: 6, fontSize: 12, fontWeight: 600, border: '1px solid rgba(255,255,255,.2)', background: 'rgba(255,255,255,.08)', color: 'white', cursor: 'pointer', fontFamily: 'inherit' }}
+                  >
+                    {mySoloReport.shared ? 'Stop sharing' : 'Share with all parties'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: 20, textAlign: 'center', marginBottom: 6 }}>
+                <div style={{ fontSize: 13, color: '#9B9590' }}>Your private report is not ready yet.</div>
+                <div style={{ fontSize: 12, color: '#9B9590', marginTop: 4 }}>It generates once you complete your check-in.</div>
+              </div>
+            )}
+
+            {/* Divider */}
+            <div style={{ borderTop: '1px solid #E2E0DB', margin: '6px 0' }} />
+            <div style={{ fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: '#9B9590', fontWeight: 700, marginBottom: 2 }}>Shared report</div>
             <div style={{ fontSize: 12, color: '#9B9590', lineHeight: 1.6, marginBottom: 4 }}>
-              This is your participant report. It speaks to your account only and does not reveal the other party's raw words.
+              Shows where your account and the other party's account agree or differ. It does not quote anyone.
             </div>
 
             {!report ? (
@@ -848,6 +910,41 @@ export function GroundParticipantPage() {
                   {redeemPaywallCode.isPending ? 'Checking...' : 'Apply'}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Share solo report confirmation modal */}
+      {showShareConfirm && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.55)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px' }}>
+          <div style={{ background: 'white', borderRadius: 12, padding: 24, maxWidth: 380, width: '100%' }}>
+            <div style={{ fontSize: 16, fontWeight: 800, color: '#0A1628', marginBottom: 8 }}>Share your private report?</div>
+            <div style={{ fontSize: 13, color: '#6B6560', lineHeight: 1.65, marginBottom: 6 }}>
+              Your private report will become visible to all other parties on this ground:
+            </div>
+            <ul style={{ margin: '0 0 14px', paddingLeft: 18 }}>
+              {(ground?.participants ?? []).filter((p: any) => p.userId !== user?.id).map((p: any) => (
+                <li key={p.id} style={{ fontSize: 13, color: '#1A1916', marginBottom: 2 }}>{p.email}</li>
+              ))}
+            </ul>
+            <div style={{ fontSize: 12, color: '#9B9590', lineHeight: 1.55, marginBottom: 18, background: '#F5F3EF', borderRadius: 8, padding: '10px 12px' }}>
+              This is all or nothing. All sections of your private report become visible at once. You can stop sharing at any time.
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={() => setShowShareConfirm(false)}
+                style={{ flex: 1, padding: '10px', borderRadius: 8, background: '#F5F3EF', color: '#6B6560', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => setSoloSharedMut.mutate(true)}
+                disabled={setSoloSharedMut.isPending}
+                style={{ flex: 1, padding: '10px', borderRadius: 8, background: '#0C447C', color: 'white', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: setSoloSharedMut.isPending ? 0.6 : 1 }}
+              >
+                {setSoloSharedMut.isPending ? 'Sharing…' : 'Yes, share it'}
+              </button>
             </div>
           </div>
         </div>

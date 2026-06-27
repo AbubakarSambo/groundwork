@@ -49,6 +49,8 @@ export const SAFE_PARTICIPANT_SELECT = {
   invitedAt: true,
   notifiedAt: true,
   soloArtifactAt: true, // timestamp only — never the artifact content
+  soloArtifactShared: true, // whether participant chose to share; content fetched separately via get()
+  soloArtifact: true, // included in select; caller must strip unless soloArtifactShared = true
   createdAt: true,
 } as const;
 
@@ -321,10 +323,18 @@ export class GroundsService {
       list.push(ci);
       checkInsByParticipant.set(ci.participantId, list);
     }
-    const participantsWithCheckIns = (ground.participants ?? []).map((p) => ({
-      ...p,
-      checkIns: checkInsByParticipant.get(p.id) ?? [],
-    }));
+    const participantsWithCheckIns = (ground.participants ?? []).map((p) => {
+      const { soloArtifact, soloArtifactShared, ...safeP } = p as any;
+      return {
+        ...safeP,
+        soloArtifactShared: soloArtifactShared ?? false,
+        // Only expose the content when the participant explicitly shared it
+        sharedSoloReport: soloArtifactShared && soloArtifact
+          ? (() => { try { return JSON.parse(soloArtifact); } catch { return null; } })()
+          : null,
+        checkIns: checkInsByParticipant.get(p.id) ?? [],
+      };
+    });
 
     const { patternDetections: _pd, ...rest } = ground as any;
     return { ...rest, participants: participantsWithCheckIns, confidence, daysLeft, brief, signals, contextNotes };
@@ -827,6 +837,31 @@ export class GroundsService {
       patterns,
       insightsLocked: false,
     };
+  }
+
+  async getMySoloReport(groundId: string, userId: string): Promise<{ report: unknown | null; shared: boolean }> {
+    const participant = await this.prisma.groundParticipant.findFirst({
+      where: { groundId, userId },
+      select: { soloArtifact: true, soloArtifactShared: true },
+    });
+    if (!participant) throw new ForbiddenException('You are not a party to this ground');
+    const report = participant.soloArtifact
+      ? (() => { try { return JSON.parse(participant.soloArtifact); } catch { return null; } })()
+      : null;
+    return { report, shared: participant.soloArtifactShared };
+  }
+
+  async setMySoloReportShared(groundId: string, userId: string, shared: boolean): Promise<{ shared: boolean }> {
+    const participant = await this.prisma.groundParticipant.findFirst({
+      where: { groundId, userId },
+      select: { id: true },
+    });
+    if (!participant) throw new ForbiddenException('You are not a party to this ground');
+    await this.prisma.groundParticipant.update({
+      where: { id: participant.id },
+      data: { soloArtifactShared: shared },
+    });
+    return { shared };
   }
 }
 
