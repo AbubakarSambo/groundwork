@@ -62,7 +62,7 @@ ALTER TABLE "organizations"
 
 -- 4. Add billing columns to grounds
 ALTER TABLE "grounds"
-  ADD COLUMN IF NOT EXISTS "access_code_id"       UUID,
+  ADD COLUMN IF NOT EXISTS "access_code_id"       TEXT,
   ADD COLUMN IF NOT EXISTS "free_reason"          VARCHAR,
   ADD COLUMN IF NOT EXISTS "is_free_ground"       BOOLEAN NOT NULL DEFAULT false,
   ADD COLUMN IF NOT EXISTS "sessions_balance"     INTEGER NOT NULL DEFAULT 1,
