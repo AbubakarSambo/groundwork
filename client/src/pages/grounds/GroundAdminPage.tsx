@@ -258,22 +258,45 @@ export function GroundAdminPage() {
             <div style={{ marginBottom: 16 }}>
               <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>Participants</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {ground.participants.map((p, i) => {
+                {ground.participants.map((p: any, i: number) => {
                   const myCheckIn = ground.checkIns?.find(c => c.participantId === p.id)
                   const status = myCheckIn?.status ?? 'NOT_STARTED'
                   const statusColor = status === 'COMPLETED' ? 'var(--gw-green-b)' : status === 'IN_PROGRESS' ? 'var(--gw-amber-b)' : 'var(--gw-border)'
                   const statusLabel = status === 'COMPLETED' ? 'Completed' : status === 'IN_PROGRESS' ? 'In progress' : 'Not started'
+                  const sharedReport = p.sharedSoloReport as Record<string, unknown> | null
                   return (
-                    <div key={p.id} className="ga-participant-row">
-                      <div className="ga-status-dot" style={{ background: statusColor }} title={statusLabel} />
-                      <div className={`gw-av gw-av-${i % 6}`}>{(p.email || '?').charAt(0).toUpperCase()}</div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 13, fontWeight: 600 }}>{p.email}</div>
-                        {p.roleAsDescribed && <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginTop: 1 }}>{p.roleAsDescribed}</div>}
-                        <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>{status.replace(/_/g, ' ').toLowerCase()}</div>
+                    <div key={p.id}>
+                      <div className="ga-participant-row">
+                        <div className="ga-status-dot" style={{ background: statusColor }} title={statusLabel} />
+                        <div className={`gw-av gw-av-${i % 6}`}>{(p.email || '?').charAt(0).toUpperCase()}</div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 13, fontWeight: 600 }}>{p.email}</div>
+                          {p.roleAsDescribed && <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginTop: 1 }}>{p.roleAsDescribed}</div>}
+                          <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>{status.replace(/_/g, ' ').toLowerCase()}</div>
+                        </div>
+                        {myCheckIn && status !== 'COMPLETED' && (
+                          <button onClick={() => remind.mutate(myCheckIn.id)} style={{ fontSize: 11, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer' }}>Remind</button>
+                        )}
                       </div>
-                      {myCheckIn && status !== 'COMPLETED' && (
-                        <button onClick={() => remind.mutate(myCheckIn.id)} style={{ fontSize: 11, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer' }}>Remind</button>
+                      {sharedReport && (
+                        <div style={{ background: '#0A1628', color: 'white', borderRadius: 8, padding: '12px 14px', marginTop: 4, marginLeft: 40 }}>
+                          <div style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,.4)', fontWeight: 700, marginBottom: 8 }}>
+                            {p.email.split('@')[0]}'s private report (shared by them)
+                          </div>
+                          {Object.entries(sharedReport).map(([key, val]) => {
+                            if (!val || (Array.isArray(val) && val.length === 0)) return null
+                            const label = key.replace(/([A-Z])/g, ' $1').replace(/^./, (s: string) => s.toUpperCase())
+                            return (
+                              <div key={key} style={{ marginBottom: 10 }}>
+                                <div style={{ fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,.35)', fontWeight: 700, marginBottom: 3 }}>{label}</div>
+                                {Array.isArray(val)
+                                  ? <ul style={{ margin: 0, paddingLeft: 14 }}>{(val as string[]).map((v, idx) => <li key={idx} style={{ fontSize: 12, lineHeight: 1.6, marginBottom: 2 }}>{v}</li>)}</ul>
+                                  : <div style={{ fontSize: 12, lineHeight: 1.6 }}>{String(val)}</div>
+                                }
+                              </div>
+                            )
+                          })}
+                        </div>
                       )}
                     </div>
                   )
