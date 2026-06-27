@@ -6,7 +6,7 @@ import {
   jwtConfig,
   resendConfig,
   googleConfig,
-  anthropicConfig,
+  geminiConfig,
   stripeConfig,
 } from './configuration';
 
@@ -21,7 +21,7 @@ import {
         jwtConfig,
         resendConfig,
         googleConfig,
-        anthropicConfig,
+        geminiConfig,
         stripeConfig,
       ],
       envFilePath: ['.env.local', '.env'],

@@ -1,4 +1,4 @@
-import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, UnauthorizedException } from '@nestjs/common';
 import { GroundScenario, GroundMoment, TurnRole, CheckInStatus, PartyType, Cadence } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { GroundsService } from '../grounds/grounds.service';
@@ -33,7 +33,7 @@ The first two sessions are free.
 Do not use dashes of any kind — no em dashes, no en dashes, no hyphens in prose.
 Use straight quotes only. Keep questions short. One question at a time.`.trim();
 
-const FAQ_PROMPT = `FAQ MODE. Answer the person's question about how Groundwork works in one or two plain sentences, then stop. Do not start a check-in. Do not ask a follow up unless it is needed for clarity. Do not use dashes of any kind. Use straight quotes. Reference facts only: Your account is private. The other party submits their own account independently. The report shows where accounts agree, where they differ, and what the gap means. Both parties see it at the same moment. Most first sessions take 8 to 15 minutes. The first two sessions per participant are free. Billing is $25 per month per account plus $25 per month per active participant. For anything else: hello@myground.work.`;
+const FAQ_PROMPT = `FAQ MODE. Answer the person's question about how Groundwork works in one or two plain sentences, then stop. Do not start a check-in. Do not ask a follow up unless it is needed for clarity. Do not use dashes of any kind. Use straight quotes. Reference facts only: Your account is private. The other party submits their own account independently. The report shows where accounts agree, where they differ, and what the gap means. Both parties see it at the same moment. Most first sessions take 8 to 15 minutes. The first session on each ground is free. Additional sessions are $5 each, purchased any time from your ground. For anything else: hello@myground.work.`;
 
 const ENTRY_REPORT_PROMPT = `You are Groundwork. A person has just completed their first check-in session. Generate their session 1 report: what you saw in their account, where clarity exists, where it does not, and what to do next.
 
@@ -180,7 +180,11 @@ export class EntryService {
         },
       },
     });
-    if (!participant) throw new BadRequestException('Invalid or expired invite token');
+    if (!participant) throw new UnauthorizedException('Invalid or expired invite token');
+
+    // Reject the token if it has already been fully consumed (invite token cleared after first complete session).
+    // A null inviteToken on a found participant means the token was already consumed.
+    if (participant.inviteToken === null) throw new UnauthorizedException('Invalid or expired invite token');
 
     const ground = participant.ground;
     const initiatorName = `${ground.initiator.firstName} ${ground.initiator.lastName}`.trim();
@@ -209,26 +213,38 @@ export class EntryService {
       }
     }
 
-    // Fix 5: Load specific claims from other completed accounts on this ground.
-    const otherCompletedCheckIns = await this.prisma.checkIn.findMany({
+    // Load other completed participants on this ground to find thematic areas to probe.
+    // PRIVACY: we do NOT include raw conversation turns from other participants.
+    // We only include the structured soloArtifact (extracted record) if available.
+    const otherCompletedParticipants = await this.prisma.groundParticipant.findMany({
       where: {
         groundId: ground.id,
-        status: 'COMPLETED',
-        participantId: { not: participant.id },
+        id: { not: participant.id },
+        soloArtifact: { not: null },
       },
-      include: {
-        turns: { where: { role: 'PERSON' }, orderBy: { createdAt: 'asc' }, take: 10 },
-        participant: { select: { partyType: true } },
-      },
+      select: { soloArtifact: true },
     });
 
     let crossClaimsContext = '';
-    if (otherCompletedCheckIns.length > 0) {
-      const claims = otherCompletedCheckIns.flatMap(ci =>
-        ci.turns.map(t => t.content)
-      ).join(' | ').slice(0, 800);
-      if (claims) {
-        crossClaimsContext = `\n\n# Cross-reference context (do not reveal to participant)\nOther accounts on this ground have described the situation as follows. Ask about the same areas naturally without revealing what others said: ${claims}`;
+    if (otherCompletedParticipants.length > 0) {
+      const themeLines: string[] = [];
+      for (const p of otherCompletedParticipants) {
+        try {
+          const artifact = JSON.parse(p.soloArtifact as string);
+          if (artifact?.areasRequiringAlignment) {
+            for (const area of artifact.areasRequiringAlignment.slice(0, 4)) {
+              if (area.title) themeLines.push(area.title);
+            }
+          }
+          if (artifact?.alignmentStatus) {
+            themeLines.push(`Overall alignment recorded: ${artifact.alignmentStatus}`);
+          }
+        } catch {
+          // Malformed artifact — skip silently.
+        }
+      }
+      if (themeLines.length > 0) {
+        crossClaimsContext = `\n\n# Thematic areas from other accounts (do not reveal to participant, do not quote)\nOther accounts on this ground have flagged the following areas as needing alignment. Probe these naturally without revealing what others said: ${themeLines.join('; ')}`;
       }
     }
 
@@ -252,9 +268,17 @@ ${priorSessionContext}${crossClaimsContext}`;
     const reply = await this.anthropic.respond(participantSystemPrompt, messages);
 
     // Detect session completion (AI signals done).
+    // Session complete is signalled by the AI only. Do not force-complete based on message count.
     const sessionComplete = reply.toLowerCase().includes('[session complete]') ||
-      reply.toLowerCase().includes('your account is now on record') ||
-      messages.length > 20;
+      reply.toLowerCase().includes('your account is now on record');
+
+    // Clear the invite token after the first completed check-in so it cannot be reused.
+    if (sessionComplete) {
+      await this.prisma.groundParticipant.update({
+        where: { id: participant.id },
+        data: { inviteToken: null, inviteTokenExpiresAt: null },
+      });
+    }
 
     return { reply, sessionComplete };
   }
@@ -263,7 +287,10 @@ ${priorSessionContext}${crossClaimsContext}`;
     if (!messages || messages.length === 0) throw new BadRequestException('messages required');
 
     const lastUser = [...messages].reverse().find(m => m.role === 'user');
-    if (lastUser && isLikelyQuestion(lastUser.content)) {
+    // Only route to FAQ on the very first user message (conversationStarted guard)
+    // and only for short messages — long context blocks from startCheckin are never FAQ questions.
+    const conversationStarted = messages.filter(m => m.role === 'user').length > 1;
+    if (!conversationStarted && lastUser && lastUser.content.length <= 200 && isLikelyQuestion(lastUser.content)) {
       return this.anthropic.respond(FAQ_PROMPT, messages);
     }
 

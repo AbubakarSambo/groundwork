@@ -178,21 +178,33 @@ export class ConversationService {
       throw new BadRequestException('This ground is no longer accepting check-ins');
     }
 
-    const existing = await this.prisma.conversationTurn.count({ where: { checkInId: checkIn.id } });
-    if (existing > 0) {
-      const first = await this.prisma.conversationTurn.findFirst({ where: { checkInId: checkIn.id, role: TurnRole.AI }, orderBy: { createdAt: 'asc' } });
-      return { reply: first?.content ?? '', groundId: checkIn.groundId };
+    // ISSUE 7: use a single findFirst on the AI turn as the idempotency guard.
+    // This collapses the count + separate findFirst into one query and closes the
+    // TOCTOU window: if any AI turn exists (written by a concurrent open()), return
+    // it immediately without calling Gemini again.
+    const existingAiTurn = await this.prisma.conversationTurn.findFirst({
+      where: { checkInId: checkIn.id, role: TurnRole.AI },
+      orderBy: { createdAt: 'asc' },
+    });
+    if (existingAiTurn) {
+      return { reply: existingAiTurn.content, groundId: checkIn.groundId };
     }
 
-    // Billing session gate: session 1 is always free; session 2+ requires an
-    // active care-fee subscription. If the org is not billing-ready, block the
-    // open and surface a clear message — trust must not be conditional on payment
-    // during the session itself (B1/B3), but we can gate the START of session 2+.
-    if (ground?.organizationId) {
-      const gate = await this.billing.checkSessionGate(ground.organizationId, checkIn.sessionNumber);
+    // Session balance gate: consume one session from the ground's balance the
+    // first time this check-in is opened (idempotent: re-opens are caught above
+    // by the existingAiTurn guard). If balance is 0, block with a clear message.
+    if (checkIn.groundId) {
+      const gate = await this.billing.canStartSession(checkIn.groundId);
       if (!gate.allowed) {
         throw new ForbiddenException(gate.reason);
       }
+      // Decrement balance atomically before calling the AI so a failure after
+      // this point does not leave the session unconsumed on a retry (the retry
+      // hits the existingAiTurn guard instead).
+      await this.prisma.ground.update({
+        where: { id: checkIn.groundId },
+        data: { sessionsBalance: { decrement: 1 } },
+      });
     }
 
     // GW-41: stamp the engine_rules prompt version on the ground at first check-in
@@ -229,22 +241,35 @@ export class ConversationService {
       throw new BadRequestException('This check-in is already complete');
     }
 
+    const personTurnCount = await this.prisma.conversationTurn.count({
+      where: { checkInId: checkIn.id, role: TurnRole.PERSON },
+    });
+    if (personTurnCount >= 20) {
+      throw new BadRequestException('Session turn limit reached. Please complete your session.');
+    }
+
     const fullSystem = await this.composeSystemPrompt(checkIn, message);
 
     // Persist the person's turn.
-    await this.prisma.conversationTurn.create({
+    const personTurn = await this.prisma.conversationTurn.create({
       data: { checkInId: checkIn.id, role: TurnRole.PERSON, content: message },
     });
 
     // Rebuild history (this party only) and ask the engine for the next turn.
-    const turns = await this.prisma.conversationTurn.findMany({ where: { checkInId: checkIn.id }, orderBy: { createdAt: 'asc' } });
-    const history: ChatTurn[] = turns.map((t) => ({ role: t.role === TurnRole.AI ? 'assistant' : 'user', content: t.content }));
-
-    const reply = await this.anthropic.respond(fullSystem, history);
-
-    const aiTurn = await this.prisma.conversationTurn.create({
-      data: { checkInId: checkIn.id, role: TurnRole.AI, content: reply },
-    });
+    // ISSUE 5: if the AI call fails, delete the orphan PERSON turn then re-throw.
+    let reply: string;
+    let aiTurn: { id: string; content: string };
+    try {
+      const turns = await this.prisma.conversationTurn.findMany({ where: { checkInId: checkIn.id }, orderBy: { createdAt: 'asc' } });
+      const history: ChatTurn[] = turns.map((t) => ({ role: t.role === TurnRole.AI ? 'assistant' : 'user', content: t.content }));
+      reply = await this.anthropic.respond(fullSystem, history);
+      aiTurn = await this.prisma.conversationTurn.create({
+        data: { checkInId: checkIn.id, role: TurnRole.AI, content: reply },
+      });
+    } catch (err) {
+      await this.prisma.conversationTurn.delete({ where: { id: personTurn.id } }).catch(() => undefined);
+      throw err;
+    }
 
     if (checkIn.status === CheckInStatus.NOT_STARTED) {
       await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { status: CheckInStatus.IN_PROGRESS, startedAt: new Date() } });
@@ -253,15 +278,18 @@ export class ConversationService {
     // Signal the frontend that the AI has delivered the session-closing elements
     // so the "Complete session" button can appear. Detected by the mandatory
     // SESSION CLOSE phrase defined in ENGINE_RULES.
+    // ISSUE 22: message-count auto-complete removed — only the AI's explicit signal triggers completion.
+    // ISSUE 23: all checks are case-insensitive via replyLower; alternative phrases added for resilience.
     const replyLower = reply.toLowerCase();
     const sessionComplete =
-      reply.includes('Here is what is now in your record:') ||
-      reply.includes('Here is what is now in your record.') ||
-      reply.includes('What is in your record from today') ||
-      reply.includes('in your record from today') ||
+      replyLower.includes('here is what is now in your record') ||
+      replyLower.includes('what is in your record from today') ||
+      replyLower.includes('in your record from today') ||
+      replyLower.includes('your account is now on record') ||
+      replyLower.includes('your record from this session') ||
       (replyLower.includes('now in your record') && replyLower.includes('next steps')) ||
       (replyLower.includes('now in your record') && replyLower.includes('carry forward')) ||
-      (replyLower.includes('now in your record') && (reply.includes('next step') || reply.includes('come back when'))) ||
+      (replyLower.includes('now in your record') && (replyLower.includes('next step') || replyLower.includes('come back when'))) ||
       (replyLower.includes('your record now') && replyLower.includes('session'));
 
     return { reply: aiTurn.content, sessionComplete };
@@ -497,6 +525,13 @@ export class ConversationService {
     // Score session specificity from person's turns before marking complete
     const specificityData = await this.scoreSessionSpecificity(checkIn.id).catch(() => null);
 
+    // ISSUE 6: extractRecordEntries runs BEFORE the status flips to COMPLETED so
+    // the record is populated before the status change races past it. buildSoloArtifact
+    // is still fire-and-forget. Both are best-effort.
+    await this.extractRecordEntries(checkIn.id, checkIn.participantId).catch((err) =>
+      this.logger.error(`Record extraction failed for check-in ${checkIn.id}: ${err.message}`),
+    );
+
     await this.prisma.checkIn.update({
       where: { id: checkIn.id },
       data: {
@@ -509,13 +544,9 @@ export class ConversationService {
     });
     this.usage.emit(UsageEventType.CHECK_IN_COMPLETED, { groundId: checkIn.groundId, participantId: checkIn.participantId }).catch(() => undefined);
 
-    // Extract the structured record from this party's own transcript, then build
-    // a single-party artifact (B2) so the person has standalone value from this
-    // session without waiting on anyone else. Both best-effort.
-    await this.extractRecordEntries(checkIn.id, checkIn.participantId).catch((err) =>
-      this.logger.error(`Record extraction failed for check-in ${checkIn.id}: ${err.message}`),
-    );
-    await this.buildSoloArtifact(checkIn.participantId, checkIn.groundId).catch((err) =>
+    // Build a single-party artifact (B2) so the person has standalone value from
+    // this session without waiting on anyone else. Fire-and-forget.
+    this.buildSoloArtifact(checkIn.participantId, checkIn.groundId).catch((err) =>
       this.logger.error(`Solo artifact failed for participant ${checkIn.participantId}: ${err.message}`),
     );
 

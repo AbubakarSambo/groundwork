@@ -23,13 +23,13 @@ export function ProfilePage() {
         </div>
         <div style={{ fontSize: 18, fontWeight: 700, color: 'white', marginBottom: 3 }}>{name}</div>
         <div style={{ fontSize: 12, color: 'rgba(255,255,255,.55)' }}>Groundwork verified contributor</div>
-        <div style={{ fontSize: 12, color: 'rgba(255,255,255,.4)', marginTop: 4 }}>0 verified grounds</div>
+        <div style={{ fontSize: 12, color: 'rgba(255,255,255,.4)', marginTop: 4 }}>No completed grounds yet</div>
       </div>
 
       <div className="gw-bd">
         <div style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', padding: 24, background: 'var(--gw-bg)', borderRadius: 8, border: '0.5px solid var(--gw-border)', marginBottom: 20 }}>
-          <div style={{ fontWeight: 600, color: 'var(--gw-text)', marginBottom: 6 }}>Profile is building</div>
-          Each closed ground adds a verified record. Grounds you choose to make public will appear here.
+          <div style={{ fontWeight: 600, color: 'var(--gw-text)', marginBottom: 6 }}>Your record starts here</div>
+          Each closed ground adds a verified entry to your profile. Complete a ground to see your first record appear here.
         </div>
 
         <div style={{ background: 'var(--gw-bg)', border: '0.5px solid var(--gw-border)', borderRadius: 8, padding: 14, marginBottom: 20 }}>

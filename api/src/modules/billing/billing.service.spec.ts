@@ -96,14 +96,4 @@ describe('BillingService.chargeParticipantFees — rolling periods & PAST_DUE (G
     expect(stripe.chargeParticipantFee).toHaveBeenCalledWith('cus_4', 2, expect.any(String));
   });
 
-  it('allows sessions 1 and 2 free, blocks session 3 without billing', async () => {
-    const prisma = {
-      organization: { findUnique: jest.fn(async () => ({ careFeeStatus: CareFeeStatus.CANCELLED, stripeCustomerId: null })) },
-    } as any;
-    const service = new BillingService(prisma, {} as any, baseConfig(), baseEmail(), { emit: () => Promise.resolve() } as any);
-
-    expect((await service.checkSessionGate('org1', 1)).allowed).toBe(true);
-    expect((await service.checkSessionGate('org1', 2)).allowed).toBe(true);
-    expect((await service.checkSessionGate('org1', 3)).allowed).toBe(false);
-  });
 });

@@ -90,7 +90,7 @@ export function GroundsListPage() {
   const checkoutMut = useMutation({
     mutationFn: () => billingApi.createCareFeeCheckout(),
     onSuccess: (url) => { window.location.href = url },
-    onError: () => toast.error('Could not start checkout — please try again.'),
+    onError: () => toast.error('Could not start checkout. Please try again.'),
   })
 
   const active = grounds.filter(g => g.status !== 'CLOSED' && g.status !== 'RESOLVED')
@@ -118,6 +118,7 @@ export function GroundsListPage() {
           <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-navy)', background: 'var(--gw-blue-bg)', border: '0.5px solid var(--gw-blue-b)', borderRadius: 20, padding: '3px 10px' }}>
             {isAdmin ? 'Admin' : 'Team member'}
           </span>
+          {isAdmin && <span onClick={() => navigate('/admin')} style={{ fontSize: 13, color: 'var(--gw-sub)', cursor: 'pointer' }}>Admin</span>}
           <span onClick={() => navigate('/billing')} style={{ fontSize: 13, color: 'var(--gw-sub)', cursor: 'pointer' }}>Settings</span>
           <span onClick={() => { useAuthStore.getState().logout(); navigate('/') }} style={{ fontSize: 13, color: 'var(--gw-sub)', cursor: 'pointer' }}>Sign out</span>
         </div>
@@ -152,7 +153,7 @@ export function GroundsListPage() {
                   disabled={checkoutMut.isPending}
                   style={{ padding: '8px 16px', borderRadius: 7, background: '#0C447C', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}
                 >
-                  {checkoutMut.isPending ? 'Opening…' : 'Subscribe — $25/mo'}
+                  {checkoutMut.isPending ? 'Opening…' : 'Unlock insights'}
                 </button>
               </div>
             )}
@@ -277,7 +278,7 @@ export function GroundsListPage() {
                   disabled={checkoutMut.isPending}
                   style={{ padding: '8px 16px', borderRadius: 7, background: '#0C447C', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}
                 >
-                  {checkoutMut.isPending ? 'Opening…' : 'Unlock — $25/mo'}
+                  {checkoutMut.isPending ? 'Opening…' : 'Unlock insights'}
                 </button>
               </div>
             )}

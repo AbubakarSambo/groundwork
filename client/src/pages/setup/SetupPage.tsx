@@ -27,8 +27,6 @@ export function SetupPage() {
   const [orgCode, setOrgCode] = useState('')
   const [orgCodeEdited, setOrgCodeEdited] = useState(false)
   const [role, setRole] = useState(user?.jobTitle ?? '')
-  const [goals, setGoals] = useState('')
-  const [stage, setStage] = useState('EARLY_REVENUE')
   const [step1Error, setStep1Error] = useState('')
 
   // Step 2 fields
@@ -43,7 +41,6 @@ export function SetupPage() {
       jobTitle: role,
       orgName,
       orgSlug: orgCode,
-      companyStage: stage as any,
     }),
     onSuccess: (updated) => {
       updateUser(updated)
@@ -93,7 +90,7 @@ export function SetupPage() {
     if (!skip && inviteList.length > 0) {
       const results = await Promise.allSettled(inviteList.map(i => inviteUser.mutateAsync(i)))
       const failed = results.filter(r => r.status === 'rejected').length
-      if (failed > 0) toast.error(`${failed} invite(s) failed — you can retry from inside a ground.`)
+      if (failed > 0) toast.error(`${failed} invite(s) failed. You can retry from inside a ground.`)
       else toast.success('Invites sent!')
     }
     setStep(3)
@@ -136,28 +133,6 @@ export function SetupPage() {
               <label className="gw-label">Your role</label>
               <input className="gw-input" type="text" value={role} onChange={e => setRole(e.target.value)} placeholder="e.g. Founder / CEO" />
             </div>
-            <div className="gw-fld">
-              <label className="gw-label">What are you focused on this period? <span style={{ fontWeight: 400, color: 'var(--gw-muted)' }}>(your goals, one per line)</span></label>
-              <textarea
-                value={goals}
-                onChange={e => setGoals(e.target.value)}
-                placeholder={"Close Series A by September\nHire VP Engineering by June"}
-                style={{ width: '100%', height: 80, padding: '8px 10px', border: '1px solid var(--gw-border)', borderRadius: 'var(--gw-radius)', fontFamily: 'var(--gw-font)', fontSize: 13, resize: 'none', boxSizing: 'border-box' }}
-              />
-            </div>
-            <div className="gw-fld">
-              <label className="gw-label">Company stage</label>
-              <select
-                value={stage}
-                onChange={e => setStage(e.target.value)}
-                style={{ width: '100%', padding: '9px 10px', border: '1px solid var(--gw-border)', borderRadius: 'var(--gw-radius)', fontFamily: 'var(--gw-font)', fontSize: 13, background: 'white' }}
-              >
-                <option value="IDEA">Idea stage</option>
-                <option value="PRE_REVENUE">Pre-revenue</option>
-                <option value="EARLY_REVENUE">Early revenue</option>
-                <option value="SCALING">Scaling</option>
-              </select>
-            </div>
             {step1Error && <div className="gw-er">{step1Error}</div>}
             <button className="gw-btn" onClick={handleStep1} disabled={updateProfile.isPending} style={{ margin: 0 }}>
               {updateProfile.isPending ? 'Saving…' : 'Continue →'}
@@ -169,7 +144,7 @@ export function SetupPage() {
         {step === 2 && (
           <div>
             <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 16 }}>
-              Invite your team by email. They get a link to open their contribution chat.
+              Invite your team. They will get a link to check in independently before the report is built.
             </div>
 
             {inviteList.length > 0 && (

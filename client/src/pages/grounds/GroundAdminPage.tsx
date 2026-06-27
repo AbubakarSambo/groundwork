@@ -186,11 +186,11 @@ export function GroundAdminPage() {
             {ground.status === 'REPORT_READY' && (
               <div style={{ background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 10, padding: '14px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: '#085041', marginBottom: 3 }}>Report is ready to release</div>
-                  <div style={{ fontSize: 12, color: '#3A7A60', lineHeight: 1.5 }}>Both accounts are in. You can now release the report to both parties simultaneously.</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#085041', marginBottom: 3 }}>Your session is complete. Want to keep this ground going?</div>
+                  <div style={{ fontSize: 12, color: '#3A7A60', lineHeight: 1.5 }}>Add another session any time. The report updates each time your team checks in.</div>
                 </div>
-                <button onClick={() => setTab('report')} style={{ flexShrink: 0, padding: '8px 14px', borderRadius: 7, background: '#085041', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
-                  Release →
+                <button onClick={() => navigate('/billing/payment', { state: { groundId: ground.id, groundName: ground.label } })} style={{ flexShrink: 0, padding: '8px 14px', borderRadius: 7, background: '#085041', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
+                  Add a session ($5)
                 </button>
               </div>
             )}

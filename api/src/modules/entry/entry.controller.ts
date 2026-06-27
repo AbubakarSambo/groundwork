@@ -1,7 +1,7 @@
-import { Controller, Post, Body } from '@nestjs/common';
+import { Controller, Post, Body, UnauthorizedException } from '@nestjs/common';
 import { Public, CurrentUser, CurrentUserData } from '../../common';
 import { EntryService } from './entry.service';
-import { IsArray, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { IsArray, IsOptional, IsString, MaxLength, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 
 class TurnDto {
@@ -31,7 +31,9 @@ class EntryOpenerDto {
 }
 
 class EntryFaqDto {
-  @IsString() question: string;
+  @IsString()
+  @MaxLength(1000)
+  question: string;
 }
 
 class ParticipantChatDto {
@@ -124,6 +126,7 @@ export class EntryCommitController {
 
   @Post('commit')
   async commit(@CurrentUser() user: CurrentUserData, @Body() dto: EntryCommitDto) {
+    if (!user?.organizationId) throw new UnauthorizedException('Account not linked to an organisation');
     return this.service.commit(user.organizationId, user.id, dto);
   }
 }

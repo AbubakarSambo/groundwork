@@ -523,8 +523,6 @@ export class ReportsService {
       },
     });
 
-    await this.prisma.ground.update({ where: { id: groundId }, data: { status: GroundStatus.REPORT_READY } });
-
     // Fire-and-forget: extract preference signals from the initiator's records and
     // upsert into their AdminProfile. Runs after the report is saved so it never
     // blocks report delivery. Errors are swallowed — a failed extraction just means

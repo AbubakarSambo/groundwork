@@ -67,9 +67,9 @@ const MODE_BUTTON_MAP: Record<string, string> = {
 
 const MODE_BUTTON_DESCRIPTIONS: Record<string, string> = {
   'Starting something': 'A new hire, project, partnership, handover, or role starting now.',
-  'Already underway': 'Something in motion — a delivery, a team, a working relationship, a process.',
+  'Already underway': 'Something in motion: a delivery, a team, a working relationship, a process.',
   'Already happened': 'A decision, project, or conversation that needs to go on record.',
-  'Regular check-in': 'A recurring ritual — weekly, fortnightly, or monthly — for a team or group.',
+  'Regular check-in': 'A recurring ritual: weekly, fortnightly, or monthly, for a team or group.',
 }
 
 const GOAL_OPTIONS = [
@@ -277,6 +277,17 @@ export function EntryChatPage() {
         setPhase('onboarding')
         setOnboardingStep(step)
       }
+    } else if (saved && !saved.closed && scenario) {
+      // ISSUE 14: in-progress session exists but a scenario param is present — confirm before wiping
+      const confirmed = window.confirm('You have a check-in in progress. Starting a new scenario will clear it. Continue?')
+      if (!confirmed) return
+      clearEntrySession()
+      if (urlInitial || scenario) {
+        const sels: OnboardingSelections = { mode: urlMode || 'new', initial: urlInitial || scenario || '' }
+        setOnboardingSelections(sels)
+        setOnboardingMessages(buildOnboardingMessages(sels))
+        persistOnboarding([], sels, 1)
+      }
     } else {
       clearEntrySession()
       if (urlInitial || scenario) {
@@ -376,15 +387,20 @@ export function EntryChatPage() {
     },
   })
 
+  const [reportTurnsForRetry, setReportTurnsForRetry] = useState<Turn[] | null>(null)
+
   async function generateSessionReport(turns: Turn[]) {
     setGeneratingReport(true)
+    setReportTurnsForRetry(turns)
     try {
       const res = await entryApi.report(turns, scenario || undefined, groundName || undefined)
       setSessionReport(res.report)
+      setReportTurnsForRetry(null)
       persistCheckin(turns, true, res.report ? JSON.stringify(res.report) : '')
     } catch {
       setSessionReport(null)
       persistCheckin(turns, true, '')
+      toast.error('We could not generate your session report. Your responses are saved.')
     } finally {
       setGeneratingReport(false)
     }
@@ -558,7 +574,10 @@ export function EntryChatPage() {
     try {
       await authApi.entrySave(trimmed)
       setEmailSent(true)
-      // Persist everything needed for the post-auth commit call
+      // Persist metadata needed for the post-auth commit call.
+      // ISSUE 17: do NOT store raw conversation history client-side before email is confirmed.
+      // The full conversation is already on the server after check-in completes.
+      // Only store UI-restoration metadata here.
       const commitPayload = {
         groundLabel: groundName || scenario || 'My first ground',
         orgName: orgName.trim() || undefined,
@@ -566,8 +585,7 @@ export function EntryChatPage() {
         cadence: cadence === 'ONE_TIME' ? 'FORTNIGHTLY' : cadence,
         checkInBy: checkInBy.trim() || undefined,
         lastCheckInBy: lastCheckInBy.trim() || undefined,
-        history,
-        report: sessionReport,
+        reportSummary: sessionReport ? { alignmentStatus: sessionReport.alignmentStatus, whatGroundworkSaw: sessionReport.whatGroundworkSaw } : undefined,
         inviteToken,
         inviteNote: inviteNote.trim() || undefined,
         contributors: inviteAdded.map(entry => {
@@ -778,7 +796,7 @@ export function EntryChatPage() {
       {showSessionsUpgrade && (
         <div style={{ background: 'var(--gw-blue-bg)', borderBottom: '1px solid var(--gw-blue-b)', padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
           <div style={{ flex: 1, fontSize: 13, color: 'var(--gw-navy)', lineHeight: 1.5 }}>
-            <strong>{sessions} sessions</strong> needs an account. ${25 + inviteAdded.length * 25}/month — $25 per organisation + $25 per contributor ({inviteAdded.length > 0 ? `${inviteAdded.length} added so far` : 'add contributors below to see your total'}). Save your session below to get set up.
+            <strong>{sessions} sessions</strong> needs an account. First session is free. Additional sessions are $5 each. Save your session below to get set up.
           </div>
           <button onClick={() => { setShowSessionsUpgrade(false); setShowSave(true) }}
             style={{ flexShrink: 0, background: 'var(--gw-navy)', color: 'white', border: 'none', borderRadius: 7, padding: '7px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
@@ -1093,6 +1111,21 @@ export function EntryChatPage() {
               </div>
             )}
 
+            {/* ISSUE 15: report failed — show retry option */}
+            {!generatingReport && !sessionReport && closed && reportTurnsForRetry && (
+              <div style={{ background: '#F8ECEA', borderRadius: 10, padding: '14px 16px', marginBottom: 18, display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ flex: 1, fontSize: 13, color: '#B5675A', lineHeight: 1.5 }}>
+                  We could not generate your report. Your responses are saved.
+                </div>
+                <button
+                  onClick={() => generateSessionReport(reportTurnsForRetry)}
+                  style={{ flexShrink: 0, padding: '8px 14px', borderRadius: 7, background: '#B5675A', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                >
+                  Retry
+                </button>
+              </div>
+            )}
+
             {/* Structured report */}
             {sessionReport && (
               <>
@@ -1180,7 +1213,7 @@ export function EntryChatPage() {
             <div style={{ marginBottom: 14 }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 6 }}>Name this ground</div>
               <input
-                type="text" placeholder="e.g. Kwame — first 90 days" value={groundName}
+                type="text" placeholder="e.g. Kwame, first 90 days" value={groundName}
                 onChange={e => setGroundName(e.target.value)}
                 style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #E2E0DB', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none', marginBottom: 8 }}
               />
@@ -1263,7 +1296,7 @@ export function EntryChatPage() {
                     )}
                   </div>
                   <div style={{ fontSize: 12, color: '#6B6560', marginBottom: 8, lineHeight: 1.5 }}>What do you want them to focus on or account for?</div>
-                  <textarea autoFocus placeholder="e.g. They are the other side of this — they own the delivery timeline."
+                  <textarea autoFocus placeholder="e.g. They are the other side of this. They own the delivery timeline."
                     value={inviteContext} onChange={e => setInviteContext(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitInviteContext() } }}
                     style={{ width: '100%', resize: 'none', minHeight: 60, padding: '8px 10px', fontSize: 13, lineHeight: 1.5, border: '1px solid #E2E0DB', borderRadius: 7, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 8 }}
@@ -1365,7 +1398,7 @@ export function EntryChatPage() {
             )}
 
             <div onClick={() => setShowSave(false)} style={{ textAlign: 'center', fontSize: 12, color: '#9B9590', cursor: 'pointer', paddingTop: 4 }}>
-              {closed ? 'Close — you can reopen this from the bar below' : 'Later'}
+              {closed ? 'Close (you can reopen this from the bar below)' : 'Later'}
             </div>
           </div>
         </div>

@@ -14,15 +14,21 @@ interface ScenarioCard {
 }
 
 const SCENARIOS: ScenarioCard[] = [
-  { scenario: 'NEW_HIRE',         label: 'New hire',              desc: 'Someone just joined. Set expectations on both sides before the work starts.',            tag: 'Starting',     tagBg: '#E8F8F5', tagColor: '#085041' },
-  { scenario: 'NEW_COFOUNDER',    label: 'New co-founder',        desc: 'A partnership forming. Get the brief on record from both sides early.',                   tag: 'Starting',     tagBg: '#E8F8F5', tagColor: '#085041' },
-  { scenario: 'NEW_ADVISOR',      label: 'New advisor',           desc: 'An advisor or board member joining. Alignment before the relationship starts.',           tag: 'Starting',     tagBg: '#E8F8F5', tagColor: '#085041' },
-  { scenario: 'NEW_PROJECT',      label: 'New project',           desc: 'A project or initiative about to begin. Both sides on record before it does.',            tag: 'Starting',     tagBg: '#E8F8F5', tagColor: '#085041' },
-  { scenario: 'NEW_MANAGER',      label: 'New manager',           desc: 'A new management relationship. Expectations on record from day one.',                     tag: 'Starting',     tagBg: '#E8F8F5', tagColor: '#085041' },
-  { scenario: 'CONTRACT_RENEWAL', label: 'Contract renewal',      desc: 'Terms being renegotiated. Both versions of what was agreed, on record.',                  tag: 'Contract',     tagBg: '#F0EAF8', tagColor: '#5B2EA6' },
-  { scenario: 'RECOGNITION',      label: 'Recognition',           desc: 'Contribution that has not been acknowledged. Evidence from both sides before the talk.',   tag: 'Recognition',  tagBg: '#FDF3E3', tagColor: '#8A5C1A' },
-  { scenario: 'DRIFT',            label: 'Something not working', desc: 'A conversation that keeps being avoided. Both independent versions before it happens.',    tag: 'Resolution',   tagBg: '#EEF4FB', tagColor: '#0C447C' },
-  { scenario: 'CRISIS_ALIGNMENT', label: 'Crisis alignment',      desc: 'Urgent. Both sides need to be heard quickly and clearly.',                                tag: 'Urgent',       tagBg: '#FCEBEB', tagColor: '#791F1F' },
+  { scenario: 'NEW_HIRE',         label: 'New hire or onboarding',    desc: 'Someone just joined. Set expectations from all sides before the work starts.',                    tag: 'Starting',     tagBg: '#E8F8F5', tagColor: '#085041' },
+  { scenario: 'NEW_MANAGER',      label: 'New manager or role',       desc: 'A new management relationship or changed role. Expectations on record from day one.',             tag: 'Starting',     tagBg: '#E8F8F5', tagColor: '#085041' },
+  { scenario: 'NEW_COFOUNDER',    label: 'New partner or co-founder', desc: 'A partnership forming. Get the brief on record from everyone involved early.',                    tag: 'Starting',     tagBg: '#E8F8F5', tagColor: '#085041' },
+  { scenario: 'NEW_ADVISOR',      label: 'New advisor or board member', desc: 'An advisor, investor, or board member joining. Alignment before the relationship starts.',      tag: 'Starting',     tagBg: '#E8F8F5', tagColor: '#085041' },
+  { scenario: 'NEW_PROJECT',      label: 'New project or initiative',  desc: 'A project about to begin. Everyone involved on record before it does.',                          tag: 'Starting',     tagBg: '#E8F8F5', tagColor: '#085041' },
+  { scenario: 'DRIFT',            label: 'Performance or delivery check', desc: 'An ongoing role or delivery that needs to be tracked. Independent accounts from all contributors.', tag: 'Accountability', tagBg: '#EEF4FB', tagColor: '#0C447C' },
+  { scenario: 'NEW_PROJECT',      label: 'Team check-in ritual',       desc: 'A recurring check-in for a group. Each person gives their own account of how goals are tracking.', tag: 'Recurring',   tagBg: '#E8F8F5', tagColor: '#085041' },
+  { scenario: 'NEW_HIRE',         label: 'Coaching or mentoring',      desc: 'Goals set together, progress tracked independently. One ground per person works best.',           tag: 'Coaching',     tagBg: '#FDF3E3', tagColor: '#8A5C1A' },
+  { scenario: 'NEW_ADVISOR',      label: 'Board or panel review',      desc: 'Multiple reviewers, one subject. Independent accounts from each reviewer before the group discusses.', tag: 'Review',  tagBg: '#F0EAF8', tagColor: '#5B2EA6' },
+  { scenario: 'NEW_PROJECT',      label: 'Client and agency',          desc: 'Two organisations, one shared outcome. Each side on record on scope, progress, and what good looks like.', tag: 'Contract', tagBg: '#F0EAF8', tagColor: '#5B2EA6' },
+  { scenario: 'CONTRACT_RENEWAL', label: 'Contract or agreement',      desc: 'Terms being negotiated or renegotiated. All versions of what was agreed, on record.',             tag: 'Contract',     tagBg: '#F0EAF8', tagColor: '#5B2EA6' },
+  { scenario: 'RECOGNITION',      label: 'Recognition or contribution', desc: 'Contribution that has not been acknowledged. Independent accounts from all parties before the talk.', tag: 'Recognition', tagBg: '#FDF3E3', tagColor: '#8A5C1A' },
+  { scenario: 'DRIFT',            label: 'Something not working',      desc: 'A conversation that keeps being avoided. Independent accounts from everyone before it happens.',   tag: 'Resolution',   tagBg: '#FCEBEB', tagColor: '#791F1F' },
+  { scenario: 'CRISIS_ALIGNMENT', label: 'Crisis alignment',           desc: 'Urgent. Everyone involved needs to be heard quickly and clearly.',                                tag: 'Urgent',       tagBg: '#FCEBEB', tagColor: '#791F1F' },
+  { scenario: 'NEW_PROJECT',      label: 'Personal or family',         desc: 'A handover, agreement, or shared plan outside of work. Put everyone\'s understanding on record.',  tag: 'Personal',    tagBg: '#FDF3E3', tagColor: '#8A5C1A' },
 ]
 
 interface MomentOption { moment: GroundMoment; label: string; sub: string }
@@ -30,6 +36,7 @@ const MOMENTS: MomentOption[] = [
   { moment: 'STARTING',    label: 'At the start',    sub: 'Set expectations before the work begins.' },
   { moment: 'RECOGNITION', label: 'Mid-way',          sub: 'Acknowledge progress. Name what has changed.' },
   { moment: 'RESOLUTION',  label: 'Reaching an end',  sub: 'Close a chapter. Agree on what happened.' },
+
 ]
 
 interface CadenceOption { cadence: GroundCadence; label: string; days: number }
@@ -44,9 +51,9 @@ const RESOLUTION_GROUPS: ResolutionGroup[] = [
   {
     label: 'Progress and alignment', color: '#085041',
     states: [
-      { state: 'Alignment confirmed',          sub: 'Both parties agree on goals, expectations, and the path forward.' },
+      { state: 'Alignment confirmed',          sub: 'Everyone agrees on goals, expectations, and the path forward.' },
       { state: 'Continue current course',       sub: 'Things are working. The record confirms it.' },
-      { state: 'Realignment needed',            sub: 'A gap exists. Both parties want to close it.' },
+      { state: 'Realignment needed',            sub: 'A gap exists. Everyone wants to close it.' },
       { state: 'Gaps identified and addressed', sub: 'The brief or expectations are revised based on what the record shows.' },
       { state: 'Brief revised',                 sub: 'The original brief is updated based on what both sides have learned.' },
       { state: 'Scope adjustment required',     sub: 'What was agreed needs to change. The record explains why.' },
@@ -65,7 +72,7 @@ const RESOLUTION_GROUPS: ResolutionGroup[] = [
     states: [
       { state: 'Additional support required', sub: 'Capacity or resource constraints identified. Support agreed.' },
       { state: 'Escalation required',         sub: 'The situation needs to be raised to a higher level. The record supports the case.' },
-      { state: 'Mutual exit agreed',          sub: 'Both parties agree the relationship ends here. The record belongs to both.' },
+      { state: 'Mutual exit agreed',          sub: 'Everyone agrees the relationship ends here. The record belongs to all parties.' },
     ],
   },
 ]
@@ -101,14 +108,16 @@ export function CreateGroundPage() {
   const [pEmail, setPEmail] = useState('')
   const [pRole, setPRole] = useState('')
   const [pNote, setPNote] = useState('')
+  const [bulkMode, setBulkMode] = useState(false)
+  const [bulkText, setBulkText] = useState('')
   const [resolutionState, setResolutionState] = useState<string | null>(null)
   const [brief, setBrief] = useState('')
   const [groundName, setGroundName] = useState('')
 
   const cadenceObj = CADENCES.find(c => c.cadence === cadence) ?? CADENCES[1]
   const sessionTotal = Math.floor(timelineDays / cadenceObj.days)
-  const freeSessions = Math.min(2, sessionTotal)
-  const paidSessions = sessionTotal - freeSessions
+
+
 
   const briefWords = brief.trim() ? brief.trim().split(/\s+/).length : 0
   const briefShort = briefWords > 0 && briefWords < 20
@@ -139,6 +148,14 @@ export function CreateGroundPage() {
     if (participants.find(p => p.email === email)) return
     setParticipants(v => [...v, { email, role: pRole.trim(), note: pNote.trim() }])
     setPEmail(''); setPRole(''); setPNote('')
+  }
+
+  function addBulk() {
+    const emails = bulkText.split(/[\n,;]+/).map(e => e.trim()).filter(e => e.includes('@'))
+    const fresh = emails.filter(e => !participants.find(p => p.email === e))
+    setParticipants(v => [...v, ...fresh.map(e => ({ email: e, role: '', note: '' }))])
+    setBulkText('')
+    setBulkMode(false)
   }
 
   function back() {
@@ -184,7 +201,7 @@ export function CreateGroundPage() {
             {scenario && (
               <>
                 <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Where are you in the relationship?</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 10 }}>This shapes the questions both parties answer.</div>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 10 }}>This shapes the questions each contributor answers.</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
                   {MOMENTS.map(m => (
                     <div key={m.moment} className={`cg-sit-card${moment === m.moment ? ' selected' : ''}`} onClick={() => setMoment(m.moment)}>
@@ -229,10 +246,10 @@ export function CreateGroundPage() {
             <div className="gw-box gw-box-blue" style={{ marginBottom: 24 }}>
               <div style={{ fontWeight: 600, marginBottom: 4 }}>{sessionTotal} sessions over {timelineDays} days</div>
               <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-                Sessions 1 and 2 are free. A card is required before both parties can release the session 2 report.{paidSessions > 0 ? ` Sessions 3–${sessionTotal} are billed.` : ''}
+                Your first session is free and includes a report. Add more sessions for $5 each any time.
               </div>
               <div style={{ marginTop: 6 }}>
-                <span style={{ fontSize: 11, fontWeight: 600, background: 'var(--gw-green-bg)', color: 'var(--gw-green-t)', borderRadius: 20, padding: '2px 8px' }}>Sessions 1–2 free</span>
+                <span style={{ fontSize: 11, fontWeight: 600, background: 'var(--gw-green-bg)', color: 'var(--gw-green-t)', borderRadius: 20, padding: '2px 8px' }}>First session free</span>
               </div>
             </div>
             <button className="gw-btn" onClick={() => setStep(3)} style={{ margin: 0 }}>Continue</button>
@@ -243,7 +260,7 @@ export function CreateGroundPage() {
         {step === 3 && (
           <div>
             <div className="gw-ttl">Who is in this ground?</div>
-            <div className="gw-sub-t">Add everyone who will check in. You can add people already in your org or invite someone new.</div>
+            <div className="gw-sub-t">Add everyone who will check in. Contributors can be from different organisations. You can add more at any time.</div>
 
             {participants.length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginBottom: 14 }}>
@@ -260,12 +277,32 @@ export function CreateGroundPage() {
               </div>
             )}
 
+            <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+              <button onClick={() => { setBulkMode(false) }} style={{ fontSize: 12, fontWeight: bulkMode ? 400 : 700, color: bulkMode ? 'var(--gw-sub)' : 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>Add one by one</button>
+              <span style={{ color: 'var(--gw-border)', fontSize: 12 }}>|</span>
+              <button onClick={() => { setBulkMode(true) }} style={{ fontSize: 12, fontWeight: bulkMode ? 700 : 400, color: bulkMode ? 'var(--gw-navy)' : 'var(--gw-sub)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>Paste multiple emails</button>
+            </div>
+
+            {bulkMode ? (
+              <div style={{ background: 'var(--gw-bg)', border: '0.5px solid var(--gw-border)', borderRadius: 8, padding: 12, marginBottom: 14 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-sub)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>Paste emails</div>
+                <textarea
+                  rows={4}
+                  value={bulkText}
+                  onChange={e => setBulkText(e.target.value)}
+                  placeholder={'one@example.com\ntwo@example.com\nthree@example.com'}
+                  style={{ width: '100%', padding: '10px 12px', border: '0.5px solid var(--gw-border)', borderRadius: 7, fontSize: 13, fontFamily: 'inherit', color: 'var(--gw-text)', background: 'white', resize: 'vertical', boxSizing: 'border-box', marginBottom: 8 }}
+                />
+                <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginBottom: 8 }}>Separate by line, comma, or semicolon. Roles and notes can be added after.</div>
+                <button onClick={addBulk} style={{ width: '100%', padding: 9, borderRadius: 6, background: 'none', color: 'var(--gw-navy)', fontSize: 13, fontWeight: 600, border: '1.5px dashed var(--gw-blue-b)', cursor: 'pointer', fontFamily: 'inherit' }}>Add all</button>
+              </div>
+            ) : (
             <div style={{ background: 'var(--gw-bg)', border: '0.5px solid var(--gw-border)', borderRadius: 8, padding: 12, marginBottom: 14 }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-sub)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 10 }}>Add someone new</div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
                 <div className="gw-fld" style={{ margin: 0 }}>
                   <label className="gw-label">Email address</label>
-                  <input className="gw-input" type="email" value={pEmail} onChange={e => setPEmail(e.target.value)} placeholder="participant@company.com" />
+                  <input className="gw-input" type="email" value={pEmail} onChange={e => setPEmail(e.target.value)} placeholder="their@email.com" />
                 </div>
                 <div className="gw-fld" style={{ margin: 0 }}>
                   <label className="gw-label">Their role <span style={{ fontWeight: 400, color: 'var(--gw-muted)' }}>(optional)</span></label>
@@ -278,16 +315,23 @@ export function CreateGroundPage() {
               </div>
               <button onClick={addParticipant} style={{ width: '100%', padding: 9, borderRadius: 6, background: 'none', color: 'var(--gw-navy)', fontSize: 13, fontWeight: 600, border: '1.5px dashed var(--gw-blue-b)', cursor: 'pointer', fontFamily: 'inherit' }}>+ Add to this ground</button>
             </div>
+            )}
 
             {participants.length > 0 && (
               <div style={{ fontSize: 12, color: 'var(--gw-sub)', background: 'var(--gw-bg)', borderRadius: 7, padding: '10px 12px', marginBottom: 14, lineHeight: 1.6 }}>
-                Each person gets their own private check-in. Nobody can see what anyone else wrote until you both activate the report.
+                Each person gets their own private check-in. Nobody can see what anyone else wrote until the report is activated.
               </div>
             )}
 
             {participants.length > 0 && (
               <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 10 }}>
                 {participants.length} {participants.length === 1 ? 'person' : 'people'} added. Up to 20 per ground.
+              </div>
+            )}
+
+            {scenario === 'NEW_HIRE' && participants.length === 0 && (
+              <div style={{ fontSize: 12, color: 'var(--gw-sub)', background: 'var(--gw-amber-bg)', border: '0.5px solid var(--gw-amber-b)', borderRadius: 7, padding: '10px 12px', marginBottom: 12, lineHeight: 1.6 }}>
+                For coaching or mentoring, one ground per person works best. Each person keeps their own private record across sessions.
               </div>
             )}
 
@@ -302,7 +346,7 @@ export function CreateGroundPage() {
         {step === 4 && (
           <div>
             <div className="gw-ttl">What does a successful outcome look like?</div>
-            <div className="gw-sub-t">Both parties see this before the first session. You are not locked in — the state can be updated if the ground reveals something different.</div>
+            <div className="gw-sub-t">Everyone involved sees this before the first session. You are not locked in — the state can be updated if the ground reveals something different.</div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
               {RESOLUTION_GROUPS.map(group => (
@@ -333,7 +377,7 @@ export function CreateGroundPage() {
         {step === 5 && (
           <div>
             <div className="gw-ttl">What is this ground about?</div>
-            <div className="gw-sub-t">Your version of the brief. The other party writes theirs in their first session. You will both see the comparison in the report.</div>
+            <div className="gw-sub-t">Your version of the brief. Each contributor writes their own in their first session. The report shows where accounts agree and where they differ.</div>
 
             <div style={{ position: 'relative', marginBottom: 6 }}>
               <textarea
@@ -358,7 +402,7 @@ export function CreateGroundPage() {
                 className="gw-input"
                 value={groundName}
                 onChange={e => setGroundName(e.target.value)}
-                placeholder={`${(scenario ?? '').replace(/_/g, ' ')} — ${new Date().getFullYear()}`}
+                placeholder={`e.g. COO onboarding, Q3 2025`}
               />
             </div>
 
