@@ -46,6 +46,7 @@ function GroundCard({ g, onClick }: { g: Ground; onClick: () => void }) {
           {g.participants.length} participant{g.participants.length !== 1 ? 's' : ''}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {g.status === 'ACTIVE' && g.participants.length > 1 && !(g.checkIns ?? []).some(c => c.status === 'COMPLETED') && (g.overdue ?? 0) === 0 && <span style={{ fontSize: 11, fontWeight: 600, color: '#7A5200', background: '#FFF8EC', borderRadius: 20, padding: '2px 8px' }}>No check-ins yet</span>}
           {(g.overdue ?? 0) > 0 && <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', borderRadius: 20, padding: '2px 8px' }}>{g.overdue} overdue</span>}
           {g.status === 'REPORT_READY' && <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-green-t)', background: 'var(--gw-green-bg)', borderRadius: 20, padding: '2px 8px' }}>Report ready</span>}
           {g.daysLeft != null && <span style={{ fontSize: 11, color: 'var(--gw-sub)' }}>{g.daysLeft}d left</span>}
@@ -87,16 +88,13 @@ export function GroundsListPage() {
     retry: false,
   })
 
-  const checkoutMut = useMutation({
-    mutationFn: () => billingApi.createCareFeeCheckout(),
-    onSuccess: (url) => { window.location.href = url },
-    onError: () => toast.error('Could not start checkout. Please try again.'),
-  })
-
+  const checkoutMut = { mutate: () => navigate('/billing/checkout'), isPending: false }
   const active = grounds.filter(g => g.status !== 'CLOSED' && g.status !== 'RESOLVED')
   const checkInsToday = grounds.reduce((n, g) => n + (g.checkInsToday ?? 0), 0)
   const reportsReady = grounds.filter(g => g.status === 'REPORT_READY').length
-  const billingActive = billing?.careFeeActive ?? false
+  const billingActive = (billing?.activeGrounds?.length ?? 0) > 0
+  // Only show unlock-insights banner when there are completed grounds that have actually generated a report
+  const hasCompletedGrounds = grounds.some(g => g.status === 'REPORT_READY' || (g.confidence ?? 0) >= 2)
   const needsAttention = grounds.filter(g => g.status === 'REPORT_READY' || (g.overdue ?? 0) > 0)
   const sortedGrounds = [...grounds].sort((a, b) => {
     const urgency = (g: typeof a) => (g.status === 'REPORT_READY' ? 10 : (g.overdue ?? 0) > 0 ? 5 : 0)
@@ -131,7 +129,7 @@ export function GroundsListPage() {
             <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
               {[
                 { val: active.length,    label: 'Active grounds' },
-                { val: checkInsToday,    label: 'Check-ins today' },
+                { val: checkInsToday,    label: 'Participant sessions today' },
                 { val: reportsReady,     label: 'Reports ready' },
               ].map(s => (
                 <div key={s.label} style={{ background: 'var(--gw-bg)', border: '0.5px solid var(--gw-border)', borderRadius: 8, padding: '10px 14px', flex: 1, minWidth: 100 }}>
@@ -141,8 +139,8 @@ export function GroundsListPage() {
               ))}
             </div>
 
-            {/* Unlock insights CTA — only if not yet subscribed */}
-            {!billingActive && (
+            {/* Unlock insights CTA — only after first completed ground pair, not on empty/new accounts */}
+            {!billingActive && hasCompletedGrounds && (
               <div style={{ background: '#EEF4FB', border: '1px solid #C5D9EF', borderRadius: 10, padding: '14px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 700, color: '#0C447C', marginBottom: 2 }}>Unlock full insights</div>
@@ -173,7 +171,7 @@ export function GroundsListPage() {
                 onClick={() => setShowInviteColleague(true)}
                 style={{ width: '100%', padding: '10px 16px', borderRadius: 8, background: 'white', color: 'var(--gw-navy)', fontSize: 13, fontWeight: 600, border: '1px solid var(--gw-blue-b)', cursor: 'pointer', fontFamily: 'inherit', marginBottom: 20, textAlign: 'left' }}
               >
-                Invite a colleague to create grounds →
+                Invite a colleague to manage their own grounds →
               </button>
             ) : (
               <div style={{ background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 10, padding: '14px 16px', marginBottom: 20 }}>
@@ -266,8 +264,8 @@ export function GroundsListPage() {
               </button>
             </div>
 
-            {/* Unlock insights CTA for contributors */}
-            {!billingActive && grounds.length > 0 && (
+            {/* Unlock insights CTA for contributors — only shown after first report is available */}
+            {!billingActive && grounds.some(g => g.status === 'REPORT_READY') && (
               <div style={{ background: '#EEF4FB', border: '1px solid #C5D9EF', borderRadius: 10, padding: '14px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 700, color: '#0C447C', marginBottom: 2 }}>See your full record</div>

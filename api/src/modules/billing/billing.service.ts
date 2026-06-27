@@ -1,5 +1,4 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
+import { Injectable, Logger, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type Stripe from 'stripe';
 import { PrismaService, CronLock } from '../prisma/prisma.service';
@@ -8,9 +7,6 @@ import { EmailService } from '../email/email.service';
 import { CareFeeStatus, GroundStatus, BillingEventType, BillingEventStatus, UserRole, UsageEventType } from '@prisma/client';
 import { UsageService } from '../usage/usage.service';
 import * as crypto from 'crypto';
-
-const PARTICIPANT_PERIOD_DAYS = 30;
-const dayMs = 24 * 60 * 60 * 1000;
 
 /**
  * Billing model:
@@ -66,11 +62,71 @@ export class BillingService {
   }
 
   /**
-   * Create a Stripe Checkout session to purchase one additional check-in session
-   * ($5 one-time). On webhook confirmation the ground sessionsBalance is
-   * incremented by 1 and a SESSION_FEE BillingEvent is recorded.
+   * Ground creation gate.
+   *
+   * Resolution order:
+   *   1. org.firstGroundUsed === false  → freeReason='FIRST_GROUND' (one-time per org)
+   *   2. accessCode provided and valid  → freeReason='ACCESS_CODE', codeId set
+   *   3. org has paid for this ground   → allowed, no freeReason (payment flow handled externally)
+   *   4. otherwise                      → not allowed
+   *
+   * The caller (GroundsService.create) is responsible for persisting the derived
+   * fields inside its transaction.
    */
-  async purchaseSession(organizationId: string, groundId: string): Promise<{ checkoutUrl: string }> {
+  async canCreateGround(
+    organizationId: string,
+    accessCode?: string,
+  ): Promise<{ allowed: boolean; reason?: string; freeReason?: 'FIRST_GROUND' | 'ACCESS_CODE'; codeId?: string }> {
+    const org = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { firstGroundUsed: true, careFeeStatus: true },
+    });
+    if (!org) return { allowed: false, reason: 'Organization not found' };
+
+    // 1. First ground for this org — always free.
+    if (!org.firstGroundUsed) {
+      return { allowed: true, freeReason: 'FIRST_GROUND' };
+    }
+
+    // 2. Contributor access code supplied.
+    if (accessCode?.trim()) {
+      const now = new Date();
+      const code = await this.prisma.contributorCode.findFirst({
+        where: {
+          code: accessCode.trim(),
+          isActive: true,
+          expiresAt: { gt: now },
+        },
+        select: { id: true, sessionsGranted: true, sessionsUsed: true },
+      });
+      if (!code) {
+        return { allowed: false, reason: 'Access code is invalid or has expired' };
+      }
+      if (code.sessionsUsed >= code.sessionsGranted) {
+        return { allowed: false, reason: 'Access code has already been fully redeemed' };
+      }
+      return { allowed: true, freeReason: 'ACCESS_CODE', codeId: code.id };
+    }
+
+    // 3. Org is on an active paid plan — allow ground creation (session balance
+    //    will have been topped up via Stripe; the ground's isFreeGround=false).
+    if (org.careFeeStatus === CareFeeStatus.ACTIVE) {
+      return { allowed: true };
+    }
+
+    // 4. No free entitlement and no active subscription.
+    return {
+      allowed: false,
+      reason: 'Your first ground is free. To create additional grounds, purchase a session or use a contributor code.',
+    };
+  }
+
+  /**
+   * Create a Stripe Checkout session to purchase one or more additional check-in
+   * sessions ($5 each, one-time). On webhook confirmation the ground sessionsBalance
+   * is incremented by quantity and a SESSION_FEE BillingEvent is recorded.
+   */
+  async purchaseSession(organizationId: string, groundId: string, quantity = 1): Promise<{ checkoutUrl: string }> {
     const org = await this.prisma.organization.findUnique({ where: { id: organizationId } });
     if (!org) throw new NotFoundException('Organization not found');
 
@@ -79,6 +135,7 @@ export class BillingService {
       await this.prisma.organization.update({ where: { id: org.id }, data: { stripeCustomerId: customerId } });
     }
 
+    const qty = Math.max(1, Math.min(20, quantity));
     const base = this.config.get<string>('stripe.callbackUrl') || 'http://localhost:5173/billing/callback';
     const session = await this.stripe.stripe.checkout.sessions.create({
       customer: customerId,
@@ -88,12 +145,12 @@ export class BillingService {
           price_data: {
             currency: 'usd',
             unit_amount: 500,
-            product_data: { name: 'Check-in session' },
+            product_data: { name: qty === 1 ? 'Check-in session' : `Check-in sessions (×${qty})` },
           },
-          quantity: 1,
+          quantity: qty,
         },
       ],
-      metadata: { organizationId, groundId, type: 'session_fee' },
+      metadata: { organizationId, groundId, type: 'session_fee', quantity: String(qty) },
       success_url: `${base}?status=success&groundId=${groundId}&type=session_fee`,
       cancel_url: `${base}?status=cancelled`,
     });
@@ -104,16 +161,47 @@ export class BillingService {
   /**
    * Generate a random 8-character uppercase alphanumeric contributor code and
    * persist it to the ContributorCode table.
+   *
+   * Only allowed if:
+   *   - caller isPlatformAdmin, OR
+   *   - caller org has allowCodeCreation=true AND caller is ADMIN
    */
   async generateContributorCode(
     organizationId: string,
     createdByUserId: string,
     sessionsGranted: number,
     note?: string,
+    allowCodeCreation = false,
+    parentCodeId?: string,
   ): Promise<{ code: string }> {
+    // Authorization check
+    const [org, callerUser] = await Promise.all([
+      this.prisma.organization.findUnique({ where: { id: organizationId }, select: { allowCodeCreation: true } }),
+      this.prisma.user.findUnique({ where: { id: createdByUserId }, select: { isPlatformAdmin: true, role: true } }),
+    ]);
+
+    const isPlatformAdmin = callerUser?.isPlatformAdmin ?? false;
+    const orgAllowsCodeCreation = org?.allowCodeCreation ?? false;
+    const callerIsAdmin = callerUser?.role === UserRole.ADMIN;
+
+    if (!isPlatformAdmin && !(orgAllowsCodeCreation && callerIsAdmin)) {
+      throw new ForbiddenException('Not authorised to generate contributor codes.');
+    }
+
     const code = crypto.randomBytes(6).toString('base64url').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8).padEnd(8, '0');
+    const expiresAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+
     await this.prisma.contributorCode.create({
-      data: { organizationId, createdByUserId, code, sessionsGranted, note },
+      data: {
+        organizationId,
+        createdByUserId,
+        code,
+        sessionsGranted,
+        note,
+        allowCodeCreation,
+        parentCodeId: parentCodeId ?? null,
+        expiresAt,
+      },
     });
     this.logger.log(`Contributor code generated for org ${organizationId}: ${code}`);
     return { code };
@@ -122,21 +210,39 @@ export class BillingService {
   /**
    * Redeem a contributor code against a ground. Increments the ground's
    * sessionsBalance, marks the code as fully used, and records a redemption row.
+   * If code.allowCodeCreation and redeemedBy is ADMIN → set org.allowCodeCreation=true.
    */
   async redeemContributorCode(
     code: string,
     groundId: string,
+    callerOrganizationId?: string,
+    redeemedByUserId?: string,
   ): Promise<{ ok: boolean; message: string; sessionsAdded?: number }> {
+    if (callerOrganizationId) {
+      const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId: callerOrganizationId } });
+      if (!ground) return { ok: false, message: 'Ground not found or does not belong to your organization.' };
+    }
+
     const record = await this.prisma.contributorCode.findUnique({ where: { code } });
     if (!record) return { ok: false, message: 'Code not valid or already used.' };
 
     const now = new Date();
+    if (!record.isActive) return { ok: false, message: 'Code not valid or already used.' };
     if (record.expiresAt && record.expiresAt < now) return { ok: false, message: 'Code not valid or already used.' };
     if (record.sessionsUsed >= record.sessionsGranted) return { ok: false, message: 'Code not valid or already used.' };
 
     const sessionsToAdd = record.sessionsGranted - record.sessionsUsed;
 
-    await this.prisma.$transaction([
+    // Check if we should grant allowCodeCreation to the redeeming org.
+    let grantCodeCreation = false;
+    if (record.allowCodeCreation && redeemedByUserId && callerOrganizationId) {
+      const redeemer = await this.prisma.user.findUnique({ where: { id: redeemedByUserId }, select: { role: true } });
+      if (redeemer?.role === UserRole.ADMIN) {
+        grantCodeCreation = true;
+      }
+    }
+
+    const ops: any[] = [
       this.prisma.ground.update({
         where: { id: groundId },
         data: { sessionsBalance: { increment: sessionsToAdd } },
@@ -146,170 +252,40 @@ export class BillingService {
         data: { sessionsUsed: record.sessionsGranted },
       }),
       this.prisma.contributorCodeRedemption.create({
-        data: { codeId: record.id, groundId },
+        data: { codeId: record.id, groundId, redeemedByUserId: redeemedByUserId ?? null },
       }),
-    ]);
+    ];
+
+    if (grantCodeCreation && callerOrganizationId) {
+      ops.push(
+        this.prisma.organization.update({
+          where: { id: callerOrganizationId },
+          data: { allowCodeCreation: true },
+        }),
+      );
+    }
+
+    await this.prisma.$transaction(ops);
 
     this.logger.log(`Contributor code ${code} redeemed for ground ${groundId}: +${sessionsToAdd} session(s)`);
     return { ok: true, message: `${sessionsToAdd} session(s) added.`, sessionsAdded: sessionsToAdd };
   }
 
-  /** The gate: an org is billing-ready once its care fee is active. */
-  async isBillingReady(organizationId: string): Promise<boolean> {
-    const BILLING_ENABLED = process.env.BILLING_ENABLED !== 'false';
-    if (!BILLING_ENABLED) return true;
-    const org = await this.prisma.organization.findUnique({
-      where: { id: organizationId },
-      select: { careFeeStatus: true, stripeCustomerId: true },
-    });
-    return !!org && org.careFeeStatus === CareFeeStatus.ACTIVE && !!org.stripeCustomerId;
+  /** With per-session billing there is no subscription prerequisite — billing is always ready. */
+  async isBillingReady(_organizationId: string): Promise<boolean> {
+    return true;
   }
 
   /**
-   * Create a hosted Checkout session to set up the care fee. Returns the URL the
-   * admin is redirected to. Completion is confirmed via webhook.
-   */
-  async createCareFeeCheckout(organizationId: string, groundId?: string): Promise<{ checkoutUrl: string }> {
-    const org = await this.prisma.organization.findUnique({ where: { id: organizationId } });
-    if (!org) throw new NotFoundException('Organization not found');
-
-    const customerId = await this.stripe.ensureCustomer(org.id, org.email ?? undefined, org.stripeCustomerId);
-    if (customerId !== org.stripeCustomerId) {
-      await this.prisma.organization.update({ where: { id: org.id }, data: { stripeCustomerId: customerId } });
-    }
-
-    const base = this.config.get<string>('stripe.callbackUrl') || 'http://localhost:5173/billing/callback';
-    const successUrl = groundId
-      ? `${base}?status=success&groundId=${groundId}`
-      : `${base}?status=success`;
-    const checkoutUrl = await this.stripe.createCareFeeCheckout({
-      customerId,
-      organizationId: org.id,
-      successUrl,
-      cancelUrl: `${base}?status=cancelled`,
-    });
-    return { checkoutUrl };
-  }
-
-  /** Count unique participant emails across all ACTIVE grounds for an org. */
-  async getUniqueActiveParticipantCount(orgId: string): Promise<number> {
-    const grounds = await this.prisma.ground.findMany({
-      where: { organizationId: orgId, status: GroundStatus.ACTIVE },
-      include: { participants: { select: { user: { select: { email: true } } } } },
-    });
-    const emails = new Set<string>();
-    for (const g of grounds) {
-      for (const p of g.participants) {
-        if (p.user?.email) emails.add(p.user.email.toLowerCase());
-      }
-    }
-    return emails.size;
-  }
-
-  /**
-   * Charge the participant fee for one org for a [periodStart, periodEnd) window.
-   * One event per org per period (groundId = null). Idempotent. (GW-04.)
-   */
-  async chargeParticipantFeeForPeriod(orgId: string, stripeCustomerId: string, periodStart: Date, periodEnd: Date) {
-    const participantCount = await this.getUniqueActiveParticipantCount(orgId);
-    if (participantCount === 0) return;
-
-    const already = await this.prisma.billingEvent.findFirst({
-      where: { organizationId: orgId, groundId: null, type: BillingEventType.PARTICIPANT_FEE, periodStart, periodEnd },
-    });
-    if (already) return;
-
-    const unit = this.config.get<number>('stripe.scenarioFeeCents') || 2500;
-    const year = periodStart.getUTCFullYear();
-    const month = periodStart.getUTCMonth() + 1;
-    const idempotencyKey = `participant-${orgId}-${year}-${month}`;
-    await this.stripe.chargeParticipantFee(stripeCustomerId, participantCount, idempotencyKey);
-    await this.prisma.billingEvent.create({
-      data: {
-        organizationId: orgId,
-        groundId: null,
-        type: BillingEventType.PARTICIPANT_FEE,
-        amountCents: unit * participantCount,
-        currency: 'USD',
-        periodStart,
-        periodEnd,
-        status: BillingEventStatus.PENDING,
-      },
-    });
-  }
-
-  /**
-   * Charge the first participant fee when a ground is activated. Rolling 30-day
-   * period anchored to activation — avoids the calendar double-charge (GW-04).
-   */
-  async chargeParticipantFeeOnActivation(orgId: string) {
-    const org = await this.prisma.organization.findUnique({
-      where: { id: orgId },
-      select: { stripeCustomerId: true },
-    });
-    if (!org?.stripeCustomerId) return;
-    const start = new Date();
-    const end = new Date(start.getTime() + PARTICIPANT_PERIOD_DAYS * dayMs);
-    await this.chargeParticipantFeeForPeriod(orgId, org.stripeCustomerId, start, end);
-  }
-
-  /**
-   * Daily: charge the next participant-fee period for every org with ACTIVE
-   * grounds. One event per org per period, deduplicated by email across grounds.
-   * Skips orgs that are PAST_DUE. Advisory-locked (GW-60).
-   */
-  @Cron(CronExpression.EVERY_DAY_AT_1AM)
-  async chargeParticipantFees() {
-    await this.prisma.withAdvisoryLock(CronLock.SCENARIO_FEES, async () => {
-      const now = new Date();
-      const orgsWithActiveGrounds = await this.prisma.organization.findMany({
-        where: { grounds: { some: { status: GroundStatus.ACTIVE } } },
-        select: { id: true, stripeCustomerId: true, careFeeStatus: true },
-      });
-
-      let charged = 0;
-      let skippedPastDue = 0;
-      for (const org of orgsWithActiveGrounds) {
-        if (org.careFeeStatus !== CareFeeStatus.ACTIVE || !org.stripeCustomerId) {
-          skippedPastDue++;
-          continue;
-        }
-        const last = await this.prisma.billingEvent.findFirst({
-          where: { organizationId: org.id, groundId: null, type: BillingEventType.PARTICIPANT_FEE },
-          orderBy: { periodEnd: 'desc' },
-          select: { periodEnd: true },
-        });
-        const nextStart = last?.periodEnd ?? now;
-        if (nextStart > now) continue;
-        const nextEnd = new Date(nextStart.getTime() + PARTICIPANT_PERIOD_DAYS * dayMs);
-        try {
-          await this.chargeParticipantFeeForPeriod(org.id, org.stripeCustomerId, nextStart, nextEnd);
-          charged++;
-        } catch (err: any) {
-          this.logger.error(`Participant fee failed for org ${org.id}: ${err.message}`);
-        }
-      }
-      this.logger.log(`Participant fee run: ${orgsWithActiveGrounds.length} orgs, ${charged} charged, ${skippedPastDue} skipped.`);
-    });
-  }
-
-  /**
-   * Billing status for an org: care-fee state, active participant count, active
-   * grounds list, and next charge estimate. (GW-status)
+   * Billing status: active grounds with session balances and saved card details.
    */
   async getStatus(organizationId: string): Promise<{
-    careFeeActive: boolean;
-    careFeeMonthlyCost: number;
-    participantFeeMonthlyCost: number;
     activeGrounds: Array<{ groundId: string; label: string; startedAt: Date | null; sessionsBalance: number }>;
-    activeParticipantCount: number;
-    estimatedNextCharge: number | null;
-    nextBillingDate: string | null;
     card?: { brand: string; last4: string } | null;
   }> {
     const org = await this.prisma.organization.findUnique({
       where: { id: organizationId },
-      select: { careFeeStatus: true, stripeCustomerId: true, defaultPaymentMethodId: true },
+      select: { stripeCustomerId: true, defaultPaymentMethodId: true },
     });
     if (!org) throw new NotFoundException('Organization not found');
 
@@ -317,27 +293,6 @@ export class BillingService {
       where: { organizationId, status: GroundStatus.ACTIVE },
       select: { id: true, label: true, billingActivatedAt: true, sessionsBalance: true },
     });
-
-    const CARE_FEE = this.config.get<number>('stripe.careFeeCents') ?? 2500;
-    const PARTICIPANT_FEE = this.config.get<number>('stripe.scenarioFeeCents') ?? 2500;
-    const careFeeActive = org.careFeeStatus === CareFeeStatus.ACTIVE;
-    const activeParticipantCount = await this.getUniqueActiveParticipantCount(organizationId);
-
-    const groundsOut = activeGrounds.map((g) => ({
-      groundId: g.id,
-      label: g.label,
-      startedAt: g.billingActivatedAt,
-      sessionsBalance: g.sessionsBalance,
-    }));
-
-    const estimatedNextCharge = careFeeActive
-      ? Math.round((CARE_FEE + activeParticipantCount * PARTICIPANT_FEE) / 100)
-      : null;
-
-    const now = new Date();
-    const nextBilling = careFeeActive
-      ? new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)).toISOString().slice(0, 10)
-      : null;
 
     let card: { brand: string; last4: string } | null = null;
     if (org.stripeCustomerId && org.defaultPaymentMethodId) {
@@ -350,21 +305,19 @@ export class BillingService {
     }
 
     return {
-      careFeeActive,
-      careFeeMonthlyCost: Math.round(CARE_FEE / 100),
-      participantFeeMonthlyCost: Math.round(PARTICIPANT_FEE / 100),
-      activeGrounds: groundsOut,
-      activeParticipantCount,
-      estimatedNextCharge,
-      nextBillingDate: nextBilling,
+      activeGrounds: activeGrounds.map((g) => ({
+        groundId: g.id,
+        label: g.label,
+        startedAt: g.billingActivatedAt,
+        sessionsBalance: g.sessionsBalance,
+      })),
       card,
     };
   }
 
   /**
-   * Full subscription cancellation. Cancels the Stripe subscription immediately,
-   * marks the org as CANCELLED, sends a record-portability notice, and returns.
-   * Does NOT delete any Ground, RecordEntry, or User records. (GW-cancel)
+   * Account cancellation. Marks the org as CANCELLED and sends a record-portability
+   * notice to every user so each person knows their record is retained.
    */
   async cancelSubscription(organizationId: string): Promise<{ cancelled: boolean }> {
     const org = await this.prisma.organization.findUnique({
@@ -374,7 +327,7 @@ export class BillingService {
     if (!org) throw new NotFoundException('Organization not found');
 
     if (org.careFeeSubscriptionId) {
-      await this.stripe.stripe.subscriptions.cancel(org.careFeeSubscriptionId);
+      await this.stripe.stripe.subscriptions.cancel(org.careFeeSubscriptionId).catch(() => null);
     }
 
     await this.prisma.organization.update({
@@ -382,9 +335,6 @@ export class BillingService {
       data: { careFeeStatus: CareFeeStatus.CANCELLED },
     });
 
-    // Send a record-portability notice to every non-deleted org user so each
-    // person knows their record is retained and can be exported. The org.email
-    // field is the workspace email but individual users are the record holders.
     const downloadUrl = `${this.config.get<string>('resend.frontendUrl') ?? ''}/users/me/export`;
     const orgUsers = await this.prisma.user.findMany({
       where: { organizationId, deletedAt: null },
@@ -399,35 +349,13 @@ export class BillingService {
         );
     }
 
-    this.logger.log(`Subscription cancelled for org ${organizationId}; portability notices sent to ${orgUsers.length} user(s).`);
+    this.logger.log(`Account cancelled for org ${organizationId}; portability notices sent to ${orgUsers.length} user(s).`);
     return { cancelled: true };
   }
 
   /**
-   * Cancel the care fee subscription (self-serve). Cancels at period end, so the
-   * org keeps access through the period it has already paid for, and active
-   * grounds keep running until then. Status is synced by the subscription
-   * webhook. (GW-09.)
-   */
-  async cancelCareFee(organizationId: string): Promise<{ cancelled: boolean; effectiveAt: Date | null }> {
-    const org = await this.prisma.organization.findUnique({
-      where: { id: organizationId },
-      select: { careFeeSubscriptionId: true },
-    });
-    if (!org) throw new NotFoundException('Organization not found');
-    if (!org.careFeeSubscriptionId) {
-      await this.prisma.organization.update({ where: { id: organizationId }, data: { careFeeStatus: CareFeeStatus.CANCELLED } });
-      return { cancelled: true, effectiveAt: null };
-    }
-    const sub = await this.stripe.cancelSubscriptionAtPeriodEnd(org.careFeeSubscriptionId);
-    const periodEnd = sub.current_period_end ? new Date(sub.current_period_end * 1000) : null;
-    this.logger.log(`Care fee cancellation scheduled for org ${organizationId} (effective ${periodEnd?.toISOString() ?? 'period end'})`);
-    return { cancelled: true, effectiveAt: periodEnd };
-  }
-
-  /**
-   * A Stripe Customer Portal session — the robust self-serve surface for
-   * updating the card, viewing invoices, and cancelling. (GW-09.)
+   * A Stripe Customer Portal session — self-serve surface for updating the card
+   * and viewing payment history.
    */
   async createBillingPortalSession(organizationId: string): Promise<{ portalUrl: string }> {
     const org = await this.prisma.organization.findUnique({ where: { id: organizationId }, select: { stripeCustomerId: true } });
@@ -437,40 +365,49 @@ export class BillingService {
     return { portalUrl };
   }
 
-  /** Handle Stripe webhook events — keeps care-fee status in sync. */
+  /** Handle Stripe webhook events. */
   async handleStripeEvent(event: Stripe.Event) {
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
 
-        // Session fee: one-time $5 purchase for a single check-in session.
         if (session.metadata?.type === 'session_fee') {
           const { organizationId, groundId } = session.metadata ?? {};
+          const qty = parseInt(session.metadata?.quantity ?? '1', 10) || 1;
+          const stripeInvoiceId = (session.payment_intent as string | null) ?? event.id;
           if (organizationId && groundId) {
-            await this.prisma.ground.update({
-              where: { id: groundId },
-              data: { sessionsBalance: { increment: 1 } },
-            });
+            // Idempotency guard: skip if we've already processed this payment intent.
+            const existing = await this.prisma.billingEvent.findFirst({ where: { stripeInvoiceId } });
+            if (existing) {
+              this.logger.warn(`Duplicate webhook for ${stripeInvoiceId} — skipping`);
+              break;
+            }
             const now = new Date();
-            await this.prisma.billingEvent.create({
-              data: {
-                organizationId,
-                groundId,
-                type: BillingEventType.SESSION_FEE,
-                amountCents: 500,
-                currency: 'USD',
-                status: BillingEventStatus.PAID,
-                periodStart: now,
-                periodEnd: now,
-                stripeInvoiceId: (session.payment_intent as string | null) ?? null,
-              },
-            });
-            this.logger.log(`Session fee paid for ground ${groundId} (org ${organizationId})`);
+            await this.prisma.$transaction([
+              this.prisma.ground.update({
+                where: { id: groundId },
+                data: { sessionsBalance: { increment: qty } },
+              }),
+              this.prisma.billingEvent.create({
+                data: {
+                  organizationId,
+                  groundId,
+                  type: BillingEventType.SESSION_FEE,
+                  amountCents: 500 * qty,
+                  currency: 'USD',
+                  status: BillingEventStatus.PAID,
+                  periodStart: now,
+                  periodEnd: now,
+                  stripeInvoiceId,
+                },
+              }),
+            ]);
+            this.logger.log(`Session fee paid: ${qty} session(s) added to ground ${groundId} (org ${organizationId})`);
           }
           break;
         }
 
-        // Care fee: subscription checkout.
+        // Handle any legacy subscription checkout completions.
         const organizationId = session.client_reference_id;
         const subscriptionId = typeof session.subscription === 'string' ? session.subscription : session.subscription?.id;
         if (!organizationId || !subscriptionId) break;
@@ -485,7 +422,7 @@ export class BillingService {
             stripeCustomerId: typeof session.customer === 'string' ? session.customer : session.customer?.id,
           },
         });
-        this.logger.log(`Care fee active for org ${organizationId}`);
+        this.logger.log(`Legacy subscription activated for org ${organizationId}`);
         this.usage.emit(UsageEventType.BILLING_ACTIVATED, { organizationId }).catch(() => undefined);
         break;
       }
@@ -507,7 +444,7 @@ export class BillingService {
         const customerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id;
         if (!customerId) break;
 
-        const gracePeriodUntil = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // +7 days
+        const gracePeriodUntil = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
         const failedOrg = await this.prisma.organization.findFirst({
           where: { stripeCustomerId: customerId },
           select: { id: true, name: true, email: true },
@@ -522,29 +459,6 @@ export class BillingService {
             .catch((err: any) =>
               this.logger.warn(`Payment-failed email failed for org ${failedOrg.id}: ${err.message}`),
             );
-        }
-        break;
-      }
-
-      case 'invoice.payment_succeeded': {
-        const invoice = event.data.object as Stripe.Invoice;
-        const customerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id;
-        if (!customerId) break;
-        const org = await this.prisma.organization.findFirst({ where: { stripeCustomerId: customerId }, select: { id: true } });
-        if (org) {
-          // Reconcile only the events this invoice actually covers: pending
-          // scenario-fee events whose period had already started by the time the
-          // invoice was created. A period charged AFTER this invoice finalised
-          // belongs to a later invoice and must stay PENDING. (GW-04.)
-          const invoiceCreated = invoice.created ? new Date(invoice.created * 1000) : new Date();
-          await this.prisma.billingEvent.updateMany({
-            where: {
-              organizationId: org.id,
-              status: BillingEventStatus.PENDING,
-              periodStart: { lte: invoiceCreated },
-            },
-            data: { status: BillingEventStatus.PAID, stripeInvoiceId: invoice.id },
-          });
         }
         break;
       }
@@ -572,8 +486,95 @@ export class BillingService {
     return this.prisma.contributorCode.findMany({
       where: { organizationId },
       orderBy: { createdAt: 'desc' },
-      include: { redemptions: { select: { groundId: true, redeemedAt: true } } },
+      include: { redemptions: { select: { groundId: true, redeemedAt: true, redeemedByUserId: true, freeReason: true } } },
     });
+  }
+
+  /**
+   * Get stats for all contributor codes belonging to an organization (admin view).
+   */
+  async getCodeStats(organizationId: string) {
+    const codes = await this.prisma.contributorCode.findMany({
+      where: { organizationId },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        redemptions: {
+          select: { groundId: true, freeReason: true, redeemedAt: true, redeemedByUserId: true },
+        },
+      },
+    });
+
+    const now = new Date();
+    return codes.map((c) => ({
+      id: c.id,
+      code: c.code,
+      allowCodeCreation: c.allowCodeCreation,
+      isActive: c.isActive,
+      expiresAt: c.expiresAt,
+      sessionsGranted: c.sessionsGranted,
+      sessionsUsed: c.sessionsUsed,
+      createdAt: c.createdAt,
+      redemptions: c.redemptions,
+      daysUntilExpiry: c.expiresAt ? Math.max(0, Math.ceil((c.expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))) : null,
+    }));
+  }
+
+  /**
+   * Disable a contributor code. Validates that the caller's org owns the code.
+   */
+  async disableCode(codeId: string, callerOrgId: string): Promise<{ ok: boolean }> {
+    const code = await this.prisma.contributorCode.findUnique({ where: { id: codeId } });
+    if (!code) throw new NotFoundException('Code not found');
+    if (code.organizationId !== callerOrgId) throw new ForbiddenException('Not authorised to disable this code.');
+    await this.prisma.contributorCode.update({ where: { id: codeId }, data: { isActive: false } });
+    this.logger.log(`Contributor code ${codeId} disabled by org ${callerOrgId}`);
+    return { ok: true };
+  }
+
+  /**
+   * Platform admin: get stats across all orgs — all codes, all redemptions, usage by freeReason.
+   */
+  async getPlatformAdminStats(callerUserId: string) {
+    const caller = await this.prisma.user.findUnique({ where: { id: callerUserId }, select: { isPlatformAdmin: true } });
+    if (!caller?.isPlatformAdmin) throw new ForbiddenException('Platform admin access required.');
+
+    const codes = await this.prisma.contributorCode.findMany({
+      orderBy: { createdAt: 'desc' },
+      include: {
+        redemptions: {
+          select: { groundId: true, freeReason: true, redeemedAt: true, redeemedByUserId: true },
+        },
+        organization: { select: { id: true, name: true, slug: true } },
+      },
+    });
+
+    const allRedemptions = codes.flatMap((c) => c.redemptions);
+    const usageByFreeReason: Record<string, number> = {};
+    for (const r of allRedemptions) {
+      const key = r.freeReason ?? 'unknown';
+      usageByFreeReason[key] = (usageByFreeReason[key] ?? 0) + 1;
+    }
+
+    const now = new Date();
+    return {
+      totalCodes: codes.length,
+      totalRedemptions: allRedemptions.length,
+      usageByFreeReason,
+      codes: codes.map((c) => ({
+        id: c.id,
+        code: c.code,
+        organizationId: c.organizationId,
+        organization: c.organization,
+        allowCodeCreation: c.allowCodeCreation,
+        isActive: c.isActive,
+        expiresAt: c.expiresAt,
+        sessionsGranted: c.sessionsGranted,
+        sessionsUsed: c.sessionsUsed,
+        createdAt: c.createdAt,
+        daysUntilExpiry: c.expiresAt ? Math.max(0, Math.ceil((c.expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))) : null,
+        redemptions: c.redemptions,
+      })),
+    };
   }
 
   /** Validate a contributor code and, if valid, mark the org as billing-active without Stripe. */

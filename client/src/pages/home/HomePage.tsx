@@ -175,6 +175,34 @@ export function HomePage() {
             </div>
           )}
 
+          <div style={{ marginTop: 28 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-muted)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 12 }}>What you can do</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+              {[
+                { label: 'Align OKRs across teams',          desc: 'Each person submits their OKRs. The ground shows where they connect and where they do not.' },
+                { label: 'Build aligned workplan & budgets', desc: 'Check that each person\'s plan is real and coherent with the org direction.' },
+                { label: 'Alignment pulse check',            desc: 'A quick read on what is moving, what is stuck, and what has changed. No meeting required.' },
+                { label: 'Realign team',                     desc: 'Independent accounts from each person before the group talks. Find the real gap.' },
+                { label: 'PIP',                              desc: 'Both accounts on record. The concern, the support, and what success looks like.' },
+                { label: 'New hire or onboarding',           desc: 'Expectations from all sides before the work starts.' },
+                { label: 'Performance or delivery check',    desc: 'Independent accounts from all contributors. Tracked over time.' },
+                { label: 'Something not working',            desc: 'A conversation that keeps being avoided. Everyone heard before it happens.' },
+              ].map(c => (
+                <div
+                  key={c.label}
+                  onClick={() => navigate(`/grounds/new?scenario=${encodeURIComponent(c.label.toLowerCase())}`)}
+                  style={{ display: 'flex', alignItems: 'flex-start', gap: 10, background: 'white', border: '0.5px solid var(--gw-border)', borderRadius: 8, padding: '10px 12px', cursor: 'pointer' }}
+                >
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)', marginBottom: 2 }}>{c.label}</div>
+                    <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>{c.desc}</div>
+                  </div>
+                  <div style={{ fontSize: 14, color: 'var(--gw-muted)', flexShrink: 0, marginTop: 2 }}>→</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
           <div style={{ marginTop: 24, paddingTop: 20, borderTop: '0.5px solid var(--gw-border)', display: 'flex', flexDirection: 'column', gap: 8, textAlign: 'center' }}>
             <div style={{ fontSize: 12, color: 'var(--gw-sub)' }}>
               No account needed to start. Your words stay private until you save them.

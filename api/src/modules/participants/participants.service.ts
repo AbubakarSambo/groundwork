@@ -51,6 +51,7 @@ export class ParticipantsService {
     const email = participant.email.toLowerCase();
     const [firstName, lastName] = this.resolveName(email, names);
 
+    let existingAccount = false;
     const user = await this.prisma.$transaction(async (tx) => {
       // Reuse an existing account for this email, else create one in the
       // ground's organization. Email is globally unique.
@@ -67,11 +68,17 @@ export class ParticipantsService {
             passwordHash: null,
           },
         });
+      } else {
+        // Pre-existing account — let the client know so it can surface a message.
+        existingAccount = true;
       }
+      // Cross-org participation: user keeps their home org. The JWT carries their
+      // real orgId so their own grounds remain accessible. Only the participant
+      // record is linked here.
 
       await tx.groundParticipant.update({
         where: { id: participant.id },
-        data: { userId: user.id, inviteToken: null, inviteTokenExpiresAt: null },
+        data: { userId: user.id },
       });
 
       return user;
@@ -113,6 +120,7 @@ export class ParticipantsService {
       },
       groundId: ground.id,
       checkInId: checkIn?.id ?? null,
+      existingAccount,
     };
   }
 
@@ -170,10 +178,11 @@ export class ParticipantsService {
   private async loadByToken(token: string) {
     const participant = await this.prisma.groundParticipant.findUnique({ where: { inviteToken: token } });
     if (!participant) {
-      // Already-accepted invites have their token cleared; surface a clear error.
       throw new NotFoundException('This invite link is invalid or has already been used');
     }
-    if (participant.inviteTokenExpiresAt && participant.inviteTokenExpiresAt < new Date()) {
+    // Skip expiry for participants who already accepted — they can always return via their link.
+    const alreadyAccepted = !!participant.userId;
+    if (!alreadyAccepted && participant.inviteTokenExpiresAt && participant.inviteTokenExpiresAt < new Date()) {
       throw new BadRequestException('This invite link has expired. Ask the person who added you to resend it.');
     }
     return participant;

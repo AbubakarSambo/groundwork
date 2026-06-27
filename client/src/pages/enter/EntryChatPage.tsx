@@ -30,6 +30,7 @@ interface OnboardingSelections {
   cadence?: string
   decision?: string
   brief?: string
+  classifiedScenario?: string
 }
 
 function saveSession(s: EntrySession) {
@@ -66,20 +67,17 @@ const MODE_BUTTON_MAP: Record<string, string> = {
 }
 
 const MODE_BUTTON_DESCRIPTIONS: Record<string, string> = {
-  'Starting something': 'A new hire, project, partnership, handover, or role starting now.',
-  'Already underway': 'Something in motion: a delivery, a team, a working relationship, a process.',
-  'Already happened': 'A decision, project, or conversation that needs to go on record.',
-  'Regular check-in': 'A recurring ritual: weekly, fortnightly, or monthly, for a team or group.',
+  'Starting something': 'A new hire, project, partnership, handover, role, or collaboration starting now.',
+  'Already underway': 'Something in motion: a delivery, a team, a review, a protocol, a handover, or an ongoing relationship.',
+  'Already happened': 'A decision, project, meeting, or conversation that needs to go on record now that it is done.',
+  'Regular check-in': 'A recurring ritual: weekly, fortnightly, or monthly, for a team, a mentee, a group, or a distributed field team.',
 }
 
 const GOAL_OPTIONS = [
-  'Verify readiness before we proceed',
-  'Verify that what was agreed is being delivered',
-  'Get everyone aligned before we begin',
-  'Make sure expectations are clear on all sides',
-  'Understand what happened and move forward',
-  'Get everyone on the same page before a decision',
-  'Make sure what was agreed is reflected in what was delivered',
+  'Verify readiness or delivery',
+  'Set expectations before we begin',
+  'Understand what happened',
+  'Get alignment on a decision or plan',
   'Something else',
 ]
 
@@ -94,6 +92,9 @@ const SESSION_END_PATTERNS = [
   'next step options',
   'here is what is now in the record',
   'option to not have',
+  'your record is saved as is',
+  'cannot be verified from this account',
+  'your contribution is saved',
 ]
 
 const MODE_INTROS: Record<string, string> = {
@@ -150,10 +151,10 @@ function buildOnboardingMessages(sels: OnboardingSelections): OnboardingMessage[
       placeholder: 'What to focus on, probe, or watch for.',
       buttons: ['Skip'],
     },
-    // Step 7: party or manager choice
+    // Step 7: party or observer choice
     {
-      text: "Last thing. Are you personally involved in this situation, or are you setting it up for others?\n\nIf you are involved, you go first. You add your account, then invite the others. If you are setting it up on their behalf, you can skip straight to inviting them.",
-      buttons: ["I am involved. Let's begin.", "I am setting this up for others"],
+      text: "Last thing. Are you one of the people in this situation, or are you setting it up for them?\n\nIf you are involved, you add your contribution to the record first, then invite the others. If you are setting this up on their behalf, you skip straight to inviting them.",
+      buttons: ["I'm involved — let's begin.", "Setting this up for others"],
     },
   ]
 }
@@ -419,7 +420,7 @@ export function EntryChatPage() {
     let newSels = { ...onboardingSelections }
 
     // Step 7: party path — show briefing before check-in starts
-    if (buttonChoice === "I am involved. Let's begin.") {
+    if (buttonChoice === "I am involved. Let's begin." || buttonChoice === "I'm involved — let's begin.") {
       setOnboardingStep(ONBOARDING_STEPS + 1)
       persistOnboarding([], newSels, ONBOARDING_STEPS)
       setShowAdminBriefing(true)
@@ -427,7 +428,7 @@ export function EntryChatPage() {
     }
 
     // Step 7: manager path — skip check-in, go straight to save card
-    if (buttonChoice === "I am setting this up for others") {
+    if (buttonChoice === "I am setting this up for others" || buttonChoice === "Setting this up for others") {
       setOnboardingStep(ONBOARDING_STEPS + 1)
       persistOnboarding([], newSels, ONBOARDING_STEPS)
       const ctx = [
@@ -448,7 +449,8 @@ export function EntryChatPage() {
     }
 
     // Step 5 multi-select: toggle goal without advancing
-    if (currentStep === 5 && buttonChoice && GOAL_OPTIONS.includes(buttonChoice)) {
+    // "Something else" requires text — don't add it as a goal string; the text input handles it
+    if (currentStep === 5 && buttonChoice && GOAL_OPTIONS.includes(buttonChoice) && buttonChoice !== 'Something else') {
       setSelectedGoals(prev =>
         prev.includes(buttonChoice) ? prev.filter(g => g !== buttonChoice) : [...prev, buttonChoice]
       )
@@ -466,6 +468,10 @@ export function EntryChatPage() {
       if (!val) return
       newSels = { ...newSels, initial: val }
       setInput('')
+      // Background intent classification — updates scenario without blocking the user
+      entryApi.classifyIntent(val, newSels.mode).then(r => {
+        setOnboardingSelections(prev => ({ ...prev, classifiedScenario: r.scenario }))
+      }).catch(() => { /* non-critical */ })
     } else if (currentStep === 3) {
       const val = input.trim()
       if (!val) return
@@ -581,17 +587,20 @@ export function EntryChatPage() {
       const commitPayload = {
         groundLabel: groundName || scenario || 'My first ground',
         orgName: orgName.trim() || undefined,
-        scenario: scenario || undefined,
+        // Prefer the AI-classified scenario; fall back to mode key, then URL param.
+        scenario: onboardingSelections.classifiedScenario || onboardingSelections.mode || scenario || undefined,
         cadence: cadence === 'ONE_TIME' ? 'FORTNIGHTLY' : cadence,
         checkInBy: checkInBy.trim() || undefined,
         lastCheckInBy: lastCheckInBy.trim() || undefined,
         reportSummary: sessionReport ? { alignmentStatus: sessionReport.alignmentStatus, whatGroundworkSaw: sessionReport.whatGroundworkSaw } : undefined,
-        inviteToken,
         inviteNote: inviteNote.trim() || undefined,
+        // Each contributor gets its own token — the server generates one per participant.
+        // Do NOT pass a shared inviteToken here; it would cause unique constraint failures
+        // on the second contributor and silently drop them.
         contributors: inviteAdded.map(entry => {
           const dashIdx = entry.indexOf(' — ')
-          if (dashIdx === -1) return { email: entry, inviteToken }
-          return { email: entry.slice(0, dashIdx), context: entry.slice(dashIdx + 3), inviteToken }
+          if (dashIdx === -1) return { email: entry }
+          return { email: entry.slice(0, dashIdx), context: entry.slice(dashIdx + 3) }
         }),
       }
       try { localStorage.setItem('gw_commit_payload', JSON.stringify(commitPayload)) } catch { /* */ }
@@ -637,8 +646,8 @@ export function EntryChatPage() {
         const payload = JSON.parse(raw)
         payload.contributors = newAdded.map(e => {
           const dashIdx = e.indexOf(' — ')
-          if (dashIdx === -1) return { email: e, inviteToken }
-          return { email: e.slice(0, dashIdx), context: e.slice(dashIdx + 3), inviteToken }
+          if (dashIdx === -1) return { email: e }
+          return { email: e.slice(0, dashIdx), context: e.slice(dashIdx + 3) }
         })
         localStorage.setItem('gw_commit_payload', JSON.stringify(payload))
       }
@@ -1181,6 +1190,46 @@ export function EntryChatPage() {
                   </div>
                 )}
 
+                {/* Suggested parties */}
+                {sessionReport.suggestedParties && sessionReport.suggestedParties.length > 0 && (
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ fontSize: 10, letterSpacing: '.09em', textTransform: 'uppercase', color: '#9B9590', fontWeight: 700, marginBottom: 8 }}>Recommended additions</div>
+                    <div style={{ border: '1px solid #E2E0DB', borderLeft: '3px solid #0C447C', borderRadius: 10, padding: '11px 13px', background: '#F4F7FC' }}>
+                      <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.6, marginBottom: 10 }}>
+                        Based on this check-in, these roles would strengthen the ground. Their account would change or confirm what is currently on record from one side only.
+                      </div>
+                      {sessionReport.suggestedParties.map((p, i) => (
+                        <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 0', borderTop: i > 0 ? '0.5px solid #D8E2F0' : undefined }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: '#1A1916', marginBottom: 2 }}>{p.role}</div>
+                            <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.4 }}>{p.reason}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Mentioned people */}
+                {sessionReport.mentionedPeople && sessionReport.mentionedPeople.length > 0 && (
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ fontSize: 10, letterSpacing: '.09em', textTransform: 'uppercase', color: '#9B9590', fontWeight: 700, marginBottom: 8 }}>People mentioned</div>
+                    <div style={{ border: '1px solid #E2E0DB', borderRadius: 10, padding: '11px 13px', background: '#FAFAF8' }}>
+                      <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.6, marginBottom: 10 }}>
+                        These people came up in this check-in. Adding them to the ground gives you a fuller picture.
+                      </div>
+                      {sessionReport.mentionedPeople.map((p, i) => (
+                        <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 0', borderTop: i > 0 ? '0.5px solid #E2E0DB' : undefined }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: '#1A1916', marginBottom: 2 }}>{p.name}</div>
+                            <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.4 }}>{p.context}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Honest close */}
                 <div style={{ marginBottom: 16 }}>
                   <div style={{ fontSize: 10, letterSpacing: '.09em', textTransform: 'uppercase', color: '#9B9590', fontWeight: 700, marginBottom: 8 }}>An honest close</div>
@@ -1276,8 +1325,22 @@ export function EntryChatPage() {
             <div style={{ borderBottom: '1px solid #E2E0DB', marginBottom: 16, paddingBottom: 16 }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 4 }}>Invite contributors</div>
               <div style={{ fontSize: 12, color: '#9B9590', lineHeight: 1.55, marginBottom: 10 }}>
-                Add one now and more any time after your account is set up. Everyone checks in independently. Nobody reads anyone else's words directly. When accounts come in, you see where everyone agrees, where they differ, and what the gap means.
+                Each person checks in independently and adds their own contribution to this ground's record. Nobody reads anyone else's words directly. When all accounts are in, the report shows where everyone agrees, where they differ, and what the gap means.
               </div>
+              {(() => {
+                const s = onboardingSelections.classifiedScenario || onboardingSelections.mode || scenario
+                const notices: Record<string, string> = {
+                  PIP: 'Performance improvement grounds document a process. They do not replace formal HR procedures, employment policy, or legal obligation. Ensure your organisation\'s HR process is followed in parallel.',
+                  DRIFT: 'This ground was opened on a situation that has already moved off course. Inviting contributors now means their account will reflect the current state, not the original agreement. Make sure that is what you want on record.',
+                  REALIGN_TEAM: 'Realignment grounds surface disagreement directly. Contributors will give independent accounts that may differ significantly from yours. The report will show those gaps without filtering them.',
+                }
+                const notice = notices[s ?? '']
+                return notice ? (
+                  <div style={{ background: '#FFF8EC', border: '1px solid #F5DFA0', borderRadius: 8, padding: '10px 12px', marginBottom: 12, fontSize: 12, color: '#7A5200', lineHeight: 1.55 }}>
+                    {notice}
+                  </div>
+                ) : null
+              })()}
 
               {inviteAdded.length > 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8 }}>
@@ -1379,7 +1442,7 @@ export function EntryChatPage() {
             {!emailSent ? (
               <div style={{ marginBottom: 16 }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 4 }}>Create your account</div>
-                <div style={{ fontSize: 12, color: '#9B9590', marginBottom: 8, lineHeight: 1.5 }}>Enter your email to save this ground and send invites. You can add more contributors any time after.</div>
+                <div style={{ fontSize: 12, color: '#9B9590', marginBottom: 8, lineHeight: 1.5 }}>Enter your email to save this ground and send invites. You will receive the report when it is ready. You can add more contributors any time after.</div>
                 <input type="email" placeholder="you@company.com" value={email} onChange={e => { setEmail(e.target.value); setEmailError('') }}
                   onKeyDown={e => e.key === 'Enter' && handleSave()}
                   style={{ width: '100%', padding: '11px 13px', borderRadius: 8, border: '1px solid #E2E0DB', fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8, outline: 'none' }}

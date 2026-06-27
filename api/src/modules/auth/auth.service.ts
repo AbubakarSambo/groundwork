@@ -55,12 +55,14 @@ export class AuthService {
     const existingUser = await this.prisma.user.findUnique({ where: { email: dto.email.toLowerCase() } });
     if (existingUser) throw new ConflictException('Email already registered');
 
-    const slug = await this.generateUniqueSlug(dto.organizationName);
+    const emailDomain = dto.email.split('@')[1]?.split('.')[0] ?? 'workspace';
+    const orgName = dto.organizationName?.trim() || emailDomain.charAt(0).toUpperCase() + emailDomain.slice(1);
+    const slug = await this.generateUniqueSlug(orgName);
     const passwordHash = await bcrypt.hash(dto.password, 12);
 
     const result = await this.prisma.$transaction(async (tx) => {
       const organization = await tx.organization.create({
-        data: { name: dto.organizationName, slug },
+        data: { name: orgName, slug },
       });
 
       const user = await tx.user.create({
@@ -179,6 +181,12 @@ export class AuthService {
     const { user } = await this.prisma.$transaction(async (tx) => {
       await tx.user.update({ where: { id: tokenRecord.userId }, data: { isEmailVerified: true } });
       await tx.emailVerificationToken.update({ where: { id: tokenRecord.id }, data: { usedAt: new Date() } });
+      // Link any groundParticipant records whose email matches but have no userId yet.
+      // This connects participants who checked in before creating their account.
+      await tx.groundParticipant.updateMany({
+        where: { email: tokenRecord.user.email.toLowerCase(), userId: null },
+        data: { userId: tokenRecord.userId },
+      });
       return { user: tokenRecord.user };
     });
 
@@ -262,7 +270,7 @@ export class AuthService {
     return { message, email: lower };
   }
 
-  async teamInvite(inviterOrgName: string, inviteeEmail: string): Promise<{ message: string }> {
+  async teamInvite(inviterOrgName: string, inviteeEmail: string, inviterOrganizationId?: string): Promise<{ message: string }> {
     const lower = inviteeEmail.toLowerCase();
 
     let user = await this.prisma.user.findUnique({ where: { email: lower } });
@@ -270,24 +278,29 @@ export class AuthService {
     if (!user) {
       const localPart = lower.split('@')[0].replace(/[._\-+]/g, ' ').trim();
       const firstName = (localPart.charAt(0).toUpperCase() + localPart.slice(1).split(' ')[0]).slice(0, 40) || 'there';
-      const domainBase = lower.split('@')[1]?.split('.')[0] ?? 'workspace';
-      const slug = await this.generateUniqueSlug(domainBase);
 
       const result = await this.prisma.$transaction(async (tx) => {
-        const org = await tx.organization.create({ data: { name: `${firstName}'s workspace`, slug } });
+        let organizationId = inviterOrganizationId;
+        if (!organizationId) {
+          // Fallback: create a standalone workspace only when no inviter org is known.
+          const domainBase = lower.split('@')[1]?.split('.')[0] ?? 'workspace';
+          const slug = await this.generateUniqueSlug(domainBase);
+          const org = await tx.organization.create({ data: { name: `${firstName}'s workspace`, slug } });
+          organizationId = org.id;
+        }
         const u = await tx.user.create({
-          data: { organizationId: org.id, email: lower, firstName, lastName: '', role: 'ADMIN', isEmailVerified: false },
+          data: { organizationId, email: lower, firstName, lastName: '', role: 'MEMBER', isEmailVerified: false },
         });
         const token = crypto.randomBytes(32).toString('hex');
         await tx.emailVerificationToken.create({
-          data: { userId: u.id, token, type: TokenType.EMAIL_VERIFICATION, expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) },
+          data: { userId: u.id, token, type: TokenType.PASSWORD_SETUP, expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) },
         });
         return { firstName, token };
       });
 
       await this.emailService.sendUserInvite(lower, result.firstName, result.token, inviterOrgName);
     } else {
-      // User exists — send them a sign-in link
+      // User exists — send them a magic sign-in link.
       await this.prisma.emailVerificationToken.updateMany({
         where: { userId: user.id, type: TokenType.EMAIL_VERIFICATION, usedAt: null },
         data: { usedAt: new Date() },
@@ -302,7 +315,7 @@ export class AuthService {
     return { message: 'Invite sent.' };
   }
 
-  async memberSignin(dto: MemberSigninDto): Promise<{ message: string; email: string }> {
+  async memberSignin(dto: MemberSigninDto): Promise<{ message: string; email: string; devUrl?: string }> {
     const message = 'If an account with that email exists, a sign-in link has been sent.';
     const email = dto.email.toLowerCase();
     const user = await this.prisma.user.findUnique({ where: { email } });
@@ -323,10 +336,11 @@ export class AuthService {
       data: { userId: user.id, token, type: TokenType.EMAIL_VERIFICATION, expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) },
     });
 
-    this.emailService.sendMagicLinkEmail(email, user.firstName, token).catch((err) =>
-      this.logger.error(`Failed to send member sign-in email to ${email}: ${err.message}`),
-    );
-    return { message, email };
+    const result = await this.emailService.sendSignInLinkEmail(email, user.firstName, token).catch((err) => {
+      this.logger.error(`Failed to send member sign-in email to ${email}: ${err.message}`);
+      return { devUrl: undefined };
+    });
+    return { message, email, ...(result.devUrl ? { devUrl: result.devUrl } : {}) };
   }
 
   async requestPasswordSetupForUser(userId: string): Promise<{ token: string }> {
@@ -341,7 +355,7 @@ export class AuthService {
     return { token };
   }
 
-  async forgotPassword(dto: ForgotPasswordDto): Promise<{ message: string }> {
+  async forgotPassword(dto: ForgotPasswordDto): Promise<{ message: string; devUrl?: string }> {
     const message = 'If an account with that email exists, a password reset link has been sent.';
     const user = await this.prisma.user.findUnique({ where: { email: dto.email.toLowerCase() } });
     if (!user) return { message };
@@ -356,10 +370,11 @@ export class AuthService {
       data: { userId: user.id, token, type: TokenType.PASSWORD_RESET, expiresAt: new Date(Date.now() + 60 * 60 * 1000) },
     });
 
-    this.emailService.sendPasswordResetEmail(user.email, user.firstName, token).catch((err) =>
-      this.logger.error(`Failed to send password reset email to ${user.email}: ${err.message}`),
-    );
-    return { message };
+    const result = await this.emailService.sendPasswordResetEmail(user.email, user.firstName, token).catch((err) => {
+      this.logger.error(`Failed to send password reset email to ${user.email}: ${err.message}`);
+      return { devUrl: undefined };
+    });
+    return { message, ...(result.devUrl ? { devUrl: result.devUrl } : {}) };
   }
 
   async resetPassword(dto: ResetPasswordDto): Promise<AuthResponseDto> {
@@ -504,6 +519,27 @@ export class AuthService {
     ]);
 
     return this.getProfile(userId);
+  }
+
+  // In-memory store for short-lived OAuth exchange codes (TTL 60s, single-use).
+  // Acceptable for a single-process deployment; replace with Redis for multi-instance.
+  private readonly oauthCodes = new Map<string, { token: string; expiresAt: number }>();
+
+  async createOAuthExchangeCode(token: string): Promise<string> {
+    const code = crypto.randomBytes(24).toString('hex');
+    this.oauthCodes.set(code, { token, expiresAt: Date.now() + 60_000 });
+    // Prune expired codes opportunistically.
+    for (const [k, v] of this.oauthCodes) {
+      if (v.expiresAt < Date.now()) this.oauthCodes.delete(k);
+    }
+    return code;
+  }
+
+  async redeemOAuthExchangeCode(code: string): Promise<{ accessToken: string }> {
+    const entry = this.oauthCodes.get(code);
+    if (!entry || entry.expiresAt < Date.now()) throw new BadRequestException('Invalid or expired exchange code');
+    this.oauthCodes.delete(code);
+    return { accessToken: entry.token };
   }
 
   private generateToken(user: { id: string; email: string; organizationId: string; role: string }) {

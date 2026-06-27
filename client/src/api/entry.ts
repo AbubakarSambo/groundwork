@@ -20,6 +20,8 @@ export interface EntryReport {
   areasRequiringAlignment: { title: string; observation: string; whyItMatters: string; recommendedMove: string }[]
   alignmentReached: { title: string; note: string }[]
   honestClose: { aligned: string; open: string; revisit: string; risk: string }
+  mentionedPeople: { name: string; context: string }[]
+  suggestedParties: { role: string; reason: string }[]
 }
 
 // ── Entry session storage ─────────────────────────────────────────────────────
@@ -73,6 +75,7 @@ export const entryApi = {
     modeOrMessages: EntryMode | ChatTurn[],
     messagesOrScenario?: ChatTurn[] | string,
     groundLabel?: string,
+    joinToken?: string,
   ): Promise<{ reply: string; sessionComplete?: boolean }> =>
     typeof modeOrMessages === 'string'
       ? apiClient.post<{ reply: string; sessionComplete: boolean }>(
@@ -81,8 +84,11 @@ export const entryApi = {
         ).then(r => r.data)
       : apiClient.post<{ reply: string }>(
           '/entry/chat',
-          { messages: modeOrMessages, scenario: messagesOrScenario as string | undefined, groundLabel },
+          { messages: modeOrMessages, scenario: messagesOrScenario as string | undefined, groundLabel, joinToken },
         ).then(r => r.data),
+
+  classifyIntent: (description: string, mode?: string) =>
+    apiClient.post<{ scenario: string }>('/entry/classify-intent', { description, mode }).then(r => r.data),
 
   faq: (question: string) =>
     apiClient.post<{ reply: string }>('/entry/faq', { question }).then(r => r.data),
@@ -98,7 +104,31 @@ export const entryApi = {
     report?: EntryReport | null
     contributors: { email: string; context?: string; inviteToken?: string; note?: string }[]
   }) =>
-    apiClient.post<{ groundId: string }>('/entry/commit', payload).then(r => r.data),
+    apiClient.post<{ groundId: string; failedInvites?: string[] }>('/entry/commit', payload).then(r => r.data),
+}
+
+// ── Join API (QR / broadcast link) ───────────────────────────────────────────
+
+export const joinApi = {
+  preview: (token: string) =>
+    apiClient.get<{ groundId: string; groundLabel: string; scenario: string; initiatorName: string }>(
+      '/entry/join-preview',
+      { params: { t: token } },
+    ).then(r => r.data),
+
+  commit: (payload: {
+    joinToken: string
+    firstName?: string
+    lastName?: string
+    email?: string
+    roleAsDescribed?: string
+    history: ChatTurn[]
+    report?: EntryReport | null
+  }) =>
+    apiClient.post<{ groundId: string; accessToken?: string; userId?: string }>(
+      '/entry/join-commit',
+      payload,
+    ).then(r => r.data),
 }
 
 // ── Participant API ───────────────────────────────────────────────────────────

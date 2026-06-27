@@ -4,14 +4,6 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { billingApi } from '@/api/billing'
 import { toast } from 'sonner'
 
-const PERIOD_OPTIONS = [
-  { value: '1w', label: '1 week' },
-  { value: '2w', label: '2 weeks' },
-  { value: '1m', label: '1 month' },
-  { value: '3m', label: '3 months' },
-  { value: '6m', label: '6 months' },
-]
-
 export function PaymentPage() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -24,7 +16,6 @@ export function PaymentPage() {
     (location.state as any)?.groundName ?? params.get('groundName') ?? undefined
 
   const [count, setCount] = useState(1)
-  const [period, setPeriod] = useState('1m')
   const [showCode, setShowCode] = useState(false)
   const [code, setCode] = useState('')
   const [codeMsg, setCodeMsg] = useState<{ ok: boolean; text: string } | null>(null)
@@ -37,7 +28,7 @@ export function PaymentPage() {
         toast.error('Ground not found. Return to your ground and try again.')
         return Promise.reject(new Error('groundId missing'))
       }
-      return billingApi.purchaseSession(groundId)
+      return billingApi.purchaseSession(groundId, count)
     },
     onSuccess: r => {
       if (r.checkoutUrl) window.location.href = r.checkoutUrl
@@ -76,7 +67,14 @@ export function PaymentPage() {
         )}
         {!groundName && <div style={{ marginBottom: 20 }} />}
 
-        {/* Session calculator */}
+        {/* Free session notice */}
+        <div style={{ background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 10, padding: '12px 16px', marginBottom: 14 }}>
+          <div style={{ fontSize: 13, color: '#085041', lineHeight: 1.6 }}>
+            <strong>First session is always free.</strong> Add sessions here when your free session is used.
+          </div>
+        </div>
+
+        {/* Session purchase */}
         <div style={{ background: 'white', border: '0.5px solid #E2E0DB', borderRadius: 10, padding: 18, marginBottom: 14 }}>
 
           <div style={{ marginBottom: 14 }}>
@@ -93,23 +91,8 @@ export function PaymentPage() {
             />
           </div>
 
-          <div style={{ marginBottom: 14 }}>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#6B6560', marginBottom: 6 }}>
-              Over what period?
-            </label>
-            <select
-              value={period}
-              onChange={e => setPeriod(e.target.value)}
-              style={{ width: '100%', padding: '9px 11px', fontSize: 13, fontFamily: 'inherit', border: '1px solid #E2E0DB', borderRadius: 7, background: '#F5F3EF', color: '#0A1628', outline: 'none', boxSizing: 'border-box' }}
-            >
-              {PERIOD_OPTIONS.map(o => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
-            </select>
-          </div>
-
           <div style={{ fontSize: 13, color: '#4A4540', lineHeight: 1.6, marginBottom: 16 }}>
-            That is {count} session{count !== 1 ? 's' : ''} at $5 each. Total: ${total}.
+            {count} session{count !== 1 ? 's' : ''} × $5 = <strong>${total}</strong>
           </div>
 
           <button
@@ -117,11 +100,11 @@ export function PaymentPage() {
             disabled={checkout.isPending}
             style={{ width: '100%', padding: '11px', borderRadius: 7, background: '#0A1628', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: checkout.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: checkout.isPending ? 0.7 : 1 }}
           >
-            {checkout.isPending ? 'Redirecting...' : `Buy ${count} session${count !== 1 ? 's' : ''} for $${total}`}
+            {checkout.isPending ? 'Redirecting to Stripe...' : `Pay $${total} — ${count} session${count !== 1 ? 's' : ''}`}
           </button>
         </div>
 
-        {/* Contributor code collapsible */}
+        {/* Contributor code */}
         <div style={{ background: 'white', border: '0.5px solid #E2E0DB', borderRadius: 10, padding: 18, marginBottom: 16 }}>
           {!showCode ? (
             <button
@@ -132,7 +115,7 @@ export function PaymentPage() {
             </button>
           ) : (
             <div>
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#1A1916', marginBottom: 10 }}>Have a contributor code?</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#1A1916', marginBottom: 10 }}>Contributor code</div>
               <input
                 type="text"
                 value={code}

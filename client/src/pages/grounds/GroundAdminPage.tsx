@@ -9,6 +9,8 @@ import { conversationApi } from '@/api/conversation'
 import { participantRequestsApi } from '@/api/participantRequests'
 import type { ParticipantRequest } from '@/api/participantRequests'
 import { toast } from 'sonner'
+import { CodeShareCard } from '@/components/CodeShareCard'
+import { billingApi } from '@/api/billing'
 
 const BANDS = ['', 'Unresolved', 'Mixed', 'Emerging', 'Clear', 'Aligned']
 function bandLabel(score?: number) { return BANDS[score ?? 1] ?? 'Unresolved' }
@@ -33,10 +35,13 @@ export function GroundAdminPage() {
   const [reportSession, setReportSession] = useState<ReportSession>('s1')
   const [ctxNote, setCtxNote] = useState('')
   const [groundLabel, setGroundLabel] = useState('')
+  const [groundScenario, setGroundScenario] = useState('')
   const [showReleaseConfirm, setShowReleaseConfirm] = useState(false)
   const [addingParticipant, setAddingParticipant] = useState(false)
   const [newParticipantEmail, setNewParticipantEmail] = useState('')
   const [newParticipantNote, setNewParticipantNote] = useState('')
+  const [shareCodeModalOpen, setShareCodeModalOpen] = useState(false)
+  const [shareCodeId, setShareCodeId] = useState<string | null>(null)
 
   const { data: ground, isLoading } = useQuery({
     queryKey: ['ground', id],
@@ -88,6 +93,13 @@ export function GroundAdminPage() {
     retry: false,
   })
 
+  const { data: shareCardData, isLoading: shareCardLoading } = useQuery({
+    queryKey: ['contributor-code-share-card', shareCodeId],
+    queryFn: () => billingApi.getContributorCodeShareCard(shareCodeId!),
+    enabled: !!shareCodeId && shareCodeModalOpen,
+    retry: false,
+  })
+
   const approveRequest = useMutation({
     mutationFn: async (req: ParticipantRequest) => {
       await participantRequestsApi.update(id!, req.id, 'APPROVED')
@@ -131,7 +143,8 @@ export function GroundAdminPage() {
 
   useEffect(() => {
     if (ground?.label) setGroundLabel(prev => prev || ground.label)
-  }, [ground?.label])
+    if (ground?.scenario) setGroundScenario(prev => prev || ground.scenario)
+  }, [ground?.label, ground?.scenario])
 
   if (isLoading) return <Shell><div style={{ padding: 24, fontSize: 13, color: 'var(--gw-muted)' }}>Loading…</div></Shell>
   if (!ground) return <Shell><div style={{ padding: 24, fontSize: 13, color: 'var(--gw-muted)' }}>Ground not found.</div></Shell>
@@ -161,10 +174,19 @@ export function GroundAdminPage() {
         </div>
 
         <div style={{ display: 'flex', gap: 10, padding: '0 16px 10px', fontSize: 11, color: 'var(--gw-sub)', flexWrap: 'wrap', alignItems: 'center' }}>
+          {ground.scenario && (
+            <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: '#F0EEE9', color: '#4A4540' }}>
+              {ground.scenario.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase())}
+            </span>
+          )}
           {ground.resolutionState && (
             <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: 'var(--gw-blue-bg)', color: 'var(--gw-navy)' }}>{ground.resolutionState}</span>
           )}
-          {ground.daysLeft != null && <span>{ground.daysLeft} days remaining</span>}
+          {ground.daysLeft != null && ground.daysLeft <= 3 ? (
+            <span style={{ fontWeight: 700, color: '#791F1F' }}>{ground.daysLeft === 0 ? 'Due today' : `${ground.daysLeft} day${ground.daysLeft === 1 ? '' : 's'} remaining`}</span>
+          ) : ground.daysLeft != null ? (
+            <span>{ground.daysLeft} days remaining</span>
+          ) : null}
         </div>
 
         {/* Tabs */}
@@ -362,6 +384,10 @@ export function GroundAdminPage() {
                 </div>
               )}
             </div>
+
+            {ground.joinToken && (
+              <ShareSection joinToken={ground.joinToken} />
+            )}
           </div>
         )}
 
@@ -628,9 +654,35 @@ export function GroundAdminPage() {
                 Save name
               </button>
             </div>
+            <div className="gw-fld">
+              <label className="gw-label">Scenario</label>
+              <select
+                className="gw-input"
+                value={groundScenario}
+                onChange={e => setGroundScenario(e.target.value)}
+                style={{ background: 'white' }}
+              >
+                {['NEW_HIRE','NEW_PROJECT','NEW_COFOUNDER','NEW_ADVISOR','NEW_MANAGER','CONTRACT_RENEWAL','DRIFT','PULSE_CHECK','REALIGN_TEAM','OKR_ALIGNMENT','WORKPLAN_BUDGET','PIP'].map(s => (
+                  <option key={s} value={s}>{s.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase())}</option>
+                ))}
+              </select>
+              <button
+                disabled={!groundScenario || groundScenario === ground.scenario}
+                onClick={() => { if (groundScenario && groundScenario !== ground.scenario) groundsApi.update(id!, { scenario: groundScenario } as any).then(() => qc.invalidateQueries({ queryKey: ['ground', id] })).catch(() => toast.error('Could not update scenario.')) }}
+                style={{ marginTop: 6, fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: '0.5px solid var(--gw-blue-b)', borderRadius: 5, padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit', opacity: (groundScenario && groundScenario !== ground.scenario) ? 1 : 0.4 }}
+              >
+                Save scenario
+              </button>
+            </div>
             <button onClick={() => navigate('/billing')}
               style={{ width: '100%', padding: 11, borderRadius: 7, background: 'none', color: 'var(--gw-navy)', fontSize: 13, fontWeight: 600, border: '1px solid var(--gw-blue-b)', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span>Billing and seats</span><span style={{ color: 'var(--gw-sub)' }}>→</span>
+            </button>
+            <button
+              onClick={() => { setShareCodeId(id ?? null); setShareCodeModalOpen(true) }}
+              style={{ width: '100%', padding: 11, borderRadius: 7, background: 'none', color: 'var(--gw-navy)', fontSize: 13, fontWeight: 600, border: '1px solid var(--gw-blue-b)', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+            >
+              <span>Share code</span><span style={{ color: 'var(--gw-sub)' }}>↗</span>
             </button>
             <div style={{ padding: 14, background: 'var(--gw-red-bg)', border: '0.5px solid var(--gw-red-b)', borderRadius: 8 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-red-t)', marginBottom: 6 }}>Close ground</div>
@@ -642,6 +694,35 @@ export function GroundAdminPage() {
           </div>
         )}
       </div>
+      {shareCodeModalOpen && (
+        <div
+          onClick={() => setShareCodeModalOpen(false)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+        >
+          <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 400 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <span style={{ fontSize: 14, fontWeight: 700, color: 'white' }}>Share contributor code</span>
+              <button onClick={() => setShareCodeModalOpen(false)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,.6)', fontSize: 18, cursor: 'pointer', lineHeight: 1 }}>×</button>
+            </div>
+            {shareCardLoading && (
+              <div style={{ color: 'rgba(255,255,255,.5)', fontSize: 13, textAlign: 'center', padding: 24 }}>Loading…</div>
+            )}
+            {!shareCardLoading && shareCardData && (
+              <CodeShareCard
+                code={shareCardData.code}
+                expiresAt={shareCardData.expiresAt}
+                daysRemaining={shareCardData.daysRemaining}
+                note={shareCardData.note}
+                allowCodeCreation={shareCardData.allowCodeCreation}
+                onCopy={() => toast.success('Code copied')}
+              />
+            )}
+            {!shareCardLoading && !shareCardData && (
+              <div style={{ color: 'rgba(255,255,255,.5)', fontSize: 13, textAlign: 'center', padding: 24 }}>No share code available for this ground.</div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -659,6 +740,49 @@ function ReportSection({ title, children, open: initialOpen = false }: { title: 
         <span style={{ color: 'var(--gw-muted)', fontSize: 12 }}>{open ? '▲' : '▼'}</span>
       </div>
       <div className="gw-report-section-body">{children}</div>
+    </div>
+  )
+}
+
+function ShareSection({ joinToken }: { joinToken: string }) {
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
+  const baseUrl = window.location.origin
+  const joinUrl = `${baseUrl}/join?t=${joinToken}`
+
+  useEffect(() => {
+    import('qrcode').then(QRCode => {
+      QRCode.toDataURL(joinUrl, { width: 180, margin: 1 }).then(setQrDataUrl).catch(() => {})
+    }).catch(() => {})
+  }, [joinUrl])
+
+  function copyLink() {
+    navigator.clipboard?.writeText(joinUrl).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }
+
+  return (
+    <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '16px', marginTop: 14 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: '#9B9590', letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 10 }}>Broadcast link</div>
+      <div style={{ fontSize: 13, color: '#4A4540', lineHeight: 1.6, marginBottom: 14 }}>
+        Share this link or QR code — anyone can check in without creating an account first. They'll be asked to save their details at the end.
+      </div>
+      <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+        {qrDataUrl && (
+          <img src={qrDataUrl} alt="QR code" style={{ width: 100, height: 100, borderRadius: 6, border: '1px solid #E2E0DB', flexShrink: 0 }} />
+        )}
+        <div style={{ flex: 1, minWidth: 200 }}>
+          <div style={{ fontSize: 11, color: '#9B9590', marginBottom: 6, wordBreak: 'break-all', fontFamily: 'monospace' }}>{joinUrl}</div>
+          <button
+            onClick={copyLink}
+            style={{ padding: '8px 14px', borderRadius: 7, background: copied ? '#E7F6EF' : '#F5F3EF', border: '1px solid #E2E0DB', color: copied ? '#085041' : '#0A1628', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+          >
+            {copied ? 'Copied!' : 'Copy link'}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

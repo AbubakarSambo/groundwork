@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
@@ -197,12 +197,33 @@ export class ReportsService {
     // report. Without this, Outcome records have no prompt attribution and the
     // learning loop cannot measure per-version outcome rates.
     const synthesisVersion = await this.prompts.getActive('report_synthesis');
-    const systemPrompt = synthesisVersion.content;
+    // Append hard synthesis rules that override any vagueness in the base prompt.
+    // These address four recurring failure modes: specifics lost, conditions stripped,
+    // absent parties misrepresented, and actionable commitments buried.
+    const systemPrompt = synthesisVersion.content + `
+
+SYNTHESIS RULES (override all other instructions if there is a conflict):
+1. PRESERVE SPECIFICS VERBATIM. Every specific number ("three investor introductions in Q1"), named artifact ("one-page document"), named threshold ("30% cut by Friday"), and named organization or role from the records must appear in the report with the same precision. Never replace a specific with a category (do not convert "three introductions" to "specific milestones").
+2. CAPTURE CONDITIONS. If a party's cooperation is conditional ("I will cooperate provided that X", "but only if Y is agreed"), the agreements section must state the condition. Never flatten a conditional agreement into an unconditional one.
+3. DO NOT ATTRIBUTE POSITIONS TO ABSENT PARTIES. If a party's record is marked as absent or not contributed, do not describe their agreement, alignment, or views. Write "only [party]'s perspective is available" rather than "both parties agree."
+4. SURFACE ACTIONABLE COMMITMENTS. If a party named a specific deliverable, threshold, or exit condition (e.g., "I will leave if X is not met by Y"), it must appear in the agreements or divergences with the party's label and the exact terms.
+5. NAME THE TENSION PRECISELY. If a conflict has a named structure (sequencing, values, role authority, information gap), name it explicitly in the divergences — do not soften it to "different perspectives."`;
+
 
     // Note any invited party who contributed no record — surfaced as an absence,
     // never inferred (decision: generate when everyone who accepted is done;
     // note no-shows).
-    const contributorIds = new Set(records.map((r) => r.participant.id));
+    // A participant counts as a contributor if they have any record entries OR
+    // completed a check-in (extractRecordEntries may occasionally produce zero
+    // entries for a valid session — we still credit the session as contributed).
+    const completedCheckInParticipantIds = await this.prisma.checkIn.findMany({
+      where: { participant: { groundId }, status: CheckInStatus.COMPLETED },
+      select: { participantId: true },
+    });
+    const contributorIds = new Set([
+      ...records.map((r) => r.participant.id),
+      ...completedCheckInParticipantIds.map((c) => c.participantId),
+    ]);
     const absent = parties.filter((p) => !contributorIds.has(p.id));
     const header = absent.length
       ? `NOTE: ${absent.length} invited part${absent.length === 1 ? 'y' : 'ies'} did not contribute a record: ${absent
@@ -219,17 +240,20 @@ export class ReportsService {
         partyType: true,
         checkIns: {
           select: {
-            turns: { select: { id: true } },
+            turns: { select: { id: true, role: true, content: true } },
           },
         },
       },
     });
-    const turnCounts = participantsWithTurns.map((p) => ({
-      label: labelById.get(p.id) ?? p.partyType,
-      turns: p.checkIns.flatMap((c) => c.turns).length,
-    }));
-    const maxTurns = Math.max(...turnCounts.map((p) => p.turns), 1);
-    const thinParties = turnCounts.filter((p) => p.turns < maxTurns * 0.4);
+    // Measure contribution by total character count of PERSON turns, not turn count.
+    // A single detailed message (e.g. 50-submission analysis) should not read as "thin."
+    const turnCounts = participantsWithTurns.map((p) => {
+      const personTurns = p.checkIns.flatMap((c) => c.turns).filter((t) => t.role === 'PERSON');
+      const charCount = personTurns.reduce((sum, t) => sum + (t.content?.length ?? 0), 0);
+      return { label: labelById.get(p.id) ?? p.partyType, turns: personTurns.length, charCount };
+    });
+    const maxChars = Math.max(...turnCounts.map((p) => p.charCount), 1);
+    const thinParties = turnCounts.filter((p) => p.charCount < maxChars * 0.15);
     const thinNotice =
       thinParties.length > 0
         ? `NOTE: ${thinParties.map((p) => p.label).join(', ')}'s record contains significantly fewer exchanges. A further session from ${thinParties.length === 1 ? 'that party' : 'those parties'} would strengthen the cross-reference.\n\n`
@@ -393,10 +417,17 @@ export class ReportsService {
     const lowerTexts = allGroundTexts.map((e) => e.text.toLowerCase());
     const difficultyDisclosures = DIFFICULTY_KEYWORDS.some((kw) => lowerTexts.some((t) => t.includes(kw)));
 
-    // documentBackedPct: share of record entries that are NOT unanchored recall.
+    // documentBackedPct: share of record entries backed by an attached document
+    // (DOCUMENT_AT_AGREEMENT or DOCUMENT_AFTER). CHECK_IN and ANCHORED_RECALL
+    // entries are not document-backed — only actual document references count.
+    // Returns 0 when no documents exist to avoid the 100%-with-no-docs bug.
     const totalEntries = allGroundTexts.length;
-    const documentBackedCount = allGroundTexts.filter((e) => e.evidenceType !== 'UNANCHORED_RECALL').length;
-    const documentBackedPct = totalEntries > 0 ? Math.round((documentBackedCount / totalEntries) * 100) : 0;
+    const documentBackedCount = allGroundTexts.filter(
+      (e) => e.evidenceType === 'DOCUMENT_AT_AGREEMENT' || e.evidenceType === 'DOCUMENT_AFTER',
+    ).length;
+    const documentBackedPct = totalEntries > 0 && documentBackedCount > 0
+      ? Math.round((documentBackedCount / totalEntries) * 100)
+      : 0;
 
     // sessionCounts: turns per party label (from the turnCounts computed above).
     const sessionCounts = Object.fromEntries(turnCounts.map((p) => [p.label, p.turns]));
@@ -427,7 +458,7 @@ export class ReportsService {
       documentBackedPct,
       coverageBand,
       difficultyDisclosures,
-      note: `This report is built from each party's self-reported account — it is not independently verified.${absent.length ? ` ${absent.length} invited part${absent.length === 1 ? 'y' : 'ies'} did not contribute, so the picture below reflects the records present.` : ''}`,
+      note: `This report is built from each party's self-reported account — it is not independently verified.${absent.length ? ` ${absent.length} invited part${absent.length === 1 ? 'y has' : 'ies have'} not yet contributed a record — the picture below reflects only the accounts that are present. Do not read any shared positions or agreements as bilateral until all parties have checked in.` : ''}`,
       parties: engagementParties,
     };
 
@@ -491,7 +522,43 @@ export class ReportsService {
       discrepancyFlags,
     };
 
-    const session2Focus = (result.divergences ?? []).slice(0, 3).map((d: any) => d.topic as string);
+    // Detect questions the AI asked at the end of a session that the participant
+    // closed without answering — carry these into session2Focus so session 2
+    // has a concrete thread to pick up rather than starting from scratch.
+    const CLOSING_PHRASES = ["that's everything", "that covers", "that's all", "i think that", "nothing else", "i'm done", "nothing more"];
+    const openQuestions: string[] = [];
+    for (const p of parties) {
+      const lastSession = await this.prisma.checkIn.findFirst({
+        where: { participantId: p.id, status: CheckInStatus.COMPLETED },
+        orderBy: { sessionNumber: 'desc' },
+        include: { turns: { orderBy: { createdAt: 'asc' }, select: { role: true, content: true } } },
+      });
+      if (!lastSession?.turns?.length) continue;
+
+      const turns = lastSession.turns;
+      const lastPersonIdx = turns.map((t) => t.role).lastIndexOf('PERSON');
+      if (lastPersonIdx < 2) continue;
+
+      const personClose = (turns[lastPersonIdx]?.content ?? '').toLowerCase();
+      const isClosingWithoutAnswer = CLOSING_PHRASES.some((ph) => personClose.includes(ph));
+      if (!isClosingWithoutAnswer) continue;
+
+      // Find the most recent AGENT turn before the close — extract any question it contains
+      for (let i = lastPersonIdx - 1; i >= Math.max(0, lastPersonIdx - 3); i--) {
+        if (turns[i]?.role !== 'AI') continue;
+        const content = turns[i]?.content ?? '';
+        const questions = content.match(/([A-Z][^.!?]*\?)/g);
+        if (questions?.length) {
+          openQuestions.push(questions[questions.length - 1].trim());
+          break;
+        }
+      }
+    }
+
+    const session2Focus = [
+      ...(result.divergences ?? []).slice(0, 3).map((d: any) => d.topic as string),
+      ...openQuestions,
+    ].slice(0, 5);
 
     const enrichedEngagement = {
       ...engagement,
@@ -576,6 +643,19 @@ export class ReportsService {
    * once, atomically — neither party reads it before the other. (Part E:
    * "why the report goes to both parties simultaneously".)
    */
+  async generateForAdmin(groundId: string, organizationId: string) {
+    const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId } });
+    if (!ground) throw new NotFoundException('Ground not found');
+
+    const completedCount = await this.prisma.checkIn.count({ where: { groundId, status: 'COMPLETED' } });
+    if (completedCount === 0) {
+      throw new BadRequestException('No check-ins completed yet — at least one party must complete a session before a report can be generated.');
+    }
+
+    await this.synthesize(groundId);
+    return { groundId, generated: true };
+  }
+
   async release(groundId: string, organizationId: string) {
     const ground = await this.prisma.ground.findFirst({
       where: { id: groundId, organizationId },
@@ -636,13 +716,14 @@ export class ReportsService {
 
     if (!ground.report.releasedAt) {
       if (isInitiator) {
-        return { id: ground.report.id, groundId, createdAt: ground.report.createdAt, releasedAt: null };
+        return { id: ground.report.id, groundId, createdAt: ground.report.createdAt, releasedAt: null, nextStep: 'release' };
       }
-      throw new ForbiddenException('Report has not been released yet');
+      throw new ForbiddenException('Report has not been released yet — the initiator will notify you when it is ready.');
     }
 
     // Mutual reveal gate: participants must activate before seeing content.
-    if (participant) {
+    // The initiator is exempt — they released the report and can always read it.
+    if (participant && !isInitiator) {
       const activation = await this.prisma.reportActivation.findUnique({
         where: { groundId_participantId: { groundId, participantId: participant.id } },
       });

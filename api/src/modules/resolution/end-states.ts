@@ -63,6 +63,33 @@ export const END_STATES: Record<GroundScenario, { value: string; label: string; 
     { value: 'ESCALATE', label: 'Requires external support or intervention' },
     { value: 'NOT_YET', label: 'Not yet — revisit when more information is available' },
   ],
+  OKR_ALIGNMENT: [
+    { value: 'ALIGNED', label: 'OKRs aligned to company direction' },
+    { value: 'GAPS_IDENTIFIED', label: 'Gaps identified — revision needed' },
+    { value: 'NOT_YET', label: 'Not yet — more sessions needed' },
+  ],
+  WORKPLAN_BUDGET: [
+    { value: 'APPROVED', label: 'Workplan and budget approved' },
+    { value: 'REVISION_NEEDED', label: 'Revision needed before approval' },
+    { value: 'NOT_YET', label: 'Not yet — plan not complete' },
+  ],
+  PULSE_CHECK: [
+    { value: 'ON_TRACK', label: 'On track' },
+    { value: 'ATTENTION_NEEDED', label: 'Attention needed on named items' },
+    { value: 'NOT_YET', label: 'Not yet — check again next session' },
+  ],
+  REALIGN_TEAM: [
+    { value: 'REALIGNED', label: 'Team realigned on shared direction' },
+    { value: 'GAPS_REMAIN', label: 'Gaps remain — further conversation needed' },
+    { value: 'ESCALATE', label: 'Requires leadership decision' },
+    { value: 'NOT_YET', label: 'Not yet — more accounts needed' },
+  ],
+  PIP: [
+    { value: 'RESOLVED', label: 'Performance concern resolved' },
+    { value: 'EXTENDED', label: 'Plan extended with named conditions' },
+    { value: 'SEPARATED', label: 'Separation agreed' },
+    { value: 'NOT_YET', label: 'Not yet — plan still running' },
+  ],
 };
 
 export function endStatesFor(scenario: GroundScenario) {

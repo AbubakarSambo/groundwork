@@ -20,48 +20,12 @@ export class StripeService {
     return customer.id;
   }
 
-  /**
-   * Hosted Checkout for the $20/mo care fee subscription. Collects + saves the
-   * card (so scenario fees can be charged later) and starts the subscription.
-   * The result of the flow arrives via webhook (checkout.session.completed).
-   */
-  async createCareFeeCheckout(params: { customerId: string; organizationId: string; successUrl: string; cancelUrl: string }): Promise<string> {
-    const priceId = this.config.get<string>('stripe.careFeePriceId');
-    if (!priceId || priceId.startsWith('price_...')) throw new Error('STRIPE_CARE_FEE_PRICE_ID is not configured');
-    const session = await this.stripe.checkout.sessions.create({
-      mode: 'subscription',
-      customer: params.customerId,
-      line_items: [{ price: priceId, quantity: 1 }],
-      payment_method_collection: 'always',
-      client_reference_id: params.organizationId,
-      subscription_data: { metadata: { organizationId: params.organizationId } },
-      success_url: params.successUrl,
-      cancel_url: params.cancelUrl,
-    });
-    if (!session.url) throw new Error('Stripe did not return a checkout URL');
-    return session.url;
-  }
-
   /** The default payment method on a subscription (saved during Checkout). */
   async getSubscriptionDefaultPaymentMethod(subscriptionId: string): Promise<string | null> {
     const sub = await this.stripe.subscriptions.retrieve(subscriptionId, { expand: ['default_payment_method'] });
     const pm = sub.default_payment_method;
     if (!pm) return null;
     return typeof pm === 'string' ? pm : pm.id;
-  }
-
-  /** Participant fee: queue one charge ($25 x unique active participants) onto the next invoice. */
-  async chargeParticipantFee(customerId: string, participantCount: number, idempotencyKey?: string) {
-    const unit = this.config.get<number>('stripe.scenarioFeeCents') || 2500;
-    return this.stripe.invoiceItems.create(
-      {
-        customer: customerId,
-        amount: unit * participantCount,
-        currency: 'usd',
-        description: `Participant fee — ${participantCount} active participant${participantCount === 1 ? '' : 's'}`,
-      },
-      idempotencyKey ? { idempotencyKey } : undefined,
-    );
   }
 
   /** Schedule a subscription to cancel at the end of the current paid period. */
@@ -76,7 +40,8 @@ export class StripeService {
   }
 
   constructEvent(payload: Buffer, signature: string): Stripe.Event {
-    const secret = this.config.get<string>('stripe.webhookSecret') || '';
+    const secret = this.config.get<string>('stripe.webhookSecret');
+    if (!secret) throw new Error('STRIPE_WEBHOOK_SECRET is required but not set');
     return this.stripe.webhooks.constructEvent(payload, signature, secret);
   }
 }

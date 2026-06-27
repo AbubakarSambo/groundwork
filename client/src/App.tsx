@@ -24,9 +24,11 @@ import { PaymentPage } from '@/pages/billing/PaymentPage'
 import { BillingCallbackPage } from '@/pages/billing/BillingCallbackPage'
 import { ProfilePage } from '@/pages/profile/ProfilePage'
 import { InvitePage } from '@/pages/invite/InvitePage'
+import { JoinPage } from '@/pages/join/JoinPage'
 import { PromptVersioningPage } from '@/pages/prompts/PromptVersioningPage'
 import { PromptTestPage } from '@/pages/prompts/PromptTestPage'
 import { AdminPage } from '@/pages/admin/AdminPage'
+import { AdminDashboardPage } from '@/pages/admin/AdminDashboardPage'
 import { DemoConversationPage } from '@/pages/demo/DemoConversationPage'
 import { HelpModal, HelpButton } from '@/components/gw/HelpModal'
 import { AppShell } from '@/components/gw/AppShell'
@@ -81,6 +83,7 @@ export default function App() {
             <Route path="/enter" element={<EnterPage />} />
             <Route path="/pin" element={<PinPage />} />
             <Route path="/invite" element={<InvitePage />} />
+            <Route path="/join" element={<JoinPage />} />
             <Route path="/demo/:persona" element={<DemoConversationPage />} />
 
             {/* Post-auth setup */}
@@ -102,6 +105,7 @@ export default function App() {
             <Route path="/prompts" element={<RequireAuth><PromptVersioningPage /></RequireAuth>} />
             <Route path="/prompts/test" element={<RequireAuth><PromptTestPage /></RequireAuth>} />
             <Route path="/admin" element={<RequireAuth><AdminPage /></RequireAuth>} />
+            <Route path="/admin/dashboard" element={<RequireAuth><AdminDashboardPage /></RequireAuth>} />
 
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

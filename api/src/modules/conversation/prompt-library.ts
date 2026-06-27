@@ -1359,7 +1359,11 @@ const STARTING_FOLLOWUP = `FOLLOW-UP IF VAGUE (the unstated reliance is almost a
 const STARTING_ROLE_QUESTIONS: Record<'NEW_HIRE' | 'NEW_COFOUNDER' | 'NEW_ADVISOR' | 'NEW_PROJECT' | 'NEW_MANAGER' | 'CONTRACT_RENEWAL', { initiator: string; participant: string }> = {
   NEW_HIRE: {
     initiator: `"Who have you just hired and what did you bring them in to do? What does success look like for you at 90 days — not the job description, your version. What would have to exist for you to know this hire is working?"`,
-    participant: `"What do you want to get out of this role — not what the organisation wants, what do you want personally. What does this look like for you in twelve months? Then separately: what do you think you were hired to do? What does the organisation expect from you right now?"`,
+    participant: `"What do you want to get out of this role — not what the organisation wants, what do you want personally. What does this look like for you in twelve months? Then separately: what do you think you were hired to do? What does the organisation expect from you right now?"
+
+DISCOVERY DEPENDENCY: For senior or executive hires, ask: "What do you need to understand, learn, or have access to before you can deliver on your mandate — and by when do you need it?" Record the answer as a named dependency. If the person cannot name it, ask what would block them in the first sixty days.
+
+AUTHORITY CLARITY: If the person describes a mandate that comes from more than one person or layer — a board, a chair, an investor, a parent company — ask: "If the people giving you this mandate disagree with each other, who has the final word?" If they cannot name one person, record that explicitly. This is often the most important thing in the ground.`,
   },
   NEW_COFOUNDER: {
     initiator: `"Who is joining and what is the arrangement? What are they contributing that nobody else in the founding team can contribute? What are you relying on them to cover that you have not explicitly agreed yet?"`,
@@ -1375,7 +1379,11 @@ const STARTING_ROLE_QUESTIONS: Record<'NEW_HIRE' | 'NEW_COFOUNDER' | 'NEW_ADVISO
   },
   NEW_MANAGER: {
     initiator: `"What are you bringing this person in to do, and for how long? What does the scope include — and what does it explicitly not include? Who will they report to and what does success look like at the end of the engagement?"`,
-    participant: `"What do you understand the scope of this engagement to be — in your own words, before the contract language? What does a successful engagement look like from your side? Then separately: what do you think the organisation expects from you that is not in writing?"`,
+    participant: `"What do you understand the scope of this engagement to be — in your own words, before the contract language? What does a successful engagement look like from your side? Then separately: what do you think the organisation expects from you that is not in writing?"
+
+DISCOVERY DEPENDENCY: Ask: "What do you need to understand, access, or have in place before you can deliver on your mandate — and by when do you need it?" Record the named dependencies. If the person says they have everything they need, note that. If they name something that has not been formally committed to by the other party, flag it as an open dependency.
+
+AUTHORITY CLARITY: If the mandate comes from more than one person — a board, investors, a parent company, a chair alongside a line manager — ask: "If the people giving you this mandate give you different instructions, who has the final word?" If they cannot name one person, record it explicitly. Ambiguity here is the most common source of executive derailment.`,
   },
   CONTRACT_RENEWAL: {
     initiator: `"The contract period is ending. What was the original arrangement and what was it supposed to deliver? What actually happened — against that original definition? What is your honest read of whether renewal makes sense and on what terms?"`,
@@ -1485,8 +1493,11 @@ IF THE TWO READS DIVERGE:
 "The conversation that needs to happen first is about the record, not the ask."
 "What specifically do you each see differently? That is where the conversation needs to start."`;
 
+const CRISIS_SCOPE_BOUNDARY = `SCOPE BOUNDARY: Keep every question focused on the current situation (numbers, runway, deadlines), what decisions need to be made and by when, what resources or commitments are at stake, and any conditions the person places on their cooperation. Do not ask about how working relationships have changed over time, relationship history, or personal dynamics unless the person explicitly raises them. This is a decision session, not a relationship assessment.`;
+
 const CRISIS_PACK_COMBINED = [
   `MOMENT: The situation requires everyone to see the same thing.`,
+  CRISIS_SCOPE_BOUNDARY,
   CRISIS_VALIDATION,
   CRISIS_OPENING,
   CRISIS_INITIATOR_VARIANTS,
@@ -1538,6 +1549,68 @@ export const SCENARIO_PACK_FRAMINGS: Record<string, string> = {
   SEPARATION: `This ground covers a situation that may be ending. The purpose is to reach the fairest possible end state on honest terms — not to prolong something that is not working, and not to end something prematurely. The question is not whether to separate but what would need to be true for either path to be fair.`,
 };
 
+const OKR_ALIGNMENT_PACK = `MOMENT: OKR alignment across teams.
+
+PURPOSE: Each person submits their own OKRs and shows how they connect to the company OKRs. The session surfaces gaps, overlaps, and missing links before the planning cycle locks in.
+
+OPENING: Ask the person to name their top two or three objectives for this period. Do not ask them to recite the company OKRs back. Ask them to describe, in their own words, what they are trying to achieve and why it matters.
+
+FOLLOW-UP: For each objective, ask what the key result looks like at the end of the period. What specific and observable thing will exist that would tell them, and anyone else who looks, that the objective was met?
+
+ALIGNMENT CHECK: Ask how this objective connects to the company direction as they understand it. If they cannot make the connection explicit, note it as a gap. Do not prompt them with the answer.
+
+CROSS-TEAM QUESTION: Ask whether any of their objectives require something from another team that has not been formally agreed. If yes, name the team and what is needed.
+
+RECORD: The record should show: stated objectives, stated key results, stated connection to company direction, and any dependencies on other teams that are not yet formalised.`;
+
+const WORKPLAN_BUDGET_PACK = `MOMENT: Workplan and budget alignment.
+
+PURPOSE: Each person builds their own workplan and budget for the period. The session checks whether they have actually done it and whether it is coherent with the org direction and resource reality.
+
+OPENING: Ask the person to describe the work they have planned for this period. Not a summary — ask for the first three things on the list, specifically. If they cannot name three things, note that a workplan has not yet been built.
+
+BUDGET CHECK: Ask what this work will cost in time, money, or people. If they have a budget allocated, ask how it maps to the plan. If there is no budget, ask what they would need to execute the plan and whether that has been approved.
+
+COHERENCE CHECK: Ask whether the plan is achievable within the time and resources available. If the plan requires things that are not yet in place, name those specifically.
+
+RECORD: The record should show: named work items, associated resource requirements, what is approved versus assumed, and any gaps between the plan and the resource reality.`;
+
+const PULSE_CHECK_PACK = `MOMENT: Alignment pulse check.
+
+PURPOSE: A lightweight recurring check-in. No setup required. The goal is a current-state read: what is moving, what is stuck, and what has changed since the last check-in.
+
+OPENING: Ask the person what is going well right now. One thing is enough. If they cannot name something, note it.
+
+FOLLOW-UP: Ask what is stuck or harder than expected. One thing is enough. Be specific — "things are busy" is not stuck, a named obstacle is.
+
+CHANGE QUESTION: Ask what has changed since the last check-in that the other party should know about.
+
+RECORD: The record should show: one thing going well with evidence, one obstacle with specifics, and any notable change since the last session. This is a signal, not a deep account. It should take no more than five minutes.`;
+
+const REALIGN_TEAM_PACK = `MOMENT: Team realignment.
+
+PURPOSE: Something has shifted — a direction has changed, a priority has moved, or the team has drifted. Each person gives their own account of where they think things stand before the group discusses it.
+
+OPENING: Ask the person what they believe the team is currently trying to achieve. Not what was agreed six months ago — what they believe is true today.
+
+DRIFT CHECK: Ask what has changed from the original plan or direction, as they understand it. If nothing has changed in their view, note that. If something has, ask when they first noticed it and whether it was discussed formally.
+
+TENSION QUESTION: Ask whether there is anything the team is not talking about openly that is affecting how people are working. If yes, name it. If they say no, accept it and note it.
+
+RECORD: The record should show: each person's current understanding of team direction, named changes from original plan, and any named tensions that have not been formally addressed.`;
+
+const PIP_PACK = `MOMENT: Performance improvement.
+
+PURPOSE: A structured record of what improvement is required, what support is available, and what success looks like. Both the person on the plan and the person setting it give their own account independently. The record shows where they agree and where they differ.
+
+OPENING: Ask the person to describe, in their own words, what they understand the performance concern to be. Do not lead. If their account differs significantly from the concern as set out, note the gap.
+
+SUPPORT QUESTION: Ask what support or resources they believe are available to them during this period. If they are not aware of support that exists, note the gap.
+
+SUCCESS DEFINITION: Ask what success looks like at the end of this period. What specific and observable thing would need to be true for the concern to be resolved? If they cannot describe it, note that success has not been defined clearly.
+
+RECORD: The record should show: the person's understanding of the concern, what support they believe is in place, their definition of success, and any significant gaps between their account and the formal plan as described by the other party.`;
+
 // Legacy combined packs — used by the DB seed only. Runtime uses buildScenarioPackForParty.
 export const SCENARIO_PACKS: Record<GroundScenario, string> = {
   NEW_HIRE: composeStartingPack('NEW_HIRE'),
@@ -1549,6 +1622,11 @@ export const SCENARIO_PACKS: Record<GroundScenario, string> = {
   DRIFT: DRIFT_PACK,
   RECOGNITION: RECOGNITION_PACK,
   CRISIS_ALIGNMENT: CRISIS_PACK_COMBINED,
+  OKR_ALIGNMENT: OKR_ALIGNMENT_PACK,
+  WORKPLAN_BUDGET: WORKPLAN_BUDGET_PACK,
+  PULSE_CHECK: PULSE_CHECK_PACK,
+  REALIGN_TEAM: REALIGN_TEAM_PACK,
+  PIP: PIP_PACK,
 };
 
 /**
@@ -1632,6 +1710,21 @@ export function buildScenarioPackForParty(scenario: GroundScenario, partyType: P
         CRISIS_WORRY_TENSION,
       ].join('\n\n');
     }
+
+    case GroundScenario.OKR_ALIGNMENT:
+      return OKR_ALIGNMENT_PACK;
+
+    case GroundScenario.WORKPLAN_BUDGET:
+      return WORKPLAN_BUDGET_PACK;
+
+    case GroundScenario.PULSE_CHECK:
+      return PULSE_CHECK_PACK;
+
+    case GroundScenario.REALIGN_TEAM:
+      return REALIGN_TEAM_PACK;
+
+    case GroundScenario.PIP:
+      return PIP_PACK;
 
     default:
       return '';

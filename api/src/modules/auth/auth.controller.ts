@@ -38,6 +38,7 @@ export class AuthController {
   @Public()
   @Post('login')
   @HttpCode(HttpStatus.OK)
+  @Throttle({ global: { limit: 10, ttl: 60000 } })
   @ApiOperation({ summary: 'Login with email and password' })
   @ApiResponse({ status: 200, description: 'Login successful', type: AuthResponseDto })
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
@@ -58,6 +59,7 @@ export class AuthController {
   @Public()
   @Post('set-password')
   @HttpCode(HttpStatus.OK)
+  @Throttle({ global: { limit: 5, ttl: 60000 } })
   @ApiOperation({ summary: 'Set password for invited user' })
   @ApiResponse({ status: 200, description: 'Password set successfully', type: AuthResponseDto })
   @ApiResponse({ status: 400, description: 'Invalid or expired token' })
@@ -98,6 +100,7 @@ export class AuthController {
   @Public()
   @Post('reset-password')
   @HttpCode(HttpStatus.OK)
+  @Throttle({ global: { limit: 5, ttl: 60000 } })
   @ApiOperation({ summary: 'Reset password using token' })
   @ApiResponse({ status: 200, description: 'Password reset successful', type: AuthResponseDto })
   @ApiResponse({ status: 400, description: 'Invalid or expired token' })
@@ -132,10 +135,21 @@ export class AuthController {
     const frontendUrl = this.configService.get<string>('google.frontendUrl');
     try {
       const { token, isNewUser } = await this.authService.findOrCreateGoogleUser(req.user);
-      return res.redirect(`${frontendUrl}/auth/google/callback?token=${token}&new=${isNewUser}`);
+      // Issue a short-lived (60s) exchange code so the full JWT is never in the URL.
+      const code = await this.authService.createOAuthExchangeCode(token);
+      return res.redirect(`${frontendUrl}/auth/google/callback?code=${code}&new=${isNewUser}`);
     } catch {
       return res.redirect(`${frontendUrl}/login?error=google_auth_failed`);
     }
+  }
+
+  @Public()
+  @Get('google/exchange')
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ global: { limit: 10, ttl: 60000 } })
+  @ApiOperation({ summary: 'Exchange a one-time OAuth code for a JWT' })
+  async googleExchange(@Query('code') code: string) {
+    return this.authService.redeemOAuthExchangeCode(code);
   }
 
   @Get('me')
@@ -175,9 +189,9 @@ export class AuthController {
   @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
   @Throttle({ global: { limit: 10, ttl: 60000 } })
-  @ApiOperation({ summary: 'Invite a colleague to Groundwork as an admin' })
+  @ApiOperation({ summary: 'Invite a colleague to Groundwork as a member of the same org' })
   async teamInvite(@CurrentUser() user: CurrentUserData, @Body() body: { email: string }) {
     const orgName = (user as any).organizationName ?? 'Groundwork';
-    return this.authService.teamInvite(orgName, body.email);
+    return this.authService.teamInvite(orgName, body.email, user.organizationId);
   }
 }

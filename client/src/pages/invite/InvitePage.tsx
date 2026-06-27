@@ -5,9 +5,8 @@ import { participantsApi } from '@/api'
 import { participantRequestsApi } from '@/api/participantRequests'
 import { useAuthStore } from '@/stores/auth'
 import { GroundworkLogo } from '@/components/gw/GroundworkLogo'
-import { entryApi } from '@/api/entry'
+import { entryApi, participantApi } from '@/api/entry'
 import type { EntryReport, ChatTurn } from '@/api/entry'
-import { authApi } from '@/api/auth'
 import { toast } from 'sonner'
 
 type Phase = 'landing' | 'checkin' | 'report'
@@ -51,7 +50,6 @@ export function InvitePage() {
   // Save email
   const [email, setEmail] = useState('')
   const [emailSent, setEmailSent] = useState(false)
-  const [emailError, setEmailError] = useState('')
 
   // Suggest participants state
   const [requestedPeople, setRequestedPeople] = useState<{ email: string; name?: string; reason: string }[]>([])
@@ -79,6 +77,9 @@ export function InvitePage() {
     onSuccess: (res) => {
       setAuth(res.user, res.accessToken)
       if (res.user?.email) setEmail(res.user.email)
+      if ((res as any).existingAccount) {
+        toast.info(`Welcome back — continuing as ${res.user.email}`)
+      }
     },
     onError: () => {
       setPhase('landing')
@@ -88,20 +89,9 @@ export function InvitePage() {
 
   function buildParticipantOnboardingMessages(initiatorName: string, groundLabel: string): string[] {
     return [
-      `Welcome. You have been invited by ${initiatorName} to share your account of ${groundLabel}. This is your private space — ${initiatorName} will not see what you write here until both accounts are complete, and the report is released to you both at the same time. There are no right answers. Take your time.`,
-      `First we will ask you to name what this is about.\n\nSomething like: Kwame, my cofounder. Or Q2 sales targets. Or the Lagos project handover. Or Priya, new head of product, first 90 days.\n\nJust enough for both of you to know what this record is about. Type okay or proceed when you are ready.`,
-      `Then we will ask you about the people involved.\n\nSomething like: Kwame was supposed to own the fundraising deck and the investor meetings. He has missed three deadlines and the Series A is in six weeks.\n\nOr: Priya joins next Monday. I want both of us to agree on what her first 90 days look like before she starts.\n\nJust names, what they were supposed to do or what you need from them, and what you believe is happening or needs to happen. Type okay or proceed when you are ready.`,
-      `Then we will ask you to pick what kind of situation this is.\n\nSomething went wrong and you need it on record. You need to get on the same page before things get worse. Or you are starting something and want both sides clear from day one.\n\nOne of those will fit.\n\nSome of what we ask might feel direct. That is the point. The record is only useful if it is honest. You are not being asked to be fair to the other person. You are being asked to be honest about your own version. Type okay or proceed when you are ready.`,
-      `We will ask for documents at the right moment.\n\nEmails where something was agreed. Work plans. Contracts. Performance reviews. Messages. Call transcripts. Project briefs.\n\nYou do not need all of them and you do not need any of them right now. But when you attach a document the product cross-references it against what you and the other party said. That cross-reference is where the most important gaps in a record are usually found. Type okay or proceed when you are ready.`,
-      `The other person gets a link. They submit their own account separately. They cannot see what you wrote. You cannot see what they wrote. When both accounts are in you both see the report at the same time.\n\nNeither of you shapes the other's story. Type okay or proceed when you are ready.`,
-      `Here is what happens when the other person opens their link.\n\nThey will see your name and the name of this ground. They will be told that their account is completely private and that you cannot see what they write until both of you activate the report together. They will go through their own short onboarding conversation before they answer any questions. They will be asked what they want the record to show from their side before the first question is asked.\n\nThey are not being ambushed. They are being given the same process you are going through right now. Type okay or proceed when you are ready.`,
-      `When both sides have submitted their accounts the report is generated. It shows where you agree, where you differ, and what the gap between your two versions actually is. Documents you attached are cross-referenced against what you both said. Performance records, emails, and agreements are referenced where they are relevant.\n\nNo one decides who is right. The record shows both sides of the truth in the same place, checked against the evidence both parties provided. Type okay or proceed when you are ready.`,
-      `After each session you will see your confidence score update. Watch it.\n\nA score of 1 means the record is just starting. A score of 3 means both sides have submitted and the picture is forming. A score of 5 means the record is strong enough to stand on its own in any room.\n\nIf the score is not moving it means the record needs more depth. More specifics. More names. More dates. More documents.\n\nThe sessions are short. About ten minutes each. You can do one today and come back next week. The record waits for you. Type okay or proceed when you are ready.`,
-      `How long do you need this record for? Use this to decide. If you need a quick resolution and both parties are willing, one month. If this needs time to play out with multiple check-ins, three months. If this could end up in front of a board, a lawyer, or an external party, six months or more. Type okay or proceed when you are ready.`,
-      `How often should both of you check in? If things are moving fast and the situation is changing week to week, every week. If you need regular check-ins but there is no immediate urgency, every two weeks. If this is a slow-moving situation or a long-term record, once a month. Type okay or proceed when you are ready.`,
-      `What do you need this ground to produce? Keep a record of what happened. Realign on what was agreed. Resolve a dispute. Document what was delivered. Get clarity before something new starts. Type okay or proceed when you are ready.`,
-      `The first four sessions are free. No card required.\n\nYour first question will be about what specifically you were expecting and what you believe has or has not happened. Be as specific as you can. Names, dates, and concrete examples make the record strong.\n\nType okay or proceed when you are ready.`,
-      `One last thing before your first question. Do you have anything you want to ask about how this works? Type okay or proceed when you are ready, or ask your question.`,
+      `Welcome. ${initiatorName} has invited you to add your account of: ${groundLabel}.\n\nThis is your private space. ${initiatorName} never sees what you write. Once everyone has checked in, you both see the shared picture at the same time — no one shapes the other's story.\n\nType anything to continue.`,
+      `Your session takes about 10 minutes. There are no right answers.\n\nBe as specific as you can — names, dates, what you saw or experienced. Specifics are what make a record strong. You can be direct.\n\nType anything to continue.`,
+      `Ready? Your first question is coming now.`,
     ]
   }
 
@@ -113,16 +103,12 @@ export function InvitePage() {
     if (!preview) return
     setLoading(true)
     try {
-      const res = await entryApi.chat(
-        [{
-          role: 'user',
-          content: `I am a participant invited by ${preview.initiatorName} to contribute my account of "${preview.groundLabel}". I have completed the onboarding. Please ask me your first specific check-in question about the situation. Reference the ground label. Do not open generically. Ask one direct specific question.`,
-        }],
-        preview.scenario,
-        preview.groundLabel,
-      )
+      const res = await participantApi.chat(token, [{
+        role: 'user',
+        content: `I am a participant invited by ${preview.initiatorName} to contribute my account of "${preview.groundLabel}". I have completed the onboarding. Please ask me your first specific check-in question about the situation. Reference the ground label. Do not open generically. Ask one direct specific question.`,
+      }])
       setMessages([{ role: 'assistant', content: res.reply }])
-      setOnboardingStep(15)
+      setOnboardingStep(4)
     } catch {
       setMessages([{ role: 'assistant', content: 'Something went wrong starting your check-in. Please try again.' }])
     } finally {
@@ -136,10 +122,10 @@ export function InvitePage() {
     setInput('')
     if (taRef.current) taRef.current.style.height = '38px'
 
-    if (onboardingStep <= 14) {
+    if (onboardingStep <= 3) {
       // Onboarding phase — advance
-      if (onboardingStep >= 14) {
-        setOnboardingStep(15)
+      if (onboardingStep >= 3) {
+        setOnboardingStep(4)
         startCheckin()
       } else {
         setOnboardingStep(s => s + 1)
@@ -147,7 +133,7 @@ export function InvitePage() {
       return
     }
 
-    // Free check-in phase
+    // Live check-in phase — use participant endpoint so turns are saved server-side
     const userTurn: ChatTurn = { role: 'user', content }
     const updatedHistory: ChatTurn[] = [
       ...messages.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })),
@@ -157,9 +143,14 @@ export function InvitePage() {
     setLoading(true)
 
     try {
-      const res = await entryApi.chat(updatedHistory, preview?.scenario, preview?.groundLabel)
+      const res = await participantApi.chat(token, updatedHistory)
+      const finalMessages = [...messages, { role: 'user' as const, content }, { role: 'assistant' as const, content: res.reply }]
       setMessages(prev => { const out = prev.filter(m => m.content !== '…'); return [...out, { role: 'assistant', content: res.reply }] })
       setFreeCheckinCount(n => n + 1)
+      if (res.sessionComplete) {
+        setSessionEnded(true)
+        endSession(finalMessages)
+      }
     } catch {
       setMessages(prev => prev.filter(m => m.content !== '…').concat({ role: 'assistant', content: 'Something went wrong. Try again.' }))
     } finally {
@@ -167,12 +158,12 @@ export function InvitePage() {
     }
   }
 
-  async function endSession() {
+  async function endSession(finalMsgs?: ChatMessage[]) {
     setSessionEnded(true)
     setGeneratingReport(true)
     setPhase('report')
     try {
-      const turns: ChatTurn[] = messages.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content }))
+      const turns: ChatTurn[] = (finalMsgs ?? messages).map(m => ({ role: m.role as 'user' | 'assistant', content: m.content }))
       const res = await entryApi.report(turns, preview?.scenario, preview?.groundLabel)
       setSessionReport(res.report)
     } catch {
@@ -182,18 +173,10 @@ export function InvitePage() {
     }
   }
 
-  async function handleSave() {
-    const trimmed = email.trim()
-    if (!trimmed || !trimmed.includes('@')) { setEmailError('Please enter a valid email address.'); return }
-    setEmailError('')
-    try {
-      await authApi.requestMagicLink({ email: trimmed, firstName: trimmed.split('@')[0] })
-      setEmailSent(true)
-      try { localStorage.setItem('gw_pending_email', trimmed) } catch { /* */ }
-    } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
-      setEmailError(msg ?? 'Could not send link. Please try again.')
-    }
+  function handleSave() {
+    // Session is already saved server-side when sessionComplete fired.
+    // Just confirm and show sign-in link.
+    setEmailSent(true)
   }
 
   async function handleRequest() {
@@ -229,8 +212,8 @@ export function InvitePage() {
           <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 20 }}>
             Sign in to continue your check-in for <strong>{preview.groundLabel}</strong>.
           </div>
-          <button className="gw-btn" style={{ display: 'inline-block', width: 'auto', padding: '10px 20px' }} onClick={() => navigate('/enter')}>
-            Sign in →
+          <button className="gw-btn" style={{ display: 'inline-block', width: 'auto', padding: '10px 20px' }} onClick={() => navigate('/grounds')}>
+            Sign in to continue →
           </button>
         </div>
       </InviteShell>
@@ -245,7 +228,7 @@ export function InvitePage() {
           <a href="https://myground.work" target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex' }}><GroundworkLogo /></a>
         </div>
 
-        <div className="gw-bd" style={{ maxWidth: 480, margin: '0 auto', width: '100%', paddingTop: 24 }}>
+        <div className="gw-bd" style={{ maxWidth: 480, margin: '0 auto', width: '100%', paddingTop: 24, paddingLeft: 16, paddingRight: 16, boxSizing: 'border-box' }}>
           <div className="gw-ttl">{preview.initiatorName} wants to hear your version</div>
           <div className="gw-sub-t">
             A Groundwork session about: <strong>{preview.groundLabel}</strong>.
@@ -268,7 +251,7 @@ export function InvitePage() {
             accept.mutate()
             setPhase('checkin')
           }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 4 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8, marginBottom: 4 }}>
               <div className="gw-fld" style={{ margin: 0 }}>
                 <label className="gw-label">First name</label>
                 <input className="gw-input" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Optional" />
@@ -307,7 +290,7 @@ export function InvitePage() {
 
   // ---------- CHECK-IN ----------
   if (phase === 'checkin') {
-    const inOnboarding = onboardingStep <= 14
+    const inOnboarding = onboardingStep <= 3
 
     return (
       <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)', overflow: 'hidden' }}>
@@ -316,7 +299,7 @@ export function InvitePage() {
             <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)' }}>{preview.groundLabel}</div>
             {inOnboarding && (
               <div style={{ fontSize: 11, color: 'var(--gw-sub)', background: 'var(--gw-blue-bg)', borderRadius: 10, padding: '2px 9px', border: '0.5px solid var(--gw-blue-b)' }}>
-                {onboardingStep} of 14
+                {onboardingStep} of 3
               </div>
             )}
           </div>
@@ -353,7 +336,7 @@ export function InvitePage() {
           <div style={{ padding: '8px 16px', borderTop: '1px solid var(--gw-border)', background: 'white', flexShrink: 0 }}>
             <div style={{ maxWidth: 680, margin: '0 auto' }}>
               <button
-                onClick={endSession}
+                onClick={() => endSession()}
                 style={{ width: '100%', padding: '10px 16px', borderRadius: 8, background: '#0A1628', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 End session →
@@ -380,8 +363,8 @@ export function InvitePage() {
                     const val = input.trim().toLowerCase()
                     if (val) {
                       setInput('')
-                      if (onboardingStep >= 14) {
-                        setOnboardingStep(15)
+                      if (onboardingStep >= 3) {
+                        setOnboardingStep(4)
                         startCheckin()
                       } else {
                         setOnboardingStep(s => s + 1)
@@ -514,7 +497,7 @@ export function InvitePage() {
               <div style={{ marginBottom: 8 }}>
                 <div style={{ fontSize: 10, letterSpacing: '.09em', textTransform: 'uppercase', color: '#9B9590', fontWeight: 700 }}>An honest close</div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 8 }}>
                 {[
                   { k: 'Aligned', v: sessionReport.honestClose.aligned, bg: '#E7F6EF', kc: '#085041' },
                   { k: 'Open',    v: sessionReport.honestClose.open,    bg: '#FDF3E3', kc: '#8A5C1A' },
@@ -534,26 +517,22 @@ export function InvitePage() {
         {/* Divider */}
         <div style={{ borderTop: '1px solid #E2E0DB', marginBottom: 18 }} />
 
-        {/* Save email */}
+        {/* Session saved confirmation + P-17 email notification */}
         {!emailSent ? (
-          <div style={{ marginBottom: 20 }}>
-            <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 6 }}>Save my session</div>
-            <input
-              type="email" placeholder="you@company.com" value={email}
-              onChange={e => setEmail(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleSave()}
-              style={{ width: '100%', padding: '11px 13px', borderRadius: 8, border: '1px solid #E2E0DB', fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8, outline: 'none' }}
-            />
-            {emailError && <div style={{ fontSize: 12, color: '#791F1F', marginBottom: 6 }}>{emailError}</div>}
-            <button onClick={handleSave} style={{ width: '100%', padding: '12px 16px', borderRadius: 8, background: '#0C447C', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
-              Save my session →
+          <div style={{ background: '#F0F7FF', border: '1px solid #C7DEFF', borderRadius: 10, padding: '14px 16px', marginBottom: 20 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#0C447C', marginBottom: 4 }}>Your session is saved.</div>
+            <div style={{ fontSize: 13, color: '#4A5568', lineHeight: 1.6, marginBottom: 12 }}>
+              You will receive an email when the report is ready — once all parties have checked in, you both see the shared picture at the same time.
+            </div>
+            <button onClick={handleSave} style={{ padding: '9px 16px', borderRadius: 8, background: '#0C447C', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
+              Got it →
             </button>
           </div>
         ) : (
           <div style={{ textAlign: 'center', padding: '10px 0', marginBottom: 20 }}>
             <div style={{ fontSize: 22, marginBottom: 6 }}>✓</div>
-            <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>Check your email</div>
-            <div style={{ fontSize: 13, color: '#6B6560', lineHeight: 1.6 }}>We sent a link to <strong>{email}</strong>. Click it to finish setting up your account.</div>
+            <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>You are on record.</div>
+            <div style={{ fontSize: 13, color: '#6B6560', lineHeight: 1.6 }}>You will receive an email when the report is ready. Sign in any time at <strong>myground.work</strong> to view your contribution.</div>
           </div>
         )}
 

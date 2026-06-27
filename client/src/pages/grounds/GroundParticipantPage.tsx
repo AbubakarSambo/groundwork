@@ -114,8 +114,8 @@ export function GroundParticipantPage() {
   })
 
   const checkoutMut = useMutation({
-    mutationFn: () => billingApi.createCareFeeCheckout(id),
-    onSuccess: (url) => { window.location.href = url },
+    mutationFn: () => billingApi.purchaseSession(id!),
+    onSuccess: (data: any) => { if (data?.checkoutUrl) window.location.href = data.checkoutUrl },
     onError: () => toast.error('Could not start checkout. Please try again.'),
   })
 
@@ -239,7 +239,7 @@ export function GroundParticipantPage() {
           <span onClick={() => navigate('/grounds')} style={{ fontSize: 13, color: '#9B9590', cursor: 'pointer', flexShrink: 0 }}>← Grounds</span>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 15, fontWeight: 700, color: '#1A1916', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ground.label}</div>
-            <div style={{ fontSize: 11, color: '#9B9590' }}>Your account is private until the report releases.</div>
+            <div style={{ fontSize: 11, color: '#9B9590' }}>Your contribution to this ground is yours until the report releases.</div>
           </div>
         </div>
 
@@ -264,6 +264,22 @@ export function GroundParticipantPage() {
         {/* CHECK-IN TAB */}
         {tab === 'checkin' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+            {/* Ground context — shown before first session to orient the participant */}
+            {completedCheckIns.length === 0 && openCheckIn && (
+              <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '14px 16px' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.07em', color: '#9B9590', marginBottom: 8 }}>About this ground</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#1A1916', marginBottom: 4 }}>{ground.label}</div>
+                {(ground as any).scenario && (
+                  <div style={{ fontSize: 12, color: '#6B6560', marginBottom: 6 }}>
+                    {(ground as any).scenario.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c: string) => c.toUpperCase())}
+                  </div>
+                )}
+                <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.55, borderTop: '1px solid #F0EEE9', paddingTop: 8, marginTop: 4 }}>
+                  Your contribution stays on your side until all parties have checked in. The report is sent to everyone at the same time so no one reads it before the other.
+                </div>
+              </div>
+            )}
 
             {/* Ground confidence */}
             <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '14px 16px' }}>
@@ -328,7 +344,7 @@ export function GroundParticipantPage() {
 
                 <div style={{ background: 'rgba(255,255,255,.06)', borderRadius: 7, padding: '9px 12px', marginBottom: 16 }}>
                   <div style={{ fontSize: 12, color: 'rgba(255,255,255,.5)', lineHeight: 1.5 }}>
-                    Your account is independent. The other party never sees what you write here.
+                    Your contribution is independent. The other party never sees what you write here until the report is released to everyone at once.
                   </div>
                 </div>
 
@@ -344,7 +360,7 @@ export function GroundParticipantPage() {
               <div style={{ background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 10, padding: '13px 16px' }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: '#085041', marginBottom: 4 }}>Session complete</div>
                 <div style={{ fontSize: 12, color: '#3A7A60', lineHeight: 1.6 }}>
-                  Your account for this session is on record. The report releases when all parties complete their sessions.
+                  Your contribution to this session is on record. The report releases when all parties complete their sessions.
                 </div>
               </div>
             )}
@@ -689,7 +705,7 @@ export function GroundParticipantPage() {
           <div>
             <div style={{ fontSize: 13, fontWeight: 700, color: '#1A1916', marginBottom: 4 }}>Documents</div>
             <div style={{ fontSize: 12, color: '#9B9590', lineHeight: 1.6, marginBottom: 14, background: 'white', borderRadius: 8, padding: '10px 12px', border: '1px solid #E2E0DB' }}>
-              Documents the admin has shared appear here. Your uploads are part of your private record until the report activates.
+              Documents the admin has shared appear here. Your uploads are part of your contribution to this ground's record until the report is released.
             </div>
 
             <div

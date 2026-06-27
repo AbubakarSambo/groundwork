@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { Resend } from 'resend';
 import { AppModule } from './app.module';
 
 /**
@@ -18,7 +19,7 @@ function assertProductionConfig(logger: Logger) {
   if (process.env.BILLING_ENABLED !== 'true') problems.push("BILLING_ENABLED must be 'true' in production (the paywall is disabled otherwise)");
   if (!process.env.STRIPE_SECRET_KEY) problems.push('STRIPE_SECRET_KEY must be set');
   if (!process.env.STRIPE_WEBHOOK_SECRET) problems.push('STRIPE_WEBHOOK_SECRET must be set (webhooks are unverified otherwise)');
-  if (!process.env.ANTHROPIC_API_KEY) problems.push('ANTHROPIC_API_KEY must be set');
+  if (!process.env.GOOGLE_SERVICE_ACCOUNT_JSON) problems.push('GOOGLE_SERVICE_ACCOUNT_JSON must be set');
   if (problems.length) {
     logger.error(`Refusing to start in production with insecure configuration:\n - ${problems.join('\n - ')}`);
     process.exit(1);
@@ -70,6 +71,36 @@ async function bootstrap() {
 
   const httpAdapter = app.getHttpAdapter();
   httpAdapter.get('/health', (_req, res) => res.status(200).send('ok'));
+
+  // Email diagnostic — call GET /health/email?to=you@example.com on the production
+  // server to see exactly what Resend returns. Safe to leave in: no auth bypass,
+  // no data exposure, just a test send to an explicit address.
+  httpAdapter.get('/health/email', async (req: any, res: any) => {
+    const to = req.query?.to;
+    if (!to || !String(to).includes('@')) {
+      return res.status(400).json({ error: 'Pass ?to=your@email.com' });
+    }
+    const apiKey = process.env.RESEND_API_KEY ?? '';
+    const fromEmail = process.env.RESEND_FROM_EMAIL || 'Groundwork <noreply@myground.work>';
+    if (!apiKey || apiKey.startsWith('re_...')) {
+      return res.status(200).json({ status: 'dev_mode', message: 'RESEND_API_KEY is the placeholder — emails are suppressed and logged only.' });
+    }
+    try {
+      const resend = new Resend(apiKey);
+      const { data, error } = await resend.emails.send({
+        from: fromEmail,
+        to: [String(to)],
+        subject: 'Groundwork email diagnostic',
+        html: '<p>This is a test email from the Groundwork health check endpoint. If you received this, email delivery is working.</p>',
+      });
+      if (error) {
+        return res.status(200).json({ status: 'resend_error', error });
+      }
+      return res.status(200).json({ status: 'sent', id: data?.id, from: fromEmail, to });
+    } catch (err: any) {
+      return res.status(200).json({ status: 'exception', message: err.message });
+    }
+  });
 
   const port = configService.get<number>('app.port') || 3000;
   await app.listen(port, '0.0.0.0');

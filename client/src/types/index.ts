@@ -20,6 +20,11 @@ export type GroundScenario =
   | 'RECOGNITION'
   | 'DRIFT'
   | 'CRISIS_ALIGNMENT'
+  | 'OKR_ALIGNMENT'
+  | 'WORKPLAN_BUDGET'
+  | 'PULSE_CHECK'
+  | 'REALIGN_TEAM'
+  | 'PIP'
 
 export type GroundMoment = 'STARTING' | 'RECOGNITION' | 'RESOLUTION'
 
@@ -58,7 +63,12 @@ export interface GroundSignal {
   groundId: string
   sessionNum: number
   type: 'Convergence' | 'Divergence' | 'Pattern'
-  text: string
+  /** Deprecated — use observationText */
+  text?: string
+  code?: string
+  observationText?: string
+  lastPeriodNumber?: number | null
+  lastSeenAt?: string | null
   confidenceDelta: string | null
   createdAt: string
 }
@@ -82,6 +92,9 @@ export interface Ground {
   checkIns?: CheckInSummary[]
   signals?: GroundSignal[]
   report?: { id: string; releasedAt: string | null; createdAt?: string } | null
+  sessionsBalance?: number
+  isFreeGround?: boolean
+  joinToken?: string | null
 }
 
 export interface ConversationTurn {
