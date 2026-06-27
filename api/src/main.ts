@@ -18,7 +18,7 @@ function assertProductionConfig(logger: Logger) {
   if (process.env.BILLING_ENABLED !== 'true') problems.push("BILLING_ENABLED must be 'true' in production (the paywall is disabled otherwise)");
   if (!process.env.STRIPE_SECRET_KEY) problems.push('STRIPE_SECRET_KEY must be set');
   if (!process.env.STRIPE_WEBHOOK_SECRET) problems.push('STRIPE_WEBHOOK_SECRET must be set (webhooks are unverified otherwise)');
-  if (!process.env.ANTHROPIC_API_KEY) problems.push('ANTHROPIC_API_KEY must be set');
+  if (!process.env.GOOGLE_SERVICE_ACCOUNT_JSON) problems.push('GOOGLE_SERVICE_ACCOUNT_JSON must be set');
   if (problems.length) {
     logger.error(`Refusing to start in production with insecure configuration:\n - ${problems.join('\n - ')}`);
     process.exit(1);
