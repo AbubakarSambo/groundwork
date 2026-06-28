@@ -27,7 +27,7 @@ const SCENARIOS: ScenarioCard[] = [
   { scenario: 'NEW_ADVISOR',      label: 'New board member',      desc: 'Each side on record on what they expect from the relationship before it starts.',                         tag: 'Starting',     tagBg: '#E8F8F5', tagColor: '#085041' },
   { scenario: 'NEW_COFOUNDER',    label: 'New partner',           desc: 'Put both sides\' understanding of the partnership on record before anything is agreed.',                  tag: 'Starting',     tagBg: '#E8F8F5', tagColor: '#085041' },
   { scenario: 'CONTRACT_RENEWAL', label: 'Contract renewal',      desc: 'Independent accounts of how things have gone. What has worked, what has not, and what the next term looks like.', tag: 'Renewal', tagBg: '#EEF4FB', tagColor: '#0C447C' },
-  { scenario: 'OKR_ALIGNMENT',    label: 'OKR building alignment', desc: 'Not to set OKRs — to check whether everyone is actually aligned on the ones you have.',                 tag: 'Planning',     tagBg: '#EEF4FB', tagColor: '#0C447C' },
+  { scenario: 'OKR_ALIGNMENT',    label: 'Goals & planning', desc: 'Check whether everyone is actually aligned on the goals and plan — not to set them.',                    tag: 'Planning',     tagBg: '#EEF4FB', tagColor: '#0C447C' },
   { scenario: 'DRIFT',            label: 'New direction',         desc: 'A strategy shift or pivot. Each person says what they understood before the group discussion.',           tag: 'Alignment',    tagBg: '#FDF3E3', tagColor: '#8A5C1A' },
   { scenario: 'PULSE_CHECK',      label: 'Other',                 desc: 'Describe the situation and Groundwork will set up the right ground for it.',                              tag: 'Other',        tagBg: '#F5F3EF', tagColor: '#6B6560' },
 ]

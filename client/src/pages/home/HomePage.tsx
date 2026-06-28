@@ -185,7 +185,7 @@ export function HomePage() {
                 { label: 'New partner',            desc: 'Put both sides\' understanding of the partnership on record before anything is agreed.' },
                 { label: 'Contract renewal',       desc: 'Independent accounts of how things have gone. What has worked, what has not.' },
                 { label: 'PIP',                    desc: 'Both accounts on record. The concern, the support available, and what success looks like.' },
-                { label: 'OKR building alignment', desc: 'Not to set OKRs — to check whether everyone is actually aligned on the ones you have.' },
+                { label: 'Goals & planning', desc: 'Check whether everyone is actually aligned on the goals and plan — not to set them.' },
                 { label: 'Pulse check',            desc: 'A quick independent read from each person. What is moving, what is stuck, what has changed.' },
                 { label: 'New direction',          desc: 'A strategy shift or pivot. Each person says what they understood before the group discussion.' },
                 { label: 'Other',                  desc: 'Describe the situation and Groundwork will set up the right ground for it.' },
