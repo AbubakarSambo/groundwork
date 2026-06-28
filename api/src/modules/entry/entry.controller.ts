@@ -102,6 +102,7 @@ export class EntryController {
     return { reply: this.service.opener(dto.scenario) };
   }
 
+  @Public()
   @Post('chat')
   @Throttle({ global: { limit: 30, ttl: 60000 } })
   async chat(@Body() dto: EntryChatDto) {
