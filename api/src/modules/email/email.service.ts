@@ -149,12 +149,12 @@ export class EmailService {
   async sendGroundActivated(email: string, firstName: string, groundLabel: string, groundUrl: string): Promise<void> {
     await this.sendEmail({
       to: email,
-      subject: `Your ground "${groundLabel}" is now active`,
+      subject: `Both accounts are in — your shared report is ready: ${groundLabel}`,
       html: this.layout(
         `<p>Hi ${firstName},</p>
-         <p>The ground <strong>${groundLabel}</strong> has been activated. Both records are in. The process continues from here.</p>
-         <p>Sign in to view the shared picture and decide your next steps together.</p>
-         <p><a href="${groundUrl}">Open ground</a></p>`,
+         <p>All parties have checked in on <strong>${groundLabel}</strong>. Your shared report is ready.</p>
+         <p>The report shows where your accounts agree, where they differ, and what is still unresolved. It does not quote anyone — it draws on what everyone said without showing the raw words.</p>
+         <p><a href="${groundUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Read the shared report →</a></p>`,
       ),
     });
   }
@@ -189,25 +189,28 @@ export class EmailService {
   async sendActivationReminder(email: string, groundLabel: string, groundUrl: string): Promise<void> {
     await this.sendEmail({
       to: email,
-      subject: `Your report for "${groundLabel}" is ready to unlock`,
+      subject: `Your shared report for "${groundLabel}" is waiting`,
       html: this.layout(
-        `<p>Both versions are in and the report for <strong>${groundLabel}</strong> is ready.</p>
-         <p>Activate the ground to read the shared picture: where you agree, where you differ, and the one question worth answering.</p>
-         <p><a href="${groundUrl}">Activate and read</a></p>`,
+        `<p>All accounts are in for <strong>${groundLabel}</strong> and the shared report has been generated.</p>
+         <p>The report shows where accounts agree, where they differ, and what is still unresolved. Nobody's words are quoted — it draws on what was said without showing the raw text.</p>
+         <p>Open the ground to read and release the report to all parties.</p>
+         <p><a href="${groundUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Read and release the report →</a></p>`,
       ),
     });
   }
 
   /** Participant checked in. Admin notified so they know to come back. */
-  async sendParticipantCheckedIn(adminEmail: string, participantEmail: string, groundLabel: string, groundUrl: string): Promise<void> {
+  async sendParticipantCheckedIn(adminEmail: string, participantEmail: string, groundLabel: string, groundUrl: string, stillPending?: number): Promise<void> {
+    const pendingNote = stillPending && stillPending > 0
+      ? `<p>${stillPending} ${stillPending === 1 ? 'party has' : 'parties have'} not yet checked in. The report generates once everyone is in.</p>`
+      : `<p>All parties have now checked in. The shared report is ready to release.</p>`;
     await this.sendEmail({
       to: adminEmail,
       subject: `${participantEmail} has checked in on ${groundLabel}`,
       html: this.layout(
-        `<p>A participant has submitted their account on <strong>${groundLabel}</strong>.</p>
-         <p>${participantEmail} has completed their check-in. Their account is now on record.</p>
-         <p>When all parties have checked in, you will be able to view the full picture and release the report.</p>
-         <p><a href="${groundUrl}">View ground</a></p>`,
+        `<p><strong>${participantEmail}</strong> has completed their check-in on <strong>${groundLabel}</strong>. Their account is on record.</p>
+         ${pendingNote}
+         <p><a href="${groundUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">View ground →</a></p>`,
       ),
     });
   }

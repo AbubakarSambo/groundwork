@@ -153,8 +153,8 @@ function buildOnboardingMessages(sels: OnboardingSelections): OnboardingMessage[
     },
     // Step 7: party or observer choice
     {
-      text: "Last thing. Are you one of the people in this situation, or are you setting it up for them?\n\nIf you are involved, you add your contribution to the record first, then invite the others. If you are setting this up on their behalf, you skip straight to inviting them.",
-      buttons: ["I'm involved — let's begin.", "Setting this up for others"],
+      text: "Last thing. Are you one of the people in this situation, or are you setting it up for them?\n\nIf you are involved, you check in first, then invite the others. If you are not involved, you skip straight to inviting them.",
+      buttons: ["I am a party. Let's begin.", "Setting this up for others — skip to invite"],
     },
   ]
 }
@@ -210,6 +210,8 @@ export function EntryChatPage() {
     clearEntrySession()
     window.location.reload()
   }
+
+  const [showEndConfirm, setShowEndConfirm] = useState(false)
 
   // Save card
   const [showSave, setShowSave] = useState(false)
@@ -983,7 +985,7 @@ export function EntryChatPage() {
                   Keep going
                 </button>
                 <button
-                  onClick={handleEndSession}
+                  onClick={() => setShowEndConfirm(true)}
                   style={{ padding: '7px 14px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}
                 >
                   End session
@@ -1011,7 +1013,7 @@ export function EntryChatPage() {
                 </label>
                 <input ref={fileRef} type="file" id="entry-doc-upload-chip" accept=".pdf,.doc,.docx,.txt,.csv,.xlsx,.png,.jpg,.jpeg,.md" style={{ display: 'none' }} onChange={handleFileChange} />
                 <div style={{ marginLeft: 'auto' }}>
-                  <button onClick={handleEndSession} disabled={loading}
+                  <button onClick={() => setShowEndConfirm(true)} disabled={loading}
                     style={{ padding: '5px 12px', borderRadius: 20, fontSize: 12, border: '1px solid var(--gw-border)', background: 'transparent', color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600, opacity: loading ? 0.5 : 1 }}>
                     End session →
                   </button>
@@ -1030,12 +1032,15 @@ export function EntryChatPage() {
             {/* Input bar / save CTA */}
             {closed && !showSave ? (
               <div style={{ borderTop: '1px solid var(--gw-border)', background: 'white', flexShrink: 0, padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ flex: 1, fontSize: 13, color: 'var(--gw-sub)' }}>Your session is on record.</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)' }}>Your account is on record.</div>
+                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 2 }}>Invite others to check in — the shared report releases when all parties are in.</div>
+                </div>
                 <button
                   onClick={() => setShowSave(true)}
                   style={{ flexShrink: 0, padding: '8px 16px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', border: 'none', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
                 >
-                  Save &amp; invite →
+                  Invite &amp; finish →
                 </button>
               </div>
             ) : !closed && (
@@ -1095,9 +1100,9 @@ export function EntryChatPage() {
 
           {/* Report header */}
           <div style={{ background: '#0A1628', color: 'white', padding: '20px 22px 16px' }}>
-            <div style={{ fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: '#5DCAA5', fontWeight: 700, marginBottom: 6 }}>{skippedCheckin ? 'New ground' : 'Session 1 · your account'}</div>
-            <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-.01em', lineHeight: 1.2 }}>{groundName || (skippedCheckin ? 'Set up your ground.' : 'Your session is on record.')}</div>
-            <div style={{ fontSize: 12, color: 'rgba(255,255,255,.5)', marginTop: 4 }}>This is your private record. Nobody else sees it. The shared report shows where all accounts agree or differ. It does not quote you.</div>
+            <div style={{ fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: '#5DCAA5', fontWeight: 700, marginBottom: 6 }}>{skippedCheckin ? 'New ground' : 'Session 1 · your private report'}</div>
+            <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-.01em', lineHeight: 1.2 }}>{groundName || (skippedCheckin ? 'Set up your ground.' : 'Your account is on record.')}</div>
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,.5)', marginTop: 4 }}>This is your private report — only you can see it. The shared report generates once all parties have checked in. It does not quote you.</div>
             {history.filter(m => m.role === 'user').length > 0 && (() => {
               const turns = history.filter(m => m.role === 'user').length
               const depth = turns < 4 ? 1 : turns < 8 ? 2 : turns < 12 ? 3 : turns < 16 ? 4 : 5
@@ -1466,6 +1471,35 @@ export function EntryChatPage() {
           </div>
         </div>
       </div>
+
+      {/* End session confirmation modal */}
+      {showEndConfirm && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.55)', zIndex: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px' }}>
+          <div style={{ background: 'white', borderRadius: 12, padding: 24, maxWidth: 380, width: '100%' }}>
+            <div style={{ fontSize: 16, fontWeight: 800, color: '#0A1628', marginBottom: 8 }}>End this session?</div>
+            <div style={{ fontSize: 13, color: '#6B6560', lineHeight: 1.65, marginBottom: 8 }}>
+              Your responses are already saved. Ending closes this session permanently — you will not be able to add to it.
+            </div>
+            <div style={{ fontSize: 13, color: '#6B6560', lineHeight: 1.65, marginBottom: 18 }}>
+              The shared report releases once all parties have checked in. You can start a new session any time.
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={() => setShowEndConfirm(false)}
+                style={{ flex: 1, padding: '10px', borderRadius: 8, background: '#F5F3EF', color: '#6B6560', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                Keep going
+              </button>
+              <button
+                onClick={() => { setShowEndConfirm(false); handleEndSession() }}
+                style={{ flex: 1, padding: '10px', borderRadius: 8, background: '#0A1628', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                End session
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

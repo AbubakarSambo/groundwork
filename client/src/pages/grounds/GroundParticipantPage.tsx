@@ -376,9 +376,13 @@ export function GroundParticipantPage() {
             ) : (
               <div style={{ background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 10, padding: '13px 16px' }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: '#085041', marginBottom: 4 }}>Session complete</div>
-                <div style={{ fontSize: 12, color: '#3A7A60', lineHeight: 1.6 }}>
-                  Your contribution to this session is on record. The report releases when all parties complete their sessions.
+                <div style={{ fontSize: 12, color: '#3A7A60', lineHeight: 1.6, marginBottom: 10 }}>
+                  Your account is on record. The shared report releases when all parties complete their check-in.
                 </div>
+                <button onClick={() => setTab('report')}
+                  style={{ padding: '7px 14px', borderRadius: 7, background: 'none', border: '1px solid #5DCAA5', color: '#085041', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  View your private report →
+                </button>
               </div>
             )}
 
@@ -529,10 +533,20 @@ export function GroundParticipantPage() {
             {/* Unlock CTA — shown whether locked or not, but changes state */}
             {myRecord?.insightsLocked !== false && (
               <div style={{ background: '#0C447C', borderRadius: 10, padding: '18px 20px' }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: 'white', marginBottom: 6 }}>Unlock your full record</div>
-                <div style={{ fontSize: 12, color: 'rgba(255,255,255,.75)', lineHeight: 1.6, marginBottom: 14 }}>
-                  See how your record has built over time: specificity trend, confidence score, and observations from your account across sessions. Unlocks for your whole organisation.
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'white', marginBottom: 6 }}>Your record insights</div>
+                <div style={{ fontSize: 12, color: 'rgba(255,255,255,.75)', lineHeight: 1.6, marginBottom: 6 }}>
+                  Complete your first check-in to start building your record. After that, you can unlock your full record: specificity trend, confidence score, and observations across sessions.
                 </div>
+                {myRecord?.insightsLocked === true && (
+                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,.55)', lineHeight: 1.5, marginBottom: 14 }}>
+                    You have completed sessions. Upgrade to see your full record.
+                  </div>
+                )}
+                {myRecord?.insightsLocked === undefined && (
+                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,.55)', lineHeight: 1.5, marginBottom: 14 }}>
+                    Your insights will appear here once you complete a check-in.
+                  </div>
+                )}
                 <button
                   onClick={() => checkoutMut.mutate()}
                   disabled={checkoutMut.isPending}
@@ -682,9 +696,12 @@ export function GroundParticipantPage() {
               </div>
             ) : !report.activated ? (
               <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '16px 18px', textAlign: 'center' }}>
-                <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>The report is ready</div>
-                <div style={{ fontSize: 13, color: '#6B6560', lineHeight: 1.65, marginBottom: 16 }}>
-                  Both parties reveal the report at the same time. Once you confirm, the shared picture is permanent.
+                <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>The shared report is ready</div>
+                <div style={{ fontSize: 13, color: '#6B6560', lineHeight: 1.65, marginBottom: 8 }}>
+                  All parties reveal it at the same time. Once unlocked, everyone can read it — this cannot be undone.
+                </div>
+                <div style={{ fontSize: 12, color: '#9B9590', lineHeight: 1.55, marginBottom: 16, background: '#F5F3EF', borderRadius: 8, padding: '8px 12px' }}>
+                  The report shows where accounts agree and where they differ. It does not quote anyone.
                 </div>
                 <button
                   onClick={() => activateMutation.mutate()}
@@ -864,7 +881,9 @@ export function GroundParticipantPage() {
             <div style={{ fontSize: 16, fontWeight: 800, color: '#0A1628', marginBottom: 8 }}>This ground needs a session to continue.</div>
             {(ground as any).sessionsBalance !== undefined && (
               <div style={{ fontSize: 13, color: '#6B6560', marginBottom: 14 }}>
-                Sessions remaining: {(ground as any).sessionsBalance}
+                {(ground as any).sessionsBalance === 0
+                  ? 'No sessions remaining on this ground.'
+                  : `Sessions remaining: ${(ground as any).sessionsBalance}`}
               </div>
             )}
             <button

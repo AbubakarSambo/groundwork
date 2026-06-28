@@ -251,6 +251,9 @@ export function InvitePage() {
             accept.mutate()
             setPhase('checkin')
           }}>
+            <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginBottom: 8, lineHeight: 1.5 }}>
+              Your name is optional — the other party will see it on the shared report if you add it.
+            </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8, marginBottom: 4 }}>
               <div className="gw-fld" style={{ margin: 0 }}>
                 <label className="gw-label">First name</label>

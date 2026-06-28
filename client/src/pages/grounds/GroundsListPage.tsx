@@ -284,9 +284,12 @@ export function GroundsListPage() {
             {isLoading && <div style={{ fontSize: 13, color: 'var(--gw-muted)', textAlign: 'center', padding: 24 }}>Loading…</div>}
             {!isLoading && grounds.length === 0 && (
               <div style={{ textAlign: 'center', padding: '48px 20px' }}>
-                <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>No grounds yet.</div>
-                <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, maxWidth: 280, margin: '0 auto 24px' }}>
-                  Grounds you are invited to will appear here. You can also open your own.
+                <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>Nothing here yet.</div>
+                <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, maxWidth: 300, margin: '0 auto 8px' }}>
+                  A ground is a shared space where two or more parties check in privately. The report releases when everyone has checked in.
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.5, maxWidth: 280, margin: '0 auto 24px' }}>
+                  You will see grounds here when someone invites you, or when you open one yourself.
                 </div>
                 <button
                   onClick={() => navigate('/start')}
