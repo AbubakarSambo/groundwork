@@ -828,7 +828,7 @@ export function EntryChatPage() {
               {onboardingMessages.slice(0, onboardingStep).map((msg, idx) => {
                 const isActive = idx === onboardingStep - 1
                 return (
-                  <div key={idx} style={{ transition: 'opacity .3s', opacity: isActive ? 1 : 0.42 }}>
+                  <div key={idx} style={{ transition: 'opacity .3s', opacity: 1 }}>
                     <div style={{
                       maxWidth: '88%',
                       background: 'white',
@@ -958,7 +958,7 @@ export function EntryChatPage() {
                       fontSize: 14,
                       lineHeight: 1.65,
                       whiteSpace: 'pre-wrap',
-                      opacity: (m.content === '…') ? 0.45 : (m.role === 'assistant' && !isActive && displayedHistory.length > 2) ? 0.55 : 1,
+                      opacity: (m.content === '…') ? 0.45 : 1,
                       transition: 'opacity .3s',
                       boxShadow: m.role === 'assistant' ? '0 1px 3px rgba(0,0,0,.06)' : 'none',
                     }}
