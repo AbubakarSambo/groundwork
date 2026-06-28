@@ -42,6 +42,8 @@ export function GroundAdminPage() {
   const [newParticipantNote, setNewParticipantNote] = useState('')
   const [shareCodeModalOpen, setShareCodeModalOpen] = useState(false)
   const [shareCodeId, setShareCodeId] = useState<string | null>(null)
+  const [lastInvitedEmail, setLastInvitedEmail] = useState<string | null>(null)
+  const [noteSaved, setNoteSaved] = useState(false)
 
   const { data: ground, isLoading } = useQuery({
     queryKey: ['ground', id],
@@ -132,11 +134,11 @@ export function GroundAdminPage() {
   const addParticipantMut = useMutation({
     mutationFn: () => groundsApi.addParticipant(id!, { email: newParticipantEmail.trim(), note: newParticipantNote.trim() || undefined }),
     onSuccess: () => {
+      setLastInvitedEmail(newParticipantEmail.trim())
       setAddingParticipant(false)
       setNewParticipantEmail('')
       setNewParticipantNote('')
       qc.invalidateQueries({ queryKey: ['ground', id] })
-      toast.success('Contributor invited')
     },
     onError: () => toast.error('Could not add contributor.'),
   })
@@ -274,8 +276,11 @@ export function GroundAdminPage() {
                           {p.roleAsDescribed && <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginTop: 1 }}>{p.roleAsDescribed}</div>}
                           <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>{status.replace(/_/g, ' ').toLowerCase()}</div>
                         </div>
-                        {myCheckIn && status !== 'COMPLETED' && (
+                        {myCheckIn && status !== 'COMPLETED' && p.userId && (
                           <button onClick={() => remind.mutate(myCheckIn.id)} style={{ fontSize: 11, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer' }}>Remind</button>
+                        )}
+                        {!p.userId && (
+                          <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}>Invite pending</span>
                         )}
                       </div>
                       {sharedReport && (
@@ -383,15 +388,27 @@ export function GroundAdminPage() {
               )
             })()}
 
-            {/* Fix 12: Add contributor */}
+            {/* Add contributor */}
             <div style={{ marginTop: 20 }}>
-              {!addingParticipant ? (
+              {lastInvitedEmail ? (
+                <div style={{ background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 10, padding: '14px 16px' }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#085041', marginBottom: 6 }}>Invite sent to {lastInvitedEmail}</div>
+                  <div style={{ fontSize: 12, color: '#3A7A60', lineHeight: 1.6, marginBottom: 10 }}>
+                    They will get an email and do their own private check-in — about 10 minutes. You cannot see what they write. Once all contributors have checked in, the shared report releases to everyone at the same time.
+                  </div>
+                  <button onClick={() => { setLastInvitedEmail(null); setAddingParticipant(true) }}
+                    style={{ padding: '7px 14px', borderRadius: 7, background: 'none', border: '1px solid #5DCAA5', color: '#085041', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                    Invite another
+                  </button>
+                </div>
+              ) : !addingParticipant ? (
                 <button onClick={() => setAddingParticipant(true)} style={{ width: '100%', padding: '11px 16px', borderRadius: 8, background: 'none', color: 'var(--gw-navy)', fontSize: 13, fontWeight: 600, border: '1px dashed var(--gw-blue-b)', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                   <span style={{ fontSize: 16, fontWeight: 300 }}>+</span> Add a contributor
                 </button>
               ) : (
                 <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px' }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>Add a contributor</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Add a contributor</div>
+                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 10, lineHeight: 1.5 }}>They will get an email invitation. You cannot see what they write in their check-in.</div>
                   <input type="email" placeholder="name@company.com" value={newParticipantEmail} onChange={e => setNewParticipantEmail(e.target.value)}
                     style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8, outline: 'none' }} />
                   <input type="text" placeholder="What do you want them to account for? (optional)" value={newParticipantNote} onChange={e => setNewParticipantNote(e.target.value)}
@@ -463,13 +480,17 @@ export function GroundAdminPage() {
             <div style={{ marginTop: 16 }}>
               <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>Context notes</div>
               <div className="gw-fld">
-                <textarea className="gw-ta" rows={3} value={ctxNote} onChange={e => setCtxNote(e.target.value)} placeholder="Add a context note: changed scope, revised goal, new constraint…" />
+                <textarea className="gw-ta" rows={3} value={ctxNote} onChange={e => { setCtxNote(e.target.value.slice(0, 500)); setNoteSaved(false) }} placeholder="Add a context note: changed scope, revised goal, new constraint…" maxLength={500} />
+                <div style={{ fontSize: 11, color: 'var(--gw-muted)', textAlign: 'right', marginTop: 2 }}>{ctxNote.length}/500</div>
               </div>
-              <button onClick={() => { if (ctxNote.trim()) addNote.mutate(ctxNote.trim()) }}
-                disabled={addNote.isPending}
-                style={{ padding: '8px 16px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', fontFamily: 'inherit', marginBottom: 14 }}>
-                {addNote.isPending ? 'Saving…' : 'Add note'}
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                <button onClick={() => { if (ctxNote.trim()) addNote.mutate(ctxNote.trim(), { onSuccess: () => setNoteSaved(true) }) }}
+                  disabled={addNote.isPending || !ctxNote.trim()}
+                  style={{ padding: '8px 16px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 600, border: 'none', cursor: ctxNote.trim() ? 'pointer' : 'not-allowed', fontFamily: 'inherit', opacity: ctxNote.trim() ? 1 : 0.5 }}>
+                  {addNote.isPending ? 'Saving…' : 'Add note'}
+                </button>
+                {noteSaved && <span style={{ fontSize: 12, color: 'var(--gw-green-t)' }}>Saved</span>}
+              </div>
               {(ground.contextNotes ?? []).map((n, i) => (
                 <div key={i} style={{ background: 'white', border: '0.5px solid var(--gw-border)', borderRadius: 8, padding: '10px 12px', fontSize: 13, color: 'var(--gw-sub)', marginBottom: 8, lineHeight: 1.6 }}>{n}</div>
               ))}
@@ -709,8 +730,9 @@ export function GroundAdminPage() {
             </button>
             <div style={{ padding: 14, background: 'var(--gw-red-bg)', border: '0.5px solid var(--gw-red-b)', borderRadius: 8 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-red-t)', marginBottom: 6 }}>Close ground</div>
-              <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>Closing the ground writes the final resolution record. Both parties keep their record permanently.</div>
-              <button style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-red-t)', background: 'none', border: '1px solid var(--gw-red-b)', padding: '8px 14px', borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit' }}>
+              <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>Closing a ground permanently archives it. All parties keep their records. This action cannot be undone.</div>
+              <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 8 }}>Coming soon — contact support to archive a ground manually.</div>
+              <button disabled style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-red-t)', background: 'none', border: '1px solid var(--gw-red-b)', padding: '8px 14px', borderRadius: 6, cursor: 'not-allowed', fontFamily: 'inherit', opacity: 0.4 }}>
                 Close this ground
               </button>
             </div>
