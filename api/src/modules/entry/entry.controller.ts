@@ -137,6 +137,7 @@ export class EntryController {
     return this.service.participantChat(dto.token, dto.messages);
   }
 
+  @Public()
   @Post('report')
   @Throttle({ global: { limit: 20, ttl: 60000 } })
   async report(@Body() dto: EntryReportDto) {
