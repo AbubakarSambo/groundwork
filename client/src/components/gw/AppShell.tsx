@@ -561,7 +561,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="gw-main-content">
         {children}
       </div>
-      {isAuthenticated && <FeedbackWidget />}
+      <FeedbackWidget />
 
       <style>{`
         @media (max-width: 640px) {
