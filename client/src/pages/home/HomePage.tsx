@@ -179,14 +179,16 @@ export function HomePage() {
             <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-muted)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 12 }}>What you can do</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
               {[
-                { label: 'Align OKRs across teams',          desc: 'Each person submits their OKRs. The ground shows where they connect and where they do not.' },
-                { label: 'Build aligned workplan & budgets', desc: 'Check that each person\'s plan is real and coherent with the org direction.' },
-                { label: 'Alignment pulse check',            desc: 'A quick read on what is moving, what is stuck, and what has changed. No meeting required.' },
-                { label: 'Realign team',                     desc: 'Independent accounts from each person before the group talks. Find the real gap.' },
-                { label: 'PIP',                              desc: 'Both accounts on record. The concern, the support, and what success looks like.' },
-                { label: 'New hire or onboarding',           desc: 'Expectations from all sides before the work starts.' },
-                { label: 'Performance or delivery check',    desc: 'Independent accounts from all contributors. Tracked over time.' },
-                { label: 'Something not working',            desc: 'A conversation that keeps being avoided. Everyone heard before it happens.' },
+                { label: 'New hire',               desc: 'Expectations from all sides before the work starts. Both accounts on record from day one.' },
+                { label: 'New project',            desc: 'Scope, ownership, and success criteria agreed independently before the work begins.' },
+                { label: 'New board member',       desc: 'Each side on record on what they expect from the relationship before it starts.' },
+                { label: 'New partner',            desc: 'Put both sides\' understanding of the partnership on record before anything is agreed.' },
+                { label: 'Contract renewal',       desc: 'Independent accounts of how things have gone. What has worked, what has not.' },
+                { label: 'PIP',                    desc: 'Both accounts on record. The concern, the support available, and what success looks like.' },
+                { label: 'Goals & planning', desc: 'Check whether everyone is actually aligned on the goals and plan — not to set them.' },
+                { label: 'Pulse check',            desc: 'A quick independent read from each person. What is moving, what is stuck, what has changed.' },
+                { label: 'New direction',          desc: 'A strategy shift or pivot. Each person says what they understood before the group discussion.' },
+                { label: 'Other',                  desc: 'Describe the situation and Groundwork will set up the right ground for it.' },
               ].map(c => (
                 <div
                   key={c.label}
