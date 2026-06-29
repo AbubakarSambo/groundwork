@@ -524,7 +524,7 @@ export function AppSidebar() {
           ) : (
             !collapsed && (
               <button
-                onClick={() => navigate('/enter')}
+                onClick={() => navigate('/auth')}
                 style={{ width: '100%', padding: '9px 12px', borderRadius: 8, background: 'rgba(255,255,255,.07)', border: '1px solid rgba(255,255,255,.12)', color: 'rgba(255,255,255,.7)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}
               >
                 Sign in →

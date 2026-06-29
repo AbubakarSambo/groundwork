@@ -959,7 +959,7 @@ export function EntryChatPage() {
                       fontSize: 14,
                       lineHeight: 1.65,
                       whiteSpace: 'pre-wrap',
-                      opacity: (m.content === '…') ? 0.45 : (m.role === 'assistant' && !isActive && displayedHistory.length > 2) ? 0.55 : 1,
+                      opacity: (m.content === '…') ? 0.45 : 1,
                       transition: 'opacity .3s',
                       boxShadow: m.role === 'assistant' ? '0 1px 3px rgba(0,0,0,.06)' : 'none',
                     }}
@@ -1002,9 +1002,8 @@ export function EntryChatPage() {
                   </button>
                 ))}
                 <button onClick={() => send('What patterns are you noticing in what I have shared so far?')} disabled={loading}
-                  style={{ padding: '5px 12px', borderRadius: 20, fontSize: 12, border: '1px solid var(--gw-border)', background: 'transparent', color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit', opacity: loading ? 0.5 : 1, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  style={{ padding: '5px 12px', borderRadius: 20, fontSize: 12, border: '1px solid var(--gw-border)', background: 'transparent', color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit', opacity: loading ? 0.5 : 1 }}>
                   Patterns
-                  <span style={{ background: 'var(--gw-navy)', color: 'white', borderRadius: 10, fontSize: 10, fontWeight: 700, padding: '0px 5px', lineHeight: '16px' }}>1</span>
                 </button>
                 <label htmlFor="entry-doc-upload-chip" title="Upload a document"
                   style={{ padding: '5px 10px', borderRadius: 20, fontSize: 13, border: '1px solid var(--gw-border)', background: 'transparent', color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit', opacity: loading ? 0.5 : 1 }}>

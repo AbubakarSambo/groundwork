@@ -12,6 +12,21 @@ import { toast } from 'sonner'
 import { CodeShareCard } from '@/components/CodeShareCard'
 import { billingApi } from '@/api/billing'
 
+const SCENARIO_LABELS: Record<string, string> = {
+  NEW_HIRE: 'New hire',
+  NEW_PROJECT: 'New project',
+  NEW_ADVISOR: 'New board member',
+  NEW_COFOUNDER: 'New partner',
+  CONTRACT_RENEWAL: 'Contract renewal',
+  PIP: 'PIP',
+  OKR_ALIGNMENT: 'Goals & planning',
+  PULSE_CHECK: 'Pulse check',
+  DRIFT: 'New direction',
+  REALIGN_TEAM: 'Other',
+  WORKPLAN_BUDGET: 'Workplan & budget',
+  NEW_MANAGER: 'New manager',
+}
+
 const BANDS = ['', 'Unresolved', 'Mixed', 'Emerging', 'Clear', 'Aligned']
 function bandLabel(score?: number) { return BANDS[score ?? 1] ?? 'Unresolved' }
 
@@ -178,7 +193,7 @@ export function GroundAdminPage() {
         <div style={{ display: 'flex', gap: 10, padding: '0 16px 10px', fontSize: 11, color: 'var(--gw-sub)', flexWrap: 'wrap', alignItems: 'center' }}>
           {ground.scenario && (
             <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: '#F0EEE9', color: '#4A4540' }}>
-              {ground.scenario.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase())}
+              {SCENARIO_LABELS[ground.scenario] ?? ground.scenario.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c: string) => c.toUpperCase())}
             </span>
           )}
           {ground.resolutionState && (
@@ -274,9 +289,9 @@ export function GroundAdminPage() {
                         <div style={{ flex: 1 }}>
                           <div style={{ fontSize: 13, fontWeight: 600 }}>{p.email}</div>
                           {p.roleAsDescribed && <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginTop: 1 }}>{p.roleAsDescribed}</div>}
-                          <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>{status.replace(/_/g, ' ').toLowerCase()}</div>
+                          <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>{status.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c: string) => c.toUpperCase())}</div>
                         </div>
-                        {myCheckIn && status !== 'COMPLETED' && p.userId && (
+                        {myCheckIn?.id && status !== 'COMPLETED' && p.userId && (
                           <button onClick={() => remind.mutate(myCheckIn.id)} style={{ fontSize: 11, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer' }}>Remind</button>
                         )}
                         {!p.userId && (
@@ -443,7 +458,7 @@ export function GroundAdminPage() {
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div style={{ fontSize: 13, fontWeight: 600 }}>Session {ci.sessionNumber}</div>
                     <span className={`gw-pill ${ci.status === 'COMPLETED' ? 'gw-pill-green' : ci.status === 'IN_PROGRESS' ? 'gw-pill-amber' : 'gw-pill-gray'}`}>
-                      {ci.status.replace(/_/g, ' ').toLowerCase()}
+                      {ci.status.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c: string) => c.toUpperCase())}
                     </span>
                   </div>
                   {ci.completedAt && <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 4 }}>{new Date(ci.completedAt).toLocaleDateString()}</div>}

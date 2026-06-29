@@ -131,7 +131,7 @@ export function CreateGroundPage() {
   const [billingLoading, setBillingLoading] = useState(false)
 
   const cadenceObj = CADENCES.find(c => c.cadence === cadence) ?? CADENCES[1]
-  const sessionTotal = Math.floor(timelineDays / cadenceObj.days)
+  const sessionTotal = Math.max(1, Math.floor(timelineDays / cadenceObj.days))
 
   const briefWords = brief.trim() ? brief.trim().split(/\s+/).length : 0
   const briefShort = briefWords > 0 && briefWords < 20
@@ -575,7 +575,7 @@ export function CreateGroundPage() {
             <div className="gw-box gw-box-blue" style={{ marginBottom: 16 }}>
               <div style={{ fontWeight: 600, marginBottom: 4 }}>Summary</div>
               <div style={{ fontSize: 12, lineHeight: 1.7 }}>
-                <div>{(scenario ?? '').replace(/_/g, ' ')} · {moment}</div>
+                <div>{SCENARIOS.find(s => s.scenario === scenario)?.label ?? (scenario ?? '').replace(/_/g, ' ')} · {MOMENTS.find(m => m.moment === moment)?.label ?? moment}</div>
                 <div>{sessionTotal} sessions · {cadence.toLowerCase()}</div>
                 {resolutionState && <div>Resolution: {resolutionState}</div>}
                 {participants.length > 0 && <div>{participants.length} participant{participants.length !== 1 ? 's' : ''} invited</div>}

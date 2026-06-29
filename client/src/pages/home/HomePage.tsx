@@ -43,7 +43,7 @@ export function HomePage() {
       return
     }
 
-    navigate(`/entry-chat?mode=${mode}&initial=${encodeURIComponent(trimmed)}`)
+    navigate(`/start?mode=${mode}&initial=${encodeURIComponent(trimmed)}`)
   }
 
   useEffect(() => {
