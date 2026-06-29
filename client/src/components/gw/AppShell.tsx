@@ -403,7 +403,7 @@ export function AppSidebar() {
             )}
             {grounds.map(g => {
               const sessions = g.checkIns?.length ?? 0
-              const maxSessions = 4
+              const maxSessions = (g as any).maxSessions ?? (g.timelineDays ? Math.ceil(g.timelineDays / 14) : null)
               return (
                 <div key={g.id} style={{ marginBottom: 2, borderRadius: 8, overflow: 'hidden' }}>
                   <NavLink
@@ -447,11 +447,11 @@ export function AppSidebar() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
                       {g.confidence != null && (
                         <span style={{ fontSize: 11, color: 'rgba(255,255,255,.45)' }}>
-                          {Math.round(g.confidence * 100)}% · {sessions}/{maxSessions} sessions
+                          {Math.round(g.confidence * 100)}% · {sessions}{maxSessions ? `/${maxSessions}` : ''} sessions
                         </span>
                       )}
                       {g.confidence == null && (
-                        <span style={{ fontSize: 11, color: 'rgba(255,255,255,.35)' }}>{sessions}/{maxSessions} sessions</span>
+                        <span style={{ fontSize: 11, color: 'rgba(255,255,255,.35)' }}>{sessions}{maxSessions ? `/${maxSessions}` : ''} sessions</span>
                       )}
                       <GroundStatusBadge status={g.status} />
                     </div>

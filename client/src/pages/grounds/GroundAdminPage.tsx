@@ -222,7 +222,7 @@ export function GroundAdminPage() {
             {/* Fix 8: Cadence miss recovery */}
             {(ground.overdue ?? 0) > 0 && (
               <div style={{ fontSize: 12, color: '#0C447C', background: '#EEF4FB', border: '1px solid #C5D9EF', borderRadius: 8, padding: '10px 12px', marginBottom: 14, lineHeight: 1.5 }}>
-                <strong>{ground.overdue} {ground.overdue === 1 ? 'participant is' : 'participants are'} overdue.</strong> A missed session is not a lost session — use Remind to get them back on track. Their next check-in picks up where they left off.
+                <strong>{ground.overdue} {ground.overdue === 1 ? 'participant is' : 'participants are'} overdue.</strong> A missed session is not a lost session. Use Remind — the most common reason is the email went to spam. Their next check-in picks up where they left off.
               </div>
             )}
 
@@ -317,9 +317,9 @@ export function GroundAdminPage() {
               return pending.length > 0 ? (
                 <div style={{ fontSize: 12, color: '#8A5C1A', background: '#FDF3E3', border: '1px solid #E8A94A', borderRadius: 8, padding: '8px 12px', marginBottom: 16, lineHeight: 1.5 }}>
                   {pending.length === 1
-                    ? `1 participant has not yet checked in. Your report cannot cross-reference accounts until their account is in.`
-                    : `${pending.length} participants have not yet checked in. Your report cannot cross-reference accounts until all accounts are in.`}
-                  <span style={{ marginLeft: 6, fontWeight: 600 }}>Use Remind to chase them.</span>
+                    ? `1 participant has not yet checked in. The shared report generates once all accounts are in.`
+                    : `${pending.length} participants have not yet checked in. The shared report generates once all accounts are in.`}
+                  <span style={{ marginLeft: 6, fontWeight: 600 }}>Use Remind if they have not received the email — it may have gone to spam.</span>
                 </div>
               ) : null
             })()}
@@ -741,7 +741,11 @@ export function GroundAdminPage() {
             <div style={{ padding: 14, background: 'var(--gw-red-bg)', border: '0.5px solid var(--gw-red-b)', borderRadius: 8 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-red-t)', marginBottom: 6 }}>Close ground</div>
               <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>Closing a ground permanently archives it. All parties keep their records. This action cannot be undone.</div>
-              <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 8 }}>Coming soon — contact support to archive a ground manually.</div>
+              <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 8 }}>
+                Self-serve close is coming. For now, email{' '}
+                <a href={`mailto:hello@myground.work?subject=Archive ground: ${encodeURIComponent(ground.label)}`} style={{ color: 'var(--gw-navy)', textDecoration: 'underline' }}>hello@myground.work</a>
+                {' '}and we will archive it manually.
+              </div>
               <button disabled style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-red-t)', background: 'none', border: '1px solid var(--gw-red-b)', padding: '8px 14px', borderRadius: 6, cursor: 'not-allowed', fontFamily: 'inherit', opacity: 0.4 }}>
                 Close this ground
               </button>

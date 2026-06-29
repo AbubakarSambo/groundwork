@@ -24,7 +24,7 @@ const SCENARIOS: ScenarioCard[] = [
   { scenario: 'OKR_ALIGNMENT',    label: 'Goals & planning', desc: 'Check whether everyone is actually aligned on the goals and plan — not to set them.',                    tag: 'Planning',     tagBg: '#EEF4FB', tagColor: '#0C447C' },
   { scenario: 'PULSE_CHECK',      label: 'Pulse check',      desc: 'A quick independent read from each person. What is moving, what is stuck, what has changed.',             tag: 'Recurring',    tagBg: '#E8F8F5', tagColor: '#085041' },
   { scenario: 'DRIFT',            label: 'New direction',    desc: 'A strategy shift or pivot. Each person says what they understood before the group discussion.',            tag: 'Alignment',    tagBg: '#FDF3E3', tagColor: '#8A5C1A' },
-  { scenario: 'PULSE_CHECK',      label: 'Other',            desc: 'Describe the situation and Groundwork will set up the right ground for it.',                              tag: 'Other',        tagBg: '#F5F3EF', tagColor: '#6B6560' },
+  { scenario: 'REALIGN_TEAM',     label: 'Other',            desc: 'Describe the situation and Groundwork will set up the right ground for it.',                              tag: 'Other',        tagBg: '#F5F3EF', tagColor: '#6B6560' },
 ]
 
 interface MomentOption { moment: GroundMoment; label: string; sub: string }
@@ -76,12 +76,16 @@ const RESOLUTION_GROUPS: ResolutionGroup[] = [
 interface Participant { email: string; role: string; note: string }
 
 const SCENARIO_FROM_LABEL: Record<string, GroundScenario> = {
-  'new hire':        'NEW_HIRE',
-  'new project':     'NEW_PROJECT',
-  'new board member':'NEW_ADVISOR',
-  'new partner':     'NEW_COFOUNDER',
-  'contract renewal':'CONTRACT_RENEWAL',
-  'new direction':   'DRIFT',
+  'new hire':           'NEW_HIRE',
+  'new project':        'NEW_PROJECT',
+  'new board member':   'NEW_ADVISOR',
+  'new partner':        'NEW_COFOUNDER',
+  'contract renewal':   'CONTRACT_RENEWAL',
+  'new direction':      'DRIFT',
+  'pip':                'PIP',
+  'goals & planning':   'OKR_ALIGNMENT',
+  'pulse check':        'PULSE_CHECK',
+  'other':              'REALIGN_TEAM',
 }
 
 function scenarioFromParam(param: string | null): GroundScenario | null {
@@ -142,8 +146,6 @@ export function CreateGroundPage() {
         if (res.freeReason === 'FIRST_GROUND') {
           setBillingFree(true)
           setBillingFreeReason('FIRST_GROUND')
-          // Auto-advance after brief pause
-          setTimeout(() => setStep(3), 1800)
         } else {
           setBillingFree(false)
         }
@@ -266,8 +268,8 @@ export function CreateGroundPage() {
 
             {scenario && (
               <>
-                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Where are you in the relationship?</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 10 }}>This shapes the questions each contributor answers.</div>
+                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Where are you in this situation?</div>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 10 }}>Are you just starting, mid-way through, or wrapping up? This shapes the questions each contributor answers.</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
                   {MOMENTS.map(m => (
                     <div key={m.moment} className={`cg-sit-card${moment === m.moment ? ' selected' : ''}`} onClick={() => setMoment(m.moment)}>
@@ -307,7 +309,7 @@ export function CreateGroundPage() {
                     No card required. Open your first ground and see how it works.
                   </div>
                 </div>
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center' }}>Taking you to the next step…</div>
+                <button className="gw-btn" onClick={() => setStep(3)} style={{ margin: '12px 0 0' }}>Continue →</button>
               </div>
             )}
 
@@ -499,6 +501,9 @@ export function CreateGroundPage() {
             <button className="gw-btn" disabled={participants.length === 0} onClick={() => setStep(5)} style={{ margin: 0 }}>Continue</button>
             <div style={{ fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 10, cursor: 'pointer' }} onClick={() => setStep(5)}>
               Skip — add participants after
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--gw-muted)', textAlign: 'center', marginTop: 4, lineHeight: 1.5 }}>
+              The shared report cannot generate until at least one other person has checked in.
             </div>
           </div>
         )}

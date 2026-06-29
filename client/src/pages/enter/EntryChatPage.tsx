@@ -205,6 +205,8 @@ export function EntryChatPage() {
 
   const [confirmClear, setConfirmClear] = useState(false)
   const [showAdminBriefing, setShowAdminBriefing] = useState(false)
+  const [showNewScenarioConflict, setShowNewScenarioConflict] = useState(false)
+  const [pendingNewScenario, setPendingNewScenario] = useState<{ sels: OnboardingSelections } | null>(null)
 
   function handleClearSession() {
     clearEntrySession()
@@ -281,16 +283,10 @@ export function EntryChatPage() {
         setOnboardingStep(step)
       }
     } else if (saved && !saved.closed && scenario) {
-      // ISSUE 14: in-progress session exists but a scenario param is present — confirm before wiping
-      const confirmed = window.confirm('You have a check-in in progress. Starting a new scenario will clear it. Continue?')
-      if (!confirmed) return
-      clearEntrySession()
-      if (urlInitial || scenario) {
-        const sels: OnboardingSelections = { mode: urlMode || 'new', initial: urlInitial || scenario || '' }
-        setOnboardingSelections(sels)
-        setOnboardingMessages(buildOnboardingMessages(sels))
-        persistOnboarding([], sels, 1)
-      }
+      // Show inline conflict modal instead of window.confirm
+      const sels: OnboardingSelections = { mode: urlMode || 'new', initial: urlInitial || scenario || '' }
+      setPendingNewScenario({ sels })
+      setShowNewScenarioConflict(true)
     } else {
       clearEntrySession()
       if (urlInitial || scenario) {
@@ -548,6 +544,9 @@ export function EntryChatPage() {
     const reader = new FileReader()
     reader.onload = (ev) => {
       const content = (ev.target?.result as string) ?? ''
+      if (content.length > 8000) {
+        toast.warning(`${file.name} is large — only the first portion will be used in this session.`)
+      }
       setUploadedDoc({ name: file.name, content: content.slice(0, 8000) })
     }
     reader.onerror = () => toast.error('Could not read file.')
@@ -1471,6 +1470,41 @@ export function EntryChatPage() {
           </div>
         </div>
       </div>
+
+      {/* New scenario conflict modal */}
+      {showNewScenarioConflict && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.55)', zIndex: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px' }}>
+          <div style={{ background: 'white', borderRadius: 12, padding: 24, maxWidth: 380, width: '100%' }}>
+            <div style={{ fontSize: 16, fontWeight: 800, color: '#0A1628', marginBottom: 8 }}>You have a check-in in progress</div>
+            <div style={{ fontSize: 13, color: '#6B6560', lineHeight: 1.65, marginBottom: 18 }}>
+              Starting a new scenario will clear your current session. Your progress will be lost.
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={() => { setShowNewScenarioConflict(false); setPendingNewScenario(null) }}
+                style={{ flex: 1, padding: '10px', borderRadius: 8, background: '#F5F3EF', color: '#6B6560', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                Keep current session
+              </button>
+              <button
+                onClick={() => {
+                  if (pendingNewScenario) {
+                    clearEntrySession()
+                    setOnboardingSelections(pendingNewScenario.sels)
+                    setOnboardingMessages(buildOnboardingMessages(pendingNewScenario.sels))
+                    persistOnboarding([], pendingNewScenario.sels, 1)
+                  }
+                  setShowNewScenarioConflict(false)
+                  setPendingNewScenario(null)
+                }}
+                style={{ flex: 1, padding: '10px', borderRadius: 8, background: '#0A1628', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                Start new scenario
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* End session confirmation modal */}
       {showEndConfirm && (
