@@ -316,7 +316,7 @@ export function CreateGroundPage() {
             {!billingLoading && billingChecked && !billingFree && billingFreeReason !== 'FIRST_GROUND' && (
               <div>
                 <div className="gw-sub-t" style={{ marginBottom: 20 }}>
-                  Each Ground costs $5 to open. You can apply an access code if you have one.
+                  Sessions are $5 each. Your first session on this Ground is included. You can apply an access code if you have one.
                 </div>
 
                 {codeApplied ? (
