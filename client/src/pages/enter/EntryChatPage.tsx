@@ -154,7 +154,7 @@ function buildOnboardingMessages(sels: OnboardingSelections): OnboardingMessage[
     // Step 7: party or observer choice
     {
       text: "Last thing. Are you one of the people in this situation, or are you setting it up for them?\n\nIf you are involved, you check in first, then invite the others. If you are not involved, you skip straight to inviting them.",
-      buttons: ["I am a party. Let's begin.", "Setting this up for others — skip to invite"],
+      buttons: ["I'm involved — let's begin.", "Setting this up for others"],
     },
   ]
 }
