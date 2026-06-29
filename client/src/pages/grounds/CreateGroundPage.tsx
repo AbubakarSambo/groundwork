@@ -15,21 +15,16 @@ interface ScenarioCard {
 }
 
 const SCENARIOS: ScenarioCard[] = [
-  { scenario: 'NEW_HIRE',         label: 'New hire or onboarding',    desc: 'Someone just joined. Set expectations from all sides before the work starts.',                    tag: 'Starting',     tagBg: '#E8F8F5', tagColor: '#085041' },
-  { scenario: 'NEW_MANAGER',      label: 'New manager or role',       desc: 'A new management relationship or changed role. Expectations on record from day one.',             tag: 'Starting',     tagBg: '#E8F8F5', tagColor: '#085041' },
-  { scenario: 'NEW_COFOUNDER',    label: 'New partner or co-founder', desc: 'A partnership forming. Get the brief on record from everyone involved early.',                    tag: 'Starting',     tagBg: '#E8F8F5', tagColor: '#085041' },
-  { scenario: 'NEW_ADVISOR',      label: 'New advisor or board member', desc: 'An advisor, investor, or board member joining. Alignment before the relationship starts.',      tag: 'Starting',     tagBg: '#E8F8F5', tagColor: '#085041' },
-  { scenario: 'NEW_PROJECT',      label: 'New project or initiative',  desc: 'A project about to begin. Everyone involved on record before it does.',                          tag: 'Starting',     tagBg: '#E8F8F5', tagColor: '#085041' },
-  { scenario: 'DRIFT',            label: 'Performance or delivery check', desc: 'An ongoing role or delivery that needs to be tracked. Independent accounts from all contributors.', tag: 'Accountability', tagBg: '#EEF4FB', tagColor: '#0C447C' },
-  { scenario: 'NEW_PROJECT',      label: 'Team check-in ritual',       desc: 'A recurring check-in for a group. Each person gives their own account of how goals are tracking.', tag: 'Recurring',   tagBg: '#E8F8F5', tagColor: '#085041' },
   { scenario: 'NEW_HIRE',         label: 'New hire',              desc: 'Expectations from all sides before the work starts. Both accounts on record from day one.',              tag: 'Starting',     tagBg: '#E8F8F5', tagColor: '#085041' },
   { scenario: 'NEW_PROJECT',      label: 'New project',           desc: 'Scope, ownership, and success criteria agreed independently before the work begins.',                    tag: 'Starting',     tagBg: '#E8F8F5', tagColor: '#085041' },
   { scenario: 'NEW_ADVISOR',      label: 'New board member',      desc: 'Each side on record on what they expect from the relationship before it starts.',                         tag: 'Starting',     tagBg: '#E8F8F5', tagColor: '#085041' },
   { scenario: 'NEW_COFOUNDER',    label: 'New partner',           desc: 'Put both sides\' understanding of the partnership on record before anything is agreed.',                  tag: 'Starting',     tagBg: '#E8F8F5', tagColor: '#085041' },
   { scenario: 'CONTRACT_RENEWAL', label: 'Contract renewal',      desc: 'Independent accounts of how things have gone. What has worked, what has not, and what the next term looks like.', tag: 'Renewal', tagBg: '#EEF4FB', tagColor: '#0C447C' },
+  { scenario: 'PIP',              label: 'PIP',              desc: 'Both accounts on record. The concern, the support available, and what success looks like.',              tag: 'Accountability', tagBg: '#FCEBEB', tagColor: '#791F1F' },
   { scenario: 'OKR_ALIGNMENT',    label: 'Goals & planning', desc: 'Check whether everyone is actually aligned on the goals and plan — not to set them.',                    tag: 'Planning',     tagBg: '#EEF4FB', tagColor: '#0C447C' },
-  { scenario: 'DRIFT',            label: 'New direction',         desc: 'A strategy shift or pivot. Each person says what they understood before the group discussion.',           tag: 'Alignment',    tagBg: '#FDF3E3', tagColor: '#8A5C1A' },
-  { scenario: 'PULSE_CHECK',      label: 'Other',                 desc: 'Describe the situation and Groundwork will set up the right ground for it.',                              tag: 'Other',        tagBg: '#F5F3EF', tagColor: '#6B6560' },
+  { scenario: 'PULSE_CHECK',      label: 'Pulse check',      desc: 'A quick independent read from each person. What is moving, what is stuck, what has changed.',             tag: 'Recurring',    tagBg: '#E8F8F5', tagColor: '#085041' },
+  { scenario: 'DRIFT',            label: 'New direction',    desc: 'A strategy shift or pivot. Each person says what they understood before the group discussion.',            tag: 'Alignment',    tagBg: '#FDF3E3', tagColor: '#8A5C1A' },
+  { scenario: 'PULSE_CHECK',      label: 'Other',            desc: 'Describe the situation and Groundwork will set up the right ground for it.',                              tag: 'Other',        tagBg: '#F5F3EF', tagColor: '#6B6560' },
 ]
 
 interface MomentOption { moment: GroundMoment; label: string; sub: string }

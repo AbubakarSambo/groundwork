@@ -26,8 +26,10 @@ const SCENARIO_MAP: Record<string, GroundScenario> = {
   'New direction':                   GroundScenario.NEW_PROJECT,
   'New manager':                     GroundScenario.NEW_MANAGER,
   'Align OKRs across teams':         GroundScenario.OKR_ALIGNMENT,
+  'Goals & planning':                GroundScenario.OKR_ALIGNMENT,
   'Build aligned workplan & budgets':GroundScenario.WORKPLAN_BUDGET,
   'Alignment pulse check':           GroundScenario.PULSE_CHECK,
+  'Pulse check':                     GroundScenario.PULSE_CHECK,
   'Realign team':                    GroundScenario.REALIGN_TEAM,
   'PIP':                             GroundScenario.PIP,
   // Extended human-readable labels

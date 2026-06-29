@@ -706,8 +706,18 @@ export function GroundAdminPage() {
                 onChange={e => setGroundScenario(e.target.value)}
                 style={{ background: 'white' }}
               >
-                {['NEW_HIRE','NEW_PROJECT','NEW_COFOUNDER','NEW_ADVISOR','NEW_MANAGER','CONTRACT_RENEWAL','DRIFT','PULSE_CHECK','REALIGN_TEAM','OKR_ALIGNMENT','WORKPLAN_BUDGET','PIP'].map(s => (
-                  <option key={s} value={s}>{s.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase())}</option>
+                {([
+                  ['NEW_HIRE', 'New hire'],
+                  ['NEW_PROJECT', 'New project'],
+                  ['NEW_ADVISOR', 'New board member'],
+                  ['NEW_COFOUNDER', 'New partner'],
+                  ['CONTRACT_RENEWAL', 'Contract renewal'],
+                  ['PIP', 'PIP'],
+                  ['OKR_ALIGNMENT', 'Goals & planning'],
+                  ['PULSE_CHECK', 'Pulse check'],
+                  ['DRIFT', 'New direction'],
+                ] as [string, string][]).map(([val, label]) => (
+                  <option key={val} value={val}>{label}</option>
                 ))}
               </select>
               <button

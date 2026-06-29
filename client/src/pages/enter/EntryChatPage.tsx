@@ -830,7 +830,7 @@ export function EntryChatPage() {
               {onboardingMessages.slice(0, onboardingStep).map((msg, idx) => {
                 const isActive = idx === onboardingStep - 1
                 return (
-                  <div key={idx} style={{ transition: 'opacity .3s', opacity: isActive ? 1 : 0.42 }}>
+                  <div key={idx} style={{ transition: 'opacity .3s', opacity: 1 }}>
                     <div style={{
                       maxWidth: '88%',
                       background: 'white',
