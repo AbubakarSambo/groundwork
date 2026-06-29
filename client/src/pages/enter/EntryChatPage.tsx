@@ -945,7 +945,6 @@ export function EntryChatPage() {
                 <div style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', padding: 24 }}>Starting your check-in…</div>
               )}
               {displayedHistory.map((m, i) => {
-                const isActive = i === displayedHistory.length - 1
                 return (
                   <div
                     key={i}
