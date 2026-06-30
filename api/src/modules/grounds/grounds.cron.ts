@@ -284,6 +284,7 @@ export class GroundsCron {
         ground: { status: { notIn: TERMINAL } },
         OR: [{ lastNudgedAt: null }, { lastNudgedAt: { lt: throttleBefore } }],
         checkIns: { some: { status: { in: OPEN_STATUSES } } },
+        ground: { sessionsBalance: { gt: 0 } },
       },
       select: {
         id: true,
