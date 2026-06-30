@@ -895,7 +895,7 @@ export function GroundParticipantPage() {
               </button>
             ) : (
               <div style={{ background: '#F5F3EF', borderRadius: 8, padding: '12px 14px', marginBottom: 14, fontSize: 13, color: '#4A4540', lineHeight: 1.6 }}>
-                The person who set up this ground needs to add a session before you can continue. Let them know and they can add one from their side.
+                The person who set up this ground needs to add a session or apply a contributor code before you can continue. Let them know and they can sort it from their side.
               </div>
             )}
 
