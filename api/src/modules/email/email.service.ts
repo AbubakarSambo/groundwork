@@ -288,6 +288,19 @@ export class EmailService {
     });
   }
 
+  /** Nudge to the ground lead when a participant is blocked by billing. */
+  async sendParticipantBlockedNudge(adminEmail: string, groundLabel: string, participantEmail: string, groundUrl: string): Promise<void> {
+    await this.sendEmail({
+      to: adminEmail,
+      subject: `${participantEmail} tried to check in — add a session to unblock them`,
+      html: this.layout(
+        `<p><strong>${participantEmail}</strong> tried to check in on <strong>${groundLabel}</strong> but there are no sessions remaining.</p>
+         <p>Add a session ($5) or apply a contributor code to unblock them.</p>
+         <p><a href="${groundUrl}">Go to the ground</a></p>`,
+      ),
+    });
+  }
+
   /** Payment failed notice sent to the org admin. */
   async sendPaymentFailed(adminEmail: string, orgName: string): Promise<void> {
     await this.sendEmail({

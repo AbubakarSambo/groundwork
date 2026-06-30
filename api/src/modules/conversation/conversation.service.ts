@@ -1,4 +1,5 @@
 import { Injectable, Logger, ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
 import { PromptsService } from '../prompts';
@@ -8,6 +9,7 @@ import { buildIntakeBlock, RECORD_EXTRACTION_PROMPT } from './prompt-library';
 import { GroundworkEvents, CheckInCompletedEvent } from '../../common';
 import { DocumentsService } from '../documents/documents.service';
 import { BillingService } from '../billing/billing.service';
+import { EmailService } from '../email/email.service';
 import { UsageService } from '../usage/usage.service';
 import { CheckInStatus, TurnRole, RecordEntryType, Cadence, GroundStatus, UsageEventType } from '@prisma/client';
 import { runIntake } from './intake';
@@ -94,7 +96,9 @@ export class ConversationService {
     private events: EventEmitter2,
     private documents: DocumentsService,
     private billing: BillingService,
+    private email: EmailService,
     private usage: UsageService,
+    private config: ConfigService,
   ) {}
 
   /** Returns the transcript for a check-in — owner-scoped only. */
@@ -196,6 +200,26 @@ export class ConversationService {
     if (checkIn.groundId) {
       const gate = await this.billing.canStartSession(checkIn.groundId);
       if (!gate.allowed) {
+        // Nudge the ground's initiator so they know someone is blocked.
+        this.prisma.ground.findUnique({
+          where: { id: checkIn.groundId },
+          select: {
+            label: true,
+            id: true,
+            participants: {
+              where: { partyType: 'INITIATOR' },
+              select: { email: true },
+              take: 1,
+            },
+          },
+        }).then(g => {
+          if (!g) return;
+          const initiatorEmail = g.participants[0]?.email;
+          if (!initiatorEmail) return;
+          const participantEmail = checkIn.participant.email;
+          const groundUrl = `${this.config.get<string>('resend.frontendUrl') ?? ''}/grounds/${g.id}`;
+          this.email.sendParticipantBlockedNudge(initiatorEmail, g.label, participantEmail, groundUrl).catch(() => undefined);
+        }).catch(() => undefined);
         throw new ForbiddenException(gate.reason);
       }
       // Atomic check-and-decrement: only succeeds when balance is still > 0,
