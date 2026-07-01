@@ -28,7 +28,7 @@ export function HomePage() {
   const faqMutation = useMutation({
     mutationFn: (question: string) => entryApi.faq(question),
     onSuccess: res => setFaqAnswer(res.reply),
-    onError: () => setFaqAnswer('That is something the team can answer directly. hello@myground.work'),
+    onError: () => setFaqAnswer('That one is better answered directly — email hello@myground.work and someone will get back to you.'),
   })
 
   function handleSubmit() {
@@ -43,7 +43,7 @@ export function HomePage() {
       return
     }
 
-    navigate(`/entry-chat?mode=${mode}&q=${encodeURIComponent(trimmed)}`)
+    navigate(`/start?mode=${mode}&initial=${encodeURIComponent(trimmed)}`)
   }
 
   useEffect(() => {
@@ -93,7 +93,7 @@ export function HomePage() {
             What are you working on?
           </h1>
           <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 24 }}>
-            Name the situation and the person involved. Groundwork builds a record from both sides.
+            Name the situation and who is involved. Groundwork builds a record from both sides.
           </p>
 
           <div className="gw-mode-pills">

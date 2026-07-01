@@ -12,6 +12,21 @@ import { toast } from 'sonner'
 import { CodeShareCard } from '@/components/CodeShareCard'
 import { billingApi } from '@/api/billing'
 
+const SCENARIO_LABELS: Record<string, string> = {
+  NEW_HIRE: 'New hire',
+  NEW_PROJECT: 'New project',
+  NEW_ADVISOR: 'New board member',
+  NEW_COFOUNDER: 'New partner',
+  CONTRACT_RENEWAL: 'Contract renewal',
+  PIP: 'PIP',
+  OKR_ALIGNMENT: 'Goals & planning',
+  PULSE_CHECK: 'Pulse check',
+  DRIFT: 'New direction',
+  REALIGN_TEAM: 'Other',
+  WORKPLAN_BUDGET: 'Workplan & budget',
+  NEW_MANAGER: 'New manager',
+}
+
 const BANDS = ['', 'Unresolved', 'Mixed', 'Emerging', 'Clear', 'Aligned']
 function bandLabel(score?: number) { return BANDS[score ?? 1] ?? 'Unresolved' }
 
@@ -178,7 +193,7 @@ export function GroundAdminPage() {
         <div style={{ display: 'flex', gap: 10, padding: '0 16px 10px', fontSize: 11, color: 'var(--gw-sub)', flexWrap: 'wrap', alignItems: 'center' }}>
           {ground.scenario && (
             <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: '#F0EEE9', color: '#4A4540' }}>
-              {ground.scenario.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase())}
+              {SCENARIO_LABELS[ground.scenario] ?? ground.scenario.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c: string) => c.toUpperCase())}
             </span>
           )}
           {ground.resolutionState && (
@@ -222,7 +237,7 @@ export function GroundAdminPage() {
             {/* Fix 8: Cadence miss recovery */}
             {(ground.overdue ?? 0) > 0 && (
               <div style={{ fontSize: 12, color: '#0C447C', background: '#EEF4FB', border: '1px solid #C5D9EF', borderRadius: 8, padding: '10px 12px', marginBottom: 14, lineHeight: 1.5 }}>
-                <strong>{ground.overdue} {ground.overdue === 1 ? 'participant is' : 'participants are'} overdue.</strong> A missed session is not a lost session — use Remind to get them back on track. Their next check-in picks up where they left off.
+                <strong>{ground.overdue} {ground.overdue === 1 ? 'participant is' : 'participants are'} overdue.</strong> A missed session is not a lost session. Use Remind — the most common reason is the email went to spam. Their next check-in picks up where they left off.
               </div>
             )}
 
@@ -274,9 +289,9 @@ export function GroundAdminPage() {
                         <div style={{ flex: 1 }}>
                           <div style={{ fontSize: 13, fontWeight: 600 }}>{p.email}</div>
                           {p.roleAsDescribed && <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginTop: 1 }}>{p.roleAsDescribed}</div>}
-                          <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>{status.replace(/_/g, ' ').toLowerCase()}</div>
+                          <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>{status.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c: string) => c.toUpperCase())}</div>
                         </div>
-                        {myCheckIn && status !== 'COMPLETED' && p.userId && (
+                        {myCheckIn?.id && status !== 'COMPLETED' && p.userId && (
                           <button onClick={() => remind.mutate(myCheckIn.id)} style={{ fontSize: 11, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer' }}>Remind</button>
                         )}
                         {!p.userId && (
@@ -317,9 +332,9 @@ export function GroundAdminPage() {
               return pending.length > 0 ? (
                 <div style={{ fontSize: 12, color: '#8A5C1A', background: '#FDF3E3', border: '1px solid #E8A94A', borderRadius: 8, padding: '8px 12px', marginBottom: 16, lineHeight: 1.5 }}>
                   {pending.length === 1
-                    ? `1 participant has not yet checked in. Your report cannot cross-reference accounts until their account is in.`
-                    : `${pending.length} participants have not yet checked in. Your report cannot cross-reference accounts until all accounts are in.`}
-                  <span style={{ marginLeft: 6, fontWeight: 600 }}>Use Remind to chase them.</span>
+                    ? `1 participant has not yet checked in. The shared report generates once all accounts are in.`
+                    : `${pending.length} participants have not yet checked in. The shared report generates once all accounts are in.`}
+                  <span style={{ marginLeft: 6, fontWeight: 600 }}>Use Remind if they have not received the email — it may have gone to spam.</span>
                 </div>
               ) : null
             })()}
@@ -443,7 +458,7 @@ export function GroundAdminPage() {
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div style={{ fontSize: 13, fontWeight: 600 }}>Session {ci.sessionNumber}</div>
                     <span className={`gw-pill ${ci.status === 'COMPLETED' ? 'gw-pill-green' : ci.status === 'IN_PROGRESS' ? 'gw-pill-amber' : 'gw-pill-gray'}`}>
-                      {ci.status.replace(/_/g, ' ').toLowerCase()}
+                      {ci.status.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c: string) => c.toUpperCase())}
                     </span>
                   </div>
                   {ci.completedAt && <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 4 }}>{new Date(ci.completedAt).toLocaleDateString()}</div>}
@@ -706,8 +721,18 @@ export function GroundAdminPage() {
                 onChange={e => setGroundScenario(e.target.value)}
                 style={{ background: 'white' }}
               >
-                {['NEW_HIRE','NEW_PROJECT','NEW_COFOUNDER','NEW_ADVISOR','NEW_MANAGER','CONTRACT_RENEWAL','DRIFT','PULSE_CHECK','REALIGN_TEAM','OKR_ALIGNMENT','WORKPLAN_BUDGET','PIP'].map(s => (
-                  <option key={s} value={s}>{s.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase())}</option>
+                {([
+                  ['NEW_HIRE', 'New hire'],
+                  ['NEW_PROJECT', 'New project'],
+                  ['NEW_ADVISOR', 'New board member'],
+                  ['NEW_COFOUNDER', 'New partner'],
+                  ['CONTRACT_RENEWAL', 'Contract renewal'],
+                  ['PIP', 'PIP'],
+                  ['OKR_ALIGNMENT', 'Goals & planning'],
+                  ['PULSE_CHECK', 'Pulse check'],
+                  ['DRIFT', 'New direction'],
+                ] as [string, string][]).map(([val, label]) => (
+                  <option key={val} value={val}>{label}</option>
                 ))}
               </select>
               <button
@@ -731,7 +756,11 @@ export function GroundAdminPage() {
             <div style={{ padding: 14, background: 'var(--gw-red-bg)', border: '0.5px solid var(--gw-red-b)', borderRadius: 8 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-red-t)', marginBottom: 6 }}>Close ground</div>
               <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>Closing a ground permanently archives it. All parties keep their records. This action cannot be undone.</div>
-              <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 8 }}>Coming soon — contact support to archive a ground manually.</div>
+              <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 8 }}>
+                Self-serve close is coming. For now, email{' '}
+                <a href={`mailto:hello@myground.work?subject=Archive ground: ${encodeURIComponent(ground.label)}`} style={{ color: 'var(--gw-navy)', textDecoration: 'underline' }}>hello@myground.work</a>
+                {' '}and we will archive it manually.
+              </div>
               <button disabled style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-red-t)', background: 'none', border: '1px solid var(--gw-red-b)', padding: '8px 14px', borderRadius: 6, cursor: 'not-allowed', fontFamily: 'inherit', opacity: 0.4 }}>
                 Close this ground
               </button>

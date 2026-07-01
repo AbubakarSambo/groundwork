@@ -81,6 +81,7 @@ export function GroundParticipantPage() {
   const qc = useQueryClient()
   const [tab, setTab] = useState<Tab>('checkin')
   const [showPaywall, setShowPaywall] = useState(false)
+  const [paywallReason, setPaywallReason] = useState<string | undefined>(undefined)
   const [paywallCode, setPaywallCode] = useState('')
   const [paywallCodeMsg, setPaywallCodeMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const [showShareConfirm, setShowShareConfirm] = useState(false)
@@ -143,11 +144,13 @@ export function GroundParticipantPage() {
         {},
         { validateStatus: () => true }
       )
-      if (res.status === 403) return { blocked: true, checkIn }
-      return { blocked: false, checkIn }
+      if (res.status === 403) return { blocked: true, checkIn, reason: res.data?.message as string | undefined }
+      if (res.status !== 200 && res.status !== 201) throw new Error(res.data?.message ?? 'Could not start session.')
+      return { blocked: false, checkIn, reason: undefined }
     },
-    onSuccess: ({ blocked, checkIn }) => {
+    onSuccess: ({ blocked, checkIn, reason }) => {
       if (blocked) {
+        if (reason) setPaywallReason(reason)
         setShowPaywall(true)
       } else {
         navigate(`/checkin/${checkIn.id}`, {
@@ -878,21 +881,23 @@ export function GroundParticipantPage() {
       {showPaywall && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.55)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px' }}>
           <div style={{ background: 'white', borderRadius: 12, padding: 24, maxWidth: 380, width: '100%' }}>
-            <div style={{ fontSize: 16, fontWeight: 800, color: '#0A1628', marginBottom: 8 }}>This ground needs a session to continue.</div>
-            {(ground as any).sessionsBalance !== undefined && (
-              <div style={{ fontSize: 13, color: '#6B6560', marginBottom: 14 }}>
-                {(ground as any).sessionsBalance === 0
-                  ? 'No sessions remaining on this ground.'
-                  : `Sessions remaining: ${(ground as any).sessionsBalance}`}
+            <div style={{ fontSize: 16, fontWeight: 800, color: '#0A1628', marginBottom: 8 }}>No sessions remaining</div>
+            <div style={{ fontSize: 13, color: '#6B6560', marginBottom: 14, lineHeight: 1.6 }}>
+              {paywallReason ?? 'No sessions remaining on this ground.'}
+            </div>
+            {myParticipant?.partyType === 'INITIATOR' ? (
+              <button
+                onClick={() => purchaseSessionMut.mutate()}
+                disabled={purchaseSessionMut.isPending}
+                style={{ width: '100%', padding: '12px', borderRadius: 8, background: '#0A1628', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: purchaseSessionMut.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: purchaseSessionMut.isPending ? 0.7 : 1, marginBottom: 14 }}
+              >
+                {purchaseSessionMut.isPending ? 'Redirecting...' : 'Add a session ($5)'}
+              </button>
+            ) : (
+              <div style={{ background: '#F5F3EF', borderRadius: 8, padding: '12px 14px', marginBottom: 14, fontSize: 13, color: '#4A4540', lineHeight: 1.6 }}>
+                The person who set up this ground needs to add a session or apply a contributor code before you can continue. Let them know and they can sort it from their side.
               </div>
             )}
-            <button
-              onClick={() => purchaseSessionMut.mutate()}
-              disabled={purchaseSessionMut.isPending}
-              style={{ width: '100%', padding: '12px', borderRadius: 8, background: '#0A1628', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: purchaseSessionMut.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: purchaseSessionMut.isPending ? 0.7 : 1, marginBottom: 14 }}
-            >
-              {purchaseSessionMut.isPending ? 'Redirecting...' : 'Add a session ($5)'}
-            </button>
 
             <div style={{ borderTop: '1px solid #E2E0DB', paddingTop: 14 }}>
               <button

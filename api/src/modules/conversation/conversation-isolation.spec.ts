@@ -34,7 +34,9 @@ function makeService(checkInRow: any) {
     {} as any, // EventEmitter2
     {} as any, // DocumentsService
     {} as any, // BillingService
+    { sendParticipantBlockedNudge: () => Promise.resolve() } as any, // EmailService
     { emit: () => Promise.resolve() } as any, // UsageService
+    { get: () => '' } as any, // ConfigService
   );
 }
 

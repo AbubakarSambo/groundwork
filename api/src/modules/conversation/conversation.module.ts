@@ -7,9 +7,10 @@ import { RemindService } from './remind.service';
 import { BillingModule } from '../billing';
 import { DocumentsModule } from '../documents/documents.module';
 import { UsageModule } from '../usage/usage.module';
+import { EmailModule } from '../email/email.module';
 
 @Module({
-  imports: [BillingModule, forwardRef(() => DocumentsModule), UsageModule],
+  imports: [BillingModule, forwardRef(() => DocumentsModule), UsageModule, EmailModule],
   controllers: [ConversationController],
   providers: [ConversationService, AnthropicService, ConversationContextService, RemindService],
   exports: [ConversationService, AnthropicService],

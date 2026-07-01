@@ -281,7 +281,7 @@ export class GroundsCron {
     const idleParties = await this.prisma.groundParticipant.findMany({
       where: {
         userId: { not: null },
-        ground: { status: { notIn: TERMINAL } },
+        ground: { status: { notIn: TERMINAL }, sessionsBalance: { gt: 0 } },
         OR: [{ lastNudgedAt: null }, { lastNudgedAt: { lt: throttleBefore } }],
         checkIns: { some: { status: { in: OPEN_STATUSES } } },
       },

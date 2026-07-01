@@ -15,21 +15,16 @@ interface ScenarioCard {
 }
 
 const SCENARIOS: ScenarioCard[] = [
-  { scenario: 'NEW_HIRE',         label: 'New hire or onboarding',    desc: 'Someone just joined. Set expectations from all sides before the work starts.',                    tag: 'Starting',     tagBg: '#E8F8F5', tagColor: '#085041' },
-  { scenario: 'NEW_MANAGER',      label: 'New manager or role',       desc: 'A new management relationship or changed role. Expectations on record from day one.',             tag: 'Starting',     tagBg: '#E8F8F5', tagColor: '#085041' },
-  { scenario: 'NEW_COFOUNDER',    label: 'New partner or co-founder', desc: 'A partnership forming. Get the brief on record from everyone involved early.',                    tag: 'Starting',     tagBg: '#E8F8F5', tagColor: '#085041' },
-  { scenario: 'NEW_ADVISOR',      label: 'New advisor or board member', desc: 'An advisor, investor, or board member joining. Alignment before the relationship starts.',      tag: 'Starting',     tagBg: '#E8F8F5', tagColor: '#085041' },
-  { scenario: 'NEW_PROJECT',      label: 'New project or initiative',  desc: 'A project about to begin. Everyone involved on record before it does.',                          tag: 'Starting',     tagBg: '#E8F8F5', tagColor: '#085041' },
-  { scenario: 'DRIFT',            label: 'Performance or delivery check', desc: 'An ongoing role or delivery that needs to be tracked. Independent accounts from all contributors.', tag: 'Accountability', tagBg: '#EEF4FB', tagColor: '#0C447C' },
-  { scenario: 'NEW_PROJECT',      label: 'Team check-in ritual',       desc: 'A recurring check-in for a group. Each person gives their own account of how goals are tracking.', tag: 'Recurring',   tagBg: '#E8F8F5', tagColor: '#085041' },
   { scenario: 'NEW_HIRE',         label: 'New hire',              desc: 'Expectations from all sides before the work starts. Both accounts on record from day one.',              tag: 'Starting',     tagBg: '#E8F8F5', tagColor: '#085041' },
   { scenario: 'NEW_PROJECT',      label: 'New project',           desc: 'Scope, ownership, and success criteria agreed independently before the work begins.',                    tag: 'Starting',     tagBg: '#E8F8F5', tagColor: '#085041' },
   { scenario: 'NEW_ADVISOR',      label: 'New board member',      desc: 'Each side on record on what they expect from the relationship before it starts.',                         tag: 'Starting',     tagBg: '#E8F8F5', tagColor: '#085041' },
   { scenario: 'NEW_COFOUNDER',    label: 'New partner',           desc: 'Put both sides\' understanding of the partnership on record before anything is agreed.',                  tag: 'Starting',     tagBg: '#E8F8F5', tagColor: '#085041' },
   { scenario: 'CONTRACT_RENEWAL', label: 'Contract renewal',      desc: 'Independent accounts of how things have gone. What has worked, what has not, and what the next term looks like.', tag: 'Renewal', tagBg: '#EEF4FB', tagColor: '#0C447C' },
+  { scenario: 'PIP',              label: 'PIP',              desc: 'Both accounts on record. The concern, the support available, and what success looks like.',              tag: 'Accountability', tagBg: '#FCEBEB', tagColor: '#791F1F' },
   { scenario: 'OKR_ALIGNMENT',    label: 'Goals & planning', desc: 'Check whether everyone is actually aligned on the goals and plan — not to set them.',                    tag: 'Planning',     tagBg: '#EEF4FB', tagColor: '#0C447C' },
-  { scenario: 'DRIFT',            label: 'New direction',         desc: 'A strategy shift or pivot. Each person says what they understood before the group discussion.',           tag: 'Alignment',    tagBg: '#FDF3E3', tagColor: '#8A5C1A' },
-  { scenario: 'PULSE_CHECK',      label: 'Other',                 desc: 'Describe the situation and Groundwork will set up the right ground for it.',                              tag: 'Other',        tagBg: '#F5F3EF', tagColor: '#6B6560' },
+  { scenario: 'PULSE_CHECK',      label: 'Pulse check',      desc: 'A quick independent read from each person. What is moving, what is stuck, what has changed.',             tag: 'Recurring',    tagBg: '#E8F8F5', tagColor: '#085041' },
+  { scenario: 'DRIFT',            label: 'New direction',    desc: 'A strategy shift or pivot. Each person says what they understood before the group discussion.',            tag: 'Alignment',    tagBg: '#FDF3E3', tagColor: '#8A5C1A' },
+  { scenario: 'REALIGN_TEAM',     label: 'Other',            desc: 'Describe the situation and Groundwork will set up the right ground for it.',                              tag: 'Other',        tagBg: '#F5F3EF', tagColor: '#6B6560' },
 ]
 
 interface MomentOption { moment: GroundMoment; label: string; sub: string }
@@ -81,12 +76,16 @@ const RESOLUTION_GROUPS: ResolutionGroup[] = [
 interface Participant { email: string; role: string; note: string }
 
 const SCENARIO_FROM_LABEL: Record<string, GroundScenario> = {
-  'new hire':        'NEW_HIRE',
-  'new project':     'NEW_PROJECT',
-  'new board member':'NEW_ADVISOR',
-  'new partner':     'NEW_COFOUNDER',
-  'contract renewal':'CONTRACT_RENEWAL',
-  'new direction':   'DRIFT',
+  'new hire':           'NEW_HIRE',
+  'new project':        'NEW_PROJECT',
+  'new board member':   'NEW_ADVISOR',
+  'new partner':        'NEW_COFOUNDER',
+  'contract renewal':   'CONTRACT_RENEWAL',
+  'new direction':      'DRIFT',
+  'pip':                'PIP',
+  'goals & planning':   'OKR_ALIGNMENT',
+  'pulse check':        'PULSE_CHECK',
+  'other':              'REALIGN_TEAM',
 }
 
 function scenarioFromParam(param: string | null): GroundScenario | null {
@@ -132,7 +131,7 @@ export function CreateGroundPage() {
   const [billingLoading, setBillingLoading] = useState(false)
 
   const cadenceObj = CADENCES.find(c => c.cadence === cadence) ?? CADENCES[1]
-  const sessionTotal = Math.floor(timelineDays / cadenceObj.days)
+  const sessionTotal = Math.max(1, Math.floor(timelineDays / cadenceObj.days))
 
   const briefWords = brief.trim() ? brief.trim().split(/\s+/).length : 0
   const briefShort = briefWords > 0 && briefWords < 20
@@ -147,8 +146,6 @@ export function CreateGroundPage() {
         if (res.freeReason === 'FIRST_GROUND') {
           setBillingFree(true)
           setBillingFreeReason('FIRST_GROUND')
-          // Auto-advance after brief pause
-          setTimeout(() => setStep(3), 1800)
         } else {
           setBillingFree(false)
         }
@@ -271,8 +268,8 @@ export function CreateGroundPage() {
 
             {scenario && (
               <>
-                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Where are you in the relationship?</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 10 }}>This shapes the questions each contributor answers.</div>
+                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Where are you in this situation?</div>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 10 }}>Are you just starting, mid-way through, or wrapping up? This shapes the questions each contributor answers.</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
                   {MOMENTS.map(m => (
                     <div key={m.moment} className={`cg-sit-card${moment === m.moment ? ' selected' : ''}`} onClick={() => setMoment(m.moment)}>
@@ -312,14 +309,14 @@ export function CreateGroundPage() {
                     No card required. Open your first ground and see how it works.
                   </div>
                 </div>
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center' }}>Taking you to the next step…</div>
+                <button className="gw-btn" onClick={() => setStep(3)} style={{ margin: '12px 0 0' }}>Continue →</button>
               </div>
             )}
 
             {!billingLoading && billingChecked && !billingFree && billingFreeReason !== 'FIRST_GROUND' && (
               <div>
                 <div className="gw-sub-t" style={{ marginBottom: 20 }}>
-                  Each Ground costs $5 to open. You can apply an access code if you have one.
+                  Sessions are $5 each. Your first session on this Ground is included. You can apply an access code if you have one.
                 </div>
 
                 {codeApplied ? (
@@ -505,6 +502,9 @@ export function CreateGroundPage() {
             <div style={{ fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 10, cursor: 'pointer' }} onClick={() => setStep(5)}>
               Skip — add participants after
             </div>
+            <div style={{ fontSize: 11, color: 'var(--gw-muted)', textAlign: 'center', marginTop: 4, lineHeight: 1.5 }}>
+              The shared report cannot generate until at least one other person has checked in.
+            </div>
           </div>
         )}
 
@@ -575,7 +575,7 @@ export function CreateGroundPage() {
             <div className="gw-box gw-box-blue" style={{ marginBottom: 16 }}>
               <div style={{ fontWeight: 600, marginBottom: 4 }}>Summary</div>
               <div style={{ fontSize: 12, lineHeight: 1.7 }}>
-                <div>{(scenario ?? '').replace(/_/g, ' ')} · {moment}</div>
+                <div>{SCENARIOS.find(s => s.scenario === scenario)?.label ?? (scenario ?? '').replace(/_/g, ' ')} · {MOMENTS.find(m => m.moment === moment)?.label ?? moment}</div>
                 <div>{sessionTotal} sessions · {cadence.toLowerCase()}</div>
                 {resolutionState && <div>Resolution: {resolutionState}</div>}
                 {participants.length > 0 && <div>{participants.length} participant{participants.length !== 1 ? 's' : ''} invited</div>}
