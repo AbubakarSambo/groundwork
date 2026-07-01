@@ -527,6 +527,87 @@ Respond with exactly one JSON object: {"scenario": "<SCENARIO_KEY>"}`;
     return { scenario: resolveScenario(mode) };
   }
 
+  async onboard(messages: ChatTurn[]): Promise<{
+    reply: string;
+    extracted: {
+      mode?: string;
+      initial?: string;
+      whoInvolved?: string;
+      decision?: string;
+      goals?: string[];
+      brief?: string;
+    };
+    ready: boolean;
+  }> {
+    if (!messages || messages.length === 0) throw new BadRequestException('messages required');
+
+    const ONBOARD_SYSTEM = `You are Groundwork, helping someone set up a new ground (a structured record for a situation involving more than one person).
+
+Your job is to gather 6 things through natural conversation:
+1. mode — what kind of situation this is: something_new (starting something), already_underway (in progress), look_back (already happened), or recurring (regular check-in)
+2. initial — a plain description of what the situation is about
+3. whoInvolved — who else is part of this and what their role is
+4. decision — what is making this important to get on record right now
+5. goals — what they need from this (can be multiple)
+6. brief — anything specific they want the tool to focus on or probe (optional)
+
+Rules:
+- Keep replies short. 2 to 3 sentences maximum.
+- Ask only one question at a time. Never list multiple questions.
+- Welcome any description the person gives, even vague or off-topic. Acknowledge it warmly and ask a natural follow-up to get what you still need.
+- If the person seems confused or off-topic, acknowledge what they said and gently redirect: "Got it. To make sure the record captures this well..."
+- Do not use dashes of any kind. Use straight quotes only.
+- Do not mention the field names (mode, initial, whoInvolved etc). Gather them conversationally.
+- When asking about the situation type, offer the four options naturally: starting something new, something already underway, something that already happened, or a regular check-in.
+- When you have enough to start — at minimum mode, initial, whoInvolved, and decision — you can wrap up warmly. Goals and brief are optional.
+
+Start by welcoming the person and asking what kind of situation they are dealing with, offering the four options.`.trim();
+
+    const reply = await this.anthropic.respond(ONBOARD_SYSTEM, messages);
+
+    // Second lightweight call to extract structured fields
+    const EXTRACT_SYSTEM = `You are extracting structured data from an onboarding conversation for Groundwork.
+
+From the conversation history, extract whatever you can. Return only what has been clearly stated.
+
+Fields:
+- mode: one of "something_new", "already_underway", "look_back", "recurring" — infer from context if not stated explicitly
+- initial: a plain description of the situation
+- whoInvolved: who else is part of this
+- decision: what prompted this, why now
+- goals: array of what they need from this
+- brief: anything specific to focus on or probe
+
+Only include a field if it has been clearly communicated. Omit fields that are still unknown.`;
+
+    const EXTRACT_TOOL = {
+      name: 'extract_onboarding',
+      description: 'Extract structured onboarding fields from the conversation.',
+      input_schema: {
+        type: 'object' as const,
+        properties: {
+          mode: { type: 'string', enum: ['something_new', 'already_underway', 'look_back', 'recurring'] },
+          initial: { type: 'string' },
+          whoInvolved: { type: 'string' },
+          decision: { type: 'string' },
+          goals: { type: 'array', items: { type: 'string' } },
+          brief: { type: 'string' },
+        },
+      },
+    };
+
+    const allMessages: ChatTurn[] = [...messages, { role: 'assistant', content: reply }];
+    let extracted: { mode?: string; initial?: string; whoInvolved?: string; decision?: string; goals?: string[]; brief?: string } = {};
+    try {
+      const result = await this.anthropic.extract<typeof extracted>(EXTRACT_SYSTEM, allMessages, EXTRACT_TOOL);
+      if (result) extracted = result;
+    } catch { /* extraction is best-effort */ }
+
+    const ready = !!(extracted.mode && extracted.initial && extracted.whoInvolved && extracted.decision);
+
+    return { reply, extracted, ready };
+  }
+
   async chat(messages: ChatTurn[], scenario?: string, groundLabel?: string, joinToken?: string): Promise<string> {
     if (!messages || messages.length === 0) throw new BadRequestException('messages required');
 

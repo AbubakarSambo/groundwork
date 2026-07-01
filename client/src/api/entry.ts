@@ -87,6 +87,13 @@ export const entryApi = {
           { messages: modeOrMessages, scenario: messagesOrScenario as string | undefined, groundLabel, joinToken },
         ).then(r => r.data),
 
+  onboard: (messages: ChatTurn[]): Promise<{
+    reply: string;
+    extracted: { mode?: string; initial?: string; whoInvolved?: string; decision?: string; goals?: string[]; brief?: string };
+    ready: boolean;
+  }> =>
+    apiClient.post('/entry/onboard', { messages }).then(r => r.data),
+
   classifyIntent: (description: string, mode?: string) =>
     apiClient.post<{ scenario: string }>('/entry/classify-intent', { description, mode }).then(r => r.data),
 

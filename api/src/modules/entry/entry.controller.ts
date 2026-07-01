@@ -29,6 +29,13 @@ class EntryChatDto {
   joinToken?: string;
 }
 
+class EntryOnboardDto {
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => TurnDto)
+  messages: TurnDto[];
+}
+
 class EntryOpenerDto {
   @IsOptional()
   @IsString()
@@ -95,6 +102,13 @@ class EntryCommitDto {
 @Controller('entry')
 export class EntryController {
   constructor(private service: EntryService) {}
+
+  @Public()
+  @Post('onboard')
+  @Throttle({ global: { limit: 30, ttl: 60000 } })
+  async onboard(@Body() dto: EntryOnboardDto) {
+    return this.service.onboard(dto.messages);
+  }
 
   @Public()
   @Post('opener')
