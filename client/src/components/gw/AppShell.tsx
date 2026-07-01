@@ -62,7 +62,7 @@ const BUILD_OPTIONS    = ['Reminder / email nudge', 'Mobile app', 'Slack integra
 
 function FeedbackWidget() {
   const location = useLocation()
-  const isChatPage = location.pathname.startsWith('/chat/') || location.pathname.startsWith('/checkin/')
+  const isChatPage = location.pathname.startsWith('/chat/') || location.pathname.startsWith('/checkin/') || location.pathname === '/start'
   const [open, setOpen] = useState(false)
   const [tab, setTab] = useState<FbTab>('reaction')
   const [reaction, setReaction] = useState('')
