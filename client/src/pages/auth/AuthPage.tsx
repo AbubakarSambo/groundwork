@@ -87,7 +87,7 @@ export function AuthPage() {
 
       <div className="gw-bd" style={{ maxWidth: 480, margin: '0 auto', width: '100%', paddingTop: 28 }}>
 
-        <div className="gw-ttl">Sign in</div>
+        <div className="gw-ttl">{view === 'link' ? 'Sign in or create account' : 'Sign in'}</div>
 
         {view === 'password' && (
           <>
@@ -136,7 +136,7 @@ export function AuthPage() {
                 style={{ color: 'var(--gw-navy)', textDecoration: 'underline', cursor: 'pointer' }}
                 onClick={() => { setError(''); setView('link') }}
               >
-                Send me a sign-in link
+                New here or forgot password? Get a link
               </span>
             </div>
           </>
@@ -145,7 +145,7 @@ export function AuthPage() {
         {view === 'link' && !linkSent && (
           <>
             <div className="gw-sub-t" style={{ marginBottom: 20 }}>
-              Enter your email and we will send you a sign-in link.
+              Enter your email. We will send you a link — it signs you in or creates an account if you don't have one.
             </div>
 
             <form onSubmit={submitLink}>

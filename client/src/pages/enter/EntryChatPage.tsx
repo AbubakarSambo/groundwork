@@ -59,29 +59,6 @@ export function hasPendingEntry(): boolean {
 
 const ONBOARDING_STEPS = 7
 
-const MODE_BUTTON_MAP: Record<string, string> = {
-  'Starting something': 'something_new',
-  'Already underway': 'already_underway',
-  'Already happened': 'look_back',
-  'Regular check-in': 'recurring',
-}
-
-const MODE_BUTTON_DESCRIPTIONS: Record<string, string> = {
-  'Starting something': 'A new hire, project, partnership, handover, role, or collaboration starting now.',
-  'Already underway': 'Something in motion: a delivery, a team, a review, a protocol, a handover, or an ongoing relationship.',
-  'Already happened': 'A decision, project, meeting, or conversation that needs to go on record now that it is done.',
-  'Regular check-in': 'A recurring ritual: weekly, fortnightly, or monthly, for a team, a mentee, a group, or a distributed field team.',
-}
-
-const GOAL_OPTIONS = [
-  'Verify readiness or delivery',
-  'Set expectations before we begin',
-  'Understand what happened',
-  'Get alignment on a decision or plan',
-  'Something else',
-]
-
-
 const SESSION_END_PATTERNS = [
   'here is what is now in your record',
   'now in your record from today',
@@ -97,67 +74,6 @@ const SESSION_END_PATTERNS = [
   'your contribution is saved',
 ]
 
-const MODE_INTROS: Record<string, string> = {
-  something_new: 'Good.\n\nThe best time to set expectations is before anyone has had a chance to assume.',
-  already_underway: 'Good.\n\nChecking in while something is moving is what keeps it on track.',
-  look_back: 'Good.\n\nGetting this on record while the details are still fresh is the right call.',
-  recurring: 'Good.\n\nA regular check-in builds the kind of record that actually shows what is happening over time.',
-}
-
-interface OnboardingMessage {
-  text: string
-  buttons?: string[]
-  buttonDescriptions?: Record<string, string>
-  multiSelect?: boolean
-  placeholder?: string
-}
-
-function buildOnboardingMessages(sels: OnboardingSelections): OnboardingMessage[] {
-  const modeKey = sels.mode || 'something_new'
-  const intro = MODE_INTROS[modeKey] || MODE_INTROS['something_new']
-
-  return [
-    // Step 1: situation type
-    {
-      text: `Groundwork builds a picture from what everyone involved has seen, experienced, and agreed. Each person adds their own account. Nobody reads anyone else's words directly. The report shows where accounts agree and where they differ.\n\nWhat kind of situation are we dealing with?`,
-      buttons: ['Starting something', 'Already underway', 'Already happened', 'Regular check-in'],
-      buttonDescriptions: MODE_BUTTON_DESCRIPTIONS,
-    },
-    // Step 2: what is this about
-    {
-      text: `${intro}\n\nWhat is this about?`,
-      placeholder: 'Describe the situation.',
-    },
-    // Step 3: who is involved
-    {
-      text: 'Who else is involved?',
-      placeholder: 'Name who is part of this and what their role is.',
-    },
-    // Step 4: why now
-    {
-      text: "What's making this important to get on record right now?",
-      placeholder: 'What prompted this.',
-    },
-    // Step 5: goals
-    {
-      text: 'What do you need from this?',
-      buttons: GOAL_OPTIONS,
-      multiSelect: true,
-      placeholder: 'Or say it in your own words.',
-    },
-    // Step 6: brief — what to focus on, probe, or watch for
-    {
-      text: "Is there anything specific you want the tool to focus on or ask about?\n\nThis could be a topic you know matters, something you want people to be specific about, or context the tool should use to ask sharper questions. You can skip this if nothing comes to mind.",
-      placeholder: 'What to focus on, probe, or watch for.',
-      buttons: ['Skip'],
-    },
-    // Step 7: party or observer choice
-    {
-      text: "Last thing. Are you one of the people in this situation, or are you setting it up for them?\n\nIf you are involved, you check in first, then invite the others. If you are not involved, you skip straight to inviting them.",
-      buttons: ["I'm involved — let's begin.", "Setting this up for others"],
-    },
-  ]
-}
 
 // Quick actions shown after the check-in starts
 const QUICK_ACTIONS = [
@@ -188,9 +104,9 @@ export function EntryChatPage() {
   const defaultSels: OnboardingSelections = { mode: urlMode || 'new', initial: urlInitial || '' }
   const [onboardingStep, setOnboardingStep] = useState(1)
   const [onboardingSelections, setOnboardingSelections] = useState<OnboardingSelections>(defaultSels)
-  const [onboardingMessages, setOnboardingMessages] = useState<OnboardingMessage[]>(
-    () => buildOnboardingMessages(defaultSels)
-  )
+  const [onboardingHistory, setOnboardingHistory] = useState<Turn[]>([])
+  const [onboardingReady, setOnboardingReady] = useState(false)
+  const [onboardingLoading, setOnboardingLoading] = useState(false)
 
   // Check-in chat state (phase 2)
   const [history, setHistory] = useState<Turn[]>([])
@@ -200,7 +116,6 @@ export function EntryChatPage() {
   const [loading, setLoading] = useState(false)
   const [closed, setClosed] = useState(false)
   const [phase, setPhase] = useState<'onboarding' | 'checkin'>('onboarding')
-  const [selectedGoals, setSelectedGoals] = useState<string[]>([])
   const [showEndPrompt, setShowEndPrompt] = useState(false)
 
   const [confirmClear, setConfirmClear] = useState(false)
@@ -272,7 +187,6 @@ export function EntryChatPage() {
       if (saved.email) setEmail(saved.email)
       if (saved.onboardingSelections) {
         setOnboardingSelections(saved.onboardingSelections)
-        setOnboardingMessages(buildOnboardingMessages(saved.onboardingSelections))
       }
       const step = saved.onboardingStep ?? 0
       if (step >= ONBOARDING_STEPS && saved.history.length > 0) {
@@ -281,6 +195,11 @@ export function EntryChatPage() {
       } else if (step > 0) {
         setPhase('onboarding')
         setOnboardingStep(step)
+        // Restore onboarding history from session if present
+        if ((saved as any).onboardingHistory) {
+          setOnboardingHistory((saved as any).onboardingHistory)
+          setOnboardingReady((saved as any).onboardingReady ?? false)
+        }
       }
     } else if (saved && !saved.closed && scenario) {
       // Show inline conflict modal instead of window.confirm
@@ -292,14 +211,13 @@ export function EntryChatPage() {
       if (urlInitial || scenario) {
         const sels: OnboardingSelections = { mode: urlMode || 'new', initial: urlInitial || scenario || '' }
         setOnboardingSelections(sels)
-        setOnboardingMessages(buildOnboardingMessages(sels))
         persistOnboarding([], sels, 1)
       }
     }
   }, [])
 
-  function persistOnboarding(h: Turn[], sels: OnboardingSelections, step: number) {
-    saveSession({ scenario, history: h, closed: false, onboardingStep: step, onboardingSelections: sels })
+  function persistOnboarding(h: Turn[], sels: OnboardingSelections, step: number, obHistory?: Turn[], obReady?: boolean) {
+    saveSession({ scenario, history: h, closed: false, onboardingStep: step, onboardingSelections: sels, ...(obHistory !== undefined ? { onboardingHistory: obHistory, onboardingReady: obReady ?? false } : {}) } as any)
   }
 
   function persistCheckin(h: Turn[], cl = false, rep = '') {
@@ -412,12 +330,11 @@ export function EntryChatPage() {
     generateSessionReport(history)
   }
 
-  // Advance onboarding step
+  // Called when user picks one of the final two buttons (works for both AI and deterministic paths)
   function advanceOnboarding(buttonChoice?: string) {
-    const currentStep = onboardingStep
-    let newSels = { ...onboardingSelections }
+    const newSels = { ...onboardingSelections }
 
-    // Step 7: party path — show briefing before check-in starts
+    // Party path — show briefing before check-in starts
     if (buttonChoice === "I am involved. Let's begin." || buttonChoice === "I'm involved — let's begin.") {
       setOnboardingStep(ONBOARDING_STEPS + 1)
       persistOnboarding([], newSels, ONBOARDING_STEPS)
@@ -425,7 +342,7 @@ export function EntryChatPage() {
       return
     }
 
-    // Step 7: manager path — skip check-in, go straight to save card
+    // Manager path — skip check-in, go straight to save card
     if (buttonChoice === "I am setting this up for others" || buttonChoice === "Setting this up for others") {
       setOnboardingStep(ONBOARDING_STEPS + 1)
       persistOnboarding([], newSels, ONBOARDING_STEPS)
@@ -445,75 +362,68 @@ export function EntryChatPage() {
       persistCheckin(managerHistory, true)
       return
     }
-
-    // Step 5 multi-select: toggle goal without advancing
-    // "Something else" requires text — don't add it as a goal string; the text input handles it
-    if (currentStep === 5 && buttonChoice && GOAL_OPTIONS.includes(buttonChoice) && buttonChoice !== 'Something else') {
-      setSelectedGoals(prev =>
-        prev.includes(buttonChoice) ? prev.filter(g => g !== buttonChoice) : [...prev, buttonChoice]
-      )
-      return
-    }
-
-    // Capture inputs per step
-    if (currentStep === 1) {
-      // Mode selection buttons
-      if (buttonChoice && MODE_BUTTON_MAP[buttonChoice]) {
-        newSels = { ...newSels, mode: MODE_BUTTON_MAP[buttonChoice] }
-      }
-    } else if (currentStep === 2) {
-      const val = input.trim()
-      if (!val) return
-      newSels = { ...newSels, initial: val }
-      setInput('')
-      // Background intent classification — updates scenario without blocking the user
-      entryApi.classifyIntent(val, newSels.mode).then(r => {
-        setOnboardingSelections(prev => ({ ...prev, classifiedScenario: r.scenario }))
-      }).catch(() => { /* non-critical */ })
-    } else if (currentStep === 3) {
-      const val = input.trim()
-      if (!val) return
-      newSels = { ...newSels, whoInvolved: val }
-      setInput('')
-    } else if (currentStep === 4) {
-      const val = input.trim()
-      if (!val) return
-      newSels = { ...newSels, decision: val }
-      setInput('')
-    } else if (currentStep === 5) {
-      const textGoal = input.trim()
-      const goals = [...selectedGoals, ...(textGoal ? [textGoal] : [])]
-      if (goals.length === 0) return
-      newSels = { ...newSels, goals }
-      setInput('')
-      setSelectedGoals([])
-    } else if (currentStep === 6) {
-      if (buttonChoice === 'Skip') {
-        newSels = { ...newSels, brief: '' }
-      } else {
-        const val = input.trim()
-        newSels = { ...newSels, brief: val }
-        setInput('')
-      }
-    }
-
-    setOnboardingSelections(newSels)
-    setOnboardingMessages(buildOnboardingMessages(newSels))
-
-    const nextStep = currentStep + 1
-    if (nextStep > ONBOARDING_STEPS) {
-      setOnboardingStep(ONBOARDING_STEPS + 1)
-      persistOnboarding([], newSels, ONBOARDING_STEPS)
-      startCheckin.mutate()
-      return
-    }
-
-    setOnboardingStep(nextStep)
-    persistOnboarding([], newSels, nextStep)
-    setTimeout(() => {
-      if (msgsRef.current) msgsRef.current.scrollTop = msgsRef.current.scrollHeight
-    }, 50)
   }
+
+  // AI-driven onboarding send
+  async function sendOnboarding(text: string) {
+    if (!text.trim() || onboardingLoading) return
+    const userTurn: Turn = { role: 'user', content: text.trim() }
+    const newHistory = [...onboardingHistory, userTurn]
+    setOnboardingHistory(newHistory)
+    setInput('')
+    setOnboardingLoading(true)
+    try {
+      const res = await entryApi.onboard(newHistory)
+      const assistantTurn: Turn = { role: 'assistant', content: res.reply }
+      const updatedHistory = [...newHistory, assistantTurn]
+      setOnboardingHistory(updatedHistory)
+      // Merge extracted fields into selections
+      if (res.extracted) {
+        setOnboardingSelections(prev => ({
+          ...prev,
+          ...(res.extracted.mode ? { mode: res.extracted.mode! } : {}),
+          ...(res.extracted.initial ? { initial: res.extracted.initial! } : {}),
+          ...(res.extracted.whoInvolved ? { whoInvolved: res.extracted.whoInvolved! } : {}),
+          ...(res.extracted.decision ? { decision: res.extracted.decision! } : {}),
+          ...(res.extracted.goals ? { goals: res.extracted.goals! } : {}),
+          ...(res.extracted.brief !== undefined ? { brief: res.extracted.brief! } : {}),
+        }))
+        // Background classify intent when we have initial
+        if (res.extracted.initial) {
+          entryApi.classifyIntent(res.extracted.initial, res.extracted.mode).then(r => {
+            setOnboardingSelections(prev => ({ ...prev, classifiedScenario: r.scenario }))
+          }).catch(() => { /* non-critical */ })
+        }
+      }
+      setOnboardingReady(res.ready)
+      persistOnboarding([], onboardingSelections, onboardingStep, updatedHistory, res.ready)
+      setTimeout(() => {
+        if (msgsRef.current) msgsRef.current.scrollTop = msgsRef.current.scrollHeight
+      }, 50)
+    } catch {
+      toast.error('Could not send message. Please try again.')
+      setOnboardingHistory(onboardingHistory) // revert
+    } finally {
+      setOnboardingLoading(false)
+    }
+  }
+
+  // Kick off the AI onboarding with the intro message on mount (if onboarding history is empty)
+  useEffect(() => {
+    if (phase !== 'onboarding' || onboardingHistory.length > 0) return
+    const INTRO = `Groundwork builds a picture from what everyone involved has seen, experienced, and agreed. Each person adds their own account. Nobody reads anyone else's words directly. The report shows where accounts agree and where they differ.\n\nWhat kind of situation are we dealing with? It could be something new you are starting, something already underway, something that has already happened, or a regular check-in.`
+    // If URL params pre-populate, inject as first user message
+    if (urlInitial) {
+      const preloadedHistory: Turn[] = [
+        { role: 'assistant', content: INTRO },
+        { role: 'user', content: urlInitial },
+      ]
+      setOnboardingHistory(preloadedHistory)
+      sendOnboarding(urlInitial)
+    } else {
+      setOnboardingHistory([{ role: 'assistant', content: INTRO }])
+    }
+  }, [phase])
 
 // Check-in send
   function send(text?: string) {
@@ -654,8 +564,6 @@ export function EntryChatPage() {
       }
     } catch { /* */ }
   }
-
-  const currentOnboardingMsg = onboardingMessages[onboardingStep - 1]
 
   if (showAdminBriefing) {
     return (
@@ -819,80 +727,70 @@ export function EntryChatPage() {
       {/* Main content area */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
 
-        {/* PHASE: ONBOARDING */}
+        {/* PHASE: ONBOARDING (AI-driven) */}
         {phase === 'onboarding' && (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
             <div
               ref={msgsRef}
-              style={{ flex: 1, overflowY: 'auto', padding: '24px 20px', display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 680, width: '100%', margin: '0 auto', boxSizing: 'border-box' }}
+              style={{ flex: 1, overflowY: 'auto', padding: '24px 20px', display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 680, width: '100%', margin: '0 auto', boxSizing: 'border-box' }}
             >
-              {onboardingMessages.slice(0, onboardingStep).map((msg, idx) => {
-                const isActive = idx === onboardingStep - 1
-                return (
-                  <div key={idx} style={{ transition: 'opacity .3s', opacity: 1 }}>
-                    <div style={{
-                      maxWidth: '88%',
-                      background: 'white',
-                      color: 'var(--gw-text)',
-                      border: '1px solid var(--gw-border)',
-                      borderRadius: '4px 16px 16px 16px',
-                      padding: '12px 16px',
-                      fontSize: 14,
-                      lineHeight: 1.7,
-                      whiteSpace: 'pre-wrap',
-                      boxShadow: '0 1px 3px rgba(0,0,0,.06)',
-                    }}>
-                      {msg.text}
-                    </div>
+              {onboardingHistory.map((m, i) => (
+                <div
+                  key={i}
+                  style={{
+                    maxWidth: '82%',
+                    alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start',
+                    background: m.role === 'user' ? 'var(--gw-navy)' : 'white',
+                    color: m.role === 'user' ? 'white' : 'var(--gw-text)',
+                    border: m.role === 'assistant' ? '1px solid var(--gw-border)' : 'none',
+                    borderRadius: m.role === 'user' ? '16px 16px 4px 16px' : '4px 16px 16px 16px',
+                    padding: '10px 14px',
+                    fontSize: 14,
+                    lineHeight: 1.65,
+                    whiteSpace: 'pre-wrap',
+                    boxShadow: m.role === 'assistant' ? '0 1px 3px rgba(0,0,0,.06)' : 'none',
+                  }}
+                >
+                  {m.content}
+                </div>
+              ))}
 
-                    {isActive && msg.buttons && (
-                      <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap', flexDirection: msg.buttonDescriptions ? 'column' : 'row', maxWidth: '88%' }}>
-                        {msg.buttons.map(btn => {
-                          const isSelected = msg.multiSelect && selectedGoals.includes(btn)
-                          const desc = msg.buttonDescriptions?.[btn]
-                          return (
-                            <button
-                              key={btn}
-                              onClick={() => advanceOnboarding(btn)}
-                              style={desc ? {
-                                padding: '12px 14px', borderRadius: 10, fontSize: 13, fontWeight: 700,
-                                border: '1px solid var(--gw-border)', background: 'white',
-                                color: 'var(--gw-text)', cursor: 'pointer', fontFamily: 'inherit',
-                                textAlign: 'left', transition: 'border-color .15s',
-                              } : {
-                                padding: '8px 14px', borderRadius: 20, fontSize: 12, fontWeight: 500,
-                                border: `1px solid ${isSelected ? 'var(--gw-navy)' : 'var(--gw-border)'}`,
-                                background: isSelected ? 'var(--gw-navy)' : 'white',
-                                color: isSelected ? 'white' : 'var(--gw-text)',
-                                cursor: 'pointer', fontFamily: 'inherit', transition: 'all .15s',
-                              }}
-                            >
-                              {desc ? (
-                                <>
-                                  <div style={{ fontWeight: 700, marginBottom: 3 }}>{btn}</div>
-                                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', fontWeight: 400, lineHeight: 1.45 }}>{desc}</div>
-                                </>
-                              ) : btn}
-                            </button>
-                          )
-                        })}
-                        {msg.multiSelect && selectedGoals.length > 0 && (
-                          <button
-                            onClick={() => advanceOnboarding()}
-                            style={{
-                              padding: '8px 16px', borderRadius: 20, fontSize: 12, fontWeight: 700,
-                              background: 'var(--gw-navy)', color: 'white',
-                              border: '1px solid var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit',
-                            }}
-                          >
-                            Confirm →
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
+              {onboardingLoading && (
+                <div style={{
+                  maxWidth: '82%', alignSelf: 'flex-start', background: 'white', color: 'var(--gw-text)',
+                  border: '1px solid var(--gw-border)', borderRadius: '4px 16px 16px 16px',
+                  padding: '10px 14px', fontSize: 14, lineHeight: 1.65,
+                  boxShadow: '0 1px 3px rgba(0,0,0,.06)', opacity: 0.45,
+                }}>
+                  …
+                </div>
+              )}
+
+              {/* Final buttons shown when AI signals ready */}
+              {onboardingReady && !onboardingLoading && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxWidth: '82%', alignSelf: 'flex-start', marginTop: 4 }}>
+                  <button
+                    onClick={() => advanceOnboarding("I'm involved — let's begin.")}
+                    style={{
+                      padding: '11px 16px', borderRadius: 10, fontSize: 13, fontWeight: 700,
+                      border: '1px solid var(--gw-border)', background: 'white',
+                      color: 'var(--gw-text)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+                    }}
+                  >
+                    I'm involved — let's begin.
+                  </button>
+                  <button
+                    onClick={() => advanceOnboarding('Setting this up for others')}
+                    style={{
+                      padding: '11px 16px', borderRadius: 10, fontSize: 13, fontWeight: 700,
+                      border: '1px solid var(--gw-border)', background: 'white',
+                      color: 'var(--gw-text)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+                    }}
+                  >
+                    Setting this up for others
+                  </button>
+                </div>
+              )}
 
               {startCheckin.isPending && (
                 <div style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', padding: 16 }}>
@@ -901,28 +799,29 @@ export function EntryChatPage() {
               )}
             </div>
 
-            {/* Text input — steps with a text placeholder only; button-only steps (1 and 6) hide the bar */}
-            {!startCheckin.isPending && currentOnboardingMsg && onboardingStep < ONBOARDING_STEPS && !!currentOnboardingMsg.placeholder && (
+            {/* Text input for onboarding — hidden once ready or loading checkin */}
+            {!startCheckin.isPending && !onboardingReady && (
               <div style={{ borderTop: '1px solid var(--gw-border)', background: 'white', flexShrink: 0 }}>
                 <div style={{ padding: '10px 16px' }}>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center', maxWidth: 680, margin: '0 auto' }}>
                     <input
                       type="text"
-                      placeholder={currentOnboardingMsg.placeholder ?? 'Type your response.'}
+                      placeholder="Type your response."
                       value={input}
                       onChange={e => setInput(e.target.value)}
-                      onKeyDown={e => { if (e.key === 'Enter' && input.trim()) advanceOnboarding() }}
+                      onKeyDown={e => { if (e.key === 'Enter' && input.trim()) { sendOnboarding(input); } }}
+                      disabled={onboardingLoading}
                       style={{
                         flex: 1, padding: '10px 12px', fontSize: 13, border: '1px solid var(--gw-border)',
                         borderRadius: 6, fontFamily: 'inherit', outline: 'none', background: 'white',
-                        color: 'var(--gw-text)',
+                        color: 'var(--gw-text)', opacity: onboardingLoading ? 0.5 : 1,
                       }}
                       autoFocus
                     />
                     <button
-                      onClick={() => { if (input.trim()) advanceOnboarding() }}
-                      disabled={!input.trim()}
-                      style={{ padding: '0 14px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 18, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: input.trim() ? 1 : 0.35 }}
+                      onClick={() => { if (input.trim()) sendOnboarding(input) }}
+                      disabled={!input.trim() || onboardingLoading}
+                      style={{ padding: '0 14px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 18, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: (input.trim() && !onboardingLoading) ? 1 : 0.35 }}
                     >
                       ↑
                     </button>
@@ -1489,7 +1388,8 @@ export function EntryChatPage() {
                   if (pendingNewScenario) {
                     clearEntrySession()
                     setOnboardingSelections(pendingNewScenario.sels)
-                    setOnboardingMessages(buildOnboardingMessages(pendingNewScenario.sels))
+                    setOnboardingHistory([])
+                    setOnboardingReady(false)
                     persistOnboarding([], pendingNewScenario.sels, 1)
                   }
                   setShowNewScenarioConflict(false)

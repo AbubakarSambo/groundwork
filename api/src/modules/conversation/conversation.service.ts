@@ -391,7 +391,7 @@ export class ConversationService {
       roleAsDescribed: checkIn.participant.roleAsDescribed,
       otherPartyCheckedIn,
       groundLabel: ground.label,
-      adminBrief: (ground as any).description ?? null,
+      adminBrief: (ground as any).brief ?? null,
       priorContext: checkIn.participant.roleAsDescribed ?? null,
       priorSession,
       lowSpecificityMultiDim,
