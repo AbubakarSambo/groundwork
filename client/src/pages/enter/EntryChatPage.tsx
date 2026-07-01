@@ -828,6 +828,17 @@ export function EntryChatPage() {
             >
               {onboardingMessages.slice(0, onboardingStep).map((msg, idx) => {
                 const isActive = idx === onboardingStep - 1
+                // Show user's answer for completed steps
+                const stepNum = idx + 1
+                const userAnswer: string | null = !isActive ? (
+                  stepNum === 1 ? (onboardingSelections.mode ? { something_new: 'Something new', look_back: 'Look back', look_forward: 'Look forward', both: 'Both' }[onboardingSelections.mode] ?? null : null)
+                  : stepNum === 2 ? (onboardingSelections.initial ?? null)
+                  : stepNum === 3 ? (onboardingSelections.whoInvolved ?? null)
+                  : stepNum === 4 ? (onboardingSelections.decision ?? null)
+                  : stepNum === 5 ? (onboardingSelections.goals?.join(', ') ?? null)
+                  : stepNum === 6 ? (onboardingSelections.brief || null)
+                  : null
+                ) : null
                 return (
                   <div key={idx} style={{ transition: 'opacity .3s', opacity: 1 }}>
                     <div style={{
@@ -844,6 +855,17 @@ export function EntryChatPage() {
                     }}>
                       {msg.text}
                     </div>
+                    {userAnswer && (
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+                        <div style={{
+                          maxWidth: '82%', background: 'var(--gw-navy)', color: 'white',
+                          borderRadius: '16px 16px 4px 16px', padding: '10px 14px',
+                          fontSize: 14, lineHeight: 1.65, whiteSpace: 'pre-wrap',
+                        }}>
+                          {userAnswer}
+                        </div>
+                      </div>
+                    )}
 
                     {isActive && msg.buttons && (
                       <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap', flexDirection: msg.buttonDescriptions ? 'column' : 'row', maxWidth: '88%' }}>
