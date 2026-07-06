@@ -16,10 +16,10 @@
     },
     {
       "name": "marketing",
-      "runtimeExecutable": "/opt/homebrew/bin/node",
-      "runtimeArgs": ["-e", "// attaches to existing astro dev server"],
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
       "port": 4321,
-      "autoPort": false
+      "cwd": "/Users/hafsahjumare/Documents/GitHub/groundwork/marketing"
     }
   ]
 }
