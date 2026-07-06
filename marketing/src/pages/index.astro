@@ -312,23 +312,26 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
   .l-btn-ghost{font-size:12px;padding:6px 10px}
   .l-btn-solid{font-size:12px;padding:6px 10px}
 
-  /* Hero - mobile feels like app entry, not brochure */
+  /* Hero - mobile */
   .l-hero{padding:0}
   .l-hero-inner{padding:28px 16px 24px}
   .l-hero-label{font-size:9px;margin-bottom:10px}
-  .l-hero-h1{font-size:22px;min-height:auto;margin-bottom:12px}
+  .l-hero-h1{font-size:20px !important;min-height:auto;margin-bottom:10px !important}
   .l-hero-sub{font-size:13px;margin-bottom:6px;max-width:100%}
   .l-hero-sub2{display:none}
+  /* hero subtext smaller on mobile */
+  .l-hero-inner p{font-size:14px !important;margin-bottom:16px !important}
 
-  /* Primary CTAs - side by side on mobile */
-  .l-hero-btns{flex-direction:row;gap:8px;margin-bottom:0;flex-wrap:nowrap}
+  /* Primary CTAs - primary full width, sign in text link */
+  .l-hero-btns{flex-direction:column;gap:8px;margin-bottom:0}
   .l-hero-btn-p{
-    flex:1;text-align:center;padding:12px 14px;
-    font-size:13px;border-radius:8px;
+    width:100%;text-align:center;padding:13px 14px;
+    font-size:14px;border-radius:8px;
   }
   .l-hero-btn-g{
-    flex:1;text-align:center;padding:12px 14px;
+    width:100%;text-align:center;padding:8px 14px;
     font-size:13px;border-radius:8px;
+    background:transparent !important;border-color:rgba(255,255,255,0.15) !important;
   }
 
   /* Mobile check-in CTA - additional prominent button */
@@ -351,8 +354,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
   .l-feed-body{min-height:180px}
 
   /* Sections */
-  .l-wrap{padding:40px 16px}
-  .l-wrap-sm{padding:40px 16px}
+  .l-wrap{padding:32px 16px}
+  .l-wrap-sm{padding:32px 16px}
+  /* Description section: left-align, smaller text on mobile */
+  .l-what-desc{font-size:13px !important;text-align:left !important;line-height:1.7 !important}
+  .l-what-list{text-align:left !important;font-size:12px !important}
   .l-sec-h2{font-size:26px}
   .l-sec-label{font-size:9px}
 
@@ -453,8 +459,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
   <div class="l-sec l-fade" style="background:#fff;border-bottom:1px solid #E2E0DB">
     <div class="l-wrap-sm" style="text-align:center">
       <p class="l-sec-label">What is Groundwork?</p>
-      <p style="font-size:16px;color:#4A5568;line-height:1.85;max-width:620px;margin:0 auto 28px">Groundwork runs regular check-ins across your team, project, or programme. Use it when you hire someone new, kick off a project, set objectives, run a performance improvement plan, or need to know if your team understood a brief or document. Everyone answers privately. Over time it cross-references what people said, what they did, the outputs they created, and what they understood against what you set, and shows you exactly where things are on track, where they are not, and where the gaps are before they become problems.</p>
-      <p style="font-size:13px;color:#9B9590;line-height:2;max-width:580px;margin:0 auto">
+      <p class="l-what-desc" style="font-size:16px;color:#4A5568;line-height:1.85;max-width:620px;margin:0 auto 28px">Groundwork runs regular check-ins across your team, project, or programme. Use it when you hire someone new, kick off a project, set objectives, run a performance improvement plan, or need to know if your team understood a brief or document. Everyone answers privately. Over time it cross-references what people said, what they did, the outputs they created, and what they understood against what you set, and shows you exactly where things are on track, where they are not, and where the gaps are before they become problems.</p>
+      <p class="l-what-list" style="font-size:13px;color:#9B9590;line-height:2;max-width:580px;margin:0 auto">
         New hire &nbsp;·&nbsp; New project &nbsp;·&nbsp; New partner &nbsp;·&nbsp; New strategy &nbsp;·&nbsp; OKR tracking &nbsp;·&nbsp; Performance improvement plan &nbsp;·&nbsp; Pulse check &nbsp;·&nbsp; Realign team &nbsp;·&nbsp; Evaluate failing delivery &nbsp;·&nbsp; Team culture
       </p>
     </div>
