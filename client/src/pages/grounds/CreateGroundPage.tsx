@@ -253,12 +253,13 @@ export function CreateGroundPage() {
           <div>
             <div className="gw-ttl">What is this ground for?</div>
             <div className="gw-sub-t">Select the situation that fits best.</div>
+            <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 10 }}>Choose one that best describes your situation.</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 24 }}>
               {SCENARIOS.map(s => (
                 <div key={s.scenario} className={`cg-sit-card${scenario === s.scenario ? ' selected' : ''}`} onClick={() => setScenario(s.scenario)}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
                     <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: s.tagBg, color: s.tagColor }}>{s.tag}</span>
-                    <div className="cg-sit-check" />
+                    <div className="cg-sit-radio" style={{ width: 16, height: 16, borderRadius: '50%', border: `2px solid ${scenario === s.scenario ? 'var(--gw-navy)' : 'var(--gw-border)'}`, background: scenario === s.scenario ? 'var(--gw-navy)' : 'transparent', flexShrink: 0 }} />
                   </div>
                   <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 3 }}>{s.label}</div>
                   <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>{s.desc}</div>
@@ -269,13 +270,14 @@ export function CreateGroundPage() {
             {scenario && (
               <>
                 <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Where are you in this situation?</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 10 }}>Are you just starting, mid-way through, or wrapping up? This shapes the questions each contributor answers.</div>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 6 }}>Are you just starting, mid-way through, or wrapping up? This shapes the questions each contributor answers.</div>
+                <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 10 }}>Choose one that best describes your situation.</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
                   {MOMENTS.map(m => (
                     <div key={m.moment} className={`cg-sit-card${moment === m.moment ? ' selected' : ''}`} onClick={() => setMoment(m.moment)}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
                         <div style={{ fontSize: 13, fontWeight: 700 }}>{m.label}</div>
-                        <div className="cg-sit-check" />
+                        <div className="cg-sit-radio" style={{ width: 16, height: 16, borderRadius: '50%', border: `2px solid ${moment === m.moment ? 'var(--gw-navy)' : 'var(--gw-border)'}`, background: moment === m.moment ? 'var(--gw-navy)' : 'transparent', flexShrink: 0 }} />
                       </div>
                       <div style={{ fontSize: 12, color: 'var(--gw-sub)' }}>{m.sub}</div>
                     </div>

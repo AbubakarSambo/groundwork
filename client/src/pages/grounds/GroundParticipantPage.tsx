@@ -790,6 +790,10 @@ export function GroundParticipantPage() {
               Documents the admin has shared appear here. Your uploads are part of your contribution to this ground's record until the report is released.
             </div>
 
+            <div style={{ fontSize: 11, color: '#9B9590', marginBottom: 10, lineHeight: 1.6 }}>
+              Your uploads are private. Everyone's documents are cross-referenced when the report is released.
+            </div>
+
             <div
               style={{ border: '1.5px dashed #E2E0DB', borderRadius: 8, padding: 16, textAlign: 'center', cursor: 'pointer', marginBottom: 12, background: 'white' }}
               onClick={() => document.getElementById('gp-doc-upload')?.click()}
@@ -881,22 +885,27 @@ export function GroundParticipantPage() {
       {showPaywall && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.55)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px' }}>
           <div style={{ background: 'white', borderRadius: 12, padding: 24, maxWidth: 380, width: '100%' }}>
-            <div style={{ fontSize: 16, fontWeight: 800, color: '#0A1628', marginBottom: 8 }}>No sessions remaining</div>
-            <div style={{ fontSize: 13, color: '#6B6560', marginBottom: 14, lineHeight: 1.6 }}>
-              {paywallReason ?? 'No sessions remaining on this ground.'}
-            </div>
             {myParticipant?.partyType === 'INITIATOR' ? (
-              <button
-                onClick={() => purchaseSessionMut.mutate()}
-                disabled={purchaseSessionMut.isPending}
-                style={{ width: '100%', padding: '12px', borderRadius: 8, background: '#0A1628', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: purchaseSessionMut.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: purchaseSessionMut.isPending ? 0.7 : 1, marginBottom: 14 }}
-              >
-                {purchaseSessionMut.isPending ? 'Redirecting...' : 'Add a session ($5)'}
-              </button>
+              <>
+                <div style={{ fontSize: 16, fontWeight: 800, color: '#0A1628', marginBottom: 8 }}>No sessions remaining</div>
+                <div style={{ fontSize: 13, color: '#6B6560', marginBottom: 14, lineHeight: 1.6 }}>
+                  {paywallReason ?? 'No sessions remaining on this ground.'}
+                </div>
+                <button
+                  onClick={() => purchaseSessionMut.mutate()}
+                  disabled={purchaseSessionMut.isPending}
+                  style={{ width: '100%', padding: '12px', borderRadius: 8, background: '#0A1628', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: purchaseSessionMut.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: purchaseSessionMut.isPending ? 0.7 : 1, marginBottom: 14 }}
+                >
+                  {purchaseSessionMut.isPending ? 'Redirecting...' : 'Add a session ($5)'}
+                </button>
+              </>
             ) : (
-              <div style={{ background: '#F5F3EF', borderRadius: 8, padding: '12px 14px', marginBottom: 14, fontSize: 13, color: '#4A4540', lineHeight: 1.6 }}>
-                The person who set up this ground needs to add a session or apply a contributor code before you can continue. Let them know and they can sort it from their side.
-              </div>
+              <>
+                <div style={{ fontSize: 16, fontWeight: 800, color: '#0A1628', marginBottom: 8 }}>Session needed to continue</div>
+                <div style={{ background: '#F5F3EF', borderRadius: 8, padding: '12px 14px', marginBottom: 14, fontSize: 13, color: '#4A4540', lineHeight: 1.6 }}>
+                  This ground needs a new session to continue. The ground initiator will need to add one before you can check in.
+                </div>
+              </>
             )}
 
             <div style={{ borderTop: '1px solid #E2E0DB', paddingTop: 14 }}>

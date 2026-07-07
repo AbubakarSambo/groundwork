@@ -67,6 +67,7 @@ export function AppShell({ children }: AppShellProps) {
     queryKey: ['grounds'],
     queryFn: groundsApi.list,
     enabled: !!user,
+    refetchOnWindowFocus: true,
   })
 
   const path = location.pathname

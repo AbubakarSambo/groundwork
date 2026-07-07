@@ -103,6 +103,20 @@ export class EmailService {
     return { devUrl };
   }
 
+  async sendContributorCode(to: string, code: string, sessionsGranted: number): Promise<void> {
+    await this.sendEmail({
+      to,
+      subject: 'Your Groundwork access code',
+      html: this.layout(
+        `<p>Here is your Groundwork access code. It gives you ${sessionsGranted} session${sessionsGranted !== 1 ? 's' : ''} free of charge.</p>
+         <p style="font-size:22px;font-weight:bold;letter-spacing:0.1em;background:#F5F3EF;border-radius:6px;padding:14px 20px;display:inline-block;">${code}</p>
+         <p>To use it: go to <a href="https://app.myground.work">app.myground.work</a>, create an account, set up a Ground, and enter this code when prompted. Your check-in stays private until the report is released.</p>
+         <p>Any questions, reply to this email.</p>
+         <p style="color:#9B9590;font-size:12px;">The Groundwork team</p>`,
+      ),
+    });
+  }
+
   // --- Team invites ---
 
   async sendUserInvite(email: string, firstName: string, token: string, orgName: string): Promise<void> {

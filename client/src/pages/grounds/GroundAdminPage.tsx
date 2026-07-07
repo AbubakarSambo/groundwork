@@ -7,6 +7,7 @@ import { reportsApi } from '@/api/reports'
 import { documentsApi } from '@/api/documents'
 import { conversationApi } from '@/api/conversation'
 import { participantRequestsApi } from '@/api/participantRequests'
+import { participantsApi } from '@/api/participants'
 import type { ParticipantRequest } from '@/api/participantRequests'
 import { toast } from 'sonner'
 import { CodeShareCard } from '@/components/CodeShareCard'
@@ -59,6 +60,8 @@ export function GroundAdminPage() {
   const [shareCodeId, setShareCodeId] = useState<string | null>(null)
   const [lastInvitedEmail, setLastInvitedEmail] = useState<string | null>(null)
   const [noteSaved, setNoteSaved] = useState(false)
+  const [editingRoleId, setEditingRoleId] = useState<string | null>(null)
+  const [editingRoleValue, setEditingRoleValue] = useState('')
 
   const { data: ground, isLoading } = useQuery({
     queryKey: ['ground', id],
@@ -138,6 +141,18 @@ export function GroundAdminPage() {
   const remind = useMutation({
     mutationFn: (checkInId: string) => conversationApi.remind(checkInId),
     onSuccess: () => toast.success('Reminder sent'),
+  })
+
+  const updateRole = useMutation({
+    mutationFn: ({ participantId, role }: { participantId: string; role: string }) =>
+      participantsApi.updateRole(participantId, role),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['ground', id] })
+      setEditingRoleId(null)
+      setEditingRoleValue('')
+      toast.success('Role updated')
+    },
+    onError: () => toast.error('Could not update role.'),
   })
 
   const addNote = useMutation({
@@ -288,7 +303,31 @@ export function GroundAdminPage() {
                         <div className={`gw-av gw-av-${i % 6}`}>{(p.email || '?').charAt(0).toUpperCase()}</div>
                         <div style={{ flex: 1 }}>
                           <div style={{ fontSize: 13, fontWeight: 600 }}>{p.email}</div>
-                          {p.roleAsDescribed && <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginTop: 1 }}>{p.roleAsDescribed}</div>}
+                          {editingRoleId === p.id ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 3 }}>
+                              <input
+                                autoFocus
+                                value={editingRoleValue}
+                                onChange={e => setEditingRoleValue(e.target.value)}
+                                onKeyDown={e => {
+                                  if (e.key === 'Enter') updateRole.mutate({ participantId: p.id, role: editingRoleValue })
+                                  if (e.key === 'Escape') { setEditingRoleId(null); setEditingRoleValue('') }
+                                }}
+                                style={{ fontSize: 11, padding: '2px 6px', borderRadius: 4, border: '1px solid var(--gw-border)', outline: 'none', fontFamily: 'inherit', width: 120 }}
+                              />
+                              <button onClick={() => updateRole.mutate({ participantId: p.id, role: editingRoleValue })} style={{ fontSize: 10, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer' }}>Save</button>
+                              <button onClick={() => { setEditingRoleId(null); setEditingRoleValue('') }} style={{ fontSize: 10, color: 'var(--gw-muted)', background: 'none', border: 'none', cursor: 'pointer' }}>Cancel</button>
+                            </div>
+                          ) : (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 1 }}>
+                              {p.roleAsDescribed && <span style={{ fontSize: 11, color: 'var(--gw-sub)' }}>{p.roleAsDescribed}</span>}
+                              <button
+                                onClick={() => { setEditingRoleId(p.id); setEditingRoleValue(p.roleAsDescribed ?? '') }}
+                                title="Edit role"
+                                style={{ fontSize: 10, color: 'var(--gw-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', lineHeight: 1 }}
+                              >✎</button>
+                            </div>
+                          )}
                           <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>{status.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c: string) => c.toUpperCase())}</div>
                         </div>
                         {myCheckIn?.id && status !== 'COMPLETED' && p.userId && (

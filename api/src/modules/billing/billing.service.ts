@@ -207,6 +207,23 @@ export class BillingService {
     return { code };
   }
 
+  async sendContributorCodeToEmail(
+    organizationId: string,
+    userId: string,
+    email: string,
+    sessionsGranted: number,
+    note?: string,
+  ): Promise<{ code: string; email: string }> {
+    const result = await this.generateContributorCode(
+      organizationId,
+      userId,
+      sessionsGranted,
+      note ?? `sent-to:${email}`,
+    );
+    await this.email.sendContributorCode(email, result.code, sessionsGranted);
+    return { code: result.code, email };
+  }
+
   /**
    * Redeem a contributor code against a ground. Increments the ground's
    * sessionsBalance, marks the code as fully used, and records a redemption row.

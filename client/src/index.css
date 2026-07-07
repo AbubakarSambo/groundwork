@@ -671,6 +671,13 @@ body.gw-sb-collapsed .gw-sb-reopen { opacity: 1; pointer-events: auto; }
   .gw-tabs-scroll .gw-tab { flex: 0 0 auto; }
 }
 
+/* ── HELP BUTTON MOBILE OFFSET ───────────────────────────── */
+@media (max-width: 640px) {
+  .gw-help-btn {
+    bottom: calc(72px + 56px) !important;
+  }
+}
+
 /* ── FEEDBACK WIDGET ──────────────────────────────────────── */
 .gw-fb-trigger {
   position: fixed;

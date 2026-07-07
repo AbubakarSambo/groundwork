@@ -78,6 +78,24 @@ export class BillingController {
     );
   }
 
+  @Post('contributor-codes/send-to-email')
+  @ApiBearerAuth()
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Generate a contributor code and email it directly to a recipient' })
+  async sendContributorCodeToEmail(
+    @CurrentUser('organizationId') organizationId: string,
+    @CurrentUser('id') userId: string,
+    @Body() body: { email: string; sessionsGranted: number; note?: string },
+  ) {
+    return this.billing.sendContributorCodeToEmail(
+      organizationId,
+      userId,
+      body.email,
+      body.sessionsGranted,
+      body.note,
+    );
+  }
+
   @Post('contributor-codes/redeem')
   @ApiBearerAuth()
   @Roles(Role.ADMIN)

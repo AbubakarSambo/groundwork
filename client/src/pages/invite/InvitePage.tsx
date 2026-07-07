@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
-import { useQuery, useMutation } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { participantsApi } from '@/api'
 import { participantRequestsApi } from '@/api/participantRequests'
 import { useAuthStore } from '@/stores/auth'
@@ -24,6 +24,7 @@ export function InvitePage() {
   const token = params.get('token') ?? ''
   const navigate = useNavigate()
   const setAuth = useAuthStore((s) => s.setAuth)
+  const qc = useQueryClient()
 
   // Landing state
   const [firstName, setFirstName] = useState('')
@@ -80,6 +81,7 @@ export function InvitePage() {
       if ((res as any).existingAccount) {
         toast.info(`Welcome back — continuing as ${res.user.email}`)
       }
+      qc.invalidateQueries({ queryKey: ['grounds'] })
     },
     onError: () => {
       setPhase('landing')

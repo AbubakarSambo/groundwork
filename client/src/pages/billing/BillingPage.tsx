@@ -16,6 +16,9 @@ export function BillingPage() {
   const [genNote, setGenNote] = useState('')
   const [newCode, setNewCode] = useState<string | null>(null)
   const [copied, setCopied] = useState<string | null>(null)
+  const [sendEmail, setSendEmail] = useState('')
+  const [sendSessions, setSendSessions] = useState(5)
+  const [sentTo, setSentTo] = useState<string | null>(null)
 
   const { data: grounds = [], isLoading: groundsLoading } = useQuery({
     queryKey: ['grounds'],
@@ -35,6 +38,16 @@ export function BillingPage() {
       setGenNote('')
     },
     onError: () => toast.error('Could not generate code. Try again.'),
+  })
+
+  const sendCode = useMutation({
+    mutationFn: () => billingApi.sendContributorCodeToEmail(sendEmail.trim(), sendSessions),
+    onSuccess: r => {
+      setSentTo(r.email)
+      setSendEmail('')
+      qc.invalidateQueries({ queryKey: ['contributor-codes'] })
+    },
+    onError: () => toast.error('Could not send code. Check the email and try again.'),
   })
 
   function copyToClipboard(text: string) {
@@ -134,6 +147,48 @@ export function BillingPage() {
             ))}
           </div>
         )}
+
+        {/* Send a code by email */}
+        <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '16px', marginBottom: 16 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#0A1628', marginBottom: 12 }}>Send access code by email</div>
+
+          <div style={{ marginBottom: 10 }}>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#6B6560', marginBottom: 5 }}>Recipient email</label>
+            <input
+              type="email"
+              value={sendEmail}
+              onChange={e => { setSendEmail(e.target.value); setSentTo(null) }}
+              placeholder="name@example.com"
+              style={{ width: '100%', padding: '9px 11px', fontSize: 13, fontFamily: 'inherit', border: '1px solid #E2E0DB', borderRadius: 7, background: '#F5F3EF', color: '#0A1628', outline: 'none', boxSizing: 'border-box' }}
+            />
+          </div>
+
+          <div style={{ marginBottom: 14 }}>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#6B6560', marginBottom: 5 }}>Sessions to grant</label>
+            <input
+              type="number"
+              min={1}
+              max={20}
+              value={sendSessions}
+              onChange={e => setSendSessions(Math.min(20, Math.max(1, Number(e.target.value))))}
+              style={{ width: '100%', padding: '9px 11px', fontSize: 13, fontFamily: 'inherit', border: '1px solid #E2E0DB', borderRadius: 7, background: '#F5F3EF', color: '#0A1628', outline: 'none', boxSizing: 'border-box' }}
+            />
+          </div>
+
+          <button
+            onClick={() => sendCode.mutate()}
+            disabled={sendCode.isPending || !sendEmail.trim()}
+            style={{ width: '100%', padding: '10px', borderRadius: 7, background: '#0A1628', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: (sendCode.isPending || !sendEmail.trim()) ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: (sendCode.isPending || !sendEmail.trim()) ? 0.5 : 1 }}
+          >
+            {sendCode.isPending ? 'Sending...' : 'Send code'}
+          </button>
+
+          {sentTo && (
+            <div style={{ marginTop: 12, fontSize: 13, color: '#085041', background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 7, padding: '10px 14px' }}>
+              Code sent to {sentTo}
+            </div>
+          )}
+        </div>
 
         {/* Generate a code form */}
         <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '16px', marginBottom: 16 }}>
