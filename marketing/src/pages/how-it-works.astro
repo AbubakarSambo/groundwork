@@ -44,69 +44,55 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
 
     <main style="max-width:600px;margin:0 auto;padding:56px 24px 80px;">
       <p style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#0C447C;font-weight:700;margin-bottom:12px;">How it works</p>
-      <h1 style="font-size:32px;font-weight:800;color:#1A1916;line-height:1.2;margin-bottom:16px;">Four steps to a shared picture.</h1>
-      <p style="font-size:16px;color:#6B6560;line-height:1.7;margin-bottom:48px;">People check in on their own and Groundwork does the comparing.</p>
+      <h1 style="font-size:32px;font-weight:800;color:#1A1916;line-height:1.2;margin-bottom:16px;">Two sides. One clear picture.</h1>
+      <p style="font-size:16px;color:#6B6560;line-height:1.7;margin-bottom:48px;">You say what you need. Your team says what they understood. You see the gap.</p>
 
       <div style="display:flex;flex-direction:column;gap:0;margin-bottom:48px;">
         <div style="display:flex;gap:20px;padding:24px 0;border-bottom:1px solid #E2E0DB;">
           <div style="width:36px;height:36px;background:#0C447C;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;font-weight:800;color:#fff;">1</div>
           <div>
-            <div style="font-size:16px;font-weight:700;color:#1A1916;margin-bottom:6px;">Define the Ground</div>
-            <div style="font-size:14px;color:#6B6560;line-height:1.7;">Describe the goal, opportunity, challenge, or decision. This is the one situation everyone is checking in on. Setting it up takes about ten minutes.</div>
+            <div style="font-size:16px;font-weight:700;color:#1A1916;margin-bottom:6px;">Write down what you need done</div>
+            <div style="font-size:14px;color:#6B6560;line-height:1.7;">What did you tell them? What does success look like? What was agreed and by when? The clearer you are here, the more useful everything that follows will be.</div>
           </div>
         </div>
         <div style="display:flex;gap:20px;padding:24px 0;border-bottom:1px solid #E2E0DB;">
           <div style="width:36px;height:36px;background:#0C447C;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;font-weight:800;color:#fff;">2</div>
           <div>
-            <div style="font-size:16px;font-weight:700;color:#1A1916;margin-bottom:6px;">Each person checks in on their own</div>
-            <div style="font-size:14px;color:#6B6560;line-height:1.7;">Privately, in their own words, about ten minutes each. No one sees anyone else's account so people say what they actually think instead of performing for the room.</div>
+            <div style="font-size:16px;font-weight:700;color:#1A1916;margin-bottom:6px;">Your team answers privately in their own words</div>
+            <div style="font-size:14px;color:#6B6560;line-height:1.7;">Each person says what they understood, what they have done, what is blocking them, and what support they need. Nobody can see each other's answers before the report is ready. That is the point. It is the only way to get what people actually think rather than what they think you want to hear.</div>
           </div>
         </div>
         <div style="display:flex;gap:20px;padding:24px 0;border-bottom:1px solid #E2E0DB;">
           <div style="width:36px;height:36px;background:#0C447C;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;font-weight:800;color:#fff;">3</div>
           <div>
-            <div style="font-size:16px;font-weight:700;color:#1A1916;margin-bottom:6px;">Groundwork builds the shared picture</div>
-            <div style="font-size:14px;color:#6B6560;line-height:1.7;">It cross references every account and shows where they agree, where they differ, and what each gap means. Every area comes with a recommended move, not just an observation. That comparison is the report.</div>
+            <div style="font-size:16px;font-weight:700;color:#1A1916;margin-bottom:6px;">You see what landed and what did not</div>
+            <div style="font-size:14px;color:#6B6560;line-height:1.7;">Where people are in sync you will see it. Where there is a gap you will see exactly who thought what, how far apart things are, and what the gap is costing you.</div>
           </div>
         </div>
         <div style="display:flex;gap:20px;padding:24px 0;">
           <div style="width:36px;height:36px;background:#085041;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;font-weight:800;color:#fff;">4</div>
           <div>
-            <div style="font-size:16px;font-weight:700;color:#1A1916;margin-bottom:6px;">Move forward</div>
-            <div style="font-size:14px;color:#6B6560;line-height:1.7;">Leave with clear next steps, decisions, responsibilities, and commitments that everyone has actually seen. The record is permanent, and everyone keeps it.</div>
+            <div style="font-size:16px;font-weight:700;color:#1A1916;margin-bottom:6px;">You know exactly what to fix</div>
+            <div style="font-size:14px;color:#6B6560;line-height:1.7;">Not a vague note to improve communication. Specific people, specific misunderstandings, specific next steps. The report tells you what to address and who to speak to.</div>
           </div>
         </div>
       </div>
 
-      <div style="background:#F5F3EF;border-radius:10px;padding:24px;border-left:3px solid #0C447C;margin-bottom:40px;">
-        <h3 style="font-size:16px;font-weight:700;color:#1A1916;margin-bottom:8px;">Alignment status</h3>
-        <p style="font-size:13px;color:#6B6560;line-height:1.7;margin-bottom:16px;">Each ground shows where things stand across all accounts. As more people check in, the status updates automatically.</p>
-        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;">
-          <div style="text-align:center;padding:10px 6px;background:white;border-radius:6px;border:1px solid #E2E0DB;">
-            <div style="font-size:12px;font-weight:700;color:#8A5C1A;">Unresolved</div>
-            <div style="font-size:10px;color:#B4B2A9;margin-top:3px;">Accounts still coming in</div>
-          </div>
-          <div style="text-align:center;padding:10px 6px;background:white;border-radius:6px;border:1px solid #E2E0DB;">
-            <div style="font-size:12px;font-weight:700;color:#9B9590;">Mixed</div>
-            <div style="font-size:10px;color:#B4B2A9;margin-top:3px;">Clear gaps between accounts</div>
-          </div>
-          <div style="text-align:center;padding:10px 6px;background:white;border-radius:6px;border:1px solid #E2E0DB;">
-            <div style="font-size:12px;font-weight:700;color:#0C447C;">Emerging</div>
-            <div style="font-size:10px;color:#B4B2A9;margin-top:3px;">More agreement than not</div>
-          </div>
-          <div style="text-align:center;padding:10px 6px;background:white;border-radius:6px;border:1px solid #E2E0DB;">
-            <div style="font-size:12px;font-weight:700;color:#0C447C;">Clear</div>
-            <div style="font-size:10px;color:#B4B2A9;margin-top:3px;">Accounts largely agree</div>
-          </div>
-          <div style="text-align:center;padding:10px 6px;background:#085041;border-radius:6px;">
-            <div style="font-size:12px;font-weight:700;color:white;">Aligned</div>
-            <div style="font-size:10px;color:rgba(255,255,255,.6);margin-top:3px;">Agreement on record</div>
-          </div>
+      <div style="background:#F5F3EF;border-radius:10px;padding:24px;border:1px solid #E2E0DB;margin-bottom:40px;">
+        <h3 style="font-size:16px;font-weight:700;color:#1A1916;margin-bottom:8px;">What you actually create</h3>
+        <p style="font-size:13px;color:#6B6560;line-height:1.7;margin-bottom:16px;">Every Ground has a situation, a set of participants, a check-in frequency, and a set of questions. Here is what one looks like.</p>
+        <div style="background:white;border-radius:8px;border:1px solid #E2E0DB;padding:16px 20px;font-size:13px;color:#1A1916;line-height:2.2;">
+          <div><strong>What we are working on:</strong> Launch MarketView in Lagos by September</div>
+          <div><strong>Participants:</strong> 12 team members</div>
+          <div><strong>Check-in frequency:</strong> Weekly</div>
+          <div><strong>Questions:</strong> What did you complete? What is blocking you? What do you need?</div>
+          <div><strong>Progress:</strong> Week 1 complete. Week 2 complete. Week 3 in progress.</div>
         </div>
+        <p style="font-size:12px;color:#9B9590;margin-top:12px;margin-bottom:0;">You create one of these for any situation where more than one person needs to be working toward the same thing.</p>
       </div>
 
       <div style="text-align:center;">
-        <a class="gw-btn-solid" href={`${APP_URL}/start`} style="padding:13px 28px;font-size:14px;">Start a Ground</a>
+        <a class="gw-btn-solid" href={`${APP_URL}/start`} style="padding:13px 28px;font-size:14px;">Start your first Ground free</a>
       </div>
     </main>
 
