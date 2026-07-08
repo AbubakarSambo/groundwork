@@ -75,6 +75,45 @@ const SESSION_END_PATTERNS = [
 ]
 
 
+const SITUATION_CARDS = [
+  {
+    group: 'positive',
+    label: 'New hire starting',
+    detail: 'Set clear expectations early and make sure both sides are aligned from day one.',
+    message: 'I have a new hire starting and want to make sure we set clear expectations from the beginning.',
+  },
+  {
+    group: 'positive',
+    label: 'New project kickoff',
+    detail: 'Get the team aligned on goals, roles, and ways of working before work starts.',
+    message: 'We are starting a new project and I want to get the team aligned on goals and roles from the beginning.',
+  },
+  {
+    group: 'positive',
+    label: 'New working arrangement',
+    detail: 'A new partnership, reporting line, or team structure that needs a clear foundation.',
+    message: 'We have a new working arrangement starting and want to make sure we are set up well.',
+  },
+  {
+    group: 'negative',
+    label: 'Team member not delivering',
+    detail: 'Someone is missing deadlines or not meeting expectations and you need to address it.',
+    message: 'A team member is not delivering and I need to address it. I want to make sure I have the full picture before we talk.',
+  },
+  {
+    group: 'negative',
+    label: 'Running a PIP',
+    detail: 'A performance improvement plan is underway and you want both sides on record.',
+    message: 'I am running a performance improvement plan and want both sides to have a fair record of where things stand.',
+  },
+  {
+    group: 'negative',
+    label: 'Cofounder or partner dispute',
+    detail: 'A disagreement about contributions, direction, or equity that needs to be put on record.',
+    message: 'My cofounder and I have a dispute about contributions and direction. I need to get both sides on record.',
+  },
+]
+
 // Quick actions shown after the check-in starts
 const QUICK_ACTIONS = [
   { label: 'Check in', msg: 'I want to keep going with my check-in.' },
@@ -99,6 +138,9 @@ export function EntryChatPage() {
   const [sessionsInput, setSessionsInput] = useState('1')
   const [showSessionsUpgrade, setShowSessionsUpgrade] = useState(false)
   const groundRenameRef = useRef<HTMLInputElement>(null)
+
+  // Situation cards shown before user types first message
+  const [pickedSituation, setPickedSituation] = useState<string | null>(null)
 
   // Onboarding state
   const defaultSels: OnboardingSelections = { mode: urlMode || 'new', initial: urlInitial || '' }
@@ -411,7 +453,7 @@ export function EntryChatPage() {
   // Kick off the AI onboarding with the intro message on mount (if onboarding history is empty)
   useEffect(() => {
     if (phase !== 'onboarding' || onboardingHistory.length > 0) return
-    const INTRO = `Groundwork builds a picture from what everyone involved has seen, experienced, and agreed. Each person adds their own account. Nobody reads anyone else's words directly. The report shows where accounts agree and where they differ.\n\nWhat kind of situation are we dealing with? It could be something new you are starting, something already underway, something that has already happened, or a regular check-in.`
+    const INTRO = `What brings you here? Pick the situation that fits or describe it below.`
     // If URL params pre-populate, inject as first user message
     if (urlInitial) {
       const preloadedHistory: Turn[] = [
@@ -755,6 +797,52 @@ export function EntryChatPage() {
                 </div>
               ))}
 
+              {/* Situation cards — shown only before user has sent first message */}
+              {onboardingHistory.length === 1 && !onboardingLoading && !pickedSituation && (
+                <div style={{ alignSelf: 'flex-start', width: '100%', maxWidth: '82%' }}>
+                  <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginBottom: 8, fontWeight: 500 }}>Starting something new</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
+                    {SITUATION_CARDS.filter(c => c.group === 'positive').map(card => (
+                      <button
+                        key={card.label}
+                        onClick={() => { setPickedSituation(card.label); sendOnboarding(card.message) }}
+                        style={{
+                          textAlign: 'left', padding: '10px 13px', borderRadius: 10,
+                          border: '1px solid var(--gw-border)', background: 'white',
+                          cursor: 'pointer', fontFamily: 'inherit',
+                        }}
+                      >
+                        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)', marginBottom: 2 }}>{card.label}</div>
+                        <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>{card.detail}</div>
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginBottom: 8, fontWeight: 500 }}>Something that needs addressing</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {SITUATION_CARDS.filter(c => c.group === 'negative').map(card => (
+                      <button
+                        key={card.label}
+                        onClick={() => { setPickedSituation(card.label); sendOnboarding(card.message) }}
+                        style={{
+                          textAlign: 'left', padding: '10px 13px', borderRadius: 10,
+                          border: '1px solid var(--gw-border)', background: 'white',
+                          cursor: 'pointer', fontFamily: 'inherit',
+                        }}
+                      >
+                        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)', marginBottom: 2 }}>{card.label}</div>
+                        <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>{card.detail}</div>
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    onClick={() => setPickedSituation('other')}
+                    style={{ marginTop: 12, background: 'none', border: 'none', fontSize: 12, color: 'var(--gw-sub)', cursor: 'pointer', padding: 0, fontFamily: 'inherit', textDecoration: 'underline', alignSelf: 'flex-start' }}
+                  >
+                    My situation is different — I will describe it
+                  </button>
+                </div>
+              )}
+
               {onboardingLoading && (
                 <div style={{
                   maxWidth: '82%', alignSelf: 'flex-start', background: 'white', color: 'var(--gw-text)',
@@ -799,8 +887,8 @@ export function EntryChatPage() {
               )}
             </div>
 
-            {/* Text input for onboarding — hidden once ready or loading checkin */}
-            {!startCheckin.isPending && !onboardingReady && (
+            {/* Text input for onboarding — hidden once ready, loading checkin, or cards not yet dismissed */}
+            {!startCheckin.isPending && !onboardingReady && !(onboardingHistory.length === 1 && !pickedSituation) && (
               <div style={{ borderTop: '1px solid var(--gw-border)', background: 'white', flexShrink: 0 }}>
                 <div style={{ padding: '10px 16px' }}>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center', maxWidth: 680, margin: '0 auto' }}>
