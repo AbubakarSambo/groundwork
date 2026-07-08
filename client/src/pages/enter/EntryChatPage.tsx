@@ -1253,12 +1253,55 @@ export function EntryChatPage() {
               </>
             )}
 
-            {/* Divider */}
+            {/* What happens next — shown after report is ready, before signup */}
+            {(sessionReport || (!generatingReport && closed)) && !emailSent && (
+              <div style={{ background: '#F0F4FA', borderRadius: 10, padding: '14px 16px', marginBottom: 18 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: '#0C447C', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '.06em' }}>What happens next</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {[
+                    'Save your email below to keep access to this report.',
+                    'Share the link with the other person so they can add their side.',
+                    'Once they check in, you both receive the shared report at the same time. It shows where you agree and where the conversation still needs to happen.',
+                  ].map((step, i) => (
+                    <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                      <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#0C447C', color: 'white', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>{i + 1}</div>
+                      <div style={{ fontSize: 13, color: '#1A1916', lineHeight: 1.55 }}>{step}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Create account — right after the report, before all admin */}
+            {!emailSent ? (
+              <div style={{ marginBottom: 20 }}>
+                <input type="email" placeholder="your@email.com" value={email} onChange={e => { setEmail(e.target.value); setEmailError('') }}
+                  onKeyDown={e => e.key === 'Enter' && handleSave()}
+                  style={{ width: '100%', padding: '11px 13px', borderRadius: 8, border: `1px solid ${emailError ? '#C0392B' : '#E2E0DB'}`, fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8, outline: 'none' }}
+                />
+                {emailError && <div style={{ fontSize: 12, color: '#791F1F', marginBottom: 6 }}>{emailError}</div>}
+                <button onClick={handleSave} disabled={generatingReport && !sessionReport} style={{ width: '100%', padding: '12px 16px', borderRadius: 8, background: '#0C447C', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: generatingReport && !sessionReport ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: generatingReport && !sessionReport ? 0.5 : 1 }}>
+                  Save my report and invite them →
+                </button>
+                <div onClick={() => setShowSave(false)} style={{ textAlign: 'center', fontSize: 12, color: '#9B9590', cursor: 'pointer', paddingTop: 10 }}>
+                  Not now
+                </div>
+              </div>
+            ) : (
+              <div style={{ background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 10, padding: '14px 16px', marginBottom: 20 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#085041', marginBottom: 4 }}>Check your email</div>
+                <div style={{ fontSize: 13, color: '#085041', lineHeight: 1.6 }}>We sent a link to <strong>{email}</strong>. Click it to finish setting up and get your invite link.</div>
+              </div>
+            )}
+
+            {/* Admin setup — only shown after email sent */}
+            {emailSent && (
+            <div>
             <div style={{ borderTop: '1px solid #E2E0DB', marginBottom: 18 }} />
 
             {/* Ground + org naming */}
             <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 6 }}>Name this ground</div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 6 }}>Name this situation</div>
               <input
                 type="text" placeholder="e.g. Kwame, first 90 days" value={groundName}
                 onChange={e => setGroundName(e.target.value)}
@@ -1446,32 +1489,8 @@ export function EntryChatPage() {
               )
             })()}
 
-            {/* Create account — shown only once report is ready or not generating */}
-            {generatingReport && !sessionReport && (
-              <div style={{ fontSize: 13, color: '#6B6560', textAlign: 'center', padding: '12px 0', marginBottom: 8 }}>
-                Preparing your report before we set up your account…
-              </div>
+            </div>
             )}
-            {(!generatingReport || sessionReport) && !emailSent ? (
-              <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 4 }}>Create your account</div>
-                <div style={{ fontSize: 12, color: '#9B9590', marginBottom: 8, lineHeight: 1.5 }}>Enter your email to save this and send invites. You will get the report as soon as the other side checks in.</div>
-                <input type="email" placeholder="you@company.com" value={email} onChange={e => { setEmail(e.target.value); setEmailError('') }}
-                  onKeyDown={e => e.key === 'Enter' && handleSave()}
-                  style={{ width: '100%', padding: '11px 13px', borderRadius: 8, border: '1px solid #E2E0DB', fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8, outline: 'none' }}
-                />
-                {emailError && <div style={{ fontSize: 12, color: '#791F1F', marginBottom: 6 }}>{emailError}</div>}
-                <button onClick={handleSave} disabled={generatingReport && !sessionReport} style={{ width: '100%', padding: '12px 16px', borderRadius: 8, background: '#0C447C', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: generatingReport && !sessionReport ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: generatingReport && !sessionReport ? 0.5 : 1 }}>
-                  Create account →
-                </button>
-              </div>
-            ) : emailSent ? (
-              <div style={{ textAlign: 'center', padding: '10px 0', marginBottom: 16 }}>
-                <div style={{ fontSize: 22, marginBottom: 6 }}>✓</div>
-                <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>Check your email</div>
-                <div style={{ fontSize: 13, color: '#6B6560', lineHeight: 1.6 }}>We sent a link to <strong>{email}</strong>. Click it to finish setting up your account and set a password.</div>
-              </div>
-            ) : null}
 
             <div onClick={() => setShowSave(false)} style={{ textAlign: 'center', fontSize: 12, color: '#9B9590', cursor: 'pointer', paddingTop: 4 }}>
               {closed ? 'Close (you can reopen this from the bar below)' : 'Later'}
