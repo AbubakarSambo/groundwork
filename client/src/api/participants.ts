@@ -24,4 +24,6 @@ export const participantsApi = {
     apiClient.post<AcceptInviteResponse>('/participants/accept', { token, ...names }).then((r) => r.data),
   saveIntake: (checkInId: string, data: object) =>
     apiClient.patch<{ ok: boolean }>(`/participants/${checkInId}/intake`, data).then((r) => r.data),
+  updateRole: (participantId: string, roleAsDescribed: string) =>
+    apiClient.patch<{ id: string; roleAsDescribed: string }>(`/participants/${participantId}`, { roleAsDescribed }).then((r) => r.data),
 }

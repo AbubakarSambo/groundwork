@@ -163,7 +163,7 @@ export function ReportPage() {
     )
   }
 
-  if (!ground || !report) {
+  if (!ground) {
     return (
       <div style={{ ...PAGE_STYLE, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
         <div style={{ fontSize: 13, color: '#6B6560' }}>Report not found.</div>
@@ -172,10 +172,10 @@ export function ReportPage() {
     )
   }
 
-  if (!report.releasedAt) {
+  if (!report || !report.releasedAt) {
     return (
       <div style={{ ...PAGE_STYLE, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
-        <div style={{ fontSize: 13, color: '#6B6560' }}>This report has not been released yet.</div>
+        <div style={{ fontSize: 13, color: '#9B9590' }}>Your report will appear here once everyone has checked in.</div>
         <button onClick={() => navigate(-1)} style={{ fontSize: 12, color: '#0C447C', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>Go back</button>
       </div>
     )

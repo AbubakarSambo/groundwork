@@ -241,7 +241,19 @@ export function ChatPage() {
                 boxShadow: m.role === 'AI' ? '0 1px 3px rgba(0,0,0,.05)' : 'none',
               }}
             >
-              {m.content}
+              {m.id === 'loading' ? (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  {[0, 1, 2].map(i => (
+                    <span key={i} style={{
+                      display: 'inline-block', width: 6, height: 6, borderRadius: '50%',
+                      background: 'var(--gw-sub)',
+                      animation: 'gwDotBounce 1.2s ease-in-out infinite',
+                      animationDelay: `${i * 0.2}s`,
+                    }} />
+                  ))}
+                  <style>{`@keyframes gwDotBounce { 0%,80%,100%{transform:translateY(0);opacity:.4} 40%{transform:translateY(-5px);opacity:1} }`}</style>
+                </span>
+              ) : m.content}
               {streamingId === m.id && (
                 <span style={{ display: 'inline-block', width: 2, height: '1em', background: 'var(--gw-navy)', marginLeft: 2, verticalAlign: 'text-bottom', animation: 'blink .7s step-end infinite' }} />
               )}

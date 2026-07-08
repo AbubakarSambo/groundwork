@@ -173,6 +173,25 @@ export class ParticipantsService {
     return { ok: true };
   }
 
+  /** Update a participant's roleAsDescribed. Only the participant themselves or the ground initiator may call this. */
+  async updateRole(participantId: string, userId: string, roleAsDescribed: string) {
+    const participant = await this.prisma.groundParticipant.findUnique({
+      where: { id: participantId },
+      include: { ground: { include: { participants: { where: { partyType: 'INITIATOR' } } } } },
+    });
+    if (!participant) throw new NotFoundException('Participant not found');
+
+    const isOwner = participant.userId === userId;
+    const isInitiator = participant.ground.participants.some((p) => p.userId === userId);
+    if (!isOwner && !isInitiator) throw new NotFoundException('Participant not found');
+
+    const updated = await this.prisma.groundParticipant.update({
+      where: { id: participantId },
+      data: { roleAsDescribed },
+    });
+    return { id: updated.id, roleAsDescribed: updated.roleAsDescribed };
+  }
+
   // --- helpers ---
 
   private async loadByToken(token: string) {

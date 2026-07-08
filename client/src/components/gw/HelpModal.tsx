@@ -218,8 +218,9 @@ export function HelpButton() {
     <button
       onClick={() => show(0)}
       title="Help"
+      className="gw-help-btn"
       style={{
-        position: 'fixed', bottom: 20, right: 20, zIndex: 8000,
+        position: 'fixed', bottom: 72, right: 20, zIndex: 8000,
         width: 38, height: 38, borderRadius: '50%',
         background: '#0C447C', color: 'white', border: 'none',
         fontSize: 16, fontWeight: 700, cursor: 'pointer',

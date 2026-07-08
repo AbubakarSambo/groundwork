@@ -54,6 +54,9 @@ export const billingApi = {
   generateContributorCode: (sessionsGranted: number, note?: string) =>
     apiClient.post<{ code: string }>('/billing/contributor-codes', { sessionsGranted, note }).then(r => r.data),
 
+  sendContributorCodeToEmail: (email: string, sessionsGranted: number, note?: string) =>
+    apiClient.post<{ code: string; email: string }>('/billing/contributor-codes/send-to-email', { email, sessionsGranted, note }).then(r => r.data),
+
   redeemContributorCode: (code: string, groundId: string) =>
     apiClient.post<{ ok: boolean; message: string; sessionsAdded?: number }>('/billing/contributor-codes/redeem', { code, groundId }).then(r => r.data),
 

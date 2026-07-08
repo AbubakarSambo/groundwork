@@ -862,7 +862,19 @@ export function EntryChatPage() {
                       boxShadow: m.role === 'assistant' ? '0 1px 3px rgba(0,0,0,.06)' : 'none',
                     }}
                   >
-                    {m.content}
+                    {m.content === '…' ? (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        {[0, 1, 2].map(i2 => (
+                          <span key={i2} style={{
+                            display: 'inline-block', width: 6, height: 6, borderRadius: '50%',
+                            background: 'var(--gw-sub)',
+                            animation: 'gwDotBounce 1.2s ease-in-out infinite',
+                            animationDelay: `${i2 * 0.2}s`,
+                          }} />
+                        ))}
+                        <style>{`@keyframes gwDotBounce { 0%,80%,100%{transform:translateY(0);opacity:.4} 40%{transform:translateY(-5px);opacity:1} }`}</style>
+                      </span>
+                    ) : m.content}
                     {streamingIdx === i && <span style={{ display: 'inline-block', width: 2, height: '1em', background: 'var(--gw-navy)', marginLeft: 2, verticalAlign: 'text-bottom', animation: 'blink .7s step-end infinite' }} />}
                   </div>
                 )

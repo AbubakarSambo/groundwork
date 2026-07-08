@@ -12,6 +12,7 @@ export function ResetPasswordPage() {
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [error, setError] = useState('')
+  const [sent, setSent] = useState(false)
 
   const save = useMutation({
     mutationFn: () => authApi.resetPassword(token, password),
@@ -31,7 +32,22 @@ export function ResetPasswordPage() {
     if (password.length < 8) { setError('Password must be at least 8 characters.'); return }
     if (!/[A-Z]/.test(password) || !/[a-z]/.test(password)) { setError('Password must contain at least 1 uppercase and 1 lowercase letter.'); return }
     if (password !== confirm) { setError('Passwords do not match.'); return }
+    setSent(true)
     save.mutate()
+  }
+
+  if (sent) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
+        <div className="gw-hdr"><a href="https://myground.work" target="_blank" rel="noopener noreferrer" className="gw-logo" style={{ textDecoration: 'none', color: 'inherit' }}>Groundwork</a></div>
+        <div className="gw-bd" style={{ maxWidth: 420, margin: '0 auto', width: '100%', paddingTop: 32 }}>
+          <div className="gw-ttl">Check your inbox</div>
+          <div style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.7, marginTop: 8 }}>
+            We've sent a reset link to your email. Check your inbox and follow the link to set a new password.
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (

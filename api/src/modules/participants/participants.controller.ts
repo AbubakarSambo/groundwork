@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Patch, Param, Query, Body } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsOptional, MaxLength } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, MaxLength, Length } from 'class-validator';
 import { ParticipantsService } from './participants.service';
 import { Public, CurrentUser } from '../../common';
 
@@ -18,6 +18,13 @@ class AcceptInviteDto {
   @IsString()
   @MaxLength(100)
   lastName?: string;
+}
+
+class UpdateRoleDto {
+  @IsString()
+  @IsNotEmpty()
+  @Length(1, 200)
+  roleAsDescribed: string;
 }
 
 class SaveIntakeDto {
@@ -52,6 +59,17 @@ export class ParticipantsController {
   @ApiOperation({ summary: 'Accept an invite — returns an auth token and the check-in to enter' })
   async accept(@Body() dto: AcceptInviteDto) {
     return this.participants.accept(dto.token, { firstName: dto.firstName, lastName: dto.lastName });
+  }
+
+  @ApiBearerAuth()
+  @Patch(':id')
+  @ApiOperation({ summary: 'Update a participant role label (owner or initiator scoped)' })
+  async updateRole(
+    @Param('id') id: string,
+    @Body() dto: UpdateRoleDto,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.participants.updateRole(id, userId, dto.roleAsDescribed);
   }
 
   @ApiBearerAuth()
