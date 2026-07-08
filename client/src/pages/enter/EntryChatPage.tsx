@@ -60,18 +60,12 @@ export function hasPendingEntry(): boolean {
 const ONBOARDING_STEPS = 7
 
 const SESSION_END_PATTERNS = [
-  'here is what is now in your record',
-  'now in your record from today',
-  'your record from today',
-  'come back when',
-  'the record is here and',
-  'your record is here',
-  'next step options',
-  'here is what is now in the record',
-  'option to not have',
-  'your record is saved as is',
-  'cannot be verified from this account',
-  'your contribution is saved',
+  'your check-in is complete',
+  'your session is complete',
+  'your contribution is now on record',
+  'that is now on record',
+  'i have enough to work with',
+  'your check-in is recorded',
 ]
 
 
@@ -141,6 +135,8 @@ export function EntryChatPage() {
 
   // Situation cards shown before user types first message
   const [pickedSituation, setPickedSituation] = useState<string | null>(null)
+  // Once the user dismisses the natural-close banner, never re-show it
+  const [endPromptDismissed, setEndPromptDismissed] = useState(false)
 
   // Onboarding state
   const defaultSels: OnboardingSelections = { mode: urlMode || 'new', initial: urlInitial || '' }
@@ -316,7 +312,8 @@ export function EntryChatPage() {
       }], scenario || undefined, groundName || undefined)
     },
     onSuccess: (res) => {
-      const h: Turn[] = [{ role: 'assistant', content: res.reply }]
+      const transition: Turn = { role: 'assistant', content: 'Good, I have what I need. Now let me ask you about your side of this.' }
+      const h: Turn[] = [transition, { role: 'assistant', content: res.reply }]
       setHistory(h)
       setDisplayedHistory(h)
       setPhase('checkin')
@@ -334,7 +331,7 @@ export function EntryChatPage() {
       setLoading(false)
       const replyLower = res.reply.toLowerCase()
       const isNaturalClose = SESSION_END_PATTERNS.some(p => replyLower.includes(p))
-      if (isNaturalClose && !closed) {
+      if (isNaturalClose && !closed && !endPromptDismissed) {
         setShowEndPrompt(true)
       }
       persistCheckin(updated)
@@ -976,7 +973,7 @@ export function EntryChatPage() {
                   This session has reached a natural close. Would you like to end and see your report?
                 </div>
                 <button
-                  onClick={() => setShowEndPrompt(false)}
+                  onClick={() => { setShowEndPrompt(false); setEndPromptDismissed(true) }}
                   style={{ padding: '7px 12px', borderRadius: 6, background: 'none', border: '1px solid var(--gw-border)', color: 'var(--gw-sub)', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}
                 >
                   Keep going
@@ -1323,10 +1320,18 @@ export function EntryChatPage() {
             </div>
 
             {/* Invite contributors — before create account */}
+            {(() => {
+              const s = onboardingSelections.classifiedScenario || onboardingSelections.mode || scenario || pickedSituation || ''
+              const isSensitive = ['PIP', 'DRIFT', 'REALIGN_TEAM', 'Running a PIP', 'Team member not delivering', 'Cofounder or partner dispute'].some(k => s.includes(k))
+              const inviteHeading = isSensitive ? 'Let them share their side' : 'Invite contributors'
+              const inviteSubtext = isSensitive
+                ? 'Send them a link so they can share their account independently. They cannot see what you wrote. When both sides are in, the report shows where you agree and where the conversation still needs to happen.'
+                : 'Each person checks in independently. Nobody reads anyone else\'s words directly. When all accounts are in, the report shows where everyone agrees, where they differ, and what the gap means.'
+              return (
             <div style={{ borderBottom: '1px solid #E2E0DB', marginBottom: 16, paddingBottom: 16 }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 4 }}>Invite contributors</div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 4 }}>{inviteHeading}</div>
               <div style={{ fontSize: 12, color: '#9B9590', lineHeight: 1.55, marginBottom: 10 }}>
-                Each person checks in independently and adds their own contribution to this ground's record. Nobody reads anyone else's words directly. When all accounts are in, the report shows where everyone agrees, where they differ, and what the gap means.
+                {inviteSubtext}
               </div>
               {(() => {
                 const s = onboardingSelections.classifiedScenario || onboardingSelections.mode || scenario
@@ -1438,28 +1443,35 @@ export function EntryChatPage() {
                 </>
               )}
             </div>
+              )
+            })()}
 
-            {/* Create account — after invite so ground is fully configured first */}
-            {!emailSent ? (
+            {/* Create account — shown only once report is ready or not generating */}
+            {generatingReport && !sessionReport && (
+              <div style={{ fontSize: 13, color: '#6B6560', textAlign: 'center', padding: '12px 0', marginBottom: 8 }}>
+                Preparing your report before we set up your account…
+              </div>
+            )}
+            {(!generatingReport || sessionReport) && !emailSent ? (
               <div style={{ marginBottom: 16 }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 4 }}>Create your account</div>
-                <div style={{ fontSize: 12, color: '#9B9590', marginBottom: 8, lineHeight: 1.5 }}>Enter your email to save this ground and send invites. You will receive the report when it is ready. You can add more contributors any time after.</div>
+                <div style={{ fontSize: 12, color: '#9B9590', marginBottom: 8, lineHeight: 1.5 }}>Enter your email to save this and send invites. You will get the report as soon as the other side checks in.</div>
                 <input type="email" placeholder="you@company.com" value={email} onChange={e => { setEmail(e.target.value); setEmailError('') }}
                   onKeyDown={e => e.key === 'Enter' && handleSave()}
                   style={{ width: '100%', padding: '11px 13px', borderRadius: 8, border: '1px solid #E2E0DB', fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8, outline: 'none' }}
                 />
                 {emailError && <div style={{ fontSize: 12, color: '#791F1F', marginBottom: 6 }}>{emailError}</div>}
-                <button onClick={handleSave} style={{ width: '100%', padding: '12px 16px', borderRadius: 8, background: '#0C447C', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
+                <button onClick={handleSave} disabled={generatingReport && !sessionReport} style={{ width: '100%', padding: '12px 16px', borderRadius: 8, background: '#0C447C', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: generatingReport && !sessionReport ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: generatingReport && !sessionReport ? 0.5 : 1 }}>
                   Create account →
                 </button>
               </div>
-            ) : (
+            ) : emailSent ? (
               <div style={{ textAlign: 'center', padding: '10px 0', marginBottom: 16 }}>
                 <div style={{ fontSize: 22, marginBottom: 6 }}>✓</div>
                 <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>Check your email</div>
                 <div style={{ fontSize: 13, color: '#6B6560', lineHeight: 1.6 }}>We sent a link to <strong>{email}</strong>. Click it to finish setting up your account and set a password.</div>
               </div>
-            )}
+            ) : null}
 
             <div onClick={() => setShowSave(false)} style={{ textAlign: 'center', fontSize: 12, color: '#9B9590', cursor: 'pointer', paddingTop: 4 }}>
               {closed ? 'Close (you can reopen this from the bar below)' : 'Later'}

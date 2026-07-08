@@ -256,6 +256,20 @@ export class AuthService {
 
       await this.emailService.sendMagicLinkEmail(lower, firstName, result.token);
     } else {
+      // If a fresh unused token was created in the last 60 seconds, reuse it to prevent
+      // double-tap from invalidating a link the user has not yet clicked.
+      const recentToken = await this.prisma.emailVerificationToken.findFirst({
+        where: {
+          userId: user.id,
+          type: TokenType.EMAIL_VERIFICATION,
+          usedAt: null,
+          createdAt: { gte: new Date(Date.now() - 60 * 1000) },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+      if (recentToken) {
+        return { message, email: lower };
+      }
       await this.prisma.emailVerificationToken.updateMany({
         where: { userId: user.id, type: TokenType.EMAIL_VERIFICATION, usedAt: null },
         data: { usedAt: new Date() },
