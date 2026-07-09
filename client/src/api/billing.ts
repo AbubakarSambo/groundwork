@@ -27,6 +27,32 @@ export interface CanCreateGroundResult {
   codeId?: string
 }
 
+export type SubscriptionPlan = 'STARTER' | 'SMALL_TEAM' | 'GROWTH' | 'BUSINESS' | 'ENTERPRISE'
+
+export const PLAN_LABELS: Record<SubscriptionPlan, string> = {
+  STARTER: 'Starter',
+  SMALL_TEAM: 'Small Team',
+  GROWTH: 'Growth',
+  BUSINESS: 'Business',
+  ENTERPRISE: 'Enterprise',
+}
+
+export const PLAN_PRICES: Record<SubscriptionPlan, string> = {
+  STARTER: '$15/mo',
+  SMALL_TEAM: '$35/mo',
+  GROWTH: '$100/mo',
+  BUSINESS: '$250/mo',
+  ENTERPRISE: 'Contact us',
+}
+
+export const PLAN_MEMBER_CAPS: Record<SubscriptionPlan, string> = {
+  STARTER: 'Up to 5 members',
+  SMALL_TEAM: 'Up to 20 members',
+  GROWTH: 'Up to 100 members',
+  BUSINESS: 'Up to 500 members',
+  ENTERPRISE: 'Unlimited',
+}
+
 export interface CodeShareCard {
   code: string
   expiresAt: string
@@ -42,8 +68,20 @@ export const billingApi = {
   portal: () =>
     apiClient.post<{ portalUrl: string }>('/billing/portal').then(r => r.data),
 
+  claimFreeExtension: (groundId: string) =>
+    apiClient.post('/billing/free-extension', { groundId }).then(r => r.data),
+
+  createSubscription: (plan: SubscriptionPlan) =>
+    apiClient.post<{ checkoutUrl: string }>('/billing/subscription', { plan }).then(r => r.data),
+
   cancelSubscription: () =>
     apiClient.delete('/billing/subscription').then(r => r.data),
+
+  pauseSubscription: () =>
+    apiClient.patch('/billing/subscription/pause').then(r => r.data),
+
+  resumeSubscription: () =>
+    apiClient.patch('/billing/subscription/resume').then(r => r.data),
 
   applyContributorCode: (code: string) =>
     apiClient.post<{ ok: boolean; message: string }>('/billing/contributor-code', { code }).then(r => r.data),

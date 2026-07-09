@@ -237,7 +237,7 @@ export class ConversationService {
             const groundUrl = `${this.config.get<string>('resend.frontendUrl') ?? ''}/grounds/${g.id}`;
             this.email.sendParticipantBlockedNudge(initiatorEmail, g.label, participantEmail, groundUrl).catch(() => undefined);
           }).catch(() => undefined);
-          throw new ForbiddenException(gate.reason);
+          throw new ForbiddenException({ message: gate.reason, freeExtensionAvailable: gate.freeExtensionAvailable ?? false });
         }
         // Atomic check-and-decrement: only succeeds when balance is still > 0,
         // preventing two concurrent requests from both passing canStartSession and
