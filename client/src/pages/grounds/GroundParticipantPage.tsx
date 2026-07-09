@@ -81,7 +81,7 @@ export function GroundParticipantPage() {
   const qc = useQueryClient()
   const [tab, setTab] = useState<Tab>('checkin')
   const [showPaywall, setShowPaywall] = useState(false)
-  const [paywallReason, setPaywallReason] = useState<string | undefined>(undefined)
+  const [paywallFreeExtensionAvailable, setPaywallFreeExtensionAvailable] = useState(false)
   const [paywallCode, setPaywallCode] = useState('')
   const [paywallCodeMsg, setPaywallCodeMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const [showShareConfirm, setShowShareConfirm] = useState(false)
@@ -144,13 +144,13 @@ export function GroundParticipantPage() {
         {},
         { validateStatus: () => true }
       )
-      if (res.status === 403) return { blocked: true, checkIn, reason: res.data?.message as string | undefined }
+      if (res.status === 403) return { blocked: true, checkIn, reason: res.data?.message as string | undefined, freeExtensionAvailable: res.data?.freeExtensionAvailable as boolean | undefined }
       if (res.status !== 200 && res.status !== 201) throw new Error(res.data?.message ?? 'Could not start session.')
-      return { blocked: false, checkIn, reason: undefined }
+      return { blocked: false, checkIn, reason: undefined, freeExtensionAvailable: undefined }
     },
-    onSuccess: ({ blocked, checkIn, reason }) => {
+    onSuccess: ({ blocked, checkIn, freeExtensionAvailable }) => {
       if (blocked) {
-        if (reason) setPaywallReason(reason)
+        setPaywallFreeExtensionAvailable(freeExtensionAvailable ?? false)
         setShowPaywall(true)
       } else {
         navigate(`/checkin/${checkIn.id}`, {
@@ -176,6 +176,23 @@ export function GroundParticipantPage() {
 
   const purchaseSessionMut = useMutation({
     mutationFn: () => billingApi.purchaseSession(id!),
+    onSuccess: r => { if (r.checkoutUrl) window.location.href = r.checkoutUrl },
+    onError: () => toast.error('Could not start checkout. Try again.'),
+  })
+
+  const claimFreeExtensionMut = useMutation({
+    mutationFn: () => billingApi.claimFreeExtension(id!),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['ground', id] })
+      setShowPaywall(false)
+      setPaywallFreeExtensionAvailable(false)
+      toast.success('Free session added. You can now start your session.')
+    },
+    onError: () => toast.error('Could not claim free session. Try again.'),
+  })
+
+  const createSubscriptionMut = useMutation({
+    mutationFn: (plan: string) => billingApi.createSubscription(plan as any),
     onSuccess: r => { if (r.checkoutUrl) window.location.href = r.checkoutUrl },
     onError: () => toast.error('Could not start checkout. Try again.'),
   })
@@ -884,66 +901,107 @@ export function GroundParticipantPage() {
       {/* Paywall overlay */}
       {showPaywall && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.55)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px' }}>
-          <div style={{ background: 'white', borderRadius: 12, padding: 24, maxWidth: 380, width: '100%' }}>
+          <div style={{ background: 'white', borderRadius: 12, padding: 24, maxWidth: 400, width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
+
             {myParticipant?.partyType === 'INITIATOR' ? (
               <>
-                <div style={{ fontSize: 16, fontWeight: 800, color: '#0A1628', marginBottom: 8 }}>No sessions remaining</div>
-                <div style={{ fontSize: 13, color: '#6B6560', marginBottom: 14, lineHeight: 1.6 }}>
-                  {paywallReason ?? 'No sessions remaining on this ground.'}
+                <div style={{ fontSize: 16, fontWeight: 800, color: '#0A1628', marginBottom: 4 }}>Your session is complete.</div>
+                <div style={{ fontSize: 13, color: '#6B6560', marginBottom: 20, lineHeight: 1.6 }}>
+                  Did Groundwork help your team move forward? Choose what works best for you.
                 </div>
-                <button
-                  onClick={() => purchaseSessionMut.mutate()}
-                  disabled={purchaseSessionMut.isPending}
-                  style={{ width: '100%', padding: '12px', borderRadius: 8, background: '#0A1628', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: purchaseSessionMut.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: purchaseSessionMut.isPending ? 0.7 : 1, marginBottom: 14 }}
-                >
-                  {purchaseSessionMut.isPending ? 'Redirecting...' : 'Add a session ($5)'}
-                </button>
+
+                {/* Tier 1: Free extension */}
+                {paywallFreeExtensionAvailable && (
+                  <div style={{ border: '1px solid #B6E8D4', borderRadius: 10, padding: '14px 16px', marginBottom: 12, background: '#F0FAF5' }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: '#085041', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 6 }}>Add one more free session</div>
+                    <div style={{ fontSize: 13, color: '#1A1916', lineHeight: 1.6, marginBottom: 12 }}>
+                      Not ready to pay yet? Keep using Groundwork until you are confident it is delivering value. Add another free session and continue your Ground.
+                    </div>
+                    <button
+                      onClick={() => claimFreeExtensionMut.mutate()}
+                      disabled={claimFreeExtensionMut.isPending}
+                      style={{ width: '100%', padding: '10px', borderRadius: 7, background: '#085041', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: claimFreeExtensionMut.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: claimFreeExtensionMut.isPending ? 0.7 : 1 }}
+                    >
+                      {claimFreeExtensionMut.isPending ? 'Adding...' : 'Continue for free'}
+                    </button>
+                  </div>
+                )}
+
+                {/* Tier 2: Buy session */}
+                <div style={{ border: '1px solid #E2E0DB', borderRadius: 10, padding: '14px 16px', marginBottom: 12 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#0C447C', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 6 }}>Buy sessions</div>
+                  <div style={{ fontSize: 13, color: '#1A1916', lineHeight: 1.6, marginBottom: 12 }}>
+                    Groundwork helping your team? Continue this Ground with additional sessions whenever you need them. Pay only because you have experienced the value, not because a trial expired.
+                  </div>
+                  <button
+                    onClick={() => purchaseSessionMut.mutate()}
+                    disabled={purchaseSessionMut.isPending}
+                    style={{ width: '100%', padding: '10px', borderRadius: 7, background: '#0A1628', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: purchaseSessionMut.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: purchaseSessionMut.isPending ? 0.7 : 1 }}
+                  >
+                    {purchaseSessionMut.isPending ? 'Redirecting...' : 'Buy a session ($5)'}
+                  </button>
+                </div>
+
+                {/* Tier 3: Upgrade org */}
+                <div style={{ border: '1px solid #E2E0DB', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#6B4FA0', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 6 }}>Upgrade organization</div>
+                  <div style={{ fontSize: 13, color: '#1A1916', lineHeight: 1.6, marginBottom: 12 }}>
+                    Your team is getting value from Groundwork. Unlock unlimited Grounds and unlimited sessions for everyone in your organization with one simple monthly subscription.
+                  </div>
+                  <button
+                    onClick={() => createSubscriptionMut.mutate('STARTER')}
+                    disabled={createSubscriptionMut.isPending}
+                    style={{ width: '100%', padding: '10px', borderRadius: 7, background: '#6B4FA0', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: createSubscriptionMut.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: createSubscriptionMut.isPending ? 0.7 : 1, marginBottom: 8 }}
+                  >
+                    {createSubscriptionMut.isPending ? 'Redirecting...' : 'Upgrade organization'}
+                  </button>
+                  <button
+                    onClick={() => navigate('/pricing')}
+                    style={{ width: '100%', padding: '8px', borderRadius: 7, background: 'none', color: '#6B4FA0', fontSize: 12, fontWeight: 600, border: '1px solid #D4C8EC', cursor: 'pointer', fontFamily: 'inherit' }}
+                  >
+                    View all plans
+                  </button>
+                </div>
               </>
             ) : (
               <>
                 <div style={{ fontSize: 16, fontWeight: 800, color: '#0A1628', marginBottom: 8 }}>Session needed to continue</div>
                 <div style={{ background: '#F5F3EF', borderRadius: 8, padding: '12px 14px', marginBottom: 14, fontSize: 13, color: '#4A4540', lineHeight: 1.6 }}>
-                  This ground needs a new session to continue. The ground initiator will need to add one before you can check in.
+                  Your initiator has been notified. Once they add a session, you will be able to check in.
                 </div>
               </>
             )}
 
+            {/* Contributor code */}
             <div style={{ borderTop: '1px solid #E2E0DB', paddingTop: 14 }}>
-              <button
-                onClick={() => setShowPaywall(false)}
-                style={{ background: 'none', border: 'none', fontSize: 12, color: '#9B9590', cursor: 'pointer', fontFamily: 'inherit', padding: 0, marginBottom: 10 }}
-              >
-                Cancel
-              </button>
-              <div style={{ marginTop: 4 }}>
-                <button
-                  onClick={() => {}}
-                  style={{ background: 'none', border: 'none', fontSize: 12, color: '#9B9590', cursor: 'pointer', fontFamily: 'inherit', padding: 0, textDecoration: 'underline' }}
-                  aria-label="toggle contributor code"
-                >
-                  Have a contributor code?
-                </button>
-              </div>
-              <div style={{ marginTop: 10 }}>
+              <div style={{ fontSize: 12, color: '#9B9590', marginBottom: 8 }}>Have a contributor code?</div>
+              <div style={{ display: 'flex', gap: 8 }}>
                 <input
                   type="text"
                   value={paywallCode}
                   onChange={e => { setPaywallCode(e.target.value); setPaywallCodeMsg(null) }}
                   placeholder="Enter code"
-                  style={{ width: '100%', padding: '9px 11px', fontSize: 13, fontFamily: 'inherit', border: `1px solid ${paywallCodeMsg && !paywallCodeMsg.ok ? '#c0392b' : '#E2E0DB'}`, borderRadius: 7, background: '#F5F3EF', color: '#0A1628', outline: 'none', boxSizing: 'border-box', marginBottom: 8 }}
+                  style={{ flex: 1, padding: '9px 11px', fontSize: 13, fontFamily: 'inherit', border: `1px solid ${paywallCodeMsg && !paywallCodeMsg.ok ? '#c0392b' : '#E2E0DB'}`, borderRadius: 7, background: '#F5F3EF', color: '#0A1628', outline: 'none' }}
                 />
-                {paywallCodeMsg && (
-                  <div style={{ fontSize: 12, color: paywallCodeMsg.ok ? '#085041' : '#c0392b', marginBottom: 8 }}>{paywallCodeMsg.text}</div>
-                )}
                 <button
                   onClick={() => redeemPaywallCode.mutate()}
                   disabled={!paywallCode.trim() || redeemPaywallCode.isPending}
-                  style={{ width: '100%', padding: '9px', borderRadius: 7, background: '#0C447C', color: 'white', fontSize: 13, fontWeight: 600, border: 'none', cursor: !paywallCode.trim() ? 'not-allowed' : 'pointer', opacity: !paywallCode.trim() ? 0.45 : 1, fontFamily: 'inherit' }}
+                  style={{ padding: '9px 14px', borderRadius: 7, background: '#0C447C', color: 'white', fontSize: 13, fontWeight: 600, border: 'none', cursor: !paywallCode.trim() ? 'not-allowed' : 'pointer', opacity: !paywallCode.trim() ? 0.45 : 1, fontFamily: 'inherit', whiteSpace: 'nowrap' }}
                 >
                   {redeemPaywallCode.isPending ? 'Checking...' : 'Apply'}
                 </button>
               </div>
+              {paywallCodeMsg && (
+                <div style={{ fontSize: 12, color: paywallCodeMsg.ok ? '#085041' : '#c0392b', marginTop: 6 }}>{paywallCodeMsg.text}</div>
+              )}
             </div>
+
+            <button
+              onClick={() => setShowPaywall(false)}
+              style={{ marginTop: 14, background: 'none', border: 'none', fontSize: 12, color: '#9B9590', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}
+            >
+              Not now
+            </button>
           </div>
         </div>
       )}
