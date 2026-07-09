@@ -832,11 +832,22 @@ export class BillingService {
       usageByFreeReason[key] = (usageByFreeReason[key] ?? 0) + 1;
     }
 
+    const [subscribedOrgsCount, sessionBalanceAgg] = await Promise.all([
+      this.prisma.organization.count({
+        where: { subscriptionStatus: 'active' },
+      }),
+      this.prisma.ground.aggregate({
+        _sum: { sessionsBalance: true },
+      }),
+    ]);
+
     const now = new Date();
     return {
       totalCodes: codes.length,
       totalRedemptions: allRedemptions.length,
       usageByFreeReason,
+      totalSubscribedOrgs: subscribedOrgsCount,
+      totalSessionsBalance: sessionBalanceAgg._sum.sessionsBalance ?? 0,
       codes: codes.map((c) => ({
         id: c.id,
         code: c.code,

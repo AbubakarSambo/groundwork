@@ -32,6 +32,8 @@ interface AdminOverview {
   totalGrounds: number
   totalCodes: number
   totalRedemptions: number
+  totalSubscribedOrgs?: number
+  totalSessionsBalance?: number
 }
 
 interface AdminCode {
@@ -236,6 +238,12 @@ function OverviewSection({ overview }: { overview: AdminOverview }) {
         <Stat val={overview.totalGrounds} label="Total grounds" />
         <Stat val={overview.totalCodes} label="Access codes" accent />
         <Stat val={overview.totalRedemptions} label="Redemptions" />
+        {overview.totalSubscribedOrgs !== undefined && (
+          <Stat val={overview.totalSubscribedOrgs} label="Subscribed orgs" accent />
+        )}
+        {overview.totalSessionsBalance !== undefined && (
+          <Stat val={overview.totalSessionsBalance} label="Sessions in balance" />
+        )}
       </div>
     </section>
   )

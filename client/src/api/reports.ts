@@ -19,4 +19,7 @@ export const reportsApi = {
 
   activationStatus: (groundId: string) =>
     apiClient.get<ActivationStatus>(`/grounds/${groundId}/report/activation-status`).then(r => r.data),
+
+  startClarification: (groundId: string, inferenceId: string) =>
+    apiClient.post<{ checkInId: string }>(`/grounds/${groundId}/clarify`, { inferenceId }).then(r => r.data),
 }

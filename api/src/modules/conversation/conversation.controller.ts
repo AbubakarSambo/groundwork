@@ -83,3 +83,21 @@ export class ConversationController {
     return this.remind.sendReminder(checkInId, userId);
   }
 }
+
+@ApiTags('Clarification')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
+@Controller('grounds')
+export class ClarificationController {
+  constructor(private readonly conversation: ConversationService) {}
+
+  @Post(':groundId/clarify')
+  @ApiOperation({ summary: 'Start a clarification session to correct a specific inference in the report' })
+  async startClarification(
+    @Param('groundId') groundId: string,
+    @Body() body: { inferenceId: string },
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.conversation.startClarificationSession(userId, groundId, body.inferenceId);
+  }
+}

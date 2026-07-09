@@ -1260,7 +1260,9 @@ Do not use a thin or absent record to imply evasion. Note it factually.`;
 // Record extraction — pulls structured entries from one party's transcript.
 // ---------------------------------------------------------------------------
 
-export const RECORD_EXTRACTION_PROMPT = `You are extracting structured record entries from ONE party's check-in transcript. Use the person's own words wherever possible — quote, do not paraphrase. Only extract what they actually said; never infer, soften, or invent. If something was not said, do not record it.
+export const RECORD_EXTRACTION_PROMPT = `You are extracting structured record entries from ONE party's check-in transcript. Use the person's own words wherever possible — quote, do not paraphrase.
+
+INFERENCE RULE: If a claim is directly stated, record it as-is. If you must make a reasonable inference to complete the picture (e.g. the person's words imply something they did not state explicitly), you MAY include it — but you MUST mark it with [INFERRED: <brief reason>] appended to the text. Example: "They took full ownership of the client relationship [INFERRED: implied by 'I handled everything on that account']". If something was not said and cannot reasonably be inferred, do not record it at all.
 
 Classify each entry as exactly one of:
 - SUCCESS_DEFINITION — what they said success / "done" looks like
@@ -2055,8 +2057,22 @@ export const NEW_STARTING_REPORT_SCHEMA = {
         },
         description: "Each party's exact words for what success looks like — quote verbatim where the record permits.",
       },
+      inferences: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', description: 'A short unique slug for this inference (e.g. "initiator-ownership-1").' },
+            text: { type: 'string', description: 'The inferred statement as it appears in the report.' },
+            participantLabel: { type: 'string', description: 'The party label this inference is about.' },
+            reason: { type: 'string', description: 'Brief explanation of why this was inferred rather than directly quoted.' },
+          },
+          required: ['id', 'text', 'participantLabel', 'reason'],
+        },
+        description: 'Claims in this report that were inferred from context rather than directly stated. Empty array if everything is directly quoted.',
+      },
     },
-    required: ['sharedPicture', 'agreements', 'divergences', 'centralQuestion', 'successDefinitions'],
+    required: ['sharedPicture', 'agreements', 'divergences', 'centralQuestion', 'successDefinitions', 'inferences'],
   },
 };
 
@@ -2107,8 +2123,22 @@ export const RECOGNITION_REPORT_SCHEMA = {
         required: ['ask', 'recordEvidence', 'gap'],
         description: 'Comparison of the explicit ask against what the record actually evidences.',
       },
+      inferences: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', description: 'A short unique slug for this inference.' },
+            text: { type: 'string', description: 'The inferred statement as it appears in the report.' },
+            participantLabel: { type: 'string', description: 'The party label this inference is about.' },
+            reason: { type: 'string', description: 'Brief explanation of why this was inferred rather than directly quoted.' },
+          },
+          required: ['id', 'text', 'participantLabel', 'reason'],
+        },
+        description: 'Claims in this report that were inferred from context rather than directly stated. Empty array if everything is directly quoted.',
+      },
     },
-    required: ['sharedPicture', 'agreements', 'divergences', 'centralQuestion', 'askVsRecord'],
+    required: ['sharedPicture', 'agreements', 'divergences', 'centralQuestion', 'askVsRecord', 'inferences'],
   },
 };
 
@@ -2164,8 +2194,22 @@ export const DRIFT_REPORT_SCHEMA = {
         required: ['agreedAtStart', 'whatRecordShows', 'gapDescription', 'structuralCause'],
         description: 'A structured trace of how the drift developed from the original agreement to the current state.',
       },
+      inferences: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', description: 'A short unique slug for this inference.' },
+            text: { type: 'string', description: 'The inferred statement as it appears in the report.' },
+            participantLabel: { type: 'string', description: 'The party label this inference is about.' },
+            reason: { type: 'string', description: 'Brief explanation of why this was inferred rather than directly quoted.' },
+          },
+          required: ['id', 'text', 'participantLabel', 'reason'],
+        },
+        description: 'Claims in this report that were inferred from context rather than directly stated. Empty array if everything is directly quoted.',
+      },
     },
-    required: ['sharedPicture', 'agreements', 'divergences', 'centralQuestion', 'driftTrace'],
+    required: ['sharedPicture', 'agreements', 'divergences', 'centralQuestion', 'driftTrace', 'inferences'],
   },
 };
 

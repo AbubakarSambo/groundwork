@@ -12,7 +12,7 @@ import type { ParticipantRequest } from '@/api/participantRequests'
 import { toast } from 'sonner'
 import { CodeShareCard } from '@/components/CodeShareCard'
 import { PostSessionPanel } from '@/components/PostSessionPanel'
-import { billingApi } from '@/api/billing'
+import { billingApi, PLAN_MEMBER_LIMITS, type SubscriptionPlan } from '@/api/billing'
 
 const SCENARIO_LABELS: Record<string, string> = {
   NEW_HIRE: 'New hire',
@@ -464,9 +464,27 @@ export function GroundAdminPage() {
                   </button>
                 </div>
               ) : !addingParticipant ? (
-                <button onClick={() => setAddingParticipant(true)} style={{ width: '100%', padding: '11px 16px', borderRadius: 8, background: 'none', color: 'var(--gw-navy)', fontSize: 13, fontWeight: 600, border: '1px dashed var(--gw-blue-b)', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                  <span style={{ fontSize: 16, fontWeight: 300 }}>+</span> Add a contributor
-                </button>
+                <>
+                  {(() => {
+                    const plan = ground.org?.subscriptionPlan as SubscriptionPlan | null | undefined
+                    const limit = plan ? PLAN_MEMBER_LIMITS[plan] : null
+                    const memberCount = ground.participants?.length ?? 0
+                    if (limit !== null && limit !== undefined && memberCount >= limit) {
+                      return (
+                        <div style={{ background: '#FFF3E0', border: '1px solid #F5C56A', borderRadius: 8, padding: '10px 14px', marginBottom: 10, fontSize: 12, color: '#7A4B00', lineHeight: 1.55 }}>
+                          Your {plan?.replace('_', ' ').toLowerCase()} plan supports up to {limit} members. You have reached the limit. Upgrade your organization to add more contributors.
+                          <button onClick={() => navigate('/billing')} style={{ display: 'inline', marginLeft: 8, background: 'none', border: 'none', fontSize: 12, color: '#7A4B00', textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>
+                            View plans
+                          </button>
+                        </div>
+                      )
+                    }
+                    return null
+                  })()}
+                  <button onClick={() => setAddingParticipant(true)} style={{ width: '100%', padding: '11px 16px', borderRadius: 8, background: 'none', color: 'var(--gw-navy)', fontSize: 13, fontWeight: 600, border: '1px dashed var(--gw-blue-b)', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 16, fontWeight: 300 }}>+</span> Add a contributor
+                  </button>
+                </>
               ) : (
                 <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px' }}>
                   <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Add a contributor</div>
@@ -590,6 +608,11 @@ export function GroundAdminPage() {
                 <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-sub)', textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 8 }}>
                   Report reveal status {activationStatus.allActivated ? '· Both activated' : '· Waiting'}
                 </div>
+                {!activationStatus.allActivated && (
+                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55, marginBottom: 10 }}>
+                    Each party sees their own report privately until they choose to reveal it. When both parties activate, the reports become visible to each other. Each person can do this from their own ground page.
+                  </div>
+                )}
                 <div style={{ display: 'flex', gap: 8 }}>
                   {activationStatus.parties.map((p, i) => (
                     <div key={p.participantId} style={{ flex: 1, padding: '8px 10px', borderRadius: 7, background: p.activated ? 'rgba(8,80,65,0.07)' : 'white', border: `1px solid ${p.activated ? '#085041' : 'var(--gw-border)'}`, textAlign: 'center' }}>
