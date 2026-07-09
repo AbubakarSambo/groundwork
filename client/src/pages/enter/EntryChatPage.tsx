@@ -60,20 +60,53 @@ export function hasPendingEntry(): boolean {
 const ONBOARDING_STEPS = 7
 
 const SESSION_END_PATTERNS = [
-  'here is what is now in your record',
-  'now in your record from today',
-  'your record from today',
-  'come back when',
-  'the record is here and',
-  'your record is here',
-  'next step options',
-  'here is what is now in the record',
-  'option to not have',
-  'your record is saved as is',
-  'cannot be verified from this account',
-  'your contribution is saved',
+  'your check-in is complete',
+  'your session is complete',
+  'your contribution is now on record',
+  'that is now on record',
+  'i have enough to work with',
+  'your check-in is recorded',
 ]
 
+
+const SITUATION_CARDS = [
+  {
+    group: 'positive',
+    label: 'New hire starting',
+    detail: 'Set clear expectations early and make sure both sides are aligned from day one.',
+    message: 'I have a new hire starting and want to make sure we set clear expectations from the beginning.',
+  },
+  {
+    group: 'positive',
+    label: 'New project kickoff',
+    detail: 'Get the team aligned on goals, roles, and ways of working before work starts.',
+    message: 'We are starting a new project and I want to get the team aligned on goals and roles from the beginning.',
+  },
+  {
+    group: 'positive',
+    label: 'New working arrangement',
+    detail: 'A new partnership, reporting line, or team structure that needs a clear foundation.',
+    message: 'We have a new working arrangement starting and want to make sure we are set up well.',
+  },
+  {
+    group: 'negative',
+    label: 'Team member not delivering',
+    detail: 'Someone is missing deadlines or not meeting expectations and you need to address it.',
+    message: 'A team member is not delivering and I need to address it. I want to make sure I have the full picture before we talk.',
+  },
+  {
+    group: 'negative',
+    label: 'Running a PIP',
+    detail: 'A performance improvement plan is underway and you want both sides on record.',
+    message: 'I am running a performance improvement plan and want both sides to have a fair record of where things stand.',
+  },
+  {
+    group: 'negative',
+    label: 'Cofounder or partner dispute',
+    detail: 'A disagreement about contributions, direction, or equity that needs to be put on record.',
+    message: 'My cofounder and I have a dispute about contributions and direction. I need to get both sides on record.',
+  },
+]
 
 // Quick actions shown after the check-in starts
 const QUICK_ACTIONS = [
@@ -99,6 +132,11 @@ export function EntryChatPage() {
   const [sessionsInput, setSessionsInput] = useState('1')
   const [showSessionsUpgrade, setShowSessionsUpgrade] = useState(false)
   const groundRenameRef = useRef<HTMLInputElement>(null)
+
+  // Situation cards shown before user types first message
+  const [pickedSituation, setPickedSituation] = useState<string | null>(null)
+  // Once the user dismisses the natural-close banner, never re-show it
+  const [endPromptDismissed, setEndPromptDismissed] = useState(false)
 
   // Onboarding state
   const defaultSels: OnboardingSelections = { mode: urlMode || 'new', initial: urlInitial || '' }
@@ -274,7 +312,8 @@ export function EntryChatPage() {
       }], scenario || undefined, groundName || undefined)
     },
     onSuccess: (res) => {
-      const h: Turn[] = [{ role: 'assistant', content: res.reply }]
+      const transition: Turn = { role: 'assistant', content: 'Good, I have what I need. Now let me ask you about your side of this.' }
+      const h: Turn[] = [transition, { role: 'assistant', content: res.reply }]
       setHistory(h)
       setDisplayedHistory(h)
       setPhase('checkin')
@@ -292,7 +331,7 @@ export function EntryChatPage() {
       setLoading(false)
       const replyLower = res.reply.toLowerCase()
       const isNaturalClose = SESSION_END_PATTERNS.some(p => replyLower.includes(p))
-      if (isNaturalClose && !closed) {
+      if (isNaturalClose && !closed && !endPromptDismissed) {
         setShowEndPrompt(true)
       }
       persistCheckin(updated)
@@ -411,7 +450,7 @@ export function EntryChatPage() {
   // Kick off the AI onboarding with the intro message on mount (if onboarding history is empty)
   useEffect(() => {
     if (phase !== 'onboarding' || onboardingHistory.length > 0) return
-    const INTRO = `Groundwork builds a picture from what everyone involved has seen, experienced, and agreed. Each person adds their own account. Nobody reads anyone else's words directly. The report shows where accounts agree and where they differ.\n\nWhat kind of situation are we dealing with? It could be something new you are starting, something already underway, something that has already happened, or a regular check-in.`
+    const INTRO = `What brings you here? Pick the situation that fits or describe it below.`
     // If URL params pre-populate, inject as first user message
     if (urlInitial) {
       const preloadedHistory: Turn[] = [
@@ -755,6 +794,52 @@ export function EntryChatPage() {
                 </div>
               ))}
 
+              {/* Situation cards — shown only before user has sent first message */}
+              {onboardingHistory.length === 1 && !onboardingLoading && !pickedSituation && (
+                <div style={{ alignSelf: 'flex-start', width: '100%', maxWidth: '82%' }}>
+                  <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginBottom: 8, fontWeight: 500 }}>Starting something new</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
+                    {SITUATION_CARDS.filter(c => c.group === 'positive').map(card => (
+                      <button
+                        key={card.label}
+                        onClick={() => { setPickedSituation(card.label); sendOnboarding(card.message) }}
+                        style={{
+                          textAlign: 'left', padding: '10px 13px', borderRadius: 10,
+                          border: '1px solid var(--gw-border)', background: 'white',
+                          cursor: 'pointer', fontFamily: 'inherit',
+                        }}
+                      >
+                        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)', marginBottom: 2 }}>{card.label}</div>
+                        <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>{card.detail}</div>
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginBottom: 8, fontWeight: 500 }}>Something that needs addressing</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {SITUATION_CARDS.filter(c => c.group === 'negative').map(card => (
+                      <button
+                        key={card.label}
+                        onClick={() => { setPickedSituation(card.label); sendOnboarding(card.message) }}
+                        style={{
+                          textAlign: 'left', padding: '10px 13px', borderRadius: 10,
+                          border: '1px solid var(--gw-border)', background: 'white',
+                          cursor: 'pointer', fontFamily: 'inherit',
+                        }}
+                      >
+                        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)', marginBottom: 2 }}>{card.label}</div>
+                        <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>{card.detail}</div>
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    onClick={() => setPickedSituation('other')}
+                    style={{ marginTop: 12, background: 'none', border: 'none', fontSize: 12, color: 'var(--gw-sub)', cursor: 'pointer', padding: 0, fontFamily: 'inherit', textDecoration: 'underline', alignSelf: 'flex-start' }}
+                  >
+                    My situation is different — I will describe it
+                  </button>
+                </div>
+              )}
+
               {onboardingLoading && (
                 <div style={{
                   maxWidth: '82%', alignSelf: 'flex-start', background: 'white', color: 'var(--gw-text)',
@@ -799,8 +884,8 @@ export function EntryChatPage() {
               )}
             </div>
 
-            {/* Text input for onboarding — hidden once ready or loading checkin */}
-            {!startCheckin.isPending && !onboardingReady && (
+            {/* Text input for onboarding — hidden once ready, loading checkin, or cards not yet dismissed */}
+            {!startCheckin.isPending && !onboardingReady && !(onboardingHistory.length === 1 && !pickedSituation) && (
               <div style={{ borderTop: '1px solid var(--gw-border)', background: 'white', flexShrink: 0 }}>
                 <div style={{ padding: '10px 16px' }}>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center', maxWidth: 680, margin: '0 auto' }}>
@@ -888,7 +973,7 @@ export function EntryChatPage() {
                   This session has reached a natural close. Would you like to end and see your report?
                 </div>
                 <button
-                  onClick={() => setShowEndPrompt(false)}
+                  onClick={() => { setShowEndPrompt(false); setEndPromptDismissed(true) }}
                   style={{ padding: '7px 12px', borderRadius: 6, background: 'none', border: '1px solid var(--gw-border)', color: 'var(--gw-sub)', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}
                 >
                   Keep going
@@ -1168,12 +1253,55 @@ export function EntryChatPage() {
               </>
             )}
 
-            {/* Divider */}
+            {/* What happens next — shown after report is ready, before signup */}
+            {(sessionReport || (!generatingReport && closed)) && !emailSent && (
+              <div style={{ background: '#F0F4FA', borderRadius: 10, padding: '14px 16px', marginBottom: 18 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: '#0C447C', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '.06em' }}>What happens next</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {[
+                    'Save your email below to keep access to this report.',
+                    'Share the link with the other person so they can add their side.',
+                    'Once they check in, you both receive the shared report at the same time. It shows where you agree and where the conversation still needs to happen.',
+                  ].map((step, i) => (
+                    <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                      <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#0C447C', color: 'white', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>{i + 1}</div>
+                      <div style={{ fontSize: 13, color: '#1A1916', lineHeight: 1.55 }}>{step}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Create account — right after the report, before all admin */}
+            {!emailSent ? (
+              <div style={{ marginBottom: 20 }}>
+                <input type="email" placeholder="your@email.com" value={email} onChange={e => { setEmail(e.target.value); setEmailError('') }}
+                  onKeyDown={e => e.key === 'Enter' && handleSave()}
+                  style={{ width: '100%', padding: '11px 13px', borderRadius: 8, border: `1px solid ${emailError ? '#C0392B' : '#E2E0DB'}`, fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8, outline: 'none' }}
+                />
+                {emailError && <div style={{ fontSize: 12, color: '#791F1F', marginBottom: 6 }}>{emailError}</div>}
+                <button onClick={handleSave} disabled={generatingReport && !sessionReport} style={{ width: '100%', padding: '12px 16px', borderRadius: 8, background: '#0C447C', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: generatingReport && !sessionReport ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: generatingReport && !sessionReport ? 0.5 : 1 }}>
+                  Save my report and invite them →
+                </button>
+                <div onClick={() => setShowSave(false)} style={{ textAlign: 'center', fontSize: 12, color: '#9B9590', cursor: 'pointer', paddingTop: 10 }}>
+                  Not now
+                </div>
+              </div>
+            ) : (
+              <div style={{ background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 10, padding: '14px 16px', marginBottom: 20 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#085041', marginBottom: 4 }}>Check your email</div>
+                <div style={{ fontSize: 13, color: '#085041', lineHeight: 1.6 }}>We sent a link to <strong>{email}</strong>. Click it to finish setting up and get your invite link.</div>
+              </div>
+            )}
+
+            {/* Admin setup — only shown after email sent */}
+            {emailSent && (
+            <div>
             <div style={{ borderTop: '1px solid #E2E0DB', marginBottom: 18 }} />
 
             {/* Ground + org naming */}
             <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 6 }}>Name this ground</div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 6 }}>Name this situation</div>
               <input
                 type="text" placeholder="e.g. Kwame, first 90 days" value={groundName}
                 onChange={e => setGroundName(e.target.value)}
@@ -1235,10 +1363,18 @@ export function EntryChatPage() {
             </div>
 
             {/* Invite contributors — before create account */}
+            {(() => {
+              const s = onboardingSelections.classifiedScenario || onboardingSelections.mode || scenario || pickedSituation || ''
+              const isSensitive = ['PIP', 'DRIFT', 'REALIGN_TEAM', 'Running a PIP', 'Team member not delivering', 'Cofounder or partner dispute'].some(k => s.includes(k))
+              const inviteHeading = isSensitive ? 'Let them share their side' : 'Invite contributors'
+              const inviteSubtext = isSensitive
+                ? 'Send them a link so they can share their account independently. They cannot see what you wrote. When both sides are in, the report shows where you agree and where the conversation still needs to happen.'
+                : 'Each person checks in independently. Nobody reads anyone else\'s words directly. When all accounts are in, the report shows where everyone agrees, where they differ, and what the gap means.'
+              return (
             <div style={{ borderBottom: '1px solid #E2E0DB', marginBottom: 16, paddingBottom: 16 }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 4 }}>Invite contributors</div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 4 }}>{inviteHeading}</div>
               <div style={{ fontSize: 12, color: '#9B9590', lineHeight: 1.55, marginBottom: 10 }}>
-                Each person checks in independently and adds their own contribution to this ground's record. Nobody reads anyone else's words directly. When all accounts are in, the report shows where everyone agrees, where they differ, and what the gap means.
+                {inviteSubtext}
               </div>
               {(() => {
                 const s = onboardingSelections.classifiedScenario || onboardingSelections.mode || scenario
@@ -1350,27 +1486,10 @@ export function EntryChatPage() {
                 </>
               )}
             </div>
+              )
+            })()}
 
-            {/* Create account — after invite so ground is fully configured first */}
-            {!emailSent ? (
-              <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 4 }}>Create your account</div>
-                <div style={{ fontSize: 12, color: '#9B9590', marginBottom: 8, lineHeight: 1.5 }}>Enter your email to save this ground and send invites. You will receive the report when it is ready. You can add more contributors any time after.</div>
-                <input type="email" placeholder="you@company.com" value={email} onChange={e => { setEmail(e.target.value); setEmailError('') }}
-                  onKeyDown={e => e.key === 'Enter' && handleSave()}
-                  style={{ width: '100%', padding: '11px 13px', borderRadius: 8, border: '1px solid #E2E0DB', fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8, outline: 'none' }}
-                />
-                {emailError && <div style={{ fontSize: 12, color: '#791F1F', marginBottom: 6 }}>{emailError}</div>}
-                <button onClick={handleSave} style={{ width: '100%', padding: '12px 16px', borderRadius: 8, background: '#0C447C', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
-                  Create account →
-                </button>
-              </div>
-            ) : (
-              <div style={{ textAlign: 'center', padding: '10px 0', marginBottom: 16 }}>
-                <div style={{ fontSize: 22, marginBottom: 6 }}>✓</div>
-                <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>Check your email</div>
-                <div style={{ fontSize: 13, color: '#6B6560', lineHeight: 1.6 }}>We sent a link to <strong>{email}</strong>. Click it to finish setting up your account and set a password.</div>
-              </div>
+            </div>
             )}
 
             <div onClick={() => setShowSave(false)} style={{ textAlign: 'center', fontSize: 12, color: '#9B9590', cursor: 'pointer', paddingTop: 4 }}>
