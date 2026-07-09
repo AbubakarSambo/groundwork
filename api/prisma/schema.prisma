@@ -111,9 +111,19 @@ enum Cadence {
 }
 
 enum BillingEventType {
-  CARE_FEE       // $25/month/account (platform fee)
-  PARTICIPANT_FEE // $25/unique participant/month across active grounds
-  SESSION_FEE    // $5 per additional session
+  CARE_FEE         // $25/month/account (platform fee)
+  PARTICIPANT_FEE  // $25/unique participant/month across active grounds
+  SESSION_FEE      // $5 per additional session
+  SUBSCRIPTION_FEE // org subscription (Starter/SmallTeam/Growth/Business/Enterprise)
+  FREE_EXTENSION   // one-time free session extension per org
+}
+
+enum SubscriptionPlan {
+  STARTER     // up to 5 members, $15/mo
+  SMALL_TEAM  // up to 20 members, $35/mo
+  GROWTH      // up to 100 members, $100/mo
+  BUSINESS    // up to 500 members, $250/mo
+  ENTERPRISE  // unlimited, contact support
 }
 
 enum EvidenceType {
@@ -153,9 +163,16 @@ model Organization {
   careFeeSubscriptionId  String?       @map("care_fee_subscription_id")
   defaultPaymentMethodId String?       @map("default_payment_method_id")
   gracePeriodUntil       DateTime?     @map("grace_period_until")
-  freeSessionsUsed  Int  @default(0) @map("free_sessions_used")
-  firstGroundUsed   Boolean @default(false) @map("first_ground_used")
-  allowCodeCreation Boolean @default(false) @map("allow_code_creation")
+  freeSessionsUsed   Int     @default(0)     @map("free_sessions_used")
+  firstGroundUsed    Boolean @default(false) @map("first_ground_used")
+  freeExtensionUsed  Boolean @default(false) @map("free_extension_used")
+  allowCodeCreation  Boolean @default(false) @map("allow_code_creation")
+
+  // Org subscription
+  subscriptionPlan      SubscriptionPlan? @map("subscription_plan")
+  subscriptionStatus    String?           @map("subscription_status") // active | paused | cancelled
+  subscriptionStripeId  String?           @map("subscription_stripe_id")
+  subscriptionPeriodEnd DateTime?         @map("subscription_period_end")
 
   companyStage CompanyStage? @map("company_stage")
 
