@@ -374,7 +374,7 @@ export function EntryChatPage() {
     const newSels = { ...onboardingSelections }
 
     // Party path — show briefing before check-in starts
-    if (buttonChoice === "I am involved. Let's begin." || buttonChoice === "I'm involved — let's begin.") {
+    if (buttonChoice === "I am involved. Let's begin." || buttonChoice === "I'm involved. Let's begin.") {
       setOnboardingStep(ONBOARDING_STEPS + 1)
       persistOnboarding([], newSels, ONBOARDING_STEPS)
       setShowAdminBriefing(true)
@@ -769,6 +769,14 @@ export function EntryChatPage() {
         {/* PHASE: ONBOARDING (AI-driven) */}
         {phase === 'onboarding' && (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+            {/* Product intro — shown once before conversation starts */}
+            {onboardingHistory.length <= 1 && (
+              <div style={{ background: 'var(--gw-blue-bg)', borderBottom: '1px solid var(--gw-blue-b)', padding: '12px 20px', flexShrink: 0 }}>
+                <div style={{ maxWidth: 680, margin: '0 auto', fontSize: 13, color: 'var(--gw-navy)', lineHeight: 1.6 }}>
+                  <strong>Groundwork</strong> builds a private written record of a workplace situation from both sides. Each person checks in independently. The report is released when both are ready. Your contributions are never shown to the other party without your consent.
+                </div>
+              </div>
+            )}
             <div
               ref={msgsRef}
               style={{ flex: 1, overflowY: 'auto', padding: '24px 20px', display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 680, width: '100%', margin: '0 auto', boxSizing: 'border-box' }}
@@ -841,28 +849,36 @@ export function EntryChatPage() {
               )}
 
               {onboardingLoading && (
-                <div style={{
+                <div className="gw-msg-loading" style={{
                   maxWidth: '82%', alignSelf: 'flex-start', background: 'white', color: 'var(--gw-text)',
                   border: '1px solid var(--gw-border)', borderRadius: '4px 16px 16px 16px',
                   padding: '10px 14px', fontSize: 14, lineHeight: 1.65,
-                  boxShadow: '0 1px 3px rgba(0,0,0,.06)', opacity: 0.45,
+                  boxShadow: '0 1px 3px rgba(0,0,0,.06)',
                 }}>
-                  …
+                  <span style={{ marginRight: 6, fontStyle: 'normal', color: 'var(--gw-muted)', fontSize: 11 }}>Thinking</span>
+                  <span className="gw-dot" /><span className="gw-dot" /><span className="gw-dot" />
                 </div>
               )}
 
               {/* Final buttons shown when AI signals ready */}
               {onboardingReady && !onboardingLoading && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxWidth: '82%', alignSelf: 'flex-start', marginTop: 4 }}>
+                  <div style={{
+                    background: 'white', color: 'var(--gw-text)', border: '1px solid var(--gw-border)',
+                    borderRadius: '4px 16px 16px 16px', padding: '10px 14px', fontSize: 14, lineHeight: 1.65,
+                    boxShadow: '0 1px 3px rgba(0,0,0,.06)', marginBottom: 4,
+                  }}>
+                    One last thing. Are you one of the people involved in this, or are you setting this up on their behalf?
+                  </div>
                   <button
-                    onClick={() => advanceOnboarding("I'm involved — let's begin.")}
+                    onClick={() => advanceOnboarding("I'm involved. Let's begin.")}
                     style={{
                       padding: '11px 16px', borderRadius: 10, fontSize: 13, fontWeight: 700,
                       border: '1px solid var(--gw-border)', background: 'white',
                       color: 'var(--gw-text)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
                     }}
                   >
-                    I'm involved — let's begin.
+                    I'm involved. Let's begin.
                   </button>
                   <button
                     onClick={() => advanceOnboarding('Setting this up for others')}

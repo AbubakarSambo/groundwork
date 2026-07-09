@@ -53,6 +53,14 @@ export const PLAN_MEMBER_CAPS: Record<SubscriptionPlan, string> = {
   ENTERPRISE: 'Unlimited',
 }
 
+export const PLAN_MEMBER_LIMITS: Record<SubscriptionPlan, number | null> = {
+  STARTER: 5,
+  SMALL_TEAM: 20,
+  GROWTH: 100,
+  BUSINESS: 500,
+  ENTERPRISE: null,
+}
+
 export interface CodeShareCard {
   code: string
   expiresAt: string

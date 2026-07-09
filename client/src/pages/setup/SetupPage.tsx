@@ -110,7 +110,8 @@ export function SetupPage() {
 
       <div className="gw-bd" style={{ maxWidth: 460, margin: '0 auto', width: '100%' }}>
         <div className="gw-ttl">Set up your org</div>
-        <div className="gw-sub-t" style={{ marginBottom: 24 }}>Takes two minutes. Your team gets invited automatically.</div>
+        <div className="gw-sub-t" style={{ marginBottom: 6 }}>Groundwork runs structured check-ins across your team and surfaces alignment and gaps in a shared report. Set up your org to invite people and start your first session.</div>
+        <div style={{ fontSize: 13, color: 'var(--gw-muted)', marginBottom: 24 }}>Takes two minutes. Your team gets invited automatically.</div>
 
         <div style={{ display: 'flex', gap: 6, marginBottom: 28 }}>
           {stepDot(1)}

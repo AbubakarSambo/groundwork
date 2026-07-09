@@ -38,13 +38,9 @@ export function AuthPage() {
   })
 
   const sendLink = useMutation({
-    mutationFn: () => authApi.memberSignin(email.trim().toLowerCase()),
+    mutationFn: () => authApi.entrySave(email.trim().toLowerCase()),
     onSuccess: () => setLinkSent(true),
-    onError: () => {
-      // memberSignin may fail if the account doesn't exist yet
-      // fall through to show a generic message
-      setLinkSent(true)
-    },
+    onError: () => setLinkSent(true),
   })
 
   const sendReset = useMutation({
@@ -91,10 +87,6 @@ export function AuthPage() {
 
         {view === 'password' && (
           <>
-            <div className="gw-sub-t" style={{ marginBottom: 20 }}>
-              Enter your email and password.
-            </div>
-
             <form onSubmit={submitPassword}>
               <div className="gw-fld">
                 <label className="gw-label">Email</label>
@@ -124,19 +116,19 @@ export function AuthPage() {
               {error && <div className="gw-er" style={{ marginTop: 8 }}>{error}</div>}
             </form>
 
-            <div style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 14, lineHeight: 1.8 }}>
+            <div style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 14, lineHeight: 2 }}>
               <span
                 style={{ color: 'var(--gw-navy)', textDecoration: 'underline', cursor: 'pointer' }}
                 onClick={() => { setError(''); setView('forgot') }}
               >
                 Forgot your password?
               </span>
-              {' · '}
+              <br />
               <span
                 style={{ color: 'var(--gw-navy)', textDecoration: 'underline', cursor: 'pointer' }}
                 onClick={() => { setError(''); setView('link') }}
               >
-                New here or forgot password? Get a link
+                New here? Get a sign-in link instead
               </span>
             </div>
           </>
@@ -145,7 +137,7 @@ export function AuthPage() {
         {view === 'link' && !linkSent && (
           <>
             <div className="gw-sub-t" style={{ marginBottom: 20 }}>
-              Enter your email. We will send you a link — it signs you in or creates an account if you don't have one.
+              Enter your email. We will send you a link. It signs you in, or creates an account if you do not have one.
             </div>
 
             <form onSubmit={submitLink}>
@@ -237,7 +229,7 @@ export function AuthPage() {
             <div style={{ fontSize: 22, marginBottom: 8 }}>✓</div>
             <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 6 }}>Check your email</div>
             <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-              If an account exists for <strong>{email}</strong>, a sign-in link is on its way.
+              A link is on its way to <strong>{email}</strong>. Check your inbox and click it to continue.
             </div>
             <div style={{ marginTop: 16 }}>
               <span

@@ -360,6 +360,8 @@ export class ConversationService {
       groundId: string;
       participantId: string;
       sessionNumber: number;
+      isClarification?: boolean;
+      clarificationTarget?: string | null;
       participant: { partyType: any; roleAsDescribed: string | null };
     },
     latestMessage?: string,
@@ -369,27 +371,45 @@ export class ConversationService {
 
     const systemPrompt = await this.prompts.getActiveContent('system');
 
-    // Load the prior session summary for PRIOR_SESSION in the intake block (max 500 chars).
-    // Also read specificityDimensions to detect multi-dim low specificity for session builder.
+    // Load prior session summaries for PRIOR_SESSION in the intake block.
+    // For session 3+, include all prior sessions for longitudinal context (max 800 chars total).
+    // Also read specificityDimensions from the most recent prior session.
     let priorSession: string | undefined;
     let lowSpecificityMultiDim = false;
     if (checkIn.sessionNumber >= 2) {
-      const prevCheckIn = await this.prisma.checkIn.findFirst({
-        where: { participantId: checkIn.participantId, sessionNumber: checkIn.sessionNumber - 1, status: CheckInStatus.COMPLETED },
-        select: { id: true, specificityDimensions: true },
+      const priorCheckIns = await this.prisma.checkIn.findMany({
+        where: {
+          participantId: checkIn.participantId,
+          sessionNumber: { lt: checkIn.sessionNumber },
+          status: CheckInStatus.COMPLETED,
+        },
+        orderBy: { sessionNumber: 'asc' },
+        select: { id: true, sessionNumber: true, specificityDimensions: true },
       });
-      if (prevCheckIn) {
-        const entries = await this.prisma.recordEntry.findMany({
-          where: { checkInId: prevCheckIn.id, participantId: checkIn.participantId },
-          orderBy: { createdAt: 'asc' },
-          select: { type: true, text: true },
-          take: 6,
-        });
-        if (entries.length) {
-          priorSession = entries.map(e => `(${e.type}) ${e.text.replace(/^\[VERIFIABILITY:\w+\] /, '')}`).join(' | ').slice(0, 500);
+      if (priorCheckIns.length) {
+        const allEntries = await Promise.all(
+          priorCheckIns.map(async (ci) => {
+            const entries = await this.prisma.recordEntry.findMany({
+              where: { checkInId: ci.id, participantId: checkIn.participantId },
+              orderBy: { createdAt: 'asc' },
+              select: { type: true, text: true },
+              take: 6,
+            });
+            return { sessionNumber: ci.sessionNumber, entries };
+          }),
+        );
+        const parts = allEntries
+          .filter(({ entries }) => entries.length > 0)
+          .map(({ sessionNumber, entries }) => {
+            const summary = entries.map(e => `(${e.type}) ${e.text.replace(/^\[VERIFIABILITY:\w+\] /, '')}`).join(' | ');
+            return `[S${sessionNumber}] ${summary}`;
+          });
+        if (parts.length) {
+          priorSession = parts.join(' || ').slice(0, 800);
         }
-        if (prevCheckIn.specificityDimensions) {
-          const dims = prevCheckIn.specificityDimensions as Record<string, string>;
+        const lastCheckIn = priorCheckIns[priorCheckIns.length - 1];
+        if (lastCheckIn?.specificityDimensions) {
+          const dims = lastCheckIn.specificityDimensions as Record<string, string>;
           const lowCount = Object.values(dims).filter((v) => v === 'vague' || v === 'managed').length;
           lowSpecificityMultiDim = lowCount >= 3;
         }
@@ -450,7 +470,26 @@ export class ConversationService {
         ? `DOC_PROMPT_HINT: At a natural moment in your next response — when the conversation has reached a point where something is described but not evidenced — say something like: "There is probably something in writing that captures this. A brief, a plan, an email exchange. If you have it, attach it using the button at the bottom — I want to know what it shows." Weave it in as one sentence. Do not make it an agenda item or a request. Only if it fits naturally.`
         : '';
 
-    return [systemPrompt, intakeBlock, returningUserContext, dynamicContext, docContext, docPromptHint].filter(Boolean).join('\n\n');
+    // Clarification session context: when this check-in is correcting a specific
+    // inference the participant flagged, inject the inference text so the AI opens
+    // on that specific claim rather than the standard opener.
+    let clarificationContext = '';
+    if (checkIn.isClarification && checkIn.clarificationTarget) {
+      const report = await this.prisma.report.findUnique({ where: { groundId: checkIn.groundId }, select: { inferences: true } });
+      const inferenceList = (report?.inferences ?? []) as Array<{ id: string; text: string; participantLabel: string; reason: string }>;
+      const inference = inferenceList.find(i => i.id === checkIn.clarificationTarget);
+      if (inference) {
+        clarificationContext = `CLARIFICATION SESSION — the participant flagged the following inference in the report as inaccurate:
+
+"${inference.text}"
+
+This was inferred because: ${inference.reason}
+
+Open the session by naming this specific inference directly. Do NOT ask the standard opener. Instead say something like: "In your last report, we wrote that [inference text]. You said that wasn't accurate. Tell me what was actually happening." Then use the standard probes and extraction rules. Record only what they explicitly say. Do not re-infer. The goal is to replace the inferred claim with the participant's own words.`;
+      }
+    }
+
+    return [systemPrompt, intakeBlock, clarificationContext, returningUserContext, dynamicContext, docContext, docPromptHint].filter(Boolean).join('\n\n');
   }
 
   /**
@@ -460,21 +499,25 @@ export class ConversationService {
    * the AI from asking "what have you been working on" to returning participants.
    */
   private async buildReturningUserContext(participantId: string, sessionNumber: number): Promise<string> {
-    // Find the previous completed check-in for this participant.
-    const prevCheckIn = await this.prisma.checkIn.findFirst({
+    // Find all prior completed check-ins for this participant (for session 3+ longitudinal view).
+    const priorCheckIns = await this.prisma.checkIn.findMany({
       where: {
         participantId,
-        sessionNumber: sessionNumber - 1,
+        sessionNumber: { lt: sessionNumber },
         status: CheckInStatus.COMPLETED,
       },
-      select: { id: true, specificityLevel: true, specificityDimensions: true },
+      orderBy: { sessionNumber: 'desc' },
+      select: { id: true, sessionNumber: true, specificityLevel: true, specificityDimensions: true },
     });
-    if (!prevCheckIn) return '';
+    if (!priorCheckIns.length) return '';
 
-    // Pull unresolved items — WORRY, TENSION, and open COMMITMENTs from the last session.
+    const prevCheckIn = priorCheckIns[0]; // most recent prior session
+
+    // Pull unresolved items — WORRY, TENSION, and open COMMITMENTs from ALL prior sessions.
+    const allPriorIds = priorCheckIns.map(ci => ci.id);
     const lastEntries = await this.prisma.recordEntry.findMany({
       where: {
-        checkInId: prevCheckIn.id,
+        checkInId: { in: allPriorIds },
         participantId,
         type: { in: [RecordEntryType.WORRY, RecordEntryType.TENSION, RecordEntryType.COMMITMENT] },
       },
@@ -494,10 +537,13 @@ export class ConversationService {
     const lowDimCount = dims ? Object.values(dims).filter((v) => v === 'vague' || v === 'managed').length : 0;
     const lowSpecificity = priorSpecificity === 'vague' || priorSpecificity === 'managed' || lowDimCount >= 3;
 
+    const sessionRange = priorCheckIns.length > 1
+      ? `sessions 1 through ${priorCheckIns[0].sessionNumber}`
+      : `session ${priorCheckIns[0].sessionNumber}`;
     const lines: string[] = [
-      `# Returning user — session ${sessionNumber}`,
+      `# Returning user — session ${sessionNumber} (${sessionRange} on record)`,
       `GUARD: Do NOT ask "what have you been working on?" or "what has been going on?" or any equivalent generic opening. This person has been here before. Open by referencing their specific record.`,
-      `Most important unresolved item from their last check-in (${topItem.type}): "${topItem.text}"`,
+      `Most important unresolved item across all prior check-ins (${topItem.type}): "${topItem.text}"`,
     ];
 
     if (lowSpecificity) {
@@ -837,6 +883,46 @@ export class ConversationService {
       parts.push(`${submittedCount} of ${totalCount} parties have submitted so far. The other party has not yet submitted.`);
     }
     return parts.join(' ');
+  }
+
+  /**
+   * Create a clarification check-in for a participant to correct a specific inference.
+   * Returns the new check-in id which the client opens immediately.
+   */
+  async startClarificationSession(requestingUserId: string, groundId: string, inferenceId: string): Promise<{ checkInId: string }> {
+    // Verify the inference exists on this ground's report
+    const report = await this.prisma.report.findUnique({ where: { groundId }, select: { inferences: true } });
+    if (!report) throw new NotFoundException('Report not found for this ground');
+    const inferenceList = (report.inferences ?? []) as Array<{ id: string; text: string; participantLabel: string; reason: string }>;
+    const inference = inferenceList.find(i => i.id === inferenceId);
+    if (!inference) throw new NotFoundException('Inference not found');
+
+    // Find the participant record for this user on this ground
+    const participant = await this.prisma.groundParticipant.findFirst({
+      where: { groundId, userId: requestingUserId },
+    });
+    if (!participant) throw new ForbiddenException('You are not a participant on this ground');
+
+    // Find the next available session number for this participant
+    const lastCheckIn = await this.prisma.checkIn.findFirst({
+      where: { participantId: participant.id },
+      orderBy: { sessionNumber: 'desc' },
+      select: { sessionNumber: true },
+    });
+    const nextSession = (lastCheckIn?.sessionNumber ?? 0) + 1;
+
+    const checkIn = await this.prisma.checkIn.create({
+      data: {
+        groundId,
+        participantId: participant.id,
+        sessionNumber: nextSession,
+        status: CheckInStatus.NOT_STARTED,
+        isClarification: true,
+        clarificationTarget: inferenceId,
+      },
+    });
+
+    return { checkInId: checkIn.id };
   }
 
   /** Loads a check-in only if the requesting user owns the participant side. */

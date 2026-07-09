@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { groundsApi } from '@/api/grounds'
 import { reportsApi } from '@/api/reports'
 import { useAuthStore } from '@/stores/auth'
+import { InferenceReviewPanel } from '@/components/InferenceReviewPanel'
 
 const LADDER_STEPS = ['Unresolved', 'Mixed', 'Emerging', 'Clear', 'Aligned'] as const
 
@@ -397,6 +398,10 @@ export function ReportPage() {
             </div>
           )}
         </div>
+
+        {report.inferences && report.inferences.length > 0 && (
+          <InferenceReviewPanel groundId={id!} inferences={report.inferences} />
+        )}
 
         <div style={{ marginTop: 40, paddingTop: 24, borderTop: '1px solid #E2E0DB', fontSize: 12, color: '#9B9590', lineHeight: 1.6 }}>
           This report is permanent. Both parties keep it, and it is portable to each of your profiles.

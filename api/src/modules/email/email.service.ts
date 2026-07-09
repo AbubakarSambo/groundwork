@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Resend } from 'resend';
+import * as nodemailer from 'nodemailer';
 
 /**
  * Groundwork email library. Per the product rules, every message names
@@ -37,6 +38,11 @@ export class EmailService {
       this.logger.warn(`[DEV EMAIL] To: ${options.to} | Subject: ${options.subject}`);
       const text = options.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
       this.logger.warn(`[DEV EMAIL] Body: ${text}`);
+      // Also relay to local mailcatcher (127.0.0.1:1025) so persona tests can read links
+      try {
+        const transport = nodemailer.createTransport({ host: '127.0.0.1', port: 1025, secure: false, ignoreTLS: true });
+        await transport.sendMail({ from: this.fromEmail, to: options.to, subject: options.subject, html: options.html });
+      } catch (_) { /* mailcatcher not running — console log is still available */ }
       // Extract first href for easy local testing
       const match = options.html.match(/href="([^"]+)"/);
       return match?.[1];
@@ -70,7 +76,7 @@ export class EmailService {
     await this.sendEmail({
       to: email,
       subject: 'Activate your Groundwork account',
-      html: this.layout(`<p>Hi ${firstName},</p><p>Click the link below to activate your account. You will be able to set a password once you are in.</p><p><a href="${url}">Activate account</a></p><p>This link expires in 24 hours.</p>`),
+      html: this.layout(`<p>Hi ${firstName},</p><p>You or someone on your team just signed up for Groundwork using this email. Click the link below to activate your account and get started.</p><p><a href="${url}">Activate account</a></p><p>This link expires in 24 hours.</p><p style="color:#888;font-size:12px;">If you did not request this, you can ignore this email. No account will be created without clicking the link.</p>`),
     });
   }
 
@@ -124,7 +130,7 @@ export class EmailService {
     await this.sendEmail({
       to: email,
       subject: `You've been added to ${orgName} on Groundwork`,
-      html: this.layout(`<p>Hi ${firstName},</p><p>${orgName} added you to their Groundwork workspace. Set your password to continue.</p><p><a href="${url}">Accept invite</a></p>`),
+      html: this.layout(`<p>Hi ${firstName},</p><p>${orgName} added you to their Groundwork workspace. Groundwork runs structured check-ins across a team and surfaces alignment and gaps in a shared report. Your contributions stay private until the report is ready.</p><p><a href="${url}">Accept invite</a></p><p style="color:#888;font-size:12px;">If you were not expecting this, you can ignore this email. No account is active until you click the link.</p>`),
     });
   }
 

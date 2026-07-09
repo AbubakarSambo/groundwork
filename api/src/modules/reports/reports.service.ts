@@ -123,8 +123,22 @@ const REPORT_SCHEMA = {
         description: 'The gap. For each topic, every party\'s position — never framed as one side being right.',
       },
       centralQuestion: { type: 'string', description: 'The one question that, answered honestly, moves things forward.' },
+      inferences: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', description: 'A short unique slug for this inference (e.g. "initiator-ownership-1").' },
+            text: { type: 'string', description: 'The inferred statement as it appears in the report.' },
+            participantLabel: { type: 'string', description: 'The party label this inference is about.' },
+            reason: { type: 'string', description: 'Brief explanation of why this was inferred rather than directly quoted.' },
+          },
+          required: ['id', 'text', 'participantLabel', 'reason'],
+        },
+        description: 'Claims in this report that were inferred from context rather than directly stated. Empty array if everything is directly quoted.',
+      },
     },
-    required: ['sharedPicture', 'agreements', 'divergences', 'centralQuestion'],
+    required: ['sharedPicture', 'agreements', 'divergences', 'centralQuestion', 'inferences'],
   },
 };
 
@@ -207,7 +221,8 @@ SYNTHESIS RULES (override all other instructions if there is a conflict):
 2. CAPTURE CONDITIONS. If a party's cooperation is conditional ("I will cooperate provided that X", "but only if Y is agreed"), the agreements section must state the condition. Never flatten a conditional agreement into an unconditional one.
 3. DO NOT ATTRIBUTE POSITIONS TO ABSENT PARTIES. If a party's record is marked as absent or not contributed, do not describe their agreement, alignment, or views. Write "only [party]'s perspective is available" rather than "both parties agree."
 4. SURFACE ACTIONABLE COMMITMENTS. If a party named a specific deliverable, threshold, or exit condition (e.g., "I will leave if X is not met by Y"), it must appear in the agreements or divergences with the party's label and the exact terms.
-5. NAME THE TENSION PRECISELY. If a conflict has a named structure (sequencing, values, role authority, information gap), name it explicitly in the divergences — do not soften it to "different perspectives."`;
+5. NAME THE TENSION PRECISELY. If a conflict has a named structure (sequencing, values, role authority, information gap), name it explicitly in the divergences — do not soften it to "different perspectives."
+6. LABEL INFERENCES. Any claim you make that is not a direct quote from the record is an inference. List every inference in the inferences array with its id, text, participantLabel, and reason. An inference is anything you concluded from context, implied meaning, or pattern — not from an explicit statement. If a claim appears in the report body and is not a direct quote, it must appear in inferences. An empty inferences array means everything in the report is directly quoted.`;
 
 
     // Note any invited party who contributed no record — surfaced as an absence,
@@ -568,6 +583,8 @@ SYNTHESIS RULES (override all other instructions if there is a conflict):
       session2Focus,
     };
 
+    const inferences = ((result as any).inferences ?? []) as Array<{ id: string; text: string; participantLabel: string; reason: string }>;
+
     const report = await this.prisma.report.upsert({
       where: { groundId },
       create: {
@@ -577,6 +594,7 @@ SYNTHESIS RULES (override all other instructions if there is a conflict):
         divergences: result.divergences as any,
         centralQuestion: result.centralQuestion,
         engagement: enrichedEngagement as any,
+        inferences: inferences as any,
         promptVersionId: synthesisVersion.id,
         releasedAt: null,
       },
@@ -586,6 +604,7 @@ SYNTHESIS RULES (override all other instructions if there is a conflict):
         divergences: result.divergences as any,
         centralQuestion: result.centralQuestion,
         engagement: enrichedEngagement as any,
+        inferences: inferences as any,
         promptVersionId: synthesisVersion.id,
       },
     });
