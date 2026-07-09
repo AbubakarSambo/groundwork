@@ -10,6 +10,13 @@ import { CurrentUser, CurrentUserData, Roles, Role, PaginationDto } from '../../
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
+  @Post('me/leave')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Deactivate own membership (self-serve leave org)' })
+  async leaveOrg(@CurrentUser('id') userId: string) {
+    return this.usersService.leaveOrg(userId);
+  }
+
   @Get('privacy-audit')
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Privacy audit for a user — admin only diagnostic (GW-privacy)' })

@@ -114,6 +114,17 @@ export class UsersService {
     return { message: 'Invite resent' };
   }
 
+  async leaveOrg(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { isActive: false },
+    });
+    return { left: true as const };
+  }
+
   async remove(id: string, organizationId: string, actingUserId: string) {
     if (id === actingUserId) throw new BadRequestException('You cannot deactivate yourself');
     const user = await this.prisma.user.findFirst({ where: { id, organizationId, deletedAt: null } });

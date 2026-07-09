@@ -199,8 +199,9 @@ model User {
   role            UserRole @default(MEMBER)
   isActive        Boolean  @default(true) @map("is_active")
   isEmailVerified Boolean  @default(false) @map("is_email_verified")
-  isPlatformAdmin Boolean  @default(false) @map("is_platform_admin")
-  googleId        String?  @unique @map("google_id")
+  isPlatformAdmin      Boolean  @default(false) @map("is_platform_admin")
+  googleId             String?  @unique @map("google_id")
+  emailNotifications   Boolean  @default(true) @map("email_notifications")
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
@@ -385,6 +386,8 @@ model CheckIn {
   specificityLevel     String?  @map("specificity_level")
   specificityDimensions Json?   @map("specificity_dimensions")
   recallConfidence     String?  @map("recall_confidence")
+  isClarification      Boolean  @default(false) @map("is_clarification") // true when session is correcting a flagged inference
+  clarificationTarget  String?  @map("clarification_target") // inference id from report.inferences being corrected
   createdAt     DateTime      @default(now()) @map("created_at")
 
   ground        Ground            @relation(fields: [groundId], references: [id], onDelete: Cascade)
@@ -442,6 +445,7 @@ model Report {
   divergences     Json // the gap — never framed as one side being right
   centralQuestion String    @db.Text @map("central_question")
   engagement      Json? // engagement-quality + confidence header: per-party session counts, % document-backed, coverage band (B4)
+  inferences      Json?     // array of { id, text, participantId, sessionNumber } — items the AI inferred rather than directly quoted
   promptVersionId String?   @map("prompt_version_id")
   releasedAt      DateTime? @map("released_at") // set once, atomically, for both
   createdAt       DateTime  @default(now()) @map("created_at")

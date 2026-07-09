@@ -117,7 +117,7 @@ export function GroundsListPage() {
             {isAdmin ? 'Admin' : 'Team member'}
           </span>
           {isAdmin && <span onClick={() => navigate('/admin')} style={{ fontSize: 13, color: 'var(--gw-sub)', cursor: 'pointer' }}>Admin</span>}
-          <span onClick={() => navigate('/billing')} style={{ fontSize: 13, color: 'var(--gw-sub)', cursor: 'pointer' }}>Settings</span>
+          <span onClick={() => navigate('/settings')} style={{ fontSize: 13, color: 'var(--gw-sub)', cursor: 'pointer' }}>Settings</span>
           <span onClick={() => { useAuthStore.getState().logout(); navigate('/') }} style={{ fontSize: 13, color: 'var(--gw-sub)', cursor: 'pointer' }}>Sign out</span>
         </div>
       </div>
@@ -248,7 +248,7 @@ export function GroundsListPage() {
             {justSetUp && (
               <div style={{ background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: '#085041', marginBottom: 3 }}>Your account is live.</div>
-                <div style={{ fontSize: 12, color: '#3A7A60', lineHeight: 1.5 }}>Your check-in is on record. You will receive the report here when it is ready.</div>
+                <div style={{ fontSize: 12, color: '#3A7A60', lineHeight: 1.5 }}>You will see your grounds and reports here. Open a ground to start contributing.</div>
               </div>
             )}
 
