@@ -37,7 +37,12 @@ export class BillingService {
       select: { sessionsBalance: true, isFreeGround: true, organizationId: true },
     });
 
+    const balance = ground?.sessionsBalance ?? 0;
+    // Paid balance always wins — check it first so topped-up free grounds work.
+    if (balance > 0) return { allowed: true, sessionsBalance: balance };
+
     // Abuse prevention: free grounds are limited to 3 free sessions per org.
+    // Only evaluated when balance is zero (no paid credits remaining).
     if (ground?.isFreeGround) {
       const org = await this.prisma.organization.findUnique({
         where: { id: ground.organizationId },
@@ -52,8 +57,6 @@ export class BillingService {
       }
     }
 
-    const balance = ground?.sessionsBalance ?? 0;
-    if (balance > 0) return { allowed: true, sessionsBalance: balance };
     return {
       allowed: false,
       reason: 'No sessions remaining. Add a session for $5 to continue.',

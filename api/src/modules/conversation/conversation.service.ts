@@ -194,51 +194,69 @@ export class ConversationService {
       return { reply: existingAiTurn.content, groundId: checkIn.groundId };
     }
 
-    // Session balance gate: consume one session from the ground's balance the
-    // first time this check-in is opened (idempotent: re-opens are caught above
-    // by the existingAiTurn guard). If balance is 0, block with a clear message.
+    // Session balance gate: consume one session from the ground's balance once
+    // per session round (sessionNumber). If any other participant has already
+    // opened a check-in for the same session number, that round was already paid
+    // for — allow without decrementing. Re-opens of the same check-in are already
+    // caught above by the existingAiTurn guard.
     if (checkIn.groundId) {
-      const gate = await this.billing.canStartSession(checkIn.groundId);
-      if (!gate.allowed) {
-        // Nudge the ground's initiator so they know someone is blocked.
-        this.prisma.ground.findUnique({
-          where: { id: checkIn.groundId },
-          select: {
-            label: true,
-            id: true,
-            participants: {
-              where: { partyType: 'INITIATOR' },
-              select: { email: true },
-              take: 1,
-            },
+      // Determine whether another participant already opened this session round.
+      const roundAlreadyStarted = await this.prisma.conversationTurn.findFirst({
+        where: {
+          checkIn: {
+            groundId: checkIn.groundId,
+            sessionNumber: checkIn.sessionNumber,
+            id: { not: checkIn.id },
           },
-        }).then(g => {
-          if (!g) return;
-          const initiatorEmail = g.participants[0]?.email;
-          if (!initiatorEmail) return;
-          const participantEmail = checkIn.participant.email;
-          const groundUrl = `${this.config.get<string>('resend.frontendUrl') ?? ''}/grounds/${g.id}`;
-          this.email.sendParticipantBlockedNudge(initiatorEmail, g.label, participantEmail, groundUrl).catch(() => undefined);
-        }).catch(() => undefined);
-        throw new ForbiddenException(gate.reason);
-      }
-      // Atomic check-and-decrement: only succeeds when balance is still > 0,
-      // preventing two concurrent requests from both passing canStartSession and
-      // both decrementing into negative territory.
-      const decremented = await this.prisma.ground.updateMany({
-        where: { id: checkIn.groundId, sessionsBalance: { gt: 0 } },
-        data: { sessionsBalance: { decrement: 1 } },
+          role: TurnRole.AI,
+        },
+        select: { id: true },
       });
-      if (decremented.count === 0) {
-        throw new ForbiddenException('No sessions remaining. Add a session for $5 to continue.');
-      }
-      // Increment the free-sessions counter so the per-org cap is enforced.
-      const ground = await this.prisma.ground.findUnique({ where: { id: checkIn.groundId }, select: { isFreeGround: true, organizationId: true } });
-      if (ground?.isFreeGround) {
-        await this.prisma.organization.update({
-          where: { id: ground.organizationId },
-          data: { freeSessionsUsed: { increment: 1 } },
+
+      if (!roundAlreadyStarted) {
+        // First participant to open this round — consume one session from the balance.
+        const gate = await this.billing.canStartSession(checkIn.groundId);
+        if (!gate.allowed) {
+          // Nudge the ground's initiator so they know someone is blocked.
+          this.prisma.ground.findUnique({
+            where: { id: checkIn.groundId },
+            select: {
+              label: true,
+              id: true,
+              participants: {
+                where: { partyType: 'INITIATOR' },
+                select: { email: true },
+                take: 1,
+              },
+            },
+          }).then(g => {
+            if (!g) return;
+            const initiatorEmail = g.participants[0]?.email;
+            if (!initiatorEmail) return;
+            const participantEmail = checkIn.participant.email;
+            const groundUrl = `${this.config.get<string>('resend.frontendUrl') ?? ''}/grounds/${g.id}`;
+            this.email.sendParticipantBlockedNudge(initiatorEmail, g.label, participantEmail, groundUrl).catch(() => undefined);
+          }).catch(() => undefined);
+          throw new ForbiddenException(gate.reason);
+        }
+        // Atomic check-and-decrement: only succeeds when balance is still > 0,
+        // preventing two concurrent requests from both passing canStartSession and
+        // both decrementing into negative territory.
+        const decremented = await this.prisma.ground.updateMany({
+          where: { id: checkIn.groundId, sessionsBalance: { gt: 0 } },
+          data: { sessionsBalance: { decrement: 1 } },
         });
+        if (decremented.count === 0) {
+          throw new ForbiddenException('No sessions remaining. Add a session for $5 to continue.');
+        }
+        // Increment the free-sessions counter so the per-org cap is enforced.
+        const groundMeta = await this.prisma.ground.findUnique({ where: { id: checkIn.groundId }, select: { isFreeGround: true, organizationId: true } });
+        if (groundMeta?.isFreeGround) {
+          await this.prisma.organization.update({
+            where: { id: groundMeta.organizationId },
+            data: { freeSessionsUsed: { increment: 1 } },
+          });
+        }
       }
     }
 
