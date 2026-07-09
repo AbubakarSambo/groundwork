@@ -10,7 +10,7 @@ import { GroundworkEvents, GroundActivatedEvent } from '../../common';
 import { GroundScenario, GroundStatus, PartyType, CheckInStatus, Cadence, UsageEventType } from '@prisma/client';
 import { endStatesFor } from '../resolution/end-states';
 
-// Default timelines per scenario (Part 2 — timeline and cadence).
+// Default timelines per scenario (Part 2 - timeline and cadence).
 const DEFAULT_TIMELINE_DAYS: Record<GroundScenario, number> = {
   NEW_HIRE: 90,
   NEW_COFOUNDER: 90,
@@ -28,7 +28,7 @@ const DEFAULT_TIMELINE_DAYS: Record<GroundScenario, number> = {
   PIP: 90,
 };
 
-// All scenarios support any number of participants — the initiator decides who
+// All scenarios support any number of participants - the initiator decides who
 // needs to be in the ground. No hard-coded per-scenario cap.
 export function isMultiPartyScenario(_scenario: GroundScenario): boolean {
   return true;
@@ -38,7 +38,7 @@ export function isMultiPartyScenario(_scenario: GroundScenario): boolean {
 // Trust-critical: NEVER serialize inviteToken (magic link → account takeover),
 // soloArtifact (the AI summary of this party's PRIVATE record), specificityHistory
 // (a behavioural signal about them), or willingness answers. Those belong to the
-// participant alone — record ownership is the mechanism, enforced here, not by
+// participant alone - record ownership is the mechanism, enforced here, not by
 // policy. (GW-01.)
 export const SAFE_PARTICIPANT_SELECT = {
   id: true,
@@ -48,7 +48,7 @@ export const SAFE_PARTICIPANT_SELECT = {
   roleAsDescribed: true,
   invitedAt: true,
   notifiedAt: true,
-  soloArtifactAt: true, // timestamp only — never the artifact content
+  soloArtifactAt: true, // timestamp only - never the artifact content
   soloArtifactShared: true, // whether participant chose to share; content fetched separately via get()
   soloArtifact: true, // included in select; caller must strip unless soloArtifactShared = true
   createdAt: true,
@@ -147,12 +147,12 @@ export class GroundsService {
       return ground;
     });
 
-    // GW-19: no-verdict expectation contract — set at creation so the initiator
+    // GW-19: no-verdict expectation contract - set at creation so the initiator
     // sees this before they invite anyone or pay. "Evidence both of you can stand
     // on" is the feature; the product is symmetry, not a verdict for one side.
     const contract = {
       noVerdict: true,
-      message: 'Groundwork does not produce a verdict. Both parties read the same report at the same moment. The product is evidence both of you can stand on — not a ruling for one side.',
+      message: 'Groundwork does not produce a verdict. Both parties read the same report at the same moment. The product is evidence both of you can stand on - not a ruling for one side.',
     };
 
     // GW-69: contraindication check for conflict-scenario grounds. If any flag is
@@ -172,7 +172,7 @@ export class GroundsService {
       }
     }
 
-    // Best-effort — event log failure must never block ground creation.
+    // Best-effort - event log failure must never block ground creation.
     this.usage.emit(UsageEventType.GROUND_CREATED, { organizationId, groundId: ground.id, userId: initiatorId }).catch(() => undefined);
 
     return { ...ground, contract, ...(contraindicationWarning ? { contraindicationWarning } : {}) };
@@ -193,7 +193,7 @@ export class GroundsService {
     };
   }
 
-  async list(organizationId: string, userId?: string) {
+  async list(organizationId: string, userId?: string, userEmail?: string) {
     const now = new Date();
     const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -211,6 +211,16 @@ export class GroundsService {
     // Also include grounds from other orgs where this user is a participant.
     let participantGrounds: typeof orgGrounds = [];
     if (userId) {
+      // Heal any unlinked participant records whose email matches this user.
+      // This covers users who accepted an invite via setPassword before the
+      // participant-link fix was deployed (groundParticipant.userId was null).
+      if (userEmail) {
+        await this.prisma.groundParticipant.updateMany({
+          where: { email: userEmail.toLowerCase(), userId: null },
+          data: { userId },
+        });
+      }
+
       const links = await this.prisma.groundParticipant.findMany({
         where: { userId, ground: { organizationId: { not: organizationId } } },
         select: { groundId: true },
@@ -246,7 +256,7 @@ export class GroundsService {
   }
 
   async get(id: string, organizationId: string, requestingUserId?: string) {
-    // Primary lookup by org — works for org members and the initiator.
+    // Primary lookup by org - works for org members and the initiator.
     const CHECKIN_SELECT = { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, specificityLevel: true, recallConfidence: true, specificityDimensions: true } as const;
 
     let ground = await this.prisma.ground.findFirst({
@@ -287,7 +297,7 @@ export class GroundsService {
 
     if (!ground) throw new NotFoundException('Ground not found');
 
-    // Computed display fields — derived here so the client never needs to repeat the logic.
+    // Computed display fields - derived here so the client never needs to repeat the logic.
     const completedCount = (ground.checkIns ?? []).filter((ci) => ci.status === CheckInStatus.COMPLETED).length;
     const confidence = Math.min(5, Math.max(1, completedCount || 1));
 
@@ -355,7 +365,7 @@ export class GroundsService {
   }
 
   /**
-   * Add the second party. They are NEVER added silently — we send an invite
+   * Add the second party. They are NEVER added silently - we send an invite
    * (magic link) and stamp notifiedAt. (OPTION FOUR RULE, Part 1.)
    */
   async addParticipant(groundId: string, organizationId: string, initiatorId: string, dto: AddParticipantDto) {
@@ -368,11 +378,11 @@ export class GroundsService {
     // Magic-link invite token, persisted on the participant. They accept it to
     // create/link a user, set userId, and enter their private check-in.
     // If the entry flow pre-generated a token (so the share link could be shown
-    // immediately before auth), honour it here — no separate lookup needed.
+    // immediately before auth), honour it here - no separate lookup needed.
     const token = dto.inviteToken ?? crypto.randomBytes(32).toString('hex');
     const inviteTokenExpiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000); // 14 days
 
-    // Prevent duplicate participant — surface a clean 400 instead of a Prisma constraint error.
+    // Prevent duplicate participant - surface a clean 400 instead of a Prisma constraint error.
     // Exception: if the existing record was never accepted (userId=null), refresh the token and
     // re-send the invite rather than permanently blocking the address.
     const existing = await this.prisma.groundParticipant.findFirst({
@@ -380,7 +390,7 @@ export class GroundsService {
     });
     if (existing) {
       if (existing.userId !== null) throw new BadRequestException('This email is already a participant on this ground');
-      // Unaccepted invite — refresh token and re-send.
+      // Unaccepted invite - refresh token and re-send.
       const freshToken = crypto.randomBytes(32).toString('hex');
       const freshExpiry = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
       await this.prisma.groundParticipant.update({
@@ -435,7 +445,7 @@ export class GroundsService {
       throw err;
     }
 
-    // Stamp notifiedAt only after the email succeeds (Rule 3 — nobody added silently).
+    // Stamp notifiedAt only after the email succeeds (Rule 3 - nobody added silently).
     await this.prisma.groundParticipant.update({
       where: { id: participant.id },
       data: { notifiedAt: new Date() },
@@ -497,7 +507,7 @@ export class GroundsService {
 
   /**
    * Return the current invite URL for a participant who has not yet accepted.
-   * Only accessible to the initiator — they may need to share the link manually
+   * Only accessible to the initiator - they may need to share the link manually
    * if the invite email was missed.
    */
   async getParticipantInviteUrl(groundId: string, participantId: string, initiatorId: string): Promise<{ inviteUrl: string }> {
@@ -571,7 +581,7 @@ export class GroundsService {
   }
 
   /**
-   * PATCH /grounds/:id — update timeline and/or cadence.
+   * PATCH /grounds/:id - update timeline and/or cadence.
    * Writes an audit entry to groundAuditLog (Json[] appended) so changes are
    * traceable without a separate audit table.
    */
@@ -597,7 +607,7 @@ export class GroundsService {
       }
     }
 
-    // Parse existing audit log — migrate legacy array format to structured object.
+    // Parse existing audit log - migrate legacy array format to structured object.
     const rawLog = ground.groundAuditLog;
     const auditData: { timeline: object[]; contextNotes: string[] } =
       rawLog && !Array.isArray(rawLog) && typeof rawLog === 'object'
@@ -643,7 +653,7 @@ export class GroundsService {
   }
 
   /**
-   * Pause a ground — marks status = PAUSED, stamps pausedAt. Typically called
+   * Pause a ground - marks status = PAUSED, stamps pausedAt. Typically called
    * when active legal proceedings are detected in a check-in (GW-08 / context.service.ts)
    * and the admin or user confirms they want to pause. Billing continues to run
    * (the ground is not RESOLVED or CLOSED); an admin can un-pause by
@@ -673,7 +683,7 @@ export class GroundsService {
   }
 
   /**
-   * GET /grounds/:id/conversation — returns all participant conversation transcripts
+   * GET /grounds/:id/conversation - returns all participant conversation transcripts
    * grouped by participant. Accessible to the ground initiator only.
    */
   async getConversation(groundId: string, requestingUserId: string) {
@@ -771,14 +781,14 @@ export class GroundsService {
     return true;
   }
 
-  /** Backward-compat alias — checks session 1 readiness. */
+  /** Backward-compat alias - checks session 1 readiness. */
   async isReportReady(groundId: string): Promise<boolean> {
     return this.isSessionReadyForReport(groundId, 1);
   }
 
   /**
    * Return the authenticated contributor's private longitudinal record for a ground.
-   * Specificity trend and pattern observations are gated behind billing — they
+   * Specificity trend and pattern observations are gated behind billing - they
    * require careFeeStatus === ACTIVE. Without billing, only session history is returned.
    */
   async getMyRecord(groundId: string, userId: string): Promise<{
@@ -825,7 +835,7 @@ export class GroundsService {
     const avg = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
     const specLabel = avg >= 0.65 ? 'high' : avg >= 0.35 ? 'moderate' : 'low';
 
-    // Confidence score — how many completed sessions cross-referenced against specificity
+    // Confidence score - how many completed sessions cross-referenced against specificity
     const completedCount = sessions.filter(s => s.status === 'COMPLETED').length;
     const confScore = Math.min(5, completedCount + (avg >= 0.5 ? 1 : 0));
     const confLabel = confScore >= 4 ? 'High' : confScore >= 2 ? 'Building' : 'Early';
@@ -835,7 +845,7 @@ export class GroundsService {
         ? 'Your record is taking shape. Each session adds depth and specificity to the picture.'
         : 'Your record is just beginning. One more session will start to show the full picture.';
 
-    // Diplomatic pattern observations — never name the code, never frame as a verdict
+    // Diplomatic pattern observations - never name the code, never frame as a verdict
     const POSITIVE_CODES = new Set(['R3']);
     const patterns = (participant.patternDetections ?? []).map(d => ({
       observation: POSITIVE_CODES.has(d.code)
@@ -882,7 +892,7 @@ export class GroundsService {
 /**
  * Rewrites a raw pattern observation into a diplomatic first-person reflection.
  * The original observation describes a behaviour; this wraps it so the contributor
- * reads it as something worth noticing in their own record — not a verdict.
+ * reads it as something worth noticing in their own record - not a verdict.
  */
 function diplomaticObservation(raw: string): string {
   if (!raw.trim()) return '';

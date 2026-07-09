@@ -204,7 +204,10 @@ export class ReportsService {
 
     const records = await this.prisma.recordEntry.findMany({
       where: { participant: { groundId } },
-      include: { participant: { select: { id: true } } },
+      include: {
+        participant: { select: { id: true } },
+        checkIn: { select: { sessionNumber: true } },
+      },
     });
 
     // GW-41: fetch the full version object so we can stamp promptVersionId on the
@@ -222,7 +225,9 @@ SYNTHESIS RULES (override all other instructions if there is a conflict):
 3. DO NOT ATTRIBUTE POSITIONS TO ABSENT PARTIES. If a party's record is marked as absent or not contributed, do not describe their agreement, alignment, or views. Write "only [party]'s perspective is available" rather than "both parties agree."
 4. SURFACE ACTIONABLE COMMITMENTS. If a party named a specific deliverable, threshold, or exit condition (e.g., "I will leave if X is not met by Y"), it must appear in the agreements or divergences with the party's label and the exact terms.
 5. NAME THE TENSION PRECISELY. If a conflict has a named structure (sequencing, values, role authority, information gap), name it explicitly in the divergences - do not soften it to "different perspectives."
-6. LABEL INFERENCES. Any claim you make that is not a direct quote from the record is an inference. List every inference in the inferences array with its id, text, participantLabel, and reason. An inference is anything you concluded from context, implied meaning, or pattern - not from an explicit statement. If a claim appears in the report body and is not a direct quote, it must appear in inferences. An empty inferences array means everything in the report is directly quoted.`;
+6. LABEL INFERENCES. Any claim you make that is not a direct quote from the record is an inference. List every inference in the inferences array with its id, text, participantLabel, and reason. An inference is anything you concluded from context, implied meaning, or pattern - not from an explicit statement. If a claim appears in the report body and is not a direct quote, it must appear in inferences. An empty inferences array means everything in the report is directly quoted.
+7. CROSS-REFERENCE SESSIONS. Each record entry is labeled with the session it came from (e.g. "[the initiator session 1]", "[participant A session 3]"). If the same party's position has changed across sessions, name that change explicitly - "in session 1 the initiator described X; by session 3 they described Y." If a commitment from an earlier session has not been followed up in later sessions, name it. The longitudinal arc is the product's core value. A report that reads as a snapshot of only the latest session has failed.
+8. NO FALSE CONSENSUS. Do not write "both parties agree" or "all parties are aligned" unless every party's record contains explicit matching statements on that specific point. If parties described the same topic differently in any session, that is a divergence - surface it. Smoothing a disagreement into apparent consensus is a more serious error than noting the gap.`;
 
 
     // Note any invited party who contributed no record - surfaced as an absence,
@@ -358,7 +363,11 @@ SYNTHESIS RULES (override all other instructions if there is a conflict):
       longitudinalNotice +
       overAgreementNotice +
       evidenceAbsenceNotice +
-      records.map((r) => `[${labelById.get(r.participant.id) ?? 'a party'}] (${r.type}) ${r.text}`).join('\n');
+      records.map((r) => {
+        const label = labelById.get(r.participant.id) ?? 'a party';
+        const session = r.checkIn?.sessionNumber ? ` session ${r.checkIn.sessionNumber}` : '';
+        return `[${label}${session}] (${r.type}) ${r.text}`;
+      }).join('\n');
 
     const NEW_STARTING_SCENARIOS: GroundScenario[] = [
       GroundScenario.NEW_HIRE,
@@ -814,7 +823,8 @@ SYNTHESIS RULES (override all other instructions if there is a conflict):
     if (!ground) throw new NotFoundException('Ground not found');
     const isParty = ground.initiatorId === requestingUserId ||
       ground.participants.some((p) => p.userId === requestingUserId);
-    if (!isParty) throw new ForbiddenException('Not a party to this ground');
+    // Non-parties (org admins, platform admins) can still see aggregate status.
+    if (!isParty) return this.getActivationStatus(groundId, ground.participants.map((p) => p.id));
     return this.getActivationStatus(groundId, ground.participants.map((p) => p.id));
   }
 

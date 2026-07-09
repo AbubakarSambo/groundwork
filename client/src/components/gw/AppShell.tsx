@@ -44,6 +44,18 @@ const NAV_ITEMS = [
     ),
   },
   {
+    label: 'Admin',
+    to: '/admin/dashboard',
+    adminOnly: true,
+    icon: (active: boolean) => (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <path d="M10 2.5L12.5 7.5H17.5L13.5 10.5L15 15.5L10 12.5L5 15.5L6.5 10.5L2.5 7.5H7.5L10 2.5Z"
+          stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"
+          fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.15 : 0} />
+      </svg>
+    ),
+  },
+  {
     label: 'Profile',
     to: '/profile',
     icon: (active: boolean) => (
@@ -88,7 +100,7 @@ function FeedbackWidget() {
       wrongText: tab === 'wrong' ? wrongText : undefined,
       contactEmail: contactEmail || undefined,
     }
-    try { await apiClient.post('/feedback', payload) } catch { /* swallow — best effort */ }
+    try { await apiClient.post('/feedback', payload) } catch { /* swallow - best effort */ }
     setSent(true)
     setTimeout(() => { setOpen(false); setSent(false); setReaction(''); setBuildPick(''); setBuildDetail(''); setWrongText(''); setContactEmail('') }, 1800)
   }
@@ -144,7 +156,7 @@ function FeedbackWidget() {
 
             {sent ? (
               <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--gw-green-t)', fontWeight: 600, fontSize: 14 }}>
-                Thanks — noted ✓
+                Thanks - noted ✓
               </div>
             ) : (
               <>
@@ -166,7 +178,7 @@ function FeedbackWidget() {
                         </button>
                       ))}
                     </div>
-                    <input type="email" placeholder="Email (optional — if you want a reply)" value={contactEmail} onChange={e => setContactEmail(e.target.value)}
+                    <input type="email" placeholder="Email (optional - if you want a reply)" value={contactEmail} onChange={e => setContactEmail(e.target.value)}
                       style={{ width: '100%', border: '1px solid var(--gw-border)', borderRadius: 6, padding: '10px 12px', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 10, outline: 'none' }} />
                   </>
                 )}
@@ -198,7 +210,7 @@ function FeedbackWidget() {
                   <>
                     <textarea placeholder="Tell us what happened" value={wrongText} onChange={e => setWrongText(e.target.value)}
                       style={{ width: '100%', border: '1px solid var(--gw-border)', borderRadius: 6, padding: '10px 12px', fontSize: 13, fontFamily: 'inherit', resize: 'vertical', minHeight: 100, boxSizing: 'border-box', marginBottom: 10, outline: 'none' }} />
-                    <input type="email" placeholder="Email (optional — if you want a reply)" value={contactEmail} onChange={e => setContactEmail(e.target.value)}
+                    <input type="email" placeholder="Email (optional - if you want a reply)" value={contactEmail} onChange={e => setContactEmail(e.target.value)}
                       style={{ width: '100%', border: '1px solid var(--gw-border)', borderRadius: 6, padding: '10px 12px', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 10, outline: 'none' }} />
                   </>
                 )}
@@ -478,7 +490,7 @@ export function AppSidebar() {
           </nav>
         )}
 
-        {/* Nav items — always visible in expanded sidebar */}
+        {/* Nav items - always visible in expanded sidebar */}
         {!collapsed && (
           <nav style={{ padding: '6px 8px', borderTop: '1px solid rgba(255,255,255,.07)', flexShrink: 0 }}>
             {NAV_ITEMS.filter(item => !item.adminOnly).map(item => {
