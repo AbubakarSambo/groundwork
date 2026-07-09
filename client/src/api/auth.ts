@@ -53,4 +53,10 @@ export const authApi = {
 
   teamInvite: (email: string) =>
     apiClient.post<{ message: string }>('/auth/team-invite', { email }).then(r => r.data),
+
+  setEmailNotifications: (enabled: boolean) =>
+    apiClient.patch<User>('/auth/me', { emailNotifications: enabled }).then(r => r.data),
+
+  leaveOrg: () =>
+    apiClient.post<{ left: boolean }>('/users/me/leave').then(r => r.data),
 }

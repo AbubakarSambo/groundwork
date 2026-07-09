@@ -8,6 +8,7 @@ export interface User {
   organizationName?: string
   jobTitle?: string
   isPlatformAdmin?: boolean
+  emailNotifications?: boolean
 }
 
 export type GroundScenario =
@@ -141,6 +142,15 @@ export interface Report {
   clarity?: string[]
   questions?: string[]
   privacy?: string
+  inferences?: ReportInference[] | null
   releasedAt: string | null
   createdAt: string
+}
+
+export interface ReportInference {
+  id: string
+  text: string
+  participantLabel: string
+  reason: string
+  dismissed?: boolean // client-side only: user said "this is right"
 }

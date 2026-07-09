@@ -142,7 +142,9 @@ export function AlignmentFeedPage() {
         <div className="gw-chat-msgs" ref={msgsRef}>
           {msgs.map(m => (
             <div key={m.id} className={`gw-msg ${m.id === 'loading' ? 'gw-msg-loading' : m.role === 'AI' ? 'gw-msg-ai' : 'gw-msg-user'}`}>
-              {m.content}
+              {m.id === 'loading'
+                ? <><span style={{ marginRight: 6, fontStyle: 'normal', color: 'var(--gw-muted)', fontSize: 11 }}>Thinking</span><span className="gw-dot" /><span className="gw-dot" /><span className="gw-dot" /></>
+                : m.content}
             </div>
           ))}
         </div>

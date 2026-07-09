@@ -470,6 +470,7 @@ export class AuthService {
       organizationName: user.organization.name,
       orgCode: user.organization.slug,
       isPlatformAdmin: user.isPlatformAdmin,
+      emailNotifications: user.emailNotifications,
       organization: {
         id: user.organization.id,
         name: user.organization.name,
@@ -514,6 +515,7 @@ export class AuthService {
     if (dto.firstName !== undefined) userUpdate.firstName = dto.firstName.trim();
     if (dto.lastName !== undefined) userUpdate.lastName = dto.lastName.trim();
     if (dto.jobTitle !== undefined) userUpdate.jobTitle = dto.jobTitle.trim();
+    if (dto.emailNotifications !== undefined) userUpdate.emailNotifications = dto.emailNotifications;
 
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
 
