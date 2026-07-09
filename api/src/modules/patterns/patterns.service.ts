@@ -31,7 +31,7 @@ const ACTIVE_STATUSES: GroundStatus[] = [
 ];
 
 /**
- * Pattern detection. Behavioural signals across check-in PERIODS — never a
+ * Pattern detection. Behavioural signals across check-in PERIODS - never a
  * verdict on a person (Part 4). A code only surfaces after it has been observed
  * in three CONSECUTIVE periods (THREE PERIOD RULE; a gap resets the streak).
  * The API exposes the plain observationText, never the code as a score/list.
@@ -105,7 +105,7 @@ export class PatternsService {
         });
         if (!confirmed) continue;
 
-        // Gap #30 — F1 composite gate: F1 (Insight Without Operation) requires
+        // Gap #30 - F1 composite gate: F1 (Insight Without Operation) requires
         // ALL four conditions (high thinking-language, low output-language,
         // pattern sustained 3 periods, no change after prior surfacing). The AI
         // extraction pass can flag F1 too early; we enforce the composite rule
@@ -113,7 +113,7 @@ export class PatternsService {
         if (d.code === 'F1') {
           const f1Input = await this.buildF1Input(checkIn.participantId);
           if (!checkF1Conditions(f1Input)) {
-            this.logger.debug(`F1 gate: composite conditions not met for participant ${checkIn.participantId} — skipping`);
+            this.logger.debug(`F1 gate: composite conditions not met for participant ${checkIn.participantId} - skipping`);
             continue;
           }
         }
@@ -147,7 +147,7 @@ export class PatternsService {
    * three-period rule with consecutive periods: a gap resets the streak; the
    * status flips to SURFACED only at three consecutive periods.
    *
-   * Gap #21 — consecutivePeriods counter: if the incoming period is not exactly
+   * Gap #21 - consecutivePeriods counter: if the incoming period is not exactly
    * lastPeriodNumber + 1 (a gap), the streak resets to 1 and the detection
    * stays CANDIDATE regardless of total periodsObserved.
    */
@@ -172,10 +172,10 @@ export class PatternsService {
 
     const last = existing.lastPeriodNumber ?? 0;
 
-    // Stale / already counted for this or an earlier period — ignore.
+    // Stale / already counted for this or an earlier period - ignore.
     if (periodNumber <= last) return existing;
 
-    // Consecutive period — extend the streak.
+    // Consecutive period - extend the streak.
     if (periodNumber === last + 1) {
       const periodsObserved = existing.periodsObserved + 1;
       return this.prisma.patternDetection.update({
@@ -191,7 +191,7 @@ export class PatternsService {
       });
     }
 
-    // Gap in periods — the consecutive streak broke. Reset to 1 (never accelerate
+    // Gap in periods - the consecutive streak broke. Reset to 1 (never accelerate
     // detection; periodsObserved is the consecutive count, not a lifetime count).
     return this.prisma.patternDetection.update({
       where: { id: existing.id },
@@ -207,7 +207,7 @@ export class PatternsService {
 
   /**
    * Record a positive signal (e.g. R3) for a participant. Positive signals are
-   * surfaced immediately — they are not subject to the three-period rule.
+   * surfaced immediately - they are not subject to the three-period rule.
    */
   async observePositive(
     groundId: string,
@@ -250,12 +250,12 @@ export class PatternsService {
   }
 
   /**
-   * Gap #21 — surfacePatterns(): enforce the three-period rule across ALL
+   * Gap #21 - surfacePatterns(): enforce the three-period rule across ALL
    * CANDIDATE detections for a ground. Any detection that has been observed in
    * exactly THREE consecutive periods is transitioned to SURFACED; any whose
    * consecutive streak is broken is left as CANDIDATE with its counter reset.
    *
-   * This is the explicit promotion pass. It is safe to call multiple times —
+   * This is the explicit promotion pass. It is safe to call multiple times -
    * already-SURFACED detections are skipped.
    */
   async surfacePatterns(groundId: string): Promise<void> {
@@ -274,7 +274,7 @@ export class PatternsService {
   }
 
   /**
-   * Gap #22 — startNewPeriod(groundId):
+   * Gap #22 - startNewPeriod(groundId):
    *   1. Archives (marks with period tag in observationText) current CANDIDATE
    *      detections so they are queryable by period.
    *   2. Resets per-period counters for detections that did NOT fire in the
@@ -312,7 +312,7 @@ export class PatternsService {
       }
 
       // 2. If this detection's last period is not the current period, the streak
-      //    is broken — reset the consecutive counter back to 0 so the next
+      //    is broken - reset the consecutive counter back to 0 so the next
       //    observation restarts the streak properly.
       const lastP = det.lastPeriodNumber ?? 0;
       if (lastP < currentPeriod) {
@@ -330,7 +330,7 @@ export class PatternsService {
   }
 
   /**
-   * Gap #29 — detectConcentrationRisk(orgId):
+   * Gap #29 - detectConcentrationRisk(orgId):
    * Detects when a single person (by userId) appears as a participant in 3 or
    * more active grounds simultaneously within the same organisation. When
    * detected, creates a CONCENTRATION_RISK PatternDetection on one of those
@@ -400,7 +400,7 @@ export class PatternsService {
   }
 
   /**
-   * Gap #32 — Org-wide mention tracking for Degree 3 cross-reference.
+   * Gap #32 - Org-wide mention tracking for Degree 3 cross-reference.
    * Returns all record entries from ALL grounds in the given organisation where
    * the specified participant email is mentioned, so cross-ground mention
    * patterns can be detected across the entire org rather than a single ground.
@@ -433,7 +433,7 @@ export class PatternsService {
   }
 
   /**
-   * Surfaced observations for a ground — plain language only. Never the raw
+   * Surfaced observations for a ground - plain language only. Never the raw
    * codes, never a count, never a verdict, never who said what.
    */
   async surfacedForGround(groundId: string) {
@@ -446,7 +446,7 @@ export class PatternsService {
   }
 
   /**
-   * Gap #30 — Build a DetectionInput for the F1 composite check using the
+   * Gap #30 - Build a DetectionInput for the F1 composite check using the
    * participant's historical check-in data. Scores are computed on-the-fly from
    * each period's record entries using runIntake() (scores are not persisted on
    * the CheckIn model). Includes prior surfaced codes so condition 4 can be
@@ -515,7 +515,7 @@ export class PatternsService {
    * Returns true only if the model answers YES. Any other response or an error
    * is treated as rejection so we fail safely (no false positives).
    *
-   * The excerpt is the observation text produced by the batch extraction step —
+   * The excerpt is the observation text produced by the batch extraction step -
    * a plain-language description of what the record shows, never a verdict.
    */
   private async confirmDetection(code: string, excerpt: string): Promise<boolean> {

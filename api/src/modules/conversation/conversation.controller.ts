@@ -42,7 +42,7 @@ export class ConversationController {
   }
 
   @Post(':id/open')
-  @ApiOperation({ summary: 'Open the check-in — the engine delivers the opening' })
+  @ApiOperation({ summary: 'Open the check-in - the engine delivers the opening' })
   async open(@Param('id') id: string, @CurrentUser('id') userId: string) {
     return this.conversation.open(id, userId);
   }
@@ -60,7 +60,7 @@ export class ConversationController {
   }
 
   @Post(':id/decline')
-  @ApiOperation({ summary: 'Decline to take part — penalty-free (owner only)' })
+  @ApiOperation({ summary: 'Decline to take part - penalty-free (owner only)' })
   async decline(@Param('id') id: string, @CurrentUser('id') userId: string) {
     return this.conversation.decline(id, userId);
   }
@@ -72,7 +72,7 @@ export class ConversationController {
   }
 
   @Post(':id/document-received')
-  @ApiOperation({ summary: 'Handle a newly attached document — generates AI response asking what it confirms' })
+  @ApiOperation({ summary: 'Handle a newly attached document - generates AI response asking what it confirms' })
   async documentReceived(@Param('id') id: string, @CurrentUser('id') userId: string) {
     return this.conversation.documentReceived(id, userId);
   }

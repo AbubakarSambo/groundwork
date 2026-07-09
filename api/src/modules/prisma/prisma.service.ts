@@ -38,7 +38,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
   async withAdvisoryLock(key: number, fn: () => Promise<void>): Promise<boolean> {
     const rows = await this.$queryRaw<{ locked: boolean }[]>`SELECT pg_try_advisory_lock(${key}) AS locked`;
     if (!rows[0]?.locked) {
-      this.logger.debug(`Advisory lock ${key} held elsewhere — skipping this run`);
+      this.logger.debug(`Advisory lock ${key} held elsewhere - skipping this run`);
       return false;
     }
     try {

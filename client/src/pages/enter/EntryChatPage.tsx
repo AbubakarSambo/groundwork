@@ -190,7 +190,7 @@ export function EntryChatPage() {
   const [bulkInviteText, setBulkInviteText] = useState('')
   const [bulkQueue, setBulkQueue] = useState<string[]>([])
 
-  // Stable invite token — generated once and stored in entryStorage
+  // Stable invite token - generated once and stored in entryStorage
   const [inviteToken] = useState<string>(() => {
     const session = loadSession()
     if ((session as any)?.inviteToken) return (session as any).inviteToken
@@ -221,7 +221,7 @@ export function EntryChatPage() {
     if (saved && !saved.closed && !scenario) {
       // Restore existing session
       setHistory(saved.history)
-      if (saved.report) { try { setSessionReport(JSON.parse(saved.report)) } catch { /* legacy plain text — discard */ } }
+      if (saved.report) { try { setSessionReport(JSON.parse(saved.report)) } catch { /* legacy plain text - discard */ } }
       if (saved.email) setEmail(saved.email)
       if (saved.onboardingSelections) {
         setOnboardingSelections(saved.onboardingSelections)
@@ -373,7 +373,7 @@ export function EntryChatPage() {
   function advanceOnboarding(buttonChoice?: string) {
     const newSels = { ...onboardingSelections }
 
-    // Party path — show briefing before check-in starts
+    // Party path - show briefing before check-in starts
     if (buttonChoice === "I am involved. Let's begin." || buttonChoice === "I'm involved. Let's begin.") {
       setOnboardingStep(ONBOARDING_STEPS + 1)
       persistOnboarding([], newSels, ONBOARDING_STEPS)
@@ -381,7 +381,7 @@ export function EntryChatPage() {
       return
     }
 
-    // Manager path — skip check-in, go straight to save card
+    // Manager path - skip check-in, go straight to save card
     if (buttonChoice === "I am setting this up for others" || buttonChoice === "Setting this up for others") {
       setOnboardingStep(ONBOARDING_STEPS + 1)
       persistOnboarding([], newSels, ONBOARDING_STEPS)
@@ -494,7 +494,7 @@ export function EntryChatPage() {
     reader.onload = (ev) => {
       const content = (ev.target?.result as string) ?? ''
       if (content.length > 8000) {
-        toast.warning(`${file.name} is large — only the first portion will be used in this session.`)
+        toast.warning(`${file.name} is large - only the first portion will be used in this session.`)
       }
       setUploadedDoc({ name: file.name, content: content.slice(0, 8000) })
     }
@@ -544,11 +544,11 @@ export function EntryChatPage() {
         lastCheckInBy: lastCheckInBy.trim() || undefined,
         reportSummary: sessionReport ? { alignmentStatus: sessionReport.alignmentStatus, whatGroundworkSaw: sessionReport.whatGroundworkSaw } : undefined,
         inviteNote: inviteNote.trim() || undefined,
-        // Each contributor gets its own token — the server generates one per participant.
+        // Each contributor gets its own token - the server generates one per participant.
         // Do NOT pass a shared inviteToken here; it would cause unique constraint failures
         // on the second contributor and silently drop them.
         contributors: inviteAdded.map(entry => {
-          const dashIdx = entry.indexOf(' — ')
+          const dashIdx = entry.indexOf(' - ')
           if (dashIdx === -1) return { email: entry }
           return { email: entry.slice(0, dashIdx), context: entry.slice(dashIdx + 3) }
         }),
@@ -577,7 +577,7 @@ export function EntryChatPage() {
 
   function submitInviteContext() {
     if (!inviteContextFor) return
-    const entry = inviteContextFor + (inviteContext.trim() ? ` — ${inviteContext.trim()}` : '')
+    const entry = inviteContextFor + (inviteContext.trim() ? ` - ${inviteContext.trim()}` : '')
     const newAdded = inviteAdded.includes(inviteContextFor) ? inviteAdded : [...inviteAdded, entry]
     setInviteAdded(newAdded)
     setInviteContext('')
@@ -595,7 +595,7 @@ export function EntryChatPage() {
       if (raw) {
         const payload = JSON.parse(raw)
         payload.contributors = newAdded.map(e => {
-          const dashIdx = e.indexOf(' — ')
+          const dashIdx = e.indexOf(' - ')
           if (dashIdx === -1) return { email: e }
           return { email: e.slice(0, dashIdx), context: e.slice(dashIdx + 3) }
         })
@@ -633,7 +633,7 @@ export function EntryChatPage() {
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '13px 16px', background: 'white', borderRadius: 10, border: '1px solid var(--gw-border)' }}>
               <span style={{ fontSize: 16, flexShrink: 0 }}>📄</span>
               <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 2 }}>The shared report — not your words</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 2 }}>The shared report - not your words</div>
                 <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55 }}>Nobody reads what you write. When everyone is in, the report shows where all accounts agree or differ. It does not quote anyone.</div>
               </div>
             </div>
@@ -729,7 +729,7 @@ export function EntryChatPage() {
         </div>
       </div>
 
-      {/* Start over / clear check-in — hidden once session is closed */}
+      {/* Start over / clear check-in - hidden once session is closed */}
       {!closed && (
         <div style={{ padding: '6px 20px', borderBottom: '1px solid var(--gw-border)', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', flexShrink: 0 }}>
           {confirmClear ? (
@@ -769,7 +769,7 @@ export function EntryChatPage() {
         {/* PHASE: ONBOARDING (AI-driven) */}
         {phase === 'onboarding' && (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-            {/* Product intro — shown once before conversation starts */}
+            {/* Product intro - shown once before conversation starts */}
             {onboardingHistory.length <= 1 && (
               <div style={{ background: 'var(--gw-blue-bg)', borderBottom: '1px solid var(--gw-blue-b)', padding: '12px 20px', flexShrink: 0 }}>
                 <div style={{ maxWidth: 680, margin: '0 auto', fontSize: 13, color: 'var(--gw-navy)', lineHeight: 1.6 }}>
@@ -802,7 +802,7 @@ export function EntryChatPage() {
                 </div>
               ))}
 
-              {/* Situation cards — shown only before user has sent first message */}
+              {/* Situation cards - shown only before user has sent first message */}
               {onboardingHistory.length === 1 && !onboardingLoading && !pickedSituation && (
                 <div style={{ alignSelf: 'flex-start', width: '100%', maxWidth: '82%' }}>
                   <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginBottom: 8, fontWeight: 500 }}>Starting something new</div>
@@ -843,7 +843,7 @@ export function EntryChatPage() {
                     onClick={() => setPickedSituation('other')}
                     style={{ marginTop: 12, background: 'none', border: 'none', fontSize: 12, color: 'var(--gw-sub)', cursor: 'pointer', padding: 0, fontFamily: 'inherit', textDecoration: 'underline', alignSelf: 'flex-start' }}
                   >
-                    My situation is different — I will describe it
+                    My situation is different - I will describe it
                   </button>
                 </div>
               )}
@@ -900,7 +900,7 @@ export function EntryChatPage() {
               )}
             </div>
 
-            {/* Text input for onboarding — hidden once ready, loading checkin, or cards not yet dismissed */}
+            {/* Text input for onboarding - hidden once ready, loading checkin, or cards not yet dismissed */}
             {!startCheckin.isPending && !onboardingReady && !(onboardingHistory.length === 1 && !pickedSituation) && (
               <div style={{ borderTop: '1px solid var(--gw-border)', background: 'white', flexShrink: 0 }}>
                 <div style={{ padding: '10px 16px' }}>
@@ -1043,7 +1043,7 @@ export function EntryChatPage() {
               <div style={{ borderTop: '1px solid var(--gw-border)', background: 'white', flexShrink: 0, padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)' }}>Your account is on record.</div>
-                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 2 }}>Invite others to check in — the shared report releases when all parties are in.</div>
+                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 2 }}>Invite others to check in - the shared report releases when all parties are in.</div>
                 </div>
                 <button
                   onClick={() => setShowSave(true)}
@@ -1111,7 +1111,7 @@ export function EntryChatPage() {
           <div style={{ background: '#0A1628', color: 'white', padding: '20px 22px 16px' }}>
             <div style={{ fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: '#5DCAA5', fontWeight: 700, marginBottom: 6 }}>{skippedCheckin ? 'New ground' : 'Session 1 · your private report'}</div>
             <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-.01em', lineHeight: 1.2 }}>{groundName || (skippedCheckin ? 'Set up your ground.' : 'Your account is on record.')}</div>
-            <div style={{ fontSize: 12, color: 'rgba(255,255,255,.5)', marginTop: 4 }}>This is your private report — only you can see it. The shared report generates once all parties have checked in. It does not quote you.</div>
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,.5)', marginTop: 4 }}>This is your private report - only you can see it. The shared report generates once all parties have checked in. It does not quote you.</div>
             {history.filter(m => m.role === 'user').length > 0 && (() => {
               const turns = history.filter(m => m.role === 'user').length
               const depth = turns < 4 ? 1 : turns < 8 ? 2 : turns < 12 ? 3 : turns < 16 ? 4 : 5
@@ -1134,7 +1134,7 @@ export function EntryChatPage() {
               </div>
             )}
 
-            {/* ISSUE 15: report failed — show retry option */}
+            {/* ISSUE 15: report failed - show retry option */}
             {!generatingReport && !sessionReport && closed && reportTurnsForRetry && (
               <div style={{ background: '#F8ECEA', borderRadius: 10, padding: '14px 16px', marginBottom: 18, display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{ flex: 1, fontSize: 13, color: '#B5675A', lineHeight: 1.5 }}>
@@ -1269,7 +1269,7 @@ export function EntryChatPage() {
               </>
             )}
 
-            {/* What happens next — shown after report is ready, before signup */}
+            {/* What happens next - shown after report is ready, before signup */}
             {(sessionReport || (!generatingReport && closed)) && !emailSent && (
               <div style={{ background: '#F0F4FA', borderRadius: 10, padding: '14px 16px', marginBottom: 18 }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: '#0C447C', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '.06em' }}>What happens next</div>
@@ -1288,7 +1288,7 @@ export function EntryChatPage() {
               </div>
             )}
 
-            {/* Create account — right after the report, before all admin */}
+            {/* Create account - right after the report, before all admin */}
             {!emailSent ? (
               <div style={{ marginBottom: 20 }}>
                 <input type="email" placeholder="your@email.com" value={email} onChange={e => { setEmail(e.target.value); setEmailError('') }}
@@ -1310,7 +1310,7 @@ export function EntryChatPage() {
               </div>
             )}
 
-            {/* Admin setup — only shown after email sent */}
+            {/* Admin setup - only shown after email sent */}
             {emailSent && (
             <div>
             <div style={{ borderTop: '1px solid #E2E0DB', marginBottom: 18 }} />
@@ -1378,7 +1378,7 @@ export function EntryChatPage() {
               )}
             </div>
 
-            {/* Invite contributors — before create account */}
+            {/* Invite contributors - before create account */}
             {(() => {
               const s = onboardingSelections.classifiedScenario || onboardingSelections.mode || scenario || pickedSituation || ''
               const isSensitive = ['PIP', 'DRIFT', 'REALIGN_TEAM', 'Running a PIP', 'Team member not delivering', 'Cofounder or partner dispute'].some(k => s.includes(k))
@@ -1557,7 +1557,7 @@ export function EntryChatPage() {
           <div style={{ background: 'white', borderRadius: 12, padding: 24, maxWidth: 380, width: '100%' }}>
             <div style={{ fontSize: 16, fontWeight: 800, color: '#0A1628', marginBottom: 8 }}>End this session?</div>
             <div style={{ fontSize: 13, color: '#6B6560', lineHeight: 1.65, marginBottom: 8 }}>
-              Your responses are already saved. Ending closes this session permanently — you will not be able to add to it.
+              Your responses are already saved. Ending closes this session permanently - you will not be able to add to it.
             </div>
             <div style={{ fontSize: 13, color: '#6B6560', lineHeight: 1.65, marginBottom: 18 }}>
               The shared report releases once all parties have checked in. You can start a new session any time.

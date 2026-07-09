@@ -97,20 +97,12 @@ export class GroundsService {
         sessionsBalance: 1,
         ...(canCreate.freeReason === 'ACCESS_CODE' && canCreate.codeId
           ? { accessCodeId: canCreate.codeId, freeReason: 'ACCESS_CODE' }
-          : canCreate.freeReason === 'FIRST_GROUND'
-            ? { freeReason: 'FIRST_GROUND' }
+          : canCreate.freeReason === 'FREE_TIER'
+            ? { freeReason: 'FREE_TIER' }
             : {}),
       };
 
       const ground = await tx.ground.create({ data: groundData as any });
-
-      // Mark org.firstGroundUsed atomically when this is the first free ground.
-      if (canCreate.freeReason === 'FIRST_GROUND') {
-        await tx.organization.update({
-          where: { id: organizationId },
-          data: { firstGroundUsed: true },
-        });
-      }
 
       // Record access-code redemption atomically.
       if (canCreate.freeReason === 'ACCESS_CODE' && canCreate.codeId) {
@@ -193,13 +185,26 @@ export class GroundsService {
     };
   }
 
-  async list(organizationId: string, userId?: string, userEmail?: string) {
+  async list(organizationId: string, userId?: string, userEmail?: string, userRole?: string) {
     const now = new Date();
     const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
+    // Non-admins only see grounds they created or were invited to.
+    // Admins see all org grounds (needed for org-level management).
+    const isAdmin = userRole === 'ADMIN';
+    const orgGroundWhere = isAdmin || !userId
+      ? { organizationId }
+      : {
+          organizationId,
+          OR: [
+            { initiatorId: userId },
+            { participants: { some: { userId } } },
+          ],
+        };
+
     const orgGrounds = await this.prisma.ground.findMany({
-      where: { organizationId },
+      where: orgGroundWhere,
       include: {
         participants: { select: { id: true, email: true, partyType: true, userId: true } },
         checkIns: {

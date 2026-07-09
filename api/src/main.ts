@@ -55,7 +55,7 @@ async function bootstrap() {
 
   const config = new DocumentBuilder()
     .setTitle('Groundwork API')
-    .setDescription('Contribution intelligence — alignment grounds, conversation engine, reports')
+    .setDescription('Contribution intelligence - alignment grounds, conversation engine, reports')
     .setVersion('1.0')
     .addBearerAuth()
     .addTag('Auth', 'Authentication endpoints')
@@ -72,7 +72,7 @@ async function bootstrap() {
   const httpAdapter = app.getHttpAdapter();
   httpAdapter.get('/health', (_req, res) => res.status(200).send('ok'));
 
-  // Email diagnostic — call GET /health/email?to=you@example.com on the production
+  // Email diagnostic - call GET /health/email?to=you@example.com on the production
   // server to see exactly what Resend returns. Safe to leave in: no auth bypass,
   // no data exposure, just a test send to an explicit address.
   httpAdapter.get('/health/email', async (req: any, res: any) => {
@@ -83,7 +83,7 @@ async function bootstrap() {
     const apiKey = process.env.RESEND_API_KEY ?? '';
     const fromEmail = process.env.RESEND_FROM_EMAIL || 'Groundwork <noreply@myground.work>';
     if (!apiKey || apiKey.startsWith('re_...')) {
-      return res.status(200).json({ status: 'dev_mode', message: 'RESEND_API_KEY is the placeholder — emails are suppressed and logged only.' });
+      return res.status(200).json({ status: 'dev_mode', message: 'RESEND_API_KEY is the placeholder - emails are suppressed and logged only.' });
     }
     try {
       const resend = new Resend(apiKey);

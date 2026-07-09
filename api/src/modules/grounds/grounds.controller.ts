@@ -38,7 +38,7 @@ export class GroundsController {
   @Get()
   @ApiOperation({ summary: 'List grounds in the organization, including grounds as a participant' })
   async list(@CurrentUser() user: CurrentUserData) {
-    return this.grounds.list(user.organizationId, user.id, user.email);
+    return this.grounds.list(user.organizationId, user.id, user.email, user.role);
   }
 
   @Get(':id')

@@ -17,7 +17,7 @@ import { PlatformAdminGuard } from '../../common/guards/platform-admin.guard';
 import { CurrentUser } from '../../common';
 
 // ---------------------------------------------------------------------------
-// OTP guard — reads X-Admin-OTP header and verifies it against the requesting
+// OTP guard - reads X-Admin-OTP header and verifies it against the requesting
 // user's stored OTP before allowing destructive operations.
 // ---------------------------------------------------------------------------
 import {
@@ -43,7 +43,7 @@ export class OtpGuard implements CanActivate {
       throw new ForbiddenException('Authenticated user not found');
     }
 
-    // verifyOtpForAdmin throws if invalid — let it bubble as 400/403
+    // verifyOtpForAdmin throws if invalid - let it bubble as 400/403
     await this.adminService.verifyOtpForAdmin(userId, otp);
     return true;
   }

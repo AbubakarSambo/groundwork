@@ -1,11 +1,11 @@
 import { GroundsService, SAFE_PARTICIPANT_SELECT } from './grounds.service';
 
 /**
- * Trust invariants (GW-01). These guard the product's load-bearing rule —
- * "record ownership is the mechanism" — against regression. If any of these
+ * Trust invariants (GW-01). These guard the product's load-bearing rule -
+ * "record ownership is the mechanism" - against regression. If any of these
  * fail, a participant's private data is leaking through the ground view.
  */
-describe('GroundsService — participant serialization (GW-01)', () => {
+describe('GroundsService - participant serialization (GW-01)', () => {
   const SENSITIVE = ['inviteToken', 'inviteTokenExpiresAt', 'soloArtifact', 'specificityHistory', 'willingnessEvidence', 'willingnessCadence', 'lastNudgedAt'];
 
   it('SAFE_PARTICIPANT_SELECT never exposes sensitive fields', () => {
@@ -49,10 +49,10 @@ describe('GroundsService — participant serialization (GW-01)', () => {
 });
 
 /**
- * GW-24: participant invite resend — generates a fresh token and re-sends
+ * GW-24: participant invite resend - generates a fresh token and re-sends
  * the email. Throws when the participant has already accepted.
  */
-describe('GroundsService.resendParticipantInvite — GW-24', () => {
+describe('GroundsService.resendParticipantInvite - GW-24', () => {
   function makePrisma(ground: any, participant: any, initiator: any) {
     const updated: any[] = [];
     return {

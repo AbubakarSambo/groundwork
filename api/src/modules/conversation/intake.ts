@@ -1,17 +1,17 @@
 /**
- * Agent 1 — Intake classification (rule-based, no API call). Ported from the
+ * Agent 1 - Intake classification (rule-based, no API call). Ported from the
  * MVP edge-function pipeline (08_final_mvp_gw_chat.html).
  *
  * Runs on every inbound message before context is built. Classifies the
  * contribution type, scores specificity, and distinguishes advisory/thinking
- * language from independent output — so the engine can push for evidence
+ * language from independent output - so the engine can push for evidence
  * (the independence test) rather than accept managed narrative.
  */
 
 const MOVEMENT_WORDS = ['delivered', 'shipped', 'completed', 'launched', 'built', 'reduced', 'increased', 'closed', 'signed'];
 const COORDINATION_WORDS = ['unblocked', 'resolved blocker', 'enabled', 'clarified', 'brought together'];
 const ABSORPTION_WORDS = ['covered for', 'picked up', 'had to step in', 'ended up doing', 'took over'];
-// #110 — expanded RESCUE detection: original patterns + invisible load + operational-absorption + late-notice
+// #110 - expanded RESCUE detection: original patterns + invisible load + operational-absorption + late-notice
 const RESCUE_WORDS = [
   'averted', 'prevented', 'fixed before', 'saved', 'caught', 'intervened',
   // invisible load language
@@ -103,7 +103,7 @@ export function runIntake(text: string): IntakeResult {
   };
 }
 
-// #11 — Added DECLINING_ENGAGEMENT as a 5th trust state.
+// #11 - Added DECLINING_ENGAGEMENT as a 5th trust state.
 // Triggered when check-in attendance rate (completed / invited) drops below 0.5
 // across the last 3 periods, regardless of specificity score.
 export type TrustLevel = 'high' | 'declining' | 'low' | 'building' | 'declining_engagement';
@@ -112,7 +112,7 @@ export interface TrustState { level: TrustLevel; tone: string }
 /**
  * Trust calibration from the rolling specificity history (ported from the MVP).
  *
- * #11 — attendanceRateHistory: optional array of (completed/invited) ratios for the
+ * #11 - attendanceRateHistory: optional array of (completed/invited) ratios for the
  * last N periods. When the last 3 values are all below 0.5 the trust state becomes
  * DECLINING_ENGAGEMENT regardless of specificity.
  */
@@ -121,7 +121,7 @@ export function trustFrom(
   checkInNum: number,
   attendanceRateHistory?: number[],
 ): TrustState {
-  // #11 — DECLINING_ENGAGEMENT check: last 3 attendance rates all below 0.5
+  // #11 - DECLINING_ENGAGEMENT check: last 3 attendance rates all below 0.5
   if (attendanceRateHistory && attendanceRateHistory.length >= 3) {
     const last3 = attendanceRateHistory.slice(-3);
     if (last3.every((r) => r < 0.5)) {

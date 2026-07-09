@@ -5,7 +5,7 @@ import { ALIGNMENT_FEED_ONLY_CODES } from '../patterns/pattern-library';
 import { CheckInStatus, RecordEntryType } from '@prisma/client';
 
 // ---------------------------------------------------------------------------
-// #12 — Dynamic cross-reference anchors.
+// #12 - Dynamic cross-reference anchors.
 // Replace hardcoded SHARED_TERMS with a function that extracts the top 10
 // nouns / noun-phrases from each party's last check-in transcript using simple
 // word-frequency analysis. Common stop-words and short tokens are filtered out.
@@ -59,7 +59,7 @@ function extractTopNouns(text: string, n = 10): string[] {
 }
 
 // ---------------------------------------------------------------------------
-// GW-08 — Disclosure detection. When a check-in message contains signals of
+// GW-08 - Disclosure detection. When a check-in message contains signals of
 // harassment, illegal conduct, active legal proceedings, or crisis/self-harm,
 // the standard contribution-chat sequence must stop. The AI must acknowledge,
 // NOT probe for evidence, and route to appropriate support.
@@ -96,11 +96,11 @@ const SUPPORT_RESOURCES = `SUPPORT RESOURCES (include these in your response):
 
 function buildDisclosureBlock(category: string): string {
   if (category === 'crisis') {
-    return `DISCLOSURE MODE — CRISIS / SELF-HARM SIGNAL DETECTED
+    return `DISCLOSURE MODE - CRISIS / SELF-HARM SIGNAL DETECTED
 STOP the alignment-ground sequence immediately.
 
-1. Respond with genuine warmth — acknowledge what was shared in one specific sentence. Do not use generic validation language.
-2. Say: "What you have shared is important. This is not the right space for what you need right now — please reach out to someone who can support you directly."
+1. Respond with genuine warmth - acknowledge what was shared in one specific sentence. Do not use generic validation language.
+2. Say: "What you have shared is important. This is not the right space for what you need right now - please reach out to someone who can support you directly."
 3. Share the support resources below.
 4. Do NOT record this as a record entry.
 5. Do NOT return to alignment-ground questions unless the person re-engages directly.
@@ -109,7 +109,7 @@ ${SUPPORT_RESOURCES}`;
   }
 
   if (category === 'legalProceedings') {
-    return `DISCLOSURE MODE — ACTIVE LEGAL PROCEEDINGS SIGNAL DETECTED
+    return `DISCLOSURE MODE - ACTIVE LEGAL PROCEEDINGS SIGNAL DETECTED
 STOP the alignment-ground sequence.
 
 1. Acknowledge what they have shared, calmly and specifically.
@@ -122,13 +122,13 @@ ${SUPPORT_RESOURCES}`;
   }
 
   // category === 'harassment'
-  return `DISCLOSURE MODE — POTENTIAL HARASSMENT / DISCRIMINATION / RETALIATION SIGNAL DETECTED
+  return `DISCLOSURE MODE - POTENTIAL HARASSMENT / DISCRIMINATION / RETALIATION SIGNAL DETECTED
 The standard contribution-chat sequence MUST NOT continue.
 
-1. Acknowledge what was shared — one sentence, specific to their words, not generic.
+1. Acknowledge what was shared - one sentence, specific to their words, not generic.
 2. Do NOT probe for evidence ("when did this happen?", "who else saw it?"). Evidence-gathering is not your role here.
-3. Say: "What you have described may go beyond what this tool is designed to handle. Your account matters, and it needs to reach the right people — not just this record."
-4. Say: "This record is currently visible only to you. If the ground is activated, the report goes to both parties — including the person you have described. Before we continue, consider where this record goes."
+3. Say: "What you have described may go beyond what this tool is designed to handle. Your account matters, and it needs to reach the right people - not just this record."
+4. Say: "This record is currently visible only to you. If the ground is activated, the report goes to both parties - including the person you have described. Before we continue, consider where this record goes."
 5. Share support resources. Let them decide whether to pause or continue.
 
 ${SUPPORT_RESOURCES}`;
@@ -144,13 +144,13 @@ interface Injection {
 }
 
 /**
- * Builds the per-turn dynamic context for a member check-in — the live
+ * Builds the per-turn dynamic context for a member check-in - the live
  * intelligence the MVP edge function ran on every message: Agent 1 intake
  * classification, trust calibration, and Agent 3 tiered cross-reference.
  *
  * ISOLATION: cross-reference reads OTHER parties' extracted record (not their
  * transcript) only to derive a SIGNAL and a probe. It never returns their
- * verbatim words — not even into the model context. The system prompt forbids
+ * verbatim words - not even into the model context. The system prompt forbids
  * revealing sources. This is the "gap is the product" exception, kept stricter
  * than the MVP (which passed verbatim content behind the curtain).
  */
@@ -180,7 +180,7 @@ export class ConversationContextService {
     if (latestMessage) {
       // GW-08: check for disclosure signals before any other processing. A message
       // containing harassment, crisis, or legal-proceedings signals must route to
-      // the disclosure protocol — never to the evidence-building flow.
+      // the disclosure protocol - never to the evidence-building flow.
       const disclosure = detectDisclosure(latestMessage);
       if (disclosure) {
         const disclosureBlock = buildDisclosureBlock(disclosure.category);
@@ -196,30 +196,30 @@ export class ConversationContextService {
       const trust = trustFrom(nextHistory, sessionNumber);
       tone = trust.tone;
 
-      block += `# Live read of this message (behind the curtain — never name these system terms to the person)\n`;
+      block += `# Live read of this message (behind the curtain - never name these system terms to the person)\n`;
       block += `Contribution types: ${intake.types.join(', ')} | Specificity: ${intake.specificity.toFixed(2)} | Output: ${intake.outputScore.toFixed(2)} | Thinking: ${intake.thinkingScore.toFixed(2)}\n`;
       block += `Trust level: ${trust.level} | Tone to use: ${trust.tone}\n`;
-      if (intake.isAdvisoryOnly) block += `ADVISORY ONLY — apply the independence test: ask what exists now that would not exist if they had not been here this period.\n`;
-      if (intake.meetingScore > 0.2) block += `MEETING LANGUAGE — probe what the meeting produced that exists independently of the meeting.\n`;
+      if (intake.isAdvisoryOnly) block += `ADVISORY ONLY - apply the independence test: ask what exists now that would not exist if they had not been here this period.\n`;
+      if (intake.meetingScore > 0.2) block += `MEETING LANGUAGE - probe what the meeting produced that exists independently of the meeting.\n`;
       if (intake.vagueLanguage.length) block += `Vague language to push past: ${intake.vagueLanguage.join(', ')}.\n`;
       if (intake.factualClaims.length) block += `Verifiable claims: ${intake.factualClaims.filter((c) => c.verifiable).length} of ${intake.factualClaims.length}.\n`;
       block += `\n`;
 
-      // Agent 3 — cross-reference (degree 2 + degree 3): only from session 2 onward,
+      // Agent 3 - cross-reference (degree 2 + degree 3): only from session 2 onward,
       // only when another party in this ground has completed a check-in.
       if (sessionNumber >= 2) {
         const injections = await this.crossReference(groundId, participantId, latestMessage);
         if (injections.length) {
-          block += `# Intelligence layer — do NOT reveal sources; the person should experience this as perceptive, not surveilled. Never quote the other party. Apply each probe at its stated tier only; do not escalate.\n`;
+          block += `# Intelligence layer - do NOT reveal sources; the person should experience this as perceptive, not surveilled. Never quote the other party. Apply each probe at its stated tier only; do not escalate.\n`;
           for (const inj of injections) {
             const topicPart = inj.topic ? ` | topic: ${inj.topic}` : '';
-            block += `[${inj.type} | TIER ${inj.tier}${inj.downstream ? ' | DOWNSTREAM — weight higher' : ''}${topicPart}] Recommended probe: ${inj.probe}\n`;
+            block += `[${inj.type} | TIER ${inj.tier}${inj.downstream ? ' | DOWNSTREAM - weight higher' : ''}${topicPart}] Recommended probe: ${inj.probe}\n`;
           }
           block += `\n`;
         }
       }
 
-      // #13 — Degree 1 cross-reference: COMMITMENT-type record entries from
+      // #13 - Degree 1 cross-reference: COMMITMENT-type record entries from
       // earlier in this same session injected as a 'Prior commitments this session'
       // block so the AI can reference them.
       if (checkInId) {
@@ -229,15 +229,15 @@ export class ConversationContextService {
           orderBy: { createdAt: 'asc' },
         });
         if (sessionCommitments.length) {
-          block += `# Prior commitments this session (Degree 1 cross-reference — reference these when relevant, never as accusation)\n`;
+          block += `# Prior commitments this session (Degree 1 cross-reference - reference these when relevant, never as accusation)\n`;
           for (const c of sessionCommitments) block += `- ${c.text}\n`;
           block += `\n`;
         }
       }
     }
 
-    // Surfaced longitudinal patterns (three-period rule) — plain, never verdicts.
-    // Feed-only codes (F5/E4 — cofounder/founder burden asymmetry) must NEVER be
+    // Surfaced longitudinal patterns (three-period rule) - plain, never verdicts.
+    // Feed-only codes (F5/E4 - cofounder/founder burden asymmetry) must NEVER be
     // named to either person directly; they surface to the alignment feed only.
     // (Part 4 / GW-07.) The WHERE clause excludes them at the DB level; the
     // post-query filter below is a defense-in-depth guard in case the DB result
@@ -257,7 +257,7 @@ export class ConversationContextService {
 
     block += `# Tone\nApply the "${tone}" tone. If absorption or rescue is present, surface it warmly as real, often-invisible contribution. Close your response by naming: what was strong and specific, what needs sharpening, and one question that would make the record stronger.`;
 
-    const header = `CONTRIBUTION CHAT MODE — check-in ${sessionNumber} | tone: ${tone}`;
+    const header = `CONTRIBUTION CHAT MODE - check-in ${sessionNumber} | tone: ${tone}`;
     return { block: `${header}\n\n${block}`, tone };
   }
 
@@ -265,7 +265,7 @@ export class ConversationContextService {
    * Derive cross-reference signals from OTHER parties' extracted records in this
    * ground. Returns source-hidden signals + probes only.
    *
-   * #12 — shared terms are now derived dynamically from the top nouns in each
+   * #12 - shared terms are now derived dynamically from the top nouns in each
    * party's last check-in transcript, falling back to FALLBACK_SHARED_TERMS when
    * transcripts are unavailable.
    */
@@ -280,7 +280,7 @@ export class ConversationContextService {
     const myCompletion = me.types.includes('movement') && me.factualClaims.some((c) => COMPLETION_WORDS.some((w) => c.claim.toLowerCase().includes(w)));
     const iReportProblem = PROBLEM_WORDS.some((w) => myLower.includes(w));
 
-    // #12 — extract top nouns from the current message for dynamic anchors.
+    // #12 - extract top nouns from the current message for dynamic anchors.
     const myTopNouns = extractTopNouns(latestMessage, 10);
 
     const injections: Injection[] = [];
@@ -293,7 +293,7 @@ export class ConversationContextService {
       const theirLower = theirText.toLowerCase();
       const theirIntake = runIntake(theirText);
 
-      // #12 — build dynamic shared terms from their top nouns + current message nouns.
+      // #12 - build dynamic shared terms from their top nouns + current message nouns.
       const theirTopNouns = extractTopNouns(theirText, 10);
       const dynamicTerms = myTopNouns.length && theirTopNouns.length
         ? myTopNouns.filter((t) => theirTopNouns.includes(t))
@@ -309,15 +309,15 @@ export class ConversationContextService {
       const theySayMovement = theirIntake.types.includes('movement');
 
       // GW-37: require ≥2 overlapping specific terms for CONTRADICTION (was 1).
-      // Probes must NOT attribute a position to the other party — only ask the
+      // Probes must NOT attribute a position to the other party - only ask the
       // person about their own record. "The other party says X" based on keyword
       // overlap is fabricated intelligence in the trust-critical moment.
       if (myCompletion && theyReportProblem && overlap.length >= 2) {
-        injections.push({ type: 'CONTRADICTION', tier: 2, topic, downstream: true, probe: `Before we log ${topic} as complete — has the downstream team or person depending on this confirmed it works for them?` });
+        injections.push({ type: 'CONTRADICTION', tier: 2, topic, downstream: true, probe: `Before we log ${topic} as complete - has the downstream team or person depending on this confirmed it works for them?` });
       } else if (iReportProblem && theySayMovement && overlap.length >= 2) {
-        injections.push({ type: 'CONTRADICTION', tier: 2, topic, downstream: false, probe: `You have named ${topic} as a blocker — is there a version of this that is already resolved elsewhere, or is this still open?` });
+        injections.push({ type: 'CONTRADICTION', tier: 2, topic, downstream: false, probe: `You have named ${topic} as a blocker - is there a version of this that is already resolved elsewhere, or is this still open?` });
       } else if (overlap.length >= 3) {
-        injections.push({ type: 'CORROBORATION', tier: 1, topic, downstream: false, probe: `Both versions seem to touch on ${topic} — does your description cover who specifically owned what and what the handoff looked like?` });
+        injections.push({ type: 'CORROBORATION', tier: 1, topic, downstream: false, probe: `Both versions seem to touch on ${topic} - does your description cover who specifically owned what and what the handoff looked like?` });
       }
     }
 
@@ -326,7 +326,7 @@ export class ConversationContextService {
     if (surfacedCount >= 1) injections.forEach((i) => { if (i.type === 'CONTRADICTION') i.tier = 3; });
 
     // -------------------------------------------------------------------------
-    // Degree 3: org-wide name mentions — invisible labour detection.
+    // Degree 3: org-wide name mentions - invisible labour detection.
     // Looks across ALL grounds in this org for mentions of this participant by
     // name in other parties' record entries.
     // -------------------------------------------------------------------------
@@ -346,7 +346,7 @@ export class ConversationContextService {
 
       if (firstName || lastName) {
         // Count RecordEntries across this org that mention this person by name
-        // alongside operational words — invisible labour signal. We only read the
+        // alongside operational words - invisible labour signal. We only read the
         // count, never the verbatim text, so other parties' words never enter
         // this party's context (Rule 1).
         const operationalWords = ['delivered', 'built', 'shipped', 'completed', 'launched', 'deployed', 'created', 'finished'];

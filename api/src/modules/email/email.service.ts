@@ -42,7 +42,7 @@ export class EmailService {
       try {
         const transport = nodemailer.createTransport({ host: '127.0.0.1', port: 1025, secure: false, ignoreTLS: true });
         await transport.sendMail({ from: this.fromEmail, to: options.to, subject: options.subject, html: options.html });
-      } catch (_) { /* mailcatcher not running — console log is still available */ }
+      } catch (_) { /* mailcatcher not running - console log is still available */ }
       // Extract first href for easy local testing
       const match = options.html.match(/href="([^"]+)"/);
       return match?.[1];
@@ -150,7 +150,7 @@ export class EmailService {
          <p>You are not being asked to be fair or balanced. You are being asked to be honest. What you put on record belongs to you.</p>
          ${noteHtml}
          <p><a href="${url}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Add my account →</a></p>
-         <p style="font-size:12px;color:#9B9590;">You are never obligated to take part. If you would rather not, you can simply ignore this — declining is never shown as a negative.</p>`,
+         <p style="font-size:12px;color:#9B9590;">You are never obligated to take part. If you would rather not, you can simply ignore this - declining is never shown as a negative.</p>`,
       ),
     });
     return { devUrl };
@@ -169,11 +169,11 @@ export class EmailService {
   async sendGroundActivated(email: string, firstName: string, groundLabel: string, groundUrl: string): Promise<void> {
     await this.sendEmail({
       to: email,
-      subject: `Both accounts are in — your shared report is ready: ${groundLabel}`,
+      subject: `Both accounts are in - your shared report is ready: ${groundLabel}`,
       html: this.layout(
         `<p>Hi ${firstName},</p>
          <p>All parties have checked in on <strong>${groundLabel}</strong>. Your shared report is ready.</p>
-         <p>The report shows where your accounts agree, where they differ, and what is still unresolved. It does not quote anyone — it draws on what everyone said without showing the raw words.</p>
+         <p>The report shows where your accounts agree, where they differ, and what is still unresolved. It does not quote anyone - it draws on what everyone said without showing the raw words.</p>
          <p><a href="${groundUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Read the shared report →</a></p>`,
       ),
     });
@@ -212,7 +212,7 @@ export class EmailService {
       subject: `Your shared report for "${groundLabel}" is waiting`,
       html: this.layout(
         `<p>All accounts are in for <strong>${groundLabel}</strong> and the shared report has been generated.</p>
-         <p>The report shows where accounts agree, where they differ, and what is still unresolved. Nobody's words are quoted — it draws on what was said without showing the raw text.</p>
+         <p>The report shows where accounts agree, where they differ, and what is still unresolved. Nobody's words are quoted - it draws on what was said without showing the raw text.</p>
          <p>Open the ground to read and release the report to all parties.</p>
          <p><a href="${groundUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Read and release the report →</a></p>`,
       ),
@@ -302,7 +302,7 @@ export class EmailService {
       subject: 'Add a card to continue on Groundwork',
       html: this.layout(
         `<p>A ground in your workspace (<strong>${orgName}</strong>) has used its free session.</p>
-         <p>The first session on every ground is free. Each additional session is $5. Add a card now to keep the process running — the record you have already built is safe and waiting.</p>
+         <p>The first session on every ground is free. Each additional session is $5. Add a card now to keep the process running - the record you have already built is safe and waiting.</p>
          <p><a href="${billingUrl}">Add a card</a></p>`,
       ),
     });
@@ -312,7 +312,7 @@ export class EmailService {
   async sendParticipantBlockedNudge(adminEmail: string, groundLabel: string, participantEmail: string, groundUrl: string): Promise<void> {
     await this.sendEmail({
       to: adminEmail,
-      subject: `${participantEmail} tried to check in — add a session to unblock them`,
+      subject: `${participantEmail} tried to check in - add a session to unblock them`,
       html: this.layout(
         `<p><strong>${participantEmail}</strong> tried to check in on <strong>${groundLabel}</strong> but there are no sessions remaining.</p>
          <p>Add a session ($5) or apply a contributor code to unblock them.</p>
@@ -489,7 +489,7 @@ export class EmailService {
       EXTEND: 'Extend evaluation period',
       RESTRUCTURE: 'Restructure',
       EXIT: 'Part ways',
-      NOT_YET: 'Not yet — revisit with a named gap',
+      NOT_YET: 'Not yet - revisit with a named gap',
       SEPARATE: 'Separate',
       CONTINUE: 'Continue',
       END: 'End the engagement',
@@ -500,15 +500,15 @@ export class EmailService {
       STOP: 'Stop',
       YES: 'Grant the ask',
       NO: 'Decline',
-      ALIGNED: 'Shared picture established — aligned',
+      ALIGNED: 'Shared picture established - aligned',
       ESCALATE: 'Requires escalation or external decision',
-      GAPS_IDENTIFIED: 'Gaps identified — revision needed',
+      GAPS_IDENTIFIED: 'Gaps identified - revision needed',
       APPROVED: 'Workplan and budget approved',
       REVISION_NEEDED: 'Revision needed before approval',
       ON_TRACK: 'On track',
       ATTENTION_NEEDED: 'Attention needed on named items',
       REALIGNED: 'Team realigned on shared direction',
-      GAPS_REMAIN: 'Gaps remain — further conversation needed',
+      GAPS_REMAIN: 'Gaps remain - further conversation needed',
       RESOLVED: 'Performance concern resolved',
       EXTENDED: 'Plan extended with named conditions',
       SEPARATED: 'Separation agreed',
@@ -525,7 +525,7 @@ export class EmailService {
   ): Promise<void> {
     const isCreateNudge = groundsCreated === 1 && daysRemaining === 14;
     const subject = isCreateNudge
-      ? `Your contributor code expires in ${daysRemaining} days — create another ground`
+      ? `Your contributor code expires in ${daysRemaining} days - create another ground`
       : `Your contributor code expires in ${daysRemaining} day${daysRemaining !== 1 ? 's' : ''}`;
 
     const urgencyNote =
@@ -537,12 +537,12 @@ export class EmailService {
       ? `<p>Hi ${firstName},</p>
          ${urgencyNote}
          <p>You have used your contributor code (<strong>${code}</strong>) to create one ground so far. You still have time to create another ground with it before it expires.</p>
-         <p>Every ground you create is a record that belongs to the people involved — start another before the code runs out.</p>
+         <p>Every ground you create is a record that belongs to the people involved - start another before the code runs out.</p>
          <p><a href="${this.frontendUrl}/grounds/new">Create another ground</a></p>`
       : `<p>Hi ${firstName},</p>
          ${urgencyNote}
          <p>Your contributor code <strong>${code}</strong> has been used on ${groundsCreated} ground${groundsCreated !== 1 ? 's' : ''} so far.</p>
-         <p>Once it expires, the code can no longer be redeemed. Any grounds already created with it are unaffected — their records remain intact.</p>
+         <p>Once it expires, the code can no longer be redeemed. Any grounds already created with it are unaffected - their records remain intact.</p>
          <p><a href="${this.frontendUrl}/billing">View your codes</a></p>`;
 
     await this.sendEmail({ to: email, subject, html: this.layout(bodyHtml) });
@@ -556,7 +556,7 @@ export class EmailService {
       html: this.layout(
         `<p>Hi ${name},</p>
          <p>Your Groundwork subscription for <strong>${orgName}</strong> is now active.</p>
-         <p>The first session on every ground is free. Each additional session is $5, charged per ground — not per participant. You are only billed when a ground moves past its first session.</p>
+         <p>The first session on every ground is free. Each additional session is $5, charged per ground - not per participant. You are only billed when a ground moves past its first session.</p>
          <p>Your records are always yours, regardless of plan status.</p>`,
       ),
     });

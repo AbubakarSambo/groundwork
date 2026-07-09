@@ -5,8 +5,8 @@ import { ConversationService } from './conversation.service';
  * Conversation isolation test suite (GW-PRI-CONV).
  *
  * The core invariant: a party's check-in conversation is their private record.
- * No other user — including the other party on the same ground, a team member,
- * or a platform admin — may read or continue a check-in they do not own.
+ * No other user - including the other party on the same ground, a team member,
+ * or a platform admin - may read or continue a check-in they do not own.
  */
 
 // ---------------------------------------------------------------------------
@@ -59,7 +59,7 @@ const OWNED_CHECK_IN = {
 // GW-PRI-CONV-01: Only the owning user may load a check-in
 // ---------------------------------------------------------------------------
 
-describe('GW-PRI-CONV-01: loadOwnedCheckIn — owning user', () => {
+describe('GW-PRI-CONV-01: loadOwnedCheckIn - owning user', () => {
   it('returns the check-in when userId matches the participant owner', async () => {
     const service = makeService(OWNED_CHECK_IN);
     // getSoloArtifact calls loadOwnedCheckIn and then prisma.groundParticipant.findUnique
@@ -77,7 +77,7 @@ describe('GW-PRI-CONV-01: loadOwnedCheckIn — owning user', () => {
 
   it('throws ForbiddenException for the other party on the same ground (user-2)', async () => {
     const service = makeService(OWNED_CHECK_IN);
-    // user-2 is the other participant — they must not read user-1's check-in
+    // user-2 is the other participant - they must not read user-1's check-in
     await expect(service.getSoloArtifact('ci1', 'user-2')).rejects.toBeInstanceOf(ForbiddenException);
   });
 
@@ -91,7 +91,7 @@ describe('GW-PRI-CONV-01: loadOwnedCheckIn — owning user', () => {
 // GW-PRI-CONV-02: decline() is party-scoped
 // ---------------------------------------------------------------------------
 
-describe('GW-PRI-CONV-02: decline() — party scoping', () => {
+describe('GW-PRI-CONV-02: decline() - party scoping', () => {
   it('throws ForbiddenException when a non-owner tries to decline', async () => {
     const service = makeService(OWNED_CHECK_IN);
     await expect(service.decline('ci1', 'user-stranger')).rejects.toBeInstanceOf(ForbiddenException);
@@ -127,7 +127,7 @@ describe('GW-PRI-CONV-02: decline() — party scoping', () => {
 // GW-PRI-CONV-03: getSoloArtifact returns only this party's artifact
 // ---------------------------------------------------------------------------
 
-describe('GW-PRI-CONV-03: getSoloArtifact — owner-scoped content', () => {
+describe('GW-PRI-CONV-03: getSoloArtifact - owner-scoped content', () => {
   it('returns null when the participant has no stored artifact', async () => {
     const service = makeService(OWNED_CHECK_IN);
     const prisma: any = (service as any).prisma;
@@ -148,8 +148,8 @@ describe('GW-PRI-CONV-03: getSoloArtifact — owner-scoped content', () => {
     expect(result.artifact).toEqual(artifact);
   });
 
-  it('a different participant\'s artifact is never returned — their check-in is blocked at the ownership gate', async () => {
-    // user-2 has their own check-in ci2 — trying to read ci1 (owned by user-1) must throw
+  it('a different participant\'s artifact is never returned - their check-in is blocked at the ownership gate', async () => {
+    // user-2 has their own check-in ci2 - trying to read ci1 (owned by user-1) must throw
     const service = makeService(OWNED_CHECK_IN);
     await expect(service.getSoloArtifact('ci1', 'user-2')).rejects.toBeInstanceOf(ForbiddenException);
   });

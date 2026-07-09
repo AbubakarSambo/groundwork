@@ -27,29 +27,32 @@ export interface CanCreateGroundResult {
   codeId?: string
 }
 
-export type SubscriptionPlan = 'STARTER' | 'SMALL_TEAM' | 'GROWTH' | 'BUSINESS' | 'ENTERPRISE'
+export type SubscriptionPlan = 'STARTER' | 'SMALL_TEAM' | 'GROWTH' | 'BUSINESS' | 'SCALE' | 'ENTERPRISE'
 
 export const PLAN_LABELS: Record<SubscriptionPlan, string> = {
   STARTER: 'Starter',
   SMALL_TEAM: 'Small Team',
   GROWTH: 'Growth',
   BUSINESS: 'Business',
+  SCALE: 'Scale',
   ENTERPRISE: 'Enterprise',
 }
 
 export const PLAN_PRICES: Record<SubscriptionPlan, string> = {
-  STARTER: '$15/mo',
-  SMALL_TEAM: '$35/mo',
+  STARTER: '$25/mo',
+  SMALL_TEAM: '$50/mo',
   GROWTH: '$100/mo',
-  BUSINESS: '$250/mo',
+  BUSINESS: '$200/mo',
+  SCALE: '$400/mo',
   ENTERPRISE: 'Contact us',
 }
 
 export const PLAN_MEMBER_CAPS: Record<SubscriptionPlan, string> = {
-  STARTER: 'Up to 5 members',
-  SMALL_TEAM: 'Up to 20 members',
-  GROWTH: 'Up to 100 members',
-  BUSINESS: 'Up to 500 members',
+  STARTER: 'Up to 5 people',
+  SMALL_TEAM: 'Up to 20 people',
+  GROWTH: 'Up to 100 people',
+  BUSINESS: 'Up to 250 people',
+  SCALE: 'Up to 1,000 people',
   ENTERPRISE: 'Unlimited',
 }
 
@@ -57,7 +60,8 @@ export const PLAN_MEMBER_LIMITS: Record<SubscriptionPlan, number | null> = {
   STARTER: 5,
   SMALL_TEAM: 20,
   GROWTH: 100,
-  BUSINESS: 500,
+  BUSINESS: 250,
+  SCALE: 1000,
   ENTERPRISE: null,
 }
 

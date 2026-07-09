@@ -6,7 +6,7 @@ import { GroundworkEvents } from '../../common';
  * GW-06: the synthesis backstop must re-emit CHECK_IN_COMPLETED for any
  * ACTIVE ground where both parties finished session 2 but the event was lost.
  */
-describe('GroundsCron.synthesisBackstop — GW-06', () => {
+describe('GroundsCron.synthesisBackstop - GW-06', () => {
   function makeService(grounds: any[], reportByGround: Record<string, any>, session2ByParticipant: Record<string, any>) {
     const emitted: any[] = [];
     const prisma: any = {

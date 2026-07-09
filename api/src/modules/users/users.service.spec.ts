@@ -5,7 +5,7 @@ import { UsersService } from './users.service';
  * GW-03: GDPR erasure must anonymise all identifying fields without touching
  * other parties' ground data. Export must return the user's own data only.
  */
-describe('UsersService — GW-03 GDPR erasure', () => {
+describe('UsersService - GW-03 GDPR erasure', () => {
   const USER_ID = 'u1';
   const LINK_ID = 'p1';
 

@@ -142,7 +142,7 @@ export function JoinPage() {
       <div style={{ maxWidth: 380, width: '100%' }}>
         <div style={{ background: '#FFF4F4', border: '1px solid #F5C6C6', borderRadius: 12, padding: '20px 22px', marginBottom: 16, textAlign: 'center' }}>
           <div style={{ fontSize: 16, fontWeight: 700, color: '#8B1A1A', marginBottom: 6 }}>Your check-in didn't save</div>
-          <div style={{ fontSize: 13, color: '#7A3030', lineHeight: 1.6 }}>Something went wrong saving your contribution. Your conversation is still here — try again.</div>
+          <div style={{ fontSize: 13, color: '#7A3030', lineHeight: 1.6 }}>Something went wrong saving your contribution. Your conversation is still here - try again.</div>
         </div>
         <button
           onClick={() => setPhase('save')}
@@ -183,7 +183,7 @@ export function JoinPage() {
         <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '16px 18px' }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: '#0A1628', marginBottom: 6 }}>What happens next</div>
           <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.6 }}>
-            When all contributions are in, everyone receives the same report at the same time. Your words stay on your side until then — nobody reads your contribution before the report is released.
+            When all contributions are in, everyone receives the same report at the same time. Your words stay on your side until then - nobody reads your contribution before the report is released.
           </div>
         </div>
       </div>
@@ -313,7 +313,7 @@ export function JoinPage() {
             disabled={saving}
             style={{ background: 'none', border: 'none', fontSize: 12, color: '#9B9590', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
           >
-            Skip — I don't want to receive the report
+            Skip - I don't want to receive the report
           </button>
         </div>
 

@@ -33,7 +33,7 @@ export class StripeService {
     return this.stripe.subscriptions.update(subscriptionId, { cancel_at_period_end: true });
   }
 
-  /** A Stripe Customer Portal session — self-serve card/invoice/cancel. */
+  /** A Stripe Customer Portal session - self-serve card/invoice/cancel. */
   async createBillingPortalSession(customerId: string, returnUrl: string): Promise<string> {
     const session = await this.stripe.billingPortal.sessions.create({ customer: customerId, return_url: returnUrl });
     return session.url;

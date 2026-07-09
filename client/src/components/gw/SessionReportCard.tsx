@@ -107,7 +107,7 @@ function SecH({ children }: { children: React.ReactNode }) {
 }
 
 // ---------------------------------------------------------------------------
-// Admin cross-reference view — built from the shared report data
+// Admin cross-reference view - built from the shared report data
 // ---------------------------------------------------------------------------
 function AdminCrossRef({ report, closed }: { report: Report; closed: boolean }) {
   const engagement = report.engagement as any
@@ -115,7 +115,7 @@ function AdminCrossRef({ report, closed }: { report: Report; closed: boolean }) 
 
   const openAreas: Area[] = (report.divergences ?? []).map(d => ({
     title: d.topic,
-    observation: d.positions.map(p => `${p.participantLabel}: ${p.view}`).join(' — '),
+    observation: d.positions.map(p => `${p.participantLabel}: ${p.view}`).join(' - '),
     whyItMatters: d.evidence?.[0] ?? 'Diverging accounts on this topic can become harder to align the longer they stay implicit.',
     move: 'Surface this explicitly next session. Name what each of you expects and write it down.',
   }))
@@ -128,8 +128,8 @@ function AdminCrossRef({ report, closed }: { report: Report; closed: boolean }) 
   }))
 
   const closeItems: CloseItem[] = [
-    { label: 'Aligned', text: report.agreements?.slice(0, 2).join('. ') || '—', bg: 'var(--gw-green-bg)', labelColor: 'var(--gw-green-t)' },
-    { label: 'Open', text: report.divergences?.map(d => d.topic).join('. ') || '—', bg: 'var(--gw-amber-bg)', labelColor: 'var(--gw-amber-t)' },
+    { label: 'Aligned', text: report.agreements?.slice(0, 2).join('. ') || '-', bg: 'var(--gw-green-bg)', labelColor: 'var(--gw-green-t)' },
+    { label: 'Open', text: report.divergences?.map(d => d.topic).join('. ') || '-', bg: 'var(--gw-amber-bg)', labelColor: 'var(--gw-amber-t)' },
     { label: 'Revisit', text: closed ? 'Review at next raise.' : 'Review next session.', bg: 'var(--gw-blue-bg)', labelColor: 'var(--gw-navy)' },
     { label: 'Risk', text: report.centralQuestion, bg: '#F8ECEA', labelColor: '#B5675A' },
   ]
@@ -202,7 +202,7 @@ function ParticipantCrossRef({ report, closed }: { report: Report; closed: boole
   const status = closed ? 'Aligned' : engagement?.coverage === 'strong' ? 'Clear, trending to aligned' : engagement?.coverage === 'moderate' ? 'Emerging' : 'Mixed'
 
   const assumptions = (report.divergences ?? []).map(d =>
-    `That ${d.topic.toLowerCase()} is settled — it may read differently from the other seat.`
+    `That ${d.topic.toLowerCase()} is settled - it may read differently from the other seat.`
   )
 
   const clarityItems = (report.divergences ?? []).map(d =>
@@ -210,7 +210,7 @@ function ParticipantCrossRef({ report, closed }: { report: Report; closed: boole
   )
 
   const questionsNext = (report.divergences ?? []).map(d =>
-    `What does ${d.topic.toLowerCase()} look like concretely — what would you sign?`
+    `What does ${d.topic.toLowerCase()} look like concretely - what would you sign?`
   )
 
   return (
@@ -279,7 +279,7 @@ function ParticipantCrossRef({ report, closed }: { report: Report; closed: boole
           </div>
           <div style={{ fontSize: 12, color: 'var(--gw-sub)', background: '#F4F1EA', border: '1px solid #E5DFD2', borderRadius: 8, padding: '10px 12px', lineHeight: 1.55 }}>
             {report.releasedAt
-              ? 'The full comparison is now open — both parties read the same report at the same moment.'
+              ? 'The full comparison is now open - both parties read the same report at the same moment.'
               : 'You still see only your own account. The full comparison opens when you both activate the report.'}
           </div>
         </>
@@ -320,14 +320,14 @@ export function SessionReportCard({ checkInId, groundId, sessionNumber, isInitia
       }
 
       if (r?.id) {
-        // Report synthesised but not released — cross reference is available
+        // Report synthesised but not released - cross reference is available
         setReport(r)
         setSessionTag(`Session ${sessionNumber} · cross reference`)
         setState('cross_ref')
         return
       }
 
-      // No report yet — try solo artifact
+      // No report yet - try solo artifact
       const art = await conversationApi.artifact(checkInId).catch(() => null)
       if (art?.artifact) {
         setSoloArtifact(art.artifact)

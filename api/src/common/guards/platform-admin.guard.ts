@@ -2,7 +2,7 @@ import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@
 
 /**
  * Restricts to platform admins. Prompt versions are global infrastructure (the
- * moat) — changing them is a team-level decision, never per-org self-service.
+ * moat) - changing them is a team-level decision, never per-org self-service.
  */
 @Injectable()
 export class PlatformAdminGuard implements CanActivate {

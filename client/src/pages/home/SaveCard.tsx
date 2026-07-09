@@ -181,7 +181,7 @@ export function SaveCard({ mode, variant = 'admin', onClear, email: initialEmail
           Your first session is on record.
         </div>
         <div style={{ fontSize: 12, color: 'var(--gw-blue-t)', lineHeight: 1.5 }}>
-          {mode ? `${MODE_LABEL[mode]}. ` : ''}Enter your email to save it. The report builds as contributors check in — you will see alignment and gaps emerge over time.
+          {mode ? `${MODE_LABEL[mode]}. ` : ''}Enter your email to save it. The report builds as contributors check in - you will see alignment and gaps emerge over time.
         </div>
       </div>
 

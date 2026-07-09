@@ -19,7 +19,7 @@ export class UsersController {
 
   @Get('privacy-audit')
   @Roles(Role.ADMIN)
-  @ApiOperation({ summary: 'Privacy audit for a user — admin only diagnostic (GW-privacy)' })
+  @ApiOperation({ summary: 'Privacy audit for a user - admin only diagnostic (GW-privacy)' })
   async getPrivacyAudit(@Query('userId') userId: string) {
     if (!userId) throw new BadRequestException('userId query parameter is required');
     return this.usersService.getPrivacyAudit(userId);

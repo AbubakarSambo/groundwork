@@ -1,8 +1,9 @@
-import { Controller, Delete, Get, Patch, Post, Req, Param, Headers, HttpCode, HttpStatus, Logger, Body, Query, ForbiddenException } from '@nestjs/common';
+import { Controller, Delete, Get, Patch, Post, Req, Param, Headers, HttpCode, HttpStatus, Logger, Body, Query, ForbiddenException, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { BillingService } from './billing.service';
 import { StripeService } from './stripe.service';
 import { CurrentUser, Roles, Role, Public } from '../../common';
+import { PlatformAdminGuard } from '../../common/guards/platform-admin.guard';
 
 @ApiTags('Billing')
 @Controller('billing')
@@ -24,7 +25,7 @@ export class BillingController {
   @Delete('account')
   @ApiBearerAuth()
   @Roles(Role.ADMIN)
-  @ApiOperation({ summary: 'Cancel the account — marks org CANCELLED, sends data-portability notice' })
+  @ApiOperation({ summary: 'Cancel the account - marks org CANCELLED, sends data-portability notice' })
   async cancelAccount(@CurrentUser('organizationId') organizationId: string) {
     return this.billing.cancelAccount(organizationId);
   }
@@ -107,7 +108,7 @@ export class BillingController {
 
   @Post('contributor-codes')
   @ApiBearerAuth()
-  @Roles(Role.ADMIN)
+  @UseGuards(PlatformAdminGuard)
   @ApiOperation({ summary: 'Generate a contributor code that grants sessions to a ground' })
   async generateContributorCode(
     @CurrentUser('organizationId') organizationId: string,
@@ -126,7 +127,7 @@ export class BillingController {
 
   @Post('contributor-codes/send-to-email')
   @ApiBearerAuth()
-  @Roles(Role.ADMIN)
+  @UseGuards(PlatformAdminGuard)
   @ApiOperation({ summary: 'Generate a contributor code and email it directly to a recipient' })
   async sendContributorCodeToEmail(
     @CurrentUser('organizationId') organizationId: string,
@@ -207,7 +208,7 @@ export class BillingController {
     try {
       return await this.billing.createBillingPortalSession(organizationId);
     } catch (err: any) {
-      // Stripe auth errors mean the payment gateway is misconfigured — surface a
+      // Stripe auth errors mean the payment gateway is misconfigured - surface a
       // human-readable message rather than the raw Stripe error string.
       if (err?.type === 'StripeAuthenticationError' || err?.message?.includes('Invalid API Key')) {
         this.logger.error(`Stripe config error: ${err.message}`);
@@ -220,7 +221,7 @@ export class BillingController {
   @Public()
   @Post('webhook')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Stripe webhook (raw body — verified by signature)' })
+  @ApiOperation({ summary: 'Stripe webhook (raw body - verified by signature)' })
   async webhook(@Req() req: any, @Headers('stripe-signature') signature: string) {
     // main.ts enables rawBody so signature verification works.
     const event = this.stripe.constructEvent(req.rawBody, signature);

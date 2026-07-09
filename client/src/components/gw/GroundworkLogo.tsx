@@ -30,11 +30,11 @@ export function GroundworkLogo({ height = 28, color = '#0C447C' }: Props) {
       role="img"
       style={{ display: 'block', flexShrink: 0 }}
     >
-      {/* Top bar — narrowest */}
+      {/* Top bar - narrowest */}
       <rect x={cx - bw[0] / 2} y={0}              width={bw[0]} height={barH} rx={barH * 0.15} fill={color} />
       {/* Middle bar */}
       <rect x={cx - bw[1] / 2} y={barH + gap}     width={bw[1]} height={barH} rx={barH * 0.15} fill={color} />
-      {/* Bottom bar — widest */}
+      {/* Bottom bar - widest */}
       <rect x={cx - bw[2] / 2} y={(barH + gap) * 2} width={bw[2]} height={barH} rx={barH * 0.15} fill={color} />
 
       {/* Wordmark */}

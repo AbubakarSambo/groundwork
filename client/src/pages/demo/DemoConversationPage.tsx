@@ -44,7 +44,7 @@ export function DemoConversationPage() {
       {/* Demo banner */}
       <div style={{ background: '#EEF4FB', borderBottom: '1px solid #C5D9EF', padding: '8px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
         <div style={{ fontSize: 12, color: '#0C447C', lineHeight: 1.4 }}>
-          <strong>Demo:</strong> {demo.name}'s {isFounder ? 'alignment feed' : 'contribution chat'} — {isFounder ? `${checkInCount} check-in${checkInCount !== 1 ? 's' : ''} on record` : `${checkInCount} check-in${checkInCount !== 1 ? 's' : ''} shown`}. Add an account to continue live.
+          <strong>Demo:</strong> {demo.name}'s {isFounder ? 'alignment feed' : 'contribution chat'} - {isFounder ? `${checkInCount} check-in${checkInCount !== 1 ? 's' : ''} on record` : `${checkInCount} check-in${checkInCount !== 1 ? 's' : ''} shown`}. Add an account to continue live.
         </div>
         <a
           href={`${MARKETING_URL}#demo`}

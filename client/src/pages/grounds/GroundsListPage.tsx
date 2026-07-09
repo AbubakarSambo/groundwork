@@ -139,7 +139,7 @@ export function GroundsListPage() {
               ))}
             </div>
 
-            {/* Unlock insights CTA — only after first completed ground pair, not on empty/new accounts */}
+            {/* Unlock insights CTA - only after first completed ground pair, not on empty/new accounts */}
             {!billingActive && hasCompletedGrounds && (
               <div style={{ background: '#EEF4FB', border: '1px solid #C5D9EF', borderRadius: 10, padding: '14px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
                 <div>
@@ -169,9 +169,10 @@ export function GroundsListPage() {
             {!showInviteColleague ? (
               <button
                 onClick={() => setShowInviteColleague(true)}
-                style={{ width: '100%', padding: '10px 16px', borderRadius: 8, background: 'white', color: 'var(--gw-navy)', fontSize: 13, fontWeight: 600, border: '1px solid var(--gw-blue-b)', cursor: 'pointer', fontFamily: 'inherit', marginBottom: 20, textAlign: 'left' }}
+                style={{ width: '100%', padding: '11px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', marginBottom: 20, textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
               >
-                Invite a colleague to manage their own grounds →
+                <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><circle cx="7" cy="7" r="3" stroke="white" strokeWidth="1.5"/><path d="M1 16c0-2.21 2.686-4 6-4s6 1.79 6 4" stroke="white" strokeWidth="1.5" strokeLinecap="round"/><path d="M15 8v4M13 10h4" stroke="white" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                Invite a team member
               </button>
             ) : (
               <div style={{ background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 10, padding: '14px 16px', marginBottom: 20 }}>
@@ -264,7 +265,7 @@ export function GroundsListPage() {
               </button>
             </div>
 
-            {/* Unlock insights CTA for contributors — only shown after first report is available */}
+            {/* Unlock insights CTA for contributors - only shown after first report is available */}
             {!billingActive && grounds.some(g => g.status === 'REPORT_READY') && (
               <div style={{ background: '#EEF4FB', border: '1px solid #C5D9EF', borderRadius: 10, padding: '14px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
                 <div>

@@ -365,7 +365,7 @@ export function BillingPage() {
           </div>
         )}
 
-        <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '16px', marginBottom: 16 }}>
+        {user?.isPlatformAdmin && <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '16px', marginBottom: 16 }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: '#0A1628', marginBottom: 12 }}>Send access code by email</div>
           <div style={{ marginBottom: 10 }}>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#6B6560', marginBottom: 5 }}>Recipient email</label>
@@ -386,9 +386,9 @@ export function BillingPage() {
               Code sent to {sentTo}
             </div>
           )}
-        </div>
+        </div>}
 
-        <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '16px', marginBottom: 16 }}>
+        {user?.isPlatformAdmin && <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '16px', marginBottom: 16 }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: '#0A1628', marginBottom: 12 }}>Generate a code</div>
           <div style={{ marginBottom: 10 }}>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#6B6560', marginBottom: 5 }}>Sessions to grant</label>
@@ -416,7 +416,7 @@ export function BillingPage() {
               </div>
             </div>
           )}
-        </div>
+        </div>}
 
       </div>
     </div>

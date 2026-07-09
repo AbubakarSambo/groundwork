@@ -334,7 +334,7 @@ export function PromptTestPage() {
             </button>
           </div>
           <div style={{ fontSize: 11, color: '#9B9590', lineHeight: 1.6 }}>
-            Builds the advice-led reports from the conversations above: the admin cross reference across all lanes, and each participant's own insight. Needs a connected model — the demo responder does not return report JSON.
+            Builds the advice-led reports from the conversations above: the admin cross reference across all lanes, and each participant's own insight. Needs a connected model - the demo responder does not return report JSON.
           </div>
         </div>
 

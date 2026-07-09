@@ -29,7 +29,7 @@ export function SetPasswordPage() {
 
   function submit() {
     setError('')
-    if (!token) { setError('Invalid link — no token.'); return }
+    if (!token) { setError('Invalid link - no token.'); return }
     if (password.length < 8) { setError('Password must be at least 8 characters.'); return }
     if (!/[A-Z]/.test(password) || !/[a-z]/.test(password)) { setError('Password must contain at least 1 uppercase and 1 lowercase letter.'); return }
     if (password !== confirm) { setError('Passwords do not match.'); return }

@@ -19,7 +19,7 @@ export class ParticipantsService {
     private email: EmailService,
   ) {}
 
-  /** Preview an invite from its token — shown before the participant accepts. */
+  /** Preview an invite from its token - shown before the participant accepts. */
   async preview(token: string) {
     const participant = await this.loadByToken(token);
     const ground = await this.prisma.ground.findUnique({
@@ -69,7 +69,7 @@ export class ParticipantsService {
           },
         });
       } else {
-        // Pre-existing account — let the client know so it can surface a message.
+        // Pre-existing account - let the client know so it can surface a message.
         existingAccount = true;
       }
       // Cross-org participation: user keeps their home org. The JWT carries their
@@ -86,7 +86,7 @@ export class ParticipantsService {
 
     // Send a password setup link so the participant can return after their
     // initial session without being locked out. Only send when no password
-    // is set — existing accounts that already have one don't need this.
+    // is set - existing accounts that already have one don't need this.
     if (!user.passwordHash) {
       const setupToken = crypto.randomBytes(32).toString('hex');
       await this.prisma.emailVerificationToken.create({
@@ -127,7 +127,7 @@ export class ParticipantsService {
   /**
    * Save cofounder intake fields to the GroundParticipant record.
    * Looked up by the check-in ID and the requesting user's ID so it is always
-   * owner-scoped — one party can never overwrite another party's intake.
+   * owner-scoped - one party can never overwrite another party's intake.
    */
   async saveIntake(checkInId: string, userId: string, data: {
     foundingIntent?: string;
@@ -199,7 +199,7 @@ export class ParticipantsService {
     if (!participant) {
       throw new NotFoundException('This invite link is invalid or has already been used');
     }
-    // Skip expiry for participants who already accepted — they can always return via their link.
+    // Skip expiry for participants who already accepted - they can always return via their link.
     const alreadyAccepted = !!participant.userId;
     if (!alreadyAccepted && participant.inviteTokenExpiresAt && participant.inviteTokenExpiresAt < new Date()) {
       throw new BadRequestException('This invite link has expired. Ask the person who added you to resend it.');

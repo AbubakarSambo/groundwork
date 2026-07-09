@@ -83,7 +83,7 @@ describe('GW-PRI-01: non-party user is denied the report', () => {
 });
 
 // ---------------------------------------------------------------------------
-// GW-PRI-02: Pre-release — participant cannot read report before release
+// GW-PRI-02: Pre-release - participant cannot read report before release
 // ---------------------------------------------------------------------------
 
 describe('GW-PRI-02: report is not readable before releasedAt is set', () => {
@@ -108,7 +108,7 @@ describe('GW-PRI-02: report is not readable before releasedAt is set', () => {
 });
 
 // ---------------------------------------------------------------------------
-// GW-PRI-03: Post-release — both parties can read
+// GW-PRI-03: Post-release - both parties can read
 // ---------------------------------------------------------------------------
 
 describe('GW-PRI-03: both parties can read the report after release', () => {
@@ -149,7 +149,7 @@ describe('GW-PRI-04: missing report does not leak ground existence', () => {
 });
 
 // ---------------------------------------------------------------------------
-// GW-PRI-05: Release org-scoping — admin of org B cannot release org A's report
+// GW-PRI-05: Release org-scoping - admin of org B cannot release org A's report
 // ---------------------------------------------------------------------------
 
 describe('GW-PRI-05: release() is scoped to the requesting org', () => {
@@ -218,7 +218,7 @@ describe('GW-PRI-06: post-report guide and solo artifact are scoped to each part
     expect(resultForP1.postReportGuide).toEqual(p1Guide);
     expect(resultForP2.postReportGuide).toEqual(p2Guide);
 
-    // Guides must differ — a party must not receive the other's guide
+    // Guides must differ - a party must not receive the other's guide
     expect(resultForP1.postReportGuide).not.toEqual(resultForP2.postReportGuide);
   });
 
@@ -242,7 +242,7 @@ describe('GW-PRI-06: post-report guide and solo artifact are scoped to each part
     const service = new ReportsService(prisma, {} as any, {} as any, {} as any, config, { emit: () => Promise.resolve() } as any);
 
     const resultForP2 = await service.get('g1', 'user-2') as any;
-    // p2 has no soloArtifact — result must be null, not p1's artifact
+    // p2 has no soloArtifact - result must be null, not p1's artifact
     expect(resultForP2.soloArtifact).toBeNull();
   });
 });

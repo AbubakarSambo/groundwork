@@ -302,7 +302,7 @@ export function GroundParticipantPage() {
         {tab === 'checkin' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
 
-            {/* Ground context — shown before first session to orient the participant */}
+            {/* Ground context - shown before first session to orient the participant */}
             {completedCheckIns.length === 0 && openCheckIn && (
               <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '14px 16px' }}>
                 <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.07em', color: '#9B9590', marginBottom: 8 }}>About this ground</div>
@@ -423,7 +423,7 @@ export function GroundParticipantPage() {
               </div>
             )}
 
-            {/* Specificity intro — shown even before first session */}
+            {/* Specificity intro - shown even before first session */}
             {specificityScores.length === 0 && (
               <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '13px 16px' }}>
                 <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: '#9B9590', marginBottom: 6 }}>Your record quality</div>
@@ -550,7 +550,7 @@ export function GroundParticipantPage() {
         {tab === 'record' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
 
-            {/* Unlock CTA — shown whether locked or not, but changes state */}
+            {/* Unlock CTA - shown whether locked or not, but changes state */}
             {myRecord?.insightsLocked !== false && (
               <div style={{ background: '#0C447C', borderRadius: 10, padding: '18px 20px' }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: 'white', marginBottom: 6 }}>Your record insights</div>
@@ -577,7 +577,7 @@ export function GroundParticipantPage() {
               </div>
             )}
 
-            {/* Session history summary — always visible */}
+            {/* Session history summary - always visible */}
             {(myRecord?.sessions ?? []).length > 0 && (
               <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '14px 16px' }}>
                 <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: '#9B9590', marginBottom: 10 }}>Sessions on record</div>
@@ -592,7 +592,7 @@ export function GroundParticipantPage() {
               </div>
             )}
 
-            {/* Specificity trend — unlocked only */}
+            {/* Specificity trend - unlocked only */}
             {myRecord && !myRecord.insightsLocked && myRecord.specificity && (
               <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '14px 16px' }}>
                 <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: '#9B9590', marginBottom: 8 }}>Specificity across sessions</div>
@@ -611,7 +611,7 @@ export function GroundParticipantPage() {
               </div>
             )}
 
-            {/* Confidence score — unlocked only */}
+            {/* Confidence score - unlocked only */}
             {myRecord && !myRecord.insightsLocked && myRecord.confidence && (
               <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '14px 16px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
@@ -627,7 +627,7 @@ export function GroundParticipantPage() {
               </div>
             )}
 
-            {/* Pattern observations — unlocked, diplomatic */}
+            {/* Pattern observations - unlocked, diplomatic */}
             {myRecord && !myRecord.insightsLocked && myRecord.patterns && myRecord.patterns.length > 0 && (
               <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '14px 16px' }}>
                 <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: '#9B9590', marginBottom: 4 }}>Observations from your record</div>
@@ -679,7 +679,7 @@ export function GroundParticipantPage() {
                   <div style={{ fontSize: 11, color: 'rgba(255,255,255,.4)' }}>
                     {mySoloReport.shared
                       ? 'Shared with all parties on this ground'
-                      : 'Private — only you can see this'}
+                      : 'Private - only you can see this'}
                   </div>
                   <button
                     onClick={() => mySoloReport.shared ? setSoloSharedMut.mutate(false) : setShowShareConfirm(true)}
@@ -718,7 +718,7 @@ export function GroundParticipantPage() {
               <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '16px 18px', textAlign: 'center' }}>
                 <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>The shared report is ready</div>
                 <div style={{ fontSize: 13, color: '#6B6560', lineHeight: 1.65, marginBottom: 8 }}>
-                  All parties reveal it at the same time. Once unlocked, everyone can read it — this cannot be undone.
+                  All parties reveal it at the same time. Once unlocked, everyone can read it - this cannot be undone.
                 </div>
                 <div style={{ fontSize: 12, color: '#9B9590', lineHeight: 1.55, marginBottom: 16, background: '#F5F3EF', borderRadius: 8, padding: '8px 12px' }}>
                   The report shows where accounts agree and where they differ. It does not quote anyone.

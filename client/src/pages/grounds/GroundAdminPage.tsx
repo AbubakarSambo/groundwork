@@ -260,7 +260,7 @@ export function GroundAdminPage() {
             {/* Fix 8: Cadence miss recovery */}
             {(ground.overdue ?? 0) > 0 && (
               <div style={{ fontSize: 12, color: '#0C447C', background: '#EEF4FB', border: '1px solid #C5D9EF', borderRadius: 8, padding: '10px 12px', marginBottom: 14, lineHeight: 1.5 }}>
-                <strong>{ground.overdue} {ground.overdue === 1 ? 'participant is' : 'participants are'} overdue.</strong> A missed session is not a lost session. Use Remind — the most common reason is the email went to spam. Their next check-in picks up where they left off.
+                <strong>{ground.overdue} {ground.overdue === 1 ? 'participant is' : 'participants are'} overdue.</strong> A missed session is not a lost session. Use Remind - the most common reason is the email went to spam. Their next check-in picks up where they left off.
               </div>
             )}
 
@@ -381,7 +381,7 @@ export function GroundAdminPage() {
                   {pending.length === 1
                     ? `1 participant has not yet checked in. The shared report generates once all accounts are in.`
                     : `${pending.length} participants have not yet checked in. The shared report generates once all accounts are in.`}
-                  <span style={{ marginLeft: 6, fontWeight: 600 }}>Use Remind if they have not received the email — it may have gone to spam.</span>
+                  <span style={{ marginLeft: 6, fontWeight: 600 }}>Use Remind if they have not received the email - it may have gone to spam.</span>
                 </div>
               ) : null
             })()}
@@ -426,7 +426,7 @@ export function GroundAdminPage() {
               const sigs = ground.signals ?? []
               const convergences = sigs.filter(s => s.type === 'Convergence').length
               const divergences = sigs.filter(s => s.type === 'Divergence').length
-              const trendLabel = convergences > divergences ? 'Trending toward alignment' : divergences > convergences ? 'Active divergence — needs attention' : 'Mixed signals'
+              const trendLabel = convergences > divergences ? 'Trending toward alignment' : divergences > convergences ? 'Active divergence - needs attention' : 'Mixed signals'
               const trendColor = convergences > divergences ? '#085041' : divergences > convergences ? '#791F1F' : '#8A5C1A'
               const trendBg = convergences > divergences ? '#E7F6EF' : divergences > convergences ? '#FCEBEB' : '#FDF3E3'
               return (
@@ -456,7 +456,7 @@ export function GroundAdminPage() {
                 <div style={{ background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 10, padding: '14px 16px' }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: '#085041', marginBottom: 6 }}>Invite sent to {lastInvitedEmail}</div>
                   <div style={{ fontSize: 12, color: '#3A7A60', lineHeight: 1.6, marginBottom: 10 }}>
-                    They will get an email and do their own private check-in — about 10 minutes. You cannot see what they write. Once all contributors have checked in, the shared report releases to everyone at the same time.
+                    They will get an email and do their own private check-in - about 10 minutes. You cannot see what they write. Once all contributors have checked in, the shared report releases to everyone at the same time.
                   </div>
                   <button onClick={() => { setLastInvitedEmail(null); setAddingParticipant(true) }}
                     style={{ padding: '7px 14px', borderRadius: 7, background: 'none', border: '1px solid #5DCAA5', color: '#085041', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
@@ -631,7 +631,14 @@ export function GroundAdminPage() {
                 {/* Pattern */}
                 {report.pattern && (
                   <div style={{ background: 'var(--gw-navy)', color: 'white', borderRadius: 10, padding: 16, marginBottom: 14 }}>
-                    <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,.55)', marginBottom: 8 }}>What Groundwork saw</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                      <svg width="18" height="11" viewBox="0 0 36 22" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0, opacity: 0.7 }}>
+                        <circle cx="11" cy="11" r="9" stroke="white" strokeWidth="2.5" fill="none"/>
+                        <circle cx="25" cy="11" r="9" stroke="white" strokeWidth="2.5" fill="none"/>
+                        <path d="M18 3.2C20.6 5.2 22.2 7.9 22.2 11C22.2 14.1 20.6 16.8 18 18.8C15.4 16.8 13.8 14.1 13.8 11C13.8 7.9 15.4 5.2 18 3.2Z" fill="rgba(100,130,255,0.7)"/>
+                      </svg>
+                      <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,.55)' }}>What Groundwork saw</div>
+                    </div>
                     <div style={{ fontSize: 14, lineHeight: 1.65 }}>{report.pattern}</div>
                   </div>
                 )}
@@ -688,7 +695,14 @@ export function GroundAdminPage() {
                 {/* Legacy flat fields */}
                 {!report.pattern && report.sharedPicture && (
                   <div style={{ background: 'var(--gw-navy)', color: 'white', borderRadius: 10, padding: 16, marginBottom: 14 }}>
-                    <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,.55)', marginBottom: 8 }}>Resolution summary</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                      <svg width="18" height="11" viewBox="0 0 36 22" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0, opacity: 0.7 }}>
+                        <circle cx="11" cy="11" r="9" stroke="white" strokeWidth="2.5" fill="none"/>
+                        <circle cx="25" cy="11" r="9" stroke="white" strokeWidth="2.5" fill="none"/>
+                        <path d="M18 3.2C20.6 5.2 22.2 7.9 22.2 11C22.2 14.1 20.6 16.8 18 18.8C15.4 16.8 13.8 14.1 13.8 11C13.8 7.9 15.4 5.2 18 3.2Z" fill="rgba(100,130,255,0.7)"/>
+                      </svg>
+                      <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,.55)' }}>Resolution summary</div>
+                    </div>
                     <div style={{ fontSize: 14, lineHeight: 1.65 }}>{report.sharedPicture}</div>
                     <button onClick={() => navigator.clipboard?.writeText(report.sharedPicture).then(() => toast.success('Copied'))}
                       style={{ marginTop: 12, fontSize: 12, fontWeight: 600, color: 'white', background: 'rgba(255,255,255,.15)', border: 'none', cursor: 'pointer', padding: '7px 12px', borderRadius: 6, fontFamily: 'inherit' }}>
@@ -733,7 +747,7 @@ export function GroundAdminPage() {
               <div>
                 <div style={{ background: 'var(--gw-bg)', border: '0.5px solid var(--gw-border)', borderRadius: 10, padding: 16, marginBottom: 14 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Report is ready</div>
-                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 14 }}>Both parties have completed their sessions. When you release the report, both parties see it simultaneously — neither reads it before the other. Billing activates on release.</div>
+                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 14 }}>Both parties have completed their sessions. When you release the report, both parties see it simultaneously - neither reads it before the other. Billing activates on release.</div>
                   {!showReleaseConfirm ? (
                     <button onClick={() => setShowReleaseConfirm(true)}
                       style={{ width: '100%', padding: 12, borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
@@ -911,7 +925,7 @@ function ShareSection({ joinToken }: { joinToken: string }) {
     <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '16px', marginTop: 14 }}>
       <div style={{ fontSize: 11, fontWeight: 700, color: '#9B9590', letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 10 }}>Broadcast link</div>
       <div style={{ fontSize: 13, color: '#4A4540', lineHeight: 1.6, marginBottom: 14 }}>
-        Share this link or QR code — anyone can check in without creating an account first. They'll be asked to save their details at the end.
+        Share this link or QR code - anyone can check in without creating an account first. They'll be asked to save their details at the end.
       </div>
       <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', flexWrap: 'wrap' }}>
         {qrDataUrl && (

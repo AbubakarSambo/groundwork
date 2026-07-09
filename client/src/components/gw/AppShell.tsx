@@ -32,6 +32,19 @@ const NAV_ITEMS = [
     ),
   },
   {
+    label: 'Team',
+    to: '/org/members',
+    adminOnly: true,
+    icon: (active: boolean) => (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <circle cx="7" cy="7" r="3" stroke="currentColor" strokeWidth="1.5" fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.15 : 0} />
+        <circle cx="14" cy="7" r="2.5" stroke="currentColor" strokeWidth="1.3" fill="none" />
+        <path d="M1 16c0-2.21 2.686-4 6-4s6 1.79 6 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        <path d="M14 12c1.657 0 3 1.12 3 2.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
     label: 'Billing',
     to: '/billing',
     adminOnly: true,

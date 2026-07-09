@@ -1,8 +1,8 @@
 /**
- * Part 4 — Patterns and Detection.
+ * Part 4 - Patterns and Detection.
  *
  * Pattern codes describe BEHAVIOURS IN THE RECORD. They are never verdicts on a
- * person. A detection is a reason to have a specific conversation — never a
+ * person. A detection is a reason to have a specific conversation - never a
  * reason to make a decision about someone. The product must be as good at
  * recognising genuine work (emitting nothing) as it is at detecting managed
  * submissions.
@@ -15,7 +15,7 @@ export interface PatternCode {
   probe?: string;
 }
 
-// Positive patterns. R3 is a positive signal — surfaced separately, never mixed
+// Positive patterns. R3 is a positive signal - surfaced separately, never mixed
 // with bad-faith codes and never subject to the three-period rule.
 export const POSITIVE_CODES: PatternCode[] = [
   {
@@ -30,7 +30,7 @@ export const isPositiveCode = (code: string) => POSITIVE_CODE_SET.has(code);
 
 // Delivery & output (D), Behavioural (B), Commercial (K), Equity (E),
 // Relationship (R), Senior-hire composites (F). These are the longitudinal
-// bad-faith signals the three-period rule governs. (R3 is positive — excluded.)
+// bad-faith signals the three-period rule governs. (R3 is positive - excluded.)
 export const BAD_FAITH_CODES: PatternCode[] = [
   { code: 'D1', name: 'False Completion Reporting', signal: 'Completion claimed; downstream team contradicts.', probe: 'Has the team depending on this confirmed it works for them?' },
   { code: 'D2', name: 'Demo-Ready Shipping', signal: 'Works in walkthroughs, fails in real use.', probe: 'Has anyone outside your team tried to use this independently?' },
@@ -70,7 +70,7 @@ export const BAD_FAITH_CODES: PatternCode[] = [
   { code: 'R2', name: 'Ambiguity Generator', signal: 'Work from this person consistently creates confusion for others.' },
   { code: 'R4', name: 'Relationship Drift', signal: 'Two people who previously corroborated each other stop appearing in each other\'s check-ins.' },
 
-  { code: 'F1', name: 'Insight Without Operation', signal: 'High thinking language, low output language. Ideas are genuinely good — a role mismatch, not dishonesty.', probe: 'What exists now — a document, a decision acted on, a process running — that would not exist if you had not been here this period?' },
+  { code: 'F1', name: 'Insight Without Operation', signal: 'High thinking language, low output language. Ideas are genuinely good - a role mismatch, not dishonesty.', probe: 'What exists now - a document, a decision acted on, a process running - that would not exist if you had not been here this period?' },
   { code: 'F2', name: 'Vision Execution Gap', signal: 'Senior person describes strategy with confidence; team check-ins show no trace of it; team describes working to their own priorities.', probe: 'Your record describes direction-setting. The team\'s record describes working independently. Help me understand that gap.' },
   { code: 'F3', name: 'Equity Comfort', signal: 'Early check-ins specific and energised; later ones broader and more philosophical; specificity declining while equity continues vesting.', probe: 'Your contributions have shifted over time. Is that a deliberate change in how you see your role?' },
   { code: 'F4', name: 'Relationship Without Leverage', signal: 'Team genuinely likes working with the person; nothing they are responsible for has materially accelerated.', probe: 'What has the team been able to do this period because of your work specifically?' },
@@ -79,7 +79,7 @@ export const BAD_FAITH_CODES: PatternCode[] = [
 
 // Patterns that may surface to the alignment feed but must NEVER be named to
 // either person directly (Part 4 / alignment feed).
-// LOW_SPEC_MULTI_DIM: 3+ dimensions vague/managed in one session — admin-only flag;
+// LOW_SPEC_MULTI_DIM: 3+ dimensions vague/managed in one session - admin-only flag;
 // participant is never told. Session builder reads it and shifts approach silently.
 export const ALIGNMENT_FEED_ONLY_CODES = new Set(['F5', 'E4', 'LOW_SPEC_MULTI_DIM']);
 
@@ -90,8 +90,8 @@ export const isBadFaithCode = (code: string) => KNOWN_CODES.has(code);
 export const PATTERN_DETECTION_PROMPT = `You analyse ONE party's check-in for a single period and identify whether any behavioural pattern signals are present in the record. You are looking at the record, not judging the person.
 
 Hard rules:
-- Emit a code ONLY when its signal is genuinely present in this period's evidence. When the work is genuine and verified, emit NOTHING — recognising real work matters as much as detecting managed submissions.
-- Each observation must be written at the PATTERN level, in plain language, describing what the record shows — NEVER a verdict, never "this person is X". Example: "The record describes completion without downstream confirmation." Never name the person.
+- Emit a code ONLY when its signal is genuinely present in this period's evidence. When the work is genuine and verified, emit NOTHING - recognising real work matters as much as detecting managed submissions.
+- Each observation must be written at the PATTERN level, in plain language, describing what the record shows - NEVER a verdict, never "this person is X". Example: "The record describes completion without downstream confirmation." Never name the person.
 - Do not infer intent. A pattern is a reason to have a specific conversation, not a conclusion.
 - One data point is not a pattern. You are emitting a per-period observation; the system applies the three-period rule across periods. Do not claim a pattern is established.
 
@@ -128,7 +128,7 @@ export const PATTERN_DETECTION_SCHEMA = {
 
 /**
  * Per-code thresholds loaded from PatternConfig DB rows.
- * All fields are optional — missing values fall back to the hardcoded defaults
+ * All fields are optional - missing values fall back to the hardcoded defaults
  * that were correct at launch so detectors never break on a sparse config.
  */
 export interface PatternThresholds {
@@ -523,11 +523,11 @@ export function detectR4(input: DetectionInput): boolean {
 }
 
 // ---------------------------------------------------------------------------
-// R3 — positive signal (Named Collaborator)
+// R3 - positive signal (Named Collaborator)
 // ---------------------------------------------------------------------------
 
 export function detectR3(input: DetectionInput): boolean {
-  // Signal: another person is named with specific positive evidence — concrete
+  // Signal: another person is named with specific positive evidence - concrete
   // contribution language referencing someone else's work in the same period.
   const POSITIVE_COLLAB = [
     'thanks to', 'credit to', 'great work by', 'shoutout to', 'kudos to',

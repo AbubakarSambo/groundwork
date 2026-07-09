@@ -53,7 +53,7 @@ export class IntelligenceController {
   }
 
   @Post('grounds/:groundId/feedback')
-  @ApiOperation({ summary: 'Submit structured outcome feedback (rating, what worked/didn\'t, would use again) — one per party per ground' })
+  @ApiOperation({ summary: 'Submit structured outcome feedback (rating, what worked/didn\'t, would use again) - one per party per ground' })
   async submitGroundFeedback(
     @Param('groundId') groundId: string,
     @CurrentUser('id') userId: string,
@@ -64,7 +64,7 @@ export class IntelligenceController {
 
   @Get('dashboard')
   @Roles(Role.ADMIN)
-  @ApiOperation({ summary: 'Admin dashboard — ground activity + outcome rates per prompt version' })
+  @ApiOperation({ summary: 'Admin dashboard - ground activity + outcome rates per prompt version' })
   async dashboard(@CurrentUser() user: CurrentUserData) {
     const [groundActivity, outcomeRates] = await Promise.all([
       this.intelligence.groundActivity(user.organizationId),

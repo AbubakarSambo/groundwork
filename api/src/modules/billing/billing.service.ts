@@ -73,14 +73,17 @@ export class BillingService {
     return { allowed: false, reason: 'No sessions remaining. Add a session for $5 to continue.', sessionsBalance: 0 };
   }
 
+  /** Free ground limit for organizations without a subscription. */
+  static readonly FREE_GROUND_LIMIT = 10;
+
   /**
    * Ground creation gate.
    *
    * Resolution order:
-   *   1. org.firstGroundUsed === false  → freeReason='FIRST_GROUND' (one-time per org)
-   *   2. accessCode provided and valid  → freeReason='ACCESS_CODE', codeId set
-   *   3. org has paid for this ground   → allowed, no freeReason (payment flow handled externally)
-   *   4. otherwise                      → not allowed
+   *   1. org has active subscription or legacy care fee → allowed (unlimited)
+   *   2. accessCode provided and valid → freeReason='ACCESS_CODE', codeId set
+   *   3. org ground count < FREE_GROUND_LIMIT → freeReason='FREE_TIER'
+   *   4. otherwise → not allowed (upgrade required)
    *
    * The caller (GroundsService.create) is responsible for persisting the derived
    * fields inside its transaction.
@@ -88,16 +91,21 @@ export class BillingService {
   async canCreateGround(
     organizationId: string,
     accessCode?: string,
-  ): Promise<{ allowed: boolean; reason?: string; freeReason?: 'FIRST_GROUND' | 'ACCESS_CODE'; codeId?: string }> {
+  ): Promise<{ allowed: boolean; reason?: string; freeReason?: 'FREE_TIER' | 'ACCESS_CODE'; codeId?: string; groundsUsed?: number }> {
     const org = await this.prisma.organization.findUnique({
       where: { id: organizationId },
-      select: { firstGroundUsed: true, careFeeStatus: true },
+      select: { subscriptionPlan: true, subscriptionStatus: true, careFeeStatus: true },
     });
     if (!org) return { allowed: false, reason: 'Organization not found' };
 
-    // 1. First ground for this org — always free.
-    if (!org.firstGroundUsed) {
-      return { allowed: true, freeReason: 'FIRST_GROUND' };
+    // 1. Org has an active subscription - unlimited grounds.
+    if (org.subscriptionPlan && org.subscriptionStatus === 'active') {
+      return { allowed: true };
+    }
+
+    // 1b. Org is on legacy active care fee plan.
+    if (org.careFeeStatus === CareFeeStatus.ACTIVE) {
+      return { allowed: true };
     }
 
     // 2. Contributor access code supplied.
@@ -120,24 +128,17 @@ export class BillingService {
       return { allowed: true, freeReason: 'ACCESS_CODE', codeId: code.id };
     }
 
-    // 3. Org has an active subscription — unlimited grounds.
-    const orgFull = await this.prisma.organization.findUnique({
-      where: { id: organizationId },
-      select: { subscriptionPlan: true, subscriptionStatus: true, careFeeStatus: true },
-    });
-    if (orgFull?.subscriptionPlan && orgFull.subscriptionStatus === 'active') {
-      return { allowed: true };
+    // 3. Free tier: up to FREE_GROUND_LIMIT grounds per org.
+    const groundCount = await this.prisma.ground.count({ where: { organizationId } });
+    if (groundCount < BillingService.FREE_GROUND_LIMIT) {
+      return { allowed: true, freeReason: 'FREE_TIER', groundsUsed: groundCount };
     }
 
-    // 4. Org is on legacy active care fee plan.
-    if (org.careFeeStatus === CareFeeStatus.ACTIVE) {
-      return { allowed: true };
-    }
-
-    // 5. No free entitlement and no active subscription.
+    // 4. Free limit reached, no active subscription.
     return {
       allowed: false,
-      reason: 'Your first ground is free. To create additional grounds, purchase a session or upgrade your organization.',
+      reason: `Your free plan includes ${BillingService.FREE_GROUND_LIMIT} Grounds. Subscribe to create unlimited Grounds.`,
+      groundsUsed: groundCount,
     };
   }
 
@@ -183,7 +184,8 @@ export class BillingService {
     [SubscriptionPlan.STARTER]: 5,
     [SubscriptionPlan.SMALL_TEAM]: 20,
     [SubscriptionPlan.GROWTH]: 100,
-    [SubscriptionPlan.BUSINESS]: 500,
+    [SubscriptionPlan.BUSINESS]: 250,
+    [SubscriptionPlan.SCALE]: 1000,
     [SubscriptionPlan.ENTERPRISE]: null, // unlimited
   };
 
@@ -237,17 +239,19 @@ export class BillingService {
 
   /** Monthly prices in cents per subscription plan. */
   private readonly PLAN_PRICES_CENTS: Partial<Record<SubscriptionPlan, number>> = {
-    [SubscriptionPlan.STARTER]: 1500,
-    [SubscriptionPlan.SMALL_TEAM]: 3500,
+    [SubscriptionPlan.STARTER]: 2500,
+    [SubscriptionPlan.SMALL_TEAM]: 5000,
     [SubscriptionPlan.GROWTH]: 10000,
-    [SubscriptionPlan.BUSINESS]: 25000,
+    [SubscriptionPlan.BUSINESS]: 20000,
+    [SubscriptionPlan.SCALE]: 40000,
   };
 
   private readonly PLAN_LABELS: Record<SubscriptionPlan, string> = {
-    [SubscriptionPlan.STARTER]: 'Starter (up to 5 members)',
-    [SubscriptionPlan.SMALL_TEAM]: 'Small Team (up to 20 members)',
-    [SubscriptionPlan.GROWTH]: 'Growth (up to 100 members)',
-    [SubscriptionPlan.BUSINESS]: 'Business (up to 500 members)',
+    [SubscriptionPlan.STARTER]: 'Starter (up to 5 people)',
+    [SubscriptionPlan.SMALL_TEAM]: 'Small Team (up to 20 people)',
+    [SubscriptionPlan.GROWTH]: 'Growth (up to 100 people)',
+    [SubscriptionPlan.BUSINESS]: 'Business (up to 250 people)',
+    [SubscriptionPlan.SCALE]: 'Scale (up to 1,000 people)',
     [SubscriptionPlan.ENTERPRISE]: 'Enterprise',
   };
 
@@ -462,7 +466,7 @@ export class BillingService {
     return { ok: true, message: `${sessionsToAdd} session(s) added.`, sessionsAdded: sessionsToAdd };
   }
 
-  /** With per-session billing there is no subscription prerequisite — billing is always ready. */
+  /** With per-session billing there is no subscription prerequisite - billing is always ready. */
   async isBillingReady(_organizationId: string): Promise<boolean> {
     return true;
   }
@@ -545,7 +549,7 @@ export class BillingService {
   }
 
   /**
-   * A Stripe Customer Portal session — self-serve surface for updating the card
+   * A Stripe Customer Portal session - self-serve surface for updating the card
    * and viewing payment history.
    */
   async createBillingPortalSession(organizationId: string): Promise<{ portalUrl: string }> {
@@ -570,7 +574,7 @@ export class BillingService {
             // Idempotency guard: skip if we've already processed this payment intent.
             const existing = await this.prisma.billingEvent.findFirst({ where: { stripeInvoiceId } });
             if (existing) {
-              this.logger.warn(`Duplicate webhook for ${stripeInvoiceId} — skipping`);
+              this.logger.warn(`Duplicate webhook for ${stripeInvoiceId} - skipping`);
               break;
             }
             const now = new Date();
@@ -809,7 +813,7 @@ export class BillingService {
   }
 
   /**
-   * Platform admin: get stats across all orgs — all codes, all redemptions, usage by freeReason.
+   * Platform admin: get stats across all orgs - all codes, all redemptions, usage by freeReason.
    */
   async getPlatformAdminStats(callerUserId: string) {
     const caller = await this.prisma.user.findUnique({ where: { id: callerUserId }, select: { isPlatformAdmin: true } });

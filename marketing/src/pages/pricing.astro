@@ -2,7 +2,7 @@
 import Layout from '../layouts/Layout.astro';
 const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
 ---
-<Layout title="Pricing · Groundwork" description="Start free. Your first session on every Ground is free. Add more for $5 each, or subscribe for unlimited access." canonicalPath="/pricing">
+<Layout title="Pricing · Groundwork" description="Start free with 10 Grounds, no card required. Subscribe as your team grows. Unlimited Grounds, sessions, and reports on every plan." canonicalPath="/pricing">
   <style>
     *,*::before,*::after{box-sizing:border-box}
     body{margin:0;overflow-x:hidden}
@@ -55,84 +55,69 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
       <!-- Header -->
       <p style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#0C447C;font-weight:700;margin-bottom:12px;">Pricing</p>
       <h1 style="font-size:34px;font-weight:800;color:#1A1916;line-height:1.2;margin-bottom:16px;">Simple, honest pricing.</h1>
-      <p style="font-size:16px;color:#6B6560;line-height:1.7;margin-bottom:44px;max-width:520px;">Every conversation starts free. Pay only when you need more, or subscribe for unlimited access. No surprises.</p>
+      <p style="font-size:16px;color:#6B6560;line-height:1.7;margin-bottom:44px;max-width:520px;">Start free with 10 Grounds, no card required. Subscribe as your team grows. Unlimited Grounds, sessions, and reports on every plan.</p>
 
       <!-- Free tier -->
-      <div style="background:#F5F3EF;border:1px solid #E2E0DB;border-radius:12px;padding:24px 26px;margin-bottom:12px;display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap;">
+      <div style="background:#F5F3EF;border:1px solid #E2E0DB;border-radius:12px;padding:24px 26px;margin-bottom:40px;display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap;">
         <div style="flex:1;min-width:220px;">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
             <span style="font-size:15px;font-weight:700;color:#1A1916;">Free</span>
             <span style="font-size:11px;background:#E7F6EF;color:#085041;border:1px solid #BFE6D4;border-radius:6px;padding:2px 8px;font-weight:700;">Always</span>
           </div>
-          <p style="font-size:13.5px;color:#6B6560;line-height:1.65;margin:0;">Your first session on every Ground is free, no card required. You see how it works before spending anything.</p>
+          <p style="font-size:13.5px;color:#6B6560;line-height:1.65;margin:0 0 12px;">Create up to 10 Grounds for free. No card required. Unlimited sessions and reports on every Ground.</p>
+          <ul style="font-size:12.5px;color:#6B6560;padding-left:18px;margin:0;line-height:1.9;">
+            <li>10 Grounds</li>
+            <li>Unlimited sessions</li>
+            <li>Unlimited reports</li>
+            <li>Admin dashboard</li>
+            <li>Templates</li>
+          </ul>
         </div>
         <div style="text-align:right;flex-shrink:0;">
           <div style="font-size:30px;font-weight:800;color:#1A1916;">$0</div>
-          <div style="font-size:12px;color:#9B9590;">1 free session per Ground</div>
-        </div>
-      </div>
-
-      <!-- Free extension -->
-      <div style="background:#EEF4FB;border:1px solid #B5D4F4;border-radius:12px;padding:24px 26px;margin-bottom:12px;display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap;">
-        <div style="flex:1;min-width:220px;">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-            <span style="font-size:15px;font-weight:700;color:#1A1916;">Free Extension</span>
-            <span style="font-size:11px;background:#EEF4FB;color:#0C447C;border:1px solid #B5D4F4;border-radius:6px;padding:2px 8px;font-weight:700;">One per org</span>
-          </div>
-          <p style="font-size:13.5px;color:#6B6560;line-height:1.65;margin:0;">Every organization gets one free extension, one time. Use it on any Ground when you need one more session before deciding to pay.</p>
-        </div>
-        <div style="text-align:right;flex-shrink:0;">
-          <div style="font-size:30px;font-weight:800;color:#1A1916;">$0</div>
-          <div style="font-size:12px;color:#9B9590;">One-time per organization</div>
-        </div>
-      </div>
-
-      <!-- Per-session -->
-      <div style="background:#0C447C;border-radius:12px;padding:24px 26px;margin-bottom:40px;display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap;">
-        <div style="flex:1;min-width:220px;">
-          <div style="margin-bottom:8px;">
-            <span style="font-size:15px;font-weight:700;color:#fff;">Pay per session</span>
-          </div>
-          <p style="font-size:13.5px;color:rgba(255,255,255,.75);line-height:1.65;margin:0;">No subscription needed. Each session covers one full round of check-ins across all participants. Pay only when something real is happening.</p>
-        </div>
-        <div style="text-align:right;flex-shrink:0;">
-          <div style="font-size:30px;font-weight:800;color:#fff;">$5</div>
-          <div style="font-size:12px;color:rgba(255,255,255,.55);">per session</div>
-          <a href={`${APP_URL}/entry`} style="display:inline-block;margin-top:12px;font-size:12px;font-weight:600;color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:7px;padding:6px 14px;text-decoration:none;">Start free</a>
+          <div style="font-size:12px;color:#9B9590;">forever</div>
+          <a href={`${APP_URL}/entry`} style="display:inline-block;margin-top:12px;font-size:12px;font-weight:600;color:#0C447C;border:1px solid #B5D4F4;border-radius:7px;padding:6px 14px;text-decoration:none;">Get started free</a>
         </div>
       </div>
 
       <!-- Org subscriptions -->
-      <h2 style="font-size:20px;font-weight:800;color:#1A1916;margin-bottom:8px;">Upgrade your organization</h2>
-      <p style="font-size:14px;color:#6B6560;line-height:1.65;margin-bottom:24px;">Subscribe for unlimited sessions across all Grounds. One flat monthly rate, no per-session charges.</p>
+      <h2 style="font-size:20px;font-weight:800;color:#1A1916;margin-bottom:8px;">Subscribe as your team grows</h2>
+      <p style="font-size:14px;color:#6B6560;line-height:1.65;margin-bottom:24px;">Every person with a Groundwork account in your organization counts toward your plan. One flat monthly rate, unlimited everything.</p>
 
       <div class="plan-grid">
         <div class="plan-card">
           <div style="font-size:14px;font-weight:700;color:#1A1916;margin-bottom:4px;">Starter</div>
-          <div style="font-size:26px;font-weight:800;color:#0C447C;margin-bottom:2px;">$15<span style="font-size:13px;font-weight:500;color:#9B9590;">/mo</span></div>
-          <div style="font-size:12px;color:#9B9590;margin-bottom:12px;">Up to 5 members</div>
-          <p style="font-size:12px;color:#6B6560;line-height:1.6;flex-grow:1;margin-bottom:16px;">For small teams that check in regularly and want a predictable monthly cost.</p>
+          <div style="font-size:26px;font-weight:800;color:#0C447C;margin-bottom:2px;">$25<span style="font-size:13px;font-weight:500;color:#9B9590;">/mo</span></div>
+          <div style="font-size:12px;color:#9B9590;margin-bottom:12px;">Up to 5 people</div>
+          <p style="font-size:12px;color:#6B6560;line-height:1.6;flex-grow:1;margin-bottom:16px;">For small teams getting started with structured check-ins.</p>
           <a href={`${APP_URL}/billing`} style="display:block;text-align:center;font-size:13px;font-weight:700;color:#fff;background:#0C447C;border-radius:8px;padding:9px;text-decoration:none;">Subscribe</a>
         </div>
         <div class="plan-card">
           <div style="font-size:14px;font-weight:700;color:#1A1916;margin-bottom:4px;">Small Team</div>
-          <div style="font-size:26px;font-weight:800;color:#0C447C;margin-bottom:2px;">$35<span style="font-size:13px;font-weight:500;color:#9B9590;">/mo</span></div>
-          <div style="font-size:12px;color:#9B9590;margin-bottom:12px;">Up to 20 members</div>
-          <p style="font-size:12px;color:#6B6560;line-height:1.6;flex-grow:1;margin-bottom:16px;">For growing teams with multiple active Grounds and frequent sessions.</p>
+          <div style="font-size:26px;font-weight:800;color:#0C447C;margin-bottom:2px;">$50<span style="font-size:13px;font-weight:500;color:#9B9590;">/mo</span></div>
+          <div style="font-size:12px;color:#9B9590;margin-bottom:12px;">Up to 20 people</div>
+          <p style="font-size:12px;color:#6B6560;line-height:1.6;flex-grow:1;margin-bottom:16px;">For growing teams running multiple Grounds at once.</p>
           <a href={`${APP_URL}/billing`} style="display:block;text-align:center;font-size:13px;font-weight:700;color:#fff;background:#0C447C;border-radius:8px;padding:9px;text-decoration:none;">Subscribe</a>
         </div>
         <div class="plan-card">
           <div style="font-size:14px;font-weight:700;color:#1A1916;margin-bottom:4px;">Growth</div>
           <div style="font-size:26px;font-weight:800;color:#0C447C;margin-bottom:2px;">$100<span style="font-size:13px;font-weight:500;color:#9B9590;">/mo</span></div>
-          <div style="font-size:12px;color:#9B9590;margin-bottom:12px;">Up to 100 members</div>
+          <div style="font-size:12px;color:#9B9590;margin-bottom:12px;">Up to 100 people</div>
           <p style="font-size:12px;color:#6B6560;line-height:1.6;flex-grow:1;margin-bottom:16px;">For organizations running Groundwork across departments or client groups.</p>
           <a href={`${APP_URL}/billing`} style="display:block;text-align:center;font-size:13px;font-weight:700;color:#fff;background:#0C447C;border-radius:8px;padding:9px;text-decoration:none;">Subscribe</a>
         </div>
         <div class="plan-card">
           <div style="font-size:14px;font-weight:700;color:#1A1916;margin-bottom:4px;">Business</div>
-          <div style="font-size:26px;font-weight:800;color:#0C447C;margin-bottom:2px;">$250<span style="font-size:13px;font-weight:500;color:#9B9590;">/mo</span></div>
-          <div style="font-size:12px;color:#9B9590;margin-bottom:12px;">Up to 500 members</div>
-          <p style="font-size:12px;color:#6B6560;line-height:1.6;flex-grow:1;margin-bottom:16px;">For large organizations with high session volume and multiple teams.</p>
+          <div style="font-size:26px;font-weight:800;color:#0C447C;margin-bottom:2px;">$200<span style="font-size:13px;font-weight:500;color:#9B9590;">/mo</span></div>
+          <div style="font-size:12px;color:#9B9590;margin-bottom:12px;">Up to 250 people</div>
+          <p style="font-size:12px;color:#6B6560;line-height:1.6;flex-grow:1;margin-bottom:16px;">For larger organizations with multiple teams and Grounds in flight.</p>
+          <a href={`${APP_URL}/billing`} style="display:block;text-align:center;font-size:13px;font-weight:700;color:#fff;background:#0C447C;border-radius:8px;padding:9px;text-decoration:none;">Subscribe</a>
+        </div>
+        <div class="plan-card">
+          <div style="font-size:14px;font-weight:700;color:#1A1916;margin-bottom:4px;">Scale</div>
+          <div style="font-size:26px;font-weight:800;color:#0C447C;margin-bottom:2px;">$400<span style="font-size:13px;font-weight:500;color:#9B9590;">/mo</span></div>
+          <div style="font-size:12px;color:#9B9590;margin-bottom:12px;">Up to 1,000 people</div>
+          <p style="font-size:12px;color:#6B6560;line-height:1.6;flex-grow:1;margin-bottom:16px;">For organizations scaling Groundwork across a large workforce.</p>
           <a href={`${APP_URL}/billing`} style="display:block;text-align:center;font-size:13px;font-weight:700;color:#fff;background:#0C447C;border-radius:8px;padding:9px;text-decoration:none;">Subscribe</a>
         </div>
       </div>
@@ -148,24 +133,20 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
 
       <!-- Why we price this way -->
       <h2 style="font-size:20px;font-weight:800;color:#1A1916;margin-bottom:8px;">Why we price this way</h2>
-      <p style="font-size:14px;color:#6B6560;line-height:1.65;margin-bottom:24px;">Most productivity tools charge you to log in. We charge you when something real happens.</p>
+      <p style="font-size:14px;color:#6B6560;line-height:1.65;margin-bottom:24px;">Most tools charge you for seats and call it a feature. We charge you for your team size and give you everything.</p>
 
       <div class="why-grid" style="margin-bottom:48px;">
         <div class="why-card">
-          <div style="font-size:13px;font-weight:700;color:#1A1916;margin-bottom:6px;">We want you to try it for real.</div>
-          <p style="font-size:12.5px;color:#6B6560;line-height:1.65;margin:0;">A free trial that runs out after a few minutes teaches you nothing. Your first session on every Ground is free so you can actually see what it does before you pay anything.</p>
+          <div style="font-size:13px;font-weight:700;color:#1A1916;margin-bottom:6px;">Start free, no card required.</div>
+          <p style="font-size:12.5px;color:#6B6560;line-height:1.65;margin:0;">10 Grounds is enough to know whether Groundwork works for your team. No credit card, no trial that expires, no pressure to upgrade before you have seen the value.</p>
         </div>
         <div class="why-card">
-          <div style="font-size:13px;font-weight:700;color:#1A1916;margin-bottom:6px;">You pay for outcomes, not access.</div>
-          <p style="font-size:12.5px;color:#6B6560;line-height:1.65;margin:0;">There is no subscription just to log in. You only pay when a session runs, which means when something real is happening.</p>
+          <div style="font-size:13px;font-weight:700;color:#1A1916;margin-bottom:6px;">Pay for your team size, not your usage.</div>
+          <p style="font-size:12.5px;color:#6B6560;line-height:1.65;margin:0;">Every person with a Groundwork account in your organization counts toward your plan. Unlimited Grounds, sessions, and reports at every tier. No counting clicks.</p>
         </div>
         <div class="why-card">
           <div style="font-size:13px;font-weight:700;color:#1A1916;margin-bottom:6px;">One price, no tiers per feature.</div>
-          <p style="font-size:12.5px;color:#6B6560;line-height:1.65;margin:0;">Every session at every price point gives you the same thing: a full AI-facilitated check-in, a structured report, and a record of what happened. No upsells mid-session.</p>
-        </div>
-        <div class="why-card">
-          <div style="font-size:13px;font-weight:700;color:#1A1916;margin-bottom:6px;">Subscriptions are for teams that already know it works.</div>
-          <p style="font-size:12.5px;color:#6B6560;line-height:1.65;margin:0;">We offer subscriptions to organizations that have already used Groundwork and want the economics to make sense at scale. We do not push you toward a subscription before you have seen the value.</p>
+          <p style="font-size:12.5px;color:#6B6560;line-height:1.65;margin:0;">Every plan gives you the same thing: full AI-facilitated check-ins, structured reports, and a permanent record. No features locked behind higher tiers.</p>
         </div>
         <div class="why-card">
           <div style="font-size:13px;font-weight:700;color:#1A1916;margin-bottom:6px;">Transparent and consistent.</div>
@@ -179,28 +160,28 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
 
       <div style="margin-bottom:48px;">
         <div class="faq-item">
-          <div style="font-size:14px;font-weight:700;color:#1A1916;margin-bottom:6px;">What counts as a session?</div>
-          <p style="font-size:13px;color:#6B6560;line-height:1.65;margin:0;">One session is one full round of check-ins across all participants on a Ground. Whether you have two people or twenty, it is one session. The report updates after each session.</p>
+          <div style="font-size:14px;font-weight:700;color:#1A1916;margin-bottom:6px;">What counts as a "person" on my plan?</div>
+          <p style="font-size:13px;color:#6B6560;line-height:1.65;margin:0;">Every person with a Groundwork account in your organization counts, whether they create Grounds or just participate in them. Guests with no account do not count.</p>
         </div>
         <div class="faq-item">
           <div style="font-size:14px;font-weight:700;color:#1A1916;margin-bottom:6px;">Do I need a card to start?</div>
-          <p style="font-size:13px;color:#6B6560;line-height:1.65;margin:0;">No. Your first session on every Ground is free and requires no payment details. You add a card only when you want to continue beyond the free session.</p>
+          <p style="font-size:13px;color:#6B6560;line-height:1.65;margin:0;">No. Your first 10 Grounds are free and require no payment details. You add a card only when you want to create more than 10.</p>
         </div>
         <div class="faq-item">
-          <div style="font-size:14px;font-weight:700;color:#1A1916;margin-bottom:6px;">What is the free extension?</div>
-          <p style="font-size:13px;color:#6B6560;line-height:1.65;margin:0;">Every organization gets one free extension, one time. It adds one session to any Ground of your choosing. You can use it before you are ready to pay, as a bridge to the next decision.</p>
+          <div style="font-size:14px;font-weight:700;color:#1A1916;margin-bottom:6px;">What counts as a session?</div>
+          <p style="font-size:13px;color:#6B6560;line-height:1.65;margin:0;">One session is one full round of check-ins across all participants on a Ground. Whether you have two people or twenty, it is one session. Sessions are unlimited on every plan.</p>
         </div>
         <div class="faq-item">
           <div style="font-size:14px;font-weight:700;color:#1A1916;margin-bottom:6px;">Can I cancel a subscription at any time?</div>
           <p style="font-size:13px;color:#6B6560;line-height:1.65;margin:0;">Yes. Cancel from the billing page and your subscription ends at the close of the billing period. No penalties, no questions.</p>
         </div>
         <div class="faq-item">
-          <div style="font-size:14px;font-weight:700;color:#1A1916;margin-bottom:6px;">What happens to my Grounds and reports if I stop paying?</div>
-          <p style="font-size:13px;color:#6B6560;line-height:1.65;margin:0;">Nothing is deleted. Your reports and history stay on your account. You can read everything that happened. You just cannot start a new session until you add balance or subscribe again.</p>
+          <div style="font-size:14px;font-weight:700;color:#1A1916;margin-bottom:6px;">What happens to my Grounds and reports if I cancel?</div>
+          <p style="font-size:13px;color:#6B6560;line-height:1.65;margin:0;">Nothing is deleted. Your reports and history stay on your account. You can read everything that happened. You can still run Grounds on the free plan (up to 10 total).</p>
         </div>
         <div class="faq-item">
           <div style="font-size:14px;font-weight:700;color:#1A1916;margin-bottom:6px;">Does every participant need to pay?</div>
-          <p style="font-size:13px;color:#6B6560;line-height:1.65;margin:0;">No. Billing is per session, per Ground, at the organization level. One person pays for the whole round. Participants just check in.</p>
+          <p style="font-size:13px;color:#6B6560;line-height:1.65;margin:0;">No. Billing is at the organization level, based on your team size. Participants who have a Groundwork account count toward your plan. External participants without an account do not.</p>
         </div>
       </div>
 

@@ -74,7 +74,7 @@ export class GroundsCron {
   }
 
   /**
-   * Gap #22 — Weekly period boundary sweep (Monday 5 AM).
+   * Gap #22 - Weekly period boundary sweep (Monday 5 AM).
    * Calls startNewPeriod() for every active ground so that:
    *   - CANDIDATE detections are archived with their period tag.
    *   - Consecutive-period counters are reset for detections that missed this period.
@@ -103,7 +103,7 @@ export class GroundsCron {
   }
 
   /**
-   * Gap #29 — Weekly concentration risk sweep (Monday 5:30 AM).
+   * Gap #29 - Weekly concentration risk sweep (Monday 5:30 AM).
    * Runs detectConcentrationRisk() for every organisation that has at least one
    * active ground, surfacing a CONCENTRATION_RISK detection when a single person
    * is an active party in 3 or more grounds simultaneously.
@@ -135,7 +135,7 @@ export class GroundsCron {
    *   1. 12+ hours of inactivity (no conversation turn in the window)
    *   2. Session is 48+ hours old (absolute age guard)
    * Fires CHECK_IN_COMPLETED so the existing reports listener handles any
-   * synthesis logic — auto-close is source-transparent to downstream consumers.
+   * synthesis logic - auto-close is source-transparent to downstream consumers.
    */
   @Cron('*/30 * * * *')
   async autoCloseStaleCheckIns() {
@@ -260,11 +260,11 @@ export class GroundsCron {
   }
 
   /**
-   * Daily reminders (B1) — grounds die silently without them. Two kinds, both
+   * Daily reminders (B1) - grounds die silently without them. Two kinds, both
    * throttled to once per NUDGE_THROTTLE_DAYS per party via lastNudgedAt:
    *   1. Return-nudge: an accepted party with an open, now-due session that
-   *      hasn't been completed — bring them back.
-   *   2. Activation reminder: a REPORT_READY ground the admin hasn't activated —
+   *      hasn't been completed - bring them back.
+   *   2. Activation reminder: a REPORT_READY ground the admin hasn't activated -
    *      remind the initiator the report is waiting.
    */
   @Cron(CronExpression.EVERY_DAY_AT_9AM)
@@ -349,12 +349,12 @@ export class GroundsCron {
     }
 
     if (returnNudges || activationNudges) {
-      this.logger.log(`Reminders sent — ${returnNudges} return-nudge(s), ${activationNudges} activation reminder(s).`);
+      this.logger.log(`Reminders sent - ${returnNudges} return-nudge(s), ${activationNudges} activation reminder(s).`);
     }
   }
 
   /**
-   * GW-06 synthesis backstop — 4 AM daily. If the CHECK_IN_COMPLETED event
+   * GW-06 synthesis backstop - 4 AM daily. If the CHECK_IN_COMPLETED event
    * was lost (e.g. a crash between session completion and synthesis), an ACTIVE
    * ground can sit with both parties done and no report. This sweep finds that
    * state and re-emits the event; the reports listener is idempotent so re-fire
@@ -409,7 +409,7 @@ export class GroundsCron {
   }
 
   /**
-   * GW-50 post-resolution feedback — 10 AM daily. ~24h after a ground closes,
+   * GW-50 post-resolution feedback - 10 AM daily. ~24h after a ground closes,
    * invite each party (who hasn't already submitted feedback) to answer one
    * question about whether the process felt fair. The 24-72h window sends once
    * per party without a dedicated schema column.

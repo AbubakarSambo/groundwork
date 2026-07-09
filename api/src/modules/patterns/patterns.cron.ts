@@ -4,7 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { PatternsService } from './patterns.service';
 import { CheckInStatus, GroundStatus } from '@prisma/client';
 
-// Grounds still in motion — patterns are longitudinal across their check-ins.
+// Grounds still in motion - patterns are longitudinal across their check-ins.
 const OPEN_STATUSES: GroundStatus[] = [GroundStatus.AWAITING_PARTIES, GroundStatus.REPORT_READY, GroundStatus.ACTIVE];
 
 /**

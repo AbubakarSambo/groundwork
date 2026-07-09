@@ -7,9 +7,9 @@ import { CheckInStatus, GroundStatus, PatternStatus } from '@prisma/client';
 /**
  * The learning loop + cross-org intelligence. When a ground resolves, its
  * outcome is recorded against the prompt version that produced it (every change
- * versioned against outcome data — the moat). Both parties answer one yes/no —
+ * versioned against outcome data - the moat). Both parties answer one yes/no -
  * did this process help you reach a decision that felt fair and grounded in
- * evidence? — which becomes the outcome rate per prompt version. Cross-org
+ * evidence? - which becomes the outcome rate per prompt version. Cross-org
  * summaries are ANONYMISED: no names, no PII, only patterns.
  */
 @Injectable()
@@ -39,7 +39,7 @@ export class IntelligenceService {
   }
 
   /**
-   * A party's post-resolution feedback — the seed of the learning loop. Only a
+   * A party's post-resolution feedback - the seed of the learning loop. Only a
    * party to the ground may submit, and only once the ground has closed.
    */
   async submitFeedback(groundId: string, userId: string, feltFair: boolean, note?: string) {
@@ -56,7 +56,7 @@ export class IntelligenceService {
   }
 
   /**
-   * Rich outcome feedback — POST /grounds/:id/feedback.
+   * Rich outcome feedback - POST /grounds/:id/feedback.
    * Accepts a structured rating object and maps to the OutcomeFeedback model.
    * Gate: only a party to the ground may submit. Gate: one submission per ground
    * per party (enforced by the @@unique on the model).
@@ -110,7 +110,7 @@ export class IntelligenceService {
 
   /**
    * Ground activity view. Session-2 rate is the single most important
-   * conversion metric — below 60% means session 1 is not producing enough
+   * conversion metric - below 60% means session 1 is not producing enough
    * surprise to bring people back.
    */
   async groundActivity(organizationId: string) {
@@ -135,7 +135,7 @@ export class IntelligenceService {
   }
 
   /**
-   * Outcome & learning view. Outcome rate per prompt version — when a prompt
+   * Outcome & learning view. Outcome rate per prompt version - when a prompt
    * changes, this shows whether it improved the rate. The ROI story after 50
    * resolved grounds.
    */
@@ -195,7 +195,7 @@ export class IntelligenceService {
    * Weekly longitudinal synthesis. Runs Monday at 09:00 UTC.
    *
    * For each active org, fetches surfaced pattern observations from the last 30
-   * days (plain language only — no codes, no names, no PII) and asks the AI to
+   * days (plain language only - no codes, no names, no PII) and asks the AI to
    * write a 2–3 sentence narrative describing what the record shows about how
    * the team is working. The result is stored in OrgIntelligence.patternSummary
    * as { narrative: "...", generatedAt: "..." }.
@@ -277,7 +277,7 @@ export class IntelligenceService {
           code: 'M4_PLUS',
           status: 'SURFACED',
           periodsObserved: 1,
-          observationText: 'This person is mentioned operationally by multiple colleagues across the organisation — a signal of broad force-multiplier contribution.',
+          observationText: 'This person is mentioned operationally by multiple colleagues across the organisation - a signal of broad force-multiplier contribution.',
         },
         update: {
           status: 'SURFACED',
@@ -361,7 +361,7 @@ export class IntelligenceService {
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
     // Fetch surfaced pattern observations for this org over the last 30 days.
-    // We use observationText only — never codes, never names, never participant IDs.
+    // We use observationText only - never codes, never names, never participant IDs.
     const detections = await this.prisma.patternDetection.findMany({
       where: {
         status: PatternStatus.SURFACED,

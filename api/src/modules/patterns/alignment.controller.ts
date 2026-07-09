@@ -11,7 +11,7 @@ export class AlignmentController {
 
   @Get()
   @Roles(Role.ADMIN)
-  @ApiOperation({ summary: 'Admin alignment feed — completeness, status, surfaced patterns (never content)' })
+  @ApiOperation({ summary: 'Admin alignment feed - completeness, status, surfaced patterns (never content)' })
   async feed(@CurrentUser('organizationId') organizationId: string) {
     return this.alignment.feed(organizationId);
   }
@@ -25,7 +25,7 @@ export class AlignmentNarrativeController {
 
   @Get('narrative')
   @Roles(Role.ADMIN)
-  @ApiOperation({ summary: 'AI narrative briefing — plain-English alignment state summary for the admin' })
+  @ApiOperation({ summary: 'AI narrative briefing - plain-English alignment state summary for the admin' })
   async narrative(@CurrentUser('organizationId') organizationId: string) {
     return this.alignment.narrative(organizationId);
   }

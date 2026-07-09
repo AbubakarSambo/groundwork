@@ -32,6 +32,7 @@ import { AdminPage } from '@/pages/admin/AdminPage'
 import { AdminDashboardPage } from '@/pages/admin/AdminDashboardPage'
 import { DemoConversationPage } from '@/pages/demo/DemoConversationPage'
 import { SettingsPage } from '@/pages/settings/SettingsPage'
+import { OrgMembersPage } from '@/pages/org/OrgMembersPage'
 import { HelpModal, HelpButton } from '@/components/gw/HelpModal'
 import { AppShell } from '@/components/gw/AppShell'
 import type { JSX } from 'react'
@@ -92,7 +93,7 @@ export default function App() {
             <Route path="/setup" element={<SetupPage />} />
             <Route path="/welcome" element={<WelcomePage />} />
 
-            {/* Main app — require auth */}
+            {/* Main app - require auth */}
             <Route path="/grounds" element={<RequireAuth><GroundsListPage /></RequireAuth>} />
             <Route path="/grounds/new" element={<RequireAuth><CreateGroundPage /></RequireAuth>} />
             <Route path="/grounds/:id" element={<RequireAuth><GroundAdminPage /></RequireAuth>} />
@@ -108,6 +109,7 @@ export default function App() {
             <Route path="/prompts" element={<RequireAuth><PromptVersioningPage /></RequireAuth>} />
             <Route path="/prompts/test" element={<RequireAuth><PromptTestPage /></RequireAuth>} />
             <Route path="/settings" element={<RequireAuth><SettingsPage /></RequireAuth>} />
+            <Route path="/org/members" element={<RequireAuth><OrgMembersPage /></RequireAuth>} />
             <Route path="/admin" element={<RequireAuth><AdminPage /></RequireAuth>} />
             <Route path="/admin/dashboard" element={<RequireAuth><AdminDashboardPage /></RequireAuth>} />
 

@@ -59,7 +59,7 @@ const RECORD_EXTRACTION_SCHEMA = {
   },
 };
 
-// Single-party artifact (B2) — gives a person standalone value from session 1
+// Single-party artifact (B2) - gives a person standalone value from session 1
 // without waiting on the other party.
 const SOLO_ARTIFACT_SCHEMA = {
   name: 'emit_solo_artifact',
@@ -74,7 +74,7 @@ const SOLO_ARTIFACT_SCHEMA = {
   },
 };
 
-const SOLO_ARTIFACT_PROMPT = `You are Groundwork. You are given ONE person's own record entries (their words). Produce a short artifact for them alone — they have not heard from anyone else and may never. Do not infer the other side. Do not produce a verdict or analysis of any person. Open with the exact phrase "Your private record shows:" then summarise what they put on the record in their own framing. Name one specific thing to carry forward. Warm, specific, brief — under 200 words total.`;
+const SOLO_ARTIFACT_PROMPT = `You are Groundwork. You are given ONE person's own record entries (their words). Produce a short artifact for them alone - they have not heard from anyone else and may never. Do not infer the other side. Do not produce a verdict or analysis of any person. Open with the exact phrase "Your private record shows:" then summarise what they put on the record in their own framing. Name one specific thing to carry forward. Warm, specific, brief - under 200 words total.`;
 
 /**
  * The conversation engine. Drives a single party's check-in.
@@ -101,7 +101,7 @@ export class ConversationService {
     private config: ConfigService,
   ) {}
 
-  /** Returns the transcript for a check-in — owner-scoped only. */
+  /** Returns the transcript for a check-in - owner-scoped only. */
   async getTranscript(checkInId: string, requestingUserId: string) {
     const checkIn = await this.loadOwnedCheckIn(checkInId, requestingUserId);
     const turns = await this.prisma.conversationTurn.findMany({
@@ -137,7 +137,7 @@ export class ConversationService {
     });
 
     const header = [
-      'Groundwork — Contribution Record',
+      'Groundwork - Contribution Record',
       `Session ${checkIn.sessionNumber}`,
       checkIn.completedAt
         ? `Completed: ${checkIn.completedAt.toISOString().slice(0, 10)}`
@@ -160,11 +160,11 @@ export class ConversationService {
 
   /**
    * Open the check-in: the engine speaks first, delivering the moment's opening
-   * per the runtime context. Idempotent — if turns already exist, returns the
+   * per the runtime context. Idempotent - if turns already exist, returns the
    * existing first turn rather than re-opening.
    *
    * NO PAYMENT OR CADENCE WALL (B1/B3, Part 9). Check-ins are never gated on
-   * payment — "if participant sessions are ever gated, trust collapses" — and
+   * payment - "if participant sessions are ever gated, trust collapses" - and
    * the cadence is a recommendation, not a wall, so the initiator reaches the
    * report fast. `availableFrom` is surfaced in the UI as a suggested return
    * date only. The paywall sits solely between REPORT_READY and ACTIVE
@@ -197,7 +197,7 @@ export class ConversationService {
     // Session balance gate: consume one session from the ground's balance once
     // per session round (sessionNumber). If any other participant has already
     // opened a check-in for the same session number, that round was already paid
-    // for — allow without decrementing. Re-opens of the same check-in are already
+    // for - allow without decrementing. Re-opens of the same check-in are already
     // caught above by the existingAiTurn guard.
     if (checkIn.groundId) {
       // Determine whether another participant already opened this session round.
@@ -214,7 +214,7 @@ export class ConversationService {
       });
 
       if (!roundAlreadyStarted) {
-        // First participant to open this round — consume one session from the balance.
+        // First participant to open this round - consume one session from the balance.
         const gate = await this.billing.canStartSession(checkIn.groundId);
         if (!gate.allowed) {
           // Nudge the ground's initiator so they know someone is blocked.
@@ -262,7 +262,7 @@ export class ConversationService {
 
     // GW-41: stamp the engine_rules prompt version on the ground at first check-in
     // open time. Outcome data is attributed to the engine version active when the
-    // conversation STARTED, not the one current at resolution time — without this
+    // conversation STARTED, not the one current at resolution time - without this
     // stamp, intelligence.service.ts recordOutcome() always writes null promptVersionId.
     // updateMany with promptVersionId: null guard makes this idempotent: the first
     // check-in to open wins; later openings on the same ground are no-ops.
@@ -276,7 +276,7 @@ export class ConversationService {
 
     const fullSystem = await this.composeSystemPrompt(checkIn);
     const reply = await this.anthropic.respond(fullSystem, [
-      { role: 'user', content: '<<BEGIN_CHECK_IN>> The person has just arrived. Open the check-in now per your runtime context — deliver the moment opening; do not wait for them to speak first.' },
+      { role: 'user', content: '<<BEGIN_CHECK_IN>> The person has just arrived. Open the check-in now per your runtime context - deliver the moment opening; do not wait for them to speak first.' },
     ]);
 
     const aiTurn = await this.prisma.conversationTurn.create({ data: { checkInId: checkIn.id, role: TurnRole.AI, content: reply } });
@@ -285,7 +285,7 @@ export class ConversationService {
   }
 
   /**
-   * Send a person's message and get the AI's next turn. Scoped to this party —
+   * Send a person's message and get the AI's next turn. Scoped to this party -
    * the other party's turns are never loaded into context.
    */
   async sendMessage(checkInId: string, requestingUserId: string, message: string) {
@@ -331,7 +331,7 @@ export class ConversationService {
     // Signal the frontend that the AI has delivered the session-closing elements
     // so the "Complete session" button can appear. Detected by the mandatory
     // SESSION CLOSE phrase defined in ENGINE_RULES.
-    // ISSUE 22: message-count auto-complete removed — only the AI's explicit signal triggers completion.
+    // ISSUE 22: message-count auto-complete removed - only the AI's explicit signal triggers completion.
     // ISSUE 23: all checks are case-insensitive via replyLower; alternative phrases added for resilience.
     const replyLower = reply.toLowerCase();
     const sessionComplete =
@@ -467,7 +467,7 @@ export class ConversationService {
 
     const docPromptHint =
       personTurnCount >= 2 && uploadedDocs.length === 0
-        ? `DOC_PROMPT_HINT: At a natural moment in your next response — when the conversation has reached a point where something is described but not evidenced — say something like: "There is probably something in writing that captures this. A brief, a plan, an email exchange. If you have it, attach it using the button at the bottom — I want to know what it shows." Weave it in as one sentence. Do not make it an agenda item or a request. Only if it fits naturally.`
+        ? `DOC_PROMPT_HINT: At a natural moment in your next response - when the conversation has reached a point where something is described but not evidenced - say something like: "There is probably something in writing that captures this. A brief, a plan, an email exchange. If you have it, attach it using the button at the bottom - I want to know what it shows." Weave it in as one sentence. Do not make it an agenda item or a request. Only if it fits naturally.`
         : '';
 
     // Clarification session context: when this check-in is correcting a specific
@@ -479,7 +479,7 @@ export class ConversationService {
       const inferenceList = (report?.inferences ?? []) as Array<{ id: string; text: string; participantLabel: string; reason: string }>;
       const inference = inferenceList.find(i => i.id === checkIn.clarificationTarget);
       if (inference) {
-        clarificationContext = `CLARIFICATION SESSION — the participant flagged the following inference in the report as inaccurate:
+        clarificationContext = `CLARIFICATION SESSION - the participant flagged the following inference in the report as inaccurate:
 
 "${inference.text}"
 
@@ -493,7 +493,7 @@ Open the session by naming this specific inference directly. Do NOT ask the stan
   }
 
   /**
-   * #2 — Build a returning-user context block for session 2+.
+   * #2 - Build a returning-user context block for session 2+.
    * Loads WORRY or TENSION entries from the most recent completed check-in and
    * injects the most important unresolved one. Adds an explicit guard preventing
    * the AI from asking "what have you been working on" to returning participants.
@@ -513,7 +513,7 @@ Open the session by naming this specific inference directly. Do NOT ask the stan
 
     const prevCheckIn = priorCheckIns[0]; // most recent prior session
 
-    // Pull unresolved items — WORRY, TENSION, and open COMMITMENTs from ALL prior sessions.
+    // Pull unresolved items - WORRY, TENSION, and open COMMITMENTs from ALL prior sessions.
     const allPriorIds = priorCheckIns.map(ci => ci.id);
     const lastEntries = await this.prisma.recordEntry.findMany({
       where: {
@@ -541,7 +541,7 @@ Open the session by naming this specific inference directly. Do NOT ask the stan
       ? `sessions 1 through ${priorCheckIns[0].sessionNumber}`
       : `session ${priorCheckIns[0].sessionNumber}`;
     const lines: string[] = [
-      `# Returning user — session ${sessionNumber} (${sessionRange} on record)`,
+      `# Returning user - session ${sessionNumber} (${sessionRange} on record)`,
       `GUARD: Do NOT ask "what have you been working on?" or "what has been going on?" or any equivalent generic opening. This person has been here before. Open by referencing their specific record.`,
       `Most important unresolved item across all prior check-ins (${topItem.type}): "${topItem.text}"`,
     ];
@@ -552,7 +552,7 @@ Open the session by naming this specific inference directly. Do NOT ask the stan
         : [];
       const dimNote = weakDims.length >= 3 ? ` Dimensions that were thin: ${weakDims.join(', ')}.` : '';
       lines.push(
-        `SPECIFICITY NOTE: Their last session produced ${priorSpecificity} specificity.${dimNote} Do not open with the same framing as last time. Ask about one unexpected angle — what almost went wrong, what they wish had happened differently, or what they held back last time. Do not announce the change. Push for something concrete they can name.`,
+        `SPECIFICITY NOTE: Their last session produced ${priorSpecificity} specificity.${dimNote} Do not open with the same framing as last time. Ask about one unexpected angle - what almost went wrong, what they wish had happened differently, or what they held back last time. Do not announce the change. Push for something concrete they can name.`,
       );
     } else {
       lines.push(`Open by naming this specifically. Ask what has changed since they last described it.`);
@@ -562,7 +562,7 @@ Open the session by naming this specific inference directly. Do NOT ask the stan
   }
 
   /**
-   * #15 — Evidence Definition enforcement.
+   * #15 - Evidence Definition enforcement.
    * Checks whether the EVIDENCE_DEFINITION_STEP has been completed for the
    * current session by looking for SUCCESS_DEFINITION entries that contain
    * both an artefact reference and a named verifier (two completions).
@@ -601,7 +601,7 @@ Open the session by naming this specific inference directly. Do NOT ask the stan
    * Complete a check-in. Triggers structured extraction of record entries and
    * a single-party solo artifact (#93, #91). When BOTH parties finish session 1
    * (their first check-in), ReportsService.synthesize() is invoked via the
-   * reports listener — not here, to keep parties isolated (#36).
+   * reports listener - not here, to keep parties isolated (#36).
    */
   async complete(checkInId: string, requestingUserId: string) {
     const checkIn = await this.loadOwnedCheckIn(checkInId, requestingUserId);
@@ -617,7 +617,7 @@ Open the session by naming this specific inference directly. Do NOT ask the stan
     });
     if (personTurns < 3) {
       throw new BadRequestException(
-        'A few more exchanges are needed before this check-in can close — the record is still thin. Answer one or two more questions, then complete.',
+        'A few more exchanges are needed before this check-in can close - the record is still thin. Answer one or two more questions, then complete.',
       );
     }
 
@@ -654,8 +654,8 @@ Open the session by naming this specific inference directly. Do NOT ask the stan
 
 
     // Announce completion. The reports listener decides whether the ground is
-    // now ready for synthesis (both parties through session 1 — #36). No import
-    // of the reports module here — that would create a cycle.
+    // now ready for synthesis (both parties through session 1 - #36). No import
+    // of the reports module here - that would create a cycle.
     this.events.emit(GroundworkEvents.CHECK_IN_COMPLETED, {
       checkInId: checkIn.id,
       groundId: checkIn.groundId,
@@ -759,7 +759,7 @@ Open the session by naming this specific inference directly. Do NOT ask the stan
 
     // Store entries. The verifiability field is kept in the text as a prefix
     // tag ([VERIFIABILITY: HIGH]) because the RecordEntry schema does not yet
-    // have a dedicated column — this preserves the signal without a migration.
+    // have a dedicated column - this preserves the signal without a migration.
     await this.prisma.recordEntry.createMany({
       data: valid.map((e) => {
         const v = VALID_VERIFIABILITY.includes(e.verifiability) ? e.verifiability : 'LOW';
@@ -777,7 +777,7 @@ Open the session by naming this specific inference directly. Do NOT ask the stan
    * Build a single-party artifact from this party's own record (B2): a short
    * "your record so far" they can use immediately, independent of the other
    * party. Stored on the participant; superseded by the full report once both
-   * parties finish. Owner-scoped — reads only this party's own entries.
+   * parties finish. Owner-scoped - reads only this party's own entries.
    */
   async buildSoloArtifact(participantId: string, groundId: string) {
     const entries = await this.prisma.recordEntry.findMany({
@@ -845,7 +845,7 @@ Open the session by naming this specific inference directly. Do NOT ask the stan
   }
 
   /**
-   * Decline to take part (B8). Penalty-free — marks this party's check-in
+   * Decline to take part (B8). Penalty-free - marks this party's check-in
    * DECLINED. The record reflects that the process was offered and declined;
    * this is shown to the admin as a neutral status, never a negative signal.
    */
@@ -861,7 +861,7 @@ Open the session by naming this specific inference directly. Do NOT ask the stan
   // --- helpers ---
 
   /**
-   * Whether any OTHER party on this ground has completed a check-in — gates the
+   * Whether any OTHER party on this ground has completed a check-in - gates the
    * degree-two cross-reference. Reads only completion metadata, never content.
    */
   private async hasOtherPartyCheckedIn(groundId: string, participantId: string): Promise<boolean> {

@@ -30,7 +30,7 @@ const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
 
 const CLAIMS_EXTRACTION_PROMPT = `You are extracting structured claims from a document a party has uploaded before a check-in session.
 
-Extract every concrete, verifiable claim — commitments made, asks raised, worries flagged, intentions stated, tensions described, and any defined success criteria. Skip preamble, small talk, and boilerplate.
+Extract every concrete, verifiable claim - commitments made, asks raised, worries flagged, intentions stated, tensions described, and any defined success criteria. Skip preamble, small talk, and boilerplate.
 
 For each claim:
 - "text": the person's exact words or a minimal faithful paraphrase (1–2 sentences max)
@@ -103,7 +103,7 @@ export class DocumentsService {
     } else if ((IMAGE_MIMES as readonly string[]).includes(file.mimetype)) {
       content = await this.imageToText(file.buffer, file.mimetype as typeof IMAGE_MIMES[number], file.originalname);
     } else {
-      content = `[Attached: ${file.originalname} — text not extractable from this file type. The document is on record.]`;
+      content = `[Attached: ${file.originalname} - text not extractable from this file type. The document is on record.]`;
     }
 
     const doc = await this.prisma.groundDocument.create({
@@ -119,7 +119,7 @@ export class DocumentsService {
 
     // Extract structured claims from the document content and write them as
     // RecordEntry rows so they flow into the report corpus automatically.
-    // Fire-and-forget — a failure here must not block the upload response.
+    // Fire-and-forget - a failure here must not block the upload response.
     this.extractAndStoreClaims(content, participant.id, file.originalname).catch((err) =>
       this.logger.warn(`Claims extraction failed for doc ${doc.id}: ${err?.message}`),
     );
@@ -136,9 +136,9 @@ export class DocumentsService {
         const csv = XLSX.utils.sheet_to_csv(workbook.Sheets[sheetName]);
         lines.push(csv.trim());
       }
-      return lines.join('\n\n').trim() || `[Attached: ${fileName} — spreadsheet contained no readable data.]`;
+      return lines.join('\n\n').trim() || `[Attached: ${fileName} - spreadsheet contained no readable data.]`;
     } catch {
-      return `[Attached: ${fileName} — could not parse spreadsheet.]`;
+      return `[Attached: ${fileName} - could not parse spreadsheet.]`;
     }
   }
 
@@ -169,10 +169,10 @@ export class DocumentsService {
         .map((b) => b.text)
         .join('\n')
         .trim();
-      return text || `[Attached: ${fileName} — image contained no readable text or data.]`;
+      return text || `[Attached: ${fileName} - image contained no readable text or data.]`;
     } catch (err: any) {
       this.logger.warn(`Image extraction failed for ${fileName}: ${err?.message}`);
-      return `[Attached: ${fileName} — image could not be processed.]`;
+      return `[Attached: ${fileName} - image could not be processed.]`;
     }
   }
 
@@ -238,7 +238,7 @@ export class DocumentsService {
     } else if (TEXT_EXTRACTABLE.includes(file.mimetype)) {
       content = file.buffer.toString('utf-8').trim();
     } else {
-      content = `[Attached: ${file.originalname} — text not extractable from this file type. The document is on record.]`;
+      content = `[Attached: ${file.originalname} - text not extractable from this file type. The document is on record.]`;
     }
 
     const doc = await this.prisma.groundDocument.create({

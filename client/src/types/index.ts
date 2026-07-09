@@ -64,7 +64,7 @@ export interface GroundSignal {
   groundId: string
   sessionNum: number
   type: 'Convergence' | 'Divergence' | 'Pattern'
-  /** Deprecated — use observationText */
+  /** Deprecated - use observationText */
   text?: string
   code?: string
   observationText?: string

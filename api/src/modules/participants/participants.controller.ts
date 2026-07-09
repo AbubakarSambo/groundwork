@@ -56,7 +56,7 @@ export class ParticipantsController {
 
   @Public()
   @Post('accept')
-  @ApiOperation({ summary: 'Accept an invite — returns an auth token and the check-in to enter' })
+  @ApiOperation({ summary: 'Accept an invite - returns an auth token and the check-in to enter' })
   async accept(@Body() dto: AcceptInviteDto) {
     return this.participants.accept(dto.token, { firstName: dto.firstName, lastName: dto.lastName });
   }

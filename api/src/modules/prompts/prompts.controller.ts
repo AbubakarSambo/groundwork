@@ -21,7 +21,7 @@ class CreatePromptVersionDto {
 }
 
 /**
- * Prompt management — a restricted, platform-admin-only interface. Prompt
+ * Prompt management - a restricted, platform-admin-only interface. Prompt
  * versions are global infrastructure (the moat); changes are versioned and
  * logged with a summary, and activation is deliberate. Not in the main product UI.
  */
@@ -51,7 +51,7 @@ export class PromptsController {
   }
 
   @Get('platform-funnel')
-  @ApiOperation({ summary: 'Usage funnel data — session drop-off, scenario breakdown, engagement' })
+  @ApiOperation({ summary: 'Usage funnel data - session drop-off, scenario breakdown, engagement' })
   async platformFunnel() {
     return this.prompts.usageFunnel();
   }
@@ -63,7 +63,7 @@ export class PromptsController {
   }
 
   @Get('platform-dashboard')
-  @ApiOperation({ summary: 'Cross-org usage dashboard — session data, ground activity, prompt performance' })
+  @ApiOperation({ summary: 'Cross-org usage dashboard - session data, ground activity, prompt performance' })
   async platformDashboard() {
     return this.prompts.platformDashboard();
   }
@@ -81,7 +81,7 @@ export class PromptsController {
   }
 
   @Get('feedback-summary')
-  @ApiOperation({ summary: 'Outcome feedback responses — fairness rate and recent notes' })
+  @ApiOperation({ summary: 'Outcome feedback responses - fairness rate and recent notes' })
   async feedbackSummary() {
     return this.prompts.feedbackSummary();
   }

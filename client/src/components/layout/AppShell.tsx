@@ -94,7 +94,7 @@ export function AppShell({ children }: AppShellProps) {
   return (
     <div style={{ height: '100vh', background: 'var(--gw-bg)' }}>
 
-      {/* Sidebar — fixed, slides off-screen when collapsed */}
+      {/* Sidebar - fixed, slides off-screen when collapsed */}
       <div
         className="gw-sidebar"
         style={{
@@ -129,7 +129,7 @@ export function AppShell({ children }: AppShellProps) {
           </div>
         )}
 
-        {/* Ground list — scrolls within the sidebar */}
+        {/* Ground list - scrolls within the sidebar */}
         <nav style={{ flex: 1, padding: '4px 8px', display: 'flex', flexDirection: 'column', gap: 1, overflowY: 'auto', minHeight: 0 }}>
           {grounds.length === 0 && (
             <div style={{ fontSize: 12, color: 'var(--gw-muted)', padding: '12px 8px', lineHeight: 1.5 }}>
@@ -269,7 +269,7 @@ export function AppShell({ children }: AppShellProps) {
         </div>
       </div>
 
-      {/* Reopen button — fades in when sidebar is collapsed */}
+      {/* Reopen button - fades in when sidebar is collapsed */}
       <button className="gw-sb-reopen" onClick={() => setCollapsed(false)} title="Open sidebar">»</button>
 
       {/* Main content */}

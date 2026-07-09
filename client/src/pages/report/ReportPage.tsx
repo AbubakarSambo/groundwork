@@ -255,7 +255,7 @@ export function ReportPage() {
         <div style={{ maxWidth: 1040, margin: '0 auto', padding: '0 20px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)' }}>
             {[
-              { h: 'What Groundwork saw', p: 'Every report opens with the pattern across the accounts — the thing no single person could see on their own.' },
+              { h: 'What Groundwork saw', p: 'Every report opens with the pattern across the accounts - the thing no single person could see on their own.' },
               { h: 'A move for every area', p: 'Each area carries an observation, why it matters, and a recommended move. The status is auditable, not a grade.' },
               { h: 'Honest closes', p: 'Decisions rarely finish clean. Each report names what is aligned, what is open, what to revisit, and what risk remains.' },
             ].map((cell, i) => (

@@ -22,7 +22,7 @@ export class ContraindicationAnswersDto {
 }
 
 export class CreateGroundDto {
-  @ApiProperty({ example: 'New cofounder — Ada' })
+  @ApiProperty({ example: 'New cofounder - Ada' })
   @IsString()
   @IsNotEmpty()
   @MaxLength(200)
@@ -72,7 +72,7 @@ export class CreateGroundDto {
   @Type(() => ContraindicationAnswersDto)
   contraindicationAnswers?: ContraindicationAnswersDto;
 
-  /** Optional contributor access code — grants a free ground when valid. */
+  /** Optional contributor access code - grants a free ground when valid. */
   @ApiPropertyOptional({ example: 'COAMANA-2026', description: 'Contributor access code granting a free ground creation' })
   @IsOptional()
   @IsString()
