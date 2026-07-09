@@ -336,8 +336,22 @@ export class GroundsService {
       };
     });
 
+    const org = await this.prisma.organization.findUnique({
+      where: { id: ground.organizationId },
+      select: { subscriptionPlan: true, subscriptionStatus: true, freeExtensionUsed: true },
+    });
+
     const { patternDetections: _pd, ...rest } = ground as any;
-    return { ...rest, participants: participantsWithCheckIns, confidence, daysLeft, brief, signals, contextNotes };
+    return {
+      ...rest,
+      participants: participantsWithCheckIns,
+      confidence,
+      daysLeft,
+      brief,
+      signals,
+      contextNotes,
+      org: org ?? null,
+    };
   }
 
   /**
