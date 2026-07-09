@@ -42,13 +42,18 @@ export class AnthropicService {
       parts: [{ text: t.content }],
     }));
 
+    const TIMEOUT_MS = 90_000;
     let res: Awaited<ReturnType<typeof this.client.models.generateContent>>;
     try {
-      res = await this.client.models.generateContent({
+      const call = this.client.models.generateContent({
         model: this.model,
         contents,
         config: { systemInstruction: systemPrompt, maxOutputTokens: this.maxTokens },
       });
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Gemini respond() timed out after 90s')), TIMEOUT_MS),
+      );
+      res = await Promise.race([call, timeout]);
     } catch (err: any) {
       this.logger.error(`respond() Gemini call failed: ${err.message}`);
       throw err;
@@ -94,7 +99,7 @@ export class AnthropicService {
       this.logger.warn(`extract(): model did not call tool ${tool.name}`);
       return null;
     }
-    // Enum values are passed through untouched — only schema.type is uppercased.
+    // Enum values are passed through untouched - only schema.type is uppercased.
     const args = fnCall.functionCall.args;
     if (args === null || args === undefined) {
       this.logger.warn(`extract(): tool ${tool.name} returned null/undefined args`);

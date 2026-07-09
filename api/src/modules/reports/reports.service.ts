@@ -9,7 +9,7 @@ import { UsageService } from '../usage/usage.service';
 import { GroundStatus, PartyType, CheckInStatus, GroundScenario, UsageEventType, ReportActivationStatus } from '@prisma/client';
 import { NEW_STARTING_REPORT_SCHEMA, RECOGNITION_REPORT_SCHEMA, DRIFT_REPORT_SCHEMA } from '../conversation/prompt-library';
 
-// Solo artifact — single-party "Your private record shows:" summary (#91).
+// Solo artifact - single-party "Your private record shows:" summary (#91).
 const SOLO_ARTIFACT_SCHEMA = {
   name: 'emit_solo_artifact',
   description: "Emit a short single-party summary of this person's own record.",
@@ -31,7 +31,7 @@ const SOLO_ARTIFACT_SCHEMA = {
 };
 
 const SOLO_ARTIFACT_PROMPT =
-  "You are Groundwork. You are given ONE person's own record entries (their words). Produce a short artifact for them alone — they have not heard from anyone else and may never. Do not infer the other side. Do not produce a verdict or analysis of any person. Open with the exact phrase \"Your private record shows:\" then summarise what they put on the record in their own framing. Name one specific thing to carry forward. Warm, specific, brief — under 150 words total.";
+  "You are Groundwork. You are given ONE person's own record entries (their words). Produce a short artifact for them alone - they have not heard from anyone else and may never. Do not infer the other side. Do not produce a verdict or analysis of any person. Open with the exact phrase \"Your private record shows:\" then summarise what they put on the record in their own framing. Name one specific thing to carry forward. Warm, specific, brief - under 150 words total.";
 
 // Post-report conversation guide schema (#99).
 const POST_REPORT_GUIDE_SCHEMA = {
@@ -42,11 +42,11 @@ const POST_REPORT_GUIDE_SCHEMA = {
     properties: {
       openingLine: {
         type: 'string',
-        description: "One opening line this person can use to start the conversation — grounded, not defensive.",
+        description: "One opening line this person can use to start the conversation - grounded, not defensive.",
       },
       questionToCarry: {
         type: 'string',
-        description: 'One question they should carry into the room — a genuine inquiry, not a challenge.',
+        description: 'One question they should carry into the room - a genuine inquiry, not a challenge.',
       },
       toAcknowledge: {
         type: 'string',
@@ -58,11 +58,11 @@ const POST_REPORT_GUIDE_SCHEMA = {
 };
 
 const POST_REPORT_GUIDE_PROMPT =
-  'You are Groundwork. A shared report has just been released to both parties. Given one party\'s record entries and the shared synthesis, produce a short, specific post-report guide for THIS party only. Three things: (1) one opening line they can use to start the real conversation — grounded, not defensive; (2) one question to carry into the room — genuine, not a challenge; (3) one concrete thing from the other side\'s record they should acknowledge, even if they see it differently. Brief, direct — no more than 3 sentences per item.';
+  'You are Groundwork. A shared report has just been released to both parties. Given one party\'s record entries and the shared synthesis, produce a short, specific post-report guide for THIS party only. Three things: (1) one opening line they can use to start the real conversation - grounded, not defensive; (2) one question to carry into the room - genuine, not a challenge; (3) one concrete thing from the other side\'s record they should acknowledge, even if they see it differently. Brief, direct - no more than 3 sentences per item.';
 
-// Admin profile — extract preference signals from an initiator's check-in records.
+// Admin profile - extract preference signals from an initiator's check-in records.
 const SIGNAL_EXTRACTION_PROMPT =
-  'You are analysing the check-in record of the person who opened this ground (the initiator/lead). Identify 3 to 5 recurring preference signals — things they consistently probed on, pushed back on, or returned to across the session. Write each signal as a plain one-sentence observation that would help an AI know where to dig deeper on a future ground. Focus on probe patterns, not opinions. Do not include personal opinions, judgements, or anything that could embarrass the person if read back. Do not invent signals — only extract what is clearly present in the record.';
+  'You are analysing the check-in record of the person who opened this ground (the initiator/lead). Identify 3 to 5 recurring preference signals - things they consistently probed on, pushed back on, or returned to across the session. Write each signal as a plain one-sentence observation that would help an AI know where to dig deeper on a future ground. Focus on probe patterns, not opinions. Do not include personal opinions, judgements, or anything that could embarrass the person if read back. Do not invent signals - only extract what is clearly present in the record.';
 
 const SIGNAL_EXTRACTION_SCHEMA = {
   name: 'emit_lead_signals',
@@ -82,9 +82,9 @@ const SIGNAL_EXTRACTION_SCHEMA = {
   },
 };
 
-// Outcome learning — weekly prompt-version resolution-rate summary (#100).
+// Outcome learning - weekly prompt-version resolution-rate summary (#100).
 const OUTCOME_LEARNING_PROMPT =
-  'You are a Groundwork analyst. You are given structured data: for each active prompt version, the number of grounds resolved, the total outcomes, and the fairness rate (% of parties who said the process felt fair). Produce a 3–5 sentence summary identifying which version(s) have the highest resolution rate, any version showing decline, and a one-sentence recommendation. Data is anonymous — no names, no org identifiers.';
+  'You are a Groundwork analyst. You are given structured data: for each active prompt version, the number of grounds resolved, the total outcomes, and the fairness rate (% of parties who said the process felt fair). Produce a 3–5 sentence summary identifying which version(s) have the highest resolution rate, any version showing decline, and a one-sentence recommendation. Data is anonymous - no names, no org identifiers.';
 
 const REPORT_SCHEMA = {
   name: 'emit_report',
@@ -106,7 +106,7 @@ const REPORT_SCHEMA = {
               items: {
                 type: 'object',
                 properties: {
-                  participantLabel: { type: 'string', description: "The party's role label (e.g. 'the initiator', 'the project owner', 'participant A') — never a personal name." },
+                  participantLabel: { type: 'string', description: "The party's role label (e.g. 'the initiator', 'the project owner', 'participant A') - never a personal name." },
                   view: { type: 'string', description: 'How this party described the topic.' },
                 },
                 required: ['participantLabel', 'view'],
@@ -120,7 +120,7 @@ const REPORT_SCHEMA = {
           },
           required: ['topic', 'positions'],
         },
-        description: 'The gap. For each topic, every party\'s position — never framed as one side being right.',
+        description: 'The gap. For each topic, every party\'s position - never framed as one side being right.',
       },
       centralQuestion: { type: 'string', description: 'The one question that, answered honestly, moves things forward.' },
       inferences: {
@@ -178,10 +178,10 @@ export class ReportsService {
     }
     const leadSignals = Array.isArray(initiatorProfile?.signals) ? (initiatorProfile!.signals as string[]) : [];
     if (leadSignals.length) {
-      groundContextLines.push(`LEAD PROFILE (from past grounds — use to add alignment recommendations at the end of the report):\n${leadSignals.map(s => `- ${s}`).join('\n')}`);
+      groundContextLines.push(`LEAD PROFILE (from past grounds - use to add alignment recommendations at the end of the report):\n${leadSignals.map(s => `- ${s}`).join('\n')}`);
     }
     const groundContextHeader = groundContextLines.length
-      ? `GROUND CONTEXT (set before any check-in — use to frame the synthesis):\n${groundContextLines.join('\n')}\n\n`
+      ? `GROUND CONTEXT (set before any check-in - use to frame the synthesis):\n${groundContextLines.join('\n')}\n\n`
       : '';
 
     // Stable, distinct label per party so the synthesis can attribute each
@@ -221,16 +221,16 @@ SYNTHESIS RULES (override all other instructions if there is a conflict):
 2. CAPTURE CONDITIONS. If a party's cooperation is conditional ("I will cooperate provided that X", "but only if Y is agreed"), the agreements section must state the condition. Never flatten a conditional agreement into an unconditional one.
 3. DO NOT ATTRIBUTE POSITIONS TO ABSENT PARTIES. If a party's record is marked as absent or not contributed, do not describe their agreement, alignment, or views. Write "only [party]'s perspective is available" rather than "both parties agree."
 4. SURFACE ACTIONABLE COMMITMENTS. If a party named a specific deliverable, threshold, or exit condition (e.g., "I will leave if X is not met by Y"), it must appear in the agreements or divergences with the party's label and the exact terms.
-5. NAME THE TENSION PRECISELY. If a conflict has a named structure (sequencing, values, role authority, information gap), name it explicitly in the divergences — do not soften it to "different perspectives."
-6. LABEL INFERENCES. Any claim you make that is not a direct quote from the record is an inference. List every inference in the inferences array with its id, text, participantLabel, and reason. An inference is anything you concluded from context, implied meaning, or pattern — not from an explicit statement. If a claim appears in the report body and is not a direct quote, it must appear in inferences. An empty inferences array means everything in the report is directly quoted.`;
+5. NAME THE TENSION PRECISELY. If a conflict has a named structure (sequencing, values, role authority, information gap), name it explicitly in the divergences - do not soften it to "different perspectives."
+6. LABEL INFERENCES. Any claim you make that is not a direct quote from the record is an inference. List every inference in the inferences array with its id, text, participantLabel, and reason. An inference is anything you concluded from context, implied meaning, or pattern - not from an explicit statement. If a claim appears in the report body and is not a direct quote, it must appear in inferences. An empty inferences array means everything in the report is directly quoted.`;
 
 
-    // Note any invited party who contributed no record — surfaced as an absence,
+    // Note any invited party who contributed no record - surfaced as an absence,
     // never inferred (decision: generate when everyone who accepted is done;
     // note no-shows).
     // A participant counts as a contributor if they have any record entries OR
     // completed a check-in (extractRecordEntries may occasionally produce zero
-    // entries for a valid session — we still credit the session as contributed).
+    // entries for a valid session - we still credit the session as contributed).
     const completedCheckInParticipantIds = await this.prisma.checkIn.findMany({
       where: { participant: { groundId }, status: CheckInStatus.COMPLETED },
       select: { participantId: true },
@@ -274,7 +274,7 @@ SYNTHESIS RULES (override all other instructions if there is a conflict):
         ? `NOTE: ${thinParties.map((p) => p.label).join(', ')}'s record contains significantly fewer exchanges. A further session from ${thinParties.length === 1 ? 'that party' : 'those parties'} would strengthen the cross-reference.\n\n`
         : '';
 
-    // Fix 6: Longitudinal vagueness — flag participants whose accounts across
+    // Fix 6: Longitudinal vagueness - flag participants whose accounts across
     // sessions contain no distinct concrete claims (same progress language, nothing closes).
     const sessionTextsPerParty = await Promise.all(
       parties.map(async (p) => {
@@ -301,10 +301,10 @@ SYNTHESIS RULES (override all other instructions if there is a conflict):
         return hasMotion && !hasDeliverable;
       });
       if (motionOnly.length === sessions.length) {
-        longitudinalNotices.push(`NOTE [longitudinal — no deliverable]: ${label} has submitted ${sessions.length} sessions. No session contains a concrete deliverable or closed outcome — only progress or activity language. Flag this pattern in the report explicitly.`);
+        longitudinalNotices.push(`NOTE [longitudinal - no deliverable]: ${label} has submitted ${sessions.length} sessions. No session contains a concrete deliverable or closed outcome - only progress or activity language. Flag this pattern in the report explicitly.`);
       }
 
-      // Pattern 2: perpetual ambiguity — no ownership or responsibility claimed across
+      // Pattern 2: perpetual ambiguity - no ownership or responsibility claimed across
       // any session, while other parties on the same ground have named theirs.
       const allText = sessionTexts.join(' ');
       const hasAnyOwnership = OWNERSHIP_PHRASES.some(p => allText.includes(p));
@@ -312,12 +312,12 @@ SYNTHESIS RULES (override all other instructions if there is a conflict):
         .filter(other => other.label !== label && other.sessions.length >= 1)
         .some(other => OWNERSHIP_PHRASES.some(p => other.sessions.map(s => s.turns.map(t => t.content).join(' ').toLowerCase()).join(' ').includes(p)));
       if (!hasAnyOwnership && sessions.length >= 2 && otherPartiesNamed) {
-        longitudinalNotices.push(`NOTE [longitudinal — perpetual ambiguity]: ${label} has submitted ${sessions.length} sessions with no claimed responsibility, ownership, or defined role across any session. Other parties on this ground have named their roles. Sustained ambiguity across all sessions is itself a pattern worth naming in the report.`);
+        longitudinalNotices.push(`NOTE [longitudinal - perpetual ambiguity]: ${label} has submitted ${sessions.length} sessions with no claimed responsibility, ownership, or defined role across any session. Other parties on this ground have named their roles. Sustained ambiguity across all sessions is itself a pattern worth naming in the report.`);
       }
     }
     const longitudinalNotice = longitudinalNotices.length ? longitudinalNotices.join('\n') + '\n\n' : '';
 
-    // Fix 7: Implausible over-agreement — flag when two accounts match too precisely
+    // Fix 7: Implausible over-agreement - flag when two accounts match too precisely
     // on specific numbers or dates (a signal of coordination outside the system).
     const NUMBER_RE = /\b(\d+(?:\.\d+)?)\s*(%|percent|equity|shares?|basis points?)\b/gi;
     const DATE_RE = /\b(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}|\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]* \d{1,2}(?:st|nd|rd|th)?,? \d{4})\b/gi;
@@ -328,10 +328,10 @@ SYNTHESIS RULES (override all other instructions if there is a conflict):
     const duplicateNumbers = allNumbers.filter((n, i) => allNumbers.indexOf(n) !== i);
     const duplicateDates = allDates.filter((d, i) => allDates.indexOf(d) !== i);
     const overAgreementNotice = (duplicateNumbers.length >= 2 || duplicateDates.length >= 2) && parties.length >= 2
-      ? `NOTE [Fix 7 — over-agreement signal]: Multiple parties used identical specific figures or dates (${[...new Set([...duplicateNumbers, ...duplicateDates])].slice(0, 5).join(', ')}). Independent accounts rarely match on exact specifics by chance. Note in the report that these figures appear in multiple accounts and their source should be confirmed.\n\n`
+      ? `NOTE [Fix 7 - over-agreement signal]: Multiple parties used identical specific figures or dates (${[...new Set([...duplicateNumbers, ...duplicateDates])].slice(0, 5).join(', ')}). Independent accounts rarely match on exact specifics by chance. Note in the report that these figures appear in multiple accounts and their source should be confirmed.\n\n`
       : '';
 
-    // Fix 8: Evidence absence — flag participants who submitted multiple sessions
+    // Fix 8: Evidence absence - flag participants who submitted multiple sessions
     // with no supporting documents in a ground where others attached documents.
     const docCounts = await this.prisma.groundDocument.groupBy({
       by: ['participantId'],
@@ -345,7 +345,7 @@ SYNTHESIS RULES (override all other instructions if there is a conflict):
         const pDocs = docCounts.find(d => d.participantId === p.id)?._count.id ?? 0;
         const pSessions = sessionTextsPerParty.find(s => s.label === (labelById.get(p.id) ?? 'a party'))?.sessions.length ?? 0;
         if (pDocs === 0 && pSessions >= 2) {
-          evidenceAbsenceNotices.push(`NOTE [Fix 8 — evidence absence]: ${labelById.get(p.id) ?? 'a party'} submitted ${pSessions} sessions with no supporting documents attached, in a ground where at least one other party did attach documents. Surface this as an observation in the report — not an accusation, but a factual note about the record.`);
+          evidenceAbsenceNotices.push(`NOTE [Fix 8 - evidence absence]: ${labelById.get(p.id) ?? 'a party'} submitted ${pSessions} sessions with no supporting documents attached, in a ground where at least one other party did attach documents. Surface this as an observation in the report - not an accusation, but a factual note about the record.`);
         }
       }
     }
@@ -385,7 +385,7 @@ SYNTHESIS RULES (override all other instructions if there is a conflict):
       );
     } catch (err: any) {
       this.logger?.error?.('Report synthesis extract failed', err?.message);
-      throw new Error('Report synthesis failed — AI response could not be parsed. Please try again.');
+      throw new Error('Report synthesis failed - AI response could not be parsed. Please try again.');
     }
     if (!result) throw new Error('Report synthesis failed to return structured output');
 
@@ -403,7 +403,7 @@ SYNTHESIS RULES (override all other instructions if there is a conflict):
       if (retry) result = retry;
     }
 
-    // Engagement-quality + confidence header (B4/B5a). Factual, not a verdict —
+    // Engagement-quality + confidence header (B4/B5a). Factual, not a verdict -
     // it tells both parties what the report is built on (session counts, record
     // depth, documents, absentees) and carries the "not independently verified"
     // disclosure. Shown alongside the synthesis.
@@ -434,7 +434,7 @@ SYNTHESIS RULES (override all other instructions if there is a conflict):
 
     // documentBackedPct: share of record entries backed by an attached document
     // (DOCUMENT_AT_AGREEMENT or DOCUMENT_AFTER). CHECK_IN and ANCHORED_RECALL
-    // entries are not document-backed — only actual document references count.
+    // entries are not document-backed - only actual document references count.
     // Returns 0 when no documents exist to avoid the 100%-with-no-docs bug.
     const totalEntries = allGroundTexts.length;
     const documentBackedCount = allGroundTexts.filter(
@@ -473,7 +473,7 @@ SYNTHESIS RULES (override all other instructions if there is a conflict):
       documentBackedPct,
       coverageBand,
       difficultyDisclosures,
-      note: `This report is built from each party's self-reported account — it is not independently verified.${absent.length ? ` ${absent.length} invited part${absent.length === 1 ? 'y has' : 'ies have'} not yet contributed a record — the picture below reflects only the accounts that are present. Do not read any shared positions or agreements as bilateral until all parties have checked in.` : ''}`,
+      note: `This report is built from each party's self-reported account - it is not independently verified.${absent.length ? ` ${absent.length} invited part${absent.length === 1 ? 'y has' : 'ies have'} not yet contributed a record - the picture below reflects only the accounts that are present. Do not read any shared positions or agreements as bilateral until all parties have checked in.` : ''}`,
       parties: engagementParties,
     };
 
@@ -538,7 +538,7 @@ SYNTHESIS RULES (override all other instructions if there is a conflict):
     };
 
     // Detect questions the AI asked at the end of a session that the participant
-    // closed without answering — carry these into session2Focus so session 2
+    // closed without answering - carry these into session2Focus so session 2
     // has a concrete thread to pick up rather than starting from scratch.
     const CLOSING_PHRASES = ["that's everything", "that covers", "that's all", "i think that", "nothing else", "i'm done", "nothing more"];
     const openQuestions: string[] = [];
@@ -558,7 +558,7 @@ SYNTHESIS RULES (override all other instructions if there is a conflict):
       const isClosingWithoutAnswer = CLOSING_PHRASES.some((ph) => personClose.includes(ph));
       if (!isClosingWithoutAnswer) continue;
 
-      // Find the most recent AGENT turn before the close — extract any question it contains
+      // Find the most recent AGENT turn before the close - extract any question it contains
       for (let i = lastPersonIdx - 1; i >= Math.max(0, lastPersonIdx - 3); i--) {
         if (turns[i]?.role !== 'AI') continue;
         const content = turns[i]?.content ?? '';
@@ -611,7 +611,7 @@ SYNTHESIS RULES (override all other instructions if there is a conflict):
 
     // Fire-and-forget: extract preference signals from the initiator's records and
     // upsert into their AdminProfile. Runs after the report is saved so it never
-    // blocks report delivery. Errors are swallowed — a failed extraction just means
+    // blocks report delivery. Errors are swallowed - a failed extraction just means
     // the profile stays as-is.
     this.extractAndStoreLeadSignals(groundId, ground.initiatorId).catch(() => null);
 
@@ -659,7 +659,7 @@ SYNTHESIS RULES (override all other instructions if there is a conflict):
 
   /**
    * Release the report to BOTH parties at the same moment. releasedAt is set
-   * once, atomically — neither party reads it before the other. (Part E:
+   * once, atomically - neither party reads it before the other. (Part E:
    * "why the report goes to both parties simultaneously".)
    */
   async generateForAdmin(groundId: string, organizationId: string) {
@@ -668,7 +668,7 @@ SYNTHESIS RULES (override all other instructions if there is a conflict):
 
     const completedCount = await this.prisma.checkIn.count({ where: { groundId, status: 'COMPLETED' } });
     if (completedCount === 0) {
-      throw new BadRequestException('No check-ins completed yet — at least one party must complete a session before a report can be generated.');
+      throw new BadRequestException('No check-ins completed yet - at least one party must complete a session before a report can be generated.');
     }
 
     await this.synthesize(groundId);
@@ -687,7 +687,7 @@ SYNTHESIS RULES (override all other instructions if there is a conflict):
     // Send notification emails before stamping releasedAt so that if delivery
     // fails entirely, the report is not marked released without anyone being
     // notified. Partial failure (one email bounces) is still logged but does
-    // not block the release — a hard stop would be worse than a logged gap.
+    // not block the release - a hard stop would be worse than a logged gap.
     const frontend = this.config.get<string>('resend.frontendUrl');
     const reportUrl = `${frontend}/report/${groundId}`;
     const emailResults = await Promise.allSettled(
@@ -697,14 +697,14 @@ SYNTHESIS RULES (override all other instructions if there is a conflict):
     if (failures.length) {
       failures.forEach((r) => this.logger.error(`Report release email failed for ground ${groundId}: ${(r as PromiseRejectedResult).reason}`));
       if (failures.length === ground.participants.length) {
-        throw new Error('All report notification emails failed — report not released. Retry to send notifications.');
+        throw new Error('All report notification emails failed - report not released. Retry to send notifications.');
       }
     }
 
     const released = await this.prisma.report.update({ where: { groundId }, data: { releasedAt: new Date() } });
     this.usage.emit(UsageEventType.REPORT_RELEASED, { groundId, organizationId }).catch(() => undefined);
 
-    // Generate per-party post-report conversation guides (#99). Best-effort —
+    // Generate per-party post-report conversation guides (#99). Best-effort -
     // a guide generation failure must never block report delivery.
     await this.generatePostReportGuides(released, ground.participants.map((p) => p.id)).catch((err) =>
       this.logger.error(`Post-report guide generation failed for ground ${groundId}: ${err.message}`),
@@ -716,13 +716,13 @@ SYNTHESIS RULES (override all other instructions if there is a conflict):
   /** Fetch the report. If released, returns full content for any party or the
    * initiator. If not yet released, returns a locked stub { id, groundId,
    * createdAt, releasedAt: null } for the initiator only so the admin page can
-   * show the release button — no content is included before release.
+   * show the release button - no content is included before release.
    *
    * After release, each participant must activate their own ReportActivation
    * before full content is returned to them (mutual reveal gate). The initiator
-   * always sees the full report once released — they are the one who released it.
+   * always sees the full report once released - they are the one who released it.
    */
-  async get(groundId: string, requestingUserId: string) {
+  async get(groundId: string, requestingUserId: string, requestingUserOrgId?: string) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       include: { participants: true, report: true },
@@ -731,23 +731,25 @@ SYNTHESIS RULES (override all other instructions if there is a conflict):
 
     const isInitiator = ground.initiatorId === requestingUserId;
     const participant = ground.participants.find((p) => p.userId === requestingUserId);
-    if (!participant && !isInitiator) throw new ForbiddenException('You are not a party to this ground');
+    // Org admins can read reports for grounds in their own org (read-only, same view as initiator).
+    const isOrgAdmin = !isInitiator && !participant && !!requestingUserOrgId && ground.organizationId === requestingUserOrgId;
+    if (!participant && !isInitiator && !isOrgAdmin) throw new ForbiddenException('You are not a party to this ground');
 
     if (!ground.report.releasedAt) {
-      if (isInitiator) {
-        return { id: ground.report.id, groundId, createdAt: ground.report.createdAt, releasedAt: null, nextStep: 'release' };
+      if (isInitiator || isOrgAdmin) {
+        return { id: ground.report.id, groundId, createdAt: ground.report.createdAt, releasedAt: null, nextStep: isInitiator ? 'release' : 'wait' };
       }
-      throw new ForbiddenException('Report has not been released yet — the initiator will notify you when it is ready.');
+      throw new ForbiddenException('Report has not been released yet - the initiator will notify you when it is ready.');
     }
 
     // Mutual reveal gate: participants must activate before seeing content.
-    // The initiator is exempt — they released the report and can always read it.
+    // The initiator is exempt - they released the report and can always read it.
     if (participant && !isInitiator) {
       const activation = await this.prisma.reportActivation.findUnique({
         where: { groundId_participantId: { groundId, participantId: participant.id } },
       });
       if (!activation || activation.status !== ReportActivationStatus.ACTIVATED) {
-        // Return a pre-activation stub — client shows the "Reveal" button.
+        // Return a pre-activation stub - client shows the "Reveal" button.
         return {
           id: ground.report.id,
           groundId,
@@ -803,7 +805,7 @@ SYNTHESIS RULES (override all other instructions if there is a conflict):
     return this.getActivationStatus(groundId, ground.participants.map((p) => p.id));
   }
 
-  /** Guard-checked version for the controller — verifies caller is a party first. */
+  /** Guard-checked version for the controller - verifies caller is a party first. */
   async getActivationStatusForUser(groundId: string, requestingUserId: string) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
@@ -833,14 +835,14 @@ SYNTHESIS RULES (override all other instructions if there is a conflict):
   }
 
   // ---------------------------------------------------------------------------
-  // #91 — Solo artifact: public entry point used when a report is not yet ready
+  // #91 - Solo artifact: public entry point used when a report is not yet ready
   // ---------------------------------------------------------------------------
 
   /**
    * Generate (or re-generate) the single-party "Your private record shows:"
    * artifact for a participant. Called after each check-in completes via the
    * conversation service, and can also be called directly (e.g. if an earlier
-   * run failed). Owner-scoped — reads only this participant's own record.
+   * run failed). Owner-scoped - reads only this participant's own record.
    */
   async generateSoloArtifact(participantId: string, groundId: string): Promise<void> {
     const entries = await this.prisma.recordEntry.findMany({
@@ -868,7 +870,7 @@ SYNTHESIS RULES (override all other instructions if there is a conflict):
   }
 
   // ---------------------------------------------------------------------------
-  // #99 — Post-report conversation guide
+  // #99 - Post-report conversation guide
   // ---------------------------------------------------------------------------
 
   /**
@@ -930,14 +932,14 @@ SYNTHESIS RULES (override all other instructions if there is a conflict):
   }
 
   // ---------------------------------------------------------------------------
-  // #100 — Ground outcome learning loop
+  // #100 - Ground outcome learning loop
   // ---------------------------------------------------------------------------
 
   /**
    * Record outcome learning data after a ground closes. Reads the ground's
    * outcome (prompt version, session count, resolvable flag, fairness ratings)
    * and creates/updates an OutcomeFeedback-style aggregate record. Called from
-   * closure flows (ResolutionService, GroundsCron, etc.) — idempotent.
+   * closure flows (ResolutionService, GroundsCron, etc.) - idempotent.
    */
   async recordOutcomeLearning(groundId: string): Promise<void> {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId } });
@@ -977,7 +979,7 @@ SYNTHESIS RULES (override all other instructions if there is a conflict):
   }
 
   /**
-   * Weekly cron — Mondays at 08:00 UTC. Reads all Outcome records grouped by
+   * Weekly cron - Mondays at 08:00 UTC. Reads all Outcome records grouped by
    * prompt version, asks the AI to summarise which versions have the highest
    * resolution rate and any declining trend, then logs the result. A lightweight
    * "learning loop status report" for the team; the full data is already in
@@ -991,7 +993,7 @@ SYNTHESIS RULES (override all other instructions if there is a conflict):
         select: { promptVersionId: true, resolvable: true, sessionCount: true, notes: true },
       });
       if (outcomes.length === 0) {
-        this.logger.log('Weekly outcome learning report: no outcome data yet — skipping');
+        this.logger.log('Weekly outcome learning report: no outcome data yet - skipping');
         return;
       }
 
