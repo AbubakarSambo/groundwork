@@ -11,6 +11,7 @@ import { participantsApi } from '@/api/participants'
 import type { ParticipantRequest } from '@/api/participantRequests'
 import { toast } from 'sonner'
 import { CodeShareCard } from '@/components/CodeShareCard'
+import { PostSessionPanel } from '@/components/PostSessionPanel'
 import { billingApi } from '@/api/billing'
 
 const SCENARIO_LABELS: Record<string, string> = {
@@ -60,6 +61,7 @@ export function GroundAdminPage() {
   const [shareCodeId, setShareCodeId] = useState<string | null>(null)
   const [lastInvitedEmail, setLastInvitedEmail] = useState<string | null>(null)
   const [noteSaved, setNoteSaved] = useState(false)
+  const [postSessionDismissed, setPostSessionDismissed] = useState(false)
   const [editingRoleId, setEditingRoleId] = useState<string | null>(null)
   const [editingRoleValue, setEditingRoleValue] = useState('')
 
@@ -236,16 +238,22 @@ export function GroundAdminPage() {
         {/* OVERVIEW */}
         {tab === 'overview' && (
           <div>
-            {/* Fix 10: Report ready CTA */}
-            {ground.status === 'REPORT_READY' && (
-              <div style={{ background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 10, padding: '14px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: '#085041', marginBottom: 3 }}>Your session is complete. Want to keep this ground going?</div>
-                  <div style={{ fontSize: 12, color: '#3A7A60', lineHeight: 1.5 }}>Add another session any time. The report updates each time your team checks in.</div>
-                </div>
-                <button onClick={() => navigate('/billing/payment', { state: { groundId: ground.id, groundName: ground.label } })} style={{ flexShrink: 0, padding: '8px 14px', borderRadius: 7, background: '#085041', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
-                  Add a session ($5)
-                </button>
+            {/* Post-session decision panel: shown when session is complete, no balance, not subscribed */}
+            {ground.status === 'REPORT_READY' && !postSessionDismissed &&
+              !(ground.org?.subscriptionPlan && ground.org?.subscriptionStatus === 'active') &&
+              (ground.sessionsBalance ?? 0) === 0 && (
+                <PostSessionPanel
+                  groundId={ground.id}
+                  freeExtensionUsed={ground.org?.freeExtensionUsed ?? false}
+                  onDismiss={() => setPostSessionDismissed(true)}
+                />
+              )
+            }
+
+            {/* Subscribed: unlimited sessions badge */}
+            {ground.org?.subscriptionPlan && ground.org?.subscriptionStatus === 'active' && (
+              <div style={{ background: '#F0FAF5', border: '1px solid #B6E8D4', borderRadius: 8, padding: '8px 14px', marginBottom: 12, fontSize: 12, color: '#085041', fontWeight: 600 }}>
+                Subscribed. Unlimited sessions active for your organization.
               </div>
             )}
 

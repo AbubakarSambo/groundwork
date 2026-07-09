@@ -95,6 +95,11 @@ export interface Ground {
   sessionsBalance?: number
   isFreeGround?: boolean
   joinToken?: string | null
+  org?: {
+    subscriptionPlan: string | null
+    subscriptionStatus: string | null
+    freeExtensionUsed: boolean
+  } | null
 }
 
 export interface ConversationTurn {
