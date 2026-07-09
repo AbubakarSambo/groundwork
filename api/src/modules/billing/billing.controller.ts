@@ -21,12 +21,58 @@ export class BillingController {
     return this.billing.getStatus(organizationId);
   }
 
-  @Delete('subscription')
+  @Delete('account')
   @ApiBearerAuth()
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Cancel the account — marks org CANCELLED, sends data-portability notice' })
+  async cancelAccount(@CurrentUser('organizationId') organizationId: string) {
+    return this.billing.cancelAccount(organizationId);
+  }
+
+  @Post('free-extension')
+  @ApiBearerAuth()
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Claim one free session extension for the org (one-time per org)' })
+  async claimFreeExtension(
+    @CurrentUser('organizationId') organizationId: string,
+    @Body() body: { groundId: string },
+  ) {
+    return this.billing.claimFreeExtension(organizationId, body.groundId);
+  }
+
+  @Post('subscription')
+  @ApiBearerAuth()
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Create a Stripe recurring checkout session for an org subscription plan' })
+  async createSubscription(
+    @CurrentUser('organizationId') organizationId: string,
+    @Body() body: { plan: string },
+  ) {
+    return this.billing.createSubscription(organizationId, body.plan as any);
+  }
+
+  @Delete('subscription')
+  @ApiBearerAuth()
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Cancel the org subscription immediately' })
   async cancelSubscription(@CurrentUser('organizationId') organizationId: string) {
     return this.billing.cancelSubscription(organizationId);
+  }
+
+  @Patch('subscription/pause')
+  @ApiBearerAuth()
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Pause the org subscription' })
+  async pauseSubscription(@CurrentUser('organizationId') organizationId: string) {
+    return this.billing.pauseSubscription(organizationId);
+  }
+
+  @Patch('subscription/resume')
+  @ApiBearerAuth()
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Resume a paused org subscription' })
+  async resumeSubscription(@CurrentUser('organizationId') organizationId: string) {
+    return this.billing.resumeSubscription(organizationId);
   }
 
   @Post('contributor-code')

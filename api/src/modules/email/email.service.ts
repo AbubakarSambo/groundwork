@@ -353,6 +353,111 @@ export class EmailService {
     });
   }
 
+  /** Sent when an org successfully subscribes to a plan. */
+  async sendSubscriptionConfirmed(email: string, plan: string, renewalDate: Date): Promise<void> {
+    const planLabel = plan.replace('_', ' ').toLowerCase();
+    const renewal = renewalDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    await this.sendEmail({
+      to: email,
+      subject: 'Your Groundwork organization subscription is active',
+      html: this.layout(
+        `<p>Thank you for supporting Groundwork.</p>
+         <p>Your organization is now on the <strong>${planLabel}</strong> plan. Unlimited Grounds and unlimited sessions are active for your team.</p>
+         <p>Your next billing date is ${renewal}. You can pause or cancel your subscription at any time from your billing page.</p>
+         <p>Your payment helps us continue building a product that helps teams align, make better decisions, and solve problems together.</p>
+         <p><a href="${this.frontendUrl}/billing">View your subscription</a></p>`,
+      ),
+    });
+  }
+
+  /** Sent when an org cancels their subscription. */
+  async sendSubscriptionCancelled(email: string, plan: string): Promise<void> {
+    const planLabel = plan.replace('_', ' ').toLowerCase();
+    await this.sendEmail({
+      to: email,
+      subject: 'Your Groundwork subscription has been cancelled',
+      html: this.layout(
+        `<p>Your <strong>${planLabel}</strong> subscription has been cancelled.</p>
+         <p>Your team can continue using Groundwork with per-session billing at $5 per session. Your records and all existing reports remain accessible.</p>
+         <p>If you want to continue as a team, you can resubscribe or buy sessions at any time.</p>
+         <p><a href="${this.frontendUrl}/billing">Go to billing</a></p>`,
+      ),
+    });
+  }
+
+  /** Sent when a subscription payment fails. */
+  async sendSubscriptionPaymentFailed(email: string, plan: string, portalUrl: string): Promise<void> {
+    const planLabel = plan.replace('_', ' ').toLowerCase();
+    await this.sendEmail({
+      to: email,
+      subject: 'Action required: payment failed for your Groundwork subscription',
+      html: this.layout(
+        `<p>We were unable to charge the card on file for your <strong>${planLabel}</strong> subscription.</p>
+         <p>Your subscription will be paused if payment is not resolved. Please update your payment method to keep your organization's access active.</p>
+         <p>Your records are safe regardless of payment status.</p>
+         <p><a href="${portalUrl}">Update payment method</a></p>`,
+      ),
+    });
+  }
+
+  /** Sent when a subscription renews successfully. */
+  async sendSubscriptionRenewal(email: string, plan: string, amountCents: number, nextRenewal: Date | null): Promise<void> {
+    const planLabel = plan.replace('_', ' ').toLowerCase();
+    const amount = (amountCents / 100).toFixed(2);
+    const next = nextRenewal
+      ? nextRenewal.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+      : 'your next billing date';
+    await this.sendEmail({
+      to: email,
+      subject: `Groundwork subscription renewed: $${amount}`,
+      html: this.layout(
+        `<p>Your <strong>${planLabel}</strong> subscription has renewed. $${amount} has been charged to the card on file.</p>
+         <p>Your next renewal is ${next}. You can pause or cancel at any time from your billing page.</p>
+         <p><a href="${this.frontendUrl}/billing">View billing</a></p>`,
+      ),
+    });
+  }
+
+  /** Sent when the free session extension is claimed. */
+  async sendFreeExtensionClaimed(email: string, groundLabel: string, groundUrl: string): Promise<void> {
+    await this.sendEmail({
+      to: email,
+      subject: `Free session added to ${groundLabel}`,
+      html: this.layout(
+        `<p>Your free session extension has been added to <strong>${groundLabel}</strong>.</p>
+         <p>When you're ready to continue after this session, you can buy more sessions at $5 each or upgrade your organization for unlimited access.</p>
+         <p><a href="${groundUrl}">Go to your ground</a></p>`,
+      ),
+    });
+  }
+
+  /** Sent when a ground's session balance reaches 1. */
+  async sendApproachingSessionLimit(email: string, groundLabel: string, groundUrl: string): Promise<void> {
+    await this.sendEmail({
+      to: email,
+      subject: `One session remaining on ${groundLabel}`,
+      html: this.layout(
+        `<p>Your ground <strong>${groundLabel}</strong> has one session remaining.</p>
+         <p>Add another session ($5) or upgrade your organization for unlimited sessions before your team's next check-in.</p>
+         <p><a href="${groundUrl}">Go to your ground</a></p>`,
+      ),
+    });
+  }
+
+  /** Sent when an org hits its plan member cap on invite. */
+  async sendMemberCapWarning(email: string, plan: string, currentCount: number, capCount: number): Promise<void> {
+    const planLabel = plan.replace('_', ' ').toLowerCase();
+    await this.sendEmail({
+      to: email,
+      subject: 'Your Groundwork plan has reached its member limit',
+      html: this.layout(
+        `<p>Your <strong>${planLabel}</strong> plan supports up to ${capCount} members. You currently have ${currentCount} members.</p>
+         <p>To add more members, upgrade your organization plan.</p>
+         <p><a href="${this.frontendUrl}/billing">Upgrade your organization</a></p>`,
+      ),
+    });
+  }
+
   /** Absence reminder. Sent when a participant has consecutively missed multiple check-ins. */
   async sendAbsenceReminder(
     to: string,
