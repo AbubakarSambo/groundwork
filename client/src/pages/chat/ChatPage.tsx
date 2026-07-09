@@ -147,7 +147,7 @@ export function ChatPage() {
       openedRef.current = true
       const jitter = Math.random() * 2000
       const t = setTimeout(() => openSession.mutate(), jitter)
-      return () => clearTimeout(t)
+      return () => { clearTimeout(t); openedRef.current = false }
     }
   }, [checkInId, opened])
 
@@ -224,7 +224,7 @@ export function ChatPage() {
         </div>
       )}
 
-      {/* Session open failure — shown at top of chat area so it's always visible */}
+      {/* Session open failure - shown at top of chat area so it's always visible */}
       {openFailed && (
         <div style={{ padding: '12px 16px', background: '#FDF3E3', borderBottom: '1px solid #E8A94A', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexShrink: 0 }}>
           <span style={{ fontSize: 13, color: '#8A5C1A', lineHeight: 1.4 }}>Could not open your session. This is usually a temporary issue.</span>
