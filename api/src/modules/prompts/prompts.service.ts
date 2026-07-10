@@ -23,7 +23,7 @@ export class PromptsService implements OnModuleInit {
 
   /**
    * Seed-on-deploy (B7): ensure every seeded prompt key has an active version.
-   * Idempotent — skips when the active content already matches; otherwise
+   * Idempotent - skips when the active content already matches; otherwise
    * activates the matching version or creates and activates a new one (history
    * preserved). Runs on every boot, so a deploy that changes a seed prompt
    * (e.g. report_synthesis) takes effect without manual SQL.
@@ -61,7 +61,7 @@ export class PromptsService implements OnModuleInit {
     return (await this.getActive(key)).content;
   }
 
-  /** All versions, newest first per key — for the prompt-management screen. */
+  /** All versions, newest first per key - for the prompt-management screen. */
   async list() {
     return this.prisma.promptVersion.findMany({
       orderBy: [{ key: 'asc' }, { version: 'desc' }],
@@ -69,7 +69,7 @@ export class PromptsService implements OnModuleInit {
     });
   }
 
-  /** Create a new version. Does not activate it — activation is deliberate. */
+  /** Create a new version. Does not activate it - activation is deliberate. */
   async createVersion(key: string, content: string, summary?: string) {
     if (key === 'system') {
       const INVARIANTS = [
@@ -98,7 +98,7 @@ export class PromptsService implements OnModuleInit {
     });
   }
 
-  /** Usage funnel — session drop-off, scenario/moment/status breakdowns, engagement stats. */
+  /** Usage funnel - session drop-off, scenario/moment/status breakdowns, engagement stats. */
   async usageFunnel() {
     const now = new Date();
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -222,7 +222,7 @@ export class PromptsService implements OnModuleInit {
     };
   }
 
-  /** Cross-org usage dashboard — platform admin only. */
+  /** Cross-org usage dashboard - platform admin only. */
   async platformDashboard() {
     const now = new Date();
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -481,8 +481,8 @@ export class PromptsService implements OnModuleInit {
   ): Promise<{ crossReference: string; p1Report: string; p2Report: string }> {
     const REPORT_PROMPT = `You are Groundwork. You have been given conversation transcripts from three parties (admin, participant 1, participant 2). Generate:
 1. A cross-reference report for the admin showing where accounts agree, where they differ, and the most important gap to address.
-2. A participant 1 report — speaks only to participant 1's own account, in second person.
-3. A participant 2 report — speaks only to participant 2's own account, in second person.
+2. A participant 1 report - speaks only to participant 1's own account, in second person.
+3. A participant 2 report - speaks only to participant 2's own account, in second person.
 
 Format your response as three labelled sections:
 --- CROSS REFERENCE ---

@@ -8,6 +8,7 @@ export interface User {
   organizationName?: string
   jobTitle?: string
   isPlatformAdmin?: boolean
+  emailNotifications?: boolean
 }
 
 export type GroundScenario =
@@ -63,7 +64,7 @@ export interface GroundSignal {
   groundId: string
   sessionNum: number
   type: 'Convergence' | 'Divergence' | 'Pattern'
-  /** Deprecated — use observationText */
+  /** Deprecated - use observationText */
   text?: string
   code?: string
   observationText?: string
@@ -95,6 +96,11 @@ export interface Ground {
   sessionsBalance?: number
   isFreeGround?: boolean
   joinToken?: string | null
+  org?: {
+    subscriptionPlan: string | null
+    subscriptionStatus: string | null
+    freeExtensionUsed: boolean
+  } | null
 }
 
 export interface ConversationTurn {
@@ -136,6 +142,15 @@ export interface Report {
   clarity?: string[]
   questions?: string[]
   privacy?: string
+  inferences?: ReportInference[] | null
   releasedAt: string | null
   createdAt: string
+}
+
+export interface ReportInference {
+  id: string
+  text: string
+  participantLabel: string
+  reason: string
+  dismissed?: boolean // client-side only: user said "this is right"
 }

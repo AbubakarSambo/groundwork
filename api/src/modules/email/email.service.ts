@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Resend } from 'resend';
+import * as nodemailer from 'nodemailer';
 
 /**
  * Groundwork email library. Per the product rules, every message names
@@ -37,6 +38,11 @@ export class EmailService {
       this.logger.warn(`[DEV EMAIL] To: ${options.to} | Subject: ${options.subject}`);
       const text = options.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
       this.logger.warn(`[DEV EMAIL] Body: ${text}`);
+      // Also relay to local mailcatcher (127.0.0.1:1025) so persona tests can read links
+      try {
+        const transport = nodemailer.createTransport({ host: '127.0.0.1', port: 1025, secure: false, ignoreTLS: true });
+        await transport.sendMail({ from: this.fromEmail, to: options.to, subject: options.subject, html: options.html });
+      } catch (_) { /* mailcatcher not running - console log is still available */ }
       // Extract first href for easy local testing
       const match = options.html.match(/href="([^"]+)"/);
       return match?.[1];
@@ -70,7 +76,7 @@ export class EmailService {
     await this.sendEmail({
       to: email,
       subject: 'Activate your Groundwork account',
-      html: this.layout(`<p>Hi ${firstName},</p><p>Click the link below to activate your account. You will be able to set a password once you are in.</p><p><a href="${url}">Activate account</a></p><p>This link expires in 24 hours.</p>`),
+      html: this.layout(`<p>Hi ${firstName},</p><p>You or someone on your team just signed up for Groundwork using this email. Click the link below to activate your account and get started.</p><p><a href="${url}">Activate account</a></p><p>This link expires in 24 hours.</p><p style="color:#888;font-size:12px;">If you did not request this, you can ignore this email. No account will be created without clicking the link.</p>`),
     });
   }
 
@@ -124,7 +130,7 @@ export class EmailService {
     await this.sendEmail({
       to: email,
       subject: `You've been added to ${orgName} on Groundwork`,
-      html: this.layout(`<p>Hi ${firstName},</p><p>${orgName} added you to their Groundwork workspace. Set your password to continue.</p><p><a href="${url}">Accept invite</a></p>`),
+      html: this.layout(`<p>Hi ${firstName},</p><p>${orgName} added you to their Groundwork workspace. Groundwork runs structured check-ins across a team and surfaces alignment and gaps in a shared report. Your contributions stay private until the report is ready.</p><p><a href="${url}">Accept invite</a></p><p style="color:#888;font-size:12px;">If you were not expecting this, you can ignore this email. No account is active until you click the link.</p>`),
     });
   }
 
@@ -144,7 +150,7 @@ export class EmailService {
          <p>You are not being asked to be fair or balanced. You are being asked to be honest. What you put on record belongs to you.</p>
          ${noteHtml}
          <p><a href="${url}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Add my account →</a></p>
-         <p style="font-size:12px;color:#9B9590;">You are never obligated to take part. If you would rather not, you can simply ignore this — declining is never shown as a negative.</p>`,
+         <p style="font-size:12px;color:#9B9590;">You are never obligated to take part. If you would rather not, you can simply ignore this - declining is never shown as a negative.</p>`,
       ),
     });
     return { devUrl };
@@ -163,11 +169,11 @@ export class EmailService {
   async sendGroundActivated(email: string, firstName: string, groundLabel: string, groundUrl: string): Promise<void> {
     await this.sendEmail({
       to: email,
-      subject: `Both accounts are in — your shared report is ready: ${groundLabel}`,
+      subject: `Both accounts are in - your shared report is ready: ${groundLabel}`,
       html: this.layout(
         `<p>Hi ${firstName},</p>
          <p>All parties have checked in on <strong>${groundLabel}</strong>. Your shared report is ready.</p>
-         <p>The report shows where your accounts agree, where they differ, and what is still unresolved. It does not quote anyone — it draws on what everyone said without showing the raw words.</p>
+         <p>The report shows where your accounts agree, where they differ, and what is still unresolved. It does not quote anyone - it draws on what everyone said without showing the raw words.</p>
          <p><a href="${groundUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Read the shared report →</a></p>`,
       ),
     });
@@ -206,7 +212,7 @@ export class EmailService {
       subject: `Your shared report for "${groundLabel}" is waiting`,
       html: this.layout(
         `<p>All accounts are in for <strong>${groundLabel}</strong> and the shared report has been generated.</p>
-         <p>The report shows where accounts agree, where they differ, and what is still unresolved. Nobody's words are quoted — it draws on what was said without showing the raw text.</p>
+         <p>The report shows where accounts agree, where they differ, and what is still unresolved. Nobody's words are quoted - it draws on what was said without showing the raw text.</p>
          <p>Open the ground to read and release the report to all parties.</p>
          <p><a href="${groundUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Read and release the report →</a></p>`,
       ),
@@ -296,7 +302,7 @@ export class EmailService {
       subject: 'Add a card to continue on Groundwork',
       html: this.layout(
         `<p>A ground in your workspace (<strong>${orgName}</strong>) has used its free session.</p>
-         <p>The first session on every ground is free. Each additional session is $5. Add a card now to keep the process running — the record you have already built is safe and waiting.</p>
+         <p>The first session on every ground is free. Each additional session is $5. Add a card now to keep the process running - the record you have already built is safe and waiting.</p>
          <p><a href="${billingUrl}">Add a card</a></p>`,
       ),
     });
@@ -306,7 +312,7 @@ export class EmailService {
   async sendParticipantBlockedNudge(adminEmail: string, groundLabel: string, participantEmail: string, groundUrl: string): Promise<void> {
     await this.sendEmail({
       to: adminEmail,
-      subject: `${participantEmail} tried to check in — add a session to unblock them`,
+      subject: `${participantEmail} tried to check in - add a session to unblock them`,
       html: this.layout(
         `<p><strong>${participantEmail}</strong> tried to check in on <strong>${groundLabel}</strong> but there are no sessions remaining.</p>
          <p>Add a session ($5) or apply a contributor code to unblock them.</p>
@@ -353,6 +359,111 @@ export class EmailService {
     });
   }
 
+  /** Sent when an org successfully subscribes to a plan. */
+  async sendSubscriptionConfirmed(email: string, plan: string, renewalDate: Date): Promise<void> {
+    const planLabel = plan.replace('_', ' ').toLowerCase();
+    const renewal = renewalDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    await this.sendEmail({
+      to: email,
+      subject: 'Your Groundwork organization subscription is active',
+      html: this.layout(
+        `<p>Thank you for supporting Groundwork.</p>
+         <p>Your organization is now on the <strong>${planLabel}</strong> plan. Unlimited Grounds and unlimited sessions are active for your team.</p>
+         <p>Your next billing date is ${renewal}. You can pause or cancel your subscription at any time from your billing page.</p>
+         <p>Your payment helps us continue building a product that helps teams align, make better decisions, and solve problems together.</p>
+         <p><a href="${this.frontendUrl}/billing">View your subscription</a></p>`,
+      ),
+    });
+  }
+
+  /** Sent when an org cancels their subscription. */
+  async sendSubscriptionCancelled(email: string, plan: string): Promise<void> {
+    const planLabel = plan.replace('_', ' ').toLowerCase();
+    await this.sendEmail({
+      to: email,
+      subject: 'Your Groundwork subscription has been cancelled',
+      html: this.layout(
+        `<p>Your <strong>${planLabel}</strong> subscription has been cancelled.</p>
+         <p>Your team can continue using Groundwork with per-session billing at $5 per session. Your records and all existing reports remain accessible.</p>
+         <p>If you want to continue as a team, you can resubscribe or buy sessions at any time.</p>
+         <p><a href="${this.frontendUrl}/billing">Go to billing</a></p>`,
+      ),
+    });
+  }
+
+  /** Sent when a subscription payment fails. */
+  async sendSubscriptionPaymentFailed(email: string, plan: string, portalUrl: string): Promise<void> {
+    const planLabel = plan.replace('_', ' ').toLowerCase();
+    await this.sendEmail({
+      to: email,
+      subject: 'Action required: payment failed for your Groundwork subscription',
+      html: this.layout(
+        `<p>We were unable to charge the card on file for your <strong>${planLabel}</strong> subscription.</p>
+         <p>Your subscription will be paused if payment is not resolved. Please update your payment method to keep your organization's access active.</p>
+         <p>Your records are safe regardless of payment status.</p>
+         <p><a href="${portalUrl}">Update payment method</a></p>`,
+      ),
+    });
+  }
+
+  /** Sent when a subscription renews successfully. */
+  async sendSubscriptionRenewal(email: string, plan: string, amountCents: number, nextRenewal: Date | null): Promise<void> {
+    const planLabel = plan.replace('_', ' ').toLowerCase();
+    const amount = (amountCents / 100).toFixed(2);
+    const next = nextRenewal
+      ? nextRenewal.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+      : 'your next billing date';
+    await this.sendEmail({
+      to: email,
+      subject: `Groundwork subscription renewed: $${amount}`,
+      html: this.layout(
+        `<p>Your <strong>${planLabel}</strong> subscription has renewed. $${amount} has been charged to the card on file.</p>
+         <p>Your next renewal is ${next}. You can pause or cancel at any time from your billing page.</p>
+         <p><a href="${this.frontendUrl}/billing">View billing</a></p>`,
+      ),
+    });
+  }
+
+  /** Sent when the free session extension is claimed. */
+  async sendFreeExtensionClaimed(email: string, groundLabel: string, groundUrl: string): Promise<void> {
+    await this.sendEmail({
+      to: email,
+      subject: `Free session added to ${groundLabel}`,
+      html: this.layout(
+        `<p>Your free session extension has been added to <strong>${groundLabel}</strong>.</p>
+         <p>When you're ready to continue after this session, you can buy more sessions at $5 each or upgrade your organization for unlimited access.</p>
+         <p><a href="${groundUrl}">Go to your ground</a></p>`,
+      ),
+    });
+  }
+
+  /** Sent when a ground's session balance reaches 1. */
+  async sendApproachingSessionLimit(email: string, groundLabel: string, groundUrl: string): Promise<void> {
+    await this.sendEmail({
+      to: email,
+      subject: `One session remaining on ${groundLabel}`,
+      html: this.layout(
+        `<p>Your ground <strong>${groundLabel}</strong> has one session remaining.</p>
+         <p>Add another session ($5) or upgrade your organization for unlimited sessions before your team's next check-in.</p>
+         <p><a href="${groundUrl}">Go to your ground</a></p>`,
+      ),
+    });
+  }
+
+  /** Sent when an org hits its plan member cap on invite. */
+  async sendMemberCapWarning(email: string, plan: string, currentCount: number, capCount: number): Promise<void> {
+    const planLabel = plan.replace('_', ' ').toLowerCase();
+    await this.sendEmail({
+      to: email,
+      subject: 'Your Groundwork plan has reached its member limit',
+      html: this.layout(
+        `<p>Your <strong>${planLabel}</strong> plan supports up to ${capCount} members. You currently have ${currentCount} members.</p>
+         <p>To add more members, upgrade your organization plan.</p>
+         <p><a href="${this.frontendUrl}/billing">Upgrade your organization</a></p>`,
+      ),
+    });
+  }
+
   /** Absence reminder. Sent when a participant has consecutively missed multiple check-ins. */
   async sendAbsenceReminder(
     to: string,
@@ -378,7 +489,7 @@ export class EmailService {
       EXTEND: 'Extend evaluation period',
       RESTRUCTURE: 'Restructure',
       EXIT: 'Part ways',
-      NOT_YET: 'Not yet — revisit with a named gap',
+      NOT_YET: 'Not yet - revisit with a named gap',
       SEPARATE: 'Separate',
       CONTINUE: 'Continue',
       END: 'End the engagement',
@@ -389,15 +500,15 @@ export class EmailService {
       STOP: 'Stop',
       YES: 'Grant the ask',
       NO: 'Decline',
-      ALIGNED: 'Shared picture established — aligned',
+      ALIGNED: 'Shared picture established - aligned',
       ESCALATE: 'Requires escalation or external decision',
-      GAPS_IDENTIFIED: 'Gaps identified — revision needed',
+      GAPS_IDENTIFIED: 'Gaps identified - revision needed',
       APPROVED: 'Workplan and budget approved',
       REVISION_NEEDED: 'Revision needed before approval',
       ON_TRACK: 'On track',
       ATTENTION_NEEDED: 'Attention needed on named items',
       REALIGNED: 'Team realigned on shared direction',
-      GAPS_REMAIN: 'Gaps remain — further conversation needed',
+      GAPS_REMAIN: 'Gaps remain - further conversation needed',
       RESOLVED: 'Performance concern resolved',
       EXTENDED: 'Plan extended with named conditions',
       SEPARATED: 'Separation agreed',
@@ -414,7 +525,7 @@ export class EmailService {
   ): Promise<void> {
     const isCreateNudge = groundsCreated === 1 && daysRemaining === 14;
     const subject = isCreateNudge
-      ? `Your contributor code expires in ${daysRemaining} days — create another ground`
+      ? `Your contributor code expires in ${daysRemaining} days - create another ground`
       : `Your contributor code expires in ${daysRemaining} day${daysRemaining !== 1 ? 's' : ''}`;
 
     const urgencyNote =
@@ -426,12 +537,12 @@ export class EmailService {
       ? `<p>Hi ${firstName},</p>
          ${urgencyNote}
          <p>You have used your contributor code (<strong>${code}</strong>) to create one ground so far. You still have time to create another ground with it before it expires.</p>
-         <p>Every ground you create is a record that belongs to the people involved — start another before the code runs out.</p>
+         <p>Every ground you create is a record that belongs to the people involved - start another before the code runs out.</p>
          <p><a href="${this.frontendUrl}/grounds/new">Create another ground</a></p>`
       : `<p>Hi ${firstName},</p>
          ${urgencyNote}
          <p>Your contributor code <strong>${code}</strong> has been used on ${groundsCreated} ground${groundsCreated !== 1 ? 's' : ''} so far.</p>
-         <p>Once it expires, the code can no longer be redeemed. Any grounds already created with it are unaffected — their records remain intact.</p>
+         <p>Once it expires, the code can no longer be redeemed. Any grounds already created with it are unaffected - their records remain intact.</p>
          <p><a href="${this.frontendUrl}/billing">View your codes</a></p>`;
 
     await this.sendEmail({ to: email, subject, html: this.layout(bodyHtml) });
@@ -445,7 +556,7 @@ export class EmailService {
       html: this.layout(
         `<p>Hi ${name},</p>
          <p>Your Groundwork subscription for <strong>${orgName}</strong> is now active.</p>
-         <p>The first session on every ground is free. Each additional session is $5, charged per ground — not per participant. You are only billed when a ground moves past its first session.</p>
+         <p>The first session on every ground is free. Each additional session is $5, charged per ground - not per participant. You are only billed when a ground moves past its first session.</p>
          <p>Your records are always yours, regardless of plan status.</p>`,
       ),
     });

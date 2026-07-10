@@ -110,7 +110,7 @@ export function AlignmentFeedPage() {
         </div>
       </div>
 
-      {/* Team panel — slides in from right */}
+      {/* Team panel - slides in from right */}
       {showTeam && (
         <div style={{ position: 'absolute', top: 0, right: 0, width: '100%', maxWidth: 340, height: '100%', minHeight: '100vh', background: 'white', borderLeft: '0.5px solid var(--gw-border)', zIndex: 20, overflowY: 'auto', padding: 14 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
@@ -142,7 +142,9 @@ export function AlignmentFeedPage() {
         <div className="gw-chat-msgs" ref={msgsRef}>
           {msgs.map(m => (
             <div key={m.id} className={`gw-msg ${m.id === 'loading' ? 'gw-msg-loading' : m.role === 'AI' ? 'gw-msg-ai' : 'gw-msg-user'}`}>
-              {m.content}
+              {m.id === 'loading'
+                ? <><span style={{ marginRight: 6, fontStyle: 'normal', color: 'var(--gw-muted)', fontSize: 11 }}>Thinking</span><span className="gw-dot" /><span className="gw-dot" /><span className="gw-dot" /></>
+                : m.content}
             </div>
           ))}
         </div>

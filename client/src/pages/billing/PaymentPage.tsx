@@ -100,7 +100,7 @@ export function PaymentPage() {
             disabled={checkout.isPending}
             style={{ width: '100%', padding: '11px', borderRadius: 7, background: '#0A1628', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: checkout.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: checkout.isPending ? 0.7 : 1 }}
           >
-            {checkout.isPending ? 'Redirecting to Stripe...' : `Pay $${total} — ${count} session${count !== 1 ? 's' : ''}`}
+            {checkout.isPending ? 'Redirecting to Stripe...' : `Pay $${total} - ${count} session${count !== 1 ? 's' : ''}`}
           </button>
         </div>
 

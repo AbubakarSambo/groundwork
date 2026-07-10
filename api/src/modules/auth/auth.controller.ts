@@ -28,7 +28,7 @@ export class AuthController {
   @Public()
   @Post('register-magic-link')
   @Throttle({ global: { limit: 5, ttl: 60000 } })
-  @ApiOperation({ summary: 'Register without a password — sends a magic activation link' })
+  @ApiOperation({ summary: 'Register without a password - sends a magic activation link' })
   @ApiResponse({ status: 201, description: 'Magic link sent' })
   @ApiResponse({ status: 409, description: 'Email or organization already exists' })
   async registerMagicLink(@Body() dto: MagicLinkRegisterDto) {
@@ -124,7 +124,7 @@ export class AuthController {
   @UseGuards(AuthGuard('google'))
   @ApiOperation({ summary: 'Initiate Google OAuth login' })
   async googleAuth() {
-    // Passport redirects to Google — no body needed
+    // Passport redirects to Google - no body needed
   }
 
   @Public()

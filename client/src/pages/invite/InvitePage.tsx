@@ -72,14 +72,14 @@ export function InvitePage() {
     if (msgsRef.current) msgsRef.current.scrollTop = msgsRef.current.scrollHeight
   }, [messages, loading])
 
-  // Accept mutation — called in background when landing → checkin
+  // Accept mutation - called in background when landing → checkin
   const accept = useMutation({
     mutationFn: () => participantsApi.accept(token, { firstName: firstName || undefined, lastName: lastName || undefined }),
     onSuccess: (res) => {
       setAuth(res.user, res.accessToken)
       if (res.user?.email) setEmail(res.user.email)
       if ((res as any).existingAccount) {
-        toast.info(`Welcome back — continuing as ${res.user.email}`)
+        toast.info(`Welcome back - continuing as ${res.user.email}`)
       }
       qc.invalidateQueries({ queryKey: ['grounds'] })
     },
@@ -92,7 +92,7 @@ export function InvitePage() {
   function buildParticipantOnboardingMessages(initiatorName: string, groundLabel: string): string[] {
     return [
       `Welcome. ${initiatorName} has invited you to add your account of: ${groundLabel}.\n\nThis is your private space. Nobody reads what you write. The shared report will show where your account and theirs agree or differ. It will not quote you.\n\nType anything to continue.`,
-      `Your session takes about 10 minutes. There are no right answers.\n\nBe as specific as you can — names, dates, what you saw or experienced. Specifics are what make a record strong. You can be direct.\n\nType anything to continue.`,
+      `Your session takes about 10 minutes. There are no right answers.\n\nBe as specific as you can - names, dates, what you saw or experienced. Specifics are what make a record strong. You can be direct.\n\nType anything to continue.`,
       `Ready? Your first question is coming now.`,
     ]
   }
@@ -125,7 +125,7 @@ export function InvitePage() {
     if (taRef.current) taRef.current.style.height = '38px'
 
     if (onboardingStep <= 3) {
-      // Onboarding phase — advance
+      // Onboarding phase - advance
       if (onboardingStep >= 3) {
         setOnboardingStep(4)
         startCheckin()
@@ -135,7 +135,7 @@ export function InvitePage() {
       return
     }
 
-    // Live check-in phase — use participant endpoint so turns are saved server-side
+    // Live check-in phase - use participant endpoint so turns are saved server-side
     const userTurn: ChatTurn = { role: 'user', content }
     const updatedHistory: ChatTurn[] = [
       ...messages.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })),
@@ -197,7 +197,7 @@ export function InvitePage() {
       setReqName('')
       setReqReason('')
     } catch {
-      // swallow — best effort
+      // swallow - best effort
     }
   }
 
@@ -243,7 +243,7 @@ export function InvitePage() {
           )}
 
           <div className="gw-box gw-box-blue" style={{ marginBottom: 16 }}>
-            Nobody ever reads what you write — not {preview.initiatorName}, not anyone.{' '}
+            Nobody ever reads what you write - not {preview.initiatorName}, not anyone.{' '}
             The shared report shows <strong>where your account and theirs agree or differ</strong>. It does not quote you.
             Your account stays private. Always.
           </div>
@@ -254,7 +254,7 @@ export function InvitePage() {
             setPhase('checkin')
           }}>
             <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginBottom: 8, lineHeight: 1.5 }}>
-              Your name is optional — the other party will see it on the shared report if you add it.
+              Your name is optional - the other party will see it on the shared report if you add it.
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8, marginBottom: 4 }}>
               <div className="gw-fld" style={{ margin: 0 }}>
@@ -277,7 +277,7 @@ export function InvitePage() {
 
           <div style={{ marginTop: 18, paddingTop: 14, borderTop: '1px solid #E2E0DB', textAlign: 'center' }}>
             <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 8, lineHeight: 1.6 }}>
-              You are never obligated to take part. If you would rather not, you can simply close this —
+              You are never obligated to take part. If you would rather not, you can simply close this -
               nothing is shared, and declining is never shown as a negative.
             </div>
             <button
@@ -431,8 +431,8 @@ export function InvitePage() {
         {/* Cross-reference notice */}
         <div style={{ background: '#E0F5EF', border: '1px solid #5DCAA5', borderRadius: 10, padding: '12px 14px', marginBottom: 20, fontSize: 13, color: '#085041', lineHeight: 1.6 }}>
           {(preview as InvitePreviewWithGround).initiatorCheckedIn
-            ? `${preview.initiatorName} has already checked in. The shared report is ready — it shows where your accounts agree or differ. It does not quote anyone.`
-            : `Your account stays private. Nobody reads what you wrote — not ${preview.initiatorName}, not anyone. The shared report shows where your accounts agree or differ. It does not quote you.`}
+            ? `${preview.initiatorName} has already checked in. The shared report is ready - it shows where your accounts agree or differ. It does not quote anyone.`
+            : `Your account stays private. Nobody reads what you wrote - not ${preview.initiatorName}, not anyone. The shared report shows where your accounts agree or differ. It does not quote you.`}
         </div>
 
         {generatingReport && !sessionReport && (
@@ -551,7 +551,7 @@ export function InvitePage() {
 
             {requestedPeople.map((p, i) => (
               <div key={i} style={{ fontSize: 12, color: '#085041', background: '#E7F6EF', borderRadius: 6, padding: '6px 10px', marginBottom: 6 }}>
-                ✓ Request sent — {p.name ? `${p.name} (${p.email})` : p.email} will be considered by {preview.initiatorName}.
+                ✓ Request sent - {p.name ? `${p.name} (${p.email})` : p.email} will be considered by {preview.initiatorName}.
               </div>
             ))}
 

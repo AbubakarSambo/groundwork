@@ -31,7 +31,7 @@ export function CodeShareCard({ code, expiresAt, daysRemaining, note, allowCodeC
   }
 
   function handleShare() {
-    const msg = `Use code ${code} to create a free Ground on Groundwork — valid until ${formattedExpiry}`
+    const msg = `Use code ${code} to create a free Ground on Groundwork - valid until ${formattedExpiry}`
     navigator.clipboard?.writeText(msg).then(() => {
       setShareCopied(true)
       setTimeout(() => setShareCopied(false), 2000)

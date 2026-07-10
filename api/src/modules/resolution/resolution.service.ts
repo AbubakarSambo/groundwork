@@ -8,7 +8,7 @@ import { GroundStatus } from '@prisma/client';
 
 /**
  * Resolution. A ground closes only when every ACTIVE party confirms the SAME
- * end state — no party has unilateral authority (Part 8 / cofounder framework).
+ * end state - no party has unilateral authority (Part 8 / cofounder framework).
  * "Active" = a party who accepted their invite (userId set); invited-but-never-
  * accepted no-shows never gate closure. Per-party choices are tracked in
  * ResolutionConfirmation, so this works identically for two-party grounds and
@@ -52,7 +52,7 @@ export class ResolutionService {
 
     // GW-16: detect a proposal change BEFORE upserting so we can clear stale
     // confirmations. Silent stale confirmations on a superseded end state would
-    // produce a false consensus — any party that already confirmed must re-confirm
+    // produce a false consensus - any party that already confirmed must re-confirm
     // the new proposal explicitly.
     const existingResolution = await this.prisma.resolution.findUnique({
       where: { groundId },
@@ -171,7 +171,7 @@ export class ResolutionService {
     return this.buildState(groundId);
   }
 
-  /** Every active party confirmed the same end state — close the ground. */
+  /** Every active party confirmed the same end state - close the ground. */
   private async finalize(groundId: string, endState: string) {
     const now = new Date();
     await this.prisma.$transaction([
@@ -182,7 +182,7 @@ export class ResolutionService {
       }),
     ]);
 
-    // Seed the learning loop. Best-effort — never block the close.
+    // Seed the learning loop. Best-effort - never block the close.
     await this.intelligence.recordOutcome(groundId, endState).catch((err) =>
       this.logger.error(`recordOutcome failed for ground ${groundId}: ${err.message}`),
     );

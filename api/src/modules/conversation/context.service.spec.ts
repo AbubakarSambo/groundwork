@@ -5,7 +5,7 @@ import { ALIGNMENT_FEED_ONLY_CODES } from '../patterns/pattern-library';
  * Feed-only codes must never reach a party's own conversation (GW-07). F5/E4
  * (cofounder / founder burden asymmetry) surface to the alignment feed only.
  */
-describe('ConversationContextService — feed-only code filtering (GW-07)', () => {
+describe('ConversationContextService - feed-only code filtering (GW-07)', () => {
   it('excludes ALIGNMENT_FEED_ONLY_CODES from the surfaced-pattern query', async () => {
     let capturedWhere: any;
     const prisma: any = {
@@ -33,7 +33,7 @@ describe('ConversationContextService — feed-only code filtering (GW-07)', () =
  * GW-08: Disclosure detection must short-circuit the contribution-chat flow.
  * GW-37: Cross-reference must not fire on a single generic term.
  */
-describe('ConversationContextService — disclosure detection (GW-08) & cross-reference quality (GW-37)', () => {
+describe('ConversationContextService - disclosure detection (GW-08) & cross-reference quality (GW-37)', () => {
   function makeService() {
     const prisma: any = {
       groundParticipant: {
@@ -50,7 +50,7 @@ describe('ConversationContextService — disclosure detection (GW-08) & cross-re
     return new ConversationContextService(prisma);
   }
 
-  it('GW-08: returns DISCLOSURE MODE block for harassment keyword — skips contribution-chat', async () => {
+  it('GW-08: returns DISCLOSURE MODE block for harassment keyword - skips contribution-chat', async () => {
     const service = makeService();
     const { tone, block } = await service.build({
       groundId: 'g1', participantId: 'p1', sessionNumber: 2,

@@ -4,10 +4,10 @@ import { ReportsService } from './reports.service';
 
 /**
  * Cross-org isolation invariant (GW-02). release() must refuse to act on a
- * ground that does not belong to the caller's organization — an admin of org A
+ * ground that does not belong to the caller's organization - an admin of org A
  * must never be able to release org B's report by ID.
  */
-describe('ReportsService.release — org scoping (GW-02)', () => {
+describe('ReportsService.release - org scoping (GW-02)', () => {
   function makeService(groundRow: any) {
     const prisma: any = {
       ground: { findFirst: jest.fn(async (args: any) => (groundRow && groundRow.organizationId === args.where.organizationId ? groundRow : null)) },
@@ -42,7 +42,7 @@ describe('ReportsService.release — org scoping (GW-02)', () => {
  * GW-41: synthesize() must stamp promptVersionId on the report so the learning
  * loop can attribute outcome rates to specific prompt versions.
  */
-describe('ReportsService.synthesize — promptVersionId stamping (GW-41)', () => {
+describe('ReportsService.synthesize - promptVersionId stamping (GW-41)', () => {
   it('writes the synthesis prompt version ID onto the report', async () => {
     const VERSION_ID = 'pv-001';
     let upsertedCreate: any;

@@ -200,6 +200,12 @@ export class AuthService {
     const user = await this.prisma.$transaction(async (tx) => {
       await tx.user.update({ where: { id: tokenRecord.userId }, data: { passwordHash, isEmailVerified: true } });
       await tx.emailVerificationToken.update({ where: { id: tokenRecord.id }, data: { usedAt: new Date() } });
+      // Link any groundParticipant records whose email matches - same as verifyEmail.
+      // Covers participants who were invited before creating their account.
+      await tx.groundParticipant.updateMany({
+        where: { email: tokenRecord.user.email.toLowerCase(), userId: null },
+        data: { userId: tokenRecord.userId },
+      });
       return tokenRecord.user;
     });
 
@@ -314,7 +320,7 @@ export class AuthService {
 
       await this.emailService.sendUserInvite(lower, result.firstName, result.token, inviterOrgName);
     } else {
-      // User exists — send them a magic sign-in link.
+      // User exists - send them a magic sign-in link.
       await this.prisma.emailVerificationToken.updateMany({
         where: { userId: user.id, type: TokenType.EMAIL_VERIFICATION, usedAt: null },
         data: { usedAt: new Date() },
@@ -470,6 +476,7 @@ export class AuthService {
       organizationName: user.organization.name,
       orgCode: user.organization.slug,
       isPlatformAdmin: user.isPlatformAdmin,
+      emailNotifications: user.emailNotifications,
       organization: {
         id: user.organization.id,
         name: user.organization.name,
@@ -514,6 +521,7 @@ export class AuthService {
     if (dto.firstName !== undefined) userUpdate.firstName = dto.firstName.trim();
     if (dto.lastName !== undefined) userUpdate.lastName = dto.lastName.trim();
     if (dto.jobTitle !== undefined) userUpdate.jobTitle = dto.jobTitle.trim();
+    if (dto.emailNotifications !== undefined) userUpdate.emailNotifications = dto.emailNotifications;
 
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
 

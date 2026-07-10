@@ -4,7 +4,7 @@ import type Stripe from 'stripe';
 import { PrismaService, CronLock } from '../prisma/prisma.service';
 import { StripeService } from './stripe.service';
 import { EmailService } from '../email/email.service';
-import { CareFeeStatus, GroundStatus, BillingEventType, BillingEventStatus, UserRole, UsageEventType } from '@prisma/client';
+import { CareFeeStatus, GroundStatus, BillingEventType, BillingEventStatus, UserRole, UsageEventType, SubscriptionPlan } from '@prisma/client';
 import { UsageService } from '../usage/usage.service';
 import * as crypto from 'crypto';
 
@@ -29,46 +29,61 @@ export class BillingService {
 
   /**
    * Session balance gate. Returns allowed: true when the ground has at least one
-   * session remaining, or allowed: false with a human-readable reason.
+   * session remaining, or the org has an active subscription (unlimited sessions).
    */
-  async canStartSession(groundId: string): Promise<{ allowed: boolean; reason?: string; sessionsBalance: number }> {
+  async canStartSession(groundId: string): Promise<{ allowed: boolean; reason?: string; sessionsBalance: number; freeExtensionAvailable?: boolean }> {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       select: { sessionsBalance: true, isFreeGround: true, organizationId: true },
     });
 
-    // Abuse prevention: free grounds are limited to 3 free sessions per org.
-    if (ground?.isFreeGround) {
+    // Active subscription = unlimited sessions, no balance check needed.
+    if (ground?.organizationId) {
       const org = await this.prisma.organization.findUnique({
         where: { id: ground.organizationId },
-        select: { freeSessionsUsed: true },
+        select: { subscriptionPlan: true, subscriptionStatus: true, freeSessionsUsed: true, freeExtensionUsed: true },
       });
-      if ((org?.freeSessionsUsed ?? 0) >= 3) {
+      if (org?.subscriptionPlan && org.subscriptionStatus === 'active') {
+        return { allowed: true, sessionsBalance: -1 }; // -1 signals unlimited
+      }
+
+      const balance = ground?.sessionsBalance ?? 0;
+      if (balance > 0) return { allowed: true, sessionsBalance: balance };
+
+      // Abuse prevention: free grounds are limited to 3 free sessions per org.
+      if (ground?.isFreeGround && (org?.freeSessionsUsed ?? 0) >= 3) {
         return {
           allowed: false,
           reason: 'Your account has used 3 free sessions. Add a session for $5 to continue.',
           sessionsBalance: 0,
+          freeExtensionAvailable: !(org?.freeExtensionUsed ?? false),
         };
       }
+
+      return {
+        allowed: false,
+        reason: 'No sessions remaining. Add a session for $5 to continue.',
+        sessionsBalance: 0,
+        freeExtensionAvailable: !(org?.freeExtensionUsed ?? false),
+      };
     }
 
     const balance = ground?.sessionsBalance ?? 0;
     if (balance > 0) return { allowed: true, sessionsBalance: balance };
-    return {
-      allowed: false,
-      reason: 'No sessions remaining. Add a session for $5 to continue.',
-      sessionsBalance: 0,
-    };
+    return { allowed: false, reason: 'No sessions remaining. Add a session for $5 to continue.', sessionsBalance: 0 };
   }
+
+  /** Free ground limit for organizations without a subscription. */
+  static readonly FREE_GROUND_LIMIT = 10;
 
   /**
    * Ground creation gate.
    *
    * Resolution order:
-   *   1. org.firstGroundUsed === false  → freeReason='FIRST_GROUND' (one-time per org)
-   *   2. accessCode provided and valid  → freeReason='ACCESS_CODE', codeId set
-   *   3. org has paid for this ground   → allowed, no freeReason (payment flow handled externally)
-   *   4. otherwise                      → not allowed
+   *   1. org has active subscription or legacy care fee → allowed (unlimited)
+   *   2. accessCode provided and valid → freeReason='ACCESS_CODE', codeId set
+   *   3. org ground count < FREE_GROUND_LIMIT → freeReason='FREE_TIER'
+   *   4. otherwise → not allowed (upgrade required)
    *
    * The caller (GroundsService.create) is responsible for persisting the derived
    * fields inside its transaction.
@@ -76,16 +91,21 @@ export class BillingService {
   async canCreateGround(
     organizationId: string,
     accessCode?: string,
-  ): Promise<{ allowed: boolean; reason?: string; freeReason?: 'FIRST_GROUND' | 'ACCESS_CODE'; codeId?: string }> {
+  ): Promise<{ allowed: boolean; reason?: string; freeReason?: 'FREE_TIER' | 'ACCESS_CODE'; codeId?: string; groundsUsed?: number }> {
     const org = await this.prisma.organization.findUnique({
       where: { id: organizationId },
-      select: { firstGroundUsed: true, careFeeStatus: true },
+      select: { subscriptionPlan: true, subscriptionStatus: true, careFeeStatus: true },
     });
     if (!org) return { allowed: false, reason: 'Organization not found' };
 
-    // 1. First ground for this org — always free.
-    if (!org.firstGroundUsed) {
-      return { allowed: true, freeReason: 'FIRST_GROUND' };
+    // 1. Org has an active subscription - unlimited grounds.
+    if (org.subscriptionPlan && org.subscriptionStatus === 'active') {
+      return { allowed: true };
+    }
+
+    // 1b. Org is on legacy active care fee plan.
+    if (org.careFeeStatus === CareFeeStatus.ACTIVE) {
+      return { allowed: true };
     }
 
     // 2. Contributor access code supplied.
@@ -108,16 +128,17 @@ export class BillingService {
       return { allowed: true, freeReason: 'ACCESS_CODE', codeId: code.id };
     }
 
-    // 3. Org is on an active paid plan — allow ground creation (session balance
-    //    will have been topped up via Stripe; the ground's isFreeGround=false).
-    if (org.careFeeStatus === CareFeeStatus.ACTIVE) {
-      return { allowed: true };
+    // 3. Free tier: up to FREE_GROUND_LIMIT grounds per org.
+    const groundCount = await this.prisma.ground.count({ where: { organizationId } });
+    if (groundCount < BillingService.FREE_GROUND_LIMIT) {
+      return { allowed: true, freeReason: 'FREE_TIER', groundsUsed: groundCount };
     }
 
-    // 4. No free entitlement and no active subscription.
+    // 4. Free limit reached, no active subscription.
     return {
       allowed: false,
-      reason: 'Your first ground is free. To create additional grounds, purchase a session or use a contributor code.',
+      reason: `Your free plan includes ${BillingService.FREE_GROUND_LIMIT} Grounds. Subscribe to create unlimited Grounds.`,
+      groundsUsed: groundCount,
     };
   }
 
@@ -156,6 +177,163 @@ export class BillingService {
     });
 
     return { checkoutUrl: session.url! };
+  }
+
+  /** Member cap limits per subscription plan. */
+  private readonly PLAN_MEMBER_CAPS: Record<SubscriptionPlan, number | null> = {
+    [SubscriptionPlan.STARTER]: 5,
+    [SubscriptionPlan.SMALL_TEAM]: 20,
+    [SubscriptionPlan.GROWTH]: 100,
+    [SubscriptionPlan.BUSINESS]: 250,
+    [SubscriptionPlan.SCALE]: 1000,
+    [SubscriptionPlan.ENTERPRISE]: null, // unlimited
+  };
+
+  /** Returns allowed: false if the org is at its plan member cap. */
+  async canInviteMember(organizationId: string): Promise<{ allowed: boolean; reason?: string }> {
+    const org = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { subscriptionPlan: true, subscriptionStatus: true, _count: { select: { users: true } } },
+    });
+    if (!org?.subscriptionPlan || org.subscriptionStatus !== 'active') return { allowed: true };
+    const cap = this.PLAN_MEMBER_CAPS[org.subscriptionPlan];
+    if (cap === null) return { allowed: true };
+    if ((org._count.users ?? 0) >= cap) {
+      return {
+        allowed: false,
+        reason: `Your ${org.subscriptionPlan.replace('_', ' ').toLowerCase()} plan supports up to ${cap} members. Upgrade your organization to add more.`,
+      };
+    }
+    return { allowed: true };
+  }
+
+  /** Grants one free session extension to a ground if the org has not used it yet. Idempotent. */
+  async claimFreeExtension(organizationId: string, groundId: string): Promise<void> {
+    const org = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { freeExtensionUsed: true },
+    });
+    if (!org) throw new NotFoundException('Organization not found');
+    if (org.freeExtensionUsed) throw new ForbiddenException('Free session extension has already been used for this organization.');
+
+    const now = new Date();
+    await this.prisma.$transaction([
+      this.prisma.organization.update({ where: { id: organizationId }, data: { freeExtensionUsed: true } }),
+      this.prisma.ground.update({ where: { id: groundId }, data: { sessionsBalance: { increment: 1 } } }),
+      this.prisma.billingEvent.create({
+        data: {
+          organizationId,
+          groundId,
+          type: BillingEventType.FREE_EXTENSION,
+          amountCents: 0,
+          currency: 'USD',
+          status: BillingEventStatus.PAID,
+          periodStart: now,
+          periodEnd: now,
+          stripeInvoiceId: `free_ext_${organizationId}`,
+        },
+      }),
+    ]);
+    this.logger.log(`Free extension claimed for org ${organizationId} on ground ${groundId}`);
+  }
+
+  /** Monthly prices in cents per subscription plan. */
+  private readonly PLAN_PRICES_CENTS: Partial<Record<SubscriptionPlan, number>> = {
+    [SubscriptionPlan.STARTER]: 2500,
+    [SubscriptionPlan.SMALL_TEAM]: 5000,
+    [SubscriptionPlan.GROWTH]: 10000,
+    [SubscriptionPlan.BUSINESS]: 20000,
+    [SubscriptionPlan.SCALE]: 40000,
+  };
+
+  private readonly PLAN_LABELS: Record<SubscriptionPlan, string> = {
+    [SubscriptionPlan.STARTER]: 'Starter (up to 5 people)',
+    [SubscriptionPlan.SMALL_TEAM]: 'Small Team (up to 20 people)',
+    [SubscriptionPlan.GROWTH]: 'Growth (up to 100 people)',
+    [SubscriptionPlan.BUSINESS]: 'Business (up to 250 people)',
+    [SubscriptionPlan.SCALE]: 'Scale (up to 1,000 people)',
+    [SubscriptionPlan.ENTERPRISE]: 'Enterprise',
+  };
+
+  /** Create a Stripe recurring checkout session for an org subscription plan. */
+  async createSubscription(organizationId: string, plan: SubscriptionPlan): Promise<{ checkoutUrl: string }> {
+    if (plan === SubscriptionPlan.ENTERPRISE) {
+      throw new ForbiddenException('Enterprise plans require contacting the support team.');
+    }
+    const org = await this.prisma.organization.findUnique({ where: { id: organizationId } });
+    if (!org) throw new NotFoundException('Organization not found');
+
+    const customerId = await this.stripe.ensureCustomer(org.id, org.email ?? undefined, org.stripeCustomerId);
+    if (customerId !== org.stripeCustomerId) {
+      await this.prisma.organization.update({ where: { id: org.id }, data: { stripeCustomerId: customerId } });
+    }
+
+    const amountCents = this.PLAN_PRICES_CENTS[plan]!;
+    const base = this.config.get<string>('stripe.callbackUrl') || 'http://localhost:5173/billing/callback';
+    const session = await this.stripe.stripe.checkout.sessions.create({
+      customer: customerId,
+      mode: 'subscription',
+      line_items: [
+        {
+          price_data: {
+            currency: 'usd',
+            unit_amount: amountCents,
+            recurring: { interval: 'month' },
+            product_data: { name: `Groundwork ${this.PLAN_LABELS[plan]}` },
+          },
+          quantity: 1,
+        },
+      ],
+      metadata: { organizationId, plan, type: 'subscription' },
+      success_url: `${base}?status=success&type=subscription&plan=${plan}`,
+      cancel_url: `${base}?status=cancelled`,
+    });
+
+    return { checkoutUrl: session.url! };
+  }
+
+  /** Cancel the org's active subscription immediately. */
+  async cancelSubscription(organizationId: string): Promise<void> {
+    const org = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { subscriptionStripeId: true },
+    });
+    if (!org?.subscriptionStripeId) throw new NotFoundException('No active subscription found.');
+
+    await this.stripe.stripe.subscriptions.cancel(org.subscriptionStripeId);
+    await this.prisma.organization.update({
+      where: { id: organizationId },
+      data: { subscriptionPlan: null, subscriptionStatus: 'cancelled', subscriptionStripeId: null, subscriptionPeriodEnd: null },
+    });
+    this.logger.log(`Subscription cancelled for org ${organizationId}`);
+  }
+
+  /** Pause the org's subscription via Stripe pause collection. */
+  async pauseSubscription(organizationId: string): Promise<void> {
+    const org = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { subscriptionStripeId: true },
+    });
+    if (!org?.subscriptionStripeId) throw new NotFoundException('No active subscription found.');
+
+    await this.stripe.stripe.subscriptions.update(org.subscriptionStripeId, {
+      pause_collection: { behavior: 'mark_uncollectible' },
+    });
+    await this.prisma.organization.update({ where: { id: organizationId }, data: { subscriptionStatus: 'paused' } });
+    this.logger.log(`Subscription paused for org ${organizationId}`);
+  }
+
+  /** Resume a paused subscription. */
+  async resumeSubscription(organizationId: string): Promise<void> {
+    const org = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { subscriptionStripeId: true },
+    });
+    if (!org?.subscriptionStripeId) throw new NotFoundException('No active subscription found.');
+
+    await this.stripe.stripe.subscriptions.update(org.subscriptionStripeId, { pause_collection: '' as any });
+    await this.prisma.organization.update({ where: { id: organizationId }, data: { subscriptionStatus: 'active' } });
+    this.logger.log(`Subscription resumed for org ${organizationId}`);
   }
 
   /**
@@ -288,7 +466,7 @@ export class BillingService {
     return { ok: true, message: `${sessionsToAdd} session(s) added.`, sessionsAdded: sessionsToAdd };
   }
 
-  /** With per-session billing there is no subscription prerequisite — billing is always ready. */
+  /** With per-session billing there is no subscription prerequisite - billing is always ready. */
   async isBillingReady(_organizationId: string): Promise<boolean> {
     return true;
   }
@@ -336,7 +514,7 @@ export class BillingService {
    * Account cancellation. Marks the org as CANCELLED and sends a record-portability
    * notice to every user so each person knows their record is retained.
    */
-  async cancelSubscription(organizationId: string): Promise<{ cancelled: boolean }> {
+  async cancelAccount(organizationId: string): Promise<{ cancelled: boolean }> {
     const org = await this.prisma.organization.findUnique({
       where: { id: organizationId },
       select: { careFeeSubscriptionId: true, email: true, name: true },
@@ -371,7 +549,7 @@ export class BillingService {
   }
 
   /**
-   * A Stripe Customer Portal session — self-serve surface for updating the card
+   * A Stripe Customer Portal session - self-serve surface for updating the card
    * and viewing payment history.
    */
   async createBillingPortalSession(organizationId: string): Promise<{ portalUrl: string }> {
@@ -396,7 +574,7 @@ export class BillingService {
             // Idempotency guard: skip if we've already processed this payment intent.
             const existing = await this.prisma.billingEvent.findFirst({ where: { stripeInvoiceId } });
             if (existing) {
-              this.logger.warn(`Duplicate webhook for ${stripeInvoiceId} — skipping`);
+              this.logger.warn(`Duplicate webhook for ${stripeInvoiceId} - skipping`);
               break;
             }
             const now = new Date();
@@ -424,6 +602,31 @@ export class BillingService {
           break;
         }
 
+        // New org subscription checkout.
+        if (session.metadata?.type === 'subscription') {
+          const { organizationId: orgId, plan } = session.metadata ?? {};
+          const subId = typeof session.subscription === 'string' ? session.subscription : session.subscription?.id;
+          if (orgId && plan && subId) {
+            const sub = await this.stripe.stripe.subscriptions.retrieve(subId);
+            const periodEnd = sub.current_period_end ? new Date(sub.current_period_end * 1000) : null;
+            await this.prisma.organization.update({
+              where: { id: orgId },
+              data: {
+                subscriptionPlan: plan as SubscriptionPlan,
+                subscriptionStatus: 'active',
+                subscriptionStripeId: subId,
+                subscriptionPeriodEnd: periodEnd,
+              },
+            });
+            const orgData = await this.prisma.organization.findUnique({ where: { id: orgId }, select: { email: true } });
+            if (orgData?.email && periodEnd) {
+              await this.email.sendSubscriptionConfirmed(orgData.email, plan, periodEnd).catch(() => undefined);
+            }
+            this.logger.log(`Org subscription activated: org ${orgId} plan ${plan}`);
+          }
+          break;
+        }
+
         // Handle any legacy subscription checkout completions.
         const organizationId = session.client_reference_id;
         const subscriptionId = typeof session.subscription === 'string' ? session.subscription : session.subscription?.id;
@@ -444,15 +647,63 @@ export class BillingService {
         break;
       }
 
-      case 'customer.subscription.updated':
+      case 'customer.subscription.updated': {
+        const sub = event.data.object as Stripe.Subscription;
+        const orgId = sub.metadata?.organizationId;
+        if (!orgId) break;
+        // Update new subscription plan fields if present.
+        if (sub.metadata?.plan) {
+          const periodEnd = sub.current_period_end ? new Date(sub.current_period_end * 1000) : null;
+          await this.prisma.organization.update({
+            where: { id: orgId },
+            data: {
+              subscriptionStatus: sub.status,
+              subscriptionPeriodEnd: periodEnd,
+            },
+          });
+        } else {
+          await this.prisma.organization.update({
+            where: { id: orgId },
+            data: { careFeeStatus: this.mapSubscriptionStatus(sub.status) },
+          });
+        }
+        break;
+      }
+
       case 'customer.subscription.deleted': {
         const sub = event.data.object as Stripe.Subscription;
-        const organizationId = sub.metadata?.organizationId;
-        if (!organizationId) break;
-        await this.prisma.organization.update({
-          where: { id: organizationId },
-          data: { careFeeStatus: this.mapSubscriptionStatus(sub.status) },
+        const orgId = sub.metadata?.organizationId;
+        if (!orgId) break;
+        if (sub.metadata?.plan) {
+          const orgData = await this.prisma.organization.findUnique({ where: { id: orgId }, select: { email: true, subscriptionPlan: true } });
+          await this.prisma.organization.update({
+            where: { id: orgId },
+            data: { subscriptionPlan: null, subscriptionStatus: 'cancelled', subscriptionStripeId: null, subscriptionPeriodEnd: null },
+          });
+          if (orgData?.email && orgData.subscriptionPlan) {
+            await this.email.sendSubscriptionCancelled(orgData.email, orgData.subscriptionPlan).catch(() => undefined);
+          }
+        } else {
+          await this.prisma.organization.update({
+            where: { id: orgId },
+            data: { careFeeStatus: this.mapSubscriptionStatus(sub.status) },
+          });
+        }
+        break;
+      }
+
+      case 'invoice.payment_succeeded': {
+        const invoice = event.data.object as Stripe.Invoice;
+        const customerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id;
+        if (!customerId) break;
+        const paidOrg = await this.prisma.organization.findFirst({
+          where: { stripeCustomerId: customerId },
+          select: { id: true, email: true, subscriptionPlan: true, subscriptionPeriodEnd: true },
         });
+        if (paidOrg?.email && paidOrg.subscriptionPlan) {
+          const amountCents = invoice.amount_paid ?? 0;
+          await this.email.sendSubscriptionRenewal(paidOrg.email, paidOrg.subscriptionPlan, amountCents, paidOrg.subscriptionPeriodEnd).catch(() => undefined);
+        }
         break;
       }
 
@@ -464,18 +715,31 @@ export class BillingService {
         const gracePeriodUntil = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
         const failedOrg = await this.prisma.organization.findFirst({
           where: { stripeCustomerId: customerId },
-          select: { id: true, name: true, email: true },
+          select: { id: true, name: true, email: true, subscriptionPlan: true },
         });
-        await this.prisma.organization.updateMany({
-          where: { stripeCustomerId: customerId },
-          data: { careFeeStatus: CareFeeStatus.PAST_DUE, gracePeriodUntil },
-        });
-        if (failedOrg?.email) {
-          await this.email
-            .sendPaymentFailed(failedOrg.email, failedOrg.name)
-            .catch((err: any) =>
-              this.logger.warn(`Payment-failed email failed for org ${failedOrg.id}: ${err.message}`),
-            );
+        if (failedOrg?.subscriptionPlan) {
+          // New subscription payment failed.
+          await this.prisma.organization.update({
+            where: { id: failedOrg.id },
+            data: { subscriptionStatus: 'past_due' },
+          });
+          const portalUrl = `${this.config.get<string>('resend.frontendUrl') ?? ''}/billing`;
+          if (failedOrg.email) {
+            await this.email.sendSubscriptionPaymentFailed(failedOrg.email, failedOrg.subscriptionPlan, portalUrl).catch(() => undefined);
+          }
+        } else {
+          // Legacy care fee payment failed.
+          await this.prisma.organization.updateMany({
+            where: { stripeCustomerId: customerId },
+            data: { careFeeStatus: CareFeeStatus.PAST_DUE, gracePeriodUntil },
+          });
+          if (failedOrg?.email) {
+            await this.email
+              .sendPaymentFailed(failedOrg.email, failedOrg.name)
+              .catch((err: any) =>
+                this.logger.warn(`Payment-failed email failed for org ${failedOrg.id}: ${err.message}`),
+              );
+          }
         }
         break;
       }
@@ -549,7 +813,7 @@ export class BillingService {
   }
 
   /**
-   * Platform admin: get stats across all orgs — all codes, all redemptions, usage by freeReason.
+   * Platform admin: get stats across all orgs - all codes, all redemptions, usage by freeReason.
    */
   async getPlatformAdminStats(callerUserId: string) {
     const caller = await this.prisma.user.findUnique({ where: { id: callerUserId }, select: { isPlatformAdmin: true } });
@@ -572,11 +836,22 @@ export class BillingService {
       usageByFreeReason[key] = (usageByFreeReason[key] ?? 0) + 1;
     }
 
+    const [subscribedOrgsCount, sessionBalanceAgg] = await Promise.all([
+      this.prisma.organization.count({
+        where: { subscriptionStatus: 'active' },
+      }),
+      this.prisma.ground.aggregate({
+        _sum: { sessionsBalance: true },
+      }),
+    ]);
+
     const now = new Date();
     return {
       totalCodes: codes.length,
       totalRedemptions: allRedemptions.length,
       usageByFreeReason,
+      totalSubscribedOrgs: subscribedOrgsCount,
+      totalSessionsBalance: sessionBalanceAgg._sum.sessionsBalance ?? 0,
       codes: codes.map((c) => ({
         id: c.id,
         code: c.code,

@@ -10,9 +10,13 @@ export class ReportsController {
   constructor(private readonly reports: ReportsService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Get the released report (party only)' })
-  async get(@Param('groundId') groundId: string, @CurrentUser('id') userId: string) {
-    return this.reports.get(groundId, userId);
+  @ApiOperation({ summary: 'Get the released report (party or org admin)' })
+  async get(
+    @Param('groundId') groundId: string,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('organizationId') organizationId: string,
+  ) {
+    return this.reports.get(groundId, userId, organizationId);
   }
 
   @Post('generate')

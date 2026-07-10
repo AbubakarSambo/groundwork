@@ -32,6 +32,8 @@ interface AdminOverview {
   totalGrounds: number
   totalCodes: number
   totalRedemptions: number
+  totalSubscribedOrgs?: number
+  totalSessionsBalance?: number
 }
 
 interface AdminCode {
@@ -47,6 +49,7 @@ interface AdminCode {
 
 interface FreeReasonBreakdown {
   FIRST_GROUND: number
+  FREE_TIER: number
   ACCESS_CODE: number
   paid: number
 }
@@ -236,6 +239,12 @@ function OverviewSection({ overview }: { overview: AdminOverview }) {
         <Stat val={overview.totalGrounds} label="Total grounds" />
         <Stat val={overview.totalCodes} label="Access codes" accent />
         <Stat val={overview.totalRedemptions} label="Redemptions" />
+        {overview.totalSubscribedOrgs !== undefined && (
+          <Stat val={overview.totalSubscribedOrgs} label="Subscribed orgs" accent />
+        )}
+        {overview.totalSessionsBalance !== undefined && (
+          <Stat val={overview.totalSessionsBalance} label="Sessions in balance" />
+        )}
       </div>
     </section>
   )
@@ -283,7 +292,7 @@ function CodeManagementSection({ codes, onDisable }: { codes: AdminCode[]; onDis
                   <td style={{ padding: '8px 10px', fontWeight: 700, color: 'var(--gw-navy)', fontFamily: 'monospace', fontSize: 13 }}>{c.code}</td>
                   <td style={{ padding: '8px 10px', color: 'var(--gw-text)' }}>{c.creatorEmail}</td>
                   <td style={{ padding: '8px 10px', color: 'var(--gw-sub)', whiteSpace: 'nowrap' }}>{new Date(c.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' })}</td>
-                  <td style={{ padding: '8px 10px', color: 'var(--gw-sub)', whiteSpace: 'nowrap' }}>{c.expiresAt ? new Date(c.expiresAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' }) : '—'}</td>
+                  <td style={{ padding: '8px 10px', color: 'var(--gw-sub)', whiteSpace: 'nowrap' }}>{c.expiresAt ? new Date(c.expiresAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' }) : '-'}</td>
                   <td style={{ padding: '8px 10px', fontWeight: 600, color: expired ? '#c0392b' : dl === '∞' ? 'var(--gw-muted)' : Number(dl) <= 7 ? '#E8A94A' : 'var(--gw-text)' }}>{dl}</td>
                   <td style={{ padding: '8px 10px' }}>
                     <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 20, background: c.active ? 'var(--gw-green-bg)' : 'var(--gw-bg)', color: c.active ? 'var(--gw-green-t)' : 'var(--gw-muted)', border: '0.5px solid var(--gw-border)' }}>
@@ -325,7 +334,8 @@ function CodeManagementSection({ codes, onDisable }: { codes: AdminCode[]; onDis
 
 function UsageBreakdownSection({ breakdown }: { breakdown: FreeReasonBreakdown }) {
   const entries: { label: string; key: keyof FreeReasonBreakdown; color: string }[] = [
-    { label: 'First ground (free)', key: 'FIRST_GROUND', color: '#5DCAA5' },
+    { label: 'Free tier', key: 'FREE_TIER', color: '#5DCAA5' },
+    { label: 'First ground (legacy)', key: 'FIRST_GROUND', color: '#A8DDD0' },
     { label: 'Access code', key: 'ACCESS_CODE', color: '#0C447C' },
     { label: 'Paid', key: 'paid', color: '#E8A94A' },
   ]

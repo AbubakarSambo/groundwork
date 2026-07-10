@@ -15,6 +15,13 @@
       "cwd": "/Users/hafsahjumare/Documents/GitHub/groundwork/client"
     },
     {
+      "name": "api",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "start:dev"],
+      "port": 3000,
+      "cwd": "/Users/hafsahjumare/Documents/GitHub/groundwork/api"
+    },
+    {
       "name": "marketing",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],

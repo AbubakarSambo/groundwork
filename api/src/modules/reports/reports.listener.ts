@@ -10,7 +10,7 @@ import { GroundStatus, PartyType } from '@prisma/client';
 
 /**
  * Bridges domain events to report generation. Lives in the reports module so
- * the emitters (conversation, grounds) never import reports — no cycle.
+ * the emitters (conversation, grounds) never import reports - no cycle.
  *
  * Flow:
  *   checkin.completed  -> when ALL parties finish any session:
@@ -57,10 +57,10 @@ export class ReportsListener {
   @OnEvent(GroundworkEvents.GROUND_ACTIVATED)
   async onGroundActivated(event: GroundActivatedEvent) {
     try {
-      this.logger.log(`Ground ${event.groundId} activated — synthesizing (if needed) and releasing report`);
+      this.logger.log(`Ground ${event.groundId} activated - synthesizing (if needed) and releasing report`);
       const g = await this.prisma.ground.findUnique({ where: { id: event.groundId }, select: { organizationId: true } });
       if (!g) return;
-      // For session 2+, the report hasn't been synthesized yet — do it now on activation.
+      // For session 2+, the report hasn't been synthesized yet - do it now on activation.
       const existing = await this.prisma.report.findUnique({ where: { groundId: event.groundId } });
       if (!existing || !existing.releasedAt) {
         await this.reports.synthesize(event.groundId);

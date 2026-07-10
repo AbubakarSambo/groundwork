@@ -42,7 +42,7 @@ export class ResolutionController {
   }
 
   @Post('counter')
-  @ApiOperation({ summary: 'Counter-propose an end state — replaces the current proposal and notifies the other party' })
+  @ApiOperation({ summary: 'Counter-propose an end state - replaces the current proposal and notifies the other party' })
   async counterPropose(
     @Param('groundId') groundId: string,
     @CurrentUser('id') userId: string,

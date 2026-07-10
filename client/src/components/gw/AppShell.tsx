@@ -32,6 +32,19 @@ const NAV_ITEMS = [
     ),
   },
   {
+    label: 'Team',
+    to: '/org/members',
+    adminOnly: true,
+    icon: (active: boolean) => (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <circle cx="7" cy="7" r="3" stroke="currentColor" strokeWidth="1.5" fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.15 : 0} />
+        <circle cx="14" cy="7" r="2.5" stroke="currentColor" strokeWidth="1.3" fill="none" />
+        <path d="M1 16c0-2.21 2.686-4 6-4s6 1.79 6 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        <path d="M14 12c1.657 0 3 1.12 3 2.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
     label: 'Billing',
     to: '/billing',
     adminOnly: true,
@@ -40,6 +53,18 @@ const NAV_ITEMS = [
         <rect x="2" y="5" width="16" height="11" rx="2" stroke="currentColor" strokeWidth="1.5" fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.12 : 0} />
         <path d="M2 8.5h16" stroke="currentColor" strokeWidth="1.5" />
         <rect x="4" y="11" width="3" height="2" rx="0.5" fill="currentColor" />
+      </svg>
+    ),
+  },
+  {
+    label: 'Admin',
+    to: '/admin/dashboard',
+    adminOnly: true,
+    icon: (active: boolean) => (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <path d="M10 2.5L12.5 7.5H17.5L13.5 10.5L15 15.5L10 12.5L5 15.5L6.5 10.5L2.5 7.5H7.5L10 2.5Z"
+          stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"
+          fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.15 : 0} />
       </svg>
     ),
   },
@@ -88,7 +113,7 @@ function FeedbackWidget() {
       wrongText: tab === 'wrong' ? wrongText : undefined,
       contactEmail: contactEmail || undefined,
     }
-    try { await apiClient.post('/feedback', payload) } catch { /* swallow — best effort */ }
+    try { await apiClient.post('/feedback', payload) } catch { /* swallow - best effort */ }
     setSent(true)
     setTimeout(() => { setOpen(false); setSent(false); setReaction(''); setBuildPick(''); setBuildDetail(''); setWrongText(''); setContactEmail('') }, 1800)
   }
@@ -144,7 +169,7 @@ function FeedbackWidget() {
 
             {sent ? (
               <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--gw-green-t)', fontWeight: 600, fontSize: 14 }}>
-                Thanks — noted ✓
+                Thanks - noted ✓
               </div>
             ) : (
               <>
@@ -166,7 +191,7 @@ function FeedbackWidget() {
                         </button>
                       ))}
                     </div>
-                    <input type="email" placeholder="Email (optional — if you want a reply)" value={contactEmail} onChange={e => setContactEmail(e.target.value)}
+                    <input type="email" placeholder="Email (optional - if you want a reply)" value={contactEmail} onChange={e => setContactEmail(e.target.value)}
                       style={{ width: '100%', border: '1px solid var(--gw-border)', borderRadius: 6, padding: '10px 12px', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 10, outline: 'none' }} />
                   </>
                 )}
@@ -198,7 +223,7 @@ function FeedbackWidget() {
                   <>
                     <textarea placeholder="Tell us what happened" value={wrongText} onChange={e => setWrongText(e.target.value)}
                       style={{ width: '100%', border: '1px solid var(--gw-border)', borderRadius: 6, padding: '10px 12px', fontSize: 13, fontFamily: 'inherit', resize: 'vertical', minHeight: 100, boxSizing: 'border-box', marginBottom: 10, outline: 'none' }} />
-                    <input type="email" placeholder="Email (optional — if you want a reply)" value={contactEmail} onChange={e => setContactEmail(e.target.value)}
+                    <input type="email" placeholder="Email (optional - if you want a reply)" value={contactEmail} onChange={e => setContactEmail(e.target.value)}
                       style={{ width: '100%', border: '1px solid var(--gw-border)', borderRadius: 6, padding: '10px 12px', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 10, outline: 'none' }} />
                   </>
                 )}
@@ -478,7 +503,7 @@ export function AppSidebar() {
           </nav>
         )}
 
-        {/* Nav items — always visible in expanded sidebar */}
+        {/* Nav items - always visible in expanded sidebar */}
         {!collapsed && (
           <nav style={{ padding: '6px 8px', borderTop: '1px solid rgba(255,255,255,.07)', flexShrink: 0 }}>
             {NAV_ITEMS.filter(item => !item.adminOnly).map(item => {

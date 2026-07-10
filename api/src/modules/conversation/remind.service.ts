@@ -18,8 +18,8 @@ export class RemindService {
 
   /**
    * Send a nudge email to every participant on the ground who has NOT yet
-   * completed a check-in for the current session. Only the requesting user —
-   * who must themselves be a party to this ground — may trigger a reminder.
+   * completed a check-in for the current session. Only the requesting user -
+   * who must themselves be a party to this ground - may trigger a reminder.
    *
    * The check-in id is used as the lookup key because the front-end typically
    * knows the check-in id, not the ground id.
@@ -105,18 +105,18 @@ export class RemindService {
   }
 
   /**
-   * #71 — Scheduled nudges at Day 3, Day 7, and Day 14 after a check-in is
+   * #71 - Scheduled nudges at Day 3, Day 7, and Day 14 after a check-in is
    * opened with NOT_STARTED status. Runs daily at 8 AM. For each NOT_STARTED
    * check-in, calculates days elapsed since createdAt and sends the nudge if
    * the elapsed days exactly match one of the thresholds and the participant
    * has not been nudged in the past 24 hours.
    *
-   * #72 — Consecutive absence tracking: after sending a Day-14 nudge (third
+   * #72 - Consecutive absence tracking: after sending a Day-14 nudge (third
    * threshold), checks whether this participant has missed 3 or more consecutive
    * check-ins (NOT_STARTED sessions whose period has ended). If so, sends an
    * absence reminder naming the ground and the missed count.
    *
-   * #34 — If the other party on the same ground/session has already completed
+   * #34 - If the other party on the same ground/session has already completed
    * their check-in, includes "The other party has already submitted their
    * version. Your record is the only thing missing." in the nudge body.
    */
@@ -199,7 +199,7 @@ export class RemindService {
         continue;
       }
 
-      // #72 — On the Day-14 nudge (last threshold), check for 3 consecutive missed check-ins.
+      // #72 - On the Day-14 nudge (last threshold), check for 3 consecutive missed check-ins.
       if (daysElapsed === 14) {
         try {
           await this.checkAndSendConsecutiveAbsenceReminder(
@@ -216,7 +216,7 @@ export class RemindService {
   }
 
   /**
-   * #72 — Checks whether the given participant has 3 or more consecutive
+   * #72 - Checks whether the given participant has 3 or more consecutive
    * NOT_STARTED check-ins whose period has ended (i.e. they were never started
    * and there is a newer check-in for the same ground or the ground has moved on).
    * A check-in is treated as "missed" if it is still NOT_STARTED and was created
@@ -252,7 +252,7 @@ export class RemindService {
         consecutiveMissed++;
         prevSession = ci.sessionNumber;
       } else {
-        // Gap in sessions — streak broken.
+        // Gap in sessions - streak broken.
         break;
       }
     }

@@ -105,7 +105,7 @@ function sortKeys(keys: string[]): string[] {
 // ─── Date formatting ─────────────────────────────────────────────────────────
 
 function fmtDate(iso: string | null): string {
-  if (!iso) return '—'
+  if (!iso) return '-'
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
@@ -263,7 +263,7 @@ function VersionRow({
           )}
           {v.summary && (
             <span style={{ fontSize: 11, color: 'var(--gw-sub)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              — {v.summary}
+              - {v.summary}
             </span>
           )}
         </div>
@@ -303,7 +303,7 @@ function VersionRow({
 
       {expanded && (
         <div style={{ padding: '0 14px 14px' }}>
-          {/* Diff toggle — only show for non-active versions when there's an active to compare to */}
+          {/* Diff toggle - only show for non-active versions when there's an active to compare to */}
           {!v.isActive && activeContent && (
             <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
               <button
@@ -393,7 +393,7 @@ function DraftEditor({
       qc.invalidateQueries({ queryKey: ['prompts'] })
       qc.invalidateQueries({ queryKey: ['prompts', 'by-key', promptKey] })
       qc.invalidateQueries({ queryKey: ['prompts', 'draft', promptKey] })
-      toast.success('Draft published — live for new conversations.')
+      toast.success('Draft published - live for new conversations.')
       setConfirmPublish(false)
       onPublish()
     },
@@ -426,7 +426,7 @@ function DraftEditor({
     <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 6, padding: '18px 20px', marginBottom: 16 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: 14, fontWeight: 700, color: '#1A1916' }}>Draft — v{draft.version}</span>
+          <span style={{ fontSize: 14, fontWeight: 700, color: '#1A1916' }}>Draft - v{draft.version}</span>
           <span style={{ fontSize: 11, color: saveStatus === 'saved' ? '#1A7A4A' : saveStatus === 'saving' ? '#8A6C00' : '#991B1B' }}>
             {saveStatus === 'saved' ? '● Saved' : saveStatus === 'saving' ? '○ Saving…' : '○ Unsaved'}
           </span>
@@ -496,7 +496,7 @@ function DraftEditor({
                   </pre>
                 )}
                 <div style={{ fontSize: 10, color: '#8A6C00', fontWeight: 600, marginBottom: 2, paddingLeft: 2 }}>
-                  🔒 Protected — cannot be edited here.
+                  🔒 Protected - cannot be edited here.
                 </div>
                 <pre style={{ fontFamily: 'monospace', fontSize: 11, whiteSpace: 'pre-wrap', wordBreak: 'break-word', background: '#FFF8E7', border: '1px solid #F0C040', borderRadius: 4, padding: '8px 10px', margin: 0 }}>
                   {block.body}
@@ -578,7 +578,7 @@ function TestRunner({ version, promptKey }: { version: PromptVersion; promptKey:
       {/* Banner */}
       <div style={{ background: '#FDF3E3', borderBottom: '1px solid #F0C040', padding: '8px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <span style={{ fontSize: 12, fontWeight: 600, color: '#8A6C00' }}>
-          TEST MODE — {version.isDraft ? `Draft v${version.version}` : `v${version.version} (active)`} · {promptKey}
+          TEST MODE - {version.isDraft ? `Draft v${version.version}` : `v${version.version} (active)`} · {promptKey}
         </span>
         <span style={{ fontSize: 11, color: '#8A6C00' }}>Not a real conversation · No data written</span>
       </div>
@@ -864,7 +864,7 @@ export function PromptVersioningPage() {
                 <TestRunner version={testVersion} promptKey={selectedKey} />
               )}
 
-              {/* Version history — always shown below the active panel */}
+              {/* Version history - always shown below the active panel */}
               <div style={{ marginTop: activePanel === 'view' ? 0 : 20 }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: '#1A1916', marginBottom: 10 }}>Version history</div>
                 {historyVersions.length === 0 && (

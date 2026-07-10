@@ -41,7 +41,7 @@ export function MagicVerifyPage() {
 
   useEffect(() => {
     const token = params.get('token')
-    if (!token) { setError('Invalid link — no token found.'); return }
+    if (!token) { setError('Invalid link - no token found.'); return }
 
     authApi.verifyEmail(token)
       .then(async res => {
@@ -71,11 +71,11 @@ export function MagicVerifyPage() {
       .catch((err: any) => {
         const msg: string = err?.response?.data?.message ?? ''
         if (msg.toLowerCase().includes('expired')) {
-          setError('This link has expired. Links are valid for 24 hours — please request a fresh one.')
+          setError('This link has expired. Links are valid for 24 hours - please request a fresh one.')
         } else if (msg.toLowerCase().includes('used') || msg.toLowerCase().includes('already')) {
           setError('This link has already been used. Please request a new one to sign in again.')
         } else {
-          setError('This link is not valid. It may have been replaced by a newer one — use the most recent link from your inbox.')
+          setError('This link is not valid. It may have been replaced by a newer one - use the most recent link from your inbox.')
         }
       })
   }, [])
@@ -113,7 +113,7 @@ export function MagicVerifyPage() {
           <div style={{ background: 'white', border: '0.5px solid var(--gw-border)', borderRadius: 12, padding: '18px 20px', marginBottom: 16 }}>
             <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gw-sub)', marginBottom: 14 }}>What happens next</div>
             {[
-              { n: '1', title: 'Contributors get their invite', body: 'Anyone you added will receive an email with a private link. They check in independently — they never see your account.' },
+              { n: '1', title: 'Contributors get their invite', body: 'Anyone you added will receive an email with a private link. They check in independently - they never see your account.' },
               { n: '2', title: 'Their account comes in', body: 'Once they submit, Groundwork builds a picture across accounts. Nobody reads anyone else\'s words directly. The report shows where accounts agree and where they differ.' },
               { n: '3', title: 'You release the report', body: 'When you are ready, you release the report to both parties at the same time. Neither sees it before the other.' },
             ].map(s => (
@@ -143,7 +143,7 @@ export function MagicVerifyPage() {
         <div style={{ maxWidth: 380, width: '100%', textAlign: 'center' }}>
           <div style={{ background: '#FFF4F4', border: '1px solid #F5C6C6', borderRadius: 12, padding: '20px 22px', marginBottom: 20 }}>
             <div style={{ fontSize: 16, fontWeight: 700, color: '#8B1A1A', marginBottom: 6 }}>Your account is active, but the ground wasn't saved.</div>
-            <div style={{ fontSize: 13, color: '#7A3030', lineHeight: 1.6 }}>Something went wrong saving your session. Your account is ready — go to your grounds page and start again from there.</div>
+            <div style={{ fontSize: 13, color: '#7A3030', lineHeight: 1.6 }}>Something went wrong saving your session. Your account is ready - go to your grounds page and start again from there.</div>
           </div>
           <button className="gw-btn" onClick={() => navigate('/grounds', { replace: true })}>
             Go to grounds →

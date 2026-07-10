@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate, useParams, useLocation } from 'react-router-dom'
+import { useNavigate, useParams, useLocation, useSearchParams } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
 import { conversationApi } from '@/api/conversation'
 import { documentsApi } from '@/api/documents'
@@ -20,6 +20,9 @@ export function ChatPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const user = useAuthStore(s => s.user)
+
+  const [searchParams] = useSearchParams()
+  const isClarificationSession = searchParams.get('clarify') === 'true'
 
   const sessionNumber: number = (location.state as any)?.sessionNumber ?? 1
   const groundLabel: string   = (location.state as any)?.groundLabel ?? ''
@@ -144,7 +147,7 @@ export function ChatPage() {
       openedRef.current = true
       const jitter = Math.random() * 2000
       const t = setTimeout(() => openSession.mutate(), jitter)
-      return () => clearTimeout(t)
+      return () => { clearTimeout(t); openedRef.current = false }
     }
   }, [checkInId, opened])
 
@@ -213,6 +216,27 @@ export function ChatPage() {
         </div>
         <button className="gw-back" onClick={() => navigate('/grounds')}>← Grounds</button>
       </div>
+
+      {/* Clarification session banner */}
+      {isClarificationSession && (
+        <div style={{ background: '#EEF4FB', borderBottom: '1px solid #B5D4F4', padding: '10px 16px', fontSize: 12.5, color: '#0C447C', lineHeight: 1.55 }}>
+          <strong>Clarification session.</strong> Something in your report was inferred, not quoted directly. Tell us what was actually happening and we'll update the record.
+        </div>
+      )}
+
+      {/* Session open failure - shown at top of chat area so it's always visible */}
+      {openFailed && (
+        <div style={{ padding: '12px 16px', background: '#FDF3E3', borderBottom: '1px solid #E8A94A', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexShrink: 0 }}>
+          <span style={{ fontSize: 13, color: '#8A5C1A', lineHeight: 1.4 }}>Could not open your session. This is usually a temporary issue.</span>
+          <button
+            onClick={() => { setOpenFailed(false); openedRef.current = false; openSession.mutate() }}
+            disabled={openSession.isPending}
+            style={{ padding: '6px 14px', borderRadius: 6, background: '#8A5C1A', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0, opacity: openSession.isPending ? 0.6 : 1 }}
+          >
+            {openSession.isPending ? 'Opening…' : 'Try again'}
+          </button>
+        </div>
+      )}
 
       {/* Chat area */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
@@ -294,19 +318,6 @@ export function ChatPage() {
           ))}
         </div>
 
-        {/* Session open failure */}
-        {openFailed && (
-          <div style={{ padding: '10px 14px', background: '#FDF3E3', borderTop: '1px solid #E8A94A', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexShrink: 0 }}>
-            <span style={{ fontSize: 13, color: '#8A5C1A' }}>Could not open your session.</span>
-            <button
-              onClick={() => { setOpenFailed(false); openedRef.current = false; openSession.mutate() }}
-              disabled={openSession.isPending}
-              style={{ padding: '6px 14px', borderRadius: 6, background: '#8A5C1A', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0, opacity: openSession.isPending ? 0.6 : 1 }}
-            >
-              {openSession.isPending ? 'Opening…' : 'Try again'}
-            </button>
-          </div>
-        )}
 
         {/* Bottom bar */}
         <div style={{ borderTop: '1px solid var(--gw-border)', background: 'white', flexShrink: 0 }}>

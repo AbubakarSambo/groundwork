@@ -21,7 +21,7 @@ const SCENARIOS: ScenarioCard[] = [
   { scenario: 'NEW_COFOUNDER',    label: 'New partner',           desc: 'Put both sides\' understanding of the partnership on record before anything is agreed.',                  tag: 'Starting',     tagBg: '#E8F8F5', tagColor: '#085041' },
   { scenario: 'CONTRACT_RENEWAL', label: 'Contract renewal',      desc: 'Independent accounts of how things have gone. What has worked, what has not, and what the next term looks like.', tag: 'Renewal', tagBg: '#EEF4FB', tagColor: '#0C447C' },
   { scenario: 'PIP',              label: 'PIP',              desc: 'Both accounts on record. The concern, the support available, and what success looks like.',              tag: 'Accountability', tagBg: '#FCEBEB', tagColor: '#791F1F' },
-  { scenario: 'OKR_ALIGNMENT',    label: 'Goals & planning', desc: 'Check whether everyone is actually aligned on the goals and plan — not to set them.',                    tag: 'Planning',     tagBg: '#EEF4FB', tagColor: '#0C447C' },
+  { scenario: 'OKR_ALIGNMENT',    label: 'Goals & planning', desc: 'Check whether everyone is actually aligned on the goals and plan. Not to set them.',                    tag: 'Planning',     tagBg: '#EEF4FB', tagColor: '#0C447C' },
   { scenario: 'PULSE_CHECK',      label: 'Pulse check',      desc: 'A quick independent read from each person. What is moving, what is stuck, what has changed.',             tag: 'Recurring',    tagBg: '#E8F8F5', tagColor: '#085041' },
   { scenario: 'DRIFT',            label: 'New direction',    desc: 'A strategy shift or pivot. Each person says what they understood before the group discussion.',            tag: 'Alignment',    tagBg: '#FDF3E3', tagColor: '#8A5C1A' },
   { scenario: 'REALIGN_TEAM',     label: 'Other',            desc: 'Describe the situation and Groundwork will set up the right ground for it.',                              tag: 'Other',        tagBg: '#F5F3EF', tagColor: '#6B6560' },
@@ -121,7 +121,6 @@ export function CreateGroundPage() {
   // Billing step state
   const [billingChecked, setBillingChecked] = useState(false)
   const [billingFree, setBillingFree] = useState(false)
-  const [billingFreeReason, setBillingFreeReason] = useState<string | null>(null)
   const [showCodeInput, setShowCodeInput] = useState(false)
   const [codeInput, setCodeInput] = useState('')
   const [codeApplied, setCodeApplied] = useState(false)
@@ -143,9 +142,8 @@ export function CreateGroundPage() {
       billingApi.checkCanCreateGround().then(res => {
         setBillingChecked(true)
         setBillingLoading(false)
-        if (res.freeReason === 'FIRST_GROUND') {
+        if (res.allowed) {
           setBillingFree(true)
-          setBillingFreeReason('FIRST_GROUND')
         } else {
           setBillingFree(false)
         }
@@ -177,16 +175,6 @@ export function CreateGroundPage() {
     }
   }
 
-  async function startStripeCheckout() {
-    try {
-      // We use a placeholder groundId sentinel — the backend will create a pending checkout
-      const res = await billingApi.purchaseSession('__new__')
-      if (res.checkoutUrl) window.location.href = res.checkoutUrl
-    } catch {
-      toast.error('Could not start checkout. Try again.')
-    }
-  }
-
   const create = useMutation({
     mutationFn: async () => {
       const ground = await groundsApi.create({
@@ -199,12 +187,19 @@ export function CreateGroundPage() {
         brief: brief.trim() || undefined,
         ...(appliedAccessCode ? { accessCode: appliedAccessCode } : {}),
       } as Parameters<typeof groundsApi.create>[0] & { accessCode?: string })
-      await Promise.all(participants.map(p =>
+      // Use allSettled so a failed invite email never blocks navigation to the
+      // newly-created ground. Failed invites are surfaced as warnings after redirect.
+      const results = await Promise.allSettled(participants.map(p =>
         groundsApi.addParticipant(ground.id, { email: p.email, roleAsDescribed: p.role || undefined, note: p.note || undefined })
       ))
-      return ground
+      const failed = results.filter(r => r.status === 'rejected').length
+      return { ground, failedInvites: failed }
     },
-    onSuccess: g => { toast.success('Ground opened'); navigate(`/grounds/${g.id}`) },
+    onSuccess: ({ ground, failedInvites }) => {
+      toast.success('Ground opened')
+      if (failedInvites > 0) toast.warning(`${failedInvites} invite${failedInvites > 1 ? 's' : ''} could not be sent. You can retry from the ground page.`)
+      navigate(`/grounds/${ground.id}`)
+    },
     onError: () => toast.error('Could not open ground. Try again.'),
   })
 
@@ -302,83 +297,78 @@ export function CreateGroundPage() {
               </div>
             )}
 
-            {!billingLoading && billingChecked && billingFreeReason === 'FIRST_GROUND' && (
+            {!billingLoading && billingChecked && billingFree && (
               <div>
                 <div style={{ background: 'var(--gw-green-bg, #E8F8F5)', border: '1px solid var(--gw-green-b, #A7D9CC)', borderRadius: 10, padding: '20px 18px', marginBottom: 20 }}>
-                  <div style={{ fontSize: 22, marginBottom: 8 }}>🎉</div>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: '#085041', marginBottom: 6 }}>Your first Ground is free — no payment needed</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: '#085041', marginBottom: 6 }}>No payment needed</div>
                   <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-                    No card required. Open your first ground and see how it works.
+                    Your plan includes unlimited Grounds, sessions, and reports.
                   </div>
                 </div>
                 <button className="gw-btn" onClick={() => setStep(3)} style={{ margin: '12px 0 0' }}>Continue →</button>
               </div>
             )}
 
-            {!billingLoading && billingChecked && !billingFree && billingFreeReason !== 'FIRST_GROUND' && (
+            {!billingLoading && billingChecked && !billingFree && (
               <div>
-                <div className="gw-sub-t" style={{ marginBottom: 20 }}>
-                  Sessions are $5 each. Your first session on this Ground is included. You can apply an access code if you have one.
+                <div style={{ background: 'var(--gw-card)', border: '1.5px solid var(--gw-border)', borderRadius: 10, padding: '20px 18px', marginBottom: 20 }}>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 6 }}>Subscribe to create more Grounds</div>
+                  <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 16 }}>
+                    Your free plan includes 10 Grounds. Subscribe for unlimited Grounds, sessions, and reports.
+                  </div>
+                  <a
+                    href="/pricing"
+                    style={{ display: 'inline-block', fontSize: 13, fontWeight: 600, background: 'var(--gw-navy)', color: 'white', border: 'none', borderRadius: 8, padding: '10px 20px', textDecoration: 'none' }}
+                  >
+                    View plans →
+                  </a>
                 </div>
 
-                {codeApplied ? (
-                  <div style={{ background: 'var(--gw-green-bg, #E8F8F5)', border: '1px solid var(--gw-green-b, #A7D9CC)', borderRadius: 10, padding: '16px 18px', marginBottom: 20 }}>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: '#085041', marginBottom: 4 }}>Code applied — this Ground is free</div>
-                    <div style={{ fontSize: 12, color: 'var(--gw-sub)' }}>Your access code has been validated and will be used when the Ground is created.</div>
-                  </div>
-                ) : (
-                  <>
+                {!showCodeInput && (
+                  <div style={{ textAlign: 'center' }}>
                     <button
-                      className="gw-btn"
-                      onClick={startStripeCheckout}
-                      style={{ margin: '0 0 12px', background: 'var(--gw-navy)', color: 'white' }}
+                      onClick={() => setShowCodeInput(true)}
+                      style={{ fontSize: 12, color: 'var(--gw-sub)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit' }}
                     >
-                      Pay $5 to create this Ground
+                      I have an access code
                     </button>
+                  </div>
+                )}
 
-                    {!showCodeInput && (
-                      <div style={{ textAlign: 'center' }}>
-                        <button
-                          onClick={() => setShowCodeInput(true)}
-                          style={{ fontSize: 12, color: 'var(--gw-sub)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit' }}
-                        >
-                          I have an access code
-                        </button>
-                      </div>
+                {showCodeInput && (
+                  <div style={{ background: 'var(--gw-bg)', border: '0.5px solid var(--gw-border)', borderRadius: 8, padding: 14, marginTop: 8 }}>
+                    <label className="gw-label">Access code</label>
+                    <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                      <input
+                        className="gw-input"
+                        value={codeInput}
+                        onChange={e => { setCodeInput(e.target.value); setCodeError(null) }}
+                        placeholder="Enter your code"
+                        style={{ flex: 1 }}
+                        onKeyDown={e => e.key === 'Enter' && applyCode()}
+                      />
+                      <button
+                        onClick={applyCode}
+                        disabled={codeChecking || !codeInput.trim()}
+                        style={{ padding: '0 16px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: codeChecking || !codeInput.trim() ? 0.6 : 1 }}
+                      >
+                        {codeChecking ? 'Checking…' : 'Apply code'}
+                      </button>
+                    </div>
+                    {codeError && (
+                      <div style={{ fontSize: 12, color: '#791F1F', marginTop: 8 }}>{codeError}</div>
                     )}
-
-                    {showCodeInput && (
-                      <div style={{ background: 'var(--gw-bg)', border: '0.5px solid var(--gw-border)', borderRadius: 8, padding: 14, marginTop: 8 }}>
-                        <label className="gw-label">Access code (optional)</label>
-                        <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
-                          <input
-                            className="gw-input"
-                            value={codeInput}
-                            onChange={e => { setCodeInput(e.target.value); setCodeError(null) }}
-                            placeholder="Enter your code"
-                            style={{ flex: 1 }}
-                            onKeyDown={e => e.key === 'Enter' && applyCode()}
-                          />
-                          <button
-                            onClick={applyCode}
-                            disabled={codeChecking || !codeInput.trim()}
-                            style={{ padding: '0 16px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: codeChecking || !codeInput.trim() ? 0.6 : 1 }}
-                          >
-                            {codeChecking ? 'Checking…' : 'Apply code'}
-                          </button>
-                        </div>
-                        {codeError && (
-                          <div style={{ fontSize: 12, color: '#791F1F', marginTop: 8 }}>{codeError}</div>
-                        )}
-                      </div>
-                    )}
-                  </>
+                  </div>
                 )}
 
                 {codeApplied && (
-                  <button className="gw-btn" onClick={() => setStep(3)} style={{ margin: '16px 0 0' }}>
-                    Continue
-                  </button>
+                  <div style={{ marginTop: 16 }}>
+                    <div style={{ background: 'var(--gw-green-bg, #E8F8F5)', border: '1px solid var(--gw-green-b, #A7D9CC)', borderRadius: 10, padding: '16px 18px', marginBottom: 12 }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: '#085041', marginBottom: 4 }}>Code applied</div>
+                      <div style={{ fontSize: 12, color: 'var(--gw-sub)' }}>Your access code has been validated and will be used when the Ground is created.</div>
+                    </div>
+                    <button className="gw-btn" onClick={() => setStep(3)}>Continue →</button>
+                  </div>
                 )}
               </div>
             )}
@@ -502,7 +492,7 @@ export function CreateGroundPage() {
 
             <button className="gw-btn" disabled={participants.length === 0} onClick={() => setStep(5)} style={{ margin: 0 }}>Continue</button>
             <div style={{ fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 10, cursor: 'pointer' }} onClick={() => setStep(5)}>
-              Skip — add participants after
+              Skip - add participants after
             </div>
             <div style={{ fontSize: 11, color: 'var(--gw-muted)', textAlign: 'center', marginTop: 4, lineHeight: 1.5 }}>
               The shared report cannot generate until at least one other person has checked in.
@@ -514,7 +504,7 @@ export function CreateGroundPage() {
         {step === 5 && (
           <div>
             <div className="gw-ttl">What does a successful outcome look like?</div>
-            <div className="gw-sub-t">Everyone involved sees this before the first session. You are not locked in — the state can be updated if the ground reveals something different.</div>
+            <div className="gw-sub-t">Everyone involved sees this before the first session. You are not locked in - the state can be updated if the ground reveals something different.</div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
               {RESOLUTION_GROUPS.map(group => (

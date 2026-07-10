@@ -20,6 +20,7 @@ import { CreateGroundPage } from '@/pages/grounds/CreateGroundPage'
 import { GroundAdminPage } from '@/pages/grounds/GroundAdminPage'
 import { GroundParticipantPage } from '@/pages/grounds/GroundParticipantPage'
 import { BillingPage } from '@/pages/billing/BillingPage'
+import { PricingPage } from '@/pages/billing/PricingPage'
 import { PaymentPage } from '@/pages/billing/PaymentPage'
 import { BillingCallbackPage } from '@/pages/billing/BillingCallbackPage'
 import { ProfilePage } from '@/pages/profile/ProfilePage'
@@ -30,6 +31,8 @@ import { PromptTestPage } from '@/pages/prompts/PromptTestPage'
 import { AdminPage } from '@/pages/admin/AdminPage'
 import { AdminDashboardPage } from '@/pages/admin/AdminDashboardPage'
 import { DemoConversationPage } from '@/pages/demo/DemoConversationPage'
+import { SettingsPage } from '@/pages/settings/SettingsPage'
+import { OrgMembersPage } from '@/pages/org/OrgMembersPage'
 import { HelpModal, HelpButton } from '@/components/gw/HelpModal'
 import { AppShell } from '@/components/gw/AppShell'
 import type { JSX } from 'react'
@@ -90,7 +93,7 @@ export default function App() {
             <Route path="/setup" element={<SetupPage />} />
             <Route path="/welcome" element={<WelcomePage />} />
 
-            {/* Main app — require auth */}
+            {/* Main app - require auth */}
             <Route path="/grounds" element={<RequireAuth><GroundsListPage /></RequireAuth>} />
             <Route path="/grounds/new" element={<RequireAuth><CreateGroundPage /></RequireAuth>} />
             <Route path="/grounds/:id" element={<RequireAuth><GroundAdminPage /></RequireAuth>} />
@@ -99,11 +102,14 @@ export default function App() {
             <Route path="/checkin/:checkInId" element={<RequireAuth><ChatPage /></RequireAuth>} />
             <Route path="/feed" element={<RequireAuth><AlignmentFeedPage /></RequireAuth>} />
             <Route path="/billing" element={<RequireAuth><BillingPage /></RequireAuth>} />
+            <Route path="/pricing" element={<PricingPage />} />
             <Route path="/billing/checkout" element={<RequireAuth><PaymentPage /></RequireAuth>} />
             <Route path="/billing/callback" element={<RequireAuth><BillingCallbackPage /></RequireAuth>} />
             <Route path="/profile/:id?" element={<ProfilePage />} />
             <Route path="/prompts" element={<RequireAuth><PromptVersioningPage /></RequireAuth>} />
             <Route path="/prompts/test" element={<RequireAuth><PromptTestPage /></RequireAuth>} />
+            <Route path="/settings" element={<RequireAuth><SettingsPage /></RequireAuth>} />
+            <Route path="/org/members" element={<RequireAuth><OrgMembersPage /></RequireAuth>} />
             <Route path="/admin" element={<RequireAuth><AdminPage /></RequireAuth>} />
             <Route path="/admin/dashboard" element={<RequireAuth><AdminDashboardPage /></RequireAuth>} />
 

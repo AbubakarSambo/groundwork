@@ -192,7 +192,7 @@ export function ParticipantOnboardingChat() {
     if (taRef.current) taRef.current.style.height = '38px'
 
     if (step === 3) {
-      // Free text goal — combine with any multi-select choices
+      // Free text goal - combine with any multi-select choices
       const goals = selectedGoals.length > 0 ? [...selectedGoals, val] : [val]
       const combined = goals.join(', ')
       purposeRef.current = combined
@@ -635,7 +635,7 @@ export function ParticipantOnboardingChat() {
 
         {!done && (
           <>
-            {/* Quick action chips — check-in phase only */}
+            {/* Quick action chips - check-in phase only */}
             {phase === 'checkin' && !loading && (
               <div className="gw-chat-actions">
                 {QUICK_ACTIONS.map(a => (

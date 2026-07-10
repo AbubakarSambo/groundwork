@@ -6,7 +6,7 @@ import { GroundStatus, GroundScenario } from '@prisma/client';
  * parties' confirmations must be cleared so they cannot silently confirm a
  * proposal they never saw.
  */
-describe('ResolutionService.propose — GW-16 confirmation reset on re-propose', () => {
+describe('ResolutionService.propose - GW-16 confirmation reset on re-propose', () => {
   const GROUND_ID = 'g1';
   const PARTICIPANT_ID = 'p1';
   const OTHER_ID = 'p2';

@@ -7,7 +7,7 @@ export class AddParticipantDto {
   @IsNotEmpty()
   email: string;
 
-  @ApiPropertyOptional({ example: 'Head of Engineering', description: 'The role as the initiator describes it (shown to the participant — never hidden)' })
+  @ApiPropertyOptional({ example: 'Head of Engineering', description: 'The role as the initiator describes it (shown to the participant - never hidden)' })
   @IsOptional()
   @IsString()
   @MaxLength(300)

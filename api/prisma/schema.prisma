@@ -111,9 +111,20 @@ enum Cadence {
 }
 
 enum BillingEventType {
-  CARE_FEE       // $25/month/account (platform fee)
-  PARTICIPANT_FEE // $25/unique participant/month across active grounds
-  SESSION_FEE    // $5 per additional session
+  CARE_FEE         // $25/month/account (platform fee)
+  PARTICIPANT_FEE  // $25/unique participant/month across active grounds
+  SESSION_FEE      // $5 per additional session
+  SUBSCRIPTION_FEE // org subscription (Starter/SmallTeam/Growth/Business/Enterprise)
+  FREE_EXTENSION   // one-time free session extension per org
+}
+
+enum SubscriptionPlan {
+  STARTER     // up to 5 people, $25/mo
+  SMALL_TEAM  // up to 20 people, $50/mo
+  GROWTH      // up to 100 people, $100/mo
+  BUSINESS    // up to 250 people, $200/mo
+  SCALE       // up to 1,000 people, $400/mo
+  ENTERPRISE  // unlimited, contact sales
 }
 
 enum EvidenceType {
@@ -153,9 +164,16 @@ model Organization {
   careFeeSubscriptionId  String?       @map("care_fee_subscription_id")
   defaultPaymentMethodId String?       @map("default_payment_method_id")
   gracePeriodUntil       DateTime?     @map("grace_period_until")
-  freeSessionsUsed  Int  @default(0) @map("free_sessions_used")
-  firstGroundUsed   Boolean @default(false) @map("first_ground_used")
-  allowCodeCreation Boolean @default(false) @map("allow_code_creation")
+  freeSessionsUsed   Int     @default(0)     @map("free_sessions_used")
+  firstGroundUsed    Boolean @default(false) @map("first_ground_used")
+  freeExtensionUsed  Boolean @default(false) @map("free_extension_used")
+  allowCodeCreation  Boolean @default(false) @map("allow_code_creation")
+
+  // Org subscription
+  subscriptionPlan      SubscriptionPlan? @map("subscription_plan")
+  subscriptionStatus    String?           @map("subscription_status") // active | paused | cancelled
+  subscriptionStripeId  String?           @map("subscription_stripe_id")
+  subscriptionPeriodEnd DateTime?         @map("subscription_period_end")
 
   companyStage CompanyStage? @map("company_stage")
 
@@ -182,8 +200,9 @@ model User {
   role            UserRole @default(MEMBER)
   isActive        Boolean  @default(true) @map("is_active")
   isEmailVerified Boolean  @default(false) @map("is_email_verified")
-  isPlatformAdmin Boolean  @default(false) @map("is_platform_admin")
-  googleId        String?  @unique @map("google_id")
+  isPlatformAdmin      Boolean  @default(false) @map("is_platform_admin")
+  googleId             String?  @unique @map("google_id")
+  emailNotifications   Boolean  @default(true) @map("email_notifications")
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
@@ -368,6 +387,8 @@ model CheckIn {
   specificityLevel     String?  @map("specificity_level")
   specificityDimensions Json?   @map("specificity_dimensions")
   recallConfidence     String?  @map("recall_confidence")
+  isClarification      Boolean  @default(false) @map("is_clarification") // true when session is correcting a flagged inference
+  clarificationTarget  String?  @map("clarification_target") // inference id from report.inferences being corrected
   createdAt     DateTime      @default(now()) @map("created_at")
 
   ground        Ground            @relation(fields: [groundId], references: [id], onDelete: Cascade)
@@ -425,6 +446,7 @@ model Report {
   divergences     Json // the gap — never framed as one side being right
   centralQuestion String    @db.Text @map("central_question")
   engagement      Json? // engagement-quality + confidence header: per-party session counts, % document-backed, coverage band (B4)
+  inferences      Json?     // array of { id, text, participantId, sessionNumber } — items the AI inferred rather than directly quoted
   promptVersionId String?   @map("prompt_version_id")
   releasedAt      DateTime? @map("released_at") // set once, atomically, for both
   createdAt       DateTime  @default(now()) @map("created_at")

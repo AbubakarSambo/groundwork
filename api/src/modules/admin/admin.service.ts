@@ -171,7 +171,7 @@ export class AdminService {
   }
 
   // ---------------------------------------------------------------------------
-  // Disable code (destructive — OTP required)
+  // Disable code (destructive - OTP required)
   // ---------------------------------------------------------------------------
 
   async disableCode(codeId: string) {
@@ -185,7 +185,7 @@ export class AdminService {
   }
 
   // ---------------------------------------------------------------------------
-  // Add platform admin (destructive — OTP required)
+  // Add platform admin (destructive - OTP required)
   // ---------------------------------------------------------------------------
 
   async addPlatformAdmin(targetEmail: string) {
@@ -200,7 +200,7 @@ export class AdminService {
   }
 
   // ---------------------------------------------------------------------------
-  // OTP — stored as JSON in AdminProfile.signals to avoid schema migrations.
+  // OTP - stored as JSON in AdminProfile.signals to avoid schema migrations.
   // The field is typed as Json (any[]) in the model; we repurpose it here to
   // hold a single-element object: { adminOtp: { hash, expiresAt, used } }.
   // ---------------------------------------------------------------------------
@@ -215,13 +215,13 @@ export class AdminService {
 
     const otpPayload = { hash, expiresAt, used: false };
 
-    // Upsert AdminProfile — store OTP in a dedicated key alongside existing signals.
+    // Upsert AdminProfile - store OTP in a dedicated key alongside existing signals.
     await this.prisma.adminProfile.upsert({
       where: { userId },
       create: {
         userId,
         signals: [],
-        // @ts-ignore — we extend the JSON shape here
+        // @ts-ignore - we extend the JSON shape here
         adminOtp: otpPayload,
       } as any,
       update: {

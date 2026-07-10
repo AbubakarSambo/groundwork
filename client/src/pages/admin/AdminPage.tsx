@@ -277,7 +277,7 @@ function UsageTab({ data }: { data: UsageStatsData }) {
       </section>
 
       <section>
-        <div style={SL}>Check-ins — last 14 days</div>
+        <div style={SL}>Check-ins - last 14 days</div>
         <div style={{ ...C, paddingBottom: 14 }}>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 80 }}>
             {data.checkInsLast14Days.map(({ date, count }) => (
@@ -371,7 +371,7 @@ function ErrorsTab() {
         <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 4 }}>No error sink connected</div>
         <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
           Connect Sentry or add a <code style={{ fontSize: 11, background: 'var(--gw-bg)', padding: '1px 5px', borderRadius: 3 }}>POST /ops/errors</code> endpoint to surface recent exceptions here.
-          The API already logs to console via NestJS Logger — redirect that output to a sink and expose it through the prompts controller.
+          The API already logs to console via NestJS Logger - redirect that output to a sink and expose it through the prompts controller.
         </div>
       </div>
       <div style={{ ...C }}>
@@ -379,9 +379,9 @@ function ErrorsTab() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
           {[
             { label: 'Sentry DSN', detail: 'Set SENTRY_DSN in api/.env and import @sentry/nestjs in main.ts' },
-            { label: 'Error log endpoint', detail: 'Add GET /prompts/errors to PromptsController — query a database error_logs table' },
+            { label: 'Error log endpoint', detail: 'Add GET /prompts/errors to PromptsController - query a database error_logs table' },
             { label: 'AI failure rate', detail: 'Log AnthropicService 4xx/5xx calls to the usage_events table with type ERROR' },
-            { label: 'Webhook failures', detail: 'Log Stripe webhook errors to a separate stripe_errors table — query it here' },
+            { label: 'Webhook failures', detail: 'Log Stripe webhook errors to a separate stripe_errors table - query it here' },
           ].map(item => (
             <div key={item.label} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
               <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-navy)', minWidth: 160, flexShrink: 0 }}>{item.label}</span>
@@ -400,7 +400,7 @@ function PromptsTab({ navigate }: { navigate: (path: string) => void }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65 }}>
-        Conversation prompts are versioned and stored in the database. Changes are logged with a summary and activation is deliberate — deactivating a version does not delete it. Outcome data is tracked per version so you can compare fairness rates across prompt iterations.
+        Conversation prompts are versioned and stored in the database. Changes are logged with a summary and activation is deliberate - deactivating a version does not delete it. Outcome data is tracked per version so you can compare fairness rates across prompt iterations.
       </div>
       <button
         onClick={() => navigate('/prompts')}

@@ -38,7 +38,7 @@ export class GroundsController {
   @Get()
   @ApiOperation({ summary: 'List grounds in the organization, including grounds as a participant' })
   async list(@CurrentUser() user: CurrentUserData) {
-    return this.grounds.list(user.organizationId, user.id);
+    return this.grounds.list(user.organizationId, user.id, user.email, user.role);
   }
 
   @Get(':id')
@@ -54,7 +54,7 @@ export class GroundsController {
   }
 
   @Post(':id/participants')
-  @ApiOperation({ summary: 'Add the other party (sends an invite — never silent)' })
+  @ApiOperation({ summary: 'Add the other party (sends an invite - never silent)' })
   async addParticipant(@Param('id') id: string, @CurrentUser() user: CurrentUserData, @Body() dto: AddParticipantDto) {
     return this.grounds.addParticipant(id, user.organizationId, user.id, dto);
   }
@@ -99,7 +99,7 @@ export class GroundsController {
   }
 
   @Get(':id/my-record')
-  @ApiOperation({ summary: "Return the requesting contributor's full private longitudinal record (specificity, confidence, patterns — gated by billing)" })
+  @ApiOperation({ summary: "Return the requesting contributor's full private longitudinal record (specificity, confidence, patterns - gated by billing)" })
   async myRecord(@Param('id') id: string, @CurrentUser('id') userId: string) {
     return this.grounds.getMyRecord(id, userId);
   }

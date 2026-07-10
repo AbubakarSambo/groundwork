@@ -3,7 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { UsageEventType } from '@prisma/client';
 
 /**
- * Append-only usage event log. Every call creates a new row — nothing is ever
+ * Append-only usage event log. Every call creates a new row - nothing is ever
  * updated or deleted. This is the authoritative ops feed and billing audit trail.
  *
  * Emit as a best-effort side-effect from service methods; a logging failure

@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { groundsApi } from '@/api/grounds'
 import { reportsApi } from '@/api/reports'
 import { useAuthStore } from '@/stores/auth'
+import { InferenceReviewPanel } from '@/components/InferenceReviewPanel'
 
 const LADDER_STEPS = ['Unresolved', 'Mixed', 'Emerging', 'Clear', 'Aligned'] as const
 
@@ -254,7 +255,7 @@ export function ReportPage() {
         <div style={{ maxWidth: 1040, margin: '0 auto', padding: '0 20px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)' }}>
             {[
-              { h: 'What Groundwork saw', p: 'Every report opens with the pattern across the accounts — the thing no single person could see on their own.' },
+              { h: 'What Groundwork saw', p: 'Every report opens with the pattern across the accounts - the thing no single person could see on their own.' },
               { h: 'A move for every area', p: 'Each area carries an observation, why it matters, and a recommended move. The status is auditable, not a grade.' },
               { h: 'Honest closes', p: 'Decisions rarely finish clean. Each report names what is aligned, what is open, what to revisit, and what risk remains.' },
             ].map((cell, i) => (
@@ -397,6 +398,10 @@ export function ReportPage() {
             </div>
           )}
         </div>
+
+        {report.inferences && report.inferences.length > 0 && (
+          <InferenceReviewPanel groundId={id!} inferences={report.inferences} />
+        )}
 
         <div style={{ marginTop: 40, paddingTop: 24, borderTop: '1px solid #E2E0DB', fontSize: 12, color: '#9B9590', lineHeight: 1.6 }}>
           This report is permanent. Both parties keep it, and it is portable to each of your profiles.

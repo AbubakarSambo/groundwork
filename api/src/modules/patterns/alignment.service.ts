@@ -4,9 +4,9 @@ import { PatternsService } from './patterns.service';
 import { CheckInStatus, GroundStatus } from '@prisma/client';
 
 /**
- * The alignment feed — the admin-only dashboard. It shows the STATE of every
+ * The alignment feed - the admin-only dashboard. It shows the STATE of every
  * ground: who has checked in, which grounds are open or closed, whether any
- * patterns have surfaced — and NEVER what anyone said. Completeness and status,
+ * patterns have surfaced - and NEVER what anyone said. Completeness and status,
  * not content (Part 5).
  */
 @Injectable()
@@ -44,7 +44,7 @@ export class AlignmentService {
           else awaiting.push(p.email);
         }
 
-        // Surfaced patterns — plain observations only, never who said what.
+        // Surfaced patterns - plain observations only, never who said what.
         const patternSignals = await this.patterns.surfacedForGround(ground.id);
 
         return {
@@ -59,7 +59,7 @@ export class AlignmentService {
             awaiting, // who has not
           },
           stalled: this.isStalled(ground),
-          patternSignals, // [{ observation, lastSeenAt }] — never content, never names
+          patternSignals, // [{ observation, lastSeenAt }] - never content, never names
         };
       }),
     );
@@ -82,7 +82,7 @@ export class AlignmentService {
     if (surfacedPatterns > 0)
       summary += ` ${surfacedPatterns} pattern${surfacedPatterns !== 1 ? 's have' : ' has'} surfaced that may be worth naming in your next conversation.`;
     if (stalledGrounds > 0)
-      summary += ` ${stalledGrounds} ground${stalledGrounds !== 1 ? 's have' : ' has'} stalled — timeline elapsed without resolution.`;
+      summary += ` ${stalledGrounds} ground${stalledGrounds !== 1 ? 's have' : ' has'} stalled - timeline elapsed without resolution.`;
 
     return { summary, activeGrounds, surfacedPatterns };
   }

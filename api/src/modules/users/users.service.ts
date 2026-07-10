@@ -114,6 +114,17 @@ export class UsersService {
     return { message: 'Invite resent' };
   }
 
+  async leaveOrg(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { isActive: false },
+    });
+    return { left: true as const };
+  }
+
   async remove(id: string, organizationId: string, actingUserId: string) {
     if (id === actingUserId) throw new BadRequestException('You cannot deactivate yourself');
     const user = await this.prisma.user.findFirst({ where: { id, organizationId, deletedAt: null } });
@@ -132,7 +143,7 @@ export class UsersService {
   }
 
   /**
-   * GW-03 — GDPR Article 15 data export. Returns all personal data held for
+   * GW-03 - GDPR Article 15 data export. Returns all personal data held for
    * the requesting user: profile, record entries, check-in summaries, and
    * grounds they are a party to. Never includes other parties' data.
    */
@@ -157,7 +168,7 @@ export class UsersService {
       orderBy: { createdAt: 'asc' },
     });
 
-    // All check-in summaries — include ground label via the ground relation.
+    // All check-in summaries - include ground label via the ground relation.
     const checkIns = await this.prisma.checkIn.findMany({
       where: { participantId: { in: participantIds } },
       select: {
@@ -195,10 +206,10 @@ export class UsersService {
   }
 
   /**
-   * GW-03 — GDPR Article 17 erasure. Anonymises all identifying fields on the
+   * GW-03 - GDPR Article 17 erasure. Anonymises all identifying fields on the
    * user account and participant links. Conversation content contributed to
    * grounds is retained under the other party's legitimate interest in the
-   * shared record (Art. 17(3)(c)) — it does not contain the user's email or
+   * shared record (Art. 17(3)(c)) - it does not contain the user's email or
    * name post-erasure.
    */
   async eraseAccount(userId: string) {
@@ -237,7 +248,7 @@ export class UsersService {
   }
 
   /**
-   * Privacy diagnostic endpoint — ADMIN only.
+   * Privacy diagnostic endpoint - ADMIN only.
    * Returns a summary of what data is held for a user and confirms the
    * product promise: records are always exportable and users are soft-deletable.
    */

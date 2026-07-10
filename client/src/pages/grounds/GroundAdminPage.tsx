@@ -11,7 +11,8 @@ import { participantsApi } from '@/api/participants'
 import type { ParticipantRequest } from '@/api/participantRequests'
 import { toast } from 'sonner'
 import { CodeShareCard } from '@/components/CodeShareCard'
-import { billingApi } from '@/api/billing'
+import { PostSessionPanel } from '@/components/PostSessionPanel'
+import { billingApi, PLAN_MEMBER_LIMITS, type SubscriptionPlan } from '@/api/billing'
 
 const SCENARIO_LABELS: Record<string, string> = {
   NEW_HIRE: 'New hire',
@@ -60,6 +61,7 @@ export function GroundAdminPage() {
   const [shareCodeId, setShareCodeId] = useState<string | null>(null)
   const [lastInvitedEmail, setLastInvitedEmail] = useState<string | null>(null)
   const [noteSaved, setNoteSaved] = useState(false)
+  const [postSessionDismissed, setPostSessionDismissed] = useState(false)
   const [editingRoleId, setEditingRoleId] = useState<string | null>(null)
   const [editingRoleValue, setEditingRoleValue] = useState('')
 
@@ -236,23 +238,29 @@ export function GroundAdminPage() {
         {/* OVERVIEW */}
         {tab === 'overview' && (
           <div>
-            {/* Fix 10: Report ready CTA */}
-            {ground.status === 'REPORT_READY' && (
-              <div style={{ background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 10, padding: '14px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: '#085041', marginBottom: 3 }}>Your session is complete. Want to keep this ground going?</div>
-                  <div style={{ fontSize: 12, color: '#3A7A60', lineHeight: 1.5 }}>Add another session any time. The report updates each time your team checks in.</div>
-                </div>
-                <button onClick={() => navigate('/billing/payment', { state: { groundId: ground.id, groundName: ground.label } })} style={{ flexShrink: 0, padding: '8px 14px', borderRadius: 7, background: '#085041', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
-                  Add a session ($5)
-                </button>
+            {/* Post-session decision panel: shown when session is complete, no balance, not subscribed */}
+            {ground.status === 'REPORT_READY' && !postSessionDismissed &&
+              !(ground.org?.subscriptionPlan && ground.org?.subscriptionStatus === 'active') &&
+              (ground.sessionsBalance ?? 0) === 0 && (
+                <PostSessionPanel
+                  groundId={ground.id}
+                  freeExtensionUsed={ground.org?.freeExtensionUsed ?? false}
+                  onDismiss={() => setPostSessionDismissed(true)}
+                />
+              )
+            }
+
+            {/* Subscribed: unlimited sessions badge */}
+            {ground.org?.subscriptionPlan && ground.org?.subscriptionStatus === 'active' && (
+              <div style={{ background: '#F0FAF5', border: '1px solid #B6E8D4', borderRadius: 8, padding: '8px 14px', marginBottom: 12, fontSize: 12, color: '#085041', fontWeight: 600 }}>
+                Subscribed. Unlimited sessions active for your organization.
               </div>
             )}
 
             {/* Fix 8: Cadence miss recovery */}
             {(ground.overdue ?? 0) > 0 && (
               <div style={{ fontSize: 12, color: '#0C447C', background: '#EEF4FB', border: '1px solid #C5D9EF', borderRadius: 8, padding: '10px 12px', marginBottom: 14, lineHeight: 1.5 }}>
-                <strong>{ground.overdue} {ground.overdue === 1 ? 'participant is' : 'participants are'} overdue.</strong> A missed session is not a lost session. Use Remind — the most common reason is the email went to spam. Their next check-in picks up where they left off.
+                <strong>{ground.overdue} {ground.overdue === 1 ? 'participant is' : 'participants are'} overdue.</strong> A missed session is not a lost session. Use Remind - the most common reason is the email went to spam. Their next check-in picks up where they left off.
               </div>
             )}
 
@@ -373,7 +381,7 @@ export function GroundAdminPage() {
                   {pending.length === 1
                     ? `1 participant has not yet checked in. The shared report generates once all accounts are in.`
                     : `${pending.length} participants have not yet checked in. The shared report generates once all accounts are in.`}
-                  <span style={{ marginLeft: 6, fontWeight: 600 }}>Use Remind if they have not received the email — it may have gone to spam.</span>
+                  <span style={{ marginLeft: 6, fontWeight: 600 }}>Use Remind if they have not received the email - it may have gone to spam.</span>
                 </div>
               ) : null
             })()}
@@ -418,7 +426,7 @@ export function GroundAdminPage() {
               const sigs = ground.signals ?? []
               const convergences = sigs.filter(s => s.type === 'Convergence').length
               const divergences = sigs.filter(s => s.type === 'Divergence').length
-              const trendLabel = convergences > divergences ? 'Trending toward alignment' : divergences > convergences ? 'Active divergence — needs attention' : 'Mixed signals'
+              const trendLabel = convergences > divergences ? 'Trending toward alignment' : divergences > convergences ? 'Active divergence - needs attention' : 'Mixed signals'
               const trendColor = convergences > divergences ? '#085041' : divergences > convergences ? '#791F1F' : '#8A5C1A'
               const trendBg = convergences > divergences ? '#E7F6EF' : divergences > convergences ? '#FCEBEB' : '#FDF3E3'
               return (
@@ -448,7 +456,7 @@ export function GroundAdminPage() {
                 <div style={{ background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 10, padding: '14px 16px' }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: '#085041', marginBottom: 6 }}>Invite sent to {lastInvitedEmail}</div>
                   <div style={{ fontSize: 12, color: '#3A7A60', lineHeight: 1.6, marginBottom: 10 }}>
-                    They will get an email and do their own private check-in — about 10 minutes. You cannot see what they write. Once all contributors have checked in, the shared report releases to everyone at the same time.
+                    They will get an email and do their own private check-in - about 10 minutes. You cannot see what they write. Once all contributors have checked in, the shared report releases to everyone at the same time.
                   </div>
                   <button onClick={() => { setLastInvitedEmail(null); setAddingParticipant(true) }}
                     style={{ padding: '7px 14px', borderRadius: 7, background: 'none', border: '1px solid #5DCAA5', color: '#085041', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
@@ -456,9 +464,27 @@ export function GroundAdminPage() {
                   </button>
                 </div>
               ) : !addingParticipant ? (
-                <button onClick={() => setAddingParticipant(true)} style={{ width: '100%', padding: '11px 16px', borderRadius: 8, background: 'none', color: 'var(--gw-navy)', fontSize: 13, fontWeight: 600, border: '1px dashed var(--gw-blue-b)', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                  <span style={{ fontSize: 16, fontWeight: 300 }}>+</span> Add a contributor
-                </button>
+                <>
+                  {(() => {
+                    const plan = ground.org?.subscriptionPlan as SubscriptionPlan | null | undefined
+                    const limit = plan ? PLAN_MEMBER_LIMITS[plan] : null
+                    const memberCount = ground.participants?.length ?? 0
+                    if (limit !== null && limit !== undefined && memberCount >= limit) {
+                      return (
+                        <div style={{ background: '#FFF3E0', border: '1px solid #F5C56A', borderRadius: 8, padding: '10px 14px', marginBottom: 10, fontSize: 12, color: '#7A4B00', lineHeight: 1.55 }}>
+                          Your {plan?.replace('_', ' ').toLowerCase()} plan supports up to {limit} members. You have reached the limit. Upgrade your organization to add more contributors.
+                          <button onClick={() => navigate('/billing')} style={{ display: 'inline', marginLeft: 8, background: 'none', border: 'none', fontSize: 12, color: '#7A4B00', textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>
+                            View plans
+                          </button>
+                        </div>
+                      )
+                    }
+                    return null
+                  })()}
+                  <button onClick={() => setAddingParticipant(true)} style={{ width: '100%', padding: '11px 16px', borderRadius: 8, background: 'none', color: 'var(--gw-navy)', fontSize: 13, fontWeight: 600, border: '1px dashed var(--gw-blue-b)', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 16, fontWeight: 300 }}>+</span> Add a contributor
+                  </button>
+                </>
               ) : (
                 <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px' }}>
                   <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Add a contributor</div>
@@ -582,6 +608,11 @@ export function GroundAdminPage() {
                 <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-sub)', textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 8 }}>
                   Report reveal status {activationStatus.allActivated ? '· Both activated' : '· Waiting'}
                 </div>
+                {!activationStatus.allActivated && (
+                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55, marginBottom: 10 }}>
+                    Each party sees their own report privately until they choose to reveal it. When both parties activate, the reports become visible to each other. Each person can do this from their own ground page.
+                  </div>
+                )}
                 <div style={{ display: 'flex', gap: 8 }}>
                   {activationStatus.parties.map((p, i) => (
                     <div key={p.participantId} style={{ flex: 1, padding: '8px 10px', borderRadius: 7, background: p.activated ? 'rgba(8,80,65,0.07)' : 'white', border: `1px solid ${p.activated ? '#085041' : 'var(--gw-border)'}`, textAlign: 'center' }}>
@@ -600,7 +631,14 @@ export function GroundAdminPage() {
                 {/* Pattern */}
                 {report.pattern && (
                   <div style={{ background: 'var(--gw-navy)', color: 'white', borderRadius: 10, padding: 16, marginBottom: 14 }}>
-                    <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,.55)', marginBottom: 8 }}>What Groundwork saw</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                      <svg width="18" height="11" viewBox="0 0 36 22" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0, opacity: 0.7 }}>
+                        <circle cx="11" cy="11" r="9" stroke="white" strokeWidth="2.5" fill="none"/>
+                        <circle cx="25" cy="11" r="9" stroke="white" strokeWidth="2.5" fill="none"/>
+                        <path d="M18 3.2C20.6 5.2 22.2 7.9 22.2 11C22.2 14.1 20.6 16.8 18 18.8C15.4 16.8 13.8 14.1 13.8 11C13.8 7.9 15.4 5.2 18 3.2Z" fill="rgba(100,130,255,0.7)"/>
+                      </svg>
+                      <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,.55)' }}>What Groundwork saw</div>
+                    </div>
                     <div style={{ fontSize: 14, lineHeight: 1.65 }}>{report.pattern}</div>
                   </div>
                 )}
@@ -657,7 +695,14 @@ export function GroundAdminPage() {
                 {/* Legacy flat fields */}
                 {!report.pattern && report.sharedPicture && (
                   <div style={{ background: 'var(--gw-navy)', color: 'white', borderRadius: 10, padding: 16, marginBottom: 14 }}>
-                    <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,.55)', marginBottom: 8 }}>Resolution summary</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                      <svg width="18" height="11" viewBox="0 0 36 22" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0, opacity: 0.7 }}>
+                        <circle cx="11" cy="11" r="9" stroke="white" strokeWidth="2.5" fill="none"/>
+                        <circle cx="25" cy="11" r="9" stroke="white" strokeWidth="2.5" fill="none"/>
+                        <path d="M18 3.2C20.6 5.2 22.2 7.9 22.2 11C22.2 14.1 20.6 16.8 18 18.8C15.4 16.8 13.8 14.1 13.8 11C13.8 7.9 15.4 5.2 18 3.2Z" fill="rgba(100,130,255,0.7)"/>
+                      </svg>
+                      <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,.55)' }}>Resolution summary</div>
+                    </div>
                     <div style={{ fontSize: 14, lineHeight: 1.65 }}>{report.sharedPicture}</div>
                     <button onClick={() => navigator.clipboard?.writeText(report.sharedPicture).then(() => toast.success('Copied'))}
                       style={{ marginTop: 12, fontSize: 12, fontWeight: 600, color: 'white', background: 'rgba(255,255,255,.15)', border: 'none', cursor: 'pointer', padding: '7px 12px', borderRadius: 6, fontFamily: 'inherit' }}>
@@ -702,7 +747,7 @@ export function GroundAdminPage() {
               <div>
                 <div style={{ background: 'var(--gw-bg)', border: '0.5px solid var(--gw-border)', borderRadius: 10, padding: 16, marginBottom: 14 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Report is ready</div>
-                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 14 }}>Both parties have completed their sessions. When you release the report, both parties see it simultaneously — neither reads it before the other. Billing activates on release.</div>
+                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 14 }}>Both parties have completed their sessions. When you release the report, both parties see it simultaneously - neither reads it before the other. Billing activates on release.</div>
                   {!showReleaseConfirm ? (
                     <button onClick={() => setShowReleaseConfirm(true)}
                       style={{ width: '100%', padding: 12, borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
@@ -880,7 +925,7 @@ function ShareSection({ joinToken }: { joinToken: string }) {
     <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '16px', marginTop: 14 }}>
       <div style={{ fontSize: 11, fontWeight: 700, color: '#9B9590', letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 10 }}>Broadcast link</div>
       <div style={{ fontSize: 13, color: '#4A4540', lineHeight: 1.6, marginBottom: 14 }}>
-        Share this link or QR code — anyone can check in without creating an account first. They'll be asked to save their details at the end.
+        Share this link or QR code - anyone can check in without creating an account first. They'll be asked to save their details at the end.
       </div>
       <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', flexWrap: 'wrap' }}>
         {qrDataUrl && (

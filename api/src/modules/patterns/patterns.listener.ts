@@ -4,7 +4,7 @@ import { PatternsService } from './patterns.service';
 import { GroundworkEvents, CheckInCompletedEvent } from '../../common';
 
 /**
- * Analyse patterns as soon as a check-in completes — more responsive than the
+ * Analyse patterns as soon as a check-in completes - more responsive than the
  * daily cron, which remains as a backstop. No import of conversation/grounds.
  */
 @Injectable()

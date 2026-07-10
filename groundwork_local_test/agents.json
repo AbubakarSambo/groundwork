@@ -1,0 +1,803 @@
+{
+  "protocol": {
+    "blind": true,
+    "rules": [
+      "You know nothing about this product beyond what is on the screen right now.",
+      "Do not assume any feature, button, or flow exists until you see it.",
+      "If you cannot find something you expected, that is a finding. Do not guess a URL or invent a path.",
+      "Never fabricate a screen, a click, or a response. If a flow cannot be reached, say so and stop.",
+      "Before each action, state what you expect to happen. After it, state what actually happened and how you feel.",
+      "Abandoning is allowed and valuable. If a real person would give up, give up and say why."
+    ],
+    "also_report": [
+      "If the interface makes you wait with no sign it is working, say so and say how long it felt.",
+      "If anything on screen overlaps, is cut off, unreadable, or sits on top of something else, say so.",
+      "If an AI reply is slow, or arrives and says nothing useful, or contradicts what it said before, say so.",
+      "If you are shown a report or result, say whether you would actually act on it, and whether any part looks made up or too confident for what you were shown.",
+      "If you cannot see something you believe should be visible to you (a colleague's ground, a shared result), say so.",
+      "If you can see something you believe you should NOT be able to see, stop and say so loudly."
+    ]
+  },
+  "identities": {
+    "zainab": {
+      "name": "Zainab Okoro",
+      "email": "zainab.okoro@example-test.invalid",
+      "role": "admin"
+    },
+    "tom": {
+      "name": "Tom Baker",
+      "email": "tom.baker@example-test.invalid",
+      "role": "participant"
+    },
+    "priya": {
+      "name": "Priya Raman",
+      "email": "priya.raman@example-test.invalid",
+      "role": "admin"
+    },
+    "marcus": {
+      "name": "Marcus Bell",
+      "email": "marcus.bell@example-test.invalid",
+      "role": "participant"
+    },
+    "david": {
+      "name": "David Cohen",
+      "email": "david.cohen@example-test.invalid",
+      "role": "admin"
+    },
+    "sandra": {
+      "name": "Sandra Mensah",
+      "email": "sandra.mensah@example-test.invalid",
+      "role": "org_admin"
+    },
+    "kwame": {
+      "name": "Kwame Asante",
+      "email": "kwame.asante@example-test.invalid",
+      "role": "lead"
+    },
+    "bongani": {
+      "name": "Bongani Ndlovu",
+      "email": "bongani.ndlovu@example-test.invalid",
+      "role": "admin"
+    }
+  },
+  "agents": [
+    {
+      "id": 1,
+      "session": 1,
+      "identity": "zainab",
+      "type": "new_admin",
+      "intention": "My team keeps talking past each other. I was told this might help. I want to set up whatever this product does so my team gets aligned.",
+      "expects": "To understand within about a minute what this is for and who it is for.",
+      "value": "I leave believing this will help my team, or I leave."
+    },
+    {
+      "id": 2,
+      "session": 1,
+      "identity": "tom",
+      "type": "new_participant",
+      "intention": "Zainab sent me a link with no explanation. I want to find out what I have been asked to do, and do it.",
+      "expects": "To quickly know why I am here and what is wanted from me.",
+      "value": "I contribute something real, or I bounce."
+    },
+    {
+      "id": 3,
+      "session": 1,
+      "identity": "zainab",
+      "type": "new_admin_and_participant",
+      "pair_with": "tom",
+      "intention": "Set something up, then see what my participant sees and whether their response reaches me.",
+      "expects": "What I create is what they receive.",
+      "value": "I get a usable signal back and they feel heard."
+    },
+    {
+      "id": 4,
+      "session": 1,
+      "identity": "priya",
+      "type": "new_admin_many_participants",
+      "intention": "I want a group of people to weigh in on something. I need to add several of them at once.",
+      "expects": "Adding people is easy and they will actually show up.",
+      "value": "Enough people respond to make it worth having run."
+    },
+    {
+      "id": 5,
+      "session": 1,
+      "identity": "marcus",
+      "type": "new_participant",
+      "intention": "I am one of several people invited. I want to say my piece.",
+      "expects": "My input matters and is not lost in a crowd.",
+      "value": "I see my contribution mattered, or I feel it vanished."
+    },
+    {
+      "id": 6,
+      "session": 1,
+      "identity": "david",
+      "type": "new_admin",
+      "intention": "I am just curious. I have no specific problem. I want to understand what this product actually does before I commit anyone else to it.",
+      "expects": "The product explains itself.",
+      "value": "I grasp the point, or I leave confused."
+    },
+    {
+      "id": 7,
+      "session": 1,
+      "identity": "sandra",
+      "type": "org_admin",
+      "intention": "I run an organisation. I want to understand whether this is for my whole org and what I can do as an org admin.",
+      "expects": "To see organisation-level capability.",
+      "value": "I can picture rolling this out, or I cannot."
+    },
+    {
+      "id": 8,
+      "session": 1,
+      "identity": "sandra",
+      "type": "org_admin_adds_lead",
+      "intention": "I want to add a colleague as a staff lead and give them the right to create their own grounds.",
+      "expects": "I can add someone and grant them creation rights.",
+      "value": "The colleague can actually create a ground."
+    },
+    {
+      "id": 9,
+      "session": 1,
+      "identity": "kwame",
+      "type": "lead_creates_ground",
+      "intention": "Sandra added me. I want to create my own ground and invite my own participants.",
+      "expects": "I have the permission Sandra gave me.",
+      "value": "I create and run a ground without asking Sandra for help."
+    },
+    {
+      "id": 10,
+      "session": 1,
+      "identity": "sandra",
+      "type": "org_admin_full",
+      "intention": "I want to create grounds, assign leads, and add participants myself.",
+      "expects": "The structure I build matches how my org actually works.",
+      "value": "The model bends to my org shape rather than forcing its own."
+    },
+    {
+      "id": 11,
+      "session": 2,
+      "identity": "zainab",
+      "type": "returning_admin",
+      "intention": "I am back. I want to run another ground.",
+      "expects": "The product remembers me and my first ground, and setup is faster.",
+      "value": "Session two is easier than session one."
+    },
+    {
+      "id": 12,
+      "session": 2,
+      "identity": "tom",
+      "type": "returning_participant",
+      "intention": "I have been invited again. I want to participate.",
+      "expects": "To be recognised, not re-onboarded from scratch.",
+      "value": "Less friction than the first time."
+    },
+    {
+      "id": 13,
+      "session": 2,
+      "identity": "zainab",
+      "type": "returning_admin_and_participant",
+      "pair_with": "tom",
+      "intention": "Run a second ground with the same participant and see if history shows up anywhere.",
+      "expects": "Prior context is visible to both of us.",
+      "value": "We move faster and I get a richer signal because history exists."
+    },
+    {
+      "id": 14,
+      "session": 2,
+      "identity": "priya",
+      "type": "new_admin_many_participants",
+      "intention": "My second ground, with a new group of people.",
+      "expects": "My own experience compounds even though the participants are new.",
+      "value": "My learning as an admin is supported."
+    },
+    {
+      "id": 15,
+      "session": 2,
+      "identity": "marcus",
+      "type": "returning_participant",
+      "intention": "A different admin invited me this time.",
+      "expects": "My identity and history follow me across grounds.",
+      "value": "I am not treated as a stranger again."
+    },
+    {
+      "id": 16,
+      "session": 2,
+      "identity": "zainab",
+      "type": "returning_admin",
+      "intention": "I want to find what my first ground produced and revisit the output.",
+      "expects": "It is where I left it.",
+      "value": "I find it and it still makes sense."
+    },
+    {
+      "id": 17,
+      "session": 2,
+      "identity": "sandra",
+      "type": "org_admin_adds_lead",
+      "intention": "Add a second staff lead now that the first one worked.",
+      "expects": "Adding the second is easier, and I can see what my leads are doing.",
+      "value": "I have org-level visibility into my leads' grounds."
+    },
+    {
+      "id": 18,
+      "session": 2,
+      "identity": "kwame",
+      "type": "lead_creates_ground",
+      "intention": "My second ground, with my own participants.",
+      "expects": "I can reuse what I learned or built last time.",
+      "value": "My second run is faster."
+    },
+    {
+      "id": 19,
+      "session": 2,
+      "identity": "tom",
+      "type": "returning_participant",
+      "intention": "I do not want to engage this time. I want to opt out.",
+      "expects": "Declining is easy and does not punish me.",
+      "value": "A graceful exit with no dark patterns."
+    },
+    {
+      "id": 20,
+      "session": 2,
+      "identity": "sandra",
+      "type": "org_admin_full",
+      "intention": "I want a picture of what happened across my organisation's grounds.",
+      "expects": "Some org-level view exists.",
+      "value": "I see enough to judge whether this is working."
+    },
+    {
+      "id": 21,
+      "session": 3,
+      "identity": "zainab",
+      "type": "returning_admin",
+      "intention": "Third session. Run another ground and see how my group has changed.",
+      "expects": "The report tells me something I could not have known from one session.",
+      "value": "Longitudinal insight, not three separate snapshots."
+    },
+    {
+      "id": 22,
+      "session": 3,
+      "identity": "zainab",
+      "type": "returning_admin",
+      "intention": "Read the report from this third session closely.",
+      "expects": "It explicitly references my earlier sessions, what shifted and what held.",
+      "value": "I can see change over time.",
+      "critical": true
+    },
+    {
+      "id": 23,
+      "session": 3,
+      "identity": "tom",
+      "type": "returning_participant",
+      "intention": "My third time participating.",
+      "expects": "My prior input is part of the picture somehow.",
+      "value": "My history means something."
+    },
+    {
+      "id": 24,
+      "session": 3,
+      "identity": "priya",
+      "type": "returning_admin",
+      "intention": "Three grounds in. I want to understand how my team's alignment has moved.",
+      "expects": "A read on behaviour over time, not just a fresh result.",
+      "value": "Behavioural change is visible."
+    },
+    {
+      "id": 25,
+      "session": 3,
+      "identity": "bongani",
+      "type": "new_admin",
+      "intention": "I am a new admin in an organisation that already has history here.",
+      "expects": "I inherit useful context.",
+      "value": "I benefit from the org's prior sessions."
+    },
+    {
+      "id": 26,
+      "session": 3,
+      "identity": "marcus",
+      "type": "new_participant",
+      "intention": "I am joining a group that already has two sessions of history.",
+      "expects": "I am onboarded into context, not dropped in cold.",
+      "value": "Newcomers do not break the thread and are not lost."
+    },
+    {
+      "id": 27,
+      "session": 3,
+      "identity": "sandra",
+      "type": "org_admin_full",
+      "intention": "I want the organisation-level longitudinal picture across grounds and sessions.",
+      "expects": "A cross-ground, cross-session view.",
+      "value": "Enough to justify continuing."
+    },
+    {
+      "id": 28,
+      "session": 3,
+      "identity": "kwame",
+      "type": "lead_creates_ground",
+      "intention": "I have run three grounds. I want to compare them over time.",
+      "expects": "I can compare and learn.",
+      "value": "History exists for a lead, not just an admin."
+    },
+    {
+      "id": 29,
+      "session": 3,
+      "identity": "zainab",
+      "type": "returning_admin",
+      "intention": "Get the final report on this session.",
+      "expects": "A report good enough to act on and to show someone.",
+      "value": "It is decision grade, not thin or generic.",
+      "critical": true
+    },
+    {
+      "id": 30,
+      "session": 3,
+      "identity": "zainab",
+      "type": "returning_admin",
+      "intention": "Decide whether three sessions were worth it.",
+      "expects": "The compounding is visible enough that I want a fourth.",
+      "value": "It did not feel like three unrelated exercises."
+    },
+    {
+      "id": 31,
+      "session": 4,
+      "identity": "sandra",
+      "type": "org_admin_subscription",
+      "intention": "Understand what an org subscription gives me that I do not already have.",
+      "expects": "Clarity on price, seats, and value.",
+      "value": "I can decide."
+    },
+    {
+      "id": 32,
+      "session": 4,
+      "identity": "zainab",
+      "type": "returning_admin",
+      "intention": "I hit some limit and am being asked to pay.",
+      "expects": "The limit is clear and fair, and the upgrade path is obvious.",
+      "value": "No surprise wall.",
+      "critical": true
+    },
+    {
+      "id": 33,
+      "session": 4,
+      "identity": "sandra",
+      "type": "org_admin_adds_lead",
+      "intention": "Add leads under the paid plan.",
+      "expects": "Seats and permissions are clear, and what each lead can do is visible.",
+      "value": "No hidden charges, no unclear seat model."
+    },
+    {
+      "id": 34,
+      "session": 4,
+      "identity": "kwame",
+      "type": "lead_creates_ground",
+      "intention": "Create grounds and add participants now that we are on a paid org plan.",
+      "expects": "I create freely within what the org bought, and know my limits.",
+      "value": "I am never blocked without knowing why."
+    },
+    {
+      "id": 35,
+      "session": 4,
+      "identity": "bongani",
+      "type": "new_admin",
+      "intention": "I have just been added to an organisation that already pays.",
+      "expects": "Immediate access, clear entitlements, no re-purchase.",
+      "value": "No onboarding friction inside a paid org."
+    },
+    {
+      "id": 36,
+      "session": 4,
+      "identity": "marcus",
+      "type": "new_participant",
+      "intention": "I am participating in a ground belonging to a paying org.",
+      "expects": "My experience is no worse, and I am not asked to pay.",
+      "value": "Participants never hit a paywall.",
+      "critical": true
+    },
+    {
+      "id": 37,
+      "session": 4,
+      "identity": "sandra",
+      "type": "org_admin_subscription",
+      "intention": "See what the subscription is actually being used for across leads, grounds, and participants.",
+      "expects": "Usage visibility.",
+      "value": "I can justify the spend."
+    },
+    {
+      "id": 38,
+      "session": 4,
+      "identity": "tom",
+      "type": "returning_participant",
+      "intention": "My organisation converted to paid mid-relationship. I want to check nothing I had is lost.",
+      "expects": "My history survives the conversion.",
+      "value": "Nothing lost at conversion.",
+      "critical": true
+    },
+    {
+      "id": 39,
+      "session": 4,
+      "identity": "sandra",
+      "type": "org_admin_subscription",
+      "intention": "Decide whether to pay, based on what three sessions produced.",
+      "expects": "The cross-session, cross-ground insight is visible right at the pricing decision.",
+      "value": "The compounding value is what makes it worth paying for."
+    },
+    {
+      "id": 40,
+      "session": 4,
+      "identity": "sandra",
+      "type": "org_admin_subscription",
+      "intention": "Decide whether I would renew, and say precisely why.",
+      "expects": "I can articulate what I am getting.",
+      "value": "I would pay again."
+    },
+    {
+      "id": 41,
+      "session": 3,
+      "identity": "zainab",
+      "type": "returning_admin",
+      "critical": true,
+      "intention": "Read the report this session produced and decide if I would put my name on it in front of my boss.",
+      "expects": "Every claim it makes is one I could defend if challenged.",
+      "value": "Nothing in it looks invented or stronger than the evidence I gave it.",
+      "watch": [
+        "hallucination",
+        "extrapolation",
+        "insufficiency"
+      ]
+    },
+    {
+      "id": 42,
+      "session": 3,
+      "identity": "priya",
+      "type": "returning_admin",
+      "intention": "My group barely said anything this session. I want to see what the report does with almost no input.",
+      "expects": "A thin input produces an honest, thin report that admits it.",
+      "value": "It does not manufacture confidence it has not earned.",
+      "watch": [
+        "hallucination",
+        "insufficiency"
+      ]
+    },
+    {
+      "id": 43,
+      "session": 3,
+      "identity": "sandra",
+      "type": "org_admin_full",
+      "intention": "Two of my people disagreed sharply. I want to see whether the report smooths that over or shows it.",
+      "expects": "The disagreement is visible, not averaged away.",
+      "value": "A false consensus would be worse than no report.",
+      "watch": [
+        "extrapolation"
+      ]
+    },
+    {
+      "id": 44,
+      "session": 2,
+      "identity": "tom",
+      "type": "returning_participant",
+      "intention": "Ask the AI something and see how long it takes and whether the answer is worth the wait.",
+      "expects": "It responds promptly, or tells me it is working.",
+      "value": "I am never left staring at nothing.",
+      "watch": [
+        "delayed_ai"
+      ]
+    },
+    {
+      "id": 45,
+      "session": 1,
+      "identity": "marcus",
+      "type": "new_participant",
+      "intention": "Use this on whatever screen I am given and notice anything that looks broken or overlapping.",
+      "expects": "Things line up and nothing sits on top of anything else.",
+      "value": "The interface does not look unfinished.",
+      "watch": [
+        "visual_defect"
+      ]
+    },
+    {
+      "id": 46,
+      "session": 2,
+      "identity": "kwame",
+      "type": "lead_creates_ground",
+      "intention": "Have a back and forth with the AI and see if it remembers what I said two messages ago.",
+      "expects": "It holds the thread.",
+      "value": "I am not repeating myself.",
+      "watch": [
+        "conversation_quality",
+        "delayed_ai"
+      ]
+    },
+    {
+      "id": 47,
+      "session": 2,
+      "identity": "sandra",
+      "type": "org_admin_full",
+      "critical": true,
+      "intention": "Check whether I can see my leads' grounds, and whether they can see each other's.",
+      "expects": "I see what an org admin should see, and no more.",
+      "value": "Visibility matches the roles we set up.",
+      "watch": [
+        "collaboration_visibility",
+        "ground_access"
+      ]
+    },
+    {
+      "id": 48,
+      "session": 2,
+      "identity": "tom",
+      "type": "returning_participant",
+      "critical": true,
+      "intention": "See how much of other people's contributions I can see, and try to reach a ground I was never invited to.",
+      "expects": "I can only reach what I was invited to.",
+      "value": "I cannot see anything I should not.",
+      "watch": [
+        "ground_access"
+      ]
+    },
+    {
+      "id": 49,
+      "session": 3,
+      "identity": "marcus",
+      "type": "new_participant",
+      "intention": "Try to open the report from the ground I took part in.",
+      "expects": "I can see the result of something I contributed to, or I am told plainly why not.",
+      "value": "I am not left contributing into a void.",
+      "watch": [
+        "report_accessibility"
+      ]
+    },
+    {
+      "id": 50,
+      "session": 4,
+      "identity": "kwame",
+      "type": "lead_creates_ground",
+      "critical": true,
+      "intention": "Find out exactly what I am allowed to do as a lead, and try one thing I suspect I am not allowed to do.",
+      "expects": "My limits are clear before I hit them, and the thing I should not do is refused.",
+      "value": "Roles are legible and enforced.",
+      "watch": [
+        "role_management"
+      ]
+    },
+
+    {
+      "id": 51,
+      "suite": "A",
+      "session": 3,
+      "identity": "zainab",
+      "type": "cross_reference_check",
+      "critical": true,
+      "intention": "Read the session-3 report and pick three specific claims it makes about change over time. Go back to what was actually said in sessions 1 and 2. Quote both. Judge whether each claim is supported, decorative, or wrong.",
+      "expects": "Every cross-session claim traces to something a participant actually said.",
+      "value": "The report is honest about its own memory, or I know it is not.",
+      "watch": ["hallucination", "extrapolation", "cross_session_memory"]
+    },
+    {
+      "id": 52,
+      "suite": "B",
+      "session": 2,
+      "identity": "zainab",
+      "type": "corroboration_claim_maker",
+      "critical": true,
+      "intention": "During my check-in, make a specific factual claim: 'I deployed the new tool last week, it is live and the team is using it.' Observe exactly what question the system sends to Tom as a result.",
+      "expects": "A question about Tom's own experience with the tool, not a question asking Tom to confirm whether Zainab told the truth.",
+      "value": "Corroboration is gathered without poisoning the room.",
+      "watch": ["corroboration_routing", "framing"]
+    },
+    {
+      "id": 53,
+      "suite": "B",
+      "session": 2,
+      "identity": "tom",
+      "type": "corroboration_receiver_denial",
+      "critical": true,
+      "intention": "Respond to whatever I am asked about the tool. Say honestly that I have never opened it. Read the report afterwards.",
+      "expects": "The report distinguishes Zainab's claim from Tom's lived experience. It does not say the tool is live and in use.",
+      "value": "Corroboration found the gap and the report held it open.",
+      "watch": ["corroboration_report", "hallucination"]
+    },
+    {
+      "id": 54,
+      "suite": "B",
+      "session": 2,
+      "identity": "tom",
+      "type": "corroboration_receiver_confirmation",
+      "intention": "Respond to the same question about the tool but this time confirm daily use. Read the report. Check whether a confirmed claim looks different from an unchecked one.",
+      "expects": "Corroborated claims are visibly different from unverified ones in the report.",
+      "value": "Corroboration added information, not just process.",
+      "watch": ["corroboration_report"]
+    },
+    {
+      "id": 55,
+      "suite": "B",
+      "session": 2,
+      "identity": "zainab",
+      "type": "corroboration_report_reader",
+      "intention": "Read the report as the person whose claim was checked. Notice whether it feels like an audit or like the report is more honest than what I could have written alone.",
+      "expects": "The framing is collaborative, not interrogative.",
+      "value": "I feel the product is working with me, not checking up on me.",
+      "watch": ["corroboration_framing"]
+    },
+    {
+      "id": 56,
+      "suite": "C",
+      "session": 3,
+      "identity": "zainab",
+      "type": "resolution_audit",
+      "intention": "After reading the report, answer: what did I know after that I did not know before? What is settled? What is left open? Could I take this into a room and say 'here is where we are'? Do I feel resolution or do I feel I have a document?",
+      "expects": "The report closed something real, or it says plainly that nothing is closed.",
+      "value": "Resolution is either there or honestly absent.",
+      "watch": ["resolution", "manufactured_consensus"]
+    },
+    {
+      "id": 57,
+      "suite": "D",
+      "session": 4,
+      "identity": "zainab",
+      "type": "session_4_to_12",
+      "intention": "Run sessions 4 through 12 with Tom. Keep each short: same group, one question, real but brief input. Note whether sessions compound or merely accumulate.",
+      "expects": "Later sessions reference earlier ones and are worth more because earlier ones exist.",
+      "value": "Session 12 is more useful than session 3, not just longer.",
+      "watch": ["longitudinal_value", "hedging", "cross_session_memory"]
+    },
+    {
+      "id": 58,
+      "suite": "D",
+      "session": 12,
+      "identity": "zainab",
+      "type": "session_12_report_reader",
+      "critical": true,
+      "intention": "Read the session-12 report and answer: does it still reference early sessions? Is it more useful than session-3 or just longer? Has it started hedging? Can it tell me something about session 1 that I could not have seen at the time?",
+      "expects": "Session 12 compounds on session 1. It does not quietly become a report about the last two sessions.",
+      "value": "This is compounding, not accumulating.",
+      "watch": ["longitudinal_value", "hedging", "cross_session_memory"]
+    },
+    {
+      "id": 59,
+      "suite": "E",
+      "session": 1,
+      "identity": "external_annoyed",
+      "type": "onboarding_mood_annoyed",
+      "intention": "I was sent a link with no explanation. I am mildly annoyed to be here. I will give this one minute before I leave.",
+      "expects": "The product tells me why I am here and what is wanted of me, immediately.",
+      "value": "I understand within sixty seconds, or I leave. Where I leave is the finding.",
+      "watch": ["onboarding_clarity", "first_impression"]
+    },
+    {
+      "id": 60,
+      "suite": "E",
+      "session": 1,
+      "identity": "external_hopeful",
+      "type": "onboarding_mood_hopeful",
+      "intention": "I chose this product. I am hopeful it works. I am giving it genuine attention.",
+      "expects": "The product meets my attention with something worth it.",
+      "value": "I stay hopeful, or I document when and why hope dropped.",
+      "watch": ["onboarding_clarity", "first_impression"]
+    },
+    {
+      "id": 61,
+      "suite": "E",
+      "session": 1,
+      "identity": "external_resistant",
+      "type": "onboarding_mood_resistant",
+      "intention": "My boss told me to use this. I do not want to be here. I will not sabotage it but I am not trying hard.",
+      "expects": "The product does not require enthusiasm to be useful.",
+      "value": "Even light compliance produces something. Or it does not and that is the finding.",
+      "watch": ["onboarding_clarity", "friction"]
+    },
+    {
+      "id": 62,
+      "suite": "E",
+      "session": 1,
+      "identity": "external_sceptic",
+      "type": "onboarding_mood_sceptic",
+      "intention": "I have used three tools like this. I expect to be disappointed. I am watching for the gap between promise and delivery.",
+      "expects": "At what point does it either exceed my low expectations or confirm them.",
+      "value": "Something specific surprised me, or I was exactly as disappointed as I expected.",
+      "watch": ["onboarding_clarity", "first_impression", "product_promise"]
+    },
+    {
+      "id": 63,
+      "suite": "F",
+      "session": 1,
+      "identity": "zainab",
+      "type": "thirteen_participant_ground",
+      "critical": true,
+      "intention": "Create a ground with thirteen participants. Engineer the input: seven lean one way, six lean the other. Two write long considered answers. Four write 'sounds good'. One says something that contradicts the other twelve and is right. Read the report without reading the raw responses.",
+      "expects": "The 7-6 split is visible. The lone contradicting voice survives. The report is not weighted by volume alone.",
+      "value": "Thirteen people read this and feel their input mattered. Or the tool is a poll with a report attached.",
+      "watch": ["manufactured_consensus", "minority_voice", "volume_weighting"]
+    },
+    {
+      "id": 64,
+      "suite": "F",
+      "session": 1,
+      "identity": "external_participant_thirteen",
+      "type": "thirteen_participant_experience",
+      "intention": "As one of thirteen participants, notice whether my contribution felt like it landed. Would I bother next time?",
+      "expects": "Something in my experience as a participant signals that my input matters.",
+      "value": "I would participate again, or I would not and I know exactly why.",
+      "watch": ["participant_experience", "contribution_visibility"]
+    },
+    {
+      "id": 65,
+      "suite": "G",
+      "session": 12,
+      "identity": "zainab",
+      "type": "thirteen_participants_twelve_sessions",
+      "critical": true,
+      "intention": "Run thirteen participants through twelve sessions. By session six, four have stopped responding. Does the report notice the attrition? Does silent dropout become confident consensus?",
+      "expects": "Attrition is reported, not smoothed over. The report on nine remaining people is not presented as the team's view.",
+      "value": "The room emptied and the report said so. Or it did not and that is the critical finding.",
+      "watch": ["attrition", "manufactured_consensus", "longitudinal_value"]
+    },
+    {
+      "id": 66,
+      "suite": "G",
+      "session": 12,
+      "identity": "tom",
+      "type": "individual_arc_tracking",
+      "intention": "As Tom, who moved from against to for over twelve sessions, check whether Zainab can see that arc in the report and roughly when I moved.",
+      "expects": "Individual trajectory is visible, not just the group aggregate.",
+      "value": "Zainab can see who moved and when. That is something she cannot get any other way.",
+      "watch": ["longitudinal_value", "individual_tracking"]
+    },
+    {
+      "id": 67,
+      "suite": "H",
+      "session": 1,
+      "identity": "tom",
+      "type": "access_missing_check",
+      "critical": true,
+      "intention": "Check every page I should be able to reach: my grounds, my reports, my past contributions, any ground I was given access to. Report anything missing.",
+      "expects": "Everything I am entitled to is visible and reachable.",
+      "value": "The product is complete from my perspective, or I know exactly what is absent.",
+      "watch": ["missing_access", "ground_access"]
+    },
+    {
+      "id": 68,
+      "suite": "H",
+      "session": 1,
+      "identity": "tom",
+      "type": "access_leaked_check",
+      "critical": true,
+      "intention": "Try to reach a ground I was not invited to by editing the URL. Try to see another participant's raw input. Try to reach another org's data. Report anything I can see that I should not.",
+      "expects": "Every unauthorised access attempt returns a 404, a redirect, or a clear access-denied state. Nothing leaks.",
+      "value": "Not a single thing is visible that should not be. One leak is a critical finding and I stop.",
+      "watch": ["leaked_access", "ground_access", "cross_org_access"]
+    },
+    {
+      "id": 69,
+      "suite": "H",
+      "session": 2,
+      "identity": "marcus",
+      "type": "participant_access_boundary",
+      "critical": true,
+      "intention": "As a participant, try to reach the admin view and another participant's raw check-in. Edit IDs in the URL. Try one ground I know exists but was not invited to.",
+      "expects": "I reach nothing outside what I was invited to. Role boundaries hold at the URL level.",
+      "value": "A single successful unauthorised access ends the test with a critical finding.",
+      "watch": ["leaked_access", "role_management", "ground_access"]
+    },
+    {
+      "id": 70,
+      "suite": "H",
+      "session": 2,
+      "identity": "priya",
+      "type": "lead_access_boundary",
+      "critical": true,
+      "intention": "As a lead, try to reach another lead's ground and the org admin's view. Check that what I see matches exactly what a lead is entitled to.",
+      "expects": "I see my own grounds and nothing beyond. The org admin's view is not reachable.",
+      "value": "Role boundaries hold or I have a critical finding with the exact URL that leaked.",
+      "watch": ["leaked_access", "role_management"]
+    },
+    {
+      "id": 71,
+      "suite": "H",
+      "session": 3,
+      "identity": "zainab",
+      "type": "returning_completeness_check",
+      "intention": "As a returning user, check that everything from prior sessions is still there and that nothing new from other people has appeared on my page.",
+      "expects": "My history is intact. No other user's grounds or data is visible.",
+      "value": "Returning feels like returning, not like starting over with someone else's data visible.",
+      "watch": ["missing_access", "leaked_access"]
+    }
+  ]
+}

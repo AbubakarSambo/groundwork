@@ -3,12 +3,12 @@ import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { ReportActivationStatus } from '@prisma/client';
 
 /**
- * GW-PRI-ACT — ReportActivation (mutual reveal gate) invariants.
+ * GW-PRI-ACT - ReportActivation (mutual reveal gate) invariants.
  *
  * After an admin releases a report, each participant must individually
  * activate before the full content is returned. The admin/initiator always
  * sees full content once released. Neither party can see content before
- * the other has also activated — the gate is per-party, not shared.
+ * the other has also activated - the gate is per-party, not shared.
  */
 
 const MOCK_USAGE = { emit: () => Promise.resolve() } as any;
@@ -36,7 +36,7 @@ const releasedReport = {
 const unreleased = { ...releasedReport, releasedAt: null };
 
 // GW-PRI-ACT-01: get() returns pre-activation stub when not yet activated
-describe('GW-PRI-ACT-01 — get() returns stub before participant activates', () => {
+describe('GW-PRI-ACT-01 - get() returns stub before participant activates', () => {
   it('returns activated:false stub when activation row is PENDING', async () => {
     const ground = {
       id: 'g1',
@@ -75,7 +75,7 @@ describe('GW-PRI-ACT-01 — get() returns stub before participant activates', ()
 });
 
 // GW-PRI-ACT-02: initiator sees full content without activating
-describe('GW-PRI-ACT-02 — initiator bypasses activation gate', () => {
+describe('GW-PRI-ACT-02 - initiator bypasses activation gate', () => {
   it('returns full report to initiator once released', async () => {
     const ground = {
       id: 'g1',
@@ -96,7 +96,7 @@ describe('GW-PRI-ACT-02 — initiator bypasses activation gate', () => {
 });
 
 // GW-PRI-ACT-03: get() returns full content after activation
-describe('GW-PRI-ACT-03 — get() returns full content after ACTIVATED', () => {
+describe('GW-PRI-ACT-03 - get() returns full content after ACTIVATED', () => {
   it('returns report content when activation is ACTIVATED', async () => {
     const ground = {
       id: 'g1',
@@ -118,7 +118,7 @@ describe('GW-PRI-ACT-03 — get() returns full content after ACTIVATED', () => {
 });
 
 // GW-PRI-ACT-04: activate() rejected before report is released
-describe('GW-PRI-ACT-04 — activate() blocked before release', () => {
+describe('GW-PRI-ACT-04 - activate() blocked before release', () => {
   it('throws ForbiddenException when report is not released', async () => {
     const ground = {
       id: 'g1',
@@ -149,7 +149,7 @@ describe('GW-PRI-ACT-04 — activate() blocked before release', () => {
 });
 
 // GW-PRI-ACT-05: activate() upserts ACTIVATED row
-describe('GW-PRI-ACT-05 — activate() writes activation row', () => {
+describe('GW-PRI-ACT-05 - activate() writes activation row', () => {
   it('upserts an ACTIVATED row with activatedAt timestamp', async () => {
     const ground = {
       id: 'g1',
@@ -176,7 +176,7 @@ describe('GW-PRI-ACT-05 — activate() writes activation row', () => {
 });
 
 // GW-PRI-ACT-06: getActivationStatus allActivated flag
-describe('GW-PRI-ACT-06 — getActivationStatus.allActivated', () => {
+describe('GW-PRI-ACT-06 - getActivationStatus.allActivated', () => {
   it('is false when only one party has activated', async () => {
     const prisma: any = {
       reportActivation: {
