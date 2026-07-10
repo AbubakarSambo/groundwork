@@ -26,6 +26,8 @@ const DEFAULT_TIMELINE_DAYS: Record<GroundScenario, number> = {
   PULSE_CHECK: 30,
   REALIGN_TEAM: 60,
   PIP: 90,
+  BOARD_STRATEGY: 90,
+  COHORT_CHECK: 30,
 };
 
 // All scenarios support any number of participants - the initiator decides who

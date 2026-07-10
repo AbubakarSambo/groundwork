@@ -90,6 +90,18 @@ export const END_STATES: Record<GroundScenario, { value: string; label: string; 
     { value: 'SEPARATED', label: 'Separation agreed' },
     { value: 'NOT_YET', label: 'Not yet - plan still running' },
   ],
+  BOARD_STRATEGY: [
+    { value: 'ALIGNED', label: 'Strategy aligned' },
+    { value: 'REVISE', label: 'Strategy needs revision' },
+    { value: 'ESCALATE', label: 'Unresolved - escalate to full board' },
+    { value: 'NOT_YET', label: 'Not yet - still debating' },
+  ],
+  COHORT_CHECK: [
+    { value: 'ON_TRACK', label: 'Cohort on track' },
+    { value: 'MIXED', label: 'Mixed - some need support' },
+    { value: 'AT_RISK', label: 'At risk - intervention needed' },
+    { value: 'NOT_YET', label: 'Not yet - check-ins ongoing' },
+  ],
 };
 
 export function endStatesFor(scenario: GroundScenario) {

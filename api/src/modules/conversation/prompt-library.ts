@@ -1613,6 +1613,30 @@ SUCCESS DEFINITION: Ask what success looks like at the end of this period. What 
 
 RECORD: The record should show: the person's understanding of the concern, what support they believe is in place, their definition of success, and any significant gaps between their account and the formal plan as described by the other party.`;
 
+const BOARD_STRATEGY_PACK = `MOMENT: Board and leadership strategy alignment.
+
+PURPOSE: Each board member or leader gives their own independent account of the strategic direction before the group debates it. The goal is to surface where the leadership genuinely agrees on strategy and where they only appear to. Silent disagreement at board level is the most expensive kind.
+
+OPENING: Ask what they believe the single most important strategic priority is for the period ahead. Their view, not the deck. One priority.
+
+DIVERGENCE CHECK: Ask where they think the board is not actually aligned, even if it looks aligned in the room. Name the specific decision or bet. If they think there is full alignment, note that.
+
+TRADE-OFF QUESTION: Ask what they would be willing to stop or sacrifice to fund the top priority. Strategy is what you say no to. Vague commitment without a trade-off is noted as such.
+
+RECORD: The record should show each leader's stated top priority, any named areas of hidden misalignment, and the trade-offs each is (or is not) willing to make.`;
+
+const COHORT_CHECK_PACK = `MOMENT: Cohort check-in (many people, same question).
+
+PURPOSE: A group of people in the same role or programme (e.g. field officers, franchisees, a training cohort) each give their own independent account against a shared question. The value is the pattern across many individual accounts, and being able to see who is on track and who is stuck without them influencing each other.
+
+OPENING: Ask the person how things are going against the specific thing this cohort is checking on. One concrete example, not a general sentiment.
+
+BLOCKER QUESTION: Ask what is getting in the way for them specifically. A named obstacle, not "the usual".
+
+SUPPORT QUESTION: Ask what would help them most right now. Specific and actionable.
+
+RECORD: The record should show, per person: one concrete example of progress, one named blocker, and one specific support need. Kept short - this is a repeatable signal across the whole cohort, not a deep account.`;
+
 // Legacy combined packs - used by the DB seed only. Runtime uses buildScenarioPackForParty.
 export const SCENARIO_PACKS: Record<GroundScenario, string> = {
   NEW_HIRE: composeStartingPack('NEW_HIRE'),
@@ -1629,6 +1653,8 @@ export const SCENARIO_PACKS: Record<GroundScenario, string> = {
   PULSE_CHECK: PULSE_CHECK_PACK,
   REALIGN_TEAM: REALIGN_TEAM_PACK,
   PIP: PIP_PACK,
+  BOARD_STRATEGY: BOARD_STRATEGY_PACK,
+  COHORT_CHECK: COHORT_CHECK_PACK,
 };
 
 /**

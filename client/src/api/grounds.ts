@@ -6,7 +6,7 @@ export type GroundScenario =
   | 'NEW_PROJECT' | 'NEW_MANAGER' | 'CONTRACT_RENEWAL'
   | 'RECOGNITION' | 'DRIFT' | 'CRISIS_ALIGNMENT'
   | 'OKR_ALIGNMENT' | 'WORKPLAN_BUDGET' | 'PULSE_CHECK'
-  | 'REALIGN_TEAM' | 'PIP'
+  | 'REALIGN_TEAM' | 'PIP' | 'BOARD_STRATEGY' | 'COHORT_CHECK'
 
 export type GroundMoment = 'STARTING' | 'RECOGNITION' | 'RESOLUTION'
 export type GroundCadence = 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY'

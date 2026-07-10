@@ -24,6 +24,8 @@ const SCENARIOS: ScenarioCard[] = [
   { scenario: 'OKR_ALIGNMENT',    label: 'Goals & planning', desc: 'Check whether everyone is actually aligned on the goals and plan. Not to set them.',                    tag: 'Planning',     tagBg: '#EEF4FB', tagColor: '#0C447C' },
   { scenario: 'PULSE_CHECK',      label: 'Pulse check',      desc: 'A quick independent read from each person. What is moving, what is stuck, what has changed.',             tag: 'Recurring',    tagBg: '#E8F8F5', tagColor: '#085041' },
   { scenario: 'DRIFT',            label: 'New direction',    desc: 'A strategy shift or pivot. Each person says what they understood before the group discussion.',            tag: 'Alignment',    tagBg: '#FDF3E3', tagColor: '#8A5C1A' },
+  { scenario: 'BOARD_STRATEGY',   label: 'Board strategy',   desc: 'Each board member or leader gives their own read on strategy before the room debates it. Surfaces hidden misalignment.', tag: 'Leadership', tagBg: '#EEF4FB', tagColor: '#0C447C' },
+  { scenario: 'COHORT_CHECK',     label: 'Cohort check-in',  desc: 'Many people in the same role (field officers, franchisees, a cohort) each check in against a shared question. See the pattern.', tag: 'Recurring', tagBg: '#E8F8F5', tagColor: '#085041' },
   { scenario: 'REALIGN_TEAM',     label: 'Other',            desc: 'Describe the situation and Groundwork will set up the right ground for it.',                              tag: 'Other',        tagBg: '#F5F3EF', tagColor: '#6B6560' },
 ]
 
@@ -85,6 +87,8 @@ const SCENARIO_FROM_LABEL: Record<string, GroundScenario> = {
   'pip':                'PIP',
   'goals & planning':   'OKR_ALIGNMENT',
   'pulse check':        'PULSE_CHECK',
+  'board strategy':     'BOARD_STRATEGY',
+  'cohort check-in':    'COHORT_CHECK',
   'other':              'REALIGN_TEAM',
 }
 

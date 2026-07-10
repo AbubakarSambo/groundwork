@@ -516,6 +516,8 @@ CONTRACT_RENEWAL - renewing, renegotiating, or extending a contract or agreement
 OKR_ALIGNMENT - aligning on objectives, goals, or key results across parties
 WORKPLAN_BUDGET - aligning on workplan, resourcing, or budget
 PIP - performance improvement, formal feedback, or capability concern
+BOARD_STRATEGY - board or leadership team aligning on strategy, priorities, or big bets
+COHORT_CHECK - many people in the same role or programme checking in against a shared question (e.g. field officers, franchisees, a training cohort)
 ${modeHint}
 
 Description: "${description.slice(0, 400)}"

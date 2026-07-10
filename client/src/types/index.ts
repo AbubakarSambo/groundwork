@@ -26,6 +26,8 @@ export type GroundScenario =
   | 'PULSE_CHECK'
   | 'REALIGN_TEAM'
   | 'PIP'
+  | 'BOARD_STRATEGY'
+  | 'COHORT_CHECK'
 
 export type GroundMoment = 'STARTING' | 'RECOGNITION' | 'RESOLUTION'
 

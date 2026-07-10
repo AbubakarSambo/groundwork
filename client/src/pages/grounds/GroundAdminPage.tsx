@@ -15,6 +15,8 @@ import { PostSessionPanel } from '@/components/PostSessionPanel'
 import { billingApi, PLAN_MEMBER_LIMITS, type SubscriptionPlan } from '@/api/billing'
 
 const SCENARIO_LABELS: Record<string, string> = {
+  BOARD_STRATEGY: 'Board strategy',
+  COHORT_CHECK: 'Cohort check-in',
   NEW_HIRE: 'New hire',
   NEW_PROJECT: 'New project',
   NEW_ADVISOR: 'New board member',

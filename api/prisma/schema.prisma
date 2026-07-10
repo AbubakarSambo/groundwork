@@ -50,6 +50,8 @@ enum GroundScenario {
   PULSE_CHECK
   REALIGN_TEAM
   PIP
+  BOARD_STRATEGY
+  COHORT_CHECK
 }
 
 // Three moments from the conversation design.
