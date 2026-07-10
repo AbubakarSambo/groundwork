@@ -47,6 +47,12 @@ export class CreateGroundDto {
   @IsEnum(Cadence)
   cadence?: Cadence;
 
+  @ApiPropertyOptional({ minimum: 0, maximum: 6, description: 'Weekday anchor for weekly cadences (0=Sun..6=Sat), e.g. every Monday' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  cadenceAnchorDay?: number;
+
   @ApiPropertyOptional({ example: 'Alignment confirmed', description: 'Pre-agreed intended outcome, shown to both parties before session 1' })
   @IsOptional()
   @IsString()

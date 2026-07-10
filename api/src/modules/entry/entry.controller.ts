@@ -2,7 +2,7 @@ import { Controller, Post, Get, Body, Query, UnauthorizedException } from '@nest
 import { Throttle } from '@nestjs/throttler';
 import { Public, CurrentUser, CurrentUserData } from '../../common';
 import { EntryService } from './entry.service';
-import { IsArray, IsOptional, IsString, MaxLength, ValidateNested } from 'class-validator';
+import { IsArray, IsInt, IsOptional, IsString, MaxLength, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 
 class TurnDto {
@@ -84,6 +84,7 @@ class EntryCommitDto {
   @IsOptional() @IsString() orgName?: string;
   @IsOptional() @IsString() scenario?: string;
   @IsOptional() @IsString() cadence?: string;
+  @IsOptional() @IsInt() cadenceAnchorDay?: number;
 
   @IsArray()
   @ValidateNested({ each: true })

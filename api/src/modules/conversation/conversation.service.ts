@@ -11,7 +11,7 @@ import { DocumentsService } from '../documents/documents.service';
 import { BillingService } from '../billing/billing.service';
 import { EmailService } from '../email/email.service';
 import { UsageService } from '../usage/usage.service';
-import { CheckInStatus, TurnRole, RecordEntryType, Cadence, GroundStatus, UsageEventType } from '@prisma/client';
+import { CheckInStatus, TurnRole, RecordEntryType, Cadence, GroundStatus, UsageEventType, PartyType } from '@prisma/client';
 import { runIntake } from './intake';
 
 function mapSpecificityLevel(avgScore: number): string {
@@ -672,21 +672,72 @@ Open the session by naming this specific inference directly. Do NOT ask the stan
    * the fortnightly / weekly / monthly schedule.
    */
   private async ensureNextSession(groundId: string, participantId: string, sessionNumber: number) {
-    const next = sessionNumber + 1;
-    const existing = await this.prisma.checkIn.findUnique({ where: { participantId_sessionNumber: { participantId, sessionNumber: next } } });
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { cadence: true, cadenceAnchorDay: true },
+    });
+    const cadence = ground?.cadence ?? Cadence.FORTNIGHTLY;
+
+    // The completer's own next session. For SEQUENTIAL there is no clock: their
+    // next round is not auto-scheduled (availableFrom stays null until triggered).
+    const ownAvailableFrom =
+      cadence === Cadence.SEQUENTIAL ? null : this.cadenceToDate(cadence, ground?.cadenceAnchorDay ?? null);
+    await this.createNextIfAbsent(groundId, participantId, sessionNumber + 1, ownAvailableFrom);
+
+    // SEQUENTIAL trigger: when the INITIATOR checks in, the team's next round
+    // opens immediately (this is the "I check in, my team gets theirs" mode).
+    if (cadence === Cadence.SEQUENTIAL) {
+      const me = await this.prisma.groundParticipant.findUnique({
+        where: { id: participantId },
+        select: { partyType: true },
+      });
+      if (me?.partyType === PartyType.INITIATOR) {
+        const others = await this.prisma.groundParticipant.findMany({
+          where: { groundId, partyType: { not: PartyType.INITIATOR }, userId: { not: null } },
+          select: { id: true },
+        });
+        const now = new Date();
+        for (const o of others) {
+          // Open their earliest not-started session now; if none exists, create it.
+          const open = await this.prisma.checkIn.findFirst({
+            where: { participantId: o.id, status: CheckInStatus.NOT_STARTED },
+            orderBy: { sessionNumber: 'asc' },
+          });
+          if (open) {
+            await this.prisma.checkIn.update({ where: { id: open.id }, data: { availableFrom: now } });
+          } else {
+            const last = await this.prisma.checkIn.findFirst({
+              where: { participantId: o.id },
+              orderBy: { sessionNumber: 'desc' },
+              select: { sessionNumber: true },
+            });
+            await this.createNextIfAbsent(groundId, o.id, (last?.sessionNumber ?? 0) + 1, now);
+          }
+        }
+      }
+    }
+  }
+
+  private async createNextIfAbsent(groundId: string, participantId: string, sessionNumber: number, availableFrom: Date | null) {
+    const existing = await this.prisma.checkIn.findUnique({ where: { participantId_sessionNumber: { participantId, sessionNumber } } });
     if (existing) return;
-
-    const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { cadence: true } });
-    const availableFrom = ground ? this.cadenceToDate(ground.cadence) : null;
-
-    await this.prisma.checkIn.create({ data: { groundId, participantId, sessionNumber: next, status: CheckInStatus.NOT_STARTED, availableFrom } });
+    await this.prisma.checkIn.create({ data: { groundId, participantId, sessionNumber, status: CheckInStatus.NOT_STARTED, availableFrom } });
   }
 
   /** Convert a cadence enum to the next available date from now. */
-  private cadenceToDate(cadence: Cadence): Date {
-    const days = cadence === Cadence.WEEKLY ? 7 : cadence === Cadence.MONTHLY ? 30 : 14; // FORTNIGHTLY = 14
+  private cadenceToDate(cadence: Cadence, anchorDay: number | null = null): Date {
     const d = new Date();
+    if (cadence === Cadence.DAILY) {
+      d.setDate(d.getDate() + 1);
+      return d;
+    }
+    const days = cadence === Cadence.WEEKLY ? 7 : cadence === Cadence.MONTHLY ? 30 : 14; // FORTNIGHTLY = 14
     d.setDate(d.getDate() + days);
+    // For weekly cadences with a fixed weekday (e.g. "every Monday"), roll forward
+    // to the next occurrence of that weekday.
+    if ((cadence === Cadence.WEEKLY || cadence === Cadence.FORTNIGHTLY) && anchorDay != null && anchorDay >= 0 && anchorDay <= 6) {
+      while (d.getDay() !== anchorDay) d.setDate(d.getDate() + 1);
+    }
     return d;
   }
 

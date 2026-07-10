@@ -105,9 +105,11 @@ enum PatternStatus {
 }
 
 enum Cadence {
+  DAILY
   WEEKLY
   FORTNIGHTLY
   MONTHLY
+  SEQUENTIAL // no fixed schedule: the initiator's check-in opens the team's next round
 }
 
 enum BillingEventType {
@@ -268,6 +270,7 @@ model Ground {
   timelineDays  Int     @map("timeline_days")
   timelineWeeks Int?    @map("timeline_weeks")
   cadence       Cadence @default(FORTNIGHTLY)
+  cadenceAnchorDay Int? @map("cadence_anchor_day") // 0=Sun..6=Sat, for "every Monday" style weekly schedules
   endState      String? @map("end_state") // the decision the process worked toward
   resolutionState String? @map("resolution_state") // pre-agreed intended outcome set at creation
   brief           String? @map("brief") // initiator's opening brief, written at ground creation

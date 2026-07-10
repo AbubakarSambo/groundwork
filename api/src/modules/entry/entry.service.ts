@@ -692,6 +692,7 @@ STRICT RULES:
       orgName?: string;
       scenario?: string;
       cadence?: string;
+      cadenceAnchorDay?: number;
       checkInBy?: string;
       history: ChatTurn[];
       report?: EntryReport | null;
@@ -716,9 +717,11 @@ STRICT RULES:
     // Create the ground. This also creates session 1 check-in (NOT_STARTED) and
     // the initiator participant in one transaction.
     const cadenceMap: Record<string, Cadence> = {
+      DAILY: Cadence.DAILY,
       WEEKLY: Cadence.WEEKLY,
       FORTNIGHTLY: Cadence.FORTNIGHTLY,
       MONTHLY: Cadence.MONTHLY,
+      SEQUENTIAL: Cadence.SEQUENTIAL,
     };
     // Use the AI's own summary as the ground brief so it's visible before participants arrive.
     const brief = dto.report?.whatGroundworkSaw ?? undefined;
@@ -730,6 +733,7 @@ STRICT RULES:
       scenario,
       moment: GroundMoment.STARTING,
       cadence: (dto.cadence && cadenceMap[dto.cadence]) ? cadenceMap[dto.cadence] : Cadence.FORTNIGHTLY,
+      cadenceAnchorDay: dto.cadenceAnchorDay ?? undefined,
       brief,
       freeParticipantCap: isBroadcast ? 100 : 4,
     });

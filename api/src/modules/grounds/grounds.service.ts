@@ -88,6 +88,7 @@ export class GroundsService {
         moment: dto.moment,
         timelineDays: dto.timelineDays ?? DEFAULT_TIMELINE_DAYS[dto.scenario],
         cadence: dto.cadence ?? Cadence.FORTNIGHTLY,
+        cadenceAnchorDay: dto.cadenceAnchorDay ?? null,
         status: GroundStatus.OPEN,
         resolutionState: dto.resolutionState ?? null,
         brief: dto.brief ?? null,

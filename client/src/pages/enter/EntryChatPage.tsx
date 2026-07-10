@@ -193,7 +193,8 @@ export function EntryChatPage() {
   const [skippedCheckin] = useState(false)
   const [checkInBy, setCheckInBy] = useState('')
   const [lastCheckInBy, setLastCheckInBy] = useState('')
-  const [cadence, setCadence] = useState<'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'ONE_TIME'>('FORTNIGHTLY')
+  const [cadence, setCadence] = useState<'DAILY' | 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'ONE_TIME' | 'SEQUENTIAL'>('FORTNIGHTLY')
+  const [cadenceAnchorDay, setCadenceAnchorDay] = useState<number | null>(null) // 0=Sun..6=Sat for "every Monday"
   const [bulkInviteMode, setBulkInviteMode] = useState(false)
   const [bulkInviteText, setBulkInviteText] = useState('')
   const [bulkQueue, setBulkQueue] = useState<string[]>([])
@@ -588,6 +589,7 @@ export function EntryChatPage() {
         // Prefer the AI-classified scenario; fall back to mode key, then URL param.
         scenario: onboardingSelections.classifiedScenario || onboardingSelections.mode || scenario || undefined,
         cadence: cadence === 'ONE_TIME' ? 'FORTNIGHTLY' : cadence,
+        cadenceAnchorDay: (cadence === 'WEEKLY' || cadence === 'FORTNIGHTLY') && cadenceAnchorDay != null ? cadenceAnchorDay : undefined,
         checkInBy: checkInBy.trim() || undefined,
         lastCheckInBy: lastCheckInBy.trim() || undefined,
         reportSummary: sessionReport ? { alignmentStatus: sessionReport.alignmentStatus, whatGroundworkSaw: sessionReport.whatGroundworkSaw } : undefined,
@@ -1456,23 +1458,42 @@ export function EntryChatPage() {
                 style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #E2E0DB', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none', marginBottom: 8 }}
               />
               <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 4 }}>How often do contributors check in?</div>
-              <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
-                {(['ONE_TIME', 'WEEKLY', 'FORTNIGHTLY', 'MONTHLY'] as const).map(c => (
+              <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
+                {(['ONE_TIME', 'DAILY', 'WEEKLY', 'FORTNIGHTLY', 'MONTHLY', 'SEQUENTIAL'] as const).map(c => {
+                  const labels: Record<string, string> = { ONE_TIME: 'One time', DAILY: 'Daily', WEEKLY: 'Weekly', FORTNIGHTLY: 'Every 2 weeks', MONTHLY: 'Monthly', SEQUENTIAL: 'When I check in' }
+                  return (
                   <button key={c} onClick={() => setCadence(c)} style={{
-                    flex: 1, padding: '9px 0', borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                    flex: '1 0 30%', padding: '9px 4px', borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
                     border: `1px solid ${cadence === c ? '#0C447C' : '#E2E0DB'}`,
                     background: cadence === c ? '#EEF4FB' : 'white',
                     color: cadence === c ? '#0C447C' : '#6B6560',
                   }}>
-                    {c === 'FORTNIGHTLY' ? 'Every 2 weeks' : c === 'ONE_TIME' ? 'One time' : c.charAt(0) + c.slice(1).toLowerCase()}
+                    {labels[c]}
                   </button>
-                ))}
+                )})}
               </div>
+              {/* Weekday anchor for weekly-style cadences ("every Monday") */}
+              {(cadence === 'WEEKLY' || cadence === 'FORTNIGHTLY') && (
+                <div style={{ marginBottom: 8 }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 4 }}>On which day? (optional)</div>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((d, i) => (
+                      <button key={d} onClick={() => setCadenceAnchorDay(cadenceAnchorDay === i ? null : i)} style={{
+                        flex: 1, padding: '6px 0', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                        border: `1px solid ${cadenceAnchorDay === i ? '#0C447C' : '#E2E0DB'}`,
+                        background: cadenceAnchorDay === i ? '#EEF4FB' : 'white', color: cadenceAnchorDay === i ? '#0C447C' : '#9B9590',
+                      }}>{d}</button>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div style={{ fontSize: 11, color: '#9B9590', marginBottom: 10, lineHeight: 1.5 }}>
                 {cadence === 'ONE_TIME' ? 'Single session · one account per party, no follow-up cadence.' :
-                 cadence === 'WEEKLY' ? 'Weekly · typical resolution in 4–6 weeks.' :
-                 cadence === 'MONTHLY' ? 'Monthly · typical resolution in 3–4 months.' :
-                 'Every 2 weeks · typical resolution in 6–8 weeks.'}
+                 cadence === 'DAILY' ? 'Daily · a fresh check-in opens each day.' :
+                 cadence === 'WEEKLY' ? `Weekly${cadenceAnchorDay != null ? ` · every ${['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][cadenceAnchorDay]}` : ''} · typical resolution in 4-6 weeks.` :
+                 cadence === 'MONTHLY' ? 'Monthly · typical resolution in 3-4 months.' :
+                 cadence === 'SEQUENTIAL' ? 'No fixed schedule · when you check in, your team gets their next check-in. Good for cascading updates to a group (e.g. field officers).' :
+                 `Every 2 weeks${cadenceAnchorDay != null ? ` · on ${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][cadenceAnchorDay]}` : ''} · typical resolution in 6-8 weeks.`}
               </div>
               {cadence === 'ONE_TIME' ? (
                 <>
