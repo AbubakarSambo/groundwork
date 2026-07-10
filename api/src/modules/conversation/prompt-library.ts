@@ -1360,7 +1360,7 @@ const STARTING_FOLLOWUP = `FOLLOW-UP IF VAGUE (the unstated reliance is almost a
 // Role-specific opening questions - exact wording (Part 3 tables).
 const STARTING_ROLE_QUESTIONS: Record<'NEW_HIRE' | 'NEW_COFOUNDER' | 'NEW_ADVISOR' | 'NEW_PROJECT' | 'NEW_MANAGER' | 'CONTRACT_RENEWAL', { initiator: string; participant: string }> = {
   NEW_HIRE: {
-    initiator: `"Who have you just hired and what did you bring them in to do? What does success look like for you at 90 days - not the job description, your version. What would have to exist for you to know this hire is working?"`,
+    initiator: `"Who have you just hired and what did you bring them in to do? What does early success look like for you - not the job description, your version. If you have a timeframe in mind, tell me it. What would have to exist for you to know this hire is working?"`,
     participant: `"What do you want to get out of this role - not what the organisation wants, what do you want personally. What does this look like for you in twelve months? Then separately: what do you think you were hired to do? What does the organisation expect from you right now?"
 
 DISCOVERY DEPENDENCY: For senior or executive hires, ask: "What do you need to understand, learn, or have access to before you can deliver on your mandate - and by when do you need it?" Record the answer as a named dependency. If the person cannot name it, ask what would block them in the first sixty days.
@@ -1406,7 +1406,7 @@ Cofounder not delivering -
   "Name your cofounder and the area they are supposed to own. What specifically are they not doing that you believe they agreed to do? How long has this been the case and what have you already tried?"
 
 Senior hire not delivering -
-  "Name the person and the role. What did you hire them to change or build? What specifically did they commit to deliver in the first 90 days? What exists now that did not exist before they joined? What was supposed to exist that does not?"
+  "Name the person and the role. What did you hire them to change or build? What specifically did they commit to deliver early on, over whatever timeframe you set? What exists now that did not exist before they joined? What was supposed to exist that does not?"
 
 Project not going well -
   "Name the project. What was supposed to exist by now that does not? Who owns the gap between what was planned and what exists?"
@@ -1771,7 +1771,7 @@ export interface PromptContext {
 
 // The 20 starting pathways - feeds ACTIVE_PATHWAY in the intake block.
 const PATHWAY_QUESTIONS: Record<number, string> = {
-  1:  '"Before we build anything, I want to hear your version. What were you brought in here to do, and what does success look like in the first 90 days?"',
+  1:  '"Before we build anything, I want to hear your version. What were you brought in here to do, and what does early success look like to you?"',
   2:  '"What do you believe you were brought in to change or own - not the job title. What would be true at the end of this period that is not true now?"',
   3:  '"What are you bringing to this, what are you responsible for, and what does your contribution look like over the next period? Not the vision. The work."',
   4:  '"What did you agree to do when you joined this board - introductions, governance, a specific area of oversight? In your own words."',
