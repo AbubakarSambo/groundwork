@@ -674,7 +674,7 @@ Open the session by naming this specific inference directly. Do NOT ask the stan
   private async ensureNextSession(groundId: string, participantId: string, sessionNumber: number) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
-      select: { cadence: true, cadenceAnchorDay: true },
+      select: { cadence: true, cadenceAnchorDay: true, endsAt: true },
     });
     const cadence = ground?.cadence ?? Cadence.FORTNIGHTLY;
 
@@ -682,7 +682,11 @@ Open the session by naming this specific inference directly. Do NOT ask the stan
     // next round is not auto-scheduled (availableFrom stays null until triggered).
     const ownAvailableFrom =
       cadence === Cadence.SEQUENTIAL ? null : this.cadenceToDate(cadence, ground?.cadenceAnchorDay ?? null);
-    await this.createNextIfAbsent(groundId, participantId, sessionNumber + 1, ownAvailableFrom);
+    // Respect the end date: do not schedule a next session past it.
+    const pastEnd = ground?.endsAt && ownAvailableFrom && ownAvailableFrom > ground.endsAt;
+    if (!pastEnd) {
+      await this.createNextIfAbsent(groundId, participantId, sessionNumber + 1, ownAvailableFrom);
+    }
 
     // SEQUENTIAL trigger: when the INITIATOR checks in, the team's next round
     // opens immediately (this is the "I check in, my team gets theirs" mode).
@@ -724,14 +728,26 @@ Open the session by naming this specific inference directly. Do NOT ask the stan
     await this.prisma.checkIn.create({ data: { groundId, participantId, sessionNumber, status: CheckInStatus.NOT_STARTED, availableFrom } });
   }
 
-  /** Convert a cadence enum to the next available date from now. */
+  /**
+   * Convert a cadence enum to the next available date from now.
+   * anchorDay: weekly/fortnightly = weekday (0=Sun..6=Sat); monthly = day of month (1-31).
+   */
   private cadenceToDate(cadence: Cadence, anchorDay: number | null = null): Date {
     const d = new Date();
     if (cadence === Cadence.DAILY) {
       d.setDate(d.getDate() + 1);
       return d;
     }
-    const days = cadence === Cadence.WEEKLY ? 7 : cadence === Cadence.MONTHLY ? 30 : 14; // FORTNIGHTLY = 14
+    if (cadence === Cadence.MONTHLY) {
+      // Next month; if a day-of-month anchor is set, land on it (clamped to month length).
+      d.setMonth(d.getMonth() + 1);
+      if (anchorDay != null && anchorDay >= 1 && anchorDay <= 31) {
+        const daysInMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+        d.setDate(Math.min(anchorDay, daysInMonth));
+      }
+      return d;
+    }
+    const days = cadence === Cadence.WEEKLY ? 7 : 14; // FORTNIGHTLY = 14
     d.setDate(d.getDate() + days);
     // For weekly cadences with a fixed weekday (e.g. "every Monday"), roll forward
     // to the next occurrence of that weekday.

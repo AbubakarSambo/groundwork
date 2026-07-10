@@ -694,6 +694,7 @@ STRICT RULES:
       cadence?: string;
       cadenceAnchorDay?: number;
       checkInBy?: string;
+      lastCheckInBy?: string;
       history: ChatTurn[];
       report?: EntryReport | null;
       contributors: { email: string; context?: string; inviteToken?: string; note?: string }[];
@@ -734,6 +735,8 @@ STRICT RULES:
       moment: GroundMoment.STARTING,
       cadence: (dto.cadence && cadenceMap[dto.cadence]) ? cadenceMap[dto.cadence] : Cadence.FORTNIGHTLY,
       cadenceAnchorDay: dto.cadenceAnchorDay ?? undefined,
+      startsAt: dto.checkInBy || undefined,
+      endsAt: dto.lastCheckInBy || undefined,
       brief,
       freeParticipantCap: isBroadcast ? 100 : 4,
     });

@@ -89,6 +89,8 @@ export class GroundsService {
         timelineDays: dto.timelineDays ?? DEFAULT_TIMELINE_DAYS[dto.scenario],
         cadence: dto.cadence ?? Cadence.FORTNIGHTLY,
         cadenceAnchorDay: dto.cadenceAnchorDay ?? null,
+        startsAt: dto.startsAt ? new Date(dto.startsAt) : null,
+        endsAt: dto.endsAt ? new Date(dto.endsAt) : null,
         status: GroundStatus.OPEN,
         resolutionState: dto.resolutionState ?? null,
         brief: dto.brief ?? null,
@@ -132,9 +134,10 @@ export class GroundsService {
         },
       });
 
-      // Session 1 is created up front and is free.
+      // Session 1 is created up front and is free. If a start date is set, the
+      // first check-in opens then (availableFrom); otherwise immediately.
       await tx.checkIn.create({
-        data: { groundId: ground.id, participantId: participant.id, sessionNumber: 1, status: CheckInStatus.NOT_STARTED },
+        data: { groundId: ground.id, participantId: participant.id, sessionNumber: 1, status: CheckInStatus.NOT_STARTED, availableFrom: dto.startsAt ? new Date(dto.startsAt) : null },
       });
 
       return ground;

@@ -47,11 +47,21 @@ export class CreateGroundDto {
   @IsEnum(Cadence)
   cadence?: Cadence;
 
-  @ApiPropertyOptional({ minimum: 0, maximum: 6, description: 'Weekday anchor for weekly cadences (0=Sun..6=Sat), e.g. every Monday' })
+  @ApiPropertyOptional({ minimum: 0, maximum: 31, description: 'Anchor day. Weekly: 0=Sun..6=Sat. Monthly: 1-31 day of month.' })
   @IsOptional()
   @IsInt()
   @Min(0)
   cadenceAnchorDay?: number;
+
+  @ApiPropertyOptional({ description: 'Start date: when the first scheduled check-in opens (ISO)' })
+  @IsOptional()
+  @IsString()
+  startsAt?: string;
+
+  @ApiPropertyOptional({ description: 'End date: no new check-ins scheduled after this (ISO)' })
+  @IsOptional()
+  @IsString()
+  endsAt?: string;
 
   @ApiPropertyOptional({ example: 'Alignment confirmed', description: 'Pre-agreed intended outcome, shown to both parties before session 1' })
   @IsOptional()

@@ -589,7 +589,7 @@ export function EntryChatPage() {
         // Prefer the AI-classified scenario; fall back to mode key, then URL param.
         scenario: onboardingSelections.classifiedScenario || onboardingSelections.mode || scenario || undefined,
         cadence: cadence === 'ONE_TIME' ? 'FORTNIGHTLY' : cadence,
-        cadenceAnchorDay: (cadence === 'WEEKLY' || cadence === 'FORTNIGHTLY') && cadenceAnchorDay != null ? cadenceAnchorDay : undefined,
+        cadenceAnchorDay: (cadence === 'WEEKLY' || cadence === 'FORTNIGHTLY' || cadence === 'MONTHLY') && cadenceAnchorDay != null ? cadenceAnchorDay : undefined,
         checkInBy: checkInBy.trim() || undefined,
         lastCheckInBy: lastCheckInBy.trim() || undefined,
         reportSummary: sessionReport ? { alignmentStatus: sessionReport.alignmentStatus, whatGroundworkSaw: sessionReport.whatGroundworkSaw } : undefined,
@@ -1487,11 +1487,24 @@ export function EntryChatPage() {
                   </div>
                 </div>
               )}
+              {/* Day-of-month anchor for monthly ("on the 1st") */}
+              {cadence === 'MONTHLY' && (
+                <div style={{ marginBottom: 8 }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 4 }}>On which day of the month? (optional)</div>
+                  <select value={cadenceAnchorDay ?? ''} onChange={e => setCadenceAnchorDay(e.target.value ? Number(e.target.value) : null)}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid #E2E0DB', fontSize: 13, fontFamily: 'inherit', background: 'white', color: cadenceAnchorDay != null ? '#1A1916' : '#9B9590' }}>
+                    <option value="">No fixed day (every ~30 days)</option>
+                    {Array.from({ length: 28 }, (_, i) => i + 1).map(day => (
+                      <option key={day} value={day}>{day}{day === 1 ? 'st' : day === 2 ? 'nd' : day === 3 ? 'rd' : 'th'} of the month</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div style={{ fontSize: 11, color: '#9B9590', marginBottom: 10, lineHeight: 1.5 }}>
                 {cadence === 'ONE_TIME' ? 'Single session · one account per party, no follow-up cadence.' :
                  cadence === 'DAILY' ? 'Daily · a fresh check-in opens each day.' :
                  cadence === 'WEEKLY' ? `Weekly${cadenceAnchorDay != null ? ` · every ${['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][cadenceAnchorDay]}` : ''} · typical resolution in 4-6 weeks.` :
-                 cadence === 'MONTHLY' ? 'Monthly · typical resolution in 3-4 months.' :
+                 cadence === 'MONTHLY' ? `Monthly${cadenceAnchorDay != null ? ` · on the ${cadenceAnchorDay}${cadenceAnchorDay === 1 ? 'st' : cadenceAnchorDay === 2 ? 'nd' : cadenceAnchorDay === 3 ? 'rd' : 'th'}` : ''} · typical resolution in 3-4 months.` :
                  cadence === 'SEQUENTIAL' ? 'No fixed schedule · when you check in, your team gets their next check-in. Good for cascading updates to a group (e.g. field officers).' :
                  `Every 2 weeks${cadenceAnchorDay != null ? ` · on ${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][cadenceAnchorDay]}` : ''} · typical resolution in 6-8 weeks.`}
               </div>
@@ -1507,7 +1520,7 @@ export function EntryChatPage() {
               ) : (
                 <div style={{ display: 'flex', gap: 8 }}>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 4 }}>First check-in</div>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 4 }}>Start date <span style={{ fontWeight: 400 }}>(first check-in)</span></div>
                     <input
                       type="date" value={checkInBy}
                       onChange={e => setCheckInBy(e.target.value)}
@@ -1515,7 +1528,7 @@ export function EntryChatPage() {
                     />
                   </div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 4 }}>Last check-in <span style={{ fontWeight: 400 }}>(optional)</span></div>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 4 }}>End date <span style={{ fontWeight: 400 }}>(last check-in, optional)</span></div>
                     <input
                       type="date" value={lastCheckInBy}
                       onChange={e => setLastCheckInBy(e.target.value)}

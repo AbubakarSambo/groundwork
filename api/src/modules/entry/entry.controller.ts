@@ -85,6 +85,8 @@ class EntryCommitDto {
   @IsOptional() @IsString() scenario?: string;
   @IsOptional() @IsString() cadence?: string;
   @IsOptional() @IsInt() cadenceAnchorDay?: number;
+  @IsOptional() @IsString() checkInBy?: string;
+  @IsOptional() @IsString() lastCheckInBy?: string;
 
   @IsArray()
   @ValidateNested({ each: true })
