@@ -145,6 +145,13 @@ export function EntryChatPage() {
   const [onboardingHistory, setOnboardingHistory] = useState<Turn[]>([])
   const [onboardingReady, setOnboardingReady] = useState(false)
   const [onboardingLoading, setOnboardingLoading] = useState(false)
+  // Doc-add during onboarding: paste or upload a text document + context, so the
+  // AI reads it and reports what it gathered (instead of the person typing it out).
+  const [showDocPanel, setShowDocPanel] = useState(false)
+  const [docTab, setDocTab] = useState<'paste' | 'upload'>('paste')
+  const [docPasteText, setDocPasteText] = useState('')
+  const [docLabel, setDocLabel] = useState('')
+  const [docContextNote, setDocContextNote] = useState('')
 
   // Check-in chat state (phase 2)
   const [history, setHistory] = useState<Turn[]>([])
@@ -445,6 +452,44 @@ export function EntryChatPage() {
     } finally {
       setOnboardingLoading(false)
     }
+  }
+
+  // Read a text-based file client-side (no ground exists yet during onboarding).
+  async function readDocFile(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader()
+      r.onload = () => resolve(String(r.result || ''))
+      r.onerror = () => reject(new Error('read failed'))
+      r.readAsText(file)
+    })
+  }
+
+  async function handleDocFileUpload(file: File) {
+    try {
+      const text = await readDocFile(file)
+      if (!text.trim()) { toast.error('That file looks empty or is not plain text. Try pasting the content instead.'); return }
+      setDocLabel(file.name)
+      setDocPasteText(text)
+      setDocTab('paste') // show what was read so they can add context and confirm
+    } catch {
+      toast.error('Could not read that file. Paste the text instead.')
+    }
+  }
+
+  // Inject the document into the conversation so the AI reads it and reports back
+  // what it gathered. Reuses sendOnboarding, which appends the turn and re-asks.
+  function submitOnboardingDoc() {
+    const content = docPasteText.trim()
+    if (!content) return
+    const label = docLabel.trim() || 'a document'
+    const note = docContextNote.trim()
+    const composed =
+      `I am adding a document to my record: "${label}".` +
+      (note ? ` Context: ${note}.` : '') +
+      ` Please read it and tell me what you gathered from it that I have not already said, then continue.\n\n--- DOCUMENT START ---\n${content}\n--- DOCUMENT END ---`
+    setShowDocPanel(false)
+    setDocPasteText(''); setDocLabel(''); setDocContextNote('')
+    sendOnboarding(composed)
   }
 
   // Kick off the AI onboarding with the intro message on mount (if onboarding history is empty)
@@ -772,8 +817,11 @@ export function EntryChatPage() {
             {/* Product intro - shown once before conversation starts */}
             {onboardingHistory.length <= 1 && (
               <div style={{ background: 'var(--gw-blue-bg)', borderBottom: '1px solid var(--gw-blue-b)', padding: '12px 20px', flexShrink: 0 }}>
-                <div style={{ maxWidth: 680, margin: '0 auto', fontSize: 13, color: 'var(--gw-navy)', lineHeight: 1.6 }}>
-                  <strong>Groundwork</strong> builds a private written record of a workplace situation from both sides. Each person checks in independently. The report is released when both are ready. Your contributions are never shown to the other party without your consent.
+                <div style={{ maxWidth: 680, margin: '0 auto' }}>
+                  <h1 style={{ fontSize: 15, fontWeight: 800, color: 'var(--gw-navy)', margin: '0 0 3px', letterSpacing: '-.01em' }}>Set up your Groundwork</h1>
+                  <div style={{ fontSize: 13, color: 'var(--gw-navy)', lineHeight: 1.6 }}>
+                    Answer a few questions about the situation. You get a private summary now; a shared report follows once the other people check in.
+                  </div>
                 </div>
               </div>
             )}
@@ -903,11 +951,58 @@ export function EntryChatPage() {
             {/* Text input for onboarding - hidden once ready, loading checkin, or cards not yet dismissed */}
             {!startCheckin.isPending && !onboardingReady && !(onboardingHistory.length === 1 && !pickedSituation) && (
               <div style={{ borderTop: '1px solid var(--gw-border)', background: 'white', flexShrink: 0 }}>
+                {/* Doc-add panel: paste or upload a document + context; the AI reads it. */}
+                {showDocPanel && (
+                  <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--gw-border)', background: '#F7F6F3' }}>
+                    <div style={{ maxWidth: 680, margin: '0 auto' }}>
+                      <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+                        {(['paste', 'upload'] as const).map(t => (
+                          <button key={t} onClick={() => setDocTab(t)}
+                            style={{ fontSize: 12, fontWeight: 700, padding: '5px 12px', borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit',
+                              border: `1px solid ${docTab === t ? 'var(--gw-navy)' : 'var(--gw-border)'}`,
+                              background: docTab === t ? 'var(--gw-navy)' : 'white', color: docTab === t ? 'white' : 'var(--gw-sub)' }}>
+                            {t === 'paste' ? 'Paste text' : 'Upload file'}
+                          </button>
+                        ))}
+                        <div style={{ flex: 1 }} />
+                        <button onClick={() => setShowDocPanel(false)} style={{ fontSize: 12, color: 'var(--gw-sub)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
+                      </div>
+                      {docTab === 'upload' && (
+                        <label style={{ display: 'block', border: '1px dashed var(--gw-border)', borderRadius: 8, padding: '14px', textAlign: 'center', fontSize: 12, color: 'var(--gw-sub)', cursor: 'pointer', marginBottom: 8, background: 'white' }}>
+                          📎 Choose a text file (.txt, .md, .csv). For PDF or Word, paste the text instead.
+                          <input type="file" accept=".txt,.md,.csv,.json,.log" style={{ display: 'none' }}
+                            onChange={e => { const f = e.target.files?.[0]; if (f) handleDocFileUpload(f) }} />
+                        </label>
+                      )}
+                      <input type="text" placeholder="What is this? e.g. the onboarding guide I shared" value={docLabel}
+                        onChange={e => setDocLabel(e.target.value)}
+                        style={{ width: '100%', padding: '8px 10px', fontSize: 13, border: '1px solid var(--gw-border)', borderRadius: 6, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 6 }} />
+                      <textarea placeholder={docTab === 'upload' ? 'File contents will appear here once read. You can edit before sending.' : 'Paste the document text here…'}
+                        value={docPasteText} onChange={e => setDocPasteText(e.target.value)} rows={5}
+                        style={{ width: '100%', padding: '8px 10px', fontSize: 12, border: '1px solid var(--gw-border)', borderRadius: 6, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', resize: 'vertical', marginBottom: 6 }} />
+                      <input type="text" placeholder="Anything to note about it? (optional)" value={docContextNote}
+                        onChange={e => setDocContextNote(e.target.value)}
+                        style={{ width: '100%', padding: '8px 10px', fontSize: 13, border: '1px solid var(--gw-border)', borderRadius: 6, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 8 }} />
+                      <button onClick={submitOnboardingDoc} disabled={!docPasteText.trim() || onboardingLoading}
+                        style={{ padding: '9px 16px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'inherit', opacity: (docPasteText.trim() && !onboardingLoading) ? 1 : 0.4 }}>
+                        Add document and let Groundwork read it
+                      </button>
+                    </div>
+                  </div>
+                )}
                 <div style={{ padding: '10px 16px' }}>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center', maxWidth: 680, margin: '0 auto' }}>
+                    <button
+                      onClick={() => setShowDocPanel(v => !v)}
+                      disabled={onboardingLoading}
+                      title="Add a document (paste or upload) instead of typing it out"
+                      style={{ padding: '0 12px', borderRadius: 6, background: 'white', color: 'var(--gw-navy)', border: '1px solid var(--gw-border)', cursor: 'pointer', fontSize: 13, fontWeight: 700, height: 38, whiteSpace: 'nowrap', opacity: onboardingLoading ? 0.5 : 1 }}
+                    >
+                      + Doc
+                    </button>
                     <input
                       type="text"
-                      placeholder="Type your response."
+                      placeholder="Type your response, or add a document with + Doc"
                       value={input}
                       onChange={e => setInput(e.target.value)}
                       onKeyDown={e => { if (e.key === 'Enter' && input.trim()) { sendOnboarding(input); } }}
@@ -936,12 +1031,25 @@ export function EntryChatPage() {
         {/* PHASE: CHECK-IN (AI-driven, message 15+) */}
         {phase === 'checkin' && (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+            {/* Not-signed-up reminder: the entry user has no account until they save. */}
+            {!user && (
+              <div style={{ background: '#FDF3E3', borderBottom: '1px solid #F5D9A0', padding: '8px 16px', flexShrink: 0 }}>
+                <div style={{ maxWidth: 680, margin: '0 auto', fontSize: 12.5, color: '#8A5C1A', lineHeight: 1.5 }}>
+                  You are not signed up yet. Your answers are saved to this device as you go, but save your email at the end to keep this record.
+                </div>
+              </div>
+            )}
             <div
               ref={msgsRef}
               style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 680, width: '100%', margin: '0 auto', boxSizing: 'border-box' }}
             >
               {startCheckin.isPending && (
                 <div style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', padding: 24 }}>Starting your check-in…</div>
+              )}
+              {!startCheckin.isPending && displayedHistory.length <= 2 && (
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', padding: '4px 12px 8px', lineHeight: 1.5 }}>
+                  This takes a few exchanges (about 3 answers) to build a solid record, then you can end the session to get your report.
+                </div>
               )}
               {displayedHistory.map((m, i) => {
                 return (
