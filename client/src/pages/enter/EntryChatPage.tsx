@@ -1284,7 +1284,7 @@ export function EntryChatPage() {
                     })}
                   </div>
                   <div style={{ fontSize: 11, color: '#9B9590', marginTop: 6, lineHeight: 1.5 }}>
-                    This reflects your side only. "Aligned" unlocks once the other party checks in and the two accounts are compared.
+                    Reading left to right: <b>Unresolved</b> (little on record) → <b>Mixed</b> → <b>Emerging</b> → <b>Clear</b> (your side is well defined) → <b>Aligned</b> (only after the other party checks in). This reflects your side only.
                   </div>
                 </div>
 
@@ -1488,6 +1488,9 @@ export function EntryChatPage() {
                     />
                   </div>
                 </div>
+              )}
+              {emailError && !checkInBy && emailError.toLowerCase().includes('date') && (
+                <div style={{ fontSize: 11.5, color: '#C0392B', marginTop: 6, fontWeight: 600 }}>Pick a date above so we know when to expect the first check-in.</div>
               )}
             </div>
 
