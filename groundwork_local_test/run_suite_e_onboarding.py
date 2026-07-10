@@ -104,8 +104,14 @@ async def run_persona(playwright, agent_id: int):
         print(f"    Feeling:  {feeling}", flush=True)
 
     try:
-        # Step 1: Arrive at the base URL
-        await wait_for_app(page)
+        # Step 1: Arrive at the onboarding entry. A logged-out visitor at the app
+        # root (/) is redirected to the external marketing site, so the real cold
+        # start for a new person is /start (the onboarding conversation).
+        try:
+            await page.goto(f"{BASE_URL}/start", timeout=10_000)
+            await page.wait_for_load_state("networkidle", timeout=8_000)
+        except Exception:
+            await wait_for_app(page)
         await ss(page, f"a{agent_id}_s01_landing")
         body_text = await page.inner_text("body") if await page.query_selector("body") else ""
         title = await page.title()

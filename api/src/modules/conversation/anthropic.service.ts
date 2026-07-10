@@ -10,6 +10,24 @@ export interface ChatTurn {
   content: string;
 }
 
+/**
+ * Groundwork house style: no em/en dashes, straight quotes only, no ellipsis
+ * character, no non-breaking spaces, no double hyphens. The model tends to echo
+ * en-dashes back (our own prompts contain "3-5 sentence" phrasing), so we
+ * normalize every AI response at the output boundary. This text is shown to
+ * customers in check-ins and reports.
+ */
+export function houseStyle(text: string): string {
+  if (!text) return text;
+  return text
+    .replace(/[—–]/g, '-') // em/en dash -> hyphen
+    .replace(/[“”]/g, '"') // curly double quotes -> straight
+    .replace(/[‘’]/g, "'") // curly single quotes/apostrophes -> straight
+    .replace(/…/g, '...') // ellipsis char -> three dots
+    .replace(/ /g, ' ') // non-breaking space -> space
+    .replace(/--+/g, '-'); // collapse double hyphens
+}
+
 @Injectable()
 export class AnthropicService {
   private readonly logger = new Logger(AnthropicService.name);
@@ -63,7 +81,7 @@ export class AnthropicService {
     if (!text) {
       throw new Error('AI returned an empty response');
     }
-    return text;
+    return houseStyle(text);
   }
 
   async extract<T = any>(systemPrompt: string, history: ChatTurn[], tool: { name: string; description: string; input_schema: any }): Promise<T | null> {
