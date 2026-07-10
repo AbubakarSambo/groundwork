@@ -412,9 +412,45 @@ export function ReportPage() {
           )}
         </div>
 
+        {/* Who is on record + how specific each account was (#33). */}
+        {Array.isArray(eng.parties) && eng.parties.length > 0 && (
+          <div style={{ marginTop: 32 }}>
+            <div style={{ fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: '#9B9590', fontWeight: 700, marginBottom: 10 }}>On record</div>
+            <div style={{ border: '1px solid #E2E0DB', borderRadius: 10, overflow: 'hidden' }}>
+              {eng.parties.map((p: any, i: number) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 14px', borderBottom: i < eng.parties.length - 1 ? '1px solid #EFEDE8' : 'none', background: 'white' }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#1A1916' }}>{p.label}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                    <span style={{ fontSize: 11, color: '#9B9590' }}>{p.contributed ? `${p.sessions ?? 0} session${(p.sessions ?? 0) !== 1 ? 's' : ''}` : 'not yet checked in'}</span>
+                    {p.contributed && p.specificityLabel && (
+                      <span title="How concrete their account was" style={{ fontSize: 11, fontWeight: 700, borderRadius: 6, padding: '2px 8px',
+                        background: p.specificityLabel === 'high' ? '#E7F6EF' : p.specificityLabel === 'moderate' ? '#EEF4FB' : '#FDF3E3',
+                        color: p.specificityLabel === 'high' ? '#085041' : p.specificityLabel === 'moderate' ? '#0C447C' : '#8A5C1A' }}>
+                        {p.specificityLabel} specificity
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {report.inferences && report.inferences.length > 0 && (
           <InferenceReviewPanel groundId={id!} inferences={report.inferences} />
         )}
+
+        {/* Always-visible correction affordance (#21): the per-claim "Correct this"
+            only appears when there are inferred claims, so make correction discoverable. */}
+        <div style={{ marginTop: 24, background: '#F7F6F3', border: '1px solid #E2E0DB', borderRadius: 10, padding: '14px 16px' }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#1A1916', marginBottom: 4 }}>Something not right in this report?</div>
+          <div style={{ fontSize: 12.5, color: '#6B6560', lineHeight: 1.6 }}>
+            {report.inferences && report.inferences.length > 0
+              ? 'Inferred claims above have a "Correct this" button that opens a short follow-up to fix the record. '
+              : ''}
+            For anything else, start a new session on this ground to add to or correct the record. Reports are built from what is on record, so adding a session updates the picture.
+          </div>
+        </div>
 
         <div style={{ marginTop: 40, paddingTop: 24, borderTop: '1px solid #E2E0DB', fontSize: 12, color: '#9B9590', lineHeight: 1.6 }}>
           This report is permanent. Both parties keep it, and it is portable to each of your profiles.

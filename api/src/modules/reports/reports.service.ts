@@ -193,12 +193,34 @@ export class ReportsService {
     });
     let participantIdx = 0;
     const labelById = new Map<string, string>();
+    // Count how many non-initiators share each role, so we can disambiguate
+    // same-role people (e.g. six "Field officer"s become "Field officer A/B/...").
+    const roleCounts = new Map<string, number>();
+    for (const p of parties) {
+      if (p.partyType !== PartyType.INITIATOR) {
+        const role = p.roleAsDescribed?.trim();
+        if (role) roleCounts.set(role.toLowerCase(), (roleCounts.get(role.toLowerCase()) ?? 0) + 1);
+      }
+    }
+    const roleSeen = new Map<string, number>();
     for (const p of parties) {
       if (p.partyType === PartyType.INITIATOR) {
         labelById.set(p.id, p.roleAsDescribed?.trim() || 'the initiator');
       } else {
-        const letter = String.fromCharCode(65 + participantIdx++);
-        labelById.set(p.id, p.roleAsDescribed?.trim() || `participant ${letter}`);
+        const role = p.roleAsDescribed?.trim();
+        if (role) {
+          // If more than one party holds this role, append a distinguishing letter.
+          if ((roleCounts.get(role.toLowerCase()) ?? 0) > 1) {
+            const n = (roleSeen.get(role.toLowerCase()) ?? 0);
+            roleSeen.set(role.toLowerCase(), n + 1);
+            labelById.set(p.id, `${role} ${String.fromCharCode(65 + n)}`);
+          } else {
+            labelById.set(p.id, role);
+          }
+        } else {
+          const letter = String.fromCharCode(65 + participantIdx++);
+          labelById.set(p.id, `participant ${letter}`);
+        }
       }
     }
 

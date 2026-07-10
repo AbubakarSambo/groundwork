@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
 import { groundsApi, type GroundScenario, type GroundMoment, type GroundCadence } from '@/api/grounds'
-import { billingApi } from '@/api/billing'
+import { billingApi, FREE_GROUND_LIMIT } from '@/api/billing'
 import { toast } from 'sonner'
 
 interface ScenarioCard {
@@ -121,6 +121,7 @@ export function CreateGroundPage() {
   // Billing step state
   const [billingChecked, setBillingChecked] = useState(false)
   const [billingFree, setBillingFree] = useState(false)
+  const [groundsUsed, setGroundsUsed] = useState<number | null>(null)
   const [showCodeInput, setShowCodeInput] = useState(false)
   const [codeInput, setCodeInput] = useState('')
   const [codeApplied, setCodeApplied] = useState(false)
@@ -142,6 +143,7 @@ export function CreateGroundPage() {
       billingApi.checkCanCreateGround().then(res => {
         setBillingChecked(true)
         setBillingLoading(false)
+        if (res.groundsUsed != null) setGroundsUsed(res.groundsUsed)
         if (res.allowed) {
           setBillingFree(true)
         } else {
@@ -305,6 +307,12 @@ export function CreateGroundPage() {
                     Your plan includes unlimited Grounds, sessions, and reports.
                   </div>
                 </div>
+                {/* Free-tier usage warning: show how many of the 10 free grounds are left before you hit the wall. */}
+                {groundsUsed != null && !appliedAccessCode && (
+                  <div style={{ fontSize: 12.5, color: groundsUsed >= FREE_GROUND_LIMIT - 2 ? '#8A5C1A' : 'var(--gw-sub)', background: groundsUsed >= FREE_GROUND_LIMIT - 2 ? '#FDF3E3' : 'transparent', border: groundsUsed >= FREE_GROUND_LIMIT - 2 ? '1px solid #F5D9A0' : 'none', borderRadius: 8, padding: groundsUsed >= FREE_GROUND_LIMIT - 2 ? '10px 12px' : '0', marginBottom: 16, lineHeight: 1.5 }}>
+                    Free plan: <b>{groundsUsed} of {FREE_GROUND_LIMIT}</b> Grounds used{groundsUsed >= FREE_GROUND_LIMIT - 2 ? `. Only ${FREE_GROUND_LIMIT - groundsUsed} left before you'll need a subscription.` : '.'}
+                  </div>
+                )}
                 <button className="gw-btn" onClick={() => setStep(3)} style={{ margin: '12px 0 0' }}>Continue →</button>
               </div>
             )}
