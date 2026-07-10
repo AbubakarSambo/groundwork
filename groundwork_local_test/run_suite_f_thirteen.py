@@ -7,6 +7,7 @@ Check whether the split survives and the lone voice is preserved.
 Run alongside sessions; same CLAUDE.md rules apply.
 """
 
+from __future__ import annotations
 import asyncio
 import json
 import re
@@ -15,6 +16,8 @@ from pathlib import Path
 from datetime import datetime
 
 from playwright.async_api import async_playwright, Page
+
+from _harness import ground_ids
 
 BASE_URL = "http://127.0.0.1:5173"
 ROOT = Path(__file__).parent
@@ -85,29 +88,10 @@ async def wait_for_app(page: Page):
         pass
 
 
-async def find_or_create_ground(page: Page) -> str | None:
-    """Find existing ground or create a new one."""
-    await page.goto(f"{BASE_URL}/grounds", timeout=8_000)
-    await page.wait_for_load_state("domcontentloaded", timeout=5_000)
-
-    links = await page.query_selector_all("a[href*='/grounds/']")
-    for link in links:
-        href = await link.get_attribute("href")
-        if href:
-            m = re.search(r"/grounds/([a-f0-9-]{8,})", href)
-            if m:
-                return m.group(1)
-
-    # Try creating a new one
-    new_btn = await page.query_selector("a[href*='/grounds/new'], button")
-    if new_btn:
-        await new_btn.click()
-        await page.wait_for_load_state("domcontentloaded", timeout=5_000)
-        await page.wait_for_timeout(2_000)
-        m = re.search(r"/grounds/([a-f0-9-]{8,})", page.url)
-        if m:
-            return m.group(1)
-    return None
+async def find_or_create_ground(page: Page, identity: str = "zainab") -> str | None:
+    """Find an existing accessible ground via the API (cards are not anchors)."""
+    ids = ground_ids(identity)
+    return ids[0] if ids else None
 
 
 async def submit_response(playwright, p_id: int, name: str, email: str, ground_id: str, response: str):

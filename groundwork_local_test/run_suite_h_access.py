@@ -6,6 +6,7 @@ visible that should not be). URL ID tampering. Role boundary checks.
 Agents 67-71. Run alongside sessions; same CLAUDE.md rules apply.
 """
 
+from __future__ import annotations
 import asyncio
 import json
 import os
@@ -15,6 +16,8 @@ from pathlib import Path
 from datetime import datetime
 
 from playwright.async_api import async_playwright, Page, BrowserContext
+
+from _harness import ground_ids as api_ground_ids
 
 BASE_URL = "http://127.0.0.1:5173"
 ROOT = Path(__file__).parent
@@ -75,17 +78,9 @@ async def wait_for_app(page: Page):
         pass
 
 
-async def collect_ground_ids(page: Page) -> list[str]:
-    """Collect ground IDs visible in the current page links."""
-    ids = []
-    links = await page.query_selector_all("a[href*='/grounds/']")
-    for link in links:
-        href = await link.get_attribute("href")
-        if href:
-            m = re.search(r"/grounds/([a-f0-9-]{8,})", href)
-            if m:
-                ids.append(m.group(1))
-    return list(set(ids))
+async def collect_ground_ids(page: Page, identity: str) -> list[str]:
+    """Collect the ground IDs this persona can see, via the API (cards are not anchors)."""
+    return api_ground_ids(identity)
 
 
 async def try_url(page: Page, url: str) -> tuple[int | None, str]:
@@ -132,7 +127,7 @@ async def agent_67_missing(playwright):
         await ss(page, f"a{agent_id}_s02_grounds_list")
         grounds_text = await page.inner_text("body")
 
-        ground_ids = await collect_ground_ids(page)
+        ground_ids = await collect_ground_ids(page, "tom")
         log(agent_id, f"Grounds visible: {len(ground_ids)} — IDs: {ground_ids}")
 
         if not ground_ids:
@@ -188,7 +183,7 @@ async def agent_68_leaked(playwright):
         # First collect tom's own ground IDs
         await page.goto(f"{BASE_URL}/grounds", timeout=8_000)
         await page.wait_for_load_state("domcontentloaded", timeout=5_000)
-        own_ids = await collect_ground_ids(page)
+        own_ids = await collect_ground_ids(page, "tom")
         log(agent_id, f"Tom's own ground IDs: {own_ids}")
 
         for gid in own_ids[:2]:
@@ -247,7 +242,7 @@ async def agent_69_participant_boundary(playwright):
         # Collect marcus's known grounds
         await page.goto(f"{BASE_URL}/grounds", timeout=8_000)
         await page.wait_for_load_state("domcontentloaded", timeout=5_000)
-        own_ids = await collect_ground_ids(page)
+        own_ids = await collect_ground_ids(page, "marcus")
         await ss(page, f"a{agent_id}_s01_grounds")
         log(agent_id, f"Marcus visible grounds: {own_ids}")
 
@@ -290,7 +285,7 @@ async def agent_70_lead_boundary(playwright):
 
         await page.goto(f"{BASE_URL}/grounds", timeout=8_000)
         await page.wait_for_load_state("domcontentloaded", timeout=5_000)
-        priya_ids = await collect_ground_ids(page)
+        priya_ids = await collect_ground_ids(page, "priya")
         await ss(page, f"a{agent_id}_s01_grounds")
         log(agent_id, f"Priya visible grounds: {priya_ids}")
 
@@ -332,7 +327,7 @@ async def agent_71_returning(playwright):
 
         await page.goto(f"{BASE_URL}/grounds", timeout=8_000)
         await page.wait_for_load_state("domcontentloaded", timeout=5_000)
-        ground_ids = await collect_ground_ids(page)
+        ground_ids = await collect_ground_ids(page, "zainab")
         await ss(page, f"a{agent_id}_s01_grounds")
         log(agent_id, f"Zainab's grounds on return: {ground_ids}")
 

@@ -7,6 +7,7 @@ and whether it can say something about session 1 not visible at the time.
 Run alongside sessions; same CLAUDE.md rules apply.
 """
 
+from __future__ import annotations
 import asyncio
 import json
 import re
@@ -15,6 +16,8 @@ from pathlib import Path
 from datetime import datetime
 
 from playwright.async_api import async_playwright, Page
+
+from _harness import ground_ids
 
 BASE_URL = "http://127.0.0.1:5173"
 ROOT = Path(__file__).parent
@@ -91,17 +94,10 @@ async def save_state(ctx, identity: str):
     await ctx.storage_state(path=str(p / "state.json"))
 
 
-async def find_ground(page: Page) -> str | None:
-    await page.goto(f"{BASE_URL}/grounds", timeout=8_000)
-    await page.wait_for_load_state("domcontentloaded", timeout=5_000)
-    links = await page.query_selector_all("a[href*='/grounds/']")
-    for link in links:
-        href = await link.get_attribute("href")
-        if href:
-            m = re.search(r"/grounds/([a-f0-9-]{8,})", href)
-            if m:
-                return m.group(1)
-    return None
+async def find_ground(page: Page, identity: str = "zainab") -> str | None:
+    """Return an accessible ground ID via the API (cards are not anchors)."""
+    ids = ground_ids(identity)
+    return ids[0] if ids else None
 
 
 async def do_checkin(page: Page, agent_id: int, ground_id: str, message: str, session_num: int, identity: str) -> str:

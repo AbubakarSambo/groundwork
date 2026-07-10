@@ -7,6 +7,7 @@ and whether the report holds the gap open when corroboration fails.
 Run alongside sessions; same CLAUDE.md rules apply.
 """
 
+from __future__ import annotations
 import asyncio
 import json
 import sys
@@ -15,6 +16,8 @@ from pathlib import Path
 from datetime import datetime
 
 from playwright.async_api import async_playwright, Page
+
+from _harness import ground_ids
 
 BASE_URL = "http://127.0.0.1:5173"
 ROOT = Path(__file__).parent
@@ -66,18 +69,10 @@ async def wait_for_app(page: Page):
         pass
 
 
-async def find_latest_ground(page: Page) -> str | None:
-    """Return the ID of the most recent accessible ground."""
-    await page.goto(f"{BASE_URL}/grounds", timeout=8_000)
-    await page.wait_for_load_state("domcontentloaded", timeout=5_000)
-    links = await page.query_selector_all("a[href*='/grounds/']")
-    for link in links:
-        href = await link.get_attribute("href")
-        if href:
-            m = re.search(r"/grounds/([a-f0-9-]{8,})", href)
-            if m:
-                return m.group(1)
-    return None
+async def find_latest_ground(page: Page, identity: str = "zainab") -> str | None:
+    """Return the ID of an accessible ground (via API — cards are not anchors)."""
+    ids = ground_ids(identity)
+    return ids[0] if ids else None
 
 
 async def do_checkin_turn(page: Page, agent_id: int, ground_id: str, message: str, step: int) -> str:
@@ -150,7 +145,7 @@ async def agent_53_tom_denial(playwright):
 
     try:
         await wait_for_app(page)
-        ground_id = await find_latest_ground(page)
+        ground_id = await find_latest_ground(page, "tom")
         if not ground_id:
             record(agent_id, "BLOCKED", "Find ground", "No grounds available for tom")
             return
@@ -214,7 +209,7 @@ async def agent_54_tom_confirmation(playwright):
 
     try:
         await wait_for_app(page)
-        ground_id = await find_latest_ground(page)
+        ground_id = await find_latest_ground(page, "tom")
         if not ground_id:
             record(agent_id, "BLOCKED", "Find ground", "No grounds available for tom")
             return

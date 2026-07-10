@@ -12,6 +12,7 @@ Suite G — Attrition: with 13 participants + 4 dropouts by session 6, check if
 Agents 51, 56, 65, 66.
 """
 
+from __future__ import annotations
 import json
 import re
 import sys
