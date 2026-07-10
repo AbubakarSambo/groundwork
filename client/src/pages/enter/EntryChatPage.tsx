@@ -1158,21 +1158,25 @@ export function EntryChatPage() {
                   <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: 'rgba(255,255,255,.93)' }}>{sessionReport.whatGroundworkSaw}</p>
                 </div>
 
-                {/* Alignment status */}
+                {/* Where your side stands (one-sided until others check in) */}
                 <div style={{ marginBottom: 16 }}>
-                  <div style={{ fontSize: 10, letterSpacing: '.09em', textTransform: 'uppercase', color: '#9B9590', fontWeight: 700, marginBottom: 6 }}>Alignment status</div>
+                  <div style={{ fontSize: 10, letterSpacing: '.09em', textTransform: 'uppercase', color: '#9B9590', fontWeight: 700, marginBottom: 6 }}>Where your side stands</div>
                   <div style={{ fontSize: 17, fontWeight: 800, color: '#1A1916' }}>{sessionReport.alignmentStatus}</div>
                   <div style={{ fontSize: 12, color: '#6B6560', marginTop: 3, lineHeight: 1.5 }}>{sessionReport.alignmentBasis}</div>
                   <div style={{ display: 'flex', gap: 4, marginTop: 10 }}>
                     {(['Unresolved','Mixed','Emerging','Clear','Aligned'] as const).map(s => {
                       const order = ['Unresolved','Mixed','Emerging','Clear','Aligned']
                       const on = order.indexOf(s) <= order.indexOf(sessionReport.alignmentStatus)
-                      const fullyAligned = sessionReport.alignmentStatus === 'Aligned'
-                      const bg = on ? (fullyAligned ? '#085041' : '#0C447C') : '#EFEDE8'
+                      // "Aligned" requires a second party, so it stays locked in a one-sided report.
+                      const locked = s === 'Aligned'
+                      const bg = on ? '#0C447C' : '#EFEDE8'
                       return (
-                        <div key={s} style={{ flex: 1, textAlign: 'center', fontSize: 9, letterSpacing: '.03em', textTransform: 'uppercase', padding: '5px 2px', borderRadius: 5, fontWeight: 700, background: bg, color: on ? 'white' : '#9B9590' }}>{s}</div>
+                        <div key={s} style={{ flex: 1, textAlign: 'center', fontSize: 9, letterSpacing: '.03em', textTransform: 'uppercase', padding: '5px 2px', borderRadius: 5, fontWeight: 700, background: bg, color: on ? 'white' : (locked ? '#B8B4AE' : '#9B9590'), border: locked ? '1px dashed #CFCBC4' : 'none' }}>{locked ? `${s} 🔒` : s}</div>
                       )
                     })}
+                  </div>
+                  <div style={{ fontSize: 11, color: '#9B9590', marginTop: 6, lineHeight: 1.5 }}>
+                    This reflects your side only. "Aligned" unlocks once the other party checks in and the two accounts are compared.
                   </div>
                 </div>
 
@@ -1191,10 +1195,10 @@ export function EntryChatPage() {
                   </div>
                 )}
 
-                {/* Alignment reached */}
+                {/* Clear on your side (not mutual agreement - only one party has checked in) */}
                 {sessionReport.alignmentReached.length > 0 && (
                   <div style={{ marginBottom: 16 }}>
-                    <div style={{ fontSize: 10, letterSpacing: '.09em', textTransform: 'uppercase', color: '#9B9590', fontWeight: 700, marginBottom: 8 }}>Alignment reached</div>
+                    <div style={{ fontSize: 10, letterSpacing: '.09em', textTransform: 'uppercase', color: '#9B9590', fontWeight: 700, marginBottom: 8 }}>Clear on your side</div>
                     {sessionReport.alignmentReached.map((a, i) => (
                       <div key={i} style={{ border: '1px solid #E2E0DB', borderLeft: '3px solid #5DCAA5', borderRadius: 10, padding: '11px 13px', marginBottom: 8 }}>
                         <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>{a.title}</div>

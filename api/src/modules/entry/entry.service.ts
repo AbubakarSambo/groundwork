@@ -137,6 +137,9 @@ Rules:
 - No verdicts. No judgements of any person.
 - Never name the other party personally. Use "the other party" or their role.
 - Be specific to what was actually said. Do not invent.
+- Address the person directly as "you" and call their record "your record". NEVER refer to them as "this account" or "the user".
+- CRITICAL: only ONE party has checked in (this person). Alignment is a two-sided outcome and CANNOT exist yet. Do NOT use the word "Aligned" or say alignment has been "reached". The status ceiling for a one-sided session is "Clear" (your own side is clearly on record). Reserve "Aligned" for when a second party has independently checked in.
+- alignmentReached items are things you have stated clearly on YOUR side and put on record - they are "clear on your side, pending the other party", never mutually agreed.
 - The alignment status reflects THIS session only. No cross-reference yet since the other party has not checked in.
 - Areas requiring alignment are things still unclear or unstated, not failures.
 - The recommended move is practical, not prescriptive.
@@ -159,12 +162,14 @@ const ENTRY_REPORT_SCHEMA = {
       },
       alignmentStatus: {
         type: 'string',
-        enum: ['Unresolved', 'Mixed', 'Emerging', 'Clear', 'Aligned'],
-        description: 'Where the account stands after session 1.',
+        // 'Aligned' is intentionally excluded: only one party has checked in, so a
+        // two-sided alignment cannot exist yet. Ceiling is 'Clear' for a solo session.
+        enum: ['Unresolved', 'Mixed', 'Emerging', 'Clear'],
+        description: 'Where YOUR side stands after session 1 (one-sided). Never "Aligned" - alignment needs a second party.',
       },
       alignmentBasis: {
         type: 'string',
-        description: '1 sentence explaining what determined the alignment status.',
+        description: '1 sentence explaining what determined the status, framed as your side only.',
       },
       areasRequiringAlignment: {
         type: 'array',

@@ -7,9 +7,17 @@ import { InferenceReviewPanel } from '@/components/InferenceReviewPanel'
 
 const LADDER_STEPS = ['Unresolved', 'Mixed', 'Emerging', 'Clear', 'Aligned'] as const
 
-function deriveStatus(agreements: string[], divergences: any[]): { label: string; steps: number } {
+function deriveStatus(agreements: string[], divergences: any[], contributedParties = 2): { label: string; steps: number } {
   const a = agreements.length
   const d = divergences.length
+  // Alignment is two-sided. With fewer than 2 parties on record, the ceiling is
+  // "Clear" (one side is clearly stated) - never "Aligned".
+  if (contributedParties < 2) {
+    if (a > 0 && d <= 1) return { label: 'Clear', steps: 4 }
+    if (a > 0 && d <= 2) return { label: 'Emerging', steps: 3 }
+    if (a > 0 || d > 0) return { label: 'Mixed', steps: 2 }
+    return { label: 'Unresolved', steps: 1 }
+  }
   if (a > 0 && d === 0) return { label: 'Aligned', steps: 5 }
   if (a > 0 && d <= 1) return { label: 'Clear', steps: 4 }
   if (a > 0 && d <= 2) return { label: 'Emerging', steps: 3 }
@@ -193,7 +201,8 @@ export function ReportPage() {
 
   const agreements = report.agreements ?? []
   const divergences = report.divergences ?? []
-  const { label: statusLabel, steps: statusSteps } = deriveStatus(agreements, divergences)
+  const contributedParties = ((report.engagement ?? {}) as any).parties?.filter((p: any) => p.contributed).length ?? 2
+  const { label: statusLabel, steps: statusSteps } = deriveStatus(agreements, divergences, contributedParties)
 
   const eng = (report.engagement ?? {}) as any
   const areas: any[] = eng.areas ?? []
