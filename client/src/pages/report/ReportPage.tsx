@@ -4,6 +4,7 @@ import { groundsApi } from '@/api/grounds'
 import { reportsApi } from '@/api/reports'
 import { useAuthStore } from '@/stores/auth'
 import { InferenceReviewPanel } from '@/components/InferenceReviewPanel'
+import { VennIcon } from '@/components/gw/VennIcon'
 
 const LADDER_STEPS = ['Unresolved', 'Mixed', 'Emerging', 'Clear', 'Aligned'] as const
 
@@ -237,9 +238,12 @@ export function ReportPage() {
           >
             ← Back
           </button>
-          <div style={{ fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase', color: '#5DCAA5', fontWeight: 700, marginBottom: 10 }}>Report</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+            <span style={{ background: 'white', borderRadius: 4, padding: '3px 4px', display: 'inline-flex' }}><VennIcon size={24} /></span>
+            <span style={{ fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase', color: '#5DCAA5', fontWeight: 700 }}>Shared report</span>
+          </div>
           <h1 style={{ fontSize: 30, lineHeight: 1.1, letterSpacing: '-.02em', margin: '0 0 12px', fontWeight: 800 }}>
-            The report tells you what to do next, not just what happened.
+            Where everyone's accounts agree or differ.
           </h1>
           <p style={{ fontSize: 15, color: 'rgba(255,255,255,.72)', maxWidth: 640, margin: 0 }}>
             {report.sharedPicture}

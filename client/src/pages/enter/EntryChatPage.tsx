@@ -5,6 +5,7 @@ import { entryApi } from '@/api/entry'
 import { authApi } from '@/api/auth'
 import { useEntryStore } from '@/stores/entry'
 import { useAuthStore } from '@/stores/auth'
+import { VennIcon } from '@/components/gw/VennIcon'
 import { toast } from 'sonner'
 
 const STORAGE_KEY = 'gw_entry_session'
@@ -380,11 +381,13 @@ export function EntryChatPage() {
   function advanceOnboarding(buttonChoice?: string) {
     const newSels = { ...onboardingSelections }
 
-    // Party path - show briefing before check-in starts
+    // Party path - go straight into the check-in (no interstitial page).
+    // The "~10 min" estimate and the two-report framing now live at the top of
+    // the check-in itself, so we do not stop the person with a separate screen.
     if (buttonChoice === "I am involved. Let's begin." || buttonChoice === "I'm involved. Let's begin.") {
       setOnboardingStep(ONBOARDING_STEPS + 1)
       persistOnboarding([], newSels, ONBOARDING_STEPS)
-      setShowAdminBriefing(true)
+      startCheckin.mutate()
       return
     }
 
@@ -1048,7 +1051,13 @@ export function EntryChatPage() {
               )}
               {!startCheckin.isPending && displayedHistory.length <= 2 && (
                 <div style={{ fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', padding: '4px 12px 8px', lineHeight: 1.5 }}>
-                  This takes a few exchanges (about 3 answers) to build a solid record, then you can end the session to get your report.
+                  About 10 minutes, a few exchanges (around 3 answers), then you can end the session to get your report.
+                </div>
+              )}
+              {!startCheckin.isPending && displayedHistory.length <= 2 && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center', fontSize: 12, color: 'var(--gw-sub)', padding: '0 12px 10px', lineHeight: 1.5 }}>
+                  <VennIcon size={22} />
+                  <span>Your individual report is private. The shared report shows where everyone's accounts agree or differ.</span>
                 </div>
               )}
               {displayedHistory.map((m, i) => {
@@ -1219,7 +1228,12 @@ export function EntryChatPage() {
           <div style={{ background: '#0A1628', color: 'white', padding: '20px 22px 16px' }}>
             <div style={{ fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: '#5DCAA5', fontWeight: 700, marginBottom: 6 }}>{skippedCheckin ? 'New ground' : 'Session 1 · your private report'}</div>
             <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-.01em', lineHeight: 1.2 }}>{groundName || (skippedCheckin ? 'Set up your ground.' : 'Your account is on record.')}</div>
-            <div style={{ fontSize: 12, color: 'rgba(255,255,255,.5)', marginTop: 4 }}>This is your private report, only you can see it. Later, once everyone has checked in, a separate shared report shows where accounts agree and differ, and it never quotes anyone directly.</div>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginTop: 6 }}>
+              <div style={{ flexShrink: 0, marginTop: 2, background: 'white', borderRadius: 4, padding: '2px 3px' }}><VennIcon size={22} /></div>
+              <div style={{ fontSize: 12, color: 'rgba(255,255,255,.6)', lineHeight: 1.5 }}>
+                This individual report is private to you. Once everyone has checked in, a separate <b style={{ color: 'rgba(255,255,255,.85)' }}>shared report</b> shows where everyone's accounts agree or differ.
+              </div>
+            </div>
             {history.filter(m => m.role === 'user').length > 0 && (() => {
               const turns = history.filter(m => m.role === 'user').length
               const depth = turns < 4 ? 1 : turns < 8 ? 2 : turns < 12 ? 3 : turns < 16 ? 4 : 5
