@@ -53,8 +53,12 @@ function RequireAuth({ children }: { children: JSX.Element }) {
 function RootRoute() {
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
   if (!isAuthenticated) {
-    window.location.replace(import.meta.env.VITE_MARKETING_URL ?? 'https://myground.work')
-    return null
+    // A logged-out visitor who lands on the app root (e.g. someone handed a raw
+    // app link) should reach onboarding, not silently bounce to marketing.
+    // Only redirect to marketing when one is explicitly configured.
+    const marketing = import.meta.env.VITE_MARKETING_URL
+    if (marketing) { window.location.replace(marketing); return null }
+    return <Navigate to="/start" replace />
   }
   return <GroundsListPage />
 }

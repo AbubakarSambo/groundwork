@@ -1111,7 +1111,7 @@ export function EntryChatPage() {
           <div style={{ background: '#0A1628', color: 'white', padding: '20px 22px 16px' }}>
             <div style={{ fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: '#5DCAA5', fontWeight: 700, marginBottom: 6 }}>{skippedCheckin ? 'New ground' : 'Session 1 · your private report'}</div>
             <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-.01em', lineHeight: 1.2 }}>{groundName || (skippedCheckin ? 'Set up your ground.' : 'Your account is on record.')}</div>
-            <div style={{ fontSize: 12, color: 'rgba(255,255,255,.5)', marginTop: 4 }}>This is your private report - only you can see it. The shared report generates once all parties have checked in. It does not quote you.</div>
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,.5)', marginTop: 4 }}>This is your private report, only you can see it. Later, once everyone has checked in, a separate shared report shows where accounts agree and differ, and it never quotes anyone directly.</div>
             {history.filter(m => m.role === 'user').length > 0 && (() => {
               const turns = history.filter(m => m.role === 'user').length
               const depth = turns < 4 ? 1 : turns < 8 ? 2 : turns < 12 ? 3 : turns < 16 ? 4 : 5
@@ -1119,7 +1119,7 @@ export function EntryChatPage() {
               return (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
                   {[1,2,3,4,5].map(n => <div key={n} style={{ width: 7, height: 7, borderRadius: 2, background: n <= depth ? '#5DCAA5' : 'rgba(255,255,255,.18)' }} />)}
-                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,.55)' }}>Session depth: {label}</span>
+                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,.55)' }} title="How concrete and specific your answers were (Thin, Fair, Good, Strong)">Specificity: {label}</span>
                 </div>
               )
             })()}
@@ -1248,14 +1248,15 @@ export function EntryChatPage() {
                   </div>
                 )}
 
-                {/* Honest close */}
+                {/* Where this leaves you — the one-glance summary of the detail above */}
                 <div style={{ marginBottom: 16 }}>
-                  <div style={{ fontSize: 10, letterSpacing: '.09em', textTransform: 'uppercase', color: '#9B9590', fontWeight: 700, marginBottom: 8 }}>An honest close</div>
+                  <div style={{ fontSize: 10, letterSpacing: '.09em', textTransform: 'uppercase', color: '#9B9590', fontWeight: 700, marginBottom: 4 }}>Where this leaves you</div>
+                  <div style={{ fontSize: 11, color: '#9B9590', marginBottom: 8, lineHeight: 1.5 }}>A one-glance summary of your side. "Next session" is what Groundwork will surface for you to check, not a task list.</div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                     {[
-                      { k: 'Aligned', v: sessionReport.honestClose.aligned, bg: '#E7F6EF', kc: '#085041' },
+                      { k: 'Settled', v: sessionReport.honestClose.aligned, bg: '#E7F6EF', kc: '#085041' },
                       { k: 'Open',    v: sessionReport.honestClose.open,    bg: '#FDF3E3', kc: '#8A5C1A' },
-                      { k: 'Revisit', v: sessionReport.honestClose.revisit, bg: '#EEF4FB', kc: '#0C447C' },
+                      { k: 'Next session', v: sessionReport.honestClose.revisit, bg: '#EEF4FB', kc: '#0C447C' },
                       { k: 'Risk',    v: sessionReport.honestClose.risk,    bg: '#F8ECEA', kc: '#B5675A' },
                     ].map(({ k, v, bg, kc }) => (
                       <div key={k} style={{ background: bg, borderRadius: 8, padding: '9px 11px', fontSize: 12, lineHeight: 1.5, color: '#1A1916' }}>
@@ -1561,10 +1562,10 @@ export function EntryChatPage() {
           <div style={{ background: 'white', borderRadius: 12, padding: 24, maxWidth: 380, width: '100%' }}>
             <div style={{ fontSize: 16, fontWeight: 800, color: '#0A1628', marginBottom: 8 }}>End this session?</div>
             <div style={{ fontSize: 13, color: '#6B6560', lineHeight: 1.65, marginBottom: 8 }}>
-              Your responses are already saved. Ending closes this session permanently - you will not be able to add to it.
+              Your answers are saved. Ending this session generates your report. This session's answers then lock, but you are not stuck: you can start a new session any time to add more.
             </div>
             <div style={{ fontSize: 13, color: '#6B6560', lineHeight: 1.65, marginBottom: 18 }}>
-              The shared report releases once all parties have checked in. You can start a new session any time.
+              If the report gets something wrong, you can open a clarification session to correct it. The shared report releases once all parties have checked in.
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button
