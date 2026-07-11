@@ -180,17 +180,17 @@ export function OrgRosterPage() {
               <div key={g.id} style={{ borderBottom: i < roster.length - 1 ? '1px solid var(--gw-border)' : 'none' }}>
                 <div
                   onClick={() => toggle(g.id)}
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', background: 'var(--gw-card)', cursor: 'pointer', gap: 12 }}
+                  style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', background: 'var(--gw-card)', cursor: 'pointer', gap: '4px 12px' }}
                 >
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 2 }}>{g.label}</div>
+                  <div style={{ minWidth: 0, flex: '1 1 200px' }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.label}</div>
                     <div style={{ fontSize: 12, color: 'var(--gw-sub)' }}>
                       Led by {g.lead.firstName || g.lead.email}
                       {g.createdByAdmin && <span style={{ marginLeft: 6, fontStyle: 'italic' }}>(set up by an admin)</span>}
                       {' · '}{g.memberCount} member{g.memberCount !== 1 ? 's' : ''}
                     </div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10, flexShrink: 0 }}>
                     <span style={{
                       fontSize: 11, fontWeight: 600, borderRadius: 20, padding: '2px 10px',
                       background: g.status === 'AWAITING_LEAD' ? 'var(--gw-amber-bg)' : g.status === 'REPORT_READY' ? 'var(--gw-green-bg)' : 'var(--gw-blue-bg, #EEF4FB)',
