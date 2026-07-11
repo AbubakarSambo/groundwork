@@ -3,7 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
-import { CheckInStatus, TokenType } from '@prisma/client';
+import { CheckInStatus, TokenType, Cadence, PartyType } from '@prisma/client';
 
 /**
  * Participant magic-link entry. A participant is added to a ground by email and
@@ -98,6 +98,25 @@ export class ParticipantsService {
         },
       });
       this.email.sendAddPasswordEmail(user.email, user.firstName, setupToken).catch(() => null);
+    }
+
+    // SEQUENTIAL cadence: if this participant was added before the lead
+    // completed their own session 1 (so their session 1 was locked at
+    // creation - see GroundsService.addParticipant()/createForLead()), and
+    // the lead has since completed it, the lock should already be satisfied -
+    // clear it now rather than leaving them stuck until some other trigger
+    // happens to touch this row. Without this, accepting after the lead has
+    // already gone first would leave a participant locked out indefinitely.
+    if (ground.cadence === Cadence.SEQUENTIAL) {
+      const leadCompletedSession1 = await this.prisma.checkIn.findFirst({
+        where: { groundId: ground.id, participant: { partyType: PartyType.INITIATOR }, sessionNumber: 1, status: CheckInStatus.COMPLETED },
+      });
+      if (leadCompletedSession1) {
+        await this.prisma.checkIn.updateMany({
+          where: { participantId: participant.id, status: CheckInStatus.NOT_STARTED, availableFrom: { gt: new Date() } },
+          data: { availableFrom: new Date() },
+        });
+      }
     }
 
     // The participant's first session to enter.

@@ -27,7 +27,7 @@ describe('GroundsService - participant serialization (GW-01)', () => {
         }),
       },
     };
-    const service = new GroundsService(prisma, {} as any, {} as any, {} as any, { emit: () => Promise.resolve() } as any);
+    const service = new GroundsService(prisma, {} as any, {} as any, {} as any, { emit: () => Promise.resolve() } as any, {} as any);
     await service.get('g1', 'org1');
 
     expect(prisma.ground.findFirst).toHaveBeenCalled();
@@ -42,7 +42,7 @@ describe('GroundsService - participant serialization (GW-01)', () => {
     const prisma: any = {
       ground: { findFirst: jest.fn(async (args: any) => ({ id: 'g1', organizationId: args.where.organizationId, participants: [] })) },
     };
-    const service = new GroundsService(prisma, {} as any, {} as any, {} as any, { emit: () => Promise.resolve() } as any);
+    const service = new GroundsService(prisma, {} as any, {} as any, {} as any, { emit: () => Promise.resolve() } as any, {} as any);
     await service.get('g1', 'org-A');
     expect(prisma.ground.findFirst.mock.calls[0][0].where.organizationId).toBe('org-A');
   });
@@ -76,7 +76,7 @@ describe('GroundsService.resendParticipantInvite - GW-24', () => {
     const emailSent: any[] = [];
     const email: any = { sendParticipantInvite: jest.fn(async (...args: any[]) => { emailSent.push(args); }) };
 
-    const service = new GroundsService(prisma, email, {} as any, {} as any, { emit: () => Promise.resolve() } as any);
+    const service = new GroundsService(prisma, email, {} as any, {} as any, { emit: () => Promise.resolve() } as any, {} as any);
     const result = await service.resendParticipantInvite('g1', 'p1', 'org1');
 
     expect(result.message).toBe('Invite resent');
@@ -90,7 +90,7 @@ describe('GroundsService.resendParticipantInvite - GW-24', () => {
     const participant = { id: 'p1', groundId: 'g1', email: 'x@test.com', userId: 'already-set' };
     const { prisma } = makePrisma(ground, participant, null);
     const { BadRequestException } = await import('@nestjs/common');
-    const service = new GroundsService(prisma, {} as any, {} as any, {} as any, { emit: () => Promise.resolve() } as any);
+    const service = new GroundsService(prisma, {} as any, {} as any, {} as any, { emit: () => Promise.resolve() } as any, {} as any);
 
     await expect(service.resendParticipantInvite('g1', 'p1', 'org1')).rejects.toBeInstanceOf(BadRequestException);
   });

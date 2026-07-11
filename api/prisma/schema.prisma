@@ -62,6 +62,7 @@ enum GroundMoment {
 }
 
 enum GroundStatus {
+  AWAITING_LEAD // admin created this for a lead; lead invited but has not confirmed yet
   OPEN // created, parties may not all be added
   AWAITING_PARTIES // waiting on check-ins
   REPORT_READY // both completed session 2, report locked behind paywall
@@ -279,6 +280,7 @@ model Ground {
   resolutionState String? @map("resolution_state") // pre-agreed intended outcome set at creation
   brief           String? @map("brief") // initiator's opening brief, written at ground creation
   groundAuditLog Json?  @map("ground_audit_log") // append-only JSON log of timeline/cadence changes
+  createdByUserId String? @map("created_by_user_id") // the admin who set this up for a lead; null for self-serve grounds
 
   // Lifecycle / billing markers
   billingActivatedAt  DateTime? @map("billing_activated_at") // admin activated report
