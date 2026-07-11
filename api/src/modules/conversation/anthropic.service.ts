@@ -109,6 +109,40 @@ export class AnthropicService {
     return houseStyle(text);
   }
 
+  /**
+   * Multimodal call: send Gemini a piece of raw media (image, PDF-as-image,
+   * etc.) alongside a text prompt in the same turn. Used for document
+   * assessment - Gemini can read images and PDFs directly rather than going
+   * through separate OCR/parsing libraries.
+   */
+  async respondWithMedia(systemPrompt: string, prompt: string, media: { mimeType: string; base64: string }): Promise<string> {
+    const TIMEOUT_MS = 90_000;
+    let res: Awaited<ReturnType<typeof this.client.models.generateContent>>;
+    try {
+      const call = this.client.models.generateContent({
+        model: this.model,
+        contents: [{
+          role: 'user',
+          parts: [
+            { inlineData: { mimeType: media.mimeType, data: media.base64 } },
+            { text: prompt },
+          ],
+        }],
+        config: { systemInstruction: systemPrompt, maxOutputTokens: this.maxTokens },
+      });
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Gemini respondWithMedia() timed out after 90s')), TIMEOUT_MS),
+      );
+      res = await Promise.race([call, timeout]);
+    } catch (err: any) {
+      this.logger.error(`respondWithMedia() Gemini call failed: ${err.message}`);
+      throw err;
+    }
+    const text = res.candidates?.[0]?.content?.parts?.map((p: any) => p.text ?? '').join('').trim() ?? '';
+    if (!text) throw new Error('AI returned an empty response');
+    return houseStyle(text);
+  }
+
   async extract<T = any>(systemPrompt: string, history: ChatTurn[], tool: { name: string; description: string; input_schema: any }): Promise<T | null> {
     const contents = history.map((t) => ({
       role: t.role === 'assistant' ? 'model' : 'user',

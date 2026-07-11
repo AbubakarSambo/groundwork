@@ -707,6 +707,7 @@ model GroundDocument {
   fileName      String   @map("file_name")
   mimeType      String   @map("mime_type")
   content       String   @db.Text
+  assessment    Json?    // { suggests: string[], willDo: string[] } - Gemini's read of the doc, correctable
 
   createdAt DateTime @default(now()) @map("created_at")
 
