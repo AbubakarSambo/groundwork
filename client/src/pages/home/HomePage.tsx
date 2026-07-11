@@ -188,6 +188,10 @@ export function HomePage() {
                 { label: 'Goals & planning', desc: 'Check whether everyone is actually aligned on the goals and plan - not to set them.' },
                 { label: 'Pulse check',            desc: 'A quick independent read from each person. What is moving, what is stuck, what has changed.' },
                 { label: 'New direction',          desc: 'A strategy shift or pivot. Each person says what they understood before the group discussion.' },
+                { label: 'Board strategy',         desc: 'Each board member or leader gives their own read on strategy before the room debates it.' },
+                { label: 'Cohort check-in',        desc: 'Many people in the same role check in against a shared question, on a recurring cadence.' },
+                { label: 'Realign a project',      desc: 'A project has drifted from the original plan. Get each person\'s current understanding on record.' },
+                { label: 'Realign with a team member', desc: 'You and someone on your team see the current situation differently. Close the gap before it grows.' },
                 { label: 'Other',                  desc: 'Describe the situation and Groundwork will set up the right ground for it.' },
               ].map(c => (
                 <div

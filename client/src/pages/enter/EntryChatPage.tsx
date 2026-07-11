@@ -107,6 +107,18 @@ const SITUATION_CARDS = [
     detail: 'A disagreement about contributions, direction, or equity that needs to be put on record.',
     message: 'My cofounder and I have a dispute about contributions and direction. I need to get both sides on record.',
   },
+  {
+    group: 'negative',
+    label: 'Realign a project',
+    detail: 'A project has drifted from the original plan and you want each person\'s current understanding on record before the group discusses it.',
+    message: 'A project of mine has drifted from what we originally agreed and I want to realign the team on where things actually stand.',
+  },
+  {
+    group: 'negative',
+    label: 'Realign with a team member',
+    detail: 'You and someone on your team see the current situation differently and want to close the gap before it grows.',
+    message: 'I need to realign with a team member. I think we see the current situation differently and want to get both our accounts on record.',
+  },
 ]
 
 // Quick actions shown after the check-in starts

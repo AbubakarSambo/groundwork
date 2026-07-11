@@ -507,8 +507,8 @@ Available scenarios:
 NEW_HIRE - onboarding a new hire or someone joining a team
 NEW_PROJECT - starting a new project, workstream, or initiative
 PULSE_CHECK - checking in on how something is going mid-flight
-DRIFT - something has gone off track or diverged from plan
-REALIGN_TEAM - realigning a team after conflict, change, or confusion
+DRIFT - a project, plan, or initiative has gone off track or diverged from what was agreed
+REALIGN_TEAM - two specific people (or a small team) see the current situation differently and need to close an interpersonal gap, after conflict, change, or confusion
 NEW_COFOUNDER - new co-founder, co-lead, or equal partner relationship
 NEW_ADVISOR - new board member, advisor, investor, or mentor relationship
 NEW_MANAGER - new manager coming into an existing team or role handover

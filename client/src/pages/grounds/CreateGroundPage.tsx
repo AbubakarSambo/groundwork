@@ -89,6 +89,8 @@ const SCENARIO_FROM_LABEL: Record<string, GroundScenario> = {
   'pulse check':        'PULSE_CHECK',
   'board strategy':     'BOARD_STRATEGY',
   'cohort check-in':    'COHORT_CHECK',
+  'realign a project':  'DRIFT',
+  'realign with a team member': 'REALIGN_TEAM',
   'other':              'REALIGN_TEAM',
 }
 
