@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, useLocation, useSearchParams } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
-import { conversationApi } from '@/api/conversation'
+import { conversationApi, streamMessage } from '@/api/conversation'
 import { documentsApi } from '@/api/documents'
 import { useAuthStore } from '@/stores/auth'
 import { SessionReportCard } from '@/components/gw/SessionReportCard'
@@ -52,9 +52,12 @@ export function ChatPage() {
 
   const msgsRef = useRef<HTMLDivElement>(null)
   const taRef   = useRef<HTMLTextAreaElement>(null)
+  const streamingRef = useRef(false)
 
-  // Typewriter effect for new AI messages
+  // Typewriter effect for new AI messages. Skipped while a live stream is running -
+  // streamed deltas are rendered directly, so the typewriter must not fight them.
   useEffect(() => {
+    if (streamingRef.current) return
     const lastIdx = msgs.length - 1
     const last = msgs[lastIdx]
     if (!last || last.role !== 'AI' || last.id === 'loading') {
@@ -98,27 +101,6 @@ export function ChatPage() {
     },
   })
 
-  const sendMsg = useMutation({
-    mutationFn: (message: string) => conversationApi.send(checkInId!, message),
-    onMutate: message => {
-      setLoading(true)
-      setMsgs(v => [...v,
-        { id: Date.now().toString(), role: 'PERSON', content: message },
-        { id: 'loading', role: 'AI', content: '…' },
-      ])
-    },
-    onSuccess: res => {
-      const id = Date.now().toString()
-      setMsgs(v => v.filter(m => m.id !== 'loading').concat({ id, role: 'AI', content: res.reply }))
-      setLoading(false)
-      if (res.sessionComplete) setDone(true)
-    },
-    onError: () => {
-      setMsgs(v => v.filter(m => m.id !== 'loading'))
-      setLoading(false)
-      toast.error('Message failed. Try again.')
-    },
-  })
 
   const complete = useMutation({
     mutationFn: () => conversationApi.complete(checkInId!),
@@ -151,17 +133,64 @@ export function ChatPage() {
     }
   }, [checkInId, opened])
 
+  // Streaming send: shows the answer token-by-token. Falls back to the plain
+  // request if the stream can't start (proxy buffering, older browser, error).
+  async function sendStreaming(message: string) {
+    if (!checkInId) return
+    setLoading(true)
+    const aiId = `ai-${Date.now()}`
+    setMsgs(v => [...v, { id: Date.now().toString(), role: 'PERSON', content: message }, { id: aiId, role: 'AI', content: '…' }])
+    let acc = ''
+    let started = false
+    streamingRef.current = true
+    try {
+      await streamMessage(checkInId, message, {
+        onDelta: (text) => {
+          started = true
+          acc += text
+          setMsgs(v => v.map(m => m.id === aiId ? { ...m, content: acc } : m))
+          setDisplayedMsgs(v => v.map(m => m.id === aiId ? { ...m, content: acc } : m))
+        },
+        onDone: (r) => {
+          setMsgs(v => v.map(m => m.id === aiId ? { ...m, content: r.reply } : m))
+          setDisplayedMsgs(v => v.map(m => m.id === aiId ? { ...m, content: r.reply } : m))
+          if (r.sessionComplete) setDone(true)
+        },
+        onError: (m) => { throw new Error(m) },
+      })
+      streamingRef.current = false
+      setLoading(false)
+    } catch (err) {
+      streamingRef.current = false
+      // If nothing streamed yet, fall back cleanly to the non-streaming path.
+      if (!started) {
+        setMsgs(v => v.filter(m => m.id !== aiId)) // drop the empty AI bubble; keep the person's message
+        try {
+          const res = await conversationApi.send(checkInId, message)
+          setMsgs(v => v.concat({ id: `ai-${Date.now()}`, role: 'AI', content: res.reply }))
+          if (res.sessionComplete) setDone(true)
+        } catch {
+          toast.error('Message failed. Try again.')
+        }
+        setLoading(false)
+      } else {
+        setLoading(false)
+        toast.error('The reply was cut off. You can send again.')
+      }
+    }
+  }
+
   function send() {
     const content = input.trim()
     if (!content || loading || done || !opened) return
     setInput('')
     if (taRef.current) { try { taRef.current.style.height = '38px' } catch { /* ref detached */ } }
-    sendMsg.mutate(content)
+    sendStreaming(content)
   }
 
   function quickSend(msg: string) {
     if (loading || done || !opened) return
-    sendMsg.mutate(msg)
+    sendStreaming(msg)
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {

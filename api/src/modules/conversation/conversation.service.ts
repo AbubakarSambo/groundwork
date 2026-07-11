@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
 import { PromptsService } from '../prompts';
-import { AnthropicService, ChatTurn } from './anthropic.service';
+import { AnthropicService, ChatTurn, houseStyle } from './anthropic.service';
 import { ConversationContextService } from './context.service';
 import { buildIntakeBlock, RECORD_EXTRACTION_PROMPT } from './prompt-library';
 import { GroundworkEvents, CheckInCompletedEvent } from '../../common';
@@ -333,8 +333,15 @@ export class ConversationService {
     // SESSION CLOSE phrase defined in ENGINE_RULES.
     // ISSUE 22: message-count auto-complete removed - only the AI's explicit signal triggers completion.
     // ISSUE 23: all checks are case-insensitive via replyLower; alternative phrases added for resilience.
+    const sessionComplete = this.detectSessionComplete(reply);
+
+    return { reply: aiTurn.content, sessionComplete };
+  }
+
+  /** Whether the AI reply contains the mandatory session-closing phrasing. */
+  private detectSessionComplete(reply: string): boolean {
     const replyLower = reply.toLowerCase();
-    const sessionComplete =
+    return (
       replyLower.includes('here is what is now in your record') ||
       replyLower.includes('what is in your record from today') ||
       replyLower.includes('in your record from today') ||
@@ -343,9 +350,54 @@ export class ConversationService {
       (replyLower.includes('now in your record') && replyLower.includes('next steps')) ||
       (replyLower.includes('now in your record') && replyLower.includes('carry forward')) ||
       (replyLower.includes('now in your record') && (replyLower.includes('next step') || replyLower.includes('come back when'))) ||
-      (replyLower.includes('your record now') && replyLower.includes('session'));
+      (replyLower.includes('your record now') && replyLower.includes('session'))
+    );
+  }
 
-    return { reply: aiTurn.content, sessionComplete };
+  /**
+   * Streaming variant of sendMessage. Async-generates events:
+   *   { type: 'delta', text }              - a chunk of the answer, as it arrives
+   *   { type: 'done', reply, sessionComplete } - final sanitized text + completion flag
+   * Persistence and status transitions match sendMessage exactly; the AI turn is
+   * written once, sanitized, after the stream completes.
+   */
+  async *sendMessageStream(checkInId: string, requestingUserId: string, message: string):
+    AsyncGenerator<{ type: 'delta'; text: string } | { type: 'done'; reply: string; sessionComplete: boolean }, void, unknown> {
+    const checkIn = await this.loadOwnedCheckIn(checkInId, requestingUserId);
+    if (checkIn.status === CheckInStatus.COMPLETED) {
+      throw new BadRequestException('This check-in is already complete');
+    }
+    const personTurnCount = await this.prisma.conversationTurn.count({
+      where: { checkInId: checkIn.id, role: TurnRole.PERSON },
+    });
+    if (personTurnCount >= 20) {
+      throw new BadRequestException('Session turn limit reached. Please complete your session.');
+    }
+
+    const fullSystem = await this.composeSystemPrompt(checkIn, message);
+    const personTurn = await this.prisma.conversationTurn.create({
+      data: { checkInId: checkIn.id, role: TurnRole.PERSON, content: message },
+    });
+
+    let raw = '';
+    try {
+      const turns = await this.prisma.conversationTurn.findMany({ where: { checkInId: checkIn.id }, orderBy: { createdAt: 'asc' } });
+      const history: ChatTurn[] = turns.map((t) => ({ role: t.role === TurnRole.AI ? 'assistant' : 'user', content: t.content }));
+      for await (const delta of this.anthropic.respondStream(fullSystem, history)) {
+        raw += delta;
+        yield { type: 'delta', text: delta };
+      }
+      const reply = houseStyle(raw.trim());
+      if (!reply) throw new Error('AI returned an empty response');
+      await this.prisma.conversationTurn.create({ data: { checkInId: checkIn.id, role: TurnRole.AI, content: reply } });
+      if (checkIn.status === CheckInStatus.NOT_STARTED) {
+        await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { status: CheckInStatus.IN_PROGRESS, startedAt: new Date() } });
+      }
+      yield { type: 'done', reply, sessionComplete: this.detectSessionComplete(reply) };
+    } catch (err) {
+      await this.prisma.conversationTurn.delete({ where: { id: personTurn.id } }).catch(() => undefined);
+      throw err;
+    }
   }
 
   /**

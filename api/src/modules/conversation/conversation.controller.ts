@@ -53,6 +53,26 @@ export class ConversationController {
     return this.conversation.sendMessage(id, userId, dto.message);
   }
 
+  @Post(':id/messages/stream')
+  @ApiOperation({ summary: 'Send a message and stream the AI reply (SSE)' })
+  async sendStream(@Param('id') id: string, @CurrentUser('id') userId: string, @Body() dto: SendMessageDto, @Res() res: Response) {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders?.();
+    const write = (data: unknown) => res.write(`data: ${JSON.stringify(data)}\n\n`);
+    try {
+      for await (const evt of this.conversation.sendMessageStream(id, userId, dto.message)) {
+        write(evt);
+      }
+    } catch (err: any) {
+      write({ type: 'error', message: err?.message ?? 'stream failed' });
+    } finally {
+      res.write('data: [DONE]\n\n');
+      res.end();
+    }
+  }
+
   @Post(':id/complete')
   @ApiOperation({ summary: 'Mark a check-in complete' })
   async complete(@Param('id') id: string, @CurrentUser('id') userId: string) {

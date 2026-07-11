@@ -54,6 +54,31 @@ export class AnthropicService {
     this.maxTokens = this.config.get<number>('gemini.maxTokens') || 2048;
   }
 
+  /**
+   * Streaming variant of respond(). Yields answer text deltas as they arrive.
+   * The caller accumulates the full text and applies houseStyle() once at the
+   * end (a dash can straddle two chunks, so we do not sanitize per-delta).
+   */
+  async *respondStream(systemPrompt: string, history: ChatTurn[]): AsyncGenerator<string, void, unknown> {
+    const contents = history.map((t) => ({
+      role: t.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: t.content }],
+    }));
+    const stream = await this.client.models.generateContentStream({
+      model: this.model,
+      contents,
+      config: { systemInstruction: systemPrompt, maxOutputTokens: this.maxTokens },
+    });
+    for await (const chunk of stream) {
+      const parts = (chunk as any).candidates?.[0]?.content?.parts ?? [];
+      for (const part of parts) {
+        // Skip thought parts here; the answer is what we stream to the user.
+        if (part?.thought) continue;
+        if (part?.text) yield part.text as string;
+      }
+    }
+  }
+
   async respond(systemPrompt: string, history: ChatTurn[]): Promise<string> {
     const contents = history.map((t) => ({
       role: t.role === 'assistant' ? 'model' : 'user',
