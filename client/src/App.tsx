@@ -33,6 +33,7 @@ import { AdminDashboardPage } from '@/pages/admin/AdminDashboardPage'
 import { DemoConversationPage } from '@/pages/demo/DemoConversationPage'
 import { SettingsPage } from '@/pages/settings/SettingsPage'
 import { OrgMembersPage } from '@/pages/org/OrgMembersPage'
+import { OrgRosterPage } from '@/pages/org/OrgRosterPage'
 import { HelpModal, HelpButton } from '@/components/gw/HelpModal'
 import { AppShell } from '@/components/gw/AppShell'
 import type { JSX } from 'react'
@@ -114,6 +115,7 @@ export default function App() {
             <Route path="/prompts/test" element={<RequireAuth><PromptTestPage /></RequireAuth>} />
             <Route path="/settings" element={<RequireAuth><SettingsPage /></RequireAuth>} />
             <Route path="/org/members" element={<RequireAuth><OrgMembersPage /></RequireAuth>} />
+            <Route path="/org/roster" element={<RequireAuth><OrgRosterPage /></RequireAuth>} />
             <Route path="/admin" element={<RequireAuth><AdminPage /></RequireAuth>} />
             <Route path="/admin/dashboard" element={<RequireAuth><AdminDashboardPage /></RequireAuth>} />
 

@@ -493,7 +493,7 @@ export class GroundsService {
 
   async get(id: string, organizationId: string, requestingUserId?: string) {
     // Primary lookup by org - works for org members and the initiator.
-    const CHECKIN_SELECT = { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, specificityLevel: true, recallConfidence: true, specificityDimensions: true } as const;
+    const CHECKIN_SELECT = { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, availableFrom: true, specificityLevel: true, recallConfidence: true, specificityDimensions: true } as const;
 
     let ground = await this.prisma.ground.findFirst({
       where: { id, organizationId },
