@@ -137,6 +137,11 @@ function FeedbackWidget() {
       {/* Trigger button */}
       <button
         onClick={() => setOpen(v => !v)}
+        // On mobile, the bottom nav bar is a fixed 60px strip - without the extra
+        // offset this button's inline `bottom: 20` sits inside that strip and
+        // overlaps the nav labels. Scoped to non-chat pages only, since chat
+        // pages position this button from `top`, not `bottom`.
+        className={isChatPage ? undefined : 'gw-fb-trigger-mobile-safe'}
         style={{
           position: 'fixed',
           ...(isChatPage ? { top: 12, right: 16 } : { bottom: 20, right: 20 }),
