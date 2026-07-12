@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
 import { PromptsService } from '../prompts';
-import { AnthropicService, ChatTurn } from './anthropic.service';
+import { AnthropicService, ChatTurn, houseStyle } from './anthropic.service';
 import { ConversationContextService } from './context.service';
 import { buildIntakeBlock, RECORD_EXTRACTION_PROMPT } from './prompt-library';
 import { GroundworkEvents, CheckInCompletedEvent } from '../../common';
@@ -11,7 +11,7 @@ import { DocumentsService } from '../documents/documents.service';
 import { BillingService } from '../billing/billing.service';
 import { EmailService } from '../email/email.service';
 import { UsageService } from '../usage/usage.service';
-import { CheckInStatus, TurnRole, RecordEntryType, Cadence, GroundStatus, UsageEventType } from '@prisma/client';
+import { CheckInStatus, TurnRole, RecordEntryType, Cadence, GroundStatus, UsageEventType, PartyType } from '@prisma/client';
 import { runIntake } from './intake';
 
 function mapSpecificityLevel(avgScore: number): string {
@@ -333,8 +333,15 @@ export class ConversationService {
     // SESSION CLOSE phrase defined in ENGINE_RULES.
     // ISSUE 22: message-count auto-complete removed - only the AI's explicit signal triggers completion.
     // ISSUE 23: all checks are case-insensitive via replyLower; alternative phrases added for resilience.
+    const sessionComplete = this.detectSessionComplete(reply);
+
+    return { reply: aiTurn.content, sessionComplete };
+  }
+
+  /** Whether the AI reply contains the mandatory session-closing phrasing. */
+  private detectSessionComplete(reply: string): boolean {
     const replyLower = reply.toLowerCase();
-    const sessionComplete =
+    return (
       replyLower.includes('here is what is now in your record') ||
       replyLower.includes('what is in your record from today') ||
       replyLower.includes('in your record from today') ||
@@ -343,9 +350,54 @@ export class ConversationService {
       (replyLower.includes('now in your record') && replyLower.includes('next steps')) ||
       (replyLower.includes('now in your record') && replyLower.includes('carry forward')) ||
       (replyLower.includes('now in your record') && (replyLower.includes('next step') || replyLower.includes('come back when'))) ||
-      (replyLower.includes('your record now') && replyLower.includes('session'));
+      (replyLower.includes('your record now') && replyLower.includes('session'))
+    );
+  }
 
-    return { reply: aiTurn.content, sessionComplete };
+  /**
+   * Streaming variant of sendMessage. Async-generates events:
+   *   { type: 'delta', text }              - a chunk of the answer, as it arrives
+   *   { type: 'done', reply, sessionComplete } - final sanitized text + completion flag
+   * Persistence and status transitions match sendMessage exactly; the AI turn is
+   * written once, sanitized, after the stream completes.
+   */
+  async *sendMessageStream(checkInId: string, requestingUserId: string, message: string):
+    AsyncGenerator<{ type: 'delta'; text: string } | { type: 'done'; reply: string; sessionComplete: boolean }, void, unknown> {
+    const checkIn = await this.loadOwnedCheckIn(checkInId, requestingUserId);
+    if (checkIn.status === CheckInStatus.COMPLETED) {
+      throw new BadRequestException('This check-in is already complete');
+    }
+    const personTurnCount = await this.prisma.conversationTurn.count({
+      where: { checkInId: checkIn.id, role: TurnRole.PERSON },
+    });
+    if (personTurnCount >= 20) {
+      throw new BadRequestException('Session turn limit reached. Please complete your session.');
+    }
+
+    const fullSystem = await this.composeSystemPrompt(checkIn, message);
+    const personTurn = await this.prisma.conversationTurn.create({
+      data: { checkInId: checkIn.id, role: TurnRole.PERSON, content: message },
+    });
+
+    let raw = '';
+    try {
+      const turns = await this.prisma.conversationTurn.findMany({ where: { checkInId: checkIn.id }, orderBy: { createdAt: 'asc' } });
+      const history: ChatTurn[] = turns.map((t) => ({ role: t.role === TurnRole.AI ? 'assistant' : 'user', content: t.content }));
+      for await (const delta of this.anthropic.respondStream(fullSystem, history)) {
+        raw += delta;
+        yield { type: 'delta', text: delta };
+      }
+      const reply = houseStyle(raw.trim());
+      if (!reply) throw new Error('AI returned an empty response');
+      await this.prisma.conversationTurn.create({ data: { checkInId: checkIn.id, role: TurnRole.AI, content: reply } });
+      if (checkIn.status === CheckInStatus.NOT_STARTED) {
+        await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { status: CheckInStatus.IN_PROGRESS, startedAt: new Date() } });
+      }
+      yield { type: 'done', reply, sessionComplete: this.detectSessionComplete(reply) };
+    } catch (err) {
+      await this.prisma.conversationTurn.delete({ where: { id: personTurn.id } }).catch(() => undefined);
+      throw err;
+    }
   }
 
   /**
@@ -362,6 +414,8 @@ export class ConversationService {
       sessionNumber: number;
       isClarification?: boolean;
       clarificationTarget?: string | null;
+      isSelfCorrection?: boolean;
+      selfCorrectionTargetSession?: number | null;
       participant: { partyType: any; roleAsDescribed: string | null };
     },
     latestMessage?: string,
@@ -422,6 +476,23 @@ export class ConversationService {
     ]);
     const groundState = await this.buildGroundState(checkIn.groundId, otherPartyCheckedIn);
     const leadSignals = Array.isArray(initiatorProfile?.signals) ? (initiatorProfile!.signals as string[]) : null;
+
+    // Session-1-only DB override for this scenario+party's pack (PromptVersion
+    // key "scenario.<name>.<party>"). Lets an admin publish a revised pack via
+    // the Prompt Versioning page without a deploy - the whole reason this seed
+    // key exists. Falls back to the in-code pack (or the bare pathway
+    // question) in buildActivePathway when no active version exists.
+    const scenarioPackOverride =
+      checkIn.sessionNumber === 1
+        ? await this.prompts
+            .getActiveContent(`scenario.${ground.scenario.toLowerCase()}.${checkIn.participant.partyType.toLowerCase()}`)
+            // null (not '') on failure - buildActivePathway's `??` only falls
+            // through to the in-code pack on null/undefined, so resolving to
+            // '' here would silently defeat that fallback whenever no active
+            // DB version exists for this scenario+party.
+            .catch(() => null)
+        : null;
+
     const intakeBlock = buildIntakeBlock({
       scenario: ground.scenario,
       partyType: checkIn.participant.partyType,
@@ -429,12 +500,18 @@ export class ConversationService {
       roleAsDescribed: checkIn.participant.roleAsDescribed,
       otherPartyCheckedIn,
       groundLabel: ground.label,
+      // Pre-existing gap, found while proving this fix: resolutionState was
+      // never wired into the intake context at all, so RESOLUTION_STATE in
+      // the prompt was always "not yet defined" regardless of what the
+      // initiator actually set at ground creation.
+      resolutionState: (ground as any).resolutionState ?? null,
       adminBrief: (ground as any).brief ?? null,
       priorContext: checkIn.participant.roleAsDescribed ?? null,
       priorSession,
       lowSpecificityMultiDim,
       groundState,
       leadSignals,
+      scenarioPackOverride,
     });
 
     // Returning user protocol: for session 2+, inject the most important unresolved
@@ -489,7 +566,28 @@ Open the session by naming this specific inference directly. Do NOT ask the stan
       }
     }
 
-    return [systemPrompt, intakeBlock, clarificationContext, returningUserContext, dynamicContext, docContext, docPromptHint].filter(Boolean).join('\n\n');
+    // Self-correction session context: when this check-in is correcting the
+    // participant's OWN prior session (not a shared-report inference), inject
+    // what they said in that session so the AI opens by asking what needs to
+    // change, rather than starting a fresh, unrelated conversation.
+    let selfCorrectionContext = '';
+    if (checkIn.isSelfCorrection && checkIn.selfCorrectionTargetSession != null) {
+      const targetEntries = await this.prisma.recordEntry.findMany({
+        where: { participantId: checkIn.participantId, checkIn: { sessionNumber: checkIn.selfCorrectionTargetSession } },
+        orderBy: { createdAt: 'asc' },
+        select: { type: true, text: true },
+      });
+      if (targetEntries.length) {
+        const summary = targetEntries.map(e => `(${e.type}) ${e.text}`).join('\n');
+        selfCorrectionContext = `SELF-CORRECTION SESSION - the participant is returning to correct or add to what they said in session ${checkIn.selfCorrectionTargetSession}:
+
+${summary}
+
+Open the session by naming that you're returning to session ${checkIn.selfCorrectionTargetSession}, and ask directly what they'd like to correct or add. Do NOT ask the standard opener. Once they've told you, use the standard probes to get specifics, then close normally. This session's record is what carries the correction - the original session's record is not deleted or edited, so be clear this is an update, not an erasure.`;
+      }
+    }
+
+    return [systemPrompt, intakeBlock, clarificationContext, selfCorrectionContext, returningUserContext, dynamicContext, docContext, docPromptHint].filter(Boolean).join('\n\n');
   }
 
   /**
@@ -611,13 +709,25 @@ Open the session by naming this specific inference directly. Do NOT ask the stan
 
     // Completion-readiness gate (B4): a check-in only closes once the person has
     // actually built a record. Hollow completions produce thin, over-confident
-    // reports. Require at least 3 substantive answers from the person.
-    const personTurns = await this.prisma.conversationTurn.count({
+    // reports. Two checks, both required: at least 3 person turns, AND those
+    // turns must carry real content - not just "yes"/"ok"/"fine" three times.
+    // The character-count approach mirrors the thin-record heuristic already
+    // used at report-synthesis time (reports.service.ts), applied here at the
+    // gate instead of only flagged after the fact.
+    const personTurnRows = await this.prisma.conversationTurn.findMany({
       where: { checkInId: checkIn.id, role: TurnRole.PERSON },
+      select: { content: true },
     });
-    if (personTurns < 3) {
+    if (personTurnRows.length < 3) {
       throw new BadRequestException(
         'A few more exchanges are needed before this check-in can close - the record is still thin. Answer one or two more questions, then complete.',
+      );
+    }
+    const totalPersonChars = personTurnRows.reduce((sum, t) => sum + (t.content?.trim().length ?? 0), 0);
+    const MIN_SUBSTANTIVE_CHARS = 120; // roughly two real sentences total, not three one-word replies
+    if (totalPersonChars < MIN_SUBSTANTIVE_CHARS) {
+      throw new BadRequestException(
+        'These answers are pretty short - the record needs a bit more detail before this check-in can close. Add specifics (names, numbers, what actually happened), then complete.',
       );
     }
 
@@ -672,21 +782,88 @@ Open the session by naming this specific inference directly. Do NOT ask the stan
    * the fortnightly / weekly / monthly schedule.
    */
   private async ensureNextSession(groundId: string, participantId: string, sessionNumber: number) {
-    const next = sessionNumber + 1;
-    const existing = await this.prisma.checkIn.findUnique({ where: { participantId_sessionNumber: { participantId, sessionNumber: next } } });
-    if (existing) return;
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { cadence: true, cadenceAnchorDay: true, endsAt: true },
+    });
+    const cadence = ground?.cadence ?? Cadence.FORTNIGHTLY;
 
-    const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { cadence: true } });
-    const availableFrom = ground ? this.cadenceToDate(ground.cadence) : null;
+    // The completer's own next session. For SEQUENTIAL there is no clock: their
+    // next round is not auto-scheduled (availableFrom stays null until triggered).
+    const ownAvailableFrom =
+      cadence === Cadence.SEQUENTIAL ? null : this.cadenceToDate(cadence, ground?.cadenceAnchorDay ?? null);
+    // Respect the end date: do not schedule a next session past it.
+    const pastEnd = ground?.endsAt && ownAvailableFrom && ownAvailableFrom > ground.endsAt;
+    if (!pastEnd) {
+      await this.createNextIfAbsent(groundId, participantId, sessionNumber + 1, ownAvailableFrom);
+    }
 
-    await this.prisma.checkIn.create({ data: { groundId, participantId, sessionNumber: next, status: CheckInStatus.NOT_STARTED, availableFrom } });
+    // SEQUENTIAL trigger: when the INITIATOR checks in, the team's next round
+    // opens immediately (this is the "I check in, my team gets theirs" mode).
+    if (cadence === Cadence.SEQUENTIAL) {
+      const me = await this.prisma.groundParticipant.findUnique({
+        where: { id: participantId },
+        select: { partyType: true },
+      });
+      if (me?.partyType === PartyType.INITIATOR) {
+        const others = await this.prisma.groundParticipant.findMany({
+          where: { groundId, partyType: { not: PartyType.INITIATOR }, userId: { not: null } },
+          select: { id: true },
+        });
+        const now = new Date();
+        for (const o of others) {
+          // Open their earliest not-started session now; if none exists, create it.
+          const open = await this.prisma.checkIn.findFirst({
+            where: { participantId: o.id, status: CheckInStatus.NOT_STARTED },
+            orderBy: { sessionNumber: 'asc' },
+          });
+          if (open) {
+            await this.prisma.checkIn.update({ where: { id: open.id }, data: { availableFrom: now } });
+          } else {
+            const last = await this.prisma.checkIn.findFirst({
+              where: { participantId: o.id },
+              orderBy: { sessionNumber: 'desc' },
+              select: { sessionNumber: true },
+            });
+            await this.createNextIfAbsent(groundId, o.id, (last?.sessionNumber ?? 0) + 1, now);
+          }
+        }
+      }
+    }
   }
 
-  /** Convert a cadence enum to the next available date from now. */
-  private cadenceToDate(cadence: Cadence): Date {
-    const days = cadence === Cadence.WEEKLY ? 7 : cadence === Cadence.MONTHLY ? 30 : 14; // FORTNIGHTLY = 14
+  private async createNextIfAbsent(groundId: string, participantId: string, sessionNumber: number, availableFrom: Date | null) {
+    const existing = await this.prisma.checkIn.findUnique({ where: { participantId_sessionNumber: { participantId, sessionNumber } } });
+    if (existing) return;
+    await this.prisma.checkIn.create({ data: { groundId, participantId, sessionNumber, status: CheckInStatus.NOT_STARTED, availableFrom } });
+  }
+
+  /**
+   * Convert a cadence enum to the next available date from now.
+   * anchorDay: weekly/fortnightly = weekday (0=Sun..6=Sat); monthly = day of month (1-31).
+   */
+  private cadenceToDate(cadence: Cadence, anchorDay: number | null = null): Date {
     const d = new Date();
+    if (cadence === Cadence.DAILY) {
+      d.setDate(d.getDate() + 1);
+      return d;
+    }
+    if (cadence === Cadence.MONTHLY) {
+      // Next month; if a day-of-month anchor is set, land on it (clamped to month length).
+      d.setMonth(d.getMonth() + 1);
+      if (anchorDay != null && anchorDay >= 1 && anchorDay <= 31) {
+        const daysInMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+        d.setDate(Math.min(anchorDay, daysInMonth));
+      }
+      return d;
+    }
+    const days = cadence === Cadence.WEEKLY ? 7 : 14; // FORTNIGHTLY = 14
     d.setDate(d.getDate() + days);
+    // For weekly cadences with a fixed weekday (e.g. "every Monday"), roll forward
+    // to the next occurrence of that weekday.
+    if ((cadence === Cadence.WEEKLY || cadence === Cadence.FORTNIGHTLY) && anchorDay != null && anchorDay >= 0 && anchorDay <= 6) {
+      while (d.getDay() !== anchorDay) d.setDate(d.getDate() + 1);
+    }
     return d;
   }
 
@@ -919,6 +1096,47 @@ Open the session by naming this specific inference directly. Do NOT ask the stan
         status: CheckInStatus.NOT_STARTED,
         isClarification: true,
         clarificationTarget: inferenceId,
+      },
+    });
+
+    return { checkInId: checkIn.id };
+  }
+
+  /**
+   * Create a self-correction check-in so a participant can go back and correct
+   * or add to what they said in a specific PAST session of their OWN record
+   * (not the shared report - that's startClarificationSession above). The AI
+   * probes for the correction using the standard conversation prompts, rather
+   * than the participant typing a free-text edit directly.
+   */
+  async startSelfCorrectionSession(requestingUserId: string, groundId: string, targetSessionNumber: number): Promise<{ checkInId: string }> {
+    const participant = await this.prisma.groundParticipant.findFirst({
+      where: { groundId, userId: requestingUserId },
+    });
+    if (!participant) throw new ForbiddenException('You are not a participant on this ground');
+
+    const targetCheckIn = await this.prisma.checkIn.findUnique({
+      where: { participantId_sessionNumber: { participantId: participant.id, sessionNumber: targetSessionNumber } },
+    });
+    if (!targetCheckIn || targetCheckIn.status !== CheckInStatus.COMPLETED) {
+      throw new NotFoundException('That session is not a completed check-in on this ground');
+    }
+
+    const lastCheckIn = await this.prisma.checkIn.findFirst({
+      where: { participantId: participant.id },
+      orderBy: { sessionNumber: 'desc' },
+      select: { sessionNumber: true },
+    });
+    const nextSession = (lastCheckIn?.sessionNumber ?? 0) + 1;
+
+    const checkIn = await this.prisma.checkIn.create({
+      data: {
+        groundId,
+        participantId: participant.id,
+        sessionNumber: nextSession,
+        status: CheckInStatus.NOT_STARTED,
+        isSelfCorrection: true,
+        selfCorrectionTargetSession: targetSessionNumber,
       },
     });
 

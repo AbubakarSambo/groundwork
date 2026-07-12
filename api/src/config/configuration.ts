@@ -4,6 +4,10 @@ export const appConfig = registerAs("app", () => ({
   port: parseInt(process.env.PORT || "3000", 10),
   nodeEnv: process.env.NODE_ENV || "development",
   corsOrigins: process.env.CORS_ORIGINS, // comma-separated list of allowed origins
+  // One-time platform-admin bootstrap: if set AND no platform admin exists yet,
+  // this email is promoted on startup. No-ops once any platform admin exists,
+  // so it can never be used to add a second one later - see AdminService.onApplicationBootstrap.
+  platformAdminBootstrapEmail: process.env.PLATFORM_ADMIN_BOOTSTRAP_EMAIL,
 }));
 
 export const databaseConfig = registerAs("database", () => ({
@@ -37,6 +41,17 @@ export const geminiConfig = registerAs("gemini", () => ({
   location: process.env.GEMINI_LOCATION || "us-central1",
   model: process.env.GEMINI_MODEL || "gemini-2.5-pro",
   maxTokens: parseInt(process.env.GEMINI_MAX_TOKENS || "8192", 10),
+}));
+
+// WhatsApp Business Cloud API - single Groundwork-owned number, shared across
+// all orgs. Sender detection matches the inbound phone number against
+// User.phoneNumber; there is no per-org toggle. Disabled (dev-log only) until
+// WHATSAPP_ACCESS_TOKEN and WHATSAPP_PHONE_NUMBER_ID are set.
+export const whatsappConfig = registerAs("whatsapp", () => ({
+  accessToken: process.env.WHATSAPP_ACCESS_TOKEN,
+  phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID,
+  verifyToken: process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN,
+  enabled: !!process.env.WHATSAPP_ACCESS_TOKEN && !!process.env.WHATSAPP_PHONE_NUMBER_ID,
 }));
 
 // Stripe, USD. Per-session billing: first session per ground is free, each additional is $5.

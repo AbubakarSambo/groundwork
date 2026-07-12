@@ -5,6 +5,7 @@ import { entryApi } from '@/api/entry'
 import { authApi } from '@/api/auth'
 import { useEntryStore } from '@/stores/entry'
 import { useAuthStore } from '@/stores/auth'
+import { VennIcon } from '@/components/gw/VennIcon'
 import { toast } from 'sonner'
 
 const STORAGE_KEY = 'gw_entry_session'
@@ -106,6 +107,18 @@ const SITUATION_CARDS = [
     detail: 'A disagreement about contributions, direction, or equity that needs to be put on record.',
     message: 'My cofounder and I have a dispute about contributions and direction. I need to get both sides on record.',
   },
+  {
+    group: 'negative',
+    label: 'Realign a project',
+    detail: 'A project has drifted from the original plan and you want each person\'s current understanding on record before the group discusses it.',
+    message: 'A project of mine has drifted from what we originally agreed and I want to realign the team on where things actually stand.',
+  },
+  {
+    group: 'negative',
+    label: 'Realign with a team member',
+    detail: 'You and someone on your team see the current situation differently and want to close the gap before it grows.',
+    message: 'I need to realign with a team member. I think we see the current situation differently and want to get both our accounts on record.',
+  },
 ]
 
 // Quick actions shown after the check-in starts
@@ -145,6 +158,13 @@ export function EntryChatPage() {
   const [onboardingHistory, setOnboardingHistory] = useState<Turn[]>([])
   const [onboardingReady, setOnboardingReady] = useState(false)
   const [onboardingLoading, setOnboardingLoading] = useState(false)
+  // Doc-add during onboarding: paste or upload a text document + context, so the
+  // AI reads it and reports what it gathered (instead of the person typing it out).
+  const [showDocPanel, setShowDocPanel] = useState(false)
+  const [docTab, setDocTab] = useState<'paste' | 'upload'>('paste')
+  const [docPasteText, setDocPasteText] = useState('')
+  const [docLabel, setDocLabel] = useState('')
+  const [docContextNote, setDocContextNote] = useState('')
 
   // Check-in chat state (phase 2)
   const [history, setHistory] = useState<Turn[]>([])
@@ -185,7 +205,8 @@ export function EntryChatPage() {
   const [skippedCheckin] = useState(false)
   const [checkInBy, setCheckInBy] = useState('')
   const [lastCheckInBy, setLastCheckInBy] = useState('')
-  const [cadence, setCadence] = useState<'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'ONE_TIME'>('FORTNIGHTLY')
+  const [cadence, setCadence] = useState<'DAILY' | 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'ONE_TIME' | 'SEQUENTIAL'>('FORTNIGHTLY')
+  const [cadenceAnchorDay, setCadenceAnchorDay] = useState<number | null>(null) // 0=Sun..6=Sat for "every Monday"
   const [bulkInviteMode, setBulkInviteMode] = useState(false)
   const [bulkInviteText, setBulkInviteText] = useState('')
   const [bulkQueue, setBulkQueue] = useState<string[]>([])
@@ -373,11 +394,13 @@ export function EntryChatPage() {
   function advanceOnboarding(buttonChoice?: string) {
     const newSels = { ...onboardingSelections }
 
-    // Party path - show briefing before check-in starts
+    // Party path - go straight into the check-in (no interstitial page).
+    // The "~10 min" estimate and the two-report framing now live at the top of
+    // the check-in itself, so we do not stop the person with a separate screen.
     if (buttonChoice === "I am involved. Let's begin." || buttonChoice === "I'm involved. Let's begin.") {
       setOnboardingStep(ONBOARDING_STEPS + 1)
       persistOnboarding([], newSels, ONBOARDING_STEPS)
-      setShowAdminBriefing(true)
+      startCheckin.mutate()
       return
     }
 
@@ -445,6 +468,44 @@ export function EntryChatPage() {
     } finally {
       setOnboardingLoading(false)
     }
+  }
+
+  // Read a text-based file client-side (no ground exists yet during onboarding).
+  async function readDocFile(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader()
+      r.onload = () => resolve(String(r.result || ''))
+      r.onerror = () => reject(new Error('read failed'))
+      r.readAsText(file)
+    })
+  }
+
+  async function handleDocFileUpload(file: File) {
+    try {
+      const text = await readDocFile(file)
+      if (!text.trim()) { toast.error('That file looks empty or is not plain text. Try pasting the content instead.'); return }
+      setDocLabel(file.name)
+      setDocPasteText(text)
+      setDocTab('paste') // show what was read so they can add context and confirm
+    } catch {
+      toast.error('Could not read that file. Paste the text instead.')
+    }
+  }
+
+  // Inject the document into the conversation so the AI reads it and reports back
+  // what it gathered. Reuses sendOnboarding, which appends the turn and re-asks.
+  function submitOnboardingDoc() {
+    const content = docPasteText.trim()
+    if (!content) return
+    const label = docLabel.trim() || 'a document'
+    const note = docContextNote.trim()
+    const composed =
+      `I am adding a document to my record: "${label}".` +
+      (note ? ` Context: ${note}.` : '') +
+      ` Please read it and tell me what you gathered from it that I have not already said, then continue.\n\n--- DOCUMENT START ---\n${content}\n--- DOCUMENT END ---`
+    setShowDocPanel(false)
+    setDocPasteText(''); setDocLabel(''); setDocContextNote('')
+    sendOnboarding(composed)
   }
 
   // Kick off the AI onboarding with the intro message on mount (if onboarding history is empty)
@@ -540,6 +601,7 @@ export function EntryChatPage() {
         // Prefer the AI-classified scenario; fall back to mode key, then URL param.
         scenario: onboardingSelections.classifiedScenario || onboardingSelections.mode || scenario || undefined,
         cadence: cadence === 'ONE_TIME' ? 'FORTNIGHTLY' : cadence,
+        cadenceAnchorDay: (cadence === 'WEEKLY' || cadence === 'FORTNIGHTLY' || cadence === 'MONTHLY') && cadenceAnchorDay != null ? cadenceAnchorDay : undefined,
         checkInBy: checkInBy.trim() || undefined,
         lastCheckInBy: lastCheckInBy.trim() || undefined,
         reportSummary: sessionReport ? { alignmentStatus: sessionReport.alignmentStatus, whatGroundworkSaw: sessionReport.whatGroundworkSaw } : undefined,
@@ -772,8 +834,11 @@ export function EntryChatPage() {
             {/* Product intro - shown once before conversation starts */}
             {onboardingHistory.length <= 1 && (
               <div style={{ background: 'var(--gw-blue-bg)', borderBottom: '1px solid var(--gw-blue-b)', padding: '12px 20px', flexShrink: 0 }}>
-                <div style={{ maxWidth: 680, margin: '0 auto', fontSize: 13, color: 'var(--gw-navy)', lineHeight: 1.6 }}>
-                  <strong>Groundwork</strong> builds a private written record of a workplace situation from both sides. Each person checks in independently. The report is released when both are ready. Your contributions are never shown to the other party without your consent.
+                <div style={{ maxWidth: 680, margin: '0 auto' }}>
+                  <h1 style={{ fontSize: 15, fontWeight: 800, color: 'var(--gw-navy)', margin: '0 0 3px', letterSpacing: '-.01em' }}>Set up your Groundwork</h1>
+                  <div style={{ fontSize: 13, color: 'var(--gw-navy)', lineHeight: 1.6 }}>
+                    Answer a few questions about the situation. You get a private summary now; a shared report follows once the other people check in.
+                  </div>
                 </div>
               </div>
             )}
@@ -903,11 +968,58 @@ export function EntryChatPage() {
             {/* Text input for onboarding - hidden once ready, loading checkin, or cards not yet dismissed */}
             {!startCheckin.isPending && !onboardingReady && !(onboardingHistory.length === 1 && !pickedSituation) && (
               <div style={{ borderTop: '1px solid var(--gw-border)', background: 'white', flexShrink: 0 }}>
+                {/* Doc-add panel: paste or upload a document + context; the AI reads it. */}
+                {showDocPanel && (
+                  <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--gw-border)', background: '#F7F6F3' }}>
+                    <div style={{ maxWidth: 680, margin: '0 auto' }}>
+                      <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+                        {(['paste', 'upload'] as const).map(t => (
+                          <button key={t} onClick={() => setDocTab(t)}
+                            style={{ fontSize: 12, fontWeight: 700, padding: '5px 12px', borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit',
+                              border: `1px solid ${docTab === t ? 'var(--gw-navy)' : 'var(--gw-border)'}`,
+                              background: docTab === t ? 'var(--gw-navy)' : 'white', color: docTab === t ? 'white' : 'var(--gw-sub)' }}>
+                            {t === 'paste' ? 'Paste text' : 'Upload file'}
+                          </button>
+                        ))}
+                        <div style={{ flex: 1 }} />
+                        <button onClick={() => setShowDocPanel(false)} style={{ fontSize: 12, color: 'var(--gw-sub)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
+                      </div>
+                      {docTab === 'upload' && (
+                        <label style={{ display: 'block', border: '1px dashed var(--gw-border)', borderRadius: 8, padding: '14px', textAlign: 'center', fontSize: 12, color: 'var(--gw-sub)', cursor: 'pointer', marginBottom: 8, background: 'white' }}>
+                          📎 Choose a text file (.txt, .md, .csv). For PDF or Word, paste the text instead.
+                          <input type="file" accept=".txt,.md,.csv,.json,.log" style={{ display: 'none' }}
+                            onChange={e => { const f = e.target.files?.[0]; if (f) handleDocFileUpload(f) }} />
+                        </label>
+                      )}
+                      <input type="text" placeholder="What is this? e.g. the onboarding guide I shared" value={docLabel}
+                        onChange={e => setDocLabel(e.target.value)}
+                        style={{ width: '100%', padding: '8px 10px', fontSize: 13, border: '1px solid var(--gw-border)', borderRadius: 6, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 6 }} />
+                      <textarea placeholder={docTab === 'upload' ? 'File contents will appear here once read. You can edit before sending.' : 'Paste the document text here…'}
+                        value={docPasteText} onChange={e => setDocPasteText(e.target.value)} rows={5}
+                        style={{ width: '100%', padding: '8px 10px', fontSize: 12, border: '1px solid var(--gw-border)', borderRadius: 6, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', resize: 'vertical', marginBottom: 6 }} />
+                      <input type="text" placeholder="Anything to note about it? (optional)" value={docContextNote}
+                        onChange={e => setDocContextNote(e.target.value)}
+                        style={{ width: '100%', padding: '8px 10px', fontSize: 13, border: '1px solid var(--gw-border)', borderRadius: 6, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 8 }} />
+                      <button onClick={submitOnboardingDoc} disabled={!docPasteText.trim() || onboardingLoading}
+                        style={{ padding: '9px 16px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'inherit', opacity: (docPasteText.trim() && !onboardingLoading) ? 1 : 0.4 }}>
+                        Add document and let Groundwork read it
+                      </button>
+                    </div>
+                  </div>
+                )}
                 <div style={{ padding: '10px 16px' }}>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center', maxWidth: 680, margin: '0 auto' }}>
+                    <button
+                      onClick={() => setShowDocPanel(v => !v)}
+                      disabled={onboardingLoading}
+                      title="Add a document (paste or upload) instead of typing it out"
+                      style={{ padding: '0 12px', borderRadius: 6, background: 'white', color: 'var(--gw-navy)', border: '1px solid var(--gw-border)', cursor: 'pointer', fontSize: 13, fontWeight: 700, height: 38, whiteSpace: 'nowrap', opacity: onboardingLoading ? 0.5 : 1 }}
+                    >
+                      + Doc
+                    </button>
                     <input
                       type="text"
-                      placeholder="Type your response."
+                      placeholder="Type your response, or add a document with + Doc"
                       value={input}
                       onChange={e => setInput(e.target.value)}
                       onKeyDown={e => { if (e.key === 'Enter' && input.trim()) { sendOnboarding(input); } }}
@@ -936,12 +1048,31 @@ export function EntryChatPage() {
         {/* PHASE: CHECK-IN (AI-driven, message 15+) */}
         {phase === 'checkin' && (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+            {/* Not-signed-up reminder: the entry user has no account until they save. */}
+            {!user && (
+              <div style={{ background: '#FDF3E3', borderBottom: '1px solid #F5D9A0', padding: '8px 16px', flexShrink: 0 }}>
+                <div style={{ maxWidth: 680, margin: '0 auto', fontSize: 12.5, color: '#8A5C1A', lineHeight: 1.5 }}>
+                  You are not signed up yet. Your answers are saved to this device as you go, but save your email at the end to keep this record.
+                </div>
+              </div>
+            )}
             <div
               ref={msgsRef}
               style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 680, width: '100%', margin: '0 auto', boxSizing: 'border-box' }}
             >
               {startCheckin.isPending && (
                 <div style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', padding: 24 }}>Starting your check-in…</div>
+              )}
+              {!startCheckin.isPending && displayedHistory.length <= 2 && (
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', padding: '4px 12px 8px', lineHeight: 1.5 }}>
+                  About 10 minutes, a few exchanges (around 3 answers), then you can end the session to get your report.
+                </div>
+              )}
+              {!startCheckin.isPending && displayedHistory.length <= 2 && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center', fontSize: 12, color: 'var(--gw-sub)', padding: '0 12px 10px', lineHeight: 1.5 }}>
+                  <VennIcon size={22} />
+                  <span>Your individual report is private. The shared report shows where everyone's accounts agree or differ.</span>
+                </div>
               )}
               {displayedHistory.map((m, i) => {
                 return (
@@ -1111,7 +1242,12 @@ export function EntryChatPage() {
           <div style={{ background: '#0A1628', color: 'white', padding: '20px 22px 16px' }}>
             <div style={{ fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: '#5DCAA5', fontWeight: 700, marginBottom: 6 }}>{skippedCheckin ? 'New ground' : 'Session 1 · your private report'}</div>
             <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-.01em', lineHeight: 1.2 }}>{groundName || (skippedCheckin ? 'Set up your ground.' : 'Your account is on record.')}</div>
-            <div style={{ fontSize: 12, color: 'rgba(255,255,255,.5)', marginTop: 4 }}>This is your private report - only you can see it. The shared report generates once all parties have checked in. It does not quote you.</div>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginTop: 6 }}>
+              <div style={{ flexShrink: 0, marginTop: 2, background: 'white', borderRadius: 4, padding: '2px 3px' }}><VennIcon size={22} /></div>
+              <div style={{ fontSize: 12, color: 'rgba(255,255,255,.6)', lineHeight: 1.5 }}>
+                This individual report is private to you. Once everyone has checked in, a separate <b style={{ color: 'rgba(255,255,255,.85)' }}>shared report</b> shows where everyone's accounts agree or differ.
+              </div>
+            </div>
             {history.filter(m => m.role === 'user').length > 0 && (() => {
               const turns = history.filter(m => m.role === 'user').length
               const depth = turns < 4 ? 1 : turns < 8 ? 2 : turns < 12 ? 3 : turns < 16 ? 4 : 5
@@ -1119,7 +1255,7 @@ export function EntryChatPage() {
               return (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
                   {[1,2,3,4,5].map(n => <div key={n} style={{ width: 7, height: 7, borderRadius: 2, background: n <= depth ? '#5DCAA5' : 'rgba(255,255,255,.18)' }} />)}
-                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,.55)' }}>Session depth: {label}</span>
+                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,.55)' }} title="How concrete and specific your answers were (Thin, Fair, Good, Strong)">Specificity: {label}</span>
                 </div>
               )
             })()}
@@ -1158,21 +1294,25 @@ export function EntryChatPage() {
                   <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: 'rgba(255,255,255,.93)' }}>{sessionReport.whatGroundworkSaw}</p>
                 </div>
 
-                {/* Alignment status */}
+                {/* Where your side stands (one-sided until others check in) */}
                 <div style={{ marginBottom: 16 }}>
-                  <div style={{ fontSize: 10, letterSpacing: '.09em', textTransform: 'uppercase', color: '#9B9590', fontWeight: 700, marginBottom: 6 }}>Alignment status</div>
+                  <div style={{ fontSize: 10, letterSpacing: '.09em', textTransform: 'uppercase', color: '#9B9590', fontWeight: 700, marginBottom: 6 }}>Where your side stands</div>
                   <div style={{ fontSize: 17, fontWeight: 800, color: '#1A1916' }}>{sessionReport.alignmentStatus}</div>
                   <div style={{ fontSize: 12, color: '#6B6560', marginTop: 3, lineHeight: 1.5 }}>{sessionReport.alignmentBasis}</div>
                   <div style={{ display: 'flex', gap: 4, marginTop: 10 }}>
                     {(['Unresolved','Mixed','Emerging','Clear','Aligned'] as const).map(s => {
                       const order = ['Unresolved','Mixed','Emerging','Clear','Aligned']
                       const on = order.indexOf(s) <= order.indexOf(sessionReport.alignmentStatus)
-                      const fullyAligned = sessionReport.alignmentStatus === 'Aligned'
-                      const bg = on ? (fullyAligned ? '#085041' : '#0C447C') : '#EFEDE8'
+                      // "Aligned" requires a second party, so it stays locked in a one-sided report.
+                      const locked = s === 'Aligned'
+                      const bg = on ? '#0C447C' : '#EFEDE8'
                       return (
-                        <div key={s} style={{ flex: 1, textAlign: 'center', fontSize: 9, letterSpacing: '.03em', textTransform: 'uppercase', padding: '5px 2px', borderRadius: 5, fontWeight: 700, background: bg, color: on ? 'white' : '#9B9590' }}>{s}</div>
+                        <div key={s} style={{ flex: 1, textAlign: 'center', fontSize: 9, letterSpacing: '.03em', textTransform: 'uppercase', padding: '5px 2px', borderRadius: 5, fontWeight: 700, background: bg, color: on ? 'white' : (locked ? '#B8B4AE' : '#9B9590'), border: locked ? '1px dashed #CFCBC4' : 'none' }}>{locked ? `${s} 🔒` : s}</div>
                       )
                     })}
+                  </div>
+                  <div style={{ fontSize: 11, color: '#9B9590', marginTop: 6, lineHeight: 1.5 }}>
+                    Reading left to right: <b>Unresolved</b> (little on record) → <b>Mixed</b> → <b>Emerging</b> → <b>Clear</b> (your side is well defined) → <b>Aligned</b> (only after the other party checks in). This reflects your side only.
                   </div>
                 </div>
 
@@ -1191,10 +1331,10 @@ export function EntryChatPage() {
                   </div>
                 )}
 
-                {/* Alignment reached */}
+                {/* Clear on your side (not mutual agreement - only one party has checked in) */}
                 {sessionReport.alignmentReached.length > 0 && (
                   <div style={{ marginBottom: 16 }}>
-                    <div style={{ fontSize: 10, letterSpacing: '.09em', textTransform: 'uppercase', color: '#9B9590', fontWeight: 700, marginBottom: 8 }}>Alignment reached</div>
+                    <div style={{ fontSize: 10, letterSpacing: '.09em', textTransform: 'uppercase', color: '#9B9590', fontWeight: 700, marginBottom: 8 }}>Clear on your side</div>
                     {sessionReport.alignmentReached.map((a, i) => (
                       <div key={i} style={{ border: '1px solid #E2E0DB', borderLeft: '3px solid #5DCAA5', borderRadius: 10, padding: '11px 13px', marginBottom: 8 }}>
                         <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>{a.title}</div>
@@ -1244,14 +1384,15 @@ export function EntryChatPage() {
                   </div>
                 )}
 
-                {/* Honest close */}
+                {/* Where this leaves you — the one-glance summary of the detail above */}
                 <div style={{ marginBottom: 16 }}>
-                  <div style={{ fontSize: 10, letterSpacing: '.09em', textTransform: 'uppercase', color: '#9B9590', fontWeight: 700, marginBottom: 8 }}>An honest close</div>
+                  <div style={{ fontSize: 10, letterSpacing: '.09em', textTransform: 'uppercase', color: '#9B9590', fontWeight: 700, marginBottom: 4 }}>Where this leaves you</div>
+                  <div style={{ fontSize: 11, color: '#9B9590', marginBottom: 8, lineHeight: 1.5 }}>A one-glance summary of your side. "Next session" is what Groundwork will surface for you to check, not a task list.</div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                     {[
-                      { k: 'Aligned', v: sessionReport.honestClose.aligned, bg: '#E7F6EF', kc: '#085041' },
+                      { k: 'Settled', v: sessionReport.honestClose.aligned, bg: '#E7F6EF', kc: '#085041' },
                       { k: 'Open',    v: sessionReport.honestClose.open,    bg: '#FDF3E3', kc: '#8A5C1A' },
-                      { k: 'Revisit', v: sessionReport.honestClose.revisit, bg: '#EEF4FB', kc: '#0C447C' },
+                      { k: 'Next session', v: sessionReport.honestClose.revisit, bg: '#EEF4FB', kc: '#0C447C' },
                       { k: 'Risk',    v: sessionReport.honestClose.risk,    bg: '#F8ECEA', kc: '#B5675A' },
                     ].map(({ k, v, bg, kc }) => (
                       <div key={k} style={{ background: bg, borderRadius: 8, padding: '9px 11px', fontSize: 12, lineHeight: 1.5, color: '#1A1916' }}>
@@ -1329,23 +1470,55 @@ export function EntryChatPage() {
                 style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #E2E0DB', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none', marginBottom: 8 }}
               />
               <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 4 }}>How often do contributors check in?</div>
-              <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
-                {(['ONE_TIME', 'WEEKLY', 'FORTNIGHTLY', 'MONTHLY'] as const).map(c => (
+              <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
+                {(['ONE_TIME', 'DAILY', 'WEEKLY', 'FORTNIGHTLY', 'MONTHLY', 'SEQUENTIAL'] as const).map(c => {
+                  const labels: Record<string, string> = { ONE_TIME: 'One time', DAILY: 'Daily', WEEKLY: 'Weekly', FORTNIGHTLY: 'Every 2 weeks', MONTHLY: 'Monthly', SEQUENTIAL: 'When I check in' }
+                  return (
                   <button key={c} onClick={() => setCadence(c)} style={{
-                    flex: 1, padding: '9px 0', borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                    flex: '1 0 30%', padding: '9px 4px', borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
                     border: `1px solid ${cadence === c ? '#0C447C' : '#E2E0DB'}`,
                     background: cadence === c ? '#EEF4FB' : 'white',
                     color: cadence === c ? '#0C447C' : '#6B6560',
                   }}>
-                    {c === 'FORTNIGHTLY' ? 'Every 2 weeks' : c === 'ONE_TIME' ? 'One time' : c.charAt(0) + c.slice(1).toLowerCase()}
+                    {labels[c]}
                   </button>
-                ))}
+                )})}
               </div>
+              {/* Weekday anchor for weekly-style cadences ("every Monday") */}
+              {(cadence === 'WEEKLY' || cadence === 'FORTNIGHTLY') && (
+                <div style={{ marginBottom: 8 }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 4 }}>On which day? (optional)</div>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((d, i) => (
+                      <button key={d} onClick={() => setCadenceAnchorDay(cadenceAnchorDay === i ? null : i)} style={{
+                        flex: 1, padding: '6px 0', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                        border: `1px solid ${cadenceAnchorDay === i ? '#0C447C' : '#E2E0DB'}`,
+                        background: cadenceAnchorDay === i ? '#EEF4FB' : 'white', color: cadenceAnchorDay === i ? '#0C447C' : '#9B9590',
+                      }}>{d}</button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {/* Day-of-month anchor for monthly ("on the 1st") */}
+              {cadence === 'MONTHLY' && (
+                <div style={{ marginBottom: 8 }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 4 }}>On which day of the month? (optional)</div>
+                  <select value={cadenceAnchorDay ?? ''} onChange={e => setCadenceAnchorDay(e.target.value ? Number(e.target.value) : null)}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid #E2E0DB', fontSize: 13, fontFamily: 'inherit', background: 'white', color: cadenceAnchorDay != null ? '#1A1916' : '#9B9590' }}>
+                    <option value="">No fixed day (every ~30 days)</option>
+                    {Array.from({ length: 28 }, (_, i) => i + 1).map(day => (
+                      <option key={day} value={day}>{day}{day === 1 ? 'st' : day === 2 ? 'nd' : day === 3 ? 'rd' : 'th'} of the month</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div style={{ fontSize: 11, color: '#9B9590', marginBottom: 10, lineHeight: 1.5 }}>
                 {cadence === 'ONE_TIME' ? 'Single session · one account per party, no follow-up cadence.' :
-                 cadence === 'WEEKLY' ? 'Weekly · typical resolution in 4–6 weeks.' :
-                 cadence === 'MONTHLY' ? 'Monthly · typical resolution in 3–4 months.' :
-                 'Every 2 weeks · typical resolution in 6–8 weeks.'}
+                 cadence === 'DAILY' ? 'Daily · a fresh check-in opens each day.' :
+                 cadence === 'WEEKLY' ? `Weekly${cadenceAnchorDay != null ? ` · every ${['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][cadenceAnchorDay]}` : ''} · typical resolution in 4-6 weeks.` :
+                 cadence === 'MONTHLY' ? `Monthly${cadenceAnchorDay != null ? ` · on the ${cadenceAnchorDay}${cadenceAnchorDay === 1 ? 'st' : cadenceAnchorDay === 2 ? 'nd' : cadenceAnchorDay === 3 ? 'rd' : 'th'}` : ''} · typical resolution in 3-4 months.` :
+                 cadence === 'SEQUENTIAL' ? 'No fixed schedule · when you check in, your team gets their next check-in. Good for cascading updates to a group (e.g. field officers).' :
+                 `Every 2 weeks${cadenceAnchorDay != null ? ` · on ${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][cadenceAnchorDay]}` : ''} · typical resolution in 6-8 weeks.`}
               </div>
               {cadence === 'ONE_TIME' ? (
                 <>
@@ -1359,7 +1532,7 @@ export function EntryChatPage() {
               ) : (
                 <div style={{ display: 'flex', gap: 8 }}>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 4 }}>First check-in</div>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 4 }}>Start date <span style={{ fontWeight: 400 }}>(first check-in)</span></div>
                     <input
                       type="date" value={checkInBy}
                       onChange={e => setCheckInBy(e.target.value)}
@@ -1367,7 +1540,7 @@ export function EntryChatPage() {
                     />
                   </div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 4 }}>Last check-in <span style={{ fontWeight: 400 }}>(optional)</span></div>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 4 }}>End date <span style={{ fontWeight: 400 }}>(last check-in, optional)</span></div>
                     <input
                       type="date" value={lastCheckInBy}
                       onChange={e => setLastCheckInBy(e.target.value)}
@@ -1375,6 +1548,9 @@ export function EntryChatPage() {
                     />
                   </div>
                 </div>
+              )}
+              {emailError && !checkInBy && emailError.toLowerCase().includes('date') && (
+                <div style={{ fontSize: 11.5, color: '#C0392B', marginTop: 6, fontWeight: 600 }}>Pick a date above so we know when to expect the first check-in.</div>
               )}
             </div>
 
@@ -1557,10 +1733,10 @@ export function EntryChatPage() {
           <div style={{ background: 'white', borderRadius: 12, padding: 24, maxWidth: 380, width: '100%' }}>
             <div style={{ fontSize: 16, fontWeight: 800, color: '#0A1628', marginBottom: 8 }}>End this session?</div>
             <div style={{ fontSize: 13, color: '#6B6560', lineHeight: 1.65, marginBottom: 8 }}>
-              Your responses are already saved. Ending closes this session permanently - you will not be able to add to it.
+              Your answers are saved. Ending this session generates your report. This session's answers then lock, but you are not stuck: you can start a new session any time to add more.
             </div>
             <div style={{ fontSize: 13, color: '#6B6560', lineHeight: 1.65, marginBottom: 18 }}>
-              The shared report releases once all parties have checked in. You can start a new session any time.
+              If the report gets something wrong, you can open a clarification session to correct it. The shared report releases once all parties have checked in.
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button

@@ -4,12 +4,21 @@ import { groundsApi } from '@/api/grounds'
 import { reportsApi } from '@/api/reports'
 import { useAuthStore } from '@/stores/auth'
 import { InferenceReviewPanel } from '@/components/InferenceReviewPanel'
+import { VennIcon } from '@/components/gw/VennIcon'
 
 const LADDER_STEPS = ['Unresolved', 'Mixed', 'Emerging', 'Clear', 'Aligned'] as const
 
-function deriveStatus(agreements: string[], divergences: any[]): { label: string; steps: number } {
+function deriveStatus(agreements: string[], divergences: any[], contributedParties = 2): { label: string; steps: number } {
   const a = agreements.length
   const d = divergences.length
+  // Alignment is two-sided. With fewer than 2 parties on record, the ceiling is
+  // "Clear" (one side is clearly stated) - never "Aligned".
+  if (contributedParties < 2) {
+    if (a > 0 && d <= 1) return { label: 'Clear', steps: 4 }
+    if (a > 0 && d <= 2) return { label: 'Emerging', steps: 3 }
+    if (a > 0 || d > 0) return { label: 'Mixed', steps: 2 }
+    return { label: 'Unresolved', steps: 1 }
+  }
   if (a > 0 && d === 0) return { label: 'Aligned', steps: 5 }
   if (a > 0 && d <= 1) return { label: 'Clear', steps: 4 }
   if (a > 0 && d <= 2) return { label: 'Emerging', steps: 3 }
@@ -193,7 +202,8 @@ export function ReportPage() {
 
   const agreements = report.agreements ?? []
   const divergences = report.divergences ?? []
-  const { label: statusLabel, steps: statusSteps } = deriveStatus(agreements, divergences)
+  const contributedParties = ((report.engagement ?? {}) as any).parties?.filter((p: any) => p.contributed).length ?? 2
+  const { label: statusLabel, steps: statusSteps } = deriveStatus(agreements, divergences, contributedParties)
 
   const eng = (report.engagement ?? {}) as any
   const areas: any[] = eng.areas ?? []
@@ -228,9 +238,12 @@ export function ReportPage() {
           >
             ← Back
           </button>
-          <div style={{ fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase', color: '#5DCAA5', fontWeight: 700, marginBottom: 10 }}>Report</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+            <span style={{ background: 'white', borderRadius: 4, padding: '3px 4px', display: 'inline-flex' }}><VennIcon size={24} /></span>
+            <span style={{ fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase', color: '#5DCAA5', fontWeight: 700 }}>Shared report</span>
+          </div>
           <h1 style={{ fontSize: 30, lineHeight: 1.1, letterSpacing: '-.02em', margin: '0 0 12px', fontWeight: 800 }}>
-            The report tells you what to do next, not just what happened.
+            Where everyone's accounts agree or differ.
           </h1>
           <p style={{ fontSize: 15, color: 'rgba(255,255,255,.72)', maxWidth: 640, margin: 0 }}>
             {report.sharedPicture}
@@ -399,9 +412,45 @@ export function ReportPage() {
           )}
         </div>
 
+        {/* Who is on record + how specific each account was (#33). */}
+        {Array.isArray(eng.parties) && eng.parties.length > 0 && (
+          <div style={{ marginTop: 32 }}>
+            <div style={{ fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: '#9B9590', fontWeight: 700, marginBottom: 10 }}>On record</div>
+            <div style={{ border: '1px solid #E2E0DB', borderRadius: 10, overflow: 'hidden' }}>
+              {eng.parties.map((p: any, i: number) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 14px', borderBottom: i < eng.parties.length - 1 ? '1px solid #EFEDE8' : 'none', background: 'white' }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#1A1916' }}>{p.label}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                    <span style={{ fontSize: 11, color: '#9B9590' }}>{p.contributed ? `${p.sessions ?? 0} session${(p.sessions ?? 0) !== 1 ? 's' : ''}` : 'not yet checked in'}</span>
+                    {p.contributed && p.specificityLabel && (
+                      <span title="How concrete their account was" style={{ fontSize: 11, fontWeight: 700, borderRadius: 6, padding: '2px 8px',
+                        background: p.specificityLabel === 'high' ? '#E7F6EF' : p.specificityLabel === 'moderate' ? '#EEF4FB' : '#FDF3E3',
+                        color: p.specificityLabel === 'high' ? '#085041' : p.specificityLabel === 'moderate' ? '#0C447C' : '#8A5C1A' }}>
+                        {p.specificityLabel} specificity
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {report.inferences && report.inferences.length > 0 && (
           <InferenceReviewPanel groundId={id!} inferences={report.inferences} />
         )}
+
+        {/* Always-visible correction affordance (#21): the per-claim "Correct this"
+            only appears when there are inferred claims, so make correction discoverable. */}
+        <div style={{ marginTop: 24, background: '#F7F6F3', border: '1px solid #E2E0DB', borderRadius: 10, padding: '14px 16px' }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#1A1916', marginBottom: 4 }}>Something not right in this report?</div>
+          <div style={{ fontSize: 12.5, color: '#6B6560', lineHeight: 1.6 }}>
+            {report.inferences && report.inferences.length > 0
+              ? 'Inferred claims above have a "Correct this" button that opens a short follow-up to fix the record. '
+              : ''}
+            For anything else, start a new session on this ground to add to or correct the record. Reports are built from what is on record, so adding a session updates the picture.
+          </div>
+        </div>
 
         <div style={{ marginTop: 40, paddingTop: 24, borderTop: '1px solid #E2E0DB', fontSize: 12, color: '#9B9590', lineHeight: 1.6 }}>
           This report is permanent. Both parties keep it, and it is portable to each of your profiles.

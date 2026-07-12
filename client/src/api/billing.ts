@@ -25,7 +25,10 @@ export interface CanCreateGroundResult {
   reason?: string
   freeReason?: string
   codeId?: string
+  groundsUsed?: number
 }
+
+export const FREE_GROUND_LIMIT = 10
 
 export type SubscriptionPlan = 'STARTER' | 'SMALL_TEAM' | 'GROWTH' | 'BUSINESS' | 'SCALE' | 'ENTERPRISE'
 

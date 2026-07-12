@@ -90,3 +90,82 @@ describe('ConversationContextService - disclosure detection (GW-08) & cross-refe
     expect(block).not.toContain('DISCLOSURE MODE');
   });
 });
+
+/**
+ * Degree-3 invisible-labour cross-reference (GW-DEGREE3-INVISIBLE-LABOUR).
+ *
+ * A correctly-attributed, already-live mechanism: it searches OTHER grounds in
+ * this participant's own org for mentions of THEIR OWN name alongside
+ * operational words, and surfaces a probe to THEM specifically when the count
+ * is >= 2. Unlike the pattern-detection R3 code (which stores against the
+ * credit-giver, not the recipient - see BUILD_TRUTH_5), this mechanism is
+ * inherently recipient-correct because it always searches for the current
+ * participant's own identity, never anyone else's.
+ */
+describe('ConversationContextService - Degree-3 invisible labour cross-reference', () => {
+  function makePrisma(opts: { crossOrgMentionCount: number; firstName?: string; lastName?: string }) {
+    return {
+      groundParticipant: {
+        findUnique: jest.fn(async (args: any) => {
+          if (args.select?.user) {
+            return {
+              user: { firstName: opts.firstName ?? 'Amara', lastName: opts.lastName ?? 'Okoye' },
+              ground: { organizationId: 'org-1' },
+            };
+          }
+          return { specificityHistory: [] };
+        }),
+        update: jest.fn(async () => ({})),
+        findMany: jest.fn(async () => []), // no other parties on this ground - degree-2 does not fire
+      },
+      recordEntry: {
+        findMany: jest.fn(async () => []),
+        count: jest.fn(async () => opts.crossOrgMentionCount),
+      },
+      patternDetection: { findMany: jest.fn(async () => []), count: jest.fn(async () => 0) },
+    };
+  }
+
+  it('surfaces INVISIBLE_LABOUR to the credited person when their name appears >= 2 times elsewhere in the org', async () => {
+    const prisma: any = makePrisma({ crossOrgMentionCount: 3 });
+    const service = new ConversationContextService(prisma);
+    const { block } = await service.build({
+      groundId: 'g1', participantId: 'p1', sessionNumber: 2,
+      latestMessage: 'We shipped the migration this week.',
+    });
+    expect(block).toContain('[INVISIBLE_LABOUR | TIER 1]');
+    expect(block).toContain('There is work that appears connected to you in the broader record. What specifically did you contribute to that, and does your record here reflect it?');
+    // The count itself, and any other party's verbatim words, must never appear.
+    expect(block).not.toContain('3');
+  });
+
+  it('is absent when the mention count is below the threshold (1 mention)', async () => {
+    const prisma: any = makePrisma({ crossOrgMentionCount: 1 });
+    const service = new ConversationContextService(prisma);
+    const { block } = await service.build({
+      groundId: 'g1', participantId: 'p1', sessionNumber: 2,
+      latestMessage: 'We shipped the migration this week.',
+    });
+    expect(block).not.toContain('INVISIBLE_LABOUR');
+  });
+
+  it('is absent when the mention count is zero', async () => {
+    const prisma: any = makePrisma({ crossOrgMentionCount: 0 });
+    const service = new ConversationContextService(prisma);
+    const { block } = await service.build({
+      groundId: 'g1', participantId: 'p1', sessionNumber: 2,
+      latestMessage: 'We shipped the migration this week.',
+    });
+    expect(block).not.toContain('INVISIBLE_LABOUR');
+  });
+
+  it('never fires at session 1, even with a qualifying mention count (crossReference only runs session >= 2)', async () => {
+    const prisma: any = makePrisma({ crossOrgMentionCount: 5 });
+    const service = new ConversationContextService(prisma);
+    const { block } = await service.build({
+      groundId: 'g1', participantId: 'p1', sessionNumber: 1,
+      latestMessage: 'We shipped the migration this week.',
+    });
+    expect(block).not.toContain('INVISIBLE_LABOUR');
+  });
+});

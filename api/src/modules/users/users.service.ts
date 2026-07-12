@@ -216,7 +216,7 @@ export class UsersService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('User not found');
 
-    const anonymisedEmail = `deleted-${userId}@deleted`;
+    const anonymisedEmail = `deleted-${userId}@erased.invalid`;
 
     await this.prisma.$transaction([
       this.prisma.user.update({
@@ -240,7 +240,7 @@ export class UsersService {
     for (const link of links) {
       await this.prisma.groundParticipant.update({
         where: { id: link.id },
-        data: { email: `deleted-${link.id}@deleted`, roleAsDescribed: null },
+        data: { email: `deleted-${link.id}@erased.invalid`, roleAsDescribed: null },
       });
     }
 

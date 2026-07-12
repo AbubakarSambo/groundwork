@@ -1,10 +1,16 @@
 import { apiClient } from './client'
 
+export interface DocumentAssessment {
+  suggests: string[]
+  willDo: string[]
+}
+
 export interface GroundDocument {
   id: string
   name: string
   mimeType: string
   uploadedAt: string
+  assessment: DocumentAssessment | null
 }
 
 export const documentsApi = {
@@ -18,6 +24,9 @@ export const documentsApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     }).then(r => r.data)
   },
+
+  correctAssessment: (groundId: string, docId: string, assessment: DocumentAssessment) =>
+    apiClient.patch<GroundDocument>(`/grounds/${groundId}/documents/${docId}/assessment`, assessment).then(r => r.data),
 
   remove: (groundId: string, docId: string) =>
     apiClient.delete(`/grounds/${groundId}/documents/${docId}`).then(r => r.data),

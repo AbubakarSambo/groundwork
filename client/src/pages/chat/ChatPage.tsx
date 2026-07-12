@@ -1,13 +1,85 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, useLocation, useSearchParams } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
-import { conversationApi } from '@/api/conversation'
-import { documentsApi } from '@/api/documents'
+import { conversationApi, streamMessage } from '@/api/conversation'
+import { documentsApi, type DocumentAssessment } from '@/api/documents'
 import { useAuthStore } from '@/stores/auth'
 import { SessionReportCard } from '@/components/gw/SessionReportCard'
 import { toast } from 'sonner'
 
-interface Msg { id: string; role: 'AI' | 'PERSON'; content: string }
+interface Msg {
+  id: string
+  role: 'AI' | 'PERSON'
+  content: string
+  docAssessment?: { docId: string; docName: string; assessment: DocumentAssessment }
+}
+
+/** Shows a document's "what this suggests / what will be done with it" bullets,
+ * with an inline correction affordance so the person can fix a wrong read. */
+function AssessmentCard({ groundId, docId, docName, assessment, onCorrected }: {
+  groundId: string; docId: string; docName: string; assessment: DocumentAssessment
+  onCorrected: (a: DocumentAssessment) => void
+}) {
+  const [editing, setEditing] = useState(false)
+  const [suggestsText, setSuggestsText] = useState(assessment.suggests.join('\n'))
+  const [willDoText, setWillDoText] = useState(assessment.willDo.join('\n'))
+  const [saving, setSaving] = useState(false)
+
+  async function save() {
+    setSaving(true)
+    try {
+      const corrected = {
+        suggests: suggestsText.split('\n').map(s => s.trim()).filter(Boolean),
+        willDo: willDoText.split('\n').map(s => s.trim()).filter(Boolean),
+      }
+      const doc = await documentsApi.correctAssessment(groundId, docId, corrected)
+      onCorrected(doc.assessment ?? corrected)
+      setEditing(false)
+    } catch {
+      toast.error('Could not save your correction. Try again.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: '12px 14px', background: 'white', maxWidth: '82%', alignSelf: 'flex-start' }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 8 }}>📎 {docName}</div>
+      {!editing ? (
+        <>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gw-sub)', marginBottom: 4 }}>What this suggests</div>
+          <ul style={{ margin: '0 0 10px', paddingLeft: 18, fontSize: 13, lineHeight: 1.6 }}>
+            {assessment.suggests.map((s, i) => <li key={i}>{s}</li>)}
+          </ul>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gw-sub)', marginBottom: 4 }}>What I will do with it</div>
+          <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, lineHeight: 1.6 }}>
+            {assessment.willDo.map((s, i) => <li key={i}>{s}</li>)}
+          </ul>
+          <button onClick={() => setEditing(true)} style={{ marginTop: 10, fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit', padding: 0 }}>
+            Not right? Correct this
+          </button>
+        </>
+      ) : (
+        <>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gw-sub)', marginBottom: 4 }}>What this suggests (one per line)</div>
+          <textarea value={suggestsText} onChange={e => setSuggestsText(e.target.value)} rows={3}
+            style={{ width: '100%', padding: '8px 10px', fontSize: 13, border: '1px solid var(--gw-border)', borderRadius: 6, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', resize: 'vertical', marginBottom: 8 }} />
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gw-sub)', marginBottom: 4 }}>What I will do with it (one per line)</div>
+          <textarea value={willDoText} onChange={e => setWillDoText(e.target.value)} rows={2}
+            style={{ width: '100%', padding: '8px 10px', fontSize: 13, border: '1px solid var(--gw-border)', borderRadius: 6, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', resize: 'vertical', marginBottom: 8 }} />
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={save} disabled={saving} style={{ padding: '7px 14px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, fontFamily: 'inherit', opacity: saving ? 0.6 : 1 }}>
+              {saving ? 'Saving…' : 'Save correction'}
+            </button>
+            <button onClick={() => setEditing(false)} disabled={saving} style={{ padding: '7px 14px', borderRadius: 6, background: 'none', color: 'var(--gw-sub)', border: '1px solid var(--gw-border)', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}>
+              Cancel
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
 
 const QUICK_ACTIONS = [
   { label: 'What am I missing?',        msg: 'What is missing from my record that would make it stronger?' },
@@ -52,9 +124,12 @@ export function ChatPage() {
 
   const msgsRef = useRef<HTMLDivElement>(null)
   const taRef   = useRef<HTMLTextAreaElement>(null)
+  const streamingRef = useRef(false)
 
-  // Typewriter effect for new AI messages
+  // Typewriter effect for new AI messages. Skipped while a live stream is running -
+  // streamed deltas are rendered directly, so the typewriter must not fight them.
   useEffect(() => {
+    if (streamingRef.current) return
     const lastIdx = msgs.length - 1
     const last = msgs[lastIdx]
     if (!last || last.role !== 'AI' || last.id === 'loading') {
@@ -98,27 +173,6 @@ export function ChatPage() {
     },
   })
 
-  const sendMsg = useMutation({
-    mutationFn: (message: string) => conversationApi.send(checkInId!, message),
-    onMutate: message => {
-      setLoading(true)
-      setMsgs(v => [...v,
-        { id: Date.now().toString(), role: 'PERSON', content: message },
-        { id: 'loading', role: 'AI', content: '…' },
-      ])
-    },
-    onSuccess: res => {
-      const id = Date.now().toString()
-      setMsgs(v => v.filter(m => m.id !== 'loading').concat({ id, role: 'AI', content: res.reply }))
-      setLoading(false)
-      if (res.sessionComplete) setDone(true)
-    },
-    onError: () => {
-      setMsgs(v => v.filter(m => m.id !== 'loading'))
-      setLoading(false)
-      toast.error('Message failed. Try again.')
-    },
-  })
 
   const complete = useMutation({
     mutationFn: () => conversationApi.complete(checkInId!),
@@ -131,13 +185,21 @@ export function ChatPage() {
       return documentsApi.upload(groundId, file)
     },
     onSuccess: (doc, { ctx }) => {
-      const id = Date.now().toString()
-      const contextLine = ctx.trim() ? `\n\nContext: ${ctx.trim()}` : ''
-      setMsgs(v => [...v, {
-        id,
+      const contextLine = ctx.trim() ? ` Context you gave: ${ctx.trim()}.` : ''
+      const newMsgs: Msg[] = [{
+        id: `doc-note-${Date.now()}`,
         role: 'AI',
-        content: `Document received: "${doc.name}".${contextLine} Let me ask you a few things about it.`,
-      }])
+        content: `Document received: "${doc.name}".${contextLine}`,
+      }]
+      if (doc.assessment) {
+        newMsgs.push({
+          id: `doc-assess-${doc.id}`,
+          role: 'AI',
+          content: '',
+          docAssessment: { docId: doc.id, docName: doc.name, assessment: doc.assessment },
+        })
+      }
+      setMsgs(v => [...v, ...newMsgs])
     },
     onError: () => toast.error('Upload failed.'),
   })
@@ -151,17 +213,64 @@ export function ChatPage() {
     }
   }, [checkInId, opened])
 
+  // Streaming send: shows the answer token-by-token. Falls back to the plain
+  // request if the stream can't start (proxy buffering, older browser, error).
+  async function sendStreaming(message: string) {
+    if (!checkInId) return
+    setLoading(true)
+    const aiId = `ai-${Date.now()}`
+    setMsgs(v => [...v, { id: Date.now().toString(), role: 'PERSON', content: message }, { id: aiId, role: 'AI', content: '…' }])
+    let acc = ''
+    let started = false
+    streamingRef.current = true
+    try {
+      await streamMessage(checkInId, message, {
+        onDelta: (text) => {
+          started = true
+          acc += text
+          setMsgs(v => v.map(m => m.id === aiId ? { ...m, content: acc } : m))
+          setDisplayedMsgs(v => v.map(m => m.id === aiId ? { ...m, content: acc } : m))
+        },
+        onDone: (r) => {
+          setMsgs(v => v.map(m => m.id === aiId ? { ...m, content: r.reply } : m))
+          setDisplayedMsgs(v => v.map(m => m.id === aiId ? { ...m, content: r.reply } : m))
+          if (r.sessionComplete) setDone(true)
+        },
+        onError: (m) => { throw new Error(m) },
+      })
+      streamingRef.current = false
+      setLoading(false)
+    } catch (err) {
+      streamingRef.current = false
+      // If nothing streamed yet, fall back cleanly to the non-streaming path.
+      if (!started) {
+        setMsgs(v => v.filter(m => m.id !== aiId)) // drop the empty AI bubble; keep the person's message
+        try {
+          const res = await conversationApi.send(checkInId, message)
+          setMsgs(v => v.concat({ id: `ai-${Date.now()}`, role: 'AI', content: res.reply }))
+          if (res.sessionComplete) setDone(true)
+        } catch {
+          toast.error('Message failed. Try again.')
+        }
+        setLoading(false)
+      } else {
+        setLoading(false)
+        toast.error('The reply was cut off. You can send again.')
+      }
+    }
+  }
+
   function send() {
     const content = input.trim()
     if (!content || loading || done || !opened) return
     setInput('')
     if (taRef.current) { try { taRef.current.style.height = '38px' } catch { /* ref detached */ } }
-    sendMsg.mutate(content)
+    sendStreaming(content)
   }
 
   function quickSend(msg: string) {
     if (loading || done || !opened) return
-    sendMsg.mutate(msg)
+    sendStreaming(msg)
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -248,6 +357,16 @@ export function ChatPage() {
             <div style={{ fontSize: 13, color: 'var(--gw-muted)', textAlign: 'center', padding: 16 }}>Opening your session…</div>
           )}
           {displayedMsgs.map(m => (
+            m.docAssessment ? (
+              <AssessmentCard
+                key={m.id}
+                groundId={groundId ?? ''}
+                docId={m.docAssessment.docId}
+                docName={m.docAssessment.docName}
+                assessment={m.docAssessment.assessment}
+                onCorrected={(a) => setMsgs(v => v.map(msg => msg.id === m.id ? { ...msg, docAssessment: { ...msg.docAssessment!, assessment: a } } : msg))}
+              />
+            ) : (
             <div
               key={m.id}
               style={{
@@ -282,6 +401,7 @@ export function ChatPage() {
                 <span style={{ display: 'inline-block', width: 2, height: '1em', background: 'var(--gw-navy)', marginLeft: 2, verticalAlign: 'text-bottom', animation: 'blink .7s step-end infinite' }} />
               )}
             </div>
+            )
           ))}
           {done && !completed && (
             <div style={{ textAlign: 'center', padding: '10px 0' }}>
@@ -339,7 +459,7 @@ export function ChatPage() {
             >
               📋 <span style={{ fontSize: 11 }}>Paste text</span>
             </button>
-            <input type="file" id="doc-upload" accept=".pdf,.doc,.docx,.txt,.csv,.xlsx,.png,.jpg,.jpeg,.md" style={{ display: 'none' }} onChange={e => {
+            <input type="file" id="doc-upload" accept=".pdf,.doc,.docx,.txt,.csv,.xlsx,.png,.jpg,.jpeg,.heic,.md,.html,.htm,.json,.xml,.js,.ts,.py,.java,.go,.rb,.php,.css" style={{ display: 'none' }} onChange={e => {
               const f = e.target.files?.[0]
               if (f) {
                 const allowed = ['.pdf','.doc','.docx','.txt','.csv','.xlsx','.png','.jpg','.jpeg','.md']

@@ -86,6 +86,24 @@ export const ALIGNMENT_FEED_ONLY_CODES = new Set(['F5', 'E4', 'LOW_SPEC_MULTI_DI
 const KNOWN_CODES = new Set(BAD_FAITH_CODES.map((c) => c.code));
 export const isBadFaithCode = (code: string) => KNOWN_CODES.has(code);
 
+// Live-conversation trust boundary: a detected pattern is NEVER stated to the
+// person as an observation or verdict in the live conversation - that belongs
+// only in the report (see reports.service.ts's concernFlags routing). A
+// pattern may only ever sharpen a follow-up QUESTION, the same way the
+// INVISIBLE_LABOUR cross-reference already works - the person experiences a
+// better question, never the detected pattern itself.
+//
+// This map is deliberately an ALLOWLIST built from BAD_FAITH_CODES' own
+// authored `probe` field, not a denylist - a code with no entry here has no
+// safe question form and is excluded from the live path by construction, not
+// by remembering to exclude it. F5 is explicitly excluded even though it has
+// a `probe` string, because that string is a routing instruction ("Surface to
+// alignment feed only..."), not a real question - it must never be mistaken
+// for one here.
+export const PATTERN_PROBE_BY_CODE = new Map<string, string>(
+  BAD_FAITH_CODES.filter((c) => c.probe && c.code !== 'F5').map((c) => [c.code, c.probe as string]),
+);
+
 // The prompt that drives detection over one party's period (transcript + record).
 export const PATTERN_DETECTION_PROMPT = `You analyse ONE party's check-in for a single period and identify whether any behavioural pattern signals are present in the record. You are looking at the record, not judging the person.
 

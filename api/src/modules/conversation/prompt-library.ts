@@ -285,6 +285,9 @@ DO NOT COMMENT ON ENGAGEMENT:
 Never say the check-ins have been shorter. Never say engagement is declining. Never say the person seems to be pulling back. These are surveillance observations. They make people feel watched not supported.
 Instead: reference something concrete from their record and ask what happened to it. The observation is embedded in the question, not stated explicitly.
 
+MULTI-CONTRIBUTOR INVITES ARE PARALLEL, NEVER SEQUENTIAL:
+When an initiator names several people to check in - a team, a cohort, a group of contributors - every one of them is invited the moment the ground is created, and each can respond independently, at the same time, on their own schedule. There is no queue and no turn order. Never say "I'll start with [name]," "opening the check-in with [name] now," or anything else that implies one person's check-in happens before or gates another's. Describe the invitation as simultaneous: something like "I'm opening check-ins with all of them now - their answers will come in independently as each responds." You may still state a specific thing you will do with what comes back (for example, flagging a vague or incomplete answer) - keep that commitment, just never frame the invitation itself as a sequence.
+
 BANNED WORDS AND PHRASES:
 Never use: "patterns", "injection", "cross-reference", "ontology", "intake", "trust state" in responses to the person. These are system words. They stay behind the curtain.
 Never say: "I understand", "I hear you", "I'm here to listen", "you can tell me what's going on." These perform empathy. They read as scripted.
@@ -1360,7 +1363,7 @@ const STARTING_FOLLOWUP = `FOLLOW-UP IF VAGUE (the unstated reliance is almost a
 // Role-specific opening questions - exact wording (Part 3 tables).
 const STARTING_ROLE_QUESTIONS: Record<'NEW_HIRE' | 'NEW_COFOUNDER' | 'NEW_ADVISOR' | 'NEW_PROJECT' | 'NEW_MANAGER' | 'CONTRACT_RENEWAL', { initiator: string; participant: string }> = {
   NEW_HIRE: {
-    initiator: `"Who have you just hired and what did you bring them in to do? What does success look like for you at 90 days - not the job description, your version. What would have to exist for you to know this hire is working?"`,
+    initiator: `"Who have you just hired and what did you bring them in to do? What does early success look like for you - not the job description, your version. If you have a timeframe in mind, tell me it. What would have to exist for you to know this hire is working?"`,
     participant: `"What do you want to get out of this role - not what the organisation wants, what do you want personally. What does this look like for you in twelve months? Then separately: what do you think you were hired to do? What does the organisation expect from you right now?"
 
 DISCOVERY DEPENDENCY: For senior or executive hires, ask: "What do you need to understand, learn, or have access to before you can deliver on your mandate - and by when do you need it?" Record the answer as a named dependency. If the person cannot name it, ask what would block them in the first sixty days.
@@ -1406,7 +1409,7 @@ Cofounder not delivering -
   "Name your cofounder and the area they are supposed to own. What specifically are they not doing that you believe they agreed to do? How long has this been the case and what have you already tried?"
 
 Senior hire not delivering -
-  "Name the person and the role. What did you hire them to change or build? What specifically did they commit to deliver in the first 90 days? What exists now that did not exist before they joined? What was supposed to exist that does not?"
+  "Name the person and the role. What did you hire them to change or build? What specifically did they commit to deliver early on, over whatever timeframe you set? What exists now that did not exist before they joined? What was supposed to exist that does not?"
 
 Project not going well -
   "Name the project. What was supposed to exist by now that does not? Who owns the gap between what was planned and what exists?"
@@ -1613,6 +1616,30 @@ SUCCESS DEFINITION: Ask what success looks like at the end of this period. What 
 
 RECORD: The record should show: the person's understanding of the concern, what support they believe is in place, their definition of success, and any significant gaps between their account and the formal plan as described by the other party.`;
 
+const BOARD_STRATEGY_PACK = `MOMENT: Board and leadership strategy alignment.
+
+PURPOSE: Each board member or leader gives their own independent account of the strategic direction before the group debates it. The goal is to surface where the leadership genuinely agrees on strategy and where they only appear to. Silent disagreement at board level is the most expensive kind.
+
+OPENING: Ask what they believe the single most important strategic priority is for the period ahead. Their view, not the deck. One priority.
+
+DIVERGENCE CHECK: Ask where they think the board is not actually aligned, even if it looks aligned in the room. Name the specific decision or bet. If they think there is full alignment, note that.
+
+TRADE-OFF QUESTION: Ask what they would be willing to stop or sacrifice to fund the top priority. Strategy is what you say no to. Vague commitment without a trade-off is noted as such.
+
+RECORD: The record should show each leader's stated top priority, any named areas of hidden misalignment, and the trade-offs each is (or is not) willing to make.`;
+
+const COHORT_CHECK_PACK = `MOMENT: Cohort check-in (many people, same question).
+
+PURPOSE: A group of people in the same role or programme (e.g. field officers, franchisees, a training cohort) each give their own independent account against a shared question. The value is the pattern across many individual accounts, and being able to see who is on track and who is stuck without them influencing each other.
+
+OPENING: Ask the person how things are going against the specific thing this cohort is checking on. One concrete example, not a general sentiment.
+
+BLOCKER QUESTION: Ask what is getting in the way for them specifically. A named obstacle, not "the usual".
+
+SUPPORT QUESTION: Ask what would help them most right now. Specific and actionable.
+
+RECORD: The record should show, per person: one concrete example of progress, one named blocker, and one specific support need. Kept short - this is a repeatable signal across the whole cohort, not a deep account.`;
+
 // Legacy combined packs - used by the DB seed only. Runtime uses buildScenarioPackForParty.
 export const SCENARIO_PACKS: Record<GroundScenario, string> = {
   NEW_HIRE: composeStartingPack('NEW_HIRE'),
@@ -1629,6 +1656,8 @@ export const SCENARIO_PACKS: Record<GroundScenario, string> = {
   PULSE_CHECK: PULSE_CHECK_PACK,
   REALIGN_TEAM: REALIGN_TEAM_PACK,
   PIP: PIP_PACK,
+  BOARD_STRATEGY: BOARD_STRATEGY_PACK,
+  COHORT_CHECK: COHORT_CHECK_PACK,
 };
 
 /**
@@ -1696,9 +1725,15 @@ export function buildScenarioPackForParty(scenario: GroundScenario, partyType: P
     }
 
     case GroundScenario.CRISIS_ALIGNMENT: {
+      // CRISIS_SCOPE_BOUNDARY was previously only reachable via the older,
+      // fully-legacy CRISIS_PACK_COMBINED (used for the pre-per-party DB seed
+      // format) and never made it into this per-party function - restored
+      // here since it's clearly written for this exact scenario and both
+      // parties need the same boundary.
       if (isInitiator) {
         return [
           `MOMENT: The situation requires everyone to see the same thing.`,
+          CRISIS_SCOPE_BOUNDARY,
           CRISIS_VALIDATION,
           CRISIS_OPENING,
           CRISIS_INITIATOR_VARIANTS,
@@ -1707,6 +1742,7 @@ export function buildScenarioPackForParty(scenario: GroundScenario, partyType: P
       }
       return [
         `MOMENT: The situation requires everyone to see the same thing.`,
+        CRISIS_SCOPE_BOUNDARY,
         PARTICIPANT_PREAMBLE,
         CRISIS_PARTICIPANT_VARIANTS,
         CRISIS_WORRY_TENSION,
@@ -1727,6 +1763,17 @@ export function buildScenarioPackForParty(scenario: GroundScenario, partyType: P
 
     case GroundScenario.PIP:
       return PIP_PACK;
+
+    // BOARD_STRATEGY and COHORT_CHECK packs were written (2026-07-10, #17/#16)
+    // directly into SCENARIO_PACKS (the legacy combined-format seed record)
+    // but a case was never added here - the function actually read by the
+    // live path - so both scenarios silently fell to the default empty pack
+    // despite having real, written content sitting unused in the same file.
+    case GroundScenario.BOARD_STRATEGY:
+      return BOARD_STRATEGY_PACK;
+
+    case GroundScenario.COHORT_CHECK:
+      return COHORT_CHECK_PACK;
 
     default:
       return '';
@@ -1767,11 +1814,17 @@ export interface PromptContext {
   lowSpecificityMultiDim?: boolean; // 3+ dimensions vague/managed in prior session; shifts opener silently
   groundState?: string | null; // current ground status for session 2 "Since then" block
   leadSignals?: string[] | null; // admin/lead preference signals extracted from past grounds
+  // Session-1 only. A DB-stored override for this scenario+party's pack,
+  // fetched from PromptVersion key "scenario.<name>.<party>" if an admin has
+  // published one. When absent, buildActivePathway falls back to the
+  // in-code buildScenarioPackForParty(scenario, partyType) - never to the
+  // bare pathway question unless neither produces content.
+  scenarioPackOverride?: string | null;
 }
 
 // The 20 starting pathways - feeds ACTIVE_PATHWAY in the intake block.
 const PATHWAY_QUESTIONS: Record<number, string> = {
-  1:  '"Before we build anything, I want to hear your version. What were you brought in here to do, and what does success look like in the first 90 days?"',
+  1:  '"Before we build anything, I want to hear your version. What were you brought in here to do, and what does early success look like to you?"',
   2:  '"What do you believe you were brought in to change or own - not the job title. What would be true at the end of this period that is not true now?"',
   3:  '"What are you bringing to this, what are you responsible for, and what does your contribution look like over the next period? Not the vision. The work."',
   4:  '"What did you agree to do when you joined this board - introductions, governance, a specific area of oversight? In your own words."',
@@ -1807,7 +1860,19 @@ function situationTypeFromScenario(scenario: GroundScenario): string {
     case GroundScenario.DRIFT:
       return 'Resolution';
     case GroundScenario.CRISIS_ALIGNMENT:
+    case GroundScenario.BOARD_STRATEGY:
+    case GroundScenario.COHORT_CHECK:
+      // Multi-party is the only documented SITUATION_TYPE value (see
+      // ENGINE_RULES's "Starting | Recognition | Resolution | Multi-party |
+      // Accountability" list) that genuinely fits: each of these three puts
+      // several independent people's accounts side by side.
       return 'Multi-party';
+    case GroundScenario.PIP:
+      // ENGINE_RULES documents 'Accountability' as a valid SITUATION_TYPE but
+      // no case ever produced it - PIP fell to the generic 'Starting' default,
+      // identical to a brand-new hire's onboarding. This was the clearest
+      // mapping gap found.
+      return 'Accountability';
     default:
       return 'Starting';
   }
@@ -1830,6 +1895,17 @@ function resolveRelationshipHistory(
       return 'drifted';
     case GroundScenario.RECOGNITION:
     case GroundScenario.CONTRACT_RENEWAL:
+    case GroundScenario.PIP:
+    case GroundScenario.OKR_ALIGNMENT:
+    case GroundScenario.WORKPLAN_BUDGET:
+    case GroundScenario.PULSE_CHECK:
+    case GroundScenario.REALIGN_TEAM:
+    case GroundScenario.BOARD_STRATEGY:
+    case GroundScenario.COHORT_CHECK:
+      // All of these presume an existing relationship/role already in
+      // motion (a performance plan, a recurring check-in, a standing team) -
+      // 'new' was never accurate for them; they fell to it only because no
+      // case existed.
       return 'ongoing';
     default:
       return 'new';
@@ -1847,6 +1923,13 @@ function relationshipTypeFromScenario(scenario: GroundScenario): string {
     case GroundScenario.DRIFT: return 'drifted_relationship';
     case GroundScenario.RECOGNITION: return 'raise_monitoring';
     case GroundScenario.CRISIS_ALIGNMENT: return 'team_misalignment';
+    case GroundScenario.PIP: return 'performance_plan';
+    case GroundScenario.OKR_ALIGNMENT: return 'okr_alignment';
+    case GroundScenario.WORKPLAN_BUDGET: return 'workplan_budget';
+    case GroundScenario.PULSE_CHECK: return 'pulse_check';
+    case GroundScenario.REALIGN_TEAM: return 'team_realignment';
+    case GroundScenario.BOARD_STRATEGY: return 'board_strategy';
+    case GroundScenario.COHORT_CHECK: return 'cohort_member';
     default: return 'relationship';
   }
 }
@@ -1894,6 +1977,16 @@ function buildActivePathway(ctx: PromptContext): string {
   const relHistory = resolveRelationshipHistory(scenario, ctx.relationshipHistory);
 
   if (sessionNumber === 1) {
+    // Merge, don't replace: a scenario-specific pack (DB override first, then
+    // the in-code function) is the primary session-1 content when one
+    // exists for this scenario+party - it's a fuller conversation guide
+    // (MOMENT/PURPOSE/OPENING/follow-ups/RECORD) than a single opening line.
+    // The pathway-number question remains the fallback for any scenario
+    // with no pack, so nothing regresses to silence.
+    const pack = ctx.scenarioPackOverride ?? buildScenarioPackForParty(scenario, partyType);
+    if (pack) {
+      return `SESSION 1 OPENING RULE: Do not open with a question. Open with one sentence that names what this ground is for or why this record matters now. Then work through the pathway below across multiple exchanges, one question at a time. Never list more than one question in a single message.\n\n${pack}`;
+    }
     const n = selectPathwayNumber(scenario, partyType, relHistory);
     return `SESSION 1 OPENING RULE: Do not open with a question. Open with one sentence that names what this ground is for or why this record matters now. Then ask exactly this question. One statement. One question. Nothing else.\n\nPathway ${n}: ${PATHWAY_QUESTIONS[n] ?? PATHWAY_QUESTIONS[20]}`;
   }

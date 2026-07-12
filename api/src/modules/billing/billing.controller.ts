@@ -195,6 +195,7 @@ export class BillingController {
 
   @Get('admin/stats')
   @ApiBearerAuth()
+  @UseGuards(PlatformAdminGuard)
   @ApiOperation({ summary: 'Platform admin: stats across all orgs, codes, and redemptions' })
   async platformAdminStats(@CurrentUser('id') userId: string) {
     return this.billing.getPlatformAdminStats(userId);

@@ -57,6 +57,9 @@ export const authApi = {
   setEmailNotifications: (enabled: boolean) =>
     apiClient.patch<User>('/auth/me', { emailNotifications: enabled }).then(r => r.data),
 
+  setPhoneNumber: (phoneNumber: string | null) =>
+    apiClient.patch<User>('/auth/me', { phoneNumber }).then(r => r.data),
+
   leaveOrg: () =>
     apiClient.post<{ left: boolean }>('/users/me/leave').then(r => r.data),
 }

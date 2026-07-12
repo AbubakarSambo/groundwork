@@ -4,9 +4,18 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { IsOptional, IsInt, Min, IsEnum } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { GroundsService } from './grounds.service';
-import { CreateGroundDto, AddParticipantDto } from './dto';
+import { CreateGroundDto, AddParticipantDto, CreateGroundForLeadDto } from './dto';
 import { CurrentUser, CurrentUserData, Roles, Role } from '../../common';
 import { Cadence } from '@prisma/client';
+import { IsString, MaxLength } from 'class-validator';
+
+class ConfirmLeadDto {
+  @ApiPropertyOptional({ description: "Edit the admin's brief before confirming (optional)" })
+  @IsOptional()
+  @IsString()
+  @MaxLength(4000)
+  brief?: string;
+}
 
 class UpdateTimelineDto {
   @ApiPropertyOptional({ description: 'Rename the ground' })
@@ -41,6 +50,13 @@ export class GroundsController {
     return this.grounds.list(user.organizationId, user.id, user.email, user.role);
   }
 
+  @Get('org-roster')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Org-wide list of every ground (team): lead, members, roles, and alignment status - for HR/admin/founder oversight' })
+  async getOrgRoster(@CurrentUser('organizationId') organizationId: string) {
+    return this.grounds.getOrgRoster(organizationId);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get a ground (status, participants, check-ins)' })
   async get(@Param('id') id: string, @CurrentUser() user: CurrentUserData) {
@@ -51,6 +67,19 @@ export class GroundsController {
   @ApiOperation({ summary: 'Open a new alignment ground' })
   async create(@CurrentUser() user: CurrentUserData, @Body() dto: CreateGroundDto) {
     return this.grounds.create(user.organizationId, user.id, dto);
+  }
+
+  @Post('for-lead')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Admin creates a ground and names someone else to lead it (e.g. HR onboarding a team, assigning the engineering lead to run it)' })
+  async createForLead(@CurrentUser() user: CurrentUserData, @Body() dto: CreateGroundForLeadDto) {
+    return this.grounds.createForLead(user.organizationId, user.id, dto);
+  }
+
+  @Post(':id/confirm-lead')
+  @ApiOperation({ summary: 'The named lead reviews the admin-supplied context, optionally edits it, and confirms - only then does the ground actually begin' })
+  async confirmLead(@Param('id') id: string, @CurrentUser('id') userId: string, @Body() dto: ConfirmLeadDto) {
+    return this.grounds.confirmLead(id, userId, dto);
   }
 
   @Post(':id/participants')

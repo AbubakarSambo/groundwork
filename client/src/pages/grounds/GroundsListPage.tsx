@@ -49,6 +49,7 @@ function GroundCard({ g, onClick }: { g: Ground; onClick: () => void }) {
           {g.status === 'ACTIVE' && g.participants.length > 1 && !(g.checkIns ?? []).some(c => c.status === 'COMPLETED') && (g.overdue ?? 0) === 0 && <span style={{ fontSize: 11, fontWeight: 600, color: '#7A5200', background: '#FFF8EC', borderRadius: 20, padding: '2px 8px' }}>No check-ins yet</span>}
           {(g.overdue ?? 0) > 0 && <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', borderRadius: 20, padding: '2px 8px' }}>{g.overdue} overdue</span>}
           {g.status === 'REPORT_READY' && <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-green-t)', background: 'var(--gw-green-bg)', borderRadius: 20, padding: '2px 8px' }}>Report ready</span>}
+          {g.status === 'AWAITING_LEAD' && <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', borderRadius: 20, padding: '2px 8px' }}>Awaiting lead</span>}
           {g.daysLeft != null && <span style={{ fontSize: 11, color: 'var(--gw-sub)' }}>{g.daysLeft}d left</span>}
         </div>
       </div>
@@ -165,8 +166,8 @@ export function GroundsListPage() {
               <span style={{ fontSize: 18, fontWeight: 300 }}>+</span>
             </button>
 
-            {/* Invite a colleague */}
-            {!showInviteColleague ? (
+            {/* Invite a colleague - admin only, matches the backend guard on POST /auth/team-invite */}
+            {isAdmin && (!showInviteColleague ? (
               <button
                 onClick={() => setShowInviteColleague(true)}
                 style={{ width: '100%', padding: '11px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', marginBottom: 20, textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
@@ -205,7 +206,7 @@ export function GroundsListPage() {
                   </button>
                 </div>
               </div>
-            )}
+            ))}
 
             {/* Needs attention banner */}
             {!isLoading && needsAttention.length > 0 && (
@@ -302,7 +303,11 @@ export function GroundsListPage() {
             )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {grounds.map(g => (
-                <GroundCard key={g.id} g={g} onClick={() => navigate(`/grounds/${g.id}/p`)} />
+                // A non-admin who is themselves the initiator (or a lead admin
+                // assigned to run this ground) still needs the admin view - the
+                // participant page has no confirm-lead / add-participant / release
+                // actions. Only route to /p when they are genuinely a participant.
+                <GroundCard key={g.id} g={g} onClick={() => navigate(g.initiatorId === user?.id ? `/grounds/${g.id}` : `/grounds/${g.id}/p`)} />
               ))}
             </div>
           </>

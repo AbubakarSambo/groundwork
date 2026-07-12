@@ -50,6 +50,8 @@ enum GroundScenario {
   PULSE_CHECK
   REALIGN_TEAM
   PIP
+  BOARD_STRATEGY
+  COHORT_CHECK
 }
 
 // Three moments from the conversation design.
@@ -60,6 +62,7 @@ enum GroundMoment {
 }
 
 enum GroundStatus {
+  AWAITING_LEAD // admin created this for a lead; lead invited but has not confirmed yet
   OPEN // created, parties may not all be added
   AWAITING_PARTIES // waiting on check-ins
   REPORT_READY // both completed session 2, report locked behind paywall
@@ -105,9 +108,11 @@ enum PatternStatus {
 }
 
 enum Cadence {
+  DAILY
   WEEKLY
   FORTNIGHTLY
   MONTHLY
+  SEQUENTIAL // no fixed schedule: the initiator's check-in opens the team's next round
 }
 
 enum BillingEventType {
@@ -203,6 +208,11 @@ model User {
   isPlatformAdmin      Boolean  @default(false) @map("is_platform_admin")
   googleId             String?  @unique @map("google_id")
   emailNotifications   Boolean  @default(true) @map("email_notifications")
+  // E.164 format (e.g. "+2348012345678"). Global uniqueness - one Groundwork
+  // WhatsApp number serves everyone, so a phone number identifies exactly one
+  // account, not one per org. Set by the user in Settings, or by an
+  // admin/HR adding it on someone's behalf via the org roster.
+  phoneNumber          String?  @unique @map("phone_number")
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
@@ -268,10 +278,14 @@ model Ground {
   timelineDays  Int     @map("timeline_days")
   timelineWeeks Int?    @map("timeline_weeks")
   cadence       Cadence @default(FORTNIGHTLY)
+  cadenceAnchorDay Int? @map("cadence_anchor_day") // weekly: 0=Sun..6=Sat ("every Monday"); monthly: 1-31 (day of month)
+  startsAt      DateTime? @map("starts_at") // when the first scheduled check-in opens (start date)
+  endsAt        DateTime? @map("ends_at")   // no new check-ins scheduled after this (end date)
   endState      String? @map("end_state") // the decision the process worked toward
   resolutionState String? @map("resolution_state") // pre-agreed intended outcome set at creation
   brief           String? @map("brief") // initiator's opening brief, written at ground creation
   groundAuditLog Json?  @map("ground_audit_log") // append-only JSON log of timeline/cadence changes
+  createdByUserId String? @map("created_by_user_id") // the admin who set this up for a lead; null for self-serve grounds
 
   // Lifecycle / billing markers
   billingActivatedAt  DateTime? @map("billing_activated_at") // admin activated report
@@ -389,6 +403,8 @@ model CheckIn {
   recallConfidence     String?  @map("recall_confidence")
   isClarification      Boolean  @default(false) @map("is_clarification") // true when session is correcting a flagged inference
   clarificationTarget  String?  @map("clarification_target") // inference id from report.inferences being corrected
+  isSelfCorrection     Boolean  @default(false) @map("is_self_correction") // true when session is correcting the participant's OWN prior session
+  selfCorrectionTargetSession Int? @map("self_correction_target_session") // the session number being corrected
   createdAt     DateTime      @default(now()) @map("created_at")
 
   ground        Ground            @relation(fields: [groundId], references: [id], onDelete: Cascade)
@@ -700,6 +716,7 @@ model GroundDocument {
   fileName      String   @map("file_name")
   mimeType      String   @map("mime_type")
   content       String   @db.Text
+  assessment    Json?    // { suggests: string[], willDo: string[] } - Gemini's read of the doc, correctable
 
   createdAt DateTime @default(now()) @map("created_at")
 
@@ -794,6 +811,22 @@ model UsageEvent {
 // Pattern thresholds — tunable per code without a deploy.
 // One row per pattern code. Missing rows fall back to hardcoded defaults.
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Platform settings — generic singleton key/value store for admin-toggleable
+// platform-wide flags (e.g. WhatsApp on/off). Not org-scoped: there is one
+// Groundwork WhatsApp number serving every org, so this is a single row per
+// key, not one per organization.
+// ---------------------------------------------------------------------------
+
+model PlatformSetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt @map("updated_at")
+  updatedBy String?  @map("updated_by") // userId of last editor
+
+  @@map("platform_settings")
+}
 
 model FeedbackSubmission {
   id        String   @id @default(uuid())

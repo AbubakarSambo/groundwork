@@ -136,7 +136,10 @@ Rules:
 - Begin the report with a single framing line, exactly: "This is your contribution to this ground's record from session 1. It reflects what you put on record. It has not been cross-referenced with any other account yet."
 - No verdicts. No judgements of any person.
 - Never name the other party personally. Use "the other party" or their role.
-- Be specific to what was actually said. Do not invent.
+- Be specific to what was actually said. Do not invent. Never introduce a timeframe, date, number, or standard the person did not state (do not write "90 days" unless they said it).
+- Address the person directly as "you" and call their record "your record". NEVER refer to them as "this account" or "the user".
+- CRITICAL: only ONE party has checked in (this person). Alignment is a two-sided outcome and CANNOT exist yet. Do NOT use the word "Aligned" or say alignment has been "reached". The status ceiling for a one-sided session is "Clear" (your own side is clearly on record). Reserve "Aligned" for when a second party has independently checked in.
+- alignmentReached items are things you have stated clearly on YOUR side and put on record - they are "clear on your side, pending the other party", never mutually agreed.
 - The alignment status reflects THIS session only. No cross-reference yet since the other party has not checked in.
 - Areas requiring alignment are things still unclear or unstated, not failures.
 - The recommended move is practical, not prescriptive.
@@ -159,12 +162,14 @@ const ENTRY_REPORT_SCHEMA = {
       },
       alignmentStatus: {
         type: 'string',
-        enum: ['Unresolved', 'Mixed', 'Emerging', 'Clear', 'Aligned'],
-        description: 'Where the account stands after session 1.',
+        // 'Aligned' is intentionally excluded: only one party has checked in, so a
+        // two-sided alignment cannot exist yet. Ceiling is 'Clear' for a solo session.
+        enum: ['Unresolved', 'Mixed', 'Emerging', 'Clear'],
+        description: 'Where YOUR side stands after session 1 (one-sided). Never "Aligned" - alignment needs a second party.',
       },
       alignmentBasis: {
         type: 'string',
-        description: '1 sentence explaining what determined the alignment status.',
+        description: '1 sentence explaining what determined the status, framed as your side only.',
       },
       areasRequiringAlignment: {
         type: 'array',
@@ -502,8 +507,8 @@ Available scenarios:
 NEW_HIRE - onboarding a new hire or someone joining a team
 NEW_PROJECT - starting a new project, workstream, or initiative
 PULSE_CHECK - checking in on how something is going mid-flight
-DRIFT - something has gone off track or diverged from plan
-REALIGN_TEAM - realigning a team after conflict, change, or confusion
+DRIFT - a project, plan, or initiative has gone off track or diverged from what was agreed
+REALIGN_TEAM - two specific people (or a small team) see the current situation differently and need to close an interpersonal gap, after conflict, change, or confusion
 NEW_COFOUNDER - new co-founder, co-lead, or equal partner relationship
 NEW_ADVISOR - new board member, advisor, investor, or mentor relationship
 NEW_MANAGER - new manager coming into an existing team or role handover
@@ -511,6 +516,8 @@ CONTRACT_RENEWAL - renewing, renegotiating, or extending a contract or agreement
 OKR_ALIGNMENT - aligning on objectives, goals, or key results across parties
 WORKPLAN_BUDGET - aligning on workplan, resourcing, or budget
 PIP - performance improvement, formal feedback, or capability concern
+BOARD_STRATEGY - board or leadership team aligning on strategy, priorities, or big bets
+COHORT_CHECK - many people in the same role or programme checking in against a shared question (e.g. field officers, franchisees, a training cohort)
 ${modeHint}
 
 Description: "${description.slice(0, 400)}"
@@ -543,10 +550,10 @@ Respond with exactly one JSON object: {"scenario": "<SCENARIO_KEY>"}`;
 
     const ONBOARD_SYSTEM = `You are Groundwork, helping someone set up a record for a situation involving more than one person.
 
-Your job is to gather 6 things through natural conversation:
+Your job is to gather these things through natural conversation:
 1. mode: is this something new starting, already underway, already happened, or a recurring check-in
 2. initial: what the situation is actually about
-3. whoInvolved: who else is part of this and what their role is
+3. whoInvolved: who else is part of this AND their role, and the person's own role in relation to them
 4. decision: what is making this worth getting on record right now
 5. goals: what they need from this process (can be more than one)
 6. brief: anything specific they want the questions to focus on (optional)
@@ -554,13 +561,17 @@ Your job is to gather 6 things through natural conversation:
 Rules:
 - Ask one short question at a time. One sentence. No lists, no sub-questions.
 - Keep each reply to 1 or 2 sentences. Never write more than that.
+- Ask the person's own role early ("what is your role in relation to them?"). Do NOT ask about the same thing (role, position, who is involved) more than once - if it has already been answered, move on. Re-asking is a bug.
 - Use plain everyday language. Never say "ground", "check-in", "on record", or "contributor". Say "situation", "your account", "saved", "other person" instead.
 - Do not use dashes of any kind. Straight quotes only.
 - Acknowledge what the person says before asking the next question.
+- NEVER invent facts the person did not say. Do not assume a timeframe (like "90 days"), a date, a number, or a standard. If a timeframe matters, ask for it - do not fill it in yourself.
+- If the person says they have a document, guide, notes, brief, or any material, invite them to add it: "You can upload or paste that here so it is kept with your record." Do not just acknowledge it and move on.
+- Describe what WILL happen next, not only what the person should do. Before wrapping up, let them know: after this, they will add the people involved, then end this session to generate their report.
 - If someone asks who will see this: say their answers stay private until both people have finished, then both people see each other's responses at the same time.
 - If someone asks what they will get at the end: say they will get a private summary for themselves and a shared report that shows where both sides agree and where the conversation still needs to happen.
 - If someone seems confused about what this is: say it is a way for both people to give their account of a situation independently, so the report can show where they agree and where they see things differently.
-- When you have mode, initial, whoInvolved, and decision, you have enough. Wrap up warmly.`.trim();
+- When you have mode, initial, whoInvolved (including roles), and decision, you have enough. Your wrap-up must NOT ask another question - confirm warmly that you have what you need, tell them what happens next (add people, then end the session to get the report), and stop.`.trim();
 
     const reply = await this.anthropic.respond(ONBOARD_SYSTEM, messages);
 
@@ -683,7 +694,9 @@ STRICT RULES:
       orgName?: string;
       scenario?: string;
       cadence?: string;
+      cadenceAnchorDay?: number;
       checkInBy?: string;
+      lastCheckInBy?: string;
       history: ChatTurn[];
       report?: EntryReport | null;
       contributors: { email: string; context?: string; inviteToken?: string; note?: string }[];
@@ -707,9 +720,11 @@ STRICT RULES:
     // Create the ground. This also creates session 1 check-in (NOT_STARTED) and
     // the initiator participant in one transaction.
     const cadenceMap: Record<string, Cadence> = {
+      DAILY: Cadence.DAILY,
       WEEKLY: Cadence.WEEKLY,
       FORTNIGHTLY: Cadence.FORTNIGHTLY,
       MONTHLY: Cadence.MONTHLY,
+      SEQUENTIAL: Cadence.SEQUENTIAL,
     };
     // Use the AI's own summary as the ground brief so it's visible before participants arrive.
     const brief = dto.report?.whatGroundworkSaw ?? undefined;
@@ -721,6 +736,9 @@ STRICT RULES:
       scenario,
       moment: GroundMoment.STARTING,
       cadence: (dto.cadence && cadenceMap[dto.cadence]) ? cadenceMap[dto.cadence] : Cadence.FORTNIGHTLY,
+      cadenceAnchorDay: dto.cadenceAnchorDay ?? undefined,
+      startsAt: dto.checkInBy || undefined,
+      endsAt: dto.lastCheckInBy || undefined,
       brief,
       freeParticipantCap: isBroadcast ? 100 : 4,
     });
@@ -859,6 +877,25 @@ STRICT RULES:
       }
       return { user, isNew };
     });
+
+    // If this email already joined this ground once, don't create a second
+    // GroundParticipant row (the [groundId, email] unique constraint would
+    // otherwise surface as a raw DB error to the joining person). Sign them
+    // back in against their existing participant record instead of
+    // re-processing another "first" check-in on top of it.
+    const existingParticipant = await this.prisma.groundParticipant.findUnique({
+      where: { groundId_email: { groundId: ground.id, email } },
+    });
+    if (existingParticipant) {
+      const accessToken = this.jwt.sign({
+        sub: user.id,
+        email: user.email,
+        organizationId: user.organizationId,
+        role: user.role,
+      });
+      this.logger.log(`join-commit: ${email} already joined ground ${ground.id} - signing back in, no duplicate created`);
+      return { groundId: ground.id, accessToken, userId: user.id };
+    }
 
     // Create participant record for this person on the ground.
     const participant = await this.prisma.groundParticipant.create({

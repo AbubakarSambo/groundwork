@@ -6,10 +6,10 @@ export type GroundScenario =
   | 'NEW_PROJECT' | 'NEW_MANAGER' | 'CONTRACT_RENEWAL'
   | 'RECOGNITION' | 'DRIFT' | 'CRISIS_ALIGNMENT'
   | 'OKR_ALIGNMENT' | 'WORKPLAN_BUDGET' | 'PULSE_CHECK'
-  | 'REALIGN_TEAM' | 'PIP'
+  | 'REALIGN_TEAM' | 'PIP' | 'BOARD_STRATEGY' | 'COHORT_CHECK'
 
 export type GroundMoment = 'STARTING' | 'RECOGNITION' | 'RESOLUTION'
-export type GroundCadence = 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY'
+export type GroundCadence = 'DAILY' | 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'SEQUENTIAL'
 
 export interface CreateGroundBody {
   label: string
@@ -17,6 +17,9 @@ export interface CreateGroundBody {
   moment: GroundMoment
   timelineDays?: number
   cadence?: GroundCadence
+  cadenceAnchorDay?: number
+  startsAt?: string
+  endsAt?: string
   resolutionState?: string
   brief?: string
 }
@@ -25,6 +28,34 @@ export interface AddParticipantBody {
   email: string
   roleAsDescribed?: string
   note?: string
+}
+
+export interface CreateGroundForLeadBody {
+  leadEmail: string
+  leadName?: string
+  label: string
+  scenario: GroundScenario
+  moment: GroundMoment
+  timelineDays?: number
+  cadence?: GroundCadence
+  cadenceAnchorDay?: number
+  brief?: string
+  participants?: { email: string; roleAsDescribed?: string }[]
+}
+
+export interface OrgRosterEntry {
+  id: string
+  label: string
+  scenario: GroundScenario
+  status: string
+  cadence: string
+  createdByAdmin: boolean
+  lead: { id: string; firstName: string; lastName: string; email: string }
+  memberCount: number
+  members: { email: string; partyType: 'INITIATOR' | 'PARTICIPANT'; roleAsDescribed: string | null; accepted: boolean; latestSpecificity: string | null }[]
+  contributedParties: number
+  report: { agreements: string[]; divergences: unknown[]; releasedAt: string | null } | null
+  lastActivity: string | null
 }
 
 export const groundsApi = {
@@ -36,6 +67,15 @@ export const groundsApi = {
 
   create: (body: CreateGroundBody) =>
     apiClient.post<Ground>('/grounds', body).then(r => r.data),
+
+  createForLead: (body: CreateGroundForLeadBody) =>
+    apiClient.post<Ground>('/grounds/for-lead', body).then(r => r.data),
+
+  confirmLead: (groundId: string, edits?: { brief?: string }) =>
+    apiClient.post<{ groundId: string; checkInId: string }>(`/grounds/${groundId}/confirm-lead`, edits ?? {}).then(r => r.data),
+
+  getOrgRoster: () =>
+    apiClient.get<OrgRosterEntry[]>('/grounds/org-roster').then(r => r.data),
 
   addParticipant: (groundId: string, body: AddParticipantBody) =>
     apiClient.post(`/grounds/${groundId}/participants`, body).then(r => r.data),

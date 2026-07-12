@@ -45,6 +45,18 @@ const NAV_ITEMS = [
     ),
   },
   {
+    label: 'Teams',
+    to: '/org/roster',
+    adminOnly: true,
+    icon: (active: boolean) => (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <rect x="2" y="3" width="16" height="4" rx="1" stroke="currentColor" strokeWidth="1.5" fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.12 : 0} />
+        <rect x="2" y="9" width="16" height="4" rx="1" stroke="currentColor" strokeWidth="1.5" fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.12 : 0} />
+        <rect x="2" y="15" width="10" height="3" rx="1" stroke="currentColor" strokeWidth="1.5" fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.12 : 0} />
+      </svg>
+    ),
+  },
+  {
     label: 'Billing',
     to: '/billing',
     adminOnly: true,
@@ -125,6 +137,11 @@ function FeedbackWidget() {
       {/* Trigger button */}
       <button
         onClick={() => setOpen(v => !v)}
+        // On mobile, the bottom nav bar is a fixed 60px strip - without the extra
+        // offset this button's inline `bottom: 20` sits inside that strip and
+        // overlaps the nav labels. Scoped to non-chat pages only, since chat
+        // pages position this button from `top`, not `bottom`.
+        className={isChatPage ? undefined : 'gw-fb-trigger-mobile-safe'}
         style={{
           position: 'fixed',
           ...(isChatPage ? { top: 12, right: 16 } : { bottom: 20, right: 20 }),

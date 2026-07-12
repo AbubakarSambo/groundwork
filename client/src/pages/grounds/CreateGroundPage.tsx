@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
 import { groundsApi, type GroundScenario, type GroundMoment, type GroundCadence } from '@/api/grounds'
-import { billingApi } from '@/api/billing'
+import { billingApi, FREE_GROUND_LIMIT } from '@/api/billing'
 import { toast } from 'sonner'
 
 interface ScenarioCard {
@@ -24,6 +24,8 @@ const SCENARIOS: ScenarioCard[] = [
   { scenario: 'OKR_ALIGNMENT',    label: 'Goals & planning', desc: 'Check whether everyone is actually aligned on the goals and plan. Not to set them.',                    tag: 'Planning',     tagBg: '#EEF4FB', tagColor: '#0C447C' },
   { scenario: 'PULSE_CHECK',      label: 'Pulse check',      desc: 'A quick independent read from each person. What is moving, what is stuck, what has changed.',             tag: 'Recurring',    tagBg: '#E8F8F5', tagColor: '#085041' },
   { scenario: 'DRIFT',            label: 'New direction',    desc: 'A strategy shift or pivot. Each person says what they understood before the group discussion.',            tag: 'Alignment',    tagBg: '#FDF3E3', tagColor: '#8A5C1A' },
+  { scenario: 'BOARD_STRATEGY',   label: 'Board strategy',   desc: 'Each board member or leader gives their own read on strategy before the room debates it. Surfaces hidden misalignment.', tag: 'Leadership', tagBg: '#EEF4FB', tagColor: '#0C447C' },
+  { scenario: 'COHORT_CHECK',     label: 'Cohort check-in',  desc: 'Many people in the same role (field officers, franchisees, a cohort) each check in against a shared question. See the pattern.', tag: 'Recurring', tagBg: '#E8F8F5', tagColor: '#085041' },
   { scenario: 'REALIGN_TEAM',     label: 'Other',            desc: 'Describe the situation and Groundwork will set up the right ground for it.',                              tag: 'Other',        tagBg: '#F5F3EF', tagColor: '#6B6560' },
 ]
 
@@ -85,6 +87,10 @@ const SCENARIO_FROM_LABEL: Record<string, GroundScenario> = {
   'pip':                'PIP',
   'goals & planning':   'OKR_ALIGNMENT',
   'pulse check':        'PULSE_CHECK',
+  'board strategy':     'BOARD_STRATEGY',
+  'cohort check-in':    'COHORT_CHECK',
+  'realign a project':  'DRIFT',
+  'realign with a team member': 'REALIGN_TEAM',
   'other':              'REALIGN_TEAM',
 }
 
@@ -121,6 +127,7 @@ export function CreateGroundPage() {
   // Billing step state
   const [billingChecked, setBillingChecked] = useState(false)
   const [billingFree, setBillingFree] = useState(false)
+  const [groundsUsed, setGroundsUsed] = useState<number | null>(null)
   const [showCodeInput, setShowCodeInput] = useState(false)
   const [codeInput, setCodeInput] = useState('')
   const [codeApplied, setCodeApplied] = useState(false)
@@ -142,6 +149,7 @@ export function CreateGroundPage() {
       billingApi.checkCanCreateGround().then(res => {
         setBillingChecked(true)
         setBillingLoading(false)
+        if (res.groundsUsed != null) setGroundsUsed(res.groundsUsed)
         if (res.allowed) {
           setBillingFree(true)
         } else {
@@ -305,6 +313,12 @@ export function CreateGroundPage() {
                     Your plan includes unlimited Grounds, sessions, and reports.
                   </div>
                 </div>
+                {/* Free-tier usage warning: show how many of the 10 free grounds are left before you hit the wall. */}
+                {groundsUsed != null && !appliedAccessCode && (
+                  <div style={{ fontSize: 12.5, color: groundsUsed >= FREE_GROUND_LIMIT - 2 ? '#8A5C1A' : 'var(--gw-sub)', background: groundsUsed >= FREE_GROUND_LIMIT - 2 ? '#FDF3E3' : 'transparent', border: groundsUsed >= FREE_GROUND_LIMIT - 2 ? '1px solid #F5D9A0' : 'none', borderRadius: 8, padding: groundsUsed >= FREE_GROUND_LIMIT - 2 ? '10px 12px' : '0', marginBottom: 16, lineHeight: 1.5 }}>
+                    Free plan: <b>{groundsUsed} of {FREE_GROUND_LIMIT}</b> Grounds used{groundsUsed >= FREE_GROUND_LIMIT - 2 ? `. Only ${FREE_GROUND_LIMIT - groundsUsed} left before you'll need a subscription.` : '.'}
+                  </div>
+                )}
                 <button className="gw-btn" onClick={() => setStep(3)} style={{ margin: '12px 0 0' }}>Continue →</button>
               </div>
             )}

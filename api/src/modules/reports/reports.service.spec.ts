@@ -59,6 +59,7 @@ describe('ReportsService.synthesize - promptVersionId stamping (GW-41)', () => {
       },
       checkIn: { count: jest.fn(async () => 1) },
       groundDocument: { count: jest.fn(async () => 0) },
+      adminProfile: { findUnique: jest.fn(async () => null) },
       report: {
         upsert: jest.fn(async (args: any) => {
           upsertedCreate = args.create;

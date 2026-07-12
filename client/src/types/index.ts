@@ -9,6 +9,7 @@ export interface User {
   jobTitle?: string
   isPlatformAdmin?: boolean
   emailNotifications?: boolean
+  phoneNumber?: string | null
 }
 
 export type GroundScenario =
@@ -26,10 +27,13 @@ export type GroundScenario =
   | 'PULSE_CHECK'
   | 'REALIGN_TEAM'
   | 'PIP'
+  | 'BOARD_STRATEGY'
+  | 'COHORT_CHECK'
 
 export type GroundMoment = 'STARTING' | 'RECOGNITION' | 'RESOLUTION'
 
 export type GroundStatus =
+  | 'AWAITING_LEAD'
   | 'OPEN'
   | 'AWAITING_PARTIES'
   | 'REPORT_READY'
@@ -57,6 +61,7 @@ export interface CheckInSummary {
   sessionNumber: number
   status: CheckInStatus
   completedAt?: string | null
+  availableFrom?: string | null
 }
 
 export interface GroundSignal {
@@ -76,6 +81,7 @@ export interface GroundSignal {
 
 export interface Ground {
   id: string
+  initiatorId: string
   label: string
   scenario: GroundScenario
   moment: GroundMoment
@@ -96,6 +102,7 @@ export interface Ground {
   sessionsBalance?: number
   isFreeGround?: boolean
   joinToken?: string | null
+  createdByUserId?: string | null
   org?: {
     subscriptionPlan: string | null
     subscriptionStatus: string | null

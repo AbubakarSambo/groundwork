@@ -1,13 +1,14 @@
 import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { BillingService } from '../billing';
 import { UsageService } from '../usage/usage.service';
-import { CreateGroundDto, AddParticipantDto } from './dto';
+import { CreateGroundDto, AddParticipantDto, CreateGroundForLeadDto } from './dto';
 import { GroundworkEvents, GroundActivatedEvent } from '../../common';
-import { GroundScenario, GroundStatus, PartyType, CheckInStatus, Cadence, UsageEventType } from '@prisma/client';
+import { GroundScenario, GroundStatus, PartyType, CheckInStatus, Cadence, UsageEventType, TokenType } from '@prisma/client';
 import { endStatesFor } from '../resolution/end-states';
 
 // Default timelines per scenario (Part 2 - timeline and cadence).
@@ -26,6 +27,8 @@ const DEFAULT_TIMELINE_DAYS: Record<GroundScenario, number> = {
   PULSE_CHECK: 30,
   REALIGN_TEAM: 60,
   PIP: 90,
+  BOARD_STRATEGY: 90,
+  COHORT_CHECK: 30,
 };
 
 // All scenarios support any number of participants - the initiator decides who
@@ -50,7 +53,6 @@ export const SAFE_PARTICIPANT_SELECT = {
   notifiedAt: true,
   soloArtifactAt: true, // timestamp only - never the artifact content
   soloArtifactShared: true, // whether participant chose to share; content fetched separately via get()
-  soloArtifact: true, // included in select; caller must strip unless soloArtifactShared = true
   createdAt: true,
 } as const;
 
@@ -64,6 +66,7 @@ export class GroundsService {
     private billing: BillingService,
     private events: EventEmitter2,
     private usage: UsageService,
+    private config: ConfigService,
   ) {}
 
   async create(organizationId: string, initiatorId: string, dto: CreateGroundDto) {
@@ -88,6 +91,9 @@ export class GroundsService {
         moment: dto.moment,
         timelineDays: dto.timelineDays ?? DEFAULT_TIMELINE_DAYS[dto.scenario],
         cadence: dto.cadence ?? Cadence.FORTNIGHTLY,
+        cadenceAnchorDay: dto.cadenceAnchorDay ?? null,
+        startsAt: dto.startsAt ? new Date(dto.startsAt) : null,
+        endsAt: dto.endsAt ? new Date(dto.endsAt) : null,
         status: GroundStatus.OPEN,
         resolutionState: dto.resolutionState ?? null,
         brief: dto.brief ?? null,
@@ -131,9 +137,10 @@ export class GroundsService {
         },
       });
 
-      // Session 1 is created up front and is free.
+      // Session 1 is created up front and is free. If a start date is set, the
+      // first check-in opens then (availableFrom); otherwise immediately.
       await tx.checkIn.create({
-        data: { groundId: ground.id, participantId: participant.id, sessionNumber: 1, status: CheckInStatus.NOT_STARTED },
+        data: { groundId: ground.id, participantId: participant.id, sessionNumber: 1, status: CheckInStatus.NOT_STARTED, availableFrom: dto.startsAt ? new Date(dto.startsAt) : null },
       });
 
       return ground;
@@ -170,6 +177,167 @@ export class GroundsService {
     return { ...ground, contract, ...(contraindicationWarning ? { contraindicationWarning } : {}) };
   }
 
+  /**
+   * Admin-initiated ground: the admin sets it up and names a Lead to run it.
+   * The Lead becomes ground.initiatorId immediately (the FK requires an
+   * existing user), but the ground stays AWAITING_LEAD - none of the normal
+   * initiator actions (own check-in, adding more participants, releasing the
+   * report) are meaningful until confirmLead() flips it to a real status.
+   * Any pre-added participants are created now, alongside the lead, since the
+   * admin is not ground.initiatorId and the normal addParticipant() path would
+   * reject them.
+   */
+  async createForLead(organizationId: string, adminUserId: string, dto: CreateGroundForLeadDto) {
+    const canCreate = await this.billing.canCreateGround(organizationId);
+    if (!canCreate.allowed) {
+      throw new BadRequestException(canCreate.reason ?? 'Ground creation not allowed');
+    }
+
+    const leadEmail = dto.leadEmail.toLowerCase();
+    const leadUser = await this.findOrCreateUserForEmail(organizationId, leadEmail, dto.leadName);
+
+    const pendingInvites: { email: string; token: string }[] = [];
+    const ground = await this.prisma.$transaction(async (tx) => {
+      const isFreeGround = canCreate.freeReason !== undefined;
+      const ground = await tx.ground.create({
+        data: {
+          organizationId,
+          initiatorId: leadUser.id,
+          createdByUserId: adminUserId,
+          label: dto.label,
+          scenario: dto.scenario,
+          moment: dto.moment,
+          timelineDays: dto.timelineDays ?? DEFAULT_TIMELINE_DAYS[dto.scenario],
+          cadence: dto.cadence ?? Cadence.FORTNIGHTLY,
+          cadenceAnchorDay: dto.cadenceAnchorDay ?? null,
+          status: GroundStatus.AWAITING_LEAD,
+          brief: dto.brief ?? null,
+          joinToken: crypto.randomBytes(24).toString('hex'),
+          freeParticipantCap: 4,
+          isFreeGround,
+          sessionsBalance: 1,
+          ...(canCreate.freeReason === 'FREE_TIER' ? { freeReason: 'FREE_TIER' } : {}),
+        } as any,
+      });
+
+      // The lead's own participant row - userId already set, no invite token
+      // needed. Session 1's CheckIn is NOT created yet; confirmLead() creates
+      // it once the lead actually confirms, mirroring create()'s timing.
+      await tx.groundParticipant.create({
+        data: { groundId: ground.id, userId: leadUser.id, email: leadEmail, partyType: PartyType.INITIATOR },
+      });
+
+      // Pre-added participants (e.g. the whole cohort), created alongside the
+      // lead since the admin isn't ground.initiatorId and addParticipant()
+      // would otherwise reject this call.
+      for (const p of dto.participants ?? []) {
+        const inviteToken = crypto.randomBytes(32).toString('hex');
+        const participant = await tx.groundParticipant.create({
+          data: {
+            groundId: ground.id,
+            email: p.email.toLowerCase(),
+            partyType: PartyType.PARTICIPANT,
+            roleAsDescribed: p.roleAsDescribed,
+            invitedAt: new Date(),
+            inviteToken,
+            inviteTokenExpiresAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+          },
+        });
+        pendingInvites.push({ email: p.email.toLowerCase(), token: inviteToken });
+        // SEQUENTIAL: lock session 1 until the lead completes their own -
+        // the lead has no completed session yet at ground-creation time, so
+        // this is unconditional here (unlike addParticipant(), which checks).
+        await tx.checkIn.create({
+          data: {
+            groundId: ground.id, participantId: participant.id, sessionNumber: 1, status: CheckInStatus.NOT_STARTED,
+            availableFrom: (dto.cadence ?? Cadence.FORTNIGHTLY) === Cadence.SEQUENTIAL ? new Date('9999-12-31T00:00:00.000Z') : null,
+          },
+        });
+      }
+
+      return ground;
+    });
+
+    // Send participant invite emails - never silently, matching addParticipant().
+    // Best-effort: the ground/participant rows are already committed; a failed
+    // email is logged, not rolled back, since some invites may have succeeded.
+    for (const invite of pendingInvites) {
+      await this.email.sendParticipantInvite(invite.email, dto.leadName ?? 'Your lead', dto.label, invite.token).catch((err: any) =>
+        this.logger.error(`Participant invite email failed for ${invite.email} on ground ${ground.id}: ${err.message}`),
+      );
+    }
+
+    // Notify the lead - a password-setup link if they're brand new, otherwise
+    // a direct link to confirm. Best-effort: a failed email must not silently
+    // leave the ground stuck with no way for the lead to ever find out.
+    const url = leadUser.isNewUser
+      ? await this.buildPasswordSetupUrl(leadUser.id)
+      : `${this.config.get<string>('resend.frontendUrl') ?? ''}/grounds/${ground.id}`;
+    const admin = await this.prisma.user.findUnique({ where: { id: adminUserId }, select: { firstName: true } });
+    await this.email.sendLeadInvite(leadEmail, admin?.firstName ?? 'An admin', dto.label, url).catch((err: any) =>
+      this.logger.error(`Lead invite email failed for ground ${ground.id}: ${err.message}`),
+    );
+
+    this.usage.emit(UsageEventType.GROUND_CREATED, { organizationId, groundId: ground.id, userId: leadUser.id }).catch(() => undefined);
+
+    return ground;
+  }
+
+  /** The lead reviews the admin's setup, optionally edits it, and confirms -
+   * only then does their own session 1 open and the ground become real. */
+  async confirmLead(groundId: string, requestingUserId: string, edits?: { brief?: string }) {
+    const ground = await this.prisma.ground.findUnique({ where: { id: groundId } });
+    if (!ground) throw new NotFoundException('Ground not found');
+    if (ground.initiatorId !== requestingUserId) throw new ForbiddenException('Only the named lead can confirm this ground');
+    if (ground.status !== GroundStatus.AWAITING_LEAD) throw new BadRequestException('This ground has already been confirmed');
+
+    const participant = await this.prisma.groundParticipant.findFirst({
+      where: { groundId, userId: requestingUserId, partyType: PartyType.INITIATOR },
+    });
+    if (!participant) throw new NotFoundException('Lead participant record not found');
+
+    const hasOtherParticipants = (await this.prisma.groundParticipant.count({ where: { groundId, partyType: PartyType.PARTICIPANT } })) > 0;
+
+    const [, checkIn] = await this.prisma.$transaction([
+      this.prisma.ground.update({
+        where: { id: groundId },
+        data: {
+          status: hasOtherParticipants ? GroundStatus.AWAITING_PARTIES : GroundStatus.OPEN,
+          ...(edits?.brief !== undefined ? { brief: edits.brief } : {}),
+        },
+      }),
+      this.prisma.checkIn.create({
+        data: { groundId, participantId: participant.id, sessionNumber: 1, status: CheckInStatus.NOT_STARTED },
+      }),
+    ]);
+
+    return { groundId, checkInId: checkIn.id };
+  }
+
+  /** Find an existing User for this email, or lazily create one - mirrors the
+   * same pattern used when a participant accepts their invite (accept() in
+   * ParticipantsService). Needed here because Ground.initiatorId is a required
+   * FK to an existing User; it cannot point at an unaccepted invite. */
+  private async findOrCreateUserForEmail(organizationId: string, email: string, name?: string): Promise<{ id: string; isNewUser: boolean }> {
+    const existing = await this.prisma.user.findUnique({ where: { email } });
+    if (existing) return { id: existing.id, isNewUser: false };
+
+    const local = email.split('@')[0] ?? 'there';
+    const firstName = name ?? local.charAt(0).toUpperCase() + local.slice(1);
+    const created = await this.prisma.user.create({
+      data: { organizationId, email, firstName, lastName: '', role: 'MEMBER', isEmailVerified: true, passwordHash: null },
+    });
+    return { id: created.id, isNewUser: true };
+  }
+
+  private async buildPasswordSetupUrl(userId: string): Promise<string> {
+    const setupToken = crypto.randomBytes(32).toString('hex');
+    await this.prisma.emailVerificationToken.create({
+      data: { userId, token: setupToken, type: TokenType.PASSWORD_SETUP, expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000) },
+    });
+    return `${this.config.get<string>('resend.frontendUrl') ?? ''}/set-password?token=${setupToken}`;
+  }
+
   /** Public: resolve a ground-level join token → name + scenario for the join page. */
   async getJoinPreview(joinToken: string) {
     const ground = await this.prisma.ground.findUnique({
@@ -183,6 +351,68 @@ export class GroundsService {
       scenario: ground.scenario,
       initiatorName: ground.initiator.firstName,
     };
+  }
+
+  /** Org-wide roster: every ground (team) in the org, its lead, members and
+   * their roles, and enough of the report to derive an alignment label
+   * client-side (reusing ReportPage's deriveStatus rather than duplicating
+   * that logic in two languages). Admin/HR/Founder/Manager oversight view -
+   * not scoped to "my grounds," unlike list(). */
+  async getOrgRoster(organizationId: string) {
+    const grounds = await this.prisma.ground.findMany({
+      where: { organizationId },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true, label: true, scenario: true, status: true, cadence: true,
+        createdByUserId: true, createdAt: true,
+        initiator: { select: { id: true, firstName: true, lastName: true, email: true } },
+        participants: {
+          select: {
+            id: true, email: true, partyType: true, roleAsDescribed: true, userId: true,
+            // No take limit here: completing a session always spawns the next
+            // session's row, so "most recent row" is never the same as "most
+            // recently completed" - we need the whole history to tell them apart.
+            checkIns: { select: { sessionNumber: true, status: true, completedAt: true, specificityLevel: true }, orderBy: { sessionNumber: 'asc' } },
+          },
+        },
+        report: { select: { agreements: true, divergences: true, releasedAt: true } },
+      },
+    });
+
+    return grounds.map((g) => {
+      const contributedParties = g.participants.filter((p) => p.checkIns.some((c) => c.status === CheckInStatus.COMPLETED)).length;
+      const lastActivity = g.participants
+        .flatMap((p) => p.checkIns.map((c) => c.completedAt))
+        .filter((d): d is Date => !!d)
+        .sort((a, b) => b.getTime() - a.getTime())[0] ?? null;
+      return {
+        id: g.id,
+        label: g.label,
+        scenario: g.scenario,
+        status: g.status,
+        cadence: g.cadence,
+        createdByAdmin: g.createdByUserId != null,
+        lead: { id: g.initiator.id, firstName: g.initiator.firstName, lastName: g.initiator.lastName, email: g.initiator.email },
+        memberCount: g.participants.filter((p) => p.partyType === PartyType.PARTICIPANT).length,
+        members: g.participants.map((p) => {
+          // Specificity from the most recently COMPLETED session, not the most
+          // recent row (which is often the freshly-spawned NOT_STARTED next one).
+          const completed = p.checkIns.filter((c) => c.status === CheckInStatus.COMPLETED).sort((a, b) => b.sessionNumber - a.sessionNumber);
+          return {
+            email: p.email,
+            partyType: p.partyType,
+            roleAsDescribed: p.roleAsDescribed,
+            accepted: p.userId != null,
+            latestSpecificity: completed[0]?.specificityLevel ?? null,
+          };
+        }),
+        contributedParties,
+        report: g.report
+          ? { agreements: g.report.agreements, divergences: g.report.divergences, releasedAt: g.report.releasedAt }
+          : null,
+        lastActivity,
+      };
+    });
   }
 
   async list(organizationId: string, userId?: string, userEmail?: string, userRole?: string) {
@@ -262,7 +492,7 @@ export class GroundsService {
 
   async get(id: string, organizationId: string, requestingUserId?: string) {
     // Primary lookup by org - works for org members and the initiator.
-    const CHECKIN_SELECT = { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, specificityLevel: true, recallConfidence: true, specificityDimensions: true } as const;
+    const CHECKIN_SELECT = { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, availableFrom: true, specificityLevel: true, recallConfidence: true, specificityDimensions: true } as const;
 
     let ground = await this.prisma.ground.findFirst({
       where: { id, organizationId },
@@ -338,14 +568,27 @@ export class GroundsService {
       list.push(ci);
       checkInsByParticipant.set(ci.participantId, list);
     }
-    const participantsWithCheckIns = (ground.participants ?? []).map((p) => {
-      const { soloArtifact, soloArtifactShared, ...safeP } = p as any;
+    // Solo artifact content is never part of SAFE_PARTICIPANT_SELECT - fetch it
+    // in a separate, explicit query, and only for participants who opted to
+    // share it. This keeps the "safe" select actually safe on its own, rather
+    // than relying on every caller remembering to strip it after the fact.
+    const sharedIds = (ground.participants ?? []).filter((p: any) => p.soloArtifactShared).map((p: any) => p.id);
+    const sharedArtifacts = sharedIds.length
+      ? await this.prisma.groundParticipant.findMany({
+          where: { id: { in: sharedIds } },
+          select: { id: true, soloArtifact: true },
+        })
+      : [];
+    const sharedArtifactById = new Map(sharedArtifacts.map((a) => [a.id, a.soloArtifact]));
+
+    const participantsWithCheckIns = (ground.participants ?? []).map((p: any) => {
+      const raw = sharedArtifactById.get(p.id);
       return {
-        ...safeP,
-        soloArtifactShared: soloArtifactShared ?? false,
+        ...p,
+        soloArtifactShared: p.soloArtifactShared ?? false,
         // Only expose the content when the participant explicitly shared it
-        sharedSoloReport: soloArtifactShared && soloArtifact
-          ? (() => { try { return JSON.parse(soloArtifact); } catch { return null; } })()
+        sharedSoloReport: raw
+          ? (() => { try { return JSON.parse(raw); } catch { return null; } })()
           : null,
         checkIns: checkInsByParticipant.get(p.id) ?? [],
       };
@@ -413,6 +656,27 @@ export class GroundsService {
       return { ...existing, inviteToken: undefined, devUrl: emailResult?.devUrl };
     }
 
+    // SEQUENTIAL cadence: the lead's own session 1 must complete before a newly
+    // added participant's session 1 opens - otherwise the team could check in
+    // ahead of the lead, defeating the "lead goes first" point of this cadence.
+    // Locked far in the future rather than null so it reads as "not yet open,"
+    // not "no schedule" - the SEQUENTIAL branch of ensureNextSession() opens it
+    // for real (sets it to now) once the lead completes session 1.
+    let session1AvailableFrom: Date | null = null;
+    if (ground.cadence === Cadence.SEQUENTIAL) {
+      const leadCompletedSession1 = await this.prisma.checkIn.findFirst({
+        where: {
+          groundId,
+          participant: { partyType: PartyType.INITIATOR },
+          sessionNumber: 1,
+          status: CheckInStatus.COMPLETED,
+        },
+      });
+      if (!leadCompletedSession1) {
+        session1AvailableFrom = new Date('9999-12-31T00:00:00.000Z'); // max JS date - "locked" sentinel
+      }
+    }
+
     const participant = await this.prisma.$transaction(async (tx) => {
       const participant = await tx.groundParticipant.create({
         data: {
@@ -427,7 +691,7 @@ export class GroundsService {
       });
 
       await tx.checkIn.create({
-        data: { groundId, participantId: participant.id, sessionNumber: 1, status: CheckInStatus.NOT_STARTED },
+        data: { groundId, participantId: participant.id, sessionNumber: 1, status: CheckInStatus.NOT_STARTED, availableFrom: session1AvailableFrom },
       });
 
       await tx.ground.update({ where: { id: groundId }, data: { status: GroundStatus.AWAITING_PARTIES } });

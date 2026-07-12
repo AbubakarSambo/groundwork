@@ -15,6 +15,8 @@ import { PostSessionPanel } from '@/components/PostSessionPanel'
 import { billingApi, PLAN_MEMBER_LIMITS, type SubscriptionPlan } from '@/api/billing'
 
 const SCENARIO_LABELS: Record<string, string> = {
+  BOARD_STRATEGY: 'Board strategy',
+  COHORT_CHECK: 'Cohort check-in',
   NEW_HIRE: 'New hire',
   NEW_PROJECT: 'New project',
   NEW_ADVISOR: 'New board member',
@@ -182,6 +184,10 @@ export function GroundAdminPage() {
 
   if (isLoading) return <Shell><div style={{ padding: 24, fontSize: 13, color: 'var(--gw-muted)' }}>Loading…</div></Shell>
   if (!ground) return <Shell><div style={{ padding: 24, fontSize: 13, color: 'var(--gw-muted)' }}>Ground not found.</div></Shell>
+
+  if (ground.status === 'AWAITING_LEAD') {
+    return <LeadConfirmView ground={ground} groundId={id!} onConfirmed={(checkInId) => navigate(`/chat/${checkInId}`)} />
+  }
 
   const conf = ground.confidence ?? 1
   const bl = bandLabel(conf)
@@ -887,6 +893,104 @@ export function GroundAdminPage() {
 
 function Shell({ children }: { children: React.ReactNode }) {
   return <div style={{ minHeight: '100vh', background: 'var(--gw-bg)' }}>{children}</div>
+}
+
+/** Shown when a ground is AWAITING_LEAD - an admin set this up and named this
+ * person to lead it. They review the admin's context, can edit it or add more
+ * participants, and confirm when ready. Their own session 1 only opens once
+ * they confirm - not synchronized with the admin in any way, deliberately
+ * worded to avoid the false-simultaneity framing found elsewhere in this app. */
+function LeadConfirmView({ ground, groundId, onConfirmed }: { ground: any; groundId: string; onConfirmed: (checkInId: string) => void }) {
+  const [brief, setBrief] = useState(ground.brief ?? '')
+  const [showAddParticipant, setShowAddParticipant] = useState(false)
+  const [newEmail, setNewEmail] = useState('')
+  const [newRole, setNewRole] = useState('')
+  const [participants, setParticipants] = useState<{ email: string; roleAsDescribed?: string | null }[]>(
+    (ground.participants ?? []).filter((p: any) => p.partyType === 'PARTICIPANT'),
+  )
+  const [confirming, setConfirming] = useState(false)
+  const [addingParticipant, setAddingParticipant] = useState(false)
+
+  async function addParticipant() {
+    if (!newEmail.includes('@')) return
+    setAddingParticipant(true)
+    try {
+      await groundsApi.addParticipant(groundId, { email: newEmail.trim(), roleAsDescribed: newRole.trim() || undefined })
+      setParticipants(v => [...v, { email: newEmail.trim(), roleAsDescribed: newRole.trim() || null }])
+      setNewEmail(''); setNewRole(''); setShowAddParticipant(false)
+      toast.success('Invited')
+    } catch {
+      toast.error('Could not add that participant. Try again.')
+    } finally {
+      setAddingParticipant(false)
+    }
+  }
+
+  async function confirmAndBegin() {
+    setConfirming(true)
+    try {
+      const res = await groundsApi.confirmLead(groundId, { brief: brief.trim() || undefined })
+      onConfirmed(res.checkInId)
+    } catch {
+      toast.error('Could not confirm. Try again.')
+      setConfirming(false)
+    }
+  }
+
+  return (
+    <Shell>
+      <div style={{ maxWidth: 560, margin: '0 auto', padding: '48px 20px' }}>
+        <div style={{ fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-sub)', fontWeight: 700, marginBottom: 8 }}>You lead this ground</div>
+        <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--gw-navy)', margin: '0 0 6px', letterSpacing: '-.01em' }}>{ground.label}</h1>
+        <p style={{ fontSize: 13.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 28 }}>
+          An admin set this up and named you to lead it. You decide when to begin - this is not a synchronized moment with anyone else.
+        </p>
+
+        <div style={{ marginBottom: 8, fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gw-sub)' }}>Context (edit if needed)</div>
+        <textarea value={brief} onChange={e => setBrief(e.target.value)} rows={4}
+          placeholder="What is this ground about?"
+          style={{ width: '100%', padding: '10px 12px', fontSize: 13.5, border: '1px solid var(--gw-border)', borderRadius: 8, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', resize: 'vertical', marginBottom: 20 }} />
+
+        <div style={{ marginBottom: 8, fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gw-sub)' }}>
+          Participants {participants.length > 0 ? `(${participants.length})` : ''}
+        </div>
+        {participants.length > 0 && (
+          <div style={{ border: '1px solid var(--gw-border)', borderRadius: 8, overflow: 'hidden', marginBottom: 10 }}>
+            {participants.map((p, i) => (
+              <div key={i} style={{ padding: '9px 12px', fontSize: 13, borderBottom: i < participants.length - 1 ? '1px solid var(--gw-border)' : 'none', display: 'flex', justifyContent: 'space-between' }}>
+                <span>{p.email}</span>
+                {p.roleAsDescribed && <span style={{ color: 'var(--gw-sub)' }}>{p.roleAsDescribed}</span>}
+              </div>
+            ))}
+          </div>
+        )}
+        {!showAddParticipant ? (
+          <button onClick={() => setShowAddParticipant(true)} style={{ fontSize: 13, color: 'var(--gw-navy)', background: 'none', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '8px 14px', cursor: 'pointer', fontFamily: 'inherit', marginBottom: 24 }}>
+            + Add someone
+          </button>
+        ) : (
+          <div style={{ border: '1px solid var(--gw-border)', borderRadius: 8, padding: 12, marginBottom: 24 }}>
+            <input type="email" placeholder="email@company.com" value={newEmail} onChange={e => setNewEmail(e.target.value)}
+              style={{ width: '100%', padding: '8px 10px', fontSize: 13, border: '1px solid var(--gw-border)', borderRadius: 6, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 6 }} />
+            <input type="text" placeholder="Role (optional)" value={newRole} onChange={e => setNewRole(e.target.value)}
+              style={{ width: '100%', padding: '8px 10px', fontSize: 13, border: '1px solid var(--gw-border)', borderRadius: 6, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 8 }} />
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={addParticipant} disabled={addingParticipant || !newEmail.includes('@')} style={{ padding: '7px 14px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, fontFamily: 'inherit', opacity: addingParticipant || !newEmail.includes('@') ? 0.5 : 1 }}>
+                {addingParticipant ? 'Adding…' : 'Add'}
+              </button>
+              <button onClick={() => setShowAddParticipant(false)} style={{ padding: '7px 14px', borderRadius: 6, background: 'none', color: 'var(--gw-sub)', border: '1px solid var(--gw-border)', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        <button onClick={confirmAndBegin} disabled={confirming} className="gw-btn" style={{ width: '100%', opacity: confirming ? 0.6 : 1 }}>
+          {confirming ? 'Confirming…' : 'Confirm and begin →'}
+        </button>
+      </div>
+    </Shell>
+  )
 }
 
 function ReportSection({ title, children, open: initialOpen = false }: { title: string; children: React.ReactNode; open?: boolean }) {

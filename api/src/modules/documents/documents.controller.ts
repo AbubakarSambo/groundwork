@@ -1,8 +1,14 @@
-import { Controller, Post, Get, Delete, Param, Query, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { Controller, Post, Patch, Get, Delete, Param, Query, Body, UseInterceptors, UploadedFile } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiConsumes } from '@nestjs/swagger';
+import { IsArray, IsString } from 'class-validator';
 import { DocumentsService } from './documents.service';
 import { CurrentUser } from '../../common';
+
+class CorrectAssessmentDto {
+  @IsArray() @IsString({ each: true }) suggests: string[];
+  @IsArray() @IsString({ each: true }) willDo: string[];
+}
 import { Public } from '../../common';
 
 @ApiTags('Documents')
@@ -45,6 +51,17 @@ export class DocumentsController {
   @ApiOperation({ summary: 'List documents uploaded by this party' })
   list(@Param('groundId') groundId: string, @CurrentUser('id') userId: string) {
     return this.docs.list(groundId, userId);
+  }
+
+  @Patch(':docId/assessment')
+  @ApiOperation({ summary: "Correct a document's assessment" })
+  correctAssessment(
+    @Param('groundId') groundId: string,
+    @Param('docId') docId: string,
+    @CurrentUser('id') userId: string,
+    @Body() dto: CorrectAssessmentDto,
+  ) {
+    return this.docs.correctAssessment(groundId, docId, userId, dto);
   }
 
   @Delete(':docId')

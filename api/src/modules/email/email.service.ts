@@ -156,6 +156,25 @@ export class EmailService {
     return { devUrl };
   }
 
+  /** Admin set up a ground and named someone to lead it. The lead decides when
+   * to confirm and begin - this is not a synchronized moment with the admin.
+   * `url` is pre-resolved by the caller: a password-setup link for a brand new
+   * user, or a direct link to the ground's confirm-lead screen for someone who
+   * already has an account. */
+  async sendLeadInvite(email: string, adminName: string, groundLabel: string, url: string): Promise<{ devUrl?: string }> {
+    const devUrl = await this.sendEmail({
+      to: email,
+      subject: `${adminName} asked you to lead a ground: ${groundLabel}`,
+      html: this.layout(
+        `<p>Hi,</p>
+         <p><strong>${adminName}</strong> set up <strong>${groundLabel}</strong> on Groundwork and named you to lead it.</p>
+         <p>You decide when to begin. Review the context they left, add or edit it, and confirm when you are ready. You will do your own check-in as part of this, and any people already invited will be waiting on you.</p>
+         <p><a href="${url}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Review and begin →</a></p>`,
+      ),
+    });
+    return { devUrl };
+  }
+
   /** Report released. Sent to BOTH parties at the same time. */
   async sendReportReady(email: string, groundLabel: string, reportUrl: string): Promise<void> {
     await this.sendEmail({

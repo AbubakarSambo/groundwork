@@ -697,6 +697,16 @@ body.gw-sb-collapsed .gw-sb-reopen { opacity: 1; pointer-events: auto; }
   }
 }
 
+/* ── FEEDBACK TRIGGER MOBILE OFFSET ───────────────────────
+   The bottom nav bar is a fixed 60px strip on mobile; without this the
+   trigger's inline `bottom: 20px` sits inside that strip and overlaps the
+   nav labels underneath it. */
+@media (max-width: 640px) {
+  .gw-fb-trigger-mobile-safe {
+    bottom: 76px !important;
+  }
+}
+
 /* ── FEEDBACK WIDGET ──────────────────────────────────────── */
 .gw-fb-trigger {
   position: fixed;

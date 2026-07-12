@@ -15,6 +15,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth, ApiHeader } from '@nestjs/swagger
 import { AdminService } from './admin.service';
 import { PlatformAdminGuard } from '../../common/guards/platform-admin.guard';
 import { CurrentUser } from '../../common';
+import { WhatsAppService } from '../whatsapp/whatsapp.service';
 
 // ---------------------------------------------------------------------------
 // OTP guard - reads X-Admin-OTP header and verifies it against the requesting
@@ -60,7 +61,28 @@ export class OtpGuard implements CanActivate {
 export class AdminController {
   private readonly logger = new Logger(AdminController.name);
 
-  constructor(private readonly adminService: AdminService) {}
+  constructor(
+    private readonly adminService: AdminService,
+    private readonly whatsapp: WhatsAppService,
+  ) {}
+
+  // ── WhatsApp toggle ───────────────────────────────────────────────────────
+  // Single Groundwork-owned number, no per-org setting - this is the one
+  // global on/off switch, for once Abubakar's WhatsApp Business API
+  // credentials are in place and verified.
+
+  @Get('whatsapp')
+  @ApiOperation({ summary: 'WhatsApp integration status: credentials configured, admin toggle, and whether it is actually live' })
+  getWhatsAppStatus() {
+    return this.whatsapp.getToggleState();
+  }
+
+  @Patch('whatsapp')
+  @ApiOperation({ summary: 'Turn the WhatsApp integration on or off platform-wide' })
+  async setWhatsAppEnabled(@Body() body: { enabled: boolean }, @CurrentUser('id') userId: string) {
+    await this.whatsapp.setEnabled(!!body.enabled, userId);
+    return this.whatsapp.getToggleState();
+  }
 
   // ── Read-only ─────────────────────────────────────────────────────────────
 
