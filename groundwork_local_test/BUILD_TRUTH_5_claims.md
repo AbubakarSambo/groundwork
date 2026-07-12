@@ -57,32 +57,70 @@ populated, non-"first session").
 
 ## 2. LONGITUDINAL TRUTH — position change + unfollowed commitments
 
-**Verdict: SPLIT, and this is the most important finding in the document.**
-A real, code-computed behavioral-trend engine exists and is wired end-to-end —
-but it feeds the **admin ground view**, not the live conversation or the
-shared report. Meanwhile the specific claim "names an unfollowed commitment in
-the shared report" is prompt-only. And the one field built to carry detected
-patterns into the live conversation is **dead** — written, never populated.
+**Verdict: SPLIT — PROMPT/AI-JUDGMENT for the detection itself, code
+guarantee only for the trigger and the surfacing gate. This is the most
+corrected finding in the document (twice) — read both corrections below in
+order.** A behavioral-trend engine exists and is wired end-to-end for
+*triggering* and *surfacing* (event-driven, three-period gate), but for 29 of
+30 bad-faith codes, what counts as a detected instance in the first place is
+AI extraction + AI confirmation, not a numeric threshold — despite an
+elaborate numeric-detector library sitting in the same file, unused. The
+specific claim "names an unfollowed commitment in the shared report" is
+prompt-only. The one field originally built to carry detected patterns into
+the live conversation is dead (written, never populated) — but a *separate*,
+already-live mechanism does carry them, unconditionally, and originally
+stated them as verdicts rather than using them to probe (now fixed).
 
-**CODE GUARANTEE — the pattern-detection engine is real:**
-- `pattern-library.ts` defines ~35 detectors (`D1`-`D8`, `B1`-`B12`, `K1`-`K5`,
-  `E1`-`E5`, `R1`-`R4`, `F1`-`F5`) as pure functions over numeric score arrays
-  (`thinkingScore`, `outputScore`, `specificityScores`), each with an explicit
-  numeric threshold, e.g.:
-  - `pattern-library.ts:458-467` (`detectE2`, "Intro Evasion"): counts future-
-    tense vs. completed-tense language across submissions —
-    `return futureCount >= 3 && doneCount === 0`.
-  - `pattern-library.ts:517-522` (`detectR4`) and `:585-589` (`detectF3`):
-    both check that the last 3 specificity scores are **strictly declining**
-    (`last3[0] > last3[1] && last3[1] > last3[2]`) — a genuine "getting vaguer
-    over time" detector.
-  - `pattern-library.ts:556-570` (`checkF1Conditions`): requires the pattern to
-    hold for 3 consecutive periods *and* to have been surfaced once before
-    with no change (`priorSurfacedCodes.includes('F1')`) — i.e. it only fires
-    on a pattern that persisted **despite the person already being told**.
-  - The general gate is `countPeriods(input) >= 3` (`pattern-library.ts:172`,
-    used by nearly every detector) — the "three-period rule" is a real code
-    comparison, not a description.
+**CORRECTION #2 (this section was wrong a second time):** the paragraph below
+originally described the bad-faith detectors (`detectD1`...`detectF5`,
+`PATTERN_DETECTORS`, `detectPattern`) as the mechanism that actually decides
+whether a pattern fires, with the three-period rule as "a real code
+comparison, not a description." **That's true of the trigger and the
+surfacing gate, but false of the detection judgment itself.** Verified via
+`git grep` across the whole committed codebase: `PATTERN_DETECTORS` and
+`detectPattern` (`pattern-library.ts:629,641`) have **zero references outside
+their own file** — nothing ever calls the dispatcher, and nothing ever calls
+`detectD1` through `detectD8`, `detectB1` through `detectB12`, `detectK1`
+through `detectK5`, `detectE1`/`detectE2`/`detectE3`/`detectE5`,
+`detectR1`/`detectR2`/`detectR4`, or `detectF2` through `detectF5` — 29 of the
+30 bad-faith codes. Even if something did call them, most would return
+`false` immediately: `patterns.service.ts:455-486` (`buildF1Input`) is the
+**only** place a real `DetectionInput` gets assembled, and it only populates
+`submissions`, `thinkingScore`, `outputScore`, `priorSurfacedCodes`, `config`
+— never `specificityScores`, which `detectR4` and `detectF3` require
+(`if (!input.specificityScores || input.specificityScores.length < 3) return
+false;`). The numeric-threshold library is dead scaffolding.
+
+**PROMPT / AI-JUDGMENT, not code guarantee — how bad-faith detection actually
+works, for 29 of 30 codes:**
+- `patterns.service.ts:90-95` (`analyzeCheckIn`): one AI call
+  (`this.anthropic.extract(PATTERN_DETECTION_PROMPT, ...)`) reads the
+  transcript + extracted record and proposes candidate `{code, observation}`
+  pairs. **No numeric threshold gates this call at all** — whether `D1`
+  ("False Completion Reporting"), `B4` ("Founder Backstop Dependency"), or any
+  other code fires is entirely the model's judgment of the transcript.
+- `patterns.service.ts:99-106` (`confirmDetection`): a **second** AI call,
+  asked YES/NO, must independently confirm each candidate before it's
+  written via `observe()`. Still AI judgment, not a numeric check.
+- The **only** code with a real numeric backstop is `F1` — `checkF1Conditions`
+  (`pattern-library.ts:574-588`) is applied as a secondary gate *after* the AI
+  proposes it (`patterns.service.ts:113-118`), requiring high thinking-language
+  and low output-language scores across 3 consecutive periods *and* that F1
+  was already surfaced once before with no change. This is real code, but it
+  narrows an AI-proposed candidate; it does not detect independently.
+- `R3` ("Named Collaborator", the one positive code) is the **only** fully
+  code-detected pattern with no AI in the loop at all: `detectR3`
+  (`pattern-library.ts:547-560`) is a plain keyword check on the person's own
+  submissions, called directly (`patterns.service.ts:80`).
+- **So: of ~31 pattern codes total, 1 (`R3`) is pure code, 1 (`F1`) is
+  AI-proposed-then-code-narrowed, and 29 are pure AI judgment (proposal +
+  confirmation, no numeric backstop anywhere).** The elaborate
+  `DetectionInput`/`thinkingScore`/`outputScore`/`specificityScores` apparatus
+  in `pattern-library.ts` reads as a numeric detection layer that was either
+  superseded by the AI-extraction approach and never removed, or written
+  speculatively and never wired — either way, it is not what runs.
+
+**What IS a genuine code guarantee, independent of this correction:**
 - **Trigger — genuinely event-driven, with a cron backstop:**
   - `patterns.listener.ts:15-20` — `@OnEvent(GroundworkEvents.CHECK_IN_COMPLETED)`
     calls `patterns.analyzeCheckIn()` the moment a check-in completes.
@@ -94,10 +132,26 @@ patterns into the live conversation is **dead** — written, never populated.
     detections with a period tag, resets counters for detections that missed a
     period, and promotes anything that reached 3 consecutive periods to
     `SURFACED` (comment at `grounds.cron.ts:78-83` states this explicitly).
+- **The three-period surfacing gate itself** (`patterns.service.ts:154-206`,
+  `observe()`'s `periodsObserved` counter and consecutive-streak reset) is
+  real code — it genuinely requires the *same AI-confirmed* code to recur on
+  3 consecutive periods before `SURFACED`. What's AI judgment is *whether a
+  period's evidence qualifies as an instance of that code at all*; what's
+  code guarantee is *counting and gating on consecutive instances once the AI
+  says yes*.
 - **History depth:** bounded by `PatternDetection.periodsObserved` and the
-  weekly period boundary above — detectors look at the **last 3 weekly
-  periods** of accumulated per-period scores, not all-time history, and not
-  just the current session.
+  weekly period boundary above — the three-period gate looks at the **last 3
+  weekly periods**, not all-time history, and not just the current session.
+
+**Implication for testing:** because there is no numeric backstop for 29 of
+30 bad-faith codes, a behavioral persona designed to trigger e.g. `D1` cannot
+be verified by checking a score computation — the only way to know whether
+detection works is to run the actual AI extraction + confirmation pipeline
+against realistic transcripts and check whether it correctly identifies (and
+correctly declines to identify) the pattern. **Detection accuracy itself —
+not just wiring — is now a required test surface**, since "the detector"
+*is* the model's judgment, not a formula a persona test can reason about in
+advance.
 
 **CODE GUARANTEE — commitment carry-forward exists but does not check fulfillment:**
 - `conversation.service.ts:610-644` (`buildReturningUserContext`) pulls every
@@ -300,8 +354,13 @@ independent signals the model is asked to weigh itself.
   factualClaims.length*0.1 - vagueCount*0.1 - noiseCount*0.08`, clamped 0..1.
   Deterministic, keyword/regex-based, "no API call" (file header comment,
   `intake.ts:1-9`).
-- This score is stored per check-in (`checkIn.specificityDimensions`) and
-  rolled into `specificityScores` arrays consumed by the pattern engine.
+- This score is stored per check-in (`checkIn.specificityDimensions`).
+  **Correction:** it is not, in fact, rolled into a `specificityScores` array
+  consumed by the pattern engine — see the claim-2 correction above.
+  `buildF1Input` (the only place a `DetectionInput` is assembled) never
+  populates `specificityScores`, so `detectR4`/`detectF3` (the two detectors
+  that would read it) always return `false` if they were ever called, which
+  they are not.
 
 **Code guarantee — a positive, code-computed "credit given" detector exists,
 but it's broken for the recipient-facing recognition claim:**
@@ -332,11 +391,11 @@ but it's broken for the recipient-facing recognition claim:**
   mechanism documented under claim 2 above (`context.service.ts:328-388`) — it
   searches for the participant's *own* name in other parties' records, so it
   is inherently recipient-correct in a way `R3` is not.
-- `pattern-library.ts:517-522`/`:585-589` (`R4`/`F3`) detect a declining
-  specificity trend across the last 3 periods — a genuine "getting vaguer"
-  signal that could underlie "someone's account is thinning while another's
-  isn't," though it's about one person's own trend, not a comparison between
-  people.
+- **Correction:** `pattern-library.ts:517-522`/`:585-589` (`R4`/`F3`) are
+  written to detect a declining specificity trend across the last 3 periods,
+  but per the claim-2 correction, neither is ever called and their required
+  input (`specificityScores`) is never populated. This is dead code, not a
+  live "getting vaguer" signal.
 
 **Not wired to the customer-facing artifact the claim describes:**
 - `reports.service.ts:145-156`'s `hiddenContributors` schema is populated
@@ -348,13 +407,15 @@ but it's broken for the recipient-facing recognition claim:**
   uses this to reorder, rank, or otherwise make a low-volume/high-specificity
   contributor more prominent than a high-volume/low-specificity one anywhere
   in the report structure.
-- Same `surfacedPatterns` dead-wiring documented under claim 2 applies here:
-  `R3`'s positive detections and `R4`/`F3`'s trend detections are computed,
-  stored, and then never reach the live conversation (`composeSystemPrompt`
-  doesn't populate `surfacedPatterns`) and never reach synthesis
-  (`reports.service.ts` never queries `patternDetection`). They only surface
-  via the admin ground view (`grounds.service.ts:504-508`) and the aggregate
-  admin narrative counter (`alignment.service.ts`).
+- `R3`'s positive detections (real, code-computed) never reach the live
+  conversation via the dead `surfacedPatterns` scaffold (`composeSystemPrompt`
+  doesn't populate it), but as of the Option B commit **do** reach the report
+  via `reports.service.ts`'s pattern-evidence query — with explicit
+  instructions to keep positive credit out of `concernFlags`. `R4`/`F3`
+  produce nothing to reach anywhere, since they're never called. Both R3 and
+  the (non-functional) R4/F3 also surface via the admin ground view
+  (`grounds.service.ts:504-508`) and the aggregate admin narrative counter
+  (`alignment.service.ts`).
 
 **Bottom line on this claim:** the substance-scoring layer is real code. The
 "surfaces the quiet heavy-lifter in what the customer actually reads" part of
@@ -404,20 +465,25 @@ weighting or promotion behind it.
 | # | Claim | Verdict | Real code lives at | Prompt-only part |
 |---|---|---|---|---|
 | 1 | Cross-referencing across sessions | Prompt instruction | `context.service.ts:272-322` (live overlap signal only) | `reports.service.ts:298` — all actual session-diffing |
-| 2 | Longitudinal truth / unfollowed commitments | **CORRECTED then FIXED: code guarantee; live conversation now probes with patterns, never states them (24 of 30 codes have a live probe form; 12 report-only)** | `context.service.ts:245-256` (probe-only, allowlist via `PATTERN_PROBE_BY_CODE`) - separate `prompt-library.ts:1810` scaffold is still genuinely dead | `reports.service.ts:298` naming it in the report, where naming is appropriate |
+| 2 | Longitudinal truth / unfollowed commitments | **PROMPT/AI-JUDGMENT for 29 of 30 bad-faith codes (detection itself is AI extraction + AI confirmation, no numeric gate); code guarantee only for the trigger (event+cron) and the 3-period surfacing counter; live conversation now probes with patterns, never states them** | `patterns.service.ts:90-106` (AI detection+confirmation); `context.service.ts:245-256` (probe-only, allowlist via `PATTERN_PROBE_BY_CODE`) - `pattern-library.ts`'s numeric detectors (`detectD1`..`detectR4`, `PATTERN_DETECTORS`, `detectPattern`) are dead, never called; separate `prompt-library.ts:1810` scaffold is also dead | `reports.service.ts:298` naming the commitment in the report; the pattern *content* itself is model judgment end to end |
 | 3 | Corroboration | Prompt instruction | `context.service.ts:298-320` (topic-overlap trigger only) | actual claim-vs-claim agreement judgment, entirely model |
 | 4 | False-consensus resistance | **Code guarantee** (strongest) | `resolution.service.ts:83-94` (closure gate); `reports.service.ts:313-342` (absence/roster) | sentence-level "don't say agree" still model-followed |
 | 5 | Hidden contributor / recognition | Split — signal computed; R3 itself misattributed (giver, not recipient) - Degree-3 mechanism is the correct version and is live | `intake.ts:74-76` (specificity); `context.service.ts:328-388` (Degree-3, correct); `pattern-library.ts:504-506` (R3, broken - see finding) | `reports.service.ts:145-156,300` — flat list, no code ranking |
 | 6 | Adversarial response | Split — trigger is code, behavior is prompt | `context.service.ts:190-206,315-385` (trigger conditions) | covert framing entirely unenforced; no output redaction |
 
-**CORRECTED, THEN FIXED — the one finding that changed what gets said to a
-customer:** the original version of this line was wrong. Claim 2's detection
-engine is real and well-built — genuine thresholds, genuine event + cron
-triggers, a genuine 3-period persistence rule — and its output already
-reached the person's own live conversation, unconditionally, from session 1,
-stated as a verdict-shaped observation, for every surfaced pattern except the
-two explicitly feed-only codes. Found by accident while verifying an
-unrelated, deliberately positive-only feature request.
+**CORRECTED TWICE, THEN FIXED — the one finding that changed what gets said
+to a customer:** the original version of this line was wrong twice over.
+First wrong claim: that the detection engine's output never reached the
+live conversation — it did, unconditionally, from session 1, stated as a
+verdict-shaped observation, for every surfaced pattern except the two
+explicitly feed-only codes. Found by accident while verifying an unrelated,
+deliberately positive-only feature request. Second wrong claim: that this
+engine ran on "genuine thresholds, a genuine 3-period persistence rule" for
+the codes themselves. It doesn't, for 29 of 30 — see the correction above.
+The three-period rule and the event/cron triggers are real code; what
+qualifies as a detected instance of `D1`, `B4`, or any other bad-faith code
+in the first place is the model's judgment on that period's transcript, not
+a formula.
 
 The governing rule turned out to be STATEMENT vs PROBE, not live vs report:
 a detected pattern must never be *stated* to the person live, but it may
