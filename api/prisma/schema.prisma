@@ -398,6 +398,8 @@ model CheckIn {
   recallConfidence     String?  @map("recall_confidence")
   isClarification      Boolean  @default(false) @map("is_clarification") // true when session is correcting a flagged inference
   clarificationTarget  String?  @map("clarification_target") // inference id from report.inferences being corrected
+  isSelfCorrection     Boolean  @default(false) @map("is_self_correction") // true when session is correcting the participant's OWN prior session
+  selfCorrectionTargetSession Int? @map("self_correction_target_session") // the session number being corrected
   createdAt     DateTime      @default(now()) @map("created_at")
 
   ground        Ground            @relation(fields: [groundId], references: [id], onDelete: Cascade)
