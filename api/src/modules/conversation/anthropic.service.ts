@@ -56,8 +56,12 @@ export class AnthropicService {
 
   /**
    * Streaming variant of respond(). Yields answer text deltas as they arrive.
-   * The caller accumulates the full text and applies houseStyle() once at the
-   * end (a dash can straddle two chunks, so we do not sanitize per-delta).
+   * Each delta is passed through houseStyle() so nothing un-normalized reaches
+   * the user live. Every banned character we normalize is a single code point
+   * (em/en dash, curly quote, ellipsis, nbsp), so it cannot be split across two
+   * chunks - per-delta sanitizing is safe for those. The only straddle-sensitive
+   * rule is the "--" collapse; the caller still applies houseStyle() once to the
+   * accumulated text at the end, which catches a double hyphen split across deltas.
    */
   async *respondStream(systemPrompt: string, history: ChatTurn[]): AsyncGenerator<string, void, unknown> {
     const contents = history.map((t) => ({
@@ -74,7 +78,7 @@ export class AnthropicService {
       for (const part of parts) {
         // Skip thought parts here; the answer is what we stream to the user.
         if (part?.thought) continue;
-        if (part?.text) yield part.text as string;
+        if (part?.text) yield houseStyle(part.text as string);
       }
     }
   }
