@@ -878,6 +878,25 @@ STRICT RULES:
       return { user, isNew };
     });
 
+    // If this email already joined this ground once, don't create a second
+    // GroundParticipant row (the [groundId, email] unique constraint would
+    // otherwise surface as a raw DB error to the joining person). Sign them
+    // back in against their existing participant record instead of
+    // re-processing another "first" check-in on top of it.
+    const existingParticipant = await this.prisma.groundParticipant.findUnique({
+      where: { groundId_email: { groundId: ground.id, email } },
+    });
+    if (existingParticipant) {
+      const accessToken = this.jwt.sign({
+        sub: user.id,
+        email: user.email,
+        organizationId: user.organizationId,
+        role: user.role,
+      });
+      this.logger.log(`join-commit: ${email} already joined ground ${ground.id} - signing back in, no duplicate created`);
+      return { groundId: ground.id, accessToken, userId: user.id };
+    }
+
     // Create participant record for this person on the ground.
     const participant = await this.prisma.groundParticipant.create({
       data: {
