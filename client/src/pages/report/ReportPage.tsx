@@ -1,10 +1,69 @@
+import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { groundsApi } from '@/api/grounds'
 import { reportsApi } from '@/api/reports'
+import { apiClient } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
 import { InferenceReviewPanel } from '@/components/InferenceReviewPanel'
 import { VennIcon } from '@/components/gw/VennIcon'
+
+type ViewTab = 'shared' | 'own'
+
+interface ResolutionStatus {
+  resolution: { id: string; endState: string; closedAt: string | null } | null
+  confirmations: { participantId: string; label: string; endState: string | null; confirmed: boolean }[]
+  confirmedCount: number
+  totalActive: number
+  groundStatus: string
+}
+
+function ResolutionSection({ groundId, resolutionState }: { groundId: string; resolutionState?: string | null }) {
+  const { data } = useQuery({
+    queryKey: ['resolution', groundId],
+    queryFn: () => apiClient.get<ResolutionStatus>(`/grounds/${groundId}/resolution`).then(r => r.data),
+    retry: false,
+  })
+  const isClosed = data?.groundStatus === 'RESOLVED' || data?.groundStatus === 'CLOSED'
+
+  return (
+    <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 12, padding: '16px 18px', marginBottom: 18 }}>
+      <div style={{ fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: '#9B9590', fontWeight: 700, marginBottom: 10 }}>Resolution</div>
+      {resolutionState && (
+        <div style={{ marginBottom: data ? 12 : 0 }}>
+          <span style={{ fontSize: 9.5, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: '#9B9590', display: 'block', marginBottom: 2 }}>Agreed at the start</span>
+          <div style={{ fontSize: 14, fontWeight: 700 }}>{resolutionState}</div>
+        </div>
+      )}
+      {data && (
+        <div>
+          <span style={{ fontSize: 9.5, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: '#9B9590', display: 'block', marginBottom: 6 }}>Current status</span>
+          {isClosed && data.resolution ? (
+            <div style={{ background: '#E7F6EF', borderRadius: 8, padding: '10px 12px' }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#085041' }}>Closed: {data.resolution.endState}</div>
+              <div style={{ fontSize: 12, color: '#3A7A60', marginTop: 2 }}>All {data.totalActive} parties confirmed the same end state.</div>
+            </div>
+          ) : (
+            <div>
+              <div style={{ fontSize: 13, marginBottom: 8 }}>{data.confirmedCount} of {data.totalActive} parties have confirmed an end state.</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {data.confirmations.map((c) => (
+                  <div key={c.participantId} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, padding: '6px 10px', background: '#F7F6F3', borderRadius: 6 }}>
+                    <span>{c.label}</span>
+                    <span style={{ color: c.confirmed ? '#085041' : '#9B9590', fontWeight: 600 }}>{c.confirmed ? c.endState : 'Not yet'}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+      {!resolutionState && !data?.resolution && (
+        <div style={{ fontSize: 13, color: '#9B9590' }}>No resolution state set for this ground yet.</div>
+      )}
+    </div>
+  )
+}
 
 const LADDER_STEPS = ['Unresolved', 'Mixed', 'Emerging', 'Clear', 'Aligned'] as const
 
@@ -142,6 +201,7 @@ export function ReportPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const user = useAuthStore(s => s.user)
+  const [tab, setTab] = useState<ViewTab>('shared')
 
   const { data: ground, isLoading: gl } = useQuery({
     queryKey: ['ground', id],
@@ -182,14 +242,20 @@ export function ReportPage() {
     )
   }
 
-  if (!report || !report.releasedAt) {
+  if (!report || (!(report as any).sharedPicture && !(report as any).forming)) {
     return (
       <div style={{ ...PAGE_STYLE, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
-        <div style={{ fontSize: 13, color: '#9B9590' }}>Your report will appear here once everyone has checked in.</div>
+        <div style={{ fontSize: 13, color: '#9B9590' }}>Your report will appear here once at least one person has checked in.</div>
         <button onClick={() => navigate(-1)} style={{ fontSize: 12, color: '#0C447C', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>Go back</button>
       </div>
     )
   }
+
+  const isForming = !report.releasedAt
+  const progress = (report as any).sessionProgress as
+    | { sessionNumber: number; total: number; completed: number; requestingUserIsMissing: boolean }
+    | null
+    | undefined
 
   const myParticipant = (ground.participants ?? []).find((p: any) => p.userId === user?.id)
   const isAdmin = myParticipant?.partyType === 'INITIATOR'
@@ -217,7 +283,9 @@ export function ReportPage() {
   }
 
   const solo = report.soloArtifact
-  const releasedDate = new Date(report.releasedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+  const releasedDate = report.releasedAt
+    ? new Date(report.releasedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    : null
 
   const sessionPhrase =
     statusLabel === 'Aligned' ? 'Aligned, and honest about what to watch.' :
@@ -253,15 +321,46 @@ export function ReportPage() {
               ground.label,
               adminHandle,
               partParty ? partHandle : null,
-              `Released ${releasedDate}`,
+              releasedDate ? `Released ${releasedDate}` : 'Still forming',
             ].filter(Boolean).map(pill => (
               <span key={pill as string} style={{ fontSize: 12, background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.16)', borderRadius: 20, padding: '5px 12px', color: 'rgba(255,255,255,.9)' }}>
                 {pill}
               </span>
             ))}
           </div>
+
+          {/* OWN / SHARED TOGGLE - always visible so it's clear these are two
+              distinct reports, not one merged document. */}
+          {solo && (
+            <div style={{ marginTop: 24, display: 'inline-flex', background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.16)', borderRadius: 10, padding: 3, gap: 2 }}>
+              {(['shared', 'own'] as ViewTab[]).map(t => (
+                <button
+                  key={t}
+                  onClick={() => setTab(t)}
+                  style={{
+                    fontSize: 13, fontWeight: 700, padding: '7px 16px', borderRadius: 7, border: 'none', cursor: 'pointer',
+                    background: tab === t ? '#fff' : 'transparent',
+                    color: tab === t ? '#0A1628' : 'rgba(255,255,255,.75)',
+                  }}
+                >
+                  {t === 'shared' ? 'Shared report' : 'Your report'}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </header>
+
+      {/* FORMING BANNER - the picture updates as people check in; this isn't
+          the final, mutually-revealed report yet. */}
+      {isForming && progress && (
+        <div style={{ background: '#FDF3E3', borderBottom: '1px solid #F0DDB0' }}>
+          <div style={{ maxWidth: 1040, margin: '0 auto', padding: '12px 20px', fontSize: 13, color: '#8A5C1A' }}>
+            <strong>Picture forming</strong> - {progress.completed} of {progress.total} checked in.
+            {progress.requestingUserIsMissing ? ' You haven\'t checked in yet for this round - that\'s part of what\'s still missing.' : ' This updates as more people check in.'}
+          </div>
+        </div>
+      )}
 
       {/* LEGEND */}
       <section style={{ background: 'white', borderBottom: '1px solid #E2E0DB' }}>
@@ -292,13 +391,17 @@ export function ReportPage() {
           <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-.01em', margin: '4px 0 2px' }}>
             {sessionPhrase}
           </div>
-          <div style={{ fontSize: 13, color: '#6B6560' }}>Released {releasedDate}</div>
+          <div style={{ fontSize: 13, color: '#6B6560' }}>{releasedDate ? `Released ${releasedDate}` : 'Still forming - not yet released'}</div>
         </div>
 
-        {/* Cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: solo ? '1fr 1fr' : '1fr', gap: 18 }}>
+        <ResolutionSection groundId={id!} resolutionState={(ground as any).resolutionState} />
 
-          {/* ADMIN CARD */}
+        {/* Cards - the toggle above picks which one shows; without a solo
+            report to toggle to, the shared report is the only thing here. */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 18 }}>
+
+          {/* SHARED / GROUND REPORT CARD */}
+          {(!solo || tab === 'shared') && (
           <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 12, overflow: 'hidden' }}>
             <div style={{ padding: '13px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#0C447C', color: '#fff' }}>
               <span style={{ fontSize: 13, fontWeight: 800 }}>Ground report</span>
@@ -366,9 +469,10 @@ export function ReportPage() {
               )}
             </div>
           </div>
+          )}
 
-          {/* PARTICIPANT CARD */}
-          {solo && (
+          {/* PARTICIPANT / OWN REPORT CARD */}
+          {solo && tab === 'own' && (
             <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 12, overflow: 'hidden' }}>
               <div style={{ padding: '13px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#085041', color: '#fff' }}>
                 <span style={{ fontSize: 13, fontWeight: 800 }}>Contributor report</span>
@@ -421,8 +525,14 @@ export function ReportPage() {
                 <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 14px', borderBottom: i < eng.parties.length - 1 ? '1px solid #EFEDE8' : 'none', background: 'white' }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: '#1A1916' }}>{p.label}</div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-                    <span style={{ fontSize: 11, color: '#9B9590' }}>{p.contributed ? `${p.sessions ?? 0} session${(p.sessions ?? 0) !== 1 ? 's' : ''}` : 'not yet checked in'}</span>
-                    {p.contributed && p.specificityLabel && (
+                    <span style={{ fontSize: 11, color: '#9B9590' }}>
+                      {!p.contributed
+                        ? 'not yet checked in'
+                        : p.recordEntries > 0
+                        ? `${p.sessions ?? 0} session${(p.sessions ?? 0) !== 1 ? 's' : ''}`
+                        : 'checked in, no record'}
+                    </span>
+                    {p.contributed && p.recordEntries > 0 && p.specificityLabel && (
                       <span title="How concrete their account was" style={{ fontSize: 11, fontWeight: 700, borderRadius: 6, padding: '2px 8px',
                         background: p.specificityLabel === 'high' ? '#E7F6EF' : p.specificityLabel === 'moderate' ? '#EEF4FB' : '#FDF3E3',
                         color: p.specificityLabel === 'high' ? '#085041' : p.specificityLabel === 'moderate' ? '#0C447C' : '#8A5C1A' }}>

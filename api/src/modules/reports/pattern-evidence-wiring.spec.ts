@@ -87,7 +87,7 @@ function makeService(overrides: {
     }),
   };
 
-  const service = new ReportsService(prisma, prompts, anthropic, {} as any, {} as any, {} as any);
+  const service = new ReportsService(prisma, prompts, anthropic, {} as any, {} as any, {} as any, {} as any);
   return {
     service,
     getCorpus: () => capturedCorpus,
@@ -140,7 +140,7 @@ describe('GW-PATTERN-WIRE-B: surfaced patterns reach report synthesis as evidenc
     // D1 (bad-faith): notice present, routed toward concernFlags per rule 10, phrased factually.
     expect(corpus).toContain('NOTE [longitudinal pattern evidence - code D1 False Completion Reporting]');
     expect(corpus).toContain('The record describes completion without downstream confirmation.');
-    expect(corpus).toContain('note it in concernFlags as a plain factual observation about the record per synthesis rule 9');
+    expect(corpus).toContain('note it in concernFlags as a plain factual observation about the record per synthesis rule 10');
     expect(corpus).toContain('never an accusation, never a judgement of the person, never speculation about motive');
 
     // R3 (positive): notice present, explicitly kept OUT of concernFlags.

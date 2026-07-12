@@ -39,11 +39,20 @@ export class ReportsListener {
 
     try {
       const sessionNumber = event.sessionNumber;
+
+      // Build/update the picture as soon as ANYONE checks in - it forms
+      // progressively rather than waiting for every party. The synthesis
+      // rules already forbid attributing positions to parties who haven't
+      // contributed yet (rule 3), so a partial picture never fabricates
+      // agreement that isn't there - it just shows what's known so far.
+      await this.reports.synthesize(event.groundId);
+
       const allDone = await this.grounds.isSessionReadyForReport(event.groundId, sessionNumber);
       if (!allDone) return;
 
-      this.logger.log(`All parties through session ${sessionNumber}. Synthesizing report and activating ground ${event.groundId}.`);
-      await this.reports.synthesize(event.groundId);
+      // Once everyone is through, this is the real moment: mutual reveal,
+      // billing activation, "your report is ready" notifications.
+      this.logger.log(`All parties through session ${sessionNumber}. Releasing report and activating ground ${event.groundId}.`);
       const g = await this.prisma.ground.findUnique({ where: { id: event.groundId }, select: { organizationId: true } });
       if (g) {
         await this.reports.release(event.groundId, g.organizationId);

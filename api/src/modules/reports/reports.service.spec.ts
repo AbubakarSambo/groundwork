@@ -15,7 +15,7 @@ describe('ReportsService.release - org scoping (GW-02)', () => {
     };
     const email: any = { sendReportReady: jest.fn(async () => undefined) };
     const config: any = { get: () => 'http://localhost:5173' };
-    const service = new ReportsService(prisma, {} as any, {} as any, email, config, { emit: () => Promise.resolve() } as any);
+    const service = new ReportsService(prisma, {} as any, {} as any, email, config, { emit: () => Promise.resolve() } as any, {} as any);
     return { service, prisma, email };
   }
 
@@ -52,14 +52,23 @@ describe('ReportsService.synthesize - promptVersionId stamping (GW-41)', () => {
         findUnique: jest.fn(async () => ({ id: 'g1', participants: [{ id: 'p1', partyType: 'INITIATOR', roleAsDescribed: 'founder' }] })),
         update: jest.fn(async () => ({})),
       },
-      groundParticipant: { findMany: jest.fn(async () => [{ id: 'p1', partyType: 'INITIATOR', roleAsDescribed: 'founder' }]) },
+      groundParticipant: { findMany: jest.fn(async () => [{ id: 'p1', partyType: 'INITIATOR', roleAsDescribed: 'founder', checkIns: [] }]) },
       recordEntry: {
         findMany: jest.fn(async () => [{ participant: { id: 'p1' }, type: 'COMMITMENT', text: 'We aligned on X.' }]),
         count: jest.fn(async () => 3),
       },
-      checkIn: { count: jest.fn(async () => 1) },
-      groundDocument: { count: jest.fn(async () => 0) },
       adminProfile: { findUnique: jest.fn(async () => null) },
+      patternDetection: { findMany: jest.fn(async () => []) },
+      checkIn: {
+        count: jest.fn(async () => 1),
+        findFirst: jest.fn(async () => null),
+        findMany: jest.fn(async () => []),
+      },
+      groundDocument: {
+        count: jest.fn(async () => 0),
+        groupBy: jest.fn(async () => []),
+        findMany: jest.fn(async () => []),
+      },
       report: {
         upsert: jest.fn(async (args: any) => {
           upsertedCreate = args.create;
@@ -81,7 +90,7 @@ describe('ReportsService.synthesize - promptVersionId stamping (GW-41)', () => {
       })),
     };
 
-    const service = new ReportsService(prisma, prompts, anthropic, {} as any, {} as any, { emit: () => Promise.resolve() } as any);
+    const service = new ReportsService(prisma, prompts, anthropic, {} as any, {} as any, { emit: () => Promise.resolve() } as any, {} as any);
     await service.synthesize('g1');
 
     expect(prompts.getActive).toHaveBeenCalledWith('report_synthesis');

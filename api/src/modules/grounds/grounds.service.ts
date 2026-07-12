@@ -599,6 +599,19 @@ export class GroundsService {
       select: { subscriptionPlan: true, subscriptionStatus: true, freeExtensionUsed: true },
     });
 
+    // Only worth computing before the report exists (or before the current
+    // round's report has released) - once released there's nothing pending.
+    let sessionProgress: Awaited<ReturnType<typeof this.getSessionProgress>> = null;
+    if (!ground.report?.releasedAt) {
+      sessionProgress = await this.getSessionProgress(id);
+    }
+    const requestingParticipant = requestingUserId
+      ? (ground.participants ?? []).find((p: any) => p.userId === requestingUserId)
+      : null;
+    const requestingUserIsMissing = !!(
+      sessionProgress && requestingParticipant && sessionProgress.missingParticipantIds.includes(requestingParticipant.id)
+    );
+
     const { patternDetections: _pd, ...rest } = ground as any;
     return {
       ...rest,
@@ -609,6 +622,7 @@ export class GroundsService {
       signals,
       contextNotes,
       org: org ?? null,
+      sessionProgress: sessionProgress ? { ...sessionProgress, requestingUserIsMissing } : null,
     };
   }
 
@@ -1053,6 +1067,51 @@ export class GroundsService {
   /** Backward-compat alias - checks session 1 readiness. */
   async isReportReady(groundId: string): Promise<boolean> {
     return this.isSessionReadyForReport(groundId, 1);
+  }
+
+  /**
+   * Progress for the round currently in play, using the same "active" party
+   * definition as isSessionReadyForReport (accepted invite OR already
+   * completed this session). Lets the client show "N of M checked in" before
+   * the report exists, instead of showing nothing until the round is full.
+   */
+  async getSessionProgress(groundId: string): Promise<{
+    sessionNumber: number;
+    total: number;
+    completed: number;
+    missingParticipantIds: string[];
+  } | null> {
+    // Current round = the highest sessionNumber any check-in row exists for.
+    const maxSession = await this.prisma.checkIn.aggregate({
+      where: { participant: { groundId } },
+      _max: { sessionNumber: true },
+    });
+    const sessionNumber = maxSession._max.sessionNumber ?? 1;
+
+    const active = await this.prisma.groundParticipant.findMany({
+      where: {
+        groundId,
+        OR: [
+          { userId: { not: null } },
+          { checkIns: { some: { sessionNumber, status: CheckInStatus.COMPLETED } } },
+        ],
+      },
+      select: { id: true },
+    });
+    if (active.length === 0) return null;
+
+    const completedCheckIns = await this.prisma.checkIn.findMany({
+      where: { participantId: { in: active.map((p) => p.id) }, sessionNumber, status: CheckInStatus.COMPLETED },
+      select: { participantId: true },
+    });
+    const completedIds = new Set(completedCheckIns.map((c) => c.participantId));
+
+    return {
+      sessionNumber,
+      total: active.length,
+      completed: completedIds.size,
+      missingParticipantIds: active.filter((p) => !completedIds.has(p.id)).map((p) => p.id),
+    };
   }
 
   /**
