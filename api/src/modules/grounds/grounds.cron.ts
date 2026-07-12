@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService, CronLock } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
+import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { GroundworkEvents, CheckInCompletedEvent } from '../../common';
 import { GroundStatus, CheckInStatus, TurnRole, PartyType } from '@prisma/client';
 import { PatternsService } from '../patterns/patterns.service';
@@ -27,6 +28,7 @@ export class GroundsCron {
     private config: ConfigService,
     private events: EventEmitter2,
     private patterns: PatternsService,
+    private whatsapp: WhatsAppService,
   ) {}
 
   /**
@@ -270,6 +272,65 @@ export class GroundsCron {
   @Cron(CronExpression.EVERY_DAY_AT_9AM)
   async sendReminders() {
     await this.prisma.withAdvisoryLock(CronLock.SEND_REMINDERS, async () => this.sendRemindersInner());
+  }
+
+  /**
+   * "Your next check-in is open" - fires once, the moment a session becomes
+   * available, unlike sendReminders above (which only nudges people already
+   * sitting on an open check-in for days). Covers both the cadence-scheduled
+   * case and the SEQUENTIAL "lead checks in, team's round opens now" case -
+   * both just set availableFrom, so a single frequent sweep catches either.
+   * Session 1 is excluded: that person already got the invite email.
+   */
+  @Cron('*/15 * * * *')
+  async sendSessionReadyNotifications() {
+    await this.prisma.withAdvisoryLock(CronLock.SEND_REMINDERS, async () => this.sendSessionReadyNotificationsInner());
+  }
+
+  private async sendSessionReadyNotificationsInner() {
+    const now = new Date();
+    const frontend = this.config.get<string>('resend.frontendUrl') || '';
+
+    const newlyOpen = await this.prisma.checkIn.findMany({
+      where: {
+        sessionNumber: { gt: 1 },
+        status: CheckInStatus.NOT_STARTED,
+        sessionReadyNotifiedAt: null,
+        availableFrom: { lte: now },
+        participant: { userId: { not: null }, ground: { status: { notIn: TERMINAL } } },
+      },
+      select: {
+        id: true,
+        participant: {
+          select: {
+            id: true,
+            email: true,
+            ground: { select: { label: true } },
+            recordEntries: { orderBy: { createdAt: 'desc' }, take: 1, select: { text: true } },
+            user: { select: { phoneNumber: true } },
+          },
+        },
+      },
+      take: 200,
+    });
+
+    for (const ci of newlyOpen) {
+      const p = ci.participant;
+      const lastContext = p.recordEntries[0]?.text;
+      const checkInUrl = `${frontend}/checkin/${ci.id}`;
+      try {
+        // WhatsApp when available (single Groundwork number, matched by phone) - email otherwise.
+        if (p.user?.phoneNumber && (await this.whatsapp.isEnabled())) {
+          const contextLine = lastContext ? `\n\nLast time: "${lastContext}"` : '';
+          await this.whatsapp.sendMessage(p.user.phoneNumber, `Your next check-in for ${p.ground.label} is open.${contextLine}\n${checkInUrl}`);
+        } else {
+          await this.email.sendSessionReady(p.email, p.ground.label, checkInUrl, lastContext);
+        }
+        await this.prisma.checkIn.update({ where: { id: ci.id }, data: { sessionReadyNotifiedAt: now } });
+      } catch (err: any) {
+        this.logger.error(`Session-ready notification failed for check-in ${ci.id}: ${err.message}`);
+      }
+    }
   }
 
   private async sendRemindersInner() {

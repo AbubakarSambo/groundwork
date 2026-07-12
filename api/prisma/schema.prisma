@@ -394,6 +394,7 @@ model CheckIn {
   startedAt     DateTime?     @map("started_at")
   completedAt    DateTime?     @map("completed_at")
   warningFiredAt DateTime?     @map("warning_fired_at")
+  sessionReadyNotifiedAt DateTime? @map("session_ready_notified_at") // one-shot: "your check-in is now open" email sent
   patternsAnalyzedAt DateTime? @map("patterns_analyzed_at") // pattern sweep has processed this period
   nextCommitment String?       @map("next_commitment")
   closedReason  String?        @map("closed_reason") // e.g. "willingness_declined"
