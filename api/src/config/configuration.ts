@@ -4,6 +4,10 @@ export const appConfig = registerAs("app", () => ({
   port: parseInt(process.env.PORT || "3000", 10),
   nodeEnv: process.env.NODE_ENV || "development",
   corsOrigins: process.env.CORS_ORIGINS, // comma-separated list of allowed origins
+  // One-time platform-admin bootstrap: if set AND no platform admin exists yet,
+  // this email is promoted on startup. No-ops once any platform admin exists,
+  // so it can never be used to add a second one later - see AdminService.onApplicationBootstrap.
+  platformAdminBootstrapEmail: process.env.PLATFORM_ADMIN_BOOTSTRAP_EMAIL,
 }));
 
 export const databaseConfig = registerAs("database", () => ({

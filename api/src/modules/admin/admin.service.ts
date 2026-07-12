@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   Logger,
+  OnApplicationBootstrap,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
@@ -11,7 +12,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 
 @Injectable()
-export class AdminService {
+export class AdminService implements OnApplicationBootstrap {
   private readonly logger = new Logger(AdminService.name);
 
   constructor(
@@ -19,6 +20,32 @@ export class AdminService {
     private readonly config: ConfigService,
     private readonly email: EmailService,
   ) {}
+
+  /**
+   * One-time platform-admin bootstrap. Runs on every startup, but is a no-op
+   * unless BOTH: (a) PLATFORM_ADMIN_BOOTSTRAP_EMAIL is set, and (b) no
+   * platform admin exists anywhere yet. Once any platform admin exists, this
+   * never fires again - it cannot be used to add a second admin, or to
+   * re-promote someone after they're demoted. Promoting anyone beyond the
+   * first admin goes through POST /admin/add-admin (platform-admin + OTP),
+   * same as always.
+   */
+  async onApplicationBootstrap() {
+    const bootstrapEmail = this.config.get<string>('app.platformAdminBootstrapEmail');
+    if (!bootstrapEmail) return;
+
+    const anyPlatformAdminExists = await this.prisma.user.findFirst({ where: { isPlatformAdmin: true } });
+    if (anyPlatformAdminExists) return;
+
+    const user = await this.prisma.user.findUnique({ where: { email: bootstrapEmail.toLowerCase() } });
+    if (!user) {
+      this.logger.warn(`Platform admin bootstrap: no user found for ${bootstrapEmail} - skipping`);
+      return;
+    }
+
+    await this.prisma.user.update({ where: { id: user.id }, data: { isPlatformAdmin: true } });
+    this.logger.warn(`Platform admin bootstrap: promoted ${bootstrapEmail} to platform admin (first admin, one-time only)`);
+  }
 
   // ---------------------------------------------------------------------------
   // Platform stats
