@@ -44,7 +44,7 @@ describe('UsersService - GW-03 GDPR erasure', () => {
 
     const userUpdate = updates.find((u) => u.model === 'user');
     expect(userUpdate).toBeDefined();
-    expect(userUpdate.data.email).toMatch(`deleted-${USER_ID}@erased.invalid`);
+    expect(userUpdate.data.email).toMatch(`deleted-${USER_ID}@deleted`);
     expect(userUpdate.data.firstName).toBe('Deleted');
     expect(userUpdate.data.lastName).toBe('User');
     expect(userUpdate.data.passwordHash).toBeNull();
@@ -61,7 +61,7 @@ describe('UsersService - GW-03 GDPR erasure', () => {
 
     const linkUpdate = updates.find((u) => u.model === 'groundParticipant' && u.id === LINK_ID);
     expect(linkUpdate).toBeDefined();
-    expect(linkUpdate.data.email).toBe(`deleted-${LINK_ID}@erased.invalid`);
+    expect(linkUpdate.data.email).toBe(`deleted-${LINK_ID}@deleted`);
     expect(linkUpdate.data.roleAsDescribed).toBeNull();
   });
 
