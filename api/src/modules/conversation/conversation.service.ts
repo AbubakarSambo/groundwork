@@ -486,7 +486,11 @@ export class ConversationService {
       checkIn.sessionNumber === 1
         ? await this.prompts
             .getActiveContent(`scenario.${ground.scenario.toLowerCase()}.${checkIn.participant.partyType.toLowerCase()}`)
-            .catch(() => '')
+            // null (not '') on failure - buildActivePathway's `??` only falls
+            // through to the in-code pack on null/undefined, so resolving to
+            // '' here would silently defeat that fallback whenever no active
+            // DB version exists for this scenario+party.
+            .catch(() => null)
         : null;
 
     const intakeBlock = buildIntakeBlock({
