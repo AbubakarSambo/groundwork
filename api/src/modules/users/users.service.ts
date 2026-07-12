@@ -82,6 +82,22 @@ export class UsersService {
       if (taken) throw new ConflictException('Email already in use');
     }
 
+    // Last-admin safeguard: this user's own role/active state can't be removed
+    // if they're the org's only remaining active admin - otherwise the org is
+    // left with nobody able to manage it at all.
+    const losingAdminStatus =
+      user.role === 'ADMIN' &&
+      user.isActive &&
+      ((dto.role && dto.role !== 'ADMIN') || dto.isActive === false);
+    if (losingAdminStatus) {
+      const otherActiveAdmins = await this.prisma.user.count({
+        where: { organizationId, role: 'ADMIN', isActive: true, id: { not: id }, deletedAt: null },
+      });
+      if (otherActiveAdmins === 0) {
+        throw new BadRequestException('This is the only active admin on the account - promote someone else to admin first.');
+      }
+    }
+
     return this.prisma.user.update({
       where: { id },
       data: {
@@ -129,6 +145,16 @@ export class UsersService {
     if (id === actingUserId) throw new BadRequestException('You cannot deactivate yourself');
     const user = await this.prisma.user.findFirst({ where: { id, organizationId, deletedAt: null } });
     if (!user) throw new NotFoundException('User not found');
+
+    // Last-admin safeguard - see update() above for the same rule.
+    if (user.role === 'ADMIN') {
+      const otherActiveAdmins = await this.prisma.user.count({
+        where: { organizationId, role: 'ADMIN', isActive: true, id: { not: id }, deletedAt: null },
+      });
+      if (otherActiveAdmins === 0) {
+        throw new BadRequestException('This is the only active admin on the account - promote someone else to admin first.');
+      }
+    }
 
     // Soft-delete: stamp deletedAt, anonymise email, deactivate.
     await this.prisma.user.update({
@@ -216,7 +242,7 @@ export class UsersService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('User not found');
 
-    const anonymisedEmail = `deleted-${userId}@erased.invalid`;
+    const anonymisedEmail = `deleted-${userId}@deleted`;
 
     await this.prisma.$transaction([
       this.prisma.user.update({
@@ -240,7 +266,7 @@ export class UsersService {
     for (const link of links) {
       await this.prisma.groundParticipant.update({
         where: { id: link.id },
-        data: { email: `deleted-${link.id}@erased.invalid`, roleAsDescribed: null },
+        data: { email: `deleted-${link.id}@deleted`, roleAsDescribed: null },
       });
     }
 
