@@ -1722,9 +1722,15 @@ export function buildScenarioPackForParty(scenario: GroundScenario, partyType: P
     }
 
     case GroundScenario.CRISIS_ALIGNMENT: {
+      // CRISIS_SCOPE_BOUNDARY was previously only reachable via the older,
+      // fully-legacy CRISIS_PACK_COMBINED (used for the pre-per-party DB seed
+      // format) and never made it into this per-party function - restored
+      // here since it's clearly written for this exact scenario and both
+      // parties need the same boundary.
       if (isInitiator) {
         return [
           `MOMENT: The situation requires everyone to see the same thing.`,
+          CRISIS_SCOPE_BOUNDARY,
           CRISIS_VALIDATION,
           CRISIS_OPENING,
           CRISIS_INITIATOR_VARIANTS,
@@ -1733,6 +1739,7 @@ export function buildScenarioPackForParty(scenario: GroundScenario, partyType: P
       }
       return [
         `MOMENT: The situation requires everyone to see the same thing.`,
+        CRISIS_SCOPE_BOUNDARY,
         PARTICIPANT_PREAMBLE,
         CRISIS_PARTICIPANT_VARIANTS,
         CRISIS_WORRY_TENSION,
@@ -1753,6 +1760,17 @@ export function buildScenarioPackForParty(scenario: GroundScenario, partyType: P
 
     case GroundScenario.PIP:
       return PIP_PACK;
+
+    // BOARD_STRATEGY and COHORT_CHECK packs were written (2026-07-10, #17/#16)
+    // directly into SCENARIO_PACKS (the legacy combined-format seed record)
+    // but a case was never added here - the function actually read by the
+    // live path - so both scenarios silently fell to the default empty pack
+    // despite having real, written content sitting unused in the same file.
+    case GroundScenario.BOARD_STRATEGY:
+      return BOARD_STRATEGY_PACK;
+
+    case GroundScenario.COHORT_CHECK:
+      return COHORT_CHECK_PACK;
 
     default:
       return '';
@@ -1793,6 +1811,12 @@ export interface PromptContext {
   lowSpecificityMultiDim?: boolean; // 3+ dimensions vague/managed in prior session; shifts opener silently
   groundState?: string | null; // current ground status for session 2 "Since then" block
   leadSignals?: string[] | null; // admin/lead preference signals extracted from past grounds
+  // Session-1 only. A DB-stored override for this scenario+party's pack,
+  // fetched from PromptVersion key "scenario.<name>.<party>" if an admin has
+  // published one. When absent, buildActivePathway falls back to the
+  // in-code buildScenarioPackForParty(scenario, partyType) - never to the
+  // bare pathway question unless neither produces content.
+  scenarioPackOverride?: string | null;
 }
 
 // The 20 starting pathways - feeds ACTIVE_PATHWAY in the intake block.
@@ -1833,7 +1857,19 @@ function situationTypeFromScenario(scenario: GroundScenario): string {
     case GroundScenario.DRIFT:
       return 'Resolution';
     case GroundScenario.CRISIS_ALIGNMENT:
+    case GroundScenario.BOARD_STRATEGY:
+    case GroundScenario.COHORT_CHECK:
+      // Multi-party is the only documented SITUATION_TYPE value (see
+      // ENGINE_RULES's "Starting | Recognition | Resolution | Multi-party |
+      // Accountability" list) that genuinely fits: each of these three puts
+      // several independent people's accounts side by side.
       return 'Multi-party';
+    case GroundScenario.PIP:
+      // ENGINE_RULES documents 'Accountability' as a valid SITUATION_TYPE but
+      // no case ever produced it - PIP fell to the generic 'Starting' default,
+      // identical to a brand-new hire's onboarding. This was the clearest
+      // mapping gap found.
+      return 'Accountability';
     default:
       return 'Starting';
   }
@@ -1856,6 +1892,17 @@ function resolveRelationshipHistory(
       return 'drifted';
     case GroundScenario.RECOGNITION:
     case GroundScenario.CONTRACT_RENEWAL:
+    case GroundScenario.PIP:
+    case GroundScenario.OKR_ALIGNMENT:
+    case GroundScenario.WORKPLAN_BUDGET:
+    case GroundScenario.PULSE_CHECK:
+    case GroundScenario.REALIGN_TEAM:
+    case GroundScenario.BOARD_STRATEGY:
+    case GroundScenario.COHORT_CHECK:
+      // All of these presume an existing relationship/role already in
+      // motion (a performance plan, a recurring check-in, a standing team) -
+      // 'new' was never accurate for them; they fell to it only because no
+      // case existed.
       return 'ongoing';
     default:
       return 'new';
@@ -1873,6 +1920,13 @@ function relationshipTypeFromScenario(scenario: GroundScenario): string {
     case GroundScenario.DRIFT: return 'drifted_relationship';
     case GroundScenario.RECOGNITION: return 'raise_monitoring';
     case GroundScenario.CRISIS_ALIGNMENT: return 'team_misalignment';
+    case GroundScenario.PIP: return 'performance_plan';
+    case GroundScenario.OKR_ALIGNMENT: return 'okr_alignment';
+    case GroundScenario.WORKPLAN_BUDGET: return 'workplan_budget';
+    case GroundScenario.PULSE_CHECK: return 'pulse_check';
+    case GroundScenario.REALIGN_TEAM: return 'team_realignment';
+    case GroundScenario.BOARD_STRATEGY: return 'board_strategy';
+    case GroundScenario.COHORT_CHECK: return 'cohort_member';
     default: return 'relationship';
   }
 }
@@ -1920,6 +1974,16 @@ function buildActivePathway(ctx: PromptContext): string {
   const relHistory = resolveRelationshipHistory(scenario, ctx.relationshipHistory);
 
   if (sessionNumber === 1) {
+    // Merge, don't replace: a scenario-specific pack (DB override first, then
+    // the in-code function) is the primary session-1 content when one
+    // exists for this scenario+party - it's a fuller conversation guide
+    // (MOMENT/PURPOSE/OPENING/follow-ups/RECORD) than a single opening line.
+    // The pathway-number question remains the fallback for any scenario
+    // with no pack, so nothing regresses to silence.
+    const pack = ctx.scenarioPackOverride ?? buildScenarioPackForParty(scenario, partyType);
+    if (pack) {
+      return `SESSION 1 OPENING RULE: Do not open with a question. Open with one sentence that names what this ground is for or why this record matters now. Then work through the pathway below across multiple exchanges, one question at a time. Never list more than one question in a single message.\n\n${pack}`;
+    }
     const n = selectPathwayNumber(scenario, partyType, relHistory);
     return `SESSION 1 OPENING RULE: Do not open with a question. Open with one sentence that names what this ground is for or why this record matters now. Then ask exactly this question. One statement. One question. Nothing else.\n\nPathway ${n}: ${PATHWAY_QUESTIONS[n] ?? PATHWAY_QUESTIONS[20]}`;
   }

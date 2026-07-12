@@ -414,6 +414,8 @@ export class ConversationService {
       sessionNumber: number;
       isClarification?: boolean;
       clarificationTarget?: string | null;
+      isSelfCorrection?: boolean;
+      selfCorrectionTargetSession?: number | null;
       participant: { partyType: any; roleAsDescribed: string | null };
     },
     latestMessage?: string,
@@ -474,6 +476,19 @@ export class ConversationService {
     ]);
     const groundState = await this.buildGroundState(checkIn.groundId, otherPartyCheckedIn);
     const leadSignals = Array.isArray(initiatorProfile?.signals) ? (initiatorProfile!.signals as string[]) : null;
+
+    // Session-1-only DB override for this scenario+party's pack (PromptVersion
+    // key "scenario.<name>.<party>"). Lets an admin publish a revised pack via
+    // the Prompt Versioning page without a deploy - the whole reason this seed
+    // key exists. Falls back to the in-code pack (or the bare pathway
+    // question) in buildActivePathway when no active version exists.
+    const scenarioPackOverride =
+      checkIn.sessionNumber === 1
+        ? await this.prompts
+            .getActiveContent(`scenario.${ground.scenario.toLowerCase()}.${checkIn.participant.partyType.toLowerCase()}`)
+            .catch(() => '')
+        : null;
+
     const intakeBlock = buildIntakeBlock({
       scenario: ground.scenario,
       partyType: checkIn.participant.partyType,
@@ -481,12 +496,18 @@ export class ConversationService {
       roleAsDescribed: checkIn.participant.roleAsDescribed,
       otherPartyCheckedIn,
       groundLabel: ground.label,
+      // Pre-existing gap, found while proving this fix: resolutionState was
+      // never wired into the intake context at all, so RESOLUTION_STATE in
+      // the prompt was always "not yet defined" regardless of what the
+      // initiator actually set at ground creation.
+      resolutionState: (ground as any).resolutionState ?? null,
       adminBrief: (ground as any).brief ?? null,
       priorContext: checkIn.participant.roleAsDescribed ?? null,
       priorSession,
       lowSpecificityMultiDim,
       groundState,
       leadSignals,
+      scenarioPackOverride,
     });
 
     // Returning user protocol: for session 2+, inject the most important unresolved
@@ -541,7 +562,28 @@ Open the session by naming this specific inference directly. Do NOT ask the stan
       }
     }
 
-    return [systemPrompt, intakeBlock, clarificationContext, returningUserContext, dynamicContext, docContext, docPromptHint].filter(Boolean).join('\n\n');
+    // Self-correction session context: when this check-in is correcting the
+    // participant's OWN prior session (not a shared-report inference), inject
+    // what they said in that session so the AI opens by asking what needs to
+    // change, rather than starting a fresh, unrelated conversation.
+    let selfCorrectionContext = '';
+    if (checkIn.isSelfCorrection && checkIn.selfCorrectionTargetSession != null) {
+      const targetEntries = await this.prisma.recordEntry.findMany({
+        where: { participantId: checkIn.participantId, checkIn: { sessionNumber: checkIn.selfCorrectionTargetSession } },
+        orderBy: { createdAt: 'asc' },
+        select: { type: true, text: true },
+      });
+      if (targetEntries.length) {
+        const summary = targetEntries.map(e => `(${e.type}) ${e.text}`).join('\n');
+        selfCorrectionContext = `SELF-CORRECTION SESSION - the participant is returning to correct or add to what they said in session ${checkIn.selfCorrectionTargetSession}:
+
+${summary}
+
+Open the session by naming that you're returning to session ${checkIn.selfCorrectionTargetSession}, and ask directly what they'd like to correct or add. Do NOT ask the standard opener. Once they've told you, use the standard probes to get specifics, then close normally. This session's record is what carries the correction - the original session's record is not deleted or edited, so be clear this is an update, not an erasure.`;
+      }
+    }
+
+    return [systemPrompt, intakeBlock, clarificationContext, selfCorrectionContext, returningUserContext, dynamicContext, docContext, docPromptHint].filter(Boolean).join('\n\n');
   }
 
   /**
@@ -663,13 +705,25 @@ Open the session by naming this specific inference directly. Do NOT ask the stan
 
     // Completion-readiness gate (B4): a check-in only closes once the person has
     // actually built a record. Hollow completions produce thin, over-confident
-    // reports. Require at least 3 substantive answers from the person.
-    const personTurns = await this.prisma.conversationTurn.count({
+    // reports. Two checks, both required: at least 3 person turns, AND those
+    // turns must carry real content - not just "yes"/"ok"/"fine" three times.
+    // The character-count approach mirrors the thin-record heuristic already
+    // used at report-synthesis time (reports.service.ts), applied here at the
+    // gate instead of only flagged after the fact.
+    const personTurnRows = await this.prisma.conversationTurn.findMany({
       where: { checkInId: checkIn.id, role: TurnRole.PERSON },
+      select: { content: true },
     });
-    if (personTurns < 3) {
+    if (personTurnRows.length < 3) {
       throw new BadRequestException(
         'A few more exchanges are needed before this check-in can close - the record is still thin. Answer one or two more questions, then complete.',
+      );
+    }
+    const totalPersonChars = personTurnRows.reduce((sum, t) => sum + (t.content?.trim().length ?? 0), 0);
+    const MIN_SUBSTANTIVE_CHARS = 120; // roughly two real sentences total, not three one-word replies
+    if (totalPersonChars < MIN_SUBSTANTIVE_CHARS) {
+      throw new BadRequestException(
+        'These answers are pretty short - the record needs a bit more detail before this check-in can close. Add specifics (names, numbers, what actually happened), then complete.',
       );
     }
 
@@ -1038,6 +1092,47 @@ Open the session by naming this specific inference directly. Do NOT ask the stan
         status: CheckInStatus.NOT_STARTED,
         isClarification: true,
         clarificationTarget: inferenceId,
+      },
+    });
+
+    return { checkInId: checkIn.id };
+  }
+
+  /**
+   * Create a self-correction check-in so a participant can go back and correct
+   * or add to what they said in a specific PAST session of their OWN record
+   * (not the shared report - that's startClarificationSession above). The AI
+   * probes for the correction using the standard conversation prompts, rather
+   * than the participant typing a free-text edit directly.
+   */
+  async startSelfCorrectionSession(requestingUserId: string, groundId: string, targetSessionNumber: number): Promise<{ checkInId: string }> {
+    const participant = await this.prisma.groundParticipant.findFirst({
+      where: { groundId, userId: requestingUserId },
+    });
+    if (!participant) throw new ForbiddenException('You are not a participant on this ground');
+
+    const targetCheckIn = await this.prisma.checkIn.findUnique({
+      where: { participantId_sessionNumber: { participantId: participant.id, sessionNumber: targetSessionNumber } },
+    });
+    if (!targetCheckIn || targetCheckIn.status !== CheckInStatus.COMPLETED) {
+      throw new NotFoundException('That session is not a completed check-in on this ground');
+    }
+
+    const lastCheckIn = await this.prisma.checkIn.findFirst({
+      where: { participantId: participant.id },
+      orderBy: { sessionNumber: 'desc' },
+      select: { sessionNumber: true },
+    });
+    const nextSession = (lastCheckIn?.sessionNumber ?? 0) + 1;
+
+    const checkIn = await this.prisma.checkIn.create({
+      data: {
+        groundId,
+        participantId: participant.id,
+        sessionNumber: nextSession,
+        status: CheckInStatus.NOT_STARTED,
+        isSelfCorrection: true,
+        selfCorrectionTargetSession: targetSessionNumber,
       },
     });
 
