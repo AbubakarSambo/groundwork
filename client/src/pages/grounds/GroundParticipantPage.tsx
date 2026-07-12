@@ -706,8 +706,16 @@ export function GroundParticipantPage() {
 
             {!report ? (
               <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: 24, textAlign: 'center' }}>
-                <div style={{ fontSize: 13, color: '#9B9590', marginBottom: 4 }}>No report yet.</div>
-                <div style={{ fontSize: 12, color: '#9B9590' }}>The report generates once all parties have checked in.</div>
+                <div style={{ fontSize: 13, color: '#9B9590', marginBottom: 4 }}>
+                  {ground?.sessionProgress
+                    ? `Report pending - ${ground.sessionProgress.completed} of ${ground.sessionProgress.total} checked in`
+                    : 'No report yet.'}
+                </div>
+                <div style={{ fontSize: 12, color: '#9B9590' }}>
+                  {ground?.sessionProgress?.requestingUserIsMissing
+                    ? "You haven't completed this round yet - that's part of what's holding the report."
+                    : 'The report generates once all parties have checked in.'}
+                </div>
               </div>
             ) : !report.releasedAt ? (
               <div style={{ background: '#EEF4FB', border: '1px solid #BFDBFE', borderRadius: 10, padding: '14px 16px' }}>
@@ -733,6 +741,20 @@ export function GroundParticipantPage() {
               </div>
             ) : (
               <>
+                <button
+                  onClick={() => navigate(`/grounds/${id}/report`)}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
+                    background: '#0A1628', color: 'white', border: 'none', borderRadius: 10,
+                    padding: '12px 16px', cursor: 'pointer', fontFamily: 'inherit',
+                  }}
+                >
+                  <span style={{ fontSize: 13, fontWeight: 700 }}>
+                    {(report as any).forming ? 'View the forming report (Venn view)' : 'View the full shared report (Venn view)'}
+                  </span>
+                  <span style={{ fontSize: 13 }}>→</span>
+                </button>
+
                 {/* Participant report sections */}
                 {report.pattern && (
                   <div style={{ background: '#0A1628', color: 'white', borderRadius: 10, padding: '14px 16px' }}>

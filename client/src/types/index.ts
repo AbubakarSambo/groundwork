@@ -99,6 +99,13 @@ export interface Ground {
   checkIns?: CheckInSummary[]
   signals?: GroundSignal[]
   report?: { id: string; releasedAt: string | null; createdAt?: string } | null
+  sessionProgress?: {
+    sessionNumber: number
+    total: number
+    completed: number
+    missingParticipantIds: string[]
+    requestingUserIsMissing: boolean
+  } | null
   sessionsBalance?: number
   isFreeGround?: boolean
   joinToken?: string | null
@@ -130,6 +137,9 @@ export interface Report {
     documentBacked: boolean
     note: string
     parties: { label: string; sessions: number; recordEntries: number; documentsAttached: number; contributed: boolean }[]
+    hiddenContributors?: { label: string; evidence: string }[]
+    concernFlags?: { label: string; observation: string }[]
+    specificityCauses?: { label: string; cause: 'behavioral' | 'misunderstanding' | 'adversarial' | 'unclear'; note: string }[]
   } | null
   // Spec payload fields (cross-ref / resolution report)
   pattern?: string

@@ -119,7 +119,7 @@ describe('GW-PATTERN-PROBE-NOT-STATEMENT: patterns sharpen questions live, never
         return { sharedPicture: '', agreements: [], divergences: [], centralQuestion: '', concernFlags: [{ label: 'founder', observation: 'Completion was claimed without downstream confirmation.' }] };
       }),
     };
-    const reportsService = new ReportsService(reportPrisma, reportPrompts, reportAnthropic, {} as any, {} as any, {} as any);
+    const reportsService = new ReportsService(reportPrisma, reportPrompts, reportAnthropic, {} as any, {} as any, {} as any, {} as any);
     const report = await reportsService.synthesize('g1');
 
     // eslint-disable-next-line no-console

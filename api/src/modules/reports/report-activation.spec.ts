@@ -21,7 +21,7 @@ function makeService(prismaOverrides: any) {
     groundParticipant: { findFirst: jest.fn() },
   };
   const prisma = { ...base, ...prismaOverrides };
-  return new ReportsService(prisma, {} as any, {} as any, {} as any, {} as any, MOCK_USAGE);
+  return new ReportsService(prisma, {} as any, {} as any, {} as any, {} as any, MOCK_USAGE, {} as any);
 }
 
 const releasedReport = {

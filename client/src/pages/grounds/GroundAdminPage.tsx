@@ -632,6 +632,22 @@ export function GroundAdminPage() {
               </div>
             )}
 
+            {(report?.releasedAt || (report as any)?.forming) && (
+              <button
+                onClick={() => navigate(`/grounds/${id}/report`)}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
+                  background: 'var(--gw-navy)', color: 'white', border: 'none', borderRadius: 10,
+                  padding: '14px 18px', marginBottom: 16, cursor: 'pointer', fontFamily: 'inherit',
+                }}
+              >
+                <span style={{ fontSize: 13, fontWeight: 700 }}>
+                  {(report as any)?.forming ? 'View the forming report (Venn view)' : 'View the full shared report (Venn view)'}
+                </span>
+                <span style={{ fontSize: 13 }}>→</span>
+              </button>
+            )}
+
             {report?.releasedAt ? (
               <div>
                 {/* Pattern */}

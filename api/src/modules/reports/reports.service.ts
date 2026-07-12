@@ -6,6 +6,7 @@ import { PromptsService } from '../prompts';
 import { AnthropicService } from '../conversation';
 import { EmailService } from '../email/email.service';
 import { UsageService } from '../usage/usage.service';
+import { GroundsService } from '../grounds';
 import { GroundStatus, PartyType, CheckInStatus, GroundScenario, UsageEventType, ReportActivationStatus, PatternStatus } from '@prisma/client';
 import { NEW_STARTING_REPORT_SCHEMA, RECOGNITION_REPORT_SCHEMA, DRIFT_REPORT_SCHEMA } from '../conversation/prompt-library';
 import { BAD_FAITH_CODES, POSITIVE_CODES, ALIGNMENT_FEED_ONLY_CODES, isPositiveCode } from '../patterns/pattern-library';
@@ -145,13 +146,18 @@ const REPORT_SCHEMA = {
         },
         description: 'Claims in this report that were inferred from context rather than directly stated. Empty array if everything is directly quoted.',
       },
-      // Minimal prerequisite for Option B (longitudinal pattern evidence into
-      // the report): this field and SYNTHESIS RULE 10 below were referenced by
-      // the task as "existing" infrastructure but were not actually committed
-      // anywhere in history - added here as the narrow slice this work depends
-      // on, without pulling in unrelated uncommitted schema fields sitting in
-      // the same area of this file (hiddenContributors, specificityCauses,
-      // leadCalibrationNote, etc. - out of scope for this change).
+      hiddenContributors: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            label: { type: 'string', description: "Whose record references this contributor (e.g. 'the project owner')." },
+            evidence: { type: 'string', description: 'Brief paraphrase of what the record says about this uncredited contributor.' },
+          },
+          required: ['label', 'evidence'],
+        },
+        description: "People whose input, work, or decisions are referenced in a party's record but who are not themselves a party with their own account on this ground - i.e. someone contributing behind the scenes with no voice here. Empty array if none.",
+      },
       concernFlags: {
         type: 'array',
         items: {
@@ -163,6 +169,19 @@ const REPORT_SCHEMA = {
           required: ['label', 'observation'],
         },
         description: "Factual observations, grounded only in what is in the record, where one party's contribution shows reduced follow-through, unmet commitments, or is notably thinner than other parties' on this same ground. Frame as an observation about the record, never a judgement of the person. Empty array if nothing in the record supports this.",
+      },
+      specificityCauses: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            label: { type: 'string' },
+            cause: { type: 'string', enum: ['behavioral', 'misunderstanding', 'adversarial', 'unclear'] },
+            note: { type: 'string', description: 'One sentence explaining why this cause was inferred.' },
+          },
+          required: ['label', 'cause', 'note'],
+        },
+        description: "Where a party's specificity is notably low or high, name the likely cause if it is inferable from the record itself: a behavioral pattern (e.g. consistently vague), a misunderstanding (e.g. confused about scope), an adversarial stance (e.g. deliberately withholding), or 'unclear' if there is not enough evidence to say. Do not guess beyond what the record supports. Empty array if not inferable.",
       },
     },
     required: ['sharedPicture', 'agreements', 'divergences', 'centralQuestion', 'inferences'],
@@ -180,6 +199,7 @@ export class ReportsService {
     private email: EmailService,
     private config: ConfigService,
     private usage: UsageService,
+    private grounds: GroundsService,
   ) {}
 
   /**
@@ -277,7 +297,10 @@ SYNTHESIS RULES (override all other instructions if there is a conflict):
 6. LABEL INFERENCES. Any claim you make that is not a direct quote from the record is an inference. List every inference in the inferences array with its id, text, participantLabel, and reason. An inference is anything you concluded from context, implied meaning, or pattern - not from an explicit statement. If a claim appears in the report body and is not a direct quote, it must appear in inferences. An empty inferences array means everything in the report is directly quoted.
 7. CROSS-REFERENCE SESSIONS. Each record entry is labeled with the session it came from (e.g. "[the initiator session 1]", "[participant A session 3]"). If the same party's position has changed across sessions, name that change explicitly - "in session 1 the initiator described X; by session 3 they described Y." If a commitment from an earlier session has not been followed up in later sessions, name it. The longitudinal arc is the product's core value. A report that reads as a snapshot of only the latest session has failed.
 8. NO FALSE CONSENSUS. Do not write "both parties agree" or "all parties are aligned" unless every party's record contains explicit matching statements on that specific point. If parties described the same topic differently in any session, that is a divergence - surface it. Smoothing a disagreement into apparent consensus is a more serious error than noting the gap.
-9. FLAG CONCERN PATTERNS FACTUALLY, NEVER AS ACCUSATION. If the record shows one party's follow-through, commitments, or contribution is notably thinner than other parties' on the same ground, note it in concernFlags as a plain factual observation about the record - not a judgement of the person. Do not speculate about motive.`;
+9. SURFACE HIDDEN CONTRIBUTORS. If any party's record references someone else's input, work, or decisions - someone who is not themselves a party with their own account on this ground - name them in hiddenContributors with the evidence. Do not invent a hidden contributor; only surface what is explicitly referenced.
+10. FLAG CONCERN PATTERNS FACTUALLY, NEVER AS ACCUSATION. If the record shows one party's follow-through, commitments, or contribution is notably thinner than other parties' on the same ground, note it in concernFlags as a plain factual observation about the record - not a judgement of the person. Do not speculate about motive.
+11. NAME THE CAUSE OF LOW OR HIGH SPECIFICITY WHEN INFERABLE. If a party's specificity is notably low or high, use specificityCauses to say why if the record supports an inference: a behavioral pattern, a misunderstanding, an adversarial stance, or "unclear" if the record does not support a specific cause.
+12. NEVER INVENT PARTY COUNTS OR ROLES. The PARTY ROSTER at the top of this corpus is the exhaustive, exact list of who is on this ground - use its exact count and exact labels only. Never state a number of parties, an "other parties" count, or a role/title/affiliation (e.g. "founder", "funders", "the board") that does not appear verbatim in the roster. If you are unsure how many parties are missing or who they are, use the roster's own wording rather than describing them yourself.`;
 
 
     // Note any invited party who contributed no record - surfaced as an absence,
@@ -300,6 +323,22 @@ SYNTHESIS RULES (override all other instructions if there is a conflict):
           .map((p) => labelById.get(p.id))
           .join(', ')}. Reflect this as an absence; do not infer their views.\n\n`
       : '';
+
+    // DETERMINISTIC ROSTER: the corpus below only contains text from parties
+    // who produced record entries. Without an explicit roster, the model has
+    // to guess how many other parties exist and what their roles are from
+    // context alone - and it will invent wrong counts and role names. This
+    // roster is the ONLY source of truth for "who is on this ground."
+    const recordEntryCountByParty = new Map<string, number>();
+    for (const r of records) {
+      recordEntryCountByParty.set(r.participant.id, (recordEntryCountByParty.get(r.participant.id) ?? 0) + 1);
+    }
+    const rosterLines = parties.map((p) => {
+      const label = labelById.get(p.id) ?? 'a party';
+      const entryCount = recordEntryCountByParty.get(p.id) ?? 0;
+      return `- ${label}: ${entryCount > 0 ? `contributed ${entryCount} record entr${entryCount === 1 ? 'y' : 'ies'} (shown below)` : 'checked in but has no record entries with text - do not describe their views, role, or affiliation beyond this exact label'}`;
+    });
+    const roster = `PARTY ROSTER (exhaustive - there are exactly ${parties.length} parties on this ground, no others exist):\n${rosterLines.join('\n')}\n\n`;
 
     // THIN-RECORD NOTICE: compute turn counts per participant to detect parties
     // whose record is much thinner than others, and warn the synthesis accordingly.
@@ -414,7 +453,7 @@ SYNTHESIS RULES (override all other instructions if there is a conflict):
     // to either person directly") are excluded here exactly as they are from the
     // live conversation - the report is read by the parties themselves, so the same
     // rule applies. Bad-faith codes are routed toward concernFlags per SYNTHESIS
-    // RULE 9 (factual, never an accusation); the one positive code (R3, Named
+    // RULE 10 (factual, never an accusation); the one positive code (R3, Named
     // Collaborator) is explicitly told NOT to go in concernFlags - that field's own
     // schema is scoped to reduced follow-through/thinner contribution, and forcing a
     // compliment into a "concern" field would mischaracterize it.
@@ -431,12 +470,13 @@ SYNTHESIS RULES (override all other instructions if there is a conflict):
         const observation = rawObservation.trim().replace(/[.!?]+$/, '');
         return isPositiveCode(p.code)
           ? `NOTE [longitudinal pattern evidence - positive, code ${p.code} ${name}]: ${label} - ${observation}. This is a positive signal, not a concern. Reflect it in the narrative or hiddenContributors if the record supports it. Do NOT place this in concernFlags - that field is for reduced follow-through or thinner contribution only.`
-          : `NOTE [longitudinal pattern evidence - code ${p.code} ${name}]: ${label} - ${observation}. If the record itself corroborates this, note it in concernFlags as a plain factual observation about the record per synthesis rule 9 - never an accusation, never a judgement of the person, never speculation about motive. If the record does not corroborate it, do not include it.`;
+          : `NOTE [longitudinal pattern evidence - code ${p.code} ${name}]: ${label} - ${observation}. If the record itself corroborates this, note it in concernFlags as a plain factual observation about the record per synthesis rule 10 - never an accusation, never a judgement of the person, never speculation about motive. If the record does not corroborate it, do not include it.`;
       });
     const patternNotice = patternNotices.length ? patternNotices.join('\n') + '\n\n' : '';
 
     const corpus =
       groundContextHeader +
+      roster +
       thinNotice +
       header +
       longitudinalNotice +
@@ -465,9 +505,15 @@ SYNTHESIS RULES (override all other instructions if there is a conflict):
         ? DRIFT_REPORT_SCHEMA
         : REPORT_SCHEMA;
 
-    let result: { sharedPicture: string; agreements: string[]; divergences: any[]; centralQuestion: string; concernFlags?: { label: string; observation: string }[] } | null;
+    type SynthesisResult = {
+      sharedPicture: string; agreements: string[]; divergences: any[]; centralQuestion: string;
+      hiddenContributors?: { label: string; evidence: string }[];
+      concernFlags?: { label: string; observation: string }[];
+      specificityCauses?: { label: string; cause: string; note: string }[];
+    };
+    let result: SynthesisResult | null;
     try {
-      result = await this.anthropic.extract<{ sharedPicture: string; agreements: string[]; divergences: any[]; centralQuestion: string; concernFlags?: { label: string; observation: string }[] }>(
+      result = await this.anthropic.extract<SynthesisResult>(
         systemPrompt,
         [{ role: 'user', content: corpus }],
         activeSchema,
@@ -484,7 +530,7 @@ SYNTHESIS RULES (override all other instructions if there is a conflict):
     if (wordCount > 500) {
       const brevityPrefix =
         'The previous report was too long. Regenerate under 500 words total. Preserve all four sections and the central question. Cut explanatory language, not substance.\n\n';
-      const retry = await this.anthropic.extract<{ sharedPicture: string; agreements: string[]; divergences: any[]; centralQuestion: string; concernFlags?: { label: string; observation: string }[] }>(
+      const retry = await this.anthropic.extract<SynthesisResult>(
         systemPrompt,
         [{ role: 'user', content: brevityPrefix + corpus }],
         activeSchema,
@@ -670,7 +716,9 @@ SYNTHESIS RULES (override all other instructions if there is a conflict):
       recallNotes,
       docStatus,
       session2Focus,
+      hiddenContributors: result.hiddenContributors ?? [],
       concernFlags: result.concernFlags ?? [],
+      specificityCauses: result.specificityCauses ?? [],
     };
 
     const inferences = ((result as any).inferences ?? []) as Array<{ id: string; text: string; participantLabel: string; reason: string }>;
@@ -829,7 +877,21 @@ SYNTHESIS RULES (override all other instructions if there is a conflict):
       if (isInitiator || isOrgAdmin) {
         return { id: ground.report.id, groundId, createdAt: ground.report.createdAt, releasedAt: null, nextStep: isInitiator ? 'release' : 'wait' };
       }
-      throw new ForbiddenException('Report has not been released yet - the initiator will notify you when it is ready.');
+      // Before everyone has checked in, the report is a forming picture, not
+      // a final one - show it as such rather than blocking participants
+      // entirely. No mutual-reveal gate applies here: that gate exists to
+      // protect the FINAL simultaneous reveal, not a picture that is still
+      // openly incomplete for everyone, initiator included.
+      const sessionProgress = await this.grounds.getSessionProgress(groundId);
+      const requestingUserIsMissing = !!(
+        sessionProgress && participant && sessionProgress.missingParticipantIds.includes(participant.id)
+      );
+      return {
+        ...ground.report,
+        activated: true,
+        forming: true,
+        sessionProgress: sessionProgress ? { ...sessionProgress, requestingUserIsMissing } : null,
+      };
     }
 
     // Mutual reveal gate: participants must activate before seeing content.
