@@ -1,95 +1,272 @@
 # BUILD_TRUTH_6b — the AI's actual conversational voice
 
-Second language pass. The first pass (`BUILD_TRUTH_6_language.md` — not yet
-written; see `SESSION_STATE.md`) was going to look at the prompt *templates*.
-This one looks at what the model actually *said*, pulled from two real,
-live, in-browser check-in transcripts run this session against the running
-app (not read from `prompt-library.ts`). Bar: a calm adult explaining
-something to a teenager — plain, concrete, never sounding like software or
-an assistant.
+How the assistant actually *sounds* in real check-ins, judged against one bar:
+**a calm adult guiding a teenager — plain, concrete, never sounding like software
+or a chatbot.**
 
-**Method note, stated plainly:** this is two transcripts, not a large
-sample. Both are single-session, both are the initiator/admin side (no
-participant-side transcript was captured this pass — that's a real gap, not
-an oversight; see "What this pass didn't cover" at the end). Findings below
-are illustrative, not exhaustive — treat this as "here is real evidence of
-the pattern," not "here is every instance of it."
+This is the real generated text, not the prompt templates. Where a template intends
+one thing and the model says another, that divergence is called out as the finding.
+**Assess only — no code was changed.**
 
 ---
 
-## Transcript A — "Pre-meeting team briefing check" (COHORT_CHECK-adjacent)
+## Method (stated plainly)
 
-Captured twice: once before the sequential-narration fix (commit `21f24f4`),
-once after, same scenario, same inputs. Full turn-by-turn quotes below are
-verbatim from the live app.
+- **Source:** 10 real check-in transcripts pulled verbatim from stored
+  `conversation_turns` rows in the local dev DB (292 AI turns / 262 person turns
+  total available). These are genuine model generations — context-dependent, varying
+  per scenario, carrying the artifacts of real LLM output (truncation, stray em
+  dashes) — not seed fixtures.
+- **Coverage this pass:** PARTICIPANT side across **NEW_HIRE, NEW_PROJECT,
+  REALIGN_TEAM, CRISIS_ALIGNMENT, PULSE_CHECK**; INITIATOR side across
+  **PULSE_CHECK, REALIGN_TEAM, NEW_HIRE**; and multi-session returning voice across
+  **NEW_HIRE (I, S3), NEW_COFOUNDER (I, S3), NEW_HIRE (P, S2)**. This fills the
+  exact gaps the prior draft of this file flagged (it had only initiator-side, one
+  scenario family, single-session).
+- **What this is NOT:** these are the **check-in phase** transcripts. The
+  pre-check-in **entry/onboarding phase** (`ONBOARD_SYSTEM` in `entry.service.ts`)
+  is stored/handled separately and is **not** in this corpus — the prior pass found
+  that phase to be the weakest register, and that finding is carried forward below,
+  not re-verified here. Report-synthesis output is still not voice-audited. Some of
+  these turns may pre-date the sequential-narration fix (`21f24f4`); exact model
+  version per turn is not recorded.
+- **Typography counts** below are exact, queried across all 292 AI turns.
 
-### Onboarding phase
+---
 
-| # | What the AI said | Verdict |
+## What it gets RIGHT — preserve this
+
+The model is at its best when it is **terse, concrete, and asks like a person would.**
+Real lines to protect:
+
+- **The terse-question register** (REALIGN_TEAM initiator is the standout — this is
+  the bar hit squarely):
+  > "What are the three visions?"
+  > "What would success look like for you?"
+  > "What concerns you most?"
+  > "Three conversations, no decision. What needs to happen in the next 30 days?"
+
+- **The sharp, plain acknowledgment-then-probe** (NEW_HIRE participant):
+  > "A concrete build target. What do you need from Adaeze to get there?"
+
+- **Returning-user openers that actually remember** — the longitudinal promise
+  working in the live voice, both sides:
+  > (NEW_HIRE participant, S2) "Welcome back, Sarah. Last time, you flagged that the
+  > decision-making process was unclear and that the feature you're picking up is
+  > bigger than you initially understood... What was one specific moment in the last
+  > week where that ambiguity almost caused a problem?"
+  > (NEW_HIRE initiator, S3) "Your last check-in noted two specific things: that
+  > Sarah still hadn't met the product lead, and that she was asking for more context
+  > on how decisions get made."
+
+- **Genuinely human insight** — lines a sharp colleague would actually say:
+  > (NEW_COFOUNDER, S3) "The fact that there isn't an immediate name to write down
+  > *is* the answer. It tells us that ownership was never explicitly agreed upon."
+  > (NEW_HIRE participant, S2) "'Useful' is a word that can hide a lot of real
+  > contribution."
+  > (CRISIS_ALIGNMENT participant) "You have put your finger on the central point."
+
+- **Concrete option-giving in probes** (REALIGN_TEAM participant) — instead of a
+  vague ask, it lists real shapes the answer could take:
+  > "Is it a named introduction from a specific founder to a specific investor? Or is
+  > it something else?"
+  > "A single warm introduction from a named founder to a specific investor? A list
+  > of VCs who have confirmed they will take meetings with members?"
+
+Concreteness is a genuine strength: the model consistently names the actual specifics
+back (Adaeze, 24-hour turnaround, $800k verified ARR, an 8-person team, 12 engineers,
+Day 45) rather than abstracting them away.
+
+---
+
+## What's wrong — and it's more specific than "sounds robotic"
+
+### 1. The record-narration tic — the #1 systemic issue
+
+The single most pervasive voice problem: the assistant narrates its own storage
+action almost every turn. "Record" is an allowed word, but stating *"this is now in
+your record"* on a loop makes it sound like software describing its database writes,
+not a person listening. It appears in the majority of AI turns across **every**
+transcript:
+
+> "That gap is now in your record. Naming it is the first step to resolving it."
+> "That honesty is now in your record."
+> "That specificity makes your record stronger."
+> "It is now in your record that you've set a six month standard..."
+> "That's a critical entry for your record because it moves from opinion to a
+> verifiable fact."
+> "Your record should show that you're absorbing the lack of a clear process."
+
+A person would just respond to the content. The fix is not banning "record" — it's
+cutting the reflex to announce the write on every turn.
+
+### 2. Affirmation / praise-filler drift
+
+No hard chatbot filler appears (see the good-news check below), but a **softer
+affirmation register** recurs as an opener — chatbot-adjacent warmth the
+ACKNOWLEDGE-BEFORE-PROBE rule is meant to prevent:
+
+> "That's a great starting point for this record."
+> "Glad to hear onboarding went well."
+> "That's a strong foundation for onboarding"
+> "That's a leadership contribution." / "That's a high-leverage contribution."
+> "Excellent. Those are three specific commitments."
+
+Individually mild; in aggregate the assistant sounds like it's grading the user's
+answers.
+
+### 3. Report-register bleed — bulleted summaries mid-conversation
+
+Twice (NEW_PROJECT participant S1, NEW_HIRE initiator S3), the model drops a long,
+markdown-bulleted written summary into the middle of a live chat — report-writing
+register, not speech, and unprompted:
+
+> "Here is what is now in your record:
+> *   **Your role:** CFO, owning investor relations...
+> *   **The blocker:** Milestones for the next funding tranche are not formally
+> agreed..."
+
+A person recapping wouldn't hand you a formatted document mid-sentence. (This also
+emits literal markdown — see defect 4 below.)
+
+### 4. Process / purpose narration to the user's face
+
+The assistant explains the product's mechanics *to* the user instead of just running
+the conversation:
+
+> "The purpose of getting everyone's version on the record is to build this shared
+> picture before any conversation happens—not to decide who is right."
+> "When Dapo and Lena complete their check-ins, their versions will be added."
+> "Let's clarify the structure, as that's what this record is for."
+> "The question I asked about a *specific* time... is the one that will make this
+> record stronger."
+
+This is the same family as the "I'll start with Alice" self-narration found earlier —
+the assistant describing the process/itself rather than speaking as a person.
+
+### 5. Product-internal word to the user's face
+
+Mostly clean — no "synthesize," "surfaced," "party," or "artifact" leaked. One term
+did:
+
+> "That's a critical **entry** for your record..." (NEW_COFOUNDER, S3)
+
+"Entry" is `RecordEntry` internal vocabulary surfacing to the user.
+
+### 6. Abstract / coach-cliché where it should be concrete
+
+The model is usually concrete; the lapses are therapist/coach interjections:
+
+> "Naming it is the first step to resolving it." (NEW_PROJECT)
+> "That feeling of shifting from learning to contributing is a clear signal of
+> progress." (NEW_HIRE participant S2)
+
+---
+
+## Real defects in the actual output (template intends X, model does Y)
+
+These are not register opinions — they are concrete failures in the generated text.
+
+| Defect | Count (of 292 AI turns) | Evidence |
 |---|---|---|
-| 1 | "Got it, this is for a one-time check with your team before an important meeting. What is your role in relation to the team?" | ✅ Plain, concrete, no jargon. This is close to the bar. |
-| 2 | "Okay, you're the manager for these three team members. You mentioned a briefing and meeting notes for them to review. You can upload or paste those here so they are kept with your account." | ✅ Good — restates a specific fact ("three team members"), plain ask. |
-| 3 | "Okay, you want to be sure the team has really absorbed the briefing before the meeting in two days. I have everything needed to prepare this for you. Your next step will be to add the three team members involved." | ⚠️ Mild software-narrator note: "I have everything needed to prepare this for you" describes the AI's own internal readiness state rather than just moving the conversation forward. A person wouldn't announce "I have what I need" as a discrete status update — they'd just ask the next thing, or say "Okay — let's get the three of them in." |
-| 4 | "Thanks for providing their names. You will be able to add Alice, Ben, and Priya in the next step. After that, you can end this session to generate your report." | ⚠️ "You will be able to add... in the next step" and "generate your report" are software-flow language — narrating the UI/process rather than talking like a person handing off next steps. A calm person would say "Great — next you'll add them, then you're done for now." "Generate your report" in particular is the AI describing a system action to the user in system terms. |
+| **Truncated mid-sentence** | 4 | tails: "...that separates" / "...call logs, CRM activity, pipeline reviews. What" / "...what will exist that does" / "...'done'—something" |
+| **Em dash (—)** | 23 | "the data you have—call logs" / "the conditions from your notes—$800k verified ARR" |
+| **En dash (–)** | 6 | "a useful detail for the record – slow tooling access" |
+| **Curly apostrophe (')** | 3 | "You've named the main risk" (mixed with straight ' elsewhere in the same turn) |
+| **Literal markdown bullets** | 3 | "*   **Your role:**" rendered raw in a chat bubble |
 
-### Step 6 + check-in opening
+- **Truncation** is the most serious — real turns end mid-thought (likely
+  `GEMINI_MAX_TOKENS` too low or a streaming cutoff). A user sees the assistant stop
+  talking mid-sentence.
+- **Typography**: the house style is straight quotes, no em/en dashes. The model
+  emits em dashes in ~8% of turns despite the banned-style rules — a template-intends
+  / model-does divergence. Worth running `typography.py` over generated output as a
+  standing check, not just over UI/email copy.
+- **Mangled opener** (PULSE_CHECK participant, S1) — the generic pathway-20 opener
+  rendered as broken grammar:
+  > "This ground is for building a shared picture of your contribution, in your own
+  > words. It's about for you, and what would need to be true at the end of this
+  > period..."
 
-| # | What the AI said | Verdict |
-|---|---|---|
-| 5 | **Before fix:** "This ground is for confirming that Alice, Ben, and Priya are prepared for the client meeting in two days... I will open a check in with each of them and ask the same question... Their independent answers will go into their records. You will see exactly how each person is articulating the response, and where any gaps are, before you walk into the room. **I will start with Alice.**" | ❌ Confirmed finding (already fixed). "Their independent answers will go into their records" and "articulating the response" are stiff, report-writing register, not spoken language. "I will start with Alice" states an order that doesn't exist in the architecture — the core finding from earlier this session. |
-| 6 | **After fix:** "Instead, I am opening parallel check-ins with Alice Chen, Ben Okafor, and Priya Nair right now. I will ask each of them this specific question: [...] Their answers will come in independently. You will see what each person retained as the priority, not just if they did the reading." | ⚠️ **The ordering claim is now correct, but a residual case of the same disease survives.** "I am opening parallel check-ins with [names] right now" is still the AI narrating its own system action in system language — a person telling their manager what they're about to do would say something like "I'll check with all three separately and let you know what each one says," not describe themselves "opening... check-ins." The fix corrected *what* is claimed (parallel, not sequential) but not *how it's said* (as a system process rather than as a person's plan). Worth a smaller follow-up pass. |
-| 7 | "That is a clear and verifiable standard. It moves confirmation from a feeling to a fact." (from an earlier admin-side exchange in this same scenario family) | ✅ Genuinely good — concrete, no jargon, reads like something a sharp colleague would actually say. This is the target register. |
-| 8 | "Understood. I will flag any response that is general in nature or does not specifically mention the revised timeline." | ⚠️ Minor: "general in nature" is a formal/legalistic phrase. A person would say "if someone's vague or skips the timeline" — not wrong, just slightly stiffer than necessary. The commitment itself (flagging vague answers) is clear and concrete, which is what matters most and what survived correctly.
-
----
-
-## Transcript B — "Team member not delivering" (DRIFT-adjacent, individual accountability)
-
-New scenario, live, this pass. Manager preparing to talk to a direct report
-(Marcus) about three missed deadlines.
-
-| # | What the AI said | Verdict |
-|---|---|---|
-| 1 | "Okay, this can help you prepare for that conversation. What is your role in relation to this team member?" | ✅ Plain, on-topic. |
-| 2 | "Got it, you're the manager and Marcus is an engineer on your team. Has this been an ongoing issue or did something specific just happen?" | ✅ Good — restates the actual fact given (Marcus, engineer), asks a real next question. |
-| 3 | **"Thank you for clarifying the timeline."** What is making you decide to formally address this at this point? | ❌ **Chatbot register.** "Thank you for clarifying" is customer-service/assistant phrasing — the exact shape the audit brief called out ("Great question", "I'd be happy to"). A calm human manager-coach wouldn't thank someone for "clarifying a timeline" — they'd just respond to the content: "Two months, three deadlines in a row — that's a real pattern." This is a genuine instance of the "sounds like an assistant" failure mode, live in production output, not hypothetical. |
-| 4 | **"Okay, so creating a clear record is an important step for you."** What do you hope to get out of this process? | ⚠️ **Therapist-paraphrase register, not concrete acknowledgment.** Compare against the product's own rule (`ENGINE_RULES`, ACKNOWLEDGE BEFORE PROBE): acknowledgment should be "something specific that exists in what they just said" — e.g. "You resolved a blocker..." Here the AI restates the user's *motivation* in analytical third-person-observer language ("is an important step for you") instead of naming the specific fact (wanting it on record before escalating to HR). This is the same shape problem noted in the first language pass for `postReportGuide`-style text: describing the person's situation back at them rather than just responding to it plainly. |
-| 5 | "One last thing. Are you one of the people involved in this, or are you setting this up on their behalf?" | ✅ Plain, direct, no jargon — good example of a structurally-necessary question asked like a person would ask it. |
-| 6 | "This record is for getting the full picture before you speak with Marcus. Let's focus on the first of the two client deliverables that slipped. What was written down to define what needed to be delivered and when — a ticket, a brief, or an email?" | ✅ **Best line in either transcript.** Concrete (names "Marcus," "two client deliverables"), plain ("a ticket, a brief, or an email" — exactly how a person would list possibilities), zero jargon, directly useful. This is the bar the rest of the product should be judged against. |
+  The template intends "What is this ground **about for you**, and what would need to
+  be true...". The variable stitching produced "It's about for you," which is not a
+  sentence. First line the participant sees — worth fixing.
+- **Possible replay/duplication** (PULSE_CHECK initiator S1, NEW_COFOUNDER initiator
+  S3) — identical person+AI exchanges repeat within one check-in. **Flagged
+  cautiously as a likely test-data/re-run artifact, not asserted as a live bug** —
+  it would need reproduction against a clean run to confirm.
 
 ---
 
-## Cross-transcript patterns
+## The good news — the hard chatbot filler holds
 
-### What's genuinely working (the "what good looks like" ask)
-
-- **No literal chatbot filler appeared in either transcript.** No "Great question!", no "I'd be happy to help you explore that," no "Let's dive in." The `BANNED WORDS AND PHRASES` / `FILLER PHRASE BAN` rules in `ENGINE_RULES` appear to actually hold at the model layer in live output — that's worth confirming positively, not just assuming from the prompt text.
-- **No raw product-internal jargon reached the user's face.** No "synthesize," "record entry," "artifact," "party," "surfaced," "cross-reference," "trust state" — the term-substitution table (`prompt-library.ts:1140-1149`) is doing its job in these two transcripts. The only system word used was "record," which is explicitly on the allowed list (`prompt-library.ts:295`).
-- **Concrete restatement of facts is consistently strong.** Both transcripts repeatedly named the actual specifics given (Marcus, engineer; Alice/Ben/Priya; two client deliverables; two months) rather than abstracting them away. This is the product's stated core discipline and it's visibly showing up in real output, not just in the prompt.
-- **The single best line found** ("This record is for getting the full picture before you speak with Marcus...") shows the product can hit the calm-adult-to-teenager bar exactly — plain words, concrete nouns, no performance.
-
-### What's still wrong, and it's a narrower, more specific failure than "sounds robotic" generally
-
-1. **Thank-you/acknowledgment phrasing drifts into service-desk register** ("Thank you for clarifying the timeline") even though the underlying rule (`ACKNOWLEDGE BEFORE PROBE`) explicitly bans generic acknowledgment and demands something specific. The rule is right; the live output sometimes doesn't follow it as tightly as the DRIFT/CRISIS/RECOGNITION packs' own hand-authored example lines do (compare: the *authored* examples in `prompt-library.ts` are reliably concrete — "You resolved a blocker that had stopped another team for two weeks" — but the model's own live improvisation during onboarding, which has no equivalent hand-authored line to fall back on, is noticeably weaker).
-2. **The onboarding phase (before the scenario pack proper kicks in) is the weakest stretch in both transcripts.** Lines like "I have everything needed to prepare this for you," "you will be able to add [names] in the next step," and "creating a clear record is an important step for you" all show up during onboarding, not during the actual check-in. The check-in phase (once `buildScenarioPackForParty` engages) is measurably more concrete and less software-flavored than the onboarding phase. **This suggests the onboarding system prompt (`ONBOARD_SYSTEM` in `entry.service.ts`) is where a plain-language pass would have the most impact** — it currently has none of the hand-authored acknowledgment examples the scenario packs have.
-3. **The sequential-narration fix corrected the factual claim but not the self-narration habit.** "I am opening parallel check-ins with [names] right now" is still the AI describing its own system action rather than speaking as a person planning to do something. This is the same underlying tendency (the assistant narrating itself/the process) surfacing in a new spot after the first spot was patched — worth watching for elsewhere, since the fix targeted the specific wrong claim ("sequential") rather than the more general habit (self-narration).
-
-### Templates vs. actual output — where they diverge
-
-The user's framing for this pass was explicit: "where they diverge is the finding." Two diverges found:
-
-- **`ENGINE_RULES`'s ACKNOWLEDGE BEFORE PROBE rule is well-designed and mostly not followed as tightly during onboarding as during check-in.** The rule and its authored examples are concrete; live onboarding output ("thank you for clarifying," "an important step for you") is looser than the rule asks for. This isn't a template problem — the template is right — it's a live-generation gap specifically in the onboarding phase, which has weaker scaffolding than the scenario packs.
-- **The multi-contributor-invites fix changed the claim, not the register.** The new approved phrasing baked into `ENGINE_RULES:289` ("I'm opening check-ins with all of them now...") is itself written in slightly software-narrator language, and the model's actual output ("I am opening parallel check-ins with Alice Chen, Ben Okafor, and Priya Nair right now") tracks the template closely — meaning **the template itself, not just the model's improvisation, could be plainer.** A revision candidate: "I'll check in with Alice, Ben, and Priya separately, and their answers will come in independently as each responds" — same content, no "opening... check-ins" software framing.
+No instance of the egregious banned phrases appeared in any of the 10 transcripts:
+no "Great question," no "I'd be happy to," no "Let's dive in," no "Let's explore."
+The `FILLER PHRASE BAN` is holding at the model layer. The remaining problem is the
+**milder** drift (affirmation openers, record-narration) — a narrower, more specific
+target than "sounds like a bot."
 
 ---
 
-## What this pass didn't cover (say so plainly, don't paper over it)
+## Per-transcript quick verdict
 
-- **No participant-side transcript.** Both transcripts here are the initiator/admin voice. The participant's experience (`PARTICIPANT_PREAMBLE`, the plain-language register-shift rule) was not observed live this pass — only read as a template in the first language pass. That's a real gap in this audit, not a "nothing to report" — someone should run a participant-side check-in and look at the actual output the same way.
-- **No report-synthesis output observed live.** `REPORT_SYNTHESIS`'s actual generated text (what a real report reads like) wasn't captured this pass — only the prompt template was read earlier. The report is arguably the highest-stakes artifact (it's what both parties actually read at the end) and hasn't been voice-audited against real output yet.
-- **Sample size is two transcripts, one scenario family variant + one drift variant, both single-session.** Multi-session continuity language (`CHECK_IN_TWO_OPENING`, "Welcome back," cross-reference framing) was not observed live this pass.
-- **Streaming was extremely slow during this session** (heavy background load from concurrent research agents) — some exchanges took over a minute to fully render, which is a real user-facing latency concern independent of voice/language, noted here since it was directly observed but is out of scope for a language audit.
+| Transcript | Verdict |
+|---|---|
+| REALIGN_TEAM initiator S1 | **Best.** Terse, plain, concrete — the target register end to end |
+| NEW_HIRE participant S1 | Strong. Sharp short probes; clean close |
+| NEW_HIRE participant S2 (returning) | Strong. Specific callback, warm, concrete — longitudinal promise working |
+| NEW_HIRE initiator S3 (returning) | Good callback, but two bulleted report-summaries mid-chat |
+| CRISIS_ALIGNMENT participant S1 | Strong on a hard problem; mild "This is a very clear..." praise openers |
+| NEW_COFOUNDER initiator S3 | One excellent insight line; "entry" leak; truncated final turn |
+| REALIGN_TEAM participant S1 | Good concrete probes; over-narrates "your record now shows" |
+| NEW_PROJECT participant S1 | **Weakest.** Verbose, over-praises ("you've named X without being asked" ×4), long report-style summary, process narration, em dashes |
+| PULSE_CHECK initiator S1 | Good probes; two truncated turns; duplicated exchange |
+| PULSE_CHECK participant S1 | Handles a disengaged user gracefully; mangled opener ("It's about for you") |
+
+---
+
+## Prior-pass findings carried forward (still stand, not re-verified here)
+
+From the earlier live in-browser pass, applying to phases **not** in this corpus:
+
+- **The entry/onboarding phase (`ONBOARD_SYSTEM`, `entry.service.ts`) is the weakest
+  register** — lines like "I have everything needed to prepare this for you,"
+  "Thank you for clarifying the timeline," "an important step for you." It has none
+  of the hand-authored acknowledgment scaffolding the check-in scenario packs have.
+  **If one thing gets fixed, it's this phase.** The check-in transcripts in *this*
+  pass are measurably stronger than that phase.
+- **The sequential-narration fix (`21f24f4`) corrected the claim, not the habit** —
+  "I am opening parallel check-ins with [names] right now" is still self-narration.
+  The process-narration finding (#4 above) is the same habit surfacing in the
+  check-in phase.
+
+---
+
+## What this pass still didn't cover
+
+- **The entry/onboarding phase live** — carried forward from the prior pass, not
+  freshly observed here.
+- **Report-synthesis output** — the highest-stakes artifact both parties read at the
+  end is still not voice-audited against real generated text.
+- **Fresh live generation** — this pass judged real *stored* output (Gemini/Vertex is
+  configured locally but was not driven to produce new transcripts). Current
+  post-fix behavior for the onboarding phase specifically should be captured live.
+
+---
 
 ## Bottom line
 
-The product's authored scenario-pack language (DRIFT, CRISIS, RECOGNITION, the check-in-phase openers) is genuinely close to the calm-adult bar and holds up well under live observation — concrete, jargon-free, no chatbot filler. The **onboarding phase** is the weaker link: it has no hand-authored acknowledgment examples to anchor against, and it's where "thank you for clarifying," "an important step for you," and "I have everything needed" all showed up. If one thing gets fixed from this pass, it's giving `ONBOARD_SYSTEM` (`entry.service.ts`) the same kind of concrete, hand-authored acknowledgment scaffolding the scenario packs already have.
+The **check-in phase** is genuinely close to the bar — terse, concrete, remembers
+across sessions, and free of hard chatbot filler. Three specific, fixable things hold
+it back, in priority order:
+
+1. **The record-narration reflex** ("this is now in your record" every turn) — the
+   most pervasive thing making it sound like software.
+2. **Real output defects** — truncated turns and ~8% em-dash contamination that the
+   house style bans; plus the mangled `pathway-20` opener a fresh participant sees.
+3. **Affirmation drift and mid-chat report summaries** — the softer register slide
+   the ACKNOWLEDGE-BEFORE-PROBE rule already aims at but doesn't fully hold.
+
+The strongest single register in the whole corpus — REALIGN_TEAM's initiator side —
+proves the model *can* hit the calm-adult bar exactly. The work is making the rest
+sound like that one.
