@@ -5,7 +5,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
 import { RegisterDto, LoginDto, AuthResponseDto, VerifyEmailDto, SetPasswordDto, ResendVerificationDto, ForgotPasswordDto, ResetPasswordDto, MagicLinkRegisterDto, MemberSigninDto, UpdateProfileDto } from './dto';
-import { Public, CurrentUser, CurrentUserData } from '../../common';
+import { Public, CurrentUser, CurrentUserData, Roles, Role } from '../../common';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -187,6 +187,7 @@ export class AuthController {
 
   @Post('team-invite')
   @ApiBearerAuth()
+  @Roles(Role.ADMIN)
   @HttpCode(HttpStatus.OK)
   @Throttle({ global: { limit: 10, ttl: 60000 } })
   @ApiOperation({ summary: 'Invite a colleague to Groundwork as a member of the same org' })

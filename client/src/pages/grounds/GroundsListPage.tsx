@@ -166,8 +166,8 @@ export function GroundsListPage() {
               <span style={{ fontSize: 18, fontWeight: 300 }}>+</span>
             </button>
 
-            {/* Invite a colleague */}
-            {!showInviteColleague ? (
+            {/* Invite a colleague - admin only, matches the backend guard on POST /auth/team-invite */}
+            {isAdmin && (!showInviteColleague ? (
               <button
                 onClick={() => setShowInviteColleague(true)}
                 style={{ width: '100%', padding: '11px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', marginBottom: 20, textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
@@ -206,7 +206,7 @@ export function GroundsListPage() {
                   </button>
                 </div>
               </div>
-            )}
+            ))}
 
             {/* Needs attention banner */}
             {!isLoading && needsAttention.length > 0 && (
