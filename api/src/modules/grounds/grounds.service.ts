@@ -53,7 +53,6 @@ export const SAFE_PARTICIPANT_SELECT = {
   notifiedAt: true,
   soloArtifactAt: true, // timestamp only - never the artifact content
   soloArtifactShared: true, // whether participant chose to share; content fetched separately via get()
-  soloArtifact: true, // included in select; caller must strip unless soloArtifactShared = true
   createdAt: true,
 } as const;
 
@@ -569,14 +568,27 @@ export class GroundsService {
       list.push(ci);
       checkInsByParticipant.set(ci.participantId, list);
     }
-    const participantsWithCheckIns = (ground.participants ?? []).map((p) => {
-      const { soloArtifact, soloArtifactShared, ...safeP } = p as any;
+    // Solo artifact content is never part of SAFE_PARTICIPANT_SELECT - fetch it
+    // in a separate, explicit query, and only for participants who opted to
+    // share it. This keeps the "safe" select actually safe on its own, rather
+    // than relying on every caller remembering to strip it after the fact.
+    const sharedIds = (ground.participants ?? []).filter((p: any) => p.soloArtifactShared).map((p: any) => p.id);
+    const sharedArtifacts = sharedIds.length
+      ? await this.prisma.groundParticipant.findMany({
+          where: { id: { in: sharedIds } },
+          select: { id: true, soloArtifact: true },
+        })
+      : [];
+    const sharedArtifactById = new Map(sharedArtifacts.map((a) => [a.id, a.soloArtifact]));
+
+    const participantsWithCheckIns = (ground.participants ?? []).map((p: any) => {
+      const raw = sharedArtifactById.get(p.id);
       return {
-        ...safeP,
-        soloArtifactShared: soloArtifactShared ?? false,
+        ...p,
+        soloArtifactShared: p.soloArtifactShared ?? false,
         // Only expose the content when the participant explicitly shared it
-        sharedSoloReport: soloArtifactShared && soloArtifact
-          ? (() => { try { return JSON.parse(soloArtifact); } catch { return null; } })()
+        sharedSoloReport: raw
+          ? (() => { try { return JSON.parse(raw); } catch { return null; } })()
           : null,
         checkIns: checkInsByParticipant.get(p.id) ?? [],
       };
