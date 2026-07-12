@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { runIntake, trustFrom, COMPLETION_WORDS, PROBLEM_WORDS } from './intake';
-import { ALIGNMENT_FEED_ONLY_CODES } from '../patterns/pattern-library';
+import { ALIGNMENT_FEED_ONLY_CODES, PATTERN_PROBE_BY_CODE } from '../patterns/pattern-library';
 import { CheckInStatus, RecordEntryType } from '@prisma/client';
 
 // ---------------------------------------------------------------------------
@@ -236,22 +236,35 @@ export class ConversationContextService {
       }
     }
 
-    // Surfaced longitudinal patterns (three-period rule) - plain, never verdicts.
-    // Feed-only codes (F5/E4 - cofounder/founder burden asymmetry) must NEVER be
-    // named to either person directly; they surface to the alignment feed only.
-    // (Part 4 / GW-07.) The WHERE clause excludes them at the DB level; the
-    // post-query filter below is a defense-in-depth guard in case the DB result
-    // set ever contains a stale or unexpected code value.
+    // Surfaced longitudinal patterns (three-period rule) - NEVER stated to the
+    // person. The trust boundary is STATEMENT vs PROBE, not live vs report: no
+    // observationText or verdict is ever injected here as something to name -
+    // that belongs only in the report (reports.service.ts's concernFlags,
+    // routed through synthesis rule 9). A surfaced pattern may only sharpen a
+    // follow-up QUESTION, the same shape the INVISIBLE_LABOUR cross-reference
+    // below already uses - the person hears a better question, never the
+    // detected pattern. PATTERN_PROBE_BY_CODE is an allowlist built from each
+    // code's own authored `probe` field (pattern-library.ts) - a code with no
+    // safe question form (no `probe` entry) is excluded by construction, not
+    // by remembering to exclude it; it still reaches the report unchanged.
+    // Feed-only codes (F5/E4 - cofounder/founder burden asymmetry) must NEVER
+    // reach the person at all, in any form, live or as a probe (Part 4 / GW-07).
+    // The WHERE clause excludes them at the DB level; the post-query filter is
+    // a defense-in-depth guard in case the DB result set ever contains a stale
+    // or unexpected code value.
     const surfacedRaw = await this.prisma.patternDetection.findMany({
       where: { participantId, status: 'SURFACED', code: { notIn: [...ALIGNMENT_FEED_ONLY_CODES] } },
-      select: { code: true, observationText: true },
+      select: { code: true },
     });
     // GW-07 defense-in-depth: filter again in memory so a DB inconsistency
     // cannot leak a feed-only code into the conversation context.
-    const surfaced = surfacedRaw.filter((p) => !ALIGNMENT_FEED_ONLY_CODES.has(p.code));
-    if (surfaced.length) {
-      block += `# Patterns established across prior periods (surface as a behaviour worth naming, never a verdict on the person)\n`;
-      for (const s of surfaced) block += `- ${s.observationText}\n`;
+    const surfacedCodes = surfacedRaw.filter((p) => !ALIGNMENT_FEED_ONLY_CODES.has(p.code));
+    const patternProbes = surfacedCodes
+      .map((p) => PATTERN_PROBE_BY_CODE.get(p.code))
+      .filter((probe): probe is string => Boolean(probe));
+    if (patternProbes.length) {
+      block += `# Sharpen these questions (behind the curtain - do NOT name a pattern, a prior period, or a verdict; ask a sharper, more specific question instead, the same way you would for any other probe)\n`;
+      for (const probe of patternProbes) block += `[PATTERN_PROBE | TIER 1] Recommended probe: ${probe}\n`;
       block += `\n`;
     }
 
