@@ -6,8 +6,16 @@ import { PromptsService } from '../prompts';
 import { AnthropicService } from '../conversation';
 import { EmailService } from '../email/email.service';
 import { UsageService } from '../usage/usage.service';
-import { GroundStatus, PartyType, CheckInStatus, GroundScenario, UsageEventType, ReportActivationStatus } from '@prisma/client';
+import { GroundStatus, PartyType, CheckInStatus, GroundScenario, UsageEventType, ReportActivationStatus, PatternStatus } from '@prisma/client';
 import { NEW_STARTING_REPORT_SCHEMA, RECOGNITION_REPORT_SCHEMA, DRIFT_REPORT_SCHEMA } from '../conversation/prompt-library';
+import { BAD_FAITH_CODES, POSITIVE_CODES, ALIGNMENT_FEED_ONLY_CODES, isPositiveCode } from '../patterns/pattern-library';
+
+// Lookup from pattern code -> its name, for readable synthesis-evidence phrasing.
+// Built once from the two code tables rather than duplicating names here.
+const PATTERN_CODE_NAME = new Map<string, string>([
+  ...BAD_FAITH_CODES.map((c) => [c.code, c.name] as const),
+  ...POSITIVE_CODES.map((c) => [c.code, c.name] as const),
+]);
 
 // Solo artifact - single-party "Your private record shows:" summary (#91).
 const SOLO_ARTIFACT_SCHEMA = {
@@ -137,6 +145,25 @@ const REPORT_SCHEMA = {
         },
         description: 'Claims in this report that were inferred from context rather than directly stated. Empty array if everything is directly quoted.',
       },
+      // Minimal prerequisite for Option B (longitudinal pattern evidence into
+      // the report): this field and SYNTHESIS RULE 10 below were referenced by
+      // the task as "existing" infrastructure but were not actually committed
+      // anywhere in history - added here as the narrow slice this work depends
+      // on, without pulling in unrelated uncommitted schema fields sitting in
+      // the same area of this file (hiddenContributors, specificityCauses,
+      // leadCalibrationNote, etc. - out of scope for this change).
+      concernFlags: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            label: { type: 'string', description: "The party's label this observation is about." },
+            observation: { type: 'string', description: 'A factual, evidence-based observation - never an accusation or verdict.' },
+          },
+          required: ['label', 'observation'],
+        },
+        description: "Factual observations, grounded only in what is in the record, where one party's contribution shows reduced follow-through, unmet commitments, or is notably thinner than other parties' on this same ground. Frame as an observation about the record, never a judgement of the person. Empty array if nothing in the record supports this.",
+      },
     },
     required: ['sharedPicture', 'agreements', 'divergences', 'centralQuestion', 'inferences'],
   },
@@ -249,7 +276,8 @@ SYNTHESIS RULES (override all other instructions if there is a conflict):
 5. NAME THE TENSION PRECISELY. If a conflict has a named structure (sequencing, values, role authority, information gap), name it explicitly in the divergences - do not soften it to "different perspectives."
 6. LABEL INFERENCES. Any claim you make that is not a direct quote from the record is an inference. List every inference in the inferences array with its id, text, participantLabel, and reason. An inference is anything you concluded from context, implied meaning, or pattern - not from an explicit statement. If a claim appears in the report body and is not a direct quote, it must appear in inferences. An empty inferences array means everything in the report is directly quoted.
 7. CROSS-REFERENCE SESSIONS. Each record entry is labeled with the session it came from (e.g. "[the initiator session 1]", "[participant A session 3]"). If the same party's position has changed across sessions, name that change explicitly - "in session 1 the initiator described X; by session 3 they described Y." If a commitment from an earlier session has not been followed up in later sessions, name it. The longitudinal arc is the product's core value. A report that reads as a snapshot of only the latest session has failed.
-8. NO FALSE CONSENSUS. Do not write "both parties agree" or "all parties are aligned" unless every party's record contains explicit matching statements on that specific point. If parties described the same topic differently in any session, that is a divergence - surface it. Smoothing a disagreement into apparent consensus is a more serious error than noting the gap.`;
+8. NO FALSE CONSENSUS. Do not write "both parties agree" or "all parties are aligned" unless every party's record contains explicit matching statements on that specific point. If parties described the same topic differently in any session, that is a divergence - surface it. Smoothing a disagreement into apparent consensus is a more serious error than noting the gap.
+9. FLAG CONCERN PATTERNS FACTUALLY, NEVER AS ACCUSATION. If the record shows one party's follow-through, commitments, or contribution is notably thinner than other parties' on the same ground, note it in concernFlags as a plain factual observation about the record - not a judgement of the person. Do not speculate about motive.`;
 
 
     // Note any invited party who contributed no record - surfaced as an absence,
@@ -378,6 +406,35 @@ SYNTHESIS RULES (override all other instructions if there is a conflict):
     }
     const evidenceAbsenceNotice = evidenceAbsenceNotices.length ? evidenceAbsenceNotices.join('\n') + '\n\n' : '';
 
+    // Longitudinal pattern evidence (Option B): surfaced, code-detected behavioural
+    // patterns (pattern-library.ts's threshold detectors - real thresholds, not a
+    // model guess) are handed to synthesis as EVIDENCE the model weighs alongside
+    // everything else in the record, never as a pre-formed conclusion. Codes in
+    // ALIGNMENT_FEED_ONLY_CODES (F5, E4 - both explicitly documented as "never name
+    // to either person directly") are excluded here exactly as they are from the
+    // live conversation - the report is read by the parties themselves, so the same
+    // rule applies. Bad-faith codes are routed toward concernFlags per SYNTHESIS
+    // RULE 9 (factual, never an accusation); the one positive code (R3, Named
+    // Collaborator) is explicitly told NOT to go in concernFlags - that field's own
+    // schema is scoped to reduced follow-through/thinner contribution, and forcing a
+    // compliment into a "concern" field would mischaracterize it.
+    const surfacedPatternRows = await this.prisma.patternDetection.findMany({
+      where: { groundId, status: PatternStatus.SURFACED },
+      select: { participantId: true, code: true, observationText: true },
+    });
+    const patternNotices = surfacedPatternRows
+      .filter((p) => !ALIGNMENT_FEED_ONLY_CODES.has(p.code))
+      .map((p) => {
+        const label = labelById.get(p.participantId) ?? 'a party';
+        const name = PATTERN_CODE_NAME.get(p.code) ?? p.code;
+        const rawObservation = p.observationText ?? 'no further detail recorded';
+        const observation = rawObservation.trim().replace(/[.!?]+$/, '');
+        return isPositiveCode(p.code)
+          ? `NOTE [longitudinal pattern evidence - positive, code ${p.code} ${name}]: ${label} - ${observation}. This is a positive signal, not a concern. Reflect it in the narrative or hiddenContributors if the record supports it. Do NOT place this in concernFlags - that field is for reduced follow-through or thinner contribution only.`
+          : `NOTE [longitudinal pattern evidence - code ${p.code} ${name}]: ${label} - ${observation}. If the record itself corroborates this, note it in concernFlags as a plain factual observation about the record per synthesis rule 9 - never an accusation, never a judgement of the person, never speculation about motive. If the record does not corroborate it, do not include it.`;
+      });
+    const patternNotice = patternNotices.length ? patternNotices.join('\n') + '\n\n' : '';
+
     const corpus =
       groundContextHeader +
       thinNotice +
@@ -385,6 +442,7 @@ SYNTHESIS RULES (override all other instructions if there is a conflict):
       longitudinalNotice +
       overAgreementNotice +
       evidenceAbsenceNotice +
+      patternNotice +
       records.map((r) => {
         const label = labelById.get(r.participant.id) ?? 'a party';
         const session = r.checkIn?.sessionNumber ? ` session ${r.checkIn.sessionNumber}` : '';
@@ -407,9 +465,9 @@ SYNTHESIS RULES (override all other instructions if there is a conflict):
         ? DRIFT_REPORT_SCHEMA
         : REPORT_SCHEMA;
 
-    let result: { sharedPicture: string; agreements: string[]; divergences: any[]; centralQuestion: string } | null;
+    let result: { sharedPicture: string; agreements: string[]; divergences: any[]; centralQuestion: string; concernFlags?: { label: string; observation: string }[] } | null;
     try {
-      result = await this.anthropic.extract<{ sharedPicture: string; agreements: string[]; divergences: any[]; centralQuestion: string }>(
+      result = await this.anthropic.extract<{ sharedPicture: string; agreements: string[]; divergences: any[]; centralQuestion: string; concernFlags?: { label: string; observation: string }[] }>(
         systemPrompt,
         [{ role: 'user', content: corpus }],
         activeSchema,
@@ -426,7 +484,7 @@ SYNTHESIS RULES (override all other instructions if there is a conflict):
     if (wordCount > 500) {
       const brevityPrefix =
         'The previous report was too long. Regenerate under 500 words total. Preserve all four sections and the central question. Cut explanatory language, not substance.\n\n';
-      const retry = await this.anthropic.extract<{ sharedPicture: string; agreements: string[]; divergences: any[]; centralQuestion: string }>(
+      const retry = await this.anthropic.extract<{ sharedPicture: string; agreements: string[]; divergences: any[]; centralQuestion: string; concernFlags?: { label: string; observation: string }[] }>(
         systemPrompt,
         [{ role: 'user', content: brevityPrefix + corpus }],
         activeSchema,
@@ -612,6 +670,7 @@ SYNTHESIS RULES (override all other instructions if there is a conflict):
       recallNotes,
       docStatus,
       session2Focus,
+      concernFlags: result.concernFlags ?? [],
     };
 
     const inferences = ((result as any).inferences ?? []) as Array<{ id: string; text: string; participantLabel: string; reason: string }>;
