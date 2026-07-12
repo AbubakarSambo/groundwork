@@ -19,6 +19,7 @@ import { GroundsListPage } from '@/pages/grounds/GroundsListPage'
 import { CreateGroundPage } from '@/pages/grounds/CreateGroundPage'
 import { GroundAdminPage } from '@/pages/grounds/GroundAdminPage'
 import { GroundParticipantPage } from '@/pages/grounds/GroundParticipantPage'
+import { ReportPage } from '@/pages/report/ReportPage'
 import { BillingPage } from '@/pages/billing/BillingPage'
 import { PricingPage } from '@/pages/billing/PricingPage'
 import { PaymentPage } from '@/pages/billing/PaymentPage'
@@ -34,6 +35,7 @@ import { DemoConversationPage } from '@/pages/demo/DemoConversationPage'
 import { SettingsPage } from '@/pages/settings/SettingsPage'
 import { OrgMembersPage } from '@/pages/org/OrgMembersPage'
 import { OrgRosterPage } from '@/pages/org/OrgRosterPage'
+import { NotFoundPage } from '@/pages/notfound/NotFoundPage'
 import { HelpModal, HelpButton } from '@/components/gw/HelpModal'
 import { AppShell } from '@/components/gw/AppShell'
 import type { JSX } from 'react'
@@ -103,6 +105,7 @@ export default function App() {
             <Route path="/grounds/new" element={<RequireAuth><CreateGroundPage /></RequireAuth>} />
             <Route path="/grounds/:id" element={<RequireAuth><GroundAdminPage /></RequireAuth>} />
             <Route path="/grounds/:id/p" element={<RequireAuth><GroundParticipantPage /></RequireAuth>} />
+            <Route path="/grounds/:id/report" element={<RequireAuth><ReportPage /></RequireAuth>} />
             <Route path="/chat/:checkInId" element={<RequireAuth><ChatPage /></RequireAuth>} />
             <Route path="/checkin/:checkInId" element={<RequireAuth><ChatPage /></RequireAuth>} />
             <Route path="/feed" element={<RequireAuth><AlignmentFeedPage /></RequireAuth>} />
@@ -119,7 +122,12 @@ export default function App() {
             <Route path="/admin" element={<RequireAuth><AdminPage /></RequireAuth>} />
             <Route path="/admin/dashboard" element={<RequireAuth><AdminDashboardPage /></RequireAuth>} />
 
-            <Route path="*" element={<Navigate to="/" replace />} />
+            {/* Any unmatched path renders a real not-found page rather than
+                re-entering RootRoute, which for a logged-out visitor can hard-
+                redirect to an externally-configured marketing URL - if that
+                URL doesn't resolve, silently redirecting here would strand the
+                visitor on a blank tab with no way forward. */}
+            <Route path="*" element={<NotFoundPage />} />
           </Routes>
           </AppShell>
         </SessionGuard>
