@@ -91,6 +91,33 @@ rank AI conversational language first, onboarding/first-contact second, everythi
 after — against the "calm adult explaining to a teenager" bar, quote-cite-rewrite table,
 save as `groundwork_local_test/BUILD_TRUTH_6_language.md`.
 
+## Merge check (done this session, after the above was written)
+
+Tested `origin/fix/persona-harness-ground-discovery` in an isolated clean-checkout
+worktree (zero uncommitted files present, fresh `npm ci`): `api` typecheck clean,
+`api` build clean, `client` typecheck clean, `client` build clean. Jest 107/109 —
+the 2 failures are the same pre-existing ones already documented in the PR body,
+not caused by anything in the uncommitted pile. **No committed file depends on
+anything in the uncommitted pile — the branch is self-contained and mergeable as-is.**
+
+## The uncommitted pile — where it lives
+
+Same 26 files/items every time `git status --short` was checked this session,
+never touched beyond what's explicitly called out above: `api/prisma/schema.prisma`,
+`api/src/modules/conversation/conversation.controller.ts`,
+`api/src/modules/email/email.service.ts`, `api/src/modules/grounds/{grounds.controller,
+grounds.cron,grounds.cron.spec,grounds.service}.ts`, `api/src/modules/reports/{privacy-
+isolation.spec,report-activation.spec,reports.listener,reports.service,reports.service.
+spec}.ts`, `api/src/modules/users/{users.service,users.service.spec}.ts`,
+`client/src/{api/reports.ts,components/layout/AppShell.tsx,pages/admin/AdminPage.tsx,
+pages/grounds/{GroundAdminPage,GroundParticipantPage}.tsx,pages/report/ReportPage.tsx,
+types/index.ts,tsconfig.tsbuildinfo}`, plus two untracked migration directories
+(`20260711000002_session_ready_notified_at`, `20260712000001_restrict_external_
+visibility`). This is D1 (forming report + session progress), D2's two real fields
+(`hiddenContributors`, `specificityCauses`) and its three deferred fields'
+groundwork, and B's backend enforcement + schema. All deliberate — see above for why
+each piece is held rather than shipped.
+
 ## What's next, in order
 
 1. **Finish D1 + D2's two real fields as a real commit(s).** They were built and verified
@@ -100,13 +127,27 @@ save as `groundwork_local_test/BUILD_TRUTH_6_language.md`.
    build/typecheck/test in isolation, commit, push.
 2. **Decide + commit `postReportGuide`** (delete vs. real feature) **and
    `leadCalibrationNote`** (read the actual generated text first, then decide
-   internal-only vs. lead-visible).
+   internal-only vs. lead-visible). **Steers already given, still yours to confirm:**
+   `postReportGuide` → delete (a hardcoded constant dressed as generated guidance, no
+   current value in keeping it "to finish later"). `leadCalibrationNote` → internal-only
+   (same probe-not-statement boundary drawn everywhere else this session) — but read
+   the actual generated text before finalizing, that step hasn't happened yet.
 3. **Build B** — the initiator-facing control for `restrictExternalVisibility` (default
    already correct, no UI yet). Prove both directions at the string, guard it, commit.
-4. **Finish the language pass** — `BUILD_TRUTH_6_language.md`, per the instructions above.
-5. **Synthesis** — whatever synthesis-quality pass was intended after the language pass
+4. **Finish the language pass** — `BUILD_TRUTH_6_language.md` (UI text + prompt templates,
+   per the instructions above — email copy inventory is done, UI text and prompt-library
+   raw material both arrived late this session and are unsynthesized).
+5. **AI voice pass — DONE, not next.** `BUILD_TRUTH_6b_ai_voice.md` was written this
+   session (assessment only, nothing committed per that turn's instruction — commit it
+   if you want it kept). Real live transcripts, not templates: found the onboarding phase
+   (`ONBOARD_SYSTEM` in `entry.service.ts`) is the weakest register (chatbot-adjacent
+   lines like "Thank you for clarifying the timeline"), the scenario-pack/check-in phase
+   is genuinely close to the bar, and the sequential-narration fix corrected the *claim*
+   but not the underlying self-narration *habit* ("I am opening parallel check-ins with...
+   right now" is still software narrating itself, even though it's no longer sequential).
+6. **Synthesis** — whatever synthesis-quality pass was intended after the language pass
    (not yet scoped in this session; ask what specifically before starting).
-6. **Personas** — the full persona-agent test suite against the now-hardened product,
+7. **Personas** — the full persona-agent test suite against the now-hardened product,
    per `groundwork_local_test/CLAUDE.md`'s "run it as a person, not as a test suite" rule.
    This was always the destination of this branch of work.
 
