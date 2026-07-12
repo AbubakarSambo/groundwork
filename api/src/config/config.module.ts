@@ -8,6 +8,7 @@ import {
   googleConfig,
   geminiConfig,
   stripeConfig,
+  whatsappConfig,
 } from './configuration';
 
 @Global()
@@ -23,6 +24,7 @@ import {
         googleConfig,
         geminiConfig,
         stripeConfig,
+        whatsappConfig,
       ],
       envFilePath: ['.env.local', '.env'],
     }),

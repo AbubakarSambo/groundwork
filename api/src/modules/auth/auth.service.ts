@@ -11,6 +11,7 @@ import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
+import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import {
   RegisterDto,
   LoginDto,
@@ -45,6 +46,7 @@ export class AuthService {
     private jwtService: JwtService,
     private configService: ConfigService,
     private emailService: EmailService,
+    private whatsapp: WhatsAppService,
   ) {}
 
   async register(dto: RegisterDto): Promise<{ message: string; email: string }> {
@@ -522,6 +524,7 @@ export class AuthService {
     if (dto.lastName !== undefined) userUpdate.lastName = dto.lastName.trim();
     if (dto.jobTitle !== undefined) userUpdate.jobTitle = dto.jobTitle.trim();
     if (dto.emailNotifications !== undefined) userUpdate.emailNotifications = dto.emailNotifications;
+    if (dto.phoneNumber !== undefined) userUpdate.phoneNumber = dto.phoneNumber ? WhatsAppService.normalize(dto.phoneNumber) : null;
 
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
 

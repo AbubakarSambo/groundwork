@@ -6,6 +6,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ConfigModule } from './config';
 import { PrismaModule } from './modules/prisma';
 import { EmailModule } from './modules/email';
+import { WhatsAppModule } from './modules/whatsapp/whatsapp.module';
 import { PromptsModule } from './modules/prompts';
 import { AuthModule } from './modules/auth';
 import { UsersModule } from './modules/users';
@@ -36,6 +37,7 @@ import { JwtAuthGuard, RolesGuard, GlobalExceptionFilter, TransformInterceptor }
     GroundsModule,
     ParticipantsModule,
     ConversationModule,
+    WhatsAppModule,
     ReportsModule,
     PatternsModule,
     ResolutionModule,

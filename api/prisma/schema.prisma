@@ -208,6 +208,11 @@ model User {
   isPlatformAdmin      Boolean  @default(false) @map("is_platform_admin")
   googleId             String?  @unique @map("google_id")
   emailNotifications   Boolean  @default(true) @map("email_notifications")
+  // E.164 format (e.g. "+2348012345678"). Global uniqueness - one Groundwork
+  // WhatsApp number serves everyone, so a phone number identifies exactly one
+  // account, not one per org. Set by the user in Settings, or by an
+  // admin/HR adding it on someone's behalf via the org roster.
+  phoneNumber          String?  @unique @map("phone_number")
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
@@ -806,6 +811,22 @@ model UsageEvent {
 // Pattern thresholds — tunable per code without a deploy.
 // One row per pattern code. Missing rows fall back to hardcoded defaults.
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Platform settings — generic singleton key/value store for admin-toggleable
+// platform-wide flags (e.g. WhatsApp on/off). Not org-scoped: there is one
+// Groundwork WhatsApp number serving every org, so this is a single row per
+// key, not one per organization.
+// ---------------------------------------------------------------------------
+
+model PlatformSetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt @map("updated_at")
+  updatedBy String?  @map("updated_by") // userId of last editor
+
+  @@map("platform_settings")
+}
 
 model FeedbackSubmission {
   id        String   @id @default(uuid())

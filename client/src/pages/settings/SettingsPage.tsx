@@ -13,6 +13,17 @@ export function SettingsPage() {
   const [emailNotif, setEmailNotif] = useState(user?.emailNotifications ?? true)
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false)
   const [notifSaved, setNotifSaved] = useState(false)
+  const [phoneNumber, setPhoneNumber] = useState(user?.phoneNumber ?? '')
+  const [phoneSaved, setPhoneSaved] = useState(false)
+
+  const savePhone = useMutation({
+    mutationFn: (val: string | null) => authApi.setPhoneNumber(val),
+    onSuccess: (updated) => {
+      updateUser(updated)
+      setPhoneSaved(true)
+      setTimeout(() => setPhoneSaved(false), 2000)
+    },
+  })
 
   const toggleNotif = useMutation({
     mutationFn: (val: boolean) => authApi.setEmailNotifications(val),
@@ -108,6 +119,36 @@ export function SettingsPage() {
               <div style={{ fontSize: 12, color: '#085041', padding: '8px 16px', borderTop: '0.5px solid var(--gw-border)', background: '#E8F8F5' }}>
                 Saved.
               </div>
+            )}
+          </div>
+        </section>
+
+        <section style={{ marginBottom: 32 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-muted)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 12 }}>
+            WhatsApp
+          </div>
+          <div style={{ background: 'white', border: '0.5px solid var(--gw-border)', borderRadius: 10, overflow: 'hidden', padding: '14px 16px' }}>
+            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Your WhatsApp number</div>
+            <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginBottom: 10, lineHeight: 1.5 }}>
+              Add your number to get check-in links and reminders on WhatsApp instead of email. We match messages to your account by this number.
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                placeholder="+234 801 234 5678"
+                style={{ flex: 1, padding: '9px 12px', borderRadius: 7, border: '0.5px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit' }}
+              />
+              <button
+                onClick={() => savePhone.mutate(phoneNumber || null)}
+                disabled={savePhone.isPending}
+                style={{ padding: '9px 16px', borderRadius: 7, border: 'none', background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: savePhone.isPending ? 0.6 : 1 }}
+              >
+                {savePhone.isPending ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+            {phoneSaved && (
+              <div style={{ fontSize: 12, color: '#085041', marginTop: 8 }}>Saved.</div>
             )}
           </div>
         </section>

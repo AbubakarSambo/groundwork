@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { promptsApi, UsageFunnelData, PlatformDashboardData, OrgListItem, UsageStatsData, FeedbackSummaryData } from '@/api/prompts'
+import { adminApi } from '@/api/admin'
 import { useAuthStore } from '@/stores/auth'
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -43,9 +44,53 @@ function Bar({ pct, color = '#0C447C' }: { pct: number; color?: string }) {
 
 // ── System tab ────────────────────────────────────────────────────────────────
 
+function WhatsAppToggle() {
+  const qc = useQueryClient()
+  const { data, isLoading } = useQuery({ queryKey: ['admin-whatsapp'], queryFn: adminApi.getWhatsAppStatus })
+  const toggle = useMutation({
+    mutationFn: (enabled: boolean) => adminApi.setWhatsAppEnabled(enabled),
+    onSuccess: (updated) => qc.setQueryData(['admin-whatsapp'], updated),
+  })
+  if (isLoading || !data) return null
+  return (
+    <div style={{ ...C, padding: '14px 16px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 700 }}>WhatsApp check-ins</div>
+          <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 2, lineHeight: 1.5 }}>
+            Single Groundwork number, shared across every org. {data.credentialsConfigured
+              ? 'Credentials are configured.'
+              : 'Waiting on WhatsApp Business API credentials - toggling this on will have no effect until those are set.'}
+          </div>
+        </div>
+        <button
+          onClick={() => toggle.mutate(!data.adminEnabled)}
+          disabled={toggle.isPending}
+          style={{
+            width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer',
+            background: data.adminEnabled ? 'var(--gw-navy)' : '#D1CEC9',
+            position: 'relative', flexShrink: 0, marginLeft: 16,
+          }}
+          aria-label={data.adminEnabled ? 'Turn off WhatsApp' : 'Turn on WhatsApp'}
+        >
+          <span style={{ position: 'absolute', top: 3, left: data.adminEnabled ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,.2)' }} />
+        </button>
+      </div>
+      <div style={{ fontSize: 11, marginTop: 8, fontWeight: 700, color: data.live ? '#085041' : 'var(--gw-muted)' }}>
+        {data.live ? 'Live' : data.adminEnabled ? 'On, but not live (credentials missing)' : 'Off'}
+      </div>
+    </div>
+  )
+}
+
 function SystemTab({ dash }: { dash: PlatformDashboardData }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+
+      <section>
+        <div style={SL}>Integrations</div>
+        <WhatsAppToggle />
+      </section>
 
       <section>
         <div style={SL}>At a glance</div>

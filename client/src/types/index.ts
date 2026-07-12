@@ -9,6 +9,7 @@ export interface User {
   jobTitle?: string
   isPlatformAdmin?: boolean
   emailNotifications?: boolean
+  phoneNumber?: string | null
 }
 
 export type GroundScenario =
