@@ -28,11 +28,11 @@ describe('GroundsCron.synthesisBackstop - GW-06', () => {
       },
     };
     const events: any = { emit: jest.fn((...args: any[]) => { emitted.push(args); }) };
-    const service = new GroundsCron(prisma, {} as any, {} as any, events, {} as any);
+    const service = new GroundsCron(prisma, {} as any, {} as any, events, {} as any, {} as any);
     return { service, emitted };
   }
 
-  it('emits CHECK_IN_COMPLETED for a stuck ground with both parties done session 2', async () => {
+  it('emits CHECK_IN_COMPLETED for a stuck ground with both parties done session 1 (#36: trigger is session 1, not session 2)', async () => {
     const grounds = [
       {
         id: 'g1',
@@ -42,20 +42,20 @@ describe('GroundsCron.synthesisBackstop - GW-06', () => {
         ],
       },
     ];
-    const session2ByParticipant = {
+    const session1ByParticipant = {
       p1: { id: 'ci1' },
       p2: { id: 'ci2' },
     };
 
-    const { service, emitted } = makeService(grounds, {}, session2ByParticipant);
+    const { service, emitted } = makeService(grounds, {}, session1ByParticipant);
     await service.synthesisBackstop();
 
     expect(emitted).toHaveLength(1);
     expect(emitted[0][0]).toBe(GroundworkEvents.CHECK_IN_COMPLETED);
-    expect(emitted[0][1]).toMatchObject({ groundId: 'g1', sessionNumber: 2 });
+    expect(emitted[0][1]).toMatchObject({ groundId: 'g1', sessionNumber: 1 });
   });
 
-  it('skips a ground where one party has not completed session 2', async () => {
+  it('skips a ground where one party has not completed session 1', async () => {
     const grounds = [
       {
         id: 'g2',
@@ -65,12 +65,12 @@ describe('GroundsCron.synthesisBackstop - GW-06', () => {
         ],
       },
     ];
-    const session2ByParticipant = {
+    const session1ByParticipant = {
       p3: { id: 'ci3' },
       p4: null, // not done
     };
 
-    const { service, emitted } = makeService(grounds, {}, session2ByParticipant);
+    const { service, emitted } = makeService(grounds, {}, session1ByParticipant);
     await service.synthesisBackstop();
 
     expect(emitted).toHaveLength(0);
