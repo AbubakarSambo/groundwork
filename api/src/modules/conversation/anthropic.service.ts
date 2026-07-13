@@ -28,6 +28,12 @@ export function houseStyle(text: string): string {
     .replace(/--+/g, '-'); // collapse double hyphens
 }
 
+// gemini-2.5-pro is a thinking model: reasoning tokens are drawn from the same
+// budget as maxOutputTokens. Bound thinking so it cannot consume the whole
+// budget and truncate the visible answer mid-sentence (observed in real
+// transcripts, e.g. "...pipeline reviews. What" cut off cold).
+const THINKING_BUDGET = 2048;
+
 @Injectable()
 export class AnthropicService {
   private readonly logger = new Logger(AnthropicService.name);
@@ -51,13 +57,21 @@ export class AnthropicService {
       location: this.config.get<string>('gemini.location') || 'us-central1',
     });
     this.model = this.config.get<string>('gemini.model') || 'gemini-2.5-pro';
-    this.maxTokens = this.config.get<number>('gemini.maxTokens') || 2048;
+    // Floor at 8192 (configuration.ts's own default). A low cap (e.g. a stale
+    // GEMINI_MAX_TOKENS=2048) leaves too little room once thinking tokens are
+    // counted, truncating the answer. NOTE: prod sets its own GEMINI_MAX_TOKENS;
+    // this floor guarantees at least 8192 there too, so prod needs no env change.
+    this.maxTokens = Math.max(this.config.get<number>('gemini.maxTokens') || 8192, 8192);
   }
 
   /**
    * Streaming variant of respond(). Yields answer text deltas as they arrive.
-   * The caller accumulates the full text and applies houseStyle() once at the
-   * end (a dash can straddle two chunks, so we do not sanitize per-delta).
+   * Each delta is passed through houseStyle() so nothing un-normalized reaches
+   * the user live. Every banned character we normalize is a single code point
+   * (em/en dash, curly quote, ellipsis, nbsp), so it cannot be split across two
+   * chunks - per-delta sanitizing is safe for those. The only straddle-sensitive
+   * rule is the "--" collapse; the caller still applies houseStyle() once to the
+   * accumulated text at the end, which catches a double hyphen split across deltas.
    */
   async *respondStream(systemPrompt: string, history: ChatTurn[]): AsyncGenerator<string, void, unknown> {
     const contents = history.map((t) => ({
@@ -67,14 +81,14 @@ export class AnthropicService {
     const stream = await this.client.models.generateContentStream({
       model: this.model,
       contents,
-      config: { systemInstruction: systemPrompt, maxOutputTokens: this.maxTokens },
+      config: { systemInstruction: systemPrompt, maxOutputTokens: this.maxTokens, thinkingConfig: { thinkingBudget: THINKING_BUDGET } },
     });
     for await (const chunk of stream) {
       const parts = (chunk as any).candidates?.[0]?.content?.parts ?? [];
       for (const part of parts) {
         // Skip thought parts here; the answer is what we stream to the user.
         if (part?.thought) continue;
-        if (part?.text) yield part.text as string;
+        if (part?.text) yield houseStyle(part.text as string);
       }
     }
   }
@@ -91,7 +105,7 @@ export class AnthropicService {
       const call = this.client.models.generateContent({
         model: this.model,
         contents,
-        config: { systemInstruction: systemPrompt, maxOutputTokens: this.maxTokens },
+        config: { systemInstruction: systemPrompt, maxOutputTokens: this.maxTokens, thinkingConfig: { thinkingBudget: THINKING_BUDGET } },
       });
       const timeout = new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error('Gemini respond() timed out after 90s')), TIMEOUT_MS),
@@ -128,7 +142,7 @@ export class AnthropicService {
             { text: prompt },
           ],
         }],
-        config: { systemInstruction: systemPrompt, maxOutputTokens: this.maxTokens },
+        config: { systemInstruction: systemPrompt, maxOutputTokens: this.maxTokens, thinkingConfig: { thinkingBudget: THINKING_BUDGET } },
       });
       const timeout = new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error('Gemini respondWithMedia() timed out after 90s')), TIMEOUT_MS),
