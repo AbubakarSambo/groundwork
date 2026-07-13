@@ -1,5 +1,13 @@
 # BUILD TRUTH — Synthesis
 
+## Canonical definition of Groundwork (internal, authoritative)
+
+> Groundwork is a system for surfacing where people genuinely align and diverge, through private, guided conversations that gather each party's own account, verify claims rather than taking them at face value, and synthesize across people and across time into a report that reflects reality, not assertion.
+
+This is the internal grounding for the product and the behavior tripwires. It names four load-bearing capabilities the suite must protect: (1) private, guided conversations that gather each party's own account, (2) claim verification instead of face-value acceptance, (3) synthesis across people and across time, (4) a report that reflects reality, not assertion. Public and user-facing copy (the marketing page, the onboarding chats) may be narrower than this on purpose and is left unchanged. The model-facing "what is Groundwork" line in the system prompt is flagged separately, not silently rewritten.
+
+---
+
 **Read this first.** It is the single truthful map of this codebase, built from the six
 `BUILD_TRUTH_*` documents and the verification work of this session. It does not re-derive
 those documents — it consolidates and cites them, and it opens with the throughline that
