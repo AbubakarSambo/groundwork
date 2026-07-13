@@ -224,6 +224,23 @@ export class EmailService {
     });
   }
 
+  /**
+   * Your next check-in just opened. Distinct from sendNudge (which reminds
+   * someone sitting on an ALREADY-open check-in) - this fires once, the
+   * moment a new session becomes available, carrying context from the last
+   * check-in so the person doesn't have to remember where they left off.
+   */
+  async sendSessionReady(email: string, groundLabel: string, checkInUrl: string, lastCheckInContext?: string): Promise<void> {
+    const contextNote = lastCheckInContext
+      ? `<p style="color:#6B6560;">Last time: "${lastCheckInContext}"</p>`
+      : '';
+    await this.sendEmail({
+      to: email,
+      subject: `Your next check-in is open: ${groundLabel}`,
+      html: this.layout(`<p>A new check-in is ready for <strong>${groundLabel}</strong>.</p>${contextNote}<p><a href="${checkInUrl}">Check in</a></p>`),
+    });
+  }
+
   /** Reminder to the admin that a generated report is waiting to be activated. */
   async sendActivationReminder(email: string, groundLabel: string, groundUrl: string): Promise<void> {
     await this.sendEmail({
