@@ -67,7 +67,35 @@ const SESSION_END_PATTERNS = [
   'that is now on record',
   'i have enough to work with',
   'your check-in is recorded',
+  // Broadened so the AI inviting a close (however it phrases it) surfaces the prompt,
+  // not only the six exact strings above.
+  'you can end this session',
+  'you can end the session',
+  'ready to submit',
+  'ready to end',
+  'submit your answers',
+  'end and see your report',
 ]
+
+// Explicit end-intent FROM THE USER. Completion was only ever detected from the AI's
+// reply, so when a person said "yes I want to submit my answers" the AI just affirmed and
+// nothing ended - they could not finish even by asking. If the user clearly signals they
+// are done, we surface the end control immediately instead of sending another turn the AI
+// only affirms. Kept specific to avoid false positives on mid-conversation "submit"
+// (e.g. "I submitted a proposal to the board").
+const END_INTENT_PATTERNS: RegExp[] = [
+  /\b(submit|send in|record|save)\s+(my\s+)?(answer|answers|response|responses|record|record now)\b/,
+  /\bi\s*('?m| am)?\s*(done|finished)\b/,
+  /\bi('?m| am)?\s*ready to (submit|finish|end|wrap|be done)\b/,
+  /\b(end|finish|close|wrap up|complete)\s+(the\s+|this\s+)?(session|check.?in|conversation|chat)\b/,
+  /\bi (want|would like|'?d like)\s+to\s+(submit|finish|end|be done|wrap up)\b/,
+  /^\s*(yes|yep|yeah|yup|ok|okay|sure)\b.*\b(submit|finish|done|end|wrap)\b/,
+  /\bthat('?s| is) (all|everything|it)\b/,
+]
+export function isEndIntent(text: string): boolean {
+  const t = text.toLowerCase().trim()
+  return END_INTENT_PATTERNS.some((re) => re.test(t))
+}
 
 
 const SITUATION_CARDS = [
@@ -350,8 +378,11 @@ export function EntryChatPage() {
       const updated = [...msgs, newTurn]
       setHistory(updated)
       setLoading(false)
+      // Consume the backend's completion signal (previously ignored: the client
+      // re-derived its own phrase-match and threw res.sessionComplete away). The reply
+      // phrase-match stays as a backstop for phrasings the backend's own matcher misses.
       const replyLower = res.reply.toLowerCase()
-      const isNaturalClose = SESSION_END_PATTERNS.some(p => replyLower.includes(p))
+      const isNaturalClose = res.sessionComplete === true || SESSION_END_PATTERNS.some(p => replyLower.includes(p))
       if (isNaturalClose && !closed && !endPromptDismissed) {
         setShowEndPrompt(true)
       }
@@ -531,8 +562,22 @@ export function EntryChatPage() {
     if (!content || loading || closed) return
     setInput('')
     if (taRef.current) taRef.current.style.height = '38px'
-    setLoading(true)
     const userTurn: Turn = { role: 'user', content }
+    // Explicit end-intent: the person is telling us they are done. Show their message,
+    // then surface the end control immediately rather than sending another turn the AI
+    // only affirms ("you can submit whenever") while they repeat themselves. They still
+    // confirm on the prompt, so a false positive costs one dismissable banner, never a
+    // silent end. Only once there is something to end (>=1 prior exchange).
+    if (isEndIntent(content) && history.length >= 1) {
+      const updated = [...history, userTurn]
+      setHistory(updated)
+      setUploadedDoc(null)
+      setEndPromptDismissed(false)
+      setShowEndPrompt(true)
+      persistCheckin(updated)
+      return
+    }
+    setLoading(true)
     setUploadedDoc(null)
     setHistory(prev => [...prev, userTurn, { role: 'assistant', content: '…' }])
     sendMut.mutate([...history, userTurn])
