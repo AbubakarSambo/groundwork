@@ -140,6 +140,7 @@ export interface Report {
     hiddenContributors?: { label: string; evidence: string }[]
     concernFlags?: { label: string; observation: string }[]
     specificityCauses?: { label: string; cause: 'behavioral' | 'misunderstanding' | 'adversarial' | 'unclear'; note: string }[]
+    leadCalibrationNote?: string
   } | null
   // Spec payload fields (cross-ref / resolution report)
   pattern?: string

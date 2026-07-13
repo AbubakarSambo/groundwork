@@ -183,6 +183,10 @@ const REPORT_SCHEMA = {
         },
         description: "Where a party's specificity is notably low or high, name the likely cause if it is inferable from the record itself: a behavioral pattern (e.g. consistently vague), a misunderstanding (e.g. confused about scope), an adversarial stance (e.g. deliberately withholding), or 'unclear' if there is not enough evidence to say. Do not guess beyond what the record supports. Empty array if not inferable.",
       },
+      leadCalibrationNote: {
+        type: 'string',
+        description: "If the divergences in this report trace back to an ambiguous, missing, or under-specified opening brief from the initiator/lead - rather than a genuine disagreement between parties - name that explicitly here. Empty string if the brief was clear and the gap is not attributable to how the ground was set up.",
+      },
     },
     required: ['sharedPicture', 'agreements', 'divergences', 'centralQuestion', 'inferences'],
   },
@@ -300,7 +304,8 @@ SYNTHESIS RULES (override all other instructions if there is a conflict):
 9. SURFACE HIDDEN CONTRIBUTORS. If any party's record references someone else's input, work, or decisions - someone who is not themselves a party with their own account on this ground - name them in hiddenContributors with the evidence. Do not invent a hidden contributor; only surface what is explicitly referenced.
 10. FLAG CONCERN PATTERNS FACTUALLY, NEVER AS ACCUSATION. If the record shows one party's follow-through, commitments, or contribution is notably thinner than other parties' on the same ground, note it in concernFlags as a plain factual observation about the record - not a judgement of the person. Do not speculate about motive.
 11. NAME THE CAUSE OF LOW OR HIGH SPECIFICITY WHEN INFERABLE. If a party's specificity is notably low or high, use specificityCauses to say why if the record supports an inference: a behavioral pattern, a misunderstanding, an adversarial stance, or "unclear" if the record does not support a specific cause.
-12. NEVER INVENT PARTY COUNTS OR ROLES. The PARTY ROSTER at the top of this corpus is the exhaustive, exact list of who is on this ground - use its exact count and exact labels only. Never state a number of parties, an "other parties" count, or a role/title/affiliation (e.g. "founder", "funders", "the board") that does not appear verbatim in the roster. If you are unsure how many parties are missing or who they are, use the roster's own wording rather than describing them yourself.`;
+12. NAME POOR INITIAL CALIBRATION WHEN IT IS THE ACTUAL SOURCE OF THE GAP. If a divergence traces back to an ambiguous or missing opening brief from the initiator/lead rather than a genuine disagreement between parties, say so explicitly in leadCalibrationNote. Leave it empty if the brief was clear.
+13. NEVER INVENT PARTY COUNTS OR ROLES. The PARTY ROSTER at the top of this corpus is the exhaustive, exact list of who is on this ground - use its exact count and exact labels only. Never state a number of parties, an "other parties" count, or a role/title/affiliation (e.g. "founder", "funders", "the board") that does not appear verbatim in the roster. If you are unsure how many parties are missing or who they are, use the roster's own wording rather than describing them yourself.`;
 
 
     // Note any invited party who contributed no record - surfaced as an absence,
@@ -510,6 +515,7 @@ SYNTHESIS RULES (override all other instructions if there is a conflict):
       hiddenContributors?: { label: string; evidence: string }[];
       concernFlags?: { label: string; observation: string }[];
       specificityCauses?: { label: string; cause: string; note: string }[];
+      leadCalibrationNote?: string;
     };
     let result: SynthesisResult | null;
     try {
@@ -719,6 +725,7 @@ SYNTHESIS RULES (override all other instructions if there is a conflict):
       hiddenContributors: result.hiddenContributors ?? [],
       concernFlags: result.concernFlags ?? [],
       specificityCauses: result.specificityCauses ?? [],
+      leadCalibrationNote: result.leadCalibrationNote ?? '',
     };
 
     const inferences = ((result as any).inferences ?? []) as Array<{ id: string; text: string; participantLabel: string; reason: string }>;
