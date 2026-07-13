@@ -80,6 +80,9 @@ export const groundsApi = {
   addParticipant: (groundId: string, body: AddParticipantBody) =>
     apiClient.post(`/grounds/${groundId}/participants`, body).then(r => r.data),
 
+  addLeadContext: (groundId: string, body: { participantId?: string; text: string }) =>
+    apiClient.post(`/grounds/${groundId}/lead-context`, body).then(r => r.data),
+
   activate: (groundId: string) =>
     apiClient.post<Ground>(`/grounds/${groundId}/activate`).then(r => r.data),
 

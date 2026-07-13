@@ -79,6 +79,13 @@ export interface GroundSignal {
   createdAt: string
 }
 
+export interface LeadContextNote {
+  id: string
+  participantId: string | null
+  text: string
+  createdAt: string
+}
+
 export interface Ground {
   id: string
   initiatorId: string
@@ -96,6 +103,7 @@ export interface Ground {
   overdue?: number
   contextNotes?: string[]
   participants: GroundParticipant[]
+  leadContextNotes?: LeadContextNote[]
   checkIns?: CheckInSummary[]
   signals?: GroundSignal[]
   report?: { id: string; releasedAt: string | null; createdAt?: string } | null

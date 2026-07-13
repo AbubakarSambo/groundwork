@@ -321,6 +321,7 @@ model Ground {
   outcomeFeedback          OutcomeFeedback[]
   billingEvents            BillingEvent[]
   documents                GroundDocument[]
+  leadContextNotes         LeadContextNote[]
   disclaimerAcknowledgements DisclaimerAcknowledgement[]
   reportActivations          ReportActivation[]
   participantRequests        ParticipantRequest[]
@@ -372,6 +373,7 @@ model GroundParticipant {
   patternDetections PatternDetection[]
   outcomeFeedback   OutcomeFeedback[]
   documents         GroundDocument[]
+  leadContextNotes  LeadContextNote[]
   resolutionConfirmations ResolutionConfirmation[]
   reportActivations       ReportActivation[]
 
@@ -726,6 +728,28 @@ model GroundDocument {
 
   @@index([groundId, participantId])
   @@map("ground_documents")
+}
+
+// Lead-supplied context: a private typed note the initiator adds about a specific
+// participant (participantId set) or about the ground (participantId null). It
+// DIRECTS and WEIGHTS synthesis - never becomes a stated claim, and is never shown
+// to the person it is about. Deliberately its OWN store, NEVER a RecordEntry: the
+// corpus reads these separately into a labeled LEAD-SUPPLIED CONTEXT section so the
+// AI can never attribute the lead's framing to the party's own words.
+model LeadContextNote {
+  id            String   @id @default(uuid())
+  groundId      String   @map("ground_id")
+  participantId String?  @map("participant_id") // null = about the ground; set = about that person
+  authorUserId  String   @map("author_user_id") // the initiator who wrote it
+  text          String   @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  ground      Ground             @relation(fields: [groundId], references: [id], onDelete: Cascade)
+  participant GroundParticipant? @relation(fields: [participantId], references: [id], onDelete: SetNull)
+
+  @@index([groundId])
+  @@map("lead_context_notes")
 }
 
 // ---------------------------------------------------------------------------

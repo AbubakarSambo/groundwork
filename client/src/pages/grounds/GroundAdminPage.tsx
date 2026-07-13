@@ -63,6 +63,9 @@ export function GroundAdminPage() {
   const [shareCodeId, setShareCodeId] = useState<string | null>(null)
   const [lastInvitedEmail, setLastInvitedEmail] = useState<string | null>(null)
   const [noteSaved, setNoteSaved] = useState(false)
+  const [leadCtxText, setLeadCtxText] = useState('')
+  const [leadCtxTarget, setLeadCtxTarget] = useState('') // '' = about the ground; else participantId
+  const [leadCtxSaved, setLeadCtxSaved] = useState(false)
   const [postSessionDismissed, setPostSessionDismissed] = useState(false)
   const [editingRoleId, setEditingRoleId] = useState<string | null>(null)
   const [editingRoleValue, setEditingRoleValue] = useState('')
@@ -163,6 +166,15 @@ export function GroundAdminPage() {
     mutationFn: (note: string) => groundsApi.update(id!, { contextNote: note }),
     onSuccess: () => { setCtxNote(''); qc.invalidateQueries({ queryKey: ['ground', id] }) },
     onError: () => toast.error('Could not save note.'),
+  })
+
+  const addLeadContextMut = useMutation({
+    mutationFn: () => groundsApi.addLeadContext(id!, {
+      participantId: leadCtxTarget || undefined,
+      text: leadCtxText.trim(),
+    }),
+    onSuccess: () => { setLeadCtxText(''); setLeadCtxSaved(true); qc.invalidateQueries({ queryKey: ['ground', id] }) },
+    onError: () => toast.error('Could not save context.'),
   })
 
   const addParticipantMut = useMutation({
@@ -581,6 +593,43 @@ export function GroundAdminPage() {
                 <div key={i} style={{ background: 'white', border: '0.5px solid var(--gw-border)', borderRadius: 8, padding: '10px 12px', fontSize: 13, color: 'var(--gw-sub)', marginBottom: 8, lineHeight: 1.6 }}>{n}</div>
               ))}
             </div>
+
+            {user?.id === ground.initiatorId && (
+              <div style={{ marginTop: 20 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Context for the AI (private)</div>
+                <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginBottom: 10, lineHeight: 1.5 }}>
+                  Background only you can add, to steer the synthesis. Never shown to the person it is about, and never quoted as a claim in the report.
+                </div>
+                <div className="gw-fld">
+                  <select className="gw-input" value={leadCtxTarget} onChange={e => { setLeadCtxTarget(e.target.value); setLeadCtxSaved(false) }} style={{ marginBottom: 8 }}>
+                    <option value="">About the whole ground</option>
+                    {ground.participants.map((p: any) => (
+                      <option key={p.id} value={p.id}>About {p.roleAsDescribed || p.email}</option>
+                    ))}
+                  </select>
+                  <textarea className="gw-ta" rows={3} value={leadCtxText} onChange={e => { setLeadCtxText(e.target.value.slice(0, 4000)); setLeadCtxSaved(false) }} placeholder="e.g. Ben has been carrying the on-call rotation solo since March." maxLength={4000} />
+                  <div style={{ fontSize: 11, color: 'var(--gw-muted)', textAlign: 'right', marginTop: 2 }}>{leadCtxText.length}/4000</div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                  <button onClick={() => { if (leadCtxText.trim()) addLeadContextMut.mutate() }}
+                    disabled={addLeadContextMut.isPending || !leadCtxText.trim()}
+                    style={{ padding: '8px 16px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 600, border: 'none', cursor: leadCtxText.trim() ? 'pointer' : 'not-allowed', fontFamily: 'inherit', opacity: leadCtxText.trim() ? 1 : 0.5 }}>
+                    {addLeadContextMut.isPending ? 'Saving…' : 'Add context'}
+                  </button>
+                  {leadCtxSaved && <span style={{ fontSize: 12, color: 'var(--gw-green-t)' }}>Saved</span>}
+                </div>
+                {(ground.leadContextNotes ?? []).map(n => {
+                  const p = n.participantId ? ground.participants.find((x: any) => x.id === n.participantId) : null
+                  const about = n.participantId ? (p?.roleAsDescribed || p?.email || 'a participant') : 'the ground'
+                  return (
+                    <div key={n.id} style={{ background: 'white', border: '0.5px solid var(--gw-border)', borderRadius: 8, padding: '10px 12px', marginBottom: 8 }}>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-muted)', marginBottom: 2 }}>About {about}</div>
+                      <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>{n.text}</div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         )}
 

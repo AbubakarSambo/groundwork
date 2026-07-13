@@ -38,6 +38,18 @@ class UpdateTimelineDto {
   contextNote?: string;
 }
 
+class AddLeadContextDto {
+  @ApiPropertyOptional({ description: 'The participant this context is about; omit for context about the whole ground' })
+  @IsOptional()
+  @IsString()
+  participantId?: string;
+
+  @ApiPropertyOptional({ description: 'Private context for the AI. Never shown to the person it is about; never quoted as a claim.' })
+  @IsString()
+  @MaxLength(4000)
+  text!: string;
+}
+
 @ApiTags('Grounds')
 @ApiBearerAuth()
 @Controller('grounds')
@@ -86,6 +98,12 @@ export class GroundsController {
   @ApiOperation({ summary: 'Add the other party (sends an invite - never silent)' })
   async addParticipant(@Param('id') id: string, @CurrentUser() user: CurrentUserData, @Body() dto: AddParticipantDto) {
     return this.grounds.addParticipant(id, user.organizationId, user.id, dto);
+  }
+
+  @Post(':id/lead-context')
+  @ApiOperation({ summary: "Initiator-only: add a private context note for the AI, about a participant or the ground. Never shown to the person; never quoted as a claim." })
+  async addLeadContext(@Param('id') id: string, @CurrentUser('id') userId: string, @Body() dto: AddLeadContextDto) {
+    return this.grounds.addLeadContext(id, userId, dto);
   }
 
   @Post(':id/activate')
