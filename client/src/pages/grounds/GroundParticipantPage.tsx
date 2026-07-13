@@ -39,12 +39,18 @@ function specificityQualityLabel(score: number): { label: string; color: string;
 
 type Tab = 'checkin' | 'history' | 'record' | 'report' | 'docs' | 'settings'
 
-function SoloArtifactBlock({ checkInId }: { checkInId: string }) {
+function SoloArtifactBlock({ checkInId, groundId, sessionNumber }: { checkInId: string; groundId: string; sessionNumber: number }) {
   const [open, setOpen] = useState(false)
+  const navigate = useNavigate()
   const { data, isLoading } = useQuery({
     queryKey: ['artifact', checkInId],
     queryFn: () => conversationApi.artifact(checkInId),
     enabled: open,
+  })
+  const correctionMutation = useMutation({
+    mutationFn: () => reportsApi.startSelfCorrection(groundId, sessionNumber),
+    onSuccess: (res) => navigate(`/checkin/${res.checkInId}`),
+    onError: () => toast.error('Could not start correction session. Try again.'),
   })
   return (
     <div style={{ marginTop: 8 }}>
@@ -69,6 +75,13 @@ function SoloArtifactBlock({ checkInId }: { checkInId: string }) {
           ) : !isLoading && (
             <div style={{ fontSize: 12, color: '#9B9590' }}>No summary yet for this session.</div>
           )}
+          <button
+            onClick={() => correctionMutation.mutate()}
+            disabled={correctionMutation.isPending}
+            style={{ marginTop: 10, fontSize: 11, color: '#8A5C1A', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit', fontWeight: 600, textDecoration: 'underline', opacity: correctionMutation.isPending ? 0.6 : 1 }}
+          >
+            {correctionMutation.isPending ? 'Starting…' : 'Something wrong here? Continue this session to correct it'}
+          </button>
         </div>
       )}
     </div>
@@ -537,7 +550,7 @@ export function GroundParticipantPage() {
                           <span style={{ fontWeight: 600 }}>Commitment:</span> {ci.nextCommitment}
                         </div>
                       )}
-                      {isComplete && <SoloArtifactBlock checkInId={ci.id} />}
+                      {isComplete && <SoloArtifactBlock checkInId={ci.id} groundId={id!} sessionNumber={ci.sessionNumber} />}
                     </div>
                   )
                 })}

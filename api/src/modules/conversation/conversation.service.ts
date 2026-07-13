@@ -1122,6 +1122,24 @@ Open the session by naming that you're returning to session ${checkIn.selfCorrec
       throw new NotFoundException('That session is not a completed check-in on this ground');
     }
 
+    // LOCKING: a session can be corrected only until the next one opens. If any
+    // later session has already started (or completed), it is already building
+    // on this one - correcting the source now would leave the sessions that
+    // followed inconsistent with it. Lock it.
+    const laterStarted = await this.prisma.checkIn.findFirst({
+      where: {
+        participantId: participant.id,
+        sessionNumber: { gt: targetSessionNumber },
+        status: { in: [CheckInStatus.IN_PROGRESS, CheckInStatus.COMPLETED] },
+      },
+      select: { sessionNumber: true },
+    });
+    if (laterStarted) {
+      throw new BadRequestException(
+        `Session ${targetSessionNumber} can no longer be corrected - a later session has already started and is building on it.`,
+      );
+    }
+
     const lastCheckIn = await this.prisma.checkIn.findFirst({
       where: { participantId: participant.id },
       orderBy: { sessionNumber: 'desc' },
