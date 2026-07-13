@@ -52,23 +52,27 @@ describe('ReportsService.synthesize - promptVersionId stamping (GW-41)', () => {
         findUnique: jest.fn(async () => ({ id: 'g1', participants: [{ id: 'p1', partyType: 'INITIATOR', roleAsDescribed: 'founder' }] })),
         update: jest.fn(async () => ({})),
       },
-      groundParticipant: { findMany: jest.fn(async () => [{ id: 'p1', partyType: 'INITIATOR', roleAsDescribed: 'founder', checkIns: [] }]) },
+      groundParticipant: {
+        findMany: jest.fn(async (args: any) =>
+          args?.select?.checkIns
+            ? [{ id: 'p1', partyType: 'INITIATOR', roleAsDescribed: 'founder', checkIns: [] }]
+            : [{ id: 'p1', partyType: 'INITIATOR', roleAsDescribed: 'founder' }],
+        ),
+        findFirst: jest.fn(async () => null),
+      },
       recordEntry: {
         findMany: jest.fn(async () => [{ participant: { id: 'p1' }, type: 'COMMITMENT', text: 'We aligned on X.' }]),
         count: jest.fn(async () => 3),
       },
-      adminProfile: { findUnique: jest.fn(async () => null) },
-      patternDetection: { findMany: jest.fn(async () => []) },
       checkIn: {
         count: jest.fn(async () => 1),
-        findFirst: jest.fn(async () => null),
-        findMany: jest.fn(async () => []),
+        findMany: jest.fn(async () => [{ participantId: 'p1' }]),
+        findFirst: jest.fn(async () => ({ specificityDimensions: null, sessionNumber: 1 })),
       },
-      groundDocument: {
-        count: jest.fn(async () => 0),
-        groupBy: jest.fn(async () => []),
-        findMany: jest.fn(async () => []),
-      },
+      groundDocument: { count: jest.fn(async () => 0), groupBy: jest.fn(async () => []), findMany: jest.fn(async () => []) },
+      patternDetection: { findMany: jest.fn(async () => []) },
+      adminProfile: { findUnique: jest.fn(async () => null), upsert: jest.fn(async () => ({})) },
+      leadContextNote: { findMany: jest.fn(async () => []) },
       report: {
         upsert: jest.fn(async (args: any) => {
           upsertedCreate = args.create;

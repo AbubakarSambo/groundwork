@@ -32,6 +32,7 @@ function makeService(overrides: {
   const prisma: any = {
     ground: { findUnique: jest.fn(async () => overrides.ground) },
     adminProfile: { findUnique: jest.fn(async () => null) },
+    leadContextNote: { findMany: jest.fn(async () => []) },
     groundParticipant: {
       findMany: jest.fn(async (args: any) => {
         if (args.select?.checkIns) {

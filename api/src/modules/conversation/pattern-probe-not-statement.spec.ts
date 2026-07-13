@@ -56,6 +56,7 @@ function makeConversationPrisma(patternRows: { code: string }[]) {
       findMany: jest.fn(async () => []),
     },
     adminProfile: { findUnique: jest.fn(async () => null) },
+    leadContextNote: { findMany: jest.fn(async () => []) },
     groundDocument: { findMany: jest.fn(async () => []) },
     patternDetection: {
       findMany: jest.fn(async () => patternRows),
@@ -93,6 +94,7 @@ describe('GW-PATTERN-PROBE-NOT-STATEMENT: patterns sharpen questions live, never
     const reportPrisma: any = {
       ground: { findUnique: jest.fn(async () => ({ id: 'g1', scenario: 'NEW_PROJECT', initiatorId: 'init-1', resolutionState: null, brief: null })) },
       adminProfile: { findUnique: jest.fn(async () => null) },
+    leadContextNote: { findMany: jest.fn(async () => []) },
       groundParticipant: {
         findMany: jest.fn(async (args: any) => {
           if (args.select?.checkIns) return [{ id: 'p1', partyType: 'INITIATOR', checkIns: [] }];

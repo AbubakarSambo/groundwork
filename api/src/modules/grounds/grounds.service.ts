@@ -612,6 +612,18 @@ export class GroundsService {
       sessionProgress && requestingParticipant && sessionProgress.missingParticipantIds.includes(requestingParticipant.id)
     );
 
+    // Read-back of private lead-context notes: ONLY the initiator who wrote them
+    // sees them. They are never returned to any other party (that is the private
+    // boundary - a participant must never see a note the lead wrote about them).
+    const isInitiatorViewer = !!requestingUserId && ground.initiatorId === requestingUserId;
+    const leadContextNotes = isInitiatorViewer
+      ? await this.prisma.leadContextNote.findMany({
+          where: { groundId: id },
+          select: { id: true, participantId: true, text: true, createdAt: true },
+          orderBy: { createdAt: 'asc' },
+        })
+      : [];
+
     const { patternDetections: _pd, ...rest } = ground as any;
     return {
       ...rest,
@@ -621,9 +633,35 @@ export class GroundsService {
       brief,
       signals,
       contextNotes,
+      leadContextNotes,
       org: org ?? null,
       sessionProgress: sessionProgress ? { ...sessionProgress, requestingUserIsMissing } : null,
     };
+  }
+
+  /**
+   * Add a private lead-context note - the initiator feeds the AI real-world
+   * context it would otherwise never have, about a specific participant
+   * (participantId set) or about the ground (participantId null). Initiator-only.
+   * It DIRECTS and WEIGHTS synthesis; it is never shown to the person it is about
+   * and never becomes a stated claim in the report (see reports.service synthesis).
+   */
+  async addLeadContext(groundId: string, requestingUserId: string, dto: { participantId?: string | null; text: string }) {
+    const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { initiatorId: true } });
+    if (!ground) throw new NotFoundException('Ground not found');
+    if (ground.initiatorId !== requestingUserId) {
+      throw new ForbiddenException('Only the initiator can add context notes to this ground');
+    }
+    const text = (dto.text ?? '').trim();
+    if (!text) throw new BadRequestException('Context note text is required');
+    if (dto.participantId) {
+      const target = await this.prisma.groundParticipant.findFirst({ where: { id: dto.participantId, groundId } });
+      if (!target) throw new BadRequestException('That participant is not on this ground');
+    }
+    return this.prisma.leadContextNote.create({
+      data: { groundId, participantId: dto.participantId ?? null, authorUserId: requestingUserId, text },
+      select: { id: true, participantId: true, text: true, createdAt: true },
+    });
   }
 
   /**
