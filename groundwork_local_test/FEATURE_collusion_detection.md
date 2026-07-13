@@ -1,4 +1,9 @@
-# Collusion Detection - Spec (for review, NOT built)
+# FEATURE: Collusion Detection - build brief (NOT built; next session)
+
+Status: scoped and recorded end-of-day 2026-07-13. NOT built - collusion detection is a real
+rebuild whose false-positive design (section 3) must be scrutinised before any code. This is the
+build brief for a future session. See PATTERN_SYSTEM_INVENTORY.md for why the existing
+`detectCollusion` is a rebuild not a wire.
 
 A rebuild of cross-party collusion detection. Replaces the inert `detectCollusion` (see
 PATTERN_SYSTEM_INVENTORY.md: unreachable `UNANCHORED_RECALL` gate + generic term-overlap, wrong
