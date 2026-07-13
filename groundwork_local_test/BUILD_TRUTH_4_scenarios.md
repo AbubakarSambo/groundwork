@@ -86,7 +86,29 @@ anywhere in the file is one NEW_HIRE-only empty-state hint (line 501).
 
 ## 2. What the AI actually asks differently, per scenario
 
-**Correction, and the most important finding in this document.** An earlier
+> **CORRECTION (2026-07-12, verified live) — READ THIS FIRST. The paragraph
+> immediately below is WRONG, and decisions were made on it.** The scenario packs
+> are **LIVE at session 1**, not dead/seed-only. `buildActivePathway`
+> (`prompt-library.ts:~1986`) runs
+> `const pack = ctx.scenarioPackOverride ?? buildScenarioPackForParty(scenario, partyType)`
+> and, whenever a pack exists, returns the **pack** as the session-1 opening content;
+> the single pathway question is only a fallback for a scenario with no pack. And
+> `buildScenarioPackForParty` returns a non-null pack (791–2924 chars) for **every**
+> scenario/party checked — so the pathway-question fallback **never fires** in practice.
+> Verified two ways: (1) calling `buildScenarioPackForParty` directly returned content
+> for all six combos tested; (2) six live session-1 openers on current code asked the
+> **pack's** questions, e.g. PULSE_CHECK/participant opened *"what's one thing that's
+> going well right now?"* (the pack's `OPENING`), **not** pathway-20's *"what would
+> need to be true..."*. So the file comment "Runtime uses `buildScenarioPackForParty`"
+> is **correct**; the claim below that it is "never called from conversation.service.ts"
+> is misleading — it is called transitively via
+> `composeSystemPrompt → buildIntakeBlock → buildActivePathway → buildScenarioPackForParty`.
+> **Net effect:** the AI's session-1 questions ARE meaningfully scenario-specific (via
+> the packs), not the near-uniform generic pathway questions this section and §5 claim.
+> §5's "barely different conversations" conclusion is overstated for session 1 as a result.
+
+**Correction, and the most important finding in this document.** [SUPERSEDED — see
+the CORRECTION banner directly above; the packs ARE live at session 1.] An earlier
 draft of this section quoted a large library of rich, scenario-specific prompt
 text (`STARTING_ROLE_QUESTIONS`, `DRIFT_OPENING`, `CRISIS_SCOPE_BOUNDARY`,
 `RECOGNITION_INITIATOR`, `PULSE_CHECK_PACK`, `BOARD_STRATEGY_PACK`,
