@@ -8,6 +8,11 @@ export const appConfig = registerAs("app", () => ({
   // this email is promoted on startup. No-ops once any platform admin exists,
   // so it can never be used to add a second one later - see AdminService.onApplicationBootstrap.
   platformAdminBootstrapEmail: process.env.PLATFORM_ADMIN_BOOTSTRAP_EMAIL,
+  // Post-report guide generation (per-participant bridge coaching, one Gemini call
+  // per party per report release). The feature is BUILT and proven accurate but has
+  // no UI surface yet, so it is OFF by default to avoid paying for output nothing
+  // renders. Flip to true once a client component shows each participant their guide.
+  postReportGuideEnabled: process.env.POST_REPORT_GUIDE_ENABLED === "true",
 }));
 
 export const databaseConfig = registerAs("database", () => ({

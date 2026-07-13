@@ -1058,6 +1058,17 @@ SYNTHESIS RULES (override all other instructions if there is a conflict):
     report: { groundId: string; sharedPicture: string; agreements: any; divergences: any; centralQuestion: string; engagement: any },
     participantIds: string[],
   ): Promise<void> {
+    // GATED: post-report guide generation is disabled until it is wired to a UI.
+    // It makes one Gemini call per participant per report release, and today NOTHING
+    // renders the result, so every call is spend into a void. Full state and the
+    // wire-up brief: groundwork_local_test/FEATURE_post_report_guide.md.
+    // TO RE-ENABLE: set POST_REPORT_GUIDE_ENABLED=true (app.postReportGuideEnabled) once a
+    // participant-facing surface consumes the guide. The feature is otherwise fully built below.
+    if (!this.config.get<boolean>('app.postReportGuideEnabled')) {
+      this.logger.debug(`Post-report guide generation skipped for ground ${report.groundId} (POST_REPORT_GUIDE_ENABLED off)`);
+      return;
+    }
+
     // Build the shared synthesis text so the AI can reference it.
     const synthesisText = [
       `Shared picture: ${report.sharedPicture}`,
