@@ -273,6 +273,41 @@ Inert, harmless, misleading to readers (implies a numeric engine that doesn't ru
 
 ---
 
+## Detector deep-dive (2026-07-13) - detectCollusion / detectForceMultiplier: REBUILD, not wire
+
+Read both orphaned detectors in full at the code. Decision reached: collusion is a genuine feature
+to BUILD (spec: COLLUSION_DETECTION_SPEC.md); force-multiplier is a separate, mislabeled positive
+feature to park/delete on its own.
+
+### `detectCollusion` (`intelligence.service.ts:300-357`) - PARTIAL, inert by construction
+Intended: flag a pair whose records share high term density with no evidence across 3+ periods.
+- **It can never fire.** Final gate requires `every` record entry to be `evidenceType === 'UNANCHORED_RECALL'`
+  (`:344-345`), but **nothing in the system ever assigns `UNANCHORED_RECALL`** (grep, whole `api/src`:
+  zero writers; records are `CHECK_IN` by default at `conversation.service.ts:940`, or
+  `DOCUMENT_AT_AGREEMENT` from uploads at `documents.service.ts:267`). So `detectCollusion` always
+  returns `null`, wired or not.
+- **Wrong signal even if the gate worked.** It checks a FIXED 10-term tech list
+  (`api,payment,integration,deploy...` `:301-304`) present in both parties' concatenated text
+  (`aText.includes(t)` `:332`). That is generic term overlap - NOT mutual vouching. It never checks
+  whether A names/credits B. Two honest engineers on the same infra match; colluders on a non-tech
+  topic do not.
+- **Persists nothing** - returns a bare `{flagged, reason}` (`:348-351`); no `PatternDetection`, no code.
+- **Verdict: rebuild.** The sketch detects the wrong thing and cannot fire. The plumbing (weekly
+  per-ground pass + feed-only surfacing) is reusable; the detector is a real build.
+
+### `detectForceMultiplier` (`intelligence.service.ts:230-291`) - MISLABELED POSITIVE, park separately
+- Scans org-wide records for this person's name + an operational word (`shipped/built/...`); if 2+
+  distinct colleagues mention them operationally, upserts `M4_PLUS` SURFACED (`:272-286`).
+- **This is a POSITIVE cross-party signal** ("broad force-multiplier contribution", its own
+  `observationText` `:280`) - a distributed R3, **not adversarial, irrelevant to collusion.**
+- Crude (substring name match -> false positives; `take:200` cap; writes SURFACED with no
+  three-period rule / no confirmation / no probe). And **`M4_PLUS` has zero consumers** - no code
+  list classifies it, no report/live/feed renders it (grep). An orphan record even if it fired.
+- **Verdict: separate decision.** Park or delete independently of collusion. If ever wanted, it is a
+  positive-contribution feature needing its own consumer + a real name-resolution approach.
+
+---
+
 ## Per-pattern decision surface (for when we act - NOT done here)
 
 Once you have this map, the natural buckets:
