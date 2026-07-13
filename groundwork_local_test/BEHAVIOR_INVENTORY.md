@@ -84,6 +84,7 @@ inconsistency**, not just assert "phrases present."
 | Pattern evidence into report | ✅ `pattern-evidence-wiring.spec.ts` |
 | Feed-only code filtering (F5/E4 never surfaced) | ✅ `context.service.spec.ts` |
 | Cross-reference DEGREES 1/2/3 + framing + contradiction rules | ⚠️ |
+| **CROSS-PARTY SILENT CORROBORATION** — `crossReference()` (`context.service.ts:285`, wired via `build():210`, `sessionNumber >= 2`) turns another party's completed record into a **probe for the current speaker** that tests their claim (e.g. claims-complete + other-reports-problem → "has the downstream team confirmed it works?"), rendered "behind the curtain" (`:266`). **Non-revealing property** (`GW-37`): probes must NEVER attribute a position to the other party. Real + wired + silent, but **generic keyword-overlap** (not bespoke claim-specific probes) and **PULL/session-2+-gated** (not forward-planted). | ⚠️ **exposed** (context.service.spec touches it but asserts neither the probe generation nor non-revealing) |
 | Check-in read isolation / privacy | ✅ `conversation-isolation` + `privacy-isolation` |
 | **Navigation — first-turn `open()`** (engine speaks first) | ⚠️ |
 | **Navigation — clarification-session opener** (`isClarification` → "do NOT ask the standard opener", open on the inference) | ⚠️ |
@@ -111,6 +112,10 @@ inconsistency**, not just assert "phrases present."
 6. **Entry-chat rules** (C) — record-builder-not-coach + FAQ mode.
 7. **Report-synthesis voice** (G) — SYNTHESIS RULES + REPORT_SYNTHESIS + entry report voice present.
 8. **Cross-reference framing + navigation openers** (F).
+9. **CROSS-PARTY SILENT CORROBORATION** (F) — tripwire asserts: (a) `crossReference()` *generates* a probe when a claim overlaps/conflicts with another party's record, and (b) the probe is **non-revealing** — never attributes a position to the other party ("the other party says X" must never appear). Guards today's real mechanism.
+
+## Separate BUILD (not a guard) — flagged, not scoped
+The sophisticated version of cross-party corroboration — **bespoke claim-specific probes** (turn "I shipped the console" into "how are you finding the console?" that distinguishes shipped-vs-built) and **forward-planting** the probe for whenever the other party next checks in — does NOT exist today (the live version is generic keyword-overlap, PULL, session-2+-gated). That's a genuine build on top of the guarded mechanism, decided separately.
 
 Only after the suite is green do we touch the claim-verification universal rule — with the
 suite watching, so any edit that drops another behavior goes red instantly.
