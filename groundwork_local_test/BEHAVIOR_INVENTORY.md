@@ -144,7 +144,7 @@ inconsistency**, not just assert "phrases present."
 4. ✅ **Core chat rules present** (A) — HUMAN FIRST, ACKNOWLEDGE BEFORE PROBE, GENERAL KNOWLEDGE, ONE QUESTION, DEMONSTRATE YOU HEARD, banned-words/filler. `behavior-preservation`
 5. ✅ **Tone / therapy** (B) — TONE STATES + TRUST CALIBRATION present. `behavior-preservation`
 6. ✅ **Entry-chat rules** (C) — record-builder-not-coach + FAQ mode, on the assembled `buildEntrySystemPrompt`. `behavior-entry-report-end`
-7. ✅ **Report-synthesis voice** (G) — all 13 SYNTHESIS RULES present via exported `SYNTHESIS_RULES`. `behavior-entry-report-end` *(entry report voice `whatGroundworkSaw`/`honestClose` still ⚠️)*
+7. ✅ **Report-synthesis voice** (G) — all 13 SYNTHESIS RULES present via exported `SYNTHESIS_RULES`; plus the one-sided **entry report** voice (not-yet-cross-referenced framing, no false alignment when one party has spoken, anti-invention, no verdicts) via exported `ENTRY_REPORT_PROMPT`. `behavior-entry-report-end`
 8. ✅ **Navigation openers** (F) — self-correction opener + returning-user (session-2) continuity block, on the assembled prompt. `behavior-context` *(clarification opener still ⚠️ — needs a report+inference fixture)*
 9. ✅ **CROSS-PARTY SILENT CORROBORATION** (F) — asserts (a) `crossReference()` *fires* a probe on claim/record conflict (`Recommended probe:` + the CONTRADICTION template) and (b) it is **non-revealing** — the other party's verbatim record text never appears + "never quote the other party" is present. `behavior-context`
 10. 🔴 **H1 ACROSS TURNS** — full prior history reaches the model (green) AND a "do not re-ask what's answered" instruction is present (**RED today** — documents the live bug; goes green in Phase 2). `behavior-context`

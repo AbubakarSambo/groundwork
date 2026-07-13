@@ -4,6 +4,7 @@ import {
   buildEntrySystemPrompt,
   FAQ_PROMPT,
   ENTRY_COMPLETION_PHRASES,
+  ENTRY_REPORT_PROMPT,
 } from '../entry/entry.service';
 import { SYNTHESIS_RULES } from '../reports/reports.service';
 
@@ -107,5 +108,30 @@ describe('GW-BEHAVIOR-REPORT-G: the synthesis rules carry the report voice', () 
 
   it('the rules assert their override precedence over the base prompt', () => {
     expect(SYNTHESIS_RULES).toContain('override all other instructions');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// G (entry side). The session-1 (one-sided) report must reflect reality, not assertion:
+// no alignment claimed when only one party has spoken; no invented specifics; no verdicts.
+// This is the canonical "a report that reflects reality, not assertion" on the solo path.
+// ---------------------------------------------------------------------------
+describe('GW-BEHAVIOR-ENTRY-REPORT-G: the one-sided entry report reflects reality, not assertion', () => {
+  it('opens by stating the record is NOT yet cross-referenced with any other account', () => {
+    expect(ENTRY_REPORT_PROMPT).toContain('has not been cross-referenced with any other account yet');
+  });
+
+  it('forbids claiming alignment when only one party has checked in (no false consensus, solo path)', () => {
+    expect(ENTRY_REPORT_PROMPT).toContain('only ONE party has checked in');
+    expect(ENTRY_REPORT_PROMPT).toContain('Do NOT use the word "Aligned"');
+  });
+
+  it('forbids inventing specifics the person did not state (anti-hallucination)', () => {
+    expect(ENTRY_REPORT_PROMPT).toContain('Do not invent');
+    expect(ENTRY_REPORT_PROMPT).toContain('Never introduce a timeframe, date, number');
+  });
+
+  it('bans verdicts and judgements of people', () => {
+    expect(ENTRY_REPORT_PROMPT).toContain('No verdicts');
   });
 });
