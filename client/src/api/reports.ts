@@ -22,4 +22,7 @@ export const reportsApi = {
 
   startClarification: (groundId: string, inferenceId: string) =>
     apiClient.post<{ checkInId: string }>(`/grounds/${groundId}/clarify`, { inferenceId }).then(r => r.data),
+
+  startSelfCorrection: (groundId: string, sessionNumber: number) =>
+    apiClient.post<{ checkInId: string }>(`/grounds/${groundId}/correct-session`, { sessionNumber }).then(r => r.data),
 }
