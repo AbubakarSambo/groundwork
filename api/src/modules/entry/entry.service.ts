@@ -64,7 +64,16 @@ function resolveScenario(input?: string): GroundScenario {
 
 const DEFAULT_SCENARIO = GroundScenario.NEW_PROJECT;
 
-const ENTRY_SESSION_ADDENDUM = `
+// The ENTRY session-completion phrase list (the anonymous-flow end detector). NOTE: this is
+// ONE of four uncoordinated end-detection sources (see BEHAVIOR_INVENTORY.md D / task_35534866:
+// auth detectSessionComplete, this list, entry.controller '[session complete]', client
+// SESSION_END_PATTERNS). They do NOT match - the behavior-entry-report-end tripwire surfaces it.
+export const ENTRY_COMPLETION_PHRASES = [
+  '[session complete]', 'your account is now on record', 'your record is here',
+  'your record is saved as is', 'cannot be verified from this account', 'your contribution is saved',
+];
+
+export const ENTRY_SESSION_ADDENDUM = `
 # Entry session context
 This is the person's first session. They have not yet created an account.
 There is no prior check-in data, no longitudinal patterns, no other-party record yet.
@@ -128,7 +137,7 @@ You are a record-builder, not a coach. If the person asks you for advice, a fram
 Do not use dashes of any kind - no em dashes, no en dashes, no hyphens in prose.
 Use straight quotes only. Keep questions short. One question at a time.`.trim();
 
-const FAQ_PROMPT = `FAQ MODE. Answer the person's question about how Groundwork works in one or two plain sentences, then stop. Do not start a check-in. Do not ask a follow up unless it is needed for clarity. Do not use dashes of any kind. Use straight quotes. Reference facts only: Your contribution to this ground stays on your side until everyone has checked in. The other party submits their own independent account. The report shows where accounts agree, where they differ, and what the gap means. Both parties receive it at the same moment. Most first sessions take 8 to 15 minutes. The first session on each ground is free. Additional sessions are $5 each, purchased any time from your ground. For anything else: hello@myground.work.`;
+export const FAQ_PROMPT = `FAQ MODE. Answer the person's question about how Groundwork works in one or two plain sentences, then stop. Do not start a check-in. Do not ask a follow up unless it is needed for clarity. Do not use dashes of any kind. Use straight quotes. Reference facts only: Your contribution to this ground stays on your side until everyone has checked in. The other party submits their own independent account. The report shows where accounts agree, where they differ, and what the gap means. Both parties receive it at the same moment. Most first sessions take 8 to 15 minutes. The first session on each ground is free. Additional sessions are $5 each, purchased any time from your ground. For anything else: hello@myground.work.`;
 
 const ENTRY_REPORT_PROMPT = `You are Groundwork. A person has just completed their first check-in session. Generate their session 1 report: what you saw in their account, where clarity exists, where it does not, and what to do next.
 
@@ -269,7 +278,7 @@ function isLikelyQuestion(text: string): boolean {
   return starters.some(s => lower.startsWith(s));
 }
 
-function buildEntrySystemPrompt(scenario: GroundScenario, groundLabel: string): string {
+export function buildEntrySystemPrompt(scenario: GroundScenario, groundLabel: string): string {
   const scenarioPack = buildScenarioPackForParty(scenario, PartyType.INITIATOR);
   const runtimeCtx = buildRuntimeContext({
     scenario,
@@ -447,12 +456,8 @@ ${priorSessionContext}${crossClaimsContext}`;
 
     // Detect session completion from the AI reply only - never trust client-supplied history
     // to detect completion, as a caller could inject fake completion phrases.
-    const COMPLETION_PHRASES = [
-      '[session complete]', 'your account is now on record', 'your record is here',
-      'your record is saved as is', 'cannot be verified from this account', 'your contribution is saved',
-    ];
     const replyLower = reply.toLowerCase();
-    const sessionComplete = COMPLETION_PHRASES.some(p => replyLower.includes(p));
+    const sessionComplete = ENTRY_COMPLETION_PHRASES.some(p => replyLower.includes(p));
 
     // When the session is complete, persist all turns and mark the checkIn COMPLETED.
     if (sessionComplete) {

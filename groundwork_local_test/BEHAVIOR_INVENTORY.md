@@ -11,6 +11,24 @@ Repo paths under `api/src/...` and `client/src/...`.
 
 ---
 
+## Phase 1 lock status — BUILT (branch `test/behavior-tripwires`)
+
+Three tripwire specs, **58 assertions green + 1 intentional RED (H1)**, every one proven to bite:
+
+| Spec | Covers | Assertions |
+|---|---|---|
+| `conversation/behavior-preservation.spec.ts` | A chat rules · B tone/trust · E pack richness | 41 ✅ |
+| `conversation/behavior-context.spec.ts` | H1 across-turns (RED) · H2 across-sessions · H3/F#9 cross-party corroboration · F-nav self-correction + returning openers | 7 ✅ / **1 🔴 H1** |
+| `conversation/behavior-entry-report-end.spec.ts` | C entry rules · D end-detection (+ inconsistency surfaced) · G synthesis voice | 10 ✅ |
+
+Every tripwire asserts on the **assembled prompt** (`ConversationService.sendMessage` capture, `buildEntrySystemPrompt`) or the **real detector** (`detectSessionComplete`, `ENTRY_COMPLETION_PHRASES`, `SYNTHESIS_RULES`), never a raw source grep. Bite-proof method: neutralise the source rule → the matching assertion reds; restore → green.
+
+**Test-enablement source changes (safe, pure):** exported `buildEntrySystemPrompt` / `FAQ_PROMPT` / `ENTRY_SESSION_ADDENDUM` / `ENTRY_COMPLETION_PHRASES` (entry.service), extracted the inline 13 synthesis rules into an exported `SYNTHESIS_RULES` const (reports.service). No behavior changed; neighbours green (reports+entry+conversation: 134 passed).
+
+**H1 is RED on purpose** — history reaches the model but no "do not re-ask" instruction exists yet. It documents the live re-ask bug and goes green when Phase 2 lands the fix. Not-yet-guarded: clarification-session opener (needs a report+inference fixture), client `SESSION_END_PATTERNS` (vitest, cross-runner — the 4th end-detection list, noted in D).
+
+---
+
 ## A. Chat rules — `ENGINE_RULES` (`modules/conversation/prompt-library.ts:55`, seeded as `'system'`, fetched every turn by `composeSystemPrompt`)
 
 | Rule | Status |
@@ -112,18 +130,18 @@ inconsistency**, not just assert "phrases present."
 ---
 
 ## Tripwire build order (each asserts on assembled prompt / real detector; each proven to bite)
-1. **DOCUMENT PROBE / evidence-probing** present for every scenario (A) — *proved it vanishes*.
-2. **Pack richness** (E) — every scenario non-empty + rich-tier packs carry evidence-probing.
-3. **End-detection** (D) — lock each detector's phrases **and surface the inconsistency**; consolidation is a separate fix/task.
-4. **Core chat rules present** (A) — HUMAN FIRST, ACKNOWLEDGE BEFORE PROBE, GENERAL KNOWLEDGE, ONE QUESTION, DEMONSTRATE YOU HEARD, banned-words/filler.
-5. **Tone / therapy** (B) — TONE STATES + TRUST CALIBRATION present.
-6. **Entry-chat rules** (C) — record-builder-not-coach + FAQ mode.
-7. **Report-synthesis voice** (G) — SYNTHESIS RULES + REPORT_SYNTHESIS + entry report voice present.
-8. **Cross-reference framing + navigation openers** (F).
-9. **CROSS-PARTY SILENT CORROBORATION** (F) — tripwire asserts: (a) `crossReference()` *generates* a probe when a claim overlaps/conflicts with another party's record, and (b) the probe is **non-revealing** — never attributes a position to the other party ("the other party says X" must never appear). Guards today's real mechanism.
-10. **H1 ACROSS TURNS** — assert the assembled model call carries the full prior history (green) AND assert a "do not re-ask what's answered" instruction is present in the assembled prompt (**starts RED** — it isn't there today; the red documents the live bug to fix, and turns green when fixed).
-11. **H2 ACROSS SESSIONS** — assert a session-2 assembled prompt contains session-1 record content (`priorSession`/returning-user), and session-1 does not.
-12. **H3 ACROSS PEOPLE** — assert `crossReference()` surfaces a divergence when A's claim + B's record conflict (live), and the report corpus contains more than one party's records.
+1. ✅ **DOCUMENT PROBE / evidence-probing** present for every scenario (A) — *proved it vanishes*. `behavior-preservation`
+2. ✅ **Pack richness** (E) — every scenario non-empty + rich-tier packs carry evidence-probing. `behavior-preservation`
+3. ✅ **End-detection** (D) — locks the auth detector + **surfaces the auth-vs-entry inconsistency** (entry's `your record is here` / `[session complete]` are invisible to the auth detector); consolidation = `task_35534866`. `behavior-entry-report-end`
+4. ✅ **Core chat rules present** (A) — HUMAN FIRST, ACKNOWLEDGE BEFORE PROBE, GENERAL KNOWLEDGE, ONE QUESTION, DEMONSTRATE YOU HEARD, banned-words/filler. `behavior-preservation`
+5. ✅ **Tone / therapy** (B) — TONE STATES + TRUST CALIBRATION present. `behavior-preservation`
+6. ✅ **Entry-chat rules** (C) — record-builder-not-coach + FAQ mode, on the assembled `buildEntrySystemPrompt`. `behavior-entry-report-end`
+7. ✅ **Report-synthesis voice** (G) — all 13 SYNTHESIS RULES present via exported `SYNTHESIS_RULES`. `behavior-entry-report-end` *(entry report voice `whatGroundworkSaw`/`honestClose` still ⚠️)*
+8. ✅ **Navigation openers** (F) — self-correction opener + returning-user (session-2) continuity block, on the assembled prompt. `behavior-context` *(clarification opener still ⚠️ — needs a report+inference fixture)*
+9. ✅ **CROSS-PARTY SILENT CORROBORATION** (F) — asserts (a) `crossReference()` *fires* a probe on claim/record conflict (`Recommended probe:` + the CONTRADICTION template) and (b) it is **non-revealing** — the other party's verbatim record text never appears + "never quote the other party" is present. `behavior-context`
+10. 🔴 **H1 ACROSS TURNS** — full prior history reaches the model (green) AND a "do not re-ask what's answered" instruction is present (**RED today** — documents the live bug; goes green in Phase 2). `behavior-context`
+11. ✅ **H2 ACROSS SESSIONS** — session-2 assembled prompt contains session-1 record content; session-1 does not. `behavior-context`
+12. ✅ **H3 ACROSS PEOPLE** — `crossReference()` surfaces a divergence when A's claim + B's record conflict (covered by #9). `behavior-context`
 
 ## Separate BUILD (not a guard) — flagged, not scoped
 The sophisticated version of cross-party corroboration — **bespoke claim-specific probes** (turn "I shipped the console" into "how are you finding the console?" that distinguishes shipped-vs-built) and **forward-planting** the probe for whenever the other party next checks in — does NOT exist today (the live version is generic keyword-overlap, PULL, session-2+-gated). That's a genuine build on top of the guarded mechanism, decided separately.
