@@ -83,6 +83,25 @@ function WhatsAppToggle() {
   )
 }
 
+function FutureIdeas() {
+  const IDEAS = [
+    {
+      title: 'Voice check-in via calendar call',
+      body: 'A scheduled call that puts itself on your calendar, joins, and runs the check-in as a spoken conversation instead of chat - including asking you to upload documents during or after the call.',
+    },
+  ]
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {IDEAS.map((idea, i) => (
+        <div key={i} style={{ ...C, padding: '12px 14px' }}>
+          <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 3 }}>{idea.title}</div>
+          <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.55 }}>{idea.body}</div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function SystemTab({ dash }: { dash: PlatformDashboardData }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
@@ -90,6 +109,11 @@ function SystemTab({ dash }: { dash: PlatformDashboardData }) {
       <section>
         <div style={SL}>Integrations</div>
         <WhatsAppToggle />
+      </section>
+
+      <section>
+        <div style={SL}>Future ideas</div>
+        <FutureIdeas />
       </section>
 
       <section>

@@ -286,6 +286,11 @@ model Ground {
   brief           String? @map("brief") // initiator's opening brief, written at ground creation
   groundAuditLog Json?  @map("ground_audit_log") // append-only JSON log of timeline/cadence changes
   createdByUserId String? @map("created_by_user_id") // the admin who set this up for a lead; null for self-serve grounds
+  // Cross-org participant visibility (per-ground, applies to cross-org
+  // participants only - same-org participants are unaffected either way).
+  // Default true: cross-org participants see other parties' roles/labels but
+  // not their email addresses, until the initiator explicitly opens it up.
+  restrictExternalVisibility Boolean @default(true) @map("restrict_external_visibility")
 
   // Lifecycle / billing markers
   billingActivatedAt  DateTime? @map("billing_activated_at") // admin activated report

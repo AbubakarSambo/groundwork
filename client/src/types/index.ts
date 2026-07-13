@@ -49,7 +49,9 @@ export type CheckInStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED' | 'DECLI
 
 export interface GroundParticipant {
   id: string
-  email: string
+  // null when a cross-org viewer is looking at another party under
+  // restrictExternalVisibility - see Ground.restrictExternalVisibility
+  email: string | null
   partyType: PartyType
   userId: string | null
   roleAsDescribed?: string | null
@@ -106,6 +108,7 @@ export interface Ground {
     missingParticipantIds: string[]
     requestingUserIsMissing: boolean
   } | null
+  restrictExternalVisibility?: boolean
   sessionsBalance?: number
   isFreeGround?: boolean
   joinToken?: string | null
@@ -140,6 +143,7 @@ export interface Report {
     hiddenContributors?: { label: string; evidence: string }[]
     concernFlags?: { label: string; observation: string }[]
     specificityCauses?: { label: string; cause: 'behavioral' | 'misunderstanding' | 'adversarial' | 'unclear'; note: string }[]
+    leadCalibrationNote?: string
   } | null
   // Spec payload fields (cross-ref / resolution report)
   pattern?: string
@@ -154,6 +158,7 @@ export interface Report {
   alignmentReached?: { title: string; note: string }[]
   areasRequiringAlignment?: { title: string; observation: string; whyItMatters?: string; recommendedMove?: string }[]
   soloArtifact?: { summary: string; whatToCarry?: string } | null
+  postReportGuide?: { openingLine: string; questionToCarry: string; toAcknowledge: string; recommendedNextStep: string } | null
   // Participant report fields
   assumptions?: string[]
   clarity?: string[]

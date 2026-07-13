@@ -581,12 +581,21 @@ export class GroundsService {
       : [];
     const sharedArtifactById = new Map(sharedArtifacts.map((a) => [a.id, a.soloArtifact]));
 
+    // Cross-org visibility restriction (per-ground, default on): a participant
+    // whose own org differs from the ground's org sees other parties' roles
+    // and labels, but not their email addresses, unless the initiator has
+    // explicitly turned this restriction off. Same-org viewers are never
+    // affected either way - this only changes what a CROSS-ORG viewer sees.
+    const isCrossOrgViewer = !!requestingUserId && ground.organizationId !== organizationId;
+    const shouldHideEmails = isCrossOrgViewer && (ground as any).restrictExternalVisibility;
+
     const participantsWithCheckIns = (ground.participants ?? []).map((p: any) => {
       const raw = sharedArtifactById.get(p.id);
+      const isSelf = p.userId === requestingUserId;
       return {
         ...p,
+        email: shouldHideEmails && !isSelf ? null : p.email,
         soloArtifactShared: p.soloArtifactShared ?? false,
-        // Only expose the content when the participant explicitly shared it
         sharedSoloReport: raw
           ? (() => { try { return JSON.parse(raw); } catch { return null; } })()
           : null,
@@ -861,6 +870,25 @@ export class GroundsService {
       gapSummary,
       note: 'This brief is for use with a facilitator. It contains structural information only, not session content.',
     };
+  }
+
+  /**
+   * Initiator-only: whether cross-org participants see other parties' email
+   * addresses on this ground. Deliberately separate from updateTimeline()
+   * (which any party can call) - this is the initiator's call alone, since
+   * they're the one who invited the external contributor in the first place.
+   */
+  async setExternalVisibility(groundId: string, requestingUserId: string, restrict: boolean) {
+    const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { initiatorId: true } });
+    if (!ground) throw new NotFoundException('Ground not found');
+    if (ground.initiatorId !== requestingUserId) {
+      throw new ForbiddenException('Only the initiator can change this setting');
+    }
+    return this.prisma.ground.update({
+      where: { id: groundId },
+      data: { restrictExternalVisibility: restrict },
+      select: { id: true, restrictExternalVisibility: true },
+    });
   }
 
   /**

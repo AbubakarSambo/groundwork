@@ -162,4 +162,10 @@ export class GroundsController {
   async updateTimeline(@Param('id') id: string, @CurrentUser('id') userId: string, @Body() dto: UpdateTimelineDto) {
     return this.grounds.updateTimeline(id, userId, dto);
   }
+
+  @Patch(':id/external-visibility')
+  @ApiOperation({ summary: 'Initiator-only: whether cross-org participants see other parties\' email addresses (default: hidden)' })
+  async setExternalVisibility(@Param('id') id: string, @CurrentUser('id') userId: string, @Body() dto: { restrict: boolean }) {
+    return this.grounds.setExternalVisibility(id, userId, dto.restrict);
+  }
 }

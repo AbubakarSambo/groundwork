@@ -84,9 +84,9 @@ export function AppShell({ children }: AppShellProps) {
   const parties = (g: Ground) => {
     const emails = g.participants
       .filter(p => p.partyType !== 'INITIATOR')
-      .map(p => p.email.split('@')[0])
+      .map(p => p.email?.split('@')[0] ?? 'hidden')
     if (emails.length === 0) {
-      return g.participants.map(p => p.email.split('@')[0]).slice(0, 2).join(' + ')
+      return g.participants.map(p => p.email?.split('@')[0] ?? 'hidden').slice(0, 2).join(' + ')
     }
     return emails.slice(0, 2).join(' + ')
   }
