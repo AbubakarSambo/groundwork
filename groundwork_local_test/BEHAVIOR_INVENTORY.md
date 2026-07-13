@@ -101,6 +101,14 @@ inconsistency**, not just assert "phrases present."
 | `REPORT_SCHEMA` field instructions (model-facing per-field text) | ⚠️ |
 | Entry report voice — `ENTRY_REPORT_PROMPT` + `whatGroundworkSaw` / `honestClose` / `alignmentStatus` (`entry.service.ts:133,159,198`) | ⚠️ |
 
+## H. CROSS-CUTTING CONTEXT PROPERTIES — "does it hold context across time and people" (not single-turn rules)
+
+| Property | Mechanism / where | Status |
+|---|---|---|
+| **H1. ACROSS TURNS** (within a session) — retain what the user said, don't re-ask | Full turn history assembled into the model call (`conversation.service.ts:316,384`, `conversationTurn.findMany` no `take`/`slice`, passed as messages). Context IS carried. | 🔴 **BROKEN behavior** — there is **no "do not re-ask what's answered" instruction anywhere**, and the packs list overlapping questions → the model re-asks answered questions (seen live). Context present, behavior fails. |
+| **H2. ACROSS SESSIONS** (same person over time) — returning-person continuity, not cold restart | `priorSession` (prior record entries, ≤800 chars, `composeSystemPrompt:433–462`) + `returningUserContext` (`buildReturningUserContext:599`), both in the final assembled prompt (`:590`), `sessionNumber >= 2` | ✅ wired & firing (session-2+; summarized not full transcript) · ⚠️ exposed (no test) |
+| **H3. ACROSS PEOPLE** (cross-participant) — connect A's records to B's | **Live:** `crossReference()` (`context.service.ts:285`, session-2+, needs other party checked in). **Report:** `reports.service.ts:274` reads ALL parties' records (`participant:{ groundId }`) | ✅ wired & firing · ⚠️ exposed (report side partly touched by `pattern-evidence-wiring`) |
+
 ---
 
 ## Tripwire build order (each asserts on assembled prompt / real detector; each proven to bite)
@@ -113,6 +121,9 @@ inconsistency**, not just assert "phrases present."
 7. **Report-synthesis voice** (G) — SYNTHESIS RULES + REPORT_SYNTHESIS + entry report voice present.
 8. **Cross-reference framing + navigation openers** (F).
 9. **CROSS-PARTY SILENT CORROBORATION** (F) — tripwire asserts: (a) `crossReference()` *generates* a probe when a claim overlaps/conflicts with another party's record, and (b) the probe is **non-revealing** — never attributes a position to the other party ("the other party says X" must never appear). Guards today's real mechanism.
+10. **H1 ACROSS TURNS** — assert the assembled model call carries the full prior history (green) AND assert a "do not re-ask what's answered" instruction is present in the assembled prompt (**starts RED** — it isn't there today; the red documents the live bug to fix, and turns green when fixed).
+11. **H2 ACROSS SESSIONS** — assert a session-2 assembled prompt contains session-1 record content (`priorSession`/returning-user), and session-1 does not.
+12. **H3 ACROSS PEOPLE** — assert `crossReference()` surfaces a divergence when A's claim + B's record conflict (live), and the report corpus contains more than one party's records.
 
 ## Separate BUILD (not a guard) — flagged, not scoped
 The sophisticated version of cross-party corroboration — **bespoke claim-specific probes** (turn "I shipped the console" into "how are you finding the console?" that distinguishes shipped-vs-built) and **forward-planting** the probe for whenever the other party next checks in — does NOT exist today (the live version is generic keyword-overlap, PULL, session-2+-gated). That's a genuine build on top of the guarded mechanism, decided separately.
