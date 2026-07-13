@@ -26,14 +26,14 @@ Three tripwire specs, **58 assertions green + 1 intentional RED (H1)**, every on
 | Spec | Covers | Assertions |
 |---|---|---|
 | `conversation/behavior-preservation.spec.ts` | A chat rules · B tone/trust · E pack richness | 41 ✅ |
-| `conversation/behavior-context.spec.ts` | H1 across-turns (RED) · H2 across-sessions · H3/F#9 cross-party corroboration · F-nav self-correction + returning openers | 7 ✅ / **1 🔴 H1** |
+| `conversation/behavior-context.spec.ts` | H1 across-turns · H2 across-sessions · H3/F#9 cross-party corroboration · F-nav self-correction + returning openers | 8 ✅ (**H1 now green, Phase 2 landed**) |
 | `conversation/behavior-entry-report-end.spec.ts` | C entry rules · D end-detection (+ inconsistency surfaced) · G synthesis voice | 10 ✅ |
 
 Every tripwire asserts on the **assembled prompt** (`ConversationService.sendMessage` capture, `buildEntrySystemPrompt`) or the **real detector** (`detectSessionComplete`, `ENTRY_COMPLETION_PHRASES`, `SYNTHESIS_RULES`), never a raw source grep. Bite-proof method: neutralise the source rule → the matching assertion reds; restore → green.
 
 **Test-enablement source changes (safe, pure):** exported `buildEntrySystemPrompt` / `FAQ_PROMPT` / `ENTRY_SESSION_ADDENDUM` / `ENTRY_COMPLETION_PHRASES` (entry.service), extracted the inline 13 synthesis rules into an exported `SYNTHESIS_RULES` const (reports.service). No behavior changed; neighbours green (reports+entry+conversation: 134 passed).
 
-**H1 is RED on purpose** — history reaches the model but no "do not re-ask" instruction exists yet. It documents the live re-ask bug and goes green when Phase 2 lands the fix. Not-yet-guarded: clarification-session opener (needs a report+inference fixture), client `SESSION_END_PATTERNS` (vitest, cross-runner — the 4th end-detection list, noted in D).
+**H1 is now GREEN (Phase 2 landed, `cda499d`)** — the "do not re-ask" instruction (FIX A) plus the claim-verification rule (FIX B) were added to `ENGINE_RULES` below HUMAN FIRST / above the pack agenda. FIX B proven at real gemini-2.5-pro output on the REALIGN_TEAM thin pack (before: accepts "aligned / on track" and moves on; after: verifies the number, warmly). H1 flipped red to green and no other tripwire reddened. Not-yet-guarded: clarification-session opener (needs a report+inference fixture), client `SESSION_END_PATTERNS` (vitest, cross-runner — the 4th end-detection list, noted in D).
 
 ---
 
@@ -147,7 +147,7 @@ inconsistency**, not just assert "phrases present."
 7. ✅ **Report-synthesis voice** (G) — all 13 SYNTHESIS RULES present via exported `SYNTHESIS_RULES`; plus the one-sided **entry report** voice (not-yet-cross-referenced framing, no false alignment when one party has spoken, anti-invention, no verdicts) via exported `ENTRY_REPORT_PROMPT`. `behavior-entry-report-end`
 8. ✅ **Navigation openers** (F) — self-correction opener + returning-user (session-2) continuity block, on the assembled prompt. `behavior-context` *(clarification opener still ⚠️ — needs a report+inference fixture)*
 9. ✅ **CROSS-PARTY SILENT CORROBORATION** (F) — asserts (a) `crossReference()` *fires* a probe on claim/record conflict (`Recommended probe:` + the CONTRADICTION template) and (b) it is **non-revealing** — the other party's verbatim record text never appears + "never quote the other party" is present. `behavior-context`
-10. 🔴 **H1 ACROSS TURNS** — full prior history reaches the model (green) AND a "do not re-ask what's answered" instruction is present (**RED today** — documents the live bug; goes green in Phase 2). `behavior-context`
+10. ✅ **H1 ACROSS TURNS** (Phase 2 landed) — full prior history reaches the model (green) AND a "do not re-ask what's answered" instruction is present (**RED today** — documents the live bug; goes green in Phase 2). `behavior-context`
 11. ✅ **H2 ACROSS SESSIONS** — session-2 assembled prompt contains session-1 record content; session-1 does not. `behavior-context`
 12. ✅ **H3 ACROSS PEOPLE** — `crossReference()` surfaces a divergence when A's claim + B's record conflict (covered by #9). `behavior-context`
 
