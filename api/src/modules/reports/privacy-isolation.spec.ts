@@ -61,7 +61,8 @@ function makeService(groundRow: any, activationStatus: 'ACTIVATED' | 'PENDING' |
   };
   const email: any = { sendReportReady: jest.fn(async () => undefined) };
   const config: any = { get: () => 'http://localhost:5173' };
-  return new ReportsService(prisma, {} as any, {} as any, email, config, { emit: () => Promise.resolve() } as any);
+  const grounds: any = { getSessionProgress: jest.fn(async () => null) };
+  return new ReportsService(prisma, {} as any, {} as any, email, config, { emit: () => Promise.resolve() } as any, grounds);
 }
 
 // ---------------------------------------------------------------------------
@@ -86,13 +87,17 @@ describe('GW-PRI-01: non-party user is denied the report', () => {
 // GW-PRI-02: Pre-release - participant cannot read report before release
 // ---------------------------------------------------------------------------
 
-describe('GW-PRI-02: report is not readable before releasedAt is set', () => {
-  it('throws ForbiddenException for a participant when releasedAt is null', async () => {
+describe('GW-PRI-02: report before release shows the forming picture, not the final one', () => {
+  it('returns the forming picture (not Forbidden) for a participant when releasedAt is null', async () => {
     const unreleasedReport = { ...makeReleasedReport(), releasedAt: null };
     const ground = makeGround({ report: unreleasedReport });
     const service = makeService(ground);
-    // user-2 is a valid participant but report not yet released
-    await expect(service.get('g1', 'user-2')).rejects.toBeInstanceOf(ForbiddenException);
+    // user-2 is a valid participant; report isn't released yet, but the
+    // picture forms progressively - they should see it marked as forming,
+    // not be blocked outright.
+    const result = await service.get('g1', 'user-2');
+    expect(result).toHaveProperty('forming', true);
+    expect(result).toHaveProperty('sharedPicture');
   });
 
   it('returns a locked stub (no content) for the initiator before release', async () => {
@@ -143,7 +148,7 @@ describe('GW-PRI-04: missing report does not leak ground existence', () => {
   it('throws NotFoundException when the ground itself does not exist', async () => {
     const prisma: any = { ground: { findUnique: jest.fn(async () => null) } };
     const config: any = { get: () => 'http://localhost:5173' };
-    const service = new ReportsService(prisma, {} as any, {} as any, {} as any, config, { emit: () => Promise.resolve() } as any);
+    const service = new ReportsService(prisma, {} as any, {} as any, {} as any, config, { emit: () => Promise.resolve() } as any, {} as any);
     await expect(service.get('g1', 'user-1')).rejects.toBeInstanceOf(NotFoundException);
   });
 });
@@ -164,7 +169,7 @@ describe('GW-PRI-05: release() is scoped to the requesting org', () => {
     };
     const email: any = { sendReportReady: jest.fn(async () => undefined) };
     const config: any = { get: () => 'http://localhost:5173' };
-    const service = new ReportsService(prisma, {} as any, {} as any, email, config, { emit: () => Promise.resolve() } as any);
+    const service = new ReportsService(prisma, {} as any, {} as any, email, config, { emit: () => Promise.resolve() } as any, {} as any);
     await expect(service.release('g1', 'org-B')).rejects.toBeInstanceOf(NotFoundException);
   });
 
@@ -183,7 +188,7 @@ describe('GW-PRI-05: release() is scoped to the requesting org', () => {
     };
     const email: any = { sendReportReady: jest.fn(async () => undefined) };
     const config: any = { get: () => 'http://localhost:5173' };
-    const service = new ReportsService(prisma, {} as any, {} as any, email, config, { emit: () => Promise.resolve() } as any);
+    const service = new ReportsService(prisma, {} as any, {} as any, email, config, { emit: () => Promise.resolve() } as any, {} as any);
     await service.release('g1', 'org-A');
     expect(email.sendReportReady).toHaveBeenCalledTimes(ground.participants.length);
   });
@@ -209,7 +214,7 @@ describe('GW-PRI-06: post-report guide and solo artifact are scoped to each part
       reportActivation: { findUnique: jest.fn(async () => activated) },
     };
     const config: any = { get: () => 'http://localhost:5173' };
-    const service = new ReportsService(prisma, {} as any, {} as any, {} as any, config, { emit: () => Promise.resolve() } as any);
+    const service = new ReportsService(prisma, {} as any, {} as any, {} as any, config, { emit: () => Promise.resolve() } as any, {} as any);
 
     const resultForP1 = await service.get('g1', 'user-1') as any;
     const resultForP2 = await service.get('g1', 'user-2') as any;
@@ -239,7 +244,7 @@ describe('GW-PRI-06: post-report guide and solo artifact are scoped to each part
       reportActivation: { findUnique: jest.fn(async () => activated) },
     };
     const config: any = { get: () => 'http://localhost:5173' };
-    const service = new ReportsService(prisma, {} as any, {} as any, {} as any, config, { emit: () => Promise.resolve() } as any);
+    const service = new ReportsService(prisma, {} as any, {} as any, {} as any, config, { emit: () => Promise.resolve() } as any, {} as any);
 
     const resultForP2 = await service.get('g1', 'user-2') as any;
     // p2 has no soloArtifact - result must be null, not p1's artifact
