@@ -162,6 +162,13 @@ export function GroundAdminPage() {
     onError: () => toast.error('Could not update role.'),
   })
 
+  // Contact visibility toggle. restrict=true hides peers' emails from each other (default).
+  const setContactVisibility = useMutation({
+    mutationFn: (restrict: boolean) => groundsApi.setExternalVisibility(id!, restrict),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['ground', id] }),
+    onError: () => toast.error('Could not update this setting.'),
+  })
+
   const addNote = useMutation({
     mutationFn: (note: string) => groundsApi.update(id!, { contextNote: note }),
     onSuccess: () => { setCtxNote(''); qc.invalidateQueries({ queryKey: ['ground', id] }) },
@@ -203,6 +210,8 @@ export function GroundAdminPage() {
 
   const conf = ground.confidence ?? 1
   const bl = bandLabel(conf)
+  // contact-visibility toggle state (default: hidden). true = peers cannot see each other's email.
+  const contactHidden = ground.restrictExternalVisibility !== false
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
@@ -897,6 +906,29 @@ export function GroundAdminPage() {
               >
                 Save scenario
               </button>
+            </div>
+            <div className="gw-fld">
+              <label className="gw-label">Participant contact details</label>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '12px 14px', border: '0.5px solid var(--gw-blue-b)', borderRadius: 8 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', marginBottom: 4 }}>Hide email addresses between participants</div>
+                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+                    {contactHidden
+                      ? "Participants can see who's here (names, roles, and presence) but can't see each other's email addresses. Good for cohorts of individuals who don't need to contact each other."
+                      : "Participants can see each other's email addresses. Only turn this off when everyone is meant to be in contact. Turning it off lets participants collect each other's contacts."}
+                  </div>
+                </div>
+                <button
+                  role="switch"
+                  aria-checked={contactHidden}
+                  aria-label="Hide email addresses between participants"
+                  disabled={setContactVisibility.isPending}
+                  onClick={() => setContactVisibility.mutate(!contactHidden)}
+                  style={{ flexShrink: 0, width: 42, height: 24, borderRadius: 999, border: 'none', cursor: setContactVisibility.isPending ? 'wait' : 'pointer', background: contactHidden ? 'var(--gw-navy)' : '#CFD8E3', position: 'relative', transition: 'background 0.15s', opacity: setContactVisibility.isPending ? 0.5 : 1, padding: 0 }}
+                >
+                  <span style={{ position: 'absolute', top: 2, left: contactHidden ? 20 : 2, width: 20, height: 20, borderRadius: '50%', background: 'white', transition: 'left 0.15s', boxShadow: '0 1px 2px rgba(0,0,0,0.2)' }} />
+                </button>
+              </div>
             </div>
             <button onClick={() => navigate('/billing')}
               style={{ width: '100%', padding: 11, borderRadius: 7, background: 'none', color: 'var(--gw-navy)', fontSize: 13, fontWeight: 600, border: '1px solid var(--gw-blue-b)', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

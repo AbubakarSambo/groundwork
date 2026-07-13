@@ -54,6 +54,10 @@ export const SAFE_PARTICIPANT_SELECT = {
   soloArtifactAt: true, // timestamp only - never the artifact content
   soloArtifactShared: true, // whether participant chose to share; content fetched separately via get()
   createdAt: true,
+  // ONLY the display name of the linked user - so a participant can see WHO is here
+  // by name when their email is hidden. Deliberately firstName/lastName only: no email,
+  // no other user PII is pulled through this nested select.
+  user: { select: { firstName: true, lastName: true } },
 } as const;
 
 @Injectable()
@@ -581,10 +585,25 @@ export class GroundsService {
       : [];
     const sharedArtifactById = new Map(sharedArtifacts.map((a) => [a.id, a.soloArtifact]));
 
+    // Contact-hiding (participant-to-participant). When the initiator turns this on, a
+    // participant sees no OTHER participant's email address - only their own. Names,
+    // roles, roster and presence stay fully visible: presence is a deliberate nudge, and
+    // only the reach-them-outside contact detail is hidden. Applies to ALL other
+    // participants, same-org or cross-org alike. Enforced in the read path so no caller
+    // can forget to strip it.
+    //
+    // The INITIATOR is exempt: they are the admin/inviter (they typed these emails in),
+    // and their admin roster must keep working. The toggle hides peers from each other,
+    // not the ground's owner from the people they invited.
+    const hideContact = !!(ground as any).restrictExternalVisibility;
+    const viewerIsInitiator = !!requestingUserId && ground.initiatorId === requestingUserId;
+
     const participantsWithCheckIns = (ground.participants ?? []).map((p: any) => {
       const raw = sharedArtifactById.get(p.id);
+      const isSelf = !!requestingUserId && p.userId === requestingUserId;
       return {
         ...p,
+        email: hideContact && !isSelf && !viewerIsInitiator ? null : p.email,
         soloArtifactShared: p.soloArtifactShared ?? false,
         // Only expose the content when the participant explicitly shared it
         sharedSoloReport: raw
@@ -661,6 +680,25 @@ export class GroundsService {
     return this.prisma.leadContextNote.create({
       data: { groundId, participantId: dto.participantId ?? null, authorUserId: requestingUserId, text },
       select: { id: true, participantId: true, text: true, createdAt: true },
+    });
+  }
+
+  /**
+   * Initiator-only: choose whether participants can see each other's contact details
+   * (email). When restricted, a participant sees every other participant's name, role
+   * and presence but not their email - only their own. Presence stays as a nudge; only
+   * the harvestable contact detail is hidden. See the read-path enforcement in get().
+   */
+  async setExternalVisibility(groundId: string, requestingUserId: string, restrict: boolean) {
+    const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { initiatorId: true } });
+    if (!ground) throw new NotFoundException('Ground not found');
+    if (ground.initiatorId !== requestingUserId) {
+      throw new ForbiddenException('Only the initiator can change this setting');
+    }
+    return this.prisma.ground.update({
+      where: { id: groundId },
+      data: { restrictExternalVisibility: restrict },
+      select: { id: true, restrictExternalVisibility: true },
     });
   }
 

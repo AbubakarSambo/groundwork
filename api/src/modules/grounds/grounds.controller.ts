@@ -175,6 +175,12 @@ export class GroundsController {
     return this.grounds.setMySoloReportShared(id, userId, dto.shared);
   }
 
+  @Patch(':id/external-visibility')
+  @ApiOperation({ summary: "Initiator-only: whether participants can see each other's contact details (email). Names/roster/presence stay visible either way." })
+  async setExternalVisibility(@Param('id') id: string, @CurrentUser('id') userId: string, @Body() dto: { restrict: boolean }) {
+    return this.grounds.setExternalVisibility(id, userId, dto.restrict);
+  }
+
   @Patch(':id')
   @ApiOperation({ summary: 'Update timeline weeks and/or cadence; change is audit-logged on the ground' })
   async updateTimeline(@Param('id') id: string, @CurrentUser('id') userId: string, @Body() dto: UpdateTimelineDto) {

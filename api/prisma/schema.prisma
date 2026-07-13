@@ -296,6 +296,11 @@ model Ground {
   pausedAt            DateTime? @map("paused_at") // set when status transitions to PAUSED
 
   sessionsBalance     Int     @default(1) @map("sessions_balance")
+  // When true (default), participants cannot see each other's email address - only
+  // their own. Names, roles, roster and presence stay visible. Initiator-only toggle;
+  // enforced in the get() read path. (Column name predates the participant-to-participant
+  // scope; it now hides contact from ALL other participants, not just cross-org.)
+  restrictExternalVisibility Boolean @default(true) @map("restrict_external_visibility")
   isFreeGround        Boolean @default(true) @map("is_free_ground")
   accessCodeId        String? @map("access_code_id")
   freeReason          String? @map("free_reason")  // "FIRST_GROUND" | "ACCESS_CODE"

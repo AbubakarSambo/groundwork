@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/auth'
 import { groundsApi } from '@/api/grounds'
 import { ConfDots } from '@/components/ConfDots'
+import { participantLabel } from '@/lib/utils'
 import type { Ground } from '@/types'
 
 interface AppShellProps {
@@ -82,13 +83,11 @@ export function AppShell({ children }: AppShellProps) {
   const roleLabel = isAdmin ? 'Admin' : 'Contributor'
 
   const parties = (g: Ground) => {
-    const emails = g.participants
-      .filter(p => p.partyType !== 'INITIATOR')
-      .map(p => p.email.split('@')[0])
-    if (emails.length === 0) {
-      return g.participants.map(p => p.email.split('@')[0]).slice(0, 2).join(' + ')
-    }
-    return emails.slice(0, 2).join(' + ')
+    // Identify by NAME, never by email. Email may be null (contact-hiding), so the old
+    // p.email.split('@') crashed here; participantLabel is null-safe and name-first.
+    const nonInitiator = g.participants.filter(p => p.partyType !== 'INITIATOR')
+    const source = nonInitiator.length ? nonInitiator : g.participants
+    return source.map(participantLabel).slice(0, 2).join(' + ')
   }
 
   return (

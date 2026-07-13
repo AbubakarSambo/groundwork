@@ -49,10 +49,13 @@ export type CheckInStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED' | 'DECLI
 
 export interface GroundParticipant {
   id: string
-  email: string
+  // null when contact-hiding is on and the viewer is a peer (not self, not the initiator)
+  email: string | null
   partyType: PartyType
   userId: string | null
   roleAsDescribed?: string | null
+  // display name of the linked user (null for a not-yet-accepted invite)
+  user?: { firstName: string | null; lastName: string | null } | null
 }
 
 export interface CheckInSummary {
@@ -98,6 +101,8 @@ export interface Ground {
   confidence?: number
   resolutionState?: string | null
   brief?: string | null
+  // initiator toggle: when true (default) participants cannot see each other's email
+  restrictExternalVisibility?: boolean
   daysLeft?: number | null
   checkInsToday?: number
   overdue?: number

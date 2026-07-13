@@ -33,3 +33,20 @@ export function formatDateTime(date: string | Date): string {
 export function getInitials(firstName: string, lastName: string): string {
   return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase()
 }
+
+/**
+ * How a participant is shown to ANOTHER participant: by name, falling back to their
+ * role, then a generic label. NEVER the email - a participant's email may be hidden
+ * (contact-visibility toggle), and even when visible we identify people by name here,
+ * not by a raw address. Null-safe: email may be null, user may be a pending invite.
+ */
+export function participantLabel(p: {
+  user?: { firstName?: string | null; lastName?: string | null } | null
+  roleAsDescribed?: string | null
+} | null | undefined): string {
+  const name = [p?.user?.firstName, p?.user?.lastName].filter(Boolean).join(' ').trim()
+  if (name) return name
+  const role = p?.roleAsDescribed?.trim()
+  if (role) return role
+  return 'a participant'
+}
