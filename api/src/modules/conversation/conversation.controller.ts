@@ -120,4 +120,14 @@ export class ClarificationController {
   ) {
     return this.conversation.startClarificationSession(userId, groundId, body.inferenceId);
   }
+
+  @Post(':groundId/correct-session')
+  @ApiOperation({ summary: "Start a self-correction session to correct or add to the participant's own prior session" })
+  async startSelfCorrection(
+    @Param('groundId') groundId: string,
+    @Body() body: { sessionNumber: number },
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.conversation.startSelfCorrectionSession(userId, groundId, body.sessionNumber);
+  }
 }
