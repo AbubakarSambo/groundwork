@@ -1,5 +1,13 @@
 # Conversation Behavior Inventory — the frozen baseline
 
+## Canonical definition of Groundwork (internal, authoritative)
+
+> Groundwork is a system for surfacing where people genuinely align and diverge, through private, guided conversations that gather each party's own account, verify claims rather than taking them at face value, and synthesize across people and across time into a report that reflects reality, not assertion.
+
+The tripwire suite is built against this full definition, not a narrower one. Its four load-bearing capabilities map onto the categories below: gather each party's own account (A chat rules, C entry rules), verify claims rather than take them at face value (A DOCUMENT PROBE / EVIDENCE / WILLINGNESS GATE, and the Phase 2 claim-verification rule), synthesize across people and across time (F cross-party corroboration, H2 across-sessions, H3 across-people, G report synthesis), a report that reflects reality not assertion (G SYNTHESIS RULES: no false consensus, preserve specifics, absent parties). Public and user-facing copy may be narrower on purpose and is not changed by this work. The model-facing "what is Groundwork" line in the system prompt is flagged, not auto-edited (see below).
+
+---
+
 Every conversation behavior in the product, where it lives, and whether a test guards it.
 This is the checklist the tripwire suite maps to: each **⚠️ exposed** row should get a
 tripwire that asserts the behavior on the **assembled prompt** or the **real detector**, and
