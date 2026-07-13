@@ -34,6 +34,14 @@ export function houseStyle(text: string): string {
 // transcripts, e.g. "...pipeline reviews. What" cut off cold).
 const THINKING_BUDGET = 2048;
 
+// Conversational turns (respond / respondStream) use a much smaller thinking budget.
+// A chat reply does not need deep reasoning, and the 2048 budget was the dominant
+// latency cost on live turns (20-37s): thinking tokens are generated before the
+// visible answer, so they also block time-to-first-token. Report/synthesis (extract,
+// which sets no explicit budget) and document vision (respondWithMedia) keep the
+// deeper budget - a one-time spinner there is fine.
+const CONVERSATION_THINKING_BUDGET = 256;
+
 @Injectable()
 export class AnthropicService {
   private readonly logger = new Logger(AnthropicService.name);
@@ -81,7 +89,7 @@ export class AnthropicService {
     const stream = await this.client.models.generateContentStream({
       model: this.model,
       contents,
-      config: { systemInstruction: systemPrompt, maxOutputTokens: this.maxTokens, thinkingConfig: { thinkingBudget: THINKING_BUDGET } },
+      config: { systemInstruction: systemPrompt, maxOutputTokens: this.maxTokens, thinkingConfig: { thinkingBudget: CONVERSATION_THINKING_BUDGET } },
     });
     for await (const chunk of stream) {
       const parts = (chunk as any).candidates?.[0]?.content?.parts ?? [];
@@ -105,7 +113,7 @@ export class AnthropicService {
       const call = this.client.models.generateContent({
         model: this.model,
         contents,
-        config: { systemInstruction: systemPrompt, maxOutputTokens: this.maxTokens, thinkingConfig: { thinkingBudget: THINKING_BUDGET } },
+        config: { systemInstruction: systemPrompt, maxOutputTokens: this.maxTokens, thinkingConfig: { thinkingBudget: CONVERSATION_THINKING_BUDGET } },
       });
       const timeout = new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error('Gemini respond() timed out after 90s')), TIMEOUT_MS),
