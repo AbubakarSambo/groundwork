@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { groundsApi } from '@/api/grounds'
 import { reportsApi } from '@/api/reports'
 import { apiClient } from '@/api/client'
@@ -216,6 +217,16 @@ export function ReportPage() {
     retry: false,
   })
 
+  // Self-correction: revisit a completed session to correct or add to it. The backend
+  // (startSelfCorrectionSession) opens a fresh session in correction mode; the corrected
+  // record flows into the next report synthesis. The original session is preserved, not
+  // overwritten. Only available on your OWN completed session that no later session builds on.
+  const correctSession = useMutation({
+    mutationFn: (sessionNumber: number) => reportsApi.startSelfCorrection(id!, sessionNumber),
+    onSuccess: (data) => navigate(`/checkin/${data.checkInId}`),
+    onError: (e: any) => toast.error(e?.response?.data?.message || 'Could not start a correction session. Please try again.'),
+  })
+
   const PAGE_STYLE: React.CSSProperties = {
     minHeight: '100vh',
     background: '#EDECEA',
@@ -259,6 +270,11 @@ export function ReportPage() {
 
   const myParticipant = (ground.participants ?? []).find((p: any) => p.userId === user?.id)
   const isAdmin = myParticipant?.partyType === 'INITIATOR'
+  // The participant's own latest COMPLETED session - the one self-correction targets.
+  const myCompletedSessions = (((myParticipant as any)?.checkIns ?? []) as any[])
+    .filter((c) => c.status === 'COMPLETED')
+    .map((c) => c.sessionNumber as number)
+  const myLatestCompletedSession = myCompletedSessions.length ? Math.max(...myCompletedSessions) : null
   const backUrl = isAdmin ? `/grounds/${id}` : `/grounds/${id}/p`
 
   const adminParty = (ground.participants ?? []).find((p: any) => p.partyType === 'INITIATOR')
@@ -554,12 +570,23 @@ export function ReportPage() {
             only appears when there are inferred claims, so make correction discoverable. */}
         <div style={{ marginTop: 24, background: '#F7F6F3', border: '1px solid #E2E0DB', borderRadius: 10, padding: '14px 16px' }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: '#1A1916', marginBottom: 4 }}>Something not right in this report?</div>
-          <div style={{ fontSize: 12.5, color: '#6B6560', lineHeight: 1.6 }}>
+          <div style={{ fontSize: 12.5, color: '#6B6560', lineHeight: 1.6, marginBottom: myLatestCompletedSession != null ? 12 : 0 }}>
             {report.inferences && report.inferences.length > 0
-              ? 'Inferred claims above have a "Correct this" button that opens a short follow-up to fix the record. '
+              ? 'Inferred claims above have a "Correct this" button that opens a short follow-up to fix that specific claim. '
               : ''}
-            For anything else, start a new session on this ground to add to or correct the record. Reports are built from what is on record, so adding a session updates the picture.
+            {myLatestCompletedSession != null
+              ? 'For anything else in your own account, revisit your last session below. It opens a short follow-up that corrects or adds to your record. Your original answers are kept as they were, and the update flows into the next report.'
+              : 'Corrections to your own account are made from a session you have completed on this ground.'}
           </div>
+          {myLatestCompletedSession != null && (
+            <button
+              onClick={() => correctSession.mutate(myLatestCompletedSession)}
+              disabled={correctSession.isPending}
+              style={{ fontSize: 13, fontWeight: 700, color: '#fff', background: '#0C447C', border: 'none', borderRadius: 8, padding: '9px 16px', cursor: correctSession.isPending ? 'wait' : 'pointer', fontFamily: 'inherit' }}
+            >
+              {correctSession.isPending ? 'Starting…' : 'Revisit my last session to correct it →'}
+            </button>
+          )}
         </div>
 
         <div style={{ marginTop: 40, paddingTop: 24, borderTop: '1px solid #E2E0DB', fontSize: 12, color: '#9B9590', lineHeight: 1.6 }}>
