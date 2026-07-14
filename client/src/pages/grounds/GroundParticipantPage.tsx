@@ -163,7 +163,10 @@ export function GroundParticipantPage() {
       return { blocked: false, checkIn, reason: undefined, freeExtensionAvailable: undefined }
     },
     onSuccess: ({ blocked, checkIn, freeExtensionAvailable }) => {
-      if (blocked) {
+      // Free-tier grounds have unlimited sessions and are never paywalled. Guard
+      // explicitly so a stray 403 can never surface the payment modal for them -
+      // intent, not reliance on the backend never 403-ing a free ground.
+      if (blocked && !ground?.isFreeGround) {
         setPaywallFreeExtensionAvailable(freeExtensionAvailable ?? false)
         setShowPaywall(true)
       } else {

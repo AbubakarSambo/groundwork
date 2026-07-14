@@ -37,6 +37,15 @@ export class BillingService {
       select: { sessionsBalance: true, isFreeGround: true, organizationId: true },
     });
 
+    // Free-tier grounds (the 10 free Grounds per org) have UNLIMITED sessions -
+    // this is the advertised model ("unlimited sessions and reports on every
+    // Ground"). They are never metered or paywalled; -1 signals unlimited to the
+    // caller so it skips the decrement/metering block entirely. The 10-ground cap
+    // (canCreateGround) is the only free-tier limit.
+    if (ground?.isFreeGround) {
+      return { allowed: true, sessionsBalance: -1 };
+    }
+
     // Active subscription = unlimited sessions, no balance check needed.
     if (ground?.organizationId) {
       const org = await this.prisma.organization.findUnique({
