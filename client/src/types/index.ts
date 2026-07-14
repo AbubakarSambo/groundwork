@@ -29,6 +29,7 @@ export type GroundScenario =
   | 'PIP'
   | 'BOARD_STRATEGY'
   | 'COHORT_CHECK'
+  | 'ACUTE_SHOCK'
 
 export type GroundMoment = 'STARTING' | 'RECOGNITION' | 'RESOLUTION'
 

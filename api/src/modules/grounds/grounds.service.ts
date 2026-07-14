@@ -29,6 +29,10 @@ const DEFAULT_TIMELINE_DAYS: Record<GroundScenario, number> = {
   PIP: 90,
   BOARD_STRATEGY: 90,
   COHORT_CHECK: 30,
+  // A shock is days-fresh by definition: the shared picture is built fast, and
+  // the suggested optional follow-up ("what turned out different from your
+  // first read?") sits about a week later - two weeks covers the whole arc.
+  ACUTE_SHOCK: 14,
 };
 
 // All scenarios support any number of participants - the initiator decides who

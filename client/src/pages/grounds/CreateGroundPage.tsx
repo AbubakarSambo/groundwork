@@ -12,6 +12,10 @@ interface ScenarioCard {
   tag: string
   tagBg: string
   tagColor: string
+  // Recognizer lines ("e.g. ...") shown under the description so people can
+  // self-select from concrete situations, not abstract labels. Optional - the
+  // full scenario reframe will fill these in for every card.
+  examples?: string[]
 }
 
 const SCENARIOS: ScenarioCard[] = [
@@ -26,6 +30,12 @@ const SCENARIOS: ScenarioCard[] = [
   { scenario: 'DRIFT',            label: 'New direction',    desc: 'A strategy shift or pivot. Each person says what they understood before the group discussion.',            tag: 'Alignment',    tagBg: '#FDF3E3', tagColor: '#8A5C1A' },
   { scenario: 'BOARD_STRATEGY',   label: 'Board strategy',   desc: 'Each board member or leader gives their own read on strategy before the room debates it. Surfaces hidden misalignment.', tag: 'Leadership', tagBg: '#EEF4FB', tagColor: '#0C447C' },
   { scenario: 'COHORT_CHECK',     label: 'Cohort check-in',  desc: 'Many people in the same role (field officers, franchisees, a cohort) each check in against a shared question. See the pattern.', tag: 'Recurring', tagBg: '#E8F8F5', tagColor: '#085041' },
+  { scenario: 'ACUTE_SHOCK',      label: 'A shock just hit', desc: 'A jarring event just happened. Get everyone\'s honest read of what actually happened and where things really stand, before anyone decides anything.', tag: 'Urgent', tagBg: '#FCEBEB', tagColor: '#791F1F',
+    examples: [
+      'A major client pulled out overnight and everyone has a different version of why.',
+      'An incident just took things down and people are scrambling to understand what happened.',
+      'Sudden bad news hit the team and you want honest reads before any decisions get made.',
+    ] },
   { scenario: 'REALIGN_TEAM',     label: 'Other',            desc: 'Describe the situation and Groundwork will set up the right ground for it.',                              tag: 'Other',        tagBg: '#F5F3EF', tagColor: '#6B6560' },
 ]
 
@@ -91,6 +101,7 @@ const SCENARIO_FROM_LABEL: Record<string, GroundScenario> = {
   'cohort check-in':    'COHORT_CHECK',
   'realign a project':  'DRIFT',
   'realign with a team member': 'REALIGN_TEAM',
+  'a shock just hit':   'ACUTE_SHOCK',
   'other':              'REALIGN_TEAM',
 }
 
@@ -266,6 +277,13 @@ export function CreateGroundPage() {
                   </div>
                   <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 3 }}>{s.label}</div>
                   <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>{s.desc}</div>
+                  {s.examples && s.examples.length > 0 && (
+                    <div style={{ marginTop: 6 }}>
+                      {s.examples.map((ex, i) => (
+                        <div key={i} style={{ fontSize: 11, color: 'var(--gw-muted)', lineHeight: 1.5 }}>e.g. {ex}</div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

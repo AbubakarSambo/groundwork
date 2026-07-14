@@ -52,6 +52,7 @@ enum GroundScenario {
   PIP
   BOARD_STRATEGY
   COHORT_CHECK
+  ACUTE_SHOCK // a jarring event just happened; build the shared picture before any decision
 }
 
 // Three moments from the conversation design.
