@@ -8,6 +8,7 @@ import { reportsApi } from '@/api/reports'
 import { documentsApi } from '@/api/documents'
 import { conversationApi } from '@/api/conversation'
 import { apiClient } from '@/api/client'
+import { participantLabel } from '@/lib/utils'
 import { toast } from 'sonner'
 
 const BANDS = ['', 'Unresolved', 'Mixed', 'Emerging', 'Clear', 'Aligned']
@@ -1051,7 +1052,10 @@ export function GroundParticipantPage() {
             </div>
             <ul style={{ margin: '0 0 14px', paddingLeft: 18 }}>
               {(ground?.participants ?? []).filter((p: any) => p.userId !== user?.id).map((p: any) => (
-                <li key={p.id} style={{ fontSize: 13, color: '#1A1916', marginBottom: 2 }}>{p.email}</li>
+                <li key={p.id} style={{ fontSize: 13, color: '#1A1916', marginBottom: 2 }}>
+                  {participantLabel(p)}
+                  {p.email ? <span style={{ color: '#9B9590' }}> · {p.email}</span> : null}
+                </li>
               ))}
             </ul>
             <div style={{ fontSize: 12, color: '#9B9590', lineHeight: 1.55, marginBottom: 18, background: '#F5F3EF', borderRadius: 8, padding: '10px 12px' }}>

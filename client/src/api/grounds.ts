@@ -65,6 +65,10 @@ export const groundsApi = {
   get: (id: string) =>
     apiClient.get<Ground>(`/grounds/${id}`).then(r => r.data),
 
+  // Initiator-only: whether participants can see each other's email. restrict=true hides.
+  setExternalVisibility: (id: string, restrict: boolean) =>
+    apiClient.patch<{ id: string; restrictExternalVisibility: boolean }>(`/grounds/${id}/external-visibility`, { restrict }).then(r => r.data),
+
   create: (body: CreateGroundBody) =>
     apiClient.post<Ground>('/grounds', body).then(r => r.data),
 
