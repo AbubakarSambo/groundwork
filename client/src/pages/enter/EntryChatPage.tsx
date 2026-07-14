@@ -97,6 +97,28 @@ export function isEndIntent(text: string): boolean {
   return END_INTENT_PATTERNS.some((re) => re.test(t))
 }
 
+// Onboarding wrap-up safety net.
+//
+// The /onboard endpoint computes `ready` from extracted fields in a SEPARATE AI
+// call from the one that writes `reply`, so it can return ready:true on a turn
+// whose reply still asks a question. When that happens the UI would show the
+// wrap-up card and hide the input, stranding a question the user cannot answer.
+// The prompt is told not to do this, but prompts do not always hold - so when
+// ready fires on a reply that still contains a question, we replace that reply
+// with a clean no-question closer. The user then sees only the closer plus the
+// wrap-up card (which has its own buttons), never a dead-end question.
+export function replyHasQuestion(text: string): boolean {
+  return /\?/.test(text ?? '')
+}
+export const ONBOARD_READY_CLOSER =
+  'Thank you. That gives me what I need to set this up for you.'
+// The reply to actually display: when the endpoint signals ready but the reply
+// still asks a question, show the clean closer instead so no question is
+// stranded. Otherwise show the reply verbatim.
+export function onboardDisplayReply(reply: string, ready: boolean): string {
+  return ready && replyHasQuestion(reply) ? ONBOARD_READY_CLOSER : reply
+}
+
 
 const SITUATION_CARDS = [
   {
@@ -467,7 +489,11 @@ export function EntryChatPage() {
     setOnboardingLoading(true)
     try {
       const res = await entryApi.onboard(newHistory)
-      const assistantTurn: Turn = { role: 'assistant', content: res.reply }
+      // Safety net: if the endpoint says we are ready to wrap up but the reply
+      // still asks a question, showing the wrap-up card would strand that
+      // question (the input hides). Swap the question-reply for a clean closer
+      // so the user never sees a question they cannot answer.
+      const assistantTurn: Turn = { role: 'assistant', content: onboardDisplayReply(res.reply, res.ready) }
       const updatedHistory = [...newHistory, assistantTurn]
       setOnboardingHistory(updatedHistory)
       // Merge extracted fields into selections

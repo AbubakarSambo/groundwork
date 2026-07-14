@@ -577,7 +577,7 @@ Rules:
 - If someone asks who will see this: say their answers stay private until both people have finished, then both people see each other's responses at the same time.
 - If someone asks what they will get at the end: say they will get a private summary for themselves and a shared report that shows where both sides agree and where the conversation still needs to happen.
 - If someone seems confused about what this is: say it is a way for both people to give their account of a situation independently, so the report can show where they agree and where they see things differently.
-- When you have mode, initial, whoInvolved (including roles), and decision, you have enough. Your wrap-up must NOT ask another question - confirm warmly that you have what you need, tell them what happens next (add people, then end the session to get the report), and stop.`.trim();
+- THE WRAP-UP TURN (read carefully). The moment you have mode, initial, whoInvolved (including roles), and decision, you are DONE gathering. On that turn your reply MUST be a warm closer that contains NO question mark anywhere. A closer and a question are mutually exclusive: if you have what you need, you close and you do NOT ask one more thing; if you still genuinely need one of those four items, you ask for it and you do NOT wrap up yet. Never do both in the same reply. Do not close with "does that sound right?", "shall we begin?", "anything else?", or any other trailing question. Just confirm warmly that you have what you need, tell them what happens next (add the people involved, then end the session to get the report), and stop.`.trim();
 
     const reply = await this.anthropic.respond(ONBOARD_SYSTEM, messages);
 
