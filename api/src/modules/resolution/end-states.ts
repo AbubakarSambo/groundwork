@@ -102,6 +102,14 @@ export const END_STATES: Record<GroundScenario, { value: string; label: string; 
     { value: 'AT_RISK', label: 'At risk - intervention needed' },
     { value: 'NOT_YET', label: 'Not yet - check-ins ongoing' },
   ],
+  // ACUTE_SHOCK ends when the PICTURE is settled, not when a decision is made -
+  // the decision happens after this ground, informed by the record.
+  ACUTE_SHOCK: [
+    { value: 'PICTURE_SHARED', label: 'Shared picture established', description: 'Everyone\'s accounts are on record and the picture of what happened is agreed. Any decision now happens outside this ground, informed by it.' },
+    { value: 'READS_DIVERGE', label: 'Accounts differ - gaps named', description: 'The accounts do not match. The specific points of divergence are named so the follow-up conversation starts there.' },
+    { value: 'UNKNOWNS_REMAIN', label: 'Key facts still unknown', description: 'The picture cannot be settled yet because named facts are still missing. Revisit when they land.' },
+    { value: 'NOT_YET', label: 'Not yet - more accounts needed' },
+  ],
 };
 
 export function endStatesFor(scenario: GroundScenario) {

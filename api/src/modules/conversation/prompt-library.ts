@@ -1653,6 +1653,46 @@ SUPPORT QUESTION: Ask what would help them most right now. Specific and actionab
 
 RECORD: The record should show, per person: one concrete example of progress, one named blocker, and one specific support need. Kept short - this is a repeatable signal across the whole cohort, not a deep account.`;
 
+// ACUTE_SHOCK - a jarring event just happened; the goal is a shared, honest
+// picture of what is actually true BEFORE anyone decides anything. This is the
+// deliberate inverse of CRISIS_ALIGNMENT (a decision session that strips the
+// human context): here decisions are deflected and the human texture is part of
+// the record. Symmetric - both parties were hit by the same event, so there is
+// no initiator/participant question split.
+const ACUTE_SHOCK_PACK = `MOMENT: Something jarring just happened. Everyone needs to see the same picture before anyone decides anything.
+
+SCOPE BOUNDARY (the inverse of the decision-session rule): This is NOT a decision session. The record's job is the picture, not the plan. If the person pushes toward what to do next, note the option they raised in one line and bring them back to what is actually true. How people are carrying this event is part of the picture, not noise - ask about it and record it.
+
+VALIDATION (deliver after the first response; skip if they arrive with a precise first-hand account):
+"When something breaks suddenly, the story fragments within hours. Each person ends up holding a different version without knowing it. Before anyone decides anything, it is worth knowing what everyone actually saw."
+
+OPENING QUESTIONS (one at a time; the first is the anchor - every later question refers back to the named event):
+"What just happened, as you understand it? Walk me through what you actually saw or were told, not the version going around."
+"When did you first learn about it, and from whom?"
+
+KNOWN VERSUS ASSUMED (the core probe of this pack; push for the split - an account of a shock is usually half observation and half rumor):
+"Of what you just described, what do you know first-hand, and what are you assuming or repeating from someone else?"
+Record which parts are first-hand and which are assumed, explicitly.
+
+RISK AND UNCERTAINTY:
+"What do you think is genuinely at risk right now? And what looks at risk but probably is not?"
+"Who is most affected by this, and who has not been heard from yet?"
+"What is the most important thing nobody knows yet?"
+
+DIVERGENCE:
+"Where do you think others see this differently from you? Whose read are you least sure of?"
+
+WORRY AND TENSION (explicitly in - part of the shared picture, not noise):
+"How are you carrying this? What is the worry underneath it?"
+Then in the next exchange:
+"Is there a tension in the team that this event has cracked open?"
+
+DECISION DEFLECTION: If the person proposes a next step, record it in one line as an option raised ("they believe the next step should be...") and return to the picture: "Before what to do, I want the picture complete. What else do you know first-hand?" Never develop the option, never weigh options, never ask what they would decide.
+
+ROUTING BOUNDARY (hold the lane): This pack is for a discrete event in the last hours or days. If the person describes a gap that grew over weeks against something that was agreed, that is a different kind of ground (something off track). If there is no specific triggering event, only ongoing mis-sync, that is a different ground (team realignment). If they arrive wanting to decide, the decision comes after this record, not inside it.
+
+RECORD: The record should show: the person's first-hand account of the event, the known-versus-assumed split, what they believe is genuinely at risk versus only apparently at risk, who is most affected and who has not been heard from, the biggest named unknown, where they think reads diverge and whose read they are least sure of, and how they are carrying it. No decisions and no plans - any proposed next step is recorded as an option raised, not a commitment.`;
+
 // Legacy combined packs - used by the DB seed only. Runtime uses buildScenarioPackForParty.
 export const SCENARIO_PACKS: Record<GroundScenario, string> = {
   NEW_HIRE: composeStartingPack('NEW_HIRE'),
@@ -1671,6 +1711,7 @@ export const SCENARIO_PACKS: Record<GroundScenario, string> = {
   PIP: PIP_PACK,
   BOARD_STRATEGY: BOARD_STRATEGY_PACK,
   COHORT_CHECK: COHORT_CHECK_PACK,
+  ACUTE_SHOCK: ACUTE_SHOCK_PACK,
 };
 
 /**
@@ -1788,13 +1829,18 @@ export function buildScenarioPackForParty(scenario: GroundScenario, partyType: P
     case GroundScenario.COHORT_CHECK:
       return COHORT_CHECK_PACK;
 
+    // Symmetric by design: everyone was hit by the same event, so both parties
+    // get the identical shared-picture probes (no initiator/participant split).
+    case GroundScenario.ACUTE_SHOCK:
+      return ACUTE_SHOCK_PACK;
+
     default:
       return '';
   }
 }
 
 // Scenarios whose first session should run the willingness gate.
-const WILLINGNESS_GATE_SCENARIOS: GroundScenario[] = [GroundScenario.DRIFT, GroundScenario.RECOGNITION, GroundScenario.CRISIS_ALIGNMENT];
+const WILLINGNESS_GATE_SCENARIOS: GroundScenario[] = [GroundScenario.DRIFT, GroundScenario.RECOGNITION, GroundScenario.CRISIS_ALIGNMENT, GroundScenario.ACUTE_SHOCK];
 
 // ---------------------------------------------------------------------------
 // ---------------------------------------------------------------------------
