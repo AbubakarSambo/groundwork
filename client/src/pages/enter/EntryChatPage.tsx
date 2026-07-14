@@ -914,9 +914,9 @@ export function EntryChatPage() {
 
               {/* Situation cards - shown only before user has sent first message */}
               {onboardingHistory.length === 1 && !onboardingLoading && !pickedSituation && (
-                <div style={{ alignSelf: 'flex-start', width: '100%', maxWidth: '82%' }}>
+                <div style={{ alignSelf: 'flex-start', width: '100%' }}>
                   <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginBottom: 8, fontWeight: 500 }}>Starting something new</div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8, marginBottom: 14 }}>
                     {SITUATION_CARDS.filter(c => c.group === 'positive').map(card => (
                       <button
                         key={card.label}
@@ -933,7 +933,7 @@ export function EntryChatPage() {
                     ))}
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginBottom: 8, fontWeight: 500 }}>Something that needs addressing</div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
                     {SITUATION_CARDS.filter(c => c.group === 'negative').map(card => (
                       <button
                         key={card.label}
