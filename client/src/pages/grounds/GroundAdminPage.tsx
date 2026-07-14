@@ -258,6 +258,7 @@ export function GroundAdminPage() {
           <div>
             {/* Post-session decision panel: shown when session is complete, no balance, not subscribed */}
             {ground.status === 'REPORT_READY' && !postSessionDismissed &&
+              !ground.isFreeGround &&
               !(ground.org?.subscriptionPlan && ground.org?.subscriptionStatus === 'active') &&
               (ground.sessionsBalance ?? 0) === 0 && (
                 <PostSessionPanel

@@ -239,23 +239,31 @@ export class ConversationService {
           }).catch(() => undefined);
           throw new ForbiddenException({ message: gate.reason, freeExtensionAvailable: gate.freeExtensionAvailable ?? false });
         }
-        // Atomic check-and-decrement: only succeeds when balance is still > 0,
-        // preventing two concurrent requests from both passing canStartSession and
-        // both decrementing into negative territory.
-        const decremented = await this.prisma.ground.updateMany({
-          where: { id: checkIn.groundId, sessionsBalance: { gt: 0 } },
-          data: { sessionsBalance: { decrement: 1 } },
-        });
-        if (decremented.count === 0) {
-          throw new ForbiddenException('No sessions remaining. Add a session for $5 to continue.');
-        }
-        // Increment the free-sessions counter so the per-org cap is enforced.
-        const groundMeta = await this.prisma.ground.findUnique({ where: { id: checkIn.groundId }, select: { isFreeGround: true, organizationId: true } });
-        if (groundMeta?.isFreeGround) {
-          await this.prisma.organization.update({
-            where: { id: groundMeta.organizationId },
-            data: { freeSessionsUsed: { increment: 1 } },
+        // Metering runs ONLY for metered grounds. gate.sessionsBalance === -1
+        // signals unlimited (free-tier or active subscription) - those grounds are
+        // never decremented and never hit the balance throw below. This is the
+        // second gate: without this guard, a free-tier or subscribed ground whose
+        // balance had already reached 0 (e.g. a returning session 2) would throw
+        // "No sessions remaining" here even though canStartSession allowed it.
+        if (gate.sessionsBalance !== -1) {
+          // Atomic check-and-decrement: only succeeds when balance is still > 0,
+          // preventing two concurrent requests from both passing canStartSession and
+          // both decrementing into negative territory.
+          const decremented = await this.prisma.ground.updateMany({
+            where: { id: checkIn.groundId, sessionsBalance: { gt: 0 } },
+            data: { sessionsBalance: { decrement: 1 } },
           });
+          if (decremented.count === 0) {
+            throw new ForbiddenException('No sessions remaining. Add a session for $5 to continue.');
+          }
+          // Increment the free-sessions counter so the per-org cap is enforced.
+          const groundMeta = await this.prisma.ground.findUnique({ where: { id: checkIn.groundId }, select: { isFreeGround: true, organizationId: true } });
+          if (groundMeta?.isFreeGround) {
+            await this.prisma.organization.update({
+              where: { id: groundMeta.organizationId },
+              data: { freeSessionsUsed: { increment: 1 } },
+            });
+          }
         }
       }
     }
