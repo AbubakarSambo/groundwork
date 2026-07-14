@@ -119,6 +119,36 @@ export function onboardDisplayReply(reply: string, ready: boolean): string {
   return ready && replyHasQuestion(reply) ? ONBOARD_READY_CLOSER : reply
 }
 
+// --- Anonymous correction (ISSUE-17 safe) -----------------------------------
+// A non-logged-in user can correct the report's read of their situation. The
+// correction is ONE user-authored turn appended to the in-session transcript;
+// the report then REGENERATES from the corrected transcript via the same
+// stateless /entry/report path. Report fields are never patched directly - a
+// report the transcript does not support is exactly the dishonesty the product
+// exists to prevent. Nothing touches the server's state: the corrected
+// transcript lives in React state + localStorage until the user commits with an
+// email. Corrections accumulate (each stays in the transcript), and if the user
+// later commits, the corrected account is what gets persisted.
+export const CORRECTION_PREFIX = 'Correction from me:'
+
+export function buildCorrectionTurn(text: string): { role: 'user'; content: string } {
+  return {
+    role: 'user',
+    content: `${CORRECTION_PREFIX} ${text.trim()}. This is the accurate account - please update your read of my situation to reflect it.`,
+  }
+}
+
+// Returns a NEW array: the original history untouched plus exactly one appended
+// correction turn. The transcript that regenerates the report is the transcript
+// that would later commit - never mutated, never truncated.
+export function withCorrection<T extends { role: string; content: string }>(history: T[], text: string): T[] {
+  return [...history, buildCorrectionTurn(text) as unknown as T]
+}
+
+export function isCorrectionTurn(t: { role: string; content: string }): boolean {
+  return t.role === 'user' && t.content.startsWith(CORRECTION_PREFIX)
+}
+
 // Display labels for the alignmentStatus ladder. DISPLAY ONLY - the underlying
 // data values ('Unresolved'...'Aligned') are the AI report schema's enum and are
 // what the report JSON carries; they must never change. Only what the person
@@ -290,6 +320,9 @@ export function EntryChatPage() {
   const [showSave, setShowSave] = useState(false)
   const [sessionReport, setSessionReport] = useState<import('@/api/entry').EntryReport | null>(null)
   const [generatingReport, setGeneratingReport] = useState(false)
+  // Anonymous correction: inline "what did we get wrong?" box on the report.
+  const [showCorrection, setShowCorrection] = useState(false)
+  const [correctionText, setCorrectionText] = useState('')
   const [orgName, setOrgName] = useState('')
   const [email, setEmail] = useState('')
   const [emailSent, setEmailSent] = useState(false)
@@ -490,6 +523,22 @@ export function EntryChatPage() {
     setShowSave(true)
     generateSessionReport(history)
   }
+
+  // Anonymous correction: append ONE correction turn to the in-session
+  // transcript and regenerate the report from the corrected transcript (same
+  // stateless path as the original report - see the helpers near the top).
+  // If regeneration fails, this degrades to the existing retry card, which
+  // retries with the corrected turns, so the correction is not lost.
+  function submitReportCorrection() {
+    const text = correctionText.trim()
+    if (!text || generatingReport) return
+    const corrected = withCorrection(history, text)
+    setHistory(corrected)
+    setShowCorrection(false)
+    setCorrectionText('')
+    generateSessionReport(corrected)
+  }
+  const reportWasCorrected = history.some(isCorrectionTurn)
 
   // Called when user picks one of the final two buttons (works for both AI and deterministic paths)
   function advanceOnboarding(buttonChoice?: string) {
@@ -1423,8 +1472,51 @@ export function EntryChatPage() {
               <>
                 {/* What we heard from you */}
                 <div style={{ background: '#0A1628', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
-                  <div style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: '#5DCAA5', fontWeight: 700, marginBottom: 8 }}>What we heard from you</div>
+                  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+                    <div style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: '#5DCAA5', fontWeight: 700 }}>What we heard from you</div>
+                    {reportWasCorrected && !generatingReport && (
+                      <div style={{ fontSize: 10, color: 'rgba(255,255,255,.55)', fontStyle: 'normal' }}>Updated after your correction</div>
+                    )}
+                  </div>
                   <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: 'rgba(255,255,255,.93)' }}>{sessionReport.whatGroundworkSaw}</p>
+                  {/* Anonymous correction: one appended turn + full regeneration.
+                      Never patches report fields (see helpers near top of file). */}
+                  {!showCorrection ? (
+                    <button
+                      onClick={() => setShowCorrection(true)}
+                      disabled={generatingReport}
+                      style={{ marginTop: 10, background: 'none', border: 'none', padding: 0, fontSize: 12, color: '#5DCAA5', cursor: generatingReport ? 'wait' : 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+                    >
+                      This isn't right - correct it
+                    </button>
+                  ) : (
+                    <div style={{ marginTop: 10 }}>
+                      <div style={{ fontSize: 12, color: 'rgba(255,255,255,.75)', marginBottom: 6 }}>What did we get wrong? Say it plainly and we'll redo the report.</div>
+                      <textarea
+                        autoFocus
+                        value={correctionText}
+                        onChange={e => setCorrectionText(e.target.value)}
+                        placeholder="e.g. The deadline is not May - it is March 1."
+                        style={{ width: '100%', minHeight: 64, padding: '8px 10px', fontSize: 13, lineHeight: 1.55, border: 'none', borderRadius: 7, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', resize: 'vertical', background: 'rgba(255,255,255,.94)', color: '#1A1916' }}
+                      />
+                      <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                        <button
+                          onClick={submitReportCorrection}
+                          disabled={!correctionText.trim() || generatingReport}
+                          style={{ padding: '7px 14px', borderRadius: 7, background: '#5DCAA5', color: '#0A1628', fontSize: 12, fontWeight: 700, border: 'none', cursor: !correctionText.trim() || generatingReport ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: !correctionText.trim() || generatingReport ? 0.6 : 1 }}
+                        >
+                          {generatingReport ? 'Redoing your report...' : 'Redo my report'}
+                        </button>
+                        <button
+                          onClick={() => { setShowCorrection(false); setCorrectionText('') }}
+                          disabled={generatingReport}
+                          style={{ padding: '7px 12px', borderRadius: 7, background: 'none', color: 'rgba(255,255,255,.6)', fontSize: 12, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* How complete your account is (one-sided until others check in) */}
