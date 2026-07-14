@@ -179,20 +179,26 @@ export function HomePage() {
             <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-muted)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 12 }}>What you can do</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
               {[
-                { label: 'New hire',               desc: 'Expectations from all sides before the work starts. Both accounts on record from day one.' },
-                { label: 'New project',            desc: 'Scope, ownership, and success criteria agreed independently before the work begins.' },
-                { label: 'New board member',       desc: 'Each side on record on what they expect from the relationship before it starts.' },
-                { label: 'New partner',            desc: 'Put both sides\' understanding of the partnership on record before anything is agreed.' },
-                { label: 'Contract renewal',       desc: 'Independent accounts of how things have gone. What has worked, what has not.' },
-                { label: 'PIP',                    desc: 'Both accounts on record. The concern, the support available, and what success looks like.' },
-                { label: 'Goals & planning', desc: 'Check whether everyone is actually aligned on the goals and plan - not to set them.' },
-                { label: 'Pulse check',            desc: 'A quick independent read from each person. What is moving, what is stuck, what has changed.' },
-                { label: 'New direction',          desc: 'A strategy shift or pivot. Each person says what they understood before the group discussion.' },
-                { label: 'Board strategy',         desc: 'Each board member or leader gives their own read on strategy before the room debates it.' },
+                // Labels double as routing params (?scenario=<label>), resolved by
+                // SCENARIO_FROM_LABEL in CreateGroundPage - the reframed labels are
+                // in that map, so these route to the same untouched scenario keys.
+                { label: 'New hire',               desc: 'Get you and a new hire on the same page about the role and what early success looks like.' },
+                { label: 'New project',            desc: 'Line everyone up on scope, ownership, and what "done" means before the work starts.' },
+                { label: 'New advisor or board member', desc: 'Pin down what the advisor will actually contribute, on what terms.' },
+                { label: 'New partner or co-founder', desc: 'Put what each of you expects to build, own, and contribute in writing, before assumptions collide.' },
+                { label: 'New manager or lead',    desc: 'Get clear on scope, reporting, and success for someone stepping into an existing team.' },
+                { label: 'Contract or renewal',    desc: 'Both sides give an honest account of how the term actually went, and what a fair next one looks like.' },
+                { label: 'Raise, promotion, or recognition', desc: 'Build the evidence behind the ask before the conversation.' },
+                { label: 'Performance improvement plan', desc: 'Run a fair plan with both sides on the concern, the support, and what success looks like.' },
+                { label: 'Goals & planning',       desc: 'Check everyone is genuinely on the same goals and plan before the cycle locks in.' },
+                { label: 'Workplan & budget',      desc: 'Check each person\'s plan and budget holds up against the resources available.' },
+                { label: 'Quick check-in',         desc: 'A fast, repeatable read from each person. What is moving, what is stuck, what has changed.' },
+                { label: 'Something\'s off track', desc: 'Name what was agreed, what actually happened, and the exact gap, so you can act on it.' },
+                { label: 'Board & leadership strategy', desc: 'Each leader gives their own read on strategy before the room debates it.' },
                 { label: 'Cohort check-in',        desc: 'Many people in the same role check in against a shared question, on a recurring cadence.' },
-                { label: 'Realign a project',      desc: 'A project has drifted from the original plan. Get each person\'s current understanding on record.' },
-                { label: 'Realign with a team member', desc: 'You and someone on your team see the current situation differently. Close the gap before it grows.' },
-                { label: 'Other',                  desc: 'Describe the situation and Groundwork will set up the right ground for it.' },
+                { label: 'A shock just hit',       desc: 'A jarring event just happened. Get everyone\'s honest read before anyone decides anything.' },
+                { label: 'Get a team back on the same page', desc: 'Each person gives their honest read before the group talks, so the conversation starts from a shared picture.' },
+                { label: 'Describe your own situation', desc: 'Not sure which fits? Describe it in your own words and we will set up the right ground for you.' },
               ].map(c => (
                 <div
                   key={c.label}

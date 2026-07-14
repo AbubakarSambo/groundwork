@@ -524,6 +524,7 @@ PIP - performance improvement, formal feedback, or capability concern
 BOARD_STRATEGY - board or leadership team aligning on strategy, priorities, or big bets
 COHORT_CHECK - many people in the same role or programme checking in against a shared question (e.g. field officers, franchisees, a training cohort)
 ACUTE_SHOCK - a sudden jarring event just happened (an incident, a blow-up, sudden bad news) and everyone needs a shared honest picture of what actually happened before any decision
+RECOGNITION - someone wants a raise, promotion, equity, or recognition, and the evidence behind the ask needs to be on record before the conversation
 ${modeHint}
 
 Description: "${description.slice(0, 400)}"
