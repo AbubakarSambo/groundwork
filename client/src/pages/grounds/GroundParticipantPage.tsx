@@ -59,7 +59,7 @@ function SoloArtifactBlock({ checkInId, groundId, sessionNumber }: { checkInId: 
         onClick={() => setOpen(o => !o)}
         style={{ fontSize: 11, color: '#0C447C', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit', fontWeight: 600 }}
       >
-        {open ? 'Hide record summary' : 'What Groundwork saw in your account'}
+        {open ? 'Hide record summary' : 'What we heard from you'}
       </button>
       {open && (
         <div style={{ marginTop: 8, background: '#F5F3EF', borderRadius: 7, padding: '10px 12px' }}>

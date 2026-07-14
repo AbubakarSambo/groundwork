@@ -119,55 +119,103 @@ export function onboardDisplayReply(reply: string, ready: boolean): string {
   return ready && replyHasQuestion(reply) ? ONBOARD_READY_CLOSER : reply
 }
 
+// Display labels for the alignmentStatus ladder. DISPLAY ONLY - the underlying
+// data values ('Unresolved'...'Aligned') are the AI report schema's enum and are
+// what the report JSON carries; they must never change. Only what the person
+// SEES is reframed here.
+export const STATUS_DISPLAY: Record<'Unresolved' | 'Mixed' | 'Emerging' | 'Clear' | 'Aligned', string> = {
+  Unresolved: 'Just started',
+  Mixed: 'Taking shape',
+  Emerging: 'Getting there',
+  Clear: 'Clear',
+  Aligned: 'Shared',
+}
 
+
+// Recognizer sub-examples ("e.g. ...") sit under each card's description so
+// people can self-select from concrete situations, not abstract labels. The
+// `message` field is what actually routes (sent to the AI) - never change it
+// as part of a copy reframe.
 const SITUATION_CARDS = [
   {
     group: 'positive',
     label: 'New hire starting',
     detail: 'Set clear expectations early and make sure both sides are aligned from day one.',
     message: 'I have a new hire starting and want to make sure we set clear expectations from the beginning.',
+    examples: [
+      'Someone starts Monday and you want to be sure you both mean the same thing by "doing well."',
+      'A new joiner and their manager each writing what success looks like in the first 90 days.',
+    ],
   },
   {
     group: 'positive',
     label: 'New project kickoff',
     detail: 'Get the team aligned on goals, roles, and ways of working before work starts.',
     message: 'We are starting a new project and I want to get the team aligned on goals and roles from the beginning.',
+    examples: [
+      'Kicking off a build and you want scope and "done" agreed before anyone starts.',
+      'A cross-team project where each team quietly assumes a different owner.',
+    ],
   },
   {
     group: 'positive',
     label: 'New working arrangement',
     detail: 'A new partnership, reporting line, or team structure that needs a clear foundation.',
     message: 'We have a new working arrangement starting and want to make sure we are set up well.',
+    examples: [
+      'A new equal partner joining and you want the assumptions said out loud first.',
+      'An interim leader stepping into an existing team and scope needs pinning down.',
+    ],
   },
   {
     group: 'negative',
     label: 'Team member not delivering',
     detail: 'Someone is missing deadlines or not meeting expectations and you need to address it.',
     message: 'A team member is not delivering and I need to address it. I want to make sure I have the full picture before we talk.',
+    examples: [
+      'A senior hire is not delivering what they were brought in to do.',
+      'Deadlines keep slipping and you want the specific gap named before the conversation.',
+    ],
   },
   {
     group: 'negative',
     label: 'Running a PIP',
     detail: 'A performance improvement plan is underway and you want both sides on record.',
     message: 'I am running a performance improvement plan and want both sides to have a fair record of where things stand.',
+    examples: [
+      'You are putting someone on a formal plan and want both sides on the concern and what success looks like.',
+      'A capability concern where you want a fair record, not a he-said-she-said.',
+    ],
   },
   {
     group: 'negative',
     label: 'Cofounder or partner dispute',
     detail: 'A disagreement about contributions, direction, or equity that needs to be put on record.',
     message: 'My cofounder and I have a dispute about contributions and direction. I need to get both sides on record.',
+    examples: [
+      'You and a co-founder disagree about who contributed what, and equity is on the line.',
+      'A partnership under strain where each side tells a different story.',
+    ],
   },
   {
     group: 'negative',
     label: 'Realign a project',
     detail: 'A project has drifted from the original plan and you want each person\'s current understanding on record before the group discusses it.',
     message: 'A project of mine has drifted from what we originally agreed and I want to realign the team on where things actually stand.',
+    examples: [
+      'A project blew up or is badly behind and everyone has a different story about why.',
+      'What was agreed and what exists no longer match, and you want the gap named.',
+    ],
   },
   {
     group: 'negative',
     label: 'Realign with a team member',
     detail: 'You and someone on your team see the current situation differently and want to close the gap before it grows.',
     message: 'I need to realign with a team member. I think we see the current situation differently and want to get both our accounts on record.',
+    examples: [
+      'Priorities shifted and you two are working off different ideas of what matters now.',
+      'After a change or a conflict, you quietly disagree about where things stand.',
+    ],
   },
 ]
 
@@ -955,6 +1003,13 @@ export function EntryChatPage() {
                       >
                         <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)', marginBottom: 2 }}>{card.label}</div>
                         <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>{card.detail}</div>
+                        {card.examples && card.examples.length > 0 && (
+                          <div style={{ marginTop: 5 }}>
+                            {card.examples.map((ex, i) => (
+                              <div key={i} style={{ fontSize: 11, color: 'var(--gw-muted)', lineHeight: 1.5 }}>e.g. {ex}</div>
+                            ))}
+                          </div>
+                        )}
                       </button>
                     ))}
                   </div>
@@ -972,6 +1027,13 @@ export function EntryChatPage() {
                       >
                         <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)', marginBottom: 2 }}>{card.label}</div>
                         <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>{card.detail}</div>
+                        {card.examples && card.examples.length > 0 && (
+                          <div style={{ marginTop: 5 }}>
+                            {card.examples.map((ex, i) => (
+                              <div key={i} style={{ fontSize: 11, color: 'var(--gw-muted)', lineHeight: 1.5 }}>e.g. {ex}</div>
+                            ))}
+                          </div>
+                        )}
                       </button>
                     ))}
                   </div>
@@ -1359,44 +1421,44 @@ export function EntryChatPage() {
             {/* Structured report */}
             {sessionReport && (
               <>
-                {/* What Groundwork saw */}
+                {/* What we heard from you */}
                 <div style={{ background: '#0A1628', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
-                  <div style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: '#5DCAA5', fontWeight: 700, marginBottom: 8 }}>What Groundwork saw</div>
+                  <div style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: '#5DCAA5', fontWeight: 700, marginBottom: 8 }}>What we heard from you</div>
                   <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: 'rgba(255,255,255,.93)' }}>{sessionReport.whatGroundworkSaw}</p>
                 </div>
 
-                {/* Where your side stands (one-sided until others check in) */}
+                {/* How complete your account is (one-sided until others check in) */}
                 <div style={{ marginBottom: 16 }}>
-                  <div style={{ fontSize: 10, letterSpacing: '.09em', textTransform: 'uppercase', color: '#9B9590', fontWeight: 700, marginBottom: 6 }}>Where your side stands</div>
-                  <div style={{ fontSize: 17, fontWeight: 800, color: '#1A1916' }}>{sessionReport.alignmentStatus}</div>
+                  <div style={{ fontSize: 10, letterSpacing: '.09em', textTransform: 'uppercase', color: '#9B9590', fontWeight: 700, marginBottom: 6 }}>How complete your account is</div>
+                  <div style={{ fontSize: 17, fontWeight: 800, color: '#1A1916' }}>{STATUS_DISPLAY[sessionReport.alignmentStatus] ?? sessionReport.alignmentStatus}</div>
                   <div style={{ fontSize: 12, color: '#6B6560', marginTop: 3, lineHeight: 1.5 }}>{sessionReport.alignmentBasis}</div>
                   <div style={{ display: 'flex', gap: 4, marginTop: 10 }}>
                     {(['Unresolved','Mixed','Emerging','Clear','Aligned'] as const).map(s => {
                       const order = ['Unresolved','Mixed','Emerging','Clear','Aligned']
                       const on = order.indexOf(s) <= order.indexOf(sessionReport.alignmentStatus)
-                      // "Aligned" requires a second party, so it stays locked in a one-sided report.
+                      // "Shared" (data value 'Aligned') requires a second party, so it stays locked in a one-sided report.
                       const locked = s === 'Aligned'
                       const bg = on ? '#0C447C' : '#EFEDE8'
                       return (
-                        <div key={s} style={{ flex: 1, textAlign: 'center', fontSize: 9, letterSpacing: '.03em', textTransform: 'uppercase', padding: '5px 2px', borderRadius: 5, fontWeight: 700, background: bg, color: on ? 'white' : (locked ? '#B8B4AE' : '#9B9590'), border: locked ? '1px dashed #CFCBC4' : 'none' }}>{locked ? `${s} 🔒` : s}</div>
+                        <div key={s} style={{ flex: 1, textAlign: 'center', fontSize: 9, letterSpacing: '.03em', textTransform: 'uppercase', padding: '5px 2px', borderRadius: 5, fontWeight: 700, background: bg, color: on ? 'white' : (locked ? '#B8B4AE' : '#9B9590'), border: locked ? '1px dashed #CFCBC4' : 'none' }}>{locked ? `${STATUS_DISPLAY[s]} 🔒` : STATUS_DISPLAY[s]}</div>
                       )
                     })}
                   </div>
                   <div style={{ fontSize: 11, color: '#9B9590', marginTop: 6, lineHeight: 1.5 }}>
-                    Reading left to right: <b>Unresolved</b> (little on record) → <b>Mixed</b> → <b>Emerging</b> → <b>Clear</b> (your side is well defined) → <b>Aligned</b> (only after the other party checks in). This reflects your side only.
+                    Reading left to right: <b>Just started</b> (little saved yet) → <b>Taking shape</b> → <b>Getting there</b> → <b>Clear</b> (your side is well defined) → <b>Shared</b>. This is your side only. It becomes "Shared" once the other person checks in too.
                   </div>
                 </div>
 
-                {/* Areas requiring alignment */}
+                {/* What's still open */}
                 {sessionReport.areasRequiringAlignment.length > 0 && (
                   <div style={{ marginBottom: 16 }}>
-                    <div style={{ fontSize: 10, letterSpacing: '.09em', textTransform: 'uppercase', color: '#9B9590', fontWeight: 700, marginBottom: 8 }}>Areas requiring alignment</div>
+                    <div style={{ fontSize: 10, letterSpacing: '.09em', textTransform: 'uppercase', color: '#9B9590', fontWeight: 700, marginBottom: 8 }}>What's still open</div>
                     {sessionReport.areasRequiringAlignment.map((a, i) => (
                       <div key={i} style={{ border: '1px solid #E2E0DB', borderLeft: '3px solid #E8A94A', borderRadius: 10, padding: '11px 13px', marginBottom: 8 }}>
                         <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 7 }}>{a.title}</div>
-                        <div style={{ fontSize: 12, lineHeight: 1.5, marginBottom: 5 }}><span style={{ fontSize: 9, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: '#9B9590', display: 'block', marginBottom: 1 }}>Observation</span>{a.observation}</div>
+                        <div style={{ fontSize: 12, lineHeight: 1.5, marginBottom: 5 }}><span style={{ fontSize: 9, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: '#9B9590', display: 'block', marginBottom: 1 }}>What we noticed</span>{a.observation}</div>
                         <div style={{ fontSize: 12, lineHeight: 1.5, marginBottom: 5 }}><span style={{ fontSize: 9, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: '#9B9590', display: 'block', marginBottom: 1 }}>Why it matters</span>{a.whyItMatters}</div>
-                        <div style={{ background: '#E7F6EF', borderRadius: 7, padding: '7px 9px', fontSize: 12, color: '#085041', lineHeight: 1.5 }}><span style={{ fontSize: 9, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: '#085041', opacity: .75, display: 'block', marginBottom: 2 }}>Recommended move</span>{a.recommendedMove}</div>
+                        <div style={{ background: '#E7F6EF', borderRadius: 7, padding: '7px 9px', fontSize: 12, color: '#085041', lineHeight: 1.5 }}><span style={{ fontSize: 9, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: '#085041', opacity: .75, display: 'block', marginBottom: 2 }}>What to do next</span>{a.recommendedMove}</div>
                       </div>
                     ))}
                   </div>
@@ -1458,13 +1520,13 @@ export function EntryChatPage() {
                 {/* Where this leaves you — the one-glance summary of the detail above */}
                 <div style={{ marginBottom: 16 }}>
                   <div style={{ fontSize: 10, letterSpacing: '.09em', textTransform: 'uppercase', color: '#9B9590', fontWeight: 700, marginBottom: 4 }}>Where this leaves you</div>
-                  <div style={{ fontSize: 11, color: '#9B9590', marginBottom: 8, lineHeight: 1.5 }}>A one-glance summary of your side. "Next session" is what Groundwork will surface for you to check, not a task list.</div>
+                  <div style={{ fontSize: 11, color: '#9B9590', marginBottom: 8, lineHeight: 1.5 }}>A one-glance summary of your side. "Worth revisiting" is what we will check back on with you next time, not a task list.</div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                     {[
                       { k: 'Settled', v: sessionReport.honestClose.aligned, bg: '#E7F6EF', kc: '#085041' },
-                      { k: 'Open',    v: sessionReport.honestClose.open,    bg: '#FDF3E3', kc: '#8A5C1A' },
-                      { k: 'Next session', v: sessionReport.honestClose.revisit, bg: '#EEF4FB', kc: '#0C447C' },
-                      { k: 'Risk',    v: sessionReport.honestClose.risk,    bg: '#F8ECEA', kc: '#B5675A' },
+                      { k: 'Still open', v: sessionReport.honestClose.open, bg: '#FDF3E3', kc: '#8A5C1A' },
+                      { k: 'Worth revisiting', v: sessionReport.honestClose.revisit, bg: '#EEF4FB', kc: '#0C447C' },
+                      { k: 'Watch for', v: sessionReport.honestClose.risk,  bg: '#F8ECEA', kc: '#B5675A' },
                     ].map(({ k, v, bg, kc }) => (
                       <div key={k} style={{ background: bg, borderRadius: 8, padding: '9px 11px', fontSize: 12, lineHeight: 1.5, color: '#1A1916' }}>
                         <span style={{ fontSize: 9, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: kc, display: 'block', marginBottom: 3 }}>{k}</span>

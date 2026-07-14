@@ -135,7 +135,7 @@ function AreaBlock({ title, observation, whyItMatters, recommendedMove, reached,
       {note && <div style={{ fontSize: 12.5, color: '#6B6560' }}>{note}</div>}
       {observation && (
         <div style={{ fontSize: 13, lineHeight: 1.5, marginBottom: 7 }}>
-          <span style={{ fontSize: 9.5, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: '#9B9590', display: 'block', marginBottom: 1 }}>Observation</span>
+          <span style={{ fontSize: 9.5, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: '#9B9590', display: 'block', marginBottom: 1 }}>What we noticed</span>
           {observation}
         </div>
       )}
@@ -147,7 +147,7 @@ function AreaBlock({ title, observation, whyItMatters, recommendedMove, reached,
       )}
       {recommendedMove && (
         <div style={{ background: '#E7F6EF', borderRadius: 7, padding: '8px 10px', fontSize: 13, color: '#085041', lineHeight: 1.5 }}>
-          <span style={{ fontSize: 9.5, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: '#085041', opacity: 0.75, display: 'block', marginBottom: 2 }}>Recommended move</span>
+          <span style={{ fontSize: 9.5, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: '#085041', opacity: 0.75, display: 'block', marginBottom: 2 }}>What to do next</span>
           {recommendedMove}
         </div>
       )}
@@ -383,7 +383,7 @@ export function ReportPage() {
         <div style={{ maxWidth: 1040, margin: '0 auto', padding: '0 20px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)' }}>
             {[
-              { h: 'What Groundwork saw', p: 'Every report opens with the pattern across the accounts - the thing no single person could see on their own.' },
+              { h: 'What we heard', p: 'Every report opens with the pattern across the accounts - the thing no single person could see on their own.' },
               { h: 'A move for every area', p: 'Each area carries an observation, why it matters, and a recommended move. The status is auditable, not a grade.' },
               { h: 'Honest closes', p: 'Decisions rarely finish clean. Each report names what is aligned, what is open, what to revisit, and what risk remains.' },
             ].map((cell, i) => (
@@ -425,7 +425,7 @@ export function ReportPage() {
             </div>
             <div style={{ padding: '16px 18px 18px' }}>
 
-              <PatternBlock label="What Groundwork saw" content={report.sharedPicture} />
+              <PatternBlock label="What we heard" content={report.sharedPicture} />
 
               {/* Alignment status */}
               <div style={{ marginBottom: 16 }}>
@@ -443,10 +443,10 @@ export function ReportPage() {
                 <StatusLadder steps={statusSteps} label={statusLabel} />
               </div>
 
-              {/* Areas requiring alignment */}
+              {/* What's still open */}
               {divergences.length > 0 && (
                 <div style={{ marginBottom: 16 }}>
-                  <SecH>Areas requiring alignment</SecH>
+                  <SecH>What's still open</SecH>
                   {hasAreas
                     ? areas.filter((a: any) => !a.reached).map((area: any, i: number) => (
                         <AreaBlock key={i} title={area.title} observation={area.observation} whyItMatters={area.whyItMatters} recommendedMove={area.recommendedMove} />

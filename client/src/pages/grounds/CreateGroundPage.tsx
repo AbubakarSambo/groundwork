@@ -6,6 +6,11 @@ import { billingApi, FREE_GROUND_LIMIT } from '@/api/billing'
 import { toast } from 'sonner'
 
 interface ScenarioCard {
+  // Unique per CARD, not per scenario: two cards can map to the same scenario
+  // key (the realignment card and the describe-your-own card both use
+  // REALIGN_TEAM's pack), so selection tracks the card, while what is SENT to
+  // the API is always the untouched scenario enum key.
+  cardKey: string
   scenario: GroundScenario
   label: string
   desc: string
@@ -13,30 +18,121 @@ interface ScenarioCard {
   tagBg: string
   tagColor: string
   // Recognizer lines ("e.g. ...") shown under the description so people can
-  // self-select from concrete situations, not abstract labels. Optional - the
-  // full scenario reframe will fill these in for every card.
+  // self-select from concrete situations, not abstract labels.
   examples?: string[]
 }
 
-const SCENARIOS: ScenarioCard[] = [
-  { scenario: 'NEW_HIRE',         label: 'New hire',              desc: 'Expectations from all sides before the work starts. Both accounts on record from day one.',              tag: 'Starting',     tagBg: '#E8F8F5', tagColor: '#085041' },
-  { scenario: 'NEW_PROJECT',      label: 'New project',           desc: 'Scope, ownership, and success criteria agreed independently before the work begins.',                    tag: 'Starting',     tagBg: '#E8F8F5', tagColor: '#085041' },
-  { scenario: 'NEW_ADVISOR',      label: 'New board member',      desc: 'Each side on record on what they expect from the relationship before it starts.',                         tag: 'Starting',     tagBg: '#E8F8F5', tagColor: '#085041' },
-  { scenario: 'NEW_COFOUNDER',    label: 'New partner',           desc: 'Put both sides\' understanding of the partnership on record before anything is agreed.',                  tag: 'Starting',     tagBg: '#E8F8F5', tagColor: '#085041' },
-  { scenario: 'CONTRACT_RENEWAL', label: 'Contract renewal',      desc: 'Independent accounts of how things have gone. What has worked, what has not, and what the next term looks like.', tag: 'Renewal', tagBg: '#EEF4FB', tagColor: '#0C447C' },
-  { scenario: 'PIP',              label: 'PIP',              desc: 'Both accounts on record. The concern, the support available, and what success looks like.',              tag: 'Accountability', tagBg: '#FCEBEB', tagColor: '#791F1F' },
-  { scenario: 'OKR_ALIGNMENT',    label: 'Goals & planning', desc: 'Check whether everyone is actually aligned on the goals and plan. Not to set them.',                    tag: 'Planning',     tagBg: '#EEF4FB', tagColor: '#0C447C' },
-  { scenario: 'PULSE_CHECK',      label: 'Pulse check',      desc: 'A quick independent read from each person. What is moving, what is stuck, what has changed.',             tag: 'Recurring',    tagBg: '#E8F8F5', tagColor: '#085041' },
-  { scenario: 'DRIFT',            label: 'New direction',    desc: 'A strategy shift or pivot. Each person says what they understood before the group discussion.',            tag: 'Alignment',    tagBg: '#FDF3E3', tagColor: '#8A5C1A' },
-  { scenario: 'BOARD_STRATEGY',   label: 'Board strategy',   desc: 'Each board member or leader gives their own read on strategy before the room debates it. Surfaces hidden misalignment.', tag: 'Leadership', tagBg: '#EEF4FB', tagColor: '#0C447C' },
-  { scenario: 'COHORT_CHECK',     label: 'Cohort check-in',  desc: 'Many people in the same role (field officers, franchisees, a cohort) each check in against a shared question. See the pattern.', tag: 'Recurring', tagBg: '#E8F8F5', tagColor: '#085041' },
-  { scenario: 'ACUTE_SHOCK',      label: 'A shock just hit', desc: 'A jarring event just happened. Get everyone\'s honest read of what actually happened and where things really stand, before anyone decides anything.', tag: 'Urgent', tagBg: '#FCEBEB', tagColor: '#791F1F',
+// Reframed per FEATURE_scenario_reframe.md: action-focused labels, plain
+// descriptions, and recognizer sub-examples. DISPLAY ONLY - every card still
+// submits its untouched GroundScenario enum key; packs, classifier keys, and
+// the report schema are unchanged.
+export const SCENARIOS: ScenarioCard[] = [
+  { cardKey: 'NEW_HIRE', scenario: 'NEW_HIRE', label: 'New hire', tag: 'Starting', tagBg: '#E8F8F5', tagColor: '#085041',
+    desc: 'Get you and a new hire on the same page about the role, expectations, and what early success looks like, before anything drifts. You each answer separately; the report shows where you already match and where you do not.',
+    examples: [
+      'Someone starts Monday and you want to be sure you both mean the same thing by "doing well."',
+      'You just hired a senior person and need what they own pinned down before day one.',
+      'A new joiner and their manager each writing what success looks like in the first 90 days.',
+    ] },
+  { cardKey: 'NEW_PROJECT', scenario: 'NEW_PROJECT', label: 'New project', tag: 'Starting', tagBg: '#E8F8F5', tagColor: '#085041',
+    desc: 'Line everyone up on scope, ownership, and what "done" means before the work starts. Each person answers on their own; the report shows the gaps to close first.',
+    examples: [
+      'Kicking off a build and you want scope and "done" agreed before anyone writes code.',
+      'A cross-team project where each team quietly assumes a different owner.',
+      'Starting work with a client and you want both sides\' version of the goal on record.',
+    ] },
+  { cardKey: 'NEW_ADVISOR', scenario: 'NEW_ADVISOR', label: 'New advisor or board member', tag: 'Starting', tagBg: '#E8F8F5', tagColor: '#085041',
+    desc: 'Pin down what the advisor will actually contribute, on what terms, so "available" does not quietly stand in for "contributing."',
+    examples: [
+      'Bringing on an advisor for equity and you want it clear what they will actually do for it.',
+      'A new board member joining, each side writing what they expect from the relationship.',
+    ] },
+  { cardKey: 'NEW_COFOUNDER', scenario: 'NEW_COFOUNDER', label: 'New partner or co-founder', tag: 'Starting', tagBg: '#E8F8F5', tagColor: '#085041',
+    desc: 'Put what each of you expects to build, own, and contribute in writing, before those assumptions collide.',
+    examples: [
+      'You and a co-founder splitting equity and roles and want the assumptions said out loud first.',
+      'A new equal partner joining the founding team.',
+    ] },
+  { cardKey: 'NEW_MANAGER', scenario: 'NEW_MANAGER', label: 'New manager or lead', tag: 'Starting', tagBg: '#E8F8F5', tagColor: '#085041',
+    desc: 'Get clear on scope, reporting, and success for someone stepping into an existing team or role.',
+    examples: [
+      'An interim leader stepping into an existing team for six months.',
+      'A new manager taking over mid-project and you want scope and authority clear.',
+    ] },
+  { cardKey: 'CONTRACT_RENEWAL', scenario: 'CONTRACT_RENEWAL', label: 'Contract or renewal', tag: 'Renewal', tagBg: '#EEF4FB', tagColor: '#0C447C',
+    desc: 'Both sides give an honest account of how the term actually went, and what a fair next one looks like.',
+    examples: [
+      'A contractor\'s term is ending and you are deciding whether to renew.',
+      'An agency engagement up for renewal and you want an honest account of what got delivered.',
+    ] },
+  { cardKey: 'RECOGNITION', scenario: 'RECOGNITION', label: 'Raise, promotion, or recognition', tag: 'Recognition', tagBg: '#FDF3E3', tagColor: '#8A5C1A',
+    desc: 'Build the evidence behind the ask before the conversation, and see how the decision-maker reads the same record, so you both start from the same picture.',
+    examples: [
+      'You are going to ask for a raise and want the evidence lined up first.',
+      'Someone is up for promotion and you want their record and your read to match before the talk.',
+    ] },
+  { cardKey: 'PIP', scenario: 'PIP', label: 'Performance improvement plan', tag: 'Accountability', tagBg: '#FCEBEB', tagColor: '#791F1F',
+    desc: 'Run a fair plan with both sides on the same page: the concern, the support available, and what success looks like at the end.',
+    examples: [
+      'You are putting someone on a formal plan and want both sides on the concern and what success looks like.',
+      'A capability concern where you want a fair record, not a he-said-she-said.',
+    ] },
+  { cardKey: 'OKR_ALIGNMENT', scenario: 'OKR_ALIGNMENT', label: 'Goals & planning', tag: 'Planning', tagBg: '#EEF4FB', tagColor: '#0C447C',
+    desc: 'Check everyone is genuinely on the same goals and plan, and catch the gaps and overlaps before the cycle locks in.',
+    examples: [
+      'Planning season and you want to check everyone\'s goals actually connect before they lock.',
+      'Two teams whose objectives depend on each other and you are not sure the handoff is agreed.',
+    ] },
+  { cardKey: 'WORKPLAN_BUDGET', scenario: 'WORKPLAN_BUDGET', label: 'Workplan & budget', tag: 'Planning', tagBg: '#EEF4FB', tagColor: '#0C447C',
+    desc: 'Check each person has actually built their plan and budget, and that it holds up against the resources available.',
+    examples: [
+      'Start of the quarter and you want each person\'s plan and budget to hold up against real resources.',
+      'A plan that looks fine on paper but you suspect the budget behind it was assumed, not approved.',
+    ] },
+  { cardKey: 'PULSE_CHECK', scenario: 'PULSE_CHECK', label: 'Quick check-in', tag: 'Recurring', tagBg: '#E8F8F5', tagColor: '#085041',
+    desc: 'A fast, repeatable read from each person: what is moving, what is stuck, what has changed. About five minutes.',
+    examples: [
+      'A fast fortnightly read from each person on what is moving and what is stuck.',
+      'You want a lightweight recurring signal without calling a meeting.',
+    ] },
+  { cardKey: 'DRIFT', scenario: 'DRIFT', label: 'Something\'s off track', tag: 'Off track', tagBg: '#FDF3E3', tagColor: '#8A5C1A',
+    desc: 'Name what was agreed, what actually happened, and the exact gap, so a vague worry becomes something you can act on. Fits a person not delivering, a project that has slipped, or a partnership under strain.',
+    examples: [
+      'A project blew up or is badly behind and everyone has a different story about why.',
+      'A senior hire is not delivering what they were brought in to do.',
+      'Cash is tight and you need everyone seeing the same runway and what has to change.',
+    ] },
+  { cardKey: 'BOARD_STRATEGY', scenario: 'BOARD_STRATEGY', label: 'Board & leadership strategy', tag: 'Leadership', tagBg: '#EEF4FB', tagColor: '#0C447C',
+    desc: 'Each leader gives their own read on strategy before the room debates it, so quiet disagreement shows up now, not after the decision.',
+    examples: [
+      'Before a strategy offsite, you want each leader\'s real read so quiet disagreement shows up early.',
+      'The board looks aligned in the room but you suspect it is not on one big bet.',
+    ] },
+  { cardKey: 'COHORT_CHECK', scenario: 'COHORT_CHECK', label: 'Cohort check-in', tag: 'Recurring', tagBg: '#E8F8F5', tagColor: '#085041',
+    desc: 'Many people in the same role each answer the same question on their own. See the pattern, who is on track and who is stuck, without them swaying each other.',
+    examples: [
+      'Twenty field officers each answering the same question so you can see the pattern.',
+      'A training cohort where you want to see who is on track and who is stuck without them influencing each other.',
+    ] },
+  { cardKey: 'ACUTE_SHOCK', scenario: 'ACUTE_SHOCK', label: 'A shock just hit', tag: 'Urgent', tagBg: '#FCEBEB', tagColor: '#791F1F',
+    desc: 'A jarring event just happened. Get everyone\'s honest read of what actually happened and where things really stand, before anyone decides anything.',
     examples: [
       'A major client pulled out overnight and everyone has a different version of why.',
       'An incident just took things down and people are scrambling to understand what happened.',
       'Sudden bad news hit the team and you want honest reads before any decisions get made.',
     ] },
-  { scenario: 'REALIGN_TEAM',     label: 'Other',            desc: 'Describe the situation and Groundwork will set up the right ground for it.',                              tag: 'Other',        tagBg: '#F5F3EF', tagColor: '#6B6560' },
+  { cardKey: 'REALIGN_TEAM', scenario: 'REALIGN_TEAM', label: 'Get a team back on the same page', tag: 'Team', tagBg: '#FDF3E3', tagColor: '#8A5C1A',
+    desc: 'You and your team see the situation differently. Each person gives their honest read before the group talks, so the conversation starts from a shared picture.',
+    examples: [
+      'The team is pulling two ways on a decision and you want each person\'s honest read before the meeting.',
+      'Priorities shifted and everyone is working off a different idea of what matters now.',
+      'After a reorg or a change, the team quietly disagrees about where things stand.',
+    ] },
+  // The genuine free-text path, separated from the realignment scenario above.
+  // It runs on REALIGN_TEAM's general pack and leans on the brief the person
+  // writes; a later iteration can route it through classifyIntent.
+  { cardKey: 'DESCRIBE_OWN', scenario: 'REALIGN_TEAM', label: 'Describe your own situation', tag: 'Anything else', tagBg: '#F5F3EF', tagColor: '#6B6560',
+    desc: 'Not sure which fits? Describe it in your own words, add any context or documents, and we will set up the right ground for you.' },
 ]
 
 interface MomentOption { moment: GroundMoment; label: string; sub: string }
@@ -103,6 +199,19 @@ const SCENARIO_FROM_LABEL: Record<string, GroundScenario> = {
   'realign with a team member': 'REALIGN_TEAM',
   'a shock just hit':   'ACUTE_SHOCK',
   'other':              'REALIGN_TEAM',
+  // Reframed labels (old labels above are kept so existing links keep working).
+  'new advisor or board member': 'NEW_ADVISOR',
+  'new partner or co-founder': 'NEW_COFOUNDER',
+  'new manager or lead': 'NEW_MANAGER',
+  'contract or renewal': 'CONTRACT_RENEWAL',
+  'raise, promotion, or recognition': 'RECOGNITION',
+  'performance improvement plan': 'PIP',
+  'workplan & budget':  'WORKPLAN_BUDGET',
+  'quick check-in':     'PULSE_CHECK',
+  "something's off track": 'DRIFT',
+  'board & leadership strategy': 'BOARD_STRATEGY',
+  'get a team back on the same page': 'REALIGN_TEAM',
+  'describe your own situation': 'REALIGN_TEAM',
 }
 
 function scenarioFromParam(param: string | null): GroundScenario | null {
@@ -121,6 +230,15 @@ export function CreateGroundPage() {
 
   const [scenario, setScenario] = useState<GroundScenario | null>(
     () => scenarioFromParam(searchParams.get('scenario'))
+  )
+  // Selection is per CARD (two cards share REALIGN_TEAM: the realignment card
+  // and the describe-your-own card). `scenario` above stays the enum key that
+  // is actually submitted.
+  const [selectedCard, setSelectedCard] = useState<string | null>(
+    () => {
+      const s = scenarioFromParam(searchParams.get('scenario'))
+      return s ? (SCENARIOS.find(c => c.scenario === s)?.cardKey ?? null) : null
+    }
   )
   const [moment, setMoment] = useState<GroundMoment | null>(null)
   const [timelineDays, setTimelineDays] = useState(90)
@@ -270,10 +388,10 @@ export function CreateGroundPage() {
             <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 10 }}>Choose one that best describes your situation.</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8, marginBottom: 24 }}>
               {SCENARIOS.map(s => (
-                <div key={s.scenario} className={`cg-sit-card${scenario === s.scenario ? ' selected' : ''}`} onClick={() => setScenario(s.scenario)}>
+                <div key={s.cardKey} className={`cg-sit-card${selectedCard === s.cardKey ? ' selected' : ''}`} onClick={() => { setScenario(s.scenario); setSelectedCard(s.cardKey) }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
                     <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: s.tagBg, color: s.tagColor }}>{s.tag}</span>
-                    <div className="cg-sit-radio" style={{ width: 16, height: 16, borderRadius: '50%', border: `2px solid ${scenario === s.scenario ? 'var(--gw-navy)' : 'var(--gw-border)'}`, background: scenario === s.scenario ? 'var(--gw-navy)' : 'transparent', flexShrink: 0 }} />
+                    <div className="cg-sit-radio" style={{ width: 16, height: 16, borderRadius: '50%', border: `2px solid ${selectedCard === s.cardKey ? 'var(--gw-navy)' : 'var(--gw-border)'}`, background: selectedCard === s.cardKey ? 'var(--gw-navy)' : 'transparent', flexShrink: 0 }} />
                   </div>
                   <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 3 }}>{s.label}</div>
                   <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>{s.desc}</div>
@@ -599,7 +717,7 @@ export function CreateGroundPage() {
             <div className="gw-box gw-box-blue" style={{ marginBottom: 16 }}>
               <div style={{ fontWeight: 600, marginBottom: 4 }}>Summary</div>
               <div style={{ fontSize: 12, lineHeight: 1.7 }}>
-                <div>{SCENARIOS.find(s => s.scenario === scenario)?.label ?? (scenario ?? '').replace(/_/g, ' ')} · {MOMENTS.find(m => m.moment === moment)?.label ?? moment}</div>
+                <div>{SCENARIOS.find(s => s.cardKey === selectedCard)?.label ?? (scenario ?? '').replace(/_/g, ' ')} · {MOMENTS.find(m => m.moment === moment)?.label ?? moment}</div>
                 <div>{sessionTotal} sessions · {cadence.toLowerCase()}</div>
                 {resolutionState && <div>Resolution: {resolutionState}</div>}
                 {participants.length > 0 && <div>{participants.length} participant{participants.length !== 1 ? 's' : ''} invited</div>}

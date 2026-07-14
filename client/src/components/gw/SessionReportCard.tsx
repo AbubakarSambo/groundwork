@@ -66,7 +66,7 @@ function AreaBlock({ area }: { area: Area }) {
     <div style={{ border: '1px solid var(--gw-border)', borderRadius: 9, padding: '11px 13px', borderLeft: '3px solid var(--gw-amber-b)', marginBottom: 8 }}>
       <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>{area.title}</div>
       <div style={{ marginBottom: 6 }}>
-        <span style={{ fontSize: 9.5, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-muted)', display: 'block', marginBottom: 1 }}>Observation</span>
+        <span style={{ fontSize: 9.5, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-muted)', display: 'block', marginBottom: 1 }}>What we noticed</span>
         <span style={{ fontSize: 13, lineHeight: 1.5 }}>{area.observation}</span>
       </div>
       <div style={{ marginBottom: 6 }}>
@@ -74,7 +74,7 @@ function AreaBlock({ area }: { area: Area }) {
         <span style={{ fontSize: 13, lineHeight: 1.5 }}>{area.whyItMatters}</span>
       </div>
       <div style={{ background: 'var(--gw-green-bg)', borderRadius: 7, padding: '8px 10px' }}>
-        <span style={{ fontSize: 9.5, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-green-t)', opacity: .75, display: 'block', marginBottom: 2 }}>Recommended move</span>
+        <span style={{ fontSize: 9.5, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-green-t)', opacity: .75, display: 'block', marginBottom: 2 }}>What to do next</span>
         <span style={{ fontSize: 13, color: 'var(--gw-green-t)', lineHeight: 1.5 }}>{area.move}</span>
       </div>
     </div>
@@ -136,10 +136,10 @@ function AdminCrossRef({ report, closed }: { report: Report; closed: boolean }) 
 
   return (
     <div>
-      {/* What Groundwork saw */}
+      {/* What we heard */}
       <div style={{ background: 'var(--gw-dark)', color: '#fff', borderRadius: 10, padding: '14px 16px', marginBottom: 14 }}>
         <div style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-green-b)', fontWeight: 700, marginBottom: 7 }}>
-          {closed ? 'What Groundwork learned across the ground' : 'What Groundwork saw'}
+          {closed ? 'What we heard across the ground' : 'What we heard from you'}
         </div>
         <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: 'rgba(255,255,255,.93)' }}>{report.sharedPicture}</p>
       </div>
@@ -158,7 +158,7 @@ function AdminCrossRef({ report, closed }: { report: Report; closed: boolean }) 
       {/* Open areas */}
       {openAreas.length > 0 && !closed && (
         <div style={{ marginBottom: 14 }}>
-          <SecH>Areas requiring alignment</SecH>
+          <SecH>What's still open</SecH>
           {openAreas.map((a, i) => <AreaBlock key={i} area={a} />)}
         </div>
       )}

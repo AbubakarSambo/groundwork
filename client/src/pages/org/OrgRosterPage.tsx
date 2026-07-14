@@ -7,10 +7,10 @@ import { toast } from 'sonner'
 
 const SCENARIO_OPTIONS: { value: GroundScenario; label: string }[] = [
   { value: 'COHORT_CHECK', label: 'Cohort check-in' },
-  { value: 'BOARD_STRATEGY', label: 'Board strategy' },
-  { value: 'PULSE_CHECK', label: 'Pulse check' },
+  { value: 'BOARD_STRATEGY', label: 'Board & leadership strategy' },
+  { value: 'PULSE_CHECK', label: 'Quick check-in' },
   { value: 'NEW_PROJECT', label: 'New project' },
-  { value: 'REALIGN_TEAM', label: 'Other' },
+  { value: 'REALIGN_TEAM', label: 'Get a team back on the same page' },
 ]
 
 const CADENCE_OPTIONS: { value: GroundCadence; label: string }[] = [

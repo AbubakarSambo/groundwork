@@ -718,7 +718,7 @@ export function GroundAdminPage() {
                         <circle cx="25" cy="11" r="9" stroke="white" strokeWidth="2.5" fill="none"/>
                         <path d="M18 3.2C20.6 5.2 22.2 7.9 22.2 11C22.2 14.1 20.6 16.8 18 18.8C15.4 16.8 13.8 14.1 13.8 11C13.8 7.9 15.4 5.2 18 3.2Z" fill="rgba(100,130,255,0.7)"/>
                       </svg>
-                      <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,.55)' }}>What Groundwork saw</div>
+                      <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,.55)' }}>What we heard</div>
                     </div>
                     <div style={{ fontSize: 14, lineHeight: 1.65 }}>{report.pattern}</div>
                   </div>
