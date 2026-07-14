@@ -1778,10 +1778,10 @@ export function EntryChatPage() {
           <div style={{ background: 'white', borderRadius: 12, padding: 24, maxWidth: 380, width: '100%' }}>
             <div style={{ fontSize: 16, fontWeight: 800, color: '#0A1628', marginBottom: 8 }}>End this session?</div>
             <div style={{ fontSize: 13, color: '#6B6560', lineHeight: 1.65, marginBottom: 8 }}>
-              Your answers are saved. Ending this session generates your report. This session's answers then lock, but you are not stuck: you can start a new session any time to add more.
+              Your answers are saved on this device. Ending this session generates your report, and this session's answers then lock.
             </div>
             <div style={{ fontSize: 13, color: '#6B6560', lineHeight: 1.65, marginBottom: 18 }}>
-              If the report gets something wrong, you can open a clarification session to correct it. The shared report releases once all parties have checked in.
+              Once you save your record below, you can revisit and correct it any time from your report. The shared report releases once all parties have checked in.
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button
