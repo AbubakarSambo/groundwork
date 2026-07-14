@@ -199,7 +199,15 @@ export class ConversationService {
     // opened a check-in for the same session number, that round was already paid
     // for - allow without decrementing. Re-opens of the same check-in are already
     // caught above by the existingAiTurn guard.
-    if (checkIn.groundId) {
+    //
+    // Self-correction is NEVER gated on payment. A participant fixing an error in
+    // their OWN prior record must always be able to, even on a ground with zero
+    // balance - charging $5 to correct your own words is exactly the "if
+    // participant sessions are ever gated, trust collapses" failure this module
+    // warns about. Correction sessions carry a fresh sessionNumber, so without
+    // this exemption they would be billed as brand-new sessions and dead-end at
+    // the paywall.
+    if (checkIn.groundId && !checkIn.isSelfCorrection) {
       // Determine whether another participant already opened this session round.
       const roundAlreadyStarted = await this.prisma.conversationTurn.findFirst({
         where: {
@@ -722,17 +730,28 @@ Open the session by naming that you're returning to session ${checkIn.selfCorrec
     // The character-count approach mirrors the thin-record heuristic already
     // used at report-synthesis time (reports.service.ts), applied here at the
     // gate instead of only flagged after the fact.
+    //
+    // Self-correction sessions carry a RELAXED gate. A correction is inherently
+    // short and targeted ("the deadline was March, not May") - it is not a fresh
+    // record being built from scratch. The engine legitimately closes a
+    // correction after one or two exchanges, so the standard 3-turn floor would
+    // strand it: the AI signals done, the input disables, but completion 400s
+    // for a turn the person can no longer add. We still require ONE substantive
+    // turn so a correction cannot close empty.
     const personTurnRows = await this.prisma.conversationTurn.findMany({
       where: { checkInId: checkIn.id, role: TurnRole.PERSON },
       select: { content: true },
     });
-    if (personTurnRows.length < 3) {
+    const minTurns = checkIn.isSelfCorrection ? 1 : 3;
+    if (personTurnRows.length < minTurns) {
       throw new BadRequestException(
         'A few more exchanges are needed before this check-in can close - the record is still thin. Answer one or two more questions, then complete.',
       );
     }
     const totalPersonChars = personTurnRows.reduce((sum, t) => sum + (t.content?.trim().length ?? 0), 0);
-    const MIN_SUBSTANTIVE_CHARS = 120; // roughly two real sentences total, not three one-word replies
+    // roughly two real sentences total for a normal session; a single specific
+    // sentence is enough to anchor a correction.
+    const MIN_SUBSTANTIVE_CHARS = checkIn.isSelfCorrection ? 40 : 120;
     if (totalPersonChars < MIN_SUBSTANTIVE_CHARS) {
       throw new BadRequestException(
         'These answers are pretty short - the record needs a bit more detail before this check-in can close. Add specifics (names, numbers, what actually happened), then complete.',

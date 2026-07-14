@@ -19,7 +19,7 @@ export function InferenceReviewPanel({ groundId, inferences }: Props) {
   const clarifyMut = useMutation({
     mutationFn: (inferenceId: string) => reportsApi.startClarification(groundId, inferenceId),
     onSuccess: (data) => {
-      navigate(`/check-in/${data.checkInId}?clarify=true`)
+      navigate(`/checkin/${data.checkInId}?clarify=true`)
     },
   })
 
