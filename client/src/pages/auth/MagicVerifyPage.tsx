@@ -25,6 +25,9 @@ function loadCommitPayload(): any | null {
         }
       }
     }
+    // The commit endpoint requires history as an array. The coordinator/lead
+    // path legitimately has none (no session), so default to empty.
+    if (!Array.isArray(payload.history)) payload.history = []
     return payload
   } catch { return null }
 }
@@ -52,7 +55,9 @@ export function MagicVerifyPage() {
           return
         }
         const payload = loadCommitPayload()
-        if (payload?.history?.length) {
+        // Coordinator/lead path commits with an EMPTY history (the coordinator
+        // had no session) - the presence of `lead` is what makes it committable.
+        if (payload?.history?.length || payload?.lead) {
           try {
             const result = await entryApi.commit(payload)
             localStorage.removeItem(COMMIT_KEY)

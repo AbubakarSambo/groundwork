@@ -704,6 +704,10 @@ STRICT RULES:
       cadenceAnchorDay?: number;
       checkInBy?: string;
       lastCheckInBy?: string;
+      // Coordinator/lead path: the onboarding context (used as the brief) and
+      // the lead who will run the first check-in.
+      brief?: string;
+      lead?: { email: string; name?: string; contextNote?: string };
       history: ChatTurn[];
       report?: EntryReport | null;
       contributors: { email: string; context?: string; inviteToken?: string; note?: string }[];
@@ -733,6 +737,43 @@ STRICT RULES:
       MONTHLY: Cadence.MONTHLY,
       SEQUENTIAL: Cadence.SEQUENTIAL,
     };
+
+    // --- Coordinator/lead path ---------------------------------------------
+    // The committer is setting this ground up for someone ELSE to run: route
+    // through the existing for-lead machinery (AWAITING_LEAD; the lead is
+    // invited to confirm and becomes the initiator; the committer is recorded
+    // as createdByUserId only). Deliberately NO check-in, NO transcript, and NO
+    // report for the coordinator - they did not have a session, and the record
+    // must not pretend they did. Contributors become pre-added participants
+    // (createForLead invites them alongside the lead). The onboarding context
+    // arrives as dto.brief; the coordinator's note to the lead becomes a
+    // LeadContextNote (participantId null = about the ground).
+    if (dto.lead) {
+      const ground = await this.grounds.createForLead(organizationId, initiatorId, {
+        leadEmail: dto.lead.email,
+        leadName: dto.lead.name,
+        label,
+        scenario,
+        moment: GroundMoment.STARTING,
+        cadence: (dto.cadence && cadenceMap[dto.cadence]) ? cadenceMap[dto.cadence] : Cadence.FORTNIGHTLY,
+        cadenceAnchorDay: dto.cadenceAnchorDay ?? undefined,
+        brief: dto.brief?.trim() || undefined,
+        participants: dto.contributors.map((c) => ({ email: c.email, roleAsDescribed: c.context })),
+      });
+      if (dto.lead.contextNote?.trim()) {
+        await this.prisma.leadContextNote.create({
+          data: { groundId: ground.id, authorUserId: initiatorId, text: dto.lead.contextNote.trim() },
+        });
+      }
+      const leadJoinToken = (ground as { joinToken?: string | null }).joinToken ?? null;
+      return {
+        groundId: ground.id,
+        joinToken: leadJoinToken,
+        contributors: dto.contributors.map((c) => ({ email: c.email })),
+        failedInvites: [],
+      };
+    }
+
     // Use the AI's own summary as the ground brief so it's visible before participants arrive.
     const brief = dto.report?.whatGroundworkSaw ?? undefined;
 

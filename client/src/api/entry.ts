@@ -110,6 +110,11 @@ export const entryApi = {
     history: ChatTurn[]
     report?: EntryReport | null
     contributors: { email: string; context?: string; inviteToken?: string; note?: string }[]
+    // Coordinator/lead path: the committer sets the ground up for someone else
+    // to run. The lead is invited to confirm and becomes the initiator; the
+    // onboarding context travels as `brief` (the coordinator has no transcript).
+    lead?: { email: string; name?: string; contextNote?: string }
+    brief?: string
   }) =>
     apiClient.post<{ groundId: string; failedInvites?: string[] }>('/entry/commit', payload).then(r => r.data),
 }
