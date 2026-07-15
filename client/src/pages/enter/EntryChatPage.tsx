@@ -177,14 +177,17 @@ export const STATUS_DISPLAY: Record<'Unresolved' | 'Mixed' | 'Emerging' | 'Clear
 
 
 // Recognizer sub-examples ("e.g. ...") sit under each card's description so
-// people can self-select from concrete situations, not abstract labels. The
-// `message` field is what actually routes (sent to the AI) - never change it
-// as part of a copy reframe.
-const SITUATION_CARDS = [
+// people can self-select from concrete situations, not abstract labels.
+//
+// CRITICAL: the `message` field is what actually routes (it is sent to the AI
+// and drives classification) - labels and details are DISPLAY ONLY and can be
+// reframed freely; message fields must never change as part of a copy pass.
+// Pinned verbatim by entry-cards-routing.spec.ts.
+export const SITUATION_CARDS = [
   {
     group: 'positive',
     label: 'New hire starting',
-    detail: 'Set clear expectations early and make sure both sides are aligned from day one.',
+    detail: 'Get you and a new hire meaning the same thing by "doing well", before anything drifts.',
     message: 'I have a new hire starting and want to make sure we set clear expectations from the beginning.',
     examples: [
       'Someone starts Monday and you want to be sure you both mean the same thing by "doing well."',
@@ -194,7 +197,7 @@ const SITUATION_CARDS = [
   {
     group: 'positive',
     label: 'New project kickoff',
-    detail: 'Get the team aligned on goals, roles, and ways of working before work starts.',
+    detail: 'Line everyone up on goals, roles, and what "done" means before the work starts.',
     message: 'We are starting a new project and I want to get the team aligned on goals and roles from the beginning.',
     examples: [
       'Kicking off a build and you want scope and "done" agreed before anyone starts.',
@@ -213,8 +216,8 @@ const SITUATION_CARDS = [
   },
   {
     group: 'negative',
-    label: 'Team member not delivering',
-    detail: 'Someone is missing deadlines or not meeting expectations and you need to address it.',
+    label: "Someone's work is off track",
+    detail: 'Deadlines or expectations are slipping, and you want the exact gap named before the conversation.',
     message: 'A team member is not delivering and I need to address it. I want to make sure I have the full picture before we talk.',
     examples: [
       'A senior hire is not delivering what they were brought in to do.',
@@ -223,8 +226,8 @@ const SITUATION_CARDS = [
   },
   {
     group: 'negative',
-    label: 'Running a PIP',
-    detail: 'A performance improvement plan is underway and you want both sides on record.',
+    label: 'Running a performance improvement plan',
+    detail: 'A plan is underway and you want both sides on the concern, the support, and what success looks like.',
     message: 'I am running a performance improvement plan and want both sides to have a fair record of where things stand.',
     examples: [
       'You are putting someone on a formal plan and want both sides on the concern and what success looks like.',
@@ -233,8 +236,8 @@ const SITUATION_CARDS = [
   },
   {
     group: 'negative',
-    label: 'Cofounder or partner dispute',
-    detail: 'A disagreement about contributions, direction, or equity that needs to be put on record.',
+    label: 'Co-founder or partner disagreement',
+    detail: "You see contributions, direction, or equity differently. Put both sides' honest accounts in writing.",
     message: 'My cofounder and I have a dispute about contributions and direction. I need to get both sides on record.',
     examples: [
       'You and a co-founder disagree about who contributed what, and equity is on the line.',
@@ -243,8 +246,8 @@ const SITUATION_CARDS = [
   },
   {
     group: 'negative',
-    label: 'Realign a project',
-    detail: 'A project has drifted from the original plan and you want each person\'s current understanding on record before the group discusses it.',
+    label: 'A project is off track',
+    detail: "What was agreed and what exists no longer match. Get each person's honest read before the group talks.",
     message: 'A project of mine has drifted from what we originally agreed and I want to realign the team on where things actually stand.',
     examples: [
       'A project blew up or is badly behind and everyone has a different story about why.',
@@ -253,8 +256,8 @@ const SITUATION_CARDS = [
   },
   {
     group: 'negative',
-    label: 'Realign with a team member',
-    detail: 'You and someone on your team see the current situation differently and want to close the gap before it grows.',
+    label: 'You and a team member see it differently',
+    detail: 'Close the gap before it grows. Each of you gives your honest read first.',
     message: 'I need to realign with a team member. I think we see the current situation differently and want to get both our accounts on record.',
     examples: [
       'Priorities shifted and you two are working off different ideas of what matters now.',
@@ -1894,7 +1897,14 @@ export function EntryChatPage() {
             {/* Invite contributors - before create account */}
             {(() => {
               const s = onboardingSelections.classifiedScenario || onboardingSelections.mode || scenario || pickedSituation || ''
-              const isSensitive = ['PIP', 'DRIFT', 'REALIGN_TEAM', 'Running a PIP', 'Team member not delivering', 'Cofounder or partner dispute'].some(k => s.includes(k))
+              // Matches scenario keys AND card labels (pickedSituation stores the
+              // label). New reframed labels first; the old labels stay so a
+              // session saved before the reframe still restores correctly.
+              const isSensitive = [
+                'PIP', 'DRIFT', 'REALIGN_TEAM',
+                "Someone's work is off track", 'Running a performance improvement plan', 'Co-founder or partner disagreement', 'A project is off track', 'You and a team member see it differently',
+                'Running a PIP', 'Team member not delivering', 'Cofounder or partner dispute',
+              ].some(k => s.includes(k))
               const inviteHeading = isSensitive ? 'Let them share their side' : 'Invite contributors'
               const inviteSubtext = isSensitive
                 ? 'Send them a link so they can share their account independently. They cannot see what you wrote. When both sides are in, the report shows where you agree and where the conversation still needs to happen.'
