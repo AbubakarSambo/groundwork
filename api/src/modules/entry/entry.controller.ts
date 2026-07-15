@@ -2,7 +2,7 @@ import { Controller, Post, Get, Body, Query, UnauthorizedException } from '@nest
 import { Throttle } from '@nestjs/throttler';
 import { Public, CurrentUser, CurrentUserData } from '../../common';
 import { EntryService } from './entry.service';
-import { IsArray, IsInt, IsOptional, IsString, MaxLength, ValidateNested } from 'class-validator';
+import { IsArray, IsEmail, IsInt, IsOptional, IsString, MaxLength, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 
 class TurnDto {
@@ -79,6 +79,15 @@ class ContributorDto {
   @IsOptional() @IsString() note?: string;
 }
 
+// Coordinator path: the committer is setting the ground up for someone ELSE to
+// run. The lead is invited to confirm and becomes the initiator; the committer
+// is recorded as createdByUserId only (no participant row, no phantom check-in).
+class EntryLeadDto {
+  @IsEmail() email: string;
+  @IsOptional() @IsString() @MaxLength(120) name?: string;
+  @IsOptional() @IsString() @MaxLength(2000) contextNote?: string;
+}
+
 class EntryCommitDto {
   @IsString() groundLabel: string;
   @IsOptional() @IsString() orgName?: string;
@@ -87,6 +96,15 @@ class EntryCommitDto {
   @IsOptional() @IsInt() cadenceAnchorDay?: number;
   @IsOptional() @IsString() checkInBy?: string;
   @IsOptional() @IsString() lastCheckInBy?: string;
+
+  // Coordinator/lead path only: the onboarding context, used as the ground's
+  // brief since the coordinator has no session transcript to derive one from.
+  @IsOptional() @IsString() @MaxLength(4000) brief?: string;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => EntryLeadDto)
+  lead?: EntryLeadDto;
 
   @IsArray()
   @ValidateNested({ each: true })

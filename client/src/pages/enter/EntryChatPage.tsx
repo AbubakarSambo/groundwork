@@ -149,6 +149,20 @@ export function isCorrectionTurn(t: { role: string; content: string }): boolean 
   return t.role === 'user' && t.content.startsWith(CORRECTION_PREFIX)
 }
 
+// Composes the coordinator's onboarding context into the ground brief for the
+// lead path. The coordinator has no session transcript, so the brief is the
+// only context the lead inherits - it must carry everything the onboarding
+// gathered, honestly labelled as the coordinator's framing.
+export function composeLeadBrief(sels: { initial?: string; whoInvolved?: string; decision?: string; goals?: string[]; brief?: string }): string {
+  return [
+    sels.initial ? `What this ground is for: ${sels.initial}` : '',
+    sels.whoInvolved ? `Who is part of this: ${sels.whoInvolved}` : '',
+    sels.decision ? `Why now: ${sels.decision}` : '',
+    sels.goals?.length ? `Goals: ${sels.goals.join(', ')}` : '',
+    sels.brief ? `Focus: ${sels.brief}` : '',
+  ].filter(Boolean).join('. ')
+}
+
 // Display labels for the alignmentStatus ladder. DISPLAY ONLY - the underlying
 // data values ('Unresolved'...'Aligned') are the AI report schema's enum and are
 // what the report JSON carries; they must never change. Only what the person
@@ -323,6 +337,14 @@ export function EntryChatPage() {
   // Anonymous correction: inline "what did we get wrong?" box on the report.
   const [showCorrection, setShowCorrection] = useState(false)
   const [correctionText, setCorrectionText] = useState('')
+  // Flow fork after onboarding: 'self' = this is my situation, I give my
+  // account now (the check-in). 'lead' = I am setting this up for my team and
+  // someone else runs the first check-in (the coordinator path - no check-in,
+  // no report for me; the lead is invited to confirm and becomes the initiator).
+  const [flowPath, setFlowPath] = useState<'self' | 'lead' | null>(null)
+  const [leadName, setLeadName] = useState('')
+  const [leadEmail, setLeadEmail] = useState('')
+  const [leadNote, setLeadNote] = useState('')
   const [orgName, setOrgName] = useState('')
   const [email, setEmail] = useState('')
   const [emailSent, setEmailSent] = useState(false)
@@ -333,7 +355,9 @@ export function EntryChatPage() {
   const [inviteContextFor, setInviteContextFor] = useState<string | null>(null)
   const [inviteContext, setInviteContext] = useState('')
   const [copiedLink, setCopiedLink] = useState(false)
-  const [skippedCheckin] = useState(false)
+  // True on the coordinator/lead path: the committer skipped the check-in
+  // because someone else (the lead) runs it. Drives the honest save-card copy.
+  const skippedCheckin = flowPath === 'lead'
   const [checkInBy, setCheckInBy] = useState('')
   const [lastCheckInBy, setLastCheckInBy] = useState('')
   const [cadence, setCadence] = useState<'DAILY' | 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'ONE_TIME' | 'SEQUENTIAL'>('FORTNIGHTLY')
@@ -374,6 +398,12 @@ export function EntryChatPage() {
       // Restore existing session
       setHistory(saved.history)
       if (saved.report) { try { setSessionReport(JSON.parse(saved.report)) } catch { /* legacy plain text - discard */ } }
+      // Coordinator/lead path survives reload: restore the fork + lead details.
+      if ((saved as any).flowPath === 'lead') {
+        setFlowPath('lead')
+        const l = (saved as any).lead
+        if (l) { setLeadEmail(l.email ?? ''); setLeadName(l.name ?? ''); setLeadNote(l.contextNote ?? '') }
+      }
       if (saved.email) setEmail(saved.email)
       if (saved.onboardingSelections) {
         setOnboardingSelections(saved.onboardingSelections)
@@ -540,40 +570,32 @@ export function EntryChatPage() {
   }
   const reportWasCorrected = history.some(isCorrectionTurn)
 
-  // Called when user picks one of the final two buttons (works for both AI and deterministic paths)
-  function advanceOnboarding(buttonChoice?: string) {
-    const newSels = { ...onboardingSelections }
+  // Self path: this is the person's own situation - straight into the check-in
+  // (no interstitial page). The "~10 min" estimate and the two-report framing
+  // live at the top of the check-in itself.
+  function startSelfPath() {
+    setFlowPath('self')
+    setOnboardingStep(ONBOARDING_STEPS + 1)
+    persistOnboarding([], { ...onboardingSelections }, ONBOARDING_STEPS)
+    startCheckin.mutate()
+  }
 
-    // Party path - go straight into the check-in (no interstitial page).
-    // The "~10 min" estimate and the two-report framing now live at the top of
-    // the check-in itself, so we do not stop the person with a separate screen.
-    if (buttonChoice === "I am involved. Let's begin." || buttonChoice === "I'm involved. Let's begin.") {
-      setOnboardingStep(ONBOARDING_STEPS + 1)
-      persistOnboarding([], newSels, ONBOARDING_STEPS)
-      startCheckin.mutate()
-      return
-    }
-
-    // Manager path - skip check-in, go straight to save card
-    if (buttonChoice === "I am setting this up for others" || buttonChoice === "Setting this up for others") {
-      setOnboardingStep(ONBOARDING_STEPS + 1)
-      persistOnboarding([], newSels, ONBOARDING_STEPS)
-      const ctx = [
-        newSels.initial ? `What this ground is for: ${newSels.initial}` : '',
-        newSels.whoInvolved ? `Who is part of this: ${newSels.whoInvolved}` : '',
-        newSels.goals?.length ? `Goals: ${newSels.goals.join(', ')}` : '',
-      ].filter(Boolean).join('. ')
-      const managerHistory: Turn[] = [
-        { role: 'user', content: `[MANAGER MODE] This ground was set up by a coordinator who is not a party to the situation. Context: ${ctx || 'No additional context provided.'}` },
-        { role: 'assistant', content: 'Your ground is set up. Invite the people involved to add their accounts.' },
-      ]
-      setHistory(managerHistory)
-      setPhase('checkin')
-      setClosed(true)
-      setShowSave(true)
-      persistCheckin(managerHistory, true)
-      return
-    }
+  // Coordinator/lead path: the person is setting this up for someone else to
+  // run. NO fake transcript and NO phantom check-in - the coordinator did not
+  // have a session, so nothing pretends they did. The lead (captured below)
+  // is invited at commit time via the for-lead machinery and becomes the
+  // initiator once they confirm.
+  function submitLeadCapture() {
+    const email = leadEmail.trim()
+    if (!email.includes('@')) return
+    setOnboardingStep(ONBOARDING_STEPS + 1)
+    setPhase('checkin')
+    setClosed(true)
+    setShowSave(true)
+    saveSession({
+      scenario, history: [], closed: true, onboardingStep: ONBOARDING_STEPS, onboardingSelections,
+      flowPath: 'lead', lead: { email, name: leadName.trim() || undefined, contextNote: leadNote.trim() || undefined },
+    } as any)
   }
 
   // AI-driven onboarding send
@@ -754,7 +776,11 @@ export function EntryChatPage() {
   async function handleSave() {
     const trimmed = email.trim()
     if (!trimmed || !trimmed.includes('@')) { setEmailError('Please enter a valid email address.'); return }
-    if (!checkInBy.trim()) { setEmailError('Please set a date for the first check-in.'); return }
+    // NOTE: a hard "set a date first" gate used to live here, but the date
+    // field only renders AFTER the email is sent (the admin section below is
+    // emailSent-gated) - so the gate deadlocked every anonymous save. The
+    // start date is optional at commit (dto.checkInBy is optional) and can be
+    // set in the admin section once it appears.
     setEmailError('')
     try {
       await authApi.entrySave(trimmed)
@@ -782,6 +808,14 @@ export function EntryChatPage() {
           if (dashIdx === -1) return { email: entry }
           return { email: entry.slice(0, dashIdx), context: entry.slice(dashIdx + 3) }
         }),
+        // Coordinator/lead path: the lead runs the first check-in; the
+        // onboarding context travels as the brief (there is no transcript).
+        ...(flowPath === 'lead' && leadEmail.trim().includes('@')
+          ? {
+              lead: { email: leadEmail.trim(), name: leadName.trim() || undefined, contextNote: leadNote.trim() || undefined },
+              brief: composeLeadBrief(onboardingSelections) || undefined,
+            }
+          : {}),
       }
       try { localStorage.setItem('gw_commit_payload', JSON.stringify(commitPayload)) } catch { /* */ }
     } catch (err: any) {
@@ -959,6 +993,34 @@ export function EntryChatPage() {
         </div>
       </div>
 
+      {/* Phase stepper: makes which phase you are in legible at a glance.
+          1 Describe the situation -> 2 Your check-in (or Hand-off) -> 3 Save & invite. */}
+      {(() => {
+        const step = phase === 'onboarding' ? (flowPath === 'lead' ? 2 : 1) : (closed || showSave ? 3 : 2)
+        const labels = ['Describe the situation', flowPath === 'lead' ? 'Hand-off to your lead' : 'Your check-in', 'Save & invite']
+        const hints = [
+          "You're describing the situation. Nothing is saved to an account yet.",
+          flowPath === 'lead' ? "You're naming the lead who runs the first check-in." : "You're giving your own account. It stays private until the report.",
+          'Save your ground and invite the people involved.',
+        ]
+        return (
+          <div style={{ padding: '7px 20px', borderBottom: '1px solid var(--gw-border)', background: '#FAFAF8', flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              {labels.map((l, i) => (
+                <div key={l} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <span style={{ width: 15, height: 15, borderRadius: '50%', fontSize: 9.5, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: i + 1 === step ? 'var(--gw-navy)' : (i + 1 < step ? '#5DCAA5' : '#E5E2DC'), color: i + 1 <= step ? 'white' : 'var(--gw-muted)' }}>{i + 1 < step ? '✓' : i + 1}</span>
+                    <span style={{ fontSize: 11.5, fontWeight: i + 1 === step ? 700 : 500, color: i + 1 === step ? 'var(--gw-text)' : 'var(--gw-muted)' }}>{l}</span>
+                  </div>
+                  {i < labels.length - 1 && <span style={{ color: 'var(--gw-border)', fontSize: 11 }}>→</span>}
+                </div>
+              ))}
+            </div>
+            <div style={{ fontSize: 10.5, color: 'var(--gw-sub)', marginTop: 2 }}>{hints[step - 1]}</div>
+          </div>
+        )
+      })()}
+
       {/* Start over / clear check-in - hidden once session is closed */}
       {!closed && (
         <div style={{ padding: '6px 20px', borderBottom: '1px solid var(--gw-border)', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', flexShrink: 0 }}>
@@ -1107,36 +1169,84 @@ export function EntryChatPage() {
                 </div>
               )}
 
-              {/* Final buttons shown when AI signals ready */}
-              {onboardingReady && !onboardingLoading && (
+              {/* The fork, shown when the AI signals ready. Replaces the old
+                  "are you involved?" question (which drove nothing but
+                  check-in-vs-skip; ownership was never derived from it). */}
+              {onboardingReady && !onboardingLoading && flowPath !== 'lead' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxWidth: '82%', alignSelf: 'flex-start', marginTop: 4 }}>
                   <div style={{
                     background: 'white', color: 'var(--gw-text)', border: '1px solid var(--gw-border)',
                     borderRadius: '4px 16px 16px 16px', padding: '10px 14px', fontSize: 14, lineHeight: 1.65,
                     boxShadow: '0 1px 3px rgba(0,0,0,.06)', marginBottom: 4,
                   }}>
-                    One last thing. Are you one of the people involved in this, or are you setting this up on their behalf?
+                    How do you want to run this?
                   </div>
                   <button
-                    onClick={() => advanceOnboarding("I'm involved. Let's begin.")}
+                    onClick={startSelfPath}
                     style={{
                       padding: '11px 16px', borderRadius: 10, fontSize: 13, fontWeight: 700,
                       border: '1px solid var(--gw-border)', background: 'white',
                       color: 'var(--gw-text)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
                     }}
                   >
-                    I'm involved. Let's begin.
+                    This is my situation - I'll give my account now
                   </button>
                   <button
-                    onClick={() => advanceOnboarding('Setting this up for others')}
+                    onClick={() => setFlowPath('lead')}
                     style={{
                       padding: '11px 16px', borderRadius: 10, fontSize: 13, fontWeight: 700,
                       border: '1px solid var(--gw-border)', background: 'white',
                       color: 'var(--gw-text)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
                     }}
                   >
-                    Setting this up for others
+                    I'm setting this up for my team - someone else will run it
                   </button>
+                </div>
+              )}
+
+              {/* Lead capture (coordinator path): who runs the first check-in. */}
+              {onboardingReady && !onboardingLoading && flowPath === 'lead' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxWidth: '82%', alignSelf: 'flex-start', marginTop: 4 }}>
+                  <div style={{
+                    background: 'white', color: 'var(--gw-text)', border: '1px solid var(--gw-border)',
+                    borderRadius: '4px 16px 16px 16px', padding: '12px 14px', fontSize: 14, lineHeight: 1.65,
+                    boxShadow: '0 1px 3px rgba(0,0,0,.06)',
+                  }}>
+                    <div style={{ fontWeight: 700, marginBottom: 2 }}>Who runs the first check-in?</div>
+                    <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.55, marginBottom: 10 }}>
+                      They'll be invited to confirm the ground and give the first account. You'll see the ground as its coordinator.
+                    </div>
+                    <input
+                      type="text" placeholder="Their name (optional)" value={leadName}
+                      onChange={e => setLeadName(e.target.value)}
+                      style={{ width: '100%', padding: '9px 11px', fontSize: 13, border: '1px solid var(--gw-border)', borderRadius: 7, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 6 }}
+                    />
+                    <input
+                      type="email" placeholder="their@email.com" value={leadEmail}
+                      onChange={e => setLeadEmail(e.target.value)}
+                      style={{ width: '100%', padding: '9px 11px', fontSize: 13, border: '1px solid var(--gw-border)', borderRadius: 7, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 6 }}
+                    />
+                    <textarea
+                      placeholder="Anything the lead should know? (optional)" value={leadNote}
+                      onChange={e => setLeadNote(e.target.value)}
+                      style={{ width: '100%', minHeight: 52, padding: '9px 11px', fontSize: 13, lineHeight: 1.5, border: '1px solid var(--gw-border)', borderRadius: 7, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', resize: 'vertical', marginBottom: 8 }}
+                    />
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <button
+                        onClick={submitLeadCapture}
+                        disabled={!leadEmail.trim().includes('@')}
+                        style={{ padding: '9px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: leadEmail.trim().includes('@') ? 'pointer' : 'not-allowed', fontFamily: 'inherit', opacity: leadEmail.trim().includes('@') ? 1 : 0.55 }}
+                      >
+                        Continue →
+                      </button>
+                      <button
+                        onClick={() => setFlowPath(null)}
+                        style={{ background: 'none', border: 'none', fontSize: 12, color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline', padding: 0 }}
+                      >
+                        Actually, this is my situation
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -1355,8 +1465,8 @@ export function EntryChatPage() {
             {closed && !showSave ? (
               <div style={{ borderTop: '1px solid var(--gw-border)', background: 'white', flexShrink: 0, padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)' }}>Your account is on record.</div>
-                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 2 }}>Invite others to check in - the shared report releases when all parties are in.</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)' }}>{skippedCheckin ? 'Ground ready to hand off.' : 'Your account is on record.'}</div>
+                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 2 }}>{skippedCheckin ? 'Your lead runs the first check-in; you\'ll see the ground as its coordinator.' : 'Invite others to check in - the shared report releases when all parties are in.'}</div>
                 </div>
                 <button
                   onClick={() => setShowSave(true)}
@@ -1422,12 +1532,14 @@ export function EntryChatPage() {
 
           {/* Report header */}
           <div style={{ background: '#0A1628', color: 'white', padding: '20px 22px 16px' }}>
-            <div style={{ fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: '#5DCAA5', fontWeight: 700, marginBottom: 6 }}>{skippedCheckin ? 'New ground' : 'Session 1 · your private report'}</div>
-            <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-.01em', lineHeight: 1.2 }}>{groundName || (skippedCheckin ? 'Set up your ground.' : 'Your account is on record.')}</div>
+            <div style={{ fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: '#5DCAA5', fontWeight: 700, marginBottom: 6 }}>{skippedCheckin ? 'New ground · run by your lead' : 'Session 1 · your private report'}</div>
+            <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-.01em', lineHeight: 1.2 }}>{groundName || (skippedCheckin ? 'Set up your org account.' : 'Your account is on record.')}</div>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginTop: 6 }}>
               <div style={{ flexShrink: 0, marginTop: 2, background: 'white', borderRadius: 4, padding: '2px 3px' }}><VennIcon size={22} /></div>
               <div style={{ fontSize: 12, color: 'rgba(255,255,255,.6)', lineHeight: 1.5 }}>
-                This individual report is private to you. Once everyone has checked in, a separate <b style={{ color: 'rgba(255,255,255,.85)' }}>shared report</b> shows where everyone's accounts agree or differ.
+                {skippedCheckin
+                  ? <>Your lead runs the first check-in; you'll see the ground as its coordinator. Once everyone has checked in, a <b style={{ color: 'rgba(255,255,255,.85)' }}>shared report</b> shows where their accounts agree or differ.</>
+                  : <>This individual report is private to you. Once everyone has checked in, a separate <b style={{ color: 'rgba(255,255,255,.85)' }}>shared report</b> shows where everyone's accounts agree or differ.</>}
               </div>
             </div>
             {history.filter(m => m.role === 'user').length > 0 && (() => {
