@@ -49,6 +49,26 @@ function loadSession(): EntrySession | null {
 export function clearEntrySession() {
   try { localStorage.removeItem(STORAGE_KEY) } catch { /* */ }
 }
+
+/** Which branch the load-or-start effect takes. Pure so it can be pinned by
+ * tests: a CLOSED saved session must take 'restore' (it holds the locked
+ * transcript and report) - it used to fall through to 'fresh', which DELETED
+ * an ended-but-unsaved session on reload. A saved session plus an incoming
+ * scenario always asks ('conflict'), never silently discards. */
+export function entryRestoreBranch(
+  saved: { closed?: boolean } | null,
+  scenario: string | null | undefined,
+): 'restore' | 'conflict' | 'fresh' {
+  if (saved && !scenario) return 'restore'
+  if (saved && scenario) return 'conflict'
+  return 'fresh'
+}
+
+/** After a reload, the coordinator/lead path (closed, empty history) lands
+ * back on the open save card - the only place it can go. */
+export function leadReturnsToSaveCard(saved: { closed?: boolean; flowPath?: string }): boolean {
+  return saved.flowPath === 'lead' && !!saved.closed
+}
 export function hasPendingEntry(): boolean {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
@@ -397,7 +417,11 @@ export function EntryChatPage() {
   // Load or start session
   useEffect(() => {
     const saved = loadSession()
-    if (saved && !saved.closed && !scenario) {
+    const branch = saved ? entryRestoreBranch(saved, scenario) : 'fresh'
+    // Closed-but-unsaved sessions MUST restore too: they hold the report and
+    // the locked transcript. Excluding them made the fallback below DELETE an
+    // ended session on reload, right when it is most valuable.
+    if (saved && branch === 'restore') {
       // Restore existing session
       setHistory(saved.history)
       if (saved.report) { try { setSessionReport(JSON.parse(saved.report)) } catch { /* legacy plain text - discard */ } }
@@ -411,10 +435,19 @@ export function EntryChatPage() {
       if (saved.onboardingSelections) {
         setOnboardingSelections(saved.onboardingSelections)
       }
+      // A closed session stays closed across reloads - "this session's answers
+      // then lock" must survive a refresh. (closed was saved but never restored,
+      // so ended sessions reopened editable.)
+      if (saved.closed) setClosed(true)
       const step = saved.onboardingStep ?? 0
-      if (step >= ONBOARDING_STEPS && saved.history.length > 0) {
+      // The lead path legitimately has an empty history (the coordinator has no
+      // check-in), so it must not fall back into onboarding on reload.
+      if (step >= ONBOARDING_STEPS && (saved.history.length > 0 || (saved as any).flowPath === 'lead')) {
         setPhase('checkin')
         setOnboardingStep(ONBOARDING_STEPS)
+        // Reload between hand-off and save: reopen the save card so the
+        // coordinator lands back where they left off.
+        if (leadReturnsToSaveCard(saved as any)) setShowSave(true)
       } else if (step > 0) {
         setPhase('onboarding')
         setOnboardingStep(step)
@@ -424,8 +457,10 @@ export function EntryChatPage() {
           setOnboardingReady((saved as any).onboardingReady ?? false)
         }
       }
-    } else if (saved && !saved.closed && scenario) {
-      // Show inline conflict modal instead of window.confirm
+    } else if (saved && branch === 'conflict') {
+      // Arriving with a new scenario while ANY session exists (open or closed):
+      // ask, never silently discard. Show inline conflict modal instead of
+      // window.confirm.
       const sels: OnboardingSelections = { mode: urlMode || 'new', initial: urlInitial || scenario || '' }
       setPendingNewScenario({ sels })
       setShowNewScenarioConflict(true)
@@ -1527,7 +1562,11 @@ export function EntryChatPage() {
       <div style={{
         position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', zIndex: 30,
         opacity: showSave ? 1 : 0, pointerEvents: showSave ? 'auto' : 'none',
-        transition: 'opacity .3s',
+        // visibility keeps the hidden modal out of the accessibility tree and
+        // tab order - opacity alone leaves "Your account is on record" readable
+        // by screen readers on step 1, before anything is on record.
+        visibility: showSave ? 'visible' : 'hidden',
+        transition: 'opacity .3s, visibility .3s',
         overflowY: 'auto', display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
         padding: '24px 16px 48px',
       }}>

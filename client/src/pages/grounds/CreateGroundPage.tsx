@@ -551,10 +551,10 @@ export function CreateGroundPage() {
             <div className="gw-box gw-box-blue" style={{ marginBottom: 24 }}>
               <div style={{ fontWeight: 600, marginBottom: 4 }}>{sessionTotal} sessions over {timelineDays} days</div>
               <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-                Your first session is free and includes a report. Add more sessions for $5 each any time.
+                Every session includes a report for each contributor. You can change the cadence or add sessions at any time.
               </div>
               <div style={{ marginTop: 6 }}>
-                <span style={{ fontSize: 11, fontWeight: 600, background: 'var(--gw-green-bg)', color: 'var(--gw-green-t)', borderRadius: 20, padding: '2px 8px' }}>First session free</span>
+                <span style={{ fontSize: 11, fontWeight: 600, background: 'var(--gw-green-bg)', color: 'var(--gw-green-t)', borderRadius: 20, padding: '2px 8px' }}>Included in your plan</span>
               </div>
             </div>
             <button className="gw-btn" onClick={() => setStep(4)} style={{ margin: 0 }}>Continue</button>
