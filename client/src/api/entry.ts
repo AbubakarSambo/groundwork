@@ -116,7 +116,20 @@ export const entryApi = {
     lead?: { email: string; name?: string; contextNote?: string }
     brief?: string
   }) =>
-    apiClient.post<{ groundId: string; failedInvites?: string[] }>('/entry/commit', payload).then(r => r.data),
+    apiClient.post<{
+      groundId: string
+      joinToken?: string | null
+      // who the commit successfully invited - drives the positive "Invited"
+      // confirmation on the completion screen
+      contributors?: { email: string }[]
+      failedInvites?: string[]
+    }>('/entry/commit', payload).then(r => r.data),
+
+  // Pre-auth update of the server-side draft, authorized by the draftToken
+  // issued at entry-save. Best-effort: callers swallow failures (localStorage
+  // still mirrors the same data for the same-browser case).
+  patchDraft: (draftToken: string, payload: Record<string, unknown>) =>
+    apiClient.patch<{ ok: true }>('/entry/draft', { draftToken, payload }).then(r => r.data),
 }
 
 // ── Join API (QR / broadcast link) ───────────────────────────────────────────

@@ -39,8 +39,11 @@ export const authApi = {
   inviteUser: (body: { firstName: string; lastName: string; email: string }) =>
     apiClient.post<User>('/users', body).then(r => r.data),
 
-  entrySave: (email: string) =>
-    apiClient.post<MagicLinkResponse>('/auth/entry-save', { email }).then(r => r.data),
+  // draft = the server-side copy of the anonymous session (transcript +
+  // commit metadata), written the moment the email is given so the commit no
+  // longer depends on which browser opens the magic link.
+  entrySave: (email: string, draft?: { payload?: Record<string, unknown>; history?: unknown[] }) =>
+    apiClient.post<MagicLinkResponse & { draftToken?: string }>('/auth/entry-save', { email, draft }).then(r => r.data),
 
   requestPasswordSetup: () =>
     apiClient.post<{ token: string }>('/auth/request-password-setup').then(r => r.data),

@@ -238,20 +238,38 @@ export class AuthService {
     return { message };
   }
 
-  async entrySave(email: string): Promise<{ message: string; email: string }> {
+  async entrySave(
+    email: string,
+    // Server-side draft of the anonymous session, written HERE because this is
+    // the ISSUE-17 consent moment (the person just gave their email). It makes
+    // the post-verification commit independent of which browser opens the
+    // magic link - before this, the transcript lived only in the originating
+    // browser's localStorage and a link opened anywhere else lost the ground.
+    draft?: { payload?: Record<string, any>; history?: unknown[] },
+  ): Promise<{ message: string; email: string; draftToken?: string }> {
     const lower = email.toLowerCase();
     const message = 'Check your email for your sign-in link.';
 
+    if (draft && JSON.stringify(draft).length > 500_000) {
+      throw new BadRequestException('Draft too large');
+    }
+
     let user = await this.prisma.user.findUnique({ where: { email: lower } });
+    let draftToken: string | undefined;
 
     if (!user) {
       const localPart = lower.split('@')[0].replace(/[._\-+]/g, ' ').trim();
       const firstName = (localPart.charAt(0).toUpperCase() + localPart.slice(1).split(' ')[0]).slice(0, 40) || 'User';
       const domainBase = lower.split('@')[1]?.split('.')[0] ?? 'workspace';
       const slug = await this.generateUniqueSlug(domainBase);
+      // If the person already named their organisation, the org is born with
+      // that name - not "Firstname's workspace" (which read as a bug: "where
+      // did my org go?"). Usually the org name arrives later via the draft
+      // PATCH and is applied at commit.
+      const typedOrgName = typeof draft?.payload?.orgName === 'string' ? draft.payload.orgName.trim().slice(0, 120) : '';
 
       const result = await this.prisma.$transaction(async (tx) => {
-        const org = await tx.organization.create({ data: { name: `${firstName}'s workspace`, slug } });
+        const org = await tx.organization.create({ data: { name: typedOrgName || `${firstName}'s workspace`, slug } });
         const u = await tx.user.create({
           data: { organizationId: org.id, email: lower, firstName, lastName: '', role: 'ADMIN', isEmailVerified: false },
         });
@@ -259,11 +277,30 @@ export class AuthService {
         await tx.emailVerificationToken.create({
           data: { userId: u.id, token, type: TokenType.EMAIL_VERIFICATION, expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) },
         });
-        return { user: u, token };
+        let dt: string | undefined;
+        if (draft) {
+          dt = crypto.randomBytes(32).toString('hex');
+          await tx.entryDraft.create({
+            data: { userId: u.id, draftToken: dt, payload: (draft.payload ?? {}) as any, history: (draft.history ?? []) as any },
+          });
+        }
+        return { user: u, token, dt };
       });
+      draftToken = result.dt;
 
       await this.emailService.sendMagicLinkEmail(lower, firstName, result.token);
     } else {
+      // Existing user saving a (new) anonymous session: last save wins. The
+      // token rotates so only the most recent entry page can update the draft,
+      // and a previously consumed draft becomes commit-able again.
+      if (draft) {
+        draftToken = crypto.randomBytes(32).toString('hex');
+        await this.prisma.entryDraft.upsert({
+          where: { userId: user.id },
+          create: { userId: user.id, draftToken, payload: (draft.payload ?? {}) as any, history: (draft.history ?? []) as any },
+          update: { draftToken, payload: (draft.payload ?? {}) as any, history: (draft.history ?? []) as any, consumedAt: null, groundId: null },
+        });
+      }
       // If a fresh unused token was created in the last 60 seconds, reuse it to prevent
       // double-tap from invalidating a link the user has not yet clicked.
       const recentToken = await this.prisma.emailVerificationToken.findFirst({
@@ -276,7 +313,7 @@ export class AuthService {
         orderBy: { createdAt: 'desc' },
       });
       if (recentToken) {
-        return { message, email: lower };
+        return { message, email: lower, draftToken };
       }
       await this.prisma.emailVerificationToken.updateMany({
         where: { userId: user.id, type: TokenType.EMAIL_VERIFICATION, usedAt: null },
@@ -289,7 +326,7 @@ export class AuthService {
       await this.emailService.sendMagicLinkEmail(lower, user.firstName, token);
     }
 
-    return { message, email: lower };
+    return { message, email: lower, draftToken };
   }
 
   async teamInvite(inviterOrgName: string, inviteeEmail: string, inviterOrganizationId?: string): Promise<{ message: string }> {

@@ -291,6 +291,38 @@ export function buildEntrySystemPrompt(scenario: GroundScenario, groundLabel: st
   return [ENGINE_RULES, scenarioPack, runtimeCtx, ENTRY_SESSION_ADDENDUM].join('\n\n---\n\n');
 }
 
+/** Merge the server-side EntryDraft (base) with whatever the browser sent
+ * (overlay). The draft was written at entry-save and kept fresh via PATCH, so
+ * it is authoritative for the cross-browser case (body is an empty skeleton);
+ * in the same-browser case the body's fresher localStorage values win
+ * field-by-field. Exported for the guard tests. */
+export function overlayDraftOntoBody(
+  draft: { payload: unknown; history: unknown },
+  body: Record<string, any>,
+): any {
+  const base = (draft.payload ?? {}) as Record<string, any>;
+  const merged: Record<string, any> = { ...base };
+  for (const [k, v] of Object.entries(body ?? {})) {
+    if (v === undefined || v === null) continue;
+    if (typeof v === 'string' && v.trim() === '') continue;
+    if (Array.isArray(v) && v.length === 0) continue;
+    merged[k] = v;
+  }
+  // History: body wins only when it actually has turns; otherwise the draft's
+  // transcript (the whole point of the draft) is used.
+  const bodyHistory = Array.isArray(body?.history) ? body.history : [];
+  const draftHistory = Array.isArray(draft.history) ? draft.history : [];
+  merged.history = bodyHistory.length > 0 ? bodyHistory : draftHistory;
+  // The client payload stores the report as reportSummary; map it into the
+  // dto's report shape so the ground brief populates ("visible before
+  // participants arrive").
+  if (!merged.report && merged.reportSummary?.whatGroundworkSaw) {
+    merged.report = { whatGroundworkSaw: merged.reportSummary.whatGroundworkSaw };
+  }
+  if (!Array.isArray(merged.contributors)) merged.contributors = [];
+  return merged;
+}
+
 @Injectable()
 export class EntryService {
   private readonly logger = new Logger(EntryService.name);
@@ -713,7 +745,77 @@ STRICT RULES:
       contributors: { email: string; context?: string; inviteToken?: string; note?: string }[];
     },
   ): Promise<{ groundId: string; joinToken: string | null; contributors: { email: string; devUrl?: string }[]; failedInvites: string[] }> {
-    const label = dto.groundLabel.trim() || 'My first ground';
+    // ---- Server-side draft (written at entry-save, the ISSUE-17 consent
+    // moment). The draft is the base and whatever the browser sent overlays
+    // it, so commit works no matter which browser opened the magic link.
+    // The draft is CLAIMED atomically up front (updateMany guarded on
+    // consumedAt: null), so concurrent commits - a double-clicked link, the
+    // dev double-fire - cannot both create a ground: exactly one wins, the
+    // other waits for the winner's groundId and returns it. Sequential
+    // replays return the recorded ground immediately.
+    const draft = await this.prisma.entryDraft.findUnique({ where: { userId: initiatorId } });
+    if (draft?.consumedAt) {
+      return this.awaitConsumedDraftGround(initiatorId);
+    }
+    if (draft) {
+      const claimed = await this.prisma.entryDraft.updateMany({
+        where: { id: draft.id, consumedAt: null },
+        data: { consumedAt: new Date() },
+      });
+      if (claimed.count === 0) {
+        // Lost the race to a concurrent commit: return its ground.
+        return this.awaitConsumedDraftGround(initiatorId);
+      }
+      dto = overlayDraftOntoBody(draft, dto);
+      try {
+        const result = await this.commitInner(organizationId, initiatorId, dto);
+        await this.prisma.entryDraft.updateMany({
+          where: { id: draft.id },
+          data: { groundId: result.groundId },
+        });
+        return result;
+      } catch (err) {
+        // Un-claim so a retry (the draft persists server-side) can succeed.
+        await this.prisma.entryDraft.updateMany({
+          where: { id: draft.id, groundId: null },
+          data: { consumedAt: null },
+        }).catch(() => undefined);
+        throw err;
+      }
+    }
+    return this.commitInner(organizationId, initiatorId, dto);
+  }
+
+  /** A consumed draft means a commit already ran (or is mid-flight). Return
+   * its ground, briefly waiting out an in-flight winner. */
+  private async awaitConsumedDraftGround(
+    userId: string,
+  ): Promise<{ groundId: string; joinToken: string | null; contributors: { email: string; devUrl?: string }[]; failedInvites: string[] }> {
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const d = await this.prisma.entryDraft.findUnique({ where: { userId } });
+      if (d?.groundId) {
+        const ground = await this.prisma.ground.findUnique({ where: { id: d.groundId }, select: { id: true, joinToken: true } });
+        if (ground) return { groundId: ground.id, joinToken: ground.joinToken ?? null, contributors: [], failedInvites: [] };
+      }
+      if (!d?.consumedAt) break; // winner failed and un-claimed; caller should retry
+      await new Promise((r) => setTimeout(r, 500));
+    }
+    throw new BadRequestException('COMMIT_IN_PROGRESS');
+  }
+
+  private async commitInner(
+    organizationId: string,
+    initiatorId: string,
+    dto: Parameters<EntryService['commit']>[2],
+  ): Promise<{ groundId: string; joinToken: string | null; contributors: { email: string; devUrl?: string }[]; failedInvites: string[] }> {
+    // Nothing usable from either source: the old client silently skipped this
+    // case and stranded the user on /setup. Fail EXPLICITLY so the client can
+    // show "we couldn't find your session on this device".
+    if ((!dto.history || dto.history.length === 0) && !dto.lead) {
+      throw new BadRequestException('NO_ENTRY_SESSION');
+    }
+
+    const label = (dto.groundLabel ?? '').trim() || 'My first ground';
     const scenario = resolveScenario(dto.scenario);
 
     if (dto.contributors.length > 20) {
@@ -859,14 +961,34 @@ STRICT RULES:
       }
     }
 
-    // If no participants were added (broadcast ground or all fails), check if the
-    // initiator completing session 1 is enough to mark the ground ACTIVE (no other parties).
-    if (dto.contributors.length === 0 || failedInvites.length === dto.contributors.length) {
+    // Zero contributors = a deliberate solo/broadcast start: the initiator
+    // completing session 1 is the whole party, so the ground goes ACTIVE.
+    // A TOTAL invite failure is NOT intent - the ground stays OPEN ("parties
+    // may not all be added") and failedInvites tells the client to surface it
+    // with a resend path, instead of silently rebranding it a solo ground.
+    if (dto.contributors.length === 0) {
       await this.prisma.ground.update({ where: { id: ground.id }, data: { status: 'ACTIVE' as any } });
     }
 
     const joinToken = (await this.prisma.ground.findUnique({ where: { id: ground.id }, select: { joinToken: true } }))?.joinToken ?? null;
     return { groundId: ground.id, joinToken, contributors: inviteResults, failedInvites };
+  }
+
+  /** Pre-auth draft update, authorized by the bearer draftToken (same pattern
+   * as invite tokens). The entry page calls this for edits made AFTER the
+   * email was sent - org name, ground name, cadence, dates, contributors -
+   * which previously lived only in localStorage and were lost cross-browser. */
+  async patchDraft(draftToken: string, payload: Record<string, any>): Promise<{ ok: true }> {
+    if (!draftToken || typeof draftToken !== 'string') throw new BadRequestException('draftToken required');
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) throw new BadRequestException('payload must be an object');
+    if (JSON.stringify(payload).length > 200_000) throw new BadRequestException('payload too large');
+
+    const draft = await this.prisma.entryDraft.findUnique({ where: { draftToken } });
+    if (!draft || draft.consumedAt) throw new NotFoundException('Draft not found');
+
+    const merged = { ...(draft.payload as Record<string, any>), ...payload };
+    await this.prisma.entryDraft.update({ where: { id: draft.id }, data: { payload: merged as any } });
+    return { ok: true };
   }
 
   /** Public proxy so the controller can resolve a joinToken without exposing grounds service directly. */

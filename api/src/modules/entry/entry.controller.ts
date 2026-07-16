@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, Query, UnauthorizedException } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Body, Query, UnauthorizedException } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { Public, CurrentUser, CurrentUserData } from '../../common';
 import { EntryService } from './entry.service';
@@ -123,6 +123,17 @@ class EntryCommitDto {
 @Controller('entry')
 export class EntryController {
   constructor(private service: EntryService) {}
+
+  /** Pre-auth update of the server-side entry draft, authorized by the bearer
+   * draftToken issued at entry-save. Carries post-email edits (org name,
+   * ground name, cadence, contributors) that previously lived only in
+   * localStorage and were lost when the magic link opened elsewhere. */
+  @Public()
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @Patch('draft')
+  async patchDraft(@Body() body: { draftToken: string; payload: Record<string, any> }) {
+    return this.service.patchDraft(body.draftToken, body.payload);
+  }
 
   @Public()
   @Post('onboard')
