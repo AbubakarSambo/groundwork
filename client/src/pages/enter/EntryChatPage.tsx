@@ -355,6 +355,11 @@ export function EntryChatPage() {
 
   // Save card
   const [showSave, setShowSave] = useState(false)
+  // Token authorizing pre-auth updates to the server-side draft (issued at
+  // entry-save). Survives reloads so post-email edits keep syncing.
+  const [draftToken, setDraftToken] = useState<string | null>(() => {
+    try { return localStorage.getItem('gw_draft_token') } catch { return null }
+  })
   const [sessionReport, setSessionReport] = useState<import('@/api/entry').EntryReport | null>(null)
   const [generatingReport, setGeneratingReport] = useState(false)
   // Anonymous correction: inline "what did we get wrong?" box on the report.
@@ -820,14 +825,14 @@ export function EntryChatPage() {
     // start date is optional at commit (dto.checkInBy is optional) and can be
     // set in the admin section once it appears.
     setEmailError('')
-    try {
-      await authApi.entrySave(trimmed)
-      setEmailSent(true)
-      // Persist metadata needed for the post-auth commit call.
-      // ISSUE 17: do NOT store raw conversation history client-side before email is confirmed.
-      // The full conversation is already on the server after check-in completes.
-      // Only store UI-restoration metadata here.
-      const commitPayload = {
+    // Build the commit payload BEFORE calling entry-save: the same request
+    // that registers the email also stores a SERVER-SIDE DRAFT of the session
+    // (this payload + the transcript). Giving the email is the ISSUE-17
+    // consent moment - nothing is persisted server-side before it. The draft
+    // is what makes the post-verification commit work no matter which browser
+    // opens the magic link; the localStorage copies below are only the
+    // same-browser mirror (and the legacy path for old links).
+    const commitPayload = {
         groundLabel: groundName || scenario || 'My first ground',
         orgName: orgName.trim() || undefined,
         // Prefer the AI-classified scenario; fall back to mode key, then URL param.
@@ -855,11 +860,43 @@ export function EntryChatPage() {
             }
           : {}),
       }
+      try {
+      const res = await authApi.entrySave(trimmed, { payload: commitPayload, history })
+      setEmailSent(true)
+      if (res.draftToken) {
+        setDraftToken(res.draftToken)
+        try { localStorage.setItem('gw_draft_token', res.draftToken) } catch { /* */ }
+      }
       try { localStorage.setItem('gw_commit_payload', JSON.stringify(commitPayload)) } catch { /* */ }
     } catch (err: any) {
       setEmailError(err?.response?.data?.message ?? 'Could not send link. Please try again.')
     }
   }
+
+  // Post-email edits (org name, ground name, cadence, dates, contributors)
+  // sync to the server-side draft, best-effort and debounced. Before this they
+  // lived only in localStorage and were lost when the magic link was opened in
+  // a different browser. localStorage stays as the same-browser mirror.
+  useEffect(() => {
+    if (!emailSent || !draftToken) return
+    const t = setTimeout(() => {
+      entryApi.patchDraft(draftToken, {
+        groundLabel: groundName || scenario || 'My first ground',
+        orgName: orgName.trim() || undefined,
+        cadence: cadence === 'ONE_TIME' ? 'FORTNIGHTLY' : cadence,
+        cadenceAnchorDay: (cadence === 'WEEKLY' || cadence === 'FORTNIGHTLY' || cadence === 'MONTHLY') && cadenceAnchorDay != null ? cadenceAnchorDay : undefined,
+        checkInBy: checkInBy.trim() || undefined,
+        lastCheckInBy: lastCheckInBy.trim() || undefined,
+        inviteNote: inviteNote.trim() || undefined,
+        contributors: inviteAdded.map(entry => {
+          const dashIdx = entry.indexOf(' - ')
+          if (dashIdx === -1) return { email: entry }
+          return { email: entry.slice(0, dashIdx), context: entry.slice(dashIdx + 3) }
+        }),
+      }).catch(() => { /* best-effort: localStorage still mirrors this */ })
+    }, 800)
+    return () => clearTimeout(t)
+  }, [emailSent, draftToken, groundName, orgName, cadence, cadenceAnchorDay, checkInBy, lastCheckInBy, inviteNote, inviteAdded])
 
   function copyInviteLink() {
     const link = `${window.location.origin}/invite?token=${inviteToken}`
@@ -1796,7 +1833,7 @@ export function EntryChatPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {[
                     'Save your email below to keep access to this report.',
-                    'Share the link with the other person so they can add their side.',
+                    'Open the confirmation link we email you - that saves your ground and sends your invites.',
                     'Once they check in, you both receive the shared report at the same time. It shows where you agree and where the conversation still needs to happen.',
                   ].map((step, i) => (
                     <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
@@ -1817,8 +1854,11 @@ export function EntryChatPage() {
                 />
                 {emailError && <div style={{ fontSize: 12, color: '#791F1F', marginBottom: 6 }}>{emailError}</div>}
                 <button onClick={handleSave} disabled={generatingReport && !sessionReport} style={{ width: '100%', padding: '12px 16px', borderRadius: 8, background: '#0C447C', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: generatingReport && !sessionReport ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: generatingReport && !sessionReport ? 0.5 : 1 }}>
-                  Save my report and invite them →
+                  Save my ground →
                 </button>
+                <div style={{ fontSize: 11.5, color: '#9B9590', lineHeight: 1.5, textAlign: 'center', paddingTop: 8 }}>
+                  We'll email you a confirmation link. Your report is saved and your invites go out the moment you open it.
+                </div>
                 <div onClick={() => setShowSave(false)} style={{ textAlign: 'center', fontSize: 12, color: '#9B9590', cursor: 'pointer', paddingTop: 10 }}>
                   Not now
                 </div>
@@ -1827,6 +1867,11 @@ export function EntryChatPage() {
               <div style={{ background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 10, padding: '14px 16px', marginBottom: 20 }}>
                 <div style={{ fontSize: 14, fontWeight: 700, color: '#085041', marginBottom: 4 }}>Check your email</div>
                 <div style={{ fontSize: 13, color: '#085041', lineHeight: 1.6 }}>We sent a link to <strong>{email}</strong>. Click it to finish setting up and get your invite link.</div>
+                {inviteAdded.length > 0 && (
+                  <div style={{ fontSize: 12, color: '#085041', lineHeight: 1.6, marginTop: 8, paddingTop: 8, borderTop: '1px solid #B6E8D4' }}>
+                    <strong>Waiting to send ({inviteAdded.length}):</strong> {inviteAdded.map(e => e.split(' - ')[0]).join(', ')}. Invites go out when you confirm your email.
+                  </div>
+                )}
               </div>
             )}
 

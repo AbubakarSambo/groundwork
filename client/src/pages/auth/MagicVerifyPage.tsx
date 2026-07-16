@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { authApi } from '@/api/auth'
 import { entryApi } from '@/api/entry'
@@ -7,6 +7,22 @@ import { useAuthStore } from '@/stores/auth'
 const COMMIT_KEY = 'gw_commit_payload'
 const SESSION_KEY = 'gw_entry_session'
 const FRONTEND_URL = window.location.origin
+
+// Verifying the token flips the auth state, which swaps the route into the
+// authed shell and REMOUNTS this page - a genuinely fresh mount (new refs),
+// which used to re-verify the now-used token and paint "Link invalid" over
+// the success screen. Cache each token's outcome at module scope so remounts
+// replay the outcome instead of re-verifying.
+type VerifyOutcome =
+  | { kind: 'success'; groundId: string; joinUrl: string | null; invited: string[]; failedInvites: string[] }
+  | { kind: 'noSession' }
+  | { kind: 'commitError' }
+  | { kind: 'redirect'; to: string }
+  | { kind: 'verifyError'; message: string }
+// SINGLE-FLIGHT per token: the remount can happen while the first mount's
+// verify+commit is still in flight, so caching only finished outcomes is not
+// enough - both mounts must await the SAME promise.
+const verifyFlows = new Map<string, Promise<VerifyOutcome>>()
 
 function loadCommitPayload(): any | null {
   try {
@@ -38,51 +54,121 @@ export function MagicVerifyPage() {
   const setAuth = useAuthStore(s => s.setAuth)
   const [error, setError] = useState('')
   const [commitError, setCommitError] = useState(false)
+  // Server said NO_ENTRY_SESSION: no draft and no local payload. Shown as an
+  // explicit "we couldn't find your session" screen - never a silent /setup.
+  const [noSession, setNoSession] = useState(false)
+  const [retrying, setRetrying] = useState(false)
   const [failedInvites, setFailedInvites] = useState<string[]>([])
+  const [invited, setInvited] = useState<string[]>([])
   const [nextGroundId, setNextGroundId] = useState<string | null>(null)
   const [joinUrl, setJoinUrl] = useState<string | null>(null)
+
+  const lastAttempt = useRef<{ token: string; payload: any; user: { jobTitle?: string | null; role?: string } } | null>(null)
+
+  function applyOutcome(outcome: VerifyOutcome) {
+    if (outcome.kind === 'success') {
+      setFailedInvites(outcome.failedInvites)
+      setInvited(outcome.invited)
+      setJoinUrl(outcome.joinUrl)
+      setNextGroundId(outcome.groundId)
+    } else if (outcome.kind === 'noSession') {
+      setNoSession(true)
+    } else if (outcome.kind === 'commitError') {
+      setCommitError(true)
+    } else if (outcome.kind === 'redirect') {
+      navigate(outcome.to, { replace: true })
+    } else if (outcome.kind === 'verifyError') {
+      setError(outcome.message)
+    }
+  }
+
+  /** The commit half of the flow, as an outcome (never throws). Safe to re-run:
+   * the server-side draft persists and commit is idempotent. */
+  async function commitFlow(payload: any, user: { jobTitle?: string | null; role?: string }, hadEntryIntent: boolean): Promise<VerifyOutcome> {
+    try {
+      const result = await entryApi.commit(payload)
+      localStorage.removeItem(COMMIT_KEY)
+      localStorage.removeItem('gw_entry_session')
+      localStorage.removeItem('gw_draft_token')
+      const invitedEmails = (result.contributors ?? []).map(c => c.email).filter(e => !result.failedInvites?.includes(e))
+      return {
+        kind: 'success',
+        groundId: result.groundId,
+        joinUrl: result.joinToken ? `${FRONTEND_URL}/join?t=${result.joinToken}` : null,
+        invited: invitedEmails,
+        failedInvites: result.failedInvites ?? [],
+      }
+    } catch (err: any) {
+      const msg: string = err?.response?.data?.message ?? ''
+      if (msg.includes('NO_ENTRY_SESSION')) {
+        // Nothing to commit anywhere. For someone who never ran the entry flow
+        // this is a plain sign-in; for someone who DID (they have local
+        // traces), it is the explicit lost-session state.
+        if (hadEntryIntent) return { kind: 'noSession' }
+        const isNew = !user.jobTitle && user.role === 'ADMIN'
+        return { kind: 'redirect', to: isNew ? '/setup' : '/grounds' }
+      }
+      return { kind: 'commitError' }
+    }
+  }
+
+  function verifyErrorMessage(err: any): string {
+    const msg: string = err?.response?.data?.message ?? ''
+    if (msg.toLowerCase().includes('expired')) {
+      return 'This link has expired. Links are valid for 24 hours - please request a fresh one.'
+    }
+    if (msg.toLowerCase().includes('used') || msg.toLowerCase().includes('already')) {
+      return 'This link has already been used. Please request a new one to sign in again.'
+    }
+    return 'This link is not valid. It may have been replaced by a newer one - use the most recent link from your inbox.'
+  }
 
   useEffect(() => {
     const token = params.get('token')
     if (!token) { setError('Invalid link - no token found.'); return }
 
-    authApi.verifyEmail(token)
-      .then(async res => {
+    // One flow per token, ever. Verifying flips the auth state, which swaps
+    // the route into the authed shell and REMOUNTS this page mid-flight; the
+    // remount (and any StrictMode double-invoke) joins the same in-flight
+    // promise instead of re-verifying the now-used token - which used to
+    // paint "Link invalid" over the success screen and double-fire the commit.
+    let flow = verifyFlows.get(token)
+    if (!flow) {
+      const fromParam = params.get('from')
+      flow = (async (): Promise<VerifyOutcome> => {
+        let res: Awaited<ReturnType<typeof authApi.verifyEmail>>
+        try {
+          res = await authApi.verifyEmail(token)
+        } catch (err: any) {
+          return { kind: 'verifyError', message: verifyErrorMessage(err) }
+        }
         setAuth(res.user, res.accessToken)
-        const from = params.get('from')
-        if (from && from.startsWith('/')) {
-          navigate(from, { replace: true })
-          return
+        if (fromParam && fromParam.startsWith('/')) {
+          return { kind: 'redirect', to: fromParam }
         }
-        const payload = loadCommitPayload()
-        // Coordinator/lead path commits with an EMPTY history (the coordinator
-        // had no session) - the presence of `lead` is what makes it committable.
-        if (payload?.history?.length || payload?.lead) {
-          try {
-            const result = await entryApi.commit(payload)
-            localStorage.removeItem(COMMIT_KEY)
-            localStorage.removeItem('gw_entry_session')
-            if (result.failedInvites?.length) setFailedInvites(result.failedInvites)
-            if ((result as any).joinToken) setJoinUrl(`${FRONTEND_URL}/join?t=${(result as any).joinToken}`)
-            setNextGroundId(result.groundId)
-          } catch {
-            setCommitError(true)
-          }
-        } else {
-          const isNew = !res.user.jobTitle && res.user.role === 'ADMIN'
-          navigate(isNew ? '/setup' : '/grounds', { replace: true })
-        }
-      })
-      .catch((err: any) => {
-        const msg: string = err?.response?.data?.message ?? ''
-        if (msg.toLowerCase().includes('expired')) {
-          setError('This link has expired. Links are valid for 24 hours - please request a fresh one.')
-        } else if (msg.toLowerCase().includes('used') || msg.toLowerCase().includes('already')) {
-          setError('This link has already been used. Please request a new one to sign in again.')
-        } else {
-          setError('This link is not valid. It may have been replaced by a newer one - use the most recent link from your inbox.')
-        }
-      })
+        // ALWAYS attempt the commit. The server merges whatever this browser
+        // has over the server-side draft written at entry-save, so the commit
+        // works even when this browser has nothing (magic link opened in a
+        // different browser/device). Whether there is anything to commit is
+        // the SERVER's decision now - the old client-side branch here silently
+        // skipped the commit and stranded people on /setup.
+        const payload = loadCommitPayload() ?? { groundLabel: '', history: [], contributors: [] }
+        const hadEntryIntent = !!localStorage.getItem(COMMIT_KEY) || !!localStorage.getItem('gw_draft_token')
+        lastAttempt.current = { token, payload, user: res.user }
+        return commitFlow(payload, res.user, hadEntryIntent)
+      })()
+      verifyFlows.set(token, flow)
+    }
+
+    let mounted = true
+    flow.then(outcome => {
+      if (!mounted) return
+      // A commitError is not cached as final: clear the flow so a remount or
+      // "Try again" re-attempts (commit is idempotent server-side).
+      if (outcome.kind === 'commitError') verifyFlows.delete(token)
+      applyOutcome(outcome)
+    })
+    return () => { mounted = false }
   }, [])
 
   if (nextGroundId) {
@@ -106,9 +192,18 @@ export function MagicVerifyPage() {
               </button>
             </div>
           )}
+          {invited.length > 0 && (
+            <div style={{ background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#085041', marginBottom: 6 }}>Invited ({invited.length}) ✓</div>
+              <div style={{ fontSize: 12, color: '#3A7A60', lineHeight: 1.55, marginBottom: 6 }}>Each of these people has been emailed a private link to add their own account:</div>
+              {invited.map(e => (
+                <div key={e} style={{ fontSize: 12, color: '#085041', fontFamily: 'monospace' }}>{e}</div>
+              ))}
+            </div>
+          )}
           {failedInvites.length > 0 && (
             <div style={{ background: '#FFF8EC', border: '1px solid #F5DFA0', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#7A5200', marginBottom: 6 }}>Some invites did not send.</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#7A5200', marginBottom: 6 }}>{invited.length === 0 ? 'None of your invites could be sent.' : 'Some invites did not send.'}</div>
               <div style={{ fontSize: 12, color: '#7A5200', lineHeight: 1.55, marginBottom: 8 }}>These addresses were not reached. You can resend from your ground page:</div>
               {failedInvites.map(e => (
                 <div key={e} style={{ fontSize: 12, color: '#5A3A00', fontFamily: 'monospace' }}>{e}</div>
@@ -142,6 +237,28 @@ export function MagicVerifyPage() {
     )
   }
 
+  if (noSession) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--gw-bg)', padding: '0 20px' }}>
+        <div style={{ maxWidth: 400, width: '100%', textAlign: 'center' }}>
+          <div style={{ background: '#FFF8EC', border: '1px solid #F5DFA0', borderRadius: 12, padding: '20px 22px', marginBottom: 20, textAlign: 'left' }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: '#7A5200', marginBottom: 6 }}>We couldn't find your session on this device.</div>
+            <div style={{ fontSize: 13, color: '#7A5200', lineHeight: 1.6 }}>
+              Your account is active, but the session you saved isn't on this device and we don't have a copy of it.
+              If you finished your session in a different browser or on another device, open this link there - your session is still saved on that device.
+            </div>
+          </div>
+          <button className="gw-btn" style={{ marginBottom: 10 }} onClick={() => navigate('/grounds', { replace: true })}>
+            Go to my grounds →
+          </button>
+          <button className="gw-btn" style={{ background: 'white', color: 'var(--gw-navy)', border: '1px solid var(--gw-border)' }} onClick={() => navigate('/start', { replace: true })}>
+            Start a new ground
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   if (commitError) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--gw-bg)', padding: '0 20px' }}>
@@ -150,6 +267,22 @@ export function MagicVerifyPage() {
             <div style={{ fontSize: 16, fontWeight: 700, color: '#8B1A1A', marginBottom: 6 }}>Your account is active, but the ground wasn't saved.</div>
             <div style={{ fontSize: 13, color: '#7A3030', lineHeight: 1.6 }}>Something went wrong saving your session. Your account is ready - go to your grounds page and start again from there.</div>
           </div>
+          <button
+            className="gw-btn"
+            disabled={retrying}
+            style={{ marginBottom: 10, opacity: retrying ? 0.6 : 1 }}
+            onClick={async () => {
+              if (!lastAttempt.current) return
+              setRetrying(true)
+              setCommitError(false)
+              // Safe to retry: the draft persists server-side and commit is
+              // idempotent (a replay returns the existing ground).
+              applyOutcome(await commitFlow(lastAttempt.current.payload, lastAttempt.current.user, true))
+              setRetrying(false)
+            }}
+          >
+            {retrying ? 'Retrying...' : 'Try again'}
+          </button>
           <button className="gw-btn" onClick={() => navigate('/grounds', { replace: true })}>
             Go to grounds →
           </button>

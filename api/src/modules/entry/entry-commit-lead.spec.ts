@@ -21,6 +21,7 @@ function makeService() {
     checkIn: { findFirst: jest.fn(async () => ({ id: 'ci1' })), update: jest.fn(async () => ({})) },
     conversationTurn: { createMany: jest.fn(async () => ({ count: 0 })) },
     ground: { findUnique: jest.fn(async () => ({ joinToken: 'jt' })), update: jest.fn(async () => ({})) },
+    entryDraft: { findUnique: jest.fn(async () => null), updateMany: jest.fn(async () => ({ count: 0 })) },
   };
   const grounds: any = {
     create: jest.fn(async () => ({ id: 'g-self' })),

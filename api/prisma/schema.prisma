@@ -228,9 +228,37 @@ model User {
   contributorCodes         ContributorCode[]          @relation("ContributorCodes")
   redeemedCodes            ContributorCode[]          @relation("RedeemedCodes")
   codeRedemptions          ContributorCodeRedemption[] @relation("CodeRedemptions")
+  entryDraft               EntryDraft?
 
   @@index([organizationId])
   @@map("users")
+}
+
+// ---------------------------------------------------------------------------
+// Server-side draft of an anonymous entry session, written the moment the
+// person gives their email (POST /auth/entry-save) - the ISSUE-17 consent
+// moment. Makes the post-verification commit independent of which browser
+// opens the magic link: before this, the transcript and commit metadata lived
+// only in the originating browser's localStorage, and a link opened anywhere
+// else silently skipped the commit (the ground "vanished").
+// One live draft per user (upserted). draftToken authorizes pre-auth updates
+// from the entry page (org name, contributors typed after the email was
+// sent). consumedAt + groundId make commit idempotent.
+// ---------------------------------------------------------------------------
+model EntryDraft {
+  id         String    @id @default(uuid())
+  userId     String    @unique @map("user_id")
+  draftToken String    @unique @map("draft_token")
+  payload    Json
+  history    Json
+  consumedAt DateTime? @map("consumed_at")
+  groundId   String?   @map("ground_id")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("entry_drafts")
 }
 
 // ---------------------------------------------------------------------------

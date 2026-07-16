@@ -173,8 +173,8 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @Throttle({ global: { limit: 10, ttl: 60000 } })
   @ApiOperation({ summary: 'Save an entry session and send a magic link' })
-  async entrySave(@Body() body: { email: string }) {
-    return this.authService.entrySave(body.email);
+  async entrySave(@Body() body: { email: string; draft?: { payload?: Record<string, any>; history?: unknown[] } }) {
+    return this.authService.entrySave(body.email, body.draft);
   }
 
   @Post('request-password-setup')
