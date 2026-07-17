@@ -112,36 +112,65 @@ jobs:
             curl -sf http://127.0.0.1:5173 && break || sleep 2
           done
 
-      # --- Run the agents ---
-      # Each runner is best-effort: one suite failing must not stop the others,
-      # so we swallow non-zero exits here and let the aggregator judge severity.
-      - name: Run persona suites (all agents)
+      # --- HARD GATE: the loop must provably work before any persona "runs".
+      # No continue-on-error: if preflight fails, this run FAILS. A suite that
+      # cannot run must never report green.
+      - name: Preflight (hard gate)
         working-directory: groundwork_local_test
-        continue-on-error: true
+        run: python preflight.py --base-url http://127.0.0.1:3000
+
+      # --- Run the suites ---
+      # HONESTY RULES (this step used to swallow everything and report green
+      # with ZERO runners present):
+      #  - a listed runner that does not exist  -> the run FAILS
+      #  - a runner that crashes (non-zero)     -> the run FAILS (all suites
+      #    still execute first so one crash does not hide another's findings)
+      #  - findings are NOT failures: runners exit 0 and report via
+      #    results/**/findings.json; the aggregator ranks them.
+      - name: Run persona suites
+        working-directory: groundwork_local_test
         run: |
-          set +e
-          for runner in \
-            run_session1.py \
-            run_session3.py \
-            run_suite_e_onboarding.py \
-            run_suite_b_corroboration.py \
-            run_suite_d_session12.py \
-            run_suite_f_thirteen.py \
-            run_suite_h_access.py \
-            run_suite_acg.py ; do
-              echo "::group::$runner"
-              python "$runner" || echo "$runner exited non-zero (captured in findings)"
-              echo "::endgroup::"
+          RUNNERS="run_suite_v_vanish.py run_suite_m_sessions.py run_suite_b_billing.py run_suite_l_layout.py"
+          MISSING=""
+          for runner in $RUNNERS; do
+            [ -f "$runner" ] || MISSING="$MISSING $runner"
           done
+          if [ -n "$MISSING" ]; then
+            echo "::error::Persona runners MISSING:$MISSING - the suite cannot run. Failing red (a missing test is not a passing test)."
+            exit 1
+          fi
+          CRASHED=""
+          for runner in $RUNNERS; do
+            echo "::group::$runner"
+            if ! python "$runner"; then
+              echo "::error::$runner crashed (non-zero exit)"
+              CRASHED="$CRASHED $runner"
+            fi
+            echo "::endgroup::"
+          done
+          if [ -n "$CRASHED" ]; then
+            echo "::error::Crashed runners:$CRASHED"
+            exit 1
+          fi
 
       # --- Aggregate and surface ---
+      # The aggregator's exit code is the CRITICAL count (a report, not a
+      # crash) - capture it without failing, but a missing ISSUES.md means the
+      # aggregation itself broke, and that DOES fail the run.
       - name: Aggregate findings
         id: agg
+        if: always()
         working-directory: groundwork_local_test
-        continue-on-error: true
         run: |
+          set +e
           python aggregate_findings.py
-          echo "criticals=$?" >> "$GITHUB_OUTPUT"
+          CRITICALS=$?
+          set -e
+          echo "criticals=$CRITICALS" >> "$GITHUB_OUTPUT"
+          if [ ! -f results/ISSUES.md ]; then
+            echo "::error::aggregate_findings.py produced no results/ISSUES.md - aggregation broke."
+            exit 1
+          fi
 
       - name: Write job summary
         if: always()
