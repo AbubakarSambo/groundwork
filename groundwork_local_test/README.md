@@ -82,7 +82,7 @@ GW_WATCH=1 python3 run_suite_v_vanish.py
 `GW_WATCH=1` runs HEADED: real Chromium windows walk the pages in front of
 you, slowed enough to follow. Every step also writes a screenshot AND updates
 `results/live/index.html` - a 1s-auto-refreshing board showing each suite's
-latest page. Serve it (`python3 -m http.server 5199 -d results/live`, or the
+latest page. Serve it (`npx serve -l 5199 results/live`, or the
 `persona-live` entry in .claude/launch.json) and open it in the preview panel
 to watch page-by-page from there.
 

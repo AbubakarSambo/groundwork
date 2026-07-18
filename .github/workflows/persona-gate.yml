@@ -52,7 +52,8 @@ jobs:
       # them those suites will BLOCK rather than fail. Add the secret to light them up.
       GEMINI_PROJECT_ID: ${{ secrets.GEMINI_PROJECT_ID }}
       GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
-      VITE_API_URL: http://127.0.0.1:3000
+      # VITE_API_URL is deliberately UNSET: the Vite dev proxy keeps every
+      # API call same-origin (no CORS), matching how the suites run locally.
 
     steps:
       - uses: actions/checkout@v4
@@ -192,5 +193,6 @@ jobs:
           path: |
             groundwork_local_test/results/**
             groundwork_local_test/*.log
-            groundwork_local_test/api.log
+            api/api.log
+            client/client.log
           retention-days: 14

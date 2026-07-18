@@ -45,12 +45,12 @@
     },
     {
       "name": "persona-live",
-      "runtimeExecutable": "python3",
+      "runtimeExecutable": "npx",
       "runtimeArgs": [
-        "-m",
-        "http.server",
+        "--yes",
+        "serve",
+        "-l",
         "5199",
-        "-d",
         "groundwork_local_test/results/live"
       ],
       "port": 5199
