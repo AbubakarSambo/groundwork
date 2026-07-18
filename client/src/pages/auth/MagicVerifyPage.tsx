@@ -199,6 +199,9 @@ export function MagicVerifyPage() {
               {invited.map(e => (
                 <div key={e} style={{ fontSize: 12, color: '#085041', fontFamily: 'monospace' }}>{e}</div>
               ))}
+              <div style={{ fontSize: 12, color: '#3A7A60', lineHeight: 1.55, marginTop: 8, paddingTop: 8, borderTop: '1px solid #B6E8D4' }}>
+                Track who has checked in on your ground page - each person shows as invited, in progress, or completed, and you can send a reminder from there.
+              </div>
             </div>
           )}
           {failedInvites.length > 0 && (
@@ -225,6 +228,9 @@ export function MagicVerifyPage() {
                 </div>
               </div>
             ))}
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', marginBottom: 8 }}>
+            Track their check-ins on your ground page:
           </div>
           <button
             onClick={() => navigate(`/grounds/${nextGroundId}`, { replace: true })}
