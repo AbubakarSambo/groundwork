@@ -274,7 +274,7 @@ async def seed_closed_entry_session(page, scenario: str = "NEW_PROJECT"):
         "closed": True,
         "onboardingStep": 7,
         "history": ENTRY_HISTORY,
-        "onboardingSelections": {"mode": "new", "initial": "New project kickoff - launch checklist ownership"},
+        "onboardingSelections": {"mode": "new", "initial": "New project - launch checklist ownership"},
     }
     await page.evaluate(
         "(s) => { localStorage.clear(); localStorage.setItem('gw_entry_session', JSON.stringify(s)); }",

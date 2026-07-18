@@ -216,7 +216,7 @@ export const SITUATION_CARDS = [
   },
   {
     group: 'positive',
-    label: 'New project kickoff',
+    label: 'New project',
     detail: 'Line everyone up on goals, roles, and what "done" means before the work starts.',
     message: 'We are starting a new project and I want to get the team aligned on goals and roles from the beginning.',
     examples: [
@@ -226,8 +226,8 @@ export const SITUATION_CARDS = [
   },
   {
     group: 'positive',
-    label: 'New working arrangement',
-    detail: 'A new partnership, reporting line, or team structure that needs a clear foundation.',
+    label: 'A new way of working together',
+    detail: 'Someone new is in the picture: a partner, a manager, a changed team. Say what each of you expects before those assumptions harden.',
     message: 'We have a new working arrangement starting and want to make sure we are set up well.',
     examples: [
       'A new equal partner joining and you want the assumptions said out loud first.',

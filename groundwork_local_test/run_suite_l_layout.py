@@ -33,8 +33,8 @@ EMAIL = f"l.layout+{STAMP}@example-test.invalid"
 
 ENTRY_CARDS = [
     "New hire starting",
-    "New project kickoff",
-    "New working arrangement",
+    "New project",
+    "A new way of working together",
     "Someone's work is off track",
     "Running a performance improvement plan",
     "Co-founder or partner disagreement",
