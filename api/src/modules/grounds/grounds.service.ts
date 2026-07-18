@@ -55,6 +55,7 @@ export const SAFE_PARTICIPANT_SELECT = {
   roleAsDescribed: true,
   invitedAt: true,
   notifiedAt: true,
+  inviteDeliveryStatus: true, // SENT | DELIVERED | BOUNCED | COMPLAINED (Resend webhook mirror)
   soloArtifactAt: true, // timestamp only - never the artifact content
   soloArtifactShared: true, // whether participant chose to share; content fetched separately via get()
   createdAt: true,
@@ -204,7 +205,7 @@ export class GroundsService {
     const leadEmail = dto.leadEmail.toLowerCase();
     const leadUser = await this.findOrCreateUserForEmail(organizationId, leadEmail, dto.leadName);
 
-    const pendingInvites: { email: string; token: string }[] = [];
+    const pendingInvites: { email: string; token: string; participantId: string }[] = [];
     const ground = await this.prisma.$transaction(async (tx) => {
       const isFreeGround = canCreate.freeReason !== undefined;
       const ground = await tx.ground.create({
@@ -251,7 +252,7 @@ export class GroundsService {
             inviteTokenExpiresAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
           },
         });
-        pendingInvites.push({ email: p.email.toLowerCase(), token: inviteToken });
+        pendingInvites.push({ email: p.email.toLowerCase(), token: inviteToken, participantId: participant.id });
         // SEQUENTIAL: lock session 1 until the lead completes their own -
         // the lead has no completed session yet at ground-creation time, so
         // this is unconditional here (unlike addParticipant(), which checks).
@@ -270,7 +271,7 @@ export class GroundsService {
     // Best-effort: the ground/participant rows are already committed; a failed
     // email is logged, not rolled back, since some invites may have succeeded.
     for (const invite of pendingInvites) {
-      await this.email.sendParticipantInvite(invite.email, dto.leadName ?? 'Your lead', dto.label, invite.token).catch((err: any) =>
+      await this.email.sendParticipantInvite(invite.email, dto.leadName ?? 'Your lead', dto.label, invite.token, undefined, { kind: 'PARTICIPANT_INVITE', participantId: invite.participantId, groundId: ground.id }).catch((err: any) =>
         this.logger.error(`Participant invite email failed for ${invite.email} on ground ${ground.id}: ${err.message}`),
       );
     }
@@ -377,6 +378,7 @@ export class GroundsService {
         participants: {
           select: {
             id: true, email: true, partyType: true, roleAsDescribed: true, userId: true,
+            inviteDeliveryStatus: true,
             // No take limit here: completing a session always spawns the next
             // session's row, so "most recent row" is never the same as "most
             // recently completed" - we need the whole history to tell them apart.
@@ -745,6 +747,7 @@ export class GroundsService {
         ground.label,
         freshToken,
         dto.note,
+        { kind: 'PARTICIPANT_INVITE', participantId: existing.id, groundId: ground.id },
       );
       await this.prisma.groundParticipant.update({ where: { id: existing.id }, data: { notifiedAt: new Date() } });
       return { ...existing, inviteToken: undefined, devUrl: emailResult?.devUrl };
@@ -801,6 +804,7 @@ export class GroundsService {
         ground.label,
         token,
         dto.note,
+        { kind: 'PARTICIPANT_INVITE', participantId: participant.id, groundId: ground.id },
       );
     } catch (err: any) {
       // Roll back the participant row so the caller can retry cleanly.
@@ -856,6 +860,8 @@ export class GroundsService {
       `${initiator?.firstName ?? 'A founder'}`,
       ground.label,
       token,
+      undefined,
+      { kind: 'REMINDER', participantId: participant.id, groundId: ground.id },
     );
 
     // Stamp notifiedAt only after the email succeeds so the field reliably

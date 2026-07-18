@@ -262,6 +262,30 @@ model EntryDraft {
 }
 
 // ---------------------------------------------------------------------------
+// Delivery log for outbound email, correlated to Resend by resend_id (the id
+// returned by resend.emails.send; dev-mode sends get a dev-<uuid>). Status is
+// updated by the Resend webhook (delivered / bounced / complained) - upserted
+// by resend_id, so webhook retries are naturally idempotent. The latest
+// invite-kind row per participant is mirrored onto
+// GroundParticipant.inviteDeliveryStatus for cheap rendering.
+// ---------------------------------------------------------------------------
+model EmailDelivery {
+  id            String    @id @default(uuid())
+  resendId      String    @unique @map("resend_id")
+  email         String
+  kind          String // PARTICIPANT_INVITE | LEAD_INVITE | MAGIC_LINK | REMINDER | OTHER
+  participantId String?   @map("participant_id")
+  groundId      String?   @map("ground_id")
+  status        String    @default("SENT") // SENT | DELIVERED | BOUNCED | COMPLAINED
+  detail        String?
+  statusAt      DateTime? @map("status_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  @@index([participantId])
+  @@map("email_deliveries")
+}
+
+// ---------------------------------------------------------------------------
 // Per-admin preference profile — built from past grounds, used to deepen
 // probing on new grounds. Never used to skip questions.
 // ---------------------------------------------------------------------------
@@ -377,6 +401,9 @@ model GroundParticipant {
   willingnessCadence   Boolean? @map("willingness_cadence") // willingness gate Q2
   invitedAt          DateTime? @map("invited_at")
   notifiedAt         DateTime? @map("notified_at") // never added silently
+  // Mirror of the LATEST invite-kind EmailDelivery status for this participant
+  // (SENT | DELIVERED | BOUNCED | COMPLAINED) - written by the Resend webhook.
+  inviteDeliveryStatus String? @map("invite_delivery_status")
   // Magic-link invite (cleared once accepted; userId is set on accept).
   inviteToken          String?   @unique @map("invite_token")
   inviteTokenExpiresAt DateTime? @map("invite_token_expires_at")
