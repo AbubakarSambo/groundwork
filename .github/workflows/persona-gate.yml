@@ -1,20 +1,19 @@
-name: Persona tests
+name: Persona gate (PR)
 
 # Runs the full persona/agent test suite whenever code lands on main, then posts
 # a ranked list of issues to a GitHub issue and to the run's summary so it is easy
 # to see at a glance. This is a POST-merge report, not a merge gate.
 on:
-  push:
-    branches: [main]
+  pull_request:
     paths:
       - "api/**"
       - "client/**"
       - "groundwork_local_test/**"
-      - ".github/workflows/persona-tests.yml"
-  workflow_dispatch: {} # allow manual runs
+      - ".github/workflows/persona-gate.yml"
+  workflow_dispatch: {}
 
 concurrency:
-  group: persona-tests-${{ github.ref }}
+  group: persona-gate-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -23,7 +22,6 @@ jobs:
     timeout-minutes: 45
     permissions:
       contents: read
-      issues: write # to open/update the findings issue
 
     services:
       postgres:
@@ -187,33 +185,6 @@ jobs:
             cat groundwork_local_test/results/ISSUES.md >> "$GITHUB_STEP_SUMMARY"
           else
             echo "No ISSUES.md produced — the suite did not complete. Check logs." >> "$GITHUB_STEP_SUMMARY"
-          fi
-
-      - name: Post issues list to a GitHub issue
-        if: always()
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          BODY=groundwork_local_test/results/ISSUES.md
-          [ -f "$BODY" ] || { echo "no ISSUES.md, skipping issue post"; exit 0; }
-          SHA_SHORT=$(git rev-parse --short HEAD)
-          TITLE="Persona test findings"
-          # Find an existing open issue with this exact title and update it; else create.
-          NUM=$(gh issue list --state open --search "\"$TITLE\" in:title" --json number,title \
-                --jq ".[] | select(.title==\"$TITLE\") | .number" | head -n1)
-          {
-            echo "_Latest run: commit \`$SHA_SHORT\` · [run log](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})_"
-            echo ""
-            cat "$BODY"
-          } > /tmp/issue_body.md
-          if [ -n "$NUM" ]; then
-            gh issue edit "$NUM" --body-file /tmp/issue_body.md
-            gh issue comment "$NUM" --body "Updated with findings from \`$SHA_SHORT\`. See body above."
-            echo "Updated issue #$NUM"
-          else
-            gh issue create --title "$TITLE" --body-file /tmp/issue_body.md \
-              --assignee "${{ github.actor }}"
-            echo "Created new findings issue"
           fi
 
       - name: Upload screenshots and raw findings

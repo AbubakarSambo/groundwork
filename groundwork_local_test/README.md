@@ -59,3 +59,37 @@ because it is the product's core promise.
 
 It does not read your code. A static audit finds the auth hole no persona happened to
 trigger. This finds the pricing page that is correct and incomprehensible. Run both.
+
+## Phase 1 scripted suites (deterministic, CI-gating)
+
+| Runner | Guards |
+|---|---|
+| `run_suite_v_vanish.py` | THE vanish class: cross-context magic-link commit, idempotency, legacy path, explicit lost-session screen |
+| `run_suite_m_sessions.py` | Multi-session return path: no paywall on the ground/participant pages, self-correction reachable |
+| `run_suite_b_billing.py` | No $5 copy in the create flow, the 10-ground gate bites and explains itself, paid leg env-gated |
+| `run_suite_l_layout.py` | Zero horizontal overflow, every picker card present, fold visibility at 1366x768 / 1280x720 / 375x812 |
+
+Findings are the product: runners exit 0 when they RAN and report via
+`results/<suite>/findings.json`; a non-zero exit means a HARD invariant broke
+(the classes that actually bit us) or the runner crashed - CI goes red.
+
+### Watching a run (preview-driven)
+
+```bash
+GW_WATCH=1 python3 run_suite_v_vanish.py
+```
+
+`GW_WATCH=1` runs HEADED: real Chromium windows walk the pages in front of
+you, slowed enough to follow. Every step also writes a screenshot AND updates
+`results/live/index.html` - a 1s-auto-refreshing board showing each suite's
+latest page. Serve it (`npx serve -l 5199 results/live`, or the
+`persona-live` entry in .claude/launch.json) and open it in the preview panel
+to watch page-by-page from there.
+
+Honesty note: the Claude preview browser cannot be driven directly by an
+external Playwright process (no CDP handle), and Suite V NEEDS multiple
+simultaneous browser contexts (the fresh zero-storage context IS the test).
+Watch mode is the honest equivalent: the personas' own windows live on your
+screen, and the live board mirrors every step with ~1s lag. Headless runs
+(CI) keep the full step-by-step screenshot record as artifacts - never a
+bare pass/fail.
