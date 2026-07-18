@@ -38,6 +38,22 @@ describe('entry cards: display reframed, routing untouched', () => {
     expect(labels).toContain('Co-founder or partner disagreement')
   })
 
+  it('the starting cards carry the plain voice (the last three un-reframed strings)', () => {
+    const labels = SITUATION_CARDS.map(c => c.label)
+    expect(labels).toContain('New project')
+    expect(labels).toContain('A new way of working together')
+    expect(labels).not.toContain('New project kickoff')
+    expect(labels).not.toContain('New working arrangement')
+    const arrangement = SITUATION_CARDS.find(c => c.label === 'A new way of working together')!
+    expect(arrangement.detail).toBe(
+      'Someone new is in the picture: a partner, a manager, a changed team. Say what each of you expects before those assumptions harden.',
+    )
+    for (const c of SITUATION_CARDS) {
+      expect(c.label, `label of "${c.label}"`).not.toMatch(/kickoff|working arrangement/i)
+      expect(c.detail, `detail of "${c.label}"`).not.toMatch(/reporting line|clear foundation/i)
+    }
+  })
+
   it('details are de-jargoned (no "aligned from day one", no "on record")', () => {
     for (const c of SITUATION_CARDS) {
       expect(c.detail, `detail of "${c.label}"`).not.toMatch(/on record/i)
