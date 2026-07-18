@@ -25,7 +25,7 @@ import time
 
 from playwright.async_api import async_playwright
 
-from _runner import BASE_URL, Recorder, launch, mail_clear, provision_admin
+from _runner import BASE_URL, Recorder, launch, mail_clear, new_page, provision_admin
 
 rec = Recorder("suite_l")
 STAMP = str(int(time.time()))
@@ -85,7 +85,7 @@ async def main() -> int:
         for vp in VIEWPORTS:
             label = f"{vp['width']}x{vp['height']}"
             ctx = await browser.new_context(viewport={"width": vp["width"], "height": vp["height"]})
-            page = await ctx.new_page()
+            page = await new_page(rec, ctx, "persona L")
             await page.goto(f"{BASE_URL}/start")
             await page.wait_for_timeout(2500)
 
@@ -126,7 +126,7 @@ async def main() -> int:
 
         for vp in [v for v in VIEWPORTS if v["desktop"]]:
             label = f"{vp['width']}x{vp['height']}"
-            page = await ctx.new_page()
+            page = await new_page(rec, ctx, "persona L")
             await page.set_viewport_size({"width": vp["width"], "height": vp["height"]})
             await page.goto(f"{origin}/grounds/new")
             await page.wait_for_timeout(2500)

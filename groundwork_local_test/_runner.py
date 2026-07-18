@@ -15,6 +15,7 @@ Design rules these helpers enforce:
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import time
@@ -193,6 +194,30 @@ def mail_link(to: str, match: str | None = None, timeout_s: int = 20) -> str | N
 def mail_messages(to: str) -> list[dict]:
     code, res = http_json("GET", f"{MAIL_BASE}/messages?to={urllib.parse.quote(to)}")
     return res if code == 200 and isinstance(res, list) else []
+
+
+# ---- pages that narrate themselves ------------------------------------------
+
+async def new_page(rec: "Recorder", ctx, persona: str = ""):
+    """Create a page whose EVERY navigation lands on the live board and in the
+    step record automatically. Suites get page-by-page coverage for free; the
+    hand-placed rec.step() calls remain for the semantic beats."""
+    page = await ctx.new_page()
+
+    def _on_load():
+        async def cap():
+            try:
+                url = page.url.split("//", 1)[-1][:70]
+                await rec.step(page, f"-> {url}", persona)
+            except Exception:
+                pass
+        try:
+            asyncio.get_event_loop().create_task(cap())
+        except Exception:
+            pass
+
+    page.on("load", _on_load)
+    return page
 
 
 # ---- persona provisioning (the real auth path, no DB access) ----------------

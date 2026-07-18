@@ -73,18 +73,20 @@ Findings are the product: runners exit 0 when they RAN and report via
 `results/<suite>/findings.json`; a non-zero exit means a HARD invariant broke
 (the classes that actually bit us) or the runner crashed - CI goes red.
 
-### Watching a run (preview-driven)
+### Watching a run (preview-driven by default)
+
+Every run - headless or headed - narrates itself: EVERY page navigation of
+every persona auto-captures a screenshot (results/<suite>/steps/) and updates
+`results/live/index.html`, a 1s-auto-refreshing board showing each persona's
+current page with a caption. Serve the board (`npx serve -l 5199
+results/live`, or the `persona-live` entry in .claude/launch.json), open it
+in the preview panel, then run any suite:
 
 ```bash
-GW_WATCH=1 python3 run_suite_v_vanish.py
+python3 run_suite_v_vanish.py            # watch in the preview panel
+GW_WATCH=1 python3 run_suite_v_vanish.py # ALSO opens the personas' own
+                                         # Chromium windows, slowed to follow
 ```
-
-`GW_WATCH=1` runs HEADED: real Chromium windows walk the pages in front of
-you, slowed enough to follow. Every step also writes a screenshot AND updates
-`results/live/index.html` - a 1s-auto-refreshing board showing each suite's
-latest page. Serve it (`npx serve -l 5199 results/live`, or the
-`persona-live` entry in .claude/launch.json) and open it in the preview panel
-to watch page-by-page from there.
 
 Honesty note: the Claude preview browser cannot be driven directly by an
 external Playwright process (no CDP handle), and Suite V NEEDS multiple

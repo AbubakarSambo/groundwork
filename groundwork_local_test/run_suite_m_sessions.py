@@ -30,6 +30,7 @@ from playwright.async_api import async_playwright
 
 from _runner import (
     launch,
+    new_page,
     BASE_URL,
     Recorder,
     api,
@@ -48,7 +49,7 @@ PAYWALL_PATTERNS = re.compile(r"\$5|No sessions remaining|Buy a session", re.I)
 async def provision_ground(browser):
     """Real path: seeded closed session -> save -> magic link -> committed ground."""
     ctx = await browser.new_context(viewport={"width": 1366, "height": 768})
-    page = await ctx.new_page()
+    page = await new_page(rec, ctx, "persona M")
     await page.goto(f"{BASE_URL}/start")
     await page.wait_for_timeout(1500)
     await seed_closed_entry_session(page)
