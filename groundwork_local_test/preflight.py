@@ -37,8 +37,11 @@ def main():
 
     print("3. app reachable")
     try:
-        with urllib.request.urlopen(a.base_url, timeout=10) as r:
-            ok(f"{a.base_url} -> HTTP {r.status}")
+        # The API serves routes under /api/v1 and health at /health - the bare
+        # root 404s by design, which made this check fail against a healthy app.
+        probe = a.base_url.rstrip('/') + '/health'
+        with urllib.request.urlopen(probe, timeout=10) as r:
+            ok(f"{probe} -> HTTP {r.status}")
     except Exception as e:
         bad(f"cannot reach {a.base_url} ({e})")
         fails.append("app")

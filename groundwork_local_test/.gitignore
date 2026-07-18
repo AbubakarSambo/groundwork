@@ -1,8 +1,4 @@
-# Persisted browser state — contains auth tokens, never commit
-state/
-
-# Test output — screenshots, findings, generated artifacts
 results/
-
-# Logs
+state/
 *.log
+__pycache__/

@@ -4,29 +4,56 @@
     {
       "name": "prototype",
       "runtimeExecutable": "/opt/homebrew/bin/node",
-      "runtimeArgs": ["-e", "const h=require('http'),fs=require('fs'),p=require('path');h.createServer((q,r)=>{let f=p.join('/Users/hafsahjumare/Downloads',q.url==='/'?'groundwork_frontend.html':q.url);try{const d=fs.readFileSync(f);const m={'html':'text/html','js':'application/javascript','css':'text/css','png':'image/png','jpg':'image/jpeg','svg':'image/svg+xml','ico':'image/x-icon'};const e=p.extname(f).slice(1);r.writeHead(200,{'Content-Type':m[e]||'text/plain'});r.end(d);}catch(e){r.writeHead(404);r.end('Not found');}}).listen(7070,'127.0.0.1');"],
+      "runtimeArgs": [
+        "-e",
+        "const h=require('http'),fs=require('fs'),p=require('path');h.createServer((q,r)=>{let f=p.join('/Users/hafsahjumare/Downloads',q.url==='/'?'groundwork_frontend.html':q.url);try{const d=fs.readFileSync(f);const m={'html':'text/html','js':'application/javascript','css':'text/css','png':'image/png','jpg':'image/jpeg','svg':'image/svg+xml','ico':'image/x-icon'};const e=p.extname(f).slice(1);r.writeHead(200,{'Content-Type':m[e]||'text/plain'});r.end(d);}catch(e){r.writeHead(404);r.end('Not found');}}).listen(7070,'127.0.0.1');"
+      ],
       "port": 7070
     },
     {
       "name": "client",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--", "--port", "5173"],
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--",
+        "--port",
+        "5173"
+      ],
       "port": 5173,
       "cwd": "/Users/hafsahjumare/Documents/GitHub/groundwork/client"
     },
     {
       "name": "api",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "start:dev"],
+      "runtimeArgs": [
+        "run",
+        "start:dev"
+      ],
       "port": 3000,
       "cwd": "/Users/hafsahjumare/Documents/GitHub/groundwork/api"
     },
     {
       "name": "marketing",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
       "port": 4321,
       "cwd": "/Users/hafsahjumare/Documents/GitHub/groundwork/marketing"
+    },
+    {
+      "name": "persona-live",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "5199",
+        "-d",
+        "groundwork_local_test/results/live"
+      ],
+      "port": 5199
     }
   ]
 }
