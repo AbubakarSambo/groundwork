@@ -32,6 +32,7 @@ from playwright.async_api import async_playwright
 
 from _runner import (
     launch,
+    new_page,
     API_BASE,
     BASE_URL,
     Recorder,
@@ -75,7 +76,7 @@ async def main() -> int:
 
         # ---- V1: context A - finish a session, save, edit AFTER the email --
         ctx_a = await browser.new_context(viewport={"width": 1366, "height": 768})
-        page = await ctx_a.new_page()
+        page = await new_page(rec, ctx_a, "persona A")
         await page.goto(f"{BASE_URL}/start")
         await page.wait_for_timeout(1500)
         await seed_closed_entry_session(page)
@@ -135,7 +136,7 @@ async def main() -> int:
 
         # ---- V2: THE VANISH REPRO - fresh context, zero storage ------------
         ctx_b = await browser.new_context(viewport={"width": 1366, "height": 768})
-        page_b = await ctx_b.new_page()
+        page_b = await new_page(rec, ctx_b, "persona A (new browser)")
         await page_b.goto(link)
         try:
             await page_b.get_by_text("Your ground is set up").wait_for(timeout=25000)
@@ -180,7 +181,7 @@ async def main() -> int:
 
         # ---- V3: idempotency - open the SAME link again ---------------------
         ctx_c = await browser.new_context(viewport={"width": 1366, "height": 768})
-        page_c = await ctx_c.new_page()
+        page_c = await new_page(rec, ctx_c, "persona A (third context)")
         await page_c.goto(link)
         await page_c.wait_for_timeout(6000)
         await rec.step(page_c, "same link opened AGAIN (idempotency)", "persona A (third context)")
@@ -195,7 +196,7 @@ async def main() -> int:
         rec.check("V4", code == 200 and bool(legacy_link), "legacy entry-save (no draft) issues a link", hard=True)
         if legacy_link:
             ctx_d = await browser.new_context(viewport={"width": 1366, "height": 768})
-            page_d = await ctx_d.new_page()
+            page_d = await new_page(rec, ctx_d, "legacy persona")
             # seed on the SAME ORIGIN the link opens (FRONTEND_URL may be
             # localhost while BASE_URL is 127.0.0.1 - different localStorage)
             link_origin = legacy_link.split("/verify-email")[0]
@@ -226,7 +227,7 @@ async def main() -> int:
         lost_link = mail_link(LOST_EMAIL, match="verify-email")
         if lost_link:
             ctx_e = await browser.new_context(viewport={"width": 1366, "height": 768})
-            page_e = await ctx_e.new_page()
+            page_e = await new_page(rec, ctx_e, "lost-session persona")
             lost_origin = lost_link.split("/verify-email")[0]
             await page_e.goto(f"{lost_origin}/start")
             await page_e.wait_for_timeout(1200)

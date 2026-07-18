@@ -22,7 +22,7 @@ import time
 
 from playwright.async_api import async_playwright
 
-from _runner import BASE_URL, Recorder, api, launch, mail_clear, provision_admin
+from _runner import BASE_URL, Recorder, api, launch, mail_clear, new_page, provision_admin
 
 rec = Recorder("suite_b")
 STAMP = str(int(time.time()))
@@ -44,7 +44,7 @@ async def main() -> int:
             rec.finish()
             return 2
 
-        page = await ctx.new_page()
+        page = await new_page(rec, ctx, "persona B")
 
         # ---- B1: the create flow carries no $5 copy -------------------------
         await page.goto(f"{origin}/grounds/new")
