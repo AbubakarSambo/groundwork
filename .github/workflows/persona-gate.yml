@@ -46,8 +46,10 @@ jobs:
       FRONTEND_URL: http://127.0.0.1:5173
       JWT_SECRET: ci-test-secret-not-for-production
       BILLING_ENABLED: "false"
-      # Mail: Resend runs in suppressed dev mode when the key is the placeholder.
-      RESEND_API_KEY: placeholder
+      # Mail: email.service isDev() accepts exactly re_test / re_... / empty as
+      # dev-mode keys ('placeholder' was NOT recognized - the API tried real
+      # Resend and every entry-save 500d with 'API key is invalid').
+      RESEND_API_KEY: re_test
       # AI: Gemini via Vertex. Report-generation suites need real creds; without
       # them those suites will BLOCK rather than fail. Add the secret to light them up.
       GEMINI_PROJECT_ID: ${{ secrets.GEMINI_PROJECT_ID }}
