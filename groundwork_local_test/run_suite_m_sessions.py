@@ -30,6 +30,7 @@ from playwright.async_api import async_playwright
 
 from _runner import (
     launch,
+    new_page,
     BASE_URL,
     Recorder,
     api,
