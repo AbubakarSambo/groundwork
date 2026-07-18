@@ -62,6 +62,9 @@ export function GroundAdminPage() {
   const [shareCodeModalOpen, setShareCodeModalOpen] = useState(false)
   const [shareCodeId, setShareCodeId] = useState<string | null>(null)
   const [lastInvitedEmail, setLastInvitedEmail] = useState<string | null>(null)
+  // Fix-and-resend for bounced invites (participant must not have accepted)
+  const [fixingEmailId, setFixingEmailId] = useState<string | null>(null)
+  const [fixingEmailValue, setFixingEmailValue] = useState('')
   const [noteSaved, setNoteSaved] = useState(false)
   const [leadCtxText, setLeadCtxText] = useState('')
   const [leadCtxTarget, setLeadCtxTarget] = useState('') // '' = about the ground; else participantId
@@ -148,6 +151,17 @@ export function GroundAdminPage() {
   const remind = useMutation({
     mutationFn: (checkInId: string) => conversationApi.remind(checkInId),
     onSuccess: () => toast.success('Reminder sent'),
+  })
+
+  const fixEmail = useMutation({
+    mutationFn: ({ participantId, email }: { participantId: string; email: string }) =>
+      participantsApi.updateEmail(participantId, email),
+    onSuccess: () => {
+      toast.success('Invite resent to the corrected address')
+      setFixingEmailId(null); setFixingEmailValue('')
+      qc.invalidateQueries({ queryKey: ['ground', id] })
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Could not update the email.'),
   })
 
   const updateRole = useMutation({
@@ -324,6 +338,15 @@ export function GroundAdminPage() {
             })()}
 
             <div style={{ marginBottom: 16 }}>
+              {(() => {
+                const bounced = ground.participants.filter((p: any) => p.inviteDeliveryStatus === 'BOUNCED')
+                if (bounced.length === 0) return null
+                return (
+                  <div style={{ background: '#FFF4F4', border: '1px solid #F5C6C6', borderRadius: 8, padding: '10px 14px', marginBottom: 10, fontSize: 12.5, color: '#8B1A1A', lineHeight: 1.5 }}>
+                    <strong>{bounced.length === 1 ? '1 invite never arrived (bounced).' : `${bounced.length} invites never arrived (bounced).`}</strong> Fix the address below and resend - until then {bounced.length === 1 ? 'that person has' : 'those people have'} no way in.
+                  </div>
+                )
+              })()}
               <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>Participants</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {ground.participants.map((p: any, i: number) => {
@@ -369,10 +392,43 @@ export function GroundAdminPage() {
                         {myCheckIn?.id && status !== 'COMPLETED' && p.userId && (
                           <button onClick={() => remind.mutate(myCheckIn.id)} style={{ fontSize: 11, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer' }}>Remind</button>
                         )}
-                        {!p.userId && (
-                          <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}>Invite pending</span>
-                        )}
+                        {!p.userId && p.inviteDeliveryStatus === 'BOUNCED' ? (
+                          <button
+                            onClick={() => { setFixingEmailId(p.id); setFixingEmailValue(p.email) }}
+                            style={{ fontSize: 11, fontWeight: 700, color: '#8B1A1A', background: '#FFF4F4', border: '1px solid #F5C6C6', borderRadius: 12, padding: '2px 10px', cursor: 'pointer', fontFamily: 'inherit' }}
+                            title="The invite email bounced - it never reached this address"
+                          >
+                            Email bounced - fix &amp; resend
+                          </button>
+                        ) : !p.userId && p.inviteDeliveryStatus === 'COMPLAINED' ? (
+                          <span style={{ fontSize: 11, fontWeight: 600, color: '#7A5200', background: '#FFF8EC', border: '1px solid #F5DFA0', borderRadius: 12, padding: '2px 10px' }} title="They marked the invite as spam">Marked as spam</span>
+                        ) : !p.userId ? (
+                          <span style={{ fontSize: 11, color: 'var(--gw-muted)' }} title={p.inviteDeliveryStatus === 'DELIVERED' ? 'Invite delivered to their inbox' : 'Invite sent'}>
+                            {p.inviteDeliveryStatus === 'DELIVERED' ? 'Invite delivered' : 'Invite pending'}
+                          </span>
+                        ) : null}
                       </div>
+                      {fixingEmailId === p.id && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6, marginLeft: 40 }}>
+                          <input
+                            autoFocus
+                            type="email"
+                            value={fixingEmailValue}
+                            onChange={e => setFixingEmailValue(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter' && fixingEmailValue.includes('@')) fixEmail.mutate({ participantId: p.id, email: fixingEmailValue }) }}
+                            placeholder="corrected@email.com"
+                            style={{ fontSize: 12, padding: '6px 10px', borderRadius: 6, border: '1px solid #F5C6C6', outline: 'none', fontFamily: 'inherit', width: 240 }}
+                          />
+                          <button
+                            disabled={fixEmail.isPending || !fixingEmailValue.includes('@')}
+                            onClick={() => fixEmail.mutate({ participantId: p.id, email: fixingEmailValue })}
+                            style={{ fontSize: 12, fontWeight: 700, color: 'white', background: '#8B1A1A', border: 'none', borderRadius: 6, padding: '6px 12px', cursor: 'pointer', fontFamily: 'inherit', opacity: fixEmail.isPending ? 0.6 : 1 }}
+                          >
+                            {fixEmail.isPending ? 'Resending...' : 'Resend invite'}
+                          </button>
+                          <button onClick={() => { setFixingEmailId(null); setFixingEmailValue('') }} style={{ fontSize: 12, color: 'var(--gw-muted)', background: 'none', border: 'none', cursor: 'pointer' }}>Cancel</button>
+                        </div>
+                      )}
                       {sharedReport && (
                         <div style={{ background: '#0A1628', color: 'white', borderRadius: 8, padding: '12px 14px', marginTop: 4, marginLeft: 40 }}>
                           <div style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,.4)', fontWeight: 700, marginBottom: 8 }}>

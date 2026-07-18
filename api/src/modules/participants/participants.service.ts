@@ -211,6 +211,50 @@ export class ParticipantsService {
     return { id: updated.id, roleAsDescribed: updated.roleAsDescribed };
   }
 
+  /** Fix a bounced/wrong address and resend the invite - initiator only, and
+   * ONLY while the participant has never accepted (userId null). Rewriting an
+   * accepted participant's address would be an account-hijack vector: their
+   * link and record would silently point at a new inbox. */
+  async updateEmail(participantId: string, actingUserId: string, newEmail: string) {
+    const participant = await this.prisma.groundParticipant.findUnique({
+      where: { id: participantId },
+      include: { ground: { include: { participants: { where: { partyType: 'INITIATOR' } } } } },
+    });
+    if (!participant) throw new NotFoundException('Participant not found');
+
+    const isInitiator = participant.ground.participants.some((p) => p.userId === actingUserId);
+    if (!isInitiator) throw new NotFoundException('Participant not found');
+    if (participant.userId) {
+      throw new BadRequestException('This person has already joined - their email cannot be changed. Remove and re-invite them instead.');
+    }
+
+    const email = newEmail.trim().toLowerCase();
+    const token = crypto.randomBytes(32).toString('hex');
+    await this.prisma.groundParticipant.update({
+      where: { id: participantId },
+      data: {
+        email,
+        inviteToken: token,
+        inviteTokenExpiresAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+        notifiedAt: null,
+        // recordSend() resets this to SENT when the fresh invite goes out
+        inviteDeliveryStatus: null,
+      },
+    });
+
+    const initiator = await this.prisma.user.findUnique({ where: { id: participant.ground.initiatorId } });
+    await this.email.sendParticipantInvite(
+      email,
+      `${initiator?.firstName ?? 'A founder'}`,
+      participant.ground.label,
+      token,
+      undefined,
+      { kind: 'PARTICIPANT_INVITE', participantId, groundId: participant.groundId },
+    );
+    await this.prisma.groundParticipant.update({ where: { id: participantId }, data: { notifiedAt: new Date() } });
+    return { id: participantId, email };
+  }
+
   // --- helpers ---
 
   private async loadByToken(token: string) {

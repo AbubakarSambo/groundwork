@@ -27,6 +27,13 @@ class UpdateRoleDto {
   roleAsDescribed: string;
 }
 
+class UpdateEmailDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(254)
+  email: string;
+}
+
 class SaveIntakeDto {
   @IsOptional() @IsString() @MaxLength(4000) foundingIntent?: string;
   @IsOptional() @IsString() @MaxLength(4000) roleIntent?: string;
@@ -73,6 +80,16 @@ export class ParticipantsController {
   }
 
   @ApiBearerAuth()
+  @Patch(':id/email')
+  @ApiOperation({ summary: 'Fix a not-yet-accepted participant email and resend the invite (initiator only)' })
+  async updateEmail(
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string,
+    @Body() dto: UpdateEmailDto,
+  ) {
+    return this.participants.updateEmail(id, userId, dto.email);
+  }
+
   @Patch(':checkInId/intake')
   @ApiOperation({ summary: 'Save cofounder pre-check-in intake fields (owner-scoped by check-in)' })
   async saveIntake(

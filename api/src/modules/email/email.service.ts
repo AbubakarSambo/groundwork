@@ -1,5 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import * as crypto from 'crypto';
+import { DeliveryService, DeliveryContext } from './delivery.service';
 import { Resend } from 'resend';
 import * as nodemailer from 'nodemailer';
 
@@ -15,7 +17,10 @@ export class EmailService {
   private fromEmail: string;
   private frontendUrl: string;
 
-  constructor(private configService: ConfigService) {
+  constructor(
+    private configService: ConfigService,
+    private delivery: DeliveryService,
+  ) {
     this.resend = new Resend(this.configService.get<string>('resend.apiKey'));
     this.fromEmail = this.configService.get<string>('resend.fromEmail') || 'Groundwork <noreply@myground.work>';
     this.frontendUrl = this.configService.get<string>('resend.frontendUrl') || 'http://localhost:5173';
@@ -33,7 +38,7 @@ export class EmailService {
     return !apiKey || apiKey.startsWith('re_...') || apiKey === 're_test';
   }
 
-  private async sendEmail(options: { to: string; subject: string; html: string }): Promise<string | undefined> {
+  private async sendEmail(options: { to: string; subject: string; html: string }, context?: DeliveryContext): Promise<string | undefined> {
     if (this.isDev()) {
       this.logger.warn(`[DEV EMAIL] To: ${options.to} | Subject: ${options.subject}`);
       const text = options.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
@@ -43,6 +48,19 @@ export class EmailService {
         const transport = nodemailer.createTransport({ host: '127.0.0.1', port: 1025, secure: false, ignoreTLS: true });
         await transport.sendMail({ from: this.fromEmail, to: options.to, subject: options.subject, html: options.html });
       } catch (_) { /* mailcatcher not running - console log is still available */ }
+      const devId = `dev-${crypto.randomUUID()}`;
+      await this.delivery.recordSend(devId, options.to, context);
+      // DEV BOUNCE CONVENTION: a recipient containing '+bounce' emits a
+      // synthetic email.bounced event through the SAME webhook handler, so
+      // the full bounced-state UI is provable at the real local UI. The
+      // Resend->endpoint hop itself is prod-verified once at registration.
+      if (options.to.includes('+bounce')) {
+        await this.delivery.applyEvent({
+          type: 'email.bounced',
+          data: { email_id: devId, to: options.to, bounce: { message: 'dev-simulated bounce (+bounce convention)' } },
+        });
+        this.logger.warn(`[DEV EMAIL] simulated bounce for ${options.to}`);
+      }
       // Extract first href for easy local testing
       const match = options.html.match(/href="([^"]+)"/);
       return match?.[1];
@@ -53,6 +71,7 @@ export class EmailService {
       throw new Error(`Failed to send email: ${error.message}`);
     }
     this.logger.log(`Email sent to ${options.to} (id: ${data?.id})`);
+    if (data?.id) await this.delivery.recordSend(data.id, options.to, context);
     return undefined;
   }
 
@@ -77,7 +96,7 @@ export class EmailService {
       to: email,
       subject: 'Activate your Groundwork account',
       html: this.layout(`<p>Hi ${firstName},</p><p>You or someone on your team just signed up for Groundwork using this email. Click the link below to activate your account and get started.</p><p><a href="${url}">Activate account</a></p><p>This link expires in 24 hours.</p><p style="color:#888;font-size:12px;">If you did not request this, you can ignore this email. No account will be created without clicking the link.</p>`),
-    });
+    }, { kind: 'MAGIC_LINK' });
   }
 
   async sendSignInLinkEmail(email: string, firstName: string, token: string): Promise<{ devUrl?: string }> {
@@ -137,7 +156,7 @@ export class EmailService {
   // --- Ground / conversation lifecycle (see comms library, Part 3) ---
 
   /** Participant added to a ground. They are NEVER added silently. */
-  async sendParticipantInvite(email: string, founderName: string, groundLabel: string, token: string, note?: string): Promise<{ devUrl?: string }> {
+  async sendParticipantInvite(email: string, founderName: string, groundLabel: string, token: string, note?: string, context?: DeliveryContext): Promise<{ devUrl?: string }> {
     const url = `${this.frontendUrl}/invite?token=${token}`;
     const noteHtml = note ? `<p style="border-left:3px solid #5DCAA5;padding:8px 14px;margin:20px 0;color:#4A4540;font-style:italic;">${note}</p>` : '';
     const devUrl = await this.sendEmail({
@@ -152,7 +171,7 @@ export class EmailService {
          <p><a href="${url}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Add my account →</a></p>
          <p style="font-size:12px;color:#9B9590;">You are never obligated to take part. If you would rather not, you can simply ignore this - declining is never shown as a negative.</p>`,
       ),
-    });
+    }, context ?? { kind: 'PARTICIPANT_INVITE' });
     return { devUrl };
   }
 
@@ -161,7 +180,7 @@ export class EmailService {
    * `url` is pre-resolved by the caller: a password-setup link for a brand new
    * user, or a direct link to the ground's confirm-lead screen for someone who
    * already has an account. */
-  async sendLeadInvite(email: string, adminName: string, groundLabel: string, url: string): Promise<{ devUrl?: string }> {
+  async sendLeadInvite(email: string, adminName: string, groundLabel: string, url: string, context?: DeliveryContext): Promise<{ devUrl?: string }> {
     const devUrl = await this.sendEmail({
       to: email,
       subject: `${adminName} asked you to lead a ground: ${groundLabel}`,
@@ -171,7 +190,7 @@ export class EmailService {
          <p>You decide when to begin. Review the context they left, add or edit it, and confirm when you are ready. You will do your own check-in as part of this, and any people already invited will be waiting on you.</p>
          <p><a href="${url}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Review and begin →</a></p>`,
       ),
-    });
+    }, context ?? { kind: 'LEAD_INVITE' });
     return { devUrl };
   }
 
