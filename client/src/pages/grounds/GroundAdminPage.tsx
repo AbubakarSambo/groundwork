@@ -148,6 +148,17 @@ export function GroundAdminPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['participant-requests', id] }),
   })
 
+  const [confirmClosing, setConfirmClosing] = useState(false)
+  const closingRound = useMutation({
+    mutationFn: () => groundsApi.beginClosingRound(id!),
+    onSuccess: (r) => {
+      toast.success(`Closing round begun - ${r.participantsFlagged} ${r.participantsFlagged === 1 ? 'person' : 'people'} will do their final check-in.`)
+      setConfirmClosing(false)
+      qc.invalidateQueries({ queryKey: ['ground', id] })
+    },
+    onError: () => toast.error('Could not begin the closing round.'),
+  })
+
   const remind = useMutation({
     mutationFn: (checkInId: string) => conversationApi.remind(checkInId),
     onSuccess: () => toast.success('Reminder sent'),
@@ -327,7 +338,7 @@ export function GroundAdminPage() {
                   </div>
                   <button
                     onClick={() => navigate(`/checkin/${myOpenCheckIn.id}`, {
-                      state: { sessionNumber: myOpenCheckIn.sessionNumber, groundLabel: ground.label, groundId: id, isInitiator: true }
+                      state: { sessionNumber: myOpenCheckIn.sessionNumber, isFinal: (myOpenCheckIn as any).isFinal ?? false, groundLabel: ground.label, groundId: id, isInitiator: true }
                     })}
                     style={{ width: '100%', padding: '11px 16px', borderRadius: 8, background: '#5DCAA5', color: '#0A1628', fontSize: 14, fontWeight: 800, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
                   >
@@ -568,6 +579,24 @@ export function GroundAdminPage() {
                   <button onClick={() => setAddingParticipant(true)} style={{ width: '100%', padding: '11px 16px', borderRadius: 8, background: 'none', color: 'var(--gw-navy)', fontSize: 13, fontWeight: 600, border: '1px dashed var(--gw-blue-b)', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                     <span style={{ fontSize: 16, fontWeight: 300 }}>+</span> Add a contributor
                   </button>
+                  {!['RESOLVED', 'CLOSED', 'STALLED', 'AWAITING_LEAD'].includes(ground.status) && (
+                    confirmClosing ? (
+                      <div style={{ border: '1px solid #E4C88A', background: '#FFF8EC', borderRadius: 8, padding: '12px 14px', marginTop: 8 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: '#7A4B00', marginBottom: 4 }}>Begin the closing round?</div>
+                        <div style={{ fontSize: 12, color: '#7A4B00', lineHeight: 1.5, marginBottom: 10 }}>
+                          Everyone's next check-in becomes their final account - same conversation, marked as closing. The final report reads the whole record, then you and the others agree the end state.
+                        </div>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <button onClick={() => closingRound.mutate()} disabled={closingRound.isPending} style={{ padding: '8px 14px', borderRadius: 7, background: '#7A4B00', color: 'white', border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Begin closing round</button>
+                          <button onClick={() => setConfirmClosing(false)} style={{ padding: '8px 14px', borderRadius: 7, background: 'none', color: '#7A4B00', border: 'none', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button onClick={() => setConfirmClosing(true)} style={{ width: '100%', padding: '11px 16px', borderRadius: 8, background: 'none', color: '#7A4B00', fontSize: 13, fontWeight: 600, border: '1px dashed #E4C88A', cursor: 'pointer', fontFamily: 'inherit', marginTop: 8 }}>
+                        Begin the closing round →
+                      </button>
+                    )
+                  )}
                 </>
               ) : (
                 <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px' }}>

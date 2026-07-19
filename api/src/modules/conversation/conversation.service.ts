@@ -2,6 +2,7 @@ import { Injectable, Logger, ForbiddenException, NotFoundException, BadRequestEx
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
+import { endStatesFor } from '../resolution/end-states';
 import { PromptsService } from '../prompts';
 import { AnthropicService, ChatTurn, houseStyle } from './anthropic.service';
 import { ConversationContextService } from './context.service';
@@ -291,8 +292,14 @@ export class ConversationService {
     }
 
     const fullSystem = await this.composeSystemPrompt(checkIn);
+    // The closing session must be NAMED in the opener - the system-context
+    // instruction alone loses to the returning-user opener script, so the
+    // begin turn (the most-attended instruction) carries it too.
+    const beginMessage = (checkIn as any).isFinal
+      ? '<<BEGIN_CHECK_IN>> The person has just arrived for their CLOSING session. Open by telling them plainly, in your first sentence, that this is their closing check-in - the last word on their record, worth documenting thoroughly - and then continue per your runtime context.'
+      : '<<BEGIN_CHECK_IN>> The person has just arrived. Open the check-in now per your runtime context - deliver the moment opening; do not wait for them to speak first.';
     const reply = await this.anthropic.respond(fullSystem, [
-      { role: 'user', content: '<<BEGIN_CHECK_IN>> The person has just arrived. Open the check-in now per your runtime context - deliver the moment opening; do not wait for them to speak first.' },
+      { role: 'user', content: beginMessage },
     ]);
 
     const aiTurn = await this.prisma.conversationTurn.create({ data: { checkInId: checkIn.id, role: TurnRole.AI, content: reply } });
@@ -603,7 +610,41 @@ Open the session by naming that you're returning to session ${checkIn.selfCorrec
       }
     }
 
-    return [systemPrompt, intakeBlock, clarificationContext, selfCorrectionContext, returningUserContext, dynamicContext, docContext, docPromptHint].filter(Boolean).join('\n\n');
+    // FINAL SESSION: same conversation, flagged closing. The block adds the
+    // four closing probes and the thoroughness framing; assessment targets are
+    // the pre-agreed resolutionState when set, else the party's own session-1
+    // SUCCESS_DEFINITION entries (entry-flow grounds have no resolutionState).
+    let finalSessionContext = '';
+    if ((checkIn as any).isFinal) {
+      const ground = await this.prisma.ground.findUnique({
+        where: { id: checkIn.groundId },
+        select: { scenario: true, resolutionState: true } as any,
+      });
+      let target = (ground as any)?.resolutionState as string | null;
+      if (!target) {
+        const defs = await this.prisma.recordEntry.findMany({
+          where: { participantId: checkIn.participantId, type: 'SUCCESS_DEFINITION' as any },
+          orderBy: { createdAt: 'asc' },
+          take: 5,
+          select: { text: true },
+        });
+        target = defs.length ? defs.map(d => `- ${d.text}`).join('\n') : null;
+      }
+      const endStates = ground ? endStatesFor((ground as any).scenario).map(o => o.label).join(' / ') : '';
+      finalSessionContext = `FINAL SESSION - this is the CLOSING check-in for this ground. OPEN THE SESSION by saying so, plainly, in your first message - before anything else: this is their closing check-in, the last word on the record, and what they document here is what the final report weighs, so it is worth being thorough. This overrides any other opener instruction (including the returning-user opener); weave the usual continuity in AFTER naming the closing. Same conversation as always - no new format.
+
+Work through, woven naturally into the conversation, not as a checklist:
+1. FINAL STATE vs THE TARGET. The target on record:
+${target ?? 'No pre-agreed target - ask the person what success was supposed to look like when this started, then measure their account against their own answer.'}
+Ask where things actually landed against that, in their words.
+2. DELIVERED vs AGREED. For each thing they say was delivered: what exists, and what shows it? Ask for the artifact. If something is described but not evidenced, say plainly that a document would carry more weight than memory, and invite an upload.
+3. WHAT REMAINS OPEN. Unfinished items, handovers, loose ends - get them named, not smoothed over.
+4. THE REVISION DOOR. Ask once, near the end: is there anything in their earlier record they would correct before the ground closes? If yes, take the correction now.
+
+The ground will close toward one of these end states: ${endStates || 'the parties will define the end state'}. Do NOT push them to pick one - that choice happens in the resolution step with the other party. Your job is the honest account it will rest on.`;
+    }
+
+    return [systemPrompt, intakeBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, dynamicContext, docContext, docPromptHint].filter(Boolean).join('\n\n');
   }
 
   /**
@@ -862,7 +903,19 @@ Open the session by naming that you're returning to session ${checkIn.selfCorrec
   private async createNextIfAbsent(groundId: string, participantId: string, sessionNumber: number, availableFrom: Date | null) {
     const existing = await this.prisma.checkIn.findUnique({ where: { participantId_sessionNumber: { participantId, sessionNumber } } });
     if (existing) return;
-    await this.prisma.checkIn.create({ data: { groundId, participantId, sessionNumber, status: CheckInStatus.NOT_STARTED, availableFrom } });
+    // AUTO-FLAG the closing session: the last cadence slot inside the ground's
+    // timeline is final - the person is told to document thoroughly and the
+    // final report reads the whole arc. (The other path is the initiator's
+    // explicit "Begin the closing round".)
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { timelineDays: true, cadence: true },
+    });
+    const cadenceDays: Record<string, number> = { DAILY: 1, WEEKLY: 7, FORTNIGHTLY: 14, MONTHLY: 30, ONE_TIME: 0, SEQUENTIAL: 0 };
+    const step = cadenceDays[ground?.cadence ?? ''] ?? 0;
+    const planned = step > 0 && ground ? Math.max(1, Math.floor(ground.timelineDays / step)) : null;
+    const isFinal = planned != null && sessionNumber >= planned;
+    await this.prisma.checkIn.create({ data: { groundId, participantId, sessionNumber, status: CheckInStatus.NOT_STARTED, availableFrom, isFinal } });
   }
 
   /**
