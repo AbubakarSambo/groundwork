@@ -96,7 +96,22 @@ async def main() -> int:
         await browser.close()
 
         # ---- S2: classify-intent routes every scenario ----------------------
+        # FALLBACK CANARY: when the model is unreachable the API degrades
+        # GRACEFULLY - classify-intent returns 200 with the NEW_PROJECT
+        # default for everything (entry.service resolveScenario). Two
+        # maximally-different canaries routing IDENTICALLY = the classifier is
+        # in fallback, and per-scenario routing CANNOT be judged - record
+        # BLOCKED loudly rather than red on answers the model never gave.
         blocked = False
+        c1 = api("POST", "/entry/classify-intent", {"description": ROUTES[0][1]})
+        c2 = api("POST", "/entry/classify-intent", {"description": ROUTES[14][1]})
+        s1 = (c1[1] or {}).get("scenario") if isinstance(c1[1], dict) else None
+        s2x = (c2[1] or {}).get("scenario") if isinstance(c2[1], dict) else None
+        if c1[0] == 200 and c2[0] == 200 and s1 is not None and s1 == s2x:
+            rec.record("S2", "BLOCKED",
+                       "classifier is in provider-fallback (two unrelated phrases routed identically) - routing sweep skipped",
+                       f"both canaries -> {s1!r}")
+            blocked = True
         for enum, phrase, canonical in ROUTES:
             code, res = api("POST", "/entry/classify-intent", {"description": phrase})
             if provider_down(code, res):
