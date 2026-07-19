@@ -1149,7 +1149,10 @@ export function EntryChatPage() {
             )}
             <div
               ref={msgsRef}
-              style={{ flex: 1, overflowY: 'auto', padding: '24px 20px', display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 680, width: '100%', margin: '0 auto', boxSizing: 'border-box' }}
+              // The picker needs the width for a multi-column grid so all 8
+              // cards sit above the fold at laptop heights; conversation
+              // bubbles keep the narrow reading column.
+              style={{ flex: 1, overflowY: 'auto', padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 12, maxWidth: onboardingHistory.length === 1 && !pickedSituation && phase === 'onboarding' ? 1080 : 680, width: '100%', margin: '0 auto', boxSizing: 'border-box' }}
             >
               {onboardingHistory.map((m, i) => (
                 <div
@@ -1175,60 +1178,72 @@ export function EntryChatPage() {
               {/* Situation cards - shown only before user has sent first message */}
               {onboardingHistory.length === 1 && !onboardingLoading && !pickedSituation && (
                 <div style={{ alignSelf: 'flex-start', width: '100%' }}>
-                  <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginBottom: 8, fontWeight: 500 }}>Starting something new</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8, marginBottom: 14 }}>
+                  <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginBottom: 5, fontWeight: 500 }}>Starting something new</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(235px, 1fr))', gap: 6, marginBottom: 10 }}>
                     {SITUATION_CARDS.filter(c => c.group === 'positive').map(card => (
                       <button
                         key={card.label}
                         onClick={() => { setPickedSituation(card.label); sendOnboarding(card.message) }}
                         style={{
-                          textAlign: 'left', padding: '10px 13px', borderRadius: 10,
+                          textAlign: 'left', padding: '8px 11px', borderRadius: 10,
                           border: '1px solid var(--gw-border)', background: 'white',
                           cursor: 'pointer', fontFamily: 'inherit',
                         }}
                       >
-                        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)', marginBottom: 2 }}>{card.label}</div>
-                        <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>{card.detail}</div>
+                        <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--gw-text)', marginBottom: 1 }}>{card.label}</div>
+                        <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', lineHeight: 1.4 }}>{card.detail}</div>
                         {card.examples && card.examples.length > 0 && (
-                          <div style={{ marginTop: 5 }}>
+                          <div style={{ marginTop: 3 }}>
                             {card.examples.map((ex, i) => (
-                              <div key={i} style={{ fontSize: 11, color: 'var(--gw-muted)', lineHeight: 1.5 }}>e.g. {ex}</div>
+                              // one visual line per recognizer keeps every card
+                              // above the fold; the full text stays in title
+                              <div key={i} title={`e.g. ${ex}`} style={{ fontSize: 10.5, color: 'var(--gw-muted)', lineHeight: 1.45, display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>e.g. {ex}</div>
                             ))}
                           </div>
                         )}
                       </button>
                     ))}
                   </div>
-                  <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginBottom: 8, fontWeight: 500 }}>Something that needs addressing</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
+                  <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginBottom: 5, fontWeight: 500 }}>Something that needs addressing</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(235px, 1fr))', gap: 6 }}>
                     {SITUATION_CARDS.filter(c => c.group === 'negative').map(card => (
                       <button
                         key={card.label}
                         onClick={() => { setPickedSituation(card.label); sendOnboarding(card.message) }}
                         style={{
-                          textAlign: 'left', padding: '10px 13px', borderRadius: 10,
+                          textAlign: 'left', padding: '8px 11px', borderRadius: 10,
                           border: '1px solid var(--gw-border)', background: 'white',
                           cursor: 'pointer', fontFamily: 'inherit',
                         }}
                       >
-                        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)', marginBottom: 2 }}>{card.label}</div>
-                        <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>{card.detail}</div>
+                        <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--gw-text)', marginBottom: 1 }}>{card.label}</div>
+                        <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', lineHeight: 1.4 }}>{card.detail}</div>
                         {card.examples && card.examples.length > 0 && (
-                          <div style={{ marginTop: 5 }}>
+                          <div style={{ marginTop: 3 }}>
                             {card.examples.map((ex, i) => (
-                              <div key={i} style={{ fontSize: 11, color: 'var(--gw-muted)', lineHeight: 1.5 }}>e.g. {ex}</div>
+                              // one visual line per recognizer keeps every card
+                              // above the fold; the full text stays in title
+                              <div key={i} title={`e.g. ${ex}`} style={{ fontSize: 10.5, color: 'var(--gw-muted)', lineHeight: 1.45, display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>e.g. {ex}</div>
                             ))}
                           </div>
                         )}
                       </button>
                     ))}
+                    {/* The describe-your-own option lives IN the grid: it
+                        fills the empty last-row slot and keeps the whole
+                        picker above the fold at laptop heights (suite L). */}
+                    <button
+                      onClick={() => setPickedSituation('other')}
+                      style={{
+                        textAlign: 'left', padding: '8px 11px', borderRadius: 10,
+                        border: '1px dashed var(--gw-border)', background: 'transparent',
+                        cursor: 'pointer', fontFamily: 'inherit',
+                      }}
+                    >
+                      <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--gw-sub)', marginBottom: 1 }}>My situation is different - I will describe it</div>
+                      <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.4 }}>Tell it in your own words and we set up from there.</div>
+                    </button>
                   </div>
-                  <button
-                    onClick={() => setPickedSituation('other')}
-                    style={{ marginTop: 12, background: 'none', border: 'none', fontSize: 12, color: 'var(--gw-sub)', cursor: 'pointer', padding: 0, fontFamily: 'inherit', textDecoration: 'underline', alignSelf: 'flex-start' }}
-                  >
-                    My situation is different - I will describe it
-                  </button>
                 </div>
               )}
 

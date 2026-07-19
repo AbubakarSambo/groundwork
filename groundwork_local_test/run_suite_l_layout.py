@@ -101,13 +101,12 @@ async def main() -> int:
                     continue
                 if vp["desktop"]:
                     ok, detail = await in_viewport(page, loc)
-                    # KNOWN GAP on current main: the tail of the picker sits
-                    # below the fold at 768/720px heights. Reported loudly on
-                    # every run as a FINDING; flip hard=True once the product
-                    # decides to meet the no-scroll bar.
+                    # ENFORCED since the fold fix: every picker card and the
+                    # describe link must sit inside the viewport at laptop
+                    # heights. hard=True - a regression reds the PR gate.
                     rec.check(f"L/{label}", ok,
                               f"'{card}' fully visible WITHOUT scrolling @ {label}",
-                              detail, hard=False)
+                              detail, hard=True)
                 else:
                     ok, detail = await reachable(page, loc)
                     rec.check(f"L/{label}", ok,
@@ -143,22 +142,28 @@ async def main() -> int:
                 if await moment.count():
                     await moment.first.click()
                     await page.wait_for_timeout(400)
+                # Playwright's clicks auto-scroll targets into view, which
+                # made this check pass vacuously - reset to the top so
+                # "visible WITHOUT scrolling" is measured honestly.
+                await page.evaluate("window.scrollTo(0, 0)")
+                await page.wait_for_timeout(300)
                 cont = page.locator("button:has-text('Continue'):visible").last
-                # KNOWN GAP on current main: the 17-card grid pushes this
-                # Continue thousands of px below the fold. Loud FINDING every
-                # run; flip hard=True once the product meets the no-scroll bar.
+                # ENFORCED since the fold fix: the step Continue must be inside
+                # the viewport (sticky action bar). hard=True.
                 ok, detail = await in_viewport(page, cont)
                 rec.check(f"L/{label}", ok,
                           f"create step-1 Continue visible WITHOUT scrolling @ {label}",
-                          detail, hard=False)
+                          detail, hard=True)
                 await cont.click()
                 await page.wait_for_timeout(900)
+                await page.evaluate("window.scrollTo(0, 0)")
+                await page.wait_for_timeout(300)
                 cont2 = page.locator("button:has-text('Continue'):visible")
                 if await cont2.count():
                     ok, detail = await in_viewport(page, cont2.last)
                     rec.check(f"L/{label}", ok,
                               f"create next-step Continue visible WITHOUT scrolling @ {label}",
-                              detail, hard=False)
+                              detail, hard=True)
             else:
                 rec.record(f"L/{label}", "FINDING", "create picker card 'New project' not found",
                            "cannot walk the create flow for Continue checks")
