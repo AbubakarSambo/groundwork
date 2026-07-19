@@ -136,7 +136,7 @@ jobs:
       - name: Run persona suites
         working-directory: groundwork_local_test
         run: |
-          RUNNERS="run_suite_v_vanish.py run_suite_m_sessions.py run_suite_b_billing.py run_suite_l_layout.py"
+          RUNNERS="run_suite_v_vanish.py run_suite_m_sessions.py run_suite_b_billing.py run_suite_l_layout.py run_suite_s_scenarios.py run_suite_r_roles.py run_suite_a_adversarial.py"
           MISSING=""
           for runner in $RUNNERS; do
             [ -f "$runner" ] || MISSING="$MISSING $runner"

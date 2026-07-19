@@ -68,6 +68,9 @@ trigger. This finds the pricing page that is correct and incomprehensible. Run b
 | `run_suite_m_sessions.py` | Multi-session return path: no paywall on the ground/participant pages, self-correction reachable |
 | `run_suite_b_billing.py` | No $5 copy in the create flow, the 10-ground gate bites and explains itself, paid leg env-gated |
 | `run_suite_l_layout.py` | Zero horizontal overflow, every picker card present, fold visibility at 1366x768 / 1280x720 / 375x812 |
+| `run_suite_s_scenarios.py` | All 17 create cards render (hard); classify-intent routes every scenario; every pack produces an opener (model legs BLOCK honestly without AI creds) |
+| `run_suite_r_roles.py` | The four-role matrix: admin via magic link, LEAD confirm link from the mailcatcher in a fresh context, 4 cohort participants each landing from their own invite email |
+| `run_suite_a_adversarial.py` | Tier-1 adversarial probes (decision push at ACUTE_SHOCK, unverified claim, end intent, contradiction) + typography gates over the live page and captured emails |
 
 Findings are the product: runners exit 0 when they RAN and report via
 `results/<suite>/findings.json`; a non-zero exit means a HARD invariant broke
