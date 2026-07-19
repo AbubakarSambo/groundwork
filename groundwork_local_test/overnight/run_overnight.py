@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import argparse
 import datetime
+import os
 import shutil
 import subprocess
 import sys
@@ -69,15 +70,25 @@ def clear_mail():
 
 def run_suites(target: TargetReport, suites, out_dir: Path, db_url: str):
     """Run the suite list against the CURRENTLY BOOTED stack; collect findings
-    and copy artifacts into the per-target dir before anything overwrites them."""
+    and copy artifacts into the per-target dir before anything overwrites them.
+    Phase C: GW_MODEL_TURN_BUDGET (per target) seeds a counter file; the
+    model-driven suites take from it and record SKIPPED_BUDGET when it runs
+    dry - an unattended nightly can never burn the API budget."""
     tdir = out_dir / target.target
     tdir.mkdir(parents=True, exist_ok=True)
+    budget_env = {}
+    budget = os.environ.get("GW_MODEL_TURN_BUDGET", "").strip()
+    if budget:
+        budget_file = tdir / "model_budget"
+        budget_file.write_text(budget)
+        budget_env["GW_MODEL_BUDGET_FILE"] = str(budget_file)
+        print(f"[{target.target}] model-turn budget: {budget}")
     for suite, rec_dir, cls, _model in suites:
         print(f"[{target.target}] running {suite} (class {cls})...")
         # per-suite recorder dirs are wiped by the suite itself at start
         try:
             code, tail = sh([sys.executable, str(HERE / suite)],
-                            cwd=HERE, env={"GW_TEST_DB": db_url}, timeout=900)
+                            cwd=HERE, env={"GW_TEST_DB": db_url, **budget_env}, timeout=900)
         except subprocess.TimeoutExpired:
             target.items.append(Item(suite=suite, cls=cls, severity="CRITICAL",
                                      summary=f"{suite} timed out after 900s"))
@@ -134,7 +145,7 @@ def main() -> int:
         # ---------------- LOCAL target ----------------
         if args.target in ("local", "both"):
             if args.target == "local" and http_ok("http://127.0.0.1:3000/health") and http_ok("http://127.0.0.1:5173"):
-                db_url = "postgresql://localhost/groundwork"  # dev fast loop
+                db_url = os.environ.get("GW_TEST_DB", "postgresql://localhost/groundwork")  # dev fast loop / CI DB
                 print("[local] reusing the already-running dev stack")
             else:
                 if port_busy(3000) or port_busy(5173):
@@ -202,6 +213,14 @@ def main() -> int:
         for s in (local_stack, main_stack):
             if s:
                 s.teardown()
+
+    # PROVE-RED (Phase D): a clearly-labeled synthetic critical, used ONLY to
+    # prove the notify path end to end. Never set on a real schedule.
+    if os.environ.get("GW_PROVE_RED") == "1":
+        local_report.items.append(Item(suite="prove-red", cls="meta", severity="CRITICAL",
+                                       summary="PROVE-RED seeded critical - this run exists to prove the notify path fires",
+                                       repro="dispatched with prove_red=true; not a product finding"))
+        print("PROVE-RED: seeded a synthetic critical to exercise the notify path")
 
     # ---------------- report ----------------
     if args.target == "main" and main_report is not None:

@@ -23,7 +23,7 @@ import time
 
 from playwright.async_api import async_playwright
 
-from _runner import Recorder, api, launch, mail_clear, new_page, provision_admin
+from _runner import Recorder, api, launch, mail_clear, model_budget_take, new_page, provision_admin
 
 rec = Recorder("suite_s")
 STAMP = str(int(time.time()))
@@ -103,8 +103,14 @@ async def main() -> int:
         # in fallback, and per-scenario routing CANNOT be judged - record
         # BLOCKED loudly rather than red on answers the model never gave.
         blocked = False
-        c1 = api("POST", "/entry/classify-intent", {"description": ROUTES[0][1]})
-        c2 = api("POST", "/entry/classify-intent", {"description": ROUTES[14][1]})
+        if not model_budget_take(2):
+            rec.record("S2", "SKIPPED_BUDGET", "routing sweep skipped: GW_MODEL_TURN_BUDGET exhausted")
+            blocked = True
+        if blocked:
+            c1 = c2 = (0, None)
+        else:
+            c1 = api("POST", "/entry/classify-intent", {"description": ROUTES[0][1]})
+            c2 = api("POST", "/entry/classify-intent", {"description": ROUTES[14][1]})
         s1 = (c1[1] or {}).get("scenario") if isinstance(c1[1], dict) else None
         s2x = (c2[1] or {}).get("scenario") if isinstance(c2[1], dict) else None
         if c1[0] == 200 and c2[0] == 200 and s1 is not None and s1 == s2x:
@@ -115,6 +121,9 @@ async def main() -> int:
         for enum, phrase, canonical in ROUTES:
             if blocked:
                 break
+            if not model_budget_take():
+                rec.record("S2", "SKIPPED_BUDGET", f"routing probe for {enum} skipped: GW_MODEL_TURN_BUDGET exhausted")
+                continue
             code, res = api("POST", "/entry/classify-intent", {"description": phrase})
             if provider_down(code, res):
                 rec.record("S2", "BLOCKED", "classify-intent unreachable (AI provider) - routing sweep skipped",
@@ -135,6 +144,9 @@ async def main() -> int:
         # ---- S3: every scenario's pack produces an opener -------------------
         if not blocked:
             for enum in sorted(VALID_ENUMS):
+                if not model_budget_take():
+                    rec.record("S3", "SKIPPED_BUDGET", f"opener for {enum} skipped: GW_MODEL_TURN_BUDGET exhausted")
+                    continue
                 code, res = api("POST", "/entry/opener", {"scenario": enum})
                 if provider_down(code, res):
                     rec.record("S3", "BLOCKED", "opener unreachable (AI provider) - pack sweep skipped",

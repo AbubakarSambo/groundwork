@@ -91,7 +91,8 @@ def render(local: TargetReport, main: TargetReport | None, selftest_result: dict
     bit = selftest_result.get("all_bit", False)
     lines.append(f"## Self-test: {'ALL GUARDS BIT' if bit else 'GUARD FAILURE - RUN UNTRUSTWORTHY'}")
     for g in selftest_result.get("guards", []):
-        lines.append(f"- {'BIT' if g['bit'] else 'DID NOT BITE'}: {g['name']}")
+        state = "BIT" if g["bit"] else ("SKIPPED (env): " + g.get("skipped", "") if g.get("bit") is None else "DID NOT BITE")
+        lines.append(f"- {state}: {g['name']}" if not state.startswith("SKIPPED") else f"- {state} - {g['name']}")
     lines.append("")
 
     def emit(target: TargetReport):

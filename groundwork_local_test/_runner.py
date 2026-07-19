@@ -172,6 +172,28 @@ def api(method: str, path: str, body: dict | None = None, token: str | None = No
     return http_json(method, f"{API_BASE}{path}", body, token)
 
 
+# ---- model-turn budget (overnight Phase C) ----------------------------------
+# The orchestrator seeds a counter file and points GW_MODEL_BUDGET_FILE at it;
+# every model-driven call in a suite takes from it first. When the budget is
+# exhausted the caller records SKIPPED_BUDGET - never a failure, never silent.
+# Suites run sequentially under the orchestrator, so plain file I/O is
+# race-free. Without the env var (dev runs, the PR gate) the budget is
+# unlimited and this is a no-op.
+
+def model_budget_take(n: int = 1) -> bool:
+    path = os.environ.get("GW_MODEL_BUDGET_FILE")
+    if not path:
+        return True
+    try:
+        remaining = int(Path(path).read_text().strip() or "0")
+    except Exception:
+        return True  # unreadable budget file must not kill a suite
+    if remaining < n:
+        return False
+    Path(path).write_text(str(remaining - n))
+    return True
+
+
 # ---- mailcatcher ------------------------------------------------------------
 
 def mail_clear():
