@@ -49,13 +49,14 @@ class Guard:
     """One break -> expect-red -> restore -> expect-green cycle."""
 
     def __init__(self, name: str, suite: str, brk, restore, env: dict | None = None,
-                 fast_env: dict | None = None):
+                 fast_env: dict | None = None, needs_model: bool = False):
         self.name = name
         self.suite = suite
         self.brk = brk
         self.restore = restore
         self.env = env or {}
         self.fast_env = fast_env or {}
+        self.needs_model = needs_model
 
     def check(self) -> dict:
         bit = False
@@ -66,7 +67,37 @@ class Guard:
         finally:
             if self.restore:
                 self.restore(ctx if 'ctx' in dir() else None)
+        # HONEST ENV-SKIP: a guard whose detector needs a live model cannot be
+        # judged where the provider is unreachable (CI without credentials).
+        # That is an environment limit, not a rotted guard - report SKIPPED
+        # (excluded from all_bit) rather than a false NO BITE that would abort
+        # every nightly run.
+        if not bit and self.needs_model and provider_unreachable(self.suite):
+            return {"name": self.name, "suite": self.suite, "bit": None,
+                    "skipped": "provider unreachable in this environment"}
         return {"name": self.name, "suite": self.suite, "bit": bit}
+
+
+
+
+def provider_unreachable(suite_file: str) -> bool:
+    """True when the suite's own findings say its model legs were BLOCKED
+    because the AI provider is unreachable - the guard is then unjudgeable
+    here, not broken."""
+    import json
+    rec_dir = {"run_suite_a_adversarial.py": "suite_a", "run_suite_s_scenarios.py": "suite_s"}.get(suite_file)
+    if not rec_dir:
+        return False
+    f = HERE / "results" / rec_dir / "findings.json"
+    if not f.exists():
+        return False
+    try:
+        rows = json.loads(f.read_text())
+        rows = rows if isinstance(rows, list) else rows.get("findings", [])
+    except Exception:
+        return False
+    return any(r.get("severity") == "BLOCKED" and "provider" in (r.get("summary", "") + r.get("check", "")).lower()
+               for r in rows)
 
 
 # ---- the sabotages (each one proven live during the build cycle) ------------
@@ -226,7 +257,7 @@ GUARDS = [
           "run_suite_a_adversarial.py", break_mail_emdash_start, break_mail_emdash_stop),
     Guard("class 3 detector wiring: banned-phrase injection reds on a live reply",
           "run_suite_a_adversarial.py", break_banned_phrase_start, noop,
-          env={"GW_A_EXTRA_BANNED": "the"}),
+          env={"GW_A_EXTRA_BANNED": "the"}, needs_model=True),
 ]
 
 
@@ -237,7 +268,7 @@ def run_selftest(db_url: str | None = None) -> dict:
     for g in GUARDS:
         results.append(g.check())
     results.append(dom_read_guard())
-    all_bit = all(r["bit"] for r in results)
+    all_bit = all(r["bit"] is not False for r in results)
     return {"all_bit": all_bit, "guards": results}
 
 
