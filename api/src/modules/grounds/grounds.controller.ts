@@ -106,6 +106,16 @@ export class GroundsController {
     return this.grounds.addLeadContext(id, userId, dto);
   }
 
+  @Post(':id/closing-round')
+  @ApiOperation({ summary: "Begin the closing round: flag every participant's next session as final (initiator only)" })
+  async beginClosingRound(
+    @Param('id') id: string,
+    @CurrentUser('organizationId') organizationId: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.grounds.beginClosingRound(id, organizationId, userId);
+  }
+
   @Post(':id/activate')
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Activate the ground after the report is ready (starts billing)' })

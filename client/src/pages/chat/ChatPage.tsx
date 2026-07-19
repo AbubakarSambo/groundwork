@@ -100,6 +100,7 @@ export function ChatPage() {
   const groundLabel: string   = (location.state as any)?.groundLabel ?? ''
   const [groundId, setGroundId] = useState<string | undefined>((location.state as any)?.groundId)
   const isInitiator: boolean  = (location.state as any)?.isInitiator ?? false
+  const isFinalSession: boolean = (location.state as any)?.isFinal ?? false
 
   const [msgs, setMsgs]               = useState<Msg[]>([])
   const [displayedMsgs, setDisplayedMsgs] = useState<Msg[]>([])
@@ -313,7 +314,9 @@ export function ChatPage() {
     setPasteLabel('')
   }
 
-  const privacyLabel = `Session ${sessionNumber} · Your words are private until you both activate the report.`
+  const privacyLabel = isFinalSession
+    ? `Closing session ${sessionNumber} · This is the last word on the record. Take the time to be thorough - what you document here is what the final report weighs.`
+    : `Session ${sessionNumber} · Your words are private until you both activate the report.`
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
@@ -321,7 +324,9 @@ export function ChatPage() {
       <div className="gw-hdr">
         <div>
           <div className="gw-logo">{groundLabel || user?.firstName || 'Your session'}</div>
-          <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>Session {sessionNumber} · Private</div>
+          <div style={{ fontSize: 11, color: isFinalSession ? '#8A5C1A' : 'var(--gw-muted)', fontWeight: isFinalSession ? 700 : 400 }}>
+            {isFinalSession ? `Closing session ${sessionNumber} · your final account` : `Session ${sessionNumber} · Private`}
+          </div>
         </div>
         <button className="gw-back" onClick={() => navigate('/grounds')}>← Grounds</button>
       </div>

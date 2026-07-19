@@ -502,7 +502,7 @@ export class GroundsService {
 
   async get(id: string, organizationId: string, requestingUserId?: string) {
     // Primary lookup by org - works for org members and the initiator.
-    const CHECKIN_SELECT = { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, availableFrom: true, specificityLevel: true, recallConfidence: true, specificityDimensions: true } as const;
+    const CHECKIN_SELECT = { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, availableFrom: true, isFinal: true, specificityLevel: true, recallConfidence: true, specificityDimensions: true } as const;
 
     let ground = await this.prisma.ground.findFirst({
       where: { id, organizationId },
@@ -898,6 +898,43 @@ export class GroundsService {
    * Activate a ground. Moves status directly to ACTIVE with no payment gate.
    * Reports are generated and released automatically after each session completes.
    */
+  /** Begin the closing round: flag every participant's NEXT session as final
+   * (creating it if none is open). Initiator only. Same conversation format -
+   * the flag changes the opener, the thoroughness framing, and makes the
+   * final report read the whole arc. */
+  async beginClosingRound(groundId: string, organizationId: string, userId: string) {
+    const ground = await this.prisma.ground.findFirst({
+      where: { id: groundId, organizationId },
+      include: { participants: true },
+    });
+    if (!ground) throw new NotFoundException('Ground not found');
+    if (ground.initiatorId !== userId) throw new ForbiddenException('Only the initiator can begin the closing round');
+    const terminal = ['RESOLVED', 'CLOSED', 'STALLED'];
+    if (terminal.includes(ground.status as string)) throw new BadRequestException('This ground has already ended');
+
+    let flagged = 0;
+    for (const p of ground.participants) {
+      const open = await this.prisma.checkIn.findFirst({
+        where: { groundId, participantId: p.id, status: { in: ['NOT_STARTED', 'IN_PROGRESS'] as any } },
+        orderBy: { sessionNumber: 'asc' },
+      });
+      if (open) {
+        await this.prisma.checkIn.update({ where: { id: open.id }, data: { isFinal: true } });
+      } else {
+        const last = await this.prisma.checkIn.findFirst({
+          where: { groundId, participantId: p.id },
+          orderBy: { sessionNumber: 'desc' },
+          select: { sessionNumber: true },
+        });
+        await this.prisma.checkIn.create({
+          data: { groundId, participantId: p.id, sessionNumber: (last?.sessionNumber ?? 0) + 1, status: 'NOT_STARTED' as any, isFinal: true },
+        });
+      }
+      flagged += 1;
+    }
+    return { groundId, closingRound: true, participantsFlagged: flagged };
+  }
+
   async activate(groundId: string, organizationId: string) {
     const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId }, include: { report: true } });
     if (!ground) throw new NotFoundException('Ground not found');
