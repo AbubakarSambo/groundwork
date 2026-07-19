@@ -89,6 +89,12 @@ class Stack:
             src, dst = REPO / sub / ".env", self.checkout / sub / ".env"
             if src.exists() and not dst.exists():
                 shutil.copy(src, dst)
+        # the AI provider reads a service-account FILE from api/credentials/
+        # (gitignored) - without it the MAIN target's model legs all BLOCK
+        # (the first real overnight run surfaced exactly this)
+        cred_src, cred_dst = REPO / "api" / "credentials", self.checkout / "api" / "credentials"
+        if cred_src.exists() and not cred_dst.exists():
+            shutil.copytree(cred_src, cred_dst)
         # the marketing redirect must be blank for suite runs
         cl_env = self.checkout / "client" / ".env"
         if cl_env.exists():
