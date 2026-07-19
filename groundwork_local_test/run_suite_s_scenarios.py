@@ -113,6 +113,8 @@ async def main() -> int:
                        f"both canaries -> {s1!r}")
             blocked = True
         for enum, phrase, canonical in ROUTES:
+            if blocked:
+                break
             code, res = api("POST", "/entry/classify-intent", {"description": phrase})
             if provider_down(code, res):
                 rec.record("S2", "BLOCKED", "classify-intent unreachable (AI provider) - routing sweep skipped",
