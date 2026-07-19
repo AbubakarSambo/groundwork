@@ -171,7 +171,7 @@ export function GroundParticipantPage() {
         setShowPaywall(true)
       } else {
         navigate(`/checkin/${checkIn.id}`, {
-          state: { sessionNumber: checkIn.sessionNumber, groundLabel: ground?.label, groundId: id, isInitiator: (ground?.participants ?? []).find((p: any) => p.userId === user?.id)?.partyType === 'INITIATOR' }
+          state: { sessionNumber: checkIn.sessionNumber, isFinal: (checkIn as any).isFinal ?? false, groundLabel: ground?.label, groundId: id, isInitiator: (ground?.participants ?? []).find((p: any) => p.userId === user?.id)?.partyType === 'INITIATOR' }
         })
       }
     },

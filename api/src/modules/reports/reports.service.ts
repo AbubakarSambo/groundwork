@@ -2,6 +2,8 @@ import { Injectable, NotFoundException, ForbiddenException, BadRequestException,
 import { Cron } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
+import { computeArcSignals, tierCopy, ArcSignals } from './arc-features';
+import { endStatesFor } from '../resolution/end-states';
 import { PromptsService } from '../prompts';
 import { AnthropicService } from '../conversation';
 import { EmailService } from '../email/email.service';
@@ -242,6 +244,55 @@ export class ReportsService {
     if (leadSignals.length) {
       groundContextLines.push(`LEAD PROFILE (from past grounds - use to add alignment recommendations at the end of the report):\n${leadSignals.map(s => `- ${s}`).join('\n')}`);
     }
+    // CLOSING ROUND: when every accepted party has completed a final-flagged
+    // session, the synthesis reads the WHOLE ARC. Deterministic features are
+    // computed here (never by the model); the model narrates them.
+    const arcByParticipant: Record<string, ArcSignals> = {};
+    const finalDone = await this.prisma.checkIn.findMany({
+      where: { groundId, isFinal: true, status: 'COMPLETED' as any },
+      select: { participantId: true, completedAt: true },
+    });
+    const acceptedIds = (ground.participants ?? []).filter((p) => p.userId).map((p) => p.id);
+    const closingComplete = acceptedIds.length > 0 && acceptedIds.every((id) => finalDone.some((f) => f.participantId === id));
+    if (closingComplete) {
+      for (const pid of acceptedIds) {
+        const [entries, sessions, docs] = await Promise.all([
+          this.prisma.recordEntry.findMany({
+            where: { participantId: pid, checkInId: { not: null } },
+            select: { type: true, recallBased: true, dimensionThreadKey: true, checkIn: { select: { sessionNumber: true } } },
+          }),
+          this.prisma.checkIn.findMany({
+            where: { participantId: pid },
+            orderBy: { sessionNumber: 'asc' },
+            select: { sessionNumber: true, isFinal: true, completedAt: true },
+          }),
+          this.prisma.groundDocument.findMany({ where: { groundId, participantId: pid }, select: { createdAt: true } }),
+        ]);
+        arcByParticipant[pid] = computeArcSignals({
+          entries: entries.map((e) => ({
+            sessionNumber: e.checkIn?.sessionNumber ?? 0,
+            type: e.type as string,
+            recallBased: e.recallBased,
+            threadKey: e.dimensionThreadKey,
+          })),
+          sessions: sessions.map((x) => ({ sessionNumber: x.sessionNumber, isFinal: (x as any).isFinal, completedAt: x.completedAt })),
+          docs,
+          finalCompletedAt: finalDone.find((f) => f.participantId === pid)?.completedAt ?? null,
+        });
+      }
+      const endStates = endStatesFor(ground.scenario).map((o) => o.label).join(' / ');
+      const arcLines = Object.entries(arcByParticipant).map(([pid, sig]) => {
+        const label = (ground.participants ?? []).find((p) => p.id === pid)?.email ?? pid;
+        // The shared report gets record-shape language only. The negative
+        // tier's advisory copy goes to the admin surface, never in here.
+        return `- ${label}: ${tierCopy(sig.tier).shared} (record shape: ${sig.f1_concentration.detail}; ${sig.f5_evidenceTiming.detail})`;
+      });
+      groundContextLines.push(`CLOSING ROUND - THIS IS THE FINAL REPORT. Structure the synthesis per goal as: what was AGREED (the target on record) -> what was DELIVERED (the final accounts) -> WHAT THE RECORD SHOWS OVER TIME. Use the arc lines below verbatim as the over-time basis - do not soften or contradict them, and never speculate about anyone's intent:
+${arcLines.join('\n')}
+
+Close the report by framing - neutrally, without recommending one - the choice now in front of the parties among this ground's end states: ${endStates}. The resolution step is where they choose together.`);
+    }
+
     const groundContextHeader = groundContextLines.length
       ? `GROUND CONTEXT (set before any check-in - use to frame the synthesis):\n${groundContextLines.join('\n')}\n\n`
       : '';
@@ -755,6 +806,10 @@ export class ReportsService {
         engagement: enrichedEngagement as any,
         inferences: inferences as any,
         promptVersionId: synthesisVersion.id,
+        finalSynthesis: (Object.keys(arcByParticipant).length
+          ? { closingComplete: true, tiers: Object.fromEntries(Object.entries(arcByParticipant).map(([pid, s2]) => [pid, s2.tier])), endStates: endStatesFor(ground.scenario).map((o) => ({ value: o.value, label: o.label })) }
+          : undefined) as any,
+        arcSignals: (Object.keys(arcByParticipant).length ? arcByParticipant : undefined) as any,
         releasedAt: null,
       },
       update: {
@@ -765,6 +820,10 @@ export class ReportsService {
         engagement: enrichedEngagement as any,
         inferences: inferences as any,
         promptVersionId: synthesisVersion.id,
+        finalSynthesis: (Object.keys(arcByParticipant).length
+          ? { closingComplete: true, tiers: Object.fromEntries(Object.entries(arcByParticipant).map(([pid, s2]) => [pid, s2.tier])), endStates: endStatesFor(ground.scenario).map((o) => ({ value: o.value, label: o.label })) }
+          : undefined) as any,
+        arcSignals: (Object.keys(arcByParticipant).length ? arcByParticipant : undefined) as any,
       },
     });
 
@@ -942,7 +1001,25 @@ export class ReportsService {
       ? (() => { try { return JSON.parse(participant.soloArtifact); } catch { return null; } })()
       : null;
 
-    return { ...ground.report, activated: true, postReportGuide, soloArtifact };
+    // The arc ADVISORY is a reviewer flag, never part of the shared report:
+    // only the initiator / org admin sees it, and only when the negative tier
+    // fired. Participants receive the neutral record-shape line inside the
+    // report body itself; arcSignals never leave the admin surface.
+    const base: any = { ...ground.report, activated: true, postReportGuide, soloArtifact };
+    if (!isInitiator && !isOrgAdmin) {
+      delete base.arcSignals;
+    } else if (base.arcSignals && typeof base.arcSignals === 'object') {
+      const advisories = Object.entries(base.arcSignals as Record<string, any>)
+        .filter(([, sig]) => sig?.tier === 'CONCENTRATED_FINISH')
+        .map(([pid, sig]) => ({
+          participantId: pid,
+          email: ground.participants.find((p) => p.id === pid)?.email ?? null,
+          note: 'Most of the delivery record for this party appears only in the closing session, without earlier support in the record. Worth asking about the history before treating the final account as settled.',
+          features: [sig.f1_concentration, sig.f2_lateUnsupported, sig.f4_cadenceShape, sig.f5_evidenceTiming].filter((f: any) => f?.fired).map((f: any) => f.detail),
+        }));
+      if (advisories.length) base.arcAdvisories = advisories;
+    }
+    return base;
   }
 
   /**

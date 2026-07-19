@@ -90,6 +90,11 @@ export const groundsApi = {
   activate: (groundId: string) =>
     apiClient.post<Ground>(`/grounds/${groundId}/activate`).then(r => r.data),
 
+  // Begin the closing round: every participant's next session is flagged
+  // final (same conversation, closing framing, arc-aware final report).
+  beginClosingRound: (groundId: string) =>
+    apiClient.post<{ groundId: string; closingRound: boolean; participantsFlagged: number }>(`/grounds/${groundId}/closing-round`).then(r => r.data),
+
   resendParticipantInvite: (groundId: string, participantId: string) =>
     apiClient.post(`/grounds/${groundId}/participants/${participantId}/resend-invite`).then(r => r.data),
 

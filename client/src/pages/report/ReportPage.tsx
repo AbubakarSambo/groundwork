@@ -483,6 +483,44 @@ export function ReportPage() {
                   <div style={{ fontSize: 13, color: '#1A1916', lineHeight: 1.6 }}>{report.centralQuestion}</div>
                 </div>
               )}
+
+              {/* CLOSING ROUND: the choice now in front of the parties. Neutral
+                  framing - the report never recommends; the resolution step is
+                  where the parties choose together. */}
+              {(report as any).finalSynthesis?.closingComplete && (
+                <div style={{ marginTop: 16, background: '#FFF8EC', border: '1px solid #E4C88A', borderRadius: 8, padding: '12px 14px' }}>
+                  <SecH>The ground is closing</SecH>
+                  <div style={{ fontSize: 13, color: '#1A1916', lineHeight: 1.6, marginBottom: 8 }}>
+                    Every account is in. The choice now in front of you, together:
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+                    {((report as any).finalSynthesis.endStates ?? []).map((es: any) => (
+                      <span key={es.value} style={{ fontSize: 12, fontWeight: 600, background: 'white', border: '1px solid #E4C88A', color: '#7A4B00', borderRadius: 20, padding: '4px 12px' }}>{es.label}</span>
+                    ))}
+                  </div>
+                  <button onClick={() => navigate(`/grounds/${id}`)} style={{ padding: '9px 16px', borderRadius: 7, background: '#7A4B00', color: 'white', border: 'none', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                    Propose the end state →
+                  </button>
+                </div>
+              )}
+
+              {/* ARC ADVISORY - initiator/org-admin surface only (the server
+                  strips arcSignals for participants). A reviewer flag, not a
+                  verdict. */}
+              {Array.isArray((report as any).arcAdvisories) && (report as any).arcAdvisories.length > 0 && (
+                <div style={{ marginTop: 12, background: '#FBF3F3', border: '1px solid #E8C4C4', borderRadius: 8, padding: '12px 14px' }}>
+                  <SecH>For your review - record shape</SecH>
+                  {((report as any).arcAdvisories as any[]).map(a => (
+                    <div key={a.participantId} style={{ marginBottom: 8 }}>
+                      <div style={{ fontSize: 12.5, fontWeight: 700, color: '#791F1F' }}>{a.email ?? a.participantId}</div>
+                      <div style={{ fontSize: 12.5, color: '#5A2A2A', lineHeight: 1.55 }}>{a.note}</div>
+                      {(a.features ?? []).map((f: string, i: number) => (
+                        <div key={i} style={{ fontSize: 11.5, color: '#7A4B4B', lineHeight: 1.5, marginTop: 2 }}>· {f}</div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
           )}

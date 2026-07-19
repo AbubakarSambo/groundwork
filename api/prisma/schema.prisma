@@ -469,6 +469,9 @@ model CheckIn {
   clarificationTarget  String?  @map("clarification_target") // inference id from report.inferences being corrected
   isSelfCorrection     Boolean  @default(false) @map("is_self_correction") // true when session is correcting the participant's OWN prior session
   selfCorrectionTargetSession Int? @map("self_correction_target_session") // the session number being corrected
+  // Closing-round marker: same conversation, flagged final - the person is
+  // told to document thoroughly and the final report reads the whole arc.
+  isFinal       Boolean       @default(false) @map("is_final")
   createdAt     DateTime      @default(now()) @map("created_at")
 
   ground        Ground            @relation(fields: [groundId], references: [id], onDelete: Cascade)
@@ -528,6 +531,8 @@ model Report {
   engagement      Json? // engagement-quality + confidence header: per-party session counts, % document-backed, coverage band (B4)
   inferences      Json?     // array of { id, text, participantId, sessionNumber } — items the AI inferred rather than directly quoted
   promptVersionId String?   @map("prompt_version_id")
+  finalSynthesis  Json?     @map("final_synthesis") // closing-round report: per-goal arc lines, tier, end-state framing
+  arcSignals      Json?     @map("arc_signals") // deterministic F1-F5 features per party (advisory surface reads this)
   releasedAt      DateTime? @map("released_at") // set once, atomically, for both
   createdAt       DateTime  @default(now()) @map("created_at")
 
