@@ -30,15 +30,15 @@ sys.path.insert(0, str(Path(__file__).parent))
 from report import Item, TargetReport, load_suite_findings, render  # noqa: E402
 from selftest import run_selftest  # noqa: E402
 
-# (suite file, issue class, model-driven?)
+# (suite file, recorder dir under results/, issue class, model-driven?)
 SUITES = [
-    ("run_suite_v_vanish.py", "1", False),
-    ("run_suite_m_sessions.py", "2", False),
-    ("run_suite_b_billing.py", "2", False),
-    ("run_suite_l_layout.py", "6", False),
-    ("run_suite_s_scenarios.py", "5", True),
-    ("run_suite_r_roles.py", "4", False),
-    ("run_suite_a_adversarial.py", "3", True),
+    ("run_suite_v_vanish.py", "suite_v", "1", False),
+    ("run_suite_m_sessions.py", "suite_m", "2", False),
+    ("run_suite_b_billing.py", "suite_b", "2", False),
+    ("run_suite_l_layout.py", "suite_l", "6", False),
+    ("run_suite_s_scenarios.py", "suite_s", "5", True),
+    ("run_suite_r_roles.py", "suite_r", "4", False),
+    ("run_suite_a_adversarial.py", "suite_a", "3", True),
 ]
 
 
@@ -119,7 +119,7 @@ def main() -> int:
 
     # ---- 3. suites, severity order ------------------------------------------
     local = TargetReport(target="local", sha=sha, branch=branch)
-    for suite, cls, _model in SUITES:
+    for suite, rec_dir, cls, _model in SUITES:
         print(f"running {suite} (class {cls})...")
         try:
             code, tail = sh([sys.executable, str(HERE / suite)], timeout=600)
@@ -127,14 +127,14 @@ def main() -> int:
             local.items.append(Item(suite=suite, cls=cls, severity="CRITICAL",
                                     summary=f"{suite} timed out after 600s"))
             continue
-        local.items.extend(load_suite_findings(HERE / "results", suite.replace("run_", "").replace(".py", ""), cls))
+        local.items.extend(load_suite_findings(HERE / "results", rec_dir, cls))
         if code == 2:
             local.items.append(Item(suite=suite, cls=cls, severity="CRITICAL",
                                     summary=f"{suite} crashed (exit 2)", repro=tail[-300:]))
 
     # copy per-suite artifacts (screenshots, steps) into the run dir
-    for suite, _, _ in SUITES:
-        src = HERE / "results" / suite.replace("run_", "").replace(".py", "")
+    for _suite, rec_dir, _, _ in SUITES:
+        src = HERE / "results" / rec_dir
         if src.exists():
             shutil.copytree(src, out_dir / src.name, dirs_exist_ok=True)
 

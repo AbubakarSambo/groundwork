@@ -64,11 +64,13 @@ def load_suite_findings(results_dir: Path, suite: str, cls: str) -> list[Item]:
                      summary=f"{suite} produced no findings.json - the suite did not run",
                      repro="check the orchestrator log for this suite's stdout")]
     items: list[Item] = []
-    for row in json.loads(f.read_text()).get("findings", []):
+    raw = json.loads(f.read_text())
+    rows = raw if isinstance(raw, list) else raw.get("findings", [])
+    for row in rows:
         sev = row.get("severity", "OK")
         items.append(Item(
             suite=suite, cls=cls, severity=sev,
-            summary=row.get("summary", ""),
+            summary=row.get("check", "") or row.get("summary", ""),
             repro=row.get("detail", ""),
             screenshot=row.get("screenshot", "") or row.get("url", ""),
         ))
