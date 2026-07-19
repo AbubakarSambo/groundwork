@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { endStatesFor } from '@/lib/end-states'
 import { useMutation } from '@tanstack/react-query'
 import { groundsApi, type GroundScenario, type GroundMoment, type GroundCadence } from '@/api/grounds'
 import { billingApi, FREE_GROUND_LIMIT } from '@/api/billing'
@@ -150,36 +151,6 @@ const CADENCES: CadenceOption[] = [
   { cadence: 'MONTHLY',     label: 'Monthly',     days: 30 },
 ]
 
-interface ResolutionGroup { label: string; color: string; states: { state: string; sub: string }[] }
-const RESOLUTION_GROUPS: ResolutionGroup[] = [
-  {
-    label: 'Progress and alignment', color: '#085041',
-    states: [
-      { state: 'Alignment confirmed',          sub: 'Everyone agrees on goals, expectations, and the path forward.' },
-      { state: 'Continue current course',       sub: 'Things are working. The record confirms it.' },
-      { state: 'Realignment needed',            sub: 'A gap exists. Everyone wants to close it.' },
-      { state: 'Gaps identified and addressed', sub: 'The brief or expectations are revised based on what the record shows.' },
-      { state: 'Brief revised',                 sub: 'The original brief is updated based on what both sides have learned.' },
-      { state: 'Scope adjustment required',     sub: 'What was agreed needs to change. The record explains why.' },
-    ],
-  },
-  {
-    label: 'Recognition', color: '#8A5C1A',
-    states: [
-      { state: 'Promotion recommended',              sub: 'The contribution record supports a role change or advancement.' },
-      { state: 'Compensation review recommended',    sub: 'The record supports a salary or equity adjustment.' },
-      { state: 'Equity discussion recommended',      sub: 'Contribution has been documented. The equity conversation has a foundation.' },
-    ],
-  },
-  {
-    label: 'Resolution', color: '#791F1F',
-    states: [
-      { state: 'Additional support required', sub: 'Capacity or resource constraints identified. Support agreed.' },
-      { state: 'Escalation required',         sub: 'The situation needs to be raised to a higher level. The record supports the case.' },
-      { state: 'Mutual exit agreed',          sub: 'Everyone agrees the relationship ends here. The record belongs to all parties.' },
-    ],
-  },
-]
 
 interface Participant { email: string; role: string; note: string }
 
@@ -669,25 +640,25 @@ export function CreateGroundPage() {
         {step === 5 && (
           <div>
             <div className="gw-ttl">What does a successful outcome look like?</div>
-            <div className="gw-sub-t">Everyone involved sees this before the first session. You are not locked in - the state can be updated if the ground reveals something different.</div>
+            <div className="gw-sub-t">The end state this ground builds toward, in this situation's own terms. Everyone sees it before the first session; the ground closes only when all parties confirm the same end state - and you are not locked in if the record reveals something different.</div>
 
+            {/* The scenario's OWN end states (mirror of the server's
+                resolution vocabulary) - the start target and the closing
+                outcome now speak the same language. Existing grounds keep
+                their old generic strings untouched. */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
-              {RESOLUTION_GROUPS.map(group => (
-                <div key={group.label}>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: group.color, textTransform: 'uppercase', letterSpacing: '.06em', margin: '12px 0 6px' }}>{group.label}</div>
-                  {group.states.map(r => (
-                    <div
-                      key={r.state}
-                      style={{ display: 'flex', alignItems: 'flex-start', gap: 12, background: 'white', border: `1.5px solid ${resolutionState === r.state ? 'var(--gw-navy)' : 'var(--gw-border)'}`, borderRadius: 8, padding: '12px 14px', cursor: 'pointer', marginBottom: 6, transition: 'border-color .15s' }}
-                      onClick={() => setResolutionState(r.state)}
-                    >
-                      <div style={{ width: 16, height: 16, borderRadius: '50%', border: `1.5px solid ${resolutionState === r.state ? 'var(--gw-navy)' : 'var(--gw-border)'}`, background: resolutionState === r.state ? 'var(--gw-navy)' : 'transparent', flexShrink: 0, marginTop: 1, transition: 'all .15s' }} />
-                      <div>
-                        <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 2 }}>{r.state}</div>
-                        <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>{r.sub}</div>
-                      </div>
-                    </div>
-                  ))}
+              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-sub)', textTransform: 'uppercase', letterSpacing: '.06em', margin: '12px 0 6px' }}>Where this ground can land</div>
+              {endStatesFor(scenario).map(r => (
+                <div
+                  key={r.value}
+                  style={{ display: 'flex', alignItems: 'flex-start', gap: 12, background: 'white', border: `1.5px solid ${resolutionState === r.label ? 'var(--gw-navy)' : 'var(--gw-border)'}`, borderRadius: 8, padding: '12px 14px', cursor: 'pointer', marginBottom: 6, transition: 'border-color .15s' }}
+                  onClick={() => setResolutionState(r.label)}
+                >
+                  <div style={{ width: 16, height: 16, borderRadius: '50%', border: `1.5px solid ${resolutionState === r.label ? 'var(--gw-navy)' : 'var(--gw-border)'}`, background: resolutionState === r.label ? 'var(--gw-navy)' : 'transparent', flexShrink: 0, marginTop: 1, transition: 'all .15s' }} />
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 2 }}>{r.label}</div>
+                    {r.description && <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>{r.description}</div>}
+                  </div>
                 </div>
               ))}
             </div>
