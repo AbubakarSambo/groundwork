@@ -24,6 +24,12 @@ from pathlib import Path
 
 HERE = Path(__file__).parent.parent  # groundwork_local_test/
 PSQL = os.environ.get("GW_TEST_DB", "postgresql://localhost/groundwork")
+
+
+def set_db(url: str):
+    global PSQL
+    PSQL = url
+    os.environ["GW_TEST_DB"] = url
 MAIL = os.environ.get("MAIL_BASE", "http://127.0.0.1:1080")
 
 
@@ -133,6 +139,41 @@ def noop(_=None):
     return None
 
 
+
+
+def seed_ground_via_api() -> str | None:
+    """Fresh-DB runs have no grounds before the suites; the DOM guard seeds
+    one through the REAL entry flow (entry-save with a server draft -> magic
+    link from the mailcatcher -> verify -> commit). Pure HTTP - no shortcuts
+    into the DB."""
+    sys.path.insert(0, str(HERE))
+    from _runner import api, mail_link  # noqa: PLC0415
+    stamp = int(time.time())
+    email = f"domprobe+{stamp}@example-test.invalid"
+    code, _ = api("POST", "/auth/entry-save", {
+        "email": email,
+        "draft": {
+            "payload": {"groundLabel": f"DOM probe ground {stamp}", "contributors": []},
+            "history": [{"role": "assistant", "content": "What brings you here?"},
+                         {"role": "user", "content": "Seeding the DOM probe ground."}],
+        },
+    })
+    if code not in (200, 201):
+        return None
+    link = mail_link(email, timeout_s=20)
+    if not link or "token=" not in link:
+        return None
+    token = link.split("token=")[1].split("&")[0]
+    code, res = api("POST", "/auth/verify-email", {"token": token})
+    if code not in (200, 201) or not isinstance(res, dict):
+        return None
+    access = res.get("accessToken") or (res.get("data") or {}).get("accessToken")
+    code, res = api("POST", "/entry/commit", {"groundLabel": f"DOM probe ground {stamp}", "history": [], "contributors": []}, token=access)
+    if code not in (200, 201) or not isinstance(res, dict):
+        return None
+    return res.get("groundId")
+
+
 def dom_read_guard() -> dict:
     """Spec 1a: prove the harness reads the RENDERED DOM, not the API.
     Sabotage the DATA behind a rendered label (a ground's name) and confirm a
@@ -140,6 +181,8 @@ def dom_read_guard() -> dict:
     does not see it, the harness is reading something other than the screen."""
     marker = f"DOMPROBE-{int(time.time())}"
     gid = sql("select id from grounds order by created_at desc limit 1")
+    if not gid:
+        gid = seed_ground_via_api()
     if not gid:
         return {"name": "harness reads the rendered DOM (spec 1a)", "suite": "-", "bit": False}
     old = sql(f"select label from grounds where id='{gid}'")
@@ -187,7 +230,9 @@ GUARDS = [
 ]
 
 
-def run_selftest() -> dict:
+def run_selftest(db_url: str | None = None) -> dict:
+    if db_url:
+        set_db(db_url)
     results = []
     for g in GUARDS:
         results.append(g.check())
