@@ -160,6 +160,16 @@ async def main() -> int:
         mp = PAYWALL_PATTERNS.search(body_p)
         rec.check("M2", mp is None, "no paywall strings on the participant view",
                   f"found {mp.group(0)!r}" if mp else "", hard=True, url=page.url)
+        # The self-correction affordance is collapsed inside the "What we
+        # heard from you" artifact toggle - expand it first, or the button
+        # never renders and every future run false-crits M3 (this was
+        # previously unreachable: suite M crashed earlier at M1 whenever the
+        # reportSummary DTO drift 400'd the initiator's own commit, so this
+        # collapsed-toggle bug was never actually exercised until now).
+        toggle = page.get_by_text("What we heard from you", exact=False)
+        if await toggle.count():
+            await toggle.first.click()
+            await page.wait_for_timeout(800)
         corr_labels = ["correct it", "Correct my", "This isn't right"]
         corr = None
         for label in corr_labels:
@@ -183,7 +193,7 @@ async def main() -> int:
         # A +bounce recipient makes dev mode fire a synthetic email.bounced
         # through the REAL webhook handler - the red pill, the banner, and
         # the fix-and-resend repair must all render and work.
-        await page.goto(f"{BASE_URL}/grounds/{ground_id}")
+        await page.goto(ground_url)
         await page.wait_for_timeout(2500)
         body = await page.inner_text("body")
         rec.check("M4", ("Invite pending" in body) or ("Not started" in body) or ("Not Started" in body),
