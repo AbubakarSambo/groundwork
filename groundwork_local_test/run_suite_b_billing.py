@@ -9,6 +9,13 @@ The classes this covers, each of which really bit:
   B3. PAID METERING: only runs when BILLING_ENABLED=true in the environment;
       otherwise it records an explicit BLOCKED (an honest skip), never a
       silent pass.
+  B4. THE WRONGFUL-CHARGE CLASS: purchase-session must refuse a genuinely
+      free-tier ground - not just hide the button. The paywall TRIGGERS were
+      hidden client-side (fix/free-tier-unlimited-sessions) but the endpoint
+      itself had no isFreeGround check for a live path via a stale link or a
+      direct call. Hits POST /billing/purchase-session DIRECTLY (bypassing
+      every UI surface) against a real free-tier ground and asserts it is
+      refused with no checkoutUrl - the mechanism, not the button.
 """
 
 from __future__ import annotations
@@ -85,6 +92,7 @@ async def main() -> int:
         created = 0
         gate_hit_at = None
         gate_message = ""
+        first_free_ground_id = None
         for i in range(1, 13):  # try up to 12; the gate must bite by 11
             code, res = api("POST", "/grounds", {
                 "label": f"Gate probe {i} ({STAMP})",
@@ -92,6 +100,8 @@ async def main() -> int:
                 "moment": "STARTING",
                 "cadence": "FORTNIGHTLY",
             }, token=token)
+            if code in (200, 201) and first_free_ground_id is None:
+                first_free_ground_id = (res or {}).get("id")
             if code == 200 or code == 201:
                 created += 1
                 continue
@@ -117,6 +127,19 @@ async def main() -> int:
             rec.check("B2", surfaced is not None,
                       "the ground limit is surfaced in the create UI",
                       "API refuses but the UI shows no limit state")
+
+        # ---- B4: the wrongful-charge class -----------------------------------
+        # Direct API call, bypassing every UI surface - the mechanism itself
+        # must refuse, not just the buttons that lead to it.
+        if first_free_ground_id is None:
+            rec.record("B4", "BLOCKED", "no free-tier ground id captured from B2 to test against", "")
+        else:
+            code, res = api("POST", "/billing/purchase-session",
+                            {"groundId": first_free_ground_id, "quantity": 1}, token=token)
+            no_checkout = not (isinstance(res, dict) and res.get("checkoutUrl"))
+            rec.check("B4", code in (400, 403) and no_checkout,
+                      "purchase-session refuses a free-tier ground - no Stripe checkout created",
+                      f"HTTP {code}: {str(res)[:200]}", hard=True)
 
         # ---- B3: paid metering (env-gated, honest skip) ---------------------
         if os.environ.get("BILLING_ENABLED", "false").lower() == "true":

@@ -160,6 +160,18 @@ export class BillingService {
     const org = await this.prisma.organization.findUnique({ where: { id: organizationId } });
     if (!org) throw new NotFoundException('Organization not found');
 
+    // Free-tier grounds have UNLIMITED sessions (the advertised model - see
+    // canStartSession's isFreeGround branch above) and must never be charged,
+    // regardless of caller: this is the mechanism itself, not a UI surface -
+    // it closes the gap left when the paywall TRIGGERS were hidden client-side
+    // (fix/free-tier-unlimited-sessions) but this endpoint was never guarded,
+    // leaving a live path via a stale link or a direct call to /billing/purchase-session.
+    const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId } });
+    if (!ground) throw new NotFoundException('Ground not found');
+    if (ground.isFreeGround) {
+      throw new ForbiddenException('This ground has unlimited free sessions - nothing to purchase.');
+    }
+
     const customerId = await this.stripe.ensureCustomer(org.id, org.email ?? undefined, org.stripeCustomerId);
     if (customerId !== org.stripeCustomerId) {
       await this.prisma.organization.update({ where: { id: org.id }, data: { stripeCustomerId: customerId } });

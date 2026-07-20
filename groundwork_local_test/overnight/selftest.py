@@ -139,6 +139,29 @@ def break_labels_stop(proc):
                    capture_output=True)
 
 
+def break_free_ground_charge_start():
+    """Wrongful-charge signature: flip is_free_ground to false on suite B's own
+    'Gate probe' grounds while it runs, so purchase-session's isFreeGround
+    guard sees a (falsely) non-free ground and allows the charge through -
+    proving suite B's B4 tripwire is actually reading live ground state, not
+    a hardcoded assumption, the same shape as class 2's label sabotage."""
+    proc = subprocess.Popen(
+        ["bash", "-c",
+         f"END=$((SECONDS+400)); while [ $SECONDS -lt $END ]; do "
+         f"psql '{PSQL}' -qc \"update grounds set is_free_ground=false where label like 'Gate probe%';\" 2>/dev/null; "
+         f"sleep 0.3; done"],
+    )
+    return proc
+
+
+def break_free_ground_charge_stop(proc):
+    if proc:
+        proc.terminate()
+    subprocess.run(["psql", PSQL, "-qc",
+                    "update grounds set is_free_ground=true where label like 'Gate probe%';"],
+                   capture_output=True)
+
+
 def break_mail_emdash_start():
     """House-style signature: inject an em-dash email; suite A's typography
     gate over captured mail must red."""
@@ -253,6 +276,8 @@ GUARDS = [
           "run_suite_v_vanish.py", break_drafts_start, break_drafts_stop),
     Guard("class 2 wrongful-gate: '$5' in rendered content reds the tripwire",
           "run_suite_m_sessions.py", break_labels_start, break_labels_stop),
+    Guard("class 4 wrongful-charge: purchase-session allowing a flipped-non-free ground reds suite B",
+          "run_suite_b_billing.py", break_free_ground_charge_start, break_free_ground_charge_stop),
     Guard("class 3 banned-string: em-dash email reds the typography gate",
           "run_suite_a_adversarial.py", break_mail_emdash_start, break_mail_emdash_stop),
     Guard("class 3 detector wiring: banned-phrase injection reds on a live reply",
