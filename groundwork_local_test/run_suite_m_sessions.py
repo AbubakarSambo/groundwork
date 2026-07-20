@@ -71,7 +71,29 @@ async def provision_ground(browser):
     if not link:
         raise RuntimeError("no magic link for suite M initiator")
     await page.goto(link)
-    await page.get_by_text("Your ground is set up").wait_for(timeout=25000)
+    # GW-REPORTSUMMARY-DTO-DRIFT tripwire: this initiator's session was closed
+    # with a real generated report before saving, so /entry/commit carries a
+    # reportSummary payload - the exact shape that 400'd with "property
+    # reportSummary should not exist" for every committer who checked in
+    # before saving (live since e078b0d, 2026-06-24, fixed in EntryCommitDto).
+    # If that contract regresses, this magic link renders the failure screen
+    # instead of the success screen - assert the success screen explicitly,
+    # by name, rather than trusting a bare wait_for timeout to surface it.
+    try:
+        await page.get_by_text("Your ground is set up").wait_for(timeout=25000)
+        landed = True
+    except Exception:
+        landed = False
+    body = await page.inner_text("body")
+    rec.check(
+        "M1",
+        landed and "wasn't saved" not in body and "reportSummary" not in body,
+        "commit-with-reportSummary succeeds end to end (GW-REPORTSUMMARY-DTO-DRIFT)",
+        body[:400],
+        hard=True,
+    )
+    if not landed:
+        raise RuntimeError("magic link did not render the success screen - reportSummary commit likely 400'd")
     go = page.get_by_text("Go to your ground")
     await go.first.click()
     await page.wait_for_timeout(3000)
@@ -126,9 +148,9 @@ async def main() -> int:
             await page.screenshot(path=str(rec.results_dir / "returning_path.png"), full_page=True)
             await rec.step(page, "returning path: next check-in, no paywall", "persona M")
         else:
-            rec.record("M2", "FINDING", "no next-check-in affordance found on the ground page",
+            rec.check("M2", False, "the next-check-in affordance EXISTS on the ground page (hard - absence is a failure, not a shrug)",
                        f"looked for {candidates} - if the label changed, update the suite; "
-                       "if the affordance is gone, that is a product finding")
+                       "if the affordance is gone, that is a product finding", hard=True)
 
         # ---- M3: self-correction reachable (on the PARTICIPANT view, /p) ----
         ground_url = page.url.split("?")[0].rstrip("/")
@@ -154,8 +176,51 @@ async def main() -> int:
                       "self-correction opens without a 404 (the /check-in/ typo class)",
                       url=page.url, hard=True)
         else:
-            rec.record("M3", "FINDING", "no self-correction affordance found",
-                       f"looked for {corr_labels} on {page.url}")
+            rec.check("M3", False, "the self-correction affordance EXISTS (hard - absence is a failure, not a shrug)",
+                       f"looked for {corr_labels} on {page.url}", hard=True)
+
+        # ---- M4: the #52 bounce UI + tracking pills (model-free) -----------
+        # A +bounce recipient makes dev mode fire a synthetic email.bounced
+        # through the REAL webhook handler - the red pill, the banner, and
+        # the fix-and-resend repair must all render and work.
+        await page.goto(f"{BASE_URL}/grounds/{ground_id}")
+        await page.wait_for_timeout(2500)
+        body = await page.inner_text("body")
+        rec.check("M4", ("Invite pending" in body) or ("Not started" in body) or ("Not Started" in body),
+                  "tracking pills render (invited / not-started states visible per participant)",
+                  body[:150], hard=True)
+
+        bounce_email = f"m.bnc+bounce.{STAMP}@example-test.invalid"
+        add_btn = page.get_by_text("Add a contributor", exact=False)
+        if await add_btn.count():
+            await add_btn.first.click()
+            await page.wait_for_timeout(600)
+            await page.locator('input[placeholder*="name@company"]').fill(bounce_email)
+            await page.get_by_text("Send invite", exact=False).first.click()
+            await page.wait_for_timeout(3500)
+            await page.reload()
+            await page.wait_for_timeout(2500)
+            body = await page.inner_text("body")
+            rec.check("M4", "never arrived (bounced)" in body,
+                      "the bounce BANNER renders after a bounced invite (the #52 surface)",
+                      body[:200], hard=True)
+            fixbtn = page.get_by_text("Email bounced - fix & resend", exact=False)
+            rec.check("M4", await fixbtn.count() > 0,
+                      "the red 'Email bounced - fix & resend' control renders on the participant card", hard=True)
+            if await fixbtn.count():
+                await fixbtn.first.click()
+                await page.wait_for_timeout(600)
+                fixed = f"m.fixed.{STAMP}@example-test.invalid"
+                fix_input = page.locator('input[placeholder*="email" i], input[type="email"]').last
+                await fix_input.fill(fixed)
+                await fix_input.press("Enter")
+                await page.wait_for_timeout(3500)
+                await page.reload()
+                await page.wait_for_timeout(2500)
+                body = await page.inner_text("body")
+                rec.check("M4", (fixed in body) and ("never arrived (bounced)" not in body),
+                          "fix-and-resend repairs the address and clears the bounce state ON SCREEN",
+                          body[:200], hard=True)
 
         await browser.close()
     return rec.finish()

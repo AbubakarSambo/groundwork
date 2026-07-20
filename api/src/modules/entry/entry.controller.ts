@@ -2,7 +2,7 @@ import { Controller, Post, Get, Patch, Body, Query, UnauthorizedException } from
 import { Throttle } from '@nestjs/throttler';
 import { Public, CurrentUser, CurrentUserData } from '../../common';
 import { EntryService } from './entry.service';
-import { IsArray, IsEmail, IsInt, IsOptional, IsString, MaxLength, ValidateNested } from 'class-validator';
+import { IsArray, IsEmail, IsIn, IsInt, IsOptional, IsString, MaxLength, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 
 class TurnDto {
@@ -88,7 +88,25 @@ class EntryLeadDto {
   @IsOptional() @IsString() @MaxLength(2000) contextNote?: string;
 }
 
-class EntryCommitDto {
+// The committer's own private session report, sent as a narrowed summary (not
+// the full EntryReport) - entry.service.ts's commit() reads whatGroundworkSaw
+// off this to populate the ground's brief when no explicit `brief` was given.
+// This DTO was missing entirely from 2026-06-24 (e078b0d) until now: the
+// client has sent `reportSummary` (not `report`) since that commit, but this
+// class never grew a matching field, so the global ValidationPipe's
+// forbidNonWhitelisted rejected every commit carrying one with 400 "property
+// reportSummary should not exist" - i.e. every commit where the committer had
+// completed their own check-in session before saving. The client and service
+// were already correct; only this DTO was stale.
+class EntryReportSummaryDto {
+  @IsIn(['Unresolved', 'Mixed', 'Emerging', 'Clear', 'Aligned'])
+  alignmentStatus: 'Unresolved' | 'Mixed' | 'Emerging' | 'Clear' | 'Aligned';
+
+  @IsString()
+  whatGroundworkSaw: string;
+}
+
+export class EntryCommitDto {
   @IsString() groundLabel: string;
   @IsOptional() @IsString() orgName?: string;
   @IsOptional() @IsString() scenario?: string;
@@ -100,6 +118,11 @@ class EntryCommitDto {
   // Coordinator/lead path only: the onboarding context, used as the ground's
   // brief since the coordinator has no session transcript to derive one from.
   @IsOptional() @IsString() @MaxLength(4000) brief?: string;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => EntryReportSummaryDto)
+  reportSummary?: EntryReportSummaryDto;
 
   @IsOptional()
   @ValidateNested()
