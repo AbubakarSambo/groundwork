@@ -100,10 +100,19 @@ export function MagicVerifyPage() {
       }
     } catch (err: any) {
       const msg: string = err?.response?.data?.message ?? ''
-      if (msg.includes('NO_ENTRY_SESSION')) {
-        // Nothing to commit anywhere. For someone who never ran the entry flow
-        // this is a plain sign-in; for someone who DID (they have local
-        // traces), it is the explicit lost-session state.
+      // NO_ENTRY_SESSION: nothing to commit anywhere - no draft, no history.
+      // COMMIT_IN_PROGRESS: a concurrent commit attempt for this same user
+      // claimed the draft and never produced a ground (entry.service.ts's
+      // awaitConsumedDraftGround gives up after ~5s) - for someone with no
+      // local entry intent (an invited participant or an existing user just
+      // signing in via a magic link, neither of whom ever had anything to
+      // commit in the first place) this is the SAME "nothing for me here"
+      // case as NO_ENTRY_SESSION, not a real failure. Both must land the
+      // same way: a plain sign-in for someone who never ran the entry flow,
+      // the explicit lost-session state for someone who did - never the
+      // initiator-only "your ground wasn't saved" copy, which is nonsensical
+      // for anyone who was never an initiator.
+      if (msg.includes('NO_ENTRY_SESSION') || msg.includes('COMMIT_IN_PROGRESS')) {
         if (hadEntryIntent) return { kind: 'noSession' }
         const isNew = !user.jobTitle && user.role === 'ADMIN'
         return { kind: 'redirect', to: isNew ? '/setup' : '/grounds' }
