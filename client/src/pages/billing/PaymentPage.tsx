@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { billingApi } from '@/api/billing'
+import { groundsApi } from '@/api/grounds'
 import { toast } from 'sonner'
 
 export function PaymentPage() {
@@ -14,6 +15,16 @@ export function PaymentPage() {
     (location.state as any)?.groundId ?? params.get('groundId') ?? undefined
   const groundName: string | undefined =
     (location.state as any)?.groundName ?? params.get('groundName') ?? undefined
+
+  // Free-tier grounds have unlimited sessions - never show "add sessions here"
+  // for one. The backend already refuses the charge itself (the mechanism);
+  // this is the cleaner-UX layer so a free-tier admin never sees a payment
+  // form for a ground that has nothing to buy.
+  const { data: ground, isLoading: groundLoading } = useQuery({
+    queryKey: ['ground', groundId],
+    queryFn: () => groundsApi.get(groundId!),
+    enabled: !!groundId,
+  })
 
   const [count, setCount] = useState(1)
   const [showCode, setShowCode] = useState(false)
@@ -61,48 +72,62 @@ export function PaymentPage() {
           Back
         </div>
 
-        <div style={{ fontSize: 22, fontWeight: 800, color: '#0A1628', marginBottom: 4 }}>Add sessions to this ground</div>
+        <div style={{ fontSize: 22, fontWeight: 800, color: '#0A1628', marginBottom: 4 }}>
+          {ground?.isFreeGround ? 'This ground' : 'Add sessions to this ground'}
+        </div>
         {groundName && (
           <div style={{ fontSize: 13, color: '#6B6560', marginBottom: 20 }}>{groundName}</div>
         )}
         {!groundName && <div style={{ marginBottom: 20 }} />}
 
-        {/* Free session notice */}
-        <div style={{ background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 10, padding: '12px 16px', marginBottom: 14 }}>
-          <div style={{ fontSize: 13, color: '#085041', lineHeight: 1.6 }}>
-            <strong>First session is always free.</strong> Add sessions here when your free session is used.
+        {groundLoading ? (
+          <div style={{ fontSize: 13, color: '#9B9590', padding: '20px 0' }}>Loading...</div>
+        ) : ground?.isFreeGround ? (
+          <div style={{ background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 10, padding: '14px 16px' }}>
+            <div style={{ fontSize: 13, color: '#085041', lineHeight: 1.6 }}>
+              <strong>This ground has unlimited free sessions.</strong> There is nothing to purchase here - just continue from the ground page.
+            </div>
           </div>
-        </div>
+        ) : (
+          <>
+            {/* Free session notice */}
+            <div style={{ background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 10, padding: '12px 16px', marginBottom: 14 }}>
+              <div style={{ fontSize: 13, color: '#085041', lineHeight: 1.6 }}>
+                <strong>First session is always free.</strong> Add sessions here when your free session is used.
+              </div>
+            </div>
 
-        {/* Session purchase */}
-        <div style={{ background: 'white', border: '0.5px solid #E2E0DB', borderRadius: 10, padding: 18, marginBottom: 14 }}>
+            {/* Session purchase */}
+            <div style={{ background: 'white', border: '0.5px solid #E2E0DB', borderRadius: 10, padding: 18, marginBottom: 14 }}>
 
-          <div style={{ marginBottom: 14 }}>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#6B6560', marginBottom: 6 }}>
-              How many sessions?
-            </label>
-            <input
-              type="number"
-              min={1}
-              max={20}
-              value={count}
-              onChange={e => setCount(Math.min(20, Math.max(1, Number(e.target.value))))}
-              style={{ width: '100%', padding: '9px 11px', fontSize: 13, fontFamily: 'inherit', border: '1px solid #E2E0DB', borderRadius: 7, background: '#F5F3EF', color: '#0A1628', outline: 'none', boxSizing: 'border-box' }}
-            />
-          </div>
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#6B6560', marginBottom: 6 }}>
+                  How many sessions?
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={20}
+                  value={count}
+                  onChange={e => setCount(Math.min(20, Math.max(1, Number(e.target.value))))}
+                  style={{ width: '100%', padding: '9px 11px', fontSize: 13, fontFamily: 'inherit', border: '1px solid #E2E0DB', borderRadius: 7, background: '#F5F3EF', color: '#0A1628', outline: 'none', boxSizing: 'border-box' }}
+                />
+              </div>
 
-          <div style={{ fontSize: 13, color: '#4A4540', lineHeight: 1.6, marginBottom: 16 }}>
-            {count} session{count !== 1 ? 's' : ''} × $5 = <strong>${total}</strong>
-          </div>
+              <div style={{ fontSize: 13, color: '#4A4540', lineHeight: 1.6, marginBottom: 16 }}>
+                {count} session{count !== 1 ? 's' : ''} × $5 = <strong>${total}</strong>
+              </div>
 
-          <button
-            onClick={() => checkout.mutate()}
-            disabled={checkout.isPending}
-            style={{ width: '100%', padding: '11px', borderRadius: 7, background: '#0A1628', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: checkout.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: checkout.isPending ? 0.7 : 1 }}
-          >
-            {checkout.isPending ? 'Redirecting to Stripe...' : `Pay $${total} - ${count} session${count !== 1 ? 's' : ''}`}
-          </button>
-        </div>
+              <button
+                onClick={() => checkout.mutate()}
+                disabled={checkout.isPending}
+                style={{ width: '100%', padding: '11px', borderRadius: 7, background: '#0A1628', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: checkout.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: checkout.isPending ? 0.7 : 1 }}
+              >
+                {checkout.isPending ? 'Redirecting to Stripe...' : `Pay $${total} - ${count} session${count !== 1 ? 's' : ''}`}
+              </button>
+            </div>
+          </>
+        )}
 
         {/* Contributor code */}
         <div style={{ background: 'white', border: '0.5px solid #E2E0DB', borderRadius: 10, padding: 18, marginBottom: 16 }}>
