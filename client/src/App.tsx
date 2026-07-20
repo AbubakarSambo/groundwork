@@ -53,6 +53,23 @@ function RequireAuth({ children }: { children: JSX.Element }) {
   return children
 }
 
+// A non-platform-admin who reaches /admin today sees the page mount and
+// render its own "you are not an admin" denial message - the panel's
+// existence and shape are visible before the denial fires. Redirect at the
+// route level instead, so a non-admin never sees the admin page at all.
+function RequirePlatformAdmin({ children }: { children: JSX.Element }) {
+  const isAuthenticated = useAuthStore(s => s.isAuthenticated)
+  const isPlatformAdmin = useAuthStore(s => s.user?.isPlatformAdmin)
+  if (!isAuthenticated) {
+    const dest = window.location.pathname + window.location.search
+    return <Navigate to={`/auth?from=${encodeURIComponent(dest)}`} replace />
+  }
+  if (!isPlatformAdmin) {
+    return <Navigate to="/grounds" replace />
+  }
+  return children
+}
+
 function RootRoute() {
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
   if (!isAuthenticated) {
@@ -119,8 +136,8 @@ export default function App() {
             <Route path="/settings" element={<RequireAuth><SettingsPage /></RequireAuth>} />
             <Route path="/org/members" element={<RequireAuth><OrgMembersPage /></RequireAuth>} />
             <Route path="/org/roster" element={<RequireAuth><OrgRosterPage /></RequireAuth>} />
-            <Route path="/admin" element={<RequireAuth><AdminPage /></RequireAuth>} />
-            <Route path="/admin/dashboard" element={<RequireAuth><AdminDashboardPage /></RequireAuth>} />
+            <Route path="/admin" element={<RequirePlatformAdmin><AdminPage /></RequirePlatformAdmin>} />
+            <Route path="/admin/dashboard" element={<RequirePlatformAdmin><AdminDashboardPage /></RequirePlatformAdmin>} />
 
             {/* Any unmatched path renders a real not-found page rather than
                 re-entering RootRoute, which for a logged-out visitor can hard-
