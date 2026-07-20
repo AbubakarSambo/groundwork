@@ -20,7 +20,7 @@ concurrency:
 jobs:
   persona:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 75 # --target both boots + suites twice (LOCAL then MAIN), not once
     permissions:
       contents: read
       issues: write # to open/update the findings issue
@@ -41,7 +41,6 @@ jobs:
           --health-retries 10
 
     env:
-      DATABASE_URL: postgresql://groundwork:groundwork@127.0.0.1:5432/groundwork_test
       NODE_ENV: development
       PORT: "3000"
       CORS_ORIGINS: http://127.0.0.1:5173
@@ -58,6 +57,14 @@ jobs:
       GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
       # VITE_API_URL is deliberately UNSET: the Vite dev proxy keeps every
       # API call same-origin (no CORS), matching how the suites run locally.
+      # --target both owns every DB itself (fresh_db() per target, spec 0) via
+      # bare `createdb`/`dropdb` - those read PG* env vars, not DATABASE_URL,
+      # so they must point at this job's postgres service explicitly or they
+      # try a local Unix socket that does not exist in this container.
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      PGUSER: groundwork
+      PGPASSWORD: groundwork
 
     steps:
       - uses: actions/checkout@v4
@@ -84,12 +91,9 @@ jobs:
           pip install playwright aiosmtpd
           python -m playwright install --with-deps chromium
 
-      # --- Database ---
-      - name: Apply migrations
-        working-directory: api
-        run: npx prisma migrate deploy
-
-      # --- Boot the stack ---
+      # --- Mail catcher: shared across both targets, idempotent (ensure_mailcatcher()
+      # in the orchestrator would start it anyway - pre-starting it here just
+      # separates a mailcatcher-specific failure from a generic environment abort).
       - name: Start mail catcher
         working-directory: groundwork_local_test
         run: |
@@ -101,41 +105,19 @@ jobs:
           done
           echo "::error::mailcatcher never became healthy"; cat mailcatcher.log; exit 1
 
-      - name: Start API
-        working-directory: api
-        run: |
-          npm run build
-          node dist/main > api.log 2>&1 &
-          for i in $(seq 1 40); do
-            curl -sf http://127.0.0.1:3000/health && exit 0 || sleep 2
-          done
-          echo "::error::API never became healthy"; tail -50 api.log; exit 1
-
-      - name: Start client
-        working-directory: client
-        run: |
-          npm run dev -- --port 5173 --host 127.0.0.1 > client.log 2>&1 &
-          for i in $(seq 1 40); do
-            curl -sf http://127.0.0.1:5173 && exit 0 || sleep 2
-          done
-          echo "::error::client never became healthy"; tail -50 client.log; exit 1
-
-      # --- HARD GATE: the loop must provably work before any persona "runs".
-      # No continue-on-error: if preflight fails, this run FAILS. A suite that
-      # cannot run must never report green.
-      - name: Preflight (hard gate)
-        working-directory: groundwork_local_test
-        run: python preflight.py --base-url http://127.0.0.1:3000
-
-      # --- The overnight orchestrator: self-test FIRST, then every suite ---
+      # --- The overnight orchestrator: --target both owns every process and DB
+      # lifecycle itself (LOCAL then MAIN, each on a fresh DB, spec 0) - it must
+      # own ports 3000/5173 itself, so there is no separate boot/preflight step
+      # here the way --target local's fast dev loop has one. Self-test runs
+      # first against LOCAL; every suite runs against both; report prints both
+      # SHAs and the LOCAL/MAIN diff.
       - name: Overnight run
         working-directory: groundwork_local_test
         env:
           GW_MODEL_TURN_BUDGET: "80" # Phase C: an unattended run cannot burn the API budget
           GW_PROVE_RED: ${{ inputs.prove_red && '1' || '0' }}
-          GW_TEST_DB: postgresql://groundwork:groundwork@127.0.0.1:5432/groundwork_test
         run: |
-          python overnight/run_overnight.py --target local
+          python overnight/run_overnight.py --target both
 
       # --- Notify on red: critical>0, guard-no-bite, or env-abort all fail the
       #     job, and failure lands here (spec 8) ---
@@ -171,6 +153,4 @@ jobs:
           path: |
             groundwork_local_test/results/**
             groundwork_local_test/*.log
-            api/api.log
-            client/client.log
           retention-days: 14
