@@ -66,7 +66,7 @@ enum GroundStatus {
   AWAITING_LEAD // admin created this for a lead; lead invited but has not confirmed yet
   OPEN // created, parties may not all be added
   AWAITING_PARTIES // waiting on check-ins
-  REPORT_READY // both completed session 2, report locked behind paywall
+  REPORT_READY // legacy: report was ready but ground awaited manual billing activation. No longer written (since 60ce541, 2026-06-24) - report release now auto-activates straight to ACTIVE (reports.listener.ts). Retained for legacy rows + readers.
   ACTIVE // admin activated -> billing running
   PAUSED // temporarily paused (e.g. active legal proceedings detected)
   RESOLVED // both confirmed an end state

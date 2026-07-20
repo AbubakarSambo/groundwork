@@ -168,8 +168,10 @@ export class ConversationService {
    * payment - "if participant sessions are ever gated, trust collapses" - and
    * the cadence is a recommendation, not a wall, so the initiator reaches the
    * report fast. `availableFrom` is surfaced in the UI as a suggested return
-   * date only. The paywall sits solely between REPORT_READY and ACTIVE
-   * (GroundsService.activate): the report is the conversion moment, not the session.
+   * date only. (Historically a paywall sat between REPORT_READY and ACTIVE;
+   * since 60ce541 report release auto-activates straight to ACTIVE, so new
+   * grounds never pause at that gate - the report is still the conversion
+   * moment, not the session.)
    */
   async open(checkInId: string, requestingUserId: string) {
     const checkIn = await this.loadOwnedCheckIn(checkInId, requestingUserId);
