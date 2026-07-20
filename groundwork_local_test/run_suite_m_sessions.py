@@ -160,12 +160,18 @@ async def main() -> int:
         mp = PAYWALL_PATTERNS.search(body_p)
         rec.check("M2", mp is None, "no paywall strings on the participant view",
                   f"found {mp.group(0)!r}" if mp else "", hard=True, url=page.url)
-        # The self-correction affordance is collapsed inside the "What we
-        # heard from you" artifact toggle - expand it first, or the button
-        # never renders and every future run false-crits M3 (this was
-        # previously unreachable: suite M crashed earlier at M1 whenever the
+        # The self-correction affordance lives on the "Session history" tab
+        # (GroundParticipantPage.tsx defaults to the "Check-in" tab), nested
+        # inside the "What we heard from you" artifact toggle, collapsed by
+        # default - switch tabs, then expand the toggle, or the button never
+        # renders and every future run false-crits M3 (this was previously
+        # unreachable: suite M crashed earlier at M1 whenever the
         # reportSummary DTO drift 400'd the initiator's own commit, so this
-        # collapsed-toggle bug was never actually exercised until now).
+        # tab/toggle path was never actually exercised until now).
+        history_tab = page.get_by_text("Session history", exact=False)
+        if await history_tab.count():
+            await history_tab.first.click()
+            await page.wait_for_timeout(800)
         toggle = page.get_by_text("What we heard from you", exact=False)
         if await toggle.count():
             await toggle.first.click()
@@ -193,12 +199,16 @@ async def main() -> int:
         # A +bounce recipient makes dev mode fire a synthetic email.bounced
         # through the REAL webhook handler - the red pill, the banner, and
         # the fix-and-resend repair must all render and work.
+        #
+        # The tracking pills (Invite pending / Not started) are PER-PARTICIPANT
+        # delivery/progress state (GroundAdminPage.tsx) - they have nothing to
+        # render against until a contributor actually exists. provision_ground's
+        # initiator has invited nobody yet, so checking for pills before adding
+        # one is a false CRITICAL by construction, not a product bug. Check
+        # right after the contributor is added instead (this ordering bug was
+        # never exercised before either: the suite always crashed earlier).
         await page.goto(ground_url)
         await page.wait_for_timeout(2500)
-        body = await page.inner_text("body")
-        rec.check("M4", ("Invite pending" in body) or ("Not started" in body) or ("Not Started" in body),
-                  "tracking pills render (invited / not-started states visible per participant)",
-                  body[:150], hard=True)
 
         bounce_email = f"m.bnc+bounce.{STAMP}@example-test.invalid"
         add_btn = page.get_by_text("Add a contributor", exact=False)
@@ -211,6 +221,10 @@ async def main() -> int:
             await page.reload()
             await page.wait_for_timeout(2500)
             body = await page.inner_text("body")
+            rec.check("M4", ("Invite pending" in body) or ("Not started" in body) or ("Not Started" in body)
+                      or ("never arrived (bounced)" in body),
+                      "tracking pills render (invited / not-started / bounced states visible per participant)",
+                      body[:150], hard=True)
             rec.check("M4", "never arrived (bounced)" in body,
                       "the bounce BANNER renders after a bounced invite (the #52 surface)",
                       body[:200], hard=True)
