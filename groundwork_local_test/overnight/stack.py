@@ -137,12 +137,27 @@ class Stack:
 
 def fresh_db(name: str) -> str:
     """Drop + create a database; returns its URL. Spec 0: each target migrates
-    from scratch - a shared DB would make the diff meaningless."""
+    from scratch - a shared DB would make the diff meaningless.
+
+    `createdb`/`dropdb` read PGHOST/PGPORT/PGUSER/PGPASSWORD from the
+    environment, so the returned URL must be built from those same variables
+    - not from the OS user via getpass.getuser(). The two only coincide on a
+    local trust-auth Postgres where the OS user IS the DB role (that's why
+    this worked in local proof runs); in CI the runner's OS user ("runner")
+    has no matching role and no password, and prisma failed P1000
+    authentication the first time this actually ran there (--target both had
+    never executed through CI until that run surfaced it).
+    """
+    pg_user = os.environ.get("PGUSER", getpass.getuser())
+    pg_password = os.environ.get("PGPASSWORD", "")
+    pg_host = os.environ.get("PGHOST", "localhost")
+    pg_port = os.environ.get("PGPORT", "5432")
     subprocess.run(["dropdb", "--if-exists", name], capture_output=True, timeout=60)
     code = subprocess.run(["createdb", name], capture_output=True, text=True, timeout=60)
     if code.returncode != 0:
         raise RuntimeError(f"createdb {name} failed: {code.stderr[-200:]}")
-    return f"postgresql://{getpass.getuser()}@localhost/{name}"
+    auth = f"{pg_user}:{pg_password}@" if pg_password else f"{pg_user}@"
+    return f"postgresql://{auth}{pg_host}:{pg_port}/{name}"
 
 
 def prepare_main_worktree(base: Path) -> tuple[Path, str]:
