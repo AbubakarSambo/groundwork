@@ -116,10 +116,12 @@ export function GroundAdminPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['docs', id] }),
   })
 
+  const isInitiator = !!ground && user?.id === ground.initiatorId
+
   const { data: pendingRequests = [] } = useQuery({
     queryKey: ['participant-requests', id],
     queryFn: () => participantRequestsApi.list(id!),
-    enabled: !!id,
+    enabled: !!id && isInitiator,
     retry: false,
   })
 

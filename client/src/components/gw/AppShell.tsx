@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/auth'
@@ -320,6 +320,14 @@ function GroundStatusBadge({ status }: { status: string }) {
 
 export function AppSidebar() {
   const [collapsed, setCollapsed] = useState(false)
+
+  // .gw-main-content and .cg-fixed-bar live outside this component and need
+  // to offset by the sidebar's actual width, not just its expanded default,
+  // or content/fixed bars leave a gap when the sidebar is collapsed to 60px.
+  useEffect(() => {
+    document.documentElement.style.setProperty('--gw-sidebar-w', collapsed ? '60px' : '240px')
+  }, [collapsed])
+
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
   const renameRef = useRef<HTMLInputElement>(null)
@@ -614,7 +622,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         @media (min-width: 641px) {
           .gw-sidebar-desktop { display: flex !important; }
           .gw-sidebar-mobile  { display: none !important; }
-          .gw-main-content    { margin-left: 240px; min-height: 100vh; }
+          .gw-main-content    { margin-left: var(--gw-sidebar-w, 240px); min-height: 100vh; }
         }
       `}</style>
     </>

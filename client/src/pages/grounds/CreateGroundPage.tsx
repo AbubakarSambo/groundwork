@@ -402,7 +402,7 @@ export function CreateGroundPage() {
                 so the bar is FIXED to the real viewport instead. Suite L
                 enforces its visibility at 1366x768 and 1280x720. */}
             <div style={{ height: 76 }} />
-            <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, display: 'flex', justifyContent: 'center', background: 'var(--gw-bg)', borderTop: '1px solid var(--gw-border)', padding: '10px 20px', zIndex: 20 }}>
+            <div className="cg-fixed-bar" style={{ background: 'var(--gw-bg)', borderTop: '1px solid var(--gw-border)', padding: '10px 20px', zIndex: 20 }}>
               <div style={{ width: 'min(560px, 100%)' }}>
                 <button className="gw-btn" disabled={!scenario || !moment} onClick={() => setStep(2)} style={{ margin: 0 }}>Continue</button>
                 {!scenario || !moment ? (

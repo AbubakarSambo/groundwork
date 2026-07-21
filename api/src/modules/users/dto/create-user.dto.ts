@@ -14,11 +14,11 @@ export class CreateUserDto {
   @MaxLength(100)
   firstName: string;
 
-  @ApiProperty({ example: 'Lovelace' })
-  @IsNotEmpty()
+  @ApiPropertyOptional({ example: 'Lovelace' })
+  @IsOptional()
   @IsString()
   @MaxLength(100)
-  lastName: string;
+  lastName?: string;
 
   @ApiPropertyOptional({ enum: Role, default: Role.MEMBER })
   @IsOptional()

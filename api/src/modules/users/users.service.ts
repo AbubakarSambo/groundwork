@@ -54,7 +54,7 @@ export class UsersService {
           organizationId,
           email: dto.email.toLowerCase(),
           firstName: dto.firstName,
-          lastName: dto.lastName,
+          lastName: dto.lastName ?? '',
           role: (dto.role as any) ?? 'MEMBER',
           isEmailVerified: false,
           passwordHash: null,

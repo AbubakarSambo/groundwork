@@ -2,6 +2,15 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth'
 
+declare module 'axios' {
+  export interface AxiosRequestConfig {
+    // Set on requests where a 404 is an expected, caller-handled outcome
+    // (e.g. polling for a report that may not be synthesised yet) - skips
+    // the global toast so the caller's own fallback UI isn't undercut by it.
+    skipNotFoundToast?: boolean
+  }
+}
+
 // In production, use VITE_API_URL env var; in dev, use proxy
 const API_BASE_URL = import.meta.env.VITE_API_URL 
   ? `${import.meta.env.VITE_API_URL}/api/v1`
@@ -53,7 +62,7 @@ apiClient.interceptors.response.use(
       toast.error('Access denied', {
         description: 'You do not have permission to perform this action',
       })
-    } else if (error.response?.status === 404) {
+    } else if (error.response?.status === 404 && !error.config?.skipNotFoundToast) {
       toast.error('Not found', {
         description: message,
       })

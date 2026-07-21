@@ -9,7 +9,7 @@ export type ActivationStatus = {
 
 export const reportsApi = {
   get: (groundId: string) =>
-    apiClient.get<Report & { activated?: boolean }>(`/grounds/${groundId}/report`).then(r => r.data),
+    apiClient.get<Report & { activated?: boolean }>(`/grounds/${groundId}/report`, { skipNotFoundToast: true }).then(r => r.data),
 
   release: (groundId: string) =>
     apiClient.post<Report>(`/grounds/${groundId}/report/release`).then(r => r.data),

@@ -66,7 +66,7 @@ export const conversationApi = {
     apiClient.get<TranscriptResponse>(`/check-ins/${checkInId}/transcript`).then(r => r.data),
 
   artifact: (checkInId: string) =>
-    apiClient.get(`/check-ins/${checkInId}/artifact`).then(r => r.data),
+    apiClient.get(`/check-ins/${checkInId}/artifact`, { skipNotFoundToast: true }).then(r => r.data),
 
   documentReceived: (checkInId: string) =>
     apiClient.post<{ reply: string }>(`/check-ins/${checkInId}/document-received`).then(r => r.data),

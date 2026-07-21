@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Logger, Inject, forwardRef } from '@nestjs/common';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const pdfParse = require('pdf-parse') as (buf: Buffer) => Promise<{ text: string }>;
+const { PDFParse } = require('pdf-parse') as { PDFParse: new (opts: { data: Buffer }) => { getText: () => Promise<{ text: string }>; destroy: () => Promise<void> } };
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const mammoth = require('mammoth') as { extractRawText: (opts: { buffer: Buffer }) => Promise<{ value: string }> };
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -122,8 +122,8 @@ export class DocumentsService {
    */
   private async extractContent(file: Express.Multer.File): Promise<string> {
     if (file.mimetype === 'application/pdf') {
-      const result = await pdfParse(file.buffer);
-      const text = result.text?.trim() ?? '';
+      const parser = new PDFParse({ data: file.buffer });
+      const text = await parser.getText().then((r) => r.text?.trim() ?? '').finally(() => parser.destroy());
       if (text) return text;
       // Scanned/image-only PDF: fall back to vision on the raw PDF bytes.
       return this.mediaToText(file.buffer, 'application/pdf', file.originalname);

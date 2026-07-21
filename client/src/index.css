@@ -338,6 +338,13 @@ body {
 
 /* ── BODY / CONTENT ──────────────────────────────────────── */
 .gw-bd { padding: 20px 16px; flex: 1; overflow-y: auto; }
+
+/* Viewport-fixed action bar, offset to match .gw-main-content's sidebar
+   margin so it centers with the page content instead of the raw viewport. */
+.cg-fixed-bar { position: fixed; bottom: 0; left: 0; right: 0; display: flex; justify-content: center; }
+@media (min-width: 641px) {
+  .cg-fixed-bar { left: var(--gw-sidebar-w, 240px); }
+}
 .gw-ttl { font-size: 20px; font-weight: 700; margin-bottom: 6px; letter-spacing: -0.01em; color: var(--gw-text); }
 .gw-sub-t { font-size: 13px; color: var(--gw-sub); margin-bottom: 20px; line-height: 1.65; }
 .gw-sec { font-size: 11px; color: var(--gw-muted); text-transform: uppercase; letter-spacing: .06em; font-weight: 600; margin: 16px 0 8px; }
