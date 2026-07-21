@@ -178,6 +178,7 @@ export function ChatPage() {
   const complete = useMutation({
     mutationFn: () => conversationApi.complete(checkInId!),
     onSuccess: () => setCompleted(true),
+    onError: (err: any) => toast.error(err?.response?.data?.message ?? 'Could not complete this session.'),
   })
 
   const uploadDoc = useMutation({
@@ -416,6 +417,23 @@ export function ChatPage() {
                 style={{ padding: '10px 24px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 {complete.isPending ? 'Saving…' : 'Complete session ✓'}
+              </button>
+            </div>
+          )}
+          {/* Manual fallback: "done" only flips when the AI's reply happens to
+              match a fixed set of closing phrases (detectSessionComplete on
+              the backend). That heuristic can miss a legitimate closing reply,
+              leaving no way to complete. Once there's a real record built,
+              offer a manual path - the backend's own readiness gate is the
+              actual authority and returns a clear message if it's too early. */}
+          {!done && !completed && opened && msgs.filter(m => m.role === 'PERSON').length >= 3 && (
+            <div style={{ textAlign: 'center', padding: '6px 0' }}>
+              <button
+                onClick={() => complete.mutate()}
+                disabled={complete.isPending}
+                style={{ fontSize: 12, color: 'var(--gw-sub)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit' }}
+              >
+                {complete.isPending ? 'Checking…' : "Not seeing a wrap-up? Complete session"}
               </button>
             </div>
           )}
