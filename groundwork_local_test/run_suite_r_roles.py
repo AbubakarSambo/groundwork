@@ -85,6 +85,12 @@ async def main() -> int:
             rec.check("R2", not crashed and not auth_walled,
                       "the lead's link opens onto a working page (no crash, no auth wall)",
                       f"url={lead_page.url} body[:120]={body[:120]!r}", hard=True, url=lead_page.url)
+            # Class 7 deepening: arrival is not enough - the CONFIRM affordance
+            # must actually render (suite J proves clicking it works).
+            has_confirm = ("Confirm and begin" in body) or ("password" in body.lower())
+            rec.check("R2", has_confirm,
+                      "the lead's page renders the confirm affordance (or the set-password step that leads to it)",
+                      body[:200], hard=True)
             await rec.step(lead_page, "lead landed from their email", "the LEAD")
             await lead_ctx.close()
 

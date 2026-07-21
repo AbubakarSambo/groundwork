@@ -44,6 +44,7 @@ SUITES = [
     ("run_suite_s_scenarios.py", "suite_s", "5", True),
     ("run_suite_r_roles.py", "suite_r", "4", False),
     ("run_suite_a_adversarial.py", "suite_a", "3", True),
+    ("run_suite_j_journeys.py", "suite_j", "7", True),
 ]
 
 
@@ -87,8 +88,9 @@ def run_suites(target: TargetReport, suites, out_dir: Path, db_url: str):
         print(f"[{target.target}] running {suite} (class {cls})...")
         # per-suite recorder dirs are wiped by the suite itself at start
         try:
+            suite_timeout = 1800 if suite == "run_suite_j_journeys.py" else 900
             code, tail = sh([sys.executable, str(HERE / suite)],
-                            cwd=HERE, env={"GW_TEST_DB": db_url, **budget_env}, timeout=900)
+                            cwd=HERE, env={"GW_TEST_DB": db_url, **budget_env}, timeout=suite_timeout)
         except subprocess.TimeoutExpired:
             target.items.append(Item(suite=suite, cls=cls, severity="CRITICAL",
                                      summary=f"{suite} timed out after 900s"))

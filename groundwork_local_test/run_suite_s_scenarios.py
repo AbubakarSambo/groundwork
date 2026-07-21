@@ -23,7 +23,9 @@ import time
 
 from playwright.async_api import async_playwright
 
-from _runner import Recorder, api, launch, mail_clear, model_budget_take, new_page, provision_admin
+from _runner import BASE_URL as BASE_URL_ROOT, Recorder, api, launch, mail_clear, model_budget_take, new_page, provision_admin
+
+BASE_URL_START = f"{BASE_URL_ROOT}/start"
 
 rec = Recorder("suite_s")
 STAMP = str(int(time.time()))
@@ -93,6 +95,27 @@ async def main() -> int:
         rec.check("S1", not missing, "all 17 create-picker cards render with exact labels",
                   f"missing: {missing}" if missing else "", hard=True, url=page.url)
         await rec.step(page, "17-card picker", "persona S")
+
+        # ---- S1b: CLICK-PATH probes (spec 1a) - what routing RENDERS --------
+        # Clicking an entry card must open the conversation with that card's
+        # message rendered as the user's first turn. (The 16-way enum sweep
+        # below stays API-level because internal routing is not itself
+        # rendered - stated honestly rather than pretended.)
+        entry_ctx = await browser.new_context(viewport={"width": 1366, "height": 900})
+        epage = await new_page(rec, entry_ctx, "persona S (entry click)")
+        await epage.goto(f"{BASE_URL_START}")
+        await epage.wait_for_timeout(2500)
+        card = epage.get_by_text("New project", exact=True)
+        if await card.count():
+            await card.first.click()
+            await epage.wait_for_timeout(2500)
+            ebody = await epage.inner_text("body")
+            rec.check("S1b", "We are starting a new project" in ebody,
+                      "clicking an entry card RENDERS its routed message as the first turn (spec 1a click-path)",
+                      ebody[:150], hard=True)
+        else:
+            rec.check("S1b", False, "the entry 'New project' card exists to click", hard=True)
+        await entry_ctx.close()
         await browser.close()
 
         # ---- S2: classify-intent routes every scenario ----------------------

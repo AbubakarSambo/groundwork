@@ -85,7 +85,7 @@ def provider_unreachable(suite_file: str) -> bool:
     because the AI provider is unreachable - the guard is then unjudgeable
     here, not broken."""
     import json
-    rec_dir = {"run_suite_a_adversarial.py": "suite_a", "run_suite_s_scenarios.py": "suite_s"}.get(suite_file)
+    rec_dir = {"run_suite_a_adversarial.py": "suite_a", "run_suite_s_scenarios.py": "suite_s", "run_suite_j_journeys.py": "suite_j"}.get(suite_file)
     if not rec_dir:
         return False
     f = HERE / "results" / rec_dir / "findings.json"
@@ -248,6 +248,23 @@ asyncio.run(main())
     return {"name": "harness reads the rendered DOM (spec 1a)", "suite": "join page", "bit": bit}
 
 
+def break_bounce_pill_start():
+    """Bounce-UI signature: a background loop nulls invite_delivery_status so
+    the red pill/banner the M4 leg asserts can never render."""
+    proc = subprocess.Popen(
+        ["bash", "-c",
+         f"END=$((SECONDS+400)); while [ $SECONDS -lt $END ]; do "
+         f"psql '{PSQL}' -qc \"update ground_participants set invite_delivery_status=NULL where invite_delivery_status='BOUNCED';\" 2>/dev/null; "
+         f"sleep 0.4; done"],
+    )
+    return proc
+
+
+def break_bounce_pill_stop(proc):
+    if proc:
+        proc.terminate()
+
+
 GUARDS = [
     Guard("class 1 data-loss: draft deletion reds suite V (vanish signature)",
           "run_suite_v_vanish.py", break_drafts_start, break_drafts_stop),
@@ -258,6 +275,11 @@ GUARDS = [
     Guard("class 3 detector wiring: banned-phrase injection reds on a live reply",
           "run_suite_a_adversarial.py", break_banned_phrase_start, noop,
           env={"GW_A_EXTRA_BANNED": "the"}, needs_model=True),
+    Guard("class 7 transcript reader: banned-claim injection reds on REAL rendered onboarding turns",
+          "run_suite_j_journeys.py", None, None,
+          env={"GW_J_BANNED_CLAIM": "the", "GW_J_GUARD_MODE": "1"}, needs_model=True),
+    Guard("class 7 bounce UI: nulling delivery status reds the pill/banner assertions",
+          "run_suite_m_sessions.py", break_bounce_pill_start, break_bounce_pill_stop),
 ]
 
 

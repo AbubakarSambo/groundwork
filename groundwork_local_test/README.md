@@ -71,6 +71,7 @@ trigger. This finds the pricing page that is correct and incomprehensible. Run b
 | `run_suite_s_scenarios.py` | All 17 create cards render (hard); classify-intent routes every scenario; every pack produces an opener (model legs BLOCK honestly without AI creds) |
 | `run_suite_r_roles.py` | The four-role matrix: admin via magic link, LEAD confirm link from the mailcatcher in a fresh context, 4 cohort participants each landing from their own invite email |
 | `run_suite_a_adversarial.py` | Tier-1 adversarial probes (decision push at ACUTE_SHOCK, unverified claim, end intent, contradiction) + typography gates over the live page and captured emails |
+| `run_suite_j_journeys.py` | Class 7: ONE real four-role journey driven end to end (real onboarding -> the fork -> lead confirms -> participant + cohort complete -> shared report mutually revealed) + transcript-read behavioral asserts (jump-bug, action-claims, end-intent, rendered decision-push) + report-honesty via planted sentinels (false consensus, isolation, grounding) with a SELF-BITE finale every run |
 
 Findings are the product: runners exit 0 when they RAN and report via
 `results/<suite>/findings.json`; a non-zero exit means a HARD invariant broke
