@@ -184,7 +184,7 @@ export function BillingPage() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
               <div>
                 <div style={{ fontSize: 14, fontWeight: 700, color: '#0A1628' }}>Free</div>
-                <div style={{ fontSize: 12, color: '#6B6560', marginTop: 3 }}>Per-session billing. $5 per session.</div>
+                <div style={{ fontSize: 12, color: '#6B6560', marginTop: 3 }}>Up to 10 Grounds, with unlimited sessions and reports.</div>
               </div>
               <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: '#F5F3EF', color: '#9B9590' }}>
                 No subscription
@@ -197,21 +197,15 @@ export function BillingPage() {
         {!hasBillingHistory && !isSubscribed && !isPaused && (
           <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '20px 18px', marginBottom: 28, textAlign: 'center' }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: '#0A1628', marginBottom: 6 }}>
-              You have not paid yet, and that is okay.
+              Your first 10 Grounds are free.
             </div>
             <div style={{ fontSize: 13, color: '#6B6560', lineHeight: 1.65, marginBottom: 14 }}>
-              We would rather you discover whether Groundwork works for your team first. When you are ready, you can continue with more sessions or upgrade your organization.
+              Create up to 10 Grounds with unlimited sessions and reports, no card required. Subscribe when your team outgrows the free tier.
             </div>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
               <button
-                onClick={() => navigate(groundId ? `/billing/payment?groundId=${groundId}` : '/billing/payment')}
-                style={{ padding: '9px 18px', borderRadius: 7, background: '#0A1628', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
-              >
-                Buy a session ($5)
-              </button>
-              <button
                 onClick={() => document.getElementById('upgrade-section')?.scrollIntoView({ behavior: 'smooth' })}
-                style={{ padding: '9px 18px', borderRadius: 7, background: 'none', color: '#6B4FA0', fontSize: 13, fontWeight: 600, border: '1px solid #D4C8EC', cursor: 'pointer', fontFamily: 'inherit' }}
+                style={{ padding: '9px 18px', borderRadius: 7, background: '#0A1628', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 View org plans
               </button>
