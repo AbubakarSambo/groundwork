@@ -880,7 +880,7 @@ export function EntryChatPage() {
   useEffect(() => {
     if (!emailSent || !draftToken) return
     const t = setTimeout(() => {
-      entryApi.patchDraft(draftToken, {
+      const patch = {
         groundLabel: groundName || scenario || 'My first ground',
         orgName: orgName.trim() || undefined,
         cadence: cadence === 'ONE_TIME' ? 'FORTNIGHTLY' : cadence,
@@ -893,7 +893,25 @@ export function EntryChatPage() {
           if (dashIdx === -1) return { email: entry }
           return { email: entry.slice(0, dashIdx), context: entry.slice(dashIdx + 3) }
         }),
-      }).catch(() => { /* best-effort: localStorage still mirrors this */ })
+      }
+      entryApi.patchDraft(draftToken, patch).catch(() => { /* best-effort: localStorage still mirrors this */ })
+      // Keep the local commit body (gw_commit_payload) in sync with these
+      // post-email setup edits too. The server overlay lets a non-empty body
+      // field override the (fresher) draft, so a stale body groundLabel would
+      // otherwise revert the ground name to "My first ground" at commit.
+      try {
+        const raw = localStorage.getItem('gw_commit_payload')
+        if (raw) {
+          const payload = JSON.parse(raw)
+          payload.groundLabel = patch.groundLabel
+          if (patch.orgName !== undefined) payload.orgName = patch.orgName
+          if (patch.cadence !== undefined) payload.cadence = patch.cadence
+          if (patch.cadenceAnchorDay !== undefined) payload.cadenceAnchorDay = patch.cadenceAnchorDay
+          if (patch.checkInBy !== undefined) payload.checkInBy = patch.checkInBy
+          if (patch.lastCheckInBy !== undefined) payload.lastCheckInBy = patch.lastCheckInBy
+          localStorage.setItem('gw_commit_payload', JSON.stringify(payload))
+        }
+      } catch { /* */ }
     }, 800)
     return () => clearTimeout(t)
   }, [emailSent, draftToken, groundName, orgName, cadence, cadenceAnchorDay, checkInBy, lastCheckInBy, inviteNote, inviteAdded])
