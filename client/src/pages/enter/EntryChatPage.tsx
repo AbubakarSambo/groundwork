@@ -2130,9 +2130,18 @@ export function EntryChatPage() {
             </div>
             )}
 
-            <div onClick={() => setShowSave(false)} style={{ textAlign: 'center', fontSize: 12, color: '#9B9590', cursor: 'pointer', paddingTop: 4 }}>
-              {closed ? 'Close (you can reopen this from the bar below)' : 'Later'}
-            </div>
+            {closed ? (
+              <div style={{ textAlign: 'center', paddingTop: 8 }}>
+                <button onClick={() => setShowSave(false)} style={{ padding: '11px 28px', borderRadius: 8, background: '#0C447C', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
+                  Done
+                </button>
+                <div style={{ fontSize: 11.5, color: '#9B9590', paddingTop: 8 }}>You can reopen this any time from the bar below.</div>
+              </div>
+            ) : (
+              <div onClick={() => setShowSave(false)} style={{ textAlign: 'center', fontSize: 12, color: '#9B9590', cursor: 'pointer', paddingTop: 4 }}>
+                Later
+              </div>
+            )}
           </div>
         </div>
       </div>
