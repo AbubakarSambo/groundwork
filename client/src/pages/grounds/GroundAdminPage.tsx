@@ -633,17 +633,28 @@ export function GroundAdminPage() {
               {(ground.checkIns ?? []).length === 0 && (
                 <div style={{ fontSize: 13, color: 'var(--gw-muted)', textAlign: 'center', padding: 24 }}>No check-ins yet.</div>
               )}
-              {ground.checkIns?.map(ci => (
+              {ground.checkIns?.map((ci: any) => {
+                // Check-ins are per-participant-per-session, so a given session
+                // number legitimately appears once per party. Label each row
+                // with whose check-in it is, or two parties' session-1 rows read
+                // as an accidental duplicate.
+                const who = (ground.participants ?? []).find((p: any) => p.id === ci.participantId)
+                const whoLabel = who?.email ?? 'Unknown participant'
+                return (
                 <div key={ci.id} style={{ background: 'white', border: '0.5px solid var(--gw-border)', borderRadius: 8, padding: '12px 14px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div style={{ fontSize: 13, fontWeight: 600 }}>Session {ci.sessionNumber}</div>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 600 }}>Session {ci.sessionNumber}</div>
+                      <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 2 }}>{whoLabel}</div>
+                    </div>
                     <span className={`gw-pill ${ci.status === 'COMPLETED' ? 'gw-pill-green' : ci.status === 'IN_PROGRESS' ? 'gw-pill-amber' : 'gw-pill-gray'}`}>
                       {ci.status.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c: string) => c.toUpperCase())}
                     </span>
                   </div>
                   {ci.completedAt && <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 4 }}>{new Date(ci.completedAt).toLocaleDateString()}</div>}
                 </div>
-              ))}
+                )
+              })}
             </div>
           </div>
         )}
