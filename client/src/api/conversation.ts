@@ -3,7 +3,7 @@ import { apiClient } from './client'
 export interface OpenCheckInResponse { reply: string; groundId?: string }
 export interface SendMessageResponse { reply: string; sessionComplete?: boolean }
 export interface TranscriptTurn { id: string; role: 'AI' | 'PERSON'; content: string }
-export interface TranscriptResponse { checkIn: { status: string; sessionNumber: number }; turns: TranscriptTurn[] }
+export interface TranscriptResponse { checkIn: { status: string; sessionNumber: number; groundId?: string }; turns: TranscriptTurn[] }
 
 const API_BASE = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api/v1` : '/api/v1'
 

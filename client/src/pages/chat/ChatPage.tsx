@@ -206,12 +206,33 @@ export function ChatPage() {
     onError: () => toast.error('Upload failed.'),
   })
 
+  // Resume an in-progress check-in with its real transcript. open() only ever
+  // returns the single opener line, so opening on every mount wiped the visible
+  // conversation for a returning user (their turns are safe server-side, but
+  // the screen reset to empty). On mount, load the stored transcript first: if
+  // there are already turns, render them; only call open() for a fresh session
+  // that has none yet.
   useEffect(() => {
     if (checkInId && !opened && !openedRef.current) {
       openedRef.current = true
+      let cancelled = false
       const jitter = Math.random() * 2000
-      const t = setTimeout(() => openSession.mutate(), jitter)
-      return () => { clearTimeout(t); openedRef.current = false }
+      const t = setTimeout(async () => {
+        try {
+          const t = await conversationApi.transcript(checkInId)
+          if (cancelled) return
+          if (t.turns && t.turns.length > 0) {
+            setMsgs(t.turns.map(turn => ({ id: turn.id, role: turn.role, content: turn.content })))
+            if (t.checkIn?.groundId && !groundId) setGroundId(t.checkIn.groundId)
+            if (t.checkIn?.status === 'COMPLETED') { setDone(true); setCompleted(true) }
+            setOpened(true)
+            setOpenFailed(false)
+            return
+          }
+        } catch { /* no transcript yet or fetch failed - fall through to open() */ }
+        if (!cancelled) openSession.mutate()
+      }, jitter)
+      return () => { cancelled = true; clearTimeout(t); openedRef.current = false }
     }
   }, [checkInId, opened])
 
