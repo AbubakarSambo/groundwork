@@ -23,6 +23,7 @@ export function SetupPage() {
   const [step, setStep] = useState<Step>(1)
 
   // Step 1 fields
+  const [fullName, setFullName] = useState(`${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim())
   const [orgName, setOrgName] = useState(user?.organizationName ?? '')
   const [orgCode, setOrgCode] = useState('')
   const [orgCodeEdited, setOrgCodeEdited] = useState(false)
@@ -37,11 +38,16 @@ export function SetupPage() {
   const [step2Error, setStep2Error] = useState('')
 
   const updateProfile = useMutation({
-    mutationFn: () => authApi.updateProfile({
-      jobTitle: role,
-      orgName,
-      orgSlug: orgCode,
-    }),
+    mutationFn: () => {
+      const parts = fullName.trim().split(/\s+/)
+      return authApi.updateProfile({
+        firstName: parts[0] ?? '',
+        lastName: parts.slice(1).join(' '),
+        jobTitle: role,
+        orgName,
+        orgSlug: orgCode,
+      })
+    },
     onSuccess: (updated) => {
       updateUser(updated)
       setStep(2)
@@ -66,6 +72,7 @@ export function SetupPage() {
 
   function handleStep1() {
     setStep1Error('')
+    if (!fullName.trim()) { setStep1Error('Enter your name.'); return }
     if (!orgName.trim()) { setStep1Error('Enter your organisation name.'); return }
     if (!orgCode.trim()) { setStep1Error('Enter an org code.'); return }
     updateProfile.mutate()
@@ -122,6 +129,10 @@ export function SetupPage() {
         {/* STEP 1 */}
         {step === 1 && (
           <div>
+            <div className="gw-fld">
+              <label className="gw-label">Your name</label>
+              <input className="gw-input" type="text" value={fullName} onChange={e => setFullName(e.target.value)} placeholder="e.g. Sarah Okonkwo" />
+            </div>
             <div className="gw-fld">
               <label className="gw-label">Organisation name</label>
               <input className="gw-input" type="text" value={orgName} onChange={e => handleOrgNameChange(e.target.value)} placeholder="e.g. Acme Corp" />
