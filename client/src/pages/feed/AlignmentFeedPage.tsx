@@ -43,8 +43,8 @@ export function AlignmentFeedPage() {
   const people: PersonEngagement[] = grounds.flatMap(g =>
     g.participants.map((p, i) => ({
       id: `${g.id}-${i}`,
-      name: typeof p === 'string' ? p : (p as any).name ?? 'Participant',
-      initials: (typeof p === 'string' ? p : (p as any).name ?? 'P').slice(0, 2).toUpperCase(),
+      name: typeof p === 'string' ? p : (p as any).name ?? 'A teammate',
+      initials: (typeof p === 'string' ? p : (p as any).name ?? 'T').slice(0, 2).toUpperCase(),
       status: (g.overdue ?? 0) > 0 ? 'overdue' : g.status === 'ACTIVE' ? 'active' : 'pending',
       sessionsDone: (p as any).sessionsDone ?? 0,
     }))

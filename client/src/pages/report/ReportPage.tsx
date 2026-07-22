@@ -279,8 +279,11 @@ export function ReportPage() {
 
   const adminParty = (ground.participants ?? []).find((p: any) => p.partyType === 'INITIATOR')
   const partParty = (ground.participants ?? []).find((p: any) => p.partyType !== 'INITIATOR')
-  const adminHandle = adminParty?.email?.split('@')[0] ?? 'Admin'
-  const partHandle = partParty?.email?.split('@')[0] ?? 'Participant'
+  // Fallback when a party has no email/name yet: use a neutral descriptor,
+  // never the bare role word ("Admin"/"Participant"), which reads as a label
+  // rather than a person.
+  const adminHandle = adminParty?.email?.split('@')[0] ?? 'the initiator'
+  const partHandle = partParty?.email?.split('@')[0] ?? 'the other party'
 
   const agreements = report.agreements ?? []
   const divergences = report.divergences ?? []

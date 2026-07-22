@@ -48,5 +48,5 @@ export function participantLabel(p: {
   if (name) return name
   const role = p?.roleAsDescribed?.trim()
   if (role) return role
-  return 'a participant'
+  return 'a teammate'
 }
