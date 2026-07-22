@@ -261,7 +261,17 @@ export function GroundParticipantPage() {
   const myCheckIns: any[] = (ground.checkIns ?? []).filter((ci: any) => ci.participantId === myParticipant?.id)
   const openCheckIn = myCheckIns.find((ci: any) => ci.status !== 'COMPLETED')
   const completedCheckIns = myCheckIns.filter((ci: any) => ci.status === 'COMPLETED').sort((a: any, b: any) => b.sessionNumber - a.sessionNumber)
-  const totalSessions = (ground as any).totalSessions ?? 6
+  // Derive the session total the same way the create wizard does
+  // (floor(timelineDays / cadence interval)), from the timelineDays + cadence
+  // the ground carries. Previously this fell back to a hardcoded 6, so a
+  // 90-day monthly ground (really 3 sessions) displayed "of 6".
+  const CADENCE_DAYS: Record<string, number> = { DAILY: 1, WEEKLY: 7, FORTNIGHTLY: 14, MONTHLY: 30 }
+  const cadenceDays = CADENCE_DAYS[(ground as any).cadence as string]
+  const derivedTotalSessions =
+    (ground as any).timelineDays && cadenceDays
+      ? Math.max(1, Math.floor((ground as any).timelineDays / cadenceDays))
+      : undefined
+  const totalSessions = (ground as any).totalSessions ?? derivedTotalSessions ?? 6
   const lastCompleted = completedCheckIns[0]
 
   const signals: any[] = ground.signals ?? []
