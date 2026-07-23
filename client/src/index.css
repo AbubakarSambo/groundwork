@@ -707,6 +707,29 @@ body.gw-sb-collapsed .gw-sb-reopen { opacity: 1; pointer-events: auto; }
   }
 }
 
+/* ── FEEDBACK BUTTON (shared visual style) ────────────────
+   Used by the floating trigger in AppShell.tsx and, on /feed only,
+   by the header button in AlignmentFeedPage.tsx - kept as one class so
+   the two stay visually identical. Position (fixed vs static, offsets,
+   z-index) is set separately by whichever button uses this class. */
+.gw-feedback-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--gw-navy);
+  color: white;
+  border: none;
+  border-radius: 20px;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  box-shadow: 0 2px 8px rgba(0,0,0,.2);
+  transition: background 0.1s;
+}
+.gw-feedback-btn:hover { background: var(--gw-navy-d); }
+
 /* ── FEEDBACK WIDGET ──────────────────────────────────────── */
 .gw-fb-trigger {
   position: fixed;

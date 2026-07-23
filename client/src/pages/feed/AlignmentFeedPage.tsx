@@ -4,6 +4,7 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { apiClient } from '@/api/client'
 import { groundsApi } from '@/api/grounds'
 import { useAuthStore } from '@/stores/auth'
+import { useFeedbackStore } from '@/stores/feedback'
 
 interface Msg { id: string; role: 'AI' | 'ADMIN'; content: string }
 
@@ -25,6 +26,7 @@ function statusColor(s: PersonEngagement['status']) {
 export function AlignmentFeedPage() {
   const navigate = useNavigate()
   const user = useAuthStore(s => s.user)
+  const showFeedback = useFeedbackStore(s => s.show)
   const [msgs, setMsgs] = useState<Msg[]>([
     { id: '0', role: 'AI', content: 'Welcome to the alignment feed. Ask about your team, request a report, or ask about a specific person.' },
   ])
@@ -87,10 +89,10 @@ export function AlignmentFeedPage() {
           <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>Engagement overview · {user?.role === 'ADMIN' ? 'Admin' : 'Read only'}</div>
         </div>
         <div style={{ display: 'flex', gap: 7, alignItems: 'center' }}>
-          <button
-            style={{ fontSize: 11, color: 'var(--gw-sub)', background: 'none', border: '1px solid var(--gw-border)', borderRadius: 'var(--gw-radius)', padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit' }}
-            onClick={() => navigate('/grounds')}
-          >
+          <button className="gw-feedback-btn" onClick={showFeedback}>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M7 1C3.686 1 1 3.462 1 6.5c0 1.41.56 2.694 1.48 3.662L1.5 13l2.98-1.334A6.2 6.2 0 0 0 7 12c3.314 0 6-2.462 6-5.5S10.314 1 7 1Z" stroke="white" strokeWidth="1.3" fill="none"/>
+            </svg>
             Feedback
           </button>
           <button
