@@ -32,14 +32,16 @@ STAMP = str(int(time.time()))
 EMAIL = f"l.layout+{STAMP}@example-test.invalid"
 
 ENTRY_CARDS = [
+    # Rebalanced 5/3 set (PR #78): PIP and cofounder-disagreement dropped as
+    # top-level cards (kept only as e.g. examples); two positive cards added.
     "New hire starting",
     "New project",
     "A new way of working together",
+    "Setting shared goals",
+    "A big decision",
     "Someone's work is off track",
-    "Running a performance improvement plan",
-    "Co-founder or partner disagreement",
     "A project is off track",
-    "You and a team member see it differently",
+    "You and someone see it differently",
 ]
 DESCRIBE = "My situation is different"
 

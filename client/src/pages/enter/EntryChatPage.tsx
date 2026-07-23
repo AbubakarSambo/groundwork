@@ -235,6 +235,26 @@ export const SITUATION_CARDS = [
     ],
   },
   {
+    group: 'positive',
+    label: 'Setting shared goals',
+    detail: "A team agreeing on what matters most this period, so effort doesn't spread in different directions.",
+    message: 'We are setting shared goals for this period and I want everyone aligned on what matters most.',
+    examples: [
+      'A team agreeing on the two or three priorities that matter most before the quarter starts.',
+      'Several people who each quietly think something different is the top priority right now.',
+    ],
+  },
+  {
+    group: 'positive',
+    label: 'A big decision',
+    detail: "A group making a real choice, each person's honest read before you commit.",
+    message: 'We are making a big decision and I want each person\'s honest read before we commit.',
+    examples: [
+      'A hiring, budget, or direction call where you want each person\'s real view before the room converges.',
+      'A choice everyone will nod along to in the meeting - you want the honest reads first.',
+    ],
+  },
+  {
     group: 'negative',
     label: "Someone's work is off track",
     detail: 'Deadlines or expectations are slipping, and you want the exact gap named before the conversation.',
@@ -242,26 +262,7 @@ export const SITUATION_CARDS = [
     examples: [
       'A senior hire is not delivering what they were brought in to do.',
       'Deadlines keep slipping and you want the specific gap named before the conversation.',
-    ],
-  },
-  {
-    group: 'negative',
-    label: 'Running a performance improvement plan',
-    detail: 'A plan is underway and you want both sides on the concern, the support, and what success looks like.',
-    message: 'I am running a performance improvement plan and want both sides to have a fair record of where things stand.',
-    examples: [
-      'You are putting someone on a formal plan and want both sides on the concern and what success looks like.',
-      'A capability concern where you want a fair record, not a he-said-she-said.',
-    ],
-  },
-  {
-    group: 'negative',
-    label: 'Co-founder or partner disagreement',
-    detail: "You see contributions, direction, or equity differently. Put both sides' honest accounts in writing.",
-    message: 'My cofounder and I have a dispute about contributions and direction. I need to get both sides on record.',
-    examples: [
-      'You and a co-founder disagree about who contributed what, and equity is on the line.',
-      'A partnership under strain where each side tells a different story.',
+      'You are putting someone on a formal improvement plan and want both sides on the concern and what good looks like.',
     ],
   },
   {
@@ -276,12 +277,12 @@ export const SITUATION_CARDS = [
   },
   {
     group: 'negative',
-    label: 'You and a team member see it differently',
+    label: 'You and someone see it differently',
     detail: 'Close the gap before it grows. Each of you gives your honest read first.',
     message: 'I need to realign with a team member. I think we see the current situation differently and want to get both our accounts on record.',
     examples: [
       'Priorities shifted and you two are working off different ideas of what matters now.',
-      'After a change or a conflict, you quietly disagree about where things stand.',
+      'You and a co-founder or partner see contributions or direction differently and want both accounts first.',
     ],
   },
 ]
@@ -1196,7 +1197,7 @@ export function EntryChatPage() {
               {/* Situation cards - shown only before user has sent first message */}
               {onboardingHistory.length === 1 && !onboardingLoading && !pickedSituation && (
                 <div style={{ alignSelf: 'flex-start', width: '100%' }}>
-                  <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginBottom: 5, fontWeight: 500 }}>Starting something new</div>
+                  <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginBottom: 5, fontWeight: 500 }}>Starting something</div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(235px, 1fr))', gap: 6, marginBottom: 10 }}>
                     {SITUATION_CARDS.filter(c => c.group === 'positive').map(card => (
                       <button
@@ -1222,7 +1223,7 @@ export function EntryChatPage() {
                       </button>
                     ))}
                   </div>
-                  <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginBottom: 5, fontWeight: 500 }}>Something that needs addressing</div>
+                  <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginBottom: 5, fontWeight: 500 }}>When something needs addressing</div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(235px, 1fr))', gap: 6 }}>
                     {SITUATION_CARDS.filter(c => c.group === 'negative').map(card => (
                       <button
