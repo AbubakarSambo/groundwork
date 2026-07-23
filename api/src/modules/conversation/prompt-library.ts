@@ -2110,6 +2110,17 @@ export function buildIntakeBlock(ctx: PromptContext): string {
     `RESOLUTION_STATE: ${ctx.resolutionState ?? 'not yet defined'}`,
     `SESSION_MODE: ${sessionMode}`,
     `ADMIN_BRIEF: ${ctx.adminBrief ?? 'none provided'}`,
+    // Ground-situation context for NON-initiator parties: the brief tells an
+    // invited participant what they were added to, but it is the INITIATOR'S
+    // framing - context yes, answers never. Without these rules the model can
+    // read the brief back as the participant's own position, which is exactly
+    // the report-echo failure (a participant's "account" that is just the
+    // initiator's goals reflected back).
+    ...(ctx.partyType !== PartyType.INITIATOR && ctx.adminBrief
+      ? [
+          `ADMIN_BRIEF_ATTRIBUTION: The brief above is the situation as the person who opened this ground framed it. Use it as background so this person knows what they were invited into, and to ground your questions in the actual situation. It is NOT this person's account, NOT their words, and NOT established fact - it is one party's framing, pending this person's own version. Never present the brief's goals or claims as this person's own position. Never read it back as settled. Elicit THEIR independent account of the same situation, in their words - where their version differs from the brief, that difference is the record's value, not an error to smooth over.`,
+        ]
+      : []),
     `PRIOR_CONTEXT: ${ctx.priorContext ?? 'none provided'}`,
     `PRIOR_SESSION: ${ctx.priorSession ? ctx.priorSession.slice(0, 500) : 'first session'}`,
     `GROUND_STATE: ${ctx.groundState ?? 'unknown'}`,
