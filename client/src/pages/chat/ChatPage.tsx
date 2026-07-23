@@ -110,6 +110,7 @@ export function ChatPage() {
   const [opened, setOpened]           = useState(false)
   const [done, setDone]               = useState(false)
   const [completed, setCompleted]     = useState(false)
+  const [confirmingFinish, setConfirmingFinish] = useState(false)
   const [openFailed, setOpenFailed]   = useState(false)
   const openedRef = useRef(false)
 
@@ -430,15 +431,46 @@ export function ChatPage() {
             </div>
             )
           ))}
-          {done && !completed && (
+          {/* Explicit end confirmation: finishing never auto-happens. Clicking
+              "Complete session" opens a confirm step so the person can review
+              before the record locks. This is the client half of one coherent
+              close - the engine has already confirmed the timeframe and that
+              they are ready in the conversation itself (TIMEFRAME RULE); this
+              is the deliberate final action, not a second stacked prompt. */}
+          {done && !completed && !confirmingFinish && (
             <div style={{ textAlign: 'center', padding: '10px 0' }}>
               <button
-                onClick={() => complete.mutate()}
-                disabled={complete.isPending}
+                onClick={() => setConfirmingFinish(true)}
                 style={{ padding: '10px 24px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
               >
-                {complete.isPending ? 'Saving…' : 'Complete session ✓'}
+                Complete session ✓
               </button>
+            </div>
+          )}
+          {!completed && confirmingFinish && (
+            <div style={{ padding: '12px 0', textAlign: 'center' }}>
+              <div style={{ maxWidth: 460, margin: '0 auto', background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '16px 18px' }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 6 }}>Ready to finish this check-in?</div>
+                <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 14 }}>
+                  Take a moment to look back over what you have said. Once you finish, this session's record is locked in and cross-referenced with the others. If a timeframe matters here, make sure you have confirmed it above.
+                </div>
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+                  <button
+                    onClick={() => complete.mutate()}
+                    disabled={complete.isPending}
+                    style={{ padding: '10px 22px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                  >
+                    {complete.isPending ? 'Saving…' : 'Finish check-in ✓'}
+                  </button>
+                  <button
+                    onClick={() => setConfirmingFinish(false)}
+                    disabled={complete.isPending}
+                    style={{ padding: '10px 18px', borderRadius: 8, background: 'none', color: 'var(--gw-sub)', fontSize: 13, fontWeight: 600, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
+                  >
+                    Not yet, keep going
+                  </button>
+                </div>
+              </div>
             </div>
           )}
           {/* Manual fallback: "done" only flips when the AI's reply happens to
@@ -447,14 +479,13 @@ export function ChatPage() {
               leaving no way to complete. Once there's a real record built,
               offer a manual path - the backend's own readiness gate is the
               actual authority and returns a clear message if it's too early. */}
-          {!done && !completed && opened && msgs.filter(m => m.role === 'PERSON').length >= 3 && (
+          {!done && !completed && !confirmingFinish && opened && msgs.filter(m => m.role === 'PERSON').length >= 3 && (
             <div style={{ textAlign: 'center', padding: '6px 0' }}>
               <button
-                onClick={() => complete.mutate()}
-                disabled={complete.isPending}
+                onClick={() => setConfirmingFinish(true)}
                 style={{ fontSize: 12, color: 'var(--gw-sub)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit' }}
               >
-                {complete.isPending ? 'Checking…' : "Not seeing a wrap-up? Complete session"}
+                Not seeing a wrap-up? Complete session
               </button>
             </div>
           )}
