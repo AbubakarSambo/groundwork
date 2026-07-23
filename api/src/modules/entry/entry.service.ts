@@ -278,11 +278,16 @@ function isLikelyQuestion(text: string): boolean {
   return starters.some(s => lower.startsWith(s));
 }
 
-export function buildEntrySystemPrompt(scenario: GroundScenario, groundLabel: string): string {
-  const scenarioPack = buildScenarioPackForParty(scenario, PartyType.INITIATOR);
+export function buildEntrySystemPrompt(scenario: GroundScenario, groundLabel: string, partyType: PartyType = PartyType.INITIATOR): string {
+  // partyType drives the opener + framing. INITIATOR (default) is the person
+  // opening the ground ("what are you starting"); PARTICIPANT is an invitee
+  // giving their own independent read of the situation the initiator already
+  // framed - never "what is beginning". Threaded so participantChat no longer
+  // reuses the initiator's opener (BUG 1 root cause).
+  const scenarioPack = buildScenarioPackForParty(scenario, partyType);
   const runtimeCtx = buildRuntimeContext({
     scenario,
-    partyType: PartyType.INITIATOR,
+    partyType,
     sessionNumber: 1,
     otherPartyCheckedIn: false,
     groundLabel: groundLabel || 'Entry session',
@@ -431,6 +436,7 @@ export class EntryService {
     const participantSystemPrompt = buildEntrySystemPrompt(
       resolveScenario(ground.scenario),
       ground.label,
+      PartyType.PARTICIPANT,
     ) + `\n\n# Participant check-in rules
 This is a participant (not the admin/initiator). They are giving their own independent account.
 Session number: ${sessionNumber}
@@ -684,7 +690,7 @@ STRICT RULES:
 - When you have a clear account of their perspective, say exactly: "Your record is here." followed by a 2-sentence plain summary of what is now on their record.
 - Off-topic or very brief first messages: name that gently and redirect - "This check-in is to get your perspective on ${ground.label}. In a sentence or two, what would you want on record?"
 
-` + buildEntrySystemPrompt(joinScenario, ground.label);
+` + buildEntrySystemPrompt(joinScenario, ground.label, PartyType.PARTICIPANT);
         return this.anthropic.respond(joinPrompt, messages);
       }
     }
