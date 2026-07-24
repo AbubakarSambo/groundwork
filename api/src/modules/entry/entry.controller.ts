@@ -244,4 +244,19 @@ export class EntryCommitController {
   }) {
     return this.service.joinCommit(dto);
   }
+
+  // ONE PATH: sign in against a broadcast join link and land in the real engine.
+  // Public: the joining cohort member is unauthenticated - the join link is the
+  // credential (like join-preview / join-commit above).
+  @Public()
+  @Post('join-accept')
+  async joinAccept(@Body() dto: {
+    joinToken: string;
+    email: string;
+    firstName?: string;
+    lastName?: string;
+    roleAsDescribed?: string;
+  }) {
+    return this.service.joinAccept(dto);
+  }
 }
