@@ -96,6 +96,15 @@ export class GroundsCron {
     for (const g of activeGrounds) {
       try {
         await this.patterns.startNewPeriod(g.id);
+        // Cross-party collusion pass: this is the only place with all parties'
+        // records together on a per-ground cadence, and it owns the period
+        // boundary the three-period rule runs on. Isolated so a failure here
+        // never blocks the period boundary.
+        try {
+          await this.patterns.analyzeGroundForCollusion(g.id);
+        } catch (cerr: any) {
+          this.logger.error(`analyzeGroundForCollusion failed for ground ${g.id}: ${cerr.message}`);
+        }
         processed++;
       } catch (err: any) {
         this.logger.error(`startNewPeriod failed for ground ${g.id}: ${err.message}`);
