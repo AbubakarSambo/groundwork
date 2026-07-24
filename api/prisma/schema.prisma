@@ -397,6 +397,12 @@ model GroundParticipant {
   userId             String?   @map("user_id") // null until they accept the invite
   email              String
   partyType          PartyType
+  // The lead chose "managing only" at confirm-lead: they oversee the ground but
+  // never give their own account. Only ever true for an INITIATOR row. They are
+  // NOT created a session-1 check-in and are excluded from the readiness count
+  // in isSessionReadyForReport - otherwise the ground would wait forever on an
+  // account that will never come. See grounds.service.ts confirmLead/isSessionReadyForReport.
+  managingOnly       Boolean   @default(false) @map("managing_only")
   roleAsDescribed    String?   @map("role_as_described") // role as the initiator described it
   willingnessEvidence  Boolean? @map("willingness_evidence") // willingness gate Q1
   willingnessCadence   Boolean? @map("willingness_cadence") // willingness gate Q2

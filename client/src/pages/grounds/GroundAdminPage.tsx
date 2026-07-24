@@ -232,7 +232,20 @@ export function GroundAdminPage() {
   if (!ground) return <Shell><div style={{ padding: 24, fontSize: 13, color: 'var(--gw-muted)' }}>Ground not found.</div></Shell>
 
   if (ground.status === 'AWAITING_LEAD') {
-    return <LeadConfirmView ground={ground} groundId={id!} onConfirmed={(checkInId) => navigate(`/chat/${checkInId}`)} />
+    return (
+      <LeadConfirmView
+        ground={ground}
+        groundId={id!}
+        onConfirmed={(checkInId) => {
+          // managing only -> no check-in was created; land the lead on their
+          // own admin view instead of trying to open a check-in that does
+          // not exist. also-checking-in -> unchanged, straight into the
+          // real engine.
+          if (checkInId) navigate(`/chat/${checkInId}`)
+          else qc.invalidateQueries({ queryKey: ['ground', id] })
+        }}
+      />
+    )
   }
 
   const conf = ground.confidence ?? 1
@@ -1096,7 +1109,7 @@ function Shell({ children }: { children: React.ReactNode }) {
  * participants, and confirm when ready. Their own session 1 only opens once
  * they confirm - not synchronized with the admin in any way, deliberately
  * worded to avoid the false-simultaneity framing found elsewhere in this app. */
-function LeadConfirmView({ ground, groundId, onConfirmed }: { ground: any; groundId: string; onConfirmed: (checkInId: string) => void }) {
+function LeadConfirmView({ ground, groundId, onConfirmed }: { ground: any; groundId: string; onConfirmed: (checkInId: string | null) => void }) {
   const [brief, setBrief] = useState(ground.brief ?? '')
   const [showAddParticipant, setShowAddParticipant] = useState(false)
   const [newEmail, setNewEmail] = useState('')
@@ -1106,6 +1119,9 @@ function LeadConfirmView({ ground, groundId, onConfirmed }: { ground: any; groun
   )
   const [confirming, setConfirming] = useState(false)
   const [addingParticipant, setAddingParticipant] = useState(false)
+  // Also-checking-in is the common case and the default; managing-only is a
+  // deliberate opt-out from having your own account in the comparison.
+  const [alsoCheckingIn, setAlsoCheckingIn] = useState(true)
 
   async function addParticipant() {
     if (!newEmail.includes('@')) return
@@ -1125,7 +1141,7 @@ function LeadConfirmView({ ground, groundId, onConfirmed }: { ground: any; groun
   async function confirmAndBegin() {
     setConfirming(true)
     try {
-      const res = await groundsApi.confirmLead(groundId, { brief: brief.trim() || undefined })
+      const res = await groundsApi.confirmLead(groundId, { brief: brief.trim() || undefined, managingOnly: !alsoCheckingIn })
       onConfirmed(res.checkInId)
     } catch {
       toast.error('Could not confirm. Try again.')
@@ -1180,6 +1196,24 @@ function LeadConfirmView({ ground, groundId, onConfirmed }: { ground: any; groun
             </div>
           </div>
         )}
+
+        <div style={{ marginBottom: 8, fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gw-sub)' }}>Your part in this</div>
+        <div style={{ border: '1px solid var(--gw-border)', borderRadius: 8, overflow: 'hidden', marginBottom: 8 }}>
+          <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '11px 12px', borderBottom: '1px solid var(--gw-border)', cursor: 'pointer', background: alsoCheckingIn ? 'var(--gw-bg)' : 'transparent' }}>
+            <input type="radio" checked={alsoCheckingIn} onChange={() => setAlsoCheckingIn(true)} style={{ marginTop: 3 }} />
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)' }}>I'm also checking in</div>
+              <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>You give your own account, same as everyone else. Recommended - most leads are also a party to the situation.</div>
+            </div>
+          </label>
+          <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '11px 12px', cursor: 'pointer', background: !alsoCheckingIn ? 'var(--gw-bg)' : 'transparent' }}>
+            <input type="radio" checked={!alsoCheckingIn} onChange={() => setAlsoCheckingIn(false)} style={{ marginTop: 3 }} />
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)' }}>Managing only</div>
+              <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>You oversee this ground but won't give your own account. You'll still see who has checked in and the shared report once it releases - you're just not one of the accounts being compared.</div>
+            </div>
+          </label>
+        </div>
 
         <button onClick={confirmAndBegin} disabled={confirming} className="gw-btn" style={{ width: '100%', opacity: confirming ? 0.6 : 1 }}>
           {confirming ? 'Confirming…' : 'Confirm and begin →'}

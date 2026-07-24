@@ -75,8 +75,8 @@ export const groundsApi = {
   createForLead: (body: CreateGroundForLeadBody) =>
     apiClient.post<Ground>('/grounds/for-lead', body).then(r => r.data),
 
-  confirmLead: (groundId: string, edits?: { brief?: string }) =>
-    apiClient.post<{ groundId: string; checkInId: string }>(`/grounds/${groundId}/confirm-lead`, edits ?? {}).then(r => r.data),
+  confirmLead: (groundId: string, edits?: { brief?: string; managingOnly?: boolean }) =>
+    apiClient.post<{ groundId: string; checkInId: string | null }>(`/grounds/${groundId}/confirm-lead`, edits ?? {}).then(r => r.data),
 
   getOrgRoster: () =>
     apiClient.get<OrgRosterEntry[]>('/grounds/org-roster').then(r => r.data),
