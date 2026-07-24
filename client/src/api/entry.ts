@@ -168,23 +168,3 @@ export const joinApi = {
       payload,
     ).then(r => r.data),
 }
-
-// ── Participant API ───────────────────────────────────────────────────────────
-
-export const participantApi = {
-  uploadDocument: (token: string, file: File) => {
-    const form = new FormData()
-    form.append('file', file)
-    return apiClient.post<{ id: string; name: string; mimeType: string; uploadedAt: string }>(
-      '/documents/invite-upload',
-      form,
-      { params: { token }, headers: { 'Content-Type': 'multipart/form-data' } },
-    ).then(r => r.data)
-  },
-
-  chat: (token: string, messages: EntryMessage[]) =>
-    apiClient.post<{ reply: string; sessionComplete: boolean }>(
-      '/entry/participant-chat',
-      { token, messages },
-    ).then(r => r.data),
-}
