@@ -76,13 +76,19 @@ export class GroundsCron {
   }
 
   /**
-   * Gap #22 - Weekly period boundary sweep (Monday 5 AM).
+   * Gap #22 - Weekly period boundary sweep (Monday 5 AM UTC).
    * Calls startNewPeriod() for every active ground so that:
    *   - CANDIDATE detections are archived with their period tag.
    *   - Consecutive-period counters are reset for detections that missed this period.
    *   - Any detection that reached THREE consecutive periods is promoted to SURFACED.
+   *
+   * timeZone was previously unset, meaning this ran in whatever local
+   * timezone the Node process happened to be in - implicit and liable to
+   * differ between a developer's machine and the deployed environment (no
+   * TZ env var is set anywhere in this repo's config). Pinned explicitly to
+   * UTC so behavioral-pattern surfacing timing is identical everywhere.
    */
-  @Cron('0 5 * * 1') // Every Monday at 05:00
+  @Cron('0 5 * * 1', { timeZone: 'UTC' }) // Every Monday at 05:00 UTC
   async weeklyPeriodBoundary() {
     const activeGrounds = await this.prisma.ground.findMany({
       where: { status: { in: [GroundStatus.ACTIVE, GroundStatus.AWAITING_PARTIES, GroundStatus.REPORT_READY] } },
@@ -114,12 +120,15 @@ export class GroundsCron {
   }
 
   /**
-   * Gap #29 - Weekly concentration risk sweep (Monday 5:30 AM).
+   * Gap #29 - Weekly concentration risk sweep (Monday 5:30 AM UTC).
    * Runs detectConcentrationRisk() for every organisation that has at least one
    * active ground, surfacing a CONCENTRATION_RISK detection when a single person
    * is an active party in 3 or more grounds simultaneously.
+   *
+   * timeZone pinned to UTC for the same reason as weeklyPeriodBoundary above -
+   * it was previously implicit (server-local time, unset anywhere in config).
    */
-  @Cron('30 5 * * 1') // Every Monday at 05:30
+  @Cron('30 5 * * 1', { timeZone: 'UTC' }) // Every Monday at 05:30 UTC
   async weeklyConcentrationRisk() {
     // Collect distinct org IDs from active grounds.
     const activeGrounds = await this.prisma.ground.findMany({
