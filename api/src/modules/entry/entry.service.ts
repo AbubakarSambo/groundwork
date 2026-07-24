@@ -1161,12 +1161,15 @@ STRICT RULES:
     lastName?: string;
     roleAsDescribed?: string;
   }): Promise<{ groundId: string; checkInId: string; accessToken: string; userId: string; existingAccount: boolean }> {
+    // Validate inputs before any DB lookup - a malformed request must be a
+    // clean 400, not a 500 from querying on an undefined join token.
+    if (!dto.joinToken?.trim()) throw new BadRequestException('A join link is required.');
+    if (!dto.email?.trim()) throw new BadRequestException('An email is required to join.');
     const ground = await this.prisma.ground.findUnique({
       where: { joinToken: dto.joinToken },
       select: { id: true, organizationId: true },
     });
     if (!ground) throw new NotFoundException('Join link not found or has expired');
-    if (!dto.email?.trim()) throw new BadRequestException('An email is required to join.');
 
     const email = dto.email.trim().toLowerCase();
     const firstName = dto.firstName?.trim() || email.split('@')[0];
