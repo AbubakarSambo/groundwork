@@ -97,7 +97,7 @@ const SIGNAL_EXTRACTION_SCHEMA = {
 const OUTCOME_LEARNING_PROMPT =
   'You are a Groundwork analyst. You are given structured data: for each active prompt version, the number of grounds resolved, the total outcomes, and the fairness rate (% of parties who said the process felt fair). Produce a 3–5 sentence summary identifying which version(s) have the highest resolution rate, any version showing decline, and a one-sentence recommendation. Data is anonymous - no names, no org identifiers.';
 
-const REPORT_SCHEMA = {
+export const REPORT_SCHEMA = {
   name: 'emit_report',
   description: 'Emit the shared picture, agreements, divergences (the gap) and the one central question.',
   input_schema: {
@@ -178,12 +178,12 @@ const REPORT_SCHEMA = {
           type: 'object',
           properties: {
             label: { type: 'string' },
-            cause: { type: 'string', enum: ['behavioral', 'misunderstanding', 'adversarial', 'unclear'] },
+            cause: { type: 'string', enum: ['behavioral', 'misunderstanding', 'adversarial', 'unclear', 'declined_by_choice'] },
             note: { type: 'string', description: 'One sentence explaining why this cause was inferred.' },
           },
           required: ['label', 'cause', 'note'],
         },
-        description: "Where a party's specificity is notably low or high, name the likely cause if it is inferable from the record itself: a behavioral pattern (e.g. consistently vague), a misunderstanding (e.g. confused about scope), an adversarial stance (e.g. deliberately withholding), or 'unclear' if there is not enough evidence to say. Do not guess beyond what the record supports. Empty array if not inferable.",
+        description: "Where a party's specificity is notably low or high, name the likely cause if it is inferable from the record itself: a behavioral pattern (e.g. consistently vague), a misunderstanding (e.g. confused about scope), an adversarial stance (e.g. deliberately withholding), 'declined_by_choice' if the record shows an explicit, stated decline to answer or provide evidence (a refusal is a choice, not vagueness and not bad faith - never file a genuine decline under adversarial or unclear), or 'unclear' if there is not enough evidence to say. Do not guess beyond what the record supports. Empty array if not inferable.",
       },
     },
     required: ['sharedPicture', 'agreements', 'divergences', 'centralQuestion', 'inferences'],
@@ -201,7 +201,7 @@ export const SYNTHESIS_RULES = `SYNTHESIS RULES (override all other instructions
 8. NO FALSE CONSENSUS. Do not write "both parties agree" or "all parties are aligned" unless every party's record contains explicit matching statements on that specific point. If parties described the same topic differently in any session, that is a divergence - surface it. Smoothing a disagreement into apparent consensus is a more serious error than noting the gap.
 9. SURFACE HIDDEN CONTRIBUTORS. If any party's record references someone else's input, work, or decisions - someone who is not themselves a party with their own account on this ground - name them in hiddenContributors with the evidence. Do not invent a hidden contributor; only surface what is explicitly referenced.
 10. FLAG CONCERN PATTERNS FACTUALLY, NEVER AS ACCUSATION. If the record shows one party's follow-through, commitments, or contribution is notably thinner than other parties' on the same ground, note it in concernFlags as a plain factual observation about the record - not a judgement of the person. Do not speculate about motive.
-11. NAME THE CAUSE OF LOW OR HIGH SPECIFICITY WHEN INFERABLE. If a party's specificity is notably low or high, use specificityCauses to say why if the record supports an inference: a behavioral pattern, a misunderstanding, an adversarial stance, or "unclear" if the record does not support a specific cause.
+11. NAME THE CAUSE OF LOW OR HIGH SPECIFICITY WHEN INFERABLE. If a party's specificity is notably low or high, use specificityCauses to say why if the record supports an inference: a behavioral pattern, a misunderstanding, an adversarial stance, "declined_by_choice" if the record shows an explicit, stated decline to answer (a refusal is a choice, never file it as adversarial or unclear), or "unclear" if the record does not support a specific cause.
 12. NEVER INVENT PARTY COUNTS OR ROLES. The PARTY ROSTER at the top of this corpus is the exhaustive, exact list of who is on this ground - use its exact count and exact labels only. Never state a number of parties, an "other parties" count, or a role/title/affiliation (e.g. "founder", "funders", "the board") that does not appear verbatim in the roster. If you are unsure how many parties are missing or who they are, use the roster's own wording rather than describing them yourself.
 13. LEAD-SUPPLIED CONTEXT IS DIRECTION, NEVER A CLAIM. The LEAD-SUPPLIED CONTEXT section is private background from the initiator, not a party's statement. Use it only to decide what to weigh and what to probe. Never attribute it to a party, never quote it, never present it as an established fact, and never let it become a claim in the report. Every claim you write must trace to a party's own record entry - if lead context points at something no party's record supports, do not assert it.`;
 

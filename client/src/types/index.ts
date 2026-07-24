@@ -153,7 +153,7 @@ export interface Report {
     parties: { label: string; sessions: number; recordEntries: number; documentsAttached: number; contributed: boolean }[]
     hiddenContributors?: { label: string; evidence: string }[]
     concernFlags?: { label: string; observation: string }[]
-    specificityCauses?: { label: string; cause: 'behavioral' | 'misunderstanding' | 'adversarial' | 'unclear'; note: string }[]
+    specificityCauses?: { label: string; cause: 'behavioral' | 'misunderstanding' | 'adversarial' | 'unclear' | 'declined_by_choice'; note: string }[]
   } | null
   // Spec payload fields (cross-ref / resolution report)
   pattern?: string
