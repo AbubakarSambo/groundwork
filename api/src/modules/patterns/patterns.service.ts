@@ -12,6 +12,9 @@ import {
   checkF1Conditions,
   DetectionInput,
   PatternConfigMap,
+  collusionRuleGate,
+  COLLUSION_COMPLETION_WORDS,
+  COLLUSION_CONFIRM_PROMPT,
 } from './pattern-library';
 
 /** Lookup map from code -> description for the AI confirmation prompt. */
@@ -397,6 +400,146 @@ export class PatternsService {
         });
       }
     }
+  }
+
+  /**
+   * COLLUSION_RISK - cross-party detector. The single-party pattern path cannot
+   * see collusion because it analyses one party in isolation; this pass sees a
+   * PAIR together. Over each pair of participants that each have >= 3 completed
+   * check-ins: a cheap rule gate (reciprocal naming + a shared claim both frame
+   * as settled + NO independent anchor), then an AI confirm on survivors, then
+   * observe() so it inherits the three-period rule. It is written feed-only with
+   * no probe (see pattern-library), so it reaches the admin feed ONLY - never a
+   * live probe to the accused and never a participant-facing report.
+   *
+   * The false-positive design is deliberate: the independent anchor is the hard
+   * gate (a document, a third party's record, or a named external clears the
+   * pair before any model call), reciprocity is mandatory, and three periods are
+   * required. Prefer false negatives over false positives.
+   */
+  async analyzeGroundForCollusion(groundId: string): Promise<void> {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: {
+        id: true,
+        documents: { select: { participantId: true } },
+        participants: {
+          where: { userId: { not: null } },
+          select: {
+            id: true,
+            user: { select: { firstName: true, lastName: true, email: true } },
+            checkIns: { where: { status: CheckInStatus.COMPLETED }, select: { sessionNumber: true } },
+            recordEntries: { select: { text: true, evidenceType: true } },
+          },
+        },
+      },
+    });
+    if (!ground) return;
+
+    const STOP = new Set([
+      'the', 'and', 'that', 'this', 'with', 'have', 'has', 'for', 'was', 'were', 'are', 'our',
+      'their', 'they', 'them', 'from', 'what', 'when', 'which', 'would', 'about', 'into', 'been',
+      'will', 'your', 'you', 'his', 'her', 'she', 'him', 'not', 'but', 'all', 'any', 'can',
+      'work', 'done', 'team', 'project', 'thing', 'things', 'said', 'get', 'got', 'also',
+    ]);
+    const nameTokens = (u: any): string[] => {
+      const parts = [u?.firstName, u?.lastName, (u?.email ?? '').split('@')[0]]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, ' ')
+        .split(/\s+/)
+        .filter((t: string) => t.length >= 3);
+      return Array.from(new Set(parts));
+    };
+    const contentTokens = (text: string): Set<string> =>
+      new Set(
+        text.toLowerCase().replace(/[^a-z0-9]/g, ' ').split(/\s+/).filter((t) => t.length > 3 && !STOP.has(t)),
+      );
+    const namesOther = (entries: { text: string }[], otherTokens: string[]) =>
+      entries.filter((e) => otherTokens.some((t) => e.text.toLowerCase().includes(t)));
+    const hasCompletion = (entries: { text: string }[]) =>
+      entries.some((e) => COLLUSION_COMPLETION_WORDS.some((w) => e.text.toLowerCase().includes(w)));
+    const hasDocAnchor = (p: any) =>
+      p.recordEntries.some((r: any) => r.evidenceType === 'DOCUMENT_AT_AGREEMENT' || r.evidenceType === 'DOCUMENT_AFTER') ||
+      ground.documents.some((d: any) => d.participantId === p.id);
+
+    const eligible = ground.participants.filter((p) => (p.checkIns?.length ?? 0) >= 3);
+    if (eligible.length < 2) return;
+
+    for (let x = 0; x < eligible.length; x++) {
+      for (let y = x + 1; y < eligible.length; y++) {
+        const a = eligible[x];
+        const b = eligible[y];
+        const aTok = nameTokens(a.user);
+        const bTok = nameTokens(b.user);
+        if (aTok.length === 0 || bTok.length === 0) continue;
+
+        const aNamingB = namesOther(a.recordEntries, bTok);
+        const bNamingA = namesOther(b.recordEntries, aTok);
+
+        // Shared claim = content-token overlap between the entries where each names the other.
+        const aClaimTokens = new Set<string>();
+        aNamingB.forEach((e) => contentTokens(e.text).forEach((t) => !bTok.includes(t) && aClaimTokens.add(t)));
+        const shared: string[] = [];
+        bNamingA.forEach((e) => contentTokens(e.text).forEach((t) => aClaimTokens.has(t) && !aTok.includes(t) && shared.push(t)));
+        const sharedTopicTokens = Array.from(new Set(shared));
+
+        // Independent anchor: a document for either party, OR a THIRD participant whose
+        // record references the shared claim (corroborated outside the pair).
+        const thirdPartyRefs = sharedTopicTokens.length
+          ? ground.participants.some(
+              (p) =>
+                p.id !== a.id &&
+                p.id !== b.id &&
+                p.recordEntries.some((r: any) => sharedTopicTokens.some((t) => r.text.toLowerCase().includes(t))),
+            )
+          : false;
+        const hasIndependentAnchor = hasDocAnchor(a) || hasDocAnchor(b) || thirdPartyRefs;
+
+        const gate = collusionRuleGate({
+          aNamesB: aNamingB.length > 0,
+          bNamesA: bNamingA.length > 0,
+          aCompletionOnShared: hasCompletion(aNamingB),
+          bCompletionOnShared: hasCompletion(bNamingA),
+          sharedTopicTokens,
+          hasIndependentAnchor,
+        });
+        if (!gate.candidate) continue;
+
+        // Survivor of the cheap gate - the nuanced call goes to the model.
+        const aName = [a.user?.firstName, a.user?.lastName].filter(Boolean).join(' ') || 'Party A';
+        const bName = [b.user?.firstName, b.user?.lastName].filter(Boolean).join(' ') || 'Party B';
+        const confirmed = await this.confirmCollusion(
+          aNamingB.map((e) => e.text).join('\n'),
+          bNamingA.map((e) => e.text).join('\n'),
+          aName,
+          bName,
+        );
+        if (!confirmed) continue;
+
+        // Anchor to a stable participant (min id) so the three-period streak is
+        // consistent across weekly runs; the partner is captured for the admin.
+        const [anchorId, partnerId] = [a.id, b.id].sort();
+        const period = Math.max(
+          ...a.checkIns.map((c) => c.sessionNumber),
+          ...b.checkIns.map((c) => c.sessionNumber),
+        );
+        const observationText =
+          `Two accounts corroborate the same claims across periods with no independent evidence - ` +
+          `each is supported only by the other. Worth an admin look. Pair (participants): ${anchorId} & ${partnerId}.`;
+        await this.observe(groundId, anchorId, 'COLLUSION_RISK', observationText, period);
+        this.logger.warn(`COLLUSION_RISK candidate flagged for review on ground ${groundId} (pair ${anchorId} & ${partnerId})`);
+      }
+    }
+  }
+
+  /** Cross-party AI confirm for COLLUSION_RISK - the pair analog of confirmDetection. */
+  private async confirmCollusion(aText: string, bText: string, aName: string, bName: string): Promise<boolean> {
+    const question =
+      `PARTY A (${aName}) record:\n${aText}\n\nPARTY B (${bName}) record:\n${bText}\n\nAnswer YES or NO.`;
+    const reply = await this.anthropic.respond(COLLUSION_CONFIRM_PROMPT, [{ role: 'user', content: question }]);
+    return reply.trim().toUpperCase().startsWith('YES');
   }
 
   /**

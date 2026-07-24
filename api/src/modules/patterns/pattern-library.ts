@@ -81,7 +81,67 @@ export const BAD_FAITH_CODES: PatternCode[] = [
 // either person directly (Part 4 / alignment feed).
 // LOW_SPEC_MULTI_DIM: 3+ dimensions vague/managed in one session - admin-only flag;
 // participant is never told. Session builder reads it and shifts approach silently.
-export const ALIGNMENT_FEED_ONLY_CODES = new Set(['F5', 'E4', 'LOW_SPEC_MULTI_DIM']);
+export const ALIGNMENT_FEED_ONLY_CODES = new Set(['F5', 'E4', 'LOW_SPEC_MULTI_DIM', 'COLLUSION_RISK']);
+
+// ---------------------------------------------------------------------------
+// COLLUSION_RISK - cross-party detector (feature: collusion detection).
+//
+// Collusion here = two parties corroborate each other's claims and the ONLY
+// evidence for those claims is each other (reciprocal vouching, same claim
+// framed settled, NO independent anchor). This is a REVIEWABLE ADMIN FLAG,
+// never a verdict and never shown to the accused (feed-only above; no probe).
+//
+// The FP design is the whole point: an independent anchor (a document, a third
+// party's record, a named external) exempts the pair BEFORE anything else -
+// genuine work leaves traces outside the two people doing it. Prefer false
+// negatives over false positives.
+// ---------------------------------------------------------------------------
+
+/** Completion / settled-claim framing shared with the single-party detectors. */
+export const COLLUSION_COMPLETION_WORDS = [
+  'completed', 'complete', 'done', 'finished', 'shipped', 'delivered',
+  'launched', 'agreed', 'signed off', 'signed-off', 'confirmed', 'resolved',
+];
+
+export interface CollusionGateInput {
+  aNamesB: boolean; // A's record names B
+  bNamesA: boolean; // B's record names A
+  aCompletionOnShared: boolean; // A frames the shared claim as settled/done
+  bCompletionOnShared: boolean; // B frames the shared claim as settled/done
+  sharedTopicTokens: string[]; // topic overlap between the entries where they name each other
+  hasIndependentAnchor: boolean; // any document / third-party record / named external on the claim
+}
+
+/**
+ * The cheap rule-based candidate gate. Pure and deterministic so the
+ * false-positive design can be tested directly. Order matters: the independent
+ * anchor is the HARD GATE and is checked first - if the claim is corroborated
+ * by anything outside the pair, it is never a candidate.
+ */
+export function collusionRuleGate(i: CollusionGateInput): { candidate: boolean; reason: string } {
+  // 1. HARD GATE - independent anchor exempts the pair, full stop.
+  if (i.hasIndependentAnchor) return { candidate: false, reason: 'independent anchor present (document / third party / external)' };
+  // 2. Reciprocity required - one-directional credit is R3, not collusion.
+  if (!(i.aNamesB && i.bNamesA)) return { candidate: false, reason: 'not reciprocal (one-directional or no mutual mention)' };
+  // 3. Same claim, both framing it as settled.
+  if (!(i.aCompletionOnShared && i.bCompletionOnShared)) return { candidate: false, reason: 'no shared completion framing' };
+  // 4. There must be an actual shared claim (topic overlap), not two different things.
+  if (i.sharedTopicTokens.length === 0) return { candidate: false, reason: 'no shared claim (no topic overlap)' };
+  return { candidate: true, reason: 'reciprocal vouching on a shared settled claim with no independent anchor' };
+}
+
+/**
+ * Cross-party AI-confirm prompt (analog of PATTERN_DETECTION_PROMPT, extended
+ * to a pair). Conservative by construction; returns YES only when the circular
+ * corroboration is unambiguous. Never a verdict, never infers intent.
+ */
+export const COLLUSION_CONFIRM_PROMPT = `You are a pattern-detection verifier looking at TWO parties' records from the same ground, for a possible COLLUSION_RISK pattern.
+
+COLLUSION_RISK means: the two accounts corroborate the SAME claim only through EACH OTHER, with no independent trace (no document, no third party, no named external). Reciprocal vouching, same claim treated as settled, and nothing outside the pair supports it.
+
+This is a pattern-level observation for admin review, never a verdict and never an accusation. Emit YES only if the circular, unanchored mutual corroboration is genuinely and unambiguously present. If two people simply agree, or if either account points to anything outside the pair, answer NO. When in doubt, answer NO - a false positive is far more damaging than a missed one.
+
+Answer only YES or NO. No explanation.`;
 
 const KNOWN_CODES = new Set(BAD_FAITH_CODES.map((c) => c.code));
 export const isBadFaithCode = (code: string) => KNOWN_CODES.has(code);
