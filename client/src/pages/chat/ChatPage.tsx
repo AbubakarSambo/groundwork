@@ -189,7 +189,7 @@ export function ChatPage() {
       if (!groundId) throw new Error('groundId missing')
       return documentsApi.upload(groundId, file)
     },
-    onSuccess: (doc, { ctx }) => {
+    onSuccess: async (doc, { ctx }) => {
       const contextLine = ctx.trim() ? ` Context you gave: ${ctx.trim()}.` : ''
       const newMsgs: Msg[] = [{
         id: `doc-note-${Date.now()}`,
@@ -205,6 +205,17 @@ export function ChatPage() {
         })
       }
       setMsgs(v => [...v, ...newMsgs])
+
+      // The engine has a real follow-up for a fresh upload - acknowledge it
+      // by name and ask what it confirms (documentReceived), instead of
+      // leaving the static line above as the only reaction. This endpoint
+      // existed and was fully wired server-side; nothing ever called it.
+      if (checkInId) {
+        try {
+          const { reply } = await conversationApi.documentReceived(checkInId)
+          if (reply) setMsgs(v => [...v, { id: `doc-followup-${Date.now()}`, role: 'AI', content: reply }])
+        } catch { /* non-critical follow-up; the upload itself already succeeded */ }
+      }
     },
     onError: () => toast.error('Upload failed.'),
   })
