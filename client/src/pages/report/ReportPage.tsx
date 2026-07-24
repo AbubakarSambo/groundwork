@@ -9,6 +9,7 @@ import { useAuthStore } from '@/stores/auth'
 import { participantLabel } from '@/lib/utils'
 import { InferenceReviewPanel } from '@/components/InferenceReviewPanel'
 import { VennIcon } from '@/components/gw/VennIcon'
+import { participantRequestsApi } from '@/api/participantRequests'
 
 type ViewTab = 'shared' | 'own'
 
@@ -195,6 +196,125 @@ function SecH({ children }: { children: React.ReactNode }) {
   return (
     <div style={{ fontSize: 10.5, letterSpacing: '.09em', textTransform: 'uppercase', color: '#9B9590', fontWeight: 700, margin: '0 0 9px' }}>
       {children}
+    </div>
+  )
+}
+
+// #1b/#1c: hiddenContributors is computed server-side (reports.service.ts
+// REPORT_SCHEMA) but was never rendered anywhere - dead data. Surfaces it here
+// with a role-appropriate action: the initiator can add the person directly
+// (the ground already exists at this point, unlike the pre-ground entry
+// flow); a participant cannot add anyone themselves, so they get the
+// existing ParticipantRequest flow instead, which the initiator already has
+// an approval UI for (GroundAdminPage.tsx pendingRequests).
+function HiddenContributorsSection({
+  groundId,
+  contributors,
+  isInitiator,
+}: {
+  groundId: string
+  contributors: { label: string; evidence: string }[]
+  isInitiator: boolean
+}) {
+  const [openFor, setOpenFor] = useState<string | null>(null)
+  const [email, setEmail] = useState('')
+  const [name, setName] = useState('')
+  const [reason, setReason] = useState('')
+  const [done, setDone] = useState<Set<string>>(new Set())
+
+  const addParticipant = useMutation({
+    mutationFn: (vars: { key: string; email: string; note: string }) =>
+      groundsApi.addParticipant(groundId, { email: vars.email, note: vars.note }),
+    onSuccess: (_data, vars) => {
+      setDone(prev => new Set(prev).add(vars.key))
+      setOpenFor(null)
+      toast.success('Invited.')
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Could not add them. Try again.'),
+  })
+
+  const requestAddition = useMutation({
+    mutationFn: (vars: { key: string; requestedEmail: string; requestedName?: string; reason: string }) =>
+      participantRequestsApi.create(groundId, { requestedEmail: vars.requestedEmail, requestedName: vars.requestedName, reason: vars.reason }),
+    onSuccess: (_data, vars) => {
+      setDone(prev => new Set(prev).add(vars.key))
+      setOpenFor(null)
+      toast.success('Request sent to the initiator.')
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Could not send the request. Try again.'),
+  })
+
+  if (contributors.length === 0) return null
+
+  return (
+    <div style={{ marginTop: 16, background: '#F4F7FC', border: '1px solid #CFE2F5', borderRadius: 8, padding: '12px 14px' }}>
+      <SecH>Possible missing contributors</SecH>
+      <div style={{ fontSize: 12.5, color: '#4A5568', lineHeight: 1.55, marginBottom: 10 }}>
+        The record references people who are not themselves a party on this ground.
+      </div>
+      {contributors.map((c, i) => {
+        const key = `${i}-${c.label}`
+        return (
+          <div key={key} style={{ padding: '9px 0', borderTop: i > 0 ? '0.5px solid #D8E2F0' : undefined }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#1A1916', marginBottom: 2 }}>{c.label}</div>
+            <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.45, marginBottom: 6 }}>{c.evidence}</div>
+            {done.has(key) ? (
+              <div style={{ fontSize: 11.5, color: '#085041', fontWeight: 600 }}>{isInitiator ? '✓ Invited' : '✓ Request sent'}</div>
+            ) : openFor === key ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <input
+                  type="email" autoFocus placeholder="their@email.com"
+                  value={email} onChange={e => setEmail(e.target.value)}
+                  style={{ padding: '7px 10px', borderRadius: 6, border: '1px solid #CFE2F5', fontSize: 12.5, fontFamily: 'inherit', outline: 'none' }}
+                />
+                {!isInitiator && (
+                  <input
+                    type="text" placeholder="Their name (optional)"
+                    value={name} onChange={e => setName(e.target.value)}
+                    style={{ padding: '7px 10px', borderRadius: 6, border: '1px solid #CFE2F5', fontSize: 12.5, fontFamily: 'inherit', outline: 'none' }}
+                  />
+                )}
+                {!isInitiator && (
+                  <textarea
+                    placeholder="Why should they be added?"
+                    value={reason} onChange={e => setReason(e.target.value)}
+                    style={{ padding: '7px 10px', borderRadius: 6, border: '1px solid #CFE2F5', fontSize: 12.5, fontFamily: 'inherit', outline: 'none', resize: 'vertical', minHeight: 44 }}
+                  />
+                )}
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button
+                    onClick={() => {
+                      if (!email.trim().includes('@')) return
+                      if (isInitiator) {
+                        addParticipant.mutate({ key, email: email.trim(), note: c.evidence })
+                      } else {
+                        requestAddition.mutate({ key, requestedEmail: email.trim(), requestedName: name.trim() || undefined, reason: reason.trim() || c.evidence })
+                      }
+                    }}
+                    disabled={addParticipant.isPending || requestAddition.isPending}
+                    style={{ flex: 1, padding: '7px 12px', borderRadius: 6, background: '#0C447C', color: 'white', border: 'none', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+                  >
+                    {isInitiator ? 'Add them' : 'Send request'}
+                  </button>
+                  <button
+                    onClick={() => { setOpenFor(null); setEmail(''); setName(''); setReason('') }}
+                    style={{ padding: '7px 12px', borderRadius: 6, background: 'none', border: '1px solid #CFE2F5', color: '#6B6560', fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit' }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => { setOpenFor(key); setEmail(''); setName(''); setReason(c.evidence) }}
+                style={{ background: 'none', border: 'none', padding: 0, fontSize: 12.5, fontWeight: 600, color: '#0C447C', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+              >
+                {isInitiator ? 'Add them' : 'Request they be added'}
+              </button>
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -486,6 +606,10 @@ export function ReportPage() {
                   <SecH>What comes next</SecH>
                   <div style={{ fontSize: 13, color: '#1A1916', lineHeight: 1.6 }}>{report.centralQuestion}</div>
                 </div>
+              )}
+
+              {Array.isArray((report as any).engagement?.hiddenContributors) && (report as any).engagement.hiddenContributors.length > 0 && (
+                <HiddenContributorsSection groundId={id!} contributors={(report as any).engagement.hiddenContributors} isInitiator={isAdmin} />
               )}
 
               {/* CLOSING ROUND: the choice now in front of the parties. Neutral

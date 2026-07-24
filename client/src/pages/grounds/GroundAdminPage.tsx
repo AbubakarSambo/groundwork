@@ -140,10 +140,13 @@ export function GroundAdminPage() {
   })
 
   const approveRequest = useMutation({
-    mutationFn: async (req: ParticipantRequest) => {
-      await participantRequestsApi.update(id!, req.id, 'APPROVED')
-      await groundsApi.addParticipant(id!, { email: req.requestedEmail })
-    },
+    // The server already invites the person as part of approving the request
+    // (participant-requests.controller.ts's update() calls grounds.addParticipant
+    // itself on APPROVED) - a second client-side addParticipant call here was
+    // redundant and, since the participant row now exists, hit the "unaccepted
+    // invite" branch and silently re-sent a second invite email for the same
+    // approval.
+    mutationFn: (req: ParticipantRequest) => participantRequestsApi.update(id!, req.id, 'APPROVED'),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['participant-requests', id] })
       qc.invalidateQueries({ queryKey: ['ground', id] })
