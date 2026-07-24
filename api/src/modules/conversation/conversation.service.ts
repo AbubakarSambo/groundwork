@@ -115,6 +115,33 @@ export class ConversationService {
     });
     // hasIntake: true when the participant has submitted the cofounder pre-check-in intake.
     const hasIntake = !!checkIn.participant.foundingIntent;
+
+    // Reopen (#3): when this is a self-correction session, surface the prior
+    // session's turns so the person can SEE what they said before adding to it.
+    // Same participant, so no cross-party content crosses (HARD RULE holds).
+    // The original session's turns are read-only context here; the correction
+    // is recorded as this new session (the original is never edited).
+    let priorTurns: typeof turns = [];
+    let priorSessionNumber: number | null = null;
+    if (checkIn.isSelfCorrection && checkIn.selfCorrectionTargetSession != null) {
+      const priorCheckIn = await this.prisma.checkIn.findUnique({
+        where: {
+          participantId_sessionNumber: {
+            participantId: checkIn.participantId,
+            sessionNumber: checkIn.selfCorrectionTargetSession,
+          },
+        },
+        select: { id: true },
+      });
+      if (priorCheckIn) {
+        priorTurns = await this.prisma.conversationTurn.findMany({
+          where: { checkInId: priorCheckIn.id },
+          orderBy: { createdAt: 'asc' },
+        });
+        priorSessionNumber = checkIn.selfCorrectionTargetSession;
+      }
+    }
+
     return {
       checkIn: {
         ...checkIn,
@@ -123,6 +150,8 @@ export class ConversationService {
         hasIntake,
       },
       turns,
+      priorTurns,
+      priorSessionNumber,
     };
   }
 

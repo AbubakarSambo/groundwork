@@ -103,6 +103,8 @@ export function ChatPage() {
   const isFinalSession: boolean = (location.state as any)?.isFinal ?? false
 
   const [msgs, setMsgs]               = useState<Msg[]>([])
+  const [priorTurns, setPriorTurns]   = useState<Msg[]>([])
+  const [priorSessionNumber, setPriorSessionNumber] = useState<number | null>(null)
   const [displayedMsgs, setDisplayedMsgs] = useState<Msg[]>([])
   const [streamingId, setStreamingId] = useState<string | null>(null)
   const [input, setInput]             = useState('')
@@ -221,6 +223,12 @@ export function ChatPage() {
         try {
           const t = await conversationApi.transcript(checkInId)
           if (cancelled) return
+          // Reopen (#3): if this is a correction session, show the prior
+          // session's turns read-only so the person sees what they said before.
+          if (t.priorTurns && t.priorTurns.length > 0) {
+            setPriorTurns(t.priorTurns.map(turn => ({ id: turn.id, role: turn.role, content: turn.content })))
+            setPriorSessionNumber(t.priorSessionNumber ?? null)
+          }
           if (t.turns && t.turns.length > 0) {
             setMsgs(t.turns.map(turn => ({ id: turn.id, role: turn.role, content: turn.content })))
             if (t.checkIn?.groundId && !groundId) setGroundId(t.checkIn.groundId)
@@ -382,6 +390,23 @@ export function ChatPage() {
         >
           {openSession.isPending && (
             <div style={{ fontSize: 13, color: 'var(--gw-muted)', textAlign: 'center', padding: 16 }}>Opening your session…</div>
+          )}
+          {priorTurns.length > 0 && (
+            <div style={{ border: '1px dashed var(--gw-border)', borderRadius: 10, padding: '10px 12px', marginBottom: 4, background: 'var(--gw-bg)' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--gw-muted)', marginBottom: 8 }}>
+                From your earlier session{priorSessionNumber != null ? ` ${priorSessionNumber}` : ''} · read-only
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, opacity: 0.72 }}>
+                {priorTurns.map(m => (
+                  <div key={`prior-${m.id}`} style={{ alignSelf: m.role === 'PERSON' ? 'flex-end' : 'flex-start', maxWidth: '85%', fontSize: 13, lineHeight: 1.5, color: 'var(--gw-text)', background: m.role === 'PERSON' ? 'var(--gw-blue-bg)' : 'white', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '7px 10px' }}>
+                    {m.content}
+                  </div>
+                ))}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 8, lineHeight: 1.5 }}>
+                This stays on record as it is. What you add below is recorded as an update, not a replacement.
+              </div>
+            </div>
           )}
           {displayedMsgs.map(m => (
             m.docAssessment ? (
