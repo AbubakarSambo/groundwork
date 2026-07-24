@@ -209,6 +209,7 @@ export const SITUATION_CARDS = [
     label: 'New hire starting',
     detail: 'Get you and a new hire meaning the same thing by "doing well", before anything drifts.',
     message: 'I have a new hire starting and want to make sure we set clear expectations from the beginning.',
+    timelineHint: 'typically 90 days',
     examples: [
       'Someone starts Monday and you want to be sure you both mean the same thing by "doing well."',
       'A new joiner and their manager each writing what success looks like in the first 90 days.',
@@ -219,6 +220,7 @@ export const SITUATION_CARDS = [
     label: 'New project',
     detail: 'Line everyone up on goals, roles, and what "done" means before the work starts.',
     message: 'We are starting a new project and I want to get the team aligned on goals and roles from the beginning.',
+    timelineHint: 'typically 90 days',
     examples: [
       'Kicking off a build and you want scope and "done" agreed before anyone starts.',
       'A cross-team project where each team quietly assumes a different owner.',
@@ -229,6 +231,7 @@ export const SITUATION_CARDS = [
     label: 'A new way of working together',
     detail: 'Someone new is in the picture: a partner, a manager, a changed team. Say what each of you expects before those assumptions harden.',
     message: 'We have a new working arrangement starting and want to make sure we are set up well.',
+    timelineHint: 'typically 90 days',
     examples: [
       'A new equal partner joining and you want the assumptions said out loud first.',
       'An interim leader stepping into an existing team and scope needs pinning down.',
@@ -239,6 +242,7 @@ export const SITUATION_CARDS = [
     label: 'Setting shared goals',
     detail: "A team agreeing on what matters most this period, so effort doesn't spread in different directions.",
     message: 'We are setting shared goals for this period and I want everyone aligned on what matters most.',
+    timelineHint: 'typically 90 days',
     examples: [
       'A team agreeing on the two or three priorities that matter most before the quarter starts.',
       'Several people who each quietly think something different is the top priority right now.',
@@ -249,6 +253,7 @@ export const SITUATION_CARDS = [
     label: 'A big decision',
     detail: "A group making a real choice, each person's honest read before you commit.",
     message: 'We are making a big decision and I want each person\'s honest read before we commit.',
+    timelineHint: 'typically one check-in',
     examples: [
       'A hiring, budget, or direction call where you want each person\'s real view before the room converges.',
       'A choice everyone will nod along to in the meeting - you want the honest reads first.',
@@ -259,6 +264,7 @@ export const SITUATION_CARDS = [
     label: "Someone's work is off track",
     detail: 'Deadlines or expectations are slipping, and you want the exact gap named before the conversation.',
     message: 'A team member is not delivering and I need to address it. I want to make sure I have the full picture before we talk.',
+    timelineHint: 'typically 90 days',
     examples: [
       'A senior hire is not delivering what they were brought in to do.',
       'Deadlines keep slipping and you want the specific gap named before the conversation.',
@@ -270,6 +276,7 @@ export const SITUATION_CARDS = [
     label: 'A project is off track',
     detail: "What was agreed and what exists no longer match. Get each person's honest read before the group talks.",
     message: 'A project of mine has drifted from what we originally agreed and I want to realign the team on where things actually stand.',
+    timelineHint: 'typically 90 days',
     examples: [
       'A project blew up or is badly behind and everyone has a different story about why.',
       'What was agreed and what exists no longer match, and you want the gap named.',
@@ -280,6 +287,7 @@ export const SITUATION_CARDS = [
     label: 'You and someone see it differently',
     detail: 'Close the gap before it grows. Each of you gives your honest read first.',
     message: 'I need to realign with a team member. I think we see the current situation differently and want to get both our accounts on record.',
+    timelineHint: 'typically 60 days',
     examples: [
       'Priorities shifted and you two are working off different ideas of what matters now.',
       'You and a co-founder or partner see contributions or direction differently and want both accounts first.',
@@ -1220,8 +1228,8 @@ export function EntryChatPage() {
               {/* Situation cards - shown only before user has sent first message */}
               {onboardingHistory.length === 1 && !onboardingLoading && !pickedSituation && (
                 <div style={{ alignSelf: 'flex-start', width: '100%' }}>
-                  <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginBottom: 5, fontWeight: 500 }}>Starting something</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(235px, 1fr))', gap: 6, marginBottom: 10 }}>
+                  <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginBottom: 4, fontWeight: 500 }}>Starting something</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(235px, 1fr))', gap: 5, marginBottom: 8 }}>
                     {SITUATION_CARDS.filter(c => c.group === 'positive').map(card => (
                       <button
                         key={card.label}
@@ -1232,7 +1240,16 @@ export function EntryChatPage() {
                           cursor: 'pointer', fontFamily: 'inherit',
                         }}
                       >
-                        <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--gw-text)', marginBottom: 1 }}>{card.label}</div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 6, marginBottom: 1 }}>
+                          <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--gw-text)' }}>{card.label}</div>
+                          {card.timelineHint && (
+                            // Inline with the label, not a separate line - suite_l's
+                            // above-the-fold check at 1280x720 failed when this was
+                            // its own row (the extra height pushed the freeform card
+                            // below the fold). No added vertical footprint this way.
+                            <div style={{ fontSize: 9.5, color: 'var(--gw-muted)', fontStyle: 'italic', whiteSpace: 'nowrap', flexShrink: 0 }}>{card.timelineHint}</div>
+                          )}
+                        </div>
                         <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', lineHeight: 1.4 }}>{card.detail}</div>
                         {card.examples && card.examples.length > 0 && (
                           <div style={{ marginTop: 3 }}>
@@ -1258,7 +1275,16 @@ export function EntryChatPage() {
                           cursor: 'pointer', fontFamily: 'inherit',
                         }}
                       >
-                        <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--gw-text)', marginBottom: 1 }}>{card.label}</div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 6, marginBottom: 1 }}>
+                          <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--gw-text)' }}>{card.label}</div>
+                          {card.timelineHint && (
+                            // Inline with the label, not a separate line - suite_l's
+                            // above-the-fold check at 1280x720 failed when this was
+                            // its own row (the extra height pushed the freeform card
+                            // below the fold). No added vertical footprint this way.
+                            <div style={{ fontSize: 9.5, color: 'var(--gw-muted)', fontStyle: 'italic', whiteSpace: 'nowrap', flexShrink: 0 }}>{card.timelineHint}</div>
+                          )}
+                        </div>
                         <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', lineHeight: 1.4 }}>{card.detail}</div>
                         {card.examples && card.examples.length > 0 && (
                           <div style={{ marginTop: 3 }}>
