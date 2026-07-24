@@ -48,15 +48,6 @@ class EntryFaqDto {
   question: string;
 }
 
-class ParticipantChatDto {
-  @IsString() token: string;
-
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => TurnDto)
-  messages: TurnDto[];
-}
-
 class EntryReportDto {
   @IsArray()
   @ValidateNested({ each: true })
@@ -198,12 +189,6 @@ export class EntryController {
   async faq(@Body() dto: EntryFaqDto) {
     const reply = await this.service.faq(dto.question);
     return { reply };
-  }
-
-  @Public()
-  @Post('participant-chat')
-  async participantChat(@Body() dto: ParticipantChatDto) {
-    return this.service.participantChat(dto.token, dto.messages);
   }
 
   @Public()
