@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/auth'
 import { apiClient } from '@/api/client'
 import { groundsApi } from '@/api/grounds'
 import { useEntryStore } from '@/stores/entry'
+import { useFeedbackStore } from '@/stores/feedback'
 import type { Ground } from '@/types'
 
 const NAV_ITEMS = [
@@ -100,7 +101,13 @@ const BUILD_OPTIONS    = ['Reminder / email nudge', 'Mobile app', 'Slack integra
 function FeedbackWidget() {
   const location = useLocation()
   const isChatPage = location.pathname.startsWith('/chat/') || location.pathname.startsWith('/checkin/') || location.pathname === '/start'
-  const [open, setOpen] = useState(false)
+  // /feed has its own header button (styled via .gw-feedback-btn to match this
+  // trigger exactly) that opens this same panel via the shared store below, so
+  // the floating trigger is suppressed there to avoid showing two of them.
+  const hideTrigger = location.pathname === '/feed'
+  const open = useFeedbackStore(s => s.open)
+  const showPanel = useFeedbackStore(s => s.show)
+  const hidePanel = useFeedbackStore(s => s.hide)
   const [tab, setTab] = useState<FbTab>('reaction')
   const [reaction, setReaction] = useState('')
   const [buildPick, setBuildPick] = useState('')
@@ -127,7 +134,7 @@ function FeedbackWidget() {
     }
     try { await apiClient.post('/feedback', payload) } catch { /* swallow - best effort */ }
     setSent(true)
-    setTimeout(() => { setOpen(false); setSent(false); setReaction(''); setBuildPick(''); setBuildDetail(''); setWrongText(''); setContactEmail('') }, 1800)
+    setTimeout(() => { hidePanel(); setSent(false); setReaction(''); setBuildPick(''); setBuildDetail(''); setWrongText(''); setContactEmail('') }, 1800)
   }
 
   const tabLabel = { reaction: 'Reaction', build: 'Build request', wrong: 'Something went wrong' }
@@ -135,33 +142,31 @@ function FeedbackWidget() {
   return (
     <>
       {/* Trigger button */}
-      <button
-        onClick={() => setOpen(v => !v)}
-        // On mobile, the bottom nav bar is a fixed 60px strip - without the extra
-        // offset this button's inline `bottom: 20` sits inside that strip and
-        // overlaps the nav labels. Scoped to non-chat pages only, since chat
-        // pages position this button from `top`, not `bottom`.
-        className={isChatPage ? undefined : 'gw-fb-trigger-mobile-safe'}
-        style={{
-          position: 'fixed',
-          ...(isChatPage ? { top: 12, right: 16 } : { bottom: 20, right: 20 }),
-          zIndex: 100,
-          background: 'var(--gw-navy)', color: 'white', border: 'none',
-          borderRadius: 20, padding: '8px 14px', fontSize: 12, fontWeight: 600,
-          cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6,
-          boxShadow: '0 2px 8px rgba(0,0,0,.2)',
-        }}
-      >
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-          <path d="M7 1C3.686 1 1 3.462 1 6.5c0 1.41.56 2.694 1.48 3.662L1.5 13l2.98-1.334A6.2 6.2 0 0 0 7 12c3.314 0 6-2.462 6-5.5S10.314 1 7 1Z" stroke="white" strokeWidth="1.3" fill="none"/>
-        </svg>
-        Feedback
-      </button>
+      {!hideTrigger && (
+        <button
+          onClick={() => (open ? hidePanel() : showPanel())}
+          // On mobile, the bottom nav bar is a fixed 60px strip - without the extra
+          // offset this button's inline `bottom: 20` sits inside that strip and
+          // overlaps the nav labels. Scoped to non-chat pages only, since chat
+          // pages position this button from `top`, not `bottom`.
+          className={isChatPage ? 'gw-feedback-btn' : 'gw-feedback-btn gw-fb-trigger-mobile-safe'}
+          style={{
+            position: 'fixed',
+            ...(isChatPage ? { top: 12, right: 16 } : { bottom: 20, right: 20 }),
+            zIndex: 100,
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M7 1C3.686 1 1 3.462 1 6.5c0 1.41.56 2.694 1.48 3.662L1.5 13l2.98-1.334A6.2 6.2 0 0 0 7 12c3.314 0 6-2.462 6-5.5S10.314 1 7 1Z" stroke="white" strokeWidth="1.3" fill="none"/>
+          </svg>
+          Feedback
+        </button>
+      )}
 
       {/* Overlay */}
       {open && (
         <div
-          onClick={e => { if (e.target === e.currentTarget) setOpen(false) }}
+          onClick={e => { if (e.target === e.currentTarget) hidePanel() }}
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)', zIndex: 200, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', paddingBottom: 0 }}
         >
           <div style={{ background: 'white', borderRadius: '12px 12px 0 0', padding: 20, width: '100%', maxWidth: 480, maxHeight: '90vh', overflowY: 'auto' }}>
@@ -246,7 +251,7 @@ function FeedbackWidget() {
                 )}
 
                 <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-                  <button onClick={() => setOpen(false)}
+                  <button onClick={() => hidePanel()}
                     style={{ padding: '11px 16px', background: 'none', color: 'var(--gw-sub)', border: '1px solid var(--gw-border)', borderRadius: 6, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
                     Cancel
                   </button>
