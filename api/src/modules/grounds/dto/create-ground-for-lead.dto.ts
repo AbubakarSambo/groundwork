@@ -65,6 +65,16 @@ export class CreateGroundForLeadDto {
   @MaxLength(4000)
   brief?: string;
 
+  @ApiPropertyOptional({ description: 'Start date: when the first scheduled check-in opens (ISO)' })
+  @IsOptional()
+  @IsString()
+  startsAt?: string;
+
+  @ApiPropertyOptional({ description: 'End date: no new check-ins scheduled after this (ISO)' })
+  @IsOptional()
+  @IsString()
+  endsAt?: string;
+
   @ApiPropertyOptional({ type: [PreAddedParticipantDto], description: 'Participants to add now (e.g. the whole team/cohort), invited immediately alongside the lead' })
   @IsOptional()
   @IsArray()
