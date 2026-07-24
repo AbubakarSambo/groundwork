@@ -966,10 +966,19 @@ Close the report by framing - neutrally, without recommending one - the choice n
       const requestingUserIsMissing = !!(
         sessionProgress && participant && sessionProgress.missingParticipantIds.includes(participant.id)
       );
+      // This party's own solo artifact ("Your private record shows:") is generated
+      // as soon as their own check-in completes, but was only ever attached to the
+      // response after the FINAL release - so a participant who finished before the
+      // other party had no way to see their own private record at all in the
+      // meantime. Surface it here too, same as the released branch below.
+      const soloArtifact = participant?.soloArtifact
+        ? (() => { try { return JSON.parse(participant.soloArtifact!); } catch { return null; } })()
+        : null;
       return {
         ...ground.report,
         activated: true,
         forming: true,
+        soloArtifact,
         sessionProgress: sessionProgress ? { ...sessionProgress, requestingUserIsMissing } : null,
       };
     }
