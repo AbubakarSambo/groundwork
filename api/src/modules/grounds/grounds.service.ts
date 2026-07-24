@@ -989,7 +989,11 @@ export class GroundsService {
   /**
    * GET /grounds/:id/mediator-brief
    * Returns structural, non-session information for use with a facilitator.
-   * Accessible only to the initiator or an org admin.
+   * Accessible only to the initiator or a party (participant) on this
+   * ground - checked below by requestingUserId, not by organization role.
+   * There is no separate org-admin/platform-admin route for this brief; an
+   * org admin who is not themselves the initiator or a participant cannot
+   * currently read it at all.
    */
   async getMediatorBrief(groundId: string, requestingUserId: string) {
     const ground = await this.prisma.ground.findUnique({
@@ -998,8 +1002,6 @@ export class GroundsService {
     });
     if (!ground) throw new NotFoundException('Ground not found');
 
-    // Only the initiator may request the mediator brief. Org admins access it
-    // via the admin surface (not this endpoint), so we check userId here.
     const requesterLink = await this.prisma.groundParticipant.findFirst({
       where: { groundId, userId: requestingUserId },
     });

@@ -845,8 +845,13 @@ model DisclaimerAcknowledgement {
 }
 
 // ---------------------------------------------------------------------------
-// Report activation — mutual reveal gate. Both parties must activate before
-// the report is released. Prevents one-sided reads.
+// Report activation — a per-party reveal confirmation, not a mutual gate.
+// Release (Report.releasedAt) happens independently of this, driven by
+// session completion; activation only controls what a given party sees
+// AFTER release. Each party's own row gates only their own view - one
+// party activating has no effect on any other party's access, and there is
+// no "wait for the other side" behavior (see ReportsService.get()). The
+// initiator is exempt and always sees full content once released.
 // ---------------------------------------------------------------------------
 
 enum ReportActivationStatus {

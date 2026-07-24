@@ -937,8 +937,10 @@ Close the report by framing - neutrally, without recommending one - the choice n
    * show the release button - no content is included before release.
    *
    * After release, each participant must activate their own ReportActivation
-   * before full content is returned to them (mutual reveal gate). The initiator
-   * always sees the full report once released - they are the one who released it.
+   * before full content is returned to THEM - this is a per-party reveal
+   * confirmation, not a mutual gate: one party activating has no effect on
+   * any other party's access. The initiator always sees the full report
+   * once released - they are the one who released it.
    */
   async get(groundId: string, requestingUserId: string, requestingUserOrgId?: string) {
     const ground = await this.prisma.ground.findUnique({
@@ -976,8 +978,10 @@ Close the report by framing - neutrally, without recommending one - the choice n
       };
     }
 
-    // Mutual reveal gate: participants must activate before seeing content.
-    // The initiator is exempt - they released the report and can always read it.
+    // Per-party reveal gate: each participant must activate before seeing
+    // content, but only their own activation is checked here - this is not
+    // mutual. The initiator is exempt - they released the report and can
+    // always read it.
     if (participant && !isInitiator) {
       const activation = await this.prisma.reportActivation.findUnique({
         where: { groundId_participantId: { groundId, participantId: participant.id } },
