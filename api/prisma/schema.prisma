@@ -115,6 +115,7 @@ enum Cadence {
   FORTNIGHTLY
   MONTHLY
   SEQUENTIAL // no fixed schedule: the initiator's check-in opens the team's next round
+  ONE_TIME // a single check-in, no follow-up round ever scheduled
 }
 
 enum BillingEventType {

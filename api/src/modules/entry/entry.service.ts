@@ -653,6 +653,7 @@ STRICT RULES:
       FORTNIGHTLY: Cadence.FORTNIGHTLY,
       MONTHLY: Cadence.MONTHLY,
       SEQUENTIAL: Cadence.SEQUENTIAL,
+      ONE_TIME: Cadence.ONE_TIME,
     };
 
     // --- Coordinator/lead path ---------------------------------------------

@@ -925,6 +925,13 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     });
     const cadence = ground?.cadence ?? Cadence.FORTNIGHTLY;
 
+    // ONE_TIME: a single check-in, full stop. No next session for this party,
+    // ever - not "not yet scheduled" like SEQUENTIAL, but genuinely never.
+    // Explicit early return rather than relying on a 0-day step in
+    // cadenceDays below: a 0-day step still CREATES a session (immediately
+    // available), which is the opposite of "no follow-up round."
+    if (cadence === Cadence.ONE_TIME) return;
+
     // The completer's own next session. For SEQUENTIAL there is no clock: their
     // next round is not auto-scheduled (availableFrom stays null until triggered).
     const ownAvailableFrom =
@@ -980,7 +987,14 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       where: { id: groundId },
       select: { timelineDays: true, cadence: true },
     });
-    const cadenceDays: Record<string, number> = { DAILY: 1, WEEKLY: 7, FORTNIGHTLY: 14, MONTHLY: 30, ONE_TIME: 0, SEQUENTIAL: 0 };
+    // ONE_TIME never reaches this function - ensureNextSession's early return
+    // above (and the SEQUENTIAL-only guard on the other caller) mean
+    // createNextIfAbsent is never called for a ONE_TIME ground. No entry for
+    // it here: a phantom "ONE_TIME: 0" used to sit next to SEQUENTIAL, but a
+    // 0-day step still creates a session (immediately available) - the
+    // opposite of "no follow-up" - so a stray future caller falling through
+    // to that entry would have silently broken the guarantee.
+    const cadenceDays: Record<string, number> = { DAILY: 1, WEEKLY: 7, FORTNIGHTLY: 14, MONTHLY: 30, SEQUENTIAL: 0 };
     const step = cadenceDays[ground?.cadence ?? ''] ?? 0;
     const planned = step > 0 && ground ? Math.max(1, Math.floor(ground.timelineDays / step)) : null;
     const isFinal = planned != null && sessionNumber >= planned;
