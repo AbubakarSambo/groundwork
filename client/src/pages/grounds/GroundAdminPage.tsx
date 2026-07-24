@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/auth'
 import { groundsApi } from '@/api/grounds'
+import { participantLabel } from '@/lib/utils'
 import { reportsApi } from '@/api/reports'
 import { documentsApi } from '@/api/documents'
 import { conversationApi } from '@/api/conversation'
@@ -387,7 +388,8 @@ export function GroundAdminPage() {
                         <div className="ga-status-dot" style={{ background: statusColor }} title={statusLabel} />
                         <div className={`gw-av gw-av-${i % 6}`}>{(p.email || '?').charAt(0).toUpperCase()}</div>
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 13, fontWeight: 600 }}>{p.email}</div>
+                          <div style={{ fontSize: 13, fontWeight: 600 }}>{participantLabel(p)}</div>
+                          <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>{p.email}</div>
                           {editingRoleId === p.id ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 3 }}>
                               <input
@@ -458,7 +460,7 @@ export function GroundAdminPage() {
                       {sharedReport && (
                         <div style={{ background: '#0A1628', color: 'white', borderRadius: 8, padding: '12px 14px', marginTop: 4, marginLeft: 40 }}>
                           <div style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,.4)', fontWeight: 700, marginBottom: 8 }}>
-                            {p.email.split('@')[0]}'s private report (shared by them)
+                            {participantLabel(p)}'s private report (shared by them)
                           </div>
                           {Object.entries(sharedReport).map(([key, val]) => {
                             if (!val || (Array.isArray(val) && val.length === 0)) return null

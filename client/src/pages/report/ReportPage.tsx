@@ -6,6 +6,7 @@ import { groundsApi } from '@/api/grounds'
 import { reportsApi } from '@/api/reports'
 import { apiClient } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
+import { participantLabel } from '@/lib/utils'
 import { InferenceReviewPanel } from '@/components/InferenceReviewPanel'
 import { VennIcon } from '@/components/gw/VennIcon'
 
@@ -279,11 +280,11 @@ export function ReportPage() {
 
   const adminParty = (ground.participants ?? []).find((p: any) => p.partyType === 'INITIATOR')
   const partParty = (ground.participants ?? []).find((p: any) => p.partyType !== 'INITIATOR')
-  // Fallback when a party has no email/name yet: use a neutral descriptor,
-  // never the bare role word ("Admin"/"Participant"), which reads as a label
-  // rather than a person.
-  const adminHandle = adminParty?.email?.split('@')[0] ?? 'the initiator'
-  const partHandle = partParty?.email?.split('@')[0] ?? 'the other party'
+  // Real name if given, else roleAsDescribed, else a neutral descriptor -
+  // never the bare role word ("Admin"/"Participant") and never a raw email
+  // local-part, both of which read as a label rather than a person.
+  const adminHandle = adminParty ? participantLabel(adminParty) : 'the initiator'
+  const partHandle = partParty ? participantLabel(partParty) : 'the other party'
 
   const agreements = report.agreements ?? []
   const divergences = report.divergences ?? []
