@@ -125,5 +125,5 @@ export const billingApi = {
     }).then(r => r.data),
 
   getCodeShareCard: (codeId: string) =>
-    apiClient.get<CodeShareCard>(`/billing/code-share/${codeId}`).then(r => r.data),
+    apiClient.get<CodeShareCard>(`/billing/contributor-codes/${codeId}/share-card`).then(r => r.data),
 }
