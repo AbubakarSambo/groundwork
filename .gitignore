@@ -1,5 +1,9 @@
 # Dependencies
 node_modules/
+# also match a node_modules symlink specifically (a symlink is not a
+# directory, so the trailing-slash pattern above won't catch it - this
+# regressed onto main once already via `git add -A` over a dev symlink)
+**/node_modules
 
 # Build output
 dist/
