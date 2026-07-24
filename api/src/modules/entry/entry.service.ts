@@ -674,6 +674,13 @@ STRICT RULES:
         moment: GroundMoment.STARTING,
         cadence: (dto.cadence && cadenceMap[dto.cadence]) ? cadenceMap[dto.cadence] : Cadence.FORTNIGHTLY,
         cadenceAnchorDay: dto.cadenceAnchorDay ?? undefined,
+        // Mirrors the self path a few lines below (dto.checkInBy/lastCheckInBy
+        // -> startsAt/endsAt) - the admin's chosen dates were previously
+        // collected on the client and silently dropped here; the lead ended
+        // up with no availableFrom gate and no endsAt no matter what the
+        // admin picked.
+        startsAt: dto.checkInBy || undefined,
+        endsAt: dto.lastCheckInBy || undefined,
         brief: dto.brief?.trim() || undefined,
         participants: dto.contributors.map((c) => ({ email: c.email, roleAsDescribed: c.context })),
       });
