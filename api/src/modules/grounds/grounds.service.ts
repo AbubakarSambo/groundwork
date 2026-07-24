@@ -294,7 +294,24 @@ export class GroundsService {
 
   /** The lead reviews the admin's setup, optionally edits it, and confirms -
    * only then does their own session 1 open and the ground become real. */
-  async confirmLead(groundId: string, requestingUserId: string, edits?: { brief?: string }) {
+  /**
+   * The named lead confirms and begins. They choose whether they are ALSO
+   * checking in (the common case - they get a session-1 check-in like any
+   * other party) or MANAGING ONLY (they oversee the ground - see submission
+   * status and the released report - but never give their own account).
+   *
+   * managingOnly: false (default) -> unchanged behaviour, a session-1 check-in
+   * is created and checkInId is returned so the client lands the lead in the
+   * real engine, same as before this flag existed.
+   *
+   * managingOnly: true -> the lead's participant row is marked managingOnly
+   * and NO check-in is created for them. checkInId is null in the response;
+   * the client must not try to open a check-in for a managing-only lead.
+   * Critically, isSessionReadyForReport excludes managingOnly participants
+   * from its readiness count, so the ground does not wait forever on an
+   * account that will never come - see that method's comment for why.
+   */
+  async confirmLead(groundId: string, requestingUserId: string, edits?: { brief?: string; managingOnly?: boolean }) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId } });
     if (!ground) throw new NotFoundException('Ground not found');
     if (ground.initiatorId !== requestingUserId) throw new ForbiddenException('Only the named lead can confirm this ground');
@@ -305,16 +322,27 @@ export class GroundsService {
     });
     if (!participant) throw new NotFoundException('Lead participant record not found');
 
+    const managingOnly = edits?.managingOnly === true;
     const hasOtherParticipants = (await this.prisma.groundParticipant.count({ where: { groundId, partyType: PartyType.PARTICIPANT } })) > 0;
 
+    const groundUpdate = this.prisma.ground.update({
+      where: { id: groundId },
+      data: {
+        status: hasOtherParticipants ? GroundStatus.AWAITING_PARTIES : GroundStatus.OPEN,
+        ...(edits?.brief !== undefined ? { brief: edits.brief } : {}),
+      },
+    });
+
+    if (managingOnly) {
+      await this.prisma.$transaction([
+        groundUpdate,
+        this.prisma.groundParticipant.update({ where: { id: participant.id }, data: { managingOnly: true } }),
+      ]);
+      return { groundId, checkInId: null };
+    }
+
     const [, checkIn] = await this.prisma.$transaction([
-      this.prisma.ground.update({
-        where: { id: groundId },
-        data: {
-          status: hasOtherParticipants ? GroundStatus.AWAITING_PARTIES : GroundStatus.OPEN,
-          ...(edits?.brief !== undefined ? { brief: edits.brief } : {}),
-        },
-      }),
+      groundUpdate,
       this.prisma.checkIn.create({
         data: { groundId, participantId: participant.id, sessionNumber: 1, status: CheckInStatus.NOT_STARTED },
       }),
@@ -1166,9 +1194,19 @@ export class GroundsService {
     // A participant is "active" if they accepted the invite (userId set) OR if
     // they already completed a check-in for this session (participant-chat flow
     // can complete a session before the user registers a full account).
+    //
+    // managingOnly is excluded here on purpose: a lead who chose "managing
+    // only" at confirm-lead has userId set (they ARE the initiator's own
+    // user) but was deliberately never given a session-1 check-in - see
+    // confirmLead. Without this exclusion they would match the `userId not
+    // null` clause, count toward the >=2 requirement, then fail the
+    // completed-check-in loop below forever (they have no check-in to
+    // complete), so the ground would wait for a report that can never
+    // release. A managing-only lead is not a party to the comparison.
     const active = await this.prisma.groundParticipant.findMany({
       where: {
         groundId,
+        managingOnly: false,
         OR: [
           { userId: { not: null } },
           { checkIns: { some: { sessionNumber, status: CheckInStatus.COMPLETED } } },

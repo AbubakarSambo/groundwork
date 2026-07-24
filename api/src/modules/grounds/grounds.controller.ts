@@ -15,6 +15,11 @@ class ConfirmLeadDto {
   @IsString()
   @MaxLength(4000)
   brief?: string;
+
+  @ApiPropertyOptional({ description: 'True if the lead is managing only and will not give their own account. Defaults to false (also checking in).' })
+  @IsOptional()
+  @IsBoolean()
+  managingOnly?: boolean;
 }
 
 class UpdateTimelineDto {
