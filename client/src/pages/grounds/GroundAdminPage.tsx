@@ -1154,9 +1154,13 @@ function LeadConfirmView({ ground, groundId, onConfirmed }: { ground: any; groun
       <div style={{ maxWidth: 560, margin: '0 auto', padding: '48px 20px' }}>
         <div style={{ fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-sub)', fontWeight: 700, marginBottom: 8 }}>You lead this ground</div>
         <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--gw-navy)', margin: '0 0 6px', letterSpacing: '-.01em' }}>{ground.label}</h1>
-        <p style={{ fontSize: 13.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 28 }}>
+        <p style={{ fontSize: 13.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 16 }}>
           An admin set this up and named you to lead it. You decide when to begin - this is not a synchronized moment with anyone else.
         </p>
+
+        <div className="gw-box gw-box-blue" style={{ marginBottom: 24 }}>
+          Groundwork records each person's account of a situation independently, then shows where they agree and where they differ. As lead, you will see who has checked in and the shared report once it releases. You will not see what anyone wrote - accounts stay private until the report is ready.
+        </div>
 
         <div style={{ marginBottom: 8, fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gw-sub)' }}>Context (edit if needed)</div>
         <textarea value={brief} onChange={e => setBrief(e.target.value)} rows={4}
