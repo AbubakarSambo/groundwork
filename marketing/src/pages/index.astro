@@ -95,8 +95,36 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
 .l-hero{
   position:relative;overflow:hidden;background:var(--c-navy-d);
   display:flex;align-items:center;
+  min-height:calc(100svh - 56px);
   padding:48px 20px;
 }
+.l-startwell{
+  display:flex;gap:12px;justify-content:center;flex-wrap:wrap;
+  max-width:820px;margin:0 auto 28px;
+}
+.l-sw-lead{
+  font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+  color:rgba(147,197,253,.75);margin:0 auto 14px;
+}
+.l-sw-step{
+  flex:1;min-width:210px;display:flex;gap:11px;text-align:left;
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);
+  border-radius:12px;padding:16px 18px;
+}
+.l-sw-n{
+  flex-shrink:0;width:22px;height:22px;border-radius:50%;
+  background:rgba(147,197,253,.16);color:#93C5FD;
+  font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;
+  margin-top:1px;
+}
+.l-sw-step p{font-size:13.5px;color:rgba(255,255,255,.78);line-height:1.6;margin:0}
+.l-fx-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:8px}
+.l-fx{background:#fff;border:1px solid #E2E0DB;border-radius:12px;padding:20px 22px}
+.l-fx-lead{grid-column:1 / -1;background:var(--c-navy-d);border-color:var(--c-navy-d)}
+.l-fx h3{font-size:15px;font-weight:700;color:var(--c-text);margin:0 0 6px}
+.l-fx p{font-size:13.5px;color:var(--c-sub);line-height:1.65;margin:0}
+.l-fx-lead h3{color:#fff;font-size:18px}
+.l-fx-lead p{color:rgba(255,255,255,.8);font-size:14.5px}
 .l-hero-inner{
   max-width:1080px;margin:0 auto;width:100%;
   display:block;
@@ -322,6 +350,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
   /* hero subtext smaller on mobile */
   .l-hero-inner p{font-size:14px !important;margin-bottom:16px !important}
 
+  /* Start-well steps stack to a single column on mobile */
+  .l-startwell{flex-direction:column;gap:10px;margin-bottom:20px}
+  .l-sw-step{min-width:0;width:100%;padding:14px 16px}
+  .l-sw-lead{font-size:10px;margin-bottom:10px}
+
+  /* Functionality grid stacks on mobile */
+  .l-fx-grid{grid-template-columns:1fr;gap:10px}
+  .l-fx{padding:16px 18px}
+  .l-fx-lead h3{font-size:16px}
+
   /* Primary CTAs - primary full width, sign in text link */
   .l-hero-btns{flex-direction:column;gap:8px;margin-bottom:0}
   .l-hero-btn-p{
@@ -446,7 +484,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
     </svg>
     <div class="l-hero-inner" style="max-width:720px;margin:0 auto;width:100%;text-align:center;padding:32px 20px 28px">
         <h1 class="l-hero-h1" style="min-height:auto;line-height:1.22;letter-spacing:-.02em;margin:6px 0 16px;font-size:30px">Work shouldn't depend on who speaks the loudest, remembers the most, or feels safest to speak.</h1>
-        <p style="font-size:17px;color:rgba(255,255,255,0.82);font-weight:500;line-height:1.65;margin:0 auto 24px;max-width:520px">Groundwork gives a clear picture of your most important work period.</p>
+        <p style="font-size:17px;color:rgba(255,255,255,0.82);font-weight:500;line-height:1.65;margin:0 auto 24px;max-width:560px">Get a clear picture of your most important work moments: onboarding, a new project, a new hire, a new direction.</p>
+        <div class="l-sw-lead">Start well</div>
+        <div class="l-startwell">
+          <div class="l-sw-step"><span class="l-sw-n">1</span><p>Create a Ground by setting the context, objectives and expectations.</p></div>
+          <div class="l-sw-step"><span class="l-sw-n">2</span><p>Everyone involved checks in privately as the work progresses.</p></div>
+          <div class="l-sw-step"><span class="l-sw-n">3</span><p>Check-ins turn into clear reports that show where things stand and what to do next.</p></div>
+        </div>
         <div class="l-hero-btns" id="l-getstarted-wrap" style="justify-content:center">
           <a class="l-hero-btn-p l-cta-pulse" href={`${APP_URL}/start`} style="padding:14px 28px;font-size:15px">Start your first Ground</a>
           <a class="l-hero-btn-g" href={`${APP_URL}/auth`} style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15)">Sign in</a>
@@ -467,103 +511,33 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
     </div>
   </div>
 
-  <!-- EVERY IMPORTANT PERIOD DESERVES A GROUND -->
+  <!-- WHAT GROUNDWORK DOES -->
   <div class="l-sec l-fade" style="background:#F5F3EF;border-bottom:1px solid #E2E0DB">
     <div class="l-wrap-sm">
-      <p class="l-sec-label">What a Ground is</p>
-      <h2 class="l-sec-h2" style="margin-bottom:18px">Every important period of work deserves a Ground.</h2>
-      <p style="font-size:15px;color:#4A5568;line-height:1.8;margin-bottom:16px">A Ground is a structured way to work through an important period. It has a clear beginning, regular check-ins, and a clear end.</p>
-      <p style="font-size:15px;color:#4A5568;line-height:1.8;margin-bottom:16px">It helps teams start important work well, stay on the same page as it changes, and finish with clarity. You start one when you are beginning something that matters, or when something already underway no longer feels right. From then on, Groundwork keeps an ongoing picture of the work: where it started, how it is going, and how today compares with what you agreed at the beginning.</p>
-      <p style="font-size:15px;color:#4A5568;line-height:1.8;margin:0">You do not have to start at the very beginning. A Ground is just as useful when you open it halfway through and need to get everyone back on the same page.</p>
-    </div>
-  </div>
-
-  <!-- WHAT CHANGES WITH GROUNDWORK -->
-  <div class="l-sec l-fade" style="border-bottom:1px solid #E2E0DB">
-    <div class="l-wrap-sm">
-      <p class="l-sec-label">What changes</p>
-      <h2 class="l-sec-h2" style="margin-bottom:22px">What changes with Groundwork.</h2>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid #E2E0DB;border-radius:10px;overflow:hidden;margin-bottom:20px">
-        <div style="padding:12px 16px;background:#F5F3EF;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#9B9590;border-bottom:1px solid #E2E0DB">Without Groundwork</div>
-        <div style="padding:12px 16px;background:#EEF4FB;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#0C447C;border-bottom:1px solid #E2E0DB">With Groundwork</div>
-        <div style="padding:12px 16px;font-size:13px;color:#6B6560;border-bottom:1px solid #E2E0DB">Meetings</div>
-        <div style="padding:12px 16px;font-size:13px;color:#1A1916;font-weight:600;border-bottom:1px solid #E2E0DB;background:#FafBff">Regular check-ins</div>
-        <div style="padding:12px 16px;font-size:13px;color:#6B6560;border-bottom:1px solid #E2E0DB">Memory</div>
-        <div style="padding:12px 16px;font-size:13px;color:#1A1916;font-weight:600;border-bottom:1px solid #E2E0DB;background:#FafBff">An ongoing picture</div>
-        <div style="padding:12px 16px;font-size:13px;color:#6B6560;border-bottom:1px solid #E2E0DB">Opinions</div>
-        <div style="padding:12px 16px;font-size:13px;color:#1A1916;font-weight:600;border-bottom:1px solid #E2E0DB;background:#FafBff">Evidence</div>
-        <div style="padding:12px 16px;font-size:13px;color:#6B6560;border-bottom:1px solid #E2E0DB">Assumptions</div>
-        <div style="padding:12px 16px;font-size:13px;color:#1A1916;font-weight:600;border-bottom:1px solid #E2E0DB;background:#FafBff">Differences made visible</div>
-        <div style="padding:12px 16px;font-size:13px;color:#6B6560;border-bottom:1px solid #E2E0DB">Late surprises</div>
-        <div style="padding:12px 16px;font-size:13px;color:#1A1916;font-weight:600;border-bottom:1px solid #E2E0DB;background:#FafBff">Early conversations</div>
-        <div style="padding:12px 16px;font-size:13px;color:#6B6560">Piecing together the past</div>
-        <div style="padding:12px 16px;font-size:13px;color:#1A1916;font-weight:600;background:#FafBff">Understanding the present</div>
-      </div>
-      <p style="font-size:15px;color:#4A5568;line-height:1.8;margin:0">Groundwork is not another layer of admin. It replaces the piecing-together you already do, and does it better.</p>
-    </div>
-  </div>
-
-  <!-- WHAT MANAGERS SEE -->
-  <div class="l-sec l-fade" style="border-bottom:1px solid #E2E0DB">
-    <div class="l-wrap-sm">
-      <p class="l-sec-label">What managers see</p>
-      <h2 class="l-sec-h2" style="margin-bottom:16px">What managers see.</h2>
-      <p style="font-size:15px;color:#4A5568;line-height:1.8;margin-bottom:20px">At every check-in, Groundwork compares what people are saying now with what was agreed at the beginning, what they said before, and the evidence they have provided. It shows managers where expectations have changed, where the work is falling behind, where people understand things differently, and where a conversation is needed.</p>
-      <div style="background:#F5F3EF;border-left:3px solid #0C447C;border-radius:0 8px 8px 0;padding:16px 20px;margin-bottom:20px">
-        <p style="font-size:13px;color:#4A5568;line-height:1.75;margin:0"><strong>Example:</strong> "Two people described different agreed deadlines. Shown at check-in 2, before the deadline passed."</p>
-      </div>
-      <p style="font-size:15px;color:#4A5568;line-height:1.8;margin-bottom:16px">The value is not in collecting more notes. It is in showing how what is happening now compares with what was agreed at the start, while there is still time to act.</p>
-      <a href="/how-it-works" style="font-size:13px;color:#0C447C;font-weight:600;text-decoration:underline;">See a full example in how it works</a>
-    </div>
-  </div>
-
-  <!-- BRING IT INTO THE CONVERSATIONS -->
-  <div class="l-sec l-fade" style="background:#F5F3EF;border-bottom:1px solid #E2E0DB">
-    <div class="l-wrap-sm">
-      <p class="l-sec-label">Works with how you manage</p>
-      <h2 class="l-sec-h2" style="margin-bottom:16px">Bring it into the conversations you already have.</h2>
-      <p style="font-size:15px;color:#4A5568;line-height:1.8;margin:0">Groundwork does not replace your one-to-ones or check-in calls. It gives you something to bring to them. Before a check-in call, you already know what has changed, where the work is falling behind, and where people see things differently, so the conversation starts from a clear picture instead of a blank page. Groundwork does the piecing-together. You spend the meeting on the conversation that matters.</p>
-    </div>
-  </div>
-
-
-  <!-- WHAT STAYS PRIVATE, WHAT IS SHARED -->
-  <div class="l-sec l-fade" style="border-bottom:1px solid #E2E0DB">
-    <div class="l-wrap">
-      <div class="l-trust-grid">
-        <div>
-          <p class="l-sec-label">Trust</p>
-          <h2 class="l-sec-h2">What stays private, what is shared.</h2>
-          <p style="font-size:15px;color:#6B6560;line-height:1.75;margin-bottom:16px">Your check-in stays private. Groundwork uses everyone's responses to show where people agree, where they understand things differently, and what needs attention. It does not show anyone's raw answers, and it does not identify who said what about another person. The shared report appears once everyone has checked in.</p>
-          <p style="font-size:15px;color:#6B6560;line-height:1.75;margin-bottom:24px">Everyone gets the same chance to contribute, so personality, seniority, confidence, and memory count for less in how the work is understood. Managers still make the decisions. Groundwork just makes sure those decisions are based on a better understanding of the work.</p>
-          <a class="l-btn-solid" style="padding:12px 22px;font-size:14px" href={`${APP_URL}/start`}>Start a Ground</a>
+      <p class="l-sec-label">What Groundwork does</p>
+      <h2 class="l-sec-h2" style="margin-bottom:22px">It shows you what meetings miss.</h2>
+      <div class="l-fx-grid">
+        <div class="l-fx l-fx-lead">
+          <h3>Surfaces misalignment and delivery gaps</h3>
+          <p>It lines up everyone's account and shows where they agree, where they don't, and whether the work is actually being delivered, while there's still time to do something about it.</p>
         </div>
-        <div>
-          <div class="l-trust-item"><span class="l-trust-dot"></span><div><strong class="l-trust-strong">Does not assess personalities</strong><p class="l-trust-p">It follows the work, not the person.</p></div></div>
-          <div class="l-trust-item"><span class="l-trust-dot"></span><div><strong class="l-trust-strong">Does not score communication</strong><p class="l-trust-p">Confidence is not rewarded and introversion is not penalised.</p></div></div>
-          <div class="l-trust-item"><span class="l-trust-dot"></span><div><strong class="l-trust-strong">Does not measure emotions or soft skills</strong><p class="l-trust-p">No grades, no ratings of people.</p></div></div>
-          <div class="l-trust-item"><span class="l-trust-dot"></span><div><strong class="l-trust-strong">Keeps each check-in private</strong><p class="l-trust-p">Only where people agree or differ is shared, never the raw answers.</p></div></div>
-          <div class="l-trust-item"><span class="l-trust-dot"></span><div><strong class="l-trust-strong">Gives everyone the same chance to contribute</strong><p class="l-trust-p">The same structured opportunity, regardless of who speaks up in the room.</p></div></div>
+        <div class="l-fx">
+          <h3>Honest input, not the manager's read</h3>
+          <p>Everyone answers on their own, in private. What they say doesn't get shaped by the loudest person in the room or by what they think the manager wants to hear.</p>
+        </div>
+        <div class="l-fx">
+          <h3>It compares over time</h3>
+          <p>Every check-in is set against where things started, what was said before, and what everyone else is saying, so you catch drift and shifting expectations early.</p>
+        </div>
+        <div class="l-fx">
+          <h3>It asks, it doesn't just collect</h3>
+          <p>It pushes for specifics and evidence instead of taking vague answers at face value.</p>
+        </div>
+        <div class="l-fx">
+          <h3>Notes in, reports out</h3>
+          <p>Add documents and evidence, and every check-in comes back as a plain report of where things stand and what to do next.</p>
         </div>
       </div>
-    </div>
-  </div>
-
-  <!-- FINISH WITH CLARITY -->
-  <div class="l-sec l-fade" style="background:#F5F3EF;border-bottom:1px solid #E2E0DB">
-    <div class="l-wrap-sm">
-      <p class="l-sec-label">At the end</p>
-      <h2 class="l-sec-h2" style="margin-bottom:16px">Finish with clarity.</h2>
-      <p style="font-size:15px;color:#4A5568;line-height:1.8;margin-bottom:16px">Every Ground reaches an end. Groundwork closes the Ground with a clear conclusion showing:</p>
-      <div style="display:flex;flex-direction:column;gap:9px;margin-bottom:20px">
-        <div style="display:flex;align-items:flex-start;gap:9px;font-size:14px;color:#4A5568;line-height:1.5"><span style="width:5px;height:5px;border-radius:50%;background:#0C447C;flex-shrink:0;margin-top:7px"></span>Where the work started</div>
-        <div style="display:flex;align-items:flex-start;gap:9px;font-size:14px;color:#4A5568;line-height:1.5"><span style="width:5px;height:5px;border-radius:50%;background:#0C447C;flex-shrink:0;margin-top:7px"></span>How expectations changed</div>
-        <div style="display:flex;align-items:flex-start;gap:9px;font-size:14px;color:#4A5568;line-height:1.5"><span style="width:5px;height:5px;border-radius:50%;background:#0C447C;flex-shrink:0;margin-top:7px"></span>What was delivered against what was agreed</div>
-        <div style="display:flex;align-items:flex-start;gap:9px;font-size:14px;color:#4A5568;line-height:1.5"><span style="width:5px;height:5px;border-radius:50%;background:#0C447C;flex-shrink:0;margin-top:7px"></span>The key decisions and the evidence behind them</div>
-        <div style="display:flex;align-items:flex-start;gap:9px;font-size:14px;color:#4A5568;line-height:1.5"><span style="width:5px;height:5px;border-radius:50%;background:#0C447C;flex-shrink:0;margin-top:7px"></span>What to carry into the next Ground</div>
-      </div>
-      <p style="font-size:15px;color:#4A5568;line-height:1.8;margin-bottom:8px">Every important piece of work leaves behind more than a result. It leaves behind understanding.</p>
-      <p style="font-size:13px;color:#9B9590;line-height:1.7;margin:0">A check-in takes about ten minutes. The piecing-together it saves you takes far longer.</p>
     </div>
   </div>
 
