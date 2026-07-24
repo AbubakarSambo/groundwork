@@ -274,6 +274,25 @@ export class EmailService {
     });
   }
 
+  /**
+   * Reveal reminder: a party's report has been released, but they have not
+   * activated their own ReportActivation yet - their report is ready and
+   * they don't know. Distinct from sendActivationReminder above, which nudges
+   * the INITIATOR to release/activate billing on a ground - a different
+   * concept from a participant's own individual reveal.
+   */
+  async sendActivationRevealReminder(email: string, groundLabel: string, reportUrl: string): Promise<void> {
+    await this.sendEmail({
+      to: email,
+      subject: `Your report for "${groundLabel}" is ready to view`,
+      html: this.layout(
+        `<p>Your shared record for <strong>${groundLabel}</strong> has been ready for a few days now.</p>
+         <p>It shows where accounts agree, where they differ, and what is still unresolved. You just need to confirm you are ready to see it.</p>
+         <p><a href="${reportUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">View your report →</a></p>`,
+      ),
+    });
+  }
+
   /** Participant checked in. Admin notified so they know to come back. */
   async sendParticipantCheckedIn(adminEmail: string, participantEmail: string, groundLabel: string, groundUrl: string, stillPending?: number): Promise<void> {
     const pendingNote = stillPending && stillPending > 0

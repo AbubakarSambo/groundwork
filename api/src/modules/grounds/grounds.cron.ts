@@ -6,7 +6,7 @@ import { PrismaService, CronLock } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { GroundworkEvents, CheckInCompletedEvent } from '../../common';
-import { GroundStatus, CheckInStatus, TurnRole, PartyType } from '@prisma/client';
+import { GroundStatus, CheckInStatus, TurnRole, PartyType, ReportActivationStatus } from '@prisma/client';
 import { PatternsService } from '../patterns/patterns.service';
 
 const INACTIVITY_AUTO_CLOSE_MS = 12 * 60 * 60 * 1000;     // 12 hours
@@ -418,8 +418,48 @@ export class GroundsCron {
       }
     }
 
-    if (returnNudges || activationNudges) {
-      this.logger.log(`Reminders sent - ${returnNudges} return-nudge(s), ${activationNudges} activation reminder(s).`);
+    // 3. Reveal reminders: a party whose report has been released but who has
+    // not activated their own ReportActivation yet. Distinct from the
+    // (legacy, no-longer-fires) activation reminder above, which is about
+    // Ground.billingActivatedAt - this is about ReportActivation, the
+    // per-party "I'm ready to see it" confirmation each non-initiator must
+    // make individually (ReportsService.get() - one party's activation has
+    // no effect on any other party, so a party can sit on PENDING forever
+    // with their report ready and nobody nudging them). The initiator is
+    // exempt from this gate entirely (see get()) and never gets a row, so
+    // this is scoped to PARTICIPANT rows only. Same throttle
+    // (NUDGE_THROTTLE_DAYS via lastNudgedAt) and same opt-out
+    // (user.emailNotifications) as every other reminder in this sweep.
+    const pendingReveal = await this.prisma.groundParticipant.findMany({
+      where: {
+        userId: { not: null },
+        partyType: PartyType.PARTICIPANT,
+        ground: { status: { notIn: TERMINAL }, report: { releasedAt: { not: null } } },
+        OR: [{ lastNudgedAt: null }, { lastNudgedAt: { lt: throttleBefore } }],
+        reportActivations: { none: { status: ReportActivationStatus.ACTIVATED } },
+      },
+      select: {
+        id: true,
+        email: true,
+        ground: { select: { id: true, label: true } },
+        user: { select: { emailNotifications: true } },
+      },
+    });
+
+    let revealReminders = 0;
+    for (const p of pendingReveal) {
+      if (p.user?.emailNotifications === false) continue;
+      try {
+        await this.email.sendActivationRevealReminder(p.email, p.ground.label, `${frontend}/report/${p.ground.id}`);
+        await this.prisma.groundParticipant.update({ where: { id: p.id }, data: { lastNudgedAt: now } });
+        revealReminders++;
+      } catch (err: any) {
+        this.logger.error(`Reveal reminder failed for participant ${p.id}: ${err.message}`);
+      }
+    }
+
+    if (returnNudges || activationNudges || revealReminders) {
+      this.logger.log(`Reminders sent - ${returnNudges} return-nudge(s), ${activationNudges} activation reminder(s), ${revealReminders} reveal reminder(s).`);
     }
   }
 
