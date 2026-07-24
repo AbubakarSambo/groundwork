@@ -116,6 +116,12 @@ export class AdminController {
     return this.adminService.getUsagePatterns();
   }
 
+  @Get('grounds/:groundId')
+  @ApiOperation({ summary: 'Support view for a single ground: state, billing, roster, check-in status, report state. Never conversation content, record-entry text, report content, lead notes, documents, or participant-request reason text.' })
+  getGroundSupportView(@Param('groundId') groundId: string) {
+    return this.adminService.getGroundSupportView(groundId);
+  }
+
   // ── OTP flow ──────────────────────────────────────────────────────────────
 
   @Post('otp/request')
