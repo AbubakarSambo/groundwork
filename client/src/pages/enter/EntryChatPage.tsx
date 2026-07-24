@@ -2033,6 +2033,9 @@ export function EntryChatPage() {
               <div style={{ fontSize: 12, color: '#9B9590', lineHeight: 1.55, marginBottom: 10 }}>
                 {inviteSubtext}
               </div>
+              <div style={{ fontSize: 12, color: '#0C447C', background: '#EEF4FB', border: '1px solid #CFE2F5', borderRadius: 8, padding: '8px 11px', lineHeight: 1.5, marginBottom: 10 }}>
+                Add them here now. Invites don't go out yet — they're sent once you save this ground and confirm your email.
+              </div>
               {(() => {
                 const s = onboardingSelections.classifiedScenario || onboardingSelections.mode || scenario
                 const notices: Record<string, string> = {
