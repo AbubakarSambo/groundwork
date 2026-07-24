@@ -1205,8 +1205,8 @@ export function EntryChatPage() {
               {/* Situation cards - shown only before user has sent first message */}
               {onboardingHistory.length === 1 && !onboardingLoading && !pickedSituation && (
                 <div style={{ alignSelf: 'flex-start', width: '100%' }}>
-                  <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginBottom: 5, fontWeight: 500 }}>Starting something</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(235px, 1fr))', gap: 6, marginBottom: 10 }}>
+                  <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginBottom: 4, fontWeight: 500 }}>Starting something</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(235px, 1fr))', gap: 5, marginBottom: 8 }}>
                     {SITUATION_CARDS.filter(c => c.group === 'positive').map(card => (
                       <button
                         key={card.label}
@@ -1217,7 +1217,16 @@ export function EntryChatPage() {
                           cursor: 'pointer', fontFamily: 'inherit',
                         }}
                       >
-                        <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--gw-text)', marginBottom: 1 }}>{card.label}</div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 6, marginBottom: 1 }}>
+                          <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--gw-text)' }}>{card.label}</div>
+                          {card.timelineHint && (
+                            // Inline with the label, not a separate line - suite_l's
+                            // above-the-fold check at 1280x720 failed when this was
+                            // its own row (the extra height pushed the freeform card
+                            // below the fold). No added vertical footprint this way.
+                            <div style={{ fontSize: 9.5, color: 'var(--gw-muted)', fontStyle: 'italic', whiteSpace: 'nowrap', flexShrink: 0 }}>{card.timelineHint}</div>
+                          )}
+                        </div>
                         <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', lineHeight: 1.4 }}>{card.detail}</div>
                         {card.examples && card.examples.length > 0 && (
                           <div style={{ marginTop: 3 }}>
@@ -1227,9 +1236,6 @@ export function EntryChatPage() {
                               <div key={i} title={`e.g. ${ex}`} style={{ fontSize: 10.5, color: 'var(--gw-muted)', lineHeight: 1.45, display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>e.g. {ex}</div>
                             ))}
                           </div>
-                        )}
-                        {card.timelineHint && (
-                          <div style={{ fontSize: 10, color: 'var(--gw-muted)', marginTop: 3, fontStyle: 'italic' }}>{card.timelineHint}</div>
                         )}
                       </button>
                     ))}
@@ -1246,7 +1252,16 @@ export function EntryChatPage() {
                           cursor: 'pointer', fontFamily: 'inherit',
                         }}
                       >
-                        <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--gw-text)', marginBottom: 1 }}>{card.label}</div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 6, marginBottom: 1 }}>
+                          <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--gw-text)' }}>{card.label}</div>
+                          {card.timelineHint && (
+                            // Inline with the label, not a separate line - suite_l's
+                            // above-the-fold check at 1280x720 failed when this was
+                            // its own row (the extra height pushed the freeform card
+                            // below the fold). No added vertical footprint this way.
+                            <div style={{ fontSize: 9.5, color: 'var(--gw-muted)', fontStyle: 'italic', whiteSpace: 'nowrap', flexShrink: 0 }}>{card.timelineHint}</div>
+                          )}
+                        </div>
                         <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', lineHeight: 1.4 }}>{card.detail}</div>
                         {card.examples && card.examples.length > 0 && (
                           <div style={{ marginTop: 3 }}>
@@ -1256,9 +1271,6 @@ export function EntryChatPage() {
                               <div key={i} title={`e.g. ${ex}`} style={{ fontSize: 10.5, color: 'var(--gw-muted)', lineHeight: 1.45, display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>e.g. {ex}</div>
                             ))}
                           </div>
-                        )}
-                        {card.timelineHint && (
-                          <div style={{ fontSize: 10, color: 'var(--gw-muted)', marginTop: 3, fontStyle: 'italic' }}>{card.timelineHint}</div>
                         )}
                       </button>
                     ))}
