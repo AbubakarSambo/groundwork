@@ -954,14 +954,15 @@ Close the report by framing - neutrally, without recommending one - the choice n
     if (!participant && !isInitiator && !isOrgAdmin) throw new ForbiddenException('You are not a party to this ground');
 
     if (!ground.report.releasedAt) {
-      if (isInitiator || isOrgAdmin) {
-        return { id: ground.report.id, groundId, createdAt: ground.report.createdAt, releasedAt: null, nextStep: isInitiator ? 'release' : 'wait' };
-      }
       // Before everyone has checked in, the report is a forming picture, not
-      // a final one - show it as such rather than blocking participants
-      // entirely. No mutual-reveal gate applies here: that gate exists to
-      // protect the FINAL simultaneous reveal, not a picture that is still
-      // openly incomplete for everyone, initiator included.
+      // a final one - show it as such rather than blocking anyone entirely.
+      // No mutual-reveal gate applies here: that gate exists to protect the
+      // FINAL simultaneous reveal, not a picture that is still openly
+      // incomplete for everyone, initiator included. This used to
+      // short-circuit for the initiator/org-admin before reaching this
+      // point, returning a bare stub with no content - the comment above
+      // always stated the symmetric intent ("initiator included"); the code
+      // just never carried it out for that branch.
       const sessionProgress = await this.grounds.getSessionProgress(groundId);
       const requestingUserIsMissing = !!(
         sessionProgress && participant && sessionProgress.missingParticipantIds.includes(participant.id)
@@ -970,6 +971,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
         ...ground.report,
         activated: true,
         forming: true,
+        nextStep: isInitiator ? 'release' : isOrgAdmin ? 'wait' : undefined,
         sessionProgress: sessionProgress ? { ...sessionProgress, requestingUserIsMissing } : null,
       };
     }
