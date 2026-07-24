@@ -363,6 +363,16 @@ export function EntryChatPage() {
   })
   const [sessionReport, setSessionReport] = useState<import('@/api/entry').EntryReport | null>(null)
   const [generatingReport, setGeneratingReport] = useState(false)
+  // Recommended additions / mentioned people (#1a): the viewer here is always
+  // the ground's future initiator (this page only ever runs pre-ground, and
+  // whoever commits becomes initiatorId - see entry.service.ts commitInner),
+  // so these get a real "Add them" affordance rather than a passive list.
+  // No ground exists yet at this point, so "adding" means queuing them into
+  // the same inviteAdded contributor queue used below - they go out for real
+  // once the ground is created at save time.
+  const [addingContributorFor, setAddingContributorFor] = useState<string | null>(null)
+  const [addingContributorEmail, setAddingContributorEmail] = useState('')
+  const [queuedFromSuggestion, setQueuedFromSuggestion] = useState<Set<string>>(new Set())
   // Anonymous correction: inline "what did we get wrong?" box on the report.
   const [showCorrection, setShowCorrection] = useState(false)
   const [correctionText, setCorrectionText] = useState('')
@@ -931,6 +941,19 @@ export function EntryChatPage() {
     setInviteEmail('')
     setInviteContextFor(e)
     setInviteContext('')
+  }
+
+  // Queues a recommended addition / mentioned person straight into the
+  // contributor list, carrying their role/reason or name/context as the note -
+  // the same shape addInviteEmail/submitInviteContext build by hand.
+  function queueSuggestedContributor(key: string, note: string) {
+    const email = addingContributorEmail.trim()
+    if (!email || !email.includes('@')) return
+    const entry = note ? `${email} - ${note}` : email
+    setInviteAdded(prev => (prev.some(e => e === email || e.startsWith(`${email} - `)) ? prev : [...prev, entry]))
+    setQueuedFromSuggestion(prev => new Set(prev).add(key))
+    setAddingContributorFor(null)
+    setAddingContributorEmail('')
   }
 
   function submitInviteContext() {
@@ -1802,14 +1825,37 @@ export function EntryChatPage() {
                       <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.6, marginBottom: 10 }}>
                         Based on this check-in, these roles would strengthen the ground. Their account would change or confirm what is currently on record from one side only.
                       </div>
-                      {sessionReport.suggestedParties.map((p, i) => (
+                      {sessionReport.suggestedParties.map((p, i) => {
+                        const key = `sug-${i}-${p.role}`
+                        return (
                         <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 0', borderTop: i > 0 ? '0.5px solid #D8E2F0' : undefined }}>
                           <div style={{ flex: 1 }}>
                             <div style={{ fontSize: 13, fontWeight: 600, color: '#1A1916', marginBottom: 2 }}>{p.role}</div>
                             <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.4 }}>{p.reason}</div>
+                            {queuedFromSuggestion.has(key) ? (
+                              <div style={{ fontSize: 11.5, color: '#085041', fontWeight: 600, marginTop: 6 }}>✓ Added to invite list</div>
+                            ) : addingContributorFor === key ? (
+                              <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                                <input
+                                  type="email" autoFocus placeholder="their@email.com"
+                                  value={addingContributorEmail} onChange={e => setAddingContributorEmail(e.target.value)}
+                                  onKeyDown={e => e.key === 'Enter' && queueSuggestedContributor(key, p.reason)}
+                                  style={{ flex: 1, padding: '6px 9px', borderRadius: 6, border: '1px solid #CFE2F5', fontSize: 12, fontFamily: 'inherit', outline: 'none' }}
+                                />
+                                <button onClick={() => queueSuggestedContributor(key, p.reason)} style={{ padding: '6px 10px', borderRadius: 6, background: '#0C447C', color: 'white', border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Add</button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => { setAddingContributorFor(key); setAddingContributorEmail('') }}
+                                style={{ marginTop: 6, background: 'none', border: 'none', padding: 0, fontSize: 12, fontWeight: 600, color: '#0C447C', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+                              >
+                                + Add them
+                              </button>
+                            )}
                           </div>
                         </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   </div>
                 )}
@@ -1822,14 +1868,37 @@ export function EntryChatPage() {
                       <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.6, marginBottom: 10 }}>
                         These people came up in this check-in. Adding them to the ground gives you a fuller picture.
                       </div>
-                      {sessionReport.mentionedPeople.map((p, i) => (
+                      {sessionReport.mentionedPeople.map((p, i) => {
+                        const key = `men-${i}-${p.name}`
+                        return (
                         <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 0', borderTop: i > 0 ? '0.5px solid #E2E0DB' : undefined }}>
                           <div style={{ flex: 1 }}>
                             <div style={{ fontSize: 13, fontWeight: 600, color: '#1A1916', marginBottom: 2 }}>{p.name}</div>
                             <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.4 }}>{p.context}</div>
+                            {queuedFromSuggestion.has(key) ? (
+                              <div style={{ fontSize: 11.5, color: '#085041', fontWeight: 600, marginTop: 6 }}>✓ Added to invite list</div>
+                            ) : addingContributorFor === key ? (
+                              <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                                <input
+                                  type="email" autoFocus placeholder="their@email.com"
+                                  value={addingContributorEmail} onChange={e => setAddingContributorEmail(e.target.value)}
+                                  onKeyDown={e => e.key === 'Enter' && queueSuggestedContributor(key, `${p.name} - ${p.context}`)}
+                                  style={{ flex: 1, padding: '6px 9px', borderRadius: 6, border: '1px solid #E2E0DB', fontSize: 12, fontFamily: 'inherit', outline: 'none' }}
+                                />
+                                <button onClick={() => queueSuggestedContributor(key, `${p.name} - ${p.context}`)} style={{ padding: '6px 10px', borderRadius: 6, background: '#0C447C', color: 'white', border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Add</button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => { setAddingContributorFor(key); setAddingContributorEmail('') }}
+                                style={{ marginTop: 6, background: 'none', border: 'none', padding: 0, fontSize: 12, fontWeight: 600, color: '#0C447C', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+                              >
+                                + Add them
+                              </button>
+                            )}
                           </div>
                         </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   </div>
                 )}
