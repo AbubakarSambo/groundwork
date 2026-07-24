@@ -559,6 +559,8 @@ export class ConversationService {
       // the prompt was always "not yet defined" regardless of what the
       // initiator actually set at ground creation.
       resolutionState: (ground as any).resolutionState ?? null,
+      // Never reached the model before - see the comment on PromptContext.cadence.
+      cadence: (ground as any).cadence ?? null,
       adminBrief: (ground as any).brief ?? null,
       priorContext: checkIn.participant.roleAsDescribed ?? null,
       priorSession,
