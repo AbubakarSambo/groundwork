@@ -3,12 +3,16 @@ import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { ReportActivationStatus } from '@prisma/client';
 
 /**
- * GW-PRI-ACT - ReportActivation (mutual reveal gate) invariants.
+ * GW-PRI-ACT - ReportActivation invariants.
  *
  * After an admin releases a report, each participant must individually
- * activate before the full content is returned. The admin/initiator always
- * sees full content once released. Neither party can see content before
- * the other has also activated - the gate is per-party, not shared.
+ * activate before the full content is returned to THEM. The gate is
+ * per-party, not mutual: get() only ever checks the calling participant's
+ * own ReportActivation row (reports.service.ts get()) - one party activating
+ * has no effect on what any other party sees. There is no "wait for the
+ * other side" behavior here; each person's activation is purely their own
+ * "I'm ready to see it" confirmation. The admin/initiator is exempt and
+ * always sees full content once released - they are the one who released it.
  */
 
 const MOCK_USAGE = { emit: () => Promise.resolve() } as any;
