@@ -94,6 +94,7 @@ enum TurnRole {
 // Structured data extracted from a check-in. Belongs to the person.
 enum RecordEntryType {
   SUCCESS_DEFINITION
+  TIMEFRAME
   COMMITMENT
   ASK
   INTENT
