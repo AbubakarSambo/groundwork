@@ -781,6 +781,22 @@ export class GroundsService {
       return { ...existing, inviteToken: undefined, devUrl: emailResult?.devUrl };
     }
 
+    // freeParticipantCap was written on ground creation (4 normal, 100 for
+    // broadcast grounds - see create()/createForLead()/entry.service.ts) but
+    // never actually checked anywhere - a write-only field. Only free grounds
+    // are capped at all; a subscribed org's grounds are unlimited here (its
+    // own plan-level member cap is a separate, already-enforced dimension via
+    // canInviteMember). Counts existing participant rows only - the
+    // initiator's own row is created at ground creation, not through this path.
+    if (ground.isFreeGround) {
+      const participantCount = await this.prisma.groundParticipant.count({ where: { groundId } });
+      if (participantCount >= ground.freeParticipantCap) {
+        throw new BadRequestException(
+          `This ground is on the free tier and is limited to ${ground.freeParticipantCap} participants. Upgrade to add more.`,
+        );
+      }
+    }
+
     // SEQUENTIAL cadence: the lead's own session 1 must complete before a newly
     // added participant's session 1 opens - otherwise the team could check in
     // ahead of the lead, defeating the "lead goes first" point of this cadence.
