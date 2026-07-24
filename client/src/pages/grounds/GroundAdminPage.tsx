@@ -31,6 +31,12 @@ const SCENARIO_LABELS: Record<string, string> = {
   NEW_MANAGER: 'New manager',
 }
 
+const MOMENT_LABELS: Record<string, string> = {
+  STARTING: 'Starting',
+  RECOGNITION: 'Recognition',
+  RESOLUTION: 'Resolution',
+}
+
 const BANDS = ['', 'Unresolved', 'Mixed', 'Emerging', 'Clear', 'Aligned']
 function bandLabel(score?: number) { return BANDS[score ?? 1] ?? 'Unresolved' }
 
@@ -263,7 +269,7 @@ export function GroundAdminPage() {
             <div>
               <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.2 }}>{ground.label}</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                <span style={{ fontSize: 10, fontWeight: 600, padding: '1px 7px', borderRadius: 20, background: 'var(--gw-blue-bg)', color: 'var(--gw-navy)' }}>{ground.moment}</span>
+                <span style={{ fontSize: 10, fontWeight: 600, padding: '1px 7px', borderRadius: 20, background: 'var(--gw-blue-bg)', color: 'var(--gw-navy)' }}>{MOMENT_LABELS[ground.moment] ?? ground.moment}</span>
                 {ground.status === 'ACTIVE' && <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--gw-green-b)', display: 'inline-block' }} />}
               </div>
             </div>

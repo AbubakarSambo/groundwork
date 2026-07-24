@@ -206,7 +206,14 @@ export function ChatPage() {
       }
       setMsgs(v => [...v, ...newMsgs])
     },
-    onError: () => toast.error('Upload failed.'),
+    onError: (_err, { file, ctx }) => {
+      // Restore what the person typed/picked instead of silently discarding it -
+      // previously a failed upload cleared pendingDoc/docContext with no way to retry.
+      setPendingDoc(file)
+      setDocContext(ctx)
+      setDocContextMode(true)
+      toast.error('Upload failed. Try again.')
+    },
   })
 
   // Resume an in-progress check-in with its real transcript. open() only ever
