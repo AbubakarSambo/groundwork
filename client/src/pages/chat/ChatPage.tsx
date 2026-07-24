@@ -87,6 +87,17 @@ const QUICK_ACTIONS = [
   { label: 'What do I carry forward?',  msg: 'What is the one thing I should carry into the next conversation?' },
 ]
 
+const RECORD_ENTRY_LABELS: Record<string, string> = {
+  SUCCESS_DEFINITION: 'What success looks like',
+  TIMEFRAME: 'Timeframe',
+  COMMITMENT: 'Commitment',
+  ASK: 'Ask',
+  INTENT: 'Intent',
+  TOLERANCE: 'Tolerance',
+  WORRY: 'Worry',
+  TENSION: 'Tension',
+}
+
 export function ChatPage() {
   const { checkInId } = useParams<{ checkInId: string }>()
   const navigate = useNavigate()
@@ -105,6 +116,12 @@ export function ChatPage() {
   const [msgs, setMsgs]               = useState<Msg[]>([])
   const [priorTurns, setPriorTurns]   = useState<Msg[]>([])
   const [priorSessionNumber, setPriorSessionNumber] = useState<number | null>(null)
+  // #3: a normal returning session (not self-correction) gets a read-only
+  // recap of the person's own prior record entries - the same data the
+  // model's PRIOR_SESSION prompt block already reads, but shown to the
+  // person themselves instead of continuity depending entirely on whether
+  // the AI's opening line happens to mention it.
+  const [priorRecordEntries, setPriorRecordEntries] = useState<import('@/api/conversation').PriorRecordEntrySession[]>([])
   const [displayedMsgs, setDisplayedMsgs] = useState<Msg[]>([])
   const [streamingId, setStreamingId] = useState<string | null>(null)
   const [input, setInput]             = useState('')
@@ -247,6 +264,9 @@ export function ChatPage() {
           if (t.priorTurns && t.priorTurns.length > 0) {
             setPriorTurns(t.priorTurns.map(turn => ({ id: turn.id, role: turn.role, content: turn.content })))
             setPriorSessionNumber(t.priorSessionNumber ?? null)
+          }
+          if (t.priorRecordEntries && t.priorRecordEntries.length > 0) {
+            setPriorRecordEntries(t.priorRecordEntries)
           }
           if (t.turns && t.turns.length > 0) {
             setMsgs(t.turns.map(turn => ({ id: turn.id, role: turn.role, content: turn.content })))
@@ -409,6 +429,31 @@ export function ChatPage() {
         >
           {openSession.isPending && (
             <div style={{ fontSize: 13, color: 'var(--gw-muted)', textAlign: 'center', padding: 16 }}>Opening your session…</div>
+          )}
+          {priorRecordEntries.length > 0 && (
+            <div style={{ border: '1px dashed var(--gw-border)', borderRadius: 10, padding: '10px 12px', marginBottom: 4, background: 'var(--gw-bg)' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--gw-muted)', marginBottom: 8 }}>
+                What you told us before · read-only
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {priorRecordEntries.map(s => (
+                  <div key={s.sessionNumber}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-sub)', marginBottom: 4 }}>Session {s.sessionNumber}</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      {s.entries.map((e, i) => (
+                        <div key={i} style={{ fontSize: 13, lineHeight: 1.5, color: 'var(--gw-text)' }}>
+                          <span style={{ fontWeight: 600 }}>{RECORD_ENTRY_LABELS[e.type] ?? e.type}: </span>
+                          {e.text.replace(/^\[VERIFIABILITY:\w+\] /, '')}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 8, lineHeight: 1.5 }}>
+                This is on record as it is. This session adds to it - it does not change what is above.
+              </div>
+            </div>
           )}
           {priorTurns.length > 0 && (
             <div style={{ border: '1px dashed var(--gw-border)', borderRadius: 10, padding: '10px 12px', marginBottom: 4, background: 'var(--gw-bg)' }}>

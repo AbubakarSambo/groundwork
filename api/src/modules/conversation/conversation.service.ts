@@ -142,6 +142,41 @@ export class ConversationService {
       }
     }
 
+    // #3: continuity is real in the model's prompt (composeSystemPrompt's
+    // PRIOR_SESSION block) and in the final report, but was invisible to the
+    // person themselves - a normal session 2+ open showed nothing of their
+    // own prior answers, leaving continuity entirely dependent on whatever
+    // the AI's opening line happened to mention. Surface the person's own
+    // record entries from every completed prior session (same source the
+    // model reads), read-only, whenever this is a normal returning session -
+    // not a self-correction, which already gets the richer full-turn replay
+    // above. Same for initiator and participant: this reads checkIn.participantId
+    // generically, with no party-type branch.
+    let priorRecordEntries: { sessionNumber: number; entries: { type: string; text: string }[] }[] = [];
+    if (checkIn.sessionNumber >= 2 && !checkIn.isSelfCorrection) {
+      const priorCheckIns = await this.prisma.checkIn.findMany({
+        where: {
+          participantId: checkIn.participantId,
+          sessionNumber: { lt: checkIn.sessionNumber },
+          status: CheckInStatus.COMPLETED,
+        },
+        orderBy: { sessionNumber: 'asc' },
+        select: { id: true, sessionNumber: true },
+      });
+      const withEntries = await Promise.all(
+        priorCheckIns.map(async (ci) => {
+          const entries = await this.prisma.recordEntry.findMany({
+            where: { checkInId: ci.id, participantId: checkIn.participantId },
+            orderBy: { createdAt: 'asc' },
+            select: { type: true, text: true },
+            take: 10,
+          });
+          return { sessionNumber: ci.sessionNumber, entries };
+        }),
+      );
+      priorRecordEntries = withEntries.filter((s) => s.entries.length > 0);
+    }
+
     return {
       checkIn: {
         ...checkIn,
@@ -152,6 +187,7 @@ export class ConversationService {
       turns,
       priorTurns,
       priorSessionNumber,
+      priorRecordEntries,
     };
   }
 
