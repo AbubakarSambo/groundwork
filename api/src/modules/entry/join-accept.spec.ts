@@ -64,4 +64,12 @@ describe('GW-JOIN-ONEPATH: join lands in the real engine, no fabricated transcri
     expect(prisma.checkIn.create).not.toHaveBeenCalled();
     expect(res.checkInId).toBe('ci-existing');
   });
+
+  it('never fabricates a name from the email when none is given', async () => {
+    const { service, prisma } = makeService();
+    await service.joinAccept({ joinToken: 'jt', email: 'hjumare@acme.test' });
+    const created = (prisma.user.create as jest.Mock).mock.calls[0][0].data;
+    expect(created.firstName).toBe('');
+    expect(created.firstName).not.toMatch(/hjumare/i);
+  });
 })

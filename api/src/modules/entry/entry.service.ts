@@ -837,7 +837,10 @@ STRICT RULES:
     }
 
     const email = dto.email.trim().toLowerCase();
-    const firstName = dto.firstName?.trim() || email.split('@')[0];
+    // Never fabricate a name from the email address - an empty firstName is
+    // the correct "no name given" value; participantLabel() and every other
+    // display surface already fall back to roleAsDescribed / "a teammate".
+    const firstName = dto.firstName?.trim() || '';
     const lastName = dto.lastName?.trim() || '';
 
     const { user, isNew } = await this.prisma.$transaction(async (tx) => {
@@ -981,7 +984,8 @@ STRICT RULES:
     if (!ground) throw new NotFoundException('Join link not found or has expired');
 
     const email = dto.email.trim().toLowerCase();
-    const firstName = dto.firstName?.trim() || email.split('@')[0];
+    // Never fabricate a name from the email address (see joinCommit above).
+    const firstName = dto.firstName?.trim() || '';
     const lastName = dto.lastName?.trim() || '';
 
     let user = await this.prisma.user.findUnique({ where: { email } });
