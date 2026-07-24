@@ -244,4 +244,16 @@ export class EntryCommitController {
   }) {
     return this.service.joinCommit(dto);
   }
+
+  // ONE PATH: sign in against a broadcast join link and land in the real engine.
+  @Post('join-accept')
+  async joinAccept(@Body() dto: {
+    joinToken: string;
+    email: string;
+    firstName?: string;
+    lastName?: string;
+    roleAsDescribed?: string;
+  }) {
+    return this.service.joinAccept(dto);
+  }
 }

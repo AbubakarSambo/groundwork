@@ -154,6 +154,19 @@ export const joinApi = {
       '/entry/join-commit',
       payload,
     ).then(r => r.data),
+
+  // ONE PATH: sign in against the join link and land in the real engine.
+  accept: (payload: {
+    joinToken: string
+    email: string
+    firstName?: string
+    lastName?: string
+    roleAsDescribed?: string
+  }) =>
+    apiClient.post<{ groundId: string; checkInId: string; accessToken: string; userId: string; existingAccount: boolean }>(
+      '/entry/join-accept',
+      payload,
+    ).then(r => r.data),
 }
 
 // ── Participant API ───────────────────────────────────────────────────────────

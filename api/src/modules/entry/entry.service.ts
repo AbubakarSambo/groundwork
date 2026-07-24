@@ -1144,4 +1144,80 @@ STRICT RULES:
     this.logger.log(`join-commit: ${email} checked in on ground ${ground.id} (new user: ${isNew})`);
     return { groundId: ground.id, accessToken, userId: user.id };
   }
+
+  /**
+   * ONE PATH for broadcast join: instead of running the entry-pipeline chat and
+   * committing a finished transcript, a cohort member signs in against the join
+   * link and lands in the REAL conversation engine (like accepting an invite,
+   * #82/#83). Creates/links their account, a GroundParticipant on the ground,
+   * and a session-1 check-in (NOT_STARTED - they run it in the engine), and
+   * returns the checkInId to hand off to /checkin/:id. Sign-in is required
+   * (there is no anonymous branch): the real engine needs an owned check-in.
+   */
+  async joinAccept(dto: {
+    joinToken: string;
+    email: string;
+    firstName?: string;
+    lastName?: string;
+    roleAsDescribed?: string;
+  }): Promise<{ groundId: string; checkInId: string; accessToken: string; userId: string; existingAccount: boolean }> {
+    const ground = await this.prisma.ground.findUnique({
+      where: { joinToken: dto.joinToken },
+      select: { id: true, organizationId: true },
+    });
+    if (!ground) throw new NotFoundException('Join link not found or has expired');
+    if (!dto.email?.trim()) throw new BadRequestException('An email is required to join.');
+
+    const email = dto.email.trim().toLowerCase();
+    const firstName = dto.firstName?.trim() || email.split('@')[0];
+    const lastName = dto.lastName?.trim() || '';
+
+    let user = await this.prisma.user.findUnique({ where: { email } });
+    const existingAccount = !!user;
+    if (!user) {
+      user = await this.prisma.user.create({
+        data: { organizationId: ground.organizationId, email, firstName, lastName, role: 'MEMBER', isEmailVerified: false, passwordHash: null },
+      });
+      const setupToken = crypto.randomBytes(32).toString('hex');
+      await this.prisma.emailVerificationToken.create({
+        data: { userId: user.id, token: setupToken, type: TokenType.PASSWORD_SETUP, expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000) },
+      });
+      this.email.sendAddPasswordEmail(email, user.firstName, setupToken).catch(() => null);
+    }
+
+    // Reuse an existing participant+check-in if this email already joined (no
+    // duplicate row - mirrors join-commit's idempotency), else create both.
+    let participant = await this.prisma.groundParticipant.findUnique({
+      where: { groundId_email: { groundId: ground.id, email } },
+    });
+    if (!participant) {
+      participant = await this.prisma.groundParticipant.create({
+        data: {
+          groundId: ground.id,
+          userId: user.id,
+          email,
+          partyType: PartyType.PARTICIPANT,
+          roleAsDescribed: dto.roleAsDescribed?.trim() || null,
+          notifiedAt: new Date(),
+        },
+      });
+    } else if (!participant.userId) {
+      participant = await this.prisma.groundParticipant.update({ where: { id: participant.id }, data: { userId: user.id } });
+    }
+
+    // The session-1 check-in they will run in the real engine. Reuse an open one.
+    let checkIn = await this.prisma.checkIn.findFirst({
+      where: { participantId: participant.id, status: { in: [CheckInStatus.NOT_STARTED, CheckInStatus.IN_PROGRESS] } },
+      orderBy: { sessionNumber: 'asc' },
+    });
+    if (!checkIn) {
+      checkIn = await this.prisma.checkIn.create({
+        data: { groundId: ground.id, participantId: participant.id, sessionNumber: 1, status: CheckInStatus.NOT_STARTED },
+      });
+    }
+
+    const accessToken = this.jwt.sign({ sub: user.id, email: user.email, organizationId: user.organizationId, role: user.role });
+    this.logger.log(`join-accept: ${email} joined ground ${ground.id} -> real engine check-in ${checkIn.id} (new user: ${!existingAccount})`);
+    return { groundId: ground.id, checkInId: checkIn.id, accessToken, userId: user.id, existingAccount };
+  }
 }
