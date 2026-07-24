@@ -100,15 +100,19 @@ describe('GW-PRI-02: report before release shows the forming picture, not the fi
     expect(result).toHaveProperty('sharedPicture');
   });
 
-  it('returns a locked stub (no content) for the initiator before release', async () => {
+  it('returns the SAME forming picture to the initiator before release (symmetric with the participant above)', async () => {
+    // Was: a locked stub with no content for the initiator. That asymmetry
+    // had no privacy rationale - the mutual-reveal gate that protects the
+    // FINAL simultaneous reveal is a post-release, participant-side gate;
+    // a still-forming picture is already openly incomplete for everyone,
+    // initiator included (see the comment in reports.service.ts get()).
     const unreleasedReport = { ...makeReleasedReport(), releasedAt: null };
     const ground = makeGround({ report: unreleasedReport });
     const service = makeService(ground);
     const result = await service.get('g1', 'user-1');
-    // Stub must not contain the shared picture or agreements
-    expect(result).not.toHaveProperty('sharedPicture');
-    expect(result).not.toHaveProperty('agreements');
-    expect(result).toHaveProperty('releasedAt', null);
+    expect(result).toHaveProperty('forming', true);
+    expect(result).toHaveProperty('sharedPicture');
+    expect(result).toHaveProperty('nextStep', 'release');
   });
 });
 

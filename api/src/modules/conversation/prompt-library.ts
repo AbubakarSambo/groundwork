@@ -1868,6 +1868,14 @@ export interface PromptContext {
   priorContext?: string | null;
   priorSession?: string | null;
   resolutionState?: string | null;
+  // The ground's actual check-in cadence, set at creation. Previously never
+  // reached the model at all - it only ever fed scheduling math
+  // (conversation.service.ts availableFrom gates) - so the engine could never
+  // reference "since you're on a weekly cadence" or reason about the process
+  // it is asking the person to commit to (see the willingness gate, which
+  // asks them to commit to "consistent check-ins over the agreed period"
+  // without the model ever being told what that period actually is).
+  cadence?: 'DAILY' | 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'SEQUENTIAL' | null;
   sessionMode?: 'checkin' | 'recall';
   openerRole?: 'founder' | 'hr' | 'manager' | 'peer' | 'external';
   relationshipHistory?: 'new' | 'ongoing' | 'drifted' | 'prior_ground';
@@ -2094,6 +2102,17 @@ One opening block. One question. Wait for a response before asking anything else
   return `SESSION ${sessionNumber} CONTINUITY: Open with one statement naming what is in the record and what is not. Then ask one question: "Before the report is prepared - is there anything in your record that is not fully captured yet that you want to name now?" One statement. One question.`;
 }
 
+function cadenceLabel(cadence: PromptContext['cadence']): string {
+  switch (cadence) {
+    case 'DAILY': return 'daily';
+    case 'WEEKLY': return 'weekly';
+    case 'FORTNIGHTLY': return 'every two weeks';
+    case 'MONTHLY': return 'monthly';
+    case 'SEQUENTIAL': return 'no fixed schedule - each round opens once the initiator checks in';
+    default: return 'not set';
+  }
+}
+
 export function buildIntakeBlock(ctx: PromptContext): string {
   const situationType = situationTypeFromScenario(ctx.scenario);
   const relHistory = resolveRelationshipHistory(ctx.scenario, ctx.relationshipHistory);
@@ -2114,6 +2133,7 @@ export function buildIntakeBlock(ctx: PromptContext): string {
     `RELATIONSHIP_TYPE: ${relType}`,
     `OPENER_ROLE: ${openerRole}`,
     `SESSION: ${ctx.sessionNumber} of ${total}`,
+    `CADENCE: ${cadenceLabel(ctx.cadence)}`,
     `RESOLUTION_STATE: ${ctx.resolutionState ?? 'not yet defined'}`,
     `SESSION_MODE: ${sessionMode}`,
     `ADMIN_BRIEF: ${ctx.adminBrief ?? 'none provided'}`,

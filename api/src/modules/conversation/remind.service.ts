@@ -49,16 +49,18 @@ export class RemindService {
       throw new ForbiddenException('You are not a party to this ground');
     }
 
-    // Find all participants who have accepted their invite (userId set) but
-    // have NOT completed a check-in for the same session number.
+    // Find all OTHER participants who have accepted their invite (userId set)
+    // but have NOT completed a check-in for the same session number. Exclude
+    // the requester themselves - clicking "remind" nudges the other party,
+    // never a self-addressed reminder to complete your own check-in.
     const allParticipants = await this.prisma.groundParticipant.findMany({
-      where: { groundId: ground.id, userId: { not: null } },
+      where: { groundId: ground.id, userId: { not: null, notIn: [requestingUserId] } },
       select: {
         id: true,
         email: true,
         userId: true,
         lastNudgedAt: true,
-        user: { select: { firstName: true } },
+        user: { select: { firstName: true, emailNotifications: true } },
         checkIns: {
           where: { sessionNumber: checkIn.sessionNumber },
           select: { id: true, status: true },
@@ -81,6 +83,10 @@ export class RemindService {
     const frontendUrl = (this.email as any).frontendUrl ?? 'http://localhost:5173';
 
     for (const participant of incomplete) {
+      // Respect "Ground invites and reminders" being turned off - a reminder
+      // email is exactly what that setting describes ("check-in is due").
+      if (participant.user?.emailNotifications === false) continue;
+
       // Throttle: do not nudge the same participant more than once per 24 h.
       if (participant.lastNudgedAt) {
         const hoursSince = (Date.now() - participant.lastNudgedAt.getTime()) / (1000 * 60 * 60);
@@ -141,7 +147,7 @@ export class RemindService {
             id: true,
             email: true,
             lastNudgedAt: true,
-            user: { select: { firstName: true } },
+            user: { select: { firstName: true, emailNotifications: true } },
           },
         },
       },
@@ -157,6 +163,7 @@ export class RemindService {
 
       const participant = checkIn.participant;
       if (!participant) continue;
+      if (participant.user?.emailNotifications === false) continue;
 
       // Throttle: skip if already nudged within the past 24 hours.
       if (participant.lastNudgedAt) {

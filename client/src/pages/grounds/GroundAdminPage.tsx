@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/auth'
 import { groundsApi } from '@/api/grounds'
+import { participantLabel } from '@/lib/utils'
 import { reportsApi } from '@/api/reports'
 import { documentsApi } from '@/api/documents'
 import { conversationApi } from '@/api/conversation'
@@ -29,6 +30,12 @@ const SCENARIO_LABELS: Record<string, string> = {
   REALIGN_TEAM: 'Other',
   WORKPLAN_BUDGET: 'Workplan & budget',
   NEW_MANAGER: 'New manager',
+}
+
+const MOMENT_LABELS: Record<string, string> = {
+  STARTING: 'Starting',
+  RECOGNITION: 'Recognition',
+  RESOLUTION: 'Resolution',
 }
 
 const BANDS = ['', 'Unresolved', 'Mixed', 'Emerging', 'Clear', 'Aligned']
@@ -133,10 +140,13 @@ export function GroundAdminPage() {
   })
 
   const approveRequest = useMutation({
-    mutationFn: async (req: ParticipantRequest) => {
-      await participantRequestsApi.update(id!, req.id, 'APPROVED')
-      await groundsApi.addParticipant(id!, { email: req.requestedEmail })
-    },
+    // The server already invites the person as part of approving the request
+    // (participant-requests.controller.ts's update() calls grounds.addParticipant
+    // itself on APPROVED) - a second client-side addParticipant call here was
+    // redundant and, since the participant row now exists, hit the "unaccepted
+    // invite" branch and silently re-sent a second invite email for the same
+    // approval.
+    mutationFn: (req: ParticipantRequest) => participantRequestsApi.update(id!, req.id, 'APPROVED'),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['participant-requests', id] })
       qc.invalidateQueries({ queryKey: ['ground', id] })
@@ -263,7 +273,7 @@ export function GroundAdminPage() {
             <div>
               <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.2 }}>{ground.label}</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                <span style={{ fontSize: 10, fontWeight: 600, padding: '1px 7px', borderRadius: 20, background: 'var(--gw-blue-bg)', color: 'var(--gw-navy)' }}>{ground.moment}</span>
+                <span style={{ fontSize: 10, fontWeight: 600, padding: '1px 7px', borderRadius: 20, background: 'var(--gw-blue-bg)', color: 'var(--gw-navy)' }}>{MOMENT_LABELS[ground.moment] ?? ground.moment}</span>
                 {ground.status === 'ACTIVE' && <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--gw-green-b)', display: 'inline-block' }} />}
               </div>
             </div>
@@ -387,7 +397,8 @@ export function GroundAdminPage() {
                         <div className="ga-status-dot" style={{ background: statusColor }} title={statusLabel} />
                         <div className={`gw-av gw-av-${i % 6}`}>{(p.email || '?').charAt(0).toUpperCase()}</div>
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 13, fontWeight: 600 }}>{p.email}</div>
+                          <div style={{ fontSize: 13, fontWeight: 600 }}>{participantLabel(p)}</div>
+                          <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>{p.email}</div>
                           {editingRoleId === p.id ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 3 }}>
                               <input
@@ -458,7 +469,7 @@ export function GroundAdminPage() {
                       {sharedReport && (
                         <div style={{ background: '#0A1628', color: 'white', borderRadius: 8, padding: '12px 14px', marginTop: 4, marginLeft: 40 }}>
                           <div style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,.4)', fontWeight: 700, marginBottom: 8 }}>
-                            {p.email.split('@')[0]}'s private report (shared by them)
+                            {participantLabel(p)}'s private report (shared by them)
                           </div>
                           {Object.entries(sharedReport).map(([key, val]) => {
                             if (!val || (Array.isArray(val) && val.length === 0)) return null

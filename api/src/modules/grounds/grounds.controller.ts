@@ -149,7 +149,7 @@ export class GroundsController {
   }
 
   @Get(':id/mediator-brief')
-  @ApiOperation({ summary: 'Get a structural brief for use with a facilitator (initiator only)' })
+  @ApiOperation({ summary: 'Get a structural brief for use with a facilitator (initiator or a party on this ground - no separate org-admin access exists)' })
   async mediatorBrief(@Param('id') id: string, @CurrentUser('id') userId: string) {
     return this.grounds.getMediatorBrief(id, userId);
   }

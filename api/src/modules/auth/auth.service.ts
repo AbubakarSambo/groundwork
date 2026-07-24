@@ -12,6 +12,7 @@ import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
+import { BillingService } from '../billing/billing.service';
 import {
   RegisterDto,
   LoginDto,
@@ -47,6 +48,7 @@ export class AuthService {
     private configService: ConfigService,
     private emailService: EmailService,
     private whatsapp: WhatsAppService,
+    private billing: BillingService,
   ) {}
 
   async register(dto: RegisterDto): Promise<{ message: string; email: string }> {
@@ -335,6 +337,17 @@ export class AuthService {
     let user = await this.prisma.user.findUnique({ where: { email: lower } });
 
     if (!user) {
+      // canInviteMember had zero callers anywhere - this is the one place
+      // that actually consumes a new member seat in the inviter's org (the
+      // existing-user branch below just sends a sign-in link; it never
+      // moves that user into inviterOrganizationId). Only check when we
+      // actually have an inviter org - the standalone-workspace fallback
+      // below has no org, and no plan cap can apply to an org that doesn't exist yet.
+      if (inviterOrganizationId) {
+        const canInvite = await this.billing.canInviteMember(inviterOrganizationId);
+        if (!canInvite.allowed) throw new BadRequestException(canInvite.reason);
+      }
+
       const localPart = lower.split('@')[0].replace(/[._\-+]/g, ' ').trim();
       const firstName = (localPart.charAt(0).toUpperCase() + localPart.slice(1).split(' ')[0]).slice(0, 40) || 'there';
 

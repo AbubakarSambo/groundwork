@@ -270,9 +270,14 @@ export class ParticipantsService {
     return participant;
   }
 
+  // Never fabricate a name from the email address. firstName is a required
+  // column, but an empty string is the correct "no name given" value -
+  // participantLabel() (and every other name-display surface) already treats
+  // an empty name as absent and falls back to roleAsDescribed / "a teammate".
+  // A capitalized email local-part ("Hjumare") is not a name; it just looks
+  // like one, which is worse than showing nothing.
   private resolveName(email: string, names?: { firstName?: string; lastName?: string }): [string, string] {
     if (names?.firstName) return [names.firstName, names.lastName ?? ''];
-    const local = email.split('@')[0] ?? 'there';
-    return [local.charAt(0).toUpperCase() + local.slice(1), ''];
+    return ['', ''];
   }
 }

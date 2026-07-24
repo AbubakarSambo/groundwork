@@ -746,8 +746,22 @@ export function GroundParticipantPage() {
               </div>
             ) : !report.releasedAt ? (
               <div style={{ background: '#EEF4FB', border: '1px solid #BFDBFE', borderRadius: 10, padding: '14px 16px' }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#0C447C', marginBottom: 4 }}>Report is being prepared</div>
-                <div style={{ fontSize: 12, color: '#4A6A9A', lineHeight: 1.6 }}>The admin is reviewing the cross-reference. Your report will be available once it is released.</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#0C447C', marginBottom: 4 }}>
+                  {(report as any)?.forming ? 'A picture is forming' : 'Report is being prepared'}
+                </div>
+                <div style={{ fontSize: 12, color: '#4A6A9A', lineHeight: 1.6, marginBottom: (report as any)?.forming ? 10 : 0 }}>
+                  {(report as any)?.forming
+                    ? 'Not everyone has checked in yet, so this is not final - but you can see what has emerged so far. It never fabricates agreement, only what is actually known.'
+                    : 'Your report will be available once it is released.'}
+                </div>
+                {(report as any)?.forming && (
+                  <button
+                    onClick={() => navigate(`/grounds/${id}/report`)}
+                    style={{ fontSize: 12, fontWeight: 700, color: '#0C447C', background: 'white', border: '1px solid #BFDBFE', borderRadius: 8, padding: '8px 14px', cursor: 'pointer', fontFamily: 'inherit' }}
+                  >
+                    View the forming picture →
+                  </button>
+                )}
               </div>
             ) : !report.activated ? (
               <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '16px 18px', textAlign: 'center' }}>
