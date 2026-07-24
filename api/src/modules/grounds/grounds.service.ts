@@ -1039,6 +1039,28 @@ export class GroundsService {
       if (!Object.values(Cadence).includes(dto.cadence as Cadence)) {
         throw new BadRequestException(`Invalid cadence. Must be one of: ${Object.values(Cadence).join(', ')}`);
       }
+
+      // ONE_TIME's whole guarantee is "a single check-in, full stop" - decided
+      // by the actual session-1 completion, not by whatever the cadence field
+      // happens to say at that instant. Converting cadence to/from ONE_TIME
+      // after session 1 has already completed for anyone on this ground would
+      // be silently inconsistent either direction: switching IN wouldn't undo
+      // a session 2 that already exists or was already scheduled; switching
+      // OUT wouldn't retroactively create the session 2 that ONE_TIME's own
+      // ensureNextSession() early-return already skipped for good. Block the
+      // conversion outright once any session 1 has completed, rather than
+      // leave that inconsistency live.
+      const changingOneTime = dto.cadence === Cadence.ONE_TIME || ground.cadence === Cadence.ONE_TIME;
+      if (changingOneTime && dto.cadence !== ground.cadence) {
+        const anySessionOneComplete = await this.prisma.checkIn.findFirst({
+          where: { groundId, sessionNumber: 1, status: CheckInStatus.COMPLETED },
+        });
+        if (anySessionOneComplete) {
+          throw new BadRequestException(
+            'Cadence cannot be changed to or from "One time" after the first check-in has completed.',
+          );
+        }
+      }
     }
 
     // Parse existing audit log - migrate legacy array format to structured object.

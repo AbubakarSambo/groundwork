@@ -838,7 +838,7 @@ export function EntryChatPage() {
         orgName: orgName.trim() || undefined,
         // Prefer the AI-classified scenario; fall back to mode key, then URL param.
         scenario: onboardingSelections.classifiedScenario || onboardingSelections.mode || scenario || undefined,
-        cadence: cadence === 'ONE_TIME' ? 'FORTNIGHTLY' : cadence,
+        cadence,
         cadenceAnchorDay: (cadence === 'WEEKLY' || cadence === 'FORTNIGHTLY' || cadence === 'MONTHLY') && cadenceAnchorDay != null ? cadenceAnchorDay : undefined,
         checkInBy: checkInBy.trim() || undefined,
         lastCheckInBy: lastCheckInBy.trim() || undefined,
@@ -884,7 +884,7 @@ export function EntryChatPage() {
       const patch = {
         groundLabel: groundName || scenario || 'My first ground',
         orgName: orgName.trim() || undefined,
-        cadence: cadence === 'ONE_TIME' ? 'FORTNIGHTLY' : cadence,
+        cadence,
         cadenceAnchorDay: (cadence === 'WEEKLY' || cadence === 'FORTNIGHTLY' || cadence === 'MONTHLY') && cadenceAnchorDay != null ? cadenceAnchorDay : undefined,
         checkInBy: checkInBy.trim() || undefined,
         lastCheckInBy: lastCheckInBy.trim() || undefined,
