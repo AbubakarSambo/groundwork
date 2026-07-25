@@ -203,7 +203,9 @@ export class IntelligenceService {
    * Cross-org summaries are fully anonymised: observations are stripped of any
    * person-identifying text before being sent to the model.
    */
-  @Cron('0 9 * * 1')
+  // timeZone pinned to UTC - previously implicit, same fix as the weekly
+  // pattern crons in grounds.cron.ts.
+  @Cron('0 9 * * 1', { timeZone: 'UTC' })
   async weeklyLongitudinalSynthesis() {
     this.logger.log('Weekly longitudinal synthesis: starting');
 

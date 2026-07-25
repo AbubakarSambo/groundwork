@@ -35,3 +35,25 @@ describe('weekly pattern crons run in an explicit, pinned timezone', () => {
     expect(opts.timeZone).toBe('UTC');
   });
 });
+
+// Follow-up to the two weekly pattern crons above: the remaining 7 crons in
+// this same file had the identical implicit-timezone gap (flagged but
+// deliberately left out of the original narrower fix). Every @Cron in
+// GroundsCron is now pinned - this locks all of them so none can regress
+// back to implicit silently.
+describe('every remaining GroundsCron job is also pinned to UTC', () => {
+  it.each([
+    ['stallOverdueGrounds', '0 03 * * *'], // CronExpression.EVERY_DAY_AT_3AM
+    ['autoCloseStaleCheckIns', '*/30 * * * *'],
+    ['fireSessionClosingWarnings', '*/15 * * * *'],
+    ['sendReminders', '0 09 * * *'], // CronExpression.EVERY_DAY_AT_9AM
+    ['sendSessionReadyNotifications', '*/15 * * * *'],
+    ['synthesisBackstop', '0 4 * * *'],
+    ['sendFeedbackRequests', '0 10 * * *'],
+  ])('%s is pinned to UTC', (methodName, expectedCronTime) => {
+    const opts = cronOptionsFor(methodName as keyof GroundsCron);
+    expect(opts).toBeDefined();
+    expect(opts.cronTime).toBe(expectedCronTime);
+    expect(opts.timeZone).toBe('UTC');
+  });
+});
