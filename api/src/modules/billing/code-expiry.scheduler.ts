@@ -12,7 +12,10 @@ export class CodeExpiryScheduler {
     private readonly email: EmailService,
   ) {}
 
-  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  // timeZone pinned to UTC - previously implicit (server-local time, no TZ
+  // env var set anywhere in this repo's config), so this could otherwise
+  // fire at a different real time in dev vs. production.
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT, { timeZone: 'UTC' })
   async handleCodeExpiryReminders(): Promise<void> {
     this.logger.log('Running contributor code expiry reminder job');
 

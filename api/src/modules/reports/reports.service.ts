@@ -1262,7 +1262,10 @@ Close the report by framing - neutrally, without recommending one - the choice n
    * "learning loop status report" for the team; the full data is already in
    * IntelligenceService.outcomeRates().
    */
-  @Cron('0 8 * * 1')
+  // The comment above already claimed "08:00 UTC" but the decorator never
+  // actually pinned a timeZone - implicit, same gap as grounds.cron.ts. Now
+  // genuinely UTC, matching what the comment always said.
+  @Cron('0 8 * * 1', { timeZone: 'UTC' })
   async weeklyOutcomeLearningReport(): Promise<void> {
     this.logger.log('Weekly outcome learning report: starting');
     try {

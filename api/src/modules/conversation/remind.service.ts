@@ -126,7 +126,8 @@ export class RemindService {
    * their check-in, includes "The other party has already submitted their
    * version. Your record is the only thing missing." in the nudge body.
    */
-  @Cron(CronExpression.EVERY_DAY_AT_8AM)
+  // timeZone pinned to UTC - previously implicit, same fix as grounds.cron.ts.
+  @Cron(CronExpression.EVERY_DAY_AT_8AM, { timeZone: 'UTC' })
   async sendScheduledNudges(): Promise<void> {
     const now = new Date();
     const frontendUrl = (this.email as any).frontendUrl ?? 'http://localhost:5173';

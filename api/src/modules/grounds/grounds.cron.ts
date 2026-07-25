@@ -34,8 +34,12 @@ export class GroundsCron {
   /**
    * Daily sweep: transition any ground past its timelineDays to STALLED.
    * Billing stops automatically because the monthly cron only queries ACTIVE grounds.
+   * timeZone pinned to UTC (previously implicit - see the two weekly pattern
+   * crons below for the same fix and its rationale) so "3am" means the same
+   * instant everywhere the app runs, not "3am wherever this process's clock
+   * thinks it is."
    */
-  @Cron(CronExpression.EVERY_DAY_AT_3AM)
+  @Cron(CronExpression.EVERY_DAY_AT_3AM, { timeZone: 'UTC' })
   async stallOverdueGrounds() {
     await this.prisma.withAdvisoryLock(CronLock.STALL_GROUNDS, async () => {
       const candidates = await this.prisma.ground.findMany({
@@ -157,7 +161,11 @@ export class GroundsCron {
    * Fires CHECK_IN_COMPLETED so the existing reports listener handles any
    * synthesis logic - auto-close is source-transparent to downstream consumers.
    */
-  @Cron('*/30 * * * *')
+  // A fixed-minute-interval schedule fires at the same wall-clock cadence
+  // regardless of timezone, so timeZone has no effect on when this actually
+  // runs - pinned anyway for consistency with the fixed-hour crons in this
+  // file, so nothing here is left ambiguous for a future reader.
+  @Cron('*/30 * * * *', { timeZone: 'UTC' })
   async autoCloseStaleCheckIns() {
     await this.prisma.withAdvisoryLock(CronLock.AUTO_CLOSE_CHECK_INS, async () => {
       const inProgress = await this.prisma.checkIn.findMany({
@@ -228,7 +236,7 @@ export class GroundsCron {
    * session auto-closes in 30 minutes. warningFiredAt is set so the warning
    * fires at most once per session.
    */
-  @Cron('*/15 * * * *')
+  @Cron('*/15 * * * *', { timeZone: 'UTC' })
   async fireSessionClosingWarnings() {
     await this.prisma.withAdvisoryLock(CronLock.SESSION_CLOSING_WARNINGS, async () => {
       const candidates = await this.prisma.checkIn.findMany({
@@ -287,7 +295,7 @@ export class GroundsCron {
    *   2. Activation reminder: a REPORT_READY ground the admin hasn't activated -
    *      remind the initiator the report is waiting.
    */
-  @Cron(CronExpression.EVERY_DAY_AT_9AM)
+  @Cron(CronExpression.EVERY_DAY_AT_9AM, { timeZone: 'UTC' })
   async sendReminders() {
     await this.prisma.withAdvisoryLock(CronLock.SEND_REMINDERS, async () => this.sendRemindersInner());
   }
@@ -300,7 +308,7 @@ export class GroundsCron {
    * both just set availableFrom, so a single frequent sweep catches either.
    * Session 1 is excluded: that person already got the invite email.
    */
-  @Cron('*/15 * * * *')
+  @Cron('*/15 * * * *', { timeZone: 'UTC' })
   async sendSessionReadyNotifications() {
     await this.prisma.withAdvisoryLock(CronLock.SEND_REMINDERS, async () => this.sendSessionReadyNotificationsInner());
   }
@@ -479,7 +487,7 @@ export class GroundsCron {
    * state and re-emits the event; the reports listener is idempotent so re-fire
    * is safe.
    */
-  @Cron('0 4 * * *')
+  @Cron('0 4 * * *', { timeZone: 'UTC' })
   async synthesisBackstop() {
     await this.prisma.withAdvisoryLock(CronLock.SYNTHESIS_BACKSTOP, async () => {
       const candidates = await this.prisma.ground.findMany({
@@ -533,7 +541,7 @@ export class GroundsCron {
    * question about whether the process felt fair. The 24-72h window sends once
    * per party without a dedicated schema column.
    */
-  @Cron('0 10 * * *')
+  @Cron('0 10 * * *', { timeZone: 'UTC' })
   async sendFeedbackRequests() {
     const now = new Date();
     const closedAfter = new Date(now.getTime() - 72 * 60 * 60 * 1000);
