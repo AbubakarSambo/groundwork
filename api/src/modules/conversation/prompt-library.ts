@@ -1296,6 +1296,56 @@ Classify each entry as exactly one of:
 - WORRY - what they fear will happen
 - TENSION - a tension they predict / can already see coming`;
 
+/**
+ * Dependency (handoff) extraction. SHARED-mode grounds only, because handoffs
+ * are a board object and a private ground has no board.
+ *
+ * This is the board's real differentiator: the critical path is not who is
+ * behind, it is what is blocked on whom.
+ *
+ * Extracted from the OWN account of the person who is waiting. A dependency is
+ * only recorded when the person themselves said they are waiting on something -
+ * never one person asserting another's obligations without it appearing in their
+ * own account of their own work.
+ */
+export const DEPENDENCY_EXTRACTION_PROMPT = `You are extracting HANDOFFS from ONE person's check-in transcript. A handoff is something this person says they are waiting on, or blocked by, in order to move their own work forward.
+
+Only extract a handoff when THIS PERSON said they need something. Do not extract a handoff because they mentioned someone else owes something to a third party, and do not invent one from a general complaint.
+
+For each handoff give:
+- what: the thing they are waiting for, short and concrete, in their words ("the sales deck", "paying-user pricing", "staging access").
+- onName: the name of the person they are waiting on, exactly as they said it, or null if it is not a person (a process, an external party, a decision nobody owns yet).
+- onLabel: when onName is null, a short description of what they are waiting on instead ("the client's legal team", "the pricing decision").
+- status: BLOCKING if they said they genuinely cannot proceed without it. WAITING if it is slowing them but other work is moving. CLEARED if they said it has since arrived or been resolved.
+- then: what happens once it clears, if they said ("then I can close the three orgs"). Null if they did not say.
+
+Be conservative. If it is not clearly a handoff this person is waiting on, do not extract it. An empty list is a correct answer.`;
+
+export const DEPENDENCY_EXTRACTION_SCHEMA = {
+  name: 'emit_dependencies',
+  description: "Emit the handoffs this person said they are waiting on.",
+  input_schema: {
+    type: 'object',
+    properties: {
+      dependencies: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            what: { type: 'string', description: 'The thing they are waiting for, in their words.' },
+            onName: { type: ['string', 'null'], description: 'Name of the person they are waiting on, or null.' },
+            onLabel: { type: ['string', 'null'], description: 'What they are waiting on when it is not a person.' },
+            status: { type: 'string', enum: ['BLOCKING', 'WAITING', 'CLEARED'] },
+            then: { type: ['string', 'null'], description: 'What happens once it clears.' },
+          },
+          required: ['what', 'status'],
+        },
+      },
+    },
+    required: ['dependencies'],
+  },
+};
+
 // ---------------------------------------------------------------------------
 // Willingness gate - fires before a tension/recognition session deepens.
 // ---------------------------------------------------------------------------

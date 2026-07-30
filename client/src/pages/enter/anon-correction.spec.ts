@@ -10,6 +10,10 @@ import { CORRECTION_PREFIX, buildCorrectionTurn, withCorrection, isCorrectionTur
  * is the dishonesty the product exists to prevent. These tests pin the
  * transcript contract:
  *   - the correction is a user turn carrying the user's words verbatim,
+ *   - the correction turn is NEUTRAL - it must not instruct the model to
+ *     accept/update its read, since the correction is now routed through the
+ *     live conversation engine (/entry/chat) precisely so the engine's own
+ *     skepticism can push back on it, rather than being told to comply,
  *   - the corrected transcript = the original + exactly one appended turn
  *     (no mutation, no truncation - what regenerates is what would later commit).
  */
@@ -19,8 +23,12 @@ describe('anonymous correction transcript contract', () => {
     expect(t.role).toBe('user')
     expect(t.content).toContain('The deadline is not May - it is March 1')
     expect(t.content.startsWith(CORRECTION_PREFIX)).toBe(true)
-    // The turn asks the model to update its read - regeneration, not patching.
-    expect(t.content).toContain('update your read')
+  })
+
+  it('does not instruct the model to comply - the engine must be free to push back', () => {
+    const t = buildCorrectionTurn('The deadline is not May - it is March 1')
+    expect(t.content).not.toContain('update your read')
+    expect(t.content).not.toContain('accurate account')
   })
 
   it('appends exactly one turn and never mutates or truncates the original', () => {

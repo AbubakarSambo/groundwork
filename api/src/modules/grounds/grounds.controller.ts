@@ -190,6 +190,12 @@ export class GroundsController {
     return this.grounds.setMySoloReportShared(id, userId, dto.shared);
   }
 
+  @Post(':id/sign-off')
+  @ApiOperation({ summary: "Confirm the requesting user's account is accurate - the deadline for corrections, in place of a timer" })
+  async signOff(@Param('id') id: string, @CurrentUser('id') userId: string) {
+    return this.grounds.signOff(id, userId);
+  }
+
   @Patch(':id/external-visibility')
   @ApiOperation({ summary: "Initiator-only: whether participants can see each other's contact details (email). Names/roster/presence stay visible either way." })
   async setExternalVisibility(@Param('id') id: string, @CurrentUser('id') userId: string, @Body() dto: { restrict: boolean }) {

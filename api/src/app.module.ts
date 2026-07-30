@@ -15,6 +15,7 @@ import { ParticipantsModule } from './modules/participants';
 import { ConversationModule } from './modules/conversation';
 import { ReportsModule } from './modules/reports';
 import { PatternsModule } from './modules/patterns';
+import { BoardModule } from './modules/board';
 import { ResolutionModule } from './modules/resolution';
 import { BillingModule } from './modules/billing';
 import { IntelligenceModule } from './modules/intelligence';
@@ -40,6 +41,7 @@ import { JwtAuthGuard, RolesGuard, GlobalExceptionFilter, TransformInterceptor }
     WhatsAppModule,
     ReportsModule,
     PatternsModule,
+    BoardModule,
     ResolutionModule,
     BillingModule,
     IntelligenceModule,

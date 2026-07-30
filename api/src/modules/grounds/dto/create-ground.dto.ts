@@ -1,7 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsString, IsNotEmpty, IsEnum, IsInt, Min, IsOptional, MaxLength, IsBoolean, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
-import { GroundScenario, GroundMoment, Cadence } from '@prisma/client';
+import { GroundScenario, GroundMoment, Cadence, GroundMode } from '@prisma/client';
 
 /** GW-69: contraindication screening answers for conflict-scenario grounds. */
 export class ContraindicationAnswersDto {
@@ -35,6 +35,14 @@ export class CreateGroundDto {
   @ApiProperty({ enum: GroundMoment })
   @IsEnum(GroundMoment)
   moment: GroundMoment;
+
+  // PRIVATE (alignment) or SHARED (delivery). Immutable after creation. Omit to
+  // take the family default: sensing scenarios (pulse, drift, crisis, realign)
+  // default PRIVATE because their whole value is that nobody sees who said what.
+  @ApiPropertyOptional({ enum: GroundMode, description: 'Alignment (PRIVATE) or delivery (SHARED). Cannot be changed later. Defaults per scenario family.' })
+  @IsOptional()
+  @IsEnum(GroundMode)
+  mode?: GroundMode;
 
   @ApiPropertyOptional({ example: 90, description: 'Defaults per scenario if omitted' })
   @IsOptional()

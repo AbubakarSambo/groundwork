@@ -145,6 +145,16 @@ export function GroundParticipantPage() {
     onError: () => toast.error('Could not update. Try again.'),
   })
 
+  // Explicit "my account is accurate" confirmation - the deadline for
+  // corrections, in place of a timer. Does not block later corrections; it
+  // just flags any that come after as "updated after sign-off" on the shared
+  // report (see reportsApi.get()'s `updates` field / SoloArtifactBlock above).
+  const signOffMut = useMutation({
+    mutationFn: () => groundsApi.signOff(id!),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['ground', id] }),
+    onError: () => toast.error('Could not sign off. Try again.'),
+  })
+
   const checkoutMut = useMutation({
     mutationFn: () => billingApi.purchaseSession(id!),
     onSuccess: (data: any) => { if (data?.checkoutUrl) window.location.href = data.checkoutUrl },
@@ -721,6 +731,33 @@ export function GroundParticipantPage() {
               <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: 20, textAlign: 'center', marginBottom: 6 }}>
                 <div style={{ fontSize: 13, color: '#9B9590' }}>Your private report is not ready yet.</div>
                 <div style={{ fontSize: 12, color: '#9B9590', marginTop: 4 }}>It generates once you complete your check-in.</div>
+              </div>
+            )}
+
+            {/* Sign-off: the deadline for corrections, in place of a timer.
+                Does not block later corrections - it just flags any that come
+                after as "updated after sign-off" on the shared report. */}
+            {mySoloReport?.report && (
+              <div style={{ background: '#F5F3EF', border: '1px solid #E2E0DB', borderRadius: 10, padding: '14px 16px', marginBottom: 6 }}>
+                {myParticipant?.signedOffAt ? (
+                  <div style={{ fontSize: 12, color: '#3A7A60', fontWeight: 600 }}>
+                    You signed off on {new Date(myParticipant.signedOffAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}.
+                    {' '}You can still correct it, but it will show as updated after sign-off.
+                  </div>
+                ) : (
+                  <>
+                    <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.55, marginBottom: 8 }}>
+                      Confirm your account is accurate. This isn't a lock - you can still correct it later - but any correction after sign-off is flagged on the shared report.
+                    </div>
+                    <button
+                      onClick={() => signOffMut.mutate()}
+                      disabled={signOffMut.isPending}
+                      style={{ padding: '8px 14px', borderRadius: 7, background: '#0C447C', color: 'white', fontSize: 12.5, fontWeight: 700, border: 'none', cursor: signOffMut.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: signOffMut.isPending ? 0.6 : 1 }}
+                    >
+                      {signOffMut.isPending ? 'Signing off…' : "Sign off - this is accurate"}
+                    </button>
+                  </>
+                )}
               </div>
             )}
 

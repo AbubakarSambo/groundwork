@@ -121,4 +121,11 @@ export const groundsApi = {
 
   setMySoloReportShared: (groundId: string, shared: boolean) =>
     apiClient.patch<{ shared: boolean }>(`/grounds/${groundId}/my-solo-report/share`, { shared }).then(r => r.data),
+
+  // Explicit "my account is accurate, I'm done" confirmation - the deadline
+  // for corrections, in place of a timer. Does not block later corrections;
+  // it just flags any that come after as "updated after sign-off" on the
+  // shared report.
+  signOff: (groundId: string) =>
+    apiClient.post<{ signedOffAt: string }>(`/grounds/${groundId}/sign-off`).then(r => r.data),
 }

@@ -57,6 +57,9 @@ export interface GroundParticipant {
   roleAsDescribed?: string | null
   // display name of the linked user (null for a not-yet-accepted invite)
   user?: { firstName: string | null; lastName: string | null } | null
+  // "my account is accurate" confirmation - the deadline for corrections, in
+  // place of a timer. Null until the participant signs off.
+  signedOffAt?: string | null
 }
 
 export interface CheckInSummary {

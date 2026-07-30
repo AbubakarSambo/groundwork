@@ -10,6 +10,7 @@ import { CreateGroundDto, AddParticipantDto, CreateGroundForLeadDto } from './dt
 import { GroundworkEvents, GroundActivatedEvent } from '../../common';
 import { GroundScenario, GroundStatus, PartyType, CheckInStatus, Cadence, UsageEventType, TokenType } from '@prisma/client';
 import { endStatesFor } from '../resolution/end-states';
+import { defaultModeFor } from '../board/board-families';
 
 // Default timelines per scenario (Part 2 - timeline and cadence).
 const DEFAULT_TIMELINE_DAYS: Record<GroundScenario, number> = {
@@ -58,6 +59,7 @@ export const SAFE_PARTICIPANT_SELECT = {
   inviteDeliveryStatus: true, // SENT | DELIVERED | BOUNCED | COMPLAINED (Resend webhook mirror)
   soloArtifactAt: true, // timestamp only - never the artifact content
   soloArtifactShared: true, // whether participant chose to share; content fetched separately via get()
+  signedOffAt: true, // "my account is accurate" confirmation - safe to show all parties, same tier as soloArtifactAt
   createdAt: true,
   // ONLY the display name of the linked user - so a participant can see WHO is here
   // by name when their email is hidden. Deliberately firstName/lastName only: no email,
@@ -97,6 +99,9 @@ export class GroundsService {
         initiatorId,
         label: dto.label,
         scenario: dto.scenario,
+        // Immutable after this point. Omitting it takes the family default so a
+        // sensing-family ground is never accidentally created shared.
+        mode: dto.mode ?? defaultModeFor(dto.scenario),
         moment: dto.moment,
         timelineDays: dto.timelineDays ?? DEFAULT_TIMELINE_DAYS[dto.scenario],
         cadence: dto.cadence ?? Cadence.FORTNIGHTLY,
@@ -215,6 +220,9 @@ export class GroundsService {
           createdByUserId: adminUserId,
           label: dto.label,
           scenario: dto.scenario,
+        // Immutable after this point. Omitting it takes the family default so a
+        // sensing-family ground is never accidentally created shared.
+        mode: dto.mode ?? defaultModeFor(dto.scenario),
           moment: dto.moment,
           timelineDays: dto.timelineDays ?? DEFAULT_TIMELINE_DAYS[dto.scenario],
           cadence: dto.cadence ?? Cadence.FORTNIGHTLY,
@@ -1033,6 +1041,16 @@ export class GroundsService {
     });
     if (!link && ground.initiatorId !== requestingUserId) throw new ForbiddenException('You are not a party to this ground');
 
+    // MODE IS IMMUTABLE. If a ground could flip from private to shared, someone
+    // who checked in believing their account was private would have it exposed -
+    // the worst possible failure for a trust product. Rejected loudly here rather
+    // than silently ignored, so a caller attempting it finds out.
+    if ((dto as any).mode !== undefined && (dto as any).mode !== ground.mode) {
+      throw new BadRequestException(
+        'A ground\'s mode cannot be changed. It is fixed when the ground is created, because people check in on the understanding of what will and will not be shared.',
+      );
+    }
+
     // Normalize and validate cadence if provided.
     if (dto.cadence) {
       (dto as any).cadence = (dto.cadence as string).toUpperCase();
@@ -1375,6 +1393,30 @@ export class GroundsService {
       data: { soloArtifactShared: shared },
     });
     return { shared };
+  }
+
+  /**
+   * Explicit "my account is accurate, I'm done" confirmation - the deadline
+   * for corrections, in place of an arbitrary timer. Signing off does NOT
+   * block startSelfCorrectionSession() afterward; a signed-off participant
+   * may still genuinely need to fix something. What changes is that any
+   * self-correction session started after this point gets CheckIn.isPostSignOff
+   * stamped, so the shared report surfaces it as a flagged update rather than
+   * silently blending it in as if it had always been there. No undo in v1.
+   */
+  async signOff(groundId: string, userId: string): Promise<{ signedOffAt: Date }> {
+    const participant = await this.prisma.groundParticipant.findFirst({
+      where: { groundId, userId },
+      select: { id: true, signedOffAt: true },
+    });
+    if (!participant) throw new ForbiddenException('You are not a party to this ground');
+    if (participant.signedOffAt) return { signedOffAt: participant.signedOffAt };
+    const updated = await this.prisma.groundParticipant.update({
+      where: { id: participant.id },
+      data: { signedOffAt: new Date() },
+      select: { signedOffAt: true },
+    });
+    return { signedOffAt: updated.signedOffAt! };
   }
 }
 

@@ -141,8 +141,13 @@ export function onboardDisplayReply(reply: string, ready: boolean): string {
 
 // --- Anonymous correction (ISSUE-17 safe) -----------------------------------
 // A non-logged-in user can correct the report's read of their situation. The
-// correction is ONE user-authored turn appended to the in-session transcript;
-// the report then REGENERATES from the corrected transcript via the same
+// correction is sent through the SAME stateless /entry/chat endpoint the live
+// check-in uses - not a one-shot instruction the model is told to comply with.
+// This means a vague or contradictory correction gets the same engine
+// skepticism (ENGINE_RULES) as any other claim, instead of a free pass: the
+// model can push back or ask a follow-up before the correction is treated as
+// settled. Only once that exchange reaches the existing natural-close signal
+// does the report REGENERATE from the corrected transcript via the same
 // stateless /entry/report path. Report fields are never patched directly - a
 // report the transcript does not support is exactly the dishonesty the product
 // exists to prevent. Nothing touches the server's state: the corrected
@@ -151,10 +156,13 @@ export function onboardDisplayReply(reply: string, ready: boolean): string {
 // later commits, the corrected account is what gets persisted.
 export const CORRECTION_PREFIX = 'Correction from me:'
 
+// Deliberately neutral - does NOT instruct the model to accept/update its read.
+// An instruction to comply would defeat the point of routing this through the
+// engine at all.
 export function buildCorrectionTurn(text: string): { role: 'user'; content: string } {
   return {
     role: 'user',
-    content: `${CORRECTION_PREFIX} ${text.trim()}. This is the accurate account - please update your read of my situation to reflect it.`,
+    content: `${CORRECTION_PREFIX} ${text.trim()}`,
   }
 }
 
@@ -366,6 +374,12 @@ export function EntryChatPage() {
   // Anonymous correction: inline "what did we get wrong?" box on the report.
   const [showCorrection, setShowCorrection] = useState(false)
   const [correctionText, setCorrectionText] = useState('')
+  const [correctionLoading, setCorrectionLoading] = useState(false)
+  // Index into `history` where the current correction exchange began - lets the
+  // UI render just the correction sub-conversation (question/answer bubbles)
+  // without re-showing the whole original check-in transcript. Null = no
+  // correction in progress.
+  const [correctionStartIndex, setCorrectionStartIndex] = useState<number | null>(null)
   // Flow fork after onboarding: 'self' = this is my situation, I give my
   // account now (the check-in). 'lead' = I am setting this up for my team and
   // someone else runs the first check-in (the coordinator path - no check-in,
@@ -598,21 +612,52 @@ export function EntryChatPage() {
     generateSessionReport(history)
   }
 
-  // Anonymous correction: append ONE correction turn to the in-session
-  // transcript and regenerate the report from the corrected transcript (same
-  // stateless path as the original report - see the helpers near the top).
-  // If regeneration fails, this degrades to the existing retry card, which
-  // retries with the corrected turns, so the correction is not lost.
-  function submitReportCorrection() {
+  // Anonymous correction: each message the user sends here goes through the
+  // real conversation engine (/entry/chat), same as the original check-in -
+  // not a one-shot patch. The engine can push back or ask a follow-up; the
+  // report only regenerates once the exchange reaches the same natural-close
+  // signal the original check-in already uses (res.sessionComplete or
+  // SESSION_END_PATTERNS). If regeneration fails, this degrades to the
+  // existing retry card, which retries with the corrected turns, so nothing
+  // in the exchange is lost.
+  async function submitReportCorrection() {
     const text = correctionText.trim()
-    if (!text || generatingReport) return
-    const corrected = withCorrection(history, text)
-    setHistory(corrected)
-    setShowCorrection(false)
+    if (!text || correctionLoading || generatingReport) return
+    const startIdx = correctionStartIndex ?? history.length
+    if (correctionStartIndex === null) setCorrectionStartIndex(startIdx)
+    const turn: Turn = correctionStartIndex === null ? buildCorrectionTurn(text) : { role: 'user', content: text }
+    const withTurn = [...history, turn]
+    setHistory(withTurn)
     setCorrectionText('')
-    generateSessionReport(corrected)
+    setCorrectionLoading(true)
+    try {
+      const res = await entryApi.chat(withTurn, scenario || undefined, groundName || undefined)
+      const withReply: Turn[] = [...withTurn, { role: 'assistant', content: res.reply }]
+      setHistory(withReply)
+      const replyLower = res.reply.toLowerCase()
+      const isNaturalClose = res.sessionComplete === true || SESSION_END_PATTERNS.some(p => replyLower.includes(p))
+      if (isNaturalClose) {
+        setShowCorrection(false)
+        setCorrectionStartIndex(null)
+        await generateSessionReport(withReply)
+      }
+    } catch {
+      toast.error('Could not send your correction. Try again.')
+    } finally {
+      setCorrectionLoading(false)
+    }
+  }
+  // Manual escape hatch: mirrors handleEndSession - if the engine never emits
+  // a natural-close signal, the user can still close out the correction
+  // exchange and regenerate the report from whatever was said so far.
+  function finishCorrection() {
+    if (correctionLoading || generatingReport) return
+    setShowCorrection(false)
+    setCorrectionStartIndex(null)
+    generateSessionReport(history)
   }
   const reportWasCorrected = history.some(isCorrectionTurn)
+  const correctionExchange = correctionStartIndex !== null ? history.slice(correctionStartIndex) : []
 
   // Self path: this is the person's own situation - straight into the check-in
   // (no interstitial page). The "~10 min" estimate and the two-report framing
@@ -1704,8 +1749,8 @@ export function EntryChatPage() {
                     )}
                   </div>
                   <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: 'rgba(255,255,255,.93)' }}>{sessionReport.whatGroundworkSaw}</p>
-                  {/* Anonymous correction: one appended turn + full regeneration.
-                      Never patches report fields (see helpers near top of file). */}
+                  {/* Anonymous correction: routed through the live engine (/entry/chat),
+                      not a one-shot patch. See the comment block above buildCorrectionTurn. */}
                   {!showCorrection ? (
                     <button
                       onClick={() => setShowCorrection(true)}
@@ -1716,7 +1761,32 @@ export function EntryChatPage() {
                     </button>
                   ) : (
                     <div style={{ marginTop: 10 }}>
-                      <div style={{ fontSize: 12, color: 'rgba(255,255,255,.75)', marginBottom: 6 }}>What did we get wrong? Say it plainly and we'll redo the report.</div>
+                      <div style={{ fontSize: 12, color: 'rgba(255,255,255,.75)', marginBottom: 6 }}>
+                        What did we get wrong? Say it plainly - we may ask a follow-up before the report updates.
+                      </div>
+                      {correctionExchange.length > 0 && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 8 }}>
+                          {correctionExchange.map((m, i) => (
+                            <div
+                              key={i}
+                              style={{
+                                alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start',
+                                maxWidth: '88%',
+                                padding: '7px 10px',
+                                borderRadius: 8,
+                                fontSize: 12.5,
+                                lineHeight: 1.5,
+                                background: m.role === 'user' ? '#5DCAA5' : 'rgba(255,255,255,.1)',
+                                color: m.role === 'user' ? '#0A1628' : 'rgba(255,255,255,.9)',
+                              }}
+                            >
+                              {m.role === 'user' && m.content.startsWith(CORRECTION_PREFIX)
+                                ? m.content.slice(CORRECTION_PREFIX.length).trim()
+                                : m.content}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                       <textarea
                         autoFocus
                         value={correctionText}
@@ -1727,14 +1797,23 @@ export function EntryChatPage() {
                       <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
                         <button
                           onClick={submitReportCorrection}
-                          disabled={!correctionText.trim() || generatingReport}
-                          style={{ padding: '7px 14px', borderRadius: 7, background: '#5DCAA5', color: '#0A1628', fontSize: 12, fontWeight: 700, border: 'none', cursor: !correctionText.trim() || generatingReport ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: !correctionText.trim() || generatingReport ? 0.6 : 1 }}
+                          disabled={!correctionText.trim() || correctionLoading || generatingReport}
+                          style={{ padding: '7px 14px', borderRadius: 7, background: '#5DCAA5', color: '#0A1628', fontSize: 12, fontWeight: 700, border: 'none', cursor: !correctionText.trim() || correctionLoading || generatingReport ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: !correctionText.trim() || correctionLoading || generatingReport ? 0.6 : 1 }}
                         >
-                          {generatingReport ? 'Redoing your report...' : 'Redo my report'}
+                          {generatingReport ? 'Redoing your report...' : correctionLoading ? 'Sending...' : correctionExchange.length > 0 ? 'Send' : 'Send correction'}
                         </button>
+                        {correctionExchange.length > 0 && (
+                          <button
+                            onClick={finishCorrection}
+                            disabled={correctionLoading || generatingReport}
+                            style={{ padding: '7px 12px', borderRadius: 7, background: 'none', color: '#5DCAA5', fontSize: 12, border: '1px solid rgba(93,202,165,.5)', cursor: 'pointer', fontFamily: 'inherit' }}
+                          >
+                            I'm done, redo my report
+                          </button>
+                        )}
                         <button
-                          onClick={() => { setShowCorrection(false); setCorrectionText('') }}
-                          disabled={generatingReport}
+                          onClick={() => { setShowCorrection(false); setCorrectionText(''); setCorrectionStartIndex(null) }}
+                          disabled={correctionLoading || generatingReport}
                           style={{ padding: '7px 12px', borderRadius: 7, background: 'none', color: 'rgba(255,255,255,.6)', fontSize: 12, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
                         >
                           Cancel
