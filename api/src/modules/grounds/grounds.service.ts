@@ -10,7 +10,7 @@ import { CreateGroundDto, AddParticipantDto, CreateGroundForLeadDto } from './dt
 import { GroundworkEvents, GroundActivatedEvent } from '../../common';
 import { GroundScenario, GroundStatus, PartyType, CheckInStatus, Cadence, UsageEventType, TokenType } from '@prisma/client';
 import { endStatesFor } from '../resolution/end-states';
-import { defaultModeFor } from '../board/board-families';
+import { defaultModeFor, boardRendersFor } from '../board/board-families';
 
 // Default timelines per scenario (Part 2 - timeline and cadence).
 const DEFAULT_TIMELINE_DAYS: Record<GroundScenario, number> = {
@@ -697,6 +697,10 @@ export class GroundsService {
       leadContextNotes,
       org: org ?? null,
       sessionProgress: sessionProgress ? { ...sessionProgress, requestingUserIsMissing } : null,
+      // Whether this ground has a delivery board, so the client can show or hide
+      // the link without duplicating the scenario-family table. The server owns
+      // that routing; the client just reads the answer.
+      boardRenders: boardRendersFor(ground.scenario, ground.mode),
     };
   }
 

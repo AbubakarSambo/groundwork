@@ -20,6 +20,7 @@ import { CreateGroundPage } from '@/pages/grounds/CreateGroundPage'
 import { GroundAdminPage } from '@/pages/grounds/GroundAdminPage'
 import { GroundParticipantPage } from '@/pages/grounds/GroundParticipantPage'
 import { ReportPage } from '@/pages/report/ReportPage'
+import { BoardPage } from '@/pages/board/BoardPage'
 import { BillingPage } from '@/pages/billing/BillingPage'
 import { PricingPage } from '@/pages/billing/PricingPage'
 import { PaymentPage } from '@/pages/billing/PaymentPage'
@@ -123,6 +124,7 @@ export default function App() {
             <Route path="/grounds/:id" element={<RequireAuth><GroundAdminPage /></RequireAuth>} />
             <Route path="/grounds/:id/p" element={<RequireAuth><GroundParticipantPage /></RequireAuth>} />
             <Route path="/grounds/:id/report" element={<RequireAuth><ReportPage /></RequireAuth>} />
+            <Route path="/grounds/:id/board" element={<RequireAuth><BoardPage /></RequireAuth>} />
             <Route path="/chat/:checkInId" element={<RequireAuth><ChatPage /></RequireAuth>} />
             <Route path="/checkin/:checkInId" element={<RequireAuth><ChatPage /></RequireAuth>} />
             <Route path="/feed" element={<RequireAuth><AlignmentFeedPage /></RequireAuth>} />

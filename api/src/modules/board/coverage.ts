@@ -117,6 +117,17 @@ export function classifyCoverageReason(input: {
         'They have said this was handed over deliberately, so it is delegation, not a gap. Their own account settles this one.',
     };
   }
+  // STABLE means nothing is moving either way, so there is nothing to explain.
+  // Reaching for the blocked or ownership-drop reasons here would attach an
+  // explanation to a non-signal, which reads as an accusation about someone whose
+  // work is simply staying with them.
+  if (input.kind === CoverageKind.STABLE) {
+    return {
+      reason: CoverageReason.SHARED_BY_DESIGN,
+      reasonText:
+        'Their responsibilities are staying with them. Nothing is leaking out or piling in, so there is nothing here to read into.',
+    };
+  }
   if (input.kind === CoverageKind.ABSORBING) {
     return {
       reason: CoverageReason.OVER_REACH,

@@ -120,6 +120,9 @@ export class BoardService {
       title: ground.label,
       scenario: ground.scenario,
       coverageVariant: variant,
+      // Which participant row is the caller, so the client knows whose poll chip
+      // is theirs to toggle. Null for an org admin reading without being a party.
+      myParticipantId: me?.id ?? null,
       readOnlyNote: 'Generated from the ground. Only the meeting poll is editable.',
       participants: ground.participants.map((p) => ({
         id: p.id,

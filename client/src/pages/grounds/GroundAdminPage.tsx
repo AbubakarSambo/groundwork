@@ -268,6 +268,16 @@ export function GroundAdminPage() {
               </div>
             </div>
           </div>
+          {/* Delivery board: only on shared-mode grounds whose scenario family has one.
+              The server decides (boardRenders); the client does not duplicate the table. */}
+          {(ground as any).boardRenders && (
+            <button
+              onClick={() => navigate(`/grounds/${id}/board`)}
+              style={{ fontSize: 11, fontWeight: 700, padding: '4px 11px', borderRadius: 20, background: 'var(--gw-dark)', color: 'white', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+            >
+              Team board →
+            </button>
+          )}
           <div style={{ textAlign: 'right' }}>
             <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--gw-navy)' }}>{conf}/5</div>
             <div style={{ fontSize: 11, color: 'var(--gw-sub)' }}>{bl}</div>
