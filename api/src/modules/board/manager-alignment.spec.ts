@@ -152,3 +152,29 @@ describe('GW-MGR-ALIGN-04: whitelist placement is deliberate', () => {
     }
   });
 });
+
+describe('GW-MGR-ALIGN-05: the no-quote rule is ENFORCED, not merely requested', () => {
+  // Against the real 12-session transcripts the model kept slipping a two-word
+  // quote into the gap text even with an explicit prohibition. A prompt is a
+  // request; this property must not depend on one. Preferring a false negative
+  // over a leak is the documented bias.
+  it('drops a gap containing any quotation, even two words (tripwire)', () => {
+    const reads = boardOnly().buildManagerAlignment({
+      leadershipGaps: [gap({ gap: "One account describes being 'spread too thin' and not converting." })],
+    });
+    expect(reads).toEqual([]);
+  });
+
+  it('drops a gap that identifies which party said it', () => {
+    for (const bad of ['party A described it differently', 'the lead never mentions it', 'the manager did not raise it']) {
+      expect(boardOnly().buildManagerAlignment({ leadershipGaps: [gap({ gap: bad })] })).toEqual([]);
+    }
+  });
+
+  it('keeps a properly written gap', () => {
+    const reads = boardOnly().buildManagerAlignment({
+      leadershipGaps: [gap({ gap: 'One account describes a conversation as still to be had; another describes tension nobody addressed.' })],
+    });
+    expect(reads).toHaveLength(1);
+  });
+});

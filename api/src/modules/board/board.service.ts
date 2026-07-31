@@ -775,6 +775,24 @@ export class BoardService {
         // string: without its pole and its label it is not actionable, and a
         // half-rendered read about someone's management is worse than none.
         if (!spec || !g?.gap) return null;
+
+        // ENFORCED, not merely requested. The prompt forbids quoting and
+        // labelling, but a prompt is a request and this is the one property
+        // that must not drift: a two-word quote still tells the other person
+        // exactly what was said. Anything carrying a quote or a party label is
+        // dropped rather than shown.
+        const gapText = String(g.gap);
+        // Possessive apostrophes are not quotations ("another party's remit"),
+        // so strip them before looking for quoted speech.
+        const withoutPossessives = gapText.replace(/(\w)['\u2019]s\b/gi, '$1s');
+        if (/["\u201c\u201d]|['\u2018][^'\u2019]{2,}['\u2019]/.test(withoutPossessives)) {
+          this.logger.warn('Dropping a leadership gap containing a quotation - the no-quote rule is absolute.');
+          return null;
+        }
+        if (/\b(party [A-Z]|the lead|the manager|the initiator)\b/i.test(gapText)) {
+          this.logger.warn('Dropping a leadership gap that identifies a party.');
+          return null;
+        }
         // One period is not a pattern. The same three-period discipline that
         // governs every other negative read governs this one, and this is the
         // most consequential read on the board.
