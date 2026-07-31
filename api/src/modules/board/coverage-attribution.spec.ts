@@ -39,7 +39,16 @@ function makeService(
   const sessionsWithEntries = opts.sessionsWithEntries ?? 4;
   const prisma: any = {
     groundDependency: {
-      findMany: jest.fn(async () => (opts.blocked ?? []).map((id) => ({ fromParticipantId: id }))),
+      findMany: jest.fn(async () =>
+        (opts.blocked ?? []).map((id, i) => ({
+          fromParticipantId: id,
+          onParticipantId: 'someone-else',
+          onLabel: null,
+          what: `a blocker ${i}`,
+          status: DependencyStatus.BLOCKING,
+          createdAt: new Date(),
+        })),
+      ),
     },
     workMention: { findMany: jest.fn(async () => mentions) },
     recordEntry: {

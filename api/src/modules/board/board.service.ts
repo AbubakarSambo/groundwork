@@ -42,6 +42,43 @@ import { PATTERN_NAME_BY_CODE } from '../patterns/pattern-library';
  *  2. WHITELIST. Only report fields in BOARD_WHITELIST can cross onto the board.
  *     The trust analysis, arc signals and anything lead-only never do.
  */
+/**
+ * Collapse handoffs that are really the same one.
+ *
+ * Extraction now dedupes on write, but every ground created before that fix has
+ * the duplicates already - 27 rows for about 4 real handoffs in the live run,
+ * which made the summary read "13 blocked" when 2 people were. Deduping on READ
+ * too means existing grounds are fixed as well as new ones.
+ *
+ * The newest row wins, because a handoff someone has stopped describing as
+ * blocking is no longer blocking.
+ */
+function dedupeDependencies<T extends { what: string; onParticipantId: string | null; onLabel: string | null; fromParticipantId: string; status: DependencyStatus; createdAt?: Date }>(
+  deps: T[],
+): T[] {
+  const norm = (t: string) =>
+    t.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\b(the|a|an|my|our|his|her|their|this|that|some|more|any|for|to)\b/g, ' ').replace(/\s+/g, ' ').trim();
+  const out: T[] = [];
+  for (const d of [...deps].sort((a, b) => (a.createdAt?.getTime() ?? 0) - (b.createdAt?.getTime() ?? 0))) {
+    const key = norm(d.what);
+    const hit = out.find(
+      (e) =>
+        e.fromParticipantId === d.fromParticipantId &&
+        (norm(e.what) === key || norm(e.what).includes(key) || key.includes(norm(e.what))),
+    );
+    if (hit) {
+      // Later row wins on status and wording.
+      (hit as any).status = d.status;
+      (hit as any).what = d.what;
+      (hit as any).onParticipantId = d.onParticipantId ?? hit.onParticipantId;
+      (hit as any).onLabel = d.onLabel ?? hit.onLabel;
+      continue;
+    }
+    out.push({ ...d });
+  }
+  return out;
+}
+
 @Injectable()
 export class BoardService {
   private readonly logger = new Logger(BoardService.name);
@@ -88,6 +125,10 @@ export class BoardService {
             : 'This kind of ground does not use a shared board. Laying these accounts out for everyone to read would undo the candour that makes them worth having. Read the report instead.',
       };
     }
+
+    // Collapse duplicate handoffs before anything reads them, so existing
+    // grounds get the same answer as new ones.
+    (ground as any).dependencies = dedupeDependencies(ground.dependencies as any);
 
     const sections = sectionsFor(ground.scenario, ground.mode);
     const has = (s: BoardSection) => sections.includes(s);
@@ -424,11 +465,17 @@ export class BoardService {
     checkIns: { participantId: string; sessionNumber: number; status: CheckInStatus; specificityLevel: string | null }[],
     nameOf: (id: string) => string | null,
   ) {
-    const deps = await this.prisma.groundDependency.findMany({
-      where: { groundId: ground.id, status: { in: [DependencyStatus.BLOCKING, DependencyStatus.WAITING] } },
-      select: { fromParticipantId: true },
+    // Read every handoff, dedupe, THEN decide who is blocked. Counting raw rows
+    // kept people marked blocked by duplicates of a handoff that had cleared.
+    const allDeps = await this.prisma.groundDependency.findMany({
+      where: { groundId: ground.id },
+      select: { fromParticipantId: true, onParticipantId: true, onLabel: true, what: true, status: true, createdAt: true },
     });
-    const blockedIds = new Set(deps.map((d) => d.fromParticipantId));
+    const blockedIds = new Set(
+      dedupeDependencies(allDeps as any)
+        .filter((d) => d.status === DependencyStatus.BLOCKING || d.status === DependencyStatus.WAITING)
+        .map((d) => d.fromParticipantId),
+    );
 
     const lastSession = checkIns.reduce((m, c) => Math.max(m, c.sessionNumber), 0);
 
@@ -594,11 +641,17 @@ export class BoardService {
     ground: { id: string; participants: any[] },
     nameOf: (id: string) => string | null,
   ): Promise<{ scope: CoverageScope; reads: CoverageRead[] }> {
-    const deps = await this.prisma.groundDependency.findMany({
-      where: { groundId: ground.id, status: { in: [DependencyStatus.BLOCKING, DependencyStatus.WAITING] } },
-      select: { fromParticipantId: true },
+    // Read every handoff, dedupe, THEN decide who is blocked. Counting raw rows
+    // kept people marked blocked by duplicates of a handoff that had cleared.
+    const allDeps = await this.prisma.groundDependency.findMany({
+      where: { groundId: ground.id },
+      select: { fromParticipantId: true, onParticipantId: true, onLabel: true, what: true, status: true, createdAt: true },
     });
-    const blockedIds = new Set(deps.map((d) => d.fromParticipantId));
+    const blockedIds = new Set(
+      dedupeDependencies(allDeps as any)
+        .filter((d) => d.status === DependencyStatus.BLOCKING || d.status === DependencyStatus.WAITING)
+        .map((d) => d.fromParticipantId),
+    );
 
     // ID-resolved at extraction time (see ConversationService.extractWorkMentions),
     // so this counts actual attributed references rather than guessing from names.
