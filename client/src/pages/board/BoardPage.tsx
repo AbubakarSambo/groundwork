@@ -86,6 +86,45 @@ export function BoardPage() {
     retry: false,
   })
 
+  const [newObjName, setNewObjName] = useState('')
+  const [newObjTarget, setNewObjTarget] = useState('')
+  const [pollQ, setPollQ] = useState('')
+  const [pollOpts, setPollOpts] = useState('')
+  const [showPollForm, setShowPollForm] = useState(false)
+
+  const invalidate = () => qc.invalidateQueries({ queryKey: ['board', id] })
+
+  const addObjective = useMutation({
+    mutationFn: () => boardApi.createObjective(id!, {
+      name: newObjName.trim(),
+      target: newObjTarget.trim() ? Number(newObjTarget) : null,
+    }),
+    onSuccess: () => { setNewObjName(''); setNewObjTarget(''); invalidate() },
+    onError: () => toast.error('Could not add that target. Try again.'),
+  })
+
+  const bumpObjective = useMutation({
+    mutationFn: (v: { objectiveId: string; count: number }) =>
+      boardApi.updateObjective(id!, v.objectiveId, { count: v.count }),
+    onSuccess: invalidate,
+    onError: () => toast.error('Could not update that count. Try again.'),
+  })
+
+  const removeObjective = useMutation({
+    mutationFn: (objectiveId: string) => boardApi.deleteObjective(id!, objectiveId),
+    onSuccess: invalidate,
+    onError: () => toast.error('Could not remove that target. Try again.'),
+  })
+
+  const savePoll = useMutation({
+    mutationFn: () => boardApi.upsertPoll(id!, {
+      question: pollQ.trim(),
+      options: pollOpts.split('\n').map((o) => o.trim()).filter(Boolean),
+    }),
+    onSuccess: () => { setShowPollForm(false); setPollQ(''); setPollOpts(''); invalidate() },
+    onError: () => toast.error('Could not save the poll. Try again.'),
+  })
+
   const togglePoll = useMutation({
     mutationFn: (optionId: string) => boardApi.togglePoll(id!, optionId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['board', id] }),
@@ -257,6 +296,28 @@ export function BoardPage() {
                         {o.delta > 0 ? `+${o.delta} this session` : 'no change'}
                       </div>
                     </div>
+                      {b.canEditFrame && (
+                        <span style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                          <button
+                            onClick={() => bumpObjective.mutate({ objectiveId: o.id, count: Math.max(0, o.count - 1) })}
+                            disabled={bumpObjective.isPending || o.count === 0}
+                            title="Move this count down"
+                            style={miniBtn}
+                          >-</button>
+                          <button
+                            onClick={() => bumpObjective.mutate({ objectiveId: o.id, count: o.count + 1 })}
+                            disabled={bumpObjective.isPending}
+                            title="Move this count up"
+                            style={miniBtn}
+                          >+</button>
+                          <button
+                            onClick={() => removeObjective.mutate(o.id)}
+                            disabled={removeObjective.isPending}
+                            title="Remove this target"
+                            style={{ ...miniBtn, color: 'var(--gw-clay)' }}
+                          >x</button>
+                        </span>
+                      )}
                     {/* A new target means nothing until people have checked in against it. */}
                     {o.isNew && o.askedOf && (
                       <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 6 }}>
@@ -270,6 +331,30 @@ export function BoardPage() {
                   </Row>
                 )
               })}
+              {/* The lead sets the frame. A target, never an assessment of a person. */}
+              {b.canEditFrame && (
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '11px 0', borderTop: '1px solid var(--gw-border)', flexWrap: 'wrap' }}>
+                  <input
+                    value={newObjName}
+                    onChange={(e) => setNewObjName(e.target.value)}
+                    placeholder="Add a target, e.g. Paying companies"
+                    style={{ flex: 1, minWidth: 200, padding: '7px 10px', fontSize: 12.5, border: '1px solid var(--gw-border)', borderRadius: 7, fontFamily: 'inherit', outline: 'none' }}
+                  />
+                  <input
+                    value={newObjTarget}
+                    onChange={(e) => setNewObjTarget(e.target.value.replace(/[^0-9]/g, ''))}
+                    placeholder="how many"
+                    style={{ width: 96, padding: '7px 10px', fontSize: 12.5, border: '1px solid var(--gw-border)', borderRadius: 7, fontFamily: 'inherit', outline: 'none' }}
+                  />
+                  <button
+                    onClick={() => addObjective.mutate()}
+                    disabled={!newObjName.trim() || addObjective.isPending}
+                    style={{ ...btn, padding: '7px 14px', fontSize: 12.5, opacity: !newObjName.trim() || addObjective.isPending ? 0.5 : 1 }}
+                  >
+                    {addObjective.isPending ? 'Adding...' : 'Add target'}
+                  </button>
+                </div>
+              )}
             </Card>
           </>
         )}
@@ -542,7 +627,7 @@ export function BoardPage() {
         )}
 
         {/* ---------------------------------------------- the record over time */}
-        {(has('patterns') || has('meetings')) && <Zone label="The record over time" />}
+        {has('patterns') && <Zone label="The record over time" />}
 
         {has('patterns') && b.patterns && (
           <>
@@ -566,34 +651,41 @@ export function BoardPage() {
           </>
         )}
 
-        {has('meetings') && b.meetings && (
-          <>
-            <Sec title="Meetings, shared record" src="captured after meetings" />
-            <Card pad={false}>
-              {b.meetings.length === 0 ? (
-                <div style={{ padding: '14px 16px', fontSize: 12.5, color: 'var(--gw-muted)' }}>No meetings on record yet.</div>
-              ) : b.meetings.map((m, i) => (
-                <div key={m.id} style={{ padding: '12px 15px', borderTop: i === 0 ? 'none' : '1px solid var(--gw-border)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                    <span style={{ fontWeight: 700, color: 'var(--gw-dark)', fontSize: 13 }}>{dshort(m.happenedAt)}</span>
-                    <span style={{ fontSize: 10.5, color: 'var(--gw-sub)' }}>present: {m.present.join(', ') || '—'}</span>
-                  </div>
-                  <div style={{ marginTop: 7, fontSize: 12, lineHeight: 1.5 }}>{m.notes}</div>
-                  {m.missed.length > 0 && (
-                    <div style={{ fontSize: 10.5, color: 'var(--gw-amber-t)', marginTop: 6 }}>Missed, should read this: {m.missed.join(', ')}</div>
-                  )}
-                </div>
-              ))}
-            </Card>
-          </>
-        )}
-
         {/* ---------------------------------------------- logistics */}
         {has('poll') && (
           <>
             <Zone label="Logistics" />
             <Sec title="Find a time" src="the one thing you add" />
             <Card>
+              {b.canEditFrame && (
+                <div style={{ padding: '8px 0', borderBottom: b.poll ? '1px solid var(--gw-border)' : 'none' }}>
+                  {!showPollForm ? (
+                    <button onClick={() => { setShowPollForm(true); setPollQ(b.poll?.question ?? 'Weekly sync, best time'); setPollOpts((b.poll?.options ?? []).map((o) => o.label).join('\n')) }}
+                      style={{ fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600, textDecoration: 'underline' }}>
+                      {b.poll ? 'Change the times' : 'Set up an availability poll'}
+                    </button>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <input value={pollQ} onChange={(e) => setPollQ(e.target.value)} placeholder="What are you finding a time for?"
+                        style={{ padding: '7px 10px', fontSize: 12.5, border: '1px solid var(--gw-border)', borderRadius: 7, fontFamily: 'inherit', outline: 'none' }} />
+                      <textarea value={pollOpts} onChange={(e) => setPollOpts(e.target.value)} placeholder={'One time per line\nTue 16:00\nWed 09:00'}
+                        style={{ minHeight: 68, padding: '7px 10px', fontSize: 12.5, border: '1px solid var(--gw-border)', borderRadius: 7, fontFamily: 'inherit', outline: 'none', resize: 'vertical' }} />
+                      {b.poll && (
+                        <div style={{ fontSize: 11, color: 'var(--gw-amber-t)' }}>
+                          Changing the times clears everyone's availability, because an answer to a question that changed is not an answer.
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button onClick={() => savePoll.mutate()} disabled={!pollQ.trim() || !pollOpts.trim() || savePoll.isPending}
+                          style={{ ...btn, padding: '7px 14px', fontSize: 12.5, opacity: !pollQ.trim() || !pollOpts.trim() || savePoll.isPending ? 0.5 : 1 }}>
+                          {savePoll.isPending ? 'Saving...' : 'Save'}
+                        </button>
+                        <button onClick={() => setShowPollForm(false)} style={{ ...btnGhost, padding: '7px 12px', fontSize: 12.5 }}>Cancel</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
               {!b.poll ? (
                 <Row first><div style={{ fontSize: 12.5, color: 'var(--gw-muted)' }}>No availability poll yet.</div></Row>
               ) : (
@@ -655,4 +747,5 @@ export function BoardPage() {
 
 const td: React.CSSProperties = { padding: '9px 12px', textAlign: 'left', fontSize: 12, borderBottom: '1px solid var(--gw-border)' }
 const btn: React.CSSProperties = { padding: '9px 16px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', display: 'inline-block' }
+const miniBtn: React.CSSProperties = { width: 22, height: 22, borderRadius: 6, border: '1px solid var(--gw-border)', background: 'white', color: 'var(--gw-sub)', fontSize: 12, lineHeight: 1, cursor: 'pointer', fontFamily: 'inherit', padding: 0 }
 const btnGhost: React.CSSProperties = { padding: '9px 16px', borderRadius: 7, background: 'none', color: 'var(--gw-sub)', fontSize: 13, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }

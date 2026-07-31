@@ -82,7 +82,6 @@ export type BoardSection =
   | 'coverage'
   | 'patterns'
   | 'decisions'
-  | 'meetings'
   | 'poll';
 
 /**
@@ -98,7 +97,7 @@ export const FAMILY_SECTIONS: Record<BoardFamily, BoardSection[]> = {
   [BoardFamily.DELIVERY]: [
     'phaseSpine', 'quickRead', 'objectives', 'startingState', 'divergence',
     'whoOwnsWhat', 'dependencies', 'checkInGrid', 'contribution', 'coverage',
-    'patterns', 'decisions', 'meetings', 'poll',
+    'patterns', 'decisions', 'poll',
   ],
   [BoardFamily.COHORT]: [
     'phaseSpine', 'quickRead', 'objectives', 'divergence',

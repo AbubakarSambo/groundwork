@@ -3,7 +3,7 @@ import { apiClient } from './client'
 export type BoardSection =
   | 'phaseSpine' | 'quickRead' | 'objectives' | 'startingState' | 'divergence'
   | 'whoOwnsWhat' | 'dependencies' | 'checkInGrid' | 'contribution' | 'coverage'
-  | 'patterns' | 'decisions' | 'meetings' | 'poll'
+  | 'patterns' | 'decisions' | 'poll'
 
 export type BoardFamily = 'DELIVERY' | 'COHORT' | 'ONBOARDING' | 'EVALUATION' | 'SENSING'
 export type CoverageVariant = 'text' | 'bar'
@@ -28,6 +28,8 @@ export type BoardPresent = {
   coverageVariant: CoverageVariant
   /** Which participant row is the caller, so only their own poll chip is clickable. */
   myParticipantId: string | null
+  /** Whether the caller may set targets and the poll question (initiator only). */
+  canEditFrame: boolean
   readOnlyNote: string
   participants: { id: string; name: string | null; role: string | null; managingOnly: boolean; signedOffAt: string | null }[]
 
@@ -58,7 +60,6 @@ export type BoardPresent = {
   }
   patterns?: { code: string; text: string; periods: number }[]
   decisions?: { question: string; why: string; owner: string; source: 'blocker' | 'divergence' }[]
-  meetings?: { id: string; happenedAt: string; present: (string | null)[]; missed: (string | null)[]; notes: string }[]
   poll?: { id: string; question: string; options: { id: string; label: string; who: (string | null)[]; whoIds: string[]; count: number }[] } | null
 }
 
@@ -73,7 +74,21 @@ export const boardApi = {
       } as any)
       .then((r) => r.data),
 
-  /** The only editable thing on the board. */
+  /** Initiator only: the lead's frame. A target, never an assessment of a person. */
+  createObjective: (groundId: string, dto: { name: string; target?: number | null }) =>
+    apiClient.post(`/grounds/${groundId}/board/objectives`, dto).then((r) => r.data),
+
+  updateObjective: (groundId: string, objectiveId: string, dto: { name?: string; target?: number | null; count?: number }) =>
+    apiClient.patch(`/grounds/${groundId}/board/objectives/${objectiveId}`, dto).then((r) => r.data),
+
+  deleteObjective: (groundId: string, objectiveId: string) =>
+    apiClient.delete(`/grounds/${groundId}/board/objectives/${objectiveId}`).then((r) => r.data),
+
+  /** Initiator only: set the availability question and the times. */
+  upsertPoll: (groundId: string, dto: { question: string; options: string[] }) =>
+    apiClient.post(`/grounds/${groundId}/board/poll`, dto).then((r) => r.data),
+
+  /** Availability is logistics, so every party can set their own. */
   togglePoll: (groundId: string, optionId: string) =>
     apiClient
       .post<{ optionId: string; available: boolean; count: number }>(`/grounds/${groundId}/board/poll/${optionId}/toggle`)

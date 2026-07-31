@@ -40,6 +40,18 @@ const FUNCTION_SIGNALS: Record<RoleFunction, RegExp[]> = {
     /\b(coordinat|chase[ds]?|status|track(ing)?|unblock|critical path|milestone|timeline|dependency|standup)\b/i,
     /\b(escalat|follow[- ]up with|nudged|checked in with)\b/i,
   ],
+  [RoleFunction.CEO]: [
+    /\b(board|investor|fundrais|runway|strategy|strategic|pivot|vision|leadership team|exec team)\b/i,
+    /\b(hired|the whole company|org|culture)\b/i,
+  ],
+  [RoleFunction.MARKETING]: [
+    /\b(campaign|content|brand|positioning|channel|impressions|reach|audience|seo|social|newsletter|launch)\b/i,
+    /\b(conversion|sign.?ups|funnel|top of funnel)\b/i,
+  ],
+  [RoleFunction.FINANCE]: [
+    /\b(budget|forecast|margin|cash|runway|invoice|collections|reconcil|payroll cost|spend|p&l|revenue recognition)\b/i,
+    /\b(model|modelled|projection|variance)\b/i,
+  ],
   [RoleFunction.MANAGEMENT]: [
     /\b(my team|direct report|one.?on.?one|1:1|delegat|hired|performance review|coach(ed|ing)?)\b/i,
     /\b(gave feedback|held them to|their commitment)\b/i,

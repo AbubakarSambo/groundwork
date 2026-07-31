@@ -59,7 +59,6 @@ export class BoardService {
         report: true,
         objectives: { orderBy: { sortOrder: 'asc' } },
         dependencies: { orderBy: { createdAt: 'asc' } },
-        meetings: { orderBy: { happenedAt: 'desc' } },
         poll: { include: { options: { orderBy: { sortOrder: 'asc' } } } },
       },
     });
@@ -123,6 +122,10 @@ export class BoardService {
       // Which participant row is the caller, so the client knows whose poll chip
       // is theirs to toggle. Null for an org admin reading without being a party.
       myParticipantId: me?.id ?? null,
+      // Whether the caller may set the frame (targets, the poll question). The
+      // board is otherwise read-only, so the client should not offer controls it
+      // would only be rejected for using.
+      canEditFrame: isInitiator,
       readOnlyNote: 'Generated from the ground. Only the meeting poll is editable.',
       participants: ground.participants.map((p) => ({
         id: p.id,
@@ -280,16 +283,6 @@ export class BoardService {
       out.patterns = detections
         .filter((d) => !PERSON_JUDGING_CODES.has(d.code))
         .map((d) => ({ code: d.code, text: d.observationText, periods: d.periodsObserved }));
-    }
-
-    if (has('meetings')) {
-      out.meetings = ground.meetings.map((m) => ({
-        id: m.id,
-        happenedAt: m.happenedAt,
-        present: m.presentIds.map((id) => nameOf(id)).filter(Boolean),
-        missed: ground.participants.filter((p) => !m.presentIds.includes(p.id)).map((p) => nameOf(p.id)).filter(Boolean),
-        notes: m.notes,
-      }));
     }
 
     if (has('poll')) {
@@ -500,7 +493,121 @@ export class BoardService {
     return { scope: 'role', reads };
   }
 
-  /** The poll is the ONE editable thing on the board. */
+  /**
+   * Objectives and the poll are the only things anyone WRITES here, and they are
+   * different kinds of write:
+   *  - Objectives are the lead's frame. Only the initiator sets them, and they
+   *    are a target, never an assessment of a person.
+   *  - The poll is availability, which is logistics and never touches an account,
+   *    so any party can mark themselves.
+   *
+   * Nothing else on the board is writable: everything else is generated from
+   * check-ins, and letting someone edit it directly would make the board a place
+   * to argue the record rather than read it.
+   */
+  private async assertInitiatorOfBoardGround(groundId: string, requestingUserId: string) {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { id: true, scenario: true, mode: true, initiatorId: true },
+    });
+    if (!ground) throw new NotFoundException('Ground not found');
+    if (!boardRendersFor(ground.scenario, ground.mode)) {
+      throw new ForbiddenException('This ground does not have a board');
+    }
+    if (ground.initiatorId !== requestingUserId) {
+      throw new ForbiddenException('Only the person who set this ground up can change what it is aiming for');
+    }
+    return ground;
+  }
+
+  async createObjective(
+    groundId: string,
+    requestingUserId: string,
+    dto: { name: string; target?: number | null },
+  ) {
+    await this.assertInitiatorOfBoardGround(groundId, requestingUserId);
+    const [count, maxSession] = await Promise.all([
+      this.prisma.groundObjective.count({ where: { groundId } }),
+      this.prisma.checkIn.aggregate({ where: { groundId }, _max: { sessionNumber: true } }),
+    ]);
+    // Stamp the session it was added in, so the board can flag it as new and show
+    // who has been asked about it. A target means nothing until people have
+    // checked in against it.
+    const addedAtSession = count === 0 ? null : (maxSession._max.sessionNumber ?? 1);
+    return this.prisma.groundObjective.create({
+      data: {
+        groundId,
+        name: dto.name.trim(),
+        target: dto.target ?? null,
+        sortOrder: count,
+        addedAtSession,
+      },
+    });
+  }
+
+  /**
+   * Update the count or target. prevCount is snapshotted from the current count
+   * so the board's "+N this session" delta stays truthful across an edit.
+   */
+  async updateObjective(
+    groundId: string,
+    objectiveId: string,
+    requestingUserId: string,
+    dto: { name?: string; target?: number | null; count?: number },
+  ) {
+    await this.assertInitiatorOfBoardGround(groundId, requestingUserId);
+    const existing = await this.prisma.groundObjective.findUnique({ where: { id: objectiveId } });
+    if (!existing || existing.groundId !== groundId) throw new NotFoundException('Objective not found');
+    return this.prisma.groundObjective.update({
+      where: { id: objectiveId },
+      data: {
+        ...(dto.name !== undefined ? { name: dto.name.trim() } : {}),
+        ...(dto.target !== undefined ? { target: dto.target } : {}),
+        ...(dto.count !== undefined ? { count: dto.count, prevCount: existing.count } : {}),
+      },
+    });
+  }
+
+  async deleteObjective(groundId: string, objectiveId: string, requestingUserId: string) {
+    await this.assertInitiatorOfBoardGround(groundId, requestingUserId);
+    const existing = await this.prisma.groundObjective.findUnique({ where: { id: objectiveId } });
+    if (!existing || existing.groundId !== groundId) throw new NotFoundException('Objective not found');
+    await this.prisma.groundObjective.delete({ where: { id: objectiveId } });
+    return { deleted: true };
+  }
+
+  /** One poll per ground. Creating again replaces the question and options. */
+  async upsertPoll(
+    groundId: string,
+    requestingUserId: string,
+    dto: { question: string; options: string[] },
+  ) {
+    await this.assertInitiatorOfBoardGround(groundId, requestingUserId);
+    const labels = dto.options.map((o) => o.trim()).filter(Boolean);
+    if (labels.length === 0) throw new ForbiddenException('A poll needs at least one time to choose between');
+
+    const existing = await this.prisma.groundPoll.findUnique({ where: { groundId } });
+    if (existing) {
+      // Replacing the options clears availability, because an answer to a
+      // question that changed is not an answer.
+      await this.prisma.groundPollOption.deleteMany({ where: { pollId: existing.id } });
+      await this.prisma.groundPoll.update({ where: { id: existing.id }, data: { question: dto.question.trim() } });
+      await this.prisma.groundPollOption.createMany({
+        data: labels.map((label, i) => ({ pollId: existing.id, label, sortOrder: i })),
+      });
+      return this.prisma.groundPoll.findUnique({ where: { id: existing.id }, include: { options: true } });
+    }
+    return this.prisma.groundPoll.create({
+      data: {
+        groundId,
+        question: dto.question.trim(),
+        options: { create: labels.map((label, i) => ({ label, sortOrder: i })) },
+      },
+      include: { options: true },
+    });
+  }
+
+  /** The poll is the ONE thing every party can edit. */
   async togglePollAvailability(groundId: string, optionId: string, requestingUserId: string) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },

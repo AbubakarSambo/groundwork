@@ -410,7 +410,6 @@ model Ground {
   reportActivations          ReportActivation[]
   objectives                 GroundObjective[]
   dependencies               GroundDependency[]
-  meetings                   GroundMeeting[]
   poll                       GroundPoll?
   participantRequests        ParticipantRequest[]
   contributorCodeRedemptions ContributorCodeRedemption[]
@@ -650,21 +649,6 @@ model GroundDependency {
 
   @@index([groundId])
   @@map("ground_dependencies")
-}
-
-// A meeting that happened. Notes come in through a check-in by reference, never typed on the board.
-model GroundMeeting {
-  id         String   @id @default(uuid())
-  groundId   String   @map("ground_id")
-  happenedAt DateTime @map("happened_at")
-  presentIds String[] @default([]) @map("present_ids") // GroundParticipant ids
-  notes      String   @db.Text
-  createdAt  DateTime @default(now()) @map("created_at")
-
-  ground Ground @relation(fields: [groundId], references: [id], onDelete: Cascade)
-
-  @@index([groundId])
-  @@map("ground_meetings")
 }
 
 //
