@@ -58,6 +58,10 @@ export type BoardPresent = {
       coupledToBlocker: boolean; remitDefined: boolean
     }[]
   }
+  managerAlignment?: {
+    managerParticipantId: string; managerName: string | null
+    dimension: string; gap: string; note: string; reportsPointingThisWay: number
+  }[]
   patterns?: { code: string; text: string; periods: number }[]
   decisions?: { question: string; why: string; owner: string; source: 'blocker' | 'divergence' }[]
   poll?: { id: string; question: string; options: { id: string; label: string; who: (string | null)[]; whoIds: string[]; count: number }[] } | null

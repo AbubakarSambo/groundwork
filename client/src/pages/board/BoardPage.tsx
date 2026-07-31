@@ -626,6 +626,37 @@ export function BoardPage() {
           </>
         )}
 
+        {b.managerAlignment && b.managerAlignment.length > 0 && (
+          <>
+            <Sec title="How the leading is landing" src="two accounts of the same leadership" />
+            <Card>
+              <div style={{ fontSize: 12, color: 'var(--gw-sub)', padding: '6px 0 2px' }}>
+                Where one account of how this team is being led differs from another. Neither is called wrong.
+              </div>
+              {b.managerAlignment.map((m, i) => (
+                <Row key={i}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-dark)' }}>
+                      {m.dimension === 'CLARITY_OF_OWNERSHIP' ? 'How clearly ownership was set'
+                        : m.dimension === 'ACCOUNTABILITY' ? 'Whether commitments get followed up'
+                        : m.dimension === 'CREDIT' ? 'Who gets credited for what moved'
+                        : 'Whether something is going unsaid'}
+                    </span>
+                    <Pill tone="warn">a gap worth talking about</Pill>
+                  </div>
+                  <div style={{ fontSize: 12.5, color: 'var(--gw-text)', marginTop: 4, lineHeight: 1.45 }}>{m.gap}</div>
+                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 4, lineHeight: 1.45 }}>{m.note}</div>
+                </Row>
+              ))}
+              <div style={{ fontSize: 10.5, color: 'var(--gw-muted)', fontStyle: 'italic', padding: '10px 0', borderTop: '1px dashed var(--gw-border)', marginTop: 4, lineHeight: 1.5 }}>
+                Neither account is called wrong. Something can be set clearly and still not land, and both people can be describing
+                their own experience honestly. This shows that two accounts of the same leadership differ, never who said what, and it
+                is a prompt for a conversation rather than a finding about anyone.
+              </div>
+            </Card>
+          </>
+        )}
+
         {/* ---------------------------------------------- the record over time */}
         {has('patterns') && <Zone label="The record over time" />}
 

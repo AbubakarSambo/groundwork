@@ -163,3 +163,52 @@ export function classifyCoverageReason(input: {
  */
 export type CoverageVariant = 'text' | 'bar';
 export const DEFAULT_COVERAGE_VARIANT: CoverageVariant = 'text';
+
+// ---------------------------------------------------------------------------
+// MANAGER AND REPORT ALIGNMENT
+//
+// The alignment mechanic pointed at management. A manager checks in on how they
+// think they are leading; each report checks in on their own work and,
+// implicitly, on how they are being led. Where the two accounts of the SAME
+// leadership diverge is the most valuable management signal there is, and the
+// thing a manager almost never gets told.
+//
+// Runs on the same independence rule as everything else: each account is
+// private and its own, the board shows the DIVERGENCE, no one is quoted to the
+// other, and the humans decide what to do about the gap. "What you thought was
+// clear did not land" is the read; who is right is not.
+// ---------------------------------------------------------------------------
+
+/** The dimensions of leadership where two accounts can quietly disagree. */
+export enum LeadershipDimension {
+  /** Manager believes ownership was set clearly; the report is unsure what they own. */
+  CLARITY_OF_OWNERSHIP = 'CLARITY_OF_OWNERSHIP',
+  /** Manager believes they hold people to things; the report experiences no follow-up. */
+  ACCOUNTABILITY = 'ACCOUNTABILITY',
+  /** Manager credits one person; another account shows a contributor they never named. */
+  CREDIT = 'CREDIT',
+  /** Manager reads the team as fine; a report signals unaddressed tension. */
+  UNADDRESSED_TENSION = 'UNADDRESSED_TENSION',
+}
+
+export const LEADERSHIP_DIMENSION_LABEL: Record<LeadershipDimension, string> = {
+  [LeadershipDimension.CLARITY_OF_OWNERSHIP]: 'How clearly ownership was set',
+  [LeadershipDimension.ACCOUNTABILITY]: 'Whether commitments get followed up',
+  [LeadershipDimension.CREDIT]: 'Who gets credited for what moved',
+  [LeadershipDimension.UNADDRESSED_TENSION]: 'Whether something is going unsaid',
+};
+
+export interface ManagerAlignmentRead {
+  managerParticipantId: string;
+  managerName: string | null;
+  dimension: LeadershipDimension;
+  /** The gap, in the product's words. Never a quote from either side. */
+  gap: string;
+  /** Why this is worth a conversation rather than a correction. */
+  note: string;
+  /** How many reports' accounts point the same way. Never names them. */
+  reportsPointingThisWay: number;
+}
+
+export const MANAGER_ALIGNMENT_GUARD =
+  'Neither account is called wrong. A manager can set something clearly and have it not land, and both people can be describing their own experience honestly. This shows that the two accounts of the same leadership differ, never who said what, and it is a prompt for a conversation rather than a finding about anyone.';

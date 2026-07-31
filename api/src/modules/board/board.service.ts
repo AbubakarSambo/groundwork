@@ -16,6 +16,8 @@ import {
   classifyCoverageReason,
   DEFAULT_COVERAGE_VARIANT,
   CoverageVariant,
+  LeadershipDimension,
+  ManagerAlignmentRead,
 } from './coverage';
 import { MIN_COACHING_CONFIDENCE, roleMapFor } from './role-maps';
 
@@ -269,6 +271,13 @@ export class BoardService {
       out.coverage = await this.buildCoverageReads(ground, nameOf);
     }
 
+    if (has('contribution')) {
+      // Only meaningful where someone actually manages someone: needs a manager
+      // and at least one report, both with accounts on record.
+      const alignment = await this.buildManagerAlignment(ground, checkIns, nameOf);
+      if (alignment.length) out.managerAlignment = alignment;
+    }
+
     if (has('patterns')) {
       // WORK patterns only. Patterns that judge a PERSON - arc concentration
       // and collusion risk - are computed but stay in the private report for the
@@ -491,6 +500,115 @@ export class BoardService {
       });
     }
     return { scope: 'role', reads };
+  }
+
+  /**
+   * Where a manager's account of how they led differs from their reports'
+   * accounts of how they were led.
+   *
+   * This is the ordinary divergence mechanic pointed at management, and it runs
+   * on the same rules: each account is read on its own, the output is the GAP,
+   * and nobody is quoted to anybody. "What you thought was clear did not land"
+   * is the single hardest thing for a manager to learn and the thing they are
+   * almost never told, which is why it is worth surfacing at all.
+   *
+   * Deliberately conservative:
+   *  - Needs a manager (someone read as MANAGEMENT, or the initiator) AND at
+   *    least one report with an account. No manager, no read.
+   *  - Reads only entries the two sides BOTH spoke to, so a gap is a genuine
+   *    disagreement rather than one side simply not mentioning something.
+   *  - Never names which report a signal came from, and never says who is right.
+   */
+  private async buildManagerAlignment(
+    ground: { id: string; initiatorId: string; participants: any[] },
+    checkIns: { participantId: string; status: CheckInStatus }[],
+    nameOf: (id: string) => string | null,
+  ): Promise<ManagerAlignmentRead[]> {
+    const manager = ground.participants.find(
+      (p) => !p.managingOnly && (p.detectedFunction === 'MANAGEMENT' || p.detectedFunction === 'CEO'),
+    ) ?? ground.participants.find((p) => p.partyType === PartyType.INITIATOR && !p.managingOnly);
+    if (!manager) return [];
+
+    const reports = ground.participants.filter(
+      (p) => p.id !== manager.id && !p.managingOnly &&
+        checkIns.some((c) => c.participantId === p.id && c.status === CheckInStatus.COMPLETED),
+    );
+    if (reports.length === 0) return [];
+
+    const [managerEntries, reportEntries] = await Promise.all([
+      this.prisma.recordEntry.findMany({ where: { participantId: manager.id }, select: { type: true, text: true } }),
+      this.prisma.recordEntry.findMany({
+        where: { participantId: { in: reports.map((r) => r.id) } },
+        select: { participantId: true, type: true, text: true },
+      }),
+    ]);
+    if (managerEntries.length === 0 || reportEntries.length === 0) return [];
+
+    const mgrText = managerEntries.map((e) => e.text.toLowerCase()).join(' \n ');
+    const byReport = new Map<string, string>();
+    for (const e of reportEntries) {
+      byReport.set(e.participantId, (byReport.get(e.participantId) ?? '') + ' \n ' + e.text.toLowerCase());
+    }
+
+    const reads: ManagerAlignmentRead[] = [];
+    const push = (dimension: LeadershipDimension, gap: string, note: string, n: number) => {
+      if (n > 0) {
+        reads.push({
+          managerParticipantId: manager.id,
+          managerName: nameOf(manager.id),
+          dimension, gap, note,
+          reportsPointingThisWay: n,
+        });
+      }
+    };
+
+    // Ownership clarity: the manager describes having set direction; a report
+    // describes not being sure what is theirs.
+    const mgrClaimsClarity = /\b(clear|clearly|set out|laid out|agreed|assigned|delegat|briefed)\b/.test(mgrText);
+    const unclearReports = [...byReport.values()].filter((t) =>
+      /\b(not sure|unclear|unsure|do not know|don't know|no one said|nobody said|assumed|thought i|ambiguous)\b/.test(t),
+    ).length;
+    if (mgrClaimsClarity) {
+      push(
+        LeadershipDimension.CLARITY_OF_OWNERSHIP,
+        'This account describes ownership being set clearly. At least one other account describes still being unsure what they own.',
+        'Both can be true at once - something can be said clearly and still not land. Worth checking what each person believes is theirs.',
+        unclearReports,
+      );
+    }
+
+    // Accountability: the manager describes holding people; a report describes
+    // nothing coming back.
+    const mgrClaimsFollowUp = /\b(followed up|held them|checked in with|chased|reminded|asked them about)\b/.test(mgrText);
+    const noFollowUpReports = [...byReport.values()].filter((t) =>
+      /\b(no follow.?up|never heard back|nobody asked|no one checked|went nowhere|never came back)\b/.test(t),
+    ).length;
+    if (mgrClaimsFollowUp) {
+      push(
+        LeadershipDimension.ACCOUNTABILITY,
+        'This account describes following things up. At least one other account describes commitments that went without follow-up.',
+        'Often a difference in what counts as following up rather than whether it happened. Worth agreeing what closing a loop looks like here.',
+        noFollowUpReports,
+      );
+    }
+
+    // Unaddressed tension: the manager reads the team as fine while a report's
+    // own account carries tension. This is the ops "no drama" failure, checked
+    // across two accounts rather than one.
+    const mgrReadsCalm = /\b(fine|going well|no issues|no problems|all good|healthy|no concerns)\b/.test(mgrText);
+    const tensionReports = [...byReport.entries()].filter(([, t]) =>
+      /\b(tension|frustrat|friction|awkward|unsaid|not raised|resent|uncomfortable|avoided)\b/.test(t),
+    ).length;
+    if (mgrReadsCalm) {
+      push(
+        LeadershipDimension.UNADDRESSED_TENSION,
+        'This account reads the team as settled. At least one other account carries something unresolved.',
+        'Quiet is not the same as settled. Worth asking directly rather than reading the absence of complaints as agreement.',
+        tensionReports,
+      );
+    }
+
+    return reads;
   }
 
   /**
