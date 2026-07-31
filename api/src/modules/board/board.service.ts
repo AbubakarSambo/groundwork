@@ -388,12 +388,83 @@ export class BoardService {
     });
     const blockedIds = new Set(deps.map((d) => d.fromParticipantId));
 
-    const entryCounts = await this.prisma.recordEntry.groupBy({
-      by: ['participantId'],
+    const lastSession = checkIns.reduce((m, c) => Math.max(m, c.sessionNumber), 0);
+
+    // HOW VERIFIABLE the record is, not how much of it there is.
+    //
+    // Counting entries could not tell a deliverer from a staller: in a live run
+    // the person who stopped working scored 43 and the person who delivered all
+    // quarter scored 45. Every entry is ALREADY tagged HIGH/MEDIUM/LOW at
+    // extraction time - the card was simply ignoring it.
+    const allEntries = await this.prisma.recordEntry.findMany({
       where: { participant: { groundId: ground.id } },
-      _count: { _all: true },
+      select: { participantId: true, text: true, checkIn: { select: { sessionNumber: true } } },
     });
-    const countOf = (pid: string) => entryCounts.find((e) => e.participantId === pid)?._count._all ?? 0;
+    const tierOf = (text: string): 'HIGH' | 'MEDIUM' | 'LOW' => {
+      const m = /^\[VERIFIABILITY:(HIGH|MEDIUM|LOW)\]/.exec(text ?? '');
+      return (m?.[1] as any) ?? 'LOW';
+    };
+    const profileOf = (pid: string) => {
+      const mine = allEntries.filter((e) => e.participantId === pid);
+      const high = mine.filter((e) => tierOf(e.text) === 'HIGH').length;
+      const medium = mine.filter((e) => tierOf(e.text) === 'MEDIUM').length;
+
+      // TRAJECTORY, not just totals.
+      //
+      // A quarter-long total hides a collapse inside it. In a live run the person
+      // who was strong in session 1, produced nothing for six sessions, then
+      // recovered, came out looking BETTER on totals than the person who
+      // delivered steadily throughout. Totals answer "how much"; a lead needs
+      // "when", because a dip in the middle is the thing worth asking about.
+      const bySession = new Map<number, number>();
+      for (const e of mine) {
+        const n = e.checkIn?.sessionNumber;
+        if (n == null) continue;
+        bySession.set(n, (bySession.get(n) ?? 0) + (tierOf(e.text) === 'LOW' ? 0 : 1));
+      }
+      return {
+        total: mine.length,
+        high,
+        medium,
+        low: mine.length - high - medium,
+        checkable: high + medium,
+        bySession,
+      };
+    };
+
+    /** Plain-language shape of someone's record over the sessions that have run. */
+    const shapeOf = (bySession: Map<number, number>, lastSession: number): string | null => {
+      if (lastSession < 3) return null;
+      const at = (n: number) => bySession.get(n) ?? 0;
+      const third = Math.max(1, Math.floor(lastSession / 3));
+      const sum = (from: number, to: number) => {
+        let t = 0;
+        for (let i = from; i <= to; i++) t += at(i);
+        return t;
+      };
+      const early = sum(1, third);
+      const middle = sum(third + 1, third * 2);
+      const late = sum(third * 2 + 1, lastSession);
+
+      // Longest run of consecutive sessions with nothing checkable.
+      let longestGap = 0, run = 0, gapEnd = 0;
+      for (let i = 1; i <= lastSession; i++) {
+        if (at(i) === 0) { run++; if (run > longestGap) { longestGap = run; gapEnd = i; } }
+        else run = 0;
+      }
+
+      if (longestGap >= 3) {
+        const gapStart = gapEnd - longestGap + 1;
+        const recovered = late > 0 && gapEnd < lastSession;
+        return recovered
+          ? `Nothing checkable from session ${gapStart} to ${gapEnd}, then picked up again. The middle of this period is the part worth asking about, not the total.`
+          : `Nothing checkable since session ${gapStart}.`;
+      }
+      if (early > 0 && late === 0) return 'Contributed early, nothing checkable in the most recent sessions.';
+      if (early === 0 && late > 0) return 'Slow start, contributing now.';
+      if (middle >= 0 && early > 0 && late > 0) return 'Steady across the period.';
+      return null;
+    };
 
     return ground.participants
       .filter((p) => !p.managingOnly)
@@ -416,7 +487,7 @@ export class BoardService {
         const confident = (p.detectedFunctionConfidence ?? 0) >= MIN_COACHING_CONFIDENCE;
         const mine = checkIns.filter((c) => c.participantId === p.id);
         const completed = mine.filter((c) => c.status === CheckInStatus.COMPLETED).length;
-        const entries = countOf(p.id);
+        const profile = profileOf(p.id);
         const isBlocked = blockedIds.has(p.id);
 
         // NO on-track / below-track label. Any threshold that produced one would
@@ -424,7 +495,21 @@ export class BoardService {
         // it is worded. What the record actually shows is the read; that is all
         // this returns.
         const reasonParts: string[] = [];
-        reasonParts.push(`${completed} check-in${completed === 1 ? '' : 's'} on record, ${entries} thing${entries === 1 ? '' : 's'} named.`);
+        // Lead with what could be CHECKED, because that is the difference
+        // between working and describing work.
+        if (profile.total === 0) {
+          reasonParts.push(`${completed} check-in${completed === 1 ? '' : 's'} on record, nothing specific named yet.`);
+        } else if (profile.checkable === 0) {
+          reasonParts.push(
+            `${completed} check-in${completed === 1 ? '' : 's'} on record. Nothing named so far could be checked by anyone else - no named people, organisations, numbers or dates.`,
+          );
+        } else {
+          reasonParts.push(
+            `${completed} check-in${completed === 1 ? '' : 's'} on record. ${profile.checkable} of ${profile.total} things named are specific enough to check later${profile.high ? `, ${profile.high} backed by something concrete` : ''}.`,
+          );
+          const shape = shapeOf(profile.bySession, lastSession);
+          if (shape) reasonParts.push(shape);
+        }
         if (isBlocked) {
           // Blocked must NEVER read as behind. This is the protection the
           // engineering and PM maps both call for, applied generally.
@@ -489,17 +574,88 @@ export class BoardService {
       const leakingOut = mentions.filter((m) => m.aboutParticipantId === p.id && m.kind === 'COVERAGE');
       // Absorbing in: THIS person describing picking up work that is someone else's.
       const absorbingIn = mentions.filter((m) => m.sourceParticipantId === p.id && m.kind === 'COVERAGE');
-      // Credit is the opposite signal and must never be counted as coverage - it is
-      // the hidden-contribution read, and confusing the two would turn "people say
-      // you unblocked them" into "your work is slipping".
-      const credited = mentions.filter((m) => m.aboutParticipantId === p.id && m.kind === 'CREDIT');
 
       const own = await this.prisma.recordEntry.count({ where: { participantId: p.id } });
       const denom = own + leakingOut.length;
       const pct = denom === 0 ? 0 : Math.round((leakingOut.length / denom) * 100);
 
+      // SECOND SIGNAL: their own record thinning out.
+      //
+      // Waiting for a colleague to narrate "I did Kavon's work" misses the
+      // commonest way ownership drops, because nobody says that - they just
+      // quietly do more of their own. In a live run the one person who genuinely
+      // stopped delivering read as "nothing here to read into", because no one
+      // had spelt it out. Their OWN record going quiet is the tell.
+      const perSession = await this.prisma.recordEntry.groupBy({
+        by: ['checkInId'],
+        where: { participantId: p.id, checkInId: { not: null } },
+        _count: { _all: true },
+      });
+      const myCheckInRows = await this.prisma.checkIn.findMany({
+        where: { participantId: p.id },
+        select: { id: true, sessionNumber: true },
+      });
+      const mySessionByCheckIn = new Map(myCheckInRows.map((c) => [c.id, c.sessionNumber]));
+      const lastSessionNumber = myCheckInRows.reduce((m, c) => Math.max(m, c.sessionNumber), 0);
+      // Credit is the opposite signal and must never be counted as coverage - it is
+      // the hidden-contribution read, and confusing the two would turn "people say
+      // you unblocked them" into "your work is slipping".
+      const credited = mentions.filter((m) => m.aboutParticipantId === p.id && m.kind === 'CREDIT');
+
+      const myCheckIns = await this.prisma.checkIn.count({
+        where: { participantId: p.id, status: CheckInStatus.COMPLETED },
+      });
+
+      // CONSECUTIVE quiet periods, not total. Counting total quiet sessions
+      // flagged the steady engineer who describes his work modestly - exactly
+      // the "invisible work" person the engineering map says to protect - just
+      // as hard as the person who genuinely went dark for a month. A run of
+      // silence is a signal; scattered quiet weeks are just how some people
+      // write.
+      const sessionsWithEntries = new Set<number>();
+      for (const row of perSession) {
+        const ci = mySessionByCheckIn.get(row.checkInId as string);
+        if (ci != null) sessionsWithEntries.add(ci);
+      }
+      let longestQuietRun = 0, run = 0;
+      for (let n = 1; n <= lastSessionNumber; n++) {
+        if (!sessionsWithEntries.has(n)) { run++; longestQuietRun = Math.max(longestQuietRun, run); }
+        else run = 0;
+      }
+      const quietPeriods = longestQuietRun;
+
+      // THE HIDDEN CONTRIBUTOR GUARD.
+      //
+      // Someone can go quiet in their OWN account and still be doing the work -
+      // the engineer whose sessions read "stable, consolidating and documenting
+      // so it is not all in my head". That is real work described unverifiably,
+      // and it is exactly the person the engineering map says to protect from
+      // being read as low contribution.
+      //
+      // What separates them from a genuine drop is whether OTHER people are
+      // crediting them DURING the quiet stretch. If colleagues keep naming you
+      // as the reason something moved while your own account is modest, that is
+      // underclaim, not a drop - and it is the hidden-contribution read, not a
+      // negative one.
+      const quietRunEnd = (() => {
+        let r = 0, end = 0;
+        for (let n = 1; n <= lastSessionNumber; n++) {
+          if (!sessionsWithEntries.has(n)) { r++; if (r >= longestQuietRun) end = n; } else r = 0;
+        }
+        return end;
+      })();
+      const quietRunStart = quietRunEnd - longestQuietRun + 1;
+      const creditedDuringQuietRun = credited.some(
+        (m) => m.sessionNumber >= quietRunStart && m.sessionNumber <= quietRunEnd,
+      );
+
+      // Three consecutive periods is the same bar every other negative read has
+      // to clear.
+      const ownRecordThinning =
+        myCheckIns >= 3 && longestQuietRun >= 3 && !blockedIds.has(p.id) && !creditedDuringQuietRun;
+
       const kind: CoverageKind =
-        leakingOut.length >= 2 && pct >= 40 ? CoverageKind.LEAKING
+        (leakingOut.length >= 2 && pct >= 40) || ownRecordThinning ? CoverageKind.LEAKING
         : absorbingIn.length >= 2 ? CoverageKind.ABSORBING
         : CoverageKind.STABLE;
 
@@ -507,7 +663,7 @@ export class BoardService {
       // single period of someone covering is not a pattern - the three-period
       // discipline applies here as it does everywhere else.
       const leakSessions = new Set(leakingOut.map((m) => m.sessionNumber));
-      const risingPeriods = leakSessions.size;
+      const risingPeriods = Math.max(leakSessions.size, ownRecordThinning ? quietPeriods : 0);
 
       const { reason, reasonText } = classifyCoverageReason({
         kind,
@@ -519,8 +675,10 @@ export class BoardService {
 
       const base = !remitDefined
         ? 'The role was never defined, so there is no boundary to measure against.'
-        : kind === CoverageKind.LEAKING
+        : kind === CoverageKind.LEAKING && leakingOut.length >= 2
         ? `${leakingOut.length} time${leakingOut.length === 1 ? '' : 's'} across ${risingPeriods} session${risingPeriods === 1 ? '' : 's'}, someone else described doing work that sits in this remit, against ${own} thing${own === 1 ? '' : 's'} named here directly.`
+        : kind === CoverageKind.LEAKING
+        ? `${quietPeriods} check-ins in a row added nothing specific to the record, and nothing is blocking them. The work has not stopped existing, so it is worth asking where it is going.`
         : kind === CoverageKind.ABSORBING
         ? `This account describes picking up work outside this remit ${absorbingIn.length} time${absorbingIn.length === 1 ? '' : 's'}.`
         : "Nothing in anyone's account describes this person's work moving elsewhere.";

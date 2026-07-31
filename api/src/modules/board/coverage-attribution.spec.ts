@@ -25,13 +25,37 @@ const P = (id: string, role: string | null = 'A remit') => ({
   id, roleAsDescribed: role, managingOnly: false,
 });
 
-function makeService(mentions: any[], opts: { ownEntries?: number; blocked?: string[] } = {}) {
+function makeService(
+  mentions: any[],
+  opts: {
+    ownEntries?: number;
+    blocked?: string[];
+    /** How many of their own check-ins produced ANY entry. */
+    sessionsWithEntries?: number;
+    /** How many check-ins they completed. */
+    completedCheckIns?: number;
+  } = {},
+) {
+  const sessionsWithEntries = opts.sessionsWithEntries ?? 4;
   const prisma: any = {
     groundDependency: {
       findMany: jest.fn(async () => (opts.blocked ?? []).map((id) => ({ fromParticipantId: id }))),
     },
     workMention: { findMany: jest.fn(async () => mentions) },
-    recordEntry: { count: jest.fn(async () => opts.ownEntries ?? 4) },
+    recordEntry: {
+      count: jest.fn(async () => opts.ownEntries ?? 4),
+      // Entries land in the FIRST n sessions, so any silence is a consecutive
+      // run at the end - which is what the signal looks for.
+      groupBy: jest.fn(async () =>
+        Array.from({ length: sessionsWithEntries }, (_, i) => ({ checkInId: `ci${i + 1}`, _count: { _all: 2 } })),
+      ),
+    },
+    checkIn: {
+      count: jest.fn(async () => opts.completedCheckIns ?? sessionsWithEntries),
+      findMany: jest.fn(async () =>
+        Array.from({ length: opts.completedCheckIns ?? sessionsWithEntries }, (_, i) => ({ id: `ci${i + 1}`, sessionNumber: i + 1 })),
+      ),
+    },
   };
   return new BoardService(prisma) as any;
 }
@@ -160,5 +184,71 @@ describe('GW-COVERAGE-03: the signal always carries the reason it cannot self-de
       ownVoiceClaimsDelegation: true, risingPeriods: 5,
     });
     expect(reason).toBe(CoverageReason.SHARED_BY_DESIGN);
+  });
+});
+
+describe('GW-COVERAGE-04: a quietly thinning record is a signal on its own', () => {
+  it('catches the person who turns up and says nothing checkable, with nobody narrating it (tripwire)', async () => {
+    // The commonest way ownership drops: no colleague ever says "I did their
+    // work", they just quietly do more of their own. Waiting for someone to
+    // spell it out missed this entirely in a live run.
+    const svc = makeService([], { completedCheckIns: 12, sessionsWithEntries: 2, ownEntries: 4 });
+    const { reads } = await svc.buildCoverageReads({ id: 'g1', participants: [P('p1')] }, nameOf);
+    expect(reads[0].kind).toBe(CoverageKind.LEAKING);
+    expect(reads[0].what).toMatch(/added nothing specific/i);
+  });
+
+  it('does NOT fire on someone who is blocked - that is the team covering, not a drop', async () => {
+    const svc = makeService([], { completedCheckIns: 12, sessionsWithEntries: 2, ownEntries: 4, blocked: ['p1'] });
+    const { reads } = await svc.buildCoverageReads({ id: 'g1', participants: [P('p1')] }, nameOf);
+    expect(reads[0].kind).not.toBe(CoverageKind.LEAKING);
+  });
+
+  it('does NOT fire on a short history - three periods is still the bar', async () => {
+    const svc = makeService([], { completedCheckIns: 2, sessionsWithEntries: 0, ownEntries: 0 });
+    const { reads } = await svc.buildCoverageReads({ id: 'g1', participants: [P('p1')] }, nameOf);
+    expect(reads[0].kind).toBe(CoverageKind.STABLE);
+  });
+
+
+  it('does NOT flag scattered quiet weeks - only a consecutive run (tripwire)', async () => {
+    // The steady engineer who describes his work modestly went quiet in a few
+    // separate weeks and was flagged as hard as someone who went dark for a
+    // month. That is the "invisible work" person the engineering map exists to
+    // protect.
+    const svc = makeService([], { completedCheckIns: 12, sessionsWithEntries: 10, ownEntries: 24 });
+    const { reads } = await svc.buildCoverageReads({ id: 'g1', participants: [P('p1')] }, nameOf);
+    expect(reads[0].kind).not.toBe(CoverageKind.LEAKING);
+  });
+
+  it('does NOT fire on someone contributing every session', async () => {
+    const svc = makeService([], { completedCheckIns: 12, sessionsWithEntries: 12, ownEntries: 40 });
+    const { reads } = await svc.buildCoverageReads({ id: 'g1', participants: [P('p1')] }, nameOf);
+    expect(reads[0].kind).toBe(CoverageKind.STABLE);
+  });
+});
+
+describe('GW-COVERAGE-05: the hidden contributor is protected from their own modesty', () => {
+  // From the live run: the engineer whose last sessions read "stable, mostly
+  // consolidating and documenting so it is not all in my head". Real work,
+  // described unverifiably. Others credited him THROUGHOUT, including inside
+  // the quiet stretch - which is what tells underclaim apart from a drop.
+  const quietRunWithCredit = [
+    { aboutParticipantId: 'p1', sourceParticipantId: 'p2', kind: 'CREDIT', sessionNumber: 11 },
+  ];
+  const quietRunNoCredit = [
+    { aboutParticipantId: 'p1', sourceParticipantId: 'p2', kind: 'CREDIT', sessionNumber: 1 },
+  ];
+
+  it('does NOT flag someone credited by others DURING their quiet stretch (tripwire)', async () => {
+    const svc = makeService(quietRunWithCredit, { completedCheckIns: 12, sessionsWithEntries: 9, ownEntries: 20 });
+    const { reads } = await svc.buildCoverageReads({ id: 'g1', participants: [P('p1')] }, nameOf);
+    expect(reads[0].kind).not.toBe(CoverageKind.LEAKING);
+  });
+
+  it('DOES flag the same silence when nobody credits them during it', async () => {
+    const svc = makeService(quietRunNoCredit, { completedCheckIns: 12, sessionsWithEntries: 9, ownEntries: 20 });
+    const { reads } = await svc.buildCoverageReads({ id: 'g1', participants: [P('p1')] }, nameOf);
+    expect(reads[0].kind).toBe(CoverageKind.LEAKING);
   });
 });

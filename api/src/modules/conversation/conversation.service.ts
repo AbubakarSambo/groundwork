@@ -25,21 +25,37 @@ import { detectFunction } from '../board/function-detection';
  * "too short" while they named a count, an outcome and a blocker, and let
  * through "things are going quite well and the team seems happy" at 90
  * characters. Length was measuring the wrong thing.
+ *
+ * NEGATION MATTERS MORE THAN ANYTHING ELSE HERE. "nothing I can point to as
+ * closed yet" contains the word "closed", and counting it as an achievement is
+ * how a person who delivered nothing for six weeks scored the same as a person
+ * who delivered all quarter. An absence is not a specific.
  */
+const NEGATION = /\b(nothing|not|no|none|never|without|yet to|hasn'?t|haven'?t|didn'?t|cannot|can'?t|couldn'?t|unable|still (waiting|pushing|working)|nowhere)\b/i;
+
 export function countCheckableSpecifics(text: string): number {
-  return (
+  // Count clause by clause, so a negated clause cannot contribute. Splitting on
+  // sentence and clause boundaries keeps "Loop signed, nothing else closed" as
+  // one positive and one negative rather than two positives.
+  const clauses = text.split(/[.!?;]|\bbut\b|\bthough\b|,\s*(?=nothing|no |not )/i);
+  let total = 0;
+  for (const clause of clauses) {
+    if (!clause.trim()) continue;
+    const negated = NEGATION.test(clause);
+
     // Proper nouns: a capitalised word NOT starting a sentence. Sentence
-    // openers ("Yeah...", "Not...") are not named entities.
-    (text.match(/(?<=[a-z,] )[A-Z][a-zA-Z]{2,}\b/g) ?? []).length +
-    // Counts as digits.
-    (text.match(/\b\d+([.,]\d+)?%?\b/g) ?? []).length +
-    // Counts as words - people say "two more signed", not "2 more signed".
-    (text.match(/\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|dozen|hundred|thousand)\b/gi) ?? []).length +
-    // Dates and periods.
-    (text.match(/\b(mon|tues|wednes|thurs|fri|satur|sun)day\b|\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b|\bnext (week|month|quarter)\b|\bq[1-4]\b/gi) ?? []).length +
-    // Concrete outcomes, the verbs that mean something happened.
-    (text.match(/\b(signed|shipped|closed|delivered|launched|agreed|blocked|paid|hired|sent|booked|onboarded)\b/gi) ?? []).length
-  );
+    // openers ("Yeah...", "Not...") are not named entities. These still count
+    // in a negated clause - naming who you did NOT hear from is still specific.
+    total += (clause.match(/(?<=[a-z,] )[A-Z][a-zA-Z]{2,}\b/g) ?? []).length;
+
+    if (negated) continue; // an absence is not an achievement
+
+    total += (clause.match(/\b\d+([.,]\d+)?%?\b/g) ?? []).length;
+    total += (clause.match(/\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|dozen|hundred|thousand)\b/gi) ?? []).length;
+    total += (clause.match(/\b(mon|tues|wednes|thurs|fri|satur|sun)day\b|\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b|\bnext (week|month|quarter)\b|\bq[1-4]\b/gi) ?? []).length;
+    total += (clause.match(/\b(signed|shipped|closed|delivered|launched|agreed|blocked|paid|hired|sent|booked|onboarded)\b/gi) ?? []).length;
+  }
+  return total;
 }
 
 function mapSpecificityLevel(avgScore: number): string {
@@ -893,20 +909,25 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     // A record is substantive when it contains specifics someone could later
     // check: a named person or organisation, a number, a date, or a concrete
     // outcome. Short and specific passes; long and vague does not.
-    const personText = personTurnRows.map((t) => t.content ?? '').join(' \n ');
-    const specifics = countCheckableSpecifics(personText);
-
+    // THIS GATE ONLY STOPS AN EMPTY RECORD. It is not a quality bar.
+    //
+    // Two different jobs were being confused here. Whether someone ANSWERED is a
+    // gate question. Whether their answer was any good is the BOARD's question,
+    // and the board now reads that honestly (verifiability, negation-aware
+    // specificity, trajectory). Enforcing quality here instead would trap an
+    // evasive person until they produced specifics, which is badgering - the
+    // design forbids it, and it punishes the honest person having a bad week
+    // just as hard as the one avoiding.
+    //
+    // So: real sentences pass, even unverifiable ones. "ok / yes / fine" does not.
+    const substantiveTurns = personTurnRows.filter((t) => (t.content?.trim().length ?? 0) >= 12);
     const totalPersonChars = personTurnRows.reduce((sum, t) => sum + (t.content?.trim().length ?? 0), 0);
-    // Deliberately LOW. This gate exists to stop an EMPTY record, not to enforce
-    // quality. Trapping an evasive person until they produce specifics is
-    // badgering, which the design forbids - a thin account is the board's job to
-    // surface honestly, not the completion gate's job to punish.
-    const MIN_SPECIFICS = checkIn.isSelfCorrection ? 1 : 2;
-    const ABSOLUTE_MIN_CHARS = checkIn.isSelfCorrection ? 20 : 50;
+    const MIN_CHARS = checkIn.isSelfCorrection ? 20 : 50;
+    const MIN_REAL_TURNS = checkIn.isSelfCorrection ? 1 : 2;
 
-    if (totalPersonChars < ABSOLUTE_MIN_CHARS || specifics < MIN_SPECIFICS) {
+    if (totalPersonChars < MIN_CHARS || substantiveTurns.length < MIN_REAL_TURNS) {
       throw new BadRequestException(
-        'There is not much here that could be checked later. Name something specific - who, how many, by when, or what actually happened - then complete.',
+        'There is almost nothing here yet. Answer a couple of the questions properly, then complete.',
       );
     }
 
@@ -1136,8 +1157,32 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     );
 
     const VALID_VERIFIABILITY = ['HIGH', 'MEDIUM', 'LOW'];
+
+    // A NON-ANSWER IS NOT A RECORD ENTRY.
+    //
+    // In a live run the extractor faithfully recorded "Nothing new to add for
+    // session 3" and "just a lot going on" as entries. Because the contribution
+    // card counted entries, the person who stopped working for ten weeks scored
+    // 43 and the person who delivered all quarter scored 45. Saying nothing was
+    // being counted as contributing.
+    const NON_ANSWER = /^(nothing (new|much|else)|no( real)? (update|change|progress)|same as (before|last|above)|not (really |much )?(sure|applicable)|n\/?a|none|tbd|as (before|discussed))\b/i;
+    const isNonAnswer = (text: string) => {
+      // Strip the model's own [INFERRED: ...] commentary before judging. The
+      // extractor appends its reasoning to thin answers ("just a lot going on
+      // [INFERRED: is making it harder to close these deals]"), which made an
+      // empty answer look like a substantive entry.
+      const t = text.replace(/\[INFERRED:[^\]]*\]/gi, '').trim().replace(/[.!]+$/, '');
+      if (t.length < 12) return true;                 // "ok", "fine", "yes"
+      if (NON_ANSWER.test(t)) return true;
+      // Nothing checkable in it at all - no name, number, date or outcome.
+      return countCheckableSpecifics(t) === 0;
+    };
+
     const valid = (result?.entries ?? []).filter(
-      (e) => e.text?.trim() && (Object.values(RecordEntryType) as string[]).includes(e.type),
+      (e) =>
+        e.text?.trim() &&
+        (Object.values(RecordEntryType) as string[]).includes(e.type) &&
+        !isNonAnswer(e.text),
     );
     if (valid.length === 0) return;
 
