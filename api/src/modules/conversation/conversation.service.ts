@@ -6,13 +6,13 @@ import { endStatesFor } from '../resolution/end-states';
 import { PromptsService } from '../prompts';
 import { AnthropicService, ChatTurn, houseStyle } from './anthropic.service';
 import { ConversationContextService } from './context.service';
-import { buildIntakeBlock, RECORD_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_SCHEMA } from './prompt-library';
+import { buildIntakeBlock, RECORD_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_SCHEMA, WORK_MENTION_PROMPT, WORK_MENTION_SCHEMA } from './prompt-library';
 import { GroundworkEvents, CheckInCompletedEvent } from '../../common';
 import { DocumentsService } from '../documents/documents.service';
 import { BillingService } from '../billing/billing.service';
 import { EmailService } from '../email/email.service';
 import { UsageService } from '../usage/usage.service';
-import { CheckInStatus, TurnRole, RecordEntryType, Cadence, GroundStatus, UsageEventType, PartyType, GroundMode, DependencyStatus } from '@prisma/client';
+import { CheckInStatus, TurnRole, RecordEntryType, Cadence, GroundStatus, UsageEventType, PartyType, GroundMode, DependencyStatus, WorkMentionKind } from '@prisma/client';
 import { runIntake } from './intake';
 import { boardRendersFor } from '../board/board-families';
 import { buildRoleProbeBlock } from '../board/role-maps';
@@ -863,6 +863,10 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
     // Re-read which function map fits this person, from their own account. Runs
     // every session because detection is continuous, not a tag set once.
+    this.extractWorkMentions(checkIn.id, checkIn.participantId, checkIn.groundId, checkIn.sessionNumber).catch((err) =>
+      this.logger.warn(`Work-mention extraction failed for check-in ${checkIn.id}: ${err.message}`),
+    );
+
     this.reviseDetectedFunction(checkIn.participantId).catch((err) =>
       this.logger.warn(`Function detection failed for participant ${checkIn.participantId}: ${err.message}`),
     );
@@ -1126,6 +1130,70 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         detectedFunctionAt: new Date(),
       },
     });
+  }
+
+  /**
+   * Resolve, to participant IDs, whose other work this person's account
+   * referenced and in what sense.
+   *
+   * SHARED-mode only. This replaces matching first names against other people's
+   * text, which false-positives on common names, misses anyone referred to
+   * differently, and cannot tell crediting someone from covering for them.
+   *
+   * A name the model reports is matched against the roster ONCE here and, if it
+   * does not resolve to a participant, is dropped. A wrong attribution on a read
+   * about a person is worse than a missing one.
+   */
+  async extractWorkMentions(checkInId: string, participantId: string, groundId: string, sessionNumber: number) {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: {
+        mode: true, scenario: true,
+        participants: { select: { id: true, email: true, user: { select: { firstName: true, lastName: true } } } },
+      },
+    });
+    if (!ground || !boardRendersFor(ground.scenario, ground.mode)) return;
+
+    const turns = await this.prisma.conversationTurn.findMany({ where: { checkInId }, orderBy: { createdAt: 'asc' } });
+    if (turns.length === 0) return;
+    const transcript = turns.map((t) => `${t.role === TurnRole.AI ? 'GROUNDWORK' : 'PERSON'}: ${t.content}`).join('\n');
+
+    const result = await this.anthropic.extract<{
+      mentions: { personName: string; kind: string; text: string }[];
+    }>(WORK_MENTION_PROMPT, [{ role: 'user', content: transcript }], WORK_MENTION_SCHEMA);
+
+    const others = ground.participants.filter((p) => p.id !== participantId);
+    const resolve = (name: string): string | null => {
+      const n = name.trim().toLowerCase();
+      if (!n) return null;
+      const hit = others.find((p) => {
+        const first = (p.user?.firstName ?? '').toLowerCase();
+        const full = [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').toLowerCase();
+        const emailLocal = (p.email ?? '').split('@')[0].toLowerCase();
+        return (!!full && full === n) || (!!first && first === n) || (!!emailLocal && emailLocal === n);
+      });
+      return hit?.id ?? null;
+    };
+
+    const rows = (result?.mentions ?? [])
+      .map((m) => {
+        const aboutParticipantId = resolve(m.personName);
+        if (!aboutParticipantId) return null; // unresolved name: dropped, never guessed
+        if (!(['CREDIT', 'COVERAGE', 'BLOCKED_BY'] as const).includes(m.kind as any)) return null;
+        if (!m.text?.trim()) return null;
+        return {
+          groundId,
+          sourceParticipantId: participantId,
+          aboutParticipantId,
+          checkInId,
+          sessionNumber,
+          kind: m.kind as WorkMentionKind,
+          text: m.text.trim(),
+        };
+      })
+      .filter(Boolean) as any[];
+
+    if (rows.length) await this.prisma.workMention.createMany({ data: rows });
   }
 
   /**

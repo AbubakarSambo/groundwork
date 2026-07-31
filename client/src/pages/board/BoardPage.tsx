@@ -505,7 +505,7 @@ export function BoardPage() {
             <Sec title="Contribution against role" src="each role, own terms" />
             <Card>
               <div style={{ fontSize: 12, color: 'var(--gw-sub)', padding: '6px 0 2px' }}>
-                Is the role clear, where does each person sit against it, and is that read fair to what their job actually is.
+                Is the role clear, and what does the record actually hold for each person, read in their own function's terms.
               </div>
               {b.contribution.map((c) => (
                 <div key={c.participantId} style={{ border: '1px solid var(--gw-border)', borderRadius: 12, padding: '12px 14px', marginTop: 9, background: 'var(--gw-bg)' }}>
@@ -514,11 +514,7 @@ export function BoardPage() {
                     {c.remitDefined
                       ? <span style={{ fontSize: 12, color: 'var(--gw-sub)' }}>{c.remit}</span>
                       : <span style={{ fontSize: 12, color: 'var(--gw-amber-t)', fontWeight: 600 }}>role not clearly defined</span>}
-                    {c.position && (
-                      <span style={{ marginLeft: 'auto' }}>
-                        <Pill tone={c.position === 'beyond' ? 'good' : c.position === 'at' ? 'info' : 'warn'}>{c.positionLabel}</Pill>
-                      </span>
-                    )}
+
                   </div>
 
                   {/* An undefined remit shows NO position. You cannot measure someone

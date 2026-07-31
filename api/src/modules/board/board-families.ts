@@ -166,6 +166,10 @@ export const BOARD_WHITELIST = [
   'divergences',
   'centralQuestion',
   'engagement',
+  // A gap between two accounts, produced by the synthesis under a rule that
+  // forbids quoting either side or naming who said what. Board-safe by
+  // construction, which is why it may cross where the raw accounts may not.
+  'leadershipGaps',
 ] as const;
 
 /** Report fields that must NEVER reach the board, asserted by the guard test. */

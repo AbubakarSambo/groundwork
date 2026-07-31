@@ -1,132 +1,107 @@
 import { BoardService } from './board.service';
-import { CheckInStatus, GroundMode, GroundScenario, PartyType } from '@prisma/client';
 import { LeadershipDimension } from './coverage';
+import { BOARD_FORBIDDEN, BOARD_WHITELIST, pickBoardSafeReportFields } from './board-families';
+import { REPORT_SCHEMA, SYNTHESIS_RULES } from '../reports/reports.service';
 
 /**
  * GW-MGR-ALIGN tripwires.
  *
- * The manager-report alignment read is the divergence mechanic pointed at
- * management. What must hold:
+ * Leadership gaps are produced by the REPORT SYNTHESIS, not by the board. The
+ * model already sees every party's labeled evidence and already produces
+ * divergences without quoting anyone, so this rides on that instead of matching
+ * phrases like "clearly" against "not sure" - which would fire on the wrong
+ * thing and miss the politely-worded version, which is the common one.
  *
- *  1. It shows the GAP, never a quote. If either side's words reached the
- *     output, the independence rule the whole product rests on would be broken
- *     on the most sensitive read it has.
- *  2. It never names which report a signal came from.
- *  3. No manager or no reports means no read at all - it does not invent one.
- *  4. Agreement produces nothing. A gap has to actually exist.
+ * What must hold:
+ *  1. The synthesis is INSTRUCTED never to quote either side, never to name who
+ *     said what, and never to say which is right.
+ *  2. The board only SHAPES what synthesis produced. It adds no detection, and
+ *     it does not attribute the gap to a person.
+ *  3. leadershipGaps is on the board whitelist deliberately - it is a gap, not an
+ *     account - while the raw accounts and lead-only reads stay off it.
  */
 
-const MGR_CLEAR = 'I set out the sales targets clearly and assigned who owns what.';
-const REPORT_UNCLEAR = 'I am not sure exactly what I own on sales, nobody said which accounts are mine.';
-const REPORT_ALIGNED = 'I own the enterprise accounts and the pipeline for them, which is clear.';
-
-function makeService(opts: {
-  managerEntries: string[];
-  reportEntries: { participantId: string; text: string }[];
-  participants?: any[];
-}) {
-  const participants = opts.participants ?? [
-    { id: 'mgr', partyType: PartyType.INITIATOR, managingOnly: false, detectedFunction: 'MANAGEMENT', roleAsDescribed: 'Sales lead', email: 'm@x', user: { firstName: 'Mo', lastName: 'Lead' } },
-    { id: 'r1', partyType: PartyType.PARTICIPANT, managingOnly: false, detectedFunction: 'SALES', roleAsDescribed: 'AE', email: 'r1@x', user: { firstName: 'Ray', lastName: 'One' } },
-  ];
-  const prisma: any = {
-    recordEntry: {
-      findMany: jest.fn(async (a: any) => {
-        const pid = a.where.participantId;
-        if (typeof pid === 'string') return opts.managerEntries.map((text) => ({ type: 'COMMITMENT', text }));
-        return opts.reportEntries.map((e) => ({ participantId: e.participantId, type: 'COMMITMENT', text: e.text }));
-      }),
-    },
-  };
-  const service = new BoardService(prisma) as any;
-  const ground = { id: 'g1', initiatorId: 'u-mgr', participants };
-  const checkIns = participants.map((p: any) => ({ participantId: p.id, status: CheckInStatus.COMPLETED }));
-  const nameOf = (pid: string) => participants.find((p: any) => p.id === pid)?.user?.firstName ?? null;
-  return { service, ground, checkIns, nameOf };
+function boardOnly() {
+  return new BoardService({} as any) as any;
 }
 
-describe('GW-MGR-ALIGN-01: the gap is surfaced, the words never are', () => {
-  it('surfaces a clarity-of-ownership gap when the two accounts disagree', async () => {
-    const { service, ground, checkIns, nameOf } = makeService({
-      managerEntries: [MGR_CLEAR],
-      reportEntries: [{ participantId: 'r1', text: REPORT_UNCLEAR }],
+describe('GW-MGR-ALIGN-01: the synthesis is instructed to produce a gap, never a quote', () => {
+  it('the schema offers only the four leadership dimensions', () => {
+    const field = (REPORT_SCHEMA as any).input_schema.properties.leadershipGaps;
+    expect(field).toBeDefined();
+    expect(field.items.properties.dimension.enum.sort()).toEqual(
+      ['ACCOUNTABILITY', 'CLARITY_OF_OWNERSHIP', 'CREDIT', 'UNADDRESSED_TENSION'],
+    );
+  });
+
+  it('the schema tells the model not to quote or name (tripwire)', () => {
+    const gapDesc = (REPORT_SCHEMA as any).input_schema.properties.leadershipGaps.items.properties.gap.description;
+    expect(gapDesc).toMatch(/never quote/i);
+    expect(gapDesc).toMatch(/never name who said what/i);
+  });
+
+  it('the synthesis rules carry the same instruction, so a schema-only edit cannot silently drop it', () => {
+    expect(SYNTHESIS_RULES).toContain('SURFACE LEADERSHIP GAPS AS GAPS, NEVER AS QUOTES');
+    expect(SYNTHESIS_RULES).toMatch(/NEVER quote either side/);
+    expect(SYNTHESIS_RULES).toMatch(/NEVER name who said what/);
+    expect(SYNTHESIS_RULES).toMatch(/NEVER say which is right/);
+  });
+});
+
+describe('GW-MGR-ALIGN-02: the board shapes, it does not detect', () => {
+  it('passes through what synthesis produced', () => {
+    const reads = boardOnly().buildManagerAlignment({
+      leadershipGaps: [
+        {
+          dimension: 'CLARITY_OF_OWNERSHIP',
+          gap: 'One account describes ownership being set clearly; another describes still being unsure what they own.',
+          note: 'Something can be set clearly and still not land.',
+        },
+      ],
     });
-    const reads = await service.buildManagerAlignment(ground, checkIns, nameOf);
-    expect(reads.length).toBeGreaterThan(0);
+    expect(reads).toHaveLength(1);
     expect(reads[0].dimension).toBe(LeadershipDimension.CLARITY_OF_OWNERSHIP);
   });
 
-  it('NEVER leaks either side\'s words into the output (tripwire)', async () => {
-    const { service, ground, checkIns, nameOf } = makeService({
-      managerEntries: [MGR_CLEAR],
-      reportEntries: [{ participantId: 'r1', text: REPORT_UNCLEAR }],
+  it('never attributes the gap to a person (tripwire)', () => {
+    const reads = boardOnly().buildManagerAlignment({
+      leadershipGaps: [{ dimension: 'ACCOUNTABILITY', gap: 'a gap', note: 'a note' }],
     });
-    const reads = await service.buildManagerAlignment(ground, checkIns, nameOf);
-    const blob = JSON.stringify(reads);
-    // Distinctive fragments from each account. If either appears, one person's
-    // words have been shown to the other - the exact thing this must not do.
-    expect(blob).not.toContain('nobody said which accounts are mine');
-    expect(blob).not.toContain('I set out the sales targets clearly');
-    expect(blob).not.toContain('assigned who owns what');
+    // The gap is BETWEEN two accounts. Naming whose it is would undo the point.
+    expect(reads[0].managerName).toBeNull();
+    expect(reads[0].managerParticipantId).toBe('');
   });
 
-  it('never names which report the signal came from', async () => {
-    const { service, ground, checkIns, nameOf } = makeService({
-      managerEntries: [MGR_CLEAR],
-      reportEntries: [{ participantId: 'r1', text: REPORT_UNCLEAR }],
+  it('produces nothing when synthesis found no gap', () => {
+    expect(boardOnly().buildManagerAlignment({ leadershipGaps: [] })).toEqual([]);
+    expect(boardOnly().buildManagerAlignment({})).toEqual([]);
+    expect(boardOnly().buildManagerAlignment(null)).toEqual([]);
+  });
+
+  it('drops a malformed entry rather than rendering half of it', () => {
+    const reads = boardOnly().buildManagerAlignment({
+      leadershipGaps: [{ dimension: 'ACCOUNTABILITY' }, { gap: 'no dimension' }, { dimension: 'CREDIT', gap: 'ok' }],
     });
-    const reads = await service.buildManagerAlignment(ground, checkIns, nameOf);
-    const blob = JSON.stringify(reads);
-    expect(blob).not.toContain('Ray');
-    expect(blob).not.toContain('r1');
-    // A count is fine - it is how many accounts point the same way, not who.
-    expect(reads[0].reportsPointingThisWay).toBe(1);
+    expect(reads).toHaveLength(1);
+    expect(reads[0].dimension).toBe('CREDIT');
   });
 });
 
-describe('GW-MGR-ALIGN-02: it does not invent a read', () => {
-  it('agreement produces no gap', async () => {
-    const { service, ground, checkIns, nameOf } = makeService({
-      managerEntries: [MGR_CLEAR],
-      reportEntries: [{ participantId: 'r1', text: REPORT_ALIGNED }],
-    });
-    const reads = await service.buildManagerAlignment(ground, checkIns, nameOf);
-    expect(reads.filter((r: any) => r.dimension === LeadershipDimension.CLARITY_OF_OWNERSHIP)).toHaveLength(0);
+describe('GW-MGR-ALIGN-03: whitelist placement is deliberate', () => {
+  it('leadershipGaps may cross to the board, because it is a gap and not an account', () => {
+    expect(BOARD_WHITELIST as readonly string[]).toContain('leadershipGaps');
   });
 
-  it('no reports means no read at all', async () => {
-    const { service, ground, checkIns, nameOf } = makeService({
-      managerEntries: [MGR_CLEAR],
-      reportEntries: [],
-      participants: [
-        { id: 'mgr', partyType: PartyType.INITIATOR, managingOnly: false, detectedFunction: 'MANAGEMENT', email: 'm@x', user: { firstName: 'Mo' } },
-      ],
+  it('the lead-only reads still may not', () => {
+    const safe = pickBoardSafeReportFields({
+      leadershipGaps: [{ dimension: 'CREDIT', gap: 'g', note: 'n' }],
+      arcSignals: { p1: {} },
+      finalSynthesis: {},
+      inferences: [],
     });
-    const reads = await service.buildManagerAlignment(ground, checkIns, nameOf);
-    expect(reads).toEqual([]);
-  });
-
-  it('a managing-only lead is not treated as a manager with an account', async () => {
-    const { service, ground, checkIns, nameOf } = makeService({
-      managerEntries: [MGR_CLEAR],
-      reportEntries: [{ participantId: 'r1', text: REPORT_UNCLEAR }],
-      participants: [
-        { id: 'mgr', partyType: PartyType.INITIATOR, managingOnly: true, detectedFunction: 'MANAGEMENT', email: 'm@x', user: { firstName: 'Mo' } },
-        { id: 'r1', partyType: PartyType.PARTICIPANT, managingOnly: false, detectedFunction: 'SALES', email: 'r1@x', user: { firstName: 'Ray' } },
-      ],
-    });
-    const reads = await service.buildManagerAlignment(ground, checkIns, nameOf);
-    expect(reads).toEqual([]);
-  });
-});
-
-describe('GW-MGR-ALIGN-03: "no drama" is checked across two accounts, not one', () => {
-  it('surfaces unaddressed tension when the manager reads calm and a report does not', async () => {
-    const { service, ground, checkIns, nameOf } = makeService({
-      managerEntries: ['The team is fine, no issues this period.'],
-      reportEntries: [{ participantId: 'r1', text: 'There is real friction with how work gets handed over and it has not been raised.' }],
-    });
-    const reads = await service.buildManagerAlignment(ground, checkIns, nameOf);
-    expect(reads.some((r: any) => r.dimension === LeadershipDimension.UNADDRESSED_TENSION)).toBe(true);
+    expect(safe).toHaveProperty('leadershipGaps');
+    for (const forbidden of BOARD_FORBIDDEN) {
+      expect(safe).not.toHaveProperty(forbidden);
+    }
   });
 });

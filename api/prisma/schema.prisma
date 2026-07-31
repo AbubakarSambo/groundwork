@@ -410,6 +410,7 @@ model Ground {
   reportActivations          ReportActivation[]
   objectives                 GroundObjective[]
   dependencies               GroundDependency[]
+  workMentions               WorkMention[]
   poll                       GroundPoll?
   participantRequests        ParticipantRequest[]
   contributorCodeRedemptions ContributorCodeRedemption[]
@@ -490,6 +491,8 @@ model GroundParticipant {
   reportActivations       ReportActivation[]
   dependenciesFrom        GroundDependency[] @relation("DependencyFrom")
   dependenciesOn          GroundDependency[] @relation("DependencyOn")
+  mentionsMade            WorkMention[]      @relation("MentionSource")
+  mentionsAbout           WorkMention[]      @relation("MentionAbout")
 
   @@unique([groundId, email])
   @@index([groundId])
@@ -536,6 +539,7 @@ model CheckIn {
   participant   GroundParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
   turns         ConversationTurn[]
   recordEntries RecordEntry[]
+  workMentions  WorkMention[]
 
   @@unique([participantId, sessionNumber])
   @@index([groundId])
@@ -651,6 +655,54 @@ model GroundDependency {
   @@map("ground_dependencies")
 }
 
+// Why a piece of someone else's work showed up in this person's account.
+enum WorkMentionKind {
+  // Credit: this account says the other person moved something. Feeds the
+  // hidden-contribution read - the quiet load-bearer whose own account is modest.
+  CREDIT
+  // Coverage: this account describes doing work that sits in the other person's
+  // remit. Feeds "where work is landing".
+  COVERAGE
+  // Named as a blocker. Explains coverage rather than counting as it.
+  BLOCKED_BY
+}
+
+// A resolved, ID-level reference from one person's account to ANOTHER
+// participant's work.
+//
+// This exists because matching on first names is not good enough to carry a read
+// about a person: it false-positives on common names, misses anyone referred to
+// differently, and cannot tell crediting someone from covering for them. Both
+// "where work is landing" and the hidden-contribution read need a precise answer
+// to "whose work did this account reference, and in what sense", so it is
+// resolved once, at extraction time, and stored as participant ids.
+//
+// sourceParticipant is whose account it appeared in; aboutParticipant is whose
+// work it concerns. A name that does not resolve to a participant is DROPPED,
+// never guessed - a wrong attribution here is worse than a missing one.
+model WorkMention {
+  id                  String          @id @default(uuid())
+  groundId            String          @map("ground_id")
+  sourceParticipantId String          @map("source_participant_id")
+  aboutParticipantId  String          @map("about_participant_id")
+  checkInId           String?         @map("check_in_id")
+  sessionNumber       Int             @default(1) @map("session_number")
+  kind                WorkMentionKind
+  // The referenced work in the source's own words. Counted and summarised in the
+  // product's words; never shown to the person it is about.
+  text                String          @db.Text
+  createdAt           DateTime        @default(now()) @map("created_at")
+
+  ground            Ground            @relation(fields: [groundId], references: [id], onDelete: Cascade)
+  sourceParticipant GroundParticipant @relation("MentionSource", fields: [sourceParticipantId], references: [id], onDelete: Cascade)
+  aboutParticipant  GroundParticipant @relation("MentionAbout", fields: [aboutParticipantId], references: [id], onDelete: Cascade)
+  checkIn           CheckIn?          @relation(fields: [checkInId], references: [id], onDelete: SetNull)
+
+  @@index([groundId])
+  @@index([aboutParticipantId])
+  @@map("work_mentions")
+}
+
 //
 // Availability poll. THE ONLY thing anyone adds on the board, because
 // availability is logistics and never touches an account.
@@ -696,6 +748,10 @@ model Report {
   inferences      Json?     // array of { id, text, participantId, sessionNumber } — items the AI inferred rather than directly quoted
   promptVersionId String?   @map("prompt_version_id")
   finalSynthesis  Json?     @map("final_synthesis") // closing-round report: per-goal arc lines, tier, end-state framing
+  // Where a manager's account of how they led differs from a report's account
+  // of how they were led. Produced by the same synthesis that finds divergences,
+  // so it is stated as a gap and never quotes either side.
+  leadershipGaps  Json?     @map("leadership_gaps")
   arcSignals      Json?     @map("arc_signals") // deterministic F1-F5 features per party (advisory surface reads this)
   releasedAt      DateTime? @map("released_at") // set once, atomically, for both
   createdAt       DateTime  @default(now()) @map("created_at")

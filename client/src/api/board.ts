@@ -45,7 +45,8 @@ export type BoardPresent = {
   checkInGrid?: { sessions: number[]; rows: { participantId: string; name: string | null; role: string | null; managingOnly: boolean; cells: Record<string, string> }[] }
   contribution?: {
     participantId: string; name: string | null; remit: string | null; remitDefined: boolean
-    position: 'beyond' | 'at' | 'below' | null; positionLabel?: string; reason: string | null
+    /** Always null. There is deliberately no on-track/below-track label - see board.service.ts. */
+    position: null; positionLabel?: string | null; reason: string | null
     fnLabel?: string | null; fnConfident?: boolean; isBlocked?: boolean; ownVoice?: string | null
     note?: string; guard?: string
   }[]

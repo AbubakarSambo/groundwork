@@ -162,8 +162,12 @@ export class BoardService {
         isNew: o.addedAtSession != null && o.addedAtSession >= maxSession,
         // A new dimension means nothing until people have checked in against it,
         // so the board shows who has been asked and who has not.
+        // Only people who can actually be asked: a managing-only lead gives no
+        // account, and someone who never accepted their invite would otherwise
+        // sit in "still to be asked" forever, making a new target look
+        // permanently unanswered.
         askedOf: o.addedAtSession == null ? null : ground.participants
-          .filter((p) => !p.managingOnly)
+          .filter((p) => !p.managingOnly && !!p.userId)
           .map((p) => ({
             participantId: p.id,
             name: nameOf(p.id),
@@ -274,7 +278,7 @@ export class BoardService {
     if (has('contribution')) {
       // Only meaningful where someone actually manages someone: needs a manager
       // and at least one report, both with accounts on record.
-      const alignment = await this.buildManagerAlignment(ground, checkIns, nameOf);
+      const alignment = this.buildManagerAlignment(reportSafe);
       if (alignment.length) out.managerAlignment = alignment;
     }
 
@@ -391,13 +395,10 @@ export class BoardService {
         const entries = countOf(p.id);
         const isBlocked = blockedIds.has(p.id);
 
-        // Deliberately coarse. This is a read on the role and the plan, not a
-        // score on the person, and the reason carries the weight, not the label.
-        let position: 'beyond' | 'at' | 'below';
-        if (entries >= 6 && completed >= 2) position = 'beyond';
-        else if (entries >= 2) position = 'at';
-        else position = 'below';
-
+        // NO on-track / below-track label. Any threshold that produced one would
+        // be invented, and a label reads as a score on the person no matter how
+        // it is worded. What the record actually shows is the read; that is all
+        // this returns.
         const reasonParts: string[] = [];
         reasonParts.push(`${completed} check-in${completed === 1 ? '' : 's'} on record, ${entries} thing${entries === 1 ? '' : 's'} named.`);
         if (isBlocked) {
@@ -415,8 +416,8 @@ export class BoardService {
           name: nameOf(p.id),
           remit: p.roleAsDescribed,
           remitDefined: true,
-          position,
-          positionLabel: position === 'beyond' ? 'Above and beyond' : position === 'at' ? 'On track' : 'Below track',
+          position: null,
+          positionLabel: null,
           reason: reasonParts.join(' '),
           fn: p.detectedFunction ?? null,
           fnLabel: map?.label ?? null,
@@ -424,7 +425,7 @@ export class BoardService {
           isBlocked,
           ownVoice: null,
           guard:
-            'Each person against their own role, in its own terms, never on one scale. A position is never shown without its reason, and never at all if the role was not defined. Below track is a read on the role and the plan, not the person.',
+            'Each person against their own role, in its own terms, never on one scale. A position is never shown without its reason, and never at all if the role was not defined. This shows what the record holds, not a rating of anyone.',
         };
       });
   }
@@ -448,39 +449,67 @@ export class BoardService {
     });
     const blockedIds = new Set(deps.map((d) => d.fromParticipantId));
 
+    // ID-resolved at extraction time (see ConversationService.extractWorkMentions),
+    // so this counts actual attributed references rather than guessing from names.
+    const mentions = await this.prisma.workMention.findMany({
+      where: { groundId: ground.id },
+      select: { aboutParticipantId: true, sourceParticipantId: true, kind: true, sessionNumber: true },
+    });
+
     const reads: CoverageRead[] = [];
     for (const p of ground.participants) {
       if (p.managingOnly) continue;
       const remitDefined = !!p.roleAsDescribed?.trim();
 
-      // Signal: how much of this person's own named work is appearing in OTHER
-      // people's accounts. Uses the same cross-reference the report already
-      // relies on - not a new capture path.
-      const mine = await this.prisma.recordEntry.count({
-        where: { participantId: p.id },
-      });
-      const othersMentioning = await this.prisma.recordEntry.count({
-        where: {
-          participant: { groundId: ground.id, id: { not: p.id } },
-          text: { contains: (nameOf(p.id) ?? '').split(' ')[0] || ' ', mode: 'insensitive' },
-        },
-      });
-      const total = mine + othersMentioning;
-      const pct = total === 0 ? 0 : Math.round((othersMentioning / total) * 100);
+      // Leaking out: others describing doing work that sits in THIS person's remit.
+      const leakingOut = mentions.filter((m) => m.aboutParticipantId === p.id && m.kind === 'COVERAGE');
+      // Absorbing in: THIS person describing picking up work that is someone else's.
+      const absorbingIn = mentions.filter((m) => m.sourceParticipantId === p.id && m.kind === 'COVERAGE');
+      // Credit is the opposite signal and must never be counted as coverage - it is
+      // the hidden-contribution read, and confusing the two would turn "people say
+      // you unblocked them" into "your work is slipping".
+      const credited = mentions.filter((m) => m.aboutParticipantId === p.id && m.kind === 'CREDIT');
+
+      const own = await this.prisma.recordEntry.count({ where: { participantId: p.id } });
+      const denom = own + leakingOut.length;
+      const pct = denom === 0 ? 0 : Math.round((leakingOut.length / denom) * 100);
 
       const kind: CoverageKind =
-        pct >= 45 ? CoverageKind.LEAKING : pct >= 20 ? CoverageKind.ABSORBING : CoverageKind.STABLE;
+        leakingOut.length >= 2 && pct >= 40 ? CoverageKind.LEAKING
+        : absorbingIn.length >= 2 ? CoverageKind.ABSORBING
+        : CoverageKind.STABLE;
+
+      // Rising over periods, from the sessions the coverage mentions land in. A
+      // single period of someone covering is not a pattern - the three-period
+      // discipline applies here as it does everywhere else.
+      const leakSessions = new Set(leakingOut.map((m) => m.sessionNumber));
+      const risingPeriods = leakSessions.size;
 
       const { reason, reasonText } = classifyCoverageReason({
         kind,
         isBlocked: blockedIds.has(p.id),
         remitDefined,
         ownVoiceClaimsDelegation: false,
-        // Rising-over-periods needs history this does not have yet, so it is
-        // reported as 0 and the classifier will land on CANNOT_DETERMINE rather
-        // than asserting an ownership drop from a single snapshot.
-        risingPeriods: 0,
+        risingPeriods,
       });
+
+      const base = !remitDefined
+        ? 'The role was never defined, so there is no boundary to measure against.'
+        : kind === CoverageKind.LEAKING
+        ? `${leakingOut.length} time${leakingOut.length === 1 ? '' : 's'} across ${risingPeriods} session${risingPeriods === 1 ? '' : 's'}, someone else described doing work that sits in this remit, against ${own} thing${own === 1 ? '' : 's'} named here directly.`
+        : kind === CoverageKind.ABSORBING
+        ? `This account describes picking up work outside this remit ${absorbingIn.length} time${absorbingIn.length === 1 ? '' : 's'}.`
+        : "Nothing in anyone's account describes this person's work moving elsewhere.";
+
+      // Credit is surfaced WHATEVER the coverage reading is. The person who is
+      // absorbing other people's work is very often the same quiet load-bearer
+      // others keep crediting, and dropping their credit because they also
+      // picked something up would lose exactly the contribution this is meant to
+      // catch. Credit never counts as coverage; it also never gets hidden by it.
+      const creditNote = credited.length
+        ? ` Others credit them ${credited.length} time${credited.length === 1 ? '' : 's'} for moving something forward.`
+        : '';
+      const what = remitDefined ? base + creditNote : base;
 
       reads.push({
         participantId: p.id,
@@ -488,10 +517,8 @@ export class BoardService {
         scope: 'role',
         pct,
         kind,
-        trend: 'stable',
-        what: remitDefined
-          ? `${othersMentioning} mention${othersMentioning === 1 ? '' : 's'} of this person's work in other people's accounts, against ${mine} they named themselves.`
-          : 'The role was never defined, so there is no boundary to measure against.',
+        trend: risingPeriods >= 3 ? 'rising' : 'stable',
+        what,
         reason,
         reasonText,
         ownVoice: null,
@@ -503,112 +530,32 @@ export class BoardService {
   }
 
   /**
-   * Where a manager's account of how they led differs from their reports'
-   * accounts of how they were led.
+   * Where one account of how this team is being led differs from another.
    *
-   * This is the ordinary divergence mechanic pointed at management, and it runs
-   * on the same rules: each account is read on its own, the output is the GAP,
-   * and nobody is quoted to anybody. "What you thought was clear did not land"
-   * is the single hardest thing for a manager to learn and the thing they are
-   * almost never told, which is why it is worth surfacing at all.
+   * Produced by the report synthesis (rule 14), not here: the model already sees
+   * every party's labeled evidence and already produces divergences without
+   * quoting anyone, so leadership gaps come from that same call. Matching
+   * phrases like "clearly" against "not sure" would fire on the wrong thing and
+   * miss the politely-worded version, which is the common one.
    *
-   * Deliberately conservative:
-   *  - Needs a manager (someone read as MANAGEMENT, or the initiator) AND at
-   *    least one report with an account. No manager, no read.
-   *  - Reads only entries the two sides BOTH spoke to, so a gap is a genuine
-   *    disagreement rather than one side simply not mentioning something.
-   *  - Never names which report a signal came from, and never says who is right.
+   * This method only shapes what synthesis produced for display. It adds no
+   * detection of its own.
    */
-  private async buildManagerAlignment(
-    ground: { id: string; initiatorId: string; participants: any[] },
-    checkIns: { participantId: string; status: CheckInStatus }[],
-    nameOf: (id: string) => string | null,
-  ): Promise<ManagerAlignmentRead[]> {
-    const manager = ground.participants.find(
-      (p) => !p.managingOnly && (p.detectedFunction === 'MANAGEMENT' || p.detectedFunction === 'CEO'),
-    ) ?? ground.participants.find((p) => p.partyType === PartyType.INITIATOR && !p.managingOnly);
-    if (!manager) return [];
-
-    const reports = ground.participants.filter(
-      (p) => p.id !== manager.id && !p.managingOnly &&
-        checkIns.some((c) => c.participantId === p.id && c.status === CheckInStatus.COMPLETED),
-    );
-    if (reports.length === 0) return [];
-
-    const [managerEntries, reportEntries] = await Promise.all([
-      this.prisma.recordEntry.findMany({ where: { participantId: manager.id }, select: { type: true, text: true } }),
-      this.prisma.recordEntry.findMany({
-        where: { participantId: { in: reports.map((r) => r.id) } },
-        select: { participantId: true, type: true, text: true },
-      }),
-    ]);
-    if (managerEntries.length === 0 || reportEntries.length === 0) return [];
-
-    const mgrText = managerEntries.map((e) => e.text.toLowerCase()).join(' \n ');
-    const byReport = new Map<string, string>();
-    for (const e of reportEntries) {
-      byReport.set(e.participantId, (byReport.get(e.participantId) ?? '') + ' \n ' + e.text.toLowerCase());
-    }
-
-    const reads: ManagerAlignmentRead[] = [];
-    const push = (dimension: LeadershipDimension, gap: string, note: string, n: number) => {
-      if (n > 0) {
-        reads.push({
-          managerParticipantId: manager.id,
-          managerName: nameOf(manager.id),
-          dimension, gap, note,
-          reportsPointingThisWay: n,
-        });
-      }
-    };
-
-    // Ownership clarity: the manager describes having set direction; a report
-    // describes not being sure what is theirs.
-    const mgrClaimsClarity = /\b(clear|clearly|set out|laid out|agreed|assigned|delegat|briefed)\b/.test(mgrText);
-    const unclearReports = [...byReport.values()].filter((t) =>
-      /\b(not sure|unclear|unsure|do not know|don't know|no one said|nobody said|assumed|thought i|ambiguous)\b/.test(t),
-    ).length;
-    if (mgrClaimsClarity) {
-      push(
-        LeadershipDimension.CLARITY_OF_OWNERSHIP,
-        'This account describes ownership being set clearly. At least one other account describes still being unsure what they own.',
-        'Both can be true at once - something can be said clearly and still not land. Worth checking what each person believes is theirs.',
-        unclearReports,
-      );
-    }
-
-    // Accountability: the manager describes holding people; a report describes
-    // nothing coming back.
-    const mgrClaimsFollowUp = /\b(followed up|held them|checked in with|chased|reminded|asked them about)\b/.test(mgrText);
-    const noFollowUpReports = [...byReport.values()].filter((t) =>
-      /\b(no follow.?up|never heard back|nobody asked|no one checked|went nowhere|never came back)\b/.test(t),
-    ).length;
-    if (mgrClaimsFollowUp) {
-      push(
-        LeadershipDimension.ACCOUNTABILITY,
-        'This account describes following things up. At least one other account describes commitments that went without follow-up.',
-        'Often a difference in what counts as following up rather than whether it happened. Worth agreeing what closing a loop looks like here.',
-        noFollowUpReports,
-      );
-    }
-
-    // Unaddressed tension: the manager reads the team as fine while a report's
-    // own account carries tension. This is the ops "no drama" failure, checked
-    // across two accounts rather than one.
-    const mgrReadsCalm = /\b(fine|going well|no issues|no problems|all good|healthy|no concerns)\b/.test(mgrText);
-    const tensionReports = [...byReport.entries()].filter(([, t]) =>
-      /\b(tension|frustrat|friction|awkward|unsaid|not raised|resent|uncomfortable|avoided)\b/.test(t),
-    ).length;
-    if (mgrReadsCalm) {
-      push(
-        LeadershipDimension.UNADDRESSED_TENSION,
-        'This account reads the team as settled. At least one other account carries something unresolved.',
-        'Quiet is not the same as settled. Worth asking directly rather than reading the absence of complaints as agreement.',
-        tensionReports,
-      );
-    }
-
-    return reads;
+  private buildManagerAlignment(reportSafe: Record<string, any> | null): ManagerAlignmentRead[] {
+    const raw = reportSafe?.leadershipGaps;
+    if (!Array.isArray(raw)) return [];
+    return raw
+      .filter((g: any) => g?.dimension && g?.gap)
+      .map((g: any) => ({
+        // Deliberately not attributed to a participant id. The gap is between two
+        // accounts; naming whose it is would undo the point.
+        managerParticipantId: '',
+        managerName: null,
+        dimension: g.dimension as LeadershipDimension,
+        gap: String(g.gap),
+        note: String(g.note ?? ''),
+        reportsPointingThisWay: 0,
+      }));
   }
 
   /**

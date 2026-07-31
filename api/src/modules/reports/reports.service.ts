@@ -97,7 +97,7 @@ const SIGNAL_EXTRACTION_SCHEMA = {
 const OUTCOME_LEARNING_PROMPT =
   'You are a Groundwork analyst. You are given structured data: for each active prompt version, the number of grounds resolved, the total outcomes, and the fairness rate (% of parties who said the process felt fair). Produce a 3–5 sentence summary identifying which version(s) have the highest resolution rate, any version showing decline, and a one-sentence recommendation. Data is anonymous - no names, no org identifiers.';
 
-const REPORT_SCHEMA = {
+export const REPORT_SCHEMA = {
   name: 'emit_report',
   description: 'Emit the shared picture, agreements, divergences (the gap) and the one central question.',
   input_schema: {
@@ -172,6 +172,19 @@ const REPORT_SCHEMA = {
         },
         description: "Factual observations, grounded only in what is in the record, where one party's contribution shows reduced follow-through, unmet commitments, or is notably thinner than other parties' on this same ground. Frame as an observation about the record, never a judgement of the person. Empty array if nothing in the record supports this.",
       },
+      leadershipGaps: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            dimension: { type: 'string', enum: ['CLARITY_OF_OWNERSHIP', 'ACCOUNTABILITY', 'CREDIT', 'UNADDRESSED_TENSION'] },
+            gap: { type: 'string', description: 'The difference between the two accounts, stated as a gap. Never quote either side and never name who said what.' },
+            note: { type: 'string', description: 'One sentence on why this is worth a conversation rather than a correction.' },
+          },
+          required: ['dimension', 'gap', 'note'],
+        },
+        description: "Where one party's account of how they are LEADING differs from another party's account of how they are BEING LED. Only where the records genuinely differ on the same thing. Empty array if there is no manager relationship here, or no gap.",
+      },
       specificityCauses: {
         type: 'array',
         items: {
@@ -203,6 +216,7 @@ export const SYNTHESIS_RULES = `SYNTHESIS RULES (override all other instructions
 10. FLAG CONCERN PATTERNS FACTUALLY, NEVER AS ACCUSATION. If the record shows one party's follow-through, commitments, or contribution is notably thinner than other parties' on the same ground, note it in concernFlags as a plain factual observation about the record - not a judgement of the person. Do not speculate about motive.
 11. NAME THE CAUSE OF LOW OR HIGH SPECIFICITY WHEN INFERABLE. If a party's specificity is notably low or high, use specificityCauses to say why if the record supports an inference: a behavioral pattern, a misunderstanding, an adversarial stance, or "unclear" if the record does not support a specific cause.
 12. NEVER INVENT PARTY COUNTS OR ROLES. The PARTY ROSTER at the top of this corpus is the exhaustive, exact list of who is on this ground - use its exact count and exact labels only. Never state a number of parties, an "other parties" count, or a role/title/affiliation (e.g. "founder", "funders", "the board") that does not appear verbatim in the roster. If you are unsure how many parties are missing or who they are, use the roster's own wording rather than describing them yourself.
+14. SURFACE LEADERSHIP GAPS AS GAPS, NEVER AS QUOTES. If one party's record describes how they set direction, held people to things, credited work, or read the team's health, and ANOTHER party's record of the same period describes experiencing it differently, put that in leadershipGaps. State it as a difference between two accounts ("one account describes ownership being set clearly; another describes still being unsure what they own"). NEVER quote either side, NEVER name who said what, and NEVER say which is right - something can be set clearly and still not land, and both people can be describing their own experience honestly. Only where the records genuinely speak to the same thing. Empty array if there is no manager relationship on this ground or no real gap.
 13. LEAD-SUPPLIED CONTEXT IS DIRECTION, NEVER A CLAIM. The LEAD-SUPPLIED CONTEXT section is private background from the initiator, not a party's statement. Use it only to decide what to weigh and what to probe. Never attribute it to a party, never quote it, never present it as an established fact, and never let it become a claim in the report. Every claim you write must trace to a party's own record entry - if lead context points at something no party's record supports, do not assert it.`;
 
 @Injectable()
@@ -805,6 +819,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
         centralQuestion: result.centralQuestion,
         engagement: enrichedEngagement as any,
         inferences: inferences as any,
+        leadershipGaps: (((result as any).leadershipGaps ?? []).length ? (result as any).leadershipGaps : undefined) as any,
         promptVersionId: synthesisVersion.id,
         finalSynthesis: (Object.keys(arcByParticipant).length
           ? { closingComplete: true, tiers: Object.fromEntries(Object.entries(arcByParticipant).map(([pid, s2]) => [pid, s2.tier])), endStates: endStatesFor(ground.scenario).map((o) => ({ value: o.value, label: o.label })) }
@@ -819,6 +834,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
         centralQuestion: result.centralQuestion,
         engagement: enrichedEngagement as any,
         inferences: inferences as any,
+        leadershipGaps: (((result as any).leadershipGaps ?? []).length ? (result as any).leadershipGaps : undefined) as any,
         promptVersionId: synthesisVersion.id,
         finalSynthesis: (Object.keys(arcByParticipant).length
           ? { closingComplete: true, tiers: Object.fromEntries(Object.entries(arcByParticipant).map(([pid, s2]) => [pid, s2.tier])), endStates: endStatesFor(ground.scenario).map((o) => ({ value: o.value, label: o.label })) }

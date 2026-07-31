@@ -1346,6 +1346,54 @@ export const DEPENDENCY_EXTRACTION_SCHEMA = {
   },
 };
 
+
+/**
+ * WORK MENTION extraction. SHARED-mode grounds only.
+ *
+ * Answers, from ONE person's account: whose OTHER work did they reference, and
+ * in what sense - crediting them, covering for them, or blocked by them.
+ *
+ * This exists so the board never has to guess by matching names against text.
+ * The model names the person as the speaker referred to them; the service then
+ * resolves that to a participant id and DROPS anything that does not resolve.
+ */
+export const WORK_MENTION_PROMPT = `From ONE person's check-in transcript, find every place they referred to work connected to ANOTHER named person.
+
+For each one give:
+- personName: the other person's name, exactly as the speaker said it.
+- kind: one of
+  CREDIT - the speaker says this other person did something, moved something, or unblocked them. Crediting them.
+  COVERAGE - the speaker describes doing work that sounds like it belongs to the other person, or picking something up on their behalf.
+  BLOCKED_BY - the speaker says they are waiting on or held up by this other person.
+- text: the short piece of the speaker's own words that shows it.
+
+Only include a reference to a real named person. Do not include the speaker themselves. Do not include organisations, teams, or customers. If the speaker mentions someone with no work attached ("I spoke to Dana"), that is not a work mention.
+
+Be conservative. An empty list is a correct answer.`;
+
+export const WORK_MENTION_SCHEMA = {
+  name: 'emit_work_mentions',
+  description: "Emit references in this person's account to another person's work.",
+  input_schema: {
+    type: 'object',
+    properties: {
+      mentions: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            personName: { type: 'string' },
+            kind: { type: 'string', enum: ['CREDIT', 'COVERAGE', 'BLOCKED_BY'] },
+            text: { type: 'string' },
+          },
+          required: ['personName', 'kind', 'text'],
+        },
+      },
+    },
+    required: ['mentions'],
+  },
+};
+
 // ---------------------------------------------------------------------------
 // Willingness gate - fires before a tension/recognition session deepens.
 // ---------------------------------------------------------------------------
