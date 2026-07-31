@@ -28,6 +28,14 @@ export class CreateGroundForLeadDto {
   @IsString()
   leadName?: string;
 
+  @ApiPropertyOptional({
+    description:
+      "What the lead is responsible for, in the admin's words. Without this the lead is the one person the board cannot read: no remit means no contribution read and no role-tuned questions, which in a live run left the person who set the whole ground up showing as \"role not clearly defined\".",
+  })
+  @IsOptional()
+  @IsString()
+  leadRemit?: string;
+
   @ApiProperty({ example: 'Q3 engineering alignment' })
   @IsString()
   @IsNotEmpty()

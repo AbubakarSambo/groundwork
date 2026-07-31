@@ -72,6 +72,22 @@ async function bootstrap() {
   const httpAdapter = app.getHttpAdapter();
   httpAdapter.get('/health', (_req, res) => res.status(200).send('ok'));
 
+  // A health check that never touches the model cannot tell you the model is
+  // unreachable. In a live run every AI call from the running process failed
+  // for the best part of an hour while /health kept returning "ok" - nothing
+  // would have alerted. This one makes a real call, and returns 503 when the
+  // engine is actually down, so a monitor can see it.
+  httpAdapter.get('/health/ai', async (_req: any, res: any) => {
+    try {
+      const { AnthropicService } = await import('./modules/conversation/anthropic.service');
+      const svc = app.get(AnthropicService, { strict: false });
+      const result = await svc.healthCheck();
+      res.status(result.ok ? 200 : 503).json(result);
+    } catch (err: any) {
+      res.status(503).json({ ok: false, error: String(err?.message ?? err).slice(0, 300) });
+    }
+  });
+
   // Email diagnostic - call GET /health/email?to=you@example.com on the production
   // server to see exactly what Resend returns. Safe to leave in: no auth bypass,
   // no data exposure, just a test send to an explicit address.

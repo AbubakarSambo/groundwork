@@ -158,10 +158,43 @@ export class BoardService {
     }
 
     if (has('objectives')) {
+      // #19, the best version. The number stays the LEAD'S - deriving "how many
+      // paying companies" from free text automatically is exactly the
+      // unreliable guessing this product exists to avoid. But making them
+      // maintain it blind means it goes stale, which is what happened in a live
+      // run: twelve productive weeks and the board still read "no change".
+      //
+      // So the record SUGGESTS and the human DECIDES: count how many distinct
+      // things in the record look like they belong to this target, show it only
+      // when it disagrees with the lead's number, and let them accept it in one
+      // click. The board never silently overwrites what a person set.
+      const objectiveEvidence = await this.prisma.recordEntry.findMany({
+        where: { participant: { groundId }, type: { in: ['COMMITMENT', 'SUCCESS_DEFINITION'] as any } },
+        select: { text: true },
+      });
+      const suggestFor = (name: string): number | null => {
+        const words = name.toLowerCase().split(/\s+/).filter((w) => w.length > 3);
+        if (words.length === 0) return null;
+        const hits = objectiveEvidence.filter((e) => {
+          const t = e.text.toLowerCase();
+          // Every meaningful word of the target appears, and the entry says
+          // something happened rather than something is planned.
+          return words.every((w) => t.includes(w.replace(/s$/, ''))) &&
+            /\b(signed|closed|paying|live|onboarded|delivered|shipped|joined|confirmed)\b/.test(t);
+        }).length;
+        return hits > 0 ? hits : null;
+      };
+
       out.objectives = ground.objectives.map((o) => ({
         id: o.id, name: o.name, count: o.count, prevCount: o.prevCount, target: o.target,
         delta: o.count - o.prevCount,
         isNew: o.addedAtSession != null && o.addedAtSession >= maxSession,
+        // Only present when the record disagrees with the lead's number. Never
+        // applied automatically - it is a prompt, not a correction.
+        suggestedCount: (() => {
+          const sug = suggestFor(o.name);
+          return sug != null && sug !== o.count ? sug : null;
+        })(),
         // A new dimension means nothing until people have checked in against it,
         // so the board shows who has been asked and who has not.
         // Only people who can actually be asked: a managing-only lead gives no
@@ -254,6 +287,15 @@ export class BoardService {
         ground.dependencies,
         nameOf,
       );
+    }
+
+    // #12: nothing ever asked the lead to set targets, so "what we are aiming
+    // for" sat empty for a whole quarter and the summary read "no change" after
+    // twelve productive weeks. The board now says so plainly, to the one person
+    // who can fix it.
+    if (has('objectives') && (out.objectives ?? []).length === 0 && isInitiator) {
+      out.objectivesPrompt =
+        'No targets set yet, so there is nothing for this board to measure progress against. Add two or three things this ground is aiming for.';
     }
 
     if (has('quickRead')) {

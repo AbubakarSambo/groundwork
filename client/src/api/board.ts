@@ -38,7 +38,11 @@ export type BoardPresent = {
   objectives?: {
     id: string; name: string; count: number; prevCount: number; target: number | null; delta: number; isNew: boolean
     askedOf: { participantId: string; name: string | null; asked: boolean }[] | null
+    /** What the record suggests, when it disagrees with the lead's number. Never applied automatically. */
+    suggestedCount: number | null
   }[]
+  /** Shown to the lead when no targets exist, because nothing else prompts for them. */
+  objectivesPrompt?: string
   divergence?: { items: any[]; agreements: any[]; centralQuestion: string | null; pointer: string }
   whoOwnsWhat?: { participantId: string; name: string | null; role: string | null; items: { id: string; type: string; text: string; sessionNumber: number | null }[] }[]
   dependencies?: { id: string; from: string | null; what: string; on: string | null; status: 'BLOCKING' | 'WAITING' | 'CLEARED'; then: string | null }[]

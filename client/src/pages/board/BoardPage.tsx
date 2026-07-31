@@ -276,6 +276,11 @@ export function BoardPage() {
         {has('objectives') && b.objectives && b.objectives.length > 0 && (
           <>
             <Sec title="What we are aiming for" src="the lead sets these" />
+            {b.objectivesPrompt && (
+              <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 10, padding: '10px 14px', marginBottom: 8, fontSize: 12.5, color: 'var(--gw-amber-t)', lineHeight: 1.5 }}>
+                {b.objectivesPrompt}
+              </div>
+            )}
             <Card>
               {b.objectives.map((o, i) => {
                 const pct = o.target && o.target > 0 ? Math.min(100, Math.round((o.count / o.target) * 100)) : 0
@@ -318,6 +323,22 @@ export function BoardPage() {
                           >x</button>
                         </span>
                       )}
+                    {/* The record suggests, the lead decides. Never auto-applied:
+                        a number a person set is theirs until they change it. */}
+                    {o.suggestedCount != null && b.canEditFrame && (
+                      <div style={{ fontSize: 11.5, color: 'var(--gw-navy)', marginTop: 6, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        <span>
+                          The record shows <b>{o.suggestedCount}</b> for this, not {o.count}.
+                        </span>
+                        <button
+                          onClick={() => bumpObjective.mutate({ objectiveId: o.id, count: o.suggestedCount! })}
+                          disabled={bumpObjective.isPending}
+                          style={{ fontSize: 11, fontWeight: 700, padding: '2px 9px', borderRadius: 11, border: '1px solid var(--gw-blue-b)', background: 'var(--gw-blue-bg)', color: 'var(--gw-blue-t)', cursor: 'pointer', fontFamily: 'inherit' }}
+                        >
+                          Use {o.suggestedCount}
+                        </button>
+                      </div>
+                    )}
                     {/* A new target means nothing until people have checked in against it. */}
                     {o.isNew && o.askedOf && (
                       <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 6 }}>
