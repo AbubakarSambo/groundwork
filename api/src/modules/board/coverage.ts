@@ -179,35 +179,133 @@ export const DEFAULT_COVERAGE_VARIANT: CoverageVariant = 'text';
 // clear did not land" is the read; who is right is not.
 // ---------------------------------------------------------------------------
 
-/** The dimensions of leadership where two accounts can quietly disagree. */
-export enum LeadershipDimension {
-  /** Manager believes ownership was set clearly; the report is unsure what they own. */
-  CLARITY_OF_OWNERSHIP = 'CLARITY_OF_OWNERSHIP',
-  /** Manager believes they hold people to things; the report experiences no follow-up. */
-  ACCOUNTABILITY = 'ACCOUNTABILITY',
-  /** Manager credits one person; another account shows a contributor they never named. */
-  CREDIT = 'CREDIT',
-  /** Manager reads the team as fine; a report signals unaddressed tension. */
-  UNADDRESSED_TENSION = 'UNADDRESSED_TENSION',
+//
+// These are the MANAGEMENT role map's own failure patterns, not dimensions
+// invented here. The map's root failure is "failure to create ownership in
+// others", with TWO POLES that look nothing alike and need opposite responses:
+//
+//   CONTROL     - does the work themselves, redoes the team's work, lets nobody
+//                 truly own. The team waits on them for everything.
+//   ABDICATION  - does not hold anyone, commitments slip silently, the hard
+//                 conversation never happens, nobody develops.
+//
+// Collapsing those into one "management gap" would be useless: telling someone
+// who over-controls to "hold people more" makes it worse, and so does the
+// reverse. The pole is what makes the read actionable, so every pattern carries
+// it.
+//
+// Each pattern below states the detection signature from the map - what the two
+// accounts would have to show for it to be real - so the synthesis is looking
+// for a described PATTERN rather than matching words.
+// ---------------------------------------------------------------------------
+
+/** Which pole of the management root failure a pattern belongs to. */
+export enum ManagementPole {
+  CONTROL = 'CONTROL',
+  ABDICATION = 'ABDICATION',
+  /** Neither pole: a gap in what got seen, not in how much was held. */
+  NEITHER = 'NEITHER',
 }
 
-export const LEADERSHIP_DIMENSION_LABEL: Record<LeadershipDimension, string> = {
-  [LeadershipDimension.CLARITY_OF_OWNERSHIP]: 'How clearly ownership was set',
-  [LeadershipDimension.ACCOUNTABILITY]: 'Whether commitments get followed up',
-  [LeadershipDimension.CREDIT]: 'Who gets credited for what moved',
-  [LeadershipDimension.UNADDRESSED_TENSION]: 'Whether something is going unsaid',
-};
+/** The MANAGEMENT map's failure patterns, as they show in a cross-reference. */
+export enum LeadershipPattern {
+  /** Map signal 3. Commitments originate from the manager instead of being authored. */
+  OWNERSHIP_NOT_AUTHORED = 'OWNERSHIP_NOT_AUTHORED',
+  /** Map signals 1, 2, 12. The manager's account is full of work the team should own. */
+  WORK_NOT_HANDED_OVER = 'WORK_NOT_HANDED_OVER',
+  /** Map signal 4. A commitment slipped and the manager's account never registers it. */
+  SLIP_NOT_REGISTERED = 'SLIP_NOT_REGISTERED',
+  /** Map signals 5, 10, 13. A hard conversation is perpetually coming up, never had. */
+  CONVERSATION_DEFERRED = 'CONVERSATION_DEFERRED',
+  /** Map signals 8, 11. A quiet contributor the manager's account never names. */
+  CONTRIBUTION_UNSEEN = 'CONTRIBUTION_UNSEEN',
+}
+
+export interface LeadershipPatternSpec {
+  pattern: LeadershipPattern;
+  pole: ManagementPole;
+  /** Shown on the board as the name of the gap. */
+  label: string;
+  /** What the two accounts must SHOW for this to be real. Fed to the synthesis. */
+  signature: string;
+  /** Why naming it helps rather than accuses. */
+  why: string;
+}
+
+export const LEADERSHIP_PATTERNS: LeadershipPatternSpec[] = [
+  {
+    pattern: LeadershipPattern.OWNERSHIP_NOT_AUTHORED,
+    pole: ManagementPole.CONTROL,
+    label: 'Commitments handed down rather than authored',
+    signature:
+      "One account describes setting or assigning what others should do, while those others' accounts describe their commitments in the manager's terms rather than their own, or are unsure what they own.",
+    why: 'A commitment someone authored themselves is one they own. One handed to them is one they comply with, and it slips differently.',
+  },
+  {
+    pattern: LeadershipPattern.WORK_NOT_HANDED_OVER,
+    pole: ManagementPole.CONTROL,
+    label: 'Doing work the team should own',
+    signature:
+      "One account is substantially made up of hands-on work that falls inside another party's stated remit, across more than one period, while that other party's account is thin on the same work.",
+    why: 'This is the control pole. The team cannot own what is still being done for them, and the manager stays the bottleneck.',
+  },
+  {
+    pattern: LeadershipPattern.SLIP_NOT_REGISTERED,
+    pole: ManagementPole.ABDICATION,
+    label: 'A slip that went unregistered',
+    signature:
+      "One account records a commitment that did not happen, and the account of the person responsible for holding it never mentions it, across the following period.",
+    why: 'Not noticing is different from choosing to let it go. Only one of those is a decision.',
+  },
+  {
+    pattern: LeadershipPattern.CONVERSATION_DEFERRED,
+    pole: ManagementPole.ABDICATION,
+    label: 'A conversation that keeps not happening',
+    signature:
+      'One account names a conversation as still to be had across two or more periods without it happening, or another account describes tension that no account describes addressing.',
+    why: 'The hard conversation is the core of the job, and deferring it is the most common way the role gets quietly avoided.',
+  },
+  {
+    pattern: LeadershipPattern.CONTRIBUTION_UNSEEN,
+    pole: ManagementPole.NEITHER,
+    label: 'A contribution that is not being seen',
+    signature:
+      "Other accounts independently credit one person for moving something, and the account of whoever leads them never names that person or that work.",
+    why: 'This is the single hardest thing for a manager to learn, because nobody tells them. It is a gap in what got seen, not a failure to hold.',
+  },
+];
+
+export const LEADERSHIP_PATTERN_BY_KEY: Record<string, LeadershipPatternSpec> = Object.fromEntries(
+  LEADERSHIP_PATTERNS.map((p) => [p.pattern, p]),
+);
+
+/**
+ * The block handed to the report synthesis.
+ *
+ * Built FROM the patterns above so the prompt and the map cannot drift apart -
+ * adding a pattern here changes what the synthesis looks for, and a test pins
+ * that they stay in step.
+ */
+export function buildLeadershipPatternBlock(): string {
+  const items = LEADERSHIP_PATTERNS.map(
+    (p) => `- ${p.pattern} (${p.pole} pole) - ${p.label}. Real only when: ${p.signature}`,
+  ).join('\n');
+  return `LEADERSHIP PATTERNS TO LOOK FOR (only where one party leads another):\n${items}`;
+}
 
 export interface ManagerAlignmentRead {
   managerParticipantId: string;
   managerName: string | null;
-  dimension: LeadershipDimension;
+  pattern: LeadershipPattern;
+  pole: ManagementPole;
+  /** The pattern's own label, from the map. */
+  label: string;
   /** The gap, in the product's words. Never a quote from either side. */
   gap: string;
   /** Why this is worth a conversation rather than a correction. */
   note: string;
-  /** How many reports' accounts point the same way. Never names them. */
-  reportsPointingThisWay: number;
+  /** How many periods the pattern was visible across. One is not a pattern. */
+  periods: number;
 }
 
 export const MANAGER_ALIGNMENT_GUARD =

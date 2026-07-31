@@ -9,6 +9,7 @@ import { AnthropicService } from '../conversation';
 import { EmailService } from '../email/email.service';
 import { UsageService } from '../usage/usage.service';
 import { GroundsService } from '../grounds';
+import { LEADERSHIP_PATTERNS, buildLeadershipPatternBlock } from '../board/coverage';
 import { GroundStatus, PartyType, CheckInStatus, GroundScenario, UsageEventType, ReportActivationStatus, PatternStatus } from '@prisma/client';
 import { NEW_STARTING_REPORT_SCHEMA, RECOGNITION_REPORT_SCHEMA, DRIFT_REPORT_SCHEMA } from '../conversation/prompt-library';
 import { BAD_FAITH_CODES, POSITIVE_CODES, ALIGNMENT_FEED_ONLY_CODES, isPositiveCode } from '../patterns/pattern-library';
@@ -177,13 +178,18 @@ export const REPORT_SCHEMA = {
         items: {
           type: 'object',
           properties: {
-            dimension: { type: 'string', enum: ['CLARITY_OF_OWNERSHIP', 'ACCOUNTABILITY', 'CREDIT', 'UNADDRESSED_TENSION'] },
+            pattern: {
+              type: 'string',
+              enum: LEADERSHIP_PATTERNS.map((p) => p.pattern),
+              description: 'Which of the named leadership patterns this is. Use only these; do not invent one.',
+            },
             gap: { type: 'string', description: 'The difference between the two accounts, stated as a gap. Never quote either side and never name who said what.' },
             note: { type: 'string', description: 'One sentence on why this is worth a conversation rather than a correction.' },
+            periods: { type: 'integer', description: 'How many distinct sessions/periods the pattern is visible across. One period is NOT a pattern - if you only see it once, do not report it.' },
           },
-          required: ['dimension', 'gap', 'note'],
+          required: ['pattern', 'gap', 'note', 'periods'],
         },
-        description: "Where one party's account of how they are LEADING differs from another party's account of how they are BEING LED. Only where the records genuinely differ on the same thing. Empty array if there is no manager relationship here, or no gap.",
+        description: "Where one party's account of how they are LEADING differs from another party's account of how they are BEING LED, matched to one of the named leadership patterns. Only where the pattern's stated signature is genuinely met across more than one period. Empty array if there is no manager relationship here, or no pattern.",
       },
       specificityCauses: {
         type: 'array',
@@ -216,7 +222,7 @@ export const SYNTHESIS_RULES = `SYNTHESIS RULES (override all other instructions
 10. FLAG CONCERN PATTERNS FACTUALLY, NEVER AS ACCUSATION. If the record shows one party's follow-through, commitments, or contribution is notably thinner than other parties' on the same ground, note it in concernFlags as a plain factual observation about the record - not a judgement of the person. Do not speculate about motive.
 11. NAME THE CAUSE OF LOW OR HIGH SPECIFICITY WHEN INFERABLE. If a party's specificity is notably low or high, use specificityCauses to say why if the record supports an inference: a behavioral pattern, a misunderstanding, an adversarial stance, or "unclear" if the record does not support a specific cause.
 12. NEVER INVENT PARTY COUNTS OR ROLES. The PARTY ROSTER at the top of this corpus is the exhaustive, exact list of who is on this ground - use its exact count and exact labels only. Never state a number of parties, an "other parties" count, or a role/title/affiliation (e.g. "founder", "funders", "the board") that does not appear verbatim in the roster. If you are unsure how many parties are missing or who they are, use the roster's own wording rather than describing them yourself.
-14. SURFACE LEADERSHIP GAPS AS GAPS, NEVER AS QUOTES. If one party's record describes how they set direction, held people to things, credited work, or read the team's health, and ANOTHER party's record of the same period describes experiencing it differently, put that in leadershipGaps. State it as a difference between two accounts ("one account describes ownership being set clearly; another describes still being unsure what they own"). NEVER quote either side, NEVER name who said what, and NEVER say which is right - something can be set clearly and still not land, and both people can be describing their own experience honestly. Only where the records genuinely speak to the same thing. Empty array if there is no manager relationship on this ground or no real gap.
+14. SURFACE LEADERSHIP GAPS AS NAMED PATTERNS, ACROSS PERIODS, NEVER AS QUOTES. Where one party leads another, look for the named leadership patterns listed below. Use ONLY those pattern names. A pattern is real only when its stated signature is met AND it is visible across MORE THAN ONE period - one session showing something is not a pattern, and you must report the number of periods you saw it across. Each pattern belongs to one of two opposite poles: CONTROL (holding on to work and decisions, so nobody else can own) or ABDICATION (not holding anyone, so things slip and hard conversations never happen). These need opposite responses, so never blur them together. State the gap as a difference between two accounts ("one account describes ownership being set clearly; another describes still being unsure what they own"). NEVER quote either side, NEVER name who said what, and NEVER say which is right - something can be set clearly and still not land, and both people can be describing their own experience honestly. If no pattern's signature is met across periods, return an empty array.
 13. LEAD-SUPPLIED CONTEXT IS DIRECTION, NEVER A CLAIM. The LEAD-SUPPLIED CONTEXT section is private background from the initiator, not a party's statement. Use it only to decide what to weigh and what to probe. Never attribute it to a party, never quote it, never present it as an established fact, and never let it become a claim in the report. Every claim you write must trace to a party's own record entry - if lead context points at something no party's record supports, do not assert it.`;
 
 @Injectable()
@@ -366,7 +372,9 @@ Close the report by framing - neutrally, without recommending one - the choice n
     // Append hard synthesis rules that override any vagueness in the base prompt.
     // These address four recurring failure modes: specifics lost, conditions stripped,
     // absent parties misrepresented, and actionable commitments buried.
-    const systemPrompt = synthesisVersion.content + "\n\n" + SYNTHESIS_RULES;
+    // The leadership-pattern block is generated FROM the role map, so adding or
+    // changing a pattern changes what the synthesis looks for. Pinned by a test.
+    const systemPrompt = synthesisVersion.content + "\n\n" + SYNTHESIS_RULES + "\n\n" + buildLeadershipPatternBlock();
 
 
     // Note any invited party who contributed no record - surfaced as an absence,

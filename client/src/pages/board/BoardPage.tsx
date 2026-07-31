@@ -632,13 +632,18 @@ export function BoardPage() {
               {b.managerAlignment.map((m, i) => (
                 <Row key={i}>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-dark)' }}>
-                      {m.dimension === 'CLARITY_OF_OWNERSHIP' ? 'How clearly ownership was set'
-                        : m.dimension === 'ACCOUNTABILITY' ? 'Whether commitments get followed up'
-                        : m.dimension === 'CREDIT' ? 'Who gets credited for what moved'
-                        : 'Whether something is going unsaid'}
+                    <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-dark)' }}>{m.label}</span>
+                    {/* The pole matters more than the gap: holding on to everything
+                        and holding nobody need opposite responses, and telling one
+                        to do the other makes it worse. */}
+                    {m.pole !== 'NEITHER' && (
+                      <Pill tone="info">
+                        {m.pole === 'CONTROL' ? 'nobody else gets to own it' : 'nobody is being held to it'}
+                      </Pill>
+                    )}
+                    <span style={{ fontSize: 10.5, color: 'var(--gw-muted)', marginLeft: 'auto' }}>
+                      seen across {m.periods} sessions
                     </span>
-                    <Pill tone="warn">a gap worth talking about</Pill>
                   </div>
                   <div style={{ fontSize: 12.5, color: 'var(--gw-text)', marginTop: 4, lineHeight: 1.45 }}>{m.gap}</div>
                   <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 4, lineHeight: 1.45 }}>{m.note}</div>

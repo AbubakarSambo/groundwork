@@ -61,7 +61,13 @@ export type BoardPresent = {
   }
   managerAlignment?: {
     managerParticipantId: string; managerName: string | null
-    dimension: string; gap: string; note: string; reportsPointingThisWay: number
+    /** One of the MANAGEMENT role map's failure patterns. */
+    pattern: string
+    /** CONTROL and ABDICATION need opposite responses, so the pole is shown. */
+    pole: 'CONTROL' | 'ABDICATION' | 'NEITHER'
+    label: string; gap: string; note: string
+    /** How many periods it was visible across. One is never a pattern. */
+    periods: number
   }[]
   patterns?: { code: string; text: string; periods: number }[]
   decisions?: { question: string; why: string; owner: string; source: 'blocker' | 'divergence' }[]

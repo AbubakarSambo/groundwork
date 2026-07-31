@@ -16,7 +16,8 @@ import {
   classifyCoverageReason,
   DEFAULT_COVERAGE_VARIANT,
   CoverageVariant,
-  LeadershipDimension,
+  LeadershipPattern,
+  LEADERSHIP_PATTERN_BY_KEY,
   ManagerAlignmentRead,
 } from './coverage';
 import { MIN_COACHING_CONFIDENCE, roleMapFor } from './role-maps';
@@ -545,17 +546,31 @@ export class BoardService {
     const raw = reportSafe?.leadershipGaps;
     if (!Array.isArray(raw)) return [];
     return raw
-      .filter((g: any) => g?.dimension && g?.gap)
-      .map((g: any) => ({
-        // Deliberately not attributed to a participant id. The gap is between two
-        // accounts; naming whose it is would undo the point.
-        managerParticipantId: '',
-        managerName: null,
-        dimension: g.dimension as LeadershipDimension,
-        gap: String(g.gap),
-        note: String(g.note ?? ''),
-        reportsPointingThisWay: 0,
-      }));
+      .map((g: any) => {
+        const spec = LEADERSHIP_PATTERN_BY_KEY[g?.pattern];
+        // An unrecognised pattern is dropped rather than rendered as a bare
+        // string: without its pole and its label it is not actionable, and a
+        // half-rendered read about someone's management is worse than none.
+        if (!spec || !g?.gap) return null;
+        // One period is not a pattern. The same three-period discipline that
+        // governs every other negative read governs this one, and this is the
+        // most consequential read on the board.
+        const periods = Number(g.periods ?? 0);
+        if (periods < 2) return null;
+        return {
+          // Deliberately not attributed. The gap is BETWEEN two accounts;
+          // naming whose it is would undo the point.
+          managerParticipantId: '',
+          managerName: null,
+          pattern: spec.pattern,
+          pole: spec.pole,
+          label: spec.label,
+          gap: String(g.gap),
+          note: String(g.note ?? spec.why),
+          periods,
+        };
+      })
+      .filter(Boolean) as ManagerAlignmentRead[];
   }
 
   /**
