@@ -1,0 +1,96 @@
+[
+  {
+    "step": "Sahar logged in",
+    "detail": ""
+  },
+  {
+    "step": "Sahar sees her grounds list",
+    "detail": {
+      "count": 0
+    }
+  },
+  {
+    "step": "ground created",
+    "detail": {
+      "id": "1179c88c-8d50-4609-b544-142d3ccc1d5e",
+      "status": "AWAITING_LEAD",
+      "mode": "SHARED",
+      "isFree": true,
+      "freeReason": "FREE_TIER"
+    }
+  },
+  {
+    "step": "Hafsah signed in",
+    "detail": ""
+  },
+  {
+    "step": "Abubakar Sambo has a user account before accepting?",
+    "detail": "no - must accept the invite first"
+  },
+  {
+    "step": "Adam Grunewald has a user account before accepting?",
+    "detail": "no - must accept the invite first"
+  },
+  {
+    "step": "Kavon Badie has a user account before accepting?",
+    "detail": "no - must accept the invite first"
+  },
+  {
+    "step": "Nate Peterson has a user account before accepting?",
+    "detail": "no - must accept the invite first"
+  },
+  {
+    "step": "Hafsah opens the ground before confirming",
+    "detail": {
+      "status": "AWAITING_LEAD",
+      "boardRenders": true
+    }
+  },
+  {
+    "step": "lead confirmed",
+    "detail": {
+      "groundId": "1179c88c-8d50-4609-b544-142d3ccc1d5e",
+      "checkInId": "de5b24d7-348a-46d5-8ff6-e32d9d4abad2"
+    }
+  },
+  {
+    "step": "Abubakar Sambo accepted the invite",
+    "detail": ""
+  },
+  {
+    "step": "Abubakar Sambo signed in",
+    "detail": ""
+  },
+  {
+    "step": "Adam Grunewald accepted the invite",
+    "detail": ""
+  },
+  {
+    "step": "Adam Grunewald signed in",
+    "detail": ""
+  },
+  {
+    "step": "Kavon Badie accepted the invite",
+    "detail": ""
+  },
+  {
+    "step": "Kavon Badie signed in",
+    "detail": ""
+  },
+  {
+    "step": "Nate Peterson accepted the invite",
+    "detail": ""
+  },
+  {
+    "step": "Nate Peterson signed in",
+    "detail": ""
+  },
+  {
+    "step": "complete failed Nate Peterson s9",
+    "detail": "400 /check-ins/9e159655-187e-41df-b073-3aa703ad8e3f/complete :: {\"success\":false,\"statusCode\":400,\"message\":\"These answers are pretty short - the record needs a"
+  },
+  {
+    "step": "complete failed Nate Peterson s11",
+    "detail": "400 /check-ins/fa7bdf82-6304-4925-838e-3180e7591ec1/complete :: {\"success\":false,\"statusCode\":400,\"message\":\"These answers are pretty short - the record needs a"
+  }
+]
