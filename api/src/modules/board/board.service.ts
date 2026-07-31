@@ -21,6 +21,7 @@ import {
   ManagerAlignmentRead,
 } from './coverage';
 import { MIN_COACHING_CONFIDENCE, roleMapFor } from './role-maps';
+import { PATTERN_NAME_BY_CODE } from '../patterns/pattern-library';
 
 /**
  * The board: a delivery-shaped rendering of the delivery-relevant parts of the
@@ -296,7 +297,15 @@ export class BoardService {
       });
       out.patterns = detections
         .filter((d) => !PERSON_JUDGING_CODES.has(d.code))
-        .map((d) => ({ code: d.code, text: d.observationText, periods: d.periodsObserved }));
+        .map((d) => ({
+          code: d.code,
+          // Only label a code this library actually knows. The model sometimes
+          // invents codes ("k5"), and a raw key on a shared board reads like a
+          // system leak - the observation text carries the meaning anyway.
+          label: PATTERN_NAME_BY_CODE.get(d.code) ?? null,
+          text: d.observationText,
+          periods: d.periodsObserved,
+        }));
     }
 
     if (has('poll')) {
@@ -334,6 +343,8 @@ export class BoardService {
       source: 'divergence' as const,
     }));
     const fromBlockers = dependencies
+      // Only STILL-OPEN blockers. A cleared handoff is not a decision anyone
+      // needs to make, and leaving them on grew this list to 15 items.
       .filter((d) => d.status === DependencyStatus.BLOCKING)
       .map((d) => ({
         question: `Unblock: ${d.what}`,
@@ -341,7 +352,19 @@ export class BoardService {
         owner: d.onParticipantId ? (nameOf(d.onParticipantId) ?? 'Unassigned') : (d.onLabel ?? 'Unassigned'),
         source: 'blocker' as const,
       }));
-    return [...fromBlockers, ...fromDivergence];
+
+    // Same decision phrased slightly differently is one decision.
+    const seen = new Set<string>();
+    const deduped = [...fromBlockers, ...fromDivergence].filter((d) => {
+      const k = d.question.toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+
+    // A list of fifteen is not a list of decisions, it is a backlog nobody
+    // reads. Blockers first, because someone is stuck behind them.
+    return deduped.slice(0, 5);
   }
 
   /**

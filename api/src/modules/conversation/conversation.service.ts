@@ -6,7 +6,7 @@ import { endStatesFor } from '../resolution/end-states';
 import { PromptsService } from '../prompts';
 import { AnthropicService, ChatTurn, houseStyle } from './anthropic.service';
 import { ConversationContextService } from './context.service';
-import { buildIntakeBlock, RECORD_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_SCHEMA, WORK_MENTION_PROMPT, WORK_MENTION_SCHEMA } from './prompt-library';
+import { SESSION_CLOSE_MARKER, stripCloseMarker, buildIntakeBlock, RECORD_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_SCHEMA, WORK_MENTION_PROMPT, WORK_MENTION_SCHEMA } from './prompt-library';
 import { GroundworkEvents, CheckInCompletedEvent } from '../../common';
 import { DocumentsService } from '../documents/documents.service';
 import { BillingService } from '../billing/billing.service';
@@ -17,6 +17,30 @@ import { runIntake } from './intake';
 import { boardRendersFor } from '../board/board-families';
 import { buildRoleProbeBlock } from '../board/role-maps';
 import { detectFunction } from '../board/function-detection';
+
+/**
+ * How many things in this text could actually be checked by someone later.
+ *
+ * Substance, not length. A live run rejected two real check-ins for being
+ * "too short" while they named a count, an outcome and a blocker, and let
+ * through "things are going quite well and the team seems happy" at 90
+ * characters. Length was measuring the wrong thing.
+ */
+export function countCheckableSpecifics(text: string): number {
+  return (
+    // Proper nouns: a capitalised word NOT starting a sentence. Sentence
+    // openers ("Yeah...", "Not...") are not named entities.
+    (text.match(/(?<=[a-z,] )[A-Z][a-zA-Z]{2,}\b/g) ?? []).length +
+    // Counts as digits.
+    (text.match(/\b\d+([.,]\d+)?%?\b/g) ?? []).length +
+    // Counts as words - people say "two more signed", not "2 more signed".
+    (text.match(/\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|dozen|hundred|thousand)\b/gi) ?? []).length +
+    // Dates and periods.
+    (text.match(/\b(mon|tues|wednes|thurs|fri|satur|sun)day\b|\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b|\bnext (week|month|quarter)\b|\bq[1-4]\b/gi) ?? []).length +
+    // Concrete outcomes, the verbs that mean something happened.
+    (text.match(/\b(signed|shipped|closed|delivered|launched|agreed|blocked|paid|hired|sent|booked|onboarded)\b/gi) ?? []).length
+  );
+}
 
 function mapSpecificityLevel(avgScore: number): string {
   if (avgScore >= 0.6) return 'specific';
@@ -336,7 +360,11 @@ export class ConversationService {
       { role: 'user', content: beginMessage },
     ]);
 
-    const aiTurn = await this.prisma.conversationTurn.create({ data: { checkInId: checkIn.id, role: TurnRole.AI, content: reply } });
+    // An opener never closes a session, but strip defensively so the marker can
+    // never reach a person even if the model emits it in the wrong place.
+    const aiTurn = await this.prisma.conversationTurn.create({
+      data: { checkInId: checkIn.id, role: TurnRole.AI, content: stripCloseMarker(reply).text },
+    });
     await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { status: CheckInStatus.IN_PROGRESS, startedAt: new Date() } });
     return { reply: aiTurn.content, groundId: checkIn.groundId };
   }
@@ -368,11 +396,16 @@ export class ConversationService {
     // Rebuild history (this party only) and ask the engine for the next turn.
     // ISSUE 5: if the AI call fails, delete the orphan PERSON turn then re-throw.
     let reply: string;
+    let hadCloseMarker = false;
     let aiTurn: { id: string; content: string };
     try {
       const turns = await this.prisma.conversationTurn.findMany({ where: { checkInId: checkIn.id }, orderBy: { createdAt: 'asc' } });
       const history: ChatTurn[] = turns.map((t) => ({ role: t.role === TurnRole.AI ? 'assistant' : 'user', content: t.content }));
-      reply = await this.anthropic.respond(fullSystem, history);
+      const rawReply = await this.anthropic.respond(fullSystem, history);
+      // Strip the close marker before it is stored or shown - it is machinery.
+      const stripped = stripCloseMarker(rawReply);
+      reply = stripped.text;
+      hadCloseMarker = stripped.hadMarker;
       aiTurn = await this.prisma.conversationTurn.create({
         data: { checkInId: checkIn.id, role: TurnRole.AI, content: reply },
       });
@@ -385,12 +418,16 @@ export class ConversationService {
       await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { status: CheckInStatus.IN_PROGRESS, startedAt: new Date() } });
     }
 
-    // Signal the frontend that the AI has delivered the session-closing elements
-    // so the "Complete session" button can appear. Detected by the mandatory
-    // SESSION CLOSE phrase defined in ENGINE_RULES.
-    // ISSUE 22: message-count auto-complete removed - only the AI's explicit signal triggers completion.
-    // ISSUE 23: all checks are case-insensitive via replyLower; alternative phrases added for resilience.
-    const sessionComplete = this.detectSessionComplete(reply);
+    // Two detectors, union. The model states plainly that it is closing (the
+    // [[SESSION_COMPLETE]] marker in ENGINE_RULES), and the old phrase matching
+    // stays as a backstop for a turn where the model forgets the marker.
+    //
+    // Why: a live 12-session run closed cleanly only 18% of the time, and three
+    // of the genuine misses were off by ONE WORD - the model wrote "here is what
+    // is in your record" where the list wanted "here is what is NOW in your
+    // record". No phrase list is ever complete, so the model says it outright
+    // instead. Costs nothing: it rides on the reply it was already generating.
+    const sessionComplete = hadCloseMarker || this.detectSessionComplete(reply);
 
     return { reply: aiTurn.content, sessionComplete };
   }
@@ -440,17 +477,29 @@ export class ConversationService {
     try {
       const turns = await this.prisma.conversationTurn.findMany({ where: { checkInId: checkIn.id }, orderBy: { createdAt: 'asc' } });
       const history: ChatTurn[] = turns.map((t) => ({ role: t.role === TurnRole.AI ? 'assistant' : 'user', content: t.content }));
+      // Hold back a tail the length of the marker so a marker split across two
+      // deltas can never flash up in the person's chat before being stripped.
+      let emitted = 0;
       for await (const delta of this.anthropic.respondStream(fullSystem, history)) {
         raw += delta;
-        yield { type: 'delta', text: delta };
+        const safeUpTo = Math.max(0, raw.length - SESSION_CLOSE_MARKER.length);
+        if (safeUpTo > emitted) {
+          const chunk = raw.slice(emitted, safeUpTo);
+          emitted = safeUpTo;
+          if (chunk) yield { type: 'delta', text: chunk };
+        }
       }
-      const reply = houseStyle(raw.trim());
+      const strippedStream = stripCloseMarker(raw);
+      const reply = houseStyle(strippedStream.text.trim());
       if (!reply) throw new Error('AI returned an empty response');
+      // Flush whatever is left after the held-back tail is cleaned.
+      const tail = reply.slice(Math.min(emitted, reply.length));
+      if (tail) yield { type: 'delta', text: tail };
       await this.prisma.conversationTurn.create({ data: { checkInId: checkIn.id, role: TurnRole.AI, content: reply } });
       if (checkIn.status === CheckInStatus.NOT_STARTED) {
         await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { status: CheckInStatus.IN_PROGRESS, startedAt: new Date() } });
       }
-      yield { type: 'done', reply, sessionComplete: this.detectSessionComplete(reply) };
+      yield { type: 'done', reply, sessionComplete: strippedStream.hadMarker || this.detectSessionComplete(reply) };
     } catch (err) {
       await this.prisma.conversationTurn.delete({ where: { id: personTurn.id } }).catch(() => undefined);
       throw err;
@@ -835,13 +884,29 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         'A few more exchanges are needed before this check-in can close - the record is still thin. Answer one or two more questions, then complete.',
       );
     }
+    // SUBSTANCE, NOT LENGTH. Counting characters rejected two of one person's
+    // real check-ins in a live run - answers that named a buyer, a number and a
+    // blocker, but tersely. Meanwhile "I think things are going quite well and
+    // the team seems happy with progress overall" sails through at 90 characters
+    // and says nothing. Length was measuring the wrong thing.
+    //
+    // A record is substantive when it contains specifics someone could later
+    // check: a named person or organisation, a number, a date, or a concrete
+    // outcome. Short and specific passes; long and vague does not.
+    const personText = personTurnRows.map((t) => t.content ?? '').join(' \n ');
+    const specifics = countCheckableSpecifics(personText);
+
     const totalPersonChars = personTurnRows.reduce((sum, t) => sum + (t.content?.trim().length ?? 0), 0);
-    // roughly two real sentences total for a normal session; a single specific
-    // sentence is enough to anchor a correction.
-    const MIN_SUBSTANTIVE_CHARS = checkIn.isSelfCorrection ? 40 : 120;
-    if (totalPersonChars < MIN_SUBSTANTIVE_CHARS) {
+    // Deliberately LOW. This gate exists to stop an EMPTY record, not to enforce
+    // quality. Trapping an evasive person until they produce specifics is
+    // badgering, which the design forbids - a thin account is the board's job to
+    // surface honestly, not the completion gate's job to punish.
+    const MIN_SPECIFICS = checkIn.isSelfCorrection ? 1 : 2;
+    const ABSOLUTE_MIN_CHARS = checkIn.isSelfCorrection ? 20 : 50;
+
+    if (totalPersonChars < ABSOLUTE_MIN_CHARS || specifics < MIN_SPECIFICS) {
       throw new BadRequestException(
-        'These answers are pretty short - the record needs a bit more detail before this check-in can close. Add specifics (names, numbers, what actually happened), then complete.',
+        'There is not much here that could be checked later. Name something specific - who, how many, by when, or what actually happened - then complete.',
       );
     }
 
@@ -1243,26 +1308,75 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       return hit?.id ?? null;
     };
 
+    // The SAME handoff gets described again every session it is still open, so
+    // inserting blindly produced 27 rows for about 4 real handoffs ("pricing",
+    // "Pricing", "the pricing" all counted separately) and left stale BLOCKING
+    // rows forever, because nothing ever updated the original. One row per real
+    // handoff, and the newest account decides its status.
+    const normalise = (t: string) =>
+      t.toLowerCase()
+        .replace(/[^a-z0-9 ]/g, ' ')
+        .replace(/\b(the|a|an|my|our|his|her|their|this|that|some|more|any)\b/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+    const openForThisPerson = await this.prisma.groundDependency.findMany({
+      where: { groundId, fromParticipantId: participantId },
+      select: { id: true, what: true, onParticipantId: true, onLabel: true, status: true },
+    });
+
     for (const d of valid) {
       const onParticipantId = matchParticipant(d.onName);
       const status = (['BLOCKING', 'WAITING', 'CLEARED'] as const).includes(d.status as any)
         ? (d.status as DependencyStatus)
         : DependencyStatus.WAITING;
-      await this.prisma.groundDependency.create({
+      const onLabel = onParticipantId ? null : (d.onLabel?.trim() || d.onName?.trim() || null);
+      const key = normalise(d.what);
+
+      // Same person waiting on the same party for roughly the same thing.
+      const existing = openForThisPerson.find(
+        (e) =>
+          e.onParticipantId === onParticipantId &&
+          (e.onLabel ?? null) === onLabel &&
+          (normalise(e.what) === key ||
+            normalise(e.what).includes(key) ||
+            key.includes(normalise(e.what))),
+      );
+
+      if (existing) {
+        // The newest account wins, which is what finally CLEARS a handoff: a
+        // person who stops describing something as blocking is no longer blocked
+        // on it.
+        await this.prisma.groundDependency.update({
+          where: { id: existing.id },
+          data: {
+            status,
+            then: d.then?.trim() || undefined,
+            sourceCheckInId: checkInId,
+            clearedAt: status === DependencyStatus.CLEARED ? new Date() : null,
+          },
+        });
+        continue;
+      }
+
+      const created = await this.prisma.groundDependency.create({
         data: {
           groundId,
           fromParticipantId: participantId,
           onParticipantId,
           // Keep the spoken name when it did not match a participant, so an
           // external blocker is still visible instead of silently dropped.
-          onLabel: onParticipantId ? null : (d.onLabel?.trim() || d.onName?.trim() || null),
+          onLabel,
           what: d.what.trim(),
           then: d.then?.trim() || null,
           status,
           sourceCheckInId: checkInId,
           clearedAt: status === DependencyStatus.CLEARED ? new Date() : null,
         },
+        select: { id: true, what: true, onParticipantId: true, onLabel: true, status: true },
       });
+      // So a second mention within the SAME extraction also dedupes.
+      openForThisPerson.push(created);
     }
   }
 

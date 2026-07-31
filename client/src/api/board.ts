@@ -69,7 +69,8 @@ export type BoardPresent = {
     /** How many periods it was visible across. One is never a pattern. */
     periods: number
   }[]
-  patterns?: { code: string; text: string; periods: number }[]
+  /** label is null for a code this build does not recognise - show nothing rather than a raw key. */
+  patterns?: { code: string; label: string | null; text: string; periods: number }[]
   decisions?: { question: string; why: string; owner: string; source: 'blocker' | 'divergence' }[]
   poll?: { id: string; question: string; options: { id: string; label: string; who: (string | null)[]; whoIds: string[]; count: number }[] } | null
 }

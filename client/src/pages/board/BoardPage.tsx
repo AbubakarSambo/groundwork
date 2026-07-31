@@ -670,7 +670,7 @@ export function BoardPage() {
               ) : b.patterns.map((p, i) => (
                 <Row key={i} first={i === 0}>
                   <div style={{ display: 'flex', gap: 11, alignItems: 'baseline' }}>
-                    <Pill tone="info">{p.code.toLowerCase().replace(/_/g, ' ')}</Pill>
+                    {p.label && <Pill tone="info">{p.label}</Pill>}
                     <span style={{ flex: 1, fontSize: 12.5 }}>{p.text}</span>
                     <span style={{ fontSize: 10.5, color: 'var(--gw-muted)' }}>{p.periods} periods</span>
                   </div>
