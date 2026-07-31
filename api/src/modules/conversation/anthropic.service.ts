@@ -218,7 +218,18 @@ export class AnthropicService {
   private convertSchema(schema: any): any {
     if (!schema || typeof schema !== 'object') return schema;
     const out: any = {};
-    if (schema.type) out.type = schema.type.toUpperCase();
+    // JSON Schema allows a union type (["string","null"]) to mean nullable.
+    // Gemini wants a single scalar type plus a nullable flag, and calling
+    // toUpperCase() on the array threw - which silently killed the whole
+    // extraction. Dependency extraction used union types, so "waiting on" never
+    // populated from a real conversation.
+    if (Array.isArray(schema.type)) {
+      const nonNull = schema.type.filter((t: any) => t !== 'null');
+      if (nonNull.length) out.type = String(nonNull[0]).toUpperCase();
+      if (schema.type.includes('null')) out.nullable = true;
+    } else if (typeof schema.type === 'string') {
+      out.type = schema.type.toUpperCase();
+    }
     if (schema.description) out.description = schema.description;
     if (schema.enum) out.enum = schema.enum;
     if (schema.required) out.required = schema.required;
