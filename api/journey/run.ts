@@ -149,8 +149,16 @@ async function main() {
   console.log('\n=== 4. Hafsah confirms she is the lead ===');
   const beforeConfirm = await http(`/grounds/${gid}`, { token: tokens[LEAD.email] });
   note('Hafsah opens the ground before confirming', { status: beforeConfirm.status, boardRenders: beforeConfirm.boardRenders });
-  const confirmed = await http(`/grounds/${gid}/confirm-lead`, { method: 'POST', token: tokens[LEAD.email], body: {} });
-  note('lead confirmed', confirmed);
+  // Idempotent on resume: a ground already confirmed is not an error here.
+  if (beforeConfirm.status === 'AWAITING_LEAD') {
+    const confirmed = await http(`/grounds/${gid}/confirm-lead`, {
+      method: 'POST', token: tokens[LEAD.email],
+      body: { remit: LEAD.remit },
+    });
+    note('lead confirmed', confirmed);
+  } else {
+    note('lead already confirmed, resuming', { status: beforeConfirm.status });
+  }
 
   // ---------------------------------------------------------------- STEP 5
   console.log('\n=== 5. Participants accept their invites, then sign in ===');

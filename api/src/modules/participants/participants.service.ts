@@ -48,6 +48,22 @@ export class ParticipantsService {
     const ground = await this.prisma.ground.findUnique({ where: { id: participant.groundId } });
     if (!ground) throw new NotFoundException('Ground not found');
 
+    // AN INVITE LINK IS SINGLE USE FOR SIGNING IN.
+    //
+    // It used to mint a fresh access token every time it was presented, and the
+    // token was never cleared, so the emailed link stayed a permanent bearer
+    // credential for that person's account: anyone who ever saw it - a forwarded
+    // email, a screenshot, a shared inbox, an old archive - could sign in as
+    // them and read their private account, indefinitely.
+    //
+    // On first accept everyone is sent a password-setup link precisely so they
+    // can return properly, so nothing is lost by refusing the second use.
+    if (participant.userId) {
+      throw new BadRequestException(
+        'This invite link has already been used. Sign in with your email instead, or use the password link we sent you.',
+      );
+    }
+
     const email = participant.email.toLowerCase();
     const [firstName, lastName] = this.resolveName(email, names);
 
@@ -78,7 +94,9 @@ export class ParticipantsService {
 
       await tx.groundParticipant.update({
         where: { id: participant.id },
-        data: { userId: user.id },
+        // Clear the invite token as the schema always said it should be
+        // ("cleared once accepted") - it never actually was.
+        data: { userId: user.id, inviteToken: null, inviteTokenExpiresAt: null },
       });
 
       return user;
