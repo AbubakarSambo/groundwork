@@ -1,7 +1,6 @@
-import { BoardService } from './board.service';
 import { CoverageKind, CoverageReason, classifyCoverageReason } from './coverage';
-import { DependencyStatus } from '@prisma/client';
-
+import { CheckInStatus, DependencyStatus } from '@prisma/client';
+import { ReadInput, buildCoverage } from './reads';
 /**
  * GW-COVERAGE tripwires.
  *
@@ -22,9 +21,18 @@ import { DependencyStatus } from '@prisma/client';
  */
 
 const P = (id: string, role: string | null = 'A remit') => ({
-  id, roleAsDescribed: role, managingOnly: false,
+  id,
+  roleAsDescribed: role,
+  managingOnly: false,
+  detectedFunction: null,
+  detectedFunctionConfidence: null,
 });
 
+/**
+ * Builds the same situations these tests always described, now as plain input
+ * to the pure read rather than a mocked Prisma client. The behaviour under test
+ * is unchanged; only the seam moved (see reads.ts).
+ */
 function makeService(
   mentions: any[],
   opts: {
@@ -37,36 +45,43 @@ function makeService(
   } = {},
 ) {
   const sessionsWithEntries = opts.sessionsWithEntries ?? 4;
-  const prisma: any = {
-    groundDependency: {
-      findMany: jest.fn(async () =>
-        (opts.blocked ?? []).map((id, i) => ({
+  const completed = opts.completedCheckIns ?? sessionsWithEntries;
+  const ownEntries = opts.ownEntries ?? 4;
+
+  return {
+    async buildCoverageReads(ground: { id: string; participants: any[] }, nameOf: (id: string) => string | null) {
+      const input: ReadInput = {
+        participants: ground.participants,
+        checkIns: ground.participants.flatMap((p) =>
+          Array.from({ length: completed }, (_, i) => ({
+            participantId: p.id,
+            sessionNumber: i + 1,
+            status: CheckInStatus.COMPLETED,
+          })),
+        ),
+        // Entries land in the FIRST n sessions, so any silence is a consecutive
+        // run at the end - which is what the signal looks for. Each is distinct
+        // and checkable, so neither the repeat filter nor the absence filter
+        // removes it.
+        entries: ground.participants.flatMap((p) =>
+          Array.from({ length: Math.max(ownEntries, sessionsWithEntries) }, (_, i) => ({
+            participantId: p.id,
+            sessionNumber: Math.min(i + 1, sessionsWithEntries),
+            text: `[VERIFIABILITY:HIGH] shipped ${p.id} item ${i + 1} on 3 March`,
+          })),
+        ),
+        mentions,
+        dependencies: (opts.blocked ?? []).map((id, i) => ({
           fromParticipantId: id,
           onParticipantId: 'someone-else',
           onLabel: null,
-          what: `a blocker ${i}`,
+          what: `a real blocker number ${i}`,
           status: DependencyStatus.BLOCKING,
-          createdAt: new Date(),
         })),
-      ),
+      };
+      return buildCoverage(input, nameOf);
     },
-    workMention: { findMany: jest.fn(async () => mentions) },
-    recordEntry: {
-      count: jest.fn(async () => opts.ownEntries ?? 4),
-      // Entries land in the FIRST n sessions, so any silence is a consecutive
-      // run at the end - which is what the signal looks for.
-      groupBy: jest.fn(async () =>
-        Array.from({ length: sessionsWithEntries }, (_, i) => ({ checkInId: `ci${i + 1}`, _count: { _all: 2 } })),
-      ),
-    },
-    checkIn: {
-      count: jest.fn(async () => opts.completedCheckIns ?? sessionsWithEntries),
-      findMany: jest.fn(async () =>
-        Array.from({ length: opts.completedCheckIns ?? sessionsWithEntries }, (_, i) => ({ id: `ci${i + 1}`, sessionNumber: i + 1 })),
-      ),
-    },
-  };
-  return new BoardService(prisma) as any;
+  } as any;
 }
 
 const nameOf = (id: string) => id;

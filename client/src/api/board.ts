@@ -53,6 +53,12 @@ export type BoardPresent = {
     position: null; positionLabel?: string | null; reason: string | null
     fnLabel?: string | null; fnConfident?: boolean; isBlocked?: boolean; ownVoice?: string | null
     note?: string; guard?: string
+    /**
+     * How much this read rests on, and whether it clears the floor to be shown
+     * at all. A confident sentence about a person built on two data points is
+     * the one a manager remembers, so a thin read is withheld rather than hedged.
+     */
+    confidence?: number; evidenceCount?: number; shown?: boolean; basis?: string
   }[]
   coverage?: {
     scope: string
@@ -61,6 +67,7 @@ export type BoardPresent = {
       kind: 'LEAKING' | 'ABSORBING' | 'STABLE'; trend: string; what: string
       reason: string; reasonText: string; ownVoice: string | null
       coupledToBlocker: boolean; remitDefined: boolean
+      confidence?: number; evidenceCount?: number; shown?: boolean; basis?: string
     }[]
   }
   managerAlignment?: {

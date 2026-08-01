@@ -540,7 +540,13 @@ export function BoardPage() {
 
                   {/* An undefined remit shows NO position. You cannot measure someone
                       against a bar that was never set. */}
-                  {!c.remitDefined ? (
+                  {c.shown === false && c.remitDefined ? (
+                    /* Too little on record to say anything about a person yet. A
+                       hedge still reads as a verdict, so nothing is shown at all. */
+                    <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 8, lineHeight: 1.45, fontStyle: 'italic' }}>
+                      Not enough on record yet to say anything about this person's contribution. {c.basis}
+                    </div>
+                  ) : !c.remitDefined ? (
                     <div style={{ fontSize: 12, color: 'var(--gw-navy)', background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 9, padding: '8px 10px', marginTop: 8, lineHeight: 1.45 }}>
                       {c.note}
                     </div>
@@ -550,6 +556,11 @@ export function BoardPage() {
                       <div style={{ marginTop: 7, fontSize: 12, lineHeight: 1.45 }}>
                         <b style={{ color: 'var(--gw-dark)' }}>Why:</b> {c.reason}
                       </div>
+                      {c.basis && (
+                        <div style={{ marginTop: 6, fontSize: 10.5, color: 'var(--gw-muted)', lineHeight: 1.45 }}>
+                          {c.basis}
+                        </div>
+                      )}
                       {c.fnLabel && (
                         <div style={{ marginTop: 6, display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                           <Pill tone="info">read as {c.fnLabel.toLowerCase()}</Pill>
@@ -596,7 +607,7 @@ export function BoardPage() {
                 ))}
               </div>
 
-              {b.coverage.reads.map((r) => (
+              {b.coverage.reads.filter((r) => r.shown !== false).map((r) => (
                 <div key={r.participantId} style={{ border: '1px solid var(--gw-border)', borderRadius: 12, padding: '12px 14px', marginTop: 9, background: 'var(--gw-bg)' }}>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 9, flexWrap: 'wrap' }}>
                     <span style={{ fontWeight: 700, color: 'var(--gw-dark)', fontSize: 14 }}>{r.name}</span>
@@ -626,11 +637,21 @@ export function BoardPage() {
                     {r.reasonText}
                   </div>
 
+                  {r.basis && (
+                    <div style={{ marginTop: 6, fontSize: 10.5, color: 'var(--gw-muted)', lineHeight: 1.45 }}>{r.basis}</div>
+                  )}
+
                   <div style={{ marginTop: 7, fontSize: 12, lineHeight: 1.4, border: '1px dashed var(--gw-border)', borderRadius: 9, padding: '6px 10px', color: 'var(--gw-muted)', fontStyle: 'italic' }}>
                     {r.ownVoice ?? 'No note. This person can add context through their next check-in.'}
                   </div>
                 </div>
               ))}
+
+              {b.coverage.reads.some((r) => r.shown === false) && (
+                <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 9, lineHeight: 1.45 }}>
+                  {b.coverage.reads.filter((r) => r.shown === false).map((r) => r.name).join(', ')} {b.coverage.reads.filter((r) => r.shown === false).length === 1 ? 'is' : 'are'} not shown here yet. There is too little on record to say anything about where their work is landing, and a guess about that would be worse than a gap.
+                </div>
+              )}
 
               <div style={{ fontSize: 10.5, color: 'var(--gw-muted)', fontStyle: 'italic', marginTop: 11, paddingTop: 9, borderTop: '1px dashed var(--gw-border)', lineHeight: 1.5 }}>
                 Other people doing your work can mean four different things: an ownership drop (others covering a gap), healthy shared

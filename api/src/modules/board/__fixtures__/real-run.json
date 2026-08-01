@@ -1,0 +1,1259 @@
+{
+  "note": "Captured from a real 12-session run with live Gemini. Ground truth for each person is in ground-truth.ts.",
+  "participants": [
+    {
+      "id": "abubakar",
+      "email": "abubakar@coamana.test",
+      "roleAsDescribed": "Engineering lead. I own the product and the engine, keeping it stable week on week.",
+      "managingOnly": false,
+      "userId": "ceba9bed-52b1-4b9b-a8d8-b53d2bb64014",
+      "detectedFunction": "ENGINEERING",
+      "detectedFunctionConfidence": 0.69
+    },
+    {
+      "id": "adam",
+      "email": "adam@coamana.test",
+      "roleAsDescribed": "Bring paying orgs and one new contributor, and document what I have done.",
+      "managingOnly": false,
+      "userId": "e8488483-402d-4286-b962-364f8e0a62ba",
+      "detectedFunction": "SALES",
+      "detectedFunctionConfidence": 0.72
+    },
+    {
+      "id": "hafsah",
+      "email": "hafsah@coamana.test",
+      "roleAsDescribed": null,
+      "managingOnly": false,
+      "userId": "0f452f25-a533-4ac7-bcc9-2a7f665668a8",
+      "detectedFunction": "SALES",
+      "detectedFunctionConfidence": 0.61
+    },
+    {
+      "id": "kavon",
+      "email": "kavon@coamana.test",
+      "roleAsDescribed": "Sales, bring paying users.",
+      "managingOnly": false,
+      "userId": "742c0e19-0e47-4d26-a59f-4942e7e150c4",
+      "detectedFunction": "SALES",
+      "detectedFunctionConfidence": 0.84
+    },
+    {
+      "id": "nate",
+      "email": "nate@coamana.test",
+      "roleAsDescribed": "Sales, six paying users, and bring three contributors: Nishita, Ceren and Jessie.",
+      "managingOnly": false,
+      "userId": "ddccd881-ee88-458e-90ec-846184a21f02",
+      "detectedFunction": "SALES",
+      "detectedFunctionConfidence": 0.88
+    },
+    {
+      "id": "newjoiner",
+      "email": "newjoiner@coamana.test",
+      "roleAsDescribed": "Customer success",
+      "managingOnly": false,
+      "userId": null,
+      "detectedFunction": null,
+      "detectedFunctionConfidence": null
+    }
+  ],
+  "checkIns": [
+    {
+      "id": "074fc030-2f28-48e1-9efa-c0f1e52377f4",
+      "participantId": "hafsah",
+      "sessionNumber": 1,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "047f39db-04a1-466b-8f72-261f7cdbbedb",
+      "participantId": "hafsah",
+      "sessionNumber": 2,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "8b579ab5-fde0-42ec-a8f2-6df41ead5da7",
+      "participantId": "hafsah",
+      "sessionNumber": 3,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "3145310a-deab-4f88-ae8b-e335e3f77bdb",
+      "participantId": "hafsah",
+      "sessionNumber": 4,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "911ba910-5c1e-4b6a-a929-1d70f589dfce",
+      "participantId": "hafsah",
+      "sessionNumber": 5,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "bb6d0a64-d4db-4079-afa5-2c6623b4cfcc",
+      "participantId": "hafsah",
+      "sessionNumber": 6,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "8c2769c9-92bb-4d78-a20b-e90762c8b5dd",
+      "participantId": "hafsah",
+      "sessionNumber": 7,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "3a90edb2-10cc-45b2-94b1-4cdd2ddb44e9",
+      "participantId": "hafsah",
+      "sessionNumber": 8,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "1b4748a4-1e25-4ba7-967d-1c0c15197b84",
+      "participantId": "hafsah",
+      "sessionNumber": 9,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "04fd6aa9-3e43-4cdb-84b4-7f17a66e2ba6",
+      "participantId": "hafsah",
+      "sessionNumber": 10,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "632f39bc-1536-4497-abb4-f0ec5c16f231",
+      "participantId": "hafsah",
+      "sessionNumber": 11,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "c590b3ae-6d31-48ec-a184-af4a095deddc",
+      "participantId": "hafsah",
+      "sessionNumber": 12,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "f892bdb8-5f93-404e-b73b-4ed393fb18d1",
+      "participantId": "hafsah",
+      "sessionNumber": 13,
+      "status": "NOT_STARTED"
+    },
+    {
+      "id": "5443e56e-fe2c-4c7e-98a4-b3b2418cdb77",
+      "participantId": "abubakar",
+      "sessionNumber": 1,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "6e6b2c6e-935b-4206-8a4e-6bec55daaeb4",
+      "participantId": "abubakar",
+      "sessionNumber": 2,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "69820c28-340b-41f0-9463-f980af4700ee",
+      "participantId": "abubakar",
+      "sessionNumber": 3,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "a5e36f49-4a79-4a1a-99d4-f10d941b4de6",
+      "participantId": "abubakar",
+      "sessionNumber": 4,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "ded792c5-b694-43fe-be7c-9b102843b998",
+      "participantId": "abubakar",
+      "sessionNumber": 5,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "fe86d058-5fad-4ff6-91d6-e12bead85016",
+      "participantId": "abubakar",
+      "sessionNumber": 6,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "id": "e6b896f1-de3e-4605-b10e-5d7b1b5a75eb",
+      "participantId": "abubakar",
+      "sessionNumber": 7,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "661fb31b-d861-4016-90f0-884bc30101da",
+      "participantId": "abubakar",
+      "sessionNumber": 8,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "946044d8-4184-4ea6-ab56-78da8486c21d",
+      "participantId": "abubakar",
+      "sessionNumber": 9,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "e4866682-ee88-4a77-b527-defef8c41664",
+      "participantId": "abubakar",
+      "sessionNumber": 10,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "5a76ad59-e4e6-4f72-803c-4eff39679d59",
+      "participantId": "abubakar",
+      "sessionNumber": 11,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "a6cdcf7d-ed2c-4b16-ad79-8426f375583e",
+      "participantId": "abubakar",
+      "sessionNumber": 12,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "d4ac00b8-9dd1-4156-b78d-d3cac00868c2",
+      "participantId": "abubakar",
+      "sessionNumber": 13,
+      "status": "NOT_STARTED"
+    },
+    {
+      "id": "34a2186a-4adf-4b40-9113-4f4a106ae037",
+      "participantId": "adam",
+      "sessionNumber": 1,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "69d0c58f-a76f-4c95-8a44-2bb9f8fe8599",
+      "participantId": "adam",
+      "sessionNumber": 2,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "0cecafbc-ba22-4fc6-bdfc-4e6055f2b372",
+      "participantId": "adam",
+      "sessionNumber": 3,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "6999e622-3e6c-4e72-bb5c-b81e7d727145",
+      "participantId": "adam",
+      "sessionNumber": 4,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "9e31ce4a-2d43-4ab2-8c82-cebf6e2c5f07",
+      "participantId": "adam",
+      "sessionNumber": 5,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "40e3f005-4c78-4e66-8cfe-d92868353f89",
+      "participantId": "adam",
+      "sessionNumber": 6,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "f16c3b8c-8299-4914-9574-7acee809710d",
+      "participantId": "adam",
+      "sessionNumber": 7,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "9ddc5b16-f9ba-4981-b23b-2d0cc98abbe1",
+      "participantId": "adam",
+      "sessionNumber": 8,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "653f0125-6f0e-4610-a3b1-d0332b71cecf",
+      "participantId": "adam",
+      "sessionNumber": 9,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "2eb41021-ad19-41ef-9fe1-aeeec11ee6db",
+      "participantId": "adam",
+      "sessionNumber": 10,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "ecc1ac35-2a5d-4934-bb59-bdc01e9509a7",
+      "participantId": "adam",
+      "sessionNumber": 11,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "b596e239-14e9-491a-9c99-5ba49fc36f11",
+      "participantId": "adam",
+      "sessionNumber": 12,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "41134f82-e434-4add-8604-5482d5292e48",
+      "participantId": "adam",
+      "sessionNumber": 13,
+      "status": "NOT_STARTED"
+    },
+    {
+      "id": "856a1492-0119-4b0b-b0cc-5d3a36e19613",
+      "participantId": "nate",
+      "sessionNumber": 1,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "87e65e44-262a-44c8-9481-b3acbe9a6846",
+      "participantId": "nate",
+      "sessionNumber": 2,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "e433d896-6971-47eb-9cba-15d674ec3687",
+      "participantId": "nate",
+      "sessionNumber": 3,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "155aa72a-65f6-4796-b96d-3f93059961a4",
+      "participantId": "nate",
+      "sessionNumber": 4,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "9cd92d7b-bb14-4a2e-a436-1fbf70d585d6",
+      "participantId": "nate",
+      "sessionNumber": 5,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "dd96ceee-fd4e-4d5b-8926-c48a54f33ef4",
+      "participantId": "nate",
+      "sessionNumber": 6,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "id": "f2065791-f9f8-4b44-acc3-a0609adc5336",
+      "participantId": "nate",
+      "sessionNumber": 7,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "1fff9f3e-f035-4982-8e54-821b150249ac",
+      "participantId": "nate",
+      "sessionNumber": 8,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "a1c441bc-1b50-47f4-9001-91058d572681",
+      "participantId": "nate",
+      "sessionNumber": 9,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "2a5c15bb-ce59-40d4-9fd0-32c7141e8bd0",
+      "participantId": "nate",
+      "sessionNumber": 10,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "43d56d00-6302-43a0-bc56-ac73b0830ea2",
+      "participantId": "nate",
+      "sessionNumber": 11,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "8a565fcb-f6a9-4585-a358-a9f54f1a37df",
+      "participantId": "nate",
+      "sessionNumber": 12,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "b53920dd-a89f-4b12-b6cd-31534eac98e4",
+      "participantId": "nate",
+      "sessionNumber": 13,
+      "status": "NOT_STARTED"
+    },
+    {
+      "id": "f94c35b0-ae04-4cf0-9088-9655ebfcdfd1",
+      "participantId": "newjoiner",
+      "sessionNumber": 1,
+      "status": "NOT_STARTED"
+    },
+    {
+      "id": "1c12c002-2178-464a-80f8-63a82525cffa",
+      "participantId": "kavon",
+      "sessionNumber": 1,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "85665c47-0e17-49e6-9223-11ebe9c98431",
+      "participantId": "kavon",
+      "sessionNumber": 2,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "8e60b104-24f8-427e-955a-a805e3b47509",
+      "participantId": "kavon",
+      "sessionNumber": 3,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "987ecba5-a2f7-455f-b002-cc76c7fb4e24",
+      "participantId": "kavon",
+      "sessionNumber": 4,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "f8609737-95cf-4f59-bf69-9f5c89f4d69a",
+      "participantId": "kavon",
+      "sessionNumber": 5,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "8614431c-c13c-482f-9745-7af9559cc924",
+      "participantId": "kavon",
+      "sessionNumber": 6,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "0dd017c8-45ea-47b5-b23a-9d3cf53727a9",
+      "participantId": "kavon",
+      "sessionNumber": 7,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "822875b2-e72e-444a-983d-1aa4fb2126f7",
+      "participantId": "kavon",
+      "sessionNumber": 8,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "cfa34666-4c61-4c04-a6d8-65274421ed79",
+      "participantId": "kavon",
+      "sessionNumber": 9,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "0033e031-83dc-4106-81af-bd927fb2ccf1",
+      "participantId": "kavon",
+      "sessionNumber": 10,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "1ce59411-d3cd-4209-b9bc-5a2c2d885611",
+      "participantId": "kavon",
+      "sessionNumber": 11,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "cd159dc4-fead-4663-8b55-471f55d241f4",
+      "participantId": "kavon",
+      "sessionNumber": 12,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "39f9927e-9303-4ffa-9904-e7d75f23094b",
+      "participantId": "kavon",
+      "sessionNumber": 13,
+      "status": "NOT_STARTED"
+    }
+  ],
+  "entries": [
+    {
+      "participantId": "hafsah",
+      "checkInId": "074fc030-2f28-48e1-9efa-c0f1e52377f4",
+      "type": "SUCCESS_DEFINITION",
+      "text": "[VERIFIABILITY:HIGH] Eleven paying companies, five new contributors."
+    },
+    {
+      "participantId": "hafsah",
+      "checkInId": "074fc030-2f28-48e1-9efa-c0f1e52377f4",
+      "type": "COMMITMENT",
+      "text": "[VERIFIABILITY:MEDIUM] I own pricing and the sales deck."
+    },
+    {
+      "participantId": "hafsah",
+      "checkInId": "074fc030-2f28-48e1-9efa-c0f1e52377f4",
+      "type": "INTENT",
+      "text": "[VERIFIABILITY:MEDIUM] Abubakar has engineering, Adam and Kavon and Nate are on sales."
+    },
+    {
+      "participantId": "abubakar",
+      "checkInId": "5443e56e-fe2c-4c7e-98a4-b3b2418cdb77",
+      "type": "SUCCESS_DEFINITION",
+      "text": "[VERIFIABILITY:MEDIUM] Staging is live as of this week. Kavon and Adam can both use it now."
+    },
+    {
+      "participantId": "adam",
+      "checkInId": "34a2186a-4adf-4b40-9113-4f4a106ae037",
+      "type": "INTENT",
+      "text": "[VERIFIABILITY:MEDIUM] I am going after three orgs: Northwind, Beacon Foods and Harto. All three are in conversation."
+    },
+    {
+      "participantId": "adam",
+      "checkInId": "34a2186a-4adf-4b40-9113-4f4a106ae037",
+      "type": "ASK",
+      "text": "[VERIFIABILITY:MEDIUM] I need the sales deck from Hafsah before I can do a proper pitch to any of them."
+    },
+    {
+      "participantId": "kavon",
+      "checkInId": "1c12c002-2178-464a-80f8-63a82525cffa",
+      "type": "COMMITMENT",
+      "text": "[VERIFIABILITY:HIGH] I closed Loop this week. They are paying, signed and onboarded."
+    },
+    {
+      "participantId": "kavon",
+      "checkInId": "1c12c002-2178-464a-80f8-63a82525cffa",
+      "type": "COMMITMENT",
+      "text": "[VERIFIABILITY:MEDIUM] I spoke to their head of operations who made the call, it took three conversations."
+    },
+    {
+      "participantId": "nate",
+      "checkInId": "856a1492-0119-4b0b-b0cc-5d3a36e19613",
+      "type": "SUCCESS_DEFINITION",
+      "text": "[VERIFIABILITY:MEDIUM] I have six paying users as my target and three contributors to bring in."
+    },
+    {
+      "participantId": "nate",
+      "checkInId": "856a1492-0119-4b0b-b0cc-5d3a36e19613",
+      "type": "ASK",
+      "text": "[VERIFIABILITY:MEDIUM] I have asked Hafsah for it [the paying-user pricing]. [INFERRED: from 'I cannot close anyone until the paying-user pricing is confirmed. I have asked Hafsah for it.']"
+    },
+    {
+      "participantId": "nate",
+      "checkInId": "856a1492-0119-4b0b-b0cc-5d3a36e19613",
+      "type": "COMMITMENT",
+      "text": "[VERIFIABILITY:MEDIUM] I am working the contributor side, Nishita, Ceren and Jessie are all in conversation."
+    },
+    {
+      "participantId": "hafsah",
+      "checkInId": "047f39db-04a1-466b-8f72-261f7cdbbedb",
+      "type": "COMMITMENT",
+      "text": "[VERIFIABILITY:MEDIUM] Two paying companies now, Flexi and Loop."
+    },
+    {
+      "participantId": "hafsah",
+      "checkInId": "047f39db-04a1-466b-8f72-261f7cdbbedb",
+      "type": "COMMITMENT",
+      "text": "[VERIFIABILITY:HIGH] The sales deck is still on my list."
+    },
+    {
+      "participantId": "abubakar",
+      "checkInId": "6e6b2c6e-935b-4206-8a4e-6bec55daaeb4",
+      "type": "COMMITMENT",
+      "text": "[VERIFIABILITY:MEDIUM] fixed two regressions that would have hit demos."
+    },
+    {
+      "participantId": "abubakar",
+      "checkInId": "6e6b2c6e-935b-4206-8a4e-6bec55daaeb4",
+      "type": "SUCCESS_DEFINITION",
+      "text": "[VERIFIABILITY:MEDIUM] Adam and Kavon are both demoing against it now, so it is doing its job."
+    },
+    {
+      "participantId": "adam",
+      "checkInId": "69d0c58f-a76f-4c95-8a44-2bb9f8fe8599",
+      "type": "WORRY",
+      "text": "[VERIFIABILITY:LOW] Beacon Foods is slower, Harto has gone quiet."
+    },
+    {
+      "participantId": "adam",
+      "checkInId": "69d0c58f-a76f-4c95-8a44-2bb9f8fe8599",
+      "type": "COMMITMENT",
+      "text": "[VERIFIABILITY:HIGH] I also brought Daisy in as a contributor, she is onboarding now."
+    },
+    {
+      "participantId": "adam",
+      "checkInId": "69d0c58f-a76f-4c95-8a44-2bb9f8fe8599",
+      "type": "WORRY",
+      "text": "[VERIFIABILITY:MEDIUM] Still waiting on the sales deck from Hafsah, that is the one thing holding the pitches back."
+    },
+    {
+      "participantId": "kavon",
+      "checkInId": "85665c47-0e17-49e6-9223-11ebe9c98431",
+      "type": "TENSION",
+      "text": "[VERIFIABILITY:HIGH] I closed Loop this week. They are paying, signed and onboarded. [INFERRED: Stated in the previous session, but contradicted in this one]"
+    },
+    {
+      "participantId": "nate",
+      "checkInId": "87e65e44-262a-44c8-9481-b3acbe9a6846",
+      "type": "TENSION",
+      "text": "[VERIFIABILITY:MEDIUM] Still blocked on pricing."
+    },
+    {
+      "participantId": "nate",
+      "checkInId": "87e65e44-262a-44c8-9481-b3acbe9a6846",
+      "type": "WORRY",
+      "text": "[VERIFIABILITY:MEDIUM] I have two buyers ready to talk numbers, Ridgeway and Alto, and I cannot give them a number."
+    },
+    {
+      "participantId": "nate",
+      "checkInId": "87e65e44-262a-44c8-9481-b3acbe9a6846",
+      "type": "ASK",
+      "text": "[VERIFIABILITY:MEDIUM] I asked Hafsah again this week [INFERRED: for the pricing information]."
+    },
+    {
+      "participantId": "nate",
+      "checkInId": "87e65e44-262a-44c8-9481-b3acbe9a6846",
+      "type": "COMMITMENT",
+      "text": "[VERIFIABILITY:MEDIUM] Nishita has agreed in principle."
+    },
+    {
+      "participantId": "hafsah",
+      "checkInId": "8b579ab5-fde0-42ec-a8f2-6df41ead5da7",
+      "type": "WORRY",
+      "text": "[VERIFIABILITY:MEDIUM] I have noticed Kavon has gone a bit quiet."
+    },
+    {
+      "participantId": "hafsah",
+      "checkInId": "8b579ab5-fde0-42ec-a8f2-6df41ead5da7",
+      "type": "TENSION",
+      "text": "[VERIFIABILITY:LOW] Three in pipeline conversations now [INFERRED: Person was unwilling to name the companies when asked.]"
+    },
+    {
+      "participantId": "abubakar",
+      "checkInId": "69820c28-340b-41f0-9463-f980af4700ee",
+      "type": "COMMITMENT",
+      "text": "[VERIFIABILITY:MEDIUM] Shipped the onboarding flow this session"
+    },
+    {
+      "participantId": "adam",
+      "checkInId": "0cecafbc-ba22-4fc6-bdfc-4e6055f2b372",
+      "type": "COMMITMENT",
+      "text": "[VERIFIABILITY:MEDIUM] Northwind pilot is agreed in principle, they are just doing internal sign-off."
+    },
+    {
+      "participantId": "adam",
+      "checkInId": "0cecafbc-ba22-4fc6-bdfc-4e6055f2b372",
+      "type": "TENSION",
+      "text": "[VERIFIABILITY:HIGH] Sales deck still outstanding from Hafsah."
+    },
+    {
+      "participantId": "nate",
+      "checkInId": "e433d896-6971-47eb-9cba-15d674ec3687",
+      "type": "COMMITMENT",
+      "text": "[VERIFIABILITY:MEDIUM] Ceren has agreed to contribute, so that is two of three."
+    },
+    {
+      "participantId": "hafsah",
+      "checkInId": "3145310a-deab-4f88-ae8b-e335e3f77bdb",
+      "type": "COMMITMENT",
+      "text": "[VERIFIABILITY:HIGH] Abubakar shipped staging which helped everyone."
+    },
+    {
+      "participantId": "hafsah",
+      "checkInId": "3145310a-deab-4f88-ae8b-e335e3f77bdb",
+      "type": "COMMITMENT",
+      "text": "[VERIFIABILITY:MEDIUM] Pricing, I am close. Probably next week."
+    },
+    {
+      "participantId": "hafsah",
+      "checkInId": "3145310a-deab-4f88-ae8b-e335e3f77bdb",
+      "type": "WORRY",
+      "text": "[VERIFIABILITY:LOW] I still need to have that conversation with Kavon. It keeps slipping down my list."
+    },
+    {
+      "participantId": "abubakar",
+      "checkInId": "a5e36f49-4a79-4a1a-99d4-f10d941b4de6",
+      "type": "COMMITMENT",
+      "text": "[VERIFIABILITY:HIGH] I shipped the reporting view Adam needed for his pitches."
+    },
+    {
+      "participantId": "adam",
+      "checkInId": "6999e622-3e6c-4e72-bb5c-b81e7d727145",
+      "type": "COMMITMENT",
+      "text": "[VERIFIABILITY:MEDIUM] Northwind signed the pilot. That is one paying org from me."
+    },
+    {
+      "participantId": "adam",
+      "checkInId": "6999e622-3e6c-4e72-bb5c-b81e7d727145",
+      "type": "TENSION",
+      "text": "[VERIFIABILITY:MEDIUM] Beacon Foods finance lead asked for pricing, which I do not have yet."
+    },
+    {
+      "participantId": "adam",
+      "checkInId": "6999e622-3e6c-4e72-bb5c-b81e7d727145",
+      "type": "COMMITMENT",
+      "text": "[VERIFIABILITY:MEDIUM] I built a rough deck myself in the end rather than keep waiting."
+    },
+    {
+      "participantId": "kavon",
+      "checkInId": "987ecba5-a2f7-455f-b002-cc76c7fb4e24",
+      "type": "COMMITMENT",
+      "text": "[VERIFIABILITY:HIGH] I closed Loop this week. They are paying, signed and onboarded."
+    },
+    {
+      "participantId": "hafsah",
+      "checkInId": "911ba910-5c1e-4b6a-a929-1d70f589dfce",
+      "type": "ASK",
+      "text": "[VERIFIABILITY:MEDIUM] I want one more data point"
+    },
+    {
+      "participantId": "hafsah",
+      "checkInId": "911ba910-5c1e-4b6a-a929-1d70f589dfce",
+      "type": "COMMITMENT",
+      "text": "[VERIFIABILITY:MEDIUM] then I will decide [INFERRED: on pricing]"
+    },
+    {
+      "participantId": "adam",
+      "checkInId": "9e31ce4a-2d43-4ab2-8c82-cebf6e2c5f07",
+      "type": "TENSION",
+      "text": "[VERIFIABILITY:MEDIUM] Beacon Foods is waiting on pricing."
+    },
+    {
+      "participantId": "adam",
+      "checkInId": "9e31ce4a-2d43-4ab2-8c82-cebf6e2c5f07",
+      "type": "COMMITMENT",
+      "text": "[VERIFIABILITY:MEDIUM] I replaced Harto with a new lead, Copperline, who came through Daisy."
+    },
+    {
+      "participantId": "nate",
+      "checkInId": "9cd92d7b-bb14-4a2e-a436-1fbf70d585d6",
+      "type": "SUCCESS_DEFINITION",
+      "text": "[VERIFIABILITY:HIGH] All three contributors are in: Nishita, Ceren, Jessie."
+    },
+    {
+      "participantId": "hafsah",
+      "checkInId": "bb6d0a64-d4db-4079-afa5-2c6623b4cfcc",
+      "type": "COMMITMENT",
+      "text": "[VERIFIABILITY:MEDIUM] I have not spoken to Kavon yet. It is on my list."
+    },
+    {
+      "participantId": "adam",
+      "checkInId": "40e3f005-4c78-4e66-8cfe-d92868353f89",
+      "type": "SUCCESS_DEFINITION",
+      "text": "[VERIFIABILITY:HIGH] eleven paying companies"
+    },
+    {
+      "participantId": "hafsah",
+      "checkInId": "8c2769c9-92bb-4d78-a20b-e90762c8b5dd",
+      "type": "SUCCESS_DEFINITION",
+      "text": "[VERIFIABILITY:LOW] Pricing is DECIDED. Two hundred a month for the standard tier. [INFERRED: Pricing decision is presented as final, but not yet confirmed in writing.]"
+    },
+    {
+      "participantId": "hafsah",
+      "checkInId": "8c2769c9-92bb-4d78-a20b-e90762c8b5dd",
+      "type": "COMMITMENT",
+      "text": "[VERIFIABILITY:HIGH] I sent Adam the sales deck as well"
+    },
+    {
+      "participantId": "abubakar",
+      "checkInId": "e6b896f1-de3e-4605-b10e-5d7b1b5a75eb",
+      "type": "COMMITMENT",
+      "text": "[VERIFIABILITY:MEDIUM] Shipped the pricing tiers into the product the same week Hafsah decided them."
+    },
+    {
+      "participantId": "adam",
+      "checkInId": "f16c3b8c-8299-4914-9574-7acee809710d",
+      "type": "COMMITMENT",
+      "text": "[VERIFIABILITY:MEDIUM] I went straight back to Beacon Foods with a number [INFERRED: as soon as pricing was available]"
+    },
+    {
+      "participantId": "adam",
+      "checkInId": "f16c3b8c-8299-4914-9574-7acee809710d",
+      "type": "COMMITMENT",
+      "text": "[VERIFIABILITY:HIGH] Got the sales deck from Hafsah"
+    },
+    {
+      "participantId": "kavon",
+      "checkInId": "0dd017c8-45ea-47b5-b23a-9d3cf53727a9",
+      "type": "WORRY",
+      "text": "[VERIFIABILITY:MEDIUM] I have not closed anything since Loop, if I am honest."
+    },
+    {
+      "participantId": "nate",
+      "checkInId": "f2065791-f9f8-4b44-acc3-a0609adc5336",
+      "type": "COMMITMENT",
+      "text": "[VERIFIABILITY:MEDIUM] I sent proposals to all four queued buyers the same day."
+    },
+    {
+      "participantId": "hafsah",
+      "checkInId": "3a90edb2-10cc-45b2-94b1-4cdd2ddb44e9",
+      "type": "COMMITMENT",
+      "text": "[VERIFIABILITY:MEDIUM] I did finally speak to Kavon. It was a hard conversation but a fair one."
+    },
+    {
+      "participantId": "adam",
+      "checkInId": "9ddc5b16-f9ba-4981-b23b-2d0cc98abbe1",
+      "type": "COMMITMENT",
+      "text": "[VERIFIABILITY:HIGH] Beacon Foods signed."
+    },
+    {
+      "participantId": "kavon",
+      "checkInId": "822875b2-e72e-444a-983d-1aa4fb2126f7",
+      "type": "COMMITMENT",
+      "text": "[VERIFIABILITY:MEDIUM] I am going to focus on two accounts instead of a long list."
+    },
+    {
+      "participantId": "kavon",
+      "checkInId": "822875b2-e72e-444a-983d-1aa4fb2126f7",
+      "type": "COMMITMENT",
+      "text": "[VERIFIABILITY:MEDIUM] The two are Meridian and Salt Yard."
+    },
+    {
+      "participantId": "nate",
+      "checkInId": "1fff9f3e-f035-4982-8e54-821b150249ac",
+      "type": "SUCCESS_DEFINITION",
+      "text": "[VERIFIABILITY:HIGH] Ridgeway signed."
+    },
+    {
+      "participantId": "nate",
+      "checkInId": "1fff9f3e-f035-4982-8e54-821b150249ac",
+      "type": "SUCCESS_DEFINITION",
+      "text": "[VERIFIABILITY:MEDIUM] Two more at proposal stage."
+    },
+    {
+      "participantId": "nate",
+      "checkInId": "1fff9f3e-f035-4982-8e54-821b150249ac",
+      "type": "SUCCESS_DEFINITION",
+      "text": "[VERIFIABILITY:MEDIUM] The queue I built while blocked is converting now."
+    },
+    {
+      "participantId": "hafsah",
+      "checkInId": "1b4748a4-1e25-4ba7-967d-1c0c15197b84",
+      "type": "SUCCESS_DEFINITION",
+      "text": "[VERIFIABILITY:MEDIUM] Five paying companies."
+    },
+    {
+      "participantId": "hafsah",
+      "checkInId": "1b4748a4-1e25-4ba7-967d-1c0c15197b84",
+      "type": "COMMITMENT",
+      "text": "[VERIFIABILITY:MEDIUM] Kavon and I agreed he would focus on two named accounts rather than a wide list."
+    },
+    {
+      "participantId": "adam",
+      "checkInId": "653f0125-6f0e-4610-a3b1-d0332b71cecf",
+      "type": "SUCCESS_DEFINITION",
+      "text": "[VERIFIABILITY:MEDIUM] Copperline signed."
+    },
+    {
+      "participantId": "adam",
+      "checkInId": "653f0125-6f0e-4610-a3b1-d0332b71cecf",
+      "type": "SUCCESS_DEFINITION",
+      "text": "[VERIFIABILITY:MEDIUM] Northwind expansion is agreed."
+    },
+    {
+      "participantId": "kavon",
+      "checkInId": "cfa34666-4c61-4c04-a6d8-65274421ed79",
+      "type": "TOLERANCE",
+      "text": "[VERIFIABILITY:MEDIUM] Salt Yard is slower but still live."
+    },
+    {
+      "participantId": "nate",
+      "checkInId": "a1c441bc-1b50-47f4-9001-91058d572681",
+      "type": "SUCCESS_DEFINITION",
+      "text": "[VERIFIABILITY:MEDIUM] Two more signed this session. That is three paying from me. [INFERRED: The person has not yet named the two new customers.]"
+    },
+    {
+      "participantId": "hafsah",
+      "checkInId": "04fd6aa9-3e43-4cdb-84b4-7f17a66e2ba6",
+      "type": "COMMITMENT",
+      "text": "[VERIFIABILITY:MEDIUM] Adam and Nate are both converting now."
+    },
+    {
+      "participantId": "abubakar",
+      "checkInId": "e4866682-ee88-4a77-b527-defef8c41664",
+      "type": "COMMITMENT",
+      "text": "[VERIFIABILITY:MEDIUM] Shipped the reliability work."
+    },
+    {
+      "participantId": "adam",
+      "checkInId": "2eb41021-ad19-41ef-9fe1-aeeec11ee6db",
+      "type": "COMMITMENT",
+      "text": "[VERIFIABILITY:MEDIUM] Three paying orgs from me now plus the Northwind expansion."
+    },
+    {
+      "participantId": "kavon",
+      "checkInId": "0033e031-83dc-4106-81af-bd927fb2ccf1",
+      "type": "WORRY",
+      "text": "[VERIFIABILITY:MEDIUM] Salt Yard has gone quiet again"
+    },
+    {
+      "participantId": "nate",
+      "checkInId": "2a5c15bb-ce59-40d4-9fd0-32c7141e8bd0",
+      "type": "SUCCESS_DEFINITION",
+      "text": "[VERIFIABILITY:MEDIUM] Four paying users now."
+    },
+    {
+      "participantId": "hafsah",
+      "checkInId": "632f39bc-1536-4497-abb4-f0ec5c16f231",
+      "type": "COMMITMENT",
+      "text": "[VERIFIABILITY:MEDIUM] Seven paying companies."
+    },
+    {
+      "participantId": "hafsah",
+      "checkInId": "632f39bc-1536-4497-abb4-f0ec5c16f231",
+      "type": "SUCCESS_DEFINITION",
+      "text": "[VERIFIABILITY:LOW] Eleven [paying companies] [INFERRED: implied by 'Short of eleven']"
+    },
+    {
+      "participantId": "hafsah",
+      "checkInId": "632f39bc-1536-4497-abb4-f0ec5c16f231",
+      "type": "INTENT",
+      "text": "[VERIFIABILITY:LOW] thinking about what we need in Q4."
+    },
+    {
+      "participantId": "adam",
+      "checkInId": "ecc1ac35-2a5d-4934-bb59-bdc01e9509a7",
+      "type": "INTENT",
+      "text": "[VERIFIABILITY:MEDIUM] Managing the three accounts and keeping them healthy rather than chasing new ones."
+    },
+    {
+      "participantId": "kavon",
+      "checkInId": "1ce59411-d3cd-4209-b9bc-5a2c2d885611",
+      "type": "SUCCESS_DEFINITION",
+      "text": "[VERIFIABILITY:MEDIUM] Meridian signed. That is my second paying customer."
+    },
+    {
+      "participantId": "kavon",
+      "checkInId": "1ce59411-d3cd-4209-b9bc-5a2c2d885611",
+      "type": "TENSION",
+      "text": "[VERIFIABILITY:MEDIUM] Salt Yard...they have budget next quarter."
+    },
+    {
+      "participantId": "nate",
+      "checkInId": "43d56d00-6302-43a0-bc56-ac73b0830ea2",
+      "type": "COMMITMENT",
+      "text": "[VERIFIABILITY:MEDIUM] Five paying users."
+    },
+    {
+      "participantId": "hafsah",
+      "checkInId": "c590b3ae-6d31-48ec-a184-af4a095deddc",
+      "type": "SUCCESS_DEFINITION",
+      "text": "[VERIFIABILITY:MEDIUM] We finished at eight paying companies against a target of eleven."
+    },
+    {
+      "participantId": "hafsah",
+      "checkInId": "c590b3ae-6d31-48ec-a184-af4a095deddc",
+      "type": "INTENT",
+      "text": "[VERIFIABILITY:LOW] What I would do differently is decide pricing in week one instead of week seven."
+    },
+    {
+      "participantId": "adam",
+      "checkInId": "b596e239-14e9-491a-9c99-5ba49fc36f11",
+      "type": "SUCCESS_DEFINITION",
+      "text": "[VERIFIABILITY:MEDIUM] My remit was three orgs"
+    },
+    {
+      "participantId": "adam",
+      "checkInId": "b596e239-14e9-491a-9c99-5ba49fc36f11",
+      "type": "COMMITMENT",
+      "text": "[VERIFIABILITY:MEDIUM] Finished the quarter with three paying orgs, one expansion, and one contributor brought in."
+    },
+    {
+      "participantId": "adam",
+      "checkInId": "b596e239-14e9-491a-9c99-5ba49fc36f11",
+      "type": "WORRY",
+      "text": "[VERIFIABILITY:MEDIUM] The one thing that cost time was waiting six sessions for the sales deck and the pricing."
+    },
+    {
+      "participantId": "kavon",
+      "checkInId": "cd159dc4-fead-4663-8b55-471f55d241f4",
+      "type": "SUCCESS_DEFINITION",
+      "text": "[VERIFIABILITY:MEDIUM] target of five"
+    },
+    {
+      "participantId": "kavon",
+      "checkInId": "cd159dc4-fead-4663-8b55-471f55d241f4",
+      "type": "SUCCESS_DEFINITION",
+      "text": "[VERIFIABILITY:HIGH] two paying, Loop and Meridian"
+    },
+    {
+      "participantId": "kavon",
+      "checkInId": "cd159dc4-fead-4663-8b55-471f55d241f4",
+      "type": "SUCCESS_DEFINITION",
+      "text": "[VERIFIABILITY:MEDIUM] Narrowing to two accounts is what turned it around."
+    },
+    {
+      "participantId": "nate",
+      "checkInId": "8a565fcb-f6a9-4585-a358-a9f54f1a37df",
+      "type": "SUCCESS_DEFINITION",
+      "text": "[VERIFIABILITY:MEDIUM] Finished on five paying against a target of six"
+    },
+    {
+      "participantId": "nate",
+      "checkInId": "8a565fcb-f6a9-4585-a358-a9f54f1a37df",
+      "type": "SUCCESS_DEFINITION",
+      "text": "[VERIFIABILITY:HIGH] all three contributors brought in"
+    }
+  ],
+  "mentions": [
+    {
+      "sourceParticipantId": "hafsah",
+      "aboutParticipantId": "abubakar",
+      "kind": "CREDIT",
+      "sessionNumber": 1
+    },
+    {
+      "sourceParticipantId": "hafsah",
+      "aboutParticipantId": "adam",
+      "kind": "CREDIT",
+      "sessionNumber": 1
+    },
+    {
+      "sourceParticipantId": "hafsah",
+      "aboutParticipantId": "kavon",
+      "kind": "CREDIT",
+      "sessionNumber": 1
+    },
+    {
+      "sourceParticipantId": "hafsah",
+      "aboutParticipantId": "nate",
+      "kind": "CREDIT",
+      "sessionNumber": 1
+    },
+    {
+      "sourceParticipantId": "abubakar",
+      "aboutParticipantId": "kavon",
+      "kind": "CREDIT",
+      "sessionNumber": 1
+    },
+    {
+      "sourceParticipantId": "abubakar",
+      "aboutParticipantId": "adam",
+      "kind": "CREDIT",
+      "sessionNumber": 1
+    },
+    {
+      "sourceParticipantId": "adam",
+      "aboutParticipantId": "hafsah",
+      "kind": "BLOCKED_BY",
+      "sessionNumber": 1
+    },
+    {
+      "sourceParticipantId": "nate",
+      "aboutParticipantId": "hafsah",
+      "kind": "BLOCKED_BY",
+      "sessionNumber": 1
+    },
+    {
+      "sourceParticipantId": "hafsah",
+      "aboutParticipantId": "nate",
+      "kind": "BLOCKED_BY",
+      "sessionNumber": 2
+    },
+    {
+      "sourceParticipantId": "hafsah",
+      "aboutParticipantId": "adam",
+      "kind": "BLOCKED_BY",
+      "sessionNumber": 2
+    },
+    {
+      "sourceParticipantId": "abubakar",
+      "aboutParticipantId": "adam",
+      "kind": "CREDIT",
+      "sessionNumber": 2
+    },
+    {
+      "sourceParticipantId": "abubakar",
+      "aboutParticipantId": "kavon",
+      "kind": "CREDIT",
+      "sessionNumber": 2
+    },
+    {
+      "sourceParticipantId": "adam",
+      "aboutParticipantId": "hafsah",
+      "kind": "BLOCKED_BY",
+      "sessionNumber": 2
+    },
+    {
+      "sourceParticipantId": "nate",
+      "aboutParticipantId": "hafsah",
+      "kind": "BLOCKED_BY",
+      "sessionNumber": 2
+    },
+    {
+      "sourceParticipantId": "adam",
+      "aboutParticipantId": "hafsah",
+      "kind": "BLOCKED_BY",
+      "sessionNumber": 3
+    },
+    {
+      "sourceParticipantId": "hafsah",
+      "aboutParticipantId": "abubakar",
+      "kind": "CREDIT",
+      "sessionNumber": 4
+    },
+    {
+      "sourceParticipantId": "hafsah",
+      "aboutParticipantId": "adam",
+      "kind": "CREDIT",
+      "sessionNumber": 4
+    },
+    {
+      "sourceParticipantId": "hafsah",
+      "aboutParticipantId": "kavon",
+      "kind": "BLOCKED_BY",
+      "sessionNumber": 4
+    },
+    {
+      "sourceParticipantId": "abubakar",
+      "aboutParticipantId": "adam",
+      "kind": "COVERAGE",
+      "sessionNumber": 4
+    },
+    {
+      "sourceParticipantId": "adam",
+      "aboutParticipantId": "hafsah",
+      "kind": "BLOCKED_BY",
+      "sessionNumber": 4
+    },
+    {
+      "sourceParticipantId": "nate",
+      "aboutParticipantId": "hafsah",
+      "kind": "BLOCKED_BY",
+      "sessionNumber": 4
+    },
+    {
+      "sourceParticipantId": "hafsah",
+      "aboutParticipantId": "adam",
+      "kind": "CREDIT",
+      "sessionNumber": 5
+    },
+    {
+      "sourceParticipantId": "hafsah",
+      "aboutParticipantId": "abubakar",
+      "kind": "CREDIT",
+      "sessionNumber": 5
+    },
+    {
+      "sourceParticipantId": "hafsah",
+      "aboutParticipantId": "nate",
+      "kind": "CREDIT",
+      "sessionNumber": 7
+    },
+    {
+      "sourceParticipantId": "hafsah",
+      "aboutParticipantId": "adam",
+      "kind": "CREDIT",
+      "sessionNumber": 7
+    },
+    {
+      "sourceParticipantId": "hafsah",
+      "aboutParticipantId": "kavon",
+      "kind": "BLOCKED_BY",
+      "sessionNumber": 7
+    },
+    {
+      "sourceParticipantId": "abubakar",
+      "aboutParticipantId": "hafsah",
+      "kind": "CREDIT",
+      "sessionNumber": 7
+    },
+    {
+      "sourceParticipantId": "abubakar",
+      "aboutParticipantId": "nate",
+      "kind": "CREDIT",
+      "sessionNumber": 7
+    },
+    {
+      "sourceParticipantId": "adam",
+      "aboutParticipantId": "hafsah",
+      "kind": "CREDIT",
+      "sessionNumber": 7
+    },
+    {
+      "sourceParticipantId": "hafsah",
+      "aboutParticipantId": "nate",
+      "kind": "CREDIT",
+      "sessionNumber": 8
+    },
+    {
+      "sourceParticipantId": "hafsah",
+      "aboutParticipantId": "kavon",
+      "kind": "CREDIT",
+      "sessionNumber": 9
+    },
+    {
+      "sourceParticipantId": "hafsah",
+      "aboutParticipantId": "adam",
+      "kind": "CREDIT",
+      "sessionNumber": 10
+    },
+    {
+      "sourceParticipantId": "hafsah",
+      "aboutParticipantId": "nate",
+      "kind": "CREDIT",
+      "sessionNumber": 10
+    },
+    {
+      "sourceParticipantId": "hafsah",
+      "aboutParticipantId": "kavon",
+      "kind": "CREDIT",
+      "sessionNumber": 10
+    },
+    {
+      "sourceParticipantId": "hafsah",
+      "aboutParticipantId": "abubakar",
+      "kind": "CREDIT",
+      "sessionNumber": 12
+    },
+    {
+      "sourceParticipantId": "adam",
+      "aboutParticipantId": "hafsah",
+      "kind": "BLOCKED_BY",
+      "sessionNumber": 12
+    }
+  ],
+  "deps": [
+    {
+      "fromParticipantId": "adam",
+      "onParticipantId": "hafsah",
+      "onLabel": null,
+      "what": "the sales deck",
+      "status": "CLEARED",
+      "createdAt": 0
+    },
+    {
+      "fromParticipantId": "nate",
+      "onParticipantId": "hafsah",
+      "onLabel": null,
+      "what": "paying-user pricing",
+      "status": "CLEARED",
+      "createdAt": 1
+    },
+    {
+      "fromParticipantId": "nate",
+      "onParticipantId": null,
+      "onLabel": "the pricing decision",
+      "what": "Pricing",
+      "status": "CLEARED",
+      "createdAt": 2
+    },
+    {
+      "fromParticipantId": "adam",
+      "onParticipantId": null,
+      "onLabel": "the pricing decision",
+      "what": "pricing",
+      "status": "CLEARED",
+      "createdAt": 3
+    },
+    {
+      "fromParticipantId": "kavon",
+      "onParticipantId": null,
+      "onLabel": "the pricing decision",
+      "what": "pricing",
+      "status": "WAITING",
+      "createdAt": 4
+    },
+    {
+      "fromParticipantId": "hafsah",
+      "onParticipantId": null,
+      "onLabel": "the pricing decision",
+      "what": "the pricing decision",
+      "status": "CLEARED",
+      "createdAt": 5
+    },
+    {
+      "fromParticipantId": "nate",
+      "onParticipantId": null,
+      "onLabel": "procurement",
+      "what": "the last one",
+      "status": "WAITING",
+      "createdAt": 6
+    },
+    {
+      "fromParticipantId": "adam",
+      "onParticipantId": null,
+      "onLabel": "the sales deck and pricing",
+      "what": "the sales deck and the pricing",
+      "status": "CLEARED",
+      "createdAt": 7
+    }
+  ]
+}
