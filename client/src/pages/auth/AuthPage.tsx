@@ -28,7 +28,11 @@ export function AuthPage() {
     mutationFn: () => authApi.login(email.trim().toLowerCase(), password),
     onSuccess: (data) => {
       setAuth(data.user, data.accessToken)
-      navigate('/home')
+      // "/" renders the grounds list for a signed-in user (RootRoute in
+      // App.tsx). There is no /home route, so signing in used to land every
+      // single user on "There is nothing at this address" - the first thing
+      // they saw after giving us their password.
+      navigate('/')
     },
     onError: (err: any) => {
       const msg = err?.response?.data?.message
