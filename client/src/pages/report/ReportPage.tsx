@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -210,12 +210,35 @@ export function ReportPage() {
     enabled: !!id,
   })
 
+  /**
+   * A report that is out of date says so.
+   *
+   * Synthesis runs after a check-in finishes, so for a minute or two the page
+   * shows the PREVIOUS report with no sign of it. Someone who has just spent
+   * twenty minutes correcting their account opens this, sees the old version,
+   * and reasonably concludes the correction was thrown away. Showing that it is
+   * still updating - and refreshing until it is - costs nothing and prevents
+   * exactly that.
+   */
+  const [reportIsStale, setReportIsStale] = useState(false)
+
   const { data: report, isLoading: rl } = useQuery({
     queryKey: ['report', id],
     queryFn: () => reportsApi.get(id!),
     enabled: !!id,
     retry: false,
+    refetchInterval: reportIsStale ? 5000 : false,
   })
+
+  // Someone finished a check-in after this report was written, so what is on
+  // screen predates their account.
+  useEffect(() => {
+    const generatedAt = (report as any)?.createdAt ? new Date((report as any).createdAt).getTime() : 0
+    const newest = (ground?.checkIns ?? [])
+      .map((c) => (c.completedAt ? new Date(c.completedAt).getTime() : 0))
+      .reduce((m, t) => Math.max(m, t), 0)
+    setReportIsStale(!!generatedAt && newest > generatedAt)
+  }, [report, ground])
 
   // Self-correction: revisit a completed session to correct or add to it. The backend
   // (startSelfCorrectionSession) opens a fresh session in correction mode; the corrected
@@ -263,6 +286,12 @@ export function ReportPage() {
   }
 
   const isForming = !report.releasedAt
+
+  const staleBanner = reportIsStale ? (
+    <div role="status" aria-live="polite" style={{ fontSize: 12.5, color: '#5A4A1A', background: '#FDF3E3', border: '1px solid #F5D9A0', borderRadius: 8, padding: '9px 12px', marginBottom: 14, lineHeight: 1.5 }}>
+      Someone has checked in since this was written, so it is being updated now. What you are reading is the previous version. It will refresh on its own.
+    </div>
+  ) : null
   const progress = (report as any).sessionProgress as
     | { sessionNumber: number; total: number; completed: number; requestingUserIsMissing: boolean }
     | null
@@ -315,6 +344,7 @@ export function ReportPage() {
 
   return (
     <div style={PAGE_STYLE}>
+      {staleBanner && <div style={{ maxWidth: 1040, margin: '0 auto', padding: '14px 20px 0' }}>{staleBanner}</div>}
 
       {/* HEADER */}
       <header style={{ background: '#0A1628', color: '#fff', padding: '40px 0 34px' }}>
