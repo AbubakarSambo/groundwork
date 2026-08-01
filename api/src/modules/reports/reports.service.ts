@@ -10,6 +10,7 @@ import { EmailService } from '../email/email.service';
 import { UsageService } from '../usage/usage.service';
 import { GroundsService } from '../grounds';
 import { LEADERSHIP_PATTERNS, buildLeadershipPatternBlock } from '../board/coverage';
+import { findDeferrals, findWaitingBehind, buildDeferralNotice } from './deferrals';
 import { GroundStatus, PartyType, CheckInStatus, GroundScenario, UsageEventType, ReportActivationStatus, PatternStatus } from '@prisma/client';
 import { NEW_STARTING_REPORT_SCHEMA, RECOGNITION_REPORT_SCHEMA, DRIFT_REPORT_SCHEMA } from '../conversation/prompt-library';
 import { BAD_FAITH_CODES, POSITIVE_CODES, ALIGNMENT_FEED_ONLY_CODES, isPositiveCode } from '../patterns/pattern-library';
@@ -582,9 +583,32 @@ Close the report by framing - neutrally, without recommending one - the choice n
           .join('\n')}\n\n`
       : '';
 
+    // WHAT THE MODEL CANNOT BE ASKED TO SPOT FOR ITSELF.
+    //
+    // The leadership patterns only exist in the shape of the record over many
+    // sessions. Asking a model to notice that the same intention was restated in
+    // sessions 4, 6 and 8 across twenty pages found nothing in a live run where
+    // the pattern was textbook. Counting is cheap and exact here, so it happens
+    // here, and the model is handed the count rather than sent hunting for it.
+    const workMentionsForLeadership = await this.prisma.workMention.findMany({
+      where: { groundId },
+      select: { sourceParticipantId: true, aboutParticipantId: true, kind: true, sessionNumber: true },
+    });
+    const deferralNotice = buildDeferralNotice(
+      findDeferrals(
+        records.map((r) => ({
+          label: labelById.get(r.participant.id) ?? 'a party',
+          sessionNumber: r.checkIn?.sessionNumber ?? null,
+          text: r.text,
+        })),
+      ),
+      findWaitingBehind(workMentionsForLeadership, (id) => labelById.get(id) ?? 'a party'),
+    );
+
     const corpus =
       groundContextHeader +
       roster +
+      deferralNotice +
       leadContextSection +
       thinNotice +
       header +

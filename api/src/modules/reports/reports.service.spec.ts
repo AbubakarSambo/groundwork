@@ -60,6 +60,7 @@ describe('ReportsService.synthesize - promptVersionId stamping (GW-41)', () => {
         ),
         findFirst: jest.fn(async () => null),
       },
+      workMention: { findMany: jest.fn(async () => []) },
       recordEntry: {
         findMany: jest.fn(async () => [{ participant: { id: 'p1' }, type: 'COMMITMENT', text: 'We aligned on X.' }]),
         count: jest.fn(async () => 3),

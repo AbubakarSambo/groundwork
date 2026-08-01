@@ -45,6 +45,7 @@ function makeConversationPrisma(patternRows: { code: string }[]) {
       findMany: jest.fn(async () => []),
       delete: jest.fn(async () => ({})),
     },
+    workMention: { findMany: jest.fn(async () => []) },
     recordEntry: {
       findMany: jest.fn(async () => []),
       count: jest.fn(async () => 0),
@@ -102,6 +103,7 @@ describe('GW-PATTERN-PROBE-NOT-STATEMENT: patterns sharpen questions live, never
         }),
         findFirst: jest.fn(async () => null),
       },
+      workMention: { findMany: jest.fn(async () => []) },
       recordEntry: {
         findMany: jest.fn(async (args: any) => {
           if (args.include?.participant) return [{ participant: { id: 'p1' }, checkIn: { sessionNumber: 1 }, text: 'We shipped the migration.', type: 'CHECK_IN' }];
