@@ -1155,6 +1155,10 @@ function LeadConfirmView({ ground, groundId, onConfirmed }: { ground: any; groun
   // Also-checking-in is the common case and the default; managing-only is a
   // deliberate opt-out from having your own account in the comparison.
   const [alsoCheckingIn, setAlsoCheckingIn] = useState(true)
+  // The lead's own remit. If the admin did not state it, this is the last point
+  // at which it can be captured - without it the lead is the only person the
+  // board cannot read.
+  const [myRemit, setMyRemit] = useState('')
 
   async function addParticipant() {
     if (!newEmail.includes('@')) return
@@ -1174,7 +1178,7 @@ function LeadConfirmView({ ground, groundId, onConfirmed }: { ground: any; groun
   async function confirmAndBegin() {
     setConfirming(true)
     try {
-      const res = await groundsApi.confirmLead(groundId, { brief: brief.trim() || undefined, managingOnly: !alsoCheckingIn })
+      const res = await groundsApi.confirmLead(groundId, { brief: brief.trim() || undefined, managingOnly: !alsoCheckingIn, remit: myRemit.trim() || undefined })
       onConfirmed(res.checkInId)
     } catch {
       toast.error('Could not confirm. Try again.')
@@ -1235,6 +1239,22 @@ function LeadConfirmView({ ground, groundId, onConfirmed }: { ground: any; groun
         )}
 
         <div style={{ marginBottom: 8, fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gw-sub)' }}>Your part in this</div>
+        {/* Only asked when the lead is giving their own account - a managing-only
+            lead has no contribution to read, so no remit is needed. */}
+        {alsoCheckingIn && (
+          <div style={{ marginBottom: 8 }}>
+            <input
+              type="text"
+              value={myRemit}
+              onChange={(e) => setMyRemit(e.target.value)}
+              placeholder="What are you responsible for on this ground?"
+              style={{ width: '100%', padding: '9px 12px', fontSize: 13, border: '1px solid var(--gw-border)', borderRadius: 8, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
+            />
+            <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 4, lineHeight: 1.5 }}>
+              Without this you are the one person the board cannot read against a role, and the questions you get will be generic.
+            </div>
+          </div>
+        )}
         <div style={{ border: '1px solid var(--gw-border)', borderRadius: 8, overflow: 'hidden', marginBottom: 8 }}>
           <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '11px 12px', borderBottom: '1px solid var(--gw-border)', cursor: 'pointer', background: alsoCheckingIn ? 'var(--gw-bg)' : 'transparent' }}>
             <input type="radio" checked={alsoCheckingIn} onChange={() => setAlsoCheckingIn(true)} style={{ marginTop: 3 }} />

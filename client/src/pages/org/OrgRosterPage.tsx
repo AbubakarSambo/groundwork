@@ -28,6 +28,7 @@ function NewTeamPanel({ onClose, onCreated }: { onClose: () => void; onCreated: 
   const [scenario, setScenario] = useState<GroundScenario>('COHORT_CHECK')
   const [cadence, setCadence] = useState<GroundCadence>('SEQUENTIAL')
   const [brief, setBrief] = useState('')
+  const [leadRemit, setLeadRemit] = useState('')
   const [participantsText, setParticipantsText] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
@@ -41,6 +42,7 @@ function NewTeamPanel({ onClose, onCreated }: { onClose: () => void; onCreated: 
       }).filter(p => p.email.includes('@'))
       await groundsApi.createForLead({
         leadEmail: leadEmail.trim(), leadName: leadName.trim() || undefined,
+        leadRemit: leadRemit.trim() || undefined,
         label: label.trim(), scenario, moment: 'STARTING', cadence,
         brief: brief.trim() || undefined,
         participants: participants.length ? participants : undefined,
@@ -63,6 +65,11 @@ function NewTeamPanel({ onClose, onCreated }: { onClose: () => void; onCreated: 
         <input type="text" placeholder="Lead's name (optional)" value={leadName} onChange={e => setLeadName(e.target.value)}
           style={{ padding: '9px 12px', fontSize: 13, border: '1px solid var(--gw-border)', borderRadius: 8, fontFamily: 'inherit', outline: 'none' }} />
       </div>
+      {/* Without a remit the lead is the only person the board cannot read - no
+          contribution read and no role-tuned questions. They can still set it
+          themselves when they confirm. */}
+      <input type="text" placeholder="What is the lead responsible for? (optional, they can set this themselves)" value={leadRemit} onChange={e => setLeadRemit(e.target.value)}
+        style={{ width: '100%', padding: '9px 12px', fontSize: 13, border: '1px solid var(--gw-border)', borderRadius: 8, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 8 }} />
       <input type="text" placeholder="Team / ground name (e.g. Q3 engineering alignment)" value={label} onChange={e => setLabel(e.target.value)}
         style={{ width: '100%', padding: '9px 12px', fontSize: 13, border: '1px solid var(--gw-border)', borderRadius: 8, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 8 }} />
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
