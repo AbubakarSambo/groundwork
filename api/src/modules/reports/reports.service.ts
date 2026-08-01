@@ -416,7 +416,16 @@ Close the report by framing - neutrally, without recommending one - the choice n
     const rosterLines = parties.map((p) => {
       const label = labelById.get(p.id) ?? 'a party';
       const entryCount = recordEntryCountByParty.get(p.id) ?? 0;
-      return `- ${label}: ${entryCount > 0 ? `contributed ${entryCount} record entr${entryCount === 1 ? 'y' : 'ies'} (shown below)` : 'checked in but has no record entries with text - do not describe their views, role, or affiliation beyond this exact label'}`;
+      // WHO LEADS WHOM. Without this the leadership-gap rules have nothing to
+      // match: they open with "where one party leads another", and a roster of
+      // anonymous labels never says that anyone does. In a live 12-session run
+      // with textbook abdication in the record, zero gaps were found for
+      // exactly this reason - the rule was correct and the input was silent.
+      const leadNote =
+        p.partyType === PartyType.INITIATOR
+          ? ' [leads this ground and the other parties on it]'
+          : '';
+      return `- ${label}${leadNote}: ${entryCount > 0 ? `contributed ${entryCount} record entr${entryCount === 1 ? 'y' : 'ies'} (shown below)` : 'checked in but has no record entries with text - do not describe their views, role, or affiliation beyond this exact label'}`;
     });
     const roster = `PARTY ROSTER (exhaustive - there are exactly ${parties.length} parties on this ground, no others exist):\n${rosterLines.join('\n')}\n\n`;
 
