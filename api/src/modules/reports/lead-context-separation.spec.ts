@@ -33,6 +33,7 @@ describe('lead-context write separation (GroundsService.addLeadContext)', () => 
     const leadCreate = jest.fn(async (a: any) => ({ id: 'ln1', ...a.data }));
     const prisma: any = {
       ground: { findUnique: jest.fn(async () => ({ initiatorId: 'init-1' })) },
+      user: { findUnique: jest.fn(async () => ({ role: 'MEMBER', organizationId: 'org1' })) },
       groundParticipant: { findFirst: jest.fn(async () => ({ id: 'p2', groundId: 'g1' })) },
       leadContextNote: { create: leadCreate },
       workMention: { findMany: jest.fn(async () => []) },
@@ -74,6 +75,7 @@ describe('lead-context corpus separation (ReportsService.synthesize)', () => {
         findUnique: jest.fn(async () => ({ id: 'g1', initiatorId: 'init-1', participants: [{ id: 'p1', partyType: 'INITIATOR', roleAsDescribed: 'founder' }] })),
         update: jest.fn(async () => ({})),
       },
+      user: { findUnique: jest.fn(async () => ({ role: 'MEMBER', organizationId: 'org1' })) },
       groundParticipant: {
         findMany: jest.fn(async (args: any) =>
           args?.select?.checkIns
@@ -146,6 +148,7 @@ describe('lead-context read-back gate (GroundsService.get)', () => {
     const leadFindMany = jest.fn(async () => [{ id: 'ln1', participantId: 'p2', text: 'private lead note about A', createdAt: new Date() }]);
     const prisma: any = {
       ground: { findFirst: jest.fn(async () => groundRow), findUnique: jest.fn(async () => groundRow) },
+      user: { findUnique: jest.fn(async () => ({ role: 'MEMBER', organizationId: 'org1' })) },
       groundParticipant: { findFirst: jest.fn(async () => ({ groundId: 'g1', userId: 'user-2' })), findMany: jest.fn(async () => []) },
       // get() now also computes sessionProgress via getSessionProgress(); it returns early
       // (no active participants) but still needs checkIn.aggregate not to throw.

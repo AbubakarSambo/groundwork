@@ -12,7 +12,7 @@ async function main() {
   const org = await prisma.organization.create({
     // No care fee, no subscription: the org's FIRST ground must come out free
     // via the FREE_TIER path, which is the case being tested.
-    data: { name: 'Coamana', slug: `coamana-${Date.now()}` },
+    data: { name: process.env.ORG_NAME ?? 'Coamana', slug: `org-${Date.now()}` },
   });
   const sahar = await prisma.user.create({
     data: {

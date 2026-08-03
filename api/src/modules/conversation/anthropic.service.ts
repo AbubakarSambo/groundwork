@@ -1,9 +1,29 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { GoogleGenAI } from '@google/genai';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+
+
+/**
+ * What the person in the check-in is allowed to be told when the engine fails.
+ *
+ * The provider's own error used to travel all the way to the browser. During a
+ * real outage a clinic manager opening their check-in link was shown a Google
+ * Cloud 403 naming our internal project and linking to a billing console - our
+ * infrastructure, in front of a customer, at the exact moment they were being
+ * asked to trust the product with an account of their work.
+ *
+ * The real error is logged in full, because we need it. What is returned says
+ * what happened, says it is not their fault, and says their answers are safe -
+ * which is the thing they will actually worry about.
+ */
+export function engineUnavailable(err: any): ServiceUnavailableException {
+  return new ServiceUnavailableException(
+    'The conversation could not be reached just now, so this session cannot continue this minute. Nothing you have already said has been lost. Please try again shortly, and if it keeps happening tell the person who set this ground up - it is a problem on our side, not anything you did.',
+  );
+}
 
 export interface ChatTurn {
   role: 'user' | 'assistant';
@@ -202,12 +222,12 @@ export class AnthropicService {
     } catch (err: any) {
       this.logger.error(`respond() Gemini call failed: ${err.message}`);
       this.noteFailure('respond', err);
-      throw err;
+      throw engineUnavailable(err);
     }
 
     const text = res.candidates?.[0]?.content?.parts?.map((p: any) => p.text ?? '').join('').trim() ?? '';
     if (!text) {
-      throw new Error('AI returned an empty response');
+      throw engineUnavailable(new Error('AI returned an empty response'));
     }
     return houseStyle(text);
   }
@@ -239,10 +259,10 @@ export class AnthropicService {
       res = await Promise.race([call, timeout]);
     } catch (err: any) {
       this.logger.error(`respondWithMedia() Gemini call failed: ${err.message}`);
-      throw err;
+      throw engineUnavailable(err);
     }
     const text = res.candidates?.[0]?.content?.parts?.map((p: any) => p.text ?? '').join('').trim() ?? '';
-    if (!text) throw new Error('AI returned an empty response');
+    if (!text) throw engineUnavailable(new Error('AI returned an empty response'));
     return houseStyle(text);
   }
 
@@ -272,7 +292,7 @@ export class AnthropicService {
     } catch (err: any) {
       this.logger.error(`extract() Gemini call failed: ${err.message}`);
       this.noteFailure('extract', err);
-      throw err;
+      throw engineUnavailable(err);
     }
 
     const fnCall = res.candidates?.[0]?.content?.parts?.find((p: any) => p.functionCall);

@@ -703,8 +703,27 @@ export class GroundsService {
       : [];
 
     const { patternDetections: _pd, ...rest } = ground as any;
+    // THE BROADCAST JOIN TOKEN IS THE INITIATOR'S TO GIVE OUT, NOBODY ELSE'S.
+    //
+    // It was returned to every party on the ground, and the ground page renders
+    // it with a Copy button, so any participant could hand out a link that lets
+    // an unauthenticated stranger check in as a party. On a probation or
+    // evaluation ground that is somebody's employment record, and the person who
+    // shared it need not even have realised what the link did.
+    //
+    // Org admins keep it because they created the ground and may be the ones
+    // distributing it; everyone else gets null.
+    const viewer = requestingUserId
+      ? await this.prisma.user.findUnique({ where: { id: requestingUserId }, select: { role: true, organizationId: true } })
+      : null;
+    const mayShareJoinLink =
+      isInitiatorViewer ||
+      // An admin of THIS organisation. Same role in a different org is a
+      // stranger here, and this is precisely the token not to hand a stranger.
+      (viewer?.role === 'ADMIN' && viewer.organizationId === (ground as any).organizationId);
     return {
       ...rest,
+      joinToken: mayShareJoinLink ? (rest as any).joinToken ?? null : null,
       participants: participantsWithCheckIns,
       confidence,
       daysLeft,

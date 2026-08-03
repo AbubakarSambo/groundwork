@@ -416,16 +416,24 @@ export function GroundAdminPage() {
                           ) : (
                             <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 1 }}>
                               {p.roleAsDescribed && <span style={{ fontSize: 11, color: 'var(--gw-sub)' }}>{p.roleAsDescribed}</span>}
-                              <button
-                                onClick={() => { setEditingRoleId(p.id); setEditingRoleValue(p.roleAsDescribed ?? '') }}
-                                title="Edit role"
-                                style={{ fontSize: 10, color: 'var(--gw-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', lineHeight: 1 }}
-                              >✎</button>
+                              {/* What someone is answerable for is the lead's to
+                                  set, or their own. Every party could edit every
+                                  other party's remit, on a ground that may be
+                                  deciding whether they keep their job. */}
+                              {(isInitiator || p.userId === user?.id) && (
+                                <button
+                                  onClick={() => { setEditingRoleId(p.id); setEditingRoleValue(p.roleAsDescribed ?? '') }}
+                                  title="Edit role"
+                                  style={{ fontSize: 10, color: 'var(--gw-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', lineHeight: 1 }}
+                                >✎</button>
+                              )}
                             </div>
                           )}
                           <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>{status.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c: string) => c.toUpperCase())}</div>
                         </div>
-                        {myCheckIn?.id && status !== 'COMPLETED' && p.userId && (
+                        {/* Chasing people is the lead's job. A peer nudging a peer
+                            on an evaluation ground is a different act entirely. */}
+                        {isInitiator && myCheckIn?.id && status !== 'COMPLETED' && p.userId && (
                           <button onClick={() => remind.mutate(myCheckIn.id)} style={{ fontSize: 11, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer' }}>Remind</button>
                         )}
                         {!p.userId && p.inviteDeliveryStatus === 'BOUNCED' ? (
@@ -601,10 +609,15 @@ export function GroundAdminPage() {
                     }
                     return null
                   })()}
-                  <button onClick={() => setAddingParticipant(true)} style={{ width: '100%', padding: '11px 16px', borderRadius: 8, background: 'none', color: 'var(--gw-navy)', fontSize: 13, fontWeight: 600, border: '1px dashed var(--gw-blue-b)', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                    <span style={{ fontSize: 16, fontWeight: 300 }}>+</span> Add a contributor
-                  </button>
-                  {!['RESOLVED', 'CLOSED', 'STALLED', 'AWAITING_LEAD'].includes(ground.status) && (
+                  {/* Running the ground is the lead's job. Every party was being
+                      shown these, so someone being evaluated on this ground could
+                      invite people to it or declare the closing round. */}
+                  {isInitiator && (
+                    <button onClick={() => setAddingParticipant(true)} style={{ width: '100%', padding: '11px 16px', borderRadius: 8, background: 'none', color: 'var(--gw-navy)', fontSize: 13, fontWeight: 600, border: '1px dashed var(--gw-blue-b)', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                      <span style={{ fontSize: 16, fontWeight: 300 }}>+</span> Add a contributor
+                    </button>
+                  )}
+                  {isInitiator && !['RESOLVED', 'CLOSED', 'STALLED', 'AWAITING_LEAD'].includes(ground.status) && (
                     confirmClosing ? (
                       <div style={{ border: '1px solid #E4C88A', background: '#FFF8EC', borderRadius: 8, padding: '12px 14px', marginTop: 8 }}>
                         <div style={{ fontSize: 13, fontWeight: 700, color: '#7A4B00', marginBottom: 4 }}>Begin the closing round?</div>
@@ -643,7 +656,10 @@ export function GroundAdminPage() {
               )}
             </div>
 
-            {ground.joinToken && (
+            {/* The server withholds the token from non-initiators; this is the
+                second lock, so a future change to either one alone cannot put a
+                shareable link to someone's record back on a participant's page. */}
+            {isInitiator && ground.joinToken && (
               <ShareSection joinToken={ground.joinToken} />
             )}
           </div>

@@ -28,6 +28,7 @@ describe('GroundsService - participant serialization (GW-01)', () => {
       },
       organization: { findUnique: jest.fn(async () => null) },
       checkIn: { aggregate: jest.fn(async () => ({ _max: { sessionNumber: null } })) },
+      user: { findUnique: jest.fn(async () => ({ role: 'MEMBER', organizationId: 'org1' })) },
       groundParticipant: { findMany: jest.fn(async () => []) },
     };
     const service = new GroundsService(prisma, {} as any, {} as any, {} as any, { emit: () => Promise.resolve() } as any, {} as any);
@@ -46,6 +47,7 @@ describe('GroundsService - participant serialization (GW-01)', () => {
       ground: { findFirst: jest.fn(async (args: any) => ({ id: 'g1', organizationId: args.where.organizationId, participants: [], checkIns: [] })) },
       organization: { findUnique: jest.fn(async () => null) },
       checkIn: { aggregate: jest.fn(async () => ({ _max: { sessionNumber: null } })) },
+      user: { findUnique: jest.fn(async () => ({ role: 'MEMBER', organizationId: 'org1' })) },
       groundParticipant: { findMany: jest.fn(async () => []) },
     };
     const service = new GroundsService(prisma, {} as any, {} as any, {} as any, { emit: () => Promise.resolve() } as any, {} as any);
@@ -118,6 +120,7 @@ describe('GroundsService.get - org boundary (GW-ORG-BOUNDARY)', () => {
         findFirst: jest.fn(async () => findFirstResult),
         findUnique: jest.fn(async () => findUniqueResult),
       },
+      user: { findUnique: jest.fn(async () => ({ role: 'MEMBER', organizationId: 'org1' })) },
       groundParticipant: {
         findFirst: jest.fn(async () => participantLink),
         findMany: jest.fn(async () => []),
