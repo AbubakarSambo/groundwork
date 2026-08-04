@@ -55,6 +55,27 @@ enum GroundScenario {
   ACUTE_SHOCK // a jarring event just happened; build the shared picture before any decision
 }
 
+//
+// PRIVATE (alignment) or SHARED (delivery). Chosen at creation, shown on every
+// surface, NEVER switchable.
+//
+// Why immutable: if a ground could flip from private to shared, a participant
+// who checked in believing their account was private would have it exposed.
+// That is the worst possible failure for a trust product. Enforced at the data
+// layer (updateTimeline and every other update path must reject a mode change)
+// and guarded by a test that bites.
+//
+// PRIVATE: accounts are never visible to other parties. Output is the alignment
+// report only. This is the product as it was before the board existed.
+// SHARED: extracted, attributed entries feed a board everyone on the ground can
+// read. Each person still ALSO has their own private report; the board is an
+// additional surface, not a replacement.
+//
+enum GroundMode {
+  PRIVATE
+  SHARED
+}
+
 // Three moments from the conversation design.
 enum GroundMoment {
   STARTING
@@ -333,6 +354,10 @@ model Ground {
   moment         GroundMoment
   status         GroundStatus   @default(OPEN)
   label          String
+  // Alignment (private) vs delivery (shared). Immutable after creation - see the
+  // GroundMode enum comment. Defaults to PRIVATE so any ground created by a path
+  // that does not set it explicitly is private, never accidentally shared.
+  mode           GroundMode     @default(PRIVATE)
 
   timelineDays  Int     @map("timeline_days")
   timelineWeeks Int?    @map("timeline_weeks")
@@ -388,6 +413,10 @@ model Ground {
   leadContextNotes         LeadContextNote[]
   disclaimerAcknowledgements DisclaimerAcknowledgement[]
   reportActivations          ReportActivation[]
+  objectives                 GroundObjective[]
+  dependencies               GroundDependency[]
+  meetings                   GroundMeeting[]
+  poll                       GroundPoll?
   participantRequests        ParticipantRequest[]
   contributorCodeRedemptions ContributorCodeRedemption[]
 
@@ -425,6 +454,22 @@ model GroundParticipant {
   soloArtifact         String?   @db.Text @map("solo_artifact") // single-party record summary after session 1 (B2)
   soloArtifactAt       DateTime? @map("solo_artifact_at")
   soloArtifactShared   Boolean   @default(false) @map("solo_artifact_shared") // whether participant chose to share their individual report
+  // Explicit "my account is accurate, I'm done" confirmation. Corrections
+  // (startSelfCorrectionSession) remain possible after this is set - it does
+  // not block them - but any correction session started afterward is stamped
+  // CheckIn.isPostSignOff so it surfaces as a flagged, visible update rather
+  // than silently reshaping a record the other party may have already seen.
+  signedOffAt          DateTime? @map("signed_off_at")
+  // Which function map reads this person fairly (SALES, PRODUCT, ENGINEERING, ...).
+  // Detection is CONTINUOUS, not a tag set once: the stated role is only a starting
+  // prior, and the engine revises this from what the person's work is actually made
+  // of over sessions. Someone titled "product manager" whose account is all
+  // coordination and clearing blockers reads as functionally PROJECT_MANAGEMENT.
+  // Confidence stays low until the pattern is consistent, and a low-confidence
+  // profile must not be coached from - see role-maps.ts.
+  detectedFunction     String?   @map("detected_function")
+  detectedFunctionConfidence Float? @map("detected_function_confidence")
+  detectedFunctionAt   DateTime? @map("detected_function_at")
   foundingIntent      String? @db.Text @map("founding_intent")
   roleIntent          String? @db.Text @map("role_intent")
   personalIntent      String? @db.Text @map("personal_intent")
@@ -449,6 +494,8 @@ model GroundParticipant {
   leadContextNotes  LeadContextNote[]
   resolutionConfirmations ResolutionConfirmation[]
   reportActivations       ReportActivation[]
+  dependenciesFrom        GroundDependency[] @relation("DependencyFrom")
+  dependenciesOn          GroundDependency[] @relation("DependencyOn")
 
   @@unique([groundId, email])
   @@index([groundId])
@@ -481,6 +528,11 @@ model CheckIn {
   clarificationTarget  String?  @map("clarification_target") // inference id from report.inferences being corrected
   isSelfCorrection     Boolean  @default(false) @map("is_self_correction") // true when session is correcting the participant's OWN prior session
   selfCorrectionTargetSession Int? @map("self_correction_target_session") // the session number being corrected
+  // True when this self-correction session was started AFTER the participant
+  // had already signed off (GroundParticipant.signedOffAt). Not a block - just
+  // a flag so the shared report can surface it as "updated after sign-off"
+  // instead of blending it in as if it had always been there.
+  isPostSignOff        Boolean  @default(false) @map("is_post_sign_off")
   // Closing-round marker: same conversation, flagged final - the person is
   // told to document thoroughly and the final report reads the whole arc.
   isFinal       Boolean       @default(false) @map("is_final")
@@ -527,6 +579,127 @@ model RecordEntry {
 
   @@index([participantId])
   @@map("record_entries")
+}
+
+// ---------------------------------------------------------------------------
+// Delivery board objects (SHARED-mode grounds only).
+//
+// The board is a delivery-shaped rendering of the delivery-relevant parts of
+// the report. These models hold the things the report itself does not: the
+// frame the lead set, the handoffs between people, the meeting record, and the
+// availability poll. Everything else the board shows is derived from data that
+// already exists (check-ins, record entries, the report, patterns).
+//
+// All of these are read-only on the board with one exception: the availability
+// poll, because availability is logistics and never touches an account.
+// ---------------------------------------------------------------------------
+
+// A target the lead set. The board shows progress against these.
+model GroundObjective {
+  id        String   @id @default(uuid())
+  groundId  String   @map("ground_id")
+  name      String
+  target    Int?     // null = a qualitative objective, tracked but not counted
+  // Snapshot of the count at the previous session, so the board can show the
+  // delta ("+2 this session") without recomputing history every read.
+  prevCount Int      @default(0) @map("prev_count")
+  count     Int      @default(0)
+  // A dimension the lead ADDED mid-phase. A new target means nothing until
+  // people have checked in against it, so the board flags it as new and shows
+  // who has been asked and who has not.
+  addedAtSession Int? @map("added_at_session")
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  ground Ground @relation(fields: [groundId], references: [id], onDelete: Cascade)
+
+  @@index([groundId])
+  @@map("ground_objectives")
+}
+
+enum DependencyStatus {
+  BLOCKING
+  WAITING
+  CLEARED
+}
+
+//
+// A handoff between two people, extracted from a check-in when someone names a
+// dependency. This is the board's real differentiator: the critical path is not
+// who is behind, it is what is blocked on whom.
+//
+// Extracted from the OWN account of the person who is waiting (fromParticipant).
+// Never created by one person asserting something about another's obligations
+// without it appearing in their own account of their own work.
+//
+model GroundDependency {
+  id                String           @id @default(uuid())
+  groundId          String           @map("ground_id")
+  fromParticipantId String           @map("from_participant_id")
+  onParticipantId   String?          @map("on_participant_id") // null = waiting on someone/something outside the ground
+  onLabel           String?          @map("on_label") // free text when the blocker is not a participant
+  what              String           @db.Text // "the sales deck", "paying-user pricing"
+  // What happens once this clears. The board shows this so a handoff reads as a
+  // consequence, not just a status.
+  then              String?          @db.Text
+  status            DependencyStatus @default(WAITING)
+  sourceCheckInId   String?          @map("source_check_in_id")
+  clearedAt         DateTime?        @map("cleared_at")
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
+
+  ground          Ground            @relation(fields: [groundId], references: [id], onDelete: Cascade)
+  fromParticipant GroundParticipant @relation("DependencyFrom", fields: [fromParticipantId], references: [id], onDelete: Cascade)
+  onParticipant   GroundParticipant? @relation("DependencyOn", fields: [onParticipantId], references: [id], onDelete: SetNull)
+
+  @@index([groundId])
+  @@map("ground_dependencies")
+}
+
+// A meeting that happened. Notes come in through a check-in by reference, never typed on the board.
+model GroundMeeting {
+  id         String   @id @default(uuid())
+  groundId   String   @map("ground_id")
+  happenedAt DateTime @map("happened_at")
+  presentIds String[] @default([]) @map("present_ids") // GroundParticipant ids
+  notes      String   @db.Text
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  ground Ground @relation(fields: [groundId], references: [id], onDelete: Cascade)
+
+  @@index([groundId])
+  @@map("ground_meetings")
+}
+
+//
+// Availability poll. THE ONLY thing anyone adds on the board, because
+// availability is logistics and never touches an account.
+//
+model GroundPoll {
+  id        String   @id @default(uuid())
+  groundId  String   @unique @map("ground_id")
+  question  String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  ground  Ground             @relation(fields: [groundId], references: [id], onDelete: Cascade)
+  options GroundPollOption[]
+
+  @@map("ground_polls")
+}
+
+model GroundPollOption {
+  id      String   @id @default(uuid())
+  pollId  String   @map("poll_id")
+  label   String
+  // GroundParticipant ids who marked themselves available for this option.
+  whoIds  String[] @default([]) @map("who_ids")
+  sortOrder Int    @default(0) @map("sort_order")
+
+  poll GroundPoll @relation(fields: [pollId], references: [id], onDelete: Cascade)
+
+  @@index([pollId])
+  @@map("ground_poll_options")
 }
 
 // ---------------------------------------------------------------------------

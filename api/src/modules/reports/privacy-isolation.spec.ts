@@ -58,6 +58,7 @@ function makeService(groundRow: any, activationStatus: 'ACTIVATED' | 'PENDING' |
     ground: { findUnique: jest.fn(async () => groundRow), findFirst: jest.fn(async () => groundRow) },
     report: { update: jest.fn(async () => ({ releasedAt: new Date() })) },
     reportActivation: { findUnique: jest.fn(async () => activation), findMany: jest.fn(async () => []) },
+    checkIn: { findMany: jest.fn(async () => []) },
   };
   const email: any = { sendReportReady: jest.fn(async () => undefined) };
   const config: any = { get: () => 'http://localhost:5173' };
@@ -216,6 +217,7 @@ describe('GW-PRI-06: post-report guide and solo artifact are scoped to each part
     const prisma: any = {
       ground: { findUnique: jest.fn(async () => ground) },
       reportActivation: { findUnique: jest.fn(async () => activated) },
+      checkIn: { findMany: jest.fn(async () => []) },
     };
     const config: any = { get: () => 'http://localhost:5173' };
     const service = new ReportsService(prisma, {} as any, {} as any, {} as any, config, { emit: () => Promise.resolve() } as any, {} as any);
@@ -246,6 +248,7 @@ describe('GW-PRI-06: post-report guide and solo artifact are scoped to each part
     const prisma: any = {
       ground: { findUnique: jest.fn(async () => ground) },
       reportActivation: { findUnique: jest.fn(async () => activated) },
+      checkIn: { findMany: jest.fn(async () => []) },
     };
     const config: any = { get: () => 'http://localhost:5173' };
     const service = new ReportsService(prisma, {} as any, {} as any, {} as any, config, { emit: () => Promise.resolve() } as any, {} as any);

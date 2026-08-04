@@ -1034,6 +1034,28 @@ Close the report by framing - neutrally, without recommending one - the choice n
         }));
       if (advisories.length) base.arcAdvisories = advisories;
     }
+
+    // Visible Updates trail: any self-correction session (startSelfCorrectionSession)
+    // shows up here as a flagged, dated entry instead of being silently blended
+    // into the report. Deliberately carries no correction TEXT - only who,
+    // when, and whether it landed after that participant had already signed
+    // off - so the other party can see something changed without either
+    // side's private reasoning leaking to the other.
+    const updateCheckIns = await this.prisma.checkIn.findMany({
+      where: { groundId, isSelfCorrection: true, status: CheckInStatus.COMPLETED },
+      select: { participantId: true, sessionNumber: true, completedAt: true, isPostSignOff: true },
+      orderBy: { completedAt: 'asc' },
+    });
+    if (updateCheckIns.length) {
+      base.updates = updateCheckIns.map((c) => ({
+        participantId: c.participantId,
+        email: ground.participants.find((p) => p.id === c.participantId)?.email ?? null,
+        sessionNumber: c.sessionNumber,
+        completedAt: c.completedAt,
+        isPostSignOff: c.isPostSignOff,
+      }));
+    }
+
     return base;
   }
 

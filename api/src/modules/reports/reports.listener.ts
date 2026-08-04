@@ -6,7 +6,7 @@ import { GroundsService } from '../grounds';
 import { ReportsService } from './reports.service';
 import { EmailService } from '../email/email.service';
 import { GroundworkEvents, CheckInCompletedEvent, GroundActivatedEvent } from '../../common';
-import { GroundStatus, PartyType } from '@prisma/client';
+import { GroundStatus, PartyType, ReportActivationStatus } from '@prisma/client';
 
 /**
  * Bridges domain events to report generation. Lives in the reports module so
@@ -35,6 +35,13 @@ export class ReportsListener {
     // Notify the admin when any participant checks in (best-effort, never blocks report flow)
     this.notifyAdminOnCheckIn(event).catch((err: any) =>
       this.logger.warn(`Admin check-in notification failed for ground ${event.groundId}: ${err.message}`),
+    );
+
+    // Notify the other party if this was a self-correction session started
+    // after sign-off, landing after they had already activated the shared
+    // report (best-effort, never blocks report flow).
+    this.notifyOnLateCorrection(event).catch((err: any) =>
+      this.logger.warn(`Late-correction notification failed for ground ${event.groundId}: ${err.message}`),
     );
 
     try {
@@ -120,5 +127,53 @@ export class ReportsListener {
     const frontendUrl = this.config.get<string>('resend.frontendUrl') || 'http://localhost:5173';
     const groundUrl = `${frontendUrl}/grounds/${event.groundId}`;
     await this.email.sendParticipantCheckedIn(ground.initiator.email, participantEmail, ground.label, groundUrl);
+  }
+
+  /**
+   * Honest Corrections: if the completed check-in is a self-correction session
+   * that was stamped isPostSignOff (started after the correcting participant
+   * had already signed off - see GroundsService.signOff /
+   * ConversationService.startSelfCorrectionSession), and the OTHER party has
+   * already activated the shared report, that party may have already made
+   * decisions based on what they saw. Tell them something changed - never
+   * what, only that it did (see reports.service.ts's `updates` field and
+   * EmailService.sendLateCorrectionNotice).
+   */
+  private async notifyOnLateCorrection(event: CheckInCompletedEvent): Promise<void> {
+    const checkIn = await this.prisma.checkIn.findUnique({
+      where: { id: event.checkInId },
+      select: { isPostSignOff: true },
+    });
+    if (!checkIn?.isPostSignOff) return;
+
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: event.groundId },
+      select: {
+        label: true,
+        participants: { select: { id: true, user: { select: { email: true } } } },
+      },
+    });
+    if (!ground) return;
+
+    const others = ground.participants.filter((p) => p.id !== event.participantId && p.user?.email);
+    if (!others.length) return;
+
+    const activations = await this.prisma.reportActivation.findMany({
+      where: { groundId: event.groundId, participantId: { in: others.map((p) => p.id) }, status: ReportActivationStatus.ACTIVATED },
+      select: { participantId: true },
+    });
+    const activatedIds = new Set(activations.map((a) => a.participantId));
+    const alreadySaw = others.filter((p) => activatedIds.has(p.id));
+    if (!alreadySaw.length) return;
+
+    const frontendUrl = this.config.get<string>('resend.frontendUrl') || 'http://localhost:5173';
+    const groundUrl = `${frontendUrl}/grounds/${event.groundId}`;
+    await Promise.all(
+      alreadySaw.map((p) =>
+        this.email
+          .sendLateCorrectionNotice(p.user!.email, ground.label, groundUrl)
+          .catch((err: any) => this.logger.error(`Failed to notify ${p.user!.email} of late correction: ${err.message}`)),
+      ),
+    );
   }
 }

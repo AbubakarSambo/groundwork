@@ -928,6 +928,29 @@ export function GroundAdminPage() {
                   </ReportSection>
                 )}
 
+                {/* Visible Updates trail (Honest Corrections): a self-correction
+                    session shows up here as a flagged, dated entry instead of
+                    being silently blended into the synthesis above. No
+                    correction TEXT is shown - only who, when, and whether it
+                    happened after that party had already signed off. */}
+                {Array.isArray((report as any).updates) && (report as any).updates.length > 0 && (
+                  <ReportSection title="Updates" open>
+                    {((report as any).updates as any[]).map((u, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, padding: '4px 0' }}>
+                        <div style={{ fontSize: 12.5, color: 'var(--gw-text)' }}>
+                          {u.email ?? 'A party'} updated their account
+                          {u.completedAt ? ` on ${new Date(u.completedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}` : ''}
+                        </div>
+                        {u.isPostSignOff && (
+                          <span style={{ fontSize: 10.5, fontWeight: 700, color: '#8A5C1A', background: '#FDF3E3', borderRadius: 6, padding: '2px 8px', flexShrink: 0 }}>
+                            Updated after sign-off
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </ReportSection>
+                )}
+
                 {/* Fix 17: Post-report offboarding */}
                 <div style={{ marginTop: 16, background: 'var(--gw-bg)', border: '0.5px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px' }}>
                   <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--gw-sub)', marginBottom: 10 }}>What now?</div>

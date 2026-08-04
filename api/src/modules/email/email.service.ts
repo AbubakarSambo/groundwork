@@ -260,6 +260,26 @@ export class EmailService {
     });
   }
 
+  /**
+   * Sent to the OTHER party when someone corrects a session after they had
+   * already signed off AND the recipient has already activated the shared
+   * report - i.e. the correction lands after the recipient may have already
+   * made decisions based on what was shared. Never includes the correction
+   * text itself, only that an update happened - see reports.service.ts's
+   * `updates` field for what the recipient can then go see on the report.
+   */
+  async sendLateCorrectionNotice(email: string, groundLabel: string, groundUrl: string): Promise<void> {
+    await this.sendEmail({
+      to: email,
+      subject: `An account was updated on "${groundLabel}"`,
+      html: this.layout(
+        `<p>One of the parties on <strong>${groundLabel}</strong> corrected their account after you had already seen the shared report.</p>
+         <p>The report now shows this as an update, flagged with when it happened - it does not show what was changed in their own words.</p>
+         <p><a href="${groundUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Open the report →</a></p>`,
+      ),
+    });
+  }
+
   /** Reminder to the admin that a generated report is waiting to be activated. */
   async sendActivationReminder(email: string, groundLabel: string, groundUrl: string): Promise<void> {
     await this.sendEmail({

@@ -6,14 +6,17 @@ import { endStatesFor } from '../resolution/end-states';
 import { PromptsService } from '../prompts';
 import { AnthropicService, ChatTurn, houseStyle } from './anthropic.service';
 import { ConversationContextService } from './context.service';
-import { buildIntakeBlock, RECORD_EXTRACTION_PROMPT } from './prompt-library';
+import { buildIntakeBlock, RECORD_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_SCHEMA } from './prompt-library';
 import { GroundworkEvents, CheckInCompletedEvent } from '../../common';
 import { DocumentsService } from '../documents/documents.service';
 import { BillingService } from '../billing/billing.service';
 import { EmailService } from '../email/email.service';
 import { UsageService } from '../usage/usage.service';
-import { CheckInStatus, TurnRole, RecordEntryType, Cadence, GroundStatus, UsageEventType, PartyType } from '@prisma/client';
+import { CheckInStatus, TurnRole, RecordEntryType, Cadence, GroundStatus, UsageEventType, PartyType, GroundMode, DependencyStatus } from '@prisma/client';
 import { runIntake } from './intake';
+import { boardRendersFor } from '../board/board-families';
+import { buildRoleProbeBlock } from '../board/role-maps';
+import { detectFunction } from '../board/function-detection';
 
 function mapSpecificityLevel(avgScore: number): string {
   if (avgScore >= 0.6) return 'specific';
@@ -506,7 +509,7 @@ export class ConversationService {
       clarificationTarget?: string | null;
       isSelfCorrection?: boolean;
       selfCorrectionTargetSession?: number | null;
-      participant: { partyType: any; roleAsDescribed: string | null };
+      participant: { partyType: any; roleAsDescribed: string | null; detectedFunction?: string | null; detectedFunctionConfidence?: number | null };
     },
     latestMessage?: string,
   ): Promise<string> {
@@ -713,7 +716,19 @@ Ask where things actually landed against that, in their words.
 The ground will close toward one of these end states: ${endStates || 'the parties will define the end state'}. Do NOT push them to pick one - that choice happens in the resolution step with the other party. Your job is the honest account it will rest on.`;
     }
 
-    return [systemPrompt, intakeBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, dynamicContext, docContext, docPromptHint].filter(Boolean).join('\n\n');
+    // Role-tuned probing. RUNTIME, not seeded: detectedFunction is per-person and
+    // revised over sessions, so it cannot live in the per-scenario DB seeds. It is
+    // also deliberately NOT in ENGINE_RULES - that prompt is invariant-checked and
+    // reseeded on boot, and a bad edit there hard-fails startup.
+    //
+    // Adds nothing at all when the function is unknown or confidence is low, so an
+    // uncertain profile never produces coaching from a guess.
+    const roleProbeBlock = buildRoleProbeBlock(
+      (checkIn.participant as any).detectedFunction,
+      (checkIn.participant as any).detectedFunctionConfidence,
+    );
+
+    return [systemPrompt, intakeBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, dynamicContext, docContext, docPromptHint].filter(Boolean).join('\n\n');
   }
 
   /**
@@ -876,6 +891,18 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     // is still fire-and-forget. Both are best-effort.
     await this.extractRecordEntries(checkIn.id, checkIn.participantId).catch((err) =>
       this.logger.error(`Record extraction failed for check-in ${checkIn.id}: ${err.message}`),
+    );
+
+    // Handoffs are a board object, so this only runs on SHARED-mode grounds.
+    // Best-effort: a failure here must never block the check-in completing.
+    this.extractDependencies(checkIn.id, checkIn.participantId, checkIn.groundId).catch((err) =>
+      this.logger.warn(`Dependency extraction failed for check-in ${checkIn.id}: ${err.message}`),
+    );
+
+    // Re-read which function map fits this person, from their own account. Runs
+    // every session because detection is continuous, not a tag set once.
+    this.reviseDetectedFunction(checkIn.participantId).catch((err) =>
+      this.logger.warn(`Function detection failed for participant ${checkIn.participantId}: ${err.message}`),
     );
 
     await this.prisma.checkIn.update({
@@ -1114,6 +1141,116 @@ The ground will close toward one of these end states: ${endStates || 'the partie
   }
 
   /**
+   * Re-read which function map fits this person, from their OWN account only.
+   *
+   * Runs after every completed check-in, because detection is continuous: the
+   * stated title is a weak prior and what the work is actually made of is what
+   * settles it. Never reads another party's account to decide this.
+   *
+   * Writes the confidence alongside the function so a low-confidence read adds
+   * no coaching downstream rather than being treated as settled.
+   */
+  async reviseDetectedFunction(participantId: string) {
+    const p = await this.prisma.groundParticipant.findUnique({
+      where: { id: participantId },
+      select: { roleAsDescribed: true, detectedFunction: true, detectedFunctionConfidence: true },
+    });
+    if (!p) return;
+
+    const entries = await this.prisma.recordEntry.findMany({
+      where: { participantId },
+      select: { text: true },
+      orderBy: { createdAt: 'asc' },
+      take: 200,
+    });
+
+    const result = detectFunction(
+      p.roleAsDescribed,
+      entries.map((e) => e.text),
+      { fn: p.detectedFunction, confidence: p.detectedFunctionConfidence },
+    );
+
+    await this.prisma.groundParticipant.update({
+      where: { id: participantId },
+      data: {
+        detectedFunction: result.fn,
+        detectedFunctionConfidence: result.confidence,
+        detectedFunctionAt: new Date(),
+      },
+    });
+  }
+
+  /**
+   * Extract handoffs (dependencies) from this person's own account.
+   *
+   * SHARED-mode only: handoffs are a board object, and a private alignment
+   * ground has no board, so extracting them there would build a structure
+   * nothing can render and quietly create cross-party data a private ground
+   * promised not to create.
+   *
+   * Only records a handoff the person named in their OWN account. Matching a
+   * named person to a participant is best-effort on first name; an unmatched
+   * name is kept as a free-text label rather than dropped, so "waiting on the
+   * client's legal team" survives.
+   */
+  async extractDependencies(checkInId: string, participantId: string, groundId: string) {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { mode: true, scenario: true, participants: { select: { id: true, email: true, user: { select: { firstName: true, lastName: true } } } } },
+    });
+    if (!ground || ground.mode !== GroundMode.SHARED) return;
+    if (!boardRendersFor(ground.scenario, ground.mode)) return;
+
+    const turns = await this.prisma.conversationTurn.findMany({ where: { checkInId }, orderBy: { createdAt: 'asc' } });
+    if (turns.length === 0) return;
+
+    const transcript = turns.map((t) => `${t.role === TurnRole.AI ? 'GROUNDWORK' : 'PERSON'}: ${t.content}`).join('\n');
+    const result = await this.anthropic.extract<{
+      dependencies: { what: string; onName?: string | null; onLabel?: string | null; status: string; then?: string | null }[];
+    }>(DEPENDENCY_EXTRACTION_PROMPT, [{ role: 'user', content: transcript }], DEPENDENCY_EXTRACTION_SCHEMA);
+
+    const valid = (result?.dependencies ?? []).filter((d) => d.what?.trim());
+    if (valid.length === 0) return;
+
+    const matchParticipant = (name?: string | null): string | null => {
+      if (!name?.trim()) return null;
+      const needle = name.trim().toLowerCase();
+      const hit = ground.participants.find((p) => {
+        const full = [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').toLowerCase();
+        const first = (p.user?.firstName ?? '').toLowerCase();
+        return (
+          (!!full && (full === needle || full.includes(needle) || needle.includes(full))) ||
+          (!!first && first === needle) ||
+          (p.email ?? '').toLowerCase() === needle
+        );
+      });
+      return hit?.id ?? null;
+    };
+
+    for (const d of valid) {
+      const onParticipantId = matchParticipant(d.onName);
+      const status = (['BLOCKING', 'WAITING', 'CLEARED'] as const).includes(d.status as any)
+        ? (d.status as DependencyStatus)
+        : DependencyStatus.WAITING;
+      await this.prisma.groundDependency.create({
+        data: {
+          groundId,
+          fromParticipantId: participantId,
+          onParticipantId,
+          // Keep the spoken name when it did not match a participant, so an
+          // external blocker is still visible instead of silently dropped.
+          onLabel: onParticipantId ? null : (d.onLabel?.trim() || d.onName?.trim() || null),
+          what: d.what.trim(),
+          then: d.then?.trim() || null,
+          status,
+          sourceCheckInId: checkInId,
+          clearedAt: status === DependencyStatus.CLEARED ? new Date() : null,
+        },
+      });
+    }
+  }
+
+  /**
    * Build a single-party artifact from this party's own record (B2): a short
    * "your record so far" they can use immediately, independent of the other
    * party. Stored on the participant; superseded by the full report once both
@@ -1310,6 +1447,10 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     });
     const nextSession = (lastCheckIn?.sessionNumber ?? 0) + 1;
 
+    // Not a block - a signed-off participant may still genuinely need to fix
+    // something - but the shared report needs to know this correction landed
+    // after they already confirmed their account was accurate, so it can be
+    // surfaced as a flagged update rather than silently blended in.
     const checkIn = await this.prisma.checkIn.create({
       data: {
         groundId,
@@ -1318,6 +1459,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         status: CheckInStatus.NOT_STARTED,
         isSelfCorrection: true,
         selfCorrectionTargetSession: targetSessionNumber,
+        isPostSignOff: !!participant.signedOffAt,
       },
     });
 

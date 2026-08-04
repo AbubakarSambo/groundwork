@@ -649,6 +649,30 @@ export function ReportPage() {
                   ))}
                 </div>
               )}
+
+              {/* Visible Updates trail (Honest Corrections): a self-correction
+                  session shows up here as a flagged, dated entry instead of
+                  being silently blended into the report above. No correction
+                  TEXT is shown - only who, when, and whether it happened
+                  after that party had already signed off. */}
+              {Array.isArray((report as any).updates) && (report as any).updates.length > 0 && (
+                <div style={{ marginTop: 12, background: '#F5F3EF', border: '1px solid #E2E0DB', borderRadius: 8, padding: '12px 14px' }}>
+                  <SecH>Updates</SecH>
+                  {((report as any).updates as any[]).map((u, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, padding: '4px 0' }}>
+                      <div style={{ fontSize: 12.5, color: '#1A1916' }}>
+                        {u.email ?? 'A party'} updated their account
+                        {u.completedAt ? ` on ${new Date(u.completedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}` : ''}
+                      </div>
+                      {u.isPostSignOff && (
+                        <span style={{ fontSize: 10.5, fontWeight: 700, color: '#8A5C1A', background: '#FDF3E3', borderRadius: 6, padding: '2px 8px', flexShrink: 0 }}>
+                          Updated after sign-off
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
           )}

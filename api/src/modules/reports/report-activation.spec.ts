@@ -23,6 +23,7 @@ function makeService(prismaOverrides: any) {
     report: { update: jest.fn(), upsert: jest.fn() },
     reportActivation: { findUnique: jest.fn(), upsert: jest.fn(), findMany: jest.fn() },
     groundParticipant: { findFirst: jest.fn() },
+    checkIn: { findMany: jest.fn(async () => []) },
   };
   const prisma = { ...base, ...prismaOverrides };
   return new ReportsService(prisma, {} as any, {} as any, {} as any, {} as any, MOCK_USAGE, {} as any);
