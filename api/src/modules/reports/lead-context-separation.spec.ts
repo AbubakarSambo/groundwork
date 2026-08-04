@@ -35,6 +35,7 @@ describe('lead-context write separation (GroundsService.addLeadContext)', () => 
       ground: { findUnique: jest.fn(async () => ({ initiatorId: 'init-1' })) },
       groundParticipant: { findFirst: jest.fn(async () => ({ id: 'p2', groundId: 'g1' })) },
       leadContextNote: { create: leadCreate },
+      workMention: { findMany: jest.fn(async () => []) },
       recordEntry: { create: recordEntryCreate },
     };
     const service = new GroundsService(prisma, {} as any, {} as any, {} as any, { emit: () => Promise.resolve() } as any, {} as any);
@@ -81,6 +82,7 @@ describe('lead-context corpus separation (ReportsService.synthesize)', () => {
         ),
         findFirst: jest.fn(async () => null),
       },
+      workMention: { findMany: jest.fn(async () => []) },
       recordEntry: {
         findMany: jest.fn(async () => [{ participant: { id: 'p1' }, type: 'COMMITMENT', text: RECORD }]),
         count: jest.fn(async () => 1),

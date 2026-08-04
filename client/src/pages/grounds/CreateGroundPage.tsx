@@ -222,6 +222,17 @@ export function CreateGroundPage() {
   const [bulkText, setBulkText] = useState('')
   const [resolutionState, setResolutionState] = useState<string | null>(null)
   const [brief, setBrief] = useState('')
+  /**
+   * Is the person setting this up part of it themselves?
+   *
+   * The main create flow never asked. Only the guided /entry walkthrough did, so
+   * an admin who opened a ground from the app was silently made a party to it -
+   * or silently left out of it - without ever being offered the choice, and the
+   * first they knew was a check-in link arriving for a project they only
+   * administer. It is a one-line question and it changes who is measured.
+   */
+  const [alsoAParty, setAlsoAParty] = useState<boolean | null>(null)
+  const [myRemit, setMyRemit] = useState('')
   const [groundName, setGroundName] = useState('')
 
   // Billing step state
@@ -297,6 +308,18 @@ export function CreateGroundPage() {
       } as Parameters<typeof groundsApi.create>[0] & { accessCode?: string })
       // Use allSettled so a failed invite email never blocks navigation to the
       // newly-created ground. Failed invites are surfaced as warnings after redirect.
+      // Record whether the person opening this is a party to it before anyone is
+      // invited, so the very first check-in round already knows who it is for.
+      if (alsoAParty !== null) {
+        try {
+          await groundsApi.confirmLead(ground.id, {
+            managingOnly: !alsoAParty,
+            remit: alsoAParty ? (myRemit.trim() || undefined) : undefined,
+          })
+        } catch {
+          // Non-fatal: the same choice can still be made on the ground page.
+        }
+      }
       const results = await Promise.allSettled(participants.map(p =>
         groundsApi.addParticipant(ground.id, { email: p.email, roleAsDescribed: p.role || undefined, note: p.note || undefined })
       ))
@@ -357,9 +380,24 @@ export function CreateGroundPage() {
             <div className="gw-ttl">What is this ground for?</div>
             <div className="gw-sub-t">Select the situation that fits best.</div>
             <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 10 }}>Choose one that best describes your situation.</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8, marginBottom: 24 }}>
+            {/* Real radios, not clickable divs. The cards were reachable only by
+                mouse: nothing focused, nothing announced itself as a choice, and
+                arrow keys did nothing - so the very first step of the product was
+                unusable from a keyboard or a screen reader. */}
+            <div role="radiogroup" aria-label="What is this ground for?" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8, marginBottom: 24 }}>
               {SCENARIOS.map(s => (
-                <div key={s.cardKey} className={`cg-sit-card${selectedCard === s.cardKey ? ' selected' : ''}`} onClick={() => { setScenario(s.scenario); setSelectedCard(s.cardKey) }}>
+                <div
+                  key={s.cardKey}
+                  role="radio"
+                  tabIndex={selectedCard === s.cardKey || (!selectedCard && s.cardKey === SCENARIOS[0].cardKey) ? 0 : -1}
+                  aria-checked={selectedCard === s.cardKey}
+                  aria-label={`${s.label}. ${s.desc}`}
+                  onKeyDown={(e) => {
+                    if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setScenario(s.scenario); setSelectedCard(s.cardKey) }
+                  }}
+                  className={`cg-sit-card${selectedCard === s.cardKey ? ' selected' : ''}`}
+                  onClick={() => { setScenario(s.scenario); setSelectedCard(s.cardKey) }}
+                >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
                     <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: s.tagBg, color: s.tagColor }}>{s.tag}</span>
                     <div className="cg-sit-radio" style={{ width: 16, height: 16, borderRadius: '50%', border: `2px solid ${selectedCard === s.cardKey ? 'var(--gw-navy)' : 'var(--gw-border)'}`, background: selectedCard === s.cardKey ? 'var(--gw-navy)' : 'transparent', flexShrink: 0 }} />
@@ -382,9 +420,18 @@ export function CreateGroundPage() {
                 <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Where are you in this situation?</div>
                 <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 6 }}>Are you just starting, mid-way through, or wrapping up? This shapes the questions each contributor answers.</div>
                 <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 10 }}>Choose one that best describes your situation.</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
+                <div role="radiogroup" aria-label="Where are you in this situation?" style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
                   {MOMENTS.map(m => (
-                    <div key={m.moment} className={`cg-sit-card${moment === m.moment ? ' selected' : ''}`} onClick={() => setMoment(m.moment)}>
+                    <div
+                      key={m.moment}
+                      role="radio"
+                      tabIndex={moment === m.moment || (!moment && m.moment === MOMENTS[0].moment) ? 0 : -1}
+                      aria-checked={moment === m.moment}
+                      aria-label={`${m.label}. ${m.sub}`}
+                      onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setMoment(m.moment) } }}
+                      className={`cg-sit-card${moment === m.moment ? ' selected' : ''}`}
+                      onClick={() => setMoment(m.moment)}
+                    >
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
                         <div style={{ fontSize: 13, fontWeight: 700 }}>{m.label}</div>
                         <div className="cg-sit-radio" style={{ width: 16, height: 16, borderRadius: '50%', border: `2px solid ${moment === m.moment ? 'var(--gw-navy)' : 'var(--gw-border)'}`, background: moment === m.moment ? 'var(--gw-navy)' : 'transparent', flexShrink: 0 }} />
@@ -552,6 +599,50 @@ export function CreateGroundPage() {
           <div>
             <div className="gw-ttl">Who is in this ground?</div>
             <div className="gw-sub-t">Add everyone who will check in. Contributors can be from different organisations. You can add more at any time.</div>
+
+            {/* Are YOU in this, or setting it up for other people?
+                Only the guided walkthrough ever asked. Coming through this flow,
+                an admin was assigned an answer without being offered the choice -
+                and it decides whether they get check-in links and whether the
+                board reads them as one of the people doing the work. */}
+            <div role="radiogroup" aria-label="Where do you sit in this ground?" style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: '12px 14px', marginBottom: 16, background: 'white' }}>
+              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 3 }}>And where do you sit in this?</div>
+              <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 9, lineHeight: 1.5 }}>
+                This decides whether you get check-in links yourself. You can change it later.
+              </div>
+              {[
+                { v: true, label: 'I am part of this too', sub: 'You check in like everyone else, and your account is read alongside theirs.' },
+                { v: false, label: 'I am setting it up for others', sub: 'You organise and read the results. Nothing asks you to check in, and nothing measures you.' },
+              ].map((o) => (
+                <div
+                  key={String(o.v)}
+                  role="radio"
+                  tabIndex={alsoAParty === o.v || (alsoAParty === null && o.v) ? 0 : -1}
+                  aria-checked={alsoAParty === o.v}
+                  aria-label={`${o.label}. ${o.sub}`}
+                  onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setAlsoAParty(o.v) } }}
+                  onClick={() => setAlsoAParty(o.v)}
+                  className={`cg-sit-card${alsoAParty === o.v ? ' selected' : ''}`}
+                  style={{ marginBottom: 6 }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700 }}>{o.label}</div>
+                    <div style={{ width: 16, height: 16, borderRadius: '50%', border: `2px solid ${alsoAParty === o.v ? 'var(--gw-navy)' : 'var(--gw-border)'}`, background: alsoAParty === o.v ? 'var(--gw-navy)' : 'transparent', flexShrink: 0 }} />
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.45 }}>{o.sub}</div>
+                </div>
+              ))}
+              {alsoAParty === true && (
+                <input
+                  className="gw-in"
+                  aria-label="What you are responsible for"
+                  placeholder="What are you responsible for here? (optional)"
+                  value={myRemit}
+                  onChange={(e) => setMyRemit(e.target.value)}
+                  style={{ marginTop: 4 }}
+                />
+              )}
+            </div>
 
             {participants.length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginBottom: 14 }}>

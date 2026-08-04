@@ -43,6 +43,7 @@ function makeService(overrides: {
       }),
       findFirst: jest.fn(async () => null), // short-circuits extractAndStoreLeadSignals harmlessly
     },
+    workMention: { findMany: jest.fn(async () => []) },
     recordEntry: {
       findMany: jest.fn(async (args: any) => {
         if (args.include?.participant) return overrides.records; // main corpus records (uses `include`, not `select`)
