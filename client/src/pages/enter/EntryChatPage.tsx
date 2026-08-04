@@ -217,6 +217,7 @@ export const SITUATION_CARDS = [
     label: 'New hire starting',
     detail: 'Get you and a new hire meaning the same thing by "doing well", before anything drifts.',
     message: 'I have a new hire starting and want to make sure we set clear expectations from the beginning.',
+    timelineHint: 'typically 90 days',
     examples: [
       'Someone starts Monday and you want to be sure you both mean the same thing by "doing well."',
       'A new joiner and their manager each writing what success looks like in the first 90 days.',
@@ -227,6 +228,7 @@ export const SITUATION_CARDS = [
     label: 'New project',
     detail: 'Line everyone up on goals, roles, and what "done" means before the work starts.',
     message: 'We are starting a new project and I want to get the team aligned on goals and roles from the beginning.',
+    timelineHint: 'typically 90 days',
     examples: [
       'Kicking off a build and you want scope and "done" agreed before anyone starts.',
       'A cross-team project where each team quietly assumes a different owner.',
@@ -237,6 +239,7 @@ export const SITUATION_CARDS = [
     label: 'A new way of working together',
     detail: 'Someone new is in the picture: a partner, a manager, a changed team. Say what each of you expects before those assumptions harden.',
     message: 'We have a new working arrangement starting and want to make sure we are set up well.',
+    timelineHint: 'typically 90 days',
     examples: [
       'A new equal partner joining and you want the assumptions said out loud first.',
       'An interim leader stepping into an existing team and scope needs pinning down.',
@@ -247,6 +250,7 @@ export const SITUATION_CARDS = [
     label: 'Setting shared goals',
     detail: "A team agreeing on what matters most this period, so effort doesn't spread in different directions.",
     message: 'We are setting shared goals for this period and I want everyone aligned on what matters most.',
+    timelineHint: 'typically 90 days',
     examples: [
       'A team agreeing on the two or three priorities that matter most before the quarter starts.',
       'Several people who each quietly think something different is the top priority right now.',
@@ -257,6 +261,7 @@ export const SITUATION_CARDS = [
     label: 'A big decision',
     detail: "A group making a real choice, each person's honest read before you commit.",
     message: 'We are making a big decision and I want each person\'s honest read before we commit.',
+    timelineHint: 'typically one check-in',
     examples: [
       'A hiring, budget, or direction call where you want each person\'s real view before the room converges.',
       'A choice everyone will nod along to in the meeting - you want the honest reads first.',
@@ -267,6 +272,7 @@ export const SITUATION_CARDS = [
     label: "Someone's work is off track",
     detail: 'Deadlines or expectations are slipping, and you want the exact gap named before the conversation.',
     message: 'A team member is not delivering and I need to address it. I want to make sure I have the full picture before we talk.',
+    timelineHint: 'typically 90 days',
     examples: [
       'A senior hire is not delivering what they were brought in to do.',
       'Deadlines keep slipping and you want the specific gap named before the conversation.',
@@ -278,6 +284,7 @@ export const SITUATION_CARDS = [
     label: 'A project is off track',
     detail: "What was agreed and what exists no longer match. Get each person's honest read before the group talks.",
     message: 'A project of mine has drifted from what we originally agreed and I want to realign the team on where things actually stand.',
+    timelineHint: 'typically 90 days',
     examples: [
       'A project blew up or is badly behind and everyone has a different story about why.',
       'What was agreed and what exists no longer match, and you want the gap named.',
@@ -288,6 +295,7 @@ export const SITUATION_CARDS = [
     label: 'You and someone see it differently',
     detail: 'Close the gap before it grows. Each of you gives your honest read first.',
     message: 'I need to realign with a team member. I think we see the current situation differently and want to get both our accounts on record.',
+    timelineHint: 'typically 60 days',
     examples: [
       'Priorities shifted and you two are working off different ideas of what matters now.',
       'You and a co-founder or partner see contributions or direction differently and want both accounts first.',
@@ -371,6 +379,16 @@ export function EntryChatPage() {
   })
   const [sessionReport, setSessionReport] = useState<import('@/api/entry').EntryReport | null>(null)
   const [generatingReport, setGeneratingReport] = useState(false)
+  // Recommended additions / mentioned people (#1a): the viewer here is always
+  // the ground's future initiator (this page only ever runs pre-ground, and
+  // whoever commits becomes initiatorId - see entry.service.ts commitInner),
+  // so these get a real "Add them" affordance rather than a passive list.
+  // No ground exists yet at this point, so "adding" means queuing them into
+  // the same inviteAdded contributor queue used below - they go out for real
+  // once the ground is created at save time.
+  const [addingContributorFor, setAddingContributorFor] = useState<string | null>(null)
+  const [addingContributorEmail, setAddingContributorEmail] = useState('')
+  const [queuedFromSuggestion, setQueuedFromSuggestion] = useState<Set<string>>(new Set())
   // Anonymous correction: inline "what did we get wrong?" box on the report.
   const [showCorrection, setShowCorrection] = useState(false)
   const [correctionText, setCorrectionText] = useState('')
@@ -883,7 +901,7 @@ export function EntryChatPage() {
         orgName: orgName.trim() || undefined,
         // Prefer the AI-classified scenario; fall back to mode key, then URL param.
         scenario: onboardingSelections.classifiedScenario || onboardingSelections.mode || scenario || undefined,
-        cadence: cadence === 'ONE_TIME' ? 'FORTNIGHTLY' : cadence,
+        cadence,
         cadenceAnchorDay: (cadence === 'WEEKLY' || cadence === 'FORTNIGHTLY' || cadence === 'MONTHLY') && cadenceAnchorDay != null ? cadenceAnchorDay : undefined,
         checkInBy: checkInBy.trim() || undefined,
         lastCheckInBy: lastCheckInBy.trim() || undefined,
@@ -929,7 +947,7 @@ export function EntryChatPage() {
       const patch = {
         groundLabel: groundName || scenario || 'My first ground',
         orgName: orgName.trim() || undefined,
-        cadence: cadence === 'ONE_TIME' ? 'FORTNIGHTLY' : cadence,
+        cadence,
         cadenceAnchorDay: (cadence === 'WEEKLY' || cadence === 'FORTNIGHTLY' || cadence === 'MONTHLY') && cadenceAnchorDay != null ? cadenceAnchorDay : undefined,
         checkInBy: checkInBy.trim() || undefined,
         lastCheckInBy: lastCheckInBy.trim() || undefined,
@@ -976,6 +994,19 @@ export function EntryChatPage() {
     setInviteEmail('')
     setInviteContextFor(e)
     setInviteContext('')
+  }
+
+  // Queues a recommended addition / mentioned person straight into the
+  // contributor list, carrying their role/reason or name/context as the note -
+  // the same shape addInviteEmail/submitInviteContext build by hand.
+  function queueSuggestedContributor(key: string, note: string) {
+    const email = addingContributorEmail.trim()
+    if (!email || !email.includes('@')) return
+    const entry = note ? `${email} - ${note}` : email
+    setInviteAdded(prev => (prev.some(e => e === email || e.startsWith(`${email} - `)) ? prev : [...prev, entry]))
+    setQueuedFromSuggestion(prev => new Set(prev).add(key))
+    setAddingContributorFor(null)
+    setAddingContributorEmail('')
   }
 
   function submitInviteContext() {
@@ -1242,8 +1273,8 @@ export function EntryChatPage() {
               {/* Situation cards - shown only before user has sent first message */}
               {onboardingHistory.length === 1 && !onboardingLoading && !pickedSituation && (
                 <div style={{ alignSelf: 'flex-start', width: '100%' }}>
-                  <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginBottom: 5, fontWeight: 500 }}>Starting something</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(235px, 1fr))', gap: 6, marginBottom: 10 }}>
+                  <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginBottom: 4, fontWeight: 500 }}>Starting something</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(235px, 1fr))', gap: 5, marginBottom: 8 }}>
                     {SITUATION_CARDS.filter(c => c.group === 'positive').map(card => (
                       <button
                         key={card.label}
@@ -1254,7 +1285,16 @@ export function EntryChatPage() {
                           cursor: 'pointer', fontFamily: 'inherit',
                         }}
                       >
-                        <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--gw-text)', marginBottom: 1 }}>{card.label}</div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 6, marginBottom: 1 }}>
+                          <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--gw-text)' }}>{card.label}</div>
+                          {card.timelineHint && (
+                            // Inline with the label, not a separate line - suite_l's
+                            // above-the-fold check at 1280x720 failed when this was
+                            // its own row (the extra height pushed the freeform card
+                            // below the fold). No added vertical footprint this way.
+                            <div style={{ fontSize: 9.5, color: 'var(--gw-muted)', fontStyle: 'italic', whiteSpace: 'nowrap', flexShrink: 0 }}>{card.timelineHint}</div>
+                          )}
+                        </div>
                         <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', lineHeight: 1.4 }}>{card.detail}</div>
                         {card.examples && card.examples.length > 0 && (
                           <div style={{ marginTop: 3 }}>
@@ -1280,7 +1320,16 @@ export function EntryChatPage() {
                           cursor: 'pointer', fontFamily: 'inherit',
                         }}
                       >
-                        <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--gw-text)', marginBottom: 1 }}>{card.label}</div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 6, marginBottom: 1 }}>
+                          <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--gw-text)' }}>{card.label}</div>
+                          {card.timelineHint && (
+                            // Inline with the label, not a separate line - suite_l's
+                            // above-the-fold check at 1280x720 failed when this was
+                            // its own row (the extra height pushed the freeform card
+                            // below the fold). No added vertical footprint this way.
+                            <div style={{ fontSize: 9.5, color: 'var(--gw-muted)', fontStyle: 'italic', whiteSpace: 'nowrap', flexShrink: 0 }}>{card.timelineHint}</div>
+                          )}
+                        </div>
                         <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', lineHeight: 1.4 }}>{card.detail}</div>
                         {card.examples && card.examples.length > 0 && (
                           <div style={{ marginTop: 3 }}>
@@ -1881,14 +1930,37 @@ export function EntryChatPage() {
                       <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.6, marginBottom: 10 }}>
                         Based on this check-in, these roles would strengthen the ground. Their account would change or confirm what is currently on record from one side only.
                       </div>
-                      {sessionReport.suggestedParties.map((p, i) => (
+                      {sessionReport.suggestedParties.map((p, i) => {
+                        const key = `sug-${i}-${p.role}`
+                        return (
                         <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 0', borderTop: i > 0 ? '0.5px solid #D8E2F0' : undefined }}>
                           <div style={{ flex: 1 }}>
                             <div style={{ fontSize: 13, fontWeight: 600, color: '#1A1916', marginBottom: 2 }}>{p.role}</div>
                             <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.4 }}>{p.reason}</div>
+                            {queuedFromSuggestion.has(key) ? (
+                              <div style={{ fontSize: 11.5, color: '#085041', fontWeight: 600, marginTop: 6 }}>✓ Added to invite list</div>
+                            ) : addingContributorFor === key ? (
+                              <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                                <input
+                                  type="email" autoFocus placeholder="their@email.com"
+                                  value={addingContributorEmail} onChange={e => setAddingContributorEmail(e.target.value)}
+                                  onKeyDown={e => e.key === 'Enter' && queueSuggestedContributor(key, p.reason)}
+                                  style={{ flex: 1, padding: '6px 9px', borderRadius: 6, border: '1px solid #CFE2F5', fontSize: 12, fontFamily: 'inherit', outline: 'none' }}
+                                />
+                                <button onClick={() => queueSuggestedContributor(key, p.reason)} style={{ padding: '6px 10px', borderRadius: 6, background: '#0C447C', color: 'white', border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Add</button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => { setAddingContributorFor(key); setAddingContributorEmail('') }}
+                                style={{ marginTop: 6, background: 'none', border: 'none', padding: 0, fontSize: 12, fontWeight: 600, color: '#0C447C', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+                              >
+                                + Add them
+                              </button>
+                            )}
                           </div>
                         </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   </div>
                 )}
@@ -1901,14 +1973,37 @@ export function EntryChatPage() {
                       <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.6, marginBottom: 10 }}>
                         These people came up in this check-in. Adding them to the ground gives you a fuller picture.
                       </div>
-                      {sessionReport.mentionedPeople.map((p, i) => (
+                      {sessionReport.mentionedPeople.map((p, i) => {
+                        const key = `men-${i}-${p.name}`
+                        return (
                         <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 0', borderTop: i > 0 ? '0.5px solid #E2E0DB' : undefined }}>
                           <div style={{ flex: 1 }}>
                             <div style={{ fontSize: 13, fontWeight: 600, color: '#1A1916', marginBottom: 2 }}>{p.name}</div>
                             <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.4 }}>{p.context}</div>
+                            {queuedFromSuggestion.has(key) ? (
+                              <div style={{ fontSize: 11.5, color: '#085041', fontWeight: 600, marginTop: 6 }}>✓ Added to invite list</div>
+                            ) : addingContributorFor === key ? (
+                              <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                                <input
+                                  type="email" autoFocus placeholder="their@email.com"
+                                  value={addingContributorEmail} onChange={e => setAddingContributorEmail(e.target.value)}
+                                  onKeyDown={e => e.key === 'Enter' && queueSuggestedContributor(key, `${p.name} - ${p.context}`)}
+                                  style={{ flex: 1, padding: '6px 9px', borderRadius: 6, border: '1px solid #E2E0DB', fontSize: 12, fontFamily: 'inherit', outline: 'none' }}
+                                />
+                                <button onClick={() => queueSuggestedContributor(key, `${p.name} - ${p.context}`)} style={{ padding: '6px 10px', borderRadius: 6, background: '#0C447C', color: 'white', border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Add</button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => { setAddingContributorFor(key); setAddingContributorEmail('') }}
+                                style={{ marginTop: 6, background: 'none', border: 'none', padding: 0, fontSize: 12, fontWeight: 600, color: '#0C447C', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+                              >
+                                + Add them
+                              </button>
+                            )}
                           </div>
                         </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   </div>
                 )}

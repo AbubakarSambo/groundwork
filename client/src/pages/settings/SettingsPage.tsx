@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth'
 import { authApi } from '@/api/auth'
 
@@ -39,6 +40,9 @@ export function SettingsPage() {
     onSuccess: () => {
       logout()
       navigate('/auth')
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message ?? 'Could not leave the organisation. Try again.')
     },
   })
 

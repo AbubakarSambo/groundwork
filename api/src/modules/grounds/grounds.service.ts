@@ -227,6 +227,8 @@ export class GroundsService {
           timelineDays: dto.timelineDays ?? DEFAULT_TIMELINE_DAYS[dto.scenario],
           cadence: dto.cadence ?? Cadence.FORTNIGHTLY,
           cadenceAnchorDay: dto.cadenceAnchorDay ?? null,
+          startsAt: dto.startsAt ? new Date(dto.startsAt) : null,
+          endsAt: dto.endsAt ? new Date(dto.endsAt) : null,
           status: GroundStatus.AWAITING_LEAD,
           brief: dto.brief ?? null,
           joinToken: crypto.randomBytes(24).toString('hex'),
@@ -273,7 +275,9 @@ export class GroundsService {
         await tx.checkIn.create({
           data: {
             groundId: ground.id, participantId: participant.id, sessionNumber: 1, status: CheckInStatus.NOT_STARTED,
-            availableFrom: (dto.cadence ?? Cadence.FORTNIGHTLY) === Cadence.SEQUENTIAL ? new Date('9999-12-31T00:00:00.000Z') : null,
+            availableFrom: (dto.cadence ?? Cadence.FORTNIGHTLY) === Cadence.SEQUENTIAL
+              ? new Date('9999-12-31T00:00:00.000Z') // locked until the lead completes theirs - stricter than any startsAt
+              : (dto.startsAt ? new Date(dto.startsAt) : null),
           },
         });
       }
@@ -369,7 +373,12 @@ export class GroundsService {
     const [, checkIn] = await this.prisma.$transaction([
       groundUpdate,
       this.prisma.checkIn.create({
-        data: { groundId, participantId: participant.id, sessionNumber: 1, status: CheckInStatus.NOT_STARTED },
+        // The admin's chosen start date (Ground.startsAt, set at
+        // createForLead time) gates the lead's own first check-in exactly
+        // like the self-serve create() path gates the initiator's - it was
+        // previously collected on the client and silently dropped for this
+        // path (CreateGroundForLeadDto had no startsAt/endsAt fields at all).
+        data: { groundId, participantId: participant.id, sessionNumber: 1, status: CheckInStatus.NOT_STARTED, availableFrom: ground.startsAt ?? null },
       }),
     ]);
 
@@ -829,6 +838,22 @@ export class GroundsService {
       return { ...existing, inviteToken: undefined, devUrl: emailResult?.devUrl };
     }
 
+    // freeParticipantCap was written on ground creation (4 normal, 100 for
+    // broadcast grounds - see create()/createForLead()/entry.service.ts) but
+    // never actually checked anywhere - a write-only field. Only free grounds
+    // are capped at all; a subscribed org's grounds are unlimited here (its
+    // own plan-level member cap is a separate, already-enforced dimension via
+    // canInviteMember). Counts existing participant rows only - the
+    // initiator's own row is created at ground creation, not through this path.
+    if (ground.isFreeGround) {
+      const participantCount = await this.prisma.groundParticipant.count({ where: { groundId } });
+      if (participantCount >= ground.freeParticipantCap) {
+        throw new BadRequestException(
+          `This ground is on the free tier and is limited to ${ground.freeParticipantCap} participants. Upgrade to add more.`,
+        );
+      }
+    }
+
     // SEQUENTIAL cadence: the lead's own session 1 must complete before a newly
     // added participant's session 1 opens - otherwise the team could check in
     // ahead of the lead, defeating the "lead goes first" point of this cadence.
@@ -1028,7 +1053,11 @@ export class GroundsService {
   /**
    * GET /grounds/:id/mediator-brief
    * Returns structural, non-session information for use with a facilitator.
-   * Accessible only to the initiator or an org admin.
+   * Accessible only to the initiator or a party (participant) on this
+   * ground - checked below by requestingUserId, not by organization role.
+   * There is no separate org-admin/platform-admin route for this brief; an
+   * org admin who is not themselves the initiator or a participant cannot
+   * currently read it at all.
    */
   async getMediatorBrief(groundId: string, requestingUserId: string) {
     const ground = await this.prisma.ground.findUnique({
@@ -1037,8 +1066,6 @@ export class GroundsService {
     });
     if (!ground) throw new NotFoundException('Ground not found');
 
-    // Only the initiator may request the mediator brief. Org admins access it
-    // via the admin surface (not this endpoint), so we check userId here.
     const requesterLink = await this.prisma.groundParticipant.findFirst({
       where: { groundId, userId: requestingUserId },
     });
@@ -1109,6 +1136,28 @@ export class GroundsService {
       (dto as any).cadence = (dto.cadence as string).toUpperCase();
       if (!Object.values(Cadence).includes(dto.cadence as Cadence)) {
         throw new BadRequestException(`Invalid cadence. Must be one of: ${Object.values(Cadence).join(', ')}`);
+      }
+
+      // ONE_TIME's whole guarantee is "a single check-in, full stop" - decided
+      // by the actual session-1 completion, not by whatever the cadence field
+      // happens to say at that instant. Converting cadence to/from ONE_TIME
+      // after session 1 has already completed for anyone on this ground would
+      // be silently inconsistent either direction: switching IN wouldn't undo
+      // a session 2 that already exists or was already scheduled; switching
+      // OUT wouldn't retroactively create the session 2 that ONE_TIME's own
+      // ensureNextSession() early-return already skipped for good. Block the
+      // conversion outright once any session 1 has completed, rather than
+      // leave that inconsistency live.
+      const changingOneTime = dto.cadence === Cadence.ONE_TIME || ground.cadence === Cadence.ONE_TIME;
+      if (changingOneTime && dto.cadence !== ground.cadence) {
+        const anySessionOneComplete = await this.prisma.checkIn.findFirst({
+          where: { groundId, sessionNumber: 1, status: CheckInStatus.COMPLETED },
+        });
+        if (anySessionOneComplete) {
+          throw new BadRequestException(
+            'Cadence cannot be changed to or from "One time" after the first check-in has completed.',
+          );
+        }
       }
     }
 

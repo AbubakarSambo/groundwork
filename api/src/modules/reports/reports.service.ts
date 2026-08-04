@@ -198,12 +198,12 @@ export const REPORT_SCHEMA = {
           type: 'object',
           properties: {
             label: { type: 'string' },
-            cause: { type: 'string', enum: ['behavioral', 'misunderstanding', 'adversarial', 'unclear'] },
+            cause: { type: 'string', enum: ['behavioral', 'misunderstanding', 'adversarial', 'unclear', 'declined_by_choice'] },
             note: { type: 'string', description: 'One sentence explaining why this cause was inferred.' },
           },
           required: ['label', 'cause', 'note'],
         },
-        description: "Where a party's specificity is notably low or high, name the likely cause if it is inferable from the record itself: a behavioral pattern (e.g. consistently vague), a misunderstanding (e.g. confused about scope), an adversarial stance (e.g. deliberately withholding), or 'unclear' if there is not enough evidence to say. Do not guess beyond what the record supports. Empty array if not inferable.",
+        description: "Where a party's specificity is notably low or high, name the likely cause if it is inferable from the record itself: a behavioral pattern (e.g. consistently vague), a misunderstanding (e.g. confused about scope), an adversarial stance (e.g. deliberately withholding), 'declined_by_choice' if the record shows an explicit, stated decline to answer or provide evidence (a refusal is a choice, not vagueness and not bad faith - never file a genuine decline under adversarial or unclear), or 'unclear' if there is not enough evidence to say. Do not guess beyond what the record supports. Empty array if not inferable.",
       },
     },
     required: ['sharedPicture', 'agreements', 'divergences', 'centralQuestion', 'inferences'],
@@ -221,7 +221,7 @@ export const SYNTHESIS_RULES = `SYNTHESIS RULES (override all other instructions
 8. NO FALSE CONSENSUS. Do not write "both parties agree" or "all parties are aligned" unless every party's record contains explicit matching statements on that specific point. If parties described the same topic differently in any session, that is a divergence - surface it. Smoothing a disagreement into apparent consensus is a more serious error than noting the gap.
 9. SURFACE HIDDEN CONTRIBUTORS. If any party's record references someone else's input, work, or decisions - someone who is not themselves a party with their own account on this ground - name them in hiddenContributors with the evidence. Do not invent a hidden contributor; only surface what is explicitly referenced.
 10. FLAG CONCERN PATTERNS FACTUALLY, NEVER AS ACCUSATION. If the record shows one party's follow-through, commitments, or contribution is notably thinner than other parties' on the same ground, note it in concernFlags as a plain factual observation about the record - not a judgement of the person. Do not speculate about motive.
-11. NAME THE CAUSE OF LOW OR HIGH SPECIFICITY WHEN INFERABLE. If a party's specificity is notably low or high, use specificityCauses to say why if the record supports an inference: a behavioral pattern, a misunderstanding, an adversarial stance, or "unclear" if the record does not support a specific cause.
+11. NAME THE CAUSE OF LOW OR HIGH SPECIFICITY WHEN INFERABLE. If a party's specificity is notably low or high, use specificityCauses to say why if the record supports an inference: a behavioral pattern, a misunderstanding, an adversarial stance, "declined_by_choice" if the record shows an explicit, stated decline to answer (a refusal is a choice, never file it as adversarial or unclear), or "unclear" if the record does not support a specific cause.
 12. NEVER INVENT PARTY COUNTS OR ROLES. The PARTY ROSTER at the top of this corpus is the exhaustive, exact list of who is on this ground - use its exact count and exact labels only. Never state a number of parties, an "other parties" count, or a role/title/affiliation (e.g. "founder", "funders", "the board") that does not appear verbatim in the roster. If you are unsure how many parties are missing or who they are, use the roster's own wording rather than describing them yourself.
 14. SURFACE LEADERSHIP GAPS AS NAMED PATTERNS, ACROSS PERIODS, NEVER AS QUOTES. Where one party leads another, look for the named leadership patterns listed below. Use ONLY those pattern names. A pattern is real only when its stated signature is met AND it is visible across MORE THAN ONE period - one session showing something is not a pattern, and you must report the number of periods you saw it across. Each pattern belongs to one of two opposite poles: CONTROL (holding on to work and decisions, so nobody else can own) or ABDICATION (not holding anyone, so things slip and hard conversations never happen). These need opposite responses, so never blur them together. State the gap as a difference between two accounts ("one account describes ownership being set clearly; another describes still being unsure what they own"). NEVER quote either side, NEVER name who said what, and NEVER say which is right - something can be set clearly and still not land, and both people can be describing their own experience honestly. If no pattern's signature is met across periods, return an empty array.
 
@@ -1000,8 +1000,10 @@ Close the report by framing - neutrally, without recommending one - the choice n
    * show the release button - no content is included before release.
    *
    * After release, each participant must activate their own ReportActivation
-   * before full content is returned to them (mutual reveal gate). The initiator
-   * always sees the full report once released - they are the one who released it.
+   * before full content is returned to THEM - this is a per-party reveal
+   * confirmation, not a mutual gate: one party activating has no effect on
+   * any other party's access. The initiator always sees the full report
+   * once released - they are the one who released it.
    */
   async get(groundId: string, requestingUserId: string, requestingUserOrgId?: string) {
     const ground = await this.prisma.ground.findUnique({
@@ -1017,28 +1019,41 @@ Close the report by framing - neutrally, without recommending one - the choice n
     if (!participant && !isInitiator && !isOrgAdmin) throw new ForbiddenException('You are not a party to this ground');
 
     if (!ground.report.releasedAt) {
-      if (isInitiator || isOrgAdmin) {
-        return { id: ground.report.id, groundId, createdAt: ground.report.createdAt, releasedAt: null, nextStep: isInitiator ? 'release' : 'wait' };
-      }
       // Before everyone has checked in, the report is a forming picture, not
-      // a final one - show it as such rather than blocking participants
-      // entirely. No mutual-reveal gate applies here: that gate exists to
-      // protect the FINAL simultaneous reveal, not a picture that is still
-      // openly incomplete for everyone, initiator included.
+      // a final one - show it as such rather than blocking anyone entirely.
+      // No mutual-reveal gate applies here: that gate exists to protect the
+      // FINAL simultaneous reveal, not a picture that is still openly
+      // incomplete for everyone, initiator included. This used to
+      // short-circuit for the initiator/org-admin before reaching this
+      // point, returning a bare stub with no content - the comment above
+      // always stated the symmetric intent ("initiator included"); the code
+      // just never carried it out for that branch.
       const sessionProgress = await this.grounds.getSessionProgress(groundId);
       const requestingUserIsMissing = !!(
         sessionProgress && participant && sessionProgress.missingParticipantIds.includes(participant.id)
       );
+      // This party's own solo artifact ("Your private record shows:") is generated
+      // as soon as their own check-in completes, but was only ever attached to the
+      // response after the FINAL release - so a participant who finished before the
+      // other party had no way to see their own private record at all in the
+      // meantime. Surface it here too, same as the released branch below.
+      const soloArtifact = participant?.soloArtifact
+        ? (() => { try { return JSON.parse(participant.soloArtifact!); } catch { return null; } })()
+        : null;
       return {
         ...ground.report,
         activated: true,
         forming: true,
+        nextStep: isInitiator ? 'release' : isOrgAdmin ? 'wait' : undefined,
+        soloArtifact,
         sessionProgress: sessionProgress ? { ...sessionProgress, requestingUserIsMissing } : null,
       };
     }
 
-    // Mutual reveal gate: participants must activate before seeing content.
-    // The initiator is exempt - they released the report and can always read it.
+    // Per-party reveal gate: each participant must activate before seeing
+    // content, but only their own activation is checked here - this is not
+    // mutual. The initiator is exempt - they released the report and can
+    // always read it.
     if (participant && !isInitiator) {
       const activation = await this.prisma.reportActivation.findUnique({
         where: { groundId_participantId: { groundId, participantId: participant.id } },
@@ -1332,7 +1347,10 @@ Close the report by framing - neutrally, without recommending one - the choice n
    * "learning loop status report" for the team; the full data is already in
    * IntelligenceService.outcomeRates().
    */
-  @Cron('0 8 * * 1')
+  // The comment above already claimed "08:00 UTC" but the decorator never
+  // actually pinned a timeZone - implicit, same gap as grounds.cron.ts. Now
+  // genuinely UTC, matching what the comment always said.
+  @Cron('0 8 * * 1', { timeZone: 'UTC' })
   async weeklyOutcomeLearningReport(): Promise<void> {
     this.logger.log('Weekly outcome learning report: starting');
     try {

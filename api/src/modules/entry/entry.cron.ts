@@ -13,7 +13,8 @@ export class EntryCron {
 
   constructor(private prisma: PrismaService) {}
 
-  @Cron(CronExpression.EVERY_DAY_AT_3AM)
+  // timeZone pinned to UTC - previously implicit, same fix as grounds.cron.ts.
+  @Cron(CronExpression.EVERY_DAY_AT_3AM, { timeZone: 'UTC' })
   async purgeAbandonedDrafts(): Promise<void> {
     const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000);
     const res = await this.prisma.entryDraft.deleteMany({

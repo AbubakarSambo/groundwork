@@ -653,6 +653,7 @@ STRICT RULES:
       FORTNIGHTLY: Cadence.FORTNIGHTLY,
       MONTHLY: Cadence.MONTHLY,
       SEQUENTIAL: Cadence.SEQUENTIAL,
+      ONE_TIME: Cadence.ONE_TIME,
     };
 
     // --- Coordinator/lead path ---------------------------------------------
@@ -674,6 +675,13 @@ STRICT RULES:
         moment: GroundMoment.STARTING,
         cadence: (dto.cadence && cadenceMap[dto.cadence]) ? cadenceMap[dto.cadence] : Cadence.FORTNIGHTLY,
         cadenceAnchorDay: dto.cadenceAnchorDay ?? undefined,
+        // Mirrors the self path a few lines below (dto.checkInBy/lastCheckInBy
+        // -> startsAt/endsAt) - the admin's chosen dates were previously
+        // collected on the client and silently dropped here; the lead ended
+        // up with no availableFrom gate and no endsAt no matter what the
+        // admin picked.
+        startsAt: dto.checkInBy || undefined,
+        endsAt: dto.lastCheckInBy || undefined,
         brief: dto.brief?.trim() || undefined,
         participants: dto.contributors.map((c) => ({ email: c.email, roleAsDescribed: c.context })),
       });
@@ -837,7 +845,10 @@ STRICT RULES:
     }
 
     const email = dto.email.trim().toLowerCase();
-    const firstName = dto.firstName?.trim() || email.split('@')[0];
+    // Never fabricate a name from the email address - an empty firstName is
+    // the correct "no name given" value; participantLabel() and every other
+    // display surface already fall back to roleAsDescribed / "a teammate".
+    const firstName = dto.firstName?.trim() || '';
     const lastName = dto.lastName?.trim() || '';
 
     const { user, isNew } = await this.prisma.$transaction(async (tx) => {
@@ -981,7 +992,8 @@ STRICT RULES:
     if (!ground) throw new NotFoundException('Join link not found or has expired');
 
     const email = dto.email.trim().toLowerCase();
-    const firstName = dto.firstName?.trim() || email.split('@')[0];
+    // Never fabricate a name from the email address (see joinCommit above).
+    const firstName = dto.firstName?.trim() || '';
     const lastName = dto.lastName?.trim() || '';
 
     let user = await this.prisma.user.findUnique({ where: { email } });

@@ -173,6 +173,137 @@ export class AdminService implements OnApplicationBootstrap {
   // Feedback
   // ---------------------------------------------------------------------------
 
+  /**
+   * #6: internal support view for a single ground. Platform admins had
+   * aggregate stats/codes/feedback but NO way to look at an individual
+   * ground when a customer reports a problem. State/billing/roster/
+   * check-in-status/report-state only - NEVER conversation content.
+   *
+   * Hard privacy boundary (deliberately excluded, do not add back):
+   * - ConversationTurn content (raw check-in text)
+   * - RecordEntry content (only counts are safe, never the extracted text)
+   * - Any Report content field (sharedPicture, agreements, divergences,
+   *   centralQuestion, soloArtifact, hiddenContributors, arcSignals,
+   *   finalSynthesis) - existence/releasedAt only, never content, not even
+   *   the "anonymized" synthesized version
+   * - LeadContextNote text
+   * - GroundDocument content/annotations
+   * - getMediatorBrief's gapSummary (derived from Report.centralQuestion)
+   * - ParticipantRequest.reason text (user-authored free text that can
+   *   contain exactly the kind of content this boundary excludes) - count
+   *   of pending requests only
+   */
+  async getGroundSupportView(groundId: string) {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: {
+        id: true,
+        label: true,
+        scenario: true,
+        moment: true,
+        status: true,
+        cadence: true,
+        timelineDays: true,
+        startsAt: true,
+        endsAt: true,
+        createdAt: true,
+        isFreeGround: true,
+        freeReason: true,
+        sessionsBalance: true,
+        billingActivatedAt: true,
+        billingEnabled: true,
+        paymentConfirmed: true,
+        organization: {
+          select: {
+            id: true,
+            name: true,
+            subscriptionPlan: true,
+            subscriptionStatus: true,
+            careFeeStatus: true,
+          },
+        },
+        participants: {
+          select: {
+            id: true,
+            email: true,
+            partyType: true,
+            userId: true,
+            managingOnly: true,
+            invitedAt: true,
+            notifiedAt: true,
+            inviteDeliveryStatus: true,
+            _count: { select: { recordEntries: true } },
+            checkIns: {
+              select: {
+                id: true,
+                sessionNumber: true,
+                status: true,
+                availableFrom: true,
+                completedAt: true,
+              },
+              orderBy: { sessionNumber: 'asc' },
+            },
+            reportActivations: { select: { status: true } },
+          },
+        },
+        report: { select: { id: true, releasedAt: true, createdAt: true } },
+      },
+    });
+    if (!ground) throw new NotFoundException('Ground not found');
+
+    const pendingParticipantRequests = await this.prisma.participantRequest.count({
+      where: { groundId, status: 'PENDING' },
+    });
+
+    return {
+      id: ground.id,
+      label: ground.label,
+      scenario: ground.scenario,
+      moment: ground.moment,
+      status: ground.status,
+      cadence: ground.cadence,
+      timelineDays: ground.timelineDays,
+      startsAt: ground.startsAt,
+      endsAt: ground.endsAt,
+      createdAt: ground.createdAt,
+      isFreeGround: ground.isFreeGround,
+      freeReason: ground.freeReason,
+      sessionsBalance: ground.sessionsBalance,
+      billing: {
+        billingActivatedAt: ground.billingActivatedAt,
+        billingEnabled: ground.billingEnabled,
+        paymentConfirmed: ground.paymentConfirmed,
+        organizationId: ground.organization.id,
+        organizationName: ground.organization.name,
+        subscriptionPlan: ground.organization.subscriptionPlan,
+        subscriptionStatus: ground.organization.subscriptionStatus,
+        careFeeStatus: ground.organization.careFeeStatus,
+      },
+      roster: ground.participants.map((p) => ({
+        id: p.id,
+        email: p.email,
+        partyType: p.partyType,
+        accepted: p.userId !== null,
+        managingOnly: p.managingOnly,
+        invitedAt: p.invitedAt,
+        notifiedAt: p.notifiedAt,
+        inviteDeliveryStatus: p.inviteDeliveryStatus,
+        recordEntryCount: p._count.recordEntries,
+        checkIns: p.checkIns.map((c) => ({
+          sessionNumber: c.sessionNumber,
+          status: c.status,
+          availableFrom: c.availableFrom,
+          completedAt: c.completedAt,
+        })),
+        activationStatus: p.reportActivations[0]?.status ?? null,
+      })),
+      report: ground.report
+        ? { exists: true, releasedAt: ground.report.releasedAt, createdAt: ground.report.createdAt }
+        : { exists: false, releasedAt: null, createdAt: null },
+      pendingParticipantRequests,
+    };
+  }
+
   async getFeedback() {
     return this.prisma.outcomeFeedback.findMany({
       include: {

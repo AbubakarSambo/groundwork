@@ -58,7 +58,7 @@ describe('confirmLead: managing-only choice', () => {
     const { service, checkInCreate, groundParticipantUpdate } = makeService();
     const res = await service.confirmLead('g1', 'lead1', {});
     expect(checkInCreate).toHaveBeenCalledWith({
-      data: { groundId: 'g1', participantId: 'p-lead', sessionNumber: 1, status: 'NOT_STARTED' },
+      data: { groundId: 'g1', participantId: 'p-lead', sessionNumber: 1, status: 'NOT_STARTED', availableFrom: null },
     });
     expect(groundParticipantUpdate).not.toHaveBeenCalled();
     expect(res.checkInId).toBe('ci-lead');

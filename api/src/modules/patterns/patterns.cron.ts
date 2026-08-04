@@ -21,7 +21,11 @@ export class PatternsCron {
     private patterns: PatternsService,
   ) {}
 
-  @Cron(CronExpression.EVERY_DAY_AT_2AM)
+  // timeZone pinned to UTC - previously implicit, same fix as the two weekly
+  // pattern crons in grounds.cron.ts (weeklyPeriodBoundary /
+  // weeklyConcentrationRisk). This is a backstop sweep for the same
+  // pattern-detection system, so it gets the same explicit pin.
+  @Cron(CronExpression.EVERY_DAY_AT_2AM, { timeZone: 'UTC' })
   async sweep() {
     const pending = await this.prisma.checkIn.findMany({
       where: {

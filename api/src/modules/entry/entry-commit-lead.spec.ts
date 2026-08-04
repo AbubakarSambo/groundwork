@@ -102,4 +102,12 @@ describe('GW-ENTRY-LEAD: coordinator commit routes through for-lead, fabricates 
     await service.commit('org1', 'admin1', { ...baseDto, lead: { email: 'lead@acme.test' } } as any);
     expect(prisma.leadContextNote.create).not.toHaveBeenCalled();
   });
+
+  it('passes the admin-chosen start/end dates through to createForLead (was silently dropped)', async () => {
+    const { service, grounds } = makeService();
+    await service.commit('org1', 'admin1', { ...baseDto, checkInBy: '2026-08-01', lastCheckInBy: '2026-09-01' } as any);
+    const arg = grounds.createForLead.mock.calls[0][2];
+    expect(arg.startsAt).toBe('2026-08-01');
+    expect(arg.endsAt).toBe('2026-09-01');
+  });
 });

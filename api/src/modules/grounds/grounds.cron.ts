@@ -6,7 +6,7 @@ import { PrismaService, CronLock } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { GroundworkEvents, CheckInCompletedEvent } from '../../common';
-import { GroundStatus, CheckInStatus, TurnRole, PartyType } from '@prisma/client';
+import { GroundStatus, CheckInStatus, TurnRole, PartyType, ReportActivationStatus } from '@prisma/client';
 import { PatternsService } from '../patterns/patterns.service';
 
 const INACTIVITY_AUTO_CLOSE_MS = 12 * 60 * 60 * 1000;     // 12 hours
@@ -34,8 +34,12 @@ export class GroundsCron {
   /**
    * Daily sweep: transition any ground past its timelineDays to STALLED.
    * Billing stops automatically because the monthly cron only queries ACTIVE grounds.
+   * timeZone pinned to UTC (previously implicit - see the two weekly pattern
+   * crons below for the same fix and its rationale) so "3am" means the same
+   * instant everywhere the app runs, not "3am wherever this process's clock
+   * thinks it is."
    */
-  @Cron(CronExpression.EVERY_DAY_AT_3AM)
+  @Cron(CronExpression.EVERY_DAY_AT_3AM, { timeZone: 'UTC' })
   async stallOverdueGrounds() {
     await this.prisma.withAdvisoryLock(CronLock.STALL_GROUNDS, async () => {
       const candidates = await this.prisma.ground.findMany({
@@ -76,13 +80,19 @@ export class GroundsCron {
   }
 
   /**
-   * Gap #22 - Weekly period boundary sweep (Monday 5 AM).
+   * Gap #22 - Weekly period boundary sweep (Monday 5 AM UTC).
    * Calls startNewPeriod() for every active ground so that:
    *   - CANDIDATE detections are archived with their period tag.
    *   - Consecutive-period counters are reset for detections that missed this period.
    *   - Any detection that reached THREE consecutive periods is promoted to SURFACED.
+   *
+   * timeZone was previously unset, meaning this ran in whatever local
+   * timezone the Node process happened to be in - implicit and liable to
+   * differ between a developer's machine and the deployed environment (no
+   * TZ env var is set anywhere in this repo's config). Pinned explicitly to
+   * UTC so behavioral-pattern surfacing timing is identical everywhere.
    */
-  @Cron('0 5 * * 1') // Every Monday at 05:00
+  @Cron('0 5 * * 1', { timeZone: 'UTC' }) // Every Monday at 05:00 UTC
   async weeklyPeriodBoundary() {
     const activeGrounds = await this.prisma.ground.findMany({
       where: { status: { in: [GroundStatus.ACTIVE, GroundStatus.AWAITING_PARTIES, GroundStatus.REPORT_READY] } },
@@ -114,12 +124,15 @@ export class GroundsCron {
   }
 
   /**
-   * Gap #29 - Weekly concentration risk sweep (Monday 5:30 AM).
+   * Gap #29 - Weekly concentration risk sweep (Monday 5:30 AM UTC).
    * Runs detectConcentrationRisk() for every organisation that has at least one
    * active ground, surfacing a CONCENTRATION_RISK detection when a single person
    * is an active party in 3 or more grounds simultaneously.
+   *
+   * timeZone pinned to UTC for the same reason as weeklyPeriodBoundary above -
+   * it was previously implicit (server-local time, unset anywhere in config).
    */
-  @Cron('30 5 * * 1') // Every Monday at 05:30
+  @Cron('30 5 * * 1', { timeZone: 'UTC' }) // Every Monday at 05:30 UTC
   async weeklyConcentrationRisk() {
     // Collect distinct org IDs from active grounds.
     const activeGrounds = await this.prisma.ground.findMany({
@@ -148,7 +161,11 @@ export class GroundsCron {
    * Fires CHECK_IN_COMPLETED so the existing reports listener handles any
    * synthesis logic - auto-close is source-transparent to downstream consumers.
    */
-  @Cron('*/30 * * * *')
+  // A fixed-minute-interval schedule fires at the same wall-clock cadence
+  // regardless of timezone, so timeZone has no effect on when this actually
+  // runs - pinned anyway for consistency with the fixed-hour crons in this
+  // file, so nothing here is left ambiguous for a future reader.
+  @Cron('*/30 * * * *', { timeZone: 'UTC' })
   async autoCloseStaleCheckIns() {
     await this.prisma.withAdvisoryLock(CronLock.AUTO_CLOSE_CHECK_INS, async () => {
       const inProgress = await this.prisma.checkIn.findMany({
@@ -219,7 +236,7 @@ export class GroundsCron {
    * session auto-closes in 30 minutes. warningFiredAt is set so the warning
    * fires at most once per session.
    */
-  @Cron('*/15 * * * *')
+  @Cron('*/15 * * * *', { timeZone: 'UTC' })
   async fireSessionClosingWarnings() {
     await this.prisma.withAdvisoryLock(CronLock.SESSION_CLOSING_WARNINGS, async () => {
       const candidates = await this.prisma.checkIn.findMany({
@@ -278,7 +295,7 @@ export class GroundsCron {
    *   2. Activation reminder: a REPORT_READY ground the admin hasn't activated -
    *      remind the initiator the report is waiting.
    */
-  @Cron(CronExpression.EVERY_DAY_AT_9AM)
+  @Cron(CronExpression.EVERY_DAY_AT_9AM, { timeZone: 'UTC' })
   async sendReminders() {
     await this.prisma.withAdvisoryLock(CronLock.SEND_REMINDERS, async () => this.sendRemindersInner());
   }
@@ -291,7 +308,7 @@ export class GroundsCron {
    * both just set availableFrom, so a single frequent sweep catches either.
    * Session 1 is excluded: that person already got the invite email.
    */
-  @Cron('*/15 * * * *')
+  @Cron('*/15 * * * *', { timeZone: 'UTC' })
   async sendSessionReadyNotifications() {
     await this.prisma.withAdvisoryLock(CronLock.SEND_REMINDERS, async () => this.sendSessionReadyNotificationsInner());
   }
@@ -418,8 +435,48 @@ export class GroundsCron {
       }
     }
 
-    if (returnNudges || activationNudges) {
-      this.logger.log(`Reminders sent - ${returnNudges} return-nudge(s), ${activationNudges} activation reminder(s).`);
+    // 3. Reveal reminders: a party whose report has been released but who has
+    // not activated their own ReportActivation yet. Distinct from the
+    // (legacy, no-longer-fires) activation reminder above, which is about
+    // Ground.billingActivatedAt - this is about ReportActivation, the
+    // per-party "I'm ready to see it" confirmation each non-initiator must
+    // make individually (ReportsService.get() - one party's activation has
+    // no effect on any other party, so a party can sit on PENDING forever
+    // with their report ready and nobody nudging them). The initiator is
+    // exempt from this gate entirely (see get()) and never gets a row, so
+    // this is scoped to PARTICIPANT rows only. Same throttle
+    // (NUDGE_THROTTLE_DAYS via lastNudgedAt) and same opt-out
+    // (user.emailNotifications) as every other reminder in this sweep.
+    const pendingReveal = await this.prisma.groundParticipant.findMany({
+      where: {
+        userId: { not: null },
+        partyType: PartyType.PARTICIPANT,
+        ground: { status: { notIn: TERMINAL }, report: { releasedAt: { not: null } } },
+        OR: [{ lastNudgedAt: null }, { lastNudgedAt: { lt: throttleBefore } }],
+        reportActivations: { none: { status: ReportActivationStatus.ACTIVATED } },
+      },
+      select: {
+        id: true,
+        email: true,
+        ground: { select: { id: true, label: true } },
+        user: { select: { emailNotifications: true } },
+      },
+    });
+
+    let revealReminders = 0;
+    for (const p of pendingReveal) {
+      if (p.user?.emailNotifications === false) continue;
+      try {
+        await this.email.sendActivationRevealReminder(p.email, p.ground.label, `${frontend}/report/${p.ground.id}`);
+        await this.prisma.groundParticipant.update({ where: { id: p.id }, data: { lastNudgedAt: now } });
+        revealReminders++;
+      } catch (err: any) {
+        this.logger.error(`Reveal reminder failed for participant ${p.id}: ${err.message}`);
+      }
+    }
+
+    if (returnNudges || activationNudges || revealReminders) {
+      this.logger.log(`Reminders sent - ${returnNudges} return-nudge(s), ${activationNudges} activation reminder(s), ${revealReminders} reveal reminder(s).`);
     }
   }
 
@@ -430,7 +487,7 @@ export class GroundsCron {
    * state and re-emits the event; the reports listener is idempotent so re-fire
    * is safe.
    */
-  @Cron('0 4 * * *')
+  @Cron('0 4 * * *', { timeZone: 'UTC' })
   async synthesisBackstop() {
     await this.prisma.withAdvisoryLock(CronLock.SYNTHESIS_BACKSTOP, async () => {
       const candidates = await this.prisma.ground.findMany({
@@ -484,7 +541,7 @@ export class GroundsCron {
    * question about whether the process felt fair. The 24-72h window sends once
    * per party without a dedicated schema column.
    */
-  @Cron('0 10 * * *')
+  @Cron('0 10 * * *', { timeZone: 'UTC' })
   async sendFeedbackRequests() {
     const now = new Date();
     const closedAfter = new Date(now.getTime() - 72 * 60 * 60 * 1000);
