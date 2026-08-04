@@ -327,12 +327,12 @@ export class BoardService {
       ];
     }
 
-    if (has('contribution')) {
-      out.contribution = buildContribution(await this.loadReadInput(ground), nameOf);
-    }
-
-    if (has('coverage')) {
-      out.coverage = buildCoverage(await this.loadReadInput(ground), nameOf);
+    // Loaded once and shared. It was fetched twice, running every one of these
+    // queries a second time to produce the same answer.
+    if (has('contribution') || has('coverage')) {
+      const readInput = await this.loadReadInput(ground);
+      if (has('contribution')) out.contribution = buildContribution(readInput, nameOf);
+      if (has('coverage')) out.coverage = buildCoverage(readInput, nameOf);
     }
 
     if (has('contribution')) {
@@ -440,7 +440,7 @@ export class BoardService {
    * pure functions so it can be replayed against a captured real run and checked
    * (see reads.spec.ts). Nothing here decides anything about a person.
    */
-  private async loadReadInput(ground: { id: string; participants: any[] }): Promise<ReadInput> {
+  private async loadReadInput(ground: { id: string; participants: any[]; scenario?: any }): Promise<ReadInput> {
     const [dependencies, entries, mentions, checkIns] = await Promise.all([
       this.prisma.groundDependency.findMany({
         where: { groundId: ground.id },
@@ -459,7 +459,14 @@ export class BoardService {
         select: { participantId: true, sessionNumber: true, status: true },
       }),
     ]);
+    // WHETHER THESE PEOPLE WORK TOGETHER AT ALL, from the scenario family rather
+    // than guessed from the record. A cohort is many people in the same role,
+    // deliberately answering separately and not influencing each other - so
+    // nobody can corroborate anybody, and the reads that depend on colleagues
+    // describing each other cannot be made honestly. See reads.ts.
+    const peopleWorkTogether = familyFor(ground.scenario) !== BoardFamily.COHORT;
     return {
+      peopleWorkTogether,
       participants: ground.participants.map((p) => ({
         id: p.id,
         roleAsDescribed: p.roleAsDescribed ?? null,
