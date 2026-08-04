@@ -176,6 +176,10 @@ model Organization {
   firstGroundUsed    Boolean @default(false) @map("first_ground_used")
   freeExtensionUsed  Boolean @default(false) @map("free_extension_used")
   allowCodeCreation  Boolean @default(false) @map("allow_code_creation")
+  // Exists in the database, referenced nowhere in the codebase. Declared here
+  // so the schema matches reality; removing it should be a deliberate decision
+  // with a migration of its own, not a side effect of a drift fix.
+  contributorBypass  Boolean @default(false) @map("contributor_bypass")
 
   // Org subscription
   subscriptionPlan      SubscriptionPlan? @map("subscription_plan")
@@ -655,6 +659,13 @@ model PromptVersion {
   summary     String?   @db.Text // change summary — every change is logged
   isActive    Boolean   @default(false) @map("is_active")
   activatedAt DateTime? @map("activated_at")
+  // These two exist in the database and are RENDERED by the prompt-versioning
+  // page (the draft badge and the "by <user>" line), but were missing from this
+  // schema - so the API never returned them and both features were silently
+  // dead. Declared rather than dropped: dropping would have destroyed data a
+  // live surface still expects.
+  isDraft     Boolean   @default(false) @map("is_draft")
+  activatedBy String?   @map("activated_by")
   createdAt   DateTime  @default(now()) @map("created_at")
 
   grounds Ground[]
