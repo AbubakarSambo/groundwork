@@ -1075,11 +1075,24 @@ export class GroundsService {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId } });
     if (!ground) throw new NotFoundException('Ground not found');
 
-    // Only parties to this ground may adjust its timeline / cadence or add notes.
     const link = await this.prisma.groundParticipant.findFirst({
       where: { groundId, userId: requestingUserId },
     });
     if (!link && ground.initiatorId !== requestingUserId) throw new ForbiddenException('You are not a party to this ground');
+
+    // HOW LONG THE GROUND RUNS IS THE LEAD'S CALL, NOT EVERY PARTY'S.
+    //
+    // Any party could change the timeline and cadence. On an onboarding that
+    // doubles as a probation, that means the person being assessed could shorten
+    // or extend their own assessment period, and nobody would necessarily
+    // notice. Adding context is still open to everyone - that is an account of
+    // the work, which is what the product is for.
+    const changesTheSchedule = dto.timelineWeeks !== undefined || dto.cadence !== undefined;
+    if (changesTheSchedule && ground.initiatorId !== requestingUserId) {
+      throw new ForbiddenException(
+        'Only the person leading this ground can change how long it runs or how often people check in. Ask them if it needs to change.',
+      );
+    }
 
     // MODE IS IMMUTABLE. If a ground could flip from private to shared, someone
     // who checked in believing their account was private would have it exposed -

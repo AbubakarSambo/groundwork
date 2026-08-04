@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/auth'
-import { groundsApi } from '@/api/grounds'
+import { groundsApi, type GroundCadence } from '@/api/grounds'
+import { TIMED_CADENCES, sessionsFor } from '@/lib/cadence'
 import { reportsApi } from '@/api/reports'
 import { documentsApi } from '@/api/documents'
 import { conversationApi } from '@/api/conversation'
@@ -54,6 +55,8 @@ export function GroundAdminPage() {
   const [reportSession, setReportSession] = useState<ReportSession>('s1')
   const [ctxNote, setCtxNote] = useState('')
   const [groundLabel, setGroundLabel] = useState('')
+  const [timelineDaysDraft, setTimelineDaysDraft] = useState(90)
+  const [cadenceDraft, setCadenceDraft] = useState<GroundCadence>('WEEKLY')
   const [groundScenario, setGroundScenario] = useState('')
   const [showReleaseConfirm, setShowReleaseConfirm] = useState(false)
   const [addingParticipant, setAddingParticipant] = useState(false)
@@ -225,6 +228,10 @@ export function GroundAdminPage() {
 
   useEffect(() => {
     if (ground?.label) setGroundLabel(prev => prev || ground.label)
+    // Seed the timeframe controls from what the ground actually is, so the form
+    // opens showing the truth rather than a default that would silently change it.
+    if (ground?.timelineDays) setTimelineDaysDraft(ground.timelineDays)
+    if (ground?.cadence) setCadenceDraft(ground.cadence as GroundCadence)
     if (ground?.scenario) setGroundScenario(prev => prev || ground.scenario)
   }, [ground?.label, ground?.scenario])
 
@@ -1027,6 +1034,43 @@ export function GroundAdminPage() {
         {/* SETTINGS */}
         {tab === 'settings' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {/* HOW LONG THIS RUNS, AND HOW OFTEN.
+                There was no way to change either after creation, anywhere in the
+                product. A ground created at the wrong length - which the old
+                admin creation form did silently, because it never asked - was
+                stuck that way, and a three-month onboarding that thinks it is a
+                thirty-day one stops asking people to check in two thirds of the
+                way through. */}
+            {isInitiator && (
+              <div className="gw-fld">
+                <label className="gw-label">How long this runs</label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <select className="gw-input" aria-label="Timeframe" value={timelineDaysDraft}
+                    onChange={(e) => setTimelineDaysDraft(Number(e.target.value))} style={{ background: 'white' }}>
+                    {[7, 14, 30, 60, 90, 180, 365].map((d) => (
+                      <option key={d} value={d}>{d === 7 ? '1 week' : d === 14 ? '2 weeks' : d === 365 ? '12 months' : d === 180 ? '6 months' : `${d} days`}</option>
+                    ))}
+                  </select>
+                  <select className="gw-input" aria-label="Check-in cadence" value={cadenceDraft}
+                    onChange={(e) => setCadenceDraft(e.target.value as GroundCadence)} style={{ background: 'white' }}>
+                    {TIMED_CADENCES.map((c) => <option key={c.cadence} value={c.cadence}>{c.label}</option>)}
+                  </select>
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 6 }}>
+                  {sessionsFor(timelineDaysDraft, cadenceDraft) ?? 1} sessions over {timelineDaysDraft} days.
+                  {' '}Sessions already completed are never removed.
+                </div>
+                <button
+                  disabled={timelineDaysDraft === ground.timelineDays && cadenceDraft === ground.cadence}
+                  onClick={() => groundsApi.update(id!, { timelineWeeks: Math.max(1, Math.round(timelineDaysDraft / 7)), cadence: cadenceDraft })
+                    .then(() => { toast.success('Updated'); qc.invalidateQueries({ queryKey: ['ground', id] }) })
+                    .catch(() => toast.error('Could not update how long this runs.'))}
+                  style={{ marginTop: 8, fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: '0.5px solid var(--gw-blue-b)', borderRadius: 5, padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit', opacity: (timelineDaysDraft !== ground.timelineDays || cadenceDraft !== ground.cadence) ? 1 : 0.4 }}
+                >
+                  Save timeframe
+                </button>
+              </div>
+            )}
             <div className="gw-fld">
               <label className="gw-label">Ground name</label>
               <input className="gw-input" value={groundLabel} onChange={e => setGroundLabel(e.target.value)} />
