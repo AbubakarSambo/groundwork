@@ -385,6 +385,16 @@ model Ground {
   // enforced in the get() read path. (Column name predates the participant-to-participant
   // scope; it now hides contact from ALL other participants, not just cross-org.)
   restrictExternalVisibility Boolean @default(true) @map("restrict_external_visibility")
+  // Do the people on this ground actually see each other's work?
+  //
+  // Nullable on purpose: null means "nobody has said", and the scenario family
+  // supplies a sensible default. Once the lead or an admin answers, their answer
+  // wins - because the scenario cannot know. A cohort of trainers who share a
+  // site do see each other; a delivery team split across regions does not. This
+  // decides whether the board's fairness reads have any ground to stand on, so
+  // guessing it from the scenario alone is how a competent person gets read as
+  // absent (see reads.ts).
+  peopleWorkTogether Boolean? @map("people_work_together")
   isFreeGround        Boolean @default(true) @map("is_free_ground")
   accessCodeId        String? @map("access_code_id")
   freeReason          String? @map("free_reason")  // "FIRST_GROUND" | "ACCESS_CODE"

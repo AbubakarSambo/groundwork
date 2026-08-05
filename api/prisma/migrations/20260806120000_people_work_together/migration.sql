@@ -1,0 +1,12 @@
+-- Whether the parties on a ground actually see each other's work.
+--
+-- Nullable: NULL means nobody has been asked yet, and the scenario family
+-- supplies the default. An explicit answer from the lead or an admin overrides
+-- it, because the scenario cannot know - a cohort sharing one site do see each
+-- other, a delivery team split across regions do not.
+--
+-- It decides whether the board's fairness reads have anything to stand on: with
+-- no colleague able to corroborate anyone, silence in someone's own account
+-- carries no information, and reading it as a drop in ownership is how a
+-- competent person gets reported as absent.
+ALTER TABLE "grounds" ADD COLUMN "people_work_together" BOOLEAN;

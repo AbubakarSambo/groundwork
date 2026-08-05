@@ -464,7 +464,16 @@ export class BoardService {
     // deliberately answering separately and not influencing each other - so
     // nobody can corroborate anybody, and the reads that depend on colleagues
     // describing each other cannot be made honestly. See reads.ts.
-    const peopleWorkTogether = familyFor(ground.scenario) !== BoardFamily.COHORT;
+    // WHOSE ANSWER THIS IS.
+    //
+    // The scenario is only a guess: a cohort usually means people who never see
+    // each other, and most other shapes usually mean they do. "Usually" is not
+    // good enough here, because this single fact decides whether the board's
+    // fairness reads have anything to stand on, and getting it wrong reads a
+    // competent quiet person as absent. So the lead or an admin can say, and when
+    // they have, their answer wins over the guess.
+    const peopleWorkTogether =
+      (ground as any).peopleWorkTogether ?? familyFor(ground.scenario) !== BoardFamily.COHORT;
     return {
       peopleWorkTogether,
       participants: ground.participants.map((p) => ({

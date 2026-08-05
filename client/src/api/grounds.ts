@@ -103,6 +103,9 @@ export const groundsApi = {
   getMediatorBrief: (groundId: string) =>
     apiClient.get(`/grounds/${groundId}/mediator-brief`).then(r => r.data),
 
+  setPeopleWorkTogether: (groundId: string, together: boolean) =>
+    apiClient.patch<{ id: string; peopleWorkTogether: boolean }>(`/grounds/${groundId}/people-work-together`, { together }).then(r => r.data),
+
   update: (groundId: string, body: { label?: string; timelineWeeks?: number; cadence?: GroundCadence; contextNote?: string }) =>
     apiClient.patch<Ground>(`/grounds/${groundId}`, body).then(r => r.data),
 

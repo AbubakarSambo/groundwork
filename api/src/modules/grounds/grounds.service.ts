@@ -794,6 +794,50 @@ export class GroundsService {
   }
 
   /**
+   * Do the people on this ground actually see each other's work?
+   *
+   * The scenario can only guess. A cohort usually means people who never meet,
+   * and a delivery team usually means people who do - but a cohort of trainers
+   * sharing one site see each other every day, and a delivery team split across
+   * four regions never does. Only the person who set the ground up knows.
+   *
+   * It matters more than it sounds. Every fairness read on the board is built on
+   * colleagues describing each other, and the protection for a quiet, competent
+   * person works by noticing that others still credit them while their own
+   * account stays modest. Where nobody can corroborate anybody, that protection
+   * has nothing to stand on and silence gets misread as work going missing. On a
+   * probation, that is somebody's job.
+   *
+   * Either party to the ground may answer, not only the initiator: an admin sets
+   * these grounds up for other people and often knows the answer when the lead is
+   * still being onboarded.
+   */
+  async setPeopleWorkTogether(groundId: string, requestingUserId: string, together: boolean) {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { initiatorId: true, organizationId: true },
+    });
+    if (!ground) throw new NotFoundException('Ground not found');
+
+    const viewer = await this.prisma.user.findUnique({
+      where: { id: requestingUserId },
+      select: { role: true, organizationId: true },
+    });
+    const isOrgAdmin = viewer?.role === 'ADMIN' && viewer.organizationId === ground.organizationId;
+    if (ground.initiatorId !== requestingUserId && !isOrgAdmin) {
+      throw new ForbiddenException(
+        'Only the person leading this ground, or an admin in this organisation, can change this.',
+      );
+    }
+
+    return this.prisma.ground.update({
+      where: { id: groundId },
+      data: { peopleWorkTogether: together },
+      select: { id: true, peopleWorkTogether: true },
+    });
+  }
+
+  /**
    * Add the second party. They are NEVER added silently - we send an invite
    * (magic link) and stamp notifiedAt. (OPTION FOUR RULE, Part 1.)
    */

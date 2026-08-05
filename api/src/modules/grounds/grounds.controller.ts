@@ -211,6 +211,16 @@ export class GroundsController {
     return this.grounds.setExternalVisibility(id, userId, dto.restrict);
   }
 
+  @Patch(':id/people-work-together')
+  @ApiOperation({ summary: "Whether the parties on this ground see each other's work - decides whether fairness reads have anything to stand on" })
+  async setPeopleWorkTogether(
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string,
+    @Body() body: { together: boolean },
+  ) {
+    return this.grounds.setPeopleWorkTogether(id, userId, !!body.together);
+  }
+
   @Patch(':id')
   @ApiOperation({ summary: 'Update timeline weeks and/or cadence; change is audit-logged on the ground' })
   async updateTimeline(@Param('id') id: string, @CurrentUser('id') userId: string, @Body() dto: UpdateTimelineDto) {

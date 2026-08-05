@@ -107,6 +107,12 @@ export interface Ground {
   brief?: string | null
   // initiator toggle: when true (default) participants cannot see each other's email
   restrictExternalVisibility?: boolean
+  /**
+   * Whether the parties actually see each other's work. Null means nobody has
+   * said, and the scenario supplies the default. Decides whether the board's
+   * fairness reads have anything to stand on.
+   */
+  peopleWorkTogether?: boolean | null
   daysLeft?: number | null
   checkInsToday?: number
   overdue?: number

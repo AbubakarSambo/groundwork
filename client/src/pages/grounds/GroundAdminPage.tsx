@@ -1052,6 +1052,54 @@ export function GroundAdminPage() {
                 stuck that way, and a three-month onboarding that thinks it is a
                 thirty-day one stops asking people to check in two thirds of the
                 way through. */}
+            {/* WHETHER THESE PEOPLE ACTUALLY SEE EACH OTHER'S WORK.
+                The scenario can only guess, and the guess decides whether the
+                board's fairness reads have anything to stand on. Where nobody can
+                corroborate anybody, a quiet account is just a quiet account - and
+                treating it as work going missing is how a competent person gets
+                reported as absent on a ground that decides their job. */}
+            {isInitiator && (
+              <div className="gw-fld">
+                <label className="gw-label">Do these people work together?</label>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 8, lineHeight: 1.5 }}>
+                  Can they see each other's work day to day? If they cannot, nobody here is in a position
+                  to confirm anyone else's account, and the board says so rather than reading a quiet
+                  account as work going missing.
+                </div>
+                <div role="radiogroup" aria-label="Do these people work together?" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {[
+                    { v: true, label: 'Yes, they work together', sub: 'They see each other\'s work, so they can corroborate each other.' },
+                    { v: false, label: 'No, they work separately', sub: 'Same role or same programme, different places. Nobody sees anybody else\'s work.' },
+                  ].map((o) => {
+                    const current = ground.peopleWorkTogether
+                    const selected = current === o.v
+                    return (
+                      <div key={String(o.v)} role="radio" aria-checked={selected}
+                        tabIndex={selected || (current == null && o.v) ? 0 : -1}
+                        aria-label={`${o.label}. ${o.sub}`}
+                        onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); (e.currentTarget as HTMLElement).click() } }}
+                        onClick={() => groundsApi.setPeopleWorkTogether(id!, o.v)
+                          .then(() => { toast.success('Saved'); qc.invalidateQueries({ queryKey: ['ground', id] }) })
+                          .catch(() => toast.error('Could not save that.'))}
+                        className={`cg-sit-card${selected ? ' selected' : ''}`}
+                        style={{ cursor: 'pointer' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <div style={{ fontSize: 13, fontWeight: 700 }}>{o.label}</div>
+                          <div style={{ width: 15, height: 15, borderRadius: '50%', flexShrink: 0, border: `2px solid ${selected ? 'var(--gw-navy)' : 'var(--gw-border)'}`, background: selected ? 'var(--gw-navy)' : 'transparent' }} />
+                        </div>
+                        <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.45, marginTop: 2 }}>{o.sub}</div>
+                      </div>
+                    )
+                  })}
+                </div>
+                {ground.peopleWorkTogether == null && (
+                  <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', marginTop: 6, lineHeight: 1.5 }}>
+                    Not set. Until you answer, this is assumed from the kind of ground you chose.
+                  </div>
+                )}
+              </div>
+            )}
+
             {isInitiator && (
               <div className="gw-fld">
                 <label className="gw-label">How long this runs</label>
