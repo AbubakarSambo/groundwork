@@ -20,6 +20,15 @@ class ConfirmLeadDto {
   @IsOptional()
   @IsBoolean()
   managingOnly?: boolean;
+
+  @ApiPropertyOptional({
+    description:
+      'What the lead is responsible for, in their own words. Their last chance to set it if the admin did not - without a remit they get no contribution read and no role-tuned questions.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  remit?: string;
 }
 
 class UpdateTimelineDto {

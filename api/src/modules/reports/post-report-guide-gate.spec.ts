@@ -19,6 +19,7 @@ import { ReportsService } from './reports.service';
 function makeService(flagEnabled: boolean) {
   const anthropic: any = { extract: jest.fn(async () => ({ openingLine: 'a', questionToCarry: 'b', toAcknowledge: 'c' })) };
   const prisma: any = {
+    workMention: { findMany: jest.fn(async () => []) },
     recordEntry: { findMany: jest.fn(async () => [{ type: 'INTENT', text: 'something on the record' }]) },
     report: { update: jest.fn(async () => ({})) },
   };

@@ -59,16 +59,6 @@ export class BillingService {
       const balance = ground?.sessionsBalance ?? 0;
       if (balance > 0) return { allowed: true, sessionsBalance: balance };
 
-      // Abuse prevention: free grounds are limited to 3 free sessions per org.
-      if (ground?.isFreeGround && (org?.freeSessionsUsed ?? 0) >= 3) {
-        return {
-          allowed: false,
-          reason: 'Your account has used 3 free sessions. Add a session for $5 to continue.',
-          sessionsBalance: 0,
-          freeExtensionAvailable: !(org?.freeExtensionUsed ?? false),
-        };
-      }
-
       return {
         allowed: false,
         reason: 'No sessions remaining. Add a session for $5 to continue.',
@@ -112,10 +102,13 @@ export class BillingService {
       return { allowed: true };
     }
 
-    // 1b. Org is on legacy active care fee plan.
-    if (org.careFeeStatus === CareFeeStatus.ACTIVE) {
-      return { allowed: true };
-    }
+    // 1b. Org is on legacy active care fee plan. Deliberately does NOT return
+    // here: returning early meant a care-fee org's FIRST ground came back
+    // allowed-but-not-free, so it was metered on sessions while a brand new org
+    // doing the same thing got a free ground. Paying a care fee should never
+    // buy you less than paying nothing, so fall through to the free-tier check
+    // and only treat the care fee as the reason if the free tier is used up.
+    const careFeeCovers = org.careFeeStatus === CareFeeStatus.ACTIVE;
 
     // 2. Contributor access code supplied.
     if (accessCode?.trim()) {
@@ -143,7 +136,10 @@ export class BillingService {
       return { allowed: true, freeReason: 'FREE_TIER', groundsUsed: groundCount };
     }
 
-    // 4. Free limit reached, no active subscription.
+    // 4. Free limit used up. A care-fee org may still create, just not free.
+    if (careFeeCovers) return { allowed: true };
+
+    // 5. Free limit reached, no active subscription and no care fee.
     return {
       allowed: false,
       reason: `Your free plan includes ${BillingService.FREE_GROUND_LIMIT} Grounds. Subscribe to create unlimited Grounds.`,

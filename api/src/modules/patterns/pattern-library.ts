@@ -160,6 +160,16 @@ export const isBadFaithCode = (code: string) => KNOWN_CODES.has(code);
 // a `probe` string, because that string is a routing instruction ("Surface to
 // alignment feed only..."), not a real question - it must never be mistaken
 // for one here.
+// Human-readable name for a code, for anywhere a code would otherwise be shown
+// to a person. The live run surfaced "k5" and "k1" on the shared board - codes
+// the MODEL invented during detection, not codes from this library. Unknown
+// codes must never be labelled: the observation text is the value, and a raw
+// key reads like a system leak.
+export const PATTERN_NAME_BY_CODE = new Map<string, string>(
+  [...POSITIVE_CODES, ...BAD_FAITH_CODES].map((c) => [c.code, c.name]),
+);
+export const isKnownPatternCode = (code: string) => PATTERN_NAME_BY_CODE.has(code);
+
 export const PATTERN_PROBE_BY_CODE = new Map<string, string>(
   BAD_FAITH_CODES.filter((c) => c.probe && c.code !== 'F5').map((c) => [c.code, c.probe as string]),
 );

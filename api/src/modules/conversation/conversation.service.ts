@@ -6,17 +6,57 @@ import { endStatesFor } from '../resolution/end-states';
 import { PromptsService } from '../prompts';
 import { AnthropicService, ChatTurn, houseStyle } from './anthropic.service';
 import { ConversationContextService } from './context.service';
-import { buildIntakeBlock, RECORD_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_SCHEMA } from './prompt-library';
+import { SESSION_CLOSE_MARKER, stripCloseMarker, buildIntakeBlock, RECORD_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_SCHEMA, WORK_MENTION_PROMPT, WORK_MENTION_SCHEMA } from './prompt-library';
 import { GroundworkEvents, CheckInCompletedEvent } from '../../common';
 import { DocumentsService } from '../documents/documents.service';
 import { BillingService } from '../billing/billing.service';
 import { EmailService } from '../email/email.service';
 import { UsageService } from '../usage/usage.service';
-import { CheckInStatus, TurnRole, RecordEntryType, Cadence, GroundStatus, UsageEventType, PartyType, GroundMode, DependencyStatus } from '@prisma/client';
+import { CheckInStatus, TurnRole, RecordEntryType, Cadence, GroundStatus, UsageEventType, PartyType, GroundMode, DependencyStatus, WorkMentionKind } from '@prisma/client';
 import { runIntake } from './intake';
 import { boardRendersFor } from '../board/board-families';
 import { buildRoleProbeBlock } from '../board/role-maps';
 import { detectFunction } from '../board/function-detection';
+
+/**
+ * How many things in this text could actually be checked by someone later.
+ *
+ * Substance, not length. A live run rejected two real check-ins for being
+ * "too short" while they named a count, an outcome and a blocker, and let
+ * through "things are going quite well and the team seems happy" at 90
+ * characters. Length was measuring the wrong thing.
+ *
+ * NEGATION MATTERS MORE THAN ANYTHING ELSE HERE. "nothing I can point to as
+ * closed yet" contains the word "closed", and counting it as an achievement is
+ * how a person who delivered nothing for six weeks scored the same as a person
+ * who delivered all quarter. An absence is not a specific.
+ */
+const NEGATION = /\b(nothing|not|no|none|never|without|yet to|hasn'?t|haven'?t|didn'?t|cannot|can'?t|couldn'?t|unable|still (waiting|pushing|working)|nowhere)\b/i;
+
+export function countCheckableSpecifics(text: string): number {
+  // Count clause by clause, so a negated clause cannot contribute. Splitting on
+  // sentence and clause boundaries keeps "Loop signed, nothing else closed" as
+  // one positive and one negative rather than two positives.
+  const clauses = text.split(/[.!?;]|\bbut\b|\bthough\b|,\s*(?=nothing|no |not )/i);
+  let total = 0;
+  for (const clause of clauses) {
+    if (!clause.trim()) continue;
+    const negated = NEGATION.test(clause);
+
+    // Proper nouns: a capitalised word NOT starting a sentence. Sentence
+    // openers ("Yeah...", "Not...") are not named entities. These still count
+    // in a negated clause - naming who you did NOT hear from is still specific.
+    total += (clause.match(/(?<=[a-z,] )[A-Z][a-zA-Z]{2,}\b/g) ?? []).length;
+
+    if (negated) continue; // an absence is not an achievement
+
+    total += (clause.match(/\b\d+([.,]\d+)?%?\b/g) ?? []).length;
+    total += (clause.match(/\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|dozen|hundred|thousand)\b/gi) ?? []).length;
+    total += (clause.match(/\b(mon|tues|wednes|thurs|fri|satur|sun)day\b|\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b|\bnext (week|month|quarter)\b|\bq[1-4]\b/gi) ?? []).length;
+    total += (clause.match(/\b(signed|shipped|closed|delivered|launched|agreed|blocked|paid|hired|sent|booked|onboarded)\b/gi) ?? []).length;
+  }
+  return total;
+}
 
 function mapSpecificityLevel(avgScore: number): string {
   if (avgScore >= 0.6) return 'specific';
@@ -372,7 +412,11 @@ export class ConversationService {
       { role: 'user', content: beginMessage },
     ]);
 
-    const aiTurn = await this.prisma.conversationTurn.create({ data: { checkInId: checkIn.id, role: TurnRole.AI, content: reply } });
+    // An opener never closes a session, but strip defensively so the marker can
+    // never reach a person even if the model emits it in the wrong place.
+    const aiTurn = await this.prisma.conversationTurn.create({
+      data: { checkInId: checkIn.id, role: TurnRole.AI, content: stripCloseMarker(reply).text },
+    });
     await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { status: CheckInStatus.IN_PROGRESS, startedAt: new Date() } });
     return { reply: aiTurn.content, groundId: checkIn.groundId };
   }
@@ -404,11 +448,16 @@ export class ConversationService {
     // Rebuild history (this party only) and ask the engine for the next turn.
     // ISSUE 5: if the AI call fails, delete the orphan PERSON turn then re-throw.
     let reply: string;
+    let hadCloseMarker = false;
     let aiTurn: { id: string; content: string };
     try {
       const turns = await this.prisma.conversationTurn.findMany({ where: { checkInId: checkIn.id }, orderBy: { createdAt: 'asc' } });
       const history: ChatTurn[] = turns.map((t) => ({ role: t.role === TurnRole.AI ? 'assistant' : 'user', content: t.content }));
-      reply = await this.anthropic.respond(fullSystem, history);
+      const rawReply = await this.anthropic.respond(fullSystem, history);
+      // Strip the close marker before it is stored or shown - it is machinery.
+      const stripped = stripCloseMarker(rawReply);
+      reply = stripped.text;
+      hadCloseMarker = stripped.hadMarker;
       aiTurn = await this.prisma.conversationTurn.create({
         data: { checkInId: checkIn.id, role: TurnRole.AI, content: reply },
       });
@@ -421,12 +470,16 @@ export class ConversationService {
       await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { status: CheckInStatus.IN_PROGRESS, startedAt: new Date() } });
     }
 
-    // Signal the frontend that the AI has delivered the session-closing elements
-    // so the "Complete session" button can appear. Detected by the mandatory
-    // SESSION CLOSE phrase defined in ENGINE_RULES.
-    // ISSUE 22: message-count auto-complete removed - only the AI's explicit signal triggers completion.
-    // ISSUE 23: all checks are case-insensitive via replyLower; alternative phrases added for resilience.
-    const sessionComplete = this.detectSessionComplete(reply);
+    // Two detectors, union. The model states plainly that it is closing (the
+    // [[SESSION_COMPLETE]] marker in ENGINE_RULES), and the old phrase matching
+    // stays as a backstop for a turn where the model forgets the marker.
+    //
+    // Why: a live 12-session run closed cleanly only 18% of the time, and three
+    // of the genuine misses were off by ONE WORD - the model wrote "here is what
+    // is in your record" where the list wanted "here is what is NOW in your
+    // record". No phrase list is ever complete, so the model says it outright
+    // instead. Costs nothing: it rides on the reply it was already generating.
+    const sessionComplete = hadCloseMarker || this.detectSessionComplete(reply);
 
     return { reply: aiTurn.content, sessionComplete };
   }
@@ -476,17 +529,29 @@ export class ConversationService {
     try {
       const turns = await this.prisma.conversationTurn.findMany({ where: { checkInId: checkIn.id }, orderBy: { createdAt: 'asc' } });
       const history: ChatTurn[] = turns.map((t) => ({ role: t.role === TurnRole.AI ? 'assistant' : 'user', content: t.content }));
+      // Hold back a tail the length of the marker so a marker split across two
+      // deltas can never flash up in the person's chat before being stripped.
+      let emitted = 0;
       for await (const delta of this.anthropic.respondStream(fullSystem, history)) {
         raw += delta;
-        yield { type: 'delta', text: delta };
+        const safeUpTo = Math.max(0, raw.length - SESSION_CLOSE_MARKER.length);
+        if (safeUpTo > emitted) {
+          const chunk = raw.slice(emitted, safeUpTo);
+          emitted = safeUpTo;
+          if (chunk) yield { type: 'delta', text: chunk };
+        }
       }
-      const reply = houseStyle(raw.trim());
+      const strippedStream = stripCloseMarker(raw);
+      const reply = houseStyle(strippedStream.text.trim());
       if (!reply) throw new Error('AI returned an empty response');
+      // Flush whatever is left after the held-back tail is cleaned.
+      const tail = reply.slice(Math.min(emitted, reply.length));
+      if (tail) yield { type: 'delta', text: tail };
       await this.prisma.conversationTurn.create({ data: { checkInId: checkIn.id, role: TurnRole.AI, content: reply } });
       if (checkIn.status === CheckInStatus.NOT_STARTED) {
         await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { status: CheckInStatus.IN_PROGRESS, startedAt: new Date() } });
       }
-      yield { type: 'done', reply, sessionComplete: this.detectSessionComplete(reply) };
+      yield { type: 'done', reply, sessionComplete: strippedStream.hadMarker || this.detectSessionComplete(reply) };
     } catch (err) {
       await this.prisma.conversationTurn.delete({ where: { id: personTurn.id } }).catch(() => undefined);
       throw err;
@@ -873,13 +938,34 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         'A few more exchanges are needed before this check-in can close - the record is still thin. Answer one or two more questions, then complete.',
       );
     }
+    // SUBSTANCE, NOT LENGTH. Counting characters rejected two of one person's
+    // real check-ins in a live run - answers that named a buyer, a number and a
+    // blocker, but tersely. Meanwhile "I think things are going quite well and
+    // the team seems happy with progress overall" sails through at 90 characters
+    // and says nothing. Length was measuring the wrong thing.
+    //
+    // A record is substantive when it contains specifics someone could later
+    // check: a named person or organisation, a number, a date, or a concrete
+    // outcome. Short and specific passes; long and vague does not.
+    // THIS GATE ONLY STOPS AN EMPTY RECORD. It is not a quality bar.
+    //
+    // Two different jobs were being confused here. Whether someone ANSWERED is a
+    // gate question. Whether their answer was any good is the BOARD's question,
+    // and the board now reads that honestly (verifiability, negation-aware
+    // specificity, trajectory). Enforcing quality here instead would trap an
+    // evasive person until they produced specifics, which is badgering - the
+    // design forbids it, and it punishes the honest person having a bad week
+    // just as hard as the one avoiding.
+    //
+    // So: real sentences pass, even unverifiable ones. "ok / yes / fine" does not.
+    const substantiveTurns = personTurnRows.filter((t) => (t.content?.trim().length ?? 0) >= 12);
     const totalPersonChars = personTurnRows.reduce((sum, t) => sum + (t.content?.trim().length ?? 0), 0);
-    // roughly two real sentences total for a normal session; a single specific
-    // sentence is enough to anchor a correction.
-    const MIN_SUBSTANTIVE_CHARS = checkIn.isSelfCorrection ? 40 : 120;
-    if (totalPersonChars < MIN_SUBSTANTIVE_CHARS) {
+    const MIN_CHARS = checkIn.isSelfCorrection ? 20 : 50;
+    const MIN_REAL_TURNS = checkIn.isSelfCorrection ? 1 : 2;
+
+    if (totalPersonChars < MIN_CHARS || substantiveTurns.length < MIN_REAL_TURNS) {
       throw new BadRequestException(
-        'These answers are pretty short - the record needs a bit more detail before this check-in can close. Add specifics (names, numbers, what actually happened), then complete.',
+        'There is almost nothing here yet. Answer a couple of the questions properly, then complete.',
       );
     }
 
@@ -901,6 +987,10 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
     // Re-read which function map fits this person, from their own account. Runs
     // every session because detection is continuous, not a tag set once.
+    this.extractWorkMentions(checkIn.id, checkIn.participantId, checkIn.groundId, checkIn.sessionNumber).catch((err) =>
+      this.logger.warn(`Work-mention extraction failed for check-in ${checkIn.id}: ${err.message}`),
+    );
+
     this.reviseDetectedFunction(checkIn.participantId).catch((err) =>
       this.logger.warn(`Function detection failed for participant ${checkIn.participantId}: ${err.message}`),
     );
@@ -1119,8 +1209,32 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     );
 
     const VALID_VERIFIABILITY = ['HIGH', 'MEDIUM', 'LOW'];
+
+    // A NON-ANSWER IS NOT A RECORD ENTRY.
+    //
+    // In a live run the extractor faithfully recorded "Nothing new to add for
+    // session 3" and "just a lot going on" as entries. Because the contribution
+    // card counted entries, the person who stopped working for ten weeks scored
+    // 43 and the person who delivered all quarter scored 45. Saying nothing was
+    // being counted as contributing.
+    const NON_ANSWER = /^(nothing (new|much|else)|no( real)? (update|change|progress)|same as (before|last|above)|not (really |much )?(sure|applicable)|n\/?a|none|tbd|as (before|discussed))\b/i;
+    const isNonAnswer = (text: string) => {
+      // Strip the model's own [INFERRED: ...] commentary before judging. The
+      // extractor appends its reasoning to thin answers ("just a lot going on
+      // [INFERRED: is making it harder to close these deals]"), which made an
+      // empty answer look like a substantive entry.
+      const t = text.replace(/\[INFERRED:[^\]]*\]/gi, '').trim().replace(/[.!]+$/, '');
+      if (t.length < 12) return true;                 // "ok", "fine", "yes"
+      if (NON_ANSWER.test(t)) return true;
+      // Nothing checkable in it at all - no name, number, date or outcome.
+      return countCheckableSpecifics(t) === 0;
+    };
+
     const valid = (result?.entries ?? []).filter(
-      (e) => e.text?.trim() && (Object.values(RecordEntryType) as string[]).includes(e.type),
+      (e) =>
+        e.text?.trim() &&
+        (Object.values(RecordEntryType) as string[]).includes(e.type) &&
+        !isNonAnswer(e.text),
     );
     if (valid.length === 0) return;
 
@@ -1181,6 +1295,70 @@ The ground will close toward one of these end states: ${endStates || 'the partie
   }
 
   /**
+   * Resolve, to participant IDs, whose other work this person's account
+   * referenced and in what sense.
+   *
+   * SHARED-mode only. This replaces matching first names against other people's
+   * text, which false-positives on common names, misses anyone referred to
+   * differently, and cannot tell crediting someone from covering for them.
+   *
+   * A name the model reports is matched against the roster ONCE here and, if it
+   * does not resolve to a participant, is dropped. A wrong attribution on a read
+   * about a person is worse than a missing one.
+   */
+  async extractWorkMentions(checkInId: string, participantId: string, groundId: string, sessionNumber: number) {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: {
+        mode: true, scenario: true,
+        participants: { select: { id: true, email: true, user: { select: { firstName: true, lastName: true } } } },
+      },
+    });
+    if (!ground || !boardRendersFor(ground.scenario, ground.mode)) return;
+
+    const turns = await this.prisma.conversationTurn.findMany({ where: { checkInId }, orderBy: { createdAt: 'asc' } });
+    if (turns.length === 0) return;
+    const transcript = turns.map((t) => `${t.role === TurnRole.AI ? 'GROUNDWORK' : 'PERSON'}: ${t.content}`).join('\n');
+
+    const result = await this.anthropic.extract<{
+      mentions: { personName: string; kind: string; text: string }[];
+    }>(WORK_MENTION_PROMPT, [{ role: 'user', content: transcript }], WORK_MENTION_SCHEMA);
+
+    const others = ground.participants.filter((p) => p.id !== participantId);
+    const resolve = (name: string): string | null => {
+      const n = name.trim().toLowerCase();
+      if (!n) return null;
+      const hit = others.find((p) => {
+        const first = (p.user?.firstName ?? '').toLowerCase();
+        const full = [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').toLowerCase();
+        const emailLocal = (p.email ?? '').split('@')[0].toLowerCase();
+        return (!!full && full === n) || (!!first && first === n) || (!!emailLocal && emailLocal === n);
+      });
+      return hit?.id ?? null;
+    };
+
+    const rows = (result?.mentions ?? [])
+      .map((m) => {
+        const aboutParticipantId = resolve(m.personName);
+        if (!aboutParticipantId) return null; // unresolved name: dropped, never guessed
+        if (!(['CREDIT', 'COVERAGE', 'BLOCKED_BY'] as const).includes(m.kind as any)) return null;
+        if (!m.text?.trim()) return null;
+        return {
+          groundId,
+          sourceParticipantId: participantId,
+          aboutParticipantId,
+          checkInId,
+          sessionNumber,
+          kind: m.kind as WorkMentionKind,
+          text: m.text.trim(),
+        };
+      })
+      .filter(Boolean) as any[];
+
+    if (rows.length) await this.prisma.workMention.createMany({ data: rows });
+  }
+
+  /**
    * Extract handoffs (dependencies) from this person's own account.
    *
    * SHARED-mode only: handoffs are a board object, and a private alignment
@@ -1227,26 +1405,75 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       return hit?.id ?? null;
     };
 
+    // The SAME handoff gets described again every session it is still open, so
+    // inserting blindly produced 27 rows for about 4 real handoffs ("pricing",
+    // "Pricing", "the pricing" all counted separately) and left stale BLOCKING
+    // rows forever, because nothing ever updated the original. One row per real
+    // handoff, and the newest account decides its status.
+    const normalise = (t: string) =>
+      t.toLowerCase()
+        .replace(/[^a-z0-9 ]/g, ' ')
+        .replace(/\b(the|a|an|my|our|his|her|their|this|that|some|more|any)\b/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+    const openForThisPerson = await this.prisma.groundDependency.findMany({
+      where: { groundId, fromParticipantId: participantId },
+      select: { id: true, what: true, onParticipantId: true, onLabel: true, status: true },
+    });
+
     for (const d of valid) {
       const onParticipantId = matchParticipant(d.onName);
       const status = (['BLOCKING', 'WAITING', 'CLEARED'] as const).includes(d.status as any)
         ? (d.status as DependencyStatus)
         : DependencyStatus.WAITING;
-      await this.prisma.groundDependency.create({
+      const onLabel = onParticipantId ? null : (d.onLabel?.trim() || d.onName?.trim() || null);
+      const key = normalise(d.what);
+
+      // Same person waiting on the same party for roughly the same thing.
+      const existing = openForThisPerson.find(
+        (e) =>
+          e.onParticipantId === onParticipantId &&
+          (e.onLabel ?? null) === onLabel &&
+          (normalise(e.what) === key ||
+            normalise(e.what).includes(key) ||
+            key.includes(normalise(e.what))),
+      );
+
+      if (existing) {
+        // The newest account wins, which is what finally CLEARS a handoff: a
+        // person who stops describing something as blocking is no longer blocked
+        // on it.
+        await this.prisma.groundDependency.update({
+          where: { id: existing.id },
+          data: {
+            status,
+            then: d.then?.trim() || undefined,
+            sourceCheckInId: checkInId,
+            clearedAt: status === DependencyStatus.CLEARED ? new Date() : null,
+          },
+        });
+        continue;
+      }
+
+      const created = await this.prisma.groundDependency.create({
         data: {
           groundId,
           fromParticipantId: participantId,
           onParticipantId,
           // Keep the spoken name when it did not match a participant, so an
           // external blocker is still visible instead of silently dropped.
-          onLabel: onParticipantId ? null : (d.onLabel?.trim() || d.onName?.trim() || null),
+          onLabel,
           what: d.what.trim(),
           then: d.then?.trim() || null,
           status,
           sourceCheckInId: checkInId,
           clearedAt: status === DependencyStatus.CLEARED ? new Date() : null,
         },
+        select: { id: true, what: true, onParticipantId: true, onLabel: true, status: true },
       });
+      // So a second mention within the SAME extraction also dedupes.
+      openForThisPerson.push(created);
     }
   }
 

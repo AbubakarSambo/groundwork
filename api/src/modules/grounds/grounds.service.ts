@@ -10,7 +10,7 @@ import { CreateGroundDto, AddParticipantDto, CreateGroundForLeadDto } from './dt
 import { GroundworkEvents, GroundActivatedEvent } from '../../common';
 import { GroundScenario, GroundStatus, PartyType, CheckInStatus, Cadence, UsageEventType, TokenType } from '@prisma/client';
 import { endStatesFor } from '../resolution/end-states';
-import { defaultModeFor } from '../board/board-families';
+import { defaultModeFor, boardRendersFor } from '../board/board-families';
 
 // Default timelines per scenario (Part 2 - timeline and cadence).
 const DEFAULT_TIMELINE_DAYS: Record<GroundScenario, number> = {
@@ -243,7 +243,13 @@ export class GroundsService {
       // needed. Session 1's CheckIn is NOT created yet; confirmLead() creates
       // it once the lead actually confirms, mirroring create()'s timing.
       await tx.groundParticipant.create({
-        data: { groundId: ground.id, userId: leadUser.id, email: leadEmail, partyType: PartyType.INITIATOR },
+        data: {
+          groundId: ground.id, userId: leadUser.id, email: leadEmail, partyType: PartyType.INITIATOR,
+          // Without a remit the lead cannot be read at all - no contribution
+          // read, no role-tuned probing. They can still set it themselves at
+          // confirm-lead if the admin left it blank.
+          roleAsDescribed: dto.leadRemit?.trim() || null,
+        },
       });
 
       // Pre-added participants (e.g. the whole cohort), created alongside the
@@ -323,7 +329,7 @@ export class GroundsService {
    * from its readiness count, so the ground does not wait forever on an
    * account that will never come - see that method's comment for why.
    */
-  async confirmLead(groundId: string, requestingUserId: string, edits?: { brief?: string; managingOnly?: boolean }) {
+  async confirmLead(groundId: string, requestingUserId: string, edits?: { brief?: string; managingOnly?: boolean; remit?: string }) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId } });
     if (!ground) throw new NotFoundException('Ground not found');
     if (ground.initiatorId !== requestingUserId) throw new ForbiddenException('Only the named lead can confirm this ground');
@@ -335,6 +341,17 @@ export class GroundsService {
     if (!participant) throw new NotFoundException('Lead participant record not found');
 
     const managingOnly = edits?.managingOnly === true;
+
+    // The lead's last chance to say what they own. A managing-only lead gives no
+    // account so needs none; anyone else without a remit is unreadable by the
+    // board - which in a live run meant the person who set the ground up was the
+    // only one showing "role not clearly defined".
+    if (!managingOnly && edits?.remit?.trim() && !participant.roleAsDescribed?.trim()) {
+      await this.prisma.groundParticipant.update({
+        where: { id: participant.id },
+        data: { roleAsDescribed: edits.remit.trim() },
+      });
+    }
     const hasOtherParticipants = (await this.prisma.groundParticipant.count({ where: { groundId, partyType: PartyType.PARTICIPANT } })) > 0;
 
     const groundUpdate = this.prisma.ground.update({
@@ -706,6 +723,10 @@ export class GroundsService {
       leadContextNotes,
       org: org ?? null,
       sessionProgress: sessionProgress ? { ...sessionProgress, requestingUserIsMissing } : null,
+      // Whether this ground has a delivery board, so the client can show or hide
+      // the link without duplicating the scenario-family table. The server owns
+      // that routing; the client just reads the answer.
+      boardRenders: boardRendersFor(ground.scenario, ground.mode),
     };
   }
 

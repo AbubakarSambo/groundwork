@@ -315,6 +315,17 @@ export function GroundParticipantPage() {
             <div style={{ fontSize: 15, fontWeight: 700, color: '#1A1916', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ground.label}</div>
             <div style={{ fontSize: 11, color: '#9B9590' }}>Your contribution to this ground is yours until the report releases.</div>
           </div>
+          {/* Delivery board: only on shared-mode grounds whose scenario family has
+              one. The server decides (boardRenders); the client does not duplicate
+              the routing table. */}
+          {(ground as any).boardRenders && (
+            <button
+              onClick={() => navigate(`/grounds/${id}/board`)}
+              style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, padding: '5px 11px', borderRadius: 20, background: '#0A1628', color: 'white', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+            >
+              Team board →
+            </button>
+          )}
         </div>
 
         {/* Tab bar */}

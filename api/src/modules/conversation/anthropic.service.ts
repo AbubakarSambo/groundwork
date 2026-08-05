@@ -59,17 +59,96 @@ export class AnthropicService {
       process.env.GOOGLE_APPLICATION_CREDENTIALS = path.resolve(process.cwd(), 'credentials/service-account.json');
     }
 
-    this.client = new GoogleGenAI({
-      vertexai: true,
-      project: this.config.get<string>('gemini.projectId') || 'groundwork-500011',
-      location: this.config.get<string>('gemini.location') || 'us-central1',
-    });
+    this.client = this.buildClient();
     this.model = this.config.get<string>('gemini.model') || 'gemini-2.5-pro';
     // Floor at 8192 (configuration.ts's own default). A low cap (e.g. a stale
     // GEMINI_MAX_TOKENS=2048) leaves too little room once thinking tokens are
     // counted, truncating the answer. NOTE: prod sets its own GEMINI_MAX_TOKENS;
     // this floor guarantees at least 8192 there too, so prod needs no env change.
     this.maxTokens = Math.max(this.config.get<number>('gemini.maxTokens') || 8192, 8192);
+  }
+
+
+  /**
+   * A fresh client. Held in one place so it can be REBUILT, which is the whole
+   * point of the recovery below.
+   */
+  private buildClient(): GoogleGenAI {
+    return new GoogleGenAI({
+      vertexai: true,
+      project: this.config.get<string>('gemini.projectId') || 'groundwork-500011',
+      location: this.config.get<string>('gemini.location') || 'us-central1',
+    });
+  }
+
+  /**
+   * A long-lived client can die while the process stays healthy.
+   *
+   * Observed twice in a 12-session run: after roughly 250 conversations every
+   * AI call from the running app failed, while a brand new process on the same
+   * credentials worked immediately. Process-local, so not quota and not the
+   * network - most likely a pooled connection or a credential held inside the
+   * client. Meanwhile /health kept returning "ok", because it never made an AI
+   * call, so nothing would have alerted in production.
+   *
+   * Rather than guess at the cause, recover from it: after a few consecutive
+   * failures, throw the client away and build a new one. Any single call can
+   * still fail; what must not happen is the engine staying dead until someone
+   * notices by hand.
+   */
+  private consecutiveFailures = 0;
+  private static readonly REBUILD_AFTER_FAILURES = 3;
+  private lastRebuildAt: Date | null = null;
+
+  private noteSuccess() {
+    this.consecutiveFailures = 0;
+  }
+
+  private noteFailure(where: string, err: unknown) {
+    this.consecutiveFailures++;
+    if (this.consecutiveFailures >= AnthropicService.REBUILD_AFTER_FAILURES) {
+      this.logger.error(
+        `${this.consecutiveFailures} consecutive AI failures (${where}). Rebuilding the client - a stale client is the known failure mode here.`,
+      );
+      this.client = this.buildClient();
+      this.lastRebuildAt = new Date();
+      this.consecutiveFailures = 0;
+    }
+  }
+
+  /**
+   * Is the engine actually reachable RIGHT NOW, from THIS process?
+   *
+   * Deliberately makes a real call. A health check that does not touch the model
+   * cannot tell you the model is unreachable, which is exactly how this went
+   * unnoticed.
+   */
+  async healthCheck(): Promise<{ ok: boolean; latencyMs: number; model: string; lastRebuildAt: Date | null; error?: string }> {
+    const started = Date.now();
+    try {
+      const res = await this.client.models.generateContent({
+        model: this.model,
+        contents: [{ role: 'user', parts: [{ text: 'Reply with the single word: ok' }] }],
+        // Real headroom, and the LOWEST thinking budget this model accepts
+        // (2.5-pro rejects 0). A tiny cap gets eaten by thinking tokens before
+        // any text is produced, which makes a WORKING engine report unhealthy -
+        // the same trap the maxTokens floor in the constructor guards against.
+        config: { maxOutputTokens: 1024, thinkingConfig: { thinkingBudget: 128 } },
+      });
+      const ok = !!res?.text;
+      if (ok) this.noteSuccess();
+      else this.noteFailure('healthCheck', new Error('empty response'));
+      return { ok, latencyMs: Date.now() - started, model: this.model, lastRebuildAt: this.lastRebuildAt };
+    } catch (err: any) {
+      this.noteFailure('healthCheck', err);
+      return {
+        ok: false,
+        latencyMs: Date.now() - started,
+        model: this.model,
+        lastRebuildAt: this.lastRebuildAt,
+        error: String(err?.message ?? err).slice(0, 300),
+      };
+    }
   }
 
   /**
@@ -119,8 +198,10 @@ export class AnthropicService {
         setTimeout(() => reject(new Error('Gemini respond() timed out after 90s')), TIMEOUT_MS),
       );
       res = await Promise.race([call, timeout]);
+      this.noteSuccess();
     } catch (err: any) {
       this.logger.error(`respond() Gemini call failed: ${err.message}`);
+      this.noteFailure('respond', err);
       throw err;
     }
 
@@ -190,6 +271,7 @@ export class AnthropicService {
       });
     } catch (err: any) {
       this.logger.error(`extract() Gemini call failed: ${err.message}`);
+      this.noteFailure('extract', err);
       throw err;
     }
 
@@ -218,7 +300,18 @@ export class AnthropicService {
   private convertSchema(schema: any): any {
     if (!schema || typeof schema !== 'object') return schema;
     const out: any = {};
-    if (schema.type) out.type = schema.type.toUpperCase();
+    // JSON Schema allows a union type (["string","null"]) to mean nullable.
+    // Gemini wants a single scalar type plus a nullable flag, and calling
+    // toUpperCase() on the array threw - which silently killed the whole
+    // extraction. Dependency extraction used union types, so "waiting on" never
+    // populated from a real conversation.
+    if (Array.isArray(schema.type)) {
+      const nonNull = schema.type.filter((t: any) => t !== 'null');
+      if (nonNull.length) out.type = String(nonNull[0]).toUpperCase();
+      if (schema.type.includes('null')) out.nullable = true;
+    } else if (typeof schema.type === 'string') {
+      out.type = schema.type.toUpperCase();
+    }
     if (schema.description) out.description = schema.description;
     if (schema.enum) out.enum = schema.enum;
     if (schema.required) out.required = schema.required;

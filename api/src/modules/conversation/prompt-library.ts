@@ -52,6 +52,20 @@ This produces: (a) a nameable artefact, (b) a named verifier. These are the evid
 // Global engine rules - seeded as the versioned "system" prompt.
 // ---------------------------------------------------------------------------
 
+/**
+ * The marker the engine appends on a genuine closing turn (see ENGINE_RULES).
+ * It is machinery, never shown to anyone: stripped from the reply before it is
+ * persisted, streamed, or displayed.
+ */
+export const SESSION_CLOSE_MARKER = '[[SESSION_COMPLETE]]';
+
+/** Remove the close marker from a reply and report whether it was there. */
+export function stripCloseMarker(reply: string): { text: string; hadMarker: boolean } {
+  if (!reply.includes(SESSION_CLOSE_MARKER)) return { text: reply, hadMarker: false };
+  const text = reply.split(SESSION_CLOSE_MARKER).join('').replace(/\n{3,}/g, '\n\n').trim();
+  return { text, hadMarker: true };
+}
+
 export const ENGINE_RULES = `You are Groundwork: an organisational intelligence layer that tracks contribution, detects patterns, and helps people and organisations see clearly. You operate through conversation. You are given structured intake data, pattern state, injection recommendations, and trust calibration alongside the person's words. Use all of it.
 
 YOUR TWO MODES:
@@ -228,6 +242,11 @@ Never state or assume a timeframe, date, deadline, or period the person has not 
 A definition of success is incomplete without the period it is measured over, so the timeframe is part of establishing success, not a separate errand. The moment the person gives you a definition of success or "done" and has not attached a period to it, your very next question asks for the period: "Over what timeframe - the next few weeks, this quarter, the year?" This is required, ask it once, naturally, not as a form field. Do not let the person move toward wrapping up before you have asked for the period at least once. Wait for their answer before framing anything around a period.
 Once they give a timeframe, use that one and only that one everywhere for the rest of the session: every question and every summary references their stated period, never an invented one.
 At the end of the session, before the record closes, confirm the timeframe back to them in the same breath as confirming they are done - one combined closing confirmation, never two stacked prompts: "You said 90 days - is that still the period you want this measured against, and are you ready to close this check-in?" If they never gave a timeframe, ask for it then rather than closing without one.
+
+SESSION CLOSE MARKER - required, mechanical, never explained to the person:
+When you are genuinely wrapping the check-in up - you have what you need, you are summarising what is now in their record and saying goodbye rather than asking another question - end your reply with this exact token on its own final line:
+[[SESSION_COMPLETE]]
+It is stripped out before the person sees it, so never mention it, never explain it, and never write it in the middle of a reply. Emit it ONLY on a genuine closing turn. If you are still asking a question, do not emit it. This is how the product knows to offer the person the "end session" step; without it they are left unsure whether they are finished.
 
 HUMAN FIRST RULE - overrides every probe, every pathway, every session instruction:
 If the person says anything that is not a direct work response - a greeting, a personal comment, how they are feeling, something off-topic, a complaint, a joke, frustration at a question - respond to what they actually said. Not a token acknowledgement with the probe stapled to the end. A real response to the real thing they said.
@@ -1363,6 +1382,54 @@ export const DEPENDENCY_EXTRACTION_SCHEMA = {
       },
     },
     required: ['dependencies'],
+  },
+};
+
+
+/**
+ * WORK MENTION extraction. SHARED-mode grounds only.
+ *
+ * Answers, from ONE person's account: whose OTHER work did they reference, and
+ * in what sense - crediting them, covering for them, or blocked by them.
+ *
+ * This exists so the board never has to guess by matching names against text.
+ * The model names the person as the speaker referred to them; the service then
+ * resolves that to a participant id and DROPS anything that does not resolve.
+ */
+export const WORK_MENTION_PROMPT = `From ONE person's check-in transcript, find every place they referred to work connected to ANOTHER named person.
+
+For each one give:
+- personName: the other person's name, exactly as the speaker said it.
+- kind: one of
+  CREDIT - the speaker says this other person did something, moved something, or unblocked them. Crediting them.
+  COVERAGE - the speaker describes doing work that sounds like it belongs to the other person, or picking something up on their behalf.
+  BLOCKED_BY - the speaker says they are waiting on or held up by this other person.
+- text: the short piece of the speaker's own words that shows it.
+
+Only include a reference to a real named person. Do not include the speaker themselves. Do not include organisations, teams, or customers. If the speaker mentions someone with no work attached ("I spoke to Dana"), that is not a work mention.
+
+Be conservative. An empty list is a correct answer.`;
+
+export const WORK_MENTION_SCHEMA = {
+  name: 'emit_work_mentions',
+  description: "Emit references in this person's account to another person's work.",
+  input_schema: {
+    type: 'object',
+    properties: {
+      mentions: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            personName: { type: 'string' },
+            kind: { type: 'string', enum: ['CREDIT', 'COVERAGE', 'BLOCKED_BY'] },
+            text: { type: 'string' },
+          },
+          required: ['personName', 'kind', 'text'],
+        },
+      },
+    },
+    required: ['mentions'],
   },
 };
 

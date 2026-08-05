@@ -32,6 +32,8 @@ export interface AddParticipantBody {
 
 export interface CreateGroundForLeadBody {
   leadEmail: string
+  /** What the lead is responsible for. Without it the lead is the one person the board cannot read. */
+  leadRemit?: string
   leadName?: string
   label: string
   scenario: GroundScenario
@@ -75,7 +77,7 @@ export const groundsApi = {
   createForLead: (body: CreateGroundForLeadBody) =>
     apiClient.post<Ground>('/grounds/for-lead', body).then(r => r.data),
 
-  confirmLead: (groundId: string, edits?: { brief?: string; managingOnly?: boolean }) =>
+  confirmLead: (groundId: string, edits?: { brief?: string; managingOnly?: boolean; remit?: string }) =>
     apiClient.post<{ groundId: string; checkInId: string | null }>(`/grounds/${groundId}/confirm-lead`, edits ?? {}).then(r => r.data),
 
   getOrgRoster: () =>

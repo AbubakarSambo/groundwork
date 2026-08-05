@@ -457,8 +457,18 @@ export function AppSidebar() {
               <div style={{ fontSize: 12, color: 'rgba(255,255,255,.3)', padding: '8px 6px' }}>No grounds yet</div>
             )}
             {grounds.map(g => {
-              const sessions = g.checkIns?.length ?? 0
-              const maxSessions = (g as any).maxSessions ?? (g.timelineDays ? Math.ceil(g.timelineDays / 14) : null)
+              // DISTINCT session numbers, not the number of check-in rows: with 5
+              // people over 13 sessions this counted 65 "sessions".
+              const sessions = new Set((g.checkIns ?? []).map((c: any) => c.sessionNumber)).size
+              // Respect the ground's real cadence. Hardcoding /14 said "7 sessions"
+              // for a 90-day WEEKLY ground that actually runs ~13.
+              const cadenceDays = ({ DAILY: 1, WEEKLY: 7, FORTNIGHTLY: 14, MONTHLY: 30 } as Record<string, number>)[(g as any).cadence] ?? 14
+              const planned = (g as any).maxSessions ?? (g.timelineDays ? Math.ceil(g.timelineDays / cadenceDays) : null)
+              // Never show fewer planned than have already happened.
+              const maxSessions = planned != null ? Math.max(planned, sessions) : null
+              // confidence is a 0-5 score, not a 0-1 fraction. Multiplying by 100
+              // produced "500%".
+              const confPct = g.confidence != null ? Math.min(100, Math.round((g.confidence / 5) * 100)) : null
               return (
                 <div key={g.id} style={{ marginBottom: 2, borderRadius: 8, overflow: 'hidden' }}>
                   <NavLink
@@ -502,7 +512,7 @@ export function AppSidebar() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
                       {g.confidence != null && (
                         <span style={{ fontSize: 11, color: 'rgba(255,255,255,.45)' }}>
-                          {Math.round(g.confidence * 100)}% · {sessions}{maxSessions ? `/${maxSessions}` : ''} sessions
+                          {confPct}% · {sessions}{maxSessions ? `/${maxSessions}` : ''} sessions
                         </span>
                       )}
                       {g.confidence == null && (

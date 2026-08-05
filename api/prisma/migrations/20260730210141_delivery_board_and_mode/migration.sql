@@ -47,18 +47,6 @@ CREATE TABLE "ground_dependencies" (
 );
 
 -- CreateTable
-CREATE TABLE "ground_meetings" (
-    "id" TEXT NOT NULL,
-    "ground_id" TEXT NOT NULL,
-    "happened_at" TIMESTAMP(3) NOT NULL,
-    "present_ids" TEXT[] DEFAULT ARRAY[]::TEXT[],
-    "notes" TEXT NOT NULL,
-    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT "ground_meetings_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
 CREATE TABLE "ground_polls" (
     "id" TEXT NOT NULL,
     "ground_id" TEXT NOT NULL,
@@ -86,9 +74,6 @@ CREATE INDEX "ground_objectives_ground_id_idx" ON "ground_objectives"("ground_id
 CREATE INDEX "ground_dependencies_ground_id_idx" ON "ground_dependencies"("ground_id");
 
 -- CreateIndex
-CREATE INDEX "ground_meetings_ground_id_idx" ON "ground_meetings"("ground_id");
-
--- CreateIndex
 CREATE UNIQUE INDEX "ground_polls_ground_id_key" ON "ground_polls"("ground_id");
 
 -- CreateIndex
@@ -105,9 +90,6 @@ ALTER TABLE "ground_dependencies" ADD CONSTRAINT "ground_dependencies_from_parti
 
 -- AddForeignKey
 ALTER TABLE "ground_dependencies" ADD CONSTRAINT "ground_dependencies_on_participant_id_fkey" FOREIGN KEY ("on_participant_id") REFERENCES "ground_participants"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "ground_meetings" ADD CONSTRAINT "ground_meetings_ground_id_fkey" FOREIGN KEY ("ground_id") REFERENCES "grounds"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "ground_polls" ADD CONSTRAINT "ground_polls_ground_id_fkey" FOREIGN KEY ("ground_id") REFERENCES "grounds"("id") ON DELETE CASCADE ON UPDATE CASCADE;

@@ -16,8 +16,13 @@ import {
   classifyCoverageReason,
   DEFAULT_COVERAGE_VARIANT,
   CoverageVariant,
+  LeadershipPattern,
+  LEADERSHIP_PATTERN_BY_KEY,
+  ManagerAlignmentRead,
 } from './coverage';
 import { MIN_COACHING_CONFIDENCE, roleMapFor } from './role-maps';
+import { ReadInput, buildContribution, buildCoverage, dedupeDependencies } from './reads';
+import { PATTERN_NAME_BY_CODE } from '../patterns/pattern-library';
 
 /**
  * The board: a delivery-shaped rendering of the delivery-relevant parts of the
@@ -37,6 +42,17 @@ import { MIN_COACHING_CONFIDENCE, roleMapFor } from './role-maps';
  *     scenario never renders one even in shared mode.
  *  2. WHITELIST. Only report fields in BOARD_WHITELIST can cross onto the board.
  *     The trust analysis, arc signals and anything lead-only never do.
+ */
+/**
+ * Collapse handoffs that are really the same one.
+ *
+ * Extraction now dedupes on write, but every ground created before that fix has
+ * the duplicates already - 27 rows for about 4 real handoffs in the live run,
+ * which made the summary read "13 blocked" when 2 people were. Deduping on READ
+ * too means existing grounds are fixed as well as new ones.
+ *
+ * The newest row wins, because a handoff someone has stopped describing as
+ * blocking is no longer blocking.
  */
 @Injectable()
 export class BoardService {
@@ -59,7 +75,6 @@ export class BoardService {
         report: true,
         objectives: { orderBy: { sortOrder: 'asc' } },
         dependencies: { orderBy: { createdAt: 'asc' } },
-        meetings: { orderBy: { happenedAt: 'desc' } },
         poll: { include: { options: { orderBy: { sortOrder: 'asc' } } } },
       },
     });
@@ -85,6 +100,10 @@ export class BoardService {
             : 'This kind of ground does not use a shared board. Laying these accounts out for everyone to read would undo the candour that makes them worth having. Read the report instead.',
       };
     }
+
+    // Collapse duplicate handoffs before anything reads them, so existing
+    // grounds get the same answer as new ones.
+    (ground as any).dependencies = dedupeDependencies(ground.dependencies as any);
 
     const sections = sectionsFor(ground.scenario, ground.mode);
     const has = (s: BoardSection) => sections.includes(s);
@@ -120,6 +139,13 @@ export class BoardService {
       title: ground.label,
       scenario: ground.scenario,
       coverageVariant: variant,
+      // Which participant row is the caller, so the client knows whose poll chip
+      // is theirs to toggle. Null for an org admin reading without being a party.
+      myParticipantId: me?.id ?? null,
+      // Whether the caller may set the frame (targets, the poll question). The
+      // board is otherwise read-only, so the client should not offer controls it
+      // would only be rejected for using.
+      canEditFrame: isInitiator,
       readOnlyNote: 'Generated from the ground. Only the meeting poll is editable.',
       participants: ground.participants.map((p) => ({
         id: p.id,
@@ -148,14 +174,51 @@ export class BoardService {
     }
 
     if (has('objectives')) {
+      // #19, the best version. The number stays the LEAD'S - deriving "how many
+      // paying companies" from free text automatically is exactly the
+      // unreliable guessing this product exists to avoid. But making them
+      // maintain it blind means it goes stale, which is what happened in a live
+      // run: twelve productive weeks and the board still read "no change".
+      //
+      // So the record SUGGESTS and the human DECIDES: count how many distinct
+      // things in the record look like they belong to this target, show it only
+      // when it disagrees with the lead's number, and let them accept it in one
+      // click. The board never silently overwrites what a person set.
+      const objectiveEvidence = await this.prisma.recordEntry.findMany({
+        where: { participant: { groundId }, type: { in: ['COMMITMENT', 'SUCCESS_DEFINITION'] as any } },
+        select: { text: true },
+      });
+      const suggestFor = (name: string): number | null => {
+        const words = name.toLowerCase().split(/\s+/).filter((w) => w.length > 3);
+        if (words.length === 0) return null;
+        const hits = objectiveEvidence.filter((e) => {
+          const t = e.text.toLowerCase();
+          // Every meaningful word of the target appears, and the entry says
+          // something happened rather than something is planned.
+          return words.every((w) => t.includes(w.replace(/s$/, ''))) &&
+            /\b(signed|closed|paying|live|onboarded|delivered|shipped|joined|confirmed)\b/.test(t);
+        }).length;
+        return hits > 0 ? hits : null;
+      };
+
       out.objectives = ground.objectives.map((o) => ({
         id: o.id, name: o.name, count: o.count, prevCount: o.prevCount, target: o.target,
         delta: o.count - o.prevCount,
         isNew: o.addedAtSession != null && o.addedAtSession >= maxSession,
+        // Only present when the record disagrees with the lead's number. Never
+        // applied automatically - it is a prompt, not a correction.
+        suggestedCount: (() => {
+          const sug = suggestFor(o.name);
+          return sug != null && sug !== o.count ? sug : null;
+        })(),
         // A new dimension means nothing until people have checked in against it,
         // so the board shows who has been asked and who has not.
+        // Only people who can actually be asked: a managing-only lead gives no
+        // account, and someone who never accepted their invite would otherwise
+        // sit in "still to be asked" forever, making a new target look
+        // permanently unanswered.
         askedOf: o.addedAtSession == null ? null : ground.participants
-          .filter((p) => !p.managingOnly)
+          .filter((p) => !p.managingOnly && !!p.userId)
           .map((p) => ({
             participantId: p.id,
             name: nameOf(p.id),
@@ -242,6 +305,15 @@ export class BoardService {
       );
     }
 
+    // #12: nothing ever asked the lead to set targets, so "what we are aiming
+    // for" sat empty for a whole quarter and the summary read "no change" after
+    // twelve productive weeks. The board now says so plainly, to the one person
+    // who can fix it.
+    if (has('objectives') && (out.objectives ?? []).length === 0 && isInitiator) {
+      out.objectivesPrompt =
+        'No targets set yet, so there is nothing for this board to measure progress against. Add two or three things this ground is aiming for.';
+    }
+
     if (has('quickRead')) {
       const blockers = ground.dependencies.filter((d) => d.status === DependencyStatus.BLOCKING).length;
       const divCount = Array.isArray(reportSafe?.divergences) ? (reportSafe!.divergences as any[]).length : 0;
@@ -256,11 +328,18 @@ export class BoardService {
     }
 
     if (has('contribution')) {
-      out.contribution = await this.buildContributionReads(ground, checkIns, nameOf);
+      out.contribution = buildContribution(await this.loadReadInput(ground), nameOf);
     }
 
     if (has('coverage')) {
-      out.coverage = await this.buildCoverageReads(ground, nameOf);
+      out.coverage = buildCoverage(await this.loadReadInput(ground), nameOf);
+    }
+
+    if (has('contribution')) {
+      // Only meaningful where someone actually manages someone: needs a manager
+      // and at least one report, both with accounts on record.
+      const alignment = this.buildManagerAlignment(reportSafe);
+      if (alignment.length) out.managerAlignment = alignment;
     }
 
     if (has('patterns')) {
@@ -276,17 +355,15 @@ export class BoardService {
       });
       out.patterns = detections
         .filter((d) => !PERSON_JUDGING_CODES.has(d.code))
-        .map((d) => ({ code: d.code, text: d.observationText, periods: d.periodsObserved }));
-    }
-
-    if (has('meetings')) {
-      out.meetings = ground.meetings.map((m) => ({
-        id: m.id,
-        happenedAt: m.happenedAt,
-        present: m.presentIds.map((id) => nameOf(id)).filter(Boolean),
-        missed: ground.participants.filter((p) => !m.presentIds.includes(p.id)).map((p) => nameOf(p.id)).filter(Boolean),
-        notes: m.notes,
-      }));
+        .map((d) => ({
+          code: d.code,
+          // Only label a code this library actually knows. The model sometimes
+          // invents codes ("k5"), and a raw key on a shared board reads like a
+          // system leak - the observation text carries the meaning anyway.
+          label: PATTERN_NAME_BY_CODE.get(d.code) ?? null,
+          text: d.observationText,
+          periods: d.periodsObserved,
+        }));
     }
 
     if (has('poll')) {
@@ -324,6 +401,8 @@ export class BoardService {
       source: 'divergence' as const,
     }));
     const fromBlockers = dependencies
+      // Only STILL-OPEN blockers. A cleared handoff is not a decision anyone
+      // needs to make, and leaving them on grew this list to 15 items.
       .filter((d) => d.status === DependencyStatus.BLOCKING)
       .map((d) => ({
         question: `Unblock: ${d.what}`,
@@ -331,7 +410,19 @@ export class BoardService {
         owner: d.onParticipantId ? (nameOf(d.onParticipantId) ?? 'Unassigned') : (d.onLabel ?? 'Unassigned'),
         source: 'blocker' as const,
       }));
-    return [...fromBlockers, ...fromDivergence];
+
+    // Same decision phrased slightly differently is one decision.
+    const seen = new Set<string>();
+    const deduped = [...fromBlockers, ...fromDivergence].filter((d) => {
+      const k = d.question.toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+
+    // A list of fifteen is not a list of decisions, it is a backlog nobody
+    // reads. Blockers first, because someone is stuck behind them.
+    return deduped.slice(0, 5);
   }
 
   /**
@@ -344,160 +435,225 @@ export class BoardService {
    *    problem rather than the person.
    *  - A position is never returned without its reason attached.
    */
-  private async buildContributionReads(
-    ground: { id: string; participants: any[] },
-    checkIns: { participantId: string; sessionNumber: number; status: CheckInStatus; specificityLevel: string | null }[],
-    nameOf: (id: string) => string | null,
-  ) {
-    const deps = await this.prisma.groundDependency.findMany({
-      where: { groundId: ground.id, status: { in: [DependencyStatus.BLOCKING, DependencyStatus.WAITING] } },
-      select: { fromParticipantId: true },
-    });
-    const blockedIds = new Set(deps.map((d) => d.fromParticipantId));
-
-    const entryCounts = await this.prisma.recordEntry.groupBy({
-      by: ['participantId'],
-      where: { participant: { groundId: ground.id } },
-      _count: { _all: true },
-    });
-    const countOf = (pid: string) => entryCounts.find((e) => e.participantId === pid)?._count._all ?? 0;
-
-    return ground.participants
-      .filter((p) => !p.managingOnly)
-      .map((p) => {
-        const remitDefined = !!p.roleAsDescribed?.trim();
-        if (!remitDefined) {
-          return {
-            participantId: p.id,
-            name: nameOf(p.id),
-            remit: p.roleAsDescribed ?? null,
-            remitDefined: false,
-            position: null,
-            reason: null,
-            note:
-              'No position shown, because the role was never clearly defined. Define what it is responsible for before assessing anyone against it. An undefined role is often the real problem, not the person.',
-          };
-        }
-
-        const map = roleMapFor(p.detectedFunction);
-        const confident = (p.detectedFunctionConfidence ?? 0) >= MIN_COACHING_CONFIDENCE;
-        const mine = checkIns.filter((c) => c.participantId === p.id);
-        const completed = mine.filter((c) => c.status === CheckInStatus.COMPLETED).length;
-        const entries = countOf(p.id);
-        const isBlocked = blockedIds.has(p.id);
-
-        // Deliberately coarse. This is a read on the role and the plan, not a
-        // score on the person, and the reason carries the weight, not the label.
-        let position: 'beyond' | 'at' | 'below';
-        if (entries >= 6 && completed >= 2) position = 'beyond';
-        else if (entries >= 2) position = 'at';
-        else position = 'below';
-
-        const reasonParts: string[] = [];
-        reasonParts.push(`${completed} check-in${completed === 1 ? '' : 's'} on record, ${entries} thing${entries === 1 ? '' : 's'} named.`);
-        if (isBlocked) {
-          // Blocked must NEVER read as behind. This is the protection the
-          // engineering and PM maps both call for, applied generally.
-          reasonParts.push('Part of this is blocked on someone else (see what people are waiting on), which is different from being behind. Separate the two before reading anything into it.');
-        }
-        if (map) {
-          reasonParts.push(`Read against ${map.label}: on track here means ${map.onTrackMeans.toLowerCase()}`);
-          if (!confident) reasonParts.push('This read of their function is still provisional.');
-        }
-
-        return {
-          participantId: p.id,
-          name: nameOf(p.id),
-          remit: p.roleAsDescribed,
-          remitDefined: true,
-          position,
-          positionLabel: position === 'beyond' ? 'Above and beyond' : position === 'at' ? 'On track' : 'Below track',
-          reason: reasonParts.join(' '),
-          fn: p.detectedFunction ?? null,
-          fnLabel: map?.label ?? null,
-          fnConfident: confident,
-          isBlocked,
-          ownVoice: null,
-          guard:
-            'Each person against their own role, in its own terms, never on one scale. A position is never shown without its reason, and never at all if the role was not defined. Below track is a read on the role and the plan, not the person.',
-        };
-      });
+  /**
+   * Load what the reads need, then hand off. The deciding lives in reads.ts as
+   * pure functions so it can be replayed against a captured real run and checked
+   * (see reads.spec.ts). Nothing here decides anything about a person.
+   */
+  private async loadReadInput(ground: { id: string; participants: any[] }): Promise<ReadInput> {
+    const [dependencies, entries, mentions, checkIns] = await Promise.all([
+      this.prisma.groundDependency.findMany({
+        where: { groundId: ground.id },
+        select: { fromParticipantId: true, onParticipantId: true, onLabel: true, what: true, status: true, createdAt: true },
+      }),
+      this.prisma.recordEntry.findMany({
+        where: { participant: { groundId: ground.id } },
+        select: { participantId: true, text: true, checkIn: { select: { sessionNumber: true } } },
+      }),
+      this.prisma.workMention.findMany({
+        where: { groundId: ground.id },
+        select: { aboutParticipantId: true, sourceParticipantId: true, kind: true, sessionNumber: true },
+      }),
+      this.prisma.checkIn.findMany({
+        where: { groundId: ground.id },
+        select: { participantId: true, sessionNumber: true, status: true },
+      }),
+    ]);
+    return {
+      participants: ground.participants.map((p) => ({
+        id: p.id,
+        roleAsDescribed: p.roleAsDescribed ?? null,
+        managingOnly: !!p.managingOnly,
+        detectedFunction: p.detectedFunction ?? null,
+        detectedFunctionConfidence: p.detectedFunctionConfidence ?? null,
+      })),
+      checkIns,
+      entries: entries.map((e) => ({
+        participantId: e.participantId,
+        sessionNumber: e.checkIn?.sessionNumber ?? null,
+        text: e.text,
+      })),
+      mentions,
+      dependencies,
+    };
   }
 
   /**
-   * Where work is landing. Two-sided, coupled to the reason it cannot
-   * self-determine, own-voice enabled, and only where the remit is defined.
+   * Where one account of how this team is being led differs from another.
    *
-   * Currently computed at ROLE scope only - the sharpest individual read. The
-   * other three scopes (project, department, company) are in the type but are
-   * not derivable until a department/company structure exists to read them at,
-   * so they are deliberately absent rather than faked.
+   * Produced by the report synthesis (rule 14), not here: the model already sees
+   * every party's labeled evidence and already produces divergences without
+   * quoting anyone, so leadership gaps come from that same call. Matching
+   * phrases like "clearly" against "not sure" would fire on the wrong thing and
+   * miss the politely-worded version, which is the common one.
+   *
+   * This method only shapes what synthesis produced for display. It adds no
+   * detection of its own.
    */
-  private async buildCoverageReads(
-    ground: { id: string; participants: any[] },
-    nameOf: (id: string) => string | null,
-  ): Promise<{ scope: CoverageScope; reads: CoverageRead[] }> {
-    const deps = await this.prisma.groundDependency.findMany({
-      where: { groundId: ground.id, status: { in: [DependencyStatus.BLOCKING, DependencyStatus.WAITING] } },
-      select: { fromParticipantId: true },
-    });
-    const blockedIds = new Set(deps.map((d) => d.fromParticipantId));
+  private buildManagerAlignment(reportSafe: Record<string, any> | null): ManagerAlignmentRead[] {
+    const raw = reportSafe?.leadershipGaps;
+    if (!Array.isArray(raw)) return [];
+    return raw
+      .map((g: any) => {
+        const spec = LEADERSHIP_PATTERN_BY_KEY[g?.pattern];
+        // An unrecognised pattern is dropped rather than rendered as a bare
+        // string: without its pole and its label it is not actionable, and a
+        // half-rendered read about someone's management is worse than none.
+        if (!spec || !g?.gap) return null;
 
-    const reads: CoverageRead[] = [];
-    for (const p of ground.participants) {
-      if (p.managingOnly) continue;
-      const remitDefined = !!p.roleAsDescribed?.trim();
-
-      // Signal: how much of this person's own named work is appearing in OTHER
-      // people's accounts. Uses the same cross-reference the report already
-      // relies on - not a new capture path.
-      const mine = await this.prisma.recordEntry.count({
-        where: { participantId: p.id },
-      });
-      const othersMentioning = await this.prisma.recordEntry.count({
-        where: {
-          participant: { groundId: ground.id, id: { not: p.id } },
-          text: { contains: (nameOf(p.id) ?? '').split(' ')[0] || ' ', mode: 'insensitive' },
-        },
-      });
-      const total = mine + othersMentioning;
-      const pct = total === 0 ? 0 : Math.round((othersMentioning / total) * 100);
-
-      const kind: CoverageKind =
-        pct >= 45 ? CoverageKind.LEAKING : pct >= 20 ? CoverageKind.ABSORBING : CoverageKind.STABLE;
-
-      const { reason, reasonText } = classifyCoverageReason({
-        kind,
-        isBlocked: blockedIds.has(p.id),
-        remitDefined,
-        ownVoiceClaimsDelegation: false,
-        // Rising-over-periods needs history this does not have yet, so it is
-        // reported as 0 and the classifier will land on CANNOT_DETERMINE rather
-        // than asserting an ownership drop from a single snapshot.
-        risingPeriods: 0,
-      });
-
-      reads.push({
-        participantId: p.id,
-        name: nameOf(p.id),
-        scope: 'role',
-        pct,
-        kind,
-        trend: 'stable',
-        what: remitDefined
-          ? `${othersMentioning} mention${othersMentioning === 1 ? '' : 's'} of this person's work in other people's accounts, against ${mine} they named themselves.`
-          : 'The role was never defined, so there is no boundary to measure against.',
-        reason,
-        reasonText,
-        ownVoice: null,
-        coupledToBlocker: blockedIds.has(p.id),
-        remitDefined,
-      });
-    }
-    return { scope: 'role', reads };
+        // ENFORCED, not merely requested. The prompt forbids quoting and
+        // labelling, but a prompt is a request and this is the one property
+        // that must not drift: a two-word quote still tells the other person
+        // exactly what was said. Anything carrying a quote or a party label is
+        // dropped rather than shown.
+        const gapText = String(g.gap);
+        // Possessive apostrophes are not quotations ("another party's remit"),
+        // so strip them before looking for quoted speech.
+        const withoutPossessives = gapText.replace(/(\w)['\u2019]s\b/gi, '$1s');
+        if (/["\u201c\u201d]|['\u2018][^'\u2019]{2,}['\u2019]/.test(withoutPossessives)) {
+          this.logger.warn('Dropping a leadership gap containing a quotation - the no-quote rule is absolute.');
+          return null;
+        }
+        if (/\b(party [A-Z]|the lead|the manager|the initiator)\b/i.test(gapText)) {
+          this.logger.warn('Dropping a leadership gap that identifies a party.');
+          return null;
+        }
+        // One period is not a pattern. The same three-period discipline that
+        // governs every other negative read governs this one, and this is the
+        // most consequential read on the board.
+        const periods = Number(g.periods ?? 0);
+        if (periods < 2) return null;
+        return {
+          // Deliberately not attributed. The gap is BETWEEN two accounts;
+          // naming whose it is would undo the point.
+          managerParticipantId: '',
+          managerName: null,
+          pattern: spec.pattern,
+          pole: spec.pole,
+          label: spec.label,
+          gap: String(g.gap),
+          note: String(g.note ?? spec.why),
+          periods,
+        };
+      })
+      .filter(Boolean) as ManagerAlignmentRead[];
   }
 
-  /** The poll is the ONE editable thing on the board. */
+  /**
+   * Objectives and the poll are the only things anyone WRITES here, and they are
+   * different kinds of write:
+   *  - Objectives are the lead's frame. Only the initiator sets them, and they
+   *    are a target, never an assessment of a person.
+   *  - The poll is availability, which is logistics and never touches an account,
+   *    so any party can mark themselves.
+   *
+   * Nothing else on the board is writable: everything else is generated from
+   * check-ins, and letting someone edit it directly would make the board a place
+   * to argue the record rather than read it.
+   */
+  private async assertInitiatorOfBoardGround(groundId: string, requestingUserId: string) {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { id: true, scenario: true, mode: true, initiatorId: true },
+    });
+    if (!ground) throw new NotFoundException('Ground not found');
+    if (!boardRendersFor(ground.scenario, ground.mode)) {
+      throw new ForbiddenException('This ground does not have a board');
+    }
+    if (ground.initiatorId !== requestingUserId) {
+      throw new ForbiddenException('Only the person who set this ground up can change what it is aiming for');
+    }
+    return ground;
+  }
+
+  async createObjective(
+    groundId: string,
+    requestingUserId: string,
+    dto: { name: string; target?: number | null },
+  ) {
+    await this.assertInitiatorOfBoardGround(groundId, requestingUserId);
+    const [count, maxSession] = await Promise.all([
+      this.prisma.groundObjective.count({ where: { groundId } }),
+      this.prisma.checkIn.aggregate({ where: { groundId }, _max: { sessionNumber: true } }),
+    ]);
+    // Stamp the session it was added in, so the board can flag it as new and show
+    // who has been asked about it. A target means nothing until people have
+    // checked in against it.
+    const addedAtSession = count === 0 ? null : (maxSession._max.sessionNumber ?? 1);
+    return this.prisma.groundObjective.create({
+      data: {
+        groundId,
+        name: dto.name.trim(),
+        target: dto.target ?? null,
+        sortOrder: count,
+        addedAtSession,
+      },
+    });
+  }
+
+  /**
+   * Update the count or target. prevCount is snapshotted from the current count
+   * so the board's "+N this session" delta stays truthful across an edit.
+   */
+  async updateObjective(
+    groundId: string,
+    objectiveId: string,
+    requestingUserId: string,
+    dto: { name?: string; target?: number | null; count?: number },
+  ) {
+    await this.assertInitiatorOfBoardGround(groundId, requestingUserId);
+    const existing = await this.prisma.groundObjective.findUnique({ where: { id: objectiveId } });
+    if (!existing || existing.groundId !== groundId) throw new NotFoundException('Objective not found');
+    return this.prisma.groundObjective.update({
+      where: { id: objectiveId },
+      data: {
+        ...(dto.name !== undefined ? { name: dto.name.trim() } : {}),
+        ...(dto.target !== undefined ? { target: dto.target } : {}),
+        ...(dto.count !== undefined ? { count: dto.count, prevCount: existing.count } : {}),
+      },
+    });
+  }
+
+  async deleteObjective(groundId: string, objectiveId: string, requestingUserId: string) {
+    await this.assertInitiatorOfBoardGround(groundId, requestingUserId);
+    const existing = await this.prisma.groundObjective.findUnique({ where: { id: objectiveId } });
+    if (!existing || existing.groundId !== groundId) throw new NotFoundException('Objective not found');
+    await this.prisma.groundObjective.delete({ where: { id: objectiveId } });
+    return { deleted: true };
+  }
+
+  /** One poll per ground. Creating again replaces the question and options. */
+  async upsertPoll(
+    groundId: string,
+    requestingUserId: string,
+    dto: { question: string; options: string[] },
+  ) {
+    await this.assertInitiatorOfBoardGround(groundId, requestingUserId);
+    const labels = dto.options.map((o) => o.trim()).filter(Boolean);
+    if (labels.length === 0) throw new ForbiddenException('A poll needs at least one time to choose between');
+
+    const existing = await this.prisma.groundPoll.findUnique({ where: { groundId } });
+    if (existing) {
+      // Replacing the options clears availability, because an answer to a
+      // question that changed is not an answer.
+      await this.prisma.groundPollOption.deleteMany({ where: { pollId: existing.id } });
+      await this.prisma.groundPoll.update({ where: { id: existing.id }, data: { question: dto.question.trim() } });
+      await this.prisma.groundPollOption.createMany({
+        data: labels.map((label, i) => ({ pollId: existing.id, label, sortOrder: i })),
+      });
+      return this.prisma.groundPoll.findUnique({ where: { id: existing.id }, include: { options: true } });
+    }
+    return this.prisma.groundPoll.create({
+      data: {
+        groundId,
+        question: dto.question.trim(),
+        options: { create: labels.map((label, i) => ({ label, sortOrder: i })) },
+      },
+      include: { options: true },
+    });
+  }
+
+  /** The poll is the ONE thing every party can edit. */
   async togglePollAvailability(groundId: string, optionId: string, requestingUserId: string) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },

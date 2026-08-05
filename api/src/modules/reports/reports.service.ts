@@ -9,6 +9,8 @@ import { AnthropicService } from '../conversation';
 import { EmailService } from '../email/email.service';
 import { UsageService } from '../usage/usage.service';
 import { GroundsService } from '../grounds';
+import { LEADERSHIP_PATTERNS, buildLeadershipPatternBlock } from '../board/coverage';
+import { findDeferrals, findWaitingBehind, buildDeferralNotice } from './deferrals';
 import { GroundStatus, PartyType, CheckInStatus, GroundScenario, UsageEventType, ReportActivationStatus, PatternStatus } from '@prisma/client';
 import { NEW_STARTING_REPORT_SCHEMA, RECOGNITION_REPORT_SCHEMA, DRIFT_REPORT_SCHEMA } from '../conversation/prompt-library';
 import { BAD_FAITH_CODES, POSITIVE_CODES, ALIGNMENT_FEED_ONLY_CODES, isPositiveCode } from '../patterns/pattern-library';
@@ -172,6 +174,24 @@ export const REPORT_SCHEMA = {
         },
         description: "Factual observations, grounded only in what is in the record, where one party's contribution shows reduced follow-through, unmet commitments, or is notably thinner than other parties' on this same ground. Frame as an observation about the record, never a judgement of the person. Empty array if nothing in the record supports this.",
       },
+      leadershipGaps: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            pattern: {
+              type: 'string',
+              enum: LEADERSHIP_PATTERNS.map((p) => p.pattern),
+              description: 'Which of the named leadership patterns this is. Use only these; do not invent one.',
+            },
+            gap: { type: 'string', description: 'The difference between the two accounts, stated as a gap. Never quote either side and never name who said what.' },
+            note: { type: 'string', description: 'One sentence on why this is worth a conversation rather than a correction.' },
+            periods: { type: 'integer', description: 'How many distinct sessions/periods the pattern is visible across. One period is NOT a pattern - if you only see it once, do not report it.' },
+          },
+          required: ['pattern', 'gap', 'note', 'periods'],
+        },
+        description: "Where one party's account of how they are LEADING differs from another party's account of how they are BEING LED, matched to one of the named leadership patterns. Only where the pattern's stated signature is genuinely met across more than one period. Empty array if there is no manager relationship here, or no pattern.",
+      },
       specificityCauses: {
         type: 'array',
         items: {
@@ -203,6 +223,13 @@ export const SYNTHESIS_RULES = `SYNTHESIS RULES (override all other instructions
 10. FLAG CONCERN PATTERNS FACTUALLY, NEVER AS ACCUSATION. If the record shows one party's follow-through, commitments, or contribution is notably thinner than other parties' on the same ground, note it in concernFlags as a plain factual observation about the record - not a judgement of the person. Do not speculate about motive.
 11. NAME THE CAUSE OF LOW OR HIGH SPECIFICITY WHEN INFERABLE. If a party's specificity is notably low or high, use specificityCauses to say why if the record supports an inference: a behavioral pattern, a misunderstanding, an adversarial stance, "declined_by_choice" if the record shows an explicit, stated decline to answer (a refusal is a choice, never file it as adversarial or unclear), or "unclear" if the record does not support a specific cause.
 12. NEVER INVENT PARTY COUNTS OR ROLES. The PARTY ROSTER at the top of this corpus is the exhaustive, exact list of who is on this ground - use its exact count and exact labels only. Never state a number of parties, an "other parties" count, or a role/title/affiliation (e.g. "founder", "funders", "the board") that does not appear verbatim in the roster. If you are unsure how many parties are missing or who they are, use the roster's own wording rather than describing them yourself.
+14. SURFACE LEADERSHIP GAPS AS NAMED PATTERNS, ACROSS PERIODS, NEVER AS QUOTES. Where one party leads another, look for the named leadership patterns listed below. Use ONLY those pattern names. A pattern is real only when its stated signature is met AND it is visible across MORE THAN ONE period - one session showing something is not a pattern, and you must report the number of periods you saw it across. Each pattern belongs to one of two opposite poles: CONTROL (holding on to work and decisions, so nobody else can own) or ABDICATION (not holding anyone, so things slip and hard conversations never happen). These need opposite responses, so never blur them together. State the gap as a difference between two accounts ("one account describes ownership being set clearly; another describes still being unsure what they own"). NEVER quote either side, NEVER name who said what, and NEVER say which is right - something can be set clearly and still not land, and both people can be describing their own experience honestly. If no pattern's signature is met across periods, return an empty array.
+
+14a. ROUTING - THIS IS WHERE LEADERSHIP FINDINGS GO. If something you found matches one of the leadership patterns, it belongs in leadershipGaps and NOT in divergences. Do not put it in both. A leadership pattern is about how one party is LEADING and how that lands for the people they lead - a deferred conversation, a commitment nobody was held to, work not handed over, a contribution not seen. That is different from a divergence, which is two parties describing the same FACT differently. If you find yourself writing a divergence whose topic is really about how someone is managing, being held accountable, or being credited, move it to leadershipGaps with the matching pattern name. This routing is required: leadership findings placed in divergences are lost, because the two are read on different surfaces for different purposes.
+
+14c. THE GAP TEXT IS MECHANICALLY CONSTRAINED. It must contain NO quotation marks of any kind, not even around two words, and NO party label - not "the lead", not "party A", not "party B", not a name. Write it as "one account ... another account ...". A two-word quote is still a quote: it tells the other person exactly what was said, which is the one thing this must never do. If you cannot state the gap without quoting or labelling, restate it in your own words until you can.
+
+14b. A LEADERSHIP PATTERN CAN LIVE IN ONE ACCOUNT. Several of these patterns are visible from a single person's record over time - a conversation named as still to be had across three sessions without it happening is a pattern whether or not anyone else mentions it. Do not require both sides to speak to it before reporting it. Where a second account does corroborate, say so in the note.
 13. LEAD-SUPPLIED CONTEXT IS DIRECTION, NEVER A CLAIM. The LEAD-SUPPLIED CONTEXT section is private background from the initiator, not a party's statement. Use it only to decide what to weigh and what to probe. Never attribute it to a party, never quote it, never present it as an established fact, and never let it become a claim in the report. Every claim you write must trace to a party's own record entry - if lead context points at something no party's record supports, do not assert it.`;
 
 @Injectable()
@@ -352,7 +379,9 @@ Close the report by framing - neutrally, without recommending one - the choice n
     // Append hard synthesis rules that override any vagueness in the base prompt.
     // These address four recurring failure modes: specifics lost, conditions stripped,
     // absent parties misrepresented, and actionable commitments buried.
-    const systemPrompt = synthesisVersion.content + "\n\n" + SYNTHESIS_RULES;
+    // The leadership-pattern block is generated FROM the role map, so adding or
+    // changing a pattern changes what the synthesis looks for. Pinned by a test.
+    const systemPrompt = synthesisVersion.content + "\n\n" + SYNTHESIS_RULES + "\n\n" + buildLeadershipPatternBlock();
 
 
     // Note any invited party who contributed no record - surfaced as an absence,
@@ -388,7 +417,16 @@ Close the report by framing - neutrally, without recommending one - the choice n
     const rosterLines = parties.map((p) => {
       const label = labelById.get(p.id) ?? 'a party';
       const entryCount = recordEntryCountByParty.get(p.id) ?? 0;
-      return `- ${label}: ${entryCount > 0 ? `contributed ${entryCount} record entr${entryCount === 1 ? 'y' : 'ies'} (shown below)` : 'checked in but has no record entries with text - do not describe their views, role, or affiliation beyond this exact label'}`;
+      // WHO LEADS WHOM. Without this the leadership-gap rules have nothing to
+      // match: they open with "where one party leads another", and a roster of
+      // anonymous labels never says that anyone does. In a live 12-session run
+      // with textbook abdication in the record, zero gaps were found for
+      // exactly this reason - the rule was correct and the input was silent.
+      const leadNote =
+        p.partyType === PartyType.INITIATOR
+          ? ' [leads this ground and the other parties on it]'
+          : '';
+      return `- ${label}${leadNote}: ${entryCount > 0 ? `contributed ${entryCount} record entr${entryCount === 1 ? 'y' : 'ies'} (shown below)` : 'checked in but has no record entries with text - do not describe their views, role, or affiliation beyond this exact label'}`;
     });
     const roster = `PARTY ROSTER (exhaustive - there are exactly ${parties.length} parties on this ground, no others exist):\n${rosterLines.join('\n')}\n\n`;
 
@@ -545,9 +583,32 @@ Close the report by framing - neutrally, without recommending one - the choice n
           .join('\n')}\n\n`
       : '';
 
+    // WHAT THE MODEL CANNOT BE ASKED TO SPOT FOR ITSELF.
+    //
+    // The leadership patterns only exist in the shape of the record over many
+    // sessions. Asking a model to notice that the same intention was restated in
+    // sessions 4, 6 and 8 across twenty pages found nothing in a live run where
+    // the pattern was textbook. Counting is cheap and exact here, so it happens
+    // here, and the model is handed the count rather than sent hunting for it.
+    const workMentionsForLeadership = await this.prisma.workMention.findMany({
+      where: { groundId },
+      select: { sourceParticipantId: true, aboutParticipantId: true, kind: true, sessionNumber: true },
+    });
+    const deferralNotice = buildDeferralNotice(
+      findDeferrals(
+        records.map((r) => ({
+          label: labelById.get(r.participant.id) ?? 'a party',
+          sessionNumber: r.checkIn?.sessionNumber ?? null,
+          text: r.text,
+        })),
+      ),
+      findWaitingBehind(workMentionsForLeadership, (id) => labelById.get(id) ?? 'a party'),
+    );
+
     const corpus =
       groundContextHeader +
       roster +
+      deferralNotice +
       leadContextSection +
       thinNotice +
       header +
@@ -805,6 +866,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
         centralQuestion: result.centralQuestion,
         engagement: enrichedEngagement as any,
         inferences: inferences as any,
+        leadershipGaps: (((result as any).leadershipGaps ?? []).length ? (result as any).leadershipGaps : undefined) as any,
         promptVersionId: synthesisVersion.id,
         finalSynthesis: (Object.keys(arcByParticipant).length
           ? { closingComplete: true, tiers: Object.fromEntries(Object.entries(arcByParticipant).map(([pid, s2]) => [pid, s2.tier])), endStates: endStatesFor(ground.scenario).map((o) => ({ value: o.value, label: o.label })) }
@@ -819,6 +881,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
         centralQuestion: result.centralQuestion,
         engagement: enrichedEngagement as any,
         inferences: inferences as any,
+        leadershipGaps: (((result as any).leadershipGaps ?? []).length ? (result as any).leadershipGaps : undefined) as any,
         promptVersionId: synthesisVersion.id,
         finalSynthesis: (Object.keys(arcByParticipant).length
           ? { closingComplete: true, tiers: Object.fromEntries(Object.entries(arcByParticipant).map(([pid, s2]) => [pid, s2.tier])), endStates: endStatesFor(ground.scenario).map((o) => ({ value: o.value, label: o.label })) }

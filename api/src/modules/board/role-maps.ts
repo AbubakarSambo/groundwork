@@ -37,6 +37,9 @@ export enum RoleFunction {
   OPS = 'OPS',
   PROJECT_MANAGEMENT = 'PROJECT_MANAGEMENT',
   MANAGEMENT = 'MANAGEMENT',
+  CEO = 'CEO',
+  MARKETING = 'MARKETING',
+  FINANCE = 'FINANCE',
 }
 
 /**
@@ -170,6 +173,60 @@ export const ROLE_MAPS: Record<RoleFunction, RoleMap> = {
     commonModes: [UniversalMode.DIFFUSION, UniversalMode.UNDER_PERSISTENCE],
   },
 
+  [RoleFunction.CEO]: {
+    fn: RoleFunction.CEO,
+    label: 'Founder or CEO',
+    rootFailure: 'Diffusion. Owning wins, distributing losses, and carrying everything so nobody else owns anything.',
+    rootSuccess: 'Concentrated ownership of the whole, distributed ownership of the parts.',
+    onTrackMeans: 'Doing the work only they can do, the hard strategy calls made and owned, leadership authoring their own commitments.',
+    goingWrongLooksLike: 'Busy in the weeds on comfortable work; strategy perpetually "exploring"; misses framed as the team\'s.',
+    neutralProbes: [
+      'What did you do this period that only you could have done?',
+      'Did they author that, or did you hand it to them?',
+      'That call has been open a while - what is the decision, and when?',
+      'Whose was that miss?',
+    ],
+    protectAgainst:
+      'A founder is carrying genuine ambiguity nobody else can resolve. Reading "unresolved" as avoidance misses that some calls honestly cannot be made yet.',
+    commonModes: [UniversalMode.DIFFUSION, UniversalMode.AVOIDANCE, UniversalMode.NON_COMMITMENT],
+  },
+
+  [RoleFunction.MARKETING]: {
+    fn: RoleFunction.MARKETING,
+    label: 'Marketing and growth',
+    rootFailure: 'Vanity. Optimising the measurable and flattering over what moves revenue or mission.',
+    rootSuccess: 'Outcome-tied growth. Every activity owns a line to pipeline, conversion, or mission.',
+    onTrackMeans: 'Activity tied to a named outcome, channel bets made and learned from, dead channels killed.',
+    goingWrongLooksLike: 'Reach and impressions reported with no revenue line; busy producing with no owned number.',
+    neutralProbes: [
+      'What did that turn into - pipeline, conversion, sign-ups?',
+      'Which number do you own here?',
+      'Which channel is not working, and what happens to it?',
+      'Who is the audience that actually buys, and are you reaching them?',
+    ],
+    protectAgainst:
+      'Brand and positioning work pays off slowly and indirectly. Demanding an immediate revenue line for every activity punishes the work that compounds.',
+    commonModes: [UniversalMode.ILLEGIBILITY, UniversalMode.NON_COMMITMENT],
+  },
+
+  [RoleFunction.FINANCE]: {
+    fn: RoleFunction.FINANCE,
+    label: 'Finance',
+    rootFailure: 'False precision, or avoiding the hard truth. Hiding behind process and numbers rather than surfacing what owners must act on.',
+    rootSuccess: 'Honest stewardship. Surfaces the hard truth plainly and owns the call it should drive.',
+    onTrackMeans: 'The implication of the number owned, uncomfortable truths surfaced early, decisions the numbers do not support challenged.',
+    goingWrongLooksLike: 'Reports figures without the implication; over-models to avoid an owned call; lets a known problem sit.',
+    neutralProbes: [
+      'What decision should that number drive?',
+      'What is the uncomfortable version of this?',
+      'Is there anything in here that does not support a decision already made?',
+      'What is the call you would make on this, at your best guess?',
+    ],
+    protectAgainst:
+      'Finance is often the messenger for bad news it did not cause. Reading the delivery of a hard truth as negativity punishes exactly the behaviour the role exists for.',
+    commonModes: [UniversalMode.AVOIDANCE, UniversalMode.NON_COMMITMENT],
+  },
+
   [RoleFunction.MANAGEMENT]: {
     fn: RoleFunction.MANAGEMENT,
     label: 'Management',
@@ -246,6 +303,17 @@ export function priorFunctionFromRole(
   }
   if (/\b(sales|account exec|account executive|business development|revenue|growth|partnerships)\b/.test(t)) {
     return { fn: RoleFunction.SALES, confidence: 0.4 };
+  }
+  if (/\b(marketing|brand|content|comms|communications|demand gen)\b/.test(t)) {
+    return { fn: RoleFunction.MARKETING, confidence: 0.4 };
+  }
+  if (/\b(finance|financial|cfo|accountant|accounting|controller|treasury)\b/.test(t)) {
+    return { fn: RoleFunction.FINANCE, confidence: 0.4 };
+  }
+  // CEO/founder before the generic leadership pattern: a founder leads people
+  // too, but the founder map is the more useful primary lens for them.
+  if (/\b(ceo|founder|co-?founder|managing director|md)\b/.test(t)) {
+    return { fn: RoleFunction.CEO, confidence: 0.4 };
   }
   if (/\b(ops|operations|people|hr|human resources|chief of staff)\b/.test(t)) {
     return { fn: RoleFunction.OPS, confidence: 0.4 };
