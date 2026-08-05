@@ -152,8 +152,13 @@ export const SCENARIOS: ScenarioCard[] = [
   // The genuine free-text path, separated from the realignment scenario above.
   // It runs on REALIGN_TEAM's general pack and leans on the brief the person
   // writes; a later iteration can route it through classifyIntent.
+  // "Anything else" quietly resolved to REALIGN_TEAM, which is a private,
+  // board-less sensing ground. So whatever the person described - a project
+  // kickoff, a renewal, a cohort - they got a shape chosen for them and never
+  // saw a board. It says what it will do now, and the copy no longer promises
+  // that we will work out the right ground, because nothing does that.
   { cardKey: 'DESCRIBE_OWN', scenario: 'REALIGN_TEAM', label: 'Describe your own situation', tag: 'Anything else', tagBg: '#F5F3EF', tagColor: '#6B6560',
-    desc: 'Not sure which fits? Describe it in your own words, add any context or documents, and we will set up the right ground for you.' },
+    desc: 'None of these quite fit? Describe it in your own words and we will open a ground where each person gives their own read first, privately, before anyone talks. If it turns out to be one of the situations above, pick that instead - it shapes the questions people are asked.' },
 ]
 
 interface MomentOption { moment: GroundMoment; label: string; sub: string }
@@ -221,6 +226,13 @@ export function CreateGroundPage() {
   const [selectedCard, setSelectedCard] = useState<string | null>(
     () => {
       const s = scenarioFromParam(searchParams.get('scenario'))
+      // Prefer the card the person actually picked. Two cards share
+      // COHORT_CHECK - an ongoing pulse and a fixed onboarding period - so
+      // resolving by scenario alone silently returned whichever came first in
+      // the list, and someone restoring an "Onboarding a group" draft found
+      // "Cohort check-in" selected instead.
+      const savedCard = sessionStorage.getItem('gw-new-ground-card')
+      if (savedCard && SCENARIOS.some(c => c.cardKey === savedCard)) return savedCard
       return s ? (SCENARIOS.find(c => c.scenario === s)?.cardKey ?? null) : null
     }
   )
@@ -439,10 +451,10 @@ export function CreateGroundPage() {
                   aria-checked={selectedCard === s.cardKey}
                   aria-label={`${s.label}. ${s.desc}`}
                   onKeyDown={(e) => {
-                    if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setScenario(s.scenario); setSelectedCard(s.cardKey) }
+                    if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setScenario(s.scenario); setSelectedCard(s.cardKey); sessionStorage.setItem('gw-new-ground-card', s.cardKey) }
                   }}
                   className={`cg-sit-card${selectedCard === s.cardKey ? ' selected' : ''}`}
-                  onClick={() => { setScenario(s.scenario); setSelectedCard(s.cardKey) }}
+                  onClick={() => { setScenario(s.scenario); setSelectedCard(s.cardKey); sessionStorage.setItem('gw-new-ground-card', s.cardKey) }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
                     <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: s.tagBg, color: s.tagColor }}>{s.tag}</span>

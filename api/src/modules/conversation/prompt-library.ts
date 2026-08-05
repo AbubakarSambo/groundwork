@@ -1,4 +1,4 @@
-import { GroundScenario, PartyType } from '@prisma/client';
+import { GroundScenario, PartyType, GroundMoment } from '@prisma/client';
 import { ALIGNMENT_FEED_ONLY_CODES } from '../patterns/pattern-library';
 
 /**
@@ -1797,6 +1797,48 @@ SUPPORT QUESTION: Ask what would help them most right now. Specific and actionab
 
 RECORD: The record should show, per person: one concrete example of progress, one named blocker, and one specific support need. Kept short - this is a repeatable signal across the whole cohort, not a deep account.`;
 
+
+/**
+ * ONBOARDING A GROUP - the same cohort machinery, at the start, when the period
+ * ends in a decision about each person.
+ *
+ * The cohort pack above is a pulse: three short questions, repeatable, "not a
+ * deep account". That is right for twenty field officers reporting every
+ * fortnight and wrong for four people three months into a job they might not
+ * keep. The card promises settling in, early warning, and a period whose end
+ * decides something; the pulse delivers none of it.
+ *
+ * Two things this has to hold at once. The person is being HELPED - they are new,
+ * they should be told what good looks like and asked what they are missing. And
+ * the record is EVIDENCE - at the end of this someone decides whether they stay.
+ * Pretending only the first is true produces a warm conversation that leaves them
+ * with nothing checkable to their name; pretending only the second is true turns
+ * onboarding into surveillance and teaches them to perform.
+ *
+ * So it asks for specifics the way it would in any delivery ground, and it is
+ * honest about why. Being told plainly that this is on the record is what makes
+ * it fair, and it is also the single most useful thing you can tell someone who
+ * would otherwise coast through twelve friendly check-ins and be surprised at the
+ * end - which is exactly what happened to the weakest person in the test run.
+ */
+const COHORT_ONBOARDING_PACK = `MOMENT: Onboarding a group. Several people started the same role at once. This period is also how it gets decided whether each is right for the role.
+
+PURPOSE: Help this person settle in, and build a record of what they have actually done that is specific enough to stand up at the end. They do not work with the others, so nobody else can confirm any of this - their own account is the whole record, which makes specifics matter more here than anywhere.
+
+SAY THIS EARLY, ONCE, PLAINLY (session 1, after their first answer): that this runs to the end of the period, that what they name here is what their lead will read, and that naming things specifically is how it works in their favour. Do not soften it into a warning and do not repeat it every session.
+
+OPENING: Ask what they have actually done since starting - the specific thing, not how it is going. If they answer in general terms ("settling in well", "getting to grips with it"), ask once for the concrete version: what did you finish, what is it called, when.
+
+WHAT TO PRESS FOR: something anyone could check later. A named module, a number, a date, a person, a document. One is enough. If they genuinely have none this week, record that plainly rather than accepting a general statement in its place - a quiet week is a fact, and dressing it up as progress is what makes the end of the period a surprise.
+
+BLOCKER QUESTION: Ask what is in their way, and whether it is theirs to clear or someone else's. Being stuck on someone else is not the same as being behind, and on this kind of ground that distinction decides how their record reads.
+
+SUPPORT QUESTION: Ask what they need that they are not getting, and from whom. They are new - not knowing what to ask for is normal, and the answer is more useful early than late.
+
+RECORD: Per session - what they specifically did, what is in their way and whose it is, what support they need. Fuller than a pulse. This is somebody's evidence.
+
+NEVER: score them, compare them to the others, hint at how they are doing relative to anyone, or suggest what the decision at the end might be. You are taking the record, not making the call.`;
+
 // ACUTE_SHOCK - a jarring event just happened; the goal is a shared, honest
 // picture of what is actually true BEFORE anyone decides anything. This is the
 // deliberate inverse of CRISIS_ALIGNMENT (a decision session that strips the
@@ -1863,7 +1905,15 @@ export const SCENARIO_PACKS: Record<GroundScenario, string> = {
  * party. The AI never sees the other party's opening questions, eliminating the
  * root cause of the initiator/participant role confusion.
  */
-export function buildScenarioPackForParty(scenario: GroundScenario, partyType: PartyType): string {
+export function buildScenarioPackForParty(
+  scenario: GroundScenario,
+  partyType: PartyType,
+  // Where in the arc this ground sits. Only COHORT_CHECK reads it today: the
+  // same scenario covers an ongoing pulse and a fixed onboarding period, and
+  // those need different conversations. Optional so every existing caller keeps
+  // working and keeps the pulse.
+  moment?: GroundMoment | null,
+): string {
   const isInitiator = partyType === PartyType.INITIATOR;
 
   switch (scenario) {
@@ -1971,7 +2021,12 @@ export function buildScenarioPackForParty(scenario: GroundScenario, partyType: P
       return BOARD_STRATEGY_PACK;
 
     case GroundScenario.COHORT_CHECK:
-      return COHORT_CHECK_PACK;
+      // One scenario, two situations. At the start it is an onboarding period
+      // that ends in a decision about each person; later it is a repeatable
+      // read. The moment is already collected on the same step of setup, so it
+      // is the honest thing to branch on rather than inventing a second
+      // scenario that behaves identically everywhere else.
+      return moment === 'STARTING' ? COHORT_ONBOARDING_PACK : COHORT_CHECK_PACK;
 
     // Symmetric by design: everyone was hit by the same event, so both parties
     // get the identical shared-picture probes (no initiator/participant split).
@@ -1996,6 +2051,13 @@ const WILLINGNESS_GATE_SCENARIOS: GroundScenario[] = [GroundScenario.DRIFT, Grou
 export interface PromptContext {
   scenario: GroundScenario;
   partyType: PartyType;
+  /**
+   * Where in the arc this ground sits. COHORT_CHECK covers both an ongoing
+   * pulse and a fixed onboarding period that ends in a decision about each
+   * person, and those are not the same conversation. Optional so callers that
+   * do not know it keep the existing behaviour.
+   */
+  moment?: GroundMoment | null;
   sessionNumber: number;
   totalSessions?: number;
   roleAsDescribed?: string | null;
@@ -2194,7 +2256,7 @@ function buildActivePathway(ctx: PromptContext): string {
     // (MOMENT/PURPOSE/OPENING/follow-ups/RECORD) than a single opening line.
     // The pathway-number question remains the fallback for any scenario
     // with no pack, so nothing regresses to silence.
-    const pack = ctx.scenarioPackOverride ?? buildScenarioPackForParty(scenario, partyType);
+    const pack = ctx.scenarioPackOverride ?? buildScenarioPackForParty(scenario, partyType, ctx.moment);
     if (pack) {
       return `SESSION 1 OPENING RULE: Do not open with a question. Open with one sentence that names what this ground is for or why this record matters now. Then work through the pathway below across multiple exchanges, one question at a time. Never list more than one question in a single message.\n\n${pack}`;
     }

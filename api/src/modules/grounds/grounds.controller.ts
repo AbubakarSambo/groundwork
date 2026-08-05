@@ -211,6 +211,16 @@ export class GroundsController {
     return this.grounds.setExternalVisibility(id, userId, dto.restrict);
   }
 
+  @Patch(':id/peer-visibility')
+  @ApiOperation({ summary: 'Whether parties can see who else is on this ground and how each is doing' })
+  async setPeerVisibility(
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string,
+    @Body() body: { visible: boolean },
+  ) {
+    return this.grounds.setPeerVisibility(id, userId, !!body.visible);
+  }
+
   @Patch(':id/people-work-together')
   @ApiOperation({ summary: "Whether the parties on this ground see each other's work - decides whether fairness reads have anything to stand on" })
   async setPeopleWorkTogether(

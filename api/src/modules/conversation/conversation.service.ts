@@ -653,6 +653,10 @@ export class ConversationService {
 
     const intakeBlock = buildIntakeBlock({
       scenario: ground.scenario,
+      // A cohort at the START is an onboarding period whose end decides
+      // something about each person; the same scenario later is a repeatable
+      // pulse. Without this the onboarding cohort got the pulse conversation.
+      moment: ground.moment,
       partyType: checkIn.participant.partyType,
       sessionNumber: checkIn.sessionNumber,
       roleAsDescribed: checkIn.participant.roleAsDescribed,

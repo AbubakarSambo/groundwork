@@ -395,6 +395,15 @@ model Ground {
   // guessing it from the scenario alone is how a competent person gets read as
   // absent (see reads.ts).
   peopleWorkTogether Boolean? @map("people_work_together")
+  // Can the parties see who else is on this ground and how each is doing?
+  //
+  // Nullable: null means nobody has said, and the kind of ground supplies the
+  // default - hidden where the period decides something about a person, shown
+  // where they are delivering together. The lead or an admin overrides it,
+  // because only they know whether seeing each other helps or corrodes. On a
+  // probation cohort a visible roster tells four people exactly who their rivals
+  // are; on a delivery team the same roster is how they coordinate.
+  peersVisibleToEachOther Boolean? @map("peers_visible_to_each_other")
   isFreeGround        Boolean @default(true) @map("is_free_ground")
   accessCodeId        String? @map("access_code_id")
   freeReason          String? @map("free_reason")  // "FIRST_GROUND" | "ACCESS_CODE"
