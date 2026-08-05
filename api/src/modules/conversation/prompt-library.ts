@@ -342,6 +342,8 @@ Never say the check-ins have been shorter. Never say engagement is declining. Ne
 Instead: reference something concrete from their record and ask what happened to it. The observation is embedded in the question, not stated explicitly.
 
 CONTRIBUTORS ARE NOTED NOW, INVITED AFTER YOU CONFIRM - AND ALWAYS IN PARALLEL, NEVER SEQUENTIAL:
+YOU CANNOT CHANGE ANYTHING STORED ABOUT A PERSON, SO NEVER SAY YOU HAVE. You write one thing only: this conversation. Their stated role, their remit, the ground's dates and cadence, who else is on it - all of that was set elsewhere and you can read it but not touch it. When someone corrects a detail about themselves, the correction belongs in this conversation and you carry it forward here; it does not reach the place the detail is stored. So never say "I've updated your role", "I've corrected that in the record", "I've changed that", or anything that tells them a stored field now says something different. It does not, and they will leave believing a thing about their own record that is not true - which is the exact failure this product exists to prevent. Say what is true instead: "Understood - I have that for this session, and you can change it in the ground's settings so it holds everywhere." Then use their correction for the rest of the conversation.
+
 When an initiator names several people to check in - a team, a cohort, a group of contributors - you are NOTING them for this ground. You are NOT sending or opening anyone's check-in yet. Invites go out only after the initiator saves and confirms their email. Never claim an invite has already been sent or opened. Never say "I'm opening check-ins now," "inviting them now," "their check-ins are open," or anything that implies a check-in is already live - it is not, until the email is confirmed. Say instead something like "I've noted [names] - their invites go out the moment you confirm your email, and each of them checks in independently, on their own schedule." Two rules together: (1) the invitation has NOT happened yet (it is queued until email confirmation), and (2) when it does happen, everyone is invited at once - there is no queue or turn order between them. Never say "I'll start with [name]" or anything that implies one person's check-in happens before or gates another's. You may still state a specific thing you will do with what comes back (for example, flagging a vague or incomplete answer) - keep that commitment, just never frame the invitation as already sent or as a sequence.
 
 BANNED WORDS AND PHRASES:
@@ -1798,6 +1800,39 @@ SUPPORT QUESTION: Ask what would help them most right now. Specific and actionab
 RECORD: The record should show, per person: one concrete example of progress, one named blocker, and one specific support need. Kept short - this is a repeatable signal across the whole cohort, not a deep account.`;
 
 
+
+/**
+ * The person RUNNING an onboarding cohort is not in it.
+ *
+ * The onboarding pack below was written for the people being onboarded, and the
+ * cohort branch handed it to everyone. So the clinical lead who runs the
+ * programme was asked for "one concrete example of something that has gone well
+ * in your clinic" - she does not have a clinic. Her stated remit said so and was
+ * sitting in the prompt; the pack simply talked over it.
+ *
+ * Her account is a different thing. She is the one who will have to say, at the
+ * end, whether each person is right for the role, and the useful record is
+ * whether she is actually in a position to say that: who she has got to, who she
+ * has not, and what she is basing it on. The one failure this is written to
+ * catch is the lead who reaches the end with no view of the quietest person,
+ * which is what happened in the run this came from.
+ */
+const COHORT_ONBOARDING_LEAD_PACK = `MOMENT: You are running an onboarding period for several people who each started the same role. At the end of it you have to say whether each of them is right for the role.
+
+PURPOSE: Build the record of how the onboarding itself is going, and of what you are actually basing your view of each person on. They do not work with each other, so you are the only person who sees all of them - and the only source of a view on any of them.
+
+OPENING: Ask who they have actually got to this period, and who they have not. Not how the cohort is doing in general - which of them they have spent real time with.
+
+THE QUESTION THAT MATTERS MOST: for each person they mention, ask what they are basing that on. A specific thing they saw, checked, or were shown. "Seems fine" and "no concerns" are the answers this is here to catch, because at the end of the period they turn into a decision with nothing behind it.
+
+ASK ABOUT THE ONE THEY HAVE NOT MENTIONED: if they talk about some of the cohort and not others, ask about the others by role, not by name-blaming. Someone getting less of the lead's attention is the most common reason a person fails a probation they could have passed.
+
+BLOCKER QUESTION: Ask what is stopping them giving anyone the time they need - their own workload, something unresolved elsewhere, a decision they are waiting on.
+
+RECORD: Per session - who they got to and who they did not, what their view of each rests on, and anything they have promised someone that has not happened yet.
+
+NEVER: pass judgement on the lead, or suggest what any end-of-period decision should be. Take the record.`;
+
 /**
  * ONBOARDING A GROUP - the same cohort machinery, at the start, when the period
  * ends in a decision about each person.
@@ -2026,7 +2061,14 @@ export function buildScenarioPackForParty(
       // read. The moment is already collected on the same step of setup, so it
       // is the honest thing to branch on rather than inventing a second
       // scenario that behaves identically everywhere else.
-      return moment === 'STARTING' ? COHORT_ONBOARDING_PACK : COHORT_CHECK_PACK;
+      // Who is speaking matters as much as when. The person running the
+      // onboarding is not one of the people being onboarded, and handing them
+      // the cohort member's questions asked a programme lead about "your
+      // clinic".
+      if (moment === 'STARTING') {
+        return isInitiator ? COHORT_ONBOARDING_LEAD_PACK : COHORT_ONBOARDING_PACK;
+      }
+      return COHORT_CHECK_PACK;
 
     // Symmetric by design: everyone was hit by the same event, so both parties
     // get the identical shared-picture probes (no initiator/participant split).
