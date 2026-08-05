@@ -26,6 +26,12 @@ export type BoardPresent = {
   title: string
   scenario: string
   coverageVariant: CoverageVariant
+  /**
+   * Whether the people here see each other's work. Set by the lead; the kind of
+   * ground is only the fallback. Decides whether anyone is in a position to
+   * confirm anyone else's account.
+   */
+  peopleWorkTogether?: boolean
   /** Which participant row is the caller, so only their own poll chip is clickable. */
   myParticipantId: string | null
   /** Whether the caller may set targets and the poll question (initiator only). */

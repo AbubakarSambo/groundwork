@@ -181,10 +181,18 @@ export function BoardPage() {
               <h1 style={{ fontSize: 19, fontWeight: 700, letterSpacing: '.2px' }}>{b.title}</h1>
               <div style={{ fontSize: 12, color: '#AEB6D6', marginTop: 4, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                 <span style={{ background: '#2C2E52', border: '1px solid #3C3E66', color: '#C7CDF0', borderRadius: 20, padding: '2px 10px', fontSize: 10.5, fontWeight: 700 }}>
-                  {b.family === 'DELIVERY' ? 'Team delivery ground'
-                    : b.family === 'COHORT' ? 'Cohort ground'
-                    : b.family === 'ONBOARDING' ? 'Onboarding ground'
-                    : 'Evaluation ground'}
+                  {/* Say what this is, in the words the person setting it up
+                      would use. "Cohort ground" is our internal grouping name
+                      leaking onto the page - nobody describes their own
+                      situation that way. What actually distinguishes these is
+                      whether the people see each other's work, which the lead
+                      now sets directly, so that is what the badge says. */}
+                  {b.peopleWorkTogether === false
+                    ? 'Same work, separate places'
+                    : b.family === 'DELIVERY' ? 'A team working together'
+                    : b.family === 'COHORT' ? 'Same work, separate places'
+                    : b.family === 'ONBOARDING' ? 'Settling into the role'
+                    : 'A period being reviewed'}
                 </span>
                 {b.phaseSpine && <span>{dshort(b.phaseSpine.startsAt)} to {dshort(b.phaseSpine.endsAt)} · session {b.phaseSpine.currentSession}</span>}
               </div>

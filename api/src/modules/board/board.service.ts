@@ -109,6 +109,17 @@ export class BoardService {
     const has = (s: BoardSection) => sections.includes(s);
     const family = familyFor(ground.scenario);
 
+    // WHOSE ANSWER THIS IS.
+    //
+    // The scenario is only a guess: a cohort usually means people who never see
+    // each other, and most other shapes usually mean they do. "Usually" is not
+    // good enough here, because this single fact decides whether the board's
+    // fairness reads have anything to stand on, and getting it wrong reads a
+    // competent quiet person as absent. So the lead or an admin can say, and when
+    // they have, their answer wins over the guess.
+    const peopleWorkTogether =
+      (ground as any).peopleWorkTogether ?? familyFor(ground.scenario) !== BoardFamily.COHORT;
+
     const participantIds = ground.participants.map((p) => p.id);
     const checkIns = await this.prisma.checkIn.findMany({
       where: { groundId },
@@ -135,6 +146,9 @@ export class BoardService {
       renders: true,
       mode: ground.mode,
       family,
+      // So the page can name the situation the way the lead described it,
+      // rather than in our internal grouping words.
+      peopleWorkTogether,
       sections,
       title: ground.label,
       scenario: ground.scenario,
@@ -459,23 +473,13 @@ export class BoardService {
         select: { participantId: true, sessionNumber: true, status: true },
       }),
     ]);
-    // WHETHER THESE PEOPLE WORK TOGETHER AT ALL, from the scenario family rather
-    // than guessed from the record. A cohort is many people in the same role,
-    // deliberately answering separately and not influencing each other - so
-    // nobody can corroborate anybody, and the reads that depend on colleagues
-    // describing each other cannot be made honestly. See reads.ts.
-    // WHOSE ANSWER THIS IS.
-    //
-    // The scenario is only a guess: a cohort usually means people who never see
-    // each other, and most other shapes usually mean they do. "Usually" is not
-    // good enough here, because this single fact decides whether the board's
-    // fairness reads have anything to stand on, and getting it wrong reads a
-    // competent quiet person as absent. So the lead or an admin can say, and when
-    // they have, their answer wins over the guess.
-    const peopleWorkTogether =
-      (ground as any).peopleWorkTogether ?? familyFor(ground.scenario) !== BoardFamily.COHORT;
+    // WHETHER THESE PEOPLE SEE EACH OTHER'S WORK. The lead's answer if they gave
+    // one, otherwise the kind of ground as a fallback. Where nobody can
+    // corroborate anybody, the reads built on colleagues describing each other
+    // cannot be made honestly. See reads.ts.
     return {
-      peopleWorkTogether,
+      peopleWorkTogether:
+        (ground as any).peopleWorkTogether ?? familyFor((ground as any).scenario) !== BoardFamily.COHORT,
       participants: ground.participants.map((p) => ({
         id: p.id,
         roleAsDescribed: p.roleAsDescribed ?? null,
