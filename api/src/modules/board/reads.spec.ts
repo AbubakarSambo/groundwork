@@ -284,6 +284,29 @@ describe('claiming to be blocked is not enough on its own', () => {
     expect(blockerHasSubstance({ ...base, onParticipantId: 'b', onLabel: null, what: 'things' })).toBe(false);
   });
 
+  it('does not let someone be blocked on themselves', () => {
+    // A lead saying "I still owe the team the decision on the budget" was stored
+    // as a handoff from her to herself, and the board read it as "part of this is
+    // blocked on someone else". She was the someone else. Being blocked switches
+    // off every negative read, so this handed the person holding a decision the
+    // protection meant for the people waiting on them.
+    expect(
+      blockerHasSubstance({
+        ...base,
+        fromParticipantId: 'lead',
+        onParticipantId: 'lead',
+        onLabel: null,
+        what: 'the budget line I still owe the team',
+      }),
+    ).toBe(false);
+  });
+
+  it('still counts a real handoff between two different people', () => {
+    expect(
+      blockerHasSubstance({ ...base, fromParticipantId: 'a', onParticipantId: 'b', onLabel: null, what: 'the budget line for next quarter' }),
+    ).toBe(true);
+  });
+
   it('does not treat a resolved handoff as protection', () => {
     expect(
       blockerHasSubstance({

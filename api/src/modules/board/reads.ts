@@ -220,6 +220,18 @@ export function dedupeDependencies<T extends ReadDependency>(deps: T[]): T[] {
 export function blockerHasSubstance(d: ReadDependency): boolean {
   const open = d.status === DependencyStatus.BLOCKING || d.status === DependencyStatus.WAITING;
   if (!open) return false;
+
+  // YOU CANNOT BE BLOCKED ON YOURSELF.
+  //
+  // A lead saying "I still owe the team the decision on the budget" was recorded
+  // as a handoff from her to herself, and the board then read it as "part of this
+  // is blocked on someone else, which is different from being behind". She was
+  // the someone else. Being blocked switches off every negative read about a
+  // person, so this hands the one who is actually holding a decision up the exact
+  // protection meant for the people waiting on them - and it is the easiest
+  // possible thing to trip accidentally, because naming your own outstanding
+  // decision is a normal thing to say in a check-in.
+  if (d.onParticipantId && d.onParticipantId === d.fromParticipantId) return false;
   const named = !!d.onParticipantId || !!d.onLabel?.trim();
   const described = (d.what ?? '').trim().split(/\s+/).filter(Boolean).length >= 3;
   return named && described;
