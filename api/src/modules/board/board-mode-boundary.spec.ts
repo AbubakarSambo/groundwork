@@ -89,11 +89,23 @@ describe('GW-BOARD-MODE-04: family shapes match the design', () => {
     );
   });
 
-  it('onboarding is light and forward-looking, no coverage read on a new person', () => {
+  it('onboarding is light and forward-looking - no coverage read on a new person', () => {
     const s = FAMILY_SECTIONS[BoardFamily.ONBOARDING];
     expect(s).toContain('objectives');
+    // Still no coverage. "Your work is landing with other people" is a
+    // meaningless thing to say about someone in their first month, and a
+    // damaging one.
     expect(s).not.toContain('coverage');
-    expect(s).not.toContain('dependencies');
+  });
+
+  it('BUT onboarding DOES show what people are waiting on', () => {
+    // This reverses the original shape, on evidence. A person settling into a
+    // role is more dependent on other people than they will ever be again - the
+    // sign-off, the access, the decision their manager owes them. A live
+    // new-hire ground recorded two real handoffs and the board had nowhere to
+    // put them, so the manager's own slippage was the one thing invisible on a
+    // page about the new person.
+    expect(FAMILY_SECTIONS[BoardFamily.ONBOARDING]).toContain('dependencies');
   });
 
   it('sensing has no sections at all', () => {

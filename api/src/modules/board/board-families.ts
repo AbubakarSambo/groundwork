@@ -104,7 +104,12 @@ export const FAMILY_SECTIONS: Record<BoardFamily, BoardSection[]> = {
     'checkInGrid', 'contribution', 'patterns',
   ],
   [BoardFamily.ONBOARDING]: [
-    'phaseSpine', 'objectives', 'checkInGrid', 'divergence', 'contribution',
+    // WAITING-ON BELONGS HERE. Someone settling into a role is more dependent on
+    // other people than they will ever be again - the sign-off, the access, the
+    // decision their manager owes them. A live run recorded two real handoffs on
+    // a new-hire ground and the board had nowhere to put them, so the manager's
+    // own slippage was the one thing invisible on a page about the new person.
+    'phaseSpine', 'objectives', 'dependencies', 'checkInGrid', 'divergence', 'contribution',
   ],
   [BoardFamily.EVALUATION]: [
     'objectives', 'checkInGrid', 'divergence',

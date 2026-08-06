@@ -20,9 +20,20 @@ import { RoleFunction, UniversalMode, priorFunctionFromRole } from './role-maps'
 
 /** Signals in a person's own account that point at a function. */
 const FUNCTION_SIGNALS: Record<RoleFunction, RegExp[]> = {
+  // SALES SIGNALS HAVE TO BE SALES WORDS.
+  //
+  // This list used to contain bare `close[ds]?`, `lead[s]?`, `intro` and `demo`.
+  // Those are ordinary English in every job. "Closed out three of the open
+  // questions with Priya" is project work, and it scored SALES - which is how an
+  // entire software team came out classified as sales at 0.78 confidence and got
+  // read against "named buyers with budget and authority, real pipeline moving".
+  // A lens becomes a label the moment it is confidently wrong, so the generic
+  // verbs now need a sales object next to them.
   [RoleFunction.SALES]: [
-    /\b(buyer|prospect|pipeline|deal|close[ds]?|pitch|demo|lead[s]?|quota|outreach|intro|client win|renewal)\b/i,
-    /\b(budget holder|decision maker|procurement|proposal|contract sent)\b/i,
+    /\b(buyer|prospect|pipeline|quota|outreach|client win)\b/i,
+    /\b(clos(e|ed|ing)) (the |a |that )?(deal|account|sale|contract|customer|logo)\b/i,
+    /\b(deal|sales lead|inbound lead|qualified lead|sales pitch|sales demo|product demo)\b/i,
+    /\b(budget holder|decision maker|procurement|proposal|contract sent|renewal (call|conversation|discussion))\b/i,
   ],
   [RoleFunction.PRODUCT]: [
     /\b(roadmap|spec|prioriti[sz]|feature|user research|discovery|backlog|requirement|scope cut)\b/i,
