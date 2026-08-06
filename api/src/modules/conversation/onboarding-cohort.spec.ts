@@ -111,3 +111,66 @@ describe('claiming to have changed something it cannot change', () => {
     expect(ENGINE_RULES).toMatch(/use their correction for the rest of the conversation/i);
   });
 });
+
+// ---------------------------------------------------------------------------
+// The wiring that made the pack fix inert.
+// ---------------------------------------------------------------------------
+
+import { SEED_PROMPTS } from './prompt-library';
+
+/**
+ * A STORED PACK WINS OVER THE IN-CODE ONE, AND THE KEY HAD NO ROOM FOR MOMENT.
+ *
+ * The lookup key is scenario + party. A pack that varies by moment therefore
+ * could never take effect in production: the generic stored row answered first
+ * and the variation never ran. The onboarding lead kept getting the pulse
+ * written for the people she was onboarding, while every test that called the
+ * pack builder directly passed - including mine.
+ *
+ * Two things have to hold now: the moment-qualified row must exist to be found,
+ * and it must actually differ from the generic one. A seed that silently
+ * duplicates the generic pack would look right here and change nothing live.
+ */
+describe('moment-qualified packs are reachable at all', () => {
+  const keys = SEED_PROMPTS.map((s) => s.key);
+  const find = (k: string) => SEED_PROMPTS.find((s) => s.key === k)?.content;
+
+  it('seeds a row for the cohort onboarding, for each party', () => {
+    expect(keys).toContain('scenario.cohort_check.starting.initiator');
+    expect(keys).toContain('scenario.cohort_check.starting.participant');
+  });
+
+  it('keeps the generic rows, so nothing else changes behaviour', () => {
+    expect(keys).toContain('scenario.cohort_check.initiator');
+    expect(keys).toContain('scenario.cohort_check.participant');
+  });
+
+  it('the moment-qualified row actually differs from the generic one', () => {
+    // The failure that would look fine and do nothing.
+    expect(find('scenario.cohort_check.starting.initiator')).not.toBe(find('scenario.cohort_check.initiator'));
+    expect(find('scenario.cohort_check.starting.participant')).not.toBe(find('scenario.cohort_check.participant'));
+  });
+
+  it('the two parties do not get the same pack at the same moment', () => {
+    expect(find('scenario.cohort_check.starting.initiator')).not.toBe(
+      find('scenario.cohort_check.starting.participant'),
+    );
+  });
+
+  it('adds no moment rows for scenarios that read the same at every moment', () => {
+    // Seeding a row per scenario per moment would triple the table and give
+    // every future edit three places to drift apart.
+    // Four segments, not three. "recognition" is a scenario name as well as a
+    // moment, so scenario.recognition.initiator is a generic row and matching on
+    // the word alone counts it as moment-qualified.
+    const momentKeys = keys.filter((k) => k.split('.').length === 4);
+    expect(momentKeys.sort()).toEqual([
+      'scenario.cohort_check.starting.initiator',
+      'scenario.cohort_check.starting.participant',
+    ]);
+  });
+
+  it('every seeded key is unique, or the later one silently wins', () => {
+    expect(new Set(keys).size).toBe(keys.length);
+  });
+});

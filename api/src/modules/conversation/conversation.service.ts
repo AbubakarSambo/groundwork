@@ -641,15 +641,32 @@ export class ConversationService {
     // the Prompt Versioning page without a deploy - the whole reason this seed
     // key exists. Falls back to the in-code pack (or the bare pathway
     // question) in buildActivePathway when no active version exists.
+    //
+    // MOMENT-QUALIFIED FIRST. The key scheme is scenario + party, with no place
+    // for the moment - and one scenario now needs different packs at different
+    // moments (a cohort at the start is an onboarding period that ends in a
+    // decision; later it is a repeatable pulse). Because a stored row wins over
+    // the in-code pack, a moment-specific pack written in code could never take
+    // effect while any generic row existed: the onboarding lead kept getting the
+    // pulse, and the change looked correct in every test that called the pack
+    // builder directly. So the moment-qualified key is tried first, and the
+    // generic key remains the fallback so nothing else changes behaviour.
+    const packKeyBase = `scenario.${ground.scenario.toLowerCase()}`;
+    const packParty = checkIn.participant.partyType.toLowerCase();
     const scenarioPackOverride =
       checkIn.sessionNumber === 1
-        ? await this.prompts
-            .getActiveContent(`scenario.${ground.scenario.toLowerCase()}.${checkIn.participant.partyType.toLowerCase()}`)
-            // null (not '') on failure - buildActivePathway's `??` only falls
+        ? await (ground.moment
+            ? this.prompts
+                .getActiveContent(`${packKeyBase}.${String(ground.moment).toLowerCase()}.${packParty}`)
+                .catch(() => null)
+            : Promise.resolve(null)
+          ).then((momentSpecific) =>
+            momentSpecific ??
+            this.prompts.getActiveContent(`${packKeyBase}.${packParty}`).catch(() => null),
+          )
+            // null (not '') throughout - buildActivePathway's `??` only falls
             // through to the in-code pack on null/undefined, so resolving to
-            // '' here would silently defeat that fallback whenever no active
-            // DB version exists for this scenario+party.
-            .catch(() => null)
+            // '' here would silently defeat that fallback.
         : null;
 
     const intakeBlock = buildIntakeBlock({

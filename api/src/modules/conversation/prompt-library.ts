@@ -2664,6 +2664,29 @@ function buildPartySeeds(): { key: string; content: string }[] {
       key: `scenario.${scenario.toLowerCase()}.participant`,
       content: buildScenarioPackForParty(scenario, PartyType.PARTICIPANT),
     });
+
+    // MOMENT-QUALIFIED SEEDS, where the pack actually differs by moment.
+    //
+    // A stored row wins over the in-code pack, so any pack that varies by moment
+    // was unreachable in production: the generic row answered first and the
+    // variation never ran. It looked correct in every test that called the pack
+    // builder directly, and was wrong in every real conversation - the person
+    // running a cohort onboarding kept getting the pulse written for the people
+    // in it.
+    //
+    // Only emitted where the content genuinely differs, so this adds no rows for
+    // the scenarios that read the same at every moment.
+    for (const moment of Object.values(GroundMoment)) {
+      for (const party of [PartyType.INITIATOR, PartyType.PARTICIPANT]) {
+        const specific = buildScenarioPackForParty(scenario, party, moment);
+        if (specific && specific !== buildScenarioPackForParty(scenario, party)) {
+          seeds.push({
+            key: `scenario.${scenario.toLowerCase()}.${moment.toLowerCase()}.${party.toLowerCase()}`,
+            content: specific,
+          });
+        }
+      }
+    }
   }
   return seeds;
 }
