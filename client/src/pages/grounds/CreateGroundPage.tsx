@@ -5,6 +5,7 @@ import { useMutation } from '@tanstack/react-query'
 import { groundsApi, type GroundScenario, type GroundMoment, type GroundCadence } from '@/api/grounds'
 import { TIMED_CADENCES, sessionsFor } from '@/lib/cadence'
 import { billingApi, FREE_GROUND_LIMIT } from '@/api/billing'
+import { entryApi } from '@/api/entry'
 import { toast } from 'sonner'
 
 interface ScenarioCard {
@@ -268,6 +269,20 @@ export function CreateGroundPage() {
    * onboarding led by a colleague could not express that in either. Asking here
    * folds the second path into this one.
    */
+  /**
+   * The free-text path. Whatever someone typed here used to be thrown away and
+   * the ground opened as REALIGN_TEAM - private, no board - so a person who
+   * described a probation cohort in detail got a container that cannot run one.
+   * The classifier that reads a description and picks a scenario already exists
+   * and is used by the guided walkthrough; this just asks it, and then SHOWS
+   * the answer rather than applying it silently. Which scenario it picks matters
+   * less than the person being able to see and change it, because that choice
+   * decides the board, the mode and the questions everyone gets asked.
+   */
+  const [ownDescription, setOwnDescription] = useState('')
+  const [routing, setRouting] = useState(false)
+  const [routedTo, setRoutedTo] = useState<GroundScenario | null>(null)
+  const [routeFailed, setRouteFailed] = useState(false)
   const [runByOther, setRunByOther] = useState(false)
   const [leadEmail, setLeadEmail] = useState('')
   const [leadName, setLeadName] = useState('')
@@ -347,7 +362,7 @@ export function CreateGroundPage() {
           moment: moment!,
           timelineDays,
           cadence,
-          brief: brief.trim() || undefined,
+          brief: (brief.trim() || ownDescription.trim()) || undefined,
           participants: participants.length
             ? participants.map((p) => ({ email: p.email, roleAsDescribed: p.role || undefined }))
             : undefined,
@@ -361,7 +376,7 @@ export function CreateGroundPage() {
         timelineDays,
         cadence,
         resolutionState: resolutionState ?? undefined,
-        brief: brief.trim() || undefined,
+        brief: (brief.trim() || ownDescription.trim()) || undefined,
         ...(appliedAccessCode ? { accessCode: appliedAccessCode } : {}),
       } as Parameters<typeof groundsApi.create>[0] & { accessCode?: string })
       // Use allSettled so a failed invite email never blocks navigation to the
@@ -473,6 +488,51 @@ export function CreateGroundPage() {
               ))}
             </div>
 
+            {selectedCard === 'DESCRIBE_OWN' && (
+              <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px', marginBottom: 18, background: 'white' }}>
+                <label className="gw-label" htmlFor="own-situation">Describe it in your own words</label>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 8, lineHeight: 1.5 }}>
+                  What is happening, who is involved, and what you want out of it. We will suggest the closest
+                  situation and you can change it - what gets picked decides the questions people are asked.
+                </div>
+                <textarea id="own-situation" className="gw-in" rows={4} value={ownDescription}
+                  onChange={(e) => { setOwnDescription(e.target.value); setRoutedTo(null); setRouteFailed(false) }}
+                  placeholder="e.g. Four new clinic managers on a three month probation. They run separate clinics and never work together, but they all report to me." />
+                <button
+                  disabled={ownDescription.trim().length < 20 || routing}
+                  onClick={() => {
+                    setRouting(true); setRouteFailed(false)
+                    entryApi.classifyIntent(ownDescription.trim())
+                      .then((r: any) => {
+                        const picked = r?.scenario as GroundScenario | undefined
+                        if (picked && SCENARIOS.some(c => c.scenario === picked)) { setRoutedTo(picked); setScenario(picked) }
+                        else setRouteFailed(true)
+                      })
+                      .catch(() => setRouteFailed(true))
+                      .finally(() => setRouting(false))
+                  }}
+                  style={{ marginTop: 8, fontSize: 12, fontWeight: 700, color: 'white', background: 'var(--gw-navy)', border: 'none', borderRadius: 7, padding: '8px 14px', cursor: 'pointer', fontFamily: 'inherit', opacity: ownDescription.trim().length < 20 || routing ? 0.45 : 1 }}>
+                  {routing ? 'Reading it…' : 'Find the closest situation'}
+                </button>
+
+                {routedTo && (
+                  <div style={{ marginTop: 10, fontSize: 12.5, lineHeight: 1.55, background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 8, padding: '10px 12px' }}>
+                    From what you wrote, this looks like <b>{SCENARIOS.find(c => c.scenario === routedTo)?.label}</b>.
+                    That is what we will set up. If it is not right, pick a card above instead - your description is
+                    kept either way.
+                  </div>
+                )}
+                {routeFailed && (
+                  <div style={{ marginTop: 10, fontSize: 12.5, lineHeight: 1.55, background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 8, padding: '10px 12px' }}>
+                    {/* Saying so beats picking one quietly. The shape decides the
+                        board, the mode and the questions - too much to guess at. */}
+                    We could not tell which situation this is closest to. We will open a general ground where each
+                    person gives their own read privately, which works for most things - or pick a card above if one fits.
+                  </div>
+                )}
+              </div>
+            )}
+
             {scenario && (
               <>
                 <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Where are you in this situation?</div>
@@ -509,12 +569,26 @@ export function CreateGroundPage() {
             <div style={{ height: 76 }} />
             <div className="cg-fixed-bar" style={{ background: 'var(--gw-bg)', borderTop: '1px solid var(--gw-border)', padding: '10px 20px', zIndex: 20 }}>
               <div style={{ width: 'min(560px, 100%)' }}>
-                <button className="gw-btn" disabled={!scenario || !moment} onClick={() => setStep(2)} style={{ margin: 0 }}>Continue</button>
-                {!scenario || !moment ? (
-                  <div style={{ fontSize: 11, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 5 }}>
-                    {!scenario ? 'Pick a situation to continue' : 'Pick where you are in it (below the cards) to continue'}
-                  </div>
-                ) : null}
+                {/* On the free-text path, the description has to have been read
+                    before we move on - otherwise the ground silently becomes
+                    whatever the card happens to default to, which is the whole
+                    bug this replaces. */}
+                {(() => {
+                  const needsRouting = selectedCard === 'DESCRIBE_OWN' && !routedTo && !routeFailed
+                  const blocked = !scenario || !moment || needsRouting
+                  return (
+                    <>
+                      <button className="gw-btn" disabled={blocked} onClick={() => setStep(2)} style={{ margin: 0 }}>Continue</button>
+                      {blocked ? (
+                        <div style={{ fontSize: 11, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 5 }}>
+                          {needsRouting
+                            ? 'Describe the situation above, then let us find the closest match'
+                            : !scenario ? 'Pick a situation to continue' : 'Pick where you are in it (below the cards) to continue'}
+                        </div>
+                      ) : null}
+                    </>
+                  )
+                })()}
               </div>
             </div>
           </div>
