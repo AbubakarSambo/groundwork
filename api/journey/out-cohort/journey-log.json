@@ -1,0 +1,78 @@
+[
+  {
+    "step": "Sahar logged in",
+    "detail": ""
+  },
+  {
+    "step": "Sahar sees her grounds list",
+    "detail": {
+      "count": 2
+    }
+  },
+  {
+    "step": "resuming the existing ground",
+    "detail": {
+      "id": "701645be-5780-4a85-b513-775ca8f82d1f",
+      "status": "ACTIVE"
+    }
+  },
+  {
+    "step": "ground created",
+    "detail": {
+      "id": "701645be-5780-4a85-b513-775ca8f82d1f",
+      "status": "ACTIVE",
+      "mode": "SHARED",
+      "isFree": true,
+      "freeReason": "FREE_TIER"
+    }
+  },
+  {
+    "step": "Hafsah signed in",
+    "detail": ""
+  },
+  {
+    "step": "Adam Grunewald has a user account before accepting?",
+    "detail": "yes"
+  },
+  {
+    "step": "Abubakar Sambo has a user account before accepting?",
+    "detail": "yes"
+  },
+  {
+    "step": "Nate Peterson has a user account before accepting?",
+    "detail": "yes"
+  },
+  {
+    "step": "Kavon Badie has a user account before accepting?",
+    "detail": "yes"
+  },
+  {
+    "step": "Hafsah opens the ground before confirming",
+    "detail": {
+      "status": "ACTIVE",
+      "boardRenders": true
+    }
+  },
+  {
+    "step": "lead already confirmed, resuming",
+    "detail": {
+      "status": "ACTIVE"
+    }
+  },
+  {
+    "step": "Adam Grunewald already had an account, signed in",
+    "detail": ""
+  },
+  {
+    "step": "Abubakar Sambo already had an account, signed in",
+    "detail": ""
+  },
+  {
+    "step": "Nate Peterson already had an account, signed in",
+    "detail": ""
+  },
+  {
+    "step": "Kavon Badie already had an account, signed in",
+    "detail": ""
+  }
+]

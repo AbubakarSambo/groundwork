@@ -1,0 +1,42 @@
+[
+ {
+  "ground": 11,
+  "area": "PAYWALL",
+  "detail": "Ground 11 should be paid but billing says it is allowed free ({\"allowed\":true})"
+ },
+ {
+  "ground": 12,
+  "area": "PAYWALL",
+  "detail": "Ground 12 should be paid but billing says it is allowed free ({\"allowed\":true})"
+ },
+ {
+  "ground": 13,
+  "area": "PAYWALL",
+  "detail": "Ground 13 should be paid but billing says it is allowed free ({\"allowed\":true})"
+ },
+ {
+  "ground": 14,
+  "area": "PAYWALL",
+  "detail": "Ground 14 should be paid but billing says it is allowed free ({\"allowed\":true})"
+ },
+ {
+  "ground": 15,
+  "area": "PAYWALL",
+  "detail": "Ground 15 should be paid but billing says it is allowed free ({\"allowed\":true})"
+ },
+ {
+  "ground": 16,
+  "area": "PAYWALL",
+  "detail": "Ground 16 should be paid but billing says it is allowed free ({\"allowed\":true})"
+ },
+ {
+  "ground": 17,
+  "area": "PAYWALL",
+  "detail": "Ground 17 should be paid but billing says it is allowed free ({\"allowed\":true})"
+ },
+ {
+  "ground": 18,
+  "area": "PAYWALL",
+  "detail": "Ground 18 should be paid but billing says it is allowed free ({\"allowed\":true})"
+ }
+]

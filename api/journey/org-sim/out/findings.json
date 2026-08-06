@@ -1,0 +1,42 @@
+[
+ {
+  "ground": 11,
+  "area": "BLOCKER",
+  "detail": "could not create the ground: 400 /grounds/for-lead :: {\"success\":false,\"statusCode\":400,\"message\":\"Your free plan includes 10 Grounds. Subscribe to create unlimited Grounds.\",\"errors\":null,\"timestamp\":\"2026-08-06T01:52:30.118Z\",\""
+ },
+ {
+  "ground": 12,
+  "area": "BLOCKER",
+  "detail": "could not create the ground: 400 /grounds/for-lead :: {\"success\":false,\"statusCode\":400,\"message\":\"Your free plan includes 10 Grounds. Subscribe to create unlimited Grounds.\",\"errors\":null,\"timestamp\":\"2026-08-06T01:52:30.137Z\",\""
+ },
+ {
+  "ground": 13,
+  "area": "BLOCKER",
+  "detail": "could not create the ground: 400 /grounds/for-lead :: {\"success\":false,\"statusCode\":400,\"message\":\"Your free plan includes 10 Grounds. Subscribe to create unlimited Grounds.\",\"errors\":null,\"timestamp\":\"2026-08-06T01:52:30.154Z\",\""
+ },
+ {
+  "ground": 14,
+  "area": "BLOCKER",
+  "detail": "could not create the ground: 400 /grounds/for-lead :: {\"success\":false,\"statusCode\":400,\"message\":\"Your free plan includes 10 Grounds. Subscribe to create unlimited Grounds.\",\"errors\":null,\"timestamp\":\"2026-08-06T01:52:30.169Z\",\""
+ },
+ {
+  "ground": 15,
+  "area": "BLOCKER",
+  "detail": "could not create the ground: 400 /grounds/for-lead :: {\"success\":false,\"statusCode\":400,\"message\":\"Your free plan includes 10 Grounds. Subscribe to create unlimited Grounds.\",\"errors\":null,\"timestamp\":\"2026-08-06T01:52:30.183Z\",\""
+ },
+ {
+  "ground": 16,
+  "area": "BLOCKER",
+  "detail": "could not create the ground: 400 /grounds/for-lead :: {\"success\":false,\"statusCode\":400,\"message\":\"Your free plan includes 10 Grounds. Subscribe to create unlimited Grounds.\",\"errors\":null,\"timestamp\":\"2026-08-06T01:52:30.196Z\",\""
+ },
+ {
+  "ground": 17,
+  "area": "BLOCKER",
+  "detail": "could not create the ground: 400 /grounds/for-lead :: {\"success\":false,\"statusCode\":400,\"message\":\"Your free plan includes 10 Grounds. Subscribe to create unlimited Grounds.\",\"errors\":null,\"timestamp\":\"2026-08-06T01:52:30.210Z\",\""
+ },
+ {
+  "ground": 18,
+  "area": "BLOCKER",
+  "detail": "could not create the ground: 400 /grounds/for-lead :: {\"success\":false,\"statusCode\":400,\"message\":\"Your free plan includes 10 Grounds. Subscribe to create unlimited Grounds.\",\"errors\":null,\"timestamp\":\"2026-08-06T01:52:30.225Z\",\""
+ }
+]
