@@ -181,6 +181,21 @@ async function main() {
   for (const p of CONTRIBUTORS) {
     const row = await prisma.groundParticipant.findFirst({ where: { groundId: gid, email: p.email } });
     if (!row) { note(`BLOCKER: no participant row for ${p.name}`); continue; }
+
+    // Already accepted on a previous run of this script. Invite tokens are
+    // single-use by design, so there is nothing to accept a second time - the
+    // real user just signs in. Not a product problem; the harness has to be
+    // resumable the way a returning person is.
+    if (!row.inviteToken && row.userId) {
+      const bcrypt = require('bcrypt');
+      await prisma.user.update({
+        where: { id: row.userId },
+        data: { passwordHash: await bcrypt.hash(PW, 10), isEmailVerified: true },
+      });
+      await login(p.email);
+      note(`${p.name} already had an account, signed in`);
+      continue;
+    }
     if (!row.inviteToken) { note(`BLOCKER: no invite token for ${p.name}`); continue; }
     const [first, last] = p.name.split(' ');
     try {

@@ -4,11 +4,11 @@
   "initiatorId": "4ff5a9d6-16cd-4a48-bded-e38e139da693",
   "scenario": "COHORT_CHECK",
   "moment": "STARTING",
-  "status": "AWAITING_LEAD",
+  "status": "ACTIVE",
   "label": "Clinic manager onboarding, autumn cohort",
   "mode": "SHARED",
   "timelineDays": 90,
-  "timelineWeeks": null,
+  "timelineWeeks": 13,
   "cadence": "WEEKLY",
   "cadenceAnchorDay": null,
   "startsAt": null,
@@ -16,7 +16,27 @@
   "endState": null,
   "resolutionState": null,
   "brief": "Four newly hired clinic managers, each running a separate clinic in a different town. Three month onboarding which is also their probation: get them familiar and safe on our protocols, and know early whether any of them is not right for the role. They do not work with each other; they share one onboarding source.",
-  "groundAuditLog": null,
+  "groundAuditLog": {
+    "timeline": [
+      {
+        "changes": {
+          "cadence": {
+            "to": "WEEKLY",
+            "from": "WEEKLY"
+          },
+          "timelineWeeks": {
+            "to": 13,
+            "from": null
+          }
+        },
+        "changedAt": "2026-08-04T00:13:59.907Z",
+        "changedBy": "4ff5a9d6-16cd-4a48-bded-e38e139da693"
+      }
+    ],
+    "contextNotes": [
+      "My licence came through this week"
+    ]
+  },
   "createdByUserId": "047eeb0a-a0f7-475f-93c4-50720346c501",
   "billingActivatedAt": null,
   "billingEnabled": false,
@@ -26,13 +46,15 @@
   "pausedAt": null,
   "sessionsBalance": 1,
   "restrictExternalVisibility": true,
+  "peopleWorkTogether": false,
+  "peersVisibleToEachOther": null,
   "isFreeGround": true,
   "accessCodeId": null,
   "freeReason": "FREE_TIER",
   "freeParticipantCap": 4,
   "joinToken": "8172578cb7f4743db0710c37f528b3a4fc86562ba8e7e766",
-  "promptVersionId": null,
+  "promptVersionId": "3292e16a-160b-4c91-b83f-2562d87a0a4c",
   "stripeScenarioSubId": null,
   "createdAt": "2026-08-03T20:12:32.816Z",
-  "updatedAt": "2026-08-03T20:12:32.816Z"
+  "updatedAt": "2026-08-06T00:04:56.741Z"
 }
