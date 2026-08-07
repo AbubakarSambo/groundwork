@@ -30,5 +30,12 @@ Thumbs.db
 *.log
 npm-debug.log*
 
-# Live journey-test harness output (transcripts contain test credentials)
+# Live journey-test harness output. Never committed: these are raw transcripts of
+# every check-in in a run - 122,000 lines from one eighteen-ground pass - and on a
+# real deployment they would be people's own accounts of their work. The harness
+# that produces them IS committed; what it produces is not. The written
+# assessment is the deliverable, and it is kept.
 api/journey/out/
+api/journey/out-cohort/
+api/journey/org-sim/out/*.json
+api/journey/org-sim/out-paid/
