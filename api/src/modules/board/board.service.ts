@@ -309,7 +309,15 @@ export class BoardService {
     }
 
     if (has('dependencies')) {
-      out.dependencies = ground.dependencies.map((d) => ({
+      out.dependencies = ground.dependencies
+        // Nobody is waiting on themselves. The read path drops self-blocks in
+        // blockerHasSubstance(); this panel did not, so a dependency whose
+        // resolved owner is the person who raised it rendered as
+        // "X needs the budget line from X - Blocking". Extraction can land
+        // there whenever someone says "waiting on the budget line" and the
+        // only name in scope is their own.
+        .filter((d) => !(d.onParticipantId && d.onParticipantId === d.fromParticipantId))
+        .map((d) => ({
         id: d.id,
         from: nameOf(d.fromParticipantId),
         fromParticipantId: d.fromParticipantId,
