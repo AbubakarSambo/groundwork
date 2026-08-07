@@ -910,6 +910,18 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const lowDimCount = dims ? Object.values(dims).filter((v) => v === 'vague' || v === 'managed').length : 0;
     const lowSpecificity = priorSpecificity === 'vague' || priorSpecificity === 'managed' || lowDimCount >= 3;
 
+    // How many sessions IN A ROW came back thin, newest first. One thin week is
+    // a week; several in a row is a person who has not been shown what we mean.
+    const staleSessions = (() => {
+      let n = 0;
+      for (const ci of priorCheckIns) {
+        const lvl = ci.specificityLevel ?? null;
+        if (lvl === 'vague' || lvl === 'managed') n += 1;
+        else break;
+      }
+      return n;
+    })();
+
     const sessionRange = priorCheckIns.length > 1
       ? `sessions 1 through ${priorCheckIns[0].sessionNumber}`
       : `session ${priorCheckIns[0].sessionNumber}`;
@@ -927,6 +939,24 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       lines.push(
         `SPECIFICITY NOTE: Their last session produced ${priorSpecificity} specificity.${dimNote} Do not open with the same framing as last time. Ask about one unexpected angle - what almost went wrong, what they wish had happened differently, or what they held back last time. Do not announce the change. Push for something concrete they can name.`,
       );
+
+      // SHOW, once asking has stopped working.
+      //
+      // An eighteen-ground run had someone reach eight check-ins with "nothing
+      // specific named yet" on their board. Every one of those sessions asked
+      // her a different way. Re-angling the question works on someone who has
+      // the answer and is not volunteering it; it does nothing for someone who
+      // does not know what a checkable answer looks like. That person is
+      // usually the one with the least practice at being asked - so the
+      // product noticing and never helping lands hardest exactly where it
+      // should land softest.
+      //
+      // Demonstrate, do not grade. Never say their answers have been thin.
+      if (staleSessions >= 2) {
+        lines.push(
+          `THIS HAS NOT WORKED FOR ${staleSessions} SESSIONS RUNNING. Stop re-asking and SHOW them instead. Once, early, offer one example of the KIND of answer that can be checked later - built from their own situation, not a generic one: "something like: I sent the draft to Priya on the 14th, and she has not come back yet." Then ask your question again. Do not tell them their answers have been vague, do not compare them to anyone, and do not repeat the example if they still cannot give one - take what they give you and move on. Someone who cannot yet name specifics is not failing; they may never have been asked to work this way before.`,
+        );
+      }
     } else {
       lines.push(`Open by naming this specifically. Ask what has changed since they last described it.`);
     }

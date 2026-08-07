@@ -2,13 +2,32 @@ import { Controller, Get, Post, Patch, Delete, Body, Param, Query, HttpCode, Htt
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { CreateUserDto, UpdateUserDto } from './dto';
+import { IsString, IsNotEmpty, MaxLength, MinLength } from 'class-validator';
 import { CurrentUser, CurrentUserData, Roles, Role, PaginationDto } from '../../common';
+
+class RenameOrganizationDto {
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(2)
+  @MaxLength(120)
+  name: string;
+}
 
 @ApiTags('Users')
 @ApiBearerAuth()
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
+
+  @Patch('organization')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Rename the organization (admin only)' })
+  async renameOrganization(
+    @CurrentUser('organizationId') organizationId: string,
+    @Body() dto: RenameOrganizationDto,
+  ) {
+    return this.usersService.renameOrganization(organizationId, dto.name);
+  }
 
   @Post('me/leave')
   @HttpCode(HttpStatus.OK)

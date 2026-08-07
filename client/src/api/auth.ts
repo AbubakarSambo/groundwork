@@ -65,4 +65,12 @@ export const authApi = {
 
   leaveOrg: () =>
     apiClient.post<{ left: boolean }>('/users/me/leave').then(r => r.data),
+
+  /**
+   * An org is named from the email address when nobody was asked - and until
+   * now nobody could correct it, though the name is on every page the team
+   * sees. Admin only, server-enforced.
+   */
+  renameOrganization: (name: string) =>
+    apiClient.patch<{ id: string; name: string }>('/users/organization', { name }).then(r => r.data),
 }
