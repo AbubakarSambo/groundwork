@@ -80,10 +80,20 @@ export class BoardService {
     });
     if (!ground) throw new NotFoundException('Ground not found');
 
-    // Authorisation: only parties to this ground (or its initiator) read the board.
+    // Authorisation: parties to this ground, its initiator, or the admin who
+    // set it up.
+    //
+    // The setting-up admin is often neither lead nor participant - she creates
+    // the ground and hands it to a lead. An eighteen-ground run found her
+    // locked out of every board she had created, from a "Team board" link her
+    // own admin page renders. READ only: createdByUserId does not confer the
+    // initiator's write powers (objectives, poll), which stay gated below.
     const isInitiator = ground.initiatorId === requestingUserId;
+    const isSetupAdmin = !!ground.createdByUserId && ground.createdByUserId === requestingUserId;
     const me = ground.participants.find((p) => p.userId === requestingUserId);
-    if (!me && !isInitiator) throw new ForbiddenException('You are not a party to this ground');
+    if (!me && !isInitiator && !isSetupAdmin) {
+      throw new ForbiddenException('You are not a party to this ground');
+    }
 
     // GATE 1: mode + family. A private ground, or a sensing-family scenario,
     // has no board at all - and says so, rather than returning an empty shell

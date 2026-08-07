@@ -10,6 +10,7 @@ import { conversationApi } from '@/api/conversation'
 import { apiClient } from '@/api/client'
 import { participantLabel } from '@/lib/utils'
 import { toast } from 'sonner'
+import { ResolutionPanel } from '@/components/gw/ResolutionPanel'
 
 const BANDS = ['', 'Unresolved', 'Mixed', 'Emerging', 'Clear', 'Aligned']
 function bandLabel(score?: number) { return BANDS[Math.min(Math.round(score ?? 1), 5)] ?? 'Unresolved' }
@@ -597,6 +598,8 @@ export function GroundParticipantPage() {
         {/* MY RECORD TAB */}
         {tab === 'record' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {/* The participant gets an equal say in how the ground ends. */}
+            {id && <ResolutionPanel groundId={id} />}
 
             {/* Unlock CTA - shown whether locked or not, but changes state */}
             {myRecord?.insightsLocked !== false && (

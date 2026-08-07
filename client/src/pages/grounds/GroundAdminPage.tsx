@@ -14,6 +14,7 @@ import type { ParticipantRequest } from '@/api/participantRequests'
 import { toast } from 'sonner'
 import { CodeShareCard } from '@/components/CodeShareCard'
 import { PostSessionPanel } from '@/components/PostSessionPanel'
+import { ResolutionPanel } from '@/components/gw/ResolutionPanel'
 import { billingApi, PLAN_MEMBER_LIMITS, type SubscriptionPlan } from '@/api/billing'
 
 const SCENARIO_LABELS: Record<string, string> = {
@@ -332,6 +333,10 @@ export function GroundAdminPage() {
         {/* OVERVIEW */}
         {tab === 'overview' && (
           <div>
+            {/* How this ground ends. Renders nothing for a non-party (the API
+                403s them), so the setting-up admin sees the board and the
+                record but does not get a vote on the outcome. */}
+            <ResolutionPanel groundId={ground.id} />
             {/* Post-session decision panel: shown when session is complete, no balance, not subscribed */}
             {ground.status === 'REPORT_READY' && !postSessionDismissed &&
               !ground.isFreeGround &&
