@@ -47,6 +47,11 @@ function GroundCard({ g, onClick }: { g: Ground; onClick: () => void }) {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           {g.status === 'ACTIVE' && g.participants.length > 1 && !(g.checkIns ?? []).some(c => c.status === 'COMPLETED') && (g.overdue ?? 0) === 0 && <span style={{ fontSize: 11, fontWeight: 600, color: '#7A5200', background: '#FFF8EC', borderRadius: 20, padding: '2px 8px' }}>No check-ins yet</span>}
+          {/* A report was released to this person and they have not opened it.
+              Across ten grounds and thirty-three people, not one report was
+              ever activated - the release email was the only thing that ever
+              said so, and nothing in the product did. */}
+          {(g as any).reportWaitingForMe && <span style={{ fontSize: 11, fontWeight: 700, color: '#085041', background: '#E8F8F5', borderRadius: 20, padding: '2px 8px' }}>Your report is ready</span>}
           {(g.overdue ?? 0) > 0 && <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', borderRadius: 20, padding: '2px 8px' }}>{g.overdue} overdue</span>}
           {g.status === 'REPORT_READY' && <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-green-t)', background: 'var(--gw-green-bg)', borderRadius: 20, padding: '2px 8px' }}>Report ready</span>}
           {g.status === 'AWAITING_LEAD' && <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', borderRadius: 20, padding: '2px 8px' }}>Awaiting lead</span>}
@@ -92,7 +97,10 @@ export function GroundsListPage() {
   const checkoutMut = { mutate: () => navigate('/billing/checkout'), isPending: false }
   const active = grounds.filter(g => g.status !== 'CLOSED' && g.status !== 'RESOLVED')
   const checkInsToday = grounds.reduce((n, g) => n + (g.checkInsToday ?? 0), 0)
-  const reportsReady = grounds.filter(g => g.status === 'REPORT_READY').length
+  // Count reports waiting for THIS person. The old count was grounds in
+  // REPORT_READY status, which is a different thing and sat permanently at
+  // zero while every ground stayed ACTIVE.
+  const reportsReady = grounds.filter(g => (g as any).reportWaitingForMe).length
   const billingActive = (billing?.activeGrounds?.length ?? 0) > 0
   // Only show unlock-insights banner when there are completed grounds that have actually generated a report
   const hasCompletedGrounds = grounds.some(g => g.status === 'REPORT_READY' || (g.confidence ?? 0) >= 2)

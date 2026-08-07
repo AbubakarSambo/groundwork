@@ -513,6 +513,10 @@ export class GroundsService {
         checkIns: {
           select: { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, createdAt: true },
         },
+        // A released report that nobody is told about is a report nobody reads.
+        // Ten grounds released theirs and not one person ever activated.
+        report: { select: { releasedAt: true } },
+        reportActivations: { select: { participantId: true, status: true } },
       },
     });
 
@@ -541,6 +545,8 @@ export class GroundsService {
             checkIns: {
               select: { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, createdAt: true },
             },
+            report: { select: { releasedAt: true } },
+            reportActivations: { select: { participantId: true, status: true } },
           },
         });
       }
@@ -558,7 +564,25 @@ export class GroundsService {
           .filter((d): d is Date => d !== null)
           .sort((a, b) => b.getTime() - a.getTime())[0];
         const lastActivity = lastCompletion ?? g.updatedAt;
-        return { ...g, confidence, overdue, checkInsToday, lastActivity };
+
+        // Is a report sitting here that THIS viewer has not opened yet? Only
+        // meaningful for a party - an admin who is not in the ground has no
+        // report of her own to activate.
+        const mine = userId ? (g.participants ?? []).find((p: any) => p.userId === userId) : null;
+        // Same rule the report endpoint applies, or the badge contradicts the
+        // page: the INITIATOR is exempt - they released it and can always read
+        // it - and everyone else needs an ACTIVATED row, not merely a row.
+        const isInitiator = !!userId && g.initiatorId === userId;
+        const activated =
+          isInitiator ||
+          (!!mine &&
+            ((g as any).reportActivations ?? []).some(
+              (a: any) => a.participantId === mine.id && a.status === 'ACTIVATED',
+            ));
+        const reportWaitingForMe = !!mine && !!(g as any).report?.releasedAt && !activated;
+
+        const { reportActivations: _drop, ...rest } = g as any;
+        return { ...rest, confidence, overdue, checkInsToday, lastActivity, reportWaitingForMe };
       })
       .sort((a, b) => new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime());
   }
