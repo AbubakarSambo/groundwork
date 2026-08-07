@@ -366,7 +366,7 @@ export class ConversationService {
         // never decremented and never hit the balance throw below. This is the
         // second gate: without this guard, a free-tier or subscribed ground whose
         // balance had already reached 0 (e.g. a returning session 2) would throw
-        // "No sessions remaining" here even though canStartSession allowed it.
+        // the over-limit message here even though canStartSession allowed it.
         if (gate.sessionsBalance !== -1) {
           // Atomic check-and-decrement: only succeeds when balance is still > 0,
           // preventing two concurrent requests from both passing canStartSession and
@@ -376,7 +376,7 @@ export class ConversationService {
             data: { sessionsBalance: { decrement: 1 } },
           });
           if (decremented.count === 0) {
-            throw new ForbiddenException('No sessions remaining. Add a session for $5 to continue.');
+            throw new ForbiddenException('This ground is beyond your ten free grounds. Resubscribe to continue checking in - the report and board stay available either way.');
           }
           // Increment the free-sessions counter so the per-org cap is enforced.
           const groundMeta = await this.prisma.ground.findUnique({ where: { id: checkIn.groundId }, select: { isFreeGround: true, organizationId: true } });

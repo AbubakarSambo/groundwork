@@ -43,7 +43,13 @@ describe('GW-BEHAVIOR-ENTRY-C: the assembled entry prompt carries the entry rule
   it('FAQ mode answers plainly and states the free-first-session fact', () => {
     expect(FAQ_PROMPT).toContain('FAQ MODE');
     expect(FAQ_PROMPT).toContain('one or two plain sentences');
-    expect(FAQ_PROMPT).toContain('The first session on each ground is free.');
+    // The intent is that the FAQ states plainly what costs what, so the chatbot
+    // never has to improvise about money. The FACT changed: it used to tell
+    // people "additional sessions are $5 each", which is a price that does not
+    // exist - and the chatbot was saying it out loud to new users.
+    expect(FAQ_PROMPT).toContain('Ten grounds are free');
+    expect(FAQ_PROMPT).toContain('participants are never charged at all');
+    expect(FAQ_PROMPT).not.toMatch(/\$5/);
   });
 });
 

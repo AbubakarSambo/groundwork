@@ -59,7 +59,8 @@ export const whatsappConfig = registerAs("whatsapp", () => ({
   enabled: !!process.env.WHATSAPP_ACCESS_TOKEN && !!process.env.WHATSAPP_PHONE_NUMBER_ID,
 }));
 
-// Stripe, USD. Per-session billing: first session per ground is free, each additional is $5.
+// Stripe, USD. Subscription billing: ten free grounds per org with unlimited
+// sessions, a subscription lifts the cap. Nothing is charged per session.
 export const stripeConfig = registerAs("stripe", () => ({
   secretKey: process.env.STRIPE_SECRET_KEY,
   publishableKey: process.env.STRIPE_PUBLISHABLE_KEY,

@@ -74,7 +74,12 @@ export class BillingService {
 
       return {
         allowed: false,
-        reason: 'No sessions remaining. Add a session for $5 to continue.',
+        // Sessions are not sold, so "add a session for $5" was a dead end
+        // pointing at a button that no longer exists. Say what is true, and say
+        // the reassuring half out loud: the person who hits this wall is
+        // usually a participant who never chose to pay and never chose to
+        // cancel, and their record is safe.
+        reason: 'This ground is beyond your ten free grounds. Resubscribe to continue checking in - the report and board stay available either way.',
         sessionsBalance: 0,
         freeExtensionAvailable: !(org?.freeExtensionUsed ?? false),
       };
@@ -82,7 +87,7 @@ export class BillingService {
 
     const balance = ground?.sessionsBalance ?? 0;
     if (balance > 0) return { allowed: true, sessionsBalance: balance };
-    return { allowed: false, reason: 'No sessions remaining. Add a session for $5 to continue.', sessionsBalance: 0 };
+    return { allowed: false, reason: 'This ground is beyond your ten free grounds. Resubscribe to continue checking in - the report and board stay available either way.', sessionsBalance: 0 };
   }
 
   /** Free ground limit for organizations without a subscription. */
