@@ -268,6 +268,14 @@ export function GroundAdminPage() {
 
   const conf = ground.confidence ?? 1
   const bl = bandLabel(conf)
+
+  // Distinct session numbers that are finished, against the plan. Counting
+  // check-in rows would say "26 sessions" for a 13-session two-party ground.
+  const doneSessions = new Set(
+    (ground.checkIns ?? []).filter((c: any) => c.status === 'COMPLETED').map((c: any) => c.sessionNumber),
+  ).size
+  const plannedSessions = (ground as any).maxSessions ?? (ground as any).totalSessions ?? null
+  const allSessionsDone = plannedSessions != null && doneSessions >= plannedSessions
   // contact-visibility toggle state (default: hidden). true = peers cannot see each other's email.
   const contactHidden = ground.restrictExternalVisibility !== false
 
@@ -302,6 +310,8 @@ export function GroundAdminPage() {
           </div>
         </div>
 
+        {/* Sessions are per-participant-per-session, so count DISTINCT session
+            numbers, not check-in rows. */}
         <div style={{ display: 'flex', gap: 10, padding: '0 16px 10px', fontSize: 11, color: 'var(--gw-sub)', flexWrap: 'wrap', alignItems: 'center' }}>
           {ground.scenario && (
             <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: '#F0EEE9', color: '#4A4540' }}>
@@ -311,10 +321,16 @@ export function GroundAdminPage() {
           {ground.resolutionState && (
             <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: 'var(--gw-blue-bg)', color: 'var(--gw-navy)' }}>{ground.resolutionState}</span>
           )}
-          {ground.daysLeft != null && ground.daysLeft <= 3 ? (
+          {/* Time remaining is only news while there are still sessions to
+              run. A ground with all thirteen of its sessions finished was
+              reading "90 days remaining", which describes the calendar and
+              not the work. */}
+          {!allSessionsDone && ground.daysLeft != null && ground.daysLeft <= 3 ? (
             <span style={{ fontWeight: 700, color: '#791F1F' }}>{ground.daysLeft === 0 ? 'Due today' : `${ground.daysLeft} day${ground.daysLeft === 1 ? '' : 's'} remaining`}</span>
-          ) : ground.daysLeft != null ? (
+          ) : !allSessionsDone && ground.daysLeft != null ? (
             <span>{ground.daysLeft} days remaining</span>
+          ) : allSessionsDone ? (
+            <span>every session done</span>
           ) : null}
         </div>
 
@@ -701,7 +717,14 @@ export function GroundAdminPage() {
                 // with whose check-in it is, or two parties' session-1 rows read
                 // as an accidental duplicate.
                 const who = (ground.participants ?? []).find((p: any) => p.id === ci.participantId)
-                const whoLabel = who?.email ?? 'Unknown participant'
+                // Name, THEN email. `email` is null for anyone who has an
+                // account - their name lives on `user` - so reading email alone
+                // made every row in a signed-up org say "Unknown participant",
+                // and the admin's main view of who checked in could not name a
+                // single person. Email still covers someone invited but not yet
+                // registered.
+                const whoName = [who?.user?.firstName, who?.user?.lastName].filter(Boolean).join(' ').trim()
+                const whoLabel = whoName || who?.email || who?.roleAsDescribed?.trim() || 'Unknown participant'
                 return (
                 <div key={ci.id} style={{ background: 'white', border: '0.5px solid var(--gw-border)', borderRadius: 8, padding: '12px 14px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { endStatesFor } from '@/lib/end-states'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { groundsApi, type GroundScenario, type GroundMoment, type GroundCadence } from '@/api/grounds'
 import { TIMED_CADENCES, sessionsFor } from '@/lib/cadence'
 import { billingApi, FREE_GROUND_LIMIT } from '@/api/billing'
@@ -214,6 +214,12 @@ function scenarioFromParam(param: string | null): GroundScenario | null {
 const TOTAL_STEPS = 6
 
 export function CreateGroundPage() {
+  // Asked once, on load, so the answer is on screen before any effort is spent.
+  const canCreate = useQuery({
+    queryKey: ['can-create-ground'],
+    queryFn: () => billingApi.checkCanCreateGround(),
+    retry: false,
+  })
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [step, setStep] = useState(1)
@@ -450,6 +456,28 @@ export function CreateGroundPage() {
         {/* Step 1: Scenario + Moment */}
         {step === 1 && (
           <div>
+            {/* Say the limit is reached BEFORE the setup work, not after it.
+                The API refuses an eleventh ground correctly, but it refused it
+                at submit - so the admin picked a card, named the ground, set
+                the timeline and the people, and only then was told she could
+                not. The block was right; the timing made it feel like a trick. */}
+            {canCreate.data && !canCreate.data.allowed && (
+              <div style={{ background: '#FDF3E3', border: '1px solid #F0DFC0', borderRadius: 8, padding: '12px 14px', marginBottom: 14 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#8A5C1A', marginBottom: 4 }}>
+                  You have used all {FREE_GROUND_LIMIT} of your free grounds
+                </div>
+                <div style={{ fontSize: 12.5, color: '#6B6560', lineHeight: 1.6, marginBottom: 10 }}>
+                  {canCreate.data.reason ?? 'Subscribe to open more grounds.'} You can still look
+                  around here, but this one cannot be created until then.
+                </div>
+                <button
+                  onClick={() => navigate('/billing')}
+                  style={{ padding: '8px 16px', borderRadius: 7, background: '#0A1628', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                >
+                  See plans
+                </button>
+              </div>
+            )}
             <div className="gw-ttl">What is this ground for?</div>
             <div className="gw-sub-t">Select the situation that fits best.</div>
             <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 10 }}>Choose one that best describes your situation.</div>

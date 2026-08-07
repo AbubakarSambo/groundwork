@@ -72,7 +72,10 @@ const NAV_ITEMS = [
   {
     label: 'Admin',
     to: '/admin/dashboard',
-    adminOnly: true,
+    // Groundwork's own back-office, NOT the org admin's area. The route is
+    // wrapped in RequirePlatformAdmin, so gating this on `adminOnly` showed
+    // every org admin a door that bounced her straight back to /grounds.
+    platformAdminOnly: true,
     icon: (active: boolean) => (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
         <path d="M10 2.5L12.5 7.5H17.5L13.5 10.5L15 15.5L10 12.5L5 15.5L6.5 10.5L2.5 7.5H7.5L10 2.5Z"
@@ -274,6 +277,7 @@ function NavItem({ item, compact }: { item: typeof NAV_ITEMS[0]; compact?: boole
   const active = location.pathname.startsWith(item.to)
   const user = useAuthStore(s => s.user)
   if (item.adminOnly && user?.role !== 'ADMIN') return null
+  if ((item as any).platformAdminOnly && !user?.isPlatformAdmin) return null
 
   if (compact) {
     return (
@@ -466,9 +470,6 @@ export function AppSidebar() {
               const planned = (g as any).maxSessions ?? (g.timelineDays ? Math.ceil(g.timelineDays / cadenceDays) : null)
               // Never show fewer planned than have already happened.
               const maxSessions = planned != null ? Math.max(planned, sessions) : null
-              // confidence is a 0-5 score, not a 0-1 fraction. Multiplying by 100
-              // produced "500%".
-              const confPct = g.confidence != null ? Math.min(100, Math.round((g.confidence / 5) * 100)) : null
               return (
                 <div key={g.id} style={{ marginBottom: 2, borderRadius: 8, overflow: 'hidden' }}>
                   <NavLink
@@ -511,8 +512,13 @@ export function AppSidebar() {
                     {/* Confidence + sessions */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
                       {g.confidence != null && (
+                        // "100% · 13/13 sessions" read as "100% complete, 13 of
+                        // 13 done" - two unrelated numbers joined by a dot. The
+                        // percentage is alignment CONFIDENCE, which is why a
+                        // one-session ground could show "40% · 1/1". Say which
+                        // is which.
                         <span style={{ fontSize: 11, color: 'rgba(255,255,255,.45)' }}>
-                          {confPct}% · {sessions}{maxSessions ? `/${maxSessions}` : ''} sessions
+                          {g.confidence}/5 aligned · {sessions}{maxSessions ? `/${maxSessions}` : ''} sessions
                         </span>
                       )}
                       {g.confidence == null && (

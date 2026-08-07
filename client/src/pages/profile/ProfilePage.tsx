@@ -32,17 +32,16 @@ export function ProfilePage() {
           Each closed ground adds a verified entry to your profile. Complete a ground to see your first record appear here.
         </div>
 
-        <div style={{ background: 'var(--gw-bg)', border: '0.5px solid var(--gw-border)', borderRadius: 8, padding: 14, marginBottom: 20 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>What does Two-party confirmed mean?</div>
-          <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.65 }}>
-            Both parties in this ground submitted independent records. Neither could see the other's account until both activated the report. The outcome shown was confirmed by both parties simultaneously. Verified by Groundwork.
-          </div>
-        </div>
+        {/* The "What does Two-party confirmed mean?" explainer used to sit here
+            unconditionally, defining a badge the page does not carry - and
+            cannot, until a ground actually closes. An explainer belongs beside
+            the thing it explains; on its own it reads like a description of
+            something the reader has and cannot find. */}
 
         <div style={{ textAlign: 'center', paddingBottom: 24 }}>
-          <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 10 }}>Build your own verified record</div>
-          <button onClick={() => navigate('/')} style={{ padding: '12px 24px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
-            Get started at myground.work
+          <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 10 }}>Your record grows as grounds close</div>
+          <button onClick={() => navigate('/grounds')} style={{ padding: '12px 24px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
+            Go to my grounds
           </button>
         </div>
       </div>
