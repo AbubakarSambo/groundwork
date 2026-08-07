@@ -39,3 +39,4 @@ api/journey/out/
 api/journey/out-cohort/
 api/journey/org-sim/out/*.json
 api/journey/org-sim/out-paid/
+api/journey/org-sim/out-verify/
