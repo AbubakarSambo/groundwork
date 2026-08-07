@@ -41,6 +41,8 @@ touches a screen verified in the running app with Playwright.
 | F21 | Picker no longer fits above the fold | **Built.** Count line + "scroll" in the opening, descriptions kept. |
 | F10 | Describe-your-own looked disabled | **Built** (was wrongly marked superseded). Solid border, full-strength label. |
 | F22 | Unverified accounts linger forever | **Built.** Daily sweep, only ever deletes a provably empty account. |
+| F23 | Per-session billing still on screen | **Built.** Six surfaces removed; sessions are not sold. |
+| F24 | Picker groups lopsided, short rows stretched | **Built.** 5/4/2/2/4, uniform card widths. |
 
 ## Six of my twenty findings were not product defects
 

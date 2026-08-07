@@ -199,11 +199,7 @@ export function GroundParticipantPage() {
     onError: () => setPaywallCodeMsg({ ok: false, text: 'Something went wrong. Try again.' }),
   })
 
-  const purchaseSessionMut = useMutation({
-    mutationFn: () => billingApi.purchaseSession(id!),
-    onSuccess: r => { if (r.checkoutUrl) window.location.href = r.checkoutUrl },
-    onError: () => toast.error('Could not start checkout. Try again.'),
-  })
+  // purchaseSessionMut removed with the buy-a-session tier.
 
   const claimFreeExtensionMut = useMutation({
     mutationFn: () => billingApi.claimFreeExtension(id!),
@@ -1031,20 +1027,9 @@ export function GroundParticipantPage() {
                   </div>
                 )}
 
-                {/* Tier 2: Buy session */}
-                <div style={{ border: '1px solid #E2E0DB', borderRadius: 10, padding: '14px 16px', marginBottom: 12 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: '#0C447C', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 6 }}>Buy sessions</div>
-                  <div style={{ fontSize: 13, color: '#1A1916', lineHeight: 1.6, marginBottom: 12 }}>
-                    Groundwork helping your team? Continue this Ground with additional sessions whenever you need them. Pay only because you have experienced the value, not because a trial expired.
-                  </div>
-                  <button
-                    onClick={() => purchaseSessionMut.mutate()}
-                    disabled={purchaseSessionMut.isPending}
-                    style={{ width: '100%', padding: '10px', borderRadius: 7, background: '#0A1628', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: purchaseSessionMut.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: purchaseSessionMut.isPending ? 0.7 : 1 }}
-                  >
-                    {purchaseSessionMut.isPending ? 'Redirecting...' : 'Buy a session ($5)'}
-                  </button>
-                </div>
+                {/* Tier 2 was "Buy a session ($5)". Removed: there is no
+                    per-session billing. What remains is the free extension
+                    above and the org subscription below. */}
 
                 {/* Tier 3: Upgrade org */}
                 <div style={{ border: '1px solid #E2E0DB', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>

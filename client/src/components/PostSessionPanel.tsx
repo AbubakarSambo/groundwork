@@ -26,11 +26,7 @@ export function PostSessionPanel({ groundId, freeExtensionUsed, onDismiss }: Pro
     onError: () => toast.error('Could not claim free session. Try again.'),
   })
 
-  const purchaseSessionMut = useMutation({
-    mutationFn: () => billingApi.purchaseSession(groundId),
-    onSuccess: r => { if (r.checkoutUrl) window.location.href = r.checkoutUrl },
-    onError: () => toast.error('Could not start checkout. Try again.'),
-  })
+  // purchaseSessionMut removed with the buy-a-session tier.
 
   const createSubscriptionMut = useMutation({
     mutationFn: (plan: string) => billingApi.createSubscription(plan as any),
@@ -70,22 +66,9 @@ export function PostSessionPanel({ groundId, freeExtensionUsed, onDismiss }: Pro
           </div>
         )}
 
-        {/* Buy session */}
-        <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '14px 16px' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#0C447C', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 5 }}>
-            Buy sessions
-          </div>
-          <div style={{ fontSize: 13, color: '#1A1916', lineHeight: 1.6, marginBottom: 12 }}>
-            Groundwork helping your team? Continue this Ground with additional sessions whenever you need them. Pay only because you have experienced the value, not because a trial expired.
-          </div>
-          <button
-            onClick={() => purchaseSessionMut.mutate()}
-            disabled={purchaseSessionMut.isPending}
-            style={{ padding: '9px 18px', borderRadius: 7, background: '#0A1628', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: purchaseSessionMut.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: purchaseSessionMut.isPending ? 0.7 : 1 }}
-          >
-            {purchaseSessionMut.isPending ? 'Redirecting...' : 'Buy a session ($5)'}
-          </button>
-        </div>
+        {/* The "Buy sessions" tier is gone: there is no per-session
+            billing. A free ground has unlimited sessions, a subscription has
+            unlimited sessions, and nothing in between is sold by the session. */}
 
         {/* Upgrade org */}
         <div style={{ background: 'white', border: '1px solid #D4C8EC', borderRadius: 10, padding: '14px 16px' }}>

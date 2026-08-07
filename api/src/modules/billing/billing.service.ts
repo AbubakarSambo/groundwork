@@ -10,10 +10,23 @@ import * as crypto from 'crypto';
 
 /**
  * Billing model:
- *   Per-session billing. First session on each ground is free (sessionsBalance starts at 1).
- *   Each additional session costs $5, purchased via Stripe one-time checkout.
- *   Free tier capped at 3 free grounds per org (freeSessionsUsed counter).
- *   Contributor codes allow admins to grant sessions to other grounds.
+ *   TEN free grounds per org, each with UNLIMITED sessions and reports. A
+ *   subscription lifts the ten-ground cap. Nothing is charged per session.
+ *   Contributor codes let an admin grant access without payment.
+ *
+ * This comment used to describe per-session billing at $5 and a three-ground
+ * free tier - a model that was dropped. canStartSession below has been the
+ * truth for a while (free grounds "are never metered or paywalled"), but the
+ * old description survived up here, and the UI kept quoting the old price at
+ * people. If you are changing this, change the comment WITH the code: the
+ * stale version was read as fact by the next person through, which is how a
+ * new user came to be told "additional sessions are $5 each" for a ground that
+ * costs nothing.
+ *
+ * purchaseSession() and the $5 line item are retained but unreferenced by any
+ * user-facing surface. They remain only because live Stripe records and
+ * webhooks may still point at them; do not treat their presence as evidence
+ * that sessions are sold.
  */
 @Injectable()
 export class BillingService {

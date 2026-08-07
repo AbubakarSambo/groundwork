@@ -246,7 +246,7 @@ export const SITUATION_CARDS = [
     ],
   },
   {
-    group: 'positive',
+    group: 'planning',
     label: 'Setting shared goals',
     detail: "A team agreeing on what matters most this period, so effort doesn't spread in different directions.",
     message: 'We are setting shared goals for this period and I want everyone aligned on what matters most.',
@@ -257,7 +257,7 @@ export const SITUATION_CARDS = [
     ],
   },
   {
-    group: 'positive',
+    group: 'planning',
     label: 'A big decision',
     detail: "A group making a real choice, each person's honest read before you commit.",
     message: 'We are making a big decision and I want each person\'s honest read before we commit.',
@@ -1338,7 +1338,11 @@ export function EntryChatPage() {
       {showSessionsUpgrade && (
         <div style={{ background: 'var(--gw-blue-bg)', borderBottom: '1px solid var(--gw-blue-b)', padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
           <div style={{ flex: 1, fontSize: 13, color: 'var(--gw-navy)', lineHeight: 1.5 }}>
-            <strong>{sessions} sessions</strong> needs an account. First session is free. Additional sessions are $5 each. Save your session below to get set up.
+            {/* There is no per-session billing. The old copy told a brand-new
+                person "additional sessions are $5 each" at the moment they were
+                deciding whether to start - and it was not even true: their
+                first ground is free with unlimited sessions. */}
+            <strong>{sessions} sessions</strong> needs an account, and it is free. Save your session below to get set up.
           </div>
           <button onClick={() => { setShowSessionsUpgrade(false); setShowSave(true) }}
             style={{ flexShrink: 0, background: 'var(--gw-navy)', color: 'white', border: 'none', borderRadius: 7, padding: '7px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
@@ -1418,7 +1422,7 @@ export function EntryChatPage() {
                     return (
                       <div key={group.key}>
                         <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginBottom: 4, fontWeight: 500 }}>{group.heading}</div>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(235px, 1fr))', gap: 5, marginBottom: last ? 0 : 8 }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(235px, 1fr))', gap: 5, marginBottom: last ? 0 : 8 }}>
                           {cards.map(card => (
                             <button
                               key={card.label}
