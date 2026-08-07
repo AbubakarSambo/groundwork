@@ -301,6 +301,129 @@ export const SITUATION_CARDS = [
       'You and a co-founder or partner see contributions or direction differently and want both accounts first.',
     ],
   },
+
+  // ------------------------------------------------------------------
+  // The situations that were reachable only AFTER signing in.
+  //
+  // /grounds/new has carried all eighteen scenario cards for a while; this
+  // picker carried eight. Ten situations - including both cohort cards - were
+  // invisible to a first-time visitor, who is exactly the person with no
+  // account and no other way in. The two lists are maintained by hand in two
+  // files, which is how they drifted; entry-cards-parity.spec.ts now fails if
+  // they drift again.
+  //
+  // `message` is what ROUTES - it is sent to the model as the person's first
+  // turn. Write it as the person would say it, and never touch it in a copy
+  // pass.
+  // ------------------------------------------------------------------
+  {
+    group: 'positive',
+    label: 'New advisor or board member',
+    detail: 'Pin down what they will actually contribute, and on what terms, so "available" does not stand in for contributing.',
+    message: 'We are bringing on a new advisor or board member and I want to pin down what they will actually contribute and on what terms.',
+    timelineHint: 'typically 90 days',
+    examples: [
+      'An advisor joined months ago and you still could not say what they have contributed.',
+      'A board member you want to agree concrete terms with before the next quarter.',
+    ],
+  },
+  {
+    group: 'positive',
+    label: 'Onboarding a group',
+    detail: 'Several people starting the same role at once. Each answers on their own, so you see who is on track and who is stuck.',
+    message: 'We are onboarding a group of people into the same role at the same time and I want to see how each of them is doing without them swaying each other.',
+    timelineHint: 'typically 90 days',
+    examples: [
+      'A cohort of managers hired to run clinics, on a three-month probation.',
+      'Several field officers who start together and do not work with each other.',
+    ],
+  },
+  {
+    group: 'planning',
+    label: 'Workplan and budget',
+    detail: 'Each person builds their own plan and budget, and you see whether it holds up against what is actually available.',
+    message: 'We are setting a workplan and budget and I want each person to build their own and check it holds up against the resources we have.',
+    timelineHint: 'typically 90 days',
+    examples: [
+      'A quarter where every team submits a plan and the numbers have to add up together.',
+      'You suspect two teams have budgeted for the same thing.',
+    ],
+  },
+  {
+    group: 'planning',
+    label: 'Board and leadership strategy',
+    detail: 'Each leader gives their own read before the room debates it, so quiet disagreement shows up now and not after the decision.',
+    message: 'Our leadership team needs to align on strategy and I want each person to give their own read before the room debates it.',
+    timelineHint: 'typically two check-ins',
+    examples: [
+      'An offsite where you want the real positions before the discussion converges.',
+      'A leadership team that nods in the room and disagrees afterwards.',
+    ],
+  },
+  {
+    group: 'recurring',
+    label: 'Quick check-in',
+    detail: 'A fast, repeatable read from each person on what is moving, what is stuck, and what has changed.',
+    message: 'I want a quick recurring check-in with my team on what is moving, what is stuck and what has changed.',
+    timelineHint: 'typically ongoing',
+    examples: [
+      'A weekly pulse across a delivery team instead of a status meeting.',
+      'You want the same few questions answered honestly every week.',
+    ],
+  },
+  {
+    group: 'recurring',
+    label: 'Cohort check-in',
+    detail: 'Many people in the same role, each answering on their own, so you see the pattern rather than the loudest voice.',
+    message: 'I have a group of people in the same role and I want an ongoing read from each of them separately so I can see the pattern of who is on track and who is stuck.',
+    timelineHint: 'typically ongoing',
+    examples: [
+      'Eight field officers doing the same job in different places.',
+      'A cohort where you need to know who is struggling before it shows in the numbers.',
+    ],
+  },
+  {
+    group: 'person',
+    label: 'Raise, promotion, or recognition',
+    detail: 'The person builds the evidence behind the ask and the decision maker reads the same record, so both start from the same picture.',
+    message: 'Someone is asking for a raise or promotion and I want us both working from the same evidence before the conversation.',
+    timelineHint: 'typically one check-in',
+    examples: [
+      'Someone has asked for a raise and you want their case in writing first.',
+      'You are deciding a promotion and want the record, not just your impression.',
+    ],
+  },
+  {
+    group: 'person',
+    label: 'Contract or renewal',
+    detail: 'Both sides give an honest account of how the term actually went and what a fair next one looks like.',
+    message: 'A contract is coming up for renewal and I want both sides to give an honest account of how the term went before we agree the next one.',
+    timelineHint: 'typically two weeks',
+    examples: [
+      'A contractor whose term is ending and you are unsure whether to renew.',
+      'A renewal where you and they would describe the last year differently.',
+    ],
+  },
+  {
+    group: 'negative',
+    label: 'A shock just hit',
+    detail: "Something jarring just happened. Get everyone's honest read of where things stand before anyone decides anything.",
+    message: 'Something has just happened that we did not expect and I want everyone\'s honest read of where things actually stand before we decide anything.',
+    timelineHint: 'typically one check-in',
+    examples: [
+      'A client pulled out overnight and everyone has a different account of why.',
+      'A sudden departure or loss where you need the real picture fast.',
+    ],
+  },
+]
+
+/** The picker's groups, in display order. */
+export const SITUATION_GROUPS: { key: string; heading: string }[] = [
+  { key: 'positive',  heading: 'Starting something' },
+  { key: 'planning',  heading: 'Goals, plans and decisions' },
+  { key: 'recurring', heading: 'Keeping a regular read' },
+  { key: 'person',    heading: 'A decision about someone' },
+  { key: 'negative',  heading: 'When something needs addressing' },
 ]
 
 // Quick actions shown after the check-in starts
@@ -1273,75 +1396,50 @@ export function EntryChatPage() {
               {/* Situation cards - shown only before user has sent first message */}
               {onboardingHistory.length === 1 && !onboardingLoading && !pickedSituation && (
                 <div style={{ alignSelf: 'flex-start', width: '100%' }}>
-                  <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginBottom: 4, fontWeight: 500 }}>Starting something</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(235px, 1fr))', gap: 5, marginBottom: 8 }}>
-                    {SITUATION_CARDS.filter(c => c.group === 'positive').map(card => (
-                      <button
-                        key={card.label}
-                        onClick={() => { setPickedSituation(card.label); sendOnboarding(card.message) }}
-                        style={{
-                          textAlign: 'left', padding: '8px 11px', borderRadius: 10,
-                          border: '1px solid var(--gw-border)', background: 'white',
-                          cursor: 'pointer', fontFamily: 'inherit',
-                        }}
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 6, marginBottom: 1 }}>
-                          <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--gw-text)' }}>{card.label}</div>
-                          {card.timelineHint && (
-                            // Inline with the label, not a separate line - suite_l's
-                            // above-the-fold check at 1280x720 failed when this was
-                            // its own row (the extra height pushed the freeform card
-                            // below the fold). No added vertical footprint this way.
-                            <div style={{ fontSize: 9.5, color: 'var(--gw-muted)', fontStyle: 'italic', whiteSpace: 'nowrap', flexShrink: 0 }}>{card.timelineHint}</div>
-                          )}
+                  {/* One block per group, driven by SITUATION_GROUPS. This was
+                      two hand-copied sixty-line blocks differing only by their
+                      filter, which is how this picker fell eight cards behind
+                      /grounds/new without anyone noticing. */}
+                  {SITUATION_GROUPS.map((group, gi) => {
+                    const cards = SITUATION_CARDS.filter(c => c.group === group.key)
+                    if (!cards.length) return null
+                    const last = gi === SITUATION_GROUPS.length - 1
+                    return (
+                      <div key={group.key}>
+                        <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginBottom: 4, fontWeight: 500 }}>{group.heading}</div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(235px, 1fr))', gap: 5, marginBottom: last ? 0 : 8 }}>
+                          {cards.map(card => (
+                            <button
+                              key={card.label}
+                              onClick={() => { setPickedSituation(card.label); sendOnboarding(card.message) }}
+                              style={{
+                                textAlign: 'left', padding: '8px 11px', borderRadius: 10,
+                                border: '1px solid var(--gw-border)', background: 'white',
+                                cursor: 'pointer', fontFamily: 'inherit',
+                              }}
+                            >
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 6, marginBottom: 1 }}>
+                                <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--gw-text)' }}>{card.label}</div>
+                                {card.timelineHint && (
+                                  <div style={{ fontSize: 9.5, color: 'var(--gw-muted)', fontStyle: 'italic', whiteSpace: 'nowrap', flexShrink: 0 }}>{card.timelineHint}</div>
+                                )}
+                              </div>
+                              <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', lineHeight: 1.4 }}>{card.detail}</div>
+                              {card.examples && card.examples.length > 0 && (
+                                <div style={{ marginTop: 3 }}>
+                                  {/* One visual line per recognizer; the full text
+                                      stays in the title attribute. With seventeen
+                                      cards this is what keeps the picker scannable. */}
+                                  <div title={card.examples.map(e => `e.g. ${e}`).join('\n')} style={{ fontSize: 10.5, color: 'var(--gw-muted)', lineHeight: 1.45, display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>e.g. {card.examples[0]}</div>
+                                </div>
+                              )}
+                            </button>
+                          ))}
                         </div>
-                        <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', lineHeight: 1.4 }}>{card.detail}</div>
-                        {card.examples && card.examples.length > 0 && (
-                          <div style={{ marginTop: 3 }}>
-                            {card.examples.map((ex, i) => (
-                              // one visual line per recognizer keeps every card
-                              // above the fold; the full text stays in title
-                              <div key={i} title={`e.g. ${ex}`} style={{ fontSize: 10.5, color: 'var(--gw-muted)', lineHeight: 1.45, display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>e.g. {ex}</div>
-                            ))}
-                          </div>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                  <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginBottom: 5, fontWeight: 500 }}>When something needs addressing</div>
+                      </div>
+                    )
+                  })}
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(235px, 1fr))', gap: 6 }}>
-                    {SITUATION_CARDS.filter(c => c.group === 'negative').map(card => (
-                      <button
-                        key={card.label}
-                        onClick={() => { setPickedSituation(card.label); sendOnboarding(card.message) }}
-                        style={{
-                          textAlign: 'left', padding: '8px 11px', borderRadius: 10,
-                          border: '1px solid var(--gw-border)', background: 'white',
-                          cursor: 'pointer', fontFamily: 'inherit',
-                        }}
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 6, marginBottom: 1 }}>
-                          <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--gw-text)' }}>{card.label}</div>
-                          {card.timelineHint && (
-                            // Inline with the label, not a separate line - suite_l's
-                            // above-the-fold check at 1280x720 failed when this was
-                            // its own row (the extra height pushed the freeform card
-                            // below the fold). No added vertical footprint this way.
-                            <div style={{ fontSize: 9.5, color: 'var(--gw-muted)', fontStyle: 'italic', whiteSpace: 'nowrap', flexShrink: 0 }}>{card.timelineHint}</div>
-                          )}
-                        </div>
-                        <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', lineHeight: 1.4 }}>{card.detail}</div>
-                        {card.examples && card.examples.length > 0 && (
-                          <div style={{ marginTop: 3 }}>
-                            {card.examples.map((ex, i) => (
-                              // one visual line per recognizer keeps every card
-                              // above the fold; the full text stays in title
-                              <div key={i} title={`e.g. ${ex}`} style={{ fontSize: 10.5, color: 'var(--gw-muted)', lineHeight: 1.45, display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>e.g. {ex}</div>
-                            ))}
-                          </div>
-                        )}
-                      </button>
-                    ))}
                     {/* The describe-your-own option lives IN the grid: it
                         fills the empty last-row slot and keeps the whole
                         picker above the fold at laptop heights (suite L). */}

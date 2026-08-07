@@ -28,7 +28,20 @@ const PINNED_MESSAGES = [
 
 describe('entry cards: display reframed, routing untouched', () => {
   it('message fields are byte-identical to the pre-reframe originals', () => {
-    expect(SITUATION_CARDS.map(c => c.message)).toEqual(PINNED_MESSAGES)
+    // Deliberately "the pinned eight are present, unchanged, and still first"
+    // rather than "these are the only eight". Nine more cards were added when
+    // /start was brought up to the same scenario set as /grounds/new, and a
+    // strict toEqual would have forced whoever did that to weaken this check -
+    // which is the one thing it exists to prevent. Adding a card is fine.
+    // Editing one of these strings is not.
+    expect(SITUATION_CARDS.slice(0, PINNED_MESSAGES.length).map(c => c.message)).toEqual(PINNED_MESSAGES)
+  })
+
+  it('every card routes on a non-empty sentence of its own', () => {
+    const messages = SITUATION_CARDS.map(c => c.message)
+    for (const m of messages) expect(m.trim().length).toBeGreaterThan(20)
+    // No two cards may route on the same sentence, or one of them is dead.
+    expect(new Set(messages).size).toBe(messages.length)
   })
 
   it('labels carry the reframed voice (old confrontational labels gone)', () => {
@@ -43,9 +56,15 @@ describe('entry cards: display reframed, routing untouched', () => {
     expect(labels).not.toContain('Co-founder or partner disagreement')
   })
 
-  it('is rebalanced positive-leaning: 5 starting, 3 addressing', () => {
-    expect(SITUATION_CARDS.filter(c => c.group === 'positive')).toHaveLength(5)
-    expect(SITUATION_CARDS.filter(c => c.group === 'negative')).toHaveLength(3)
+  it('stays positive-leaning: more to start with than to fix', () => {
+    // This used to pin exact counts (5 positive, 3 negative). The intent was
+    // the LEAN, not the arithmetic - a picker whose first impression is
+    // "something is wrong here" sets the wrong tone for the whole product. The
+    // counts moved when /start was brought up to the full scenario set, so the
+    // check now holds the intent instead of the numbers.
+    const positive = SITUATION_CARDS.filter(c => c.group === 'positive').length
+    const negative = SITUATION_CARDS.filter(c => c.group === 'negative').length
+    expect(positive).toBeGreaterThan(negative)
     const labels = SITUATION_CARDS.map(c => c.label)
     expect(labels).toContain('Setting shared goals')
     expect(labels).toContain('A big decision')

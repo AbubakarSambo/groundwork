@@ -21,10 +21,22 @@ const EXPECTED: Record<string, string> = {
   "Someone's work is off track": 'typically 90 days',
   'A project is off track': 'typically 90 days',
   'You and someone see it differently': 'typically 60 days',
+  // The nine added when /start was brought up to the same scenario set as
+  // /grounds/new. Same rule: "typically", never a bare fixed duration, so the
+  // badge reads as a recommendation rather than a commitment.
+  'New advisor or board member': 'typically 90 days',
+  'Onboarding a group': 'typically 90 days',
+  'Workplan and budget': 'typically 90 days',
+  'Board and leadership strategy': 'typically two check-ins',
+  'Quick check-in': 'typically ongoing',
+  'Cohort check-in': 'typically ongoing',
+  'Raise, promotion, or recognition': 'typically one check-in',
+  'Contract or renewal': 'typically two weeks',
+  'A shock just hit': 'typically one check-in',
 }
 
 describe('situation card timeline hints', () => {
-  it('each of the 8 cards carries the confirmed timelineHint', () => {
+  it('every card carries its confirmed timelineHint', () => {
     for (const card of SITUATION_CARDS) {
       expect(card.timelineHint).toBe(EXPECTED[card.label])
     }
