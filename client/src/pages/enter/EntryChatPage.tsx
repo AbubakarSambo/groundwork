@@ -917,7 +917,7 @@ export function EntryChatPage() {
   // Kick off the AI onboarding with the intro message on mount (if onboarding history is empty)
   useEffect(() => {
     if (phase !== 'onboarding' || onboardingHistory.length > 0) return
-    const INTRO = `What brings you here? Pick the situation that fits or describe it below.`
+    const INTRO = `What brings you here? Scroll for the full list of situations, pick the one that fits, or describe your own at the bottom.`
     // If URL params pre-populate, inject as first user message
     if (urlInitial) {
       const preloadedHistory: Turn[] = [
@@ -1396,6 +1396,17 @@ export function EntryChatPage() {
               {/* Situation cards - shown only before user has sent first message */}
               {onboardingHistory.length === 1 && !onboardingLoading && !pickedSituation && (
                 <div style={{ alignSelf: 'flex-start', width: '100%' }}>
+                  {/* Seventeen situations will not fit above the fold at a
+                      laptop height - measured: even stripping the descriptions
+                      leaves 152px over, so the old "everything visible at once"
+                      rule is unreachable rather than merely expensive. The
+                      descriptions stay, because recognising your own situation
+                      matters MORE as the list gets longer. What was missing is
+                      any signal that the first screen is not the whole set. */}
+                  <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 8 }}>
+                    {SITUATION_CARDS.length} situations, grouped. Scroll for the rest, or describe your own at the bottom.
+                  </div>
+
                   {/* One block per group, driven by SITUATION_GROUPS. This was
                       two hand-copied sixty-line blocks differing only by their
                       filter, which is how this picker fell eight cards behind
