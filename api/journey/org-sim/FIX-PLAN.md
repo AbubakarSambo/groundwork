@@ -39,6 +39,7 @@ touches a screen verified in the running app with Playwright.
 | F18 | Two pickers disagreed | **Built.** All 17 situations at `/start`, one render loop, parity spec. |
 | F19 | Jargon re-explained | **No change — my harness.** The style memory had recorded all three people correctly. |
 | F20 | Self-block on the board | **Fixed.** |
+| F21 | Picker no longer fits above the fold | **Built.** Count line + "scroll" in the opening, descriptions kept. |
 
 ## Six of my twenty findings were not product defects
 
@@ -55,11 +56,35 @@ all of this lived.
 - On a fresh sign-up with no draft, the client posts an empty `/entry/commit` and
   gets a **400 on every signup**. Harmless — `/setup` still loads — and not fixed here.
 
-## Open decision for you
+## F21 · The picker outgrew the fold — decided and built
 
-**The `/start` picker no longer fits above the fold.** Measured at 1280 wide: 467px of
-scrolling at 720 tall, 287px at 900, 107px at 1080. Eight cards fitted; seventeen
-cannot without a denser card. Left as it is rather than silently shrinking them.
+**The measurement made the decision.** At 1280x720 the seventeen-card picker runs 467px
+past the fold. Dropping the "e.g." line saves 75px. Dropping the descriptions **as well**
+saves 315px — and it is still 152px over. Fitting them all above the fold is not
+expensive, it is unreachable.
+
+**So the fold stopped being the constraint.** Buying 300px by cutting descriptions would
+have traded away the thing that makes a long list usable: recognising your own situation
+matters MORE as the list grows, not less. "Onboarding a group" and "Cohort check-in" are
+only told apart by their descriptions.
+
+**Built instead:** a count above the cards — *"17 situations, grouped. Scroll for the
+rest, or describe your own at the bottom."* — and an opening line that says to scroll. The
+second group heading falls at y=763 against a 720px fold, so content is visibly cut
+mid-list, which is the strongest scroll cue available. Nothing is hidden behind a click.
+
+### Decision recorded: the cards stay the primary route
+
+I had flagged that with seventeen options the free-text box might become the faster path,
+and that the picker could end up a fallback. **That is not the direction to take.** People
+come to this page without a settled idea of what they need; the cards are how they find
+out that "cohort check-in" or "contract renewal" is even a thing Groundwork does. A
+free-text-first picker would serve the person who already knows the answer and abandon the
+person who does not — which is most people, most of the time.
+
+So: cards first, described properly, browsable. Free text is the catch-all underneath, not
+the front door. Anything that makes the cards harder to read or skim is working against
+the point of the page.
 
 
 
