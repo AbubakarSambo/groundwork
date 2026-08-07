@@ -19,6 +19,7 @@ import { boardRendersFor } from '../board/board-families';
 import { buildRoleProbeBlock } from '../board/role-maps';
 import { detectFunction } from '../board/function-detection';
 import { closeReadiness } from './close-readiness';
+import { observeStyle, mergeStyle, styleGuidance } from './person-style';
 
 /**
  * How many things in this text could actually be checked by someone later.
@@ -607,7 +608,7 @@ export class ConversationService {
       clarificationTarget?: string | null;
       isSelfCorrection?: boolean;
       selfCorrectionTargetSession?: number | null;
-      participant: { partyType: any; roleAsDescribed: string | null; detectedFunction?: string | null; detectedFunctionConfidence?: number | null };
+      participant: { partyType: any; roleAsDescribed: string | null; userId?: string | null; detectedFunction?: string | null; detectedFunctionConfidence?: number | null };
     },
     latestMessage?: string,
   ): Promise<string> {
@@ -700,6 +701,20 @@ export class ConversationService {
             // through to the in-code pack on null/undefined, so resolving to
             // '' here would silently defeat that fallback.
         : null;
+
+    // How this person has answered before, across grounds in this org. Style
+    // only - the block itself cannot carry content, by construction.
+    let styleBlock = '';
+    try {
+      const uid = checkIn.participant?.userId;
+      const g = await this.prisma.ground.findUnique({ where: { id: checkIn.groundId }, select: { organizationId: true } });
+      if (uid && g) {
+        const prof = await this.prisma.personStyleProfile.findUnique({
+          where: { userId_organizationId: { userId: uid, organizationId: g.organizationId } },
+        });
+        if (prof) styleBlock = styleGuidance(prof, prof.groundsSeen);
+      }
+    } catch { /* never block a check-in over a nicety */ }
 
     const intakeBlock = buildIntakeBlock({
       scenario: ground.scenario,
@@ -847,7 +862,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       (checkIn.participant as any).detectedFunctionConfidence,
     );
 
-    return [systemPrompt, intakeBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, dynamicContext, docContext, docPromptHint].filter(Boolean).join('\n\n');
+    return [systemPrompt, intakeBlock, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, dynamicContext, docContext, docPromptHint].filter(Boolean).join('\n\n');
   }
 
   /**
@@ -961,6 +976,50 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    * (their first check-in), ReportsService.synthesize() is invoked via the
    * reports listener - not here, to keep parties isolated (#36).
    */
+  /**
+   * Remember HOW to talk to this person next time. Never what they said.
+   *
+   * Called once, on completion, so a session that never finished teaches
+   * nothing. Failures here are swallowed: this is a convenience for the next
+   * conversation and must never be the reason someone cannot close the one they
+   * are in.
+   */
+  private async rememberStyle(checkIn: any): Promise<void> {
+    try {
+      const userId = checkIn.participant?.userId;
+      if (!userId) return;
+      const ground = await this.prisma.ground.findUnique({
+        where: { id: checkIn.groundId },
+        select: { organizationId: true },
+      });
+      if (!ground) return;
+
+      const said = await this.prisma.conversationTurn.findMany({
+        where: { checkInId: checkIn.id, role: TurnRole.PERSON },
+        select: { content: true },
+        orderBy: { createdAt: 'asc' },
+      });
+      const seen = observeStyle(said.map((t) => t.content ?? ''));
+
+      const existing = await this.prisma.personStyleProfile.findUnique({
+        where: { userId_organizationId: { userId, organizationId: ground.organizationId } },
+      });
+      const merged = mergeStyle(existing, seen);
+
+      // groundsSeen counts GROUNDS, not sessions - twelve check-ins on one
+      // ground is still one shared history, and counting sessions would tell the
+      // engine someone is a veteran on their first week.
+      const firstSessionHere = checkIn.sessionNumber === 1;
+      await this.prisma.personStyleProfile.upsert({
+        where: { userId_organizationId: { userId, organizationId: ground.organizationId } },
+        create: { userId, organizationId: ground.organizationId, ...merged, groundsSeen: 1 },
+        update: { ...merged, ...(firstSessionHere ? { groundsSeen: { increment: 1 } } : {}) },
+      });
+    } catch (e: any) {
+      this.logger.warn(`Could not record how to talk to this person: ${e.message}`);
+    }
+  }
+
   async complete(checkInId: string, requestingUserId: string) {
     const checkIn = await this.loadOwnedCheckIn(checkInId, requestingUserId);
     if (checkIn.status === CheckInStatus.COMPLETED) {
@@ -1060,6 +1119,11 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       },
     });
     this.usage.emit(UsageEventType.CHECK_IN_COMPLETED, { groundId: checkIn.groundId, participantId: checkIn.participantId }).catch(() => undefined);
+
+    // Learn how to talk to this person next time - style only, never content.
+    // On completion rather than per message, so an abandoned session teaches
+    // nothing, and awaited so the next ground has it.
+    await this.rememberStyle(checkIn);
 
     // Build a single-party artifact (B2) so the person has standalone value from
     // this session without waiting on anyone else. Fire-and-forget.

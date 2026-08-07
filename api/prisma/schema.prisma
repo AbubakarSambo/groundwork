@@ -220,6 +220,7 @@ model Organization {
   contributorCodes ContributorCode[]
 
   @@map("organizations")
+  styleProfiles PersonStyleProfile[]
 }
 
 model User {
@@ -259,6 +260,7 @@ model User {
 
   @@index([organizationId])
   @@map("users")
+  styleProfiles PersonStyleProfile[]
 }
 
 // ---------------------------------------------------------------------------
@@ -617,6 +619,48 @@ model RecordEntry {
 // ---------------------------------------------------------------------------
 
 // A target the lead set. The board shows progress against these.
+// HOW TO TALK TO ONE PERSON, REMEMBERED ACROSS GROUNDS.
+//
+// An eighteen-ground org run found the same colleague met as a stranger five
+// times. One participant asked what a "ground" was in five separate grounds and
+// got a good plain answer in each; the product never once remembered he asked.
+//
+// WHAT THIS DELIBERATELY DOES NOT HOLD: anything anyone said. No topics, no
+// accounts, no ground names, no outcomes. A ground is a closed container - a
+// person speaking to two colleagues in one and seven in another has to be able
+// to trust that the two do not leak into the seven. Carrying content across
+// would break the only promise the product really makes, and would mean someone
+// on a performance plan in March has it following them into a cohort in June.
+//
+// So this holds only HOW to speak to them: do they need the vocabulary
+// explained, do they answer in a line, have they asked who reads this. Style,
+// never substance. Everything here could be shown to the person it describes
+// without embarrassment, which is the bar it has to clear.
+model PersonStyleProfile {
+  id             String @id @default(uuid())
+  userId         String @map("user_id")
+  organizationId String @map("organization_id")
+
+  // They asked what a product term meant. Explain plainly, do not assume.
+  needsPlainLanguage Boolean @default(false) @map("needs_plain_language")
+  // They answer briefly. Ask one thing at a time and expect short replies.
+  answersBriefly     Boolean @default(false) @map("answers_briefly")
+  // They have asked who reads this. Say so early, without being asked again.
+  asksWhoReadsThis   Boolean @default(false) @map("asks_who_reads_this")
+  // How many grounds they have taken part in. Orientation only.
+  groundsSeen        Int     @default(0) @map("grounds_seen")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+  @@index([organizationId])
+  @@map("person_style_profiles")
+}
+
 model GroundObjective {
   id        String   @id @default(uuid())
   groundId  String   @map("ground_id")
