@@ -156,11 +156,8 @@ export function GroundParticipantPage() {
     onError: () => toast.error('Could not sign off. Try again.'),
   })
 
-  const checkoutMut = useMutation({
-    mutationFn: () => billingApi.purchaseSession(id!),
-    onSuccess: (data: any) => { if (data?.checkoutUrl) window.location.href = data.checkoutUrl },
-    onError: () => toast.error('Could not start checkout. Please try again.'),
-  })
+  // The checkout mutation behind the deleted subscription CTA is gone with it.
+  // `purchaseSessionMut` below is the initiator's, and stays.
 
   const probeSession = useMutation({
     mutationFn: async (checkIn: any) => {
@@ -601,30 +598,23 @@ export function GroundParticipantPage() {
             {/* The participant gets an equal say in how the ground ends. */}
             {id && <ResolutionPanel groundId={id} />}
 
-            {/* Unlock CTA - shown whether locked or not, but changes state */}
+            {/* The empty state, and NO price.
+                `insightsLocked` does not mean "unpaid" - it means "no completed
+                session yet", and the server says so: the first session of every
+                ground is free, so there is no billing gate here at all. A
+                monthly-subscription button had been attached to that empty
+                state anyway, shown to the one person who has contributed
+                nothing and is deciding whether to begin - and wired to a
+                ONE-OFF purchase call, so the label was wrong twice over.
+                Participants are never charged. The state is real; the price
+                was scaffolding. */}
             {myRecord?.insightsLocked !== false && (
               <div style={{ background: '#0C447C', borderRadius: 10, padding: '18px 20px' }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: 'white', marginBottom: 6 }}>Your record insights</div>
-                <div style={{ fontSize: 12, color: 'rgba(255,255,255,.75)', lineHeight: 1.6, marginBottom: 6 }}>
-                  Complete your first check-in to start building your record. After that, you can unlock your full record: specificity trend, confidence score, and observations across sessions.
+                <div style={{ fontSize: 12, color: 'rgba(255,255,255,.75)', lineHeight: 1.6 }}>
+                  Complete your first check-in to start building your record. Your specificity trend,
+                  confidence score, and observations across sessions appear here as you go.
                 </div>
-                {myRecord?.insightsLocked === true && (
-                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,.55)', lineHeight: 1.5, marginBottom: 14 }}>
-                    You have completed sessions. Upgrade to see your full record.
-                  </div>
-                )}
-                {myRecord?.insightsLocked === undefined && (
-                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,.55)', lineHeight: 1.5, marginBottom: 14 }}>
-                    Your insights will appear here once you complete a check-in.
-                  </div>
-                )}
-                <button
-                  onClick={() => checkoutMut.mutate()}
-                  disabled={checkoutMut.isPending}
-                  style={{ padding: '9px 18px', borderRadius: 7, background: 'white', color: '#0C447C', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
-                >
-                  {checkoutMut.isPending ? 'Opening…' : 'Unlock insights for $25/mo'}
-                </button>
               </div>
             )}
 
@@ -1086,7 +1076,10 @@ export function GroundParticipantPage() {
               </>
             )}
 
-            {/* Contributor code */}
+            {/* Contributor code: an admin/lead instrument for bypassing a
+                payment block. It used to render for everyone, sending plain
+                participants hunting for a code they were never issued. */}
+            {myParticipant?.partyType === 'INITIATOR' && (
             <div style={{ borderTop: '1px solid #E2E0DB', paddingTop: 14 }}>
               <div style={{ fontSize: 12, color: '#9B9590', marginBottom: 8 }}>Have a contributor code?</div>
               <div style={{ display: 'flex', gap: 8 }}>
@@ -1109,6 +1102,7 @@ export function GroundParticipantPage() {
                 <div style={{ fontSize: 12, color: paywallCodeMsg.ok ? '#085041' : '#c0392b', marginTop: 6 }}>{paywallCodeMsg.text}</div>
               )}
             </div>
+            )}
 
             <button
               onClick={() => setShowPaywall(false)}
