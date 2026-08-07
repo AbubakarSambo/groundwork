@@ -27,6 +27,25 @@ describe('what a session tells us about how to talk to someone', () => {
     expect(observeStyle(['Fine.', 'All good', 'Nothing to add']).answersBriefly).toBe(true);
   });
 
+  it('does not count the sign-off and the blocker answer, which are short for everyone', () => {
+    // These are the four turns the most articulate person in a live org run
+    // actually gave. Counting "Not blocked." and "That is it from me." flagged
+    // her as terse, and flagged everybody else too, which made the signal
+    // useless the first time it ran against real data.
+    const articulate = [
+      'On the role, what early success looks like, and what he owns: Closed out 2 of the open questions with Tom this week.',
+      'Sent the written version to Ada on the 4nd, 10 pages',
+      'Not blocked.',
+      'That is it from me.',
+    ];
+    expect(observeStyle(articulate).answersBriefly).toBe(false);
+  });
+
+  it('still catches someone who is genuinely terse when they ARE answering', () => {
+    const terse = ['Fine.', 'All good', 'Nothing much', 'Not blocked.', 'That is it from me.'];
+    expect(observeStyle(terse).answersBriefly).toBe(true);
+  });
+
   it('does not call someone brief on the strength of one short answer', () => {
     const s = observeStyle([
       'Ok',

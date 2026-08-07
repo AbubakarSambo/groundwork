@@ -25,6 +25,20 @@ const ASKED_WHO_READS_IT =
 /** Short enough that one question at a time is the right way to ask. */
 const BRIEF_ANSWER_CHARS = 60;
 
+/**
+ * Turns that are short for everyone, and so say nothing about a person's style.
+ *
+ * A live run flagged the most articulate person in the org as brief. Her four
+ * turns were 116, 52, 12 and 19 characters - and the two short ones were "Not
+ * blocked." and "That is it from me." Every check-in ends with a sign-off, and
+ * most contain a one-word answer to the blocker question, so counting them makes
+ * nearly everybody look terse and the signal stops meaning anything.
+ *
+ * Judged on what someone says when they are actually answering.
+ */
+const STRUCTURALLY_SHORT =
+  /^(that'?s (it|me|all)|that is (it|me|all)( from me)?|no|nope|none|not blocked|nothing( else| to add)?|n\/a|no blockers?|all good|done|yes|yep|ok(ay)?)[.! ]*$/i;
+
 export interface StyleObservation {
   needsPlainLanguage: boolean;
   answersBriefly: boolean;
@@ -34,13 +48,25 @@ export interface StyleObservation {
 /** Read one session's worth of a person's own turns. */
 export function observeStyle(personTurns: string[]): StyleObservation {
   const said = personTurns.join(' \n ');
-  const substantive = personTurns.filter((t) => t.trim().length > 0);
-  const shortOnes = substantive.filter((t) => t.trim().length <= BRIEF_ANSWER_CHARS).length;
+  const substantive = personTurns
+    .map((t) => t.trim())
+    .filter((t) => t.length > 0 && !STRUCTURALLY_SHORT.test(t));
+  const shortOnes = substantive.filter((t) => t.length <= BRIEF_ANSWER_CHARS).length;
+  const allTurns = personTurns.map((t) => t.trim()).filter(Boolean);
+  // Someone whose every turn was a sign-off or a one-word "no" has not given a
+  // single real answer. There is nothing left to measure, and that is itself the
+  // clearest possible case of answering briefly.
+  const nothingButBoilerplate = substantive.length === 0 && allTurns.length >= 3;
   return {
     needsPlainLanguage: ASKED_WHAT_A_TERM_MEANS.test(said),
     // Most of what they said was short. One long answer among five brief ones
     // does not make someone verbose.
-    answersBriefly: substantive.length >= 2 && shortOnes / substantive.length > 0.6,
+    // Needs at least two turns overall to say anything - one answer is not a
+    // habit. Beyond that it is the proportion of REAL answers that were short,
+    // so one terse reply among several full ones does not count.
+    answersBriefly:
+      allTurns.length >= 2 &&
+      (nothingButBoilerplate || (substantive.length >= 1 && shortOnes / substantive.length > 0.6)),
     asksWhoReadsThis: ASKED_WHO_READS_IT.test(said),
   };
 }
