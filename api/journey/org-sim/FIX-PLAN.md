@@ -10,6 +10,61 @@ itself plus its guard test.
 
 ---
 
+# OUTCOME — all twenty worked through
+
+Branch `gw-11-org18-fixes`. **666 API tests, 139 client tests**, every change that
+touches a screen verified in the running app with Playwright.
+
+| | Item | Outcome |
+|---|---|---|
+| F1 | Resolution has an entry point | **Built.** It was fully written and uncalled; this is the UI. |
+| F2 | Participant paywall | **Removed.** Was shown pre-first-check-in, wired to a one-off call. |
+| F2b | "Buy a session ($5)" | **No change — my error.** Already initiator-only, with the right message. |
+| F2c | Contributor code | **Moved** inside the initiator branch. |
+| F3 | Report waiting | **Partly built.** The in-ground prompt already existed; the grounds LIST did not. |
+| F4 | Admin locked out of her board | **Fixed**, read-only, bite-checked. |
+| F5 | Something back each session | **No change — already built.** 29 of 33 had a real solo artifact. |
+| F6 | Help the thin participant | **Built.** After two thin sessions running, show an example. Bite-checked. |
+| F7 | Ground limit announced early | **Built.** |
+| F8 | "Unknown participant" | **Fixed.** Read `email`, which is null once someone has an account. |
+| F9 | Confidence dressed as progress | **Fixed.** Now "4/5 aligned · 13/13 sessions". |
+| F10 | Describe-your-own looked disabled | **Superseded by F18** — the picker was rebuilt. |
+| F11 | Stale countdown | **Fixed.** Finished grounds say "every session done". |
+| F12 | Admin menu item | **Hidden** from org admins. |
+| F13 | Profile explainer + ad | **Removed.** |
+| F14 | Roster text | **No change — my error.** A CSS margin my text dump had stripped. |
+| F15 | Sign-up cannot complete | **No change — my error.** It completes; dev logs the link and `/setup` follows. |
+| F16 | Org created pre-verification | **Deliberately not done.** The draft flow needs it; changing it is an auth redesign. |
+| F17 | Org name never changeable | **Built.** PATCH /users/organization, admin only. |
+| F18 | Two pickers disagreed | **Built.** All 17 situations at `/start`, one render loop, parity spec. |
+| F19 | Jargon re-explained | **No change — my harness.** The style memory had recorded all three people correctly. |
+| F20 | Self-block on the board | **Fixed.** |
+
+## Six of my twenty findings were not product defects
+
+F2b, F5, F14, F15, F19 were mine — my test rig, or reading source instead of
+rendering the page. F16 is a real behaviour I now think should stay. F1, F3 and
+F5 were all cases of a feature being **built and not wired**, which is worth naming
+as a pattern in itself: the gap between "written" and "reachable" is where nearly
+all of this lived.
+
+## Two things found while fixing, not before
+
+- A global 403 interceptor made **"Access denied" pop on every ground page** once
+  the resolution query was added. Fixed with `skipForbiddenToast`.
+- On a fresh sign-up with no draft, the client posts an empty `/entry/commit` and
+  gets a **400 on every signup**. Harmless — `/setup` still loads — and not fixed here.
+
+## Open decision for you
+
+**The `/start` picker no longer fits above the fold.** Measured at 1280 wide: 467px of
+scrolling at 720 tall, 287px at 900, 107px at 1080. Eight cards fitted; seventeen
+cannot without a denser card. Left as it is rather than silently shrinking them.
+
+
+
+---
+
 # Wave 1 — The product cannot complete a cycle
 
 These four are why a ground produces work and never produces an outcome. Everything else is
