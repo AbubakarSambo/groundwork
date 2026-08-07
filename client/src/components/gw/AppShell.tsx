@@ -552,7 +552,9 @@ export function AppSidebar() {
         {/* Nav items - always visible in expanded sidebar */}
         {!collapsed && (
           <nav style={{ padding: '6px 8px', borderTop: '1px solid rgba(255,255,255,.07)', flexShrink: 0 }}>
-            {NAV_ITEMS.filter(item => !item.adminOnly).map(item => {
+            {/* Both gates, not just adminOnly: this nav is always visible, so
+                anything filtered only by the other list leaks in here. */}
+            {NAV_ITEMS.filter(item => !item.adminOnly && !(item as any).platformAdminOnly).map(item => {
               const active = location.pathname.startsWith(item.to)
               const canNav = isAuthenticated
               return (

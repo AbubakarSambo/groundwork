@@ -31,7 +31,12 @@ export interface ResolutionState {
 
 export const resolutionApi = {
   get: (groundId: string) =>
-    apiClient.get<ResolutionState>(`/grounds/${groundId}/resolution`).then(r => r.data),
+    apiClient
+      // A non-party (an admin who set the ground up but is not in it) gets a
+      // 403 here, and that is a correct answer to "may I see this?", not an
+      // error worth shouting about. The panel hides itself instead.
+      .get<ResolutionState>(`/grounds/${groundId}/resolution`, { skipForbiddenToast: true })
+      .then(r => r.data),
 
   /** Propose or confirm. The ground closes when every active party picks the same one. */
   propose: (groundId: string, endState: string) =>

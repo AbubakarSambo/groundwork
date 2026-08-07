@@ -274,7 +274,12 @@ export function GroundAdminPage() {
   const doneSessions = new Set(
     (ground.checkIns ?? []).filter((c: any) => c.status === 'COMPLETED').map((c: any) => c.sessionNumber),
   ).size
-  const plannedSessions = (ground as any).maxSessions ?? (ground as any).totalSessions ?? null
+  // The ground payload carries no planned-session count, only the timeline and
+  // the cadence - so derive it the same way the sidebar does.
+  const cadenceDays = ({ DAILY: 1, WEEKLY: 7, FORTNIGHTLY: 14, MONTHLY: 30 } as Record<string, number>)[(ground as any).cadence] ?? null
+  const plannedSessions = (ground as any).maxSessions
+    ?? (ground as any).totalSessions
+    ?? (cadenceDays && ground.timelineDays ? Math.ceil(ground.timelineDays / cadenceDays) : null)
   const allSessionsDone = plannedSessions != null && doneSessions >= plannedSessions
   // contact-visibility toggle state (default: hidden). true = peers cannot see each other's email.
   const contactHidden = ground.restrictExternalVisibility !== false
