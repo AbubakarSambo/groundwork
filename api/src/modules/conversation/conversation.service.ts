@@ -18,6 +18,7 @@ import { runIntake } from './intake';
 import { boardRendersFor } from '../board/board-families';
 import { buildRoleProbeBlock } from '../board/role-maps';
 import { detectFunction } from '../board/function-detection';
+import { closeReadiness } from './close-readiness';
 
 /**
  * How many things in this text could actually be checked by someone later.
@@ -480,9 +481,39 @@ export class ConversationService {
     // is in your record" where the list wanted "here is what is NOW in your
     // record". No phrase list is ever complete, so the model says it outright
     // instead. Costs nothing: it rides on the reply it was already generating.
-    const sessionComplete = hadCloseMarker || this.detectSessionComplete(reply);
+    const signalled = hadCloseMarker || this.detectSessionComplete(reply);
+    const sessionComplete = signalled ? await this.mayClose(checkIn.id) : false;
 
     return { reply: aiTurn.content, sessionComplete };
+  }
+
+  /**
+   * The engine has offered to close. Should it?
+   *
+   * It closes when the person stops producing new material, and running out of
+   * things to say correlates with having had little to say - so the thinnest
+   * records were getting the tidiest endings. This holds a close back exactly
+   * ONCE when there is nothing checkable and the person has not said there is
+   * nothing, and then never again in that session. Nobody gets trapped in a loop
+   * to extract a specific that does not exist.
+   */
+  private async mayClose(checkInId: string): Promise<boolean> {
+    const turns = await this.prisma.conversationTurn.findMany({
+      where: { checkInId },
+      orderBy: { createdAt: 'asc' },
+      select: { role: true, content: true },
+    });
+    const personSaid = turns.filter((t) => t.role === TurnRole.PERSON).map((t) => t.content ?? '');
+    // Has a close already been held back? The AI's own turns carry the extra
+    // question, so a second offer to close means we have already had our one.
+    const aiTurns = turns.filter((t) => t.role === TurnRole.AI).length;
+    const alreadyProbed = aiTurns > personSaid.length;
+
+    const verdict = closeReadiness(personSaid, alreadyProbed);
+    if (!verdict.ready) {
+      this.logger.log(`Holding the close on ${checkInId}: ${verdict.reason}`);
+    }
+    return verdict.ready;
   }
 
   /** Whether the AI reply contains the mandatory session-closing phrasing. */
@@ -552,7 +583,8 @@ export class ConversationService {
       if (checkIn.status === CheckInStatus.NOT_STARTED) {
         await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { status: CheckInStatus.IN_PROGRESS, startedAt: new Date() } });
       }
-      yield { type: 'done', reply, sessionComplete: strippedStream.hadMarker || this.detectSessionComplete(reply) };
+      const signalled = strippedStream.hadMarker || this.detectSessionComplete(reply);
+      yield { type: 'done', reply, sessionComplete: signalled ? await this.mayClose(checkIn.id) : false };
     } catch (err) {
       await this.prisma.conversationTurn.delete({ where: { id: personTurn.id } }).catch(() => undefined);
       throw err;
