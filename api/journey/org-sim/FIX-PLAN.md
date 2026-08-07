@@ -28,7 +28,6 @@ touches a screen verified in the running app with Playwright.
 | F7 | Ground limit announced early | **Built.** |
 | F8 | "Unknown participant" | **Fixed.** Read `email`, which is null once someone has an account. |
 | F9 | Confidence dressed as progress | **Fixed.** Now "4/5 aligned · 13/13 sessions". |
-| F10 | Describe-your-own looked disabled | **Superseded by F18** — the picker was rebuilt. |
 | F11 | Stale countdown | **Fixed.** Finished grounds say "every session done". |
 | F12 | Admin menu item | **Hidden** from org admins. |
 | F13 | Profile explainer + ad | **Removed.** |
@@ -40,6 +39,8 @@ touches a screen verified in the running app with Playwright.
 | F19 | Jargon re-explained | **No change — my harness.** The style memory had recorded all three people correctly. |
 | F20 | Self-block on the board | **Fixed.** |
 | F21 | Picker no longer fits above the fold | **Built.** Count line + "scroll" in the opening, descriptions kept. |
+| F10 | Describe-your-own looked disabled | **Built** (was wrongly marked superseded). Solid border, full-strength label. |
+| F22 | Unverified accounts linger forever | **Built.** Daily sweep, only ever deletes a provably empty account. |
 
 ## Six of my twenty findings were not product defects
 
@@ -53,8 +54,12 @@ all of this lived.
 
 - A global 403 interceptor made **"Access denied" pop on every ground page** once
   the resolution query was added. Fixed with `skipForbiddenToast`.
-- On a fresh sign-up with no draft, the client posts an empty `/entry/commit` and
-  gets a **400 on every signup**. Harmless — `/setup` still loads — and not fixed here.
+- The **`/entry/commit` 400 on every signup was not a bug** and the entry is corrected.
+  The client always attempts the commit and lets the SERVER decide whether there is
+  anything to commit — the comment in `MagicVerifyPage` says the old client-side skip
+  "stranded people on /setup". The 400 is `NO_ENTRY_SESSION`, which the client routes on.
+  I had tested with `curl -d '{}'`, got a *different* 400 about missing fields, and
+  assumed that was what the app hit.
 
 ## F21 · The picker outgrew the fold — decided and built
 

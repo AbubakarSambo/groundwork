@@ -1451,19 +1451,27 @@ export function EntryChatPage() {
                     )
                   })}
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(235px, 1fr))', gap: 6 }}>
-                    {/* The describe-your-own option lives IN the grid: it
-                        fills the empty last-row slot and keeps the whole
-                        picker above the fold at laptop heights (suite L). */}
+                    {/* The describe-your-own option lives IN the grid, as a
+                        real choice.
+                        It used to be dashed-bordered, transparent, and greyed:
+                        the visual language of a DISABLED control, sat among
+                        white solid-bordered cards. It has always worked when
+                        clicked, but nothing said so - and this is the way in
+                        for anyone whose situation is not on the list, so it is
+                        the last card that should look switched off. Solid
+                        border and full-strength label now, like every other
+                        card; the tinted background is the only thing marking it
+                        as the catch-all rather than a situation of its own. */}
                     <button
                       onClick={() => setPickedSituation('other')}
                       style={{
                         textAlign: 'left', padding: '8px 11px', borderRadius: 10,
-                        border: '1px dashed var(--gw-border)', background: 'transparent',
+                        border: '1px solid var(--gw-border)', background: 'var(--gw-bg)',
                         cursor: 'pointer', fontFamily: 'inherit',
                       }}
                     >
-                      <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--gw-sub)', marginBottom: 1 }}>My situation is different - I will describe it</div>
-                      <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.4 }}>Tell it in your own words and we set up from there.</div>
+                      <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--gw-text)', marginBottom: 1 }}>My situation is different - I will describe it</div>
+                      <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', lineHeight: 1.4 }}>Tell it in your own words and we set up from there.</div>
                     </button>
                   </div>
                 </div>
