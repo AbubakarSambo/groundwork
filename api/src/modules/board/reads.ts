@@ -74,6 +74,20 @@ export type ReadInput = {
   entries: ReadEntry[];
   mentions: ReadMention[];
   dependencies: ReadDependency[];
+  /**
+   * Do the people on this ground actually work together?
+   *
+   * On a cohort - many people in the same role, each in a different place,
+   * deliberately not influencing each other - they do not. That is not a
+   * property of what they happened to say; it is what the ground IS, so it comes
+   * from the scenario family rather than being guessed at from the record.
+   *
+   * It matters because every fairness read is built on colleagues describing
+   * each other. Where there are no colleagues, some of those reads cannot be
+   * made honestly at all. Defaults to true, so a caller that does not know
+   * assumes collaboration and keeps the existing behaviour.
+   */
+  peopleWorkTogether?: boolean;
 };
 
 export type NameOf = (participantId: string) => string | null;
@@ -206,6 +220,18 @@ export function dedupeDependencies<T extends ReadDependency>(deps: T[]): T[] {
 export function blockerHasSubstance(d: ReadDependency): boolean {
   const open = d.status === DependencyStatus.BLOCKING || d.status === DependencyStatus.WAITING;
   if (!open) return false;
+
+  // YOU CANNOT BE BLOCKED ON YOURSELF.
+  //
+  // A lead saying "I still owe the team the decision on the budget" was recorded
+  // as a handoff from her to herself, and the board then read it as "part of this
+  // is blocked on someone else, which is different from being behind". She was
+  // the someone else. Being blocked switches off every negative read about a
+  // person, so this hands the one who is actually holding a decision up the exact
+  // protection meant for the people waiting on them - and it is the easiest
+  // possible thing to trip accidentally, because naming your own outstanding
+  // decision is a normal thing to say in a check-in.
+  if (d.onParticipantId && d.onParticipantId === d.fromParticipantId) return false;
   const named = !!d.onParticipantId || !!d.onLabel?.trim();
   const described = (d.what ?? '').trim().split(/\s+/).filter(Boolean).length >= 3;
   return named && described;
@@ -356,6 +382,11 @@ export type ContributionRead = {
 export function buildContribution(input: ReadInput, nameOf: NameOf): ContributionRead[] {
   const blocked = blockedParticipantIds(input.dependencies);
   const entries = withoutRepeats(input.entries);
+  // Whether anyone here is in a position to confirm anyone else's account. On a
+  // cohort of people who each work somewhere different, nobody is - and a lead
+  // reading these needs telling that, because it is the difference between "no
+  // second account agrees" and "no second account exists".
+  const peopleWorkTogether = input.peopleWorkTogether !== false;
   const lastSession = input.checkIns.reduce((m, c) => Math.max(m, c.sessionNumber), 0);
 
   return input.participants
@@ -408,6 +439,17 @@ export function buildContribution(input: ReadInput, nameOf: NameOf): Contributio
       const conf = confidenceOf({ sessions: completed, checkableEntries: checkable, corroborations });
       const isBlocked = blocked.has(p.id);
 
+      // A READ THAT ONLY REPORTS AN ABSENCE IS HONEST AT ANY CONFIDENCE.
+      //
+      // The floor exists to stop thin evidence turning into a verdict about a
+      // person. "Nothing named so far could be checked by anyone else" is not a
+      // verdict - it is a statement about what the record contains, and it is the
+      // single most useful thing to tell a lead who has to make a decision about
+      // someone. Withholding it for low confidence produced silence about exactly
+      // the person the product should have had something to say about, which is
+      // the opposite of the intent.
+      const onlyReportsAbsence = checkable === 0;
+
       // NO on-track / below-track label. Any threshold that produced one would
       // be invented, and a label reads as a score on the person no matter how
       // it is worded. What the record actually shows is the read; that is all
@@ -447,6 +489,14 @@ export function buildContribution(input: ReadInput, nameOf: NameOf): Contributio
           'Part of this is blocked on someone else (see what people are waiting on), which is different from being behind. Separate the two before reading anything into it.',
         );
       }
+      if (!peopleWorkTogether && completed >= 3) {
+        // The limitation itself, stated plainly. Someone who does the work and
+        // describes it flatly looks identical to someone who did not do it, and
+        // on this kind of ground there is no colleague who could tell them apart.
+        reasonParts.push(
+          'Nobody else on this ground sees this person\'s work, so there is no second account to check any of this against. Read it as one account, not as confirmed.',
+        );
+      }
       if (map) {
         reasonParts.push(`Read against ${map.label}: on track here means ${map.onTrackMeans.toLowerCase()}`);
         if (!fnConfident) reasonParts.push('This read of their function is still provisional.');
@@ -466,6 +516,7 @@ export function buildContribution(input: ReadInput, nameOf: NameOf): Contributio
         isBlocked,
         ownVoice: null,
         ...conf,
+        shown: onlyReportsAbsence ? true : conf.shown,
         guard:
           'Each person against their own role, in its own terms, never on one scale. A position is never shown without its reason, and never at all if the role was not defined. This shows what the record holds, not a rating of anyone.',
       };
@@ -490,6 +541,31 @@ export type CoverageResult = { scope: 'role'; reads: (CoverageRead & Partial<Con
 export function buildCoverage(input: ReadInput, nameOf: NameOf): CoverageResult {
   const blocked = blockedParticipantIds(input.dependencies);
   const entries = withoutRepeats(input.entries);
+
+  // CAN ANYONE HERE CORROBORATE ANYONE?
+  //
+  // The quiet-record signal below is only safe because of its guard: someone who
+  // goes quiet in their own account is protected if colleagues keep crediting
+  // them through the silence. That guard reads the ABSENCE of credit as evidence.
+  //
+  // Where nobody can credit anybody, absence of credit means nothing, and the
+  // guard fails open on everyone. Four clinic managers each running a separate
+  // clinic in a different town never see each other's work. Run against exactly
+  // that shape, the manager who finished all fourteen modules and was signed off
+  // unsupervised was read as "nothing specific for six check-ins in a row, worth
+  // asking where the work is going" - and so was the trainer, whose job is
+  // training rather than clinic output. On a ground deciding whether people keep
+  // their jobs, that is the most damaging sentence this product could produce.
+  //
+  // This is deliberately NOT inferred from whether credit happens to appear. A
+  // delivery team who simply had a quiet fortnight would then lose the signal
+  // too, and that signal is the whole point of the read. It comes from what kind
+  // of ground this is, which the scenario family already knows.
+  //
+  // What someone's record does or does not hold still gets said either way - by
+  // the contribution read, in the language of the record rather than the language
+  // of work going missing.
+  const peopleWorkTogether = input.peopleWorkTogether !== false;
   const reads: (CoverageRead & Partial<Confidence>)[] = [];
 
   for (const p of input.participants) {
@@ -566,7 +642,11 @@ export function buildCoverage(input: ReadInput, nameOf: NameOf): CoverageResult 
     // Three consecutive periods is the same bar every other negative read has
     // to clear.
     const ownRecordThinning =
-      completedCount >= 3 && longestQuietRun >= 3 && !blocked.has(p.id) && !creditedDuringQuietRun;
+      peopleWorkTogether &&
+      completedCount >= 3 &&
+      longestQuietRun >= 3 &&
+      !blocked.has(p.id) &&
+      !creditedDuringQuietRun;
 
     const kind: CoverageKind =
       (leakingOut.length >= 2 && pct >= 40) || ownRecordThinning
@@ -607,9 +687,12 @@ export function buildCoverage(input: ReadInput, nameOf: NameOf): CoverageResult 
       ? ` Others credit them ${credited.length} time${credited.length === 1 ? '' : 's'} for moving something forward.`
       : '';
 
+    // Confidence comes from evidence, never from its absence. Counting the quiet
+    // run here made the read more certain the less the person said, which is
+    // circular: silence was treated as proof of the conclusion drawn from it.
     const conf = confidenceOf({
       sessions: completedCount,
-      checkableEntries: leakingOut.length + absorbingIn.length + (ownRecordThinning ? longestQuietRun : 0),
+      checkableEntries: leakingOut.length + absorbingIn.length,
       corroborations: credited.length,
     });
 

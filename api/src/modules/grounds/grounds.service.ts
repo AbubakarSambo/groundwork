@@ -11,6 +11,7 @@ import { GroundworkEvents, GroundActivatedEvent } from '../../common';
 import { GroundScenario, GroundStatus, PartyType, CheckInStatus, Cadence, UsageEventType, TokenType } from '@prisma/client';
 import { endStatesFor } from '../resolution/end-states';
 import { defaultModeFor, boardRendersFor } from '../board/board-families';
+import { BoardFamily, familyFor } from '../board/board-families';
 
 // Default timelines per scenario (Part 2 - timeline and cadence).
 const DEFAULT_TIMELINE_DAYS: Record<GroundScenario, number> = {
@@ -666,7 +667,26 @@ export class GroundsService {
     const hideContact = !!(ground as any).restrictExternalVisibility;
     const viewerIsInitiator = !!requestingUserId && ground.initiatorId === requestingUserId;
 
-    const participantsWithCheckIns = (ground.participants ?? []).map((p: any) => {
+    // CAN THE PARTIES SEE EACH OTHER AT ALL?
+    //
+    // Separate from hiding email addresses. This is whether one party sees that
+    // the others exist, what each is answerable for, and how far along each is.
+    // On a team delivering together that roster is how people coordinate. On an
+    // onboarding period that doubles as a probation it tells four people exactly
+    // who they are being measured against, and turns a record meant to help them
+    // into a leaderboard.
+    //
+    // The lead or an admin decides. Until they do, the default is by kind of
+    // ground: hidden where the period decides something about a person, shown
+    // where it does not. The lead always sees everyone - running the ground is
+    // the job.
+    const evaluative = [BoardFamily.EVALUATION, BoardFamily.COHORT].includes(familyFor(ground.scenario));
+    const peersVisible = (ground as any).peersVisibleToEachOther ?? !evaluative;
+    const hidePeers = !peersVisible && !viewerIsInitiator;
+
+    const participantsWithCheckIns = (ground.participants ?? [])
+      .filter((p: any) => !hidePeers || (!!requestingUserId && p.userId === requestingUserId))
+      .map((p: any) => {
       const raw = sharedArtifactById.get(p.id);
       const isSelf = !!requestingUserId && p.userId === requestingUserId;
       return {
@@ -712,8 +732,27 @@ export class GroundsService {
       : [];
 
     const { patternDetections: _pd, ...rest } = ground as any;
+    // THE BROADCAST JOIN TOKEN IS THE INITIATOR'S TO GIVE OUT, NOBODY ELSE'S.
+    //
+    // It was returned to every party on the ground, and the ground page renders
+    // it with a Copy button, so any participant could hand out a link that lets
+    // an unauthenticated stranger check in as a party. On a probation or
+    // evaluation ground that is somebody's employment record, and the person who
+    // shared it need not even have realised what the link did.
+    //
+    // Org admins keep it because they created the ground and may be the ones
+    // distributing it; everyone else gets null.
+    const viewer = requestingUserId
+      ? await this.prisma.user.findUnique({ where: { id: requestingUserId }, select: { role: true, organizationId: true } })
+      : null;
+    const mayShareJoinLink =
+      isInitiatorViewer ||
+      // An admin of THIS organisation. Same role in a different org is a
+      // stranger here, and this is precisely the token not to hand a stranger.
+      (viewer?.role === 'ADMIN' && viewer.organizationId === (ground as any).organizationId);
     return {
       ...rest,
+      joinToken: mayShareJoinLink ? (rest as any).joinToken ?? null : null,
       participants: participantsWithCheckIns,
       confidence,
       daysLeft,
@@ -771,6 +810,89 @@ export class GroundsService {
       where: { id: groundId },
       data: { restrictExternalVisibility: restrict },
       select: { id: true, restrictExternalVisibility: true },
+    });
+  }
+
+  /**
+   * Can the parties see who else is on this ground and how each is doing?
+   *
+   * The same roster means opposite things depending on the situation. On a team
+   * delivering together it is how people coordinate and how someone notices a
+   * colleague is stuck. On an onboarding period that doubles as a probation it
+   * tells four people exactly who they are being measured against, and turns a
+   * record meant to help them into a leaderboard.
+   *
+   * The product cannot tell those apart from the scenario alone, and it should
+   * not decide it silently either way, so the lead or an admin says. Until they
+   * do, the default is by kind of ground: hidden where the period decides
+   * something about a person, shown where it does not.
+   */
+  async setPeerVisibility(groundId: string, requestingUserId: string, visible: boolean) {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { initiatorId: true, organizationId: true },
+    });
+    if (!ground) throw new NotFoundException('Ground not found');
+
+    const viewer = await this.prisma.user.findUnique({
+      where: { id: requestingUserId },
+      select: { role: true, organizationId: true },
+    });
+    const isOrgAdmin = viewer?.role === 'ADMIN' && viewer.organizationId === ground.organizationId;
+    if (ground.initiatorId !== requestingUserId && !isOrgAdmin) {
+      throw new ForbiddenException(
+        'Only the person leading this ground, or an admin in this organisation, can change this.',
+      );
+    }
+
+    return this.prisma.ground.update({
+      where: { id: groundId },
+      data: { peersVisibleToEachOther: visible },
+      select: { id: true, peersVisibleToEachOther: true },
+    });
+  }
+
+  /**
+   * Do the people on this ground actually see each other's work?
+   *
+   * The scenario can only guess. A cohort usually means people who never meet,
+   * and a delivery team usually means people who do - but a cohort of trainers
+   * sharing one site see each other every day, and a delivery team split across
+   * four regions never does. Only the person who set the ground up knows.
+   *
+   * It matters more than it sounds. Every fairness read on the board is built on
+   * colleagues describing each other, and the protection for a quiet, competent
+   * person works by noticing that others still credit them while their own
+   * account stays modest. Where nobody can corroborate anybody, that protection
+   * has nothing to stand on and silence gets misread as work going missing. On a
+   * probation, that is somebody's job.
+   *
+   * Either party to the ground may answer, not only the initiator: an admin sets
+   * these grounds up for other people and often knows the answer when the lead is
+   * still being onboarded.
+   */
+  async setPeopleWorkTogether(groundId: string, requestingUserId: string, together: boolean) {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { initiatorId: true, organizationId: true },
+    });
+    if (!ground) throw new NotFoundException('Ground not found');
+
+    const viewer = await this.prisma.user.findUnique({
+      where: { id: requestingUserId },
+      select: { role: true, organizationId: true },
+    });
+    const isOrgAdmin = viewer?.role === 'ADMIN' && viewer.organizationId === ground.organizationId;
+    if (ground.initiatorId !== requestingUserId && !isOrgAdmin) {
+      throw new ForbiddenException(
+        'Only the person leading this ground, or an admin in this organisation, can change this.',
+      );
+    }
+
+    return this.prisma.ground.update({
+      where: { id: groundId },
+      data: { peopleWorkTogether: together },
+      select: { id: true, peopleWorkTogether: true },
     });
   }
 
@@ -1083,11 +1205,24 @@ export class GroundsService {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId } });
     if (!ground) throw new NotFoundException('Ground not found');
 
-    // Only parties to this ground may adjust its timeline / cadence or add notes.
     const link = await this.prisma.groundParticipant.findFirst({
       where: { groundId, userId: requestingUserId },
     });
     if (!link && ground.initiatorId !== requestingUserId) throw new ForbiddenException('You are not a party to this ground');
+
+    // HOW LONG THE GROUND RUNS IS THE LEAD'S CALL, NOT EVERY PARTY'S.
+    //
+    // Any party could change the timeline and cadence. On an onboarding that
+    // doubles as a probation, that means the person being assessed could shorten
+    // or extend their own assessment period, and nobody would necessarily
+    // notice. Adding context is still open to everyone - that is an account of
+    // the work, which is what the product is for.
+    const changesTheSchedule = dto.timelineWeeks !== undefined || dto.cadence !== undefined;
+    if (changesTheSchedule && ground.initiatorId !== requestingUserId) {
+      throw new ForbiddenException(
+        'Only the person leading this ground can change how long it runs or how often people check in. Ask them if it needs to change.',
+      );
+    }
 
     // MODE IS IMMUTABLE. If a ground could flip from private to shared, someone
     // who checked in believing their account was private would have it exposed -

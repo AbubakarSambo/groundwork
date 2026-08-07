@@ -1,0 +1,12 @@
+-- Whether the parties on a ground can see who else is on it and how each is
+-- doing.
+--
+-- Nullable: NULL means nobody has been asked, and the kind of ground supplies
+-- the default - hidden where the period decides something about a person, shown
+-- where people are delivering together. The lead or an admin overrides it.
+--
+-- The same roster means opposite things in the two cases. On a delivery team it
+-- is how people coordinate. On a probation cohort it tells four people who they
+-- are being measured against, which is not information the product should hand
+-- out on their behalf.
+ALTER TABLE "grounds" ADD COLUMN "peers_visible_to_each_other" BOOLEAN;

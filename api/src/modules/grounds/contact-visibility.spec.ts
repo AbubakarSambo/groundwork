@@ -36,6 +36,7 @@ function serviceFor(restrict: boolean) {
   };
   const prisma: any = {
     ground: { findFirst: async () => ground, findUnique: async () => ground },
+    user: { findUnique: jest.fn(async () => ({ role: 'MEMBER', organizationId: 'org1' })) },
     groundParticipant: { findFirst: async () => null, findMany: async () => [] },
     organization: { findUnique: async () => ({ subscriptionPlan: 'FREE', subscriptionStatus: 'ACTIVE', freeExtensionUsed: false }) },
     leadContextNote: { findMany: async () => [] },

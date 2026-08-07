@@ -57,11 +57,54 @@ export type Deferral = {
  * findWaitingBehind.
  */
 const OUTSTANDING =
-  /\b(still need|still to|need to|going to|i will|i'?ll|have not|haven'?t|has not|hasn'?t|not yet|yet to|keeps slipping|on my list|on the list|next week|probably|soon|close to|nearly|almost there)\b/i;
+  /\b(still need|still to|need to|going to|i will|i'?ll|have not|haven'?t|has not|hasn'?t|not yet|yet to|keeps slipping|on my list|on the list|next week|probably|soon|close to|nearly|almost there|owe[sd]?|outstanding|still open|not decided|undecided|have yet to|my call|down to me|sitting with me|pending (a |my |the )?decision|still (deciding|thinking|working out)|put(ting)? off|postponed|pushed (it )?back|another week)\b/i;
 
-/** Language that marks the same thing as finally done. */
-const DONE =
-  /\b(did finally|finally|i have now|decided|sent|had that conversation|did speak|spoke to|shipped|signed|agreed|closed|resolved|done)\b/i;
+/*
+ * "OWE" WAS MISSING, AND IT IS THE WORD PEOPLE ACTUALLY USE.
+ *
+ * A twelve-session ground had the lead say "I still owe the team the decision on
+ * scope. It keeps slipping down my list" in eight separate sessions. The engine
+ * recorded every one of them as a record entry and the deferral count came back
+ * empty, because the list above had "still need" and "need to" but not "owe".
+ * One of eight statements matched, the cluster never reached the three-session
+ * bar, and the clearest leadership pattern in the run was invisible.
+ *
+ * The additions are the other plain ways a person says they have not done the
+ * thing they said they would: it is outstanding, it is still open, it is my
+ * call, it is sitting with me, I keep putting it off. Deliberately still no bare
+ * "later" or "eventually" - those appear in ordinary planning talk and would
+ * turn every forward-looking sentence into a deferral.
+ */
+
+/**
+ * Language that marks the same thing as finally done.
+ *
+ * Checked BEFORE the outstanding test, because the sentence that closes a
+ * deferral usually names the deferral: "I made the decision I had been putting
+ * off" contains "putting off" and is the opposite of a deferral. Read the wrong
+ * way round, the resolution becomes one more count against the person, and the
+ * pattern never shows as resolved however long ago they fixed it.
+ */
+const DONE_WORDS =
+  /\b(did finally|finally|i have now|decided|made the (decision|call)|sent|had that conversation|did speak|spoke to|shipped|signed|agreed|closed|resolved|sorted|done)\b/i;
+
+/**
+ * Negated, it is the opposite. "I have not decided pricing yet" contains
+ * "decided" and is the plainest possible deferral; read as a completion it
+ * cancels the very pattern it belongs to. The same blindness turned "nothing
+ * closed" into an achievement elsewhere in this codebase, which is why it is
+ * checked here rather than trusted to word choice.
+ */
+const NEGATED_DONE = /\b(not|never|yet to|have yet|still (need|to|have)|haven'?t|hasn'?t|didn'?t|no)\b[^.!?]{0,30}$/i;
+
+const isDone = (text: string): boolean => {
+  const m = DONE_WORDS.exec(text);
+  if (!m) return false;
+  // Look at the run-up to the done-word, not the whole sentence: "I owe them a
+  // decision but I did finally speak to Tom" is a completion of the speaking.
+  const before = text.slice(0, m.index);
+  return !NEGATED_DONE.test(before);
+};
 
 const STOPWORDS = new Set([
   'that', 'this', 'with', 'have', 'been', 'from', 'they', 'them', 'then', 'than', 'what', 'when',
@@ -101,7 +144,9 @@ export function findDeferrals(entries: DeferralEntry[], minSessions = 3): Deferr
 
   for (const [label, theirs] of byLabel) {
     const ordered = [...theirs].sort((a, b) => (a.sessionNumber ?? 0) - (b.sessionNumber ?? 0));
-    const outstanding = ordered.filter((e) => OUTSTANDING.test(e.text));
+    // Done beats outstanding. A completion that mentions what it completed is
+    // still a completion.
+    const outstanding = ordered.filter((e) => OUTSTANDING.test(e.text) && !isDone(e.text));
 
     // Cluster the outstanding mentions by what they are ABOUT, so "the pricing
     // decision" and "the conversation with a colleague" are counted as two
@@ -128,7 +173,7 @@ export function findDeferrals(entries: DeferralEntry[], minSessions = 3): Deferr
       const resolved = ordered.find(
         (e) =>
           (e.sessionNumber ?? 0) > last &&
-          DONE.test(e.text) &&
+          isDone(e.text) &&
           overlap(c.words, keywords(e.text)).length >= 1,
       );
       out.push({

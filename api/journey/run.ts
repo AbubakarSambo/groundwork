@@ -13,12 +13,28 @@
 import { PrismaService } from '../src/modules/prisma/prisma.service';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from '../src/app.module';
-import { PERSONAS, LEAD, CONTRIBUTORS } from './personas';
+// Which scenario is under test. The harness is the same either way - only the
+// people and the ground they are on change - so a new scenario is a new personas
+// file rather than a second copy of this runner.
+const CAST = process.env.CAST ?? 'personas';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const cast = require(`./${CAST}`);
+const { PERSONAS, LEAD, CONTRIBUTORS } = cast as {
+  PERSONAS: any[]; LEAD: any; CONTRIBUTORS: any[];
+};
+const GROUND = cast.GROUND ?? {
+  label: 'Coamana growth, Q3 paying customers',
+  scenario: 'NEW_PROJECT',
+  moment: 'STARTING',
+  timelineDays: 90,
+  cadence: 'WEEKLY',
+  brief: 'Three month push to eleven paying companies. Sales, engineering and contributor recruitment all in one ground.',
+};
 import * as fs from 'fs';
 
 const API = 'http://localhost:3000/api/v1';
 const PW = 'Journey123!';
-const OUT = 'journey/out';
+const OUT = process.env.OUT ?? 'journey/out';
 const SESSIONS = Number(process.env.SESSIONS ?? 12);
 
 type Log = { step: string; detail: any };
@@ -96,7 +112,7 @@ async function main() {
   // ---------------------------------------------------------------- STEP 2
   console.log('\n=== 2. Sahar creates the ground and names Hafsah as lead ===');
   let ground: any;
-  const existing = await prisma.ground.findFirst({ where: { label: 'Coamana growth, Q3 paying customers' }, orderBy: { createdAt: 'desc' } });
+  const existing = await prisma.ground.findFirst({ where: { label: GROUND.label }, orderBy: { createdAt: 'desc' } });
   if (existing) {
     ground = existing;
     note('resuming the existing ground', { id: ground.id, status: ground.status });
@@ -107,12 +123,12 @@ async function main() {
       body: {
         leadEmail: LEAD.email,
         leadName: LEAD.name,
-        label: 'Coamana growth, Q3 paying customers',
-        scenario: 'NEW_PROJECT',
-        moment: 'STARTING',
-        timelineDays: 90,
-        cadence: 'WEEKLY',
-        brief: 'Three month push to eleven paying companies. Sales, engineering and contributor recruitment all in one ground.',
+        label: GROUND.label,
+        scenario: GROUND.scenario,
+        moment: GROUND.moment,
+        timelineDays: GROUND.timelineDays,
+        cadence: GROUND.cadence,
+        brief: GROUND.brief,
         participants: CONTRIBUTORS.map((p) => ({ email: p.email, roleAsDescribed: p.remit })),
       },
     });
@@ -135,7 +151,7 @@ async function main() {
     const bcrypt = require('bcrypt');
     await prisma.user.update({
       where: { id: u.id },
-      data: { passwordHash: await bcrypt.hash(PW, 10), isEmailVerified: true, firstName: 'Hafsah', lastName: 'Jumare' },
+      data: { passwordHash: await bcrypt.hash(PW, 10), isEmailVerified: true, firstName: LEAD.name.split(' ')[0], lastName: LEAD.name.split(' ').slice(1).join(' ') },
     });
     await login(LEAD.email);
     note('Hafsah signed in');
@@ -165,6 +181,21 @@ async function main() {
   for (const p of CONTRIBUTORS) {
     const row = await prisma.groundParticipant.findFirst({ where: { groundId: gid, email: p.email } });
     if (!row) { note(`BLOCKER: no participant row for ${p.name}`); continue; }
+
+    // Already accepted on a previous run of this script. Invite tokens are
+    // single-use by design, so there is nothing to accept a second time - the
+    // real user just signs in. Not a product problem; the harness has to be
+    // resumable the way a returning person is.
+    if (!row.inviteToken && row.userId) {
+      const bcrypt = require('bcrypt');
+      await prisma.user.update({
+        where: { id: row.userId },
+        data: { passwordHash: await bcrypt.hash(PW, 10), isEmailVerified: true },
+      });
+      await login(p.email);
+      note(`${p.name} already had an account, signed in`);
+      continue;
+    }
     if (!row.inviteToken) { note(`BLOCKER: no invite token for ${p.name}`); continue; }
     const [first, last] = p.name.split(' ');
     try {

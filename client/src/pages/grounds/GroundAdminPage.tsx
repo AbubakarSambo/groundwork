@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/auth'
-import { groundsApi } from '@/api/grounds'
+import { groundsApi, type GroundCadence } from '@/api/grounds'
+import { TIMED_CADENCES, sessionsFor } from '@/lib/cadence'
 import { participantLabel } from '@/lib/utils'
 import { reportsApi } from '@/api/reports'
 import { documentsApi } from '@/api/documents'
@@ -61,6 +62,8 @@ export function GroundAdminPage() {
   const [reportSession, setReportSession] = useState<ReportSession>('s1')
   const [ctxNote, setCtxNote] = useState('')
   const [groundLabel, setGroundLabel] = useState('')
+  const [timelineDaysDraft, setTimelineDaysDraft] = useState(90)
+  const [cadenceDraft, setCadenceDraft] = useState<GroundCadence>('WEEKLY')
   const [groundScenario, setGroundScenario] = useState('')
   const [showReleaseConfirm, setShowReleaseConfirm] = useState(false)
   const [addingParticipant, setAddingParticipant] = useState(false)
@@ -235,6 +238,10 @@ export function GroundAdminPage() {
 
   useEffect(() => {
     if (ground?.label) setGroundLabel(prev => prev || ground.label)
+    // Seed the timeframe controls from what the ground actually is, so the form
+    // opens showing the truth rather than a default that would silently change it.
+    if (ground?.timelineDays) setTimelineDaysDraft(ground.timelineDays)
+    if (ground?.cadence) setCadenceDraft(ground.cadence as GroundCadence)
     if (ground?.scenario) setGroundScenario(prev => prev || ground.scenario)
   }, [ground?.label, ground?.scenario])
 
@@ -427,16 +434,24 @@ export function GroundAdminPage() {
                           ) : (
                             <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 1 }}>
                               {p.roleAsDescribed && <span style={{ fontSize: 11, color: 'var(--gw-sub)' }}>{p.roleAsDescribed}</span>}
-                              <button
-                                onClick={() => { setEditingRoleId(p.id); setEditingRoleValue(p.roleAsDescribed ?? '') }}
-                                title="Edit role"
-                                style={{ fontSize: 10, color: 'var(--gw-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', lineHeight: 1 }}
-                              >✎</button>
+                              {/* What someone is answerable for is the lead's to
+                                  set, or their own. Every party could edit every
+                                  other party's remit, on a ground that may be
+                                  deciding whether they keep their job. */}
+                              {(isInitiator || p.userId === user?.id) && (
+                                <button
+                                  onClick={() => { setEditingRoleId(p.id); setEditingRoleValue(p.roleAsDescribed ?? '') }}
+                                  title="Edit role"
+                                  style={{ fontSize: 10, color: 'var(--gw-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', lineHeight: 1 }}
+                                >✎</button>
+                              )}
                             </div>
                           )}
                           <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>{status.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c: string) => c.toUpperCase())}</div>
                         </div>
-                        {myCheckIn?.id && status !== 'COMPLETED' && p.userId && (
+                        {/* Chasing people is the lead's job. A peer nudging a peer
+                            on an evaluation ground is a different act entirely. */}
+                        {isInitiator && myCheckIn?.id && status !== 'COMPLETED' && p.userId && (
                           <button onClick={() => remind.mutate(myCheckIn.id)} style={{ fontSize: 11, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer' }}>Remind</button>
                         )}
                         {!p.userId && p.inviteDeliveryStatus === 'BOUNCED' ? (
@@ -612,10 +627,15 @@ export function GroundAdminPage() {
                     }
                     return null
                   })()}
-                  <button onClick={() => setAddingParticipant(true)} style={{ width: '100%', padding: '11px 16px', borderRadius: 8, background: 'none', color: 'var(--gw-navy)', fontSize: 13, fontWeight: 600, border: '1px dashed var(--gw-blue-b)', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                    <span style={{ fontSize: 16, fontWeight: 300 }}>+</span> Add a contributor
-                  </button>
-                  {!['RESOLVED', 'CLOSED', 'STALLED', 'AWAITING_LEAD'].includes(ground.status) && (
+                  {/* Running the ground is the lead's job. Every party was being
+                      shown these, so someone being evaluated on this ground could
+                      invite people to it or declare the closing round. */}
+                  {isInitiator && (
+                    <button onClick={() => setAddingParticipant(true)} style={{ width: '100%', padding: '11px 16px', borderRadius: 8, background: 'none', color: 'var(--gw-navy)', fontSize: 13, fontWeight: 600, border: '1px dashed var(--gw-blue-b)', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                      <span style={{ fontSize: 16, fontWeight: 300 }}>+</span> Add a contributor
+                    </button>
+                  )}
+                  {isInitiator && !['RESOLVED', 'CLOSED', 'STALLED', 'AWAITING_LEAD'].includes(ground.status) && (
                     confirmClosing ? (
                       <div style={{ border: '1px solid #E4C88A', background: '#FFF8EC', borderRadius: 8, padding: '12px 14px', marginTop: 8 }}>
                         <div style={{ fontSize: 13, fontWeight: 700, color: '#7A4B00', marginBottom: 4 }}>Begin the closing round?</div>
@@ -654,7 +674,10 @@ export function GroundAdminPage() {
               )}
             </div>
 
-            {ground.joinToken && (
+            {/* The server withholds the token from non-initiators; this is the
+                second lock, so a future change to either one alone cannot put a
+                shareable link to someone's record back on a participant's page. */}
+            {isInitiator && ground.joinToken && (
               <ShareSection joinToken={ground.joinToken} />
             )}
           </div>
@@ -1022,6 +1045,91 @@ export function GroundAdminPage() {
         {/* SETTINGS */}
         {tab === 'settings' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {/* HOW LONG THIS RUNS, AND HOW OFTEN.
+                There was no way to change either after creation, anywhere in the
+                product. A ground created at the wrong length - which the old
+                admin creation form did silently, because it never asked - was
+                stuck that way, and a three-month onboarding that thinks it is a
+                thirty-day one stops asking people to check in two thirds of the
+                way through. */}
+            {/* WHETHER THESE PEOPLE ACTUALLY SEE EACH OTHER'S WORK.
+                The scenario can only guess, and the guess decides whether the
+                board's fairness reads have anything to stand on. Where nobody can
+                corroborate anybody, a quiet account is just a quiet account - and
+                treating it as work going missing is how a competent person gets
+                reported as absent on a ground that decides their job. */}
+            {isInitiator && (
+              <div className="gw-fld">
+                <label className="gw-label">Do these people work together?</label>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 8, lineHeight: 1.5 }}>
+                  Can they see each other's work day to day? If they cannot, nobody here is in a position
+                  to confirm anyone else's account, and the board says so rather than reading a quiet
+                  account as work going missing.
+                </div>
+                <div role="radiogroup" aria-label="Do these people work together?" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {[
+                    { v: true, label: 'Yes, they work together', sub: 'They see each other\'s work, so they can corroborate each other.' },
+                    { v: false, label: 'No, they work separately', sub: 'Same role or same programme, different places. Nobody sees anybody else\'s work.' },
+                  ].map((o) => {
+                    const current = ground.peopleWorkTogether
+                    const selected = current === o.v
+                    return (
+                      <div key={String(o.v)} role="radio" aria-checked={selected}
+                        tabIndex={selected || (current == null && o.v) ? 0 : -1}
+                        aria-label={`${o.label}. ${o.sub}`}
+                        onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); (e.currentTarget as HTMLElement).click() } }}
+                        onClick={() => groundsApi.setPeopleWorkTogether(id!, o.v)
+                          .then(() => { toast.success('Saved'); qc.invalidateQueries({ queryKey: ['ground', id] }) })
+                          .catch(() => toast.error('Could not save that.'))}
+                        className={`cg-sit-card${selected ? ' selected' : ''}`}
+                        style={{ cursor: 'pointer' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <div style={{ fontSize: 13, fontWeight: 700 }}>{o.label}</div>
+                          <div style={{ width: 15, height: 15, borderRadius: '50%', flexShrink: 0, border: `2px solid ${selected ? 'var(--gw-navy)' : 'var(--gw-border)'}`, background: selected ? 'var(--gw-navy)' : 'transparent' }} />
+                        </div>
+                        <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.45, marginTop: 2 }}>{o.sub}</div>
+                      </div>
+                    )
+                  })}
+                </div>
+                {ground.peopleWorkTogether == null && (
+                  <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', marginTop: 6, lineHeight: 1.5 }}>
+                    Not set. Until you answer, this is assumed from the kind of ground you chose.
+                  </div>
+                )}
+              </div>
+            )}
+
+            {isInitiator && (
+              <div className="gw-fld">
+                <label className="gw-label">How long this runs</label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <select className="gw-input" aria-label="Timeframe" value={timelineDaysDraft}
+                    onChange={(e) => setTimelineDaysDraft(Number(e.target.value))} style={{ background: 'white' }}>
+                    {[7, 14, 30, 60, 90, 180, 365].map((d) => (
+                      <option key={d} value={d}>{d === 7 ? '1 week' : d === 14 ? '2 weeks' : d === 365 ? '12 months' : d === 180 ? '6 months' : `${d} days`}</option>
+                    ))}
+                  </select>
+                  <select className="gw-input" aria-label="Check-in cadence" value={cadenceDraft}
+                    onChange={(e) => setCadenceDraft(e.target.value as GroundCadence)} style={{ background: 'white' }}>
+                    {TIMED_CADENCES.map((c) => <option key={c.cadence} value={c.cadence}>{c.label}</option>)}
+                  </select>
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 6 }}>
+                  {sessionsFor(timelineDaysDraft, cadenceDraft) ?? 1} sessions over {timelineDaysDraft} days.
+                  {' '}Sessions already completed are never removed.
+                </div>
+                <button
+                  disabled={timelineDaysDraft === ground.timelineDays && cadenceDraft === ground.cadence}
+                  onClick={() => groundsApi.update(id!, { timelineWeeks: Math.max(1, Math.round(timelineDaysDraft / 7)), cadence: cadenceDraft })
+                    .then(() => { toast.success('Updated'); qc.invalidateQueries({ queryKey: ['ground', id] }) })
+                    .catch(() => toast.error('Could not update how long this runs.'))}
+                  style={{ marginTop: 8, fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: '0.5px solid var(--gw-blue-b)', borderRadius: 5, padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit', opacity: (timelineDaysDraft !== ground.timelineDays || cadenceDraft !== ground.cadence) ? 1 : 0.4 }}
+                >
+                  Save timeframe
+                </button>
+              </div>
+            )}
             <div className="gw-fld">
               <label className="gw-label">Ground name</label>
               <input className="gw-input" value={groundLabel} onChange={e => setGroundLabel(e.target.value)} />

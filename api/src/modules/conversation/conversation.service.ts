@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
 import { endStatesFor } from '../resolution/end-states';
+import { totalSessionsFor } from '../grounds/session-count';
 import { PromptsService } from '../prompts';
 import { AnthropicService, ChatTurn, houseStyle } from './anthropic.service';
 import { ConversationContextService } from './context.service';
@@ -17,6 +18,7 @@ import { runIntake } from './intake';
 import { boardRendersFor } from '../board/board-families';
 import { buildRoleProbeBlock } from '../board/role-maps';
 import { detectFunction } from '../board/function-detection';
+import { closeReadiness } from './close-readiness';
 
 /**
  * How many things in this text could actually be checked by someone later.
@@ -479,9 +481,39 @@ export class ConversationService {
     // is in your record" where the list wanted "here is what is NOW in your
     // record". No phrase list is ever complete, so the model says it outright
     // instead. Costs nothing: it rides on the reply it was already generating.
-    const sessionComplete = hadCloseMarker || this.detectSessionComplete(reply);
+    const signalled = hadCloseMarker || this.detectSessionComplete(reply);
+    const sessionComplete = signalled ? await this.mayClose(checkIn.id) : false;
 
     return { reply: aiTurn.content, sessionComplete };
+  }
+
+  /**
+   * The engine has offered to close. Should it?
+   *
+   * It closes when the person stops producing new material, and running out of
+   * things to say correlates with having had little to say - so the thinnest
+   * records were getting the tidiest endings. This holds a close back exactly
+   * ONCE when there is nothing checkable and the person has not said there is
+   * nothing, and then never again in that session. Nobody gets trapped in a loop
+   * to extract a specific that does not exist.
+   */
+  private async mayClose(checkInId: string): Promise<boolean> {
+    const turns = await this.prisma.conversationTurn.findMany({
+      where: { checkInId },
+      orderBy: { createdAt: 'asc' },
+      select: { role: true, content: true },
+    });
+    const personSaid = turns.filter((t) => t.role === TurnRole.PERSON).map((t) => t.content ?? '');
+    // Has a close already been held back? The AI's own turns carry the extra
+    // question, so a second offer to close means we have already had our one.
+    const aiTurns = turns.filter((t) => t.role === TurnRole.AI).length;
+    const alreadyProbed = aiTurns > personSaid.length;
+
+    const verdict = closeReadiness(personSaid, alreadyProbed);
+    if (!verdict.ready) {
+      this.logger.log(`Holding the close on ${checkInId}: ${verdict.reason}`);
+    }
+    return verdict.ready;
   }
 
   /** Whether the AI reply contains the mandatory session-closing phrasing. */
@@ -551,7 +583,8 @@ export class ConversationService {
       if (checkIn.status === CheckInStatus.NOT_STARTED) {
         await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { status: CheckInStatus.IN_PROGRESS, startedAt: new Date() } });
       }
-      yield { type: 'done', reply, sessionComplete: strippedStream.hadMarker || this.detectSessionComplete(reply) };
+      const signalled = strippedStream.hadMarker || this.detectSessionComplete(reply);
+      yield { type: 'done', reply, sessionComplete: signalled ? await this.mayClose(checkIn.id) : false };
     } catch (err) {
       await this.prisma.conversationTurn.delete({ where: { id: personTurn.id } }).catch(() => undefined);
       throw err;
@@ -640,19 +673,40 @@ export class ConversationService {
     // the Prompt Versioning page without a deploy - the whole reason this seed
     // key exists. Falls back to the in-code pack (or the bare pathway
     // question) in buildActivePathway when no active version exists.
+    //
+    // MOMENT-QUALIFIED FIRST. The key scheme is scenario + party, with no place
+    // for the moment - and one scenario now needs different packs at different
+    // moments (a cohort at the start is an onboarding period that ends in a
+    // decision; later it is a repeatable pulse). Because a stored row wins over
+    // the in-code pack, a moment-specific pack written in code could never take
+    // effect while any generic row existed: the onboarding lead kept getting the
+    // pulse, and the change looked correct in every test that called the pack
+    // builder directly. So the moment-qualified key is tried first, and the
+    // generic key remains the fallback so nothing else changes behaviour.
+    const packKeyBase = `scenario.${ground.scenario.toLowerCase()}`;
+    const packParty = checkIn.participant.partyType.toLowerCase();
     const scenarioPackOverride =
       checkIn.sessionNumber === 1
-        ? await this.prompts
-            .getActiveContent(`scenario.${ground.scenario.toLowerCase()}.${checkIn.participant.partyType.toLowerCase()}`)
-            // null (not '') on failure - buildActivePathway's `??` only falls
+        ? await (ground.moment
+            ? this.prompts
+                .getActiveContent(`${packKeyBase}.${String(ground.moment).toLowerCase()}.${packParty}`)
+                .catch(() => null)
+            : Promise.resolve(null)
+          ).then((momentSpecific) =>
+            momentSpecific ??
+            this.prompts.getActiveContent(`${packKeyBase}.${packParty}`).catch(() => null),
+          )
+            // null (not '') throughout - buildActivePathway's `??` only falls
             // through to the in-code pack on null/undefined, so resolving to
-            // '' here would silently defeat that fallback whenever no active
-            // DB version exists for this scenario+party.
-            .catch(() => null)
+            // '' here would silently defeat that fallback.
         : null;
 
     const intakeBlock = buildIntakeBlock({
       scenario: ground.scenario,
+      // A cohort at the START is an onboarding period whose end decides
+      // something about each person; the same scenario later is a repeatable
+      // pulse. Without this the onboarding cohort got the pulse conversation.
+      moment: ground.moment,
       partyType: checkIn.participant.partyType,
       sessionNumber: checkIn.sessionNumber,
       roleAsDescribed: checkIn.participant.roleAsDescribed,

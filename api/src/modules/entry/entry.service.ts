@@ -278,13 +278,21 @@ function isLikelyQuestion(text: string): boolean {
   return starters.some(s => lower.startsWith(s));
 }
 
-export function buildEntrySystemPrompt(scenario: GroundScenario, groundLabel: string, partyType: PartyType = PartyType.INITIATOR): string {
+export function buildEntrySystemPrompt(
+  scenario: GroundScenario,
+  groundLabel: string,
+  partyType: PartyType = PartyType.INITIATOR,
+  // A cohort at the start is an onboarding period that ends in a decision about
+  // each person, not a repeatable pulse. Optional here because the pre-account
+  // walkthrough often has not established the moment yet.
+  moment?: GroundMoment | null,
+): string {
   // partyType drives the opener + framing. INITIATOR (default) is the person
   // opening the ground ("what are you starting"); PARTICIPANT is an invitee
   // giving their own independent read of the situation the initiator already
   // framed - never "what is beginning". Threaded so participantChat no longer
   // reuses the initiator's opener (BUG 1 root cause).
-  const scenarioPack = buildScenarioPackForParty(scenario, partyType);
+  const scenarioPack = buildScenarioPackForParty(scenario, partyType, moment);
   const runtimeCtx = buildRuntimeContext({
     scenario,
     partyType,

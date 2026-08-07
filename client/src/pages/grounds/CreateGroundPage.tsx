@@ -3,7 +3,9 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { endStatesFor } from '@/lib/end-states'
 import { useMutation } from '@tanstack/react-query'
 import { groundsApi, type GroundScenario, type GroundMoment, type GroundCadence } from '@/api/grounds'
+import { TIMED_CADENCES, sessionsFor } from '@/lib/cadence'
 import { billingApi, FREE_GROUND_LIMIT } from '@/api/billing'
+import { entryApi } from '@/api/entry'
 import { toast } from 'sonner'
 
 interface ScenarioCard {
@@ -110,10 +112,29 @@ export const SCENARIOS: ScenarioCard[] = [
       'The board looks aligned in the room but you suspect it is not on one big bet.',
     ] },
   { cardKey: 'COHORT_CHECK', scenario: 'COHORT_CHECK', label: 'Cohort check-in', tag: 'Recurring', tagBg: '#E8F8F5', tagColor: '#085041',
-    desc: 'Many people in the same role each answer the same question on their own. See the pattern, who is on track and who is stuck, without them swaying each other.',
+    desc: 'An ongoing read from many people in the same role, each answering on their own. See the pattern, who is on track and who is stuck, without them swaying each other. For a group who are new, use "Onboarding a group" instead.',
     examples: [
       'Twenty field officers each answering the same question so you can see the pattern.',
       'A training cohort where you want to see who is on track and who is stuck without them influencing each other.',
+    ] },
+  // ONBOARDING A GROUP, WHERE THE PERIOD ALSO DECIDES SOMETHING.
+  //
+  // There was no home for this. The half about settling people in mapped to "New
+  // hire", which is one person and their manager; the half about many people at
+  // once mapped to "Cohort check-in", which reads as a recurring pulse with no
+  // beginning or end; and the half about deciding whether someone is right for
+  // the role mapped only to "Performance improvement plan", which is a far more
+  // loaded thing to pick and would be the wrong thing to tell four new starters
+  // they are on. Someone onboarding a cohort had to choose which third of their
+  // situation to describe. It runs on the cohort machinery, which is the correct
+  // shape - separate people, same questions, no swaying each other - and says so
+  // in language the person actually has in their head.
+  { cardKey: 'COHORT_ONBOARDING', scenario: 'COHORT_CHECK', label: 'Onboarding a group', tag: 'Starting', tagBg: '#E8F8F5', tagColor: '#085041',
+    desc: 'Several people starting the same role at once, each answering on their own. Settle them in, and see early who is finding it and who is struggling, before the end of the period decides anything.',
+    examples: [
+      'Four new managers on a three month onboarding that is also their probation.',
+      'A cohort of new starters where you need to know by month two, not month three, who needs help.',
+      'Trainees in different locations who never work together but are all learning the same job.',
     ] },
   { cardKey: 'ACUTE_SHOCK', scenario: 'ACUTE_SHOCK', label: 'A shock just hit', tag: 'Urgent', tagBg: '#FCEBEB', tagColor: '#791F1F',
     desc: 'A jarring event just happened. Get everyone\'s honest read of what actually happened and where things really stand, before anyone decides anything.',
@@ -132,8 +153,13 @@ export const SCENARIOS: ScenarioCard[] = [
   // The genuine free-text path, separated from the realignment scenario above.
   // It runs on REALIGN_TEAM's general pack and leans on the brief the person
   // writes; a later iteration can route it through classifyIntent.
+  // "Anything else" quietly resolved to REALIGN_TEAM, which is a private,
+  // board-less sensing ground. So whatever the person described - a project
+  // kickoff, a renewal, a cohort - they got a shape chosen for them and never
+  // saw a board. It says what it will do now, and the copy no longer promises
+  // that we will work out the right ground, because nothing does that.
   { cardKey: 'DESCRIBE_OWN', scenario: 'REALIGN_TEAM', label: 'Describe your own situation', tag: 'Anything else', tagBg: '#F5F3EF', tagColor: '#6B6560',
-    desc: 'Not sure which fits? Describe it in your own words, add any context or documents, and we will set up the right ground for you.' },
+    desc: 'None of these quite fit? Describe it in your own words and we will open a ground where each person gives their own read first, privately, before anyone talks. If it turns out to be one of the situations above, pick that instead - it shapes the questions people are asked.' },
 ]
 
 interface MomentOption { moment: GroundMoment; label: string; sub: string }
@@ -142,13 +168,6 @@ const MOMENTS: MomentOption[] = [
   { moment: 'RECOGNITION', label: 'Mid-way',          sub: 'Acknowledge progress. Name what has changed.' },
   { moment: 'RESOLUTION',  label: 'Reaching an end',  sub: 'Close a chapter. Agree on what happened.' },
 
-]
-
-interface CadenceOption { cadence: GroundCadence; label: string; days: number }
-const CADENCES: CadenceOption[] = [
-  { cadence: 'WEEKLY',      label: 'Weekly',      days: 7 },
-  { cadence: 'FORTNIGHTLY', label: 'Fortnightly', days: 14 },
-  { cadence: 'MONTHLY',     label: 'Monthly',     days: 30 },
 ]
 
 
@@ -208,6 +227,13 @@ export function CreateGroundPage() {
   const [selectedCard, setSelectedCard] = useState<string | null>(
     () => {
       const s = scenarioFromParam(searchParams.get('scenario'))
+      // Prefer the card the person actually picked. Two cards share
+      // COHORT_CHECK - an ongoing pulse and a fixed onboarding period - so
+      // resolving by scenario alone silently returned whichever came first in
+      // the list, and someone restoring an "Onboarding a group" draft found
+      // "Cohort check-in" selected instead.
+      const savedCard = sessionStorage.getItem('gw-new-ground-card')
+      if (savedCard && SCENARIOS.some(c => c.cardKey === savedCard)) return savedCard
       return s ? (SCENARIOS.find(c => c.scenario === s)?.cardKey ?? null) : null
     }
   )
@@ -233,6 +259,34 @@ export function CreateGroundPage() {
    */
   const [alsoAParty, setAlsoAParty] = useState<boolean | null>(null)
   const [myRemit, setMyRemit] = useState('')
+  /**
+   * Does someone ELSE run this ground?
+   *
+   * There were two creation paths and neither could do the whole job. This one
+   * had all seventeen situations and a timeframe but no way to say another
+   * person runs it; the other could name a lead but offered five situations and
+   * never asked how long the ground runs. An admin opening a three-month
+   * onboarding led by a colleague could not express that in either. Asking here
+   * folds the second path into this one.
+   */
+  /**
+   * The free-text path. Whatever someone typed here used to be thrown away and
+   * the ground opened as REALIGN_TEAM - private, no board - so a person who
+   * described a probation cohort in detail got a container that cannot run one.
+   * The classifier that reads a description and picks a scenario already exists
+   * and is used by the guided walkthrough; this just asks it, and then SHOWS
+   * the answer rather than applying it silently. Which scenario it picks matters
+   * less than the person being able to see and change it, because that choice
+   * decides the board, the mode and the questions everyone gets asked.
+   */
+  const [ownDescription, setOwnDescription] = useState('')
+  const [routing, setRouting] = useState(false)
+  const [routedTo, setRoutedTo] = useState<GroundScenario | null>(null)
+  const [routeFailed, setRouteFailed] = useState(false)
+  const [runByOther, setRunByOther] = useState(false)
+  const [leadEmail, setLeadEmail] = useState('')
+  const [leadName, setLeadName] = useState('')
+  const [leadRemit, setLeadRemit] = useState('')
   const [groundName, setGroundName] = useState('')
 
   // Billing step state
@@ -247,8 +301,7 @@ export function CreateGroundPage() {
   const [appliedAccessCode, setAppliedAccessCode] = useState<string | null>(null)
   const [billingLoading, setBillingLoading] = useState(false)
 
-  const cadenceObj = CADENCES.find(c => c.cadence === cadence) ?? CADENCES[1]
-  const sessionTotal = Math.max(1, Math.floor(timelineDays / cadenceObj.days))
+  const sessionTotal = sessionsFor(timelineDays, cadence) ?? 1
 
   const briefWords = brief.trim() ? brief.trim().split(/\s+/).length : 0
   const briefShort = briefWords > 0 && briefWords < 20
@@ -296,6 +349,26 @@ export function CreateGroundPage() {
 
   const create = useMutation({
     mutationFn: async () => {
+      // Handing the ground to a lead is a different creation call, but it is the
+      // same set of answers - so it is the same flow, not a second form that
+      // happens to be missing half the fields.
+      if (runByOther) {
+        const ground = await groundsApi.createForLead({
+          leadEmail: leadEmail.trim(),
+          leadName: leadName.trim() || undefined,
+          leadRemit: leadRemit.trim() || undefined,
+          label: groundName.trim() || `${scenario?.replace(/_/g, ' ')} ground`,
+          scenario: scenario!,
+          moment: moment!,
+          timelineDays,
+          cadence,
+          brief: (brief.trim() || ownDescription.trim()) || undefined,
+          participants: participants.length
+            ? participants.map((p) => ({ email: p.email, roleAsDescribed: p.role || undefined }))
+            : undefined,
+        })
+        return { ground, failedInvites: 0 }
+      }
       const ground = await groundsApi.create({
         label: groundName.trim() || `${scenario?.replace(/_/g, ' ')} ground`,
         scenario: scenario!,
@@ -303,7 +376,7 @@ export function CreateGroundPage() {
         timelineDays,
         cadence,
         resolutionState: resolutionState ?? undefined,
-        brief: brief.trim() || undefined,
+        brief: (brief.trim() || ownDescription.trim()) || undefined,
         ...(appliedAccessCode ? { accessCode: appliedAccessCode } : {}),
       } as Parameters<typeof groundsApi.create>[0] & { accessCode?: string })
       // Use allSettled so a failed invite email never blocks navigation to the
@@ -393,10 +466,10 @@ export function CreateGroundPage() {
                   aria-checked={selectedCard === s.cardKey}
                   aria-label={`${s.label}. ${s.desc}`}
                   onKeyDown={(e) => {
-                    if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setScenario(s.scenario); setSelectedCard(s.cardKey) }
+                    if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setScenario(s.scenario); setSelectedCard(s.cardKey); sessionStorage.setItem('gw-new-ground-card', s.cardKey) }
                   }}
                   className={`cg-sit-card${selectedCard === s.cardKey ? ' selected' : ''}`}
-                  onClick={() => { setScenario(s.scenario); setSelectedCard(s.cardKey) }}
+                  onClick={() => { setScenario(s.scenario); setSelectedCard(s.cardKey); sessionStorage.setItem('gw-new-ground-card', s.cardKey) }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
                     <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: s.tagBg, color: s.tagColor }}>{s.tag}</span>
@@ -414,6 +487,51 @@ export function CreateGroundPage() {
                 </div>
               ))}
             </div>
+
+            {selectedCard === 'DESCRIBE_OWN' && (
+              <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px', marginBottom: 18, background: 'white' }}>
+                <label className="gw-label" htmlFor="own-situation">Describe it in your own words</label>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 8, lineHeight: 1.5 }}>
+                  What is happening, who is involved, and what you want out of it. We will suggest the closest
+                  situation and you can change it - what gets picked decides the questions people are asked.
+                </div>
+                <textarea id="own-situation" className="gw-in" rows={4} value={ownDescription}
+                  onChange={(e) => { setOwnDescription(e.target.value); setRoutedTo(null); setRouteFailed(false) }}
+                  placeholder="e.g. Four new clinic managers on a three month probation. They run separate clinics and never work together, but they all report to me." />
+                <button
+                  disabled={ownDescription.trim().length < 20 || routing}
+                  onClick={() => {
+                    setRouting(true); setRouteFailed(false)
+                    entryApi.classifyIntent(ownDescription.trim())
+                      .then((r: any) => {
+                        const picked = r?.scenario as GroundScenario | undefined
+                        if (picked && SCENARIOS.some(c => c.scenario === picked)) { setRoutedTo(picked); setScenario(picked) }
+                        else setRouteFailed(true)
+                      })
+                      .catch(() => setRouteFailed(true))
+                      .finally(() => setRouting(false))
+                  }}
+                  style={{ marginTop: 8, fontSize: 12, fontWeight: 700, color: 'white', background: 'var(--gw-navy)', border: 'none', borderRadius: 7, padding: '8px 14px', cursor: 'pointer', fontFamily: 'inherit', opacity: ownDescription.trim().length < 20 || routing ? 0.45 : 1 }}>
+                  {routing ? 'Reading it…' : 'Find the closest situation'}
+                </button>
+
+                {routedTo && (
+                  <div style={{ marginTop: 10, fontSize: 12.5, lineHeight: 1.55, background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 8, padding: '10px 12px' }}>
+                    From what you wrote, this looks like <b>{SCENARIOS.find(c => c.scenario === routedTo)?.label}</b>.
+                    That is what we will set up. If it is not right, pick a card above instead - your description is
+                    kept either way.
+                  </div>
+                )}
+                {routeFailed && (
+                  <div style={{ marginTop: 10, fontSize: 12.5, lineHeight: 1.55, background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 8, padding: '10px 12px' }}>
+                    {/* Saying so beats picking one quietly. The shape decides the
+                        board, the mode and the questions - too much to guess at. */}
+                    We could not tell which situation this is closest to. We will open a general ground where each
+                    person gives their own read privately, which works for most things - or pick a card above if one fits.
+                  </div>
+                )}
+              </div>
+            )}
 
             {scenario && (
               <>
@@ -451,12 +569,26 @@ export function CreateGroundPage() {
             <div style={{ height: 76 }} />
             <div className="cg-fixed-bar" style={{ background: 'var(--gw-bg)', borderTop: '1px solid var(--gw-border)', padding: '10px 20px', zIndex: 20 }}>
               <div style={{ width: 'min(560px, 100%)' }}>
-                <button className="gw-btn" disabled={!scenario || !moment} onClick={() => setStep(2)} style={{ margin: 0 }}>Continue</button>
-                {!scenario || !moment ? (
-                  <div style={{ fontSize: 11, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 5 }}>
-                    {!scenario ? 'Pick a situation to continue' : 'Pick where you are in it (below the cards) to continue'}
-                  </div>
-                ) : null}
+                {/* On the free-text path, the description has to have been read
+                    before we move on - otherwise the ground silently becomes
+                    whatever the card happens to default to, which is the whole
+                    bug this replaces. */}
+                {(() => {
+                  const needsRouting = selectedCard === 'DESCRIBE_OWN' && !routedTo && !routeFailed
+                  const blocked = !scenario || !moment || needsRouting
+                  return (
+                    <>
+                      <button className="gw-btn" disabled={blocked} onClick={() => setStep(2)} style={{ margin: 0 }}>Continue</button>
+                      {blocked ? (
+                        <div style={{ fontSize: 11, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 5 }}>
+                          {needsRouting
+                            ? 'Describe the situation above, then let us find the closest match'
+                            : !scenario ? 'Pick a situation to continue' : 'Pick where you are in it (below the cards) to continue'}
+                        </div>
+                      ) : null}
+                    </>
+                  )
+                })()}
               </div>
             </div>
           </div>
@@ -478,14 +610,22 @@ export function CreateGroundPage() {
               <div>
                 <div style={{ background: 'var(--gw-green-bg, #E8F8F5)', border: '1px solid var(--gw-green-b, #A7D9CC)', borderRadius: 10, padding: '20px 18px', marginBottom: 20 }}>
                   <div style={{ fontSize: 15, fontWeight: 700, color: '#085041', marginBottom: 6 }}>No payment needed</div>
+                  {/* One statement about what they have, not two that disagree.
+                      This said "unlimited Grounds" directly above "0 of 10
+                      Grounds used" - the first thing a new admin reads about
+                      money, contradicting itself. A paid plan really is
+                      unlimited; the free tier is not, and should say so once. */}
                   <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-                    Your plan includes unlimited Grounds, sessions, and reports.
+                    {groundsUsed != null && !appliedAccessCode
+                      ? <>Your free plan includes {FREE_GROUND_LIMIT} grounds, with unlimited sessions and reports in each. You have used <b>{groundsUsed}</b>.</>
+                      : <>This one is covered. Unlimited sessions and reports.</>}
                   </div>
                 </div>
-                {/* Free-tier usage warning: show how many of the 10 free grounds are left before you hit the wall. */}
-                {groundsUsed != null && !appliedAccessCode && (
-                  <div style={{ fontSize: 12.5, color: groundsUsed >= FREE_GROUND_LIMIT - 2 ? '#8A5C1A' : 'var(--gw-sub)', background: groundsUsed >= FREE_GROUND_LIMIT - 2 ? '#FDF3E3' : 'transparent', border: groundsUsed >= FREE_GROUND_LIMIT - 2 ? '1px solid #F5D9A0' : 'none', borderRadius: 8, padding: groundsUsed >= FREE_GROUND_LIMIT - 2 ? '10px 12px' : '0', marginBottom: 16, lineHeight: 1.5 }}>
-                    Free plan: <b>{groundsUsed} of {FREE_GROUND_LIMIT}</b> Grounds used{groundsUsed >= FREE_GROUND_LIMIT - 2 ? `. Only ${FREE_GROUND_LIMIT - groundsUsed} left before you'll need a subscription.` : '.'}
+                {/* The warning stays, but only when they are actually near the
+                    wall. Repeating the count when they have eight left is noise. */}
+                {groundsUsed != null && !appliedAccessCode && groundsUsed >= FREE_GROUND_LIMIT - 2 && (
+                  <div style={{ fontSize: 12.5, color: '#8A5C1A', background: '#FDF3E3', border: '1px solid #F5D9A0', borderRadius: 8, padding: '10px 12px', marginBottom: 16, lineHeight: 1.5 }}>
+                    Only {FREE_GROUND_LIMIT - groundsUsed} {FREE_GROUND_LIMIT - groundsUsed === 1 ? 'ground' : 'grounds'} left on the free plan. After that you will need a subscription to open another.
                   </div>
                 )}
                 <button className="gw-btn" onClick={() => setStep(3)} style={{ margin: '12px 0 0' }}>Continue →</button>
@@ -578,7 +718,7 @@ export function CreateGroundPage() {
             <div className="gw-fld">
               <label className="gw-label">Check-in cadence</label>
               <select className="gw-select" value={cadence} onChange={e => setCadence(e.target.value as GroundCadence)}>
-                {CADENCES.map(c => <option key={c.cadence} value={c.cadence}>{c.label}</option>)}
+                {TIMED_CADENCES.map(c => <option key={c.cadence} value={c.cadence}>{c.label}</option>)}
               </select>
             </div>
             <div className="gw-box gw-box-blue" style={{ marginBottom: 24 }}>
@@ -611,28 +751,29 @@ export function CreateGroundPage() {
                 This decides whether you get check-in links yourself. You can change it later.
               </div>
               {[
-                { v: true, label: 'I am part of this too', sub: 'You check in like everyone else, and your account is read alongside theirs.' },
-                { v: false, label: 'I am setting it up for others', sub: 'You organise and read the results. Nothing asks you to check in, and nothing measures you.' },
+                { v: true, label: 'I am part of this too', sub: 'You check in like everyone else, and your account is read alongside theirs.', other: false },
+                { v: false, label: 'I am setting it up for others', sub: 'You organise and read the results. Nothing asks you to check in, and nothing measures you.', other: false },
+                { v: false, label: 'Someone else runs this', sub: 'You set it up and hand it over. They lead it, check in themselves, and see the results.', other: true },
               ].map((o) => (
                 <div
-                  key={String(o.v)}
+                  key={o.label}
                   role="radio"
-                  tabIndex={alsoAParty === o.v || (alsoAParty === null && o.v) ? 0 : -1}
-                  aria-checked={alsoAParty === o.v}
+                  tabIndex={(alsoAParty === o.v && runByOther === o.other) || (alsoAParty === null && o.v) ? 0 : -1}
+                  aria-checked={alsoAParty === o.v && runByOther === o.other}
                   aria-label={`${o.label}. ${o.sub}`}
-                  onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setAlsoAParty(o.v) } }}
-                  onClick={() => setAlsoAParty(o.v)}
-                  className={`cg-sit-card${alsoAParty === o.v ? ' selected' : ''}`}
+                  onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setAlsoAParty(o.v); setRunByOther(o.other) } }}
+                  onClick={() => { setAlsoAParty(o.v); setRunByOther(o.other) }}
+                  className={`cg-sit-card${alsoAParty === o.v && runByOther === o.other ? ' selected' : ''}`}
                   style={{ marginBottom: 6 }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
                     <div style={{ fontSize: 13, fontWeight: 700 }}>{o.label}</div>
-                    <div style={{ width: 16, height: 16, borderRadius: '50%', border: `2px solid ${alsoAParty === o.v ? 'var(--gw-navy)' : 'var(--gw-border)'}`, background: alsoAParty === o.v ? 'var(--gw-navy)' : 'transparent', flexShrink: 0 }} />
+                    <div style={{ width: 16, height: 16, borderRadius: '50%', border: `2px solid ${alsoAParty === o.v && runByOther === o.other ? 'var(--gw-navy)' : 'var(--gw-border)'}`, background: alsoAParty === o.v && runByOther === o.other ? 'var(--gw-navy)' : 'transparent', flexShrink: 0 }} />
                   </div>
                   <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.45 }}>{o.sub}</div>
                 </div>
               ))}
-              {alsoAParty === true && (
+              {alsoAParty === true && !runByOther && (
                 <input
                   className="gw-in"
                   aria-label="What you are responsible for"
@@ -641,6 +782,24 @@ export function CreateGroundPage() {
                   onChange={(e) => setMyRemit(e.target.value)}
                   style={{ marginTop: 4 }}
                 />
+              )}
+              {runByOther && (
+                <div style={{ marginTop: 4 }}>
+                  <input className="gw-in" type="email" aria-label="The lead's email address"
+                    placeholder="Their email address" value={leadEmail}
+                    onChange={(e) => setLeadEmail(e.target.value)} />
+                  <input className="gw-in" aria-label="The lead's name"
+                    placeholder="Their name (optional)" value={leadName}
+                    onChange={(e) => setLeadName(e.target.value)} style={{ marginTop: 6 }} />
+                  {/* Without this the lead is the one person on the ground with no
+                      stated remit, and the only person the board cannot read. */}
+                  <input className="gw-in" aria-label="What the lead is responsible for"
+                    placeholder="What are they responsible for? (optional, they can set this themselves)"
+                    value={leadRemit} onChange={(e) => setLeadRemit(e.target.value)} style={{ marginTop: 6 }} />
+                  <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 6, lineHeight: 1.5 }}>
+                    They get an invitation to lead this ground. Until they accept it, nobody is asked to check in.
+                  </div>
+                </div>
               )}
             </div>
 
@@ -717,8 +876,16 @@ export function CreateGroundPage() {
               </div>
             )}
 
-            <button className="gw-btn" disabled={participants.length === 0} onClick={() => setStep(5)} style={{ margin: 0 }}>Continue</button>
-            <div style={{ fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 10, cursor: 'pointer' }} onClick={() => setStep(5)}>
+            {/* Handing the ground over needs an address to hand it to. Better to
+                stop here than to create a ground nobody is leading. */}
+            <button className="gw-btn" disabled={participants.length === 0 || (runByOther && !leadEmail.includes('@'))} onClick={() => setStep(5)} style={{ margin: 0 }}>Continue</button>
+            {runByOther && !leadEmail.includes('@') && (
+              <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 5 }}>
+                Add the email address of the person who will lead this ground.
+              </div>
+            )}
+            <div style={{ fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 10, cursor: (runByOther && !leadEmail.includes('@')) ? 'not-allowed' : 'pointer', opacity: (runByOther && !leadEmail.includes('@')) ? 0.45 : 1 }}
+              onClick={() => { if (!(runByOther && !leadEmail.includes('@'))) setStep(5) }}>
               Skip - add participants after
             </div>
             <div style={{ fontSize: 11, color: 'var(--gw-muted)', textAlign: 'center', marginTop: 4, lineHeight: 1.5 }}>

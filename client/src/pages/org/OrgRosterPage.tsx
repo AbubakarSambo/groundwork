@@ -1,107 +1,10 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { groundsApi, type GroundScenario, type GroundCadence } from '@/api/grounds'
+import { useQuery } from '@tanstack/react-query'
+import { groundsApi } from '@/api/grounds'
 import { useAuthStore } from '@/stores/auth'
-import { toast } from 'sonner'
 
-const SCENARIO_OPTIONS: { value: GroundScenario; label: string }[] = [
-  { value: 'COHORT_CHECK', label: 'Cohort check-in' },
-  { value: 'BOARD_STRATEGY', label: 'Board & leadership strategy' },
-  { value: 'PULSE_CHECK', label: 'Quick check-in' },
-  { value: 'NEW_PROJECT', label: 'New project' },
-  { value: 'REALIGN_TEAM', label: 'Get a team back on the same page' },
-]
 
-const CADENCE_OPTIONS: { value: GroundCadence; label: string }[] = [
-  { value: 'SEQUENTIAL', label: 'When the lead checks in' },
-  { value: 'WEEKLY', label: 'Weekly' },
-  { value: 'FORTNIGHTLY', label: 'Every 2 weeks' },
-  { value: 'MONTHLY', label: 'Monthly' },
-  { value: 'DAILY', label: 'Daily' },
-]
-
-function NewTeamPanel({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
-  const [leadEmail, setLeadEmail] = useState('')
-  const [leadName, setLeadName] = useState('')
-  const [label, setLabel] = useState('')
-  const [scenario, setScenario] = useState<GroundScenario>('COHORT_CHECK')
-  const [cadence, setCadence] = useState<GroundCadence>('SEQUENTIAL')
-  const [brief, setBrief] = useState('')
-  const [leadRemit, setLeadRemit] = useState('')
-  const [participantsText, setParticipantsText] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-
-  async function submit() {
-    if (!leadEmail.includes('@') || !label.trim()) return
-    setSubmitting(true)
-    try {
-      const participants = participantsText.split('\n').map(l => l.trim()).filter(Boolean).map(line => {
-        const [email, role] = line.split(',').map(s => s.trim())
-        return { email, roleAsDescribed: role || undefined }
-      }).filter(p => p.email.includes('@'))
-      await groundsApi.createForLead({
-        leadEmail: leadEmail.trim(), leadName: leadName.trim() || undefined,
-        leadRemit: leadRemit.trim() || undefined,
-        label: label.trim(), scenario, moment: 'STARTING', cadence,
-        brief: brief.trim() || undefined,
-        participants: participants.length ? participants : undefined,
-      })
-      toast.success('Team created - the lead has been invited')
-      onCreated()
-    } catch {
-      toast.error('Could not create this team. Check the details and try again.')
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  return (
-    <div style={{ background: 'var(--gw-blue-bg, #EEF4FB)', border: '1px solid var(--gw-blue-b, #B5D4F4)', borderRadius: 12, padding: '20px 22px', marginBottom: 24 }}>
-      <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 12 }}>New team</div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
-        <input type="email" placeholder="Lead's email" value={leadEmail} onChange={e => setLeadEmail(e.target.value)}
-          style={{ padding: '9px 12px', fontSize: 13, border: '1px solid var(--gw-border)', borderRadius: 8, fontFamily: 'inherit', outline: 'none' }} />
-        <input type="text" placeholder="Lead's name (optional)" value={leadName} onChange={e => setLeadName(e.target.value)}
-          style={{ padding: '9px 12px', fontSize: 13, border: '1px solid var(--gw-border)', borderRadius: 8, fontFamily: 'inherit', outline: 'none' }} />
-      </div>
-      {/* Without a remit the lead is the only person the board cannot read - no
-          contribution read and no role-tuned questions. They can still set it
-          themselves when they confirm. */}
-      <input type="text" placeholder="What is the lead responsible for? (optional, they can set this themselves)" value={leadRemit} onChange={e => setLeadRemit(e.target.value)}
-        style={{ width: '100%', padding: '9px 12px', fontSize: 13, border: '1px solid var(--gw-border)', borderRadius: 8, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 8 }} />
-      <input type="text" placeholder="Team / ground name (e.g. Q3 engineering alignment)" value={label} onChange={e => setLabel(e.target.value)}
-        style={{ width: '100%', padding: '9px 12px', fontSize: 13, border: '1px solid var(--gw-border)', borderRadius: 8, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 8 }} />
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
-        <select value={scenario} onChange={e => setScenario(e.target.value as GroundScenario)}
-          style={{ padding: '9px 12px', fontSize: 13, border: '1px solid var(--gw-border)', borderRadius: 8, fontFamily: 'inherit', background: 'white' }}>
-          {SCENARIO_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
-        <select value={cadence} onChange={e => setCadence(e.target.value as GroundCadence)}
-          style={{ padding: '9px 12px', fontSize: 13, border: '1px solid var(--gw-border)', borderRadius: 8, fontFamily: 'inherit', background: 'white' }}>
-          {CADENCE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
-      </div>
-      <textarea placeholder="Context for the lead (e.g. review the codebase and development process this quarter)" value={brief} onChange={e => setBrief(e.target.value)} rows={2}
-        style={{ width: '100%', padding: '9px 12px', fontSize: 13, border: '1px solid var(--gw-border)', borderRadius: 8, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', resize: 'vertical', marginBottom: 8 }} />
-      <textarea placeholder={'Participants to add now (optional), one per line:\nemail@company.com, Role'} value={participantsText} onChange={e => setParticipantsText(e.target.value)} rows={3}
-        style={{ width: '100%', padding: '9px 12px', fontSize: 12.5, border: '1px solid var(--gw-border)', borderRadius: 8, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', resize: 'vertical', marginBottom: 12 }} />
-      <div style={{ display: 'flex', gap: 8 }}>
-        <button onClick={submit} disabled={submitting || !leadEmail.includes('@') || !label.trim()}
-          style={{ padding: '9px 18px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'inherit', opacity: submitting || !leadEmail.includes('@') || !label.trim() ? 0.5 : 1 }}>
-          {submitting ? 'Creating…' : 'Create and invite lead'}
-        </button>
-        <button onClick={onClose} style={{ padding: '9px 18px', borderRadius: 8, background: 'none', color: 'var(--gw-sub)', border: '1px solid var(--gw-border)', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>
-          Cancel
-        </button>
-      </div>
-    </div>
-  )
-}
-
-/** Same derivation ReportPage uses - kept in sync deliberately rather than
- * duplicating the logic server-side, so there is one definition of what an
- * alignment label means. */
 function deriveAlignmentLabel(agreements: string[], divergences: unknown[], contributedParties: number): string {
   const a = agreements.length
   const d = divergences.length
@@ -133,10 +36,8 @@ const STATUS_LABELS: Record<string, string> = {
 export function OrgRosterPage() {
   const { user } = useAuthStore()
   const navigate = useNavigate()
-  const qc = useQueryClient()
   const isAdmin = user?.role === 'ADMIN'
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
-  const [showNewTeam, setShowNewTeam] = useState(false)
 
   const { data: roster = [], isLoading } = useQuery({
     queryKey: ['org-roster'],
@@ -163,16 +64,18 @@ export function OrgRosterPage() {
         Every ground in your organization - who leads it, who is in it, and where alignment stands.
       </p>
 
-      {!showNewTeam ? (
-        <button onClick={() => setShowNewTeam(true)} style={{ marginBottom: 20, padding: '10px 18px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'inherit' }}>
-          + New team
-        </button>
-      ) : (
-        <NewTeamPanel
-          onClose={() => setShowNewTeam(false)}
-          onCreated={() => { setShowNewTeam(false); qc.invalidateQueries({ queryKey: ['org-roster'] }) }}
-        />
-      )}
+      {/* ONE WAY TO OPEN A GROUND.
+          This page used to carry its own creation form. It could name a lead but
+          offered five of the seventeen situations and never asked how long the
+          ground runs - so a three-month onboarding created here silently became a
+          thirty-day one. The main flow now asks who runs it, which was the only
+          thing this form could do that it could not. */}
+      <button onClick={() => navigate('/grounds/new')} style={{ marginBottom: 20, padding: '10px 18px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'inherit' }}>
+        + New ground
+      </button>
+      <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 20, marginTop: -12, lineHeight: 1.5 }}>
+        You can lead it yourself or hand it to someone else - that is one of the questions in the flow.
+      </div>
 
       {isLoading ? (
         <div style={{ color: 'var(--gw-sub)', fontSize: 14 }}>Loading…</div>

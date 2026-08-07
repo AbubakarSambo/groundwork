@@ -80,6 +80,46 @@ describe('things one party kept naming as still to do', () => {
     expect(found).toEqual([]);
   });
 
+  it('counts "I owe the team a decision", which is how people actually say it', () => {
+    // The word that was missing. A twelve-session ground had the lead say "I
+    // still owe the team the decision on scope" in eight separate sessions; the
+    // list had "still need" and "need to" but not "owe", one statement of eight
+    // matched, and the clearest leadership pattern in the run was invisible.
+    const found = findDeferrals([
+      { label: 'lead', sessionNumber: 3, text: 'I still owe the team the decision on scope.' },
+      { label: 'lead', sessionNumber: 4, text: 'I still owe the team the decision on scope.' },
+      { label: 'lead', sessionNumber: 5, text: 'I still owe the team the decision on scope.' },
+    ]);
+    expect(found).toHaveLength(1);
+    expect(found[0].sessions).toEqual([3, 4, 5]);
+  });
+
+  it('reads the sentence that CLOSES a deferral as a resolution, not another one', () => {
+    // "I made the decision I had been putting off" contains "putting off". Read
+    // the wrong way round it becomes one more count against the person, and the
+    // pattern never shows as resolved however long ago they fixed it.
+    const found = findDeferrals([
+      { label: 'lead', sessionNumber: 3, text: 'I still owe the team the decision on scope.' },
+      { label: 'lead', sessionNumber: 4, text: 'The scope decision is still open.' },
+      { label: 'lead', sessionNumber: 5, text: 'Scope is still sitting with me.' },
+      { label: 'lead', sessionNumber: 7, text: 'I made the decision on scope that I had been putting off.' },
+    ]);
+    expect(found).toHaveLength(1);
+    expect(found[0].sessions).toEqual([3, 4, 5]);
+    expect(found[0].resolvedAt).toBe(7);
+  });
+
+  it('does not treat ordinary forward planning as a deferral', () => {
+    // "later" and "eventually" are deliberately NOT in the list. Every plan
+    // contains them, and counting them would make a deferral out of every
+    // sentence about the future.
+    expect(findDeferrals([
+      { label: 'a', sessionNumber: 1, text: 'We will look at the pricing later in the year.' },
+      { label: 'a', sessionNumber: 2, text: 'Eventually we want three regions.' },
+      { label: 'a', sessionNumber: 3, text: 'The plan covers the next two quarters.' },
+    ])).toEqual([]);
+  });
+
   it('needs three separate sessions before calling anything a pattern', () => {
     const twice = findDeferrals([
       { label: 'a', sessionNumber: 1, text: 'I still need to write the pricing page' },
