@@ -30,18 +30,18 @@ import { SITUATION_CARDS, SITUATION_GROUPS } from './EntryChatPage'
 const ENTRY_COVERS: Record<string, string[]> = {
   'New hire starting': ['NEW_HIRE'],
   'New project': ['NEW_PROJECT'],
-  'A new way of working together': ['NEW_COFOUNDER', 'NEW_MANAGER'],
+  'A new partner, cofounder, or manager': ['NEW_COFOUNDER', 'NEW_MANAGER'],
   'Setting shared goals': ['OKR_ALIGNMENT'],
   'A big decision': ['BOARD_STRATEGY'],
   "Someone's work is off track": ['PIP'],
   'A project is off track': ['DRIFT'],
   'You and someone see it differently': ['REALIGN_TEAM'],
   'New advisor or board member': ['NEW_ADVISOR'],
-  'Onboarding a group': ['COHORT_ONBOARDING'],
+  'Onboarding several people at once': ['COHORT_ONBOARDING'],
   'Workplan and budget': ['WORKPLAN_BUDGET'],
   'Board and leadership strategy': ['BOARD_STRATEGY'],
-  'Quick check-in': ['PULSE_CHECK'],
-  'Cohort check-in': ['COHORT_CHECK'],
+  'A regular read on live work': ['PULSE_CHECK'],
+  'Many people in the same role': ['COHORT_CHECK'],
   'Raise, promotion, or recognition': ['RECOGNITION'],
   'Contract or renewal': ['CONTRACT_RENEWAL'],
   'A shock just hit': ['ACUTE_SHOCK'],
@@ -81,7 +81,7 @@ describe('what a signed-out visitor is offered', () => {
 
   it('reaches the cohort situations, which used to need an account', () => {
     const labels = SITUATION_CARDS.map(c => c.label)
-    expect(labels).toContain('Cohort check-in')
-    expect(labels).toContain('Onboarding a group')
+    expect(labels).toContain('Many people in the same role')
+    expect(labels).toContain('Onboarding several people at once')
   })
 })

@@ -15,7 +15,7 @@ import { dirname, join } from 'node:path'
 const EXPECTED: Record<string, string> = {
   'New hire starting': 'typically 90 days',
   'New project': 'typically 90 days',
-  'A new way of working together': 'typically 90 days',
+  'A new partner, cofounder, or manager': 'typically 90 days',
   'Setting shared goals': 'typically 90 days',
   'A big decision': 'typically one check-in',
   "Someone's work is off track": 'typically 90 days',
@@ -25,11 +25,11 @@ const EXPECTED: Record<string, string> = {
   // /grounds/new. Same rule: "typically", never a bare fixed duration, so the
   // badge reads as a recommendation rather than a commitment.
   'New advisor or board member': 'typically 90 days',
-  'Onboarding a group': 'typically 90 days',
+  'Onboarding several people at once': 'typically 90 days',
   'Workplan and budget': 'typically 90 days',
   'Board and leadership strategy': 'typically two check-ins',
-  'Quick check-in': 'typically ongoing',
-  'Cohort check-in': 'typically ongoing',
+  'A regular read on live work': 'typically ongoing',
+  'Many people in the same role': 'typically ongoing',
   'Raise, promotion, or recognition': 'typically one check-in',
   'Contract or renewal': 'typically two weeks',
   'A shock just hit': 'typically one check-in',

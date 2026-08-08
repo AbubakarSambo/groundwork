@@ -236,8 +236,8 @@ export const SITUATION_CARDS = [
   },
   {
     group: 'positive',
-    label: 'A new way of working together',
-    detail: 'Someone new is in the picture: a partner, a manager, a changed team. Say what each of you expects before those assumptions harden.',
+    label: 'A new partner, cofounder, or manager',
+    detail: 'Someone new is sharing the work or taking it over. Each of you says what you expect before those assumptions harden.',
     message: 'We have a new working arrangement starting and want to make sure we are set up well.',
     timelineHint: 'typically 90 days',
     examples: [
@@ -329,7 +329,7 @@ export const SITUATION_CARDS = [
   },
   {
     group: 'positive',
-    label: 'Onboarding a group',
+    label: 'Onboarding several people at once',
     detail: 'Several people starting the same role at once. Each answers on their own, so you see who is on track and who is stuck.',
     message: 'We are onboarding a group of people into the same role at the same time and I want to see how each of them is doing without them swaying each other.',
     timelineHint: 'typically 90 days',
@@ -362,8 +362,8 @@ export const SITUATION_CARDS = [
   },
   {
     group: 'recurring',
-    label: 'Quick check-in',
-    detail: 'A fast, repeatable read from each person on what is moving, what is stuck, and what has changed.',
+    label: 'A regular read on live work',
+    detail: 'A short, repeatable read from each person on what is moving, what is stuck, and what has changed since last time.',
     message: 'I want a quick recurring check-in with my team on what is moving, what is stuck and what has changed.',
     timelineHint: 'typically ongoing',
     examples: [
@@ -373,8 +373,8 @@ export const SITUATION_CARDS = [
   },
   {
     group: 'recurring',
-    label: 'Cohort check-in',
-    detail: 'Many people in the same role, each answering on their own, so you see the pattern rather than the loudest voice.',
+    label: 'Many people in the same role',
+    detail: 'Field officers, branch managers, franchisees. Each answers on their own, so you see the pattern rather than the loudest voice.',
     message: 'I have a group of people in the same role and I want an ongoing read from each of them separately so I can see the pattern of who is on track and who is stuck.',
     timelineHint: 'typically ongoing',
     examples: [

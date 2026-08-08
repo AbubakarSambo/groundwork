@@ -50,13 +50,13 @@ export const SCENARIOS: ScenarioCard[] = [
       'Bringing on an advisor for equity and you want it clear what they will actually do for it.',
       'A new board member joining, each side writing what they expect from the relationship.',
     ] },
-  { cardKey: 'NEW_COFOUNDER', scenario: 'NEW_COFOUNDER', label: 'New partner or co-founder', tag: 'Starting', tagBg: '#E8F8F5', tagColor: '#085041',
+  { cardKey: 'NEW_COFOUNDER', scenario: 'NEW_COFOUNDER', label: 'A new partner or co-founder', tag: 'Starting', tagBg: '#E8F8F5', tagColor: '#085041',
     desc: 'Put what each of you expects to build, own, and contribute in writing, before those assumptions collide.',
     examples: [
       'You and a co-founder splitting equity and roles and want the assumptions said out loud first.',
       'A new equal partner joining the founding team.',
     ] },
-  { cardKey: 'NEW_MANAGER', scenario: 'NEW_MANAGER', label: 'New manager or lead', tag: 'Starting', tagBg: '#E8F8F5', tagColor: '#085041',
+  { cardKey: 'NEW_MANAGER', scenario: 'NEW_MANAGER', label: 'A new manager taking over', tag: 'Starting', tagBg: '#E8F8F5', tagColor: '#085041',
     desc: 'Get clear on scope, reporting, and success for someone stepping into an existing team or role.',
     examples: [
       'An interim leader stepping into an existing team for six months.',
@@ -92,7 +92,7 @@ export const SCENARIOS: ScenarioCard[] = [
       'Start of the quarter and you want each person\'s plan and budget to hold up against real resources.',
       'A plan that looks fine on paper but you suspect the budget behind it was assumed, not approved.',
     ] },
-  { cardKey: 'PULSE_CHECK', scenario: 'PULSE_CHECK', label: 'Quick check-in', tag: 'Recurring', tagBg: '#E8F8F5', tagColor: '#085041',
+  { cardKey: 'PULSE_CHECK', scenario: 'PULSE_CHECK', label: 'A regular read on live work', tag: 'Recurring', tagBg: '#E8F8F5', tagColor: '#085041',
     desc: 'A fast, repeatable read from each person: what is moving, what is stuck, what has changed. About five minutes.',
     examples: [
       'A fast fortnightly read from each person on what is moving and what is stuck.',
@@ -111,7 +111,7 @@ export const SCENARIOS: ScenarioCard[] = [
       'Before a strategy offsite, you want each leader\'s real read so quiet disagreement shows up early.',
       'The board looks aligned in the room but you suspect it is not on one big bet.',
     ] },
-  { cardKey: 'COHORT_CHECK', scenario: 'COHORT_CHECK', label: 'Cohort check-in', tag: 'Recurring', tagBg: '#E8F8F5', tagColor: '#085041',
+  { cardKey: 'COHORT_CHECK', scenario: 'COHORT_CHECK', label: 'Many people in the same role', tag: 'Recurring', tagBg: '#E8F8F5', tagColor: '#085041',
     desc: 'An ongoing read from many people in the same role, each answering on their own. See the pattern, who is on track and who is stuck, without them swaying each other. For a group who are new, use "Onboarding a group" instead.',
     examples: [
       'Twenty field officers each answering the same question so you can see the pattern.',
@@ -129,7 +129,7 @@ export const SCENARIOS: ScenarioCard[] = [
   // situation to describe. It runs on the cohort machinery, which is the correct
   // shape - separate people, same questions, no swaying each other - and says so
   // in language the person actually has in their head.
-  { cardKey: 'COHORT_ONBOARDING', scenario: 'COHORT_CHECK', label: 'Onboarding a group', tag: 'Starting', tagBg: '#E8F8F5', tagColor: '#085041',
+  { cardKey: 'COHORT_ONBOARDING', scenario: 'COHORT_CHECK', label: 'Onboarding several people at once', tag: 'Starting', tagBg: '#E8F8F5', tagColor: '#085041',
     desc: 'Several people starting the same role at once, each answering on their own. Settle them in, and see early who is finding it and who is struggling, before the end of the period decides anything.',
     examples: [
       'Four new managers on a three month onboarding that is also their probation.',

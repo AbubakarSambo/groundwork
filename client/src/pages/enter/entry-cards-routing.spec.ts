@@ -74,13 +74,17 @@ describe('entry cards: display reframed, routing untouched', () => {
   it('the starting cards carry the plain voice (the last three un-reframed strings)', () => {
     const labels = SITUATION_CARDS.map(c => c.label)
     expect(labels).toContain('New project')
-    expect(labels).toContain('A new way of working together')
+    expect(labels).toContain('A new partner, cofounder, or manager')
     expect(labels).not.toContain('New project kickoff')
     expect(labels).not.toContain('New working arrangement')
-    const arrangement = SITUATION_CARDS.find(c => c.label === 'A new way of working together')!
-    expect(arrangement.detail).toBe(
-      'Someone new is in the picture: a partner, a manager, a changed team. Say what each of you expects before those assumptions harden.',
-    )
+    // Sharpened for a reader who runs a company: "a new way of working
+    // together" was the vaguest label on the page. Display only - the
+    // routing sentence beneath it is unchanged.
+    expect(labels).not.toContain('A new way of working together')
+    const arrangement = SITUATION_CARDS.find(c => c.label === 'A new partner, cofounder, or manager')!
+    // Names who is involved, in the words someone running a company would use.
+    // The old label described a mood; this one describes a person arriving.
+    expect(arrangement.detail).toMatch(/sharing the work or taking it over/)
     for (const c of SITUATION_CARDS) {
       expect(c.label, `label of "${c.label}"`).not.toMatch(/kickoff|working arrangement/i)
       expect(c.detail, `detail of "${c.label}"`).not.toMatch(/reporting line|clear foundation/i)
