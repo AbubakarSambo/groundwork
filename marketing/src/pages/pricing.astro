@@ -88,7 +88,7 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
           <div style="font-size:14px;font-weight:700;color:#1A1916;margin-bottom:4px;">Starter</div>
           <div style="font-size:26px;font-weight:800;color:#0C447C;margin-bottom:2px;">$25<span style="font-size:13px;font-weight:500;color:#9B9590;">/mo</span></div>
           <div style="font-size:12px;color:#9B9590;margin-bottom:12px;">Up to 5 people</div>
-          <p style="font-size:12px;color:#6B6560;line-height:1.6;flex-grow:1;margin-bottom:16px;">For small teams getting started with structured check-ins.</p>
+          <p style="font-size:12px;color:#6B6560;line-height:1.6;flex-grow:1;margin-bottom:16px;">For small teams getting each person's own account on the record.</p>
           <a href={`${APP_URL}/billing`} style="display:block;text-align:center;font-size:13px;font-weight:700;color:#fff;background:#0C447C;border-radius:8px;padding:9px;text-decoration:none;">Subscribe</a>
         </div>
         <div class="plan-card">
@@ -184,6 +184,12 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
         </div>
       </div>
 
+      <!-- 7b: a visitor can arrive on pricing from a search and never see the
+           homepage. One line, so they know what they would be buying. -->
+      <div style="background:#F5F3EF;border:1px solid #E2E0DB;border-radius:10px;padding:18px 20px;margin-bottom:8px;">
+        <p style="font-size:14px;color:#4A5568;line-height:1.75;margin:0;">Every plan works the same way: each person gives their own account, privately. Nobody is scored, ranked or watched, and no one sees anyone else's raw answers.</p>
+      </div>
+
       <div style="text-align:center;padding:36px 28px;">
         <a class="gw-btn-solid" href={`${APP_URL}/start`} style="padding:11px 24px;font-size:14px;">Start your first Ground free</a>
       </div>
@@ -206,7 +212,7 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
         <a class="gw-footer-btn" href="/pricing">Pricing</a>
         <a class="gw-footer-btn" href="/about">About</a>
       </div>
-      <p style="font-size:11px;color:rgba(255,255,255,.2);margin:0;">&#169; 2025 Groundwork.</p>
+      <p style="font-size:11px;color:rgba(255,255,255,.2);margin:0;">&#169; 2026 Groundwork</p>
     </footer>
 
   </div>

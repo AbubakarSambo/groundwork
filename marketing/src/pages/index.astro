@@ -487,19 +487,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
              their own situation before being told what we sell. Headline stays
              broad on purpose: Groundwork covers cofounders, boards, contracts
              and programmes, not only teams. -->
-        <p class="l-hero-problem" style="font-size:15px;color:rgba(255,255,255,0.62);line-height:1.7;margin:0 auto 18px;max-width:560px">Meetings only tell you part of the story. Updates get filtered. People remember things differently. By the time a problem reaches you, it has usually been growing for weeks.</p>
-        <h1 class="l-hero-h1" style="min-height:auto;line-height:1.15;letter-spacing:-.02em;margin:6px 0 10px;font-size:38px">Know what's really happening.</h1>
-        <!-- B1: three subheads, rotated per visitor and held for that visitor.
-             The second and third deliberately reframe the first away from any
-             "I am watching you" reading. MEASUREMENT IS NOT WIRED: the site has
-             no analytics and the only endpoint it can reach is /feedback, whose
-             payload is a fixed enum with nowhere to record a variant. This
-             rotates honestly; it does not yet report. -->
-        <p id="l-subhead" style="font-size:19px;color:rgba(255,255,255,0.88);font-weight:500;line-height:1.5;margin:0 auto 14px;max-width:560px">Even when you're not in the room.</p>
-        <!-- B10: the defuser, adjacent to the headline so it answers the
-             surveillance fear at the moment it fires, not six sections later. -->
-        <p style="font-size:15px;color:rgba(255,255,255,0.66);line-height:1.65;margin:0 auto 20px;max-width:560px">Not by watching your team. By giving everyone a place to say what is really going on, privately, and showing where those accounts line up and where they do not.</p>
-        <p style="font-size:16px;color:rgba(255,255,255,0.78);line-height:1.65;margin:0 auto 24px;max-width:580px;border-top:1px solid rgba(255,255,255,.12);padding-top:18px">Every person gives their own independent account. Groundwork compares every account and reveals the differences no meeting can.</p>
+        <!-- 6a: three beats only. Problem, headline, ONE line under it.
+             The mechanism sentence moved down into "what Groundwork does" - it
+             is not lost, it just stopped competing with the headline.
+             2: the problem lines now carry a consequence, merged with the old
+             "growing for weeks" line rather than saying both. -->
+        <p class="l-hero-problem" style="font-size:15px;color:rgba(255,255,255,0.62);line-height:1.8;margin:0 auto 22px;max-width:560px">Meetings only tell you part of the story. Updates get filtered. People remember things differently.<br><br>By the time you find out, you have often already hired wrong, missed a deadline, or spent weeks solving the wrong problem.</p>
+        <h1 class="l-hero-h1" style="min-height:auto;line-height:1.12;letter-spacing:-.02em;margin:6px 0 14px;font-size:42px">Know what's really happening.</h1>
+        <!-- Three subheads, rotated per visitor and held for that visitor. The
+             second and third reframe the first away from any "I am watching
+             you" reading. MEASUREMENT IS NOT WIRED: the site has no analytics
+             and the one endpoint it can reach takes a fixed enum with nowhere
+             to record a variant. This rotates; it does not yet report. -->
+        <p id="l-subhead" style="font-size:20px;color:rgba(255,255,255,0.88);font-weight:500;line-height:1.45;margin:0 auto 26px;max-width:560px">Even when you're not in the room.</p>
+        <!-- 6d: the ONLY reassurance in the hero. The other two placements are
+             the callout and the "what Groundwork is not" block, lower down. -->
+        <p style="font-size:16px;color:rgba(255,255,255,0.70);line-height:1.7;margin:0 auto 30px;max-width:520px">Not by watching your team, but by finally hearing all of them.</p>
         <script is:inline>
           (function () {
             var VARIANTS = [
@@ -516,16 +519,62 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
             } catch (e) { /* no storage: the server-rendered first variant stands */ }
           })();
         </script>
-        <div class="l-sw-lead">Start well</div>
-        <div class="l-startwell">
-          <div class="l-sw-step"><span class="l-sw-n">1</span><p>Create a Ground by setting the context, objectives and expectations.</p></div>
-          <div class="l-sw-step"><span class="l-sw-n">2</span><p>Everyone involved checks in privately as the work progresses.</p></div>
-          <div class="l-sw-step"><span class="l-sw-n">3</span><p>Check-ins turn into clear reports that show where things stand and what to do next.</p></div>
-        </div>
+        <!-- 6b: the "Start well" three-step block is gone from here. It
+             duplicated /how-it-works, where the same three steps live with more
+             detail. The CTA below leads there. -->
         <div class="l-hero-btns" id="l-getstarted-wrap" style="justify-content:center">
           <a class="l-hero-btn-p l-cta-pulse" href={`${APP_URL}/start`} style="padding:14px 28px;font-size:15px">Start your first Ground</a>
           <a class="l-hero-btn-g" href={`${APP_URL}/auth`} style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15)">Sign in</a>
         </div>
+    </div>
+  </div>
+
+  <!-- ITEM 1: the sample report sits directly under the hero. It is the most
+       convincing thing on the site and people believe an example faster than a
+       claim, so it now comes before any explanation.
+
+       EVERY ELEMENT IS REAL OUTPUT. Re-verified against the live report for a
+       seven-person Q3 ground at the time of writing: divergence topic, three
+       positions, the closing question and the agreements count are all fields
+       the engine produces and populated. Nothing here is invented, and nothing
+       richer than the real thing is shown. Names are neutralised because this
+       is example data, not because the product hides them - a real report does
+       attribute each position to the person who holds it. It ends on a
+       QUESTION, which is what the engine produces; it does not issue
+       instructions. -->
+  <div class="l-sec l-fade" style="background:#F5F3EF;border-bottom:1px solid #E2E0DB">
+    <div class="l-wrap-sm">
+      <p class="l-sec-label">What a report looks like</p>
+      <h2 class="l-sec-h2" style="margin-bottom:10px">Every meeting said Q3 was on track.</h2>
+      <p style="font-size:15px;color:#4A5568;line-height:1.8;margin-bottom:26px">Seven people gave their own account, separately. Here is what came back.</p>
+
+      <div style="background:#fff;border:1px solid #E2E0DB;border-radius:12px;padding:26px 28px;box-shadow:0 1px 3px rgba(0,0,0,.04)">
+        <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#9B9590;margin-bottom:14px">Where the accounts differ</div>
+        <div style="font-size:16px;font-weight:700;color:#1A1916;margin-bottom:16px">Definition of success</div>
+
+        <div style="border-left:2px solid #E2E0DB;padding-left:16px;margin-bottom:14px">
+          <p style="font-size:14.5px;color:#1A1916;line-height:1.65;margin:0 0 4px">Success is the completion of weekly tasks. Finishing an item on the list, closing a set of open questions.</p>
+          <p style="font-size:12px;color:#9B9590;margin:0">most of the team</p>
+        </div>
+        <div style="border-left:2px solid #E2E0DB;padding-left:16px;margin-bottom:14px">
+          <p style="font-size:14.5px;color:#1A1916;line-height:1.65;margin:0 0 4px">Success is one strategic outcome: a stable v1 used by at least one major partner by the end of Q3.</p>
+          <p style="font-size:12px;color:#9B9590;margin:0">one person</p>
+        </div>
+        <div style="border-left:2px solid #E2E0DB;padding-left:16px;margin-bottom:22px">
+          <p style="font-size:14.5px;color:#1A1916;line-height:1.65;margin:0 0 4px">Has not set quarterly goals at all, and expects to be measured on weekly actions instead.</p>
+          <p style="font-size:12px;color:#9B9590;margin:0">one person</p>
+        </div>
+
+        <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#9B9590;margin-bottom:8px">The question this turns on</div>
+        <p style="font-size:14.5px;color:#1A1916;line-height:1.7;margin:0 0 20px">What single outcome for the quarter would connect the strategic goal to the work being tracked day to day, and what evidence would show it had been reached?</p>
+
+        <div style="border-top:1px solid #F0EEE9;padding-top:16px;display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap">
+          <span style="font-size:13px;color:#6B6560">Agreed: documents delivered, ownership recorded in writing, open questions closed week by week.</span>
+          <span style="font-size:13px;font-weight:700;color:#0C447C;white-space:nowrap">3 agreed, 1 still open</span>
+        </div>
+      </div>
+
+      <p style="font-size:15px;color:#4A5568;line-height:1.8;margin-top:22px">Nobody was withholding anything. Each person answered honestly about their own work. The gap only appears when the accounts are put side by side.</p>
     </div>
   </div>
 
@@ -538,7 +587,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
       <p class="l-sec-label">Why leaders miss problems</p>
       <h2 class="l-sec-h2" style="margin-bottom:18px">Nobody is hiding anything. The story just changes on the way to you.</h2>
       <p style="font-size:15px;color:#4A5568;line-height:1.8;margin-bottom:16px">As the company grows you stop seeing the work yourself. You rely on meetings, written updates, chat, and the managers between you and the people doing it. Each of those is someone's summary, and every summary leaves something out.</p>
-      <p style="font-size:15px;color:#1A1916;line-height:1.9;margin-bottom:16px;font-weight:600">Some people dominate meetings.<br>Some avoid conflict.<br>Some do not feel safe challenging a decision.</p>
+      <!-- 6c: same words, more air. Three separate lines, each given room, so
+           each one lands instead of dissolving into the paragraph. -->
+      <div style="margin:26px 0">
+        <p style="font-size:17px;color:#1A1916;line-height:1.5;margin:0 0 14px;font-weight:600">Some people dominate meetings.</p>
+        <p style="font-size:17px;color:#1A1916;line-height:1.5;margin:0 0 14px;font-weight:600">Some avoid conflict.</p>
+        <p style="font-size:17px;color:#1A1916;line-height:1.5;margin:0;font-weight:600">Some do not feel safe challenging a decision.</p>
+      </div>
       <p style="font-size:15px;color:#4A5568;line-height:1.8;margin-bottom:16px">So the account you get is shaped by who is confident, who was in the room, and what they think you want to hear. Someone explains it brilliantly and delivers poorly. Someone else quietly does excellent work nobody records. Most people are simply trying to do a good job.</p>
       <p style="font-size:15px;color:#4A5568;line-height:1.8;margin-bottom:16px">The result is not a shortage of information. It is that everyone believes they are talking about the same thing, and often they are not. By the time it surfaces, expectations have already moved and the work has already drifted.</p>
       <p style="font-size:15px;color:#4A5568;line-height:1.8;margin:0">Groundwork gives managers and teams a better way to work through these moments.</p>
@@ -549,7 +604,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
   <div class="l-sec l-fade" style="background:#F5F3EF;border-bottom:1px solid #E2E0DB">
     <div class="l-wrap-sm">
       <p class="l-sec-label">What Groundwork does</p>
-      <h2 class="l-sec-h2" style="margin-bottom:22px">It shows you what meetings miss.</h2>
+      <h2 class="l-sec-h2" style="margin-bottom:14px">It shows you what meetings miss.</h2>
+      <!-- 6a: the signature sentence, moved down out of the hero rather than
+           cut. It was competing with the headline up there; here it opens the
+           section that explains the mechanism. -->
+      <p style="font-size:17px;color:#1A1916;line-height:1.7;margin-bottom:26px;font-weight:500">Every person gives their own independent account. Groundwork compares every account and reveals the differences no meeting can.</p>
       <!-- B3: the independent account leads. It is the actual innovation and
            the reason everything downstream is worth reading, so it goes first
            rather than third. B4: headings say what you get, not what it does. -->
@@ -571,46 +630,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
           <p>Instead of accepting "things are going well", it asks for specifics, examples, and evidence.</p>
         </div>
       </div>
-    </div>
-  </div>
-
-  <!-- B5: SAMPLE REPORT.
-       Every line below is lifted from a real Groundwork report produced in a
-       seven-person "Q3 goals" ground - the agreements, the divergence, and the
-       closing question are the engine's own words, trimmed for length only.
-       Deliberately NOT the tidy three-way date clash a marketing page would
-       invent: what the product actually finds is subtler and more useful. One
-       person was aiming at an outcome while everyone else was aiming at tasks,
-       and nobody had noticed. Note the ending is a QUESTION, because that is
-       what the report produces. It does not hand out instructions. -->
-  <div class="l-sec l-fade" style="border-bottom:1px solid #E2E0DB">
-    <div class="l-wrap-sm">
-      <p class="l-sec-label">What a report looks like</p>
-      <h2 class="l-sec-h2" style="margin-bottom:8px">Every meeting said Q3 was on track.</h2>
-      <p style="font-size:15px;color:#4A5568;line-height:1.8;margin-bottom:22px">Seven people checked in separately. Here is what came back.</p>
-
-      <div style="background:#fff;border:1px solid #E2E0DB;border-radius:12px;padding:22px 24px;box-shadow:0 1px 3px rgba(0,0,0,.04)">
-        <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#9B9590;margin-bottom:12px">Where the accounts differ</div>
-        <div style="font-size:15px;font-weight:700;color:#1A1916;margin-bottom:12px">How Q3 success is defined</div>
-        <div style="border-left:2px solid #E2E0DB;padding-left:14px;margin-bottom:8px">
-          <p style="font-size:14px;color:#1A1916;line-height:1.65;margin:0 0 4px">Success is a specific product outcome: a stable v1 used by at least one major partner by the end of Q3.</p>
-          <p style="font-size:12px;color:#9B9590;margin:0">one person's record</p>
-        </div>
-        <div style="border-left:2px solid #E2E0DB;padding-left:14px;margin-bottom:18px">
-          <p style="font-size:14px;color:#1A1916;line-height:1.65;margin:0 0 4px">Success is the completion of weekly tasks and checklist items. One record states their contribution is measured by "weekly actions" rather than goals they set themselves.</p>
-          <p style="font-size:12px;color:#9B9590;margin:0">the other records</p>
-        </div>
-
-        <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#9B9590;margin-bottom:8px">The question this turns on</div>
-        <p style="font-size:14px;color:#1A1916;line-height:1.7;margin:0 0 18px">What is the relationship between the team's weekly checklist and the goal of delivering a stable v1 for a major partner by the end of Q3?</p>
-
-        <div style="border-top:1px solid #F0EEE9;padding-top:14px;display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap">
-          <span style="font-size:13px;color:#6B6560">Agreed: documents delivered, ownership lines recorded in writing, open questions closed week by week.</span>
-          <span style="font-size:13px;font-weight:700;color:#0C447C;white-space:nowrap">4 agreed, 1 still open</span>
-        </div>
-      </div>
-
-      <p style="font-size:14px;color:#6B6560;line-height:1.8;margin-top:18px">Nobody was withholding anything. Each person answered honestly about their own work. The gap only appears when the accounts are put side by side.</p>
     </div>
   </div>
 
@@ -641,8 +660,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
       <p class="l-sec-label">Who it is for</p>
       <h2 class="l-sec-h2" style="margin-bottom:18px">The same picture goes to everyone in it.</h2>
       <p style="font-size:15px;color:#4A5568;line-height:1.8;margin-bottom:16px">Groundwork is not a way of reporting your team to you. Everyone in a Ground reads the same report, so the person running it can correct course and the people doing the work can correct course themselves, before a small thing turns into an expensive one.</p>
-      <p style="font-size:15px;color:#4A5568;line-height:1.8;margin-bottom:16px">The person running it does see one thing extra: occasional notes suggesting what is worth asking about, when the shape of the record makes a question worth raising. They are prompts for a better conversation, never a verdict, and never anyone's raw answer.</p>
-      <p style="font-size:15px;color:#4A5568;line-height:1.8;margin-bottom:22px">That is also why people answer honestly. A tool that only ever pointed upward would get careful answers, and careful answers make the report worthless to everyone, including you.</p>
+      <p style="font-size:14px;color:#6B6560;line-height:1.75;margin-bottom:26px">The person running it also sees occasional notes on what is worth asking about. Prompts for a better conversation, never a verdict, and never anyone's raw answer.</p>
 
       <div style="background:#F5F3EF;border:1px solid #E2E0DB;border-radius:10px;padding:20px 22px;margin-bottom:22px">
         <div style="font-size:13px;font-weight:700;color:#1A1916;margin-bottom:10px">What your team gets</div>
@@ -851,7 +869,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
       <button onclick="lNav('pricing')"  style="font-size:12px;color:rgba(255,255,255,.38);background:none;border:none;cursor:pointer;font-family:var(--font)">Pricing</button>
       <button onclick="lNav('about')"    style="font-size:12px;color:rgba(255,255,255,.38);background:none;border:none;cursor:pointer;font-family:var(--font)">About</button>
     </div>
-    <div style="font-size:11px;color:rgba(255,255,255,.22)">© 2025 Groundwork</div>
+    <div style="font-size:11px;color:rgba(255,255,255,.22)">© 2026 Groundwork</div>
   </div>
 </footer>
 
