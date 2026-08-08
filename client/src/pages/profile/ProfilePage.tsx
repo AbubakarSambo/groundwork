@@ -22,14 +22,21 @@ export function ProfilePage() {
           {initials}
         </div>
         <div style={{ fontSize: 18, fontWeight: 700, color: 'white', marginBottom: 3 }}>{name}</div>
-        <div style={{ fontSize: 12, color: 'rgba(255,255,255,.55)' }}>Groundwork verified contributor</div>
+        {/* "Groundwork verified contributor" asserted a status with nothing
+              behind it - no verification exists, and nothing on this page is
+              fetched. */}
+        <div style={{ fontSize: 12, color: 'rgba(255,255,255,.55)' }}>{user?.email}</div>
         <div style={{ fontSize: 12, color: 'rgba(255,255,255,.4)', marginTop: 4 }}>No completed grounds yet</div>
       </div>
 
       <div className="gw-bd">
         <div style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', padding: 24, background: 'var(--gw-bg)', borderRadius: 8, border: '0.5px solid var(--gw-border)', marginBottom: 20 }}>
-          <div style={{ fontWeight: 600, color: 'var(--gw-text)', marginBottom: 6 }}>Your record starts here</div>
-          Each closed ground adds a verified entry to your profile. Complete a ground to see your first record appear here.
+          {/* This said "Each closed ground adds a verified entry to your
+              profile", and this page fetches nothing at all - there is no
+              cross-ground history endpoint, so no entry has ever appeared for
+              anyone. Describe where the record actually lives. */}
+          <div style={{ fontWeight: 600, color: 'var(--gw-text)', marginBottom: 6 }}>Your record lives in your grounds</div>
+          Each ground keeps its own record of what you contributed, and stays open to you after it closes. A profile that gathers them in one place is not built yet.
         </div>
 
         {/* The "What does Two-party confirmed mean?" explainer used to sit here

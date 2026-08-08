@@ -74,7 +74,12 @@ export function PricingPage() {
                 Create up to 10 Grounds for free. No card required. Unlimited sessions and reports on every Ground.
               </p>
               <ul style={{ fontSize: 12, color: 'var(--gw-sub)', paddingLeft: 16, margin: 0, lineHeight: 1.8 }}>
-                {['10 Grounds', 'Unlimited sessions', 'Unlimited reports', 'Admin dashboard', 'Templates'].map((f) => (
+                {/* "Templates" was listed here and on the marketing pricing page. There
+                    is no templates feature anywhere in the product - the only
+                    match in the codebase is "More templates" in a feature-REQUEST
+                    list. A free-tier bullet nobody can find erodes trust in the
+                    rest of the list. */}
+                {['10 Grounds', 'Unlimited sessions', 'Unlimited reports', 'Admin dashboard'].map((f) => (
                   <li key={f}>{f}</li>
                 ))}
               </ul>
