@@ -489,8 +489,33 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
              and programmes, not only teams. -->
         <p class="l-hero-problem" style="font-size:15px;color:rgba(255,255,255,0.62);line-height:1.7;margin:0 auto 18px;max-width:560px">Meetings only tell you part of the story. Updates get filtered. People remember things differently. By the time a problem reaches you, it has usually been growing for weeks.</p>
         <h1 class="l-hero-h1" style="min-height:auto;line-height:1.15;letter-spacing:-.02em;margin:6px 0 10px;font-size:38px">Know what's really happening.</h1>
-        <p style="font-size:19px;color:rgba(255,255,255,0.88);font-weight:500;line-height:1.5;margin:0 auto 20px;max-width:560px">Even when you're not in the room.</p>
+        <!-- B1: three subheads, rotated per visitor and held for that visitor.
+             The second and third deliberately reframe the first away from any
+             "I am watching you" reading. MEASUREMENT IS NOT WIRED: the site has
+             no analytics and the only endpoint it can reach is /feedback, whose
+             payload is a fixed enum with nowhere to record a variant. This
+             rotates honestly; it does not yet report. -->
+        <p id="l-subhead" style="font-size:19px;color:rgba(255,255,255,0.88);font-weight:500;line-height:1.5;margin:0 auto 14px;max-width:560px">Even when you're not in the room.</p>
+        <!-- B10: the defuser, adjacent to the headline so it answers the
+             surveillance fear at the moment it fires, not six sections later. -->
+        <p style="font-size:15px;color:rgba(255,255,255,0.66);line-height:1.65;margin:0 auto 20px;max-width:560px">Not by watching your team. By giving everyone a place to say what is really going on, privately, and showing where those accounts line up and where they do not.</p>
         <p style="font-size:16px;color:rgba(255,255,255,0.78);line-height:1.65;margin:0 auto 24px;max-width:580px;border-top:1px solid rgba(255,255,255,.12);padding-top:18px">Every person gives their own independent account. Groundwork compares every account and reveals the differences no meeting can.</p>
+        <script is:inline>
+          (function () {
+            var VARIANTS = [
+              "Even when you're not in the room.",
+              "By finally hearing everyone.",
+              "Without relying on the loudest voice in the room.",
+            ];
+            try {
+              var k = 'gw_subhead_variant';
+              var v = localStorage.getItem(k);
+              if (v === null) { v = String(Math.floor(Math.random() * VARIANTS.length)); localStorage.setItem(k, v); }
+              var el = document.getElementById('l-subhead');
+              if (el && VARIANTS[+v]) el.textContent = VARIANTS[+v];
+            } catch (e) { /* no storage: the server-rendered first variant stands */ }
+          })();
+        </script>
         <div class="l-sw-lead">Start well</div>
         <div class="l-startwell">
           <div class="l-sw-step"><span class="l-sw-n">1</span><p>Create a Ground by setting the context, objectives and expectations.</p></div>
@@ -586,6 +611,57 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
       </div>
 
       <p style="font-size:14px;color:#6B6560;line-height:1.8;margin-top:18px">Nobody was withholding anything. Each person answered honestly about their own work. The gap only appears when the accounts are put side by side.</p>
+    </div>
+  </div>
+
+  <!-- B11: ONE highlighted callout, and only one. The sentence that explains
+       WHY privacy produces value is the strongest trust-builder on the page, so
+       it gets its own frame rather than a buried line. Deliberately not stacked
+       with more reassurance: a wall of defensiveness loses the reader before
+       they understand the product. The fuller "what it is not" detail sits
+       lower, for the person who scrolls looking for it. -->
+  <div class="l-sec l-fade" style="border-bottom:1px solid #E2E0DB">
+    <div class="l-wrap-sm">
+      <div style="background:#EEF4FB;border:1px solid #C5D9EF;border-left:3px solid #0C447C;border-radius:10px;padding:22px 24px">
+        <p style="font-size:17px;color:#0A1628;line-height:1.7;margin:0;font-weight:500">Groundwork never shares individual answers. It only shares the picture that emerges when everyone's independent accounts are compared. That is why people tell the truth, and why the reports are useful.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- B10: mutual course-correction. Architecturally true, and checked before
+       writing: the board's read guard admits ANY party to the ground, not only
+       the initiator, so every person sees the same picture. The contribution
+       card's `position` field is typed `null` - it cannot hold a score. Neither
+       the board nor the report ever reads a conversation turn, so raw answers
+       cannot reach a shared surface. The synthesis prompts carry an explicit
+       "never quote or name anyone". No model in the schema records presence,
+       last-active or any measure of time spent. -->
+  <div class="l-sec l-fade">
+    <div class="l-wrap-sm">
+      <p class="l-sec-label">Who it is for</p>
+      <h2 class="l-sec-h2" style="margin-bottom:18px">The same picture goes to everyone in it.</h2>
+      <p style="font-size:15px;color:#4A5568;line-height:1.8;margin-bottom:16px">Groundwork is not a way of reporting your team to you. Everyone in a Ground reads the same report, so the person running it can correct course and the people doing the work can correct course themselves, before a small thing turns into an expensive one.</p>
+      <p style="font-size:15px;color:#4A5568;line-height:1.8;margin-bottom:22px">That is also why people answer honestly. A tool that only ever pointed upward would get careful answers, and careful answers make the report worthless to everyone, including you.</p>
+
+      <div style="background:#F5F3EF;border:1px solid #E2E0DB;border-radius:10px;padding:20px 22px;margin-bottom:22px">
+        <div style="font-size:13px;font-weight:700;color:#1A1916;margin-bottom:10px">What your team gets</div>
+        <ul style="font-size:14px;color:#4A5568;line-height:1.9;margin:0;padding-left:20px">
+          <li>a place to say what is actually going on, without saying it to someone's face</li>
+          <li>the quiet contributor's work on the record, not just the confident account of it</li>
+          <li>a blocker heard while it still matters, instead of after the deadline</li>
+          <li>the same picture the person running it has</li>
+        </ul>
+      </div>
+
+      <div style="border:1px solid #E2E0DB;border-radius:10px;padding:20px 22px">
+        <div style="font-size:13px;font-weight:700;color:#1A1916;margin-bottom:10px">What Groundwork is not</div>
+        <ul style="font-size:14px;color:#4A5568;line-height:1.9;margin:0;padding-left:20px">
+          <li>It does not monitor activity, screen time, or who is online. It holds no record of any of them.</li>
+          <li>It does not score, rank, or rate anyone. There is no number attached to a person anywhere in it.</li>
+          <li>It never shows anyone's raw answers, to you or to anyone else.</li>
+          <li>It never says who said what about whom.</li>
+        </ul>
+      </div>
     </div>
   </div>
 
