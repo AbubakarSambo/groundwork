@@ -5,10 +5,9 @@ import { groundsApi } from '@/api/grounds'
 import { authApi } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
 import type { Ground } from '@/types'
+import { alignmentLabel } from '@/lib/alignment'
 import { toast } from 'sonner'
 
-const BANDS = ['', 'Unresolved', 'Mixed', 'Emerging', 'Clear', 'Aligned']
-function bandLabel(score?: number) { return BANDS[score ?? 1] ?? 'Unresolved' }
 
 const MODE_COLORS: Record<string, { bg: string; color: string }> = {
   Starting:       { bg: '#E8F8F5', color: '#085041' },
@@ -21,8 +20,9 @@ const MODE_COLORS: Record<string, { bg: string; color: string }> = {
 }
 
 function GroundCard({ g, onClick }: { g: Ground; onClick: () => void }) {
-  const score = g.confidence ?? 1
-  const bl = bandLabel(score)
+  // What the report holds, or nothing. The old "{score}/5 {band}" was a count
+  // of completed check-ins wearing the word "Aligned".
+  const read = alignmentLabel((g as any).alignment)
   const mc = MODE_COLORS[g.moment ?? ''] ?? MODE_COLORS['Resolution']
   return (
     <div className="gw-ground-card" onClick={onClick}>
@@ -35,8 +35,9 @@ function GroundCard({ g, onClick }: { g: Ground; onClick: () => void }) {
           </div>
         </div>
         <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 12 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-navy)' }}>{score}/5</div>
-          <div style={{ fontSize: 11, color: 'var(--gw-sub)' }}>{bl}</div>
+          {read
+            ? <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--gw-navy)', textAlign: 'right', maxWidth: 132, lineHeight: 1.35 }}>{read}</div>
+            : <div style={{ fontSize: 11, color: 'var(--gw-muted)', textAlign: 'right' }}>No read yet</div>}
         </div>
       </div>
       {g.brief && <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5, marginBottom: 10 }}>{g.brief}</div>}

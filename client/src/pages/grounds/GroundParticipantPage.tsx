@@ -9,19 +9,11 @@ import { documentsApi } from '@/api/documents'
 import { conversationApi } from '@/api/conversation'
 import { apiClient } from '@/api/client'
 import { participantLabel } from '@/lib/utils'
+import { alignmentLabel } from '@/lib/alignment'
 import { toast } from 'sonner'
 import { ResolutionPanel } from '@/components/gw/ResolutionPanel'
 
-const BANDS = ['', 'Unresolved', 'Mixed', 'Emerging', 'Clear', 'Aligned']
-function bandLabel(score?: number) { return BANDS[Math.min(Math.round(score ?? 1), 5)] ?? 'Unresolved' }
 
-function confidenceDescription(conf: number): string {
-  if (conf <= 1) return 'Just started. One more session will begin to show the picture.'
-  if (conf <= 2) return 'Building. Both parties are on record for the first time.'
-  if (conf <= 3) return 'Strong enough to generate a report.'
-  if (conf <= 4) return 'High confidence. Multiple sessions cross-referenced.'
-  return 'Full depth. Record is verifiable and complete.'
-}
 
 function timeAgo(date: string | Date): string {
   const ms = Date.now() - new Date(date).getTime()
@@ -243,8 +235,7 @@ export function GroundParticipantPage() {
   if (isLoading) return <div style={{ minHeight: '100vh', background: '#F5F3EF', padding: 24, fontSize: 13, color: '#9B9590' }}>Loading…</div>
   if (!ground) return <div style={{ minHeight: '100vh', background: '#F5F3EF', padding: 24, fontSize: 13, color: '#9B9590' }}>Ground not found.</div>
 
-  const conf = ground.confidence ?? 1
-  const bl = bandLabel(conf)
+  const alignRead = alignmentLabel((ground as any).alignment)
   const myParticipant = (ground.participants ?? []).find((p: any) => p.userId === user?.id)
 
   if (!myParticipant) {
@@ -360,18 +351,25 @@ export function GroundParticipantPage() {
               </div>
             )}
 
-            {/* Ground confidence */}
+            {/* Where the accounts stand.
+                This was "Ground confidence", a 5-dot meter over "{conf}/5
+                Aligned" - all of it computed from how many check-ins had
+                happened. A participant reading it had no way to know it said
+                nothing about whether anyone agreed. */}
             <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '14px 16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: '#9B9590' }}>Ground confidence</div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: '#0C447C' }}>{conf}/5 <span style={{ fontSize: 12, fontWeight: 600, color: '#6B6560' }}>{bl}</span></div>
-              </div>
-              <div style={{ display: 'flex', gap: 3, marginBottom: 8 }}>
-                {[1,2,3,4,5].map(i => (
-                  <div key={i} style={{ flex: 1, height: 4, borderRadius: 2, background: i <= conf ? '#0C447C' : '#E2E0DB' }} />
-                ))}
-              </div>
-              <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.5 }}>{confidenceDescription(conf)}</div>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: '#9B9590', marginBottom: 6 }}>Where the accounts stand</div>
+              {alignRead ? (
+                <>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: '#0C447C', marginBottom: 4 }}>{alignRead}</div>
+                  <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.5 }}>
+                    From the areas the report names. An open area is something to talk about, not a mark against anyone.
+                  </div>
+                </>
+              ) : (
+                <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.5 }}>
+                  No read yet. The report has not named an area the accounts agree or differ on.
+                </div>
+              )}
             </div>
 
             {/* My record quality (if has check-ins) */}
@@ -475,24 +473,19 @@ export function GroundParticipantPage() {
               </div>
             )}
 
-            {/* Alignment map */}
-            {completedCheckIns.length >= 1 && (
+            {/* This was an "Alignment map": a five-bar ladder from Unresolved
+                to Aligned that filled up as check-ins accumulated, over the
+                line "Currently at Aligned after 10 sessions." Nothing in it
+                measured agreement. A ladder that fills with attendance is worse
+                than no ladder, because it reads as progress toward a verdict.
+                What replaces it says only what the report names, and says
+                nothing when the report names nothing. */}
+            {completedCheckIns.length >= 1 && alignRead && (
               <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '14px 16px' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: '#9B9590', marginBottom: 10 }}>Alignment map</div>
-                <div style={{ display: 'flex', gap: 3, marginBottom: 10 }}>
-                  {[1,2,3,4,5].map(i => {
-                    const bandIndex = Math.min(Math.round(conf), 5)
-                    return (
-                      <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-                        <div style={{ width: '100%', height: 28, borderRadius: 4, background: i <= bandIndex ? '#0C447C' : '#E2E0DB', opacity: i <= bandIndex ? (0.4 + i * 0.12) : 1 }} />
-                        <div style={{ fontSize: 9, color: '#9B9590', textAlign: 'center', lineHeight: 1.2 }}>{BANDS[i]}</div>
-                      </div>
-                    )
-                  })}
-                </div>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: '#9B9590', marginBottom: 8 }}>Where the accounts stand</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#0C447C', marginBottom: 4 }}>{alignRead}</div>
                 <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.5 }}>
-                  Currently at <strong>{bl}</strong> after {completedCheckIns.length} session{completedCheckIns.length !== 1 ? 's' : ''}.
-                  {conf < 3 ? ' More sessions will sharpen the picture.' : ' Strong enough to generate a full report.'}
+                  Counted from the areas this report names, after {completedCheckIns.length} session{completedCheckIns.length !== 1 ? 's' : ''}.
                 </div>
               </div>
             )}

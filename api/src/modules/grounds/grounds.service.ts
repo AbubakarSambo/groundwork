@@ -68,6 +68,31 @@ export const SAFE_PARTICIPANT_SELECT = {
   user: { select: { firstName: true, lastName: true } },
 } as const;
 
+/**
+ * What the parties actually agree on, and what is still open.
+ *
+ * The ground's old "confidence" was min(5, completedCheckIns) rendered as
+ * "5/5 Aligned". It measured ACTIVITY, not agreement, and could not tell the
+ * two apart: an advisor ground with five real agreements and zero divergences
+ * scored identically to a performance-improvement plan whose report contained
+ * nothing at all, which told both parties on a formal process that they were
+ * fully aligned.
+ *
+ * This reads the only place agreement is actually recorded - the report's own
+ * `agreements` and `divergences`. When neither holds anything there is nothing
+ * to say, and it returns null so the surface shows no read rather than
+ * rounding an empty record up to a score.
+ */
+export function alignmentRead(report: { agreements?: unknown; divergences?: unknown } | null | undefined):
+  { agreed: number; open: number } | null {
+  if (!report) return null;
+  const count = (v: unknown) => (Array.isArray(v) ? v.length : 0);
+  const agreed = count(report.agreements);
+  const open = count(report.divergences);
+  if (agreed + open === 0) return null;
+  return { agreed, open };
+}
+
 @Injectable()
 export class GroundsService {
   private readonly logger = new Logger(GroundsService.name);
@@ -515,7 +540,7 @@ export class GroundsService {
         },
         // A released report that nobody is told about is a report nobody reads.
         // Ten grounds released theirs and not one person ever activated.
-        report: { select: { releasedAt: true } },
+        report: { select: { releasedAt: true, agreements: true, divergences: true } },
         reportActivations: { select: { participantId: true, status: true } },
       },
     });
@@ -545,7 +570,7 @@ export class GroundsService {
             checkIns: {
               select: { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, createdAt: true },
             },
-            report: { select: { releasedAt: true } },
+            report: { select: { releasedAt: true, agreements: true, divergences: true } },
             reportActivations: { select: { participantId: true, status: true } },
           },
         });
@@ -556,7 +581,7 @@ export class GroundsService {
       .map(g => {
         const checkIns = g.checkIns;
         const completedCount = checkIns.filter(ci => ci.status === CheckInStatus.COMPLETED).length;
-        const confidence = completedCount > 0 ? Math.min(5, Math.max(1, completedCount)) : undefined;
+        const alignment = alignmentRead((g as any).report);
         const overdue = checkIns.filter(ci => ci.status === CheckInStatus.NOT_STARTED && ci.createdAt < threeDaysAgo).length;
         const checkInsToday = checkIns.filter(ci => ci.status === CheckInStatus.COMPLETED && ci.completedAt != null && ci.completedAt >= todayStart).length;
         const lastCompletion = checkIns
@@ -582,7 +607,7 @@ export class GroundsService {
         const reportWaitingForMe = !!mine && !!(g as any).report?.releasedAt && !activated;
 
         const { reportActivations: _drop, ...rest } = g as any;
-        return { ...rest, confidence, overdue, checkInsToday, lastActivity, reportWaitingForMe };
+        return { ...rest, alignment, overdue, checkInsToday, lastActivity, reportWaitingForMe };
       })
       .sort((a, b) => new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime());
   }
@@ -630,8 +655,7 @@ export class GroundsService {
     if (!ground) throw new NotFoundException('Ground not found');
 
     // Computed display fields - derived here so the client never needs to repeat the logic.
-    const completedCount = (ground.checkIns ?? []).filter((ci) => ci.status === CheckInStatus.COMPLETED).length;
-    const confidence = Math.min(5, Math.max(1, completedCount || 1));
+    const alignment = alignmentRead((ground as any).report);
 
     const daysLeft =
       ground.timelineDays != null
@@ -778,7 +802,7 @@ export class GroundsService {
       ...rest,
       joinToken: mayShareJoinLink ? (rest as any).joinToken ?? null : null,
       participants: participantsWithCheckIns,
-      confidence,
+      alignment,
       daysLeft,
       brief,
       signals,

@@ -7,6 +7,7 @@ import { groundsApi } from '@/api/grounds'
 import { useEntryStore } from '@/stores/entry'
 import { useFeedbackStore } from '@/stores/feedback'
 import type { Ground } from '@/types'
+import { alignmentShort } from '@/lib/alignment'
 
 const NAV_ITEMS = [
   {
@@ -509,21 +510,21 @@ export function AppSidebar() {
                       </div>
                     )}
 
-                    {/* Confidence + sessions */}
+                    {/* What the report holds, and how far along we are.
+                        This used to read "4/5 aligned · 13/13 sessions" - and
+                        the first number was a count of completed check-ins, not
+                        a measure of agreement. When there is no read yet, the
+                        sessions stand alone rather than being padded with a
+                        score nothing supports. */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                      {g.confidence != null && (
-                        // "100% · 13/13 sessions" read as "100% complete, 13 of
-                        // 13 done" - two unrelated numbers joined by a dot. The
-                        // percentage is alignment CONFIDENCE, which is why a
-                        // one-session ground could show "40% · 1/1". Say which
-                        // is which.
-                        <span style={{ fontSize: 11, color: 'rgba(255,255,255,.45)' }}>
-                          {g.confidence}/5 aligned · {sessions}{maxSessions ? `/${maxSessions}` : ''} sessions
-                        </span>
-                      )}
-                      {g.confidence == null && (
-                        <span style={{ fontSize: 11, color: 'rgba(255,255,255,.35)' }}>{sessions}{maxSessions ? `/${maxSessions}` : ''} sessions</span>
-                      )}
+                      {(() => {
+                        const read = alignmentShort((g as any).alignment)
+                        return (
+                          <span style={{ fontSize: 11, color: `rgba(255,255,255,${read ? '.45' : '.35'})` }}>
+                            {read ? `${read} · ` : ''}{sessions}{maxSessions ? `/${maxSessions}` : ''} sessions
+                          </span>
+                        )
+                      })()}
                       <GroundStatusBadge status={g.status} />
                     </div>
                   </NavLink>

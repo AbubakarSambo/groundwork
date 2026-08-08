@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/auth'
 import { groundsApi, type GroundCadence } from '@/api/grounds'
 import { TIMED_CADENCES, sessionsFor } from '@/lib/cadence'
 import { participantLabel } from '@/lib/utils'
+import { alignmentLabel } from '@/lib/alignment'
 import { reportsApi } from '@/api/reports'
 import { documentsApi } from '@/api/documents'
 import { conversationApi } from '@/api/conversation'
@@ -40,16 +41,7 @@ const MOMENT_LABELS: Record<string, string> = {
   RESOLUTION: 'Resolution',
 }
 
-const BANDS = ['', 'Unresolved', 'Mixed', 'Emerging', 'Clear', 'Aligned']
-function bandLabel(score?: number) { return BANDS[score ?? 1] ?? 'Unresolved' }
 
-const CONF_DESC: Record<number, string> = {
-  1: 'One account only. The other party is needed.',
-  2: 'Two accounts. Picture is forming.',
-  3: 'Three sessions. Pattern visible but not confirmed.',
-  4: 'Four sessions. Evidence strong. Recommendation defensible.',
-  5: 'Five sessions. Full picture. High confidence.',
-}
 
 type Tab = 'overview' | 'checkins' | 'docs' | 'report' | 'settings'
 type ReportSession = 's1' | 's2' | 'closing'
@@ -266,8 +258,9 @@ export function GroundAdminPage() {
     )
   }
 
-  const conf = ground.confidence ?? 1
-  const bl = bandLabel(conf)
+  // The report's own read, or nothing at all. "{conf}/5 {band}" counted
+  // completed check-ins and called the result "Aligned".
+  const alignRead = alignmentLabel((ground as any).alignment)
 
   // Distinct session numbers that are finished, against the plan. Counting
   // check-in rows would say "26 sessions" for a 13-session two-party ground.
@@ -310,8 +303,9 @@ export function GroundAdminPage() {
             </button>
           )}
           <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--gw-navy)' }}>{conf}/5</div>
-            <div style={{ fontSize: 11, color: 'var(--gw-sub)' }}>{bl}</div>
+            {alignRead
+              ? <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', maxWidth: 160, lineHeight: 1.35 }}>{alignRead}</div>
+              : <div style={{ fontSize: 11, color: 'var(--gw-sub)' }}>No read yet</div>}
           </div>
         </div>
 
@@ -834,11 +828,25 @@ export function GroundAdminPage() {
         {/* REPORT */}
         {tab === 'report' && (
           <div>
-            {/* Confidence band header */}
+            {/* What the accounts actually agree on. This was a big "4/5" over
+                a band name over a canned description - all three derived from
+                the number of completed check-ins. */}
             <div style={{ textAlign: 'center', padding: '20px 0 16px' }}>
-              <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--gw-navy)' }}>{conf}/5</div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--gw-sub)', marginTop: 2 }}>{bl}</div>
-              <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 4 }}>{CONF_DESC[conf] ?? ''}</div>
+              {alignRead ? (
+                <>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--gw-navy)' }}>{alignRead}</div>
+                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 4 }}>
+                    Counted from the areas this report names, not from how many check-ins have happened.
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--gw-sub)' }}>No read yet</div>
+                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 4 }}>
+                    The report has not named an area the accounts agree or differ on.
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Session switcher */}

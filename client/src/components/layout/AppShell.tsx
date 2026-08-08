@@ -3,7 +3,6 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/auth'
 import { groundsApi } from '@/api/grounds'
-import { ConfDots } from '@/components/ConfDots'
 import { participantLabel } from '@/lib/utils'
 import type { Ground } from '@/types'
 
@@ -171,7 +170,12 @@ export function AppShell({ children }: AppShellProps) {
                       {parties(g)}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                      <ConfDots score={g.confidence} />
+                      {/* `confidence` is gone: it was min(5, completedCheckIns)
+                          dressed up as a five-dot alignment score. This shell is
+                          not mounted anywhere (App.tsx uses components/gw/AppShell),
+                          so rather than invent a dot rendering for the honest read,
+                          the dots are simply dropped. If this file is ever revived,
+                          use alignmentShort() from @/lib/alignment. */}
                       <span style={{ fontSize: 10, color: 'var(--gw-muted)' }}>{STATUS_WORD[g.status] ?? g.status.toLowerCase()}</span>
                     </div>
                   </div>
