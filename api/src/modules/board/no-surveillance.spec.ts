@@ -100,3 +100,31 @@ describe('"the same picture goes to everyone in it"', () => {
     expect(board).toMatch(/if \(!me && !isInitiator/);
   });
 });
+
+describe('the one asymmetry, named rather than hidden', () => {
+  it('keeps the arc advisory a prompt, and keeps raw answers out of it', () => {
+    // PART 3 FINDING. Two-party Grounds are symmetric in almost everything: the
+    // same report body, the same board, neither party controlling the other's
+    // visibility. One exception exists and it is deliberate - `arcAdvisories`
+    // reaches only the initiator, carrying the other party's id and a note that
+    // the record's SHAPE is worth asking about.
+    //
+    // It fired zero times across ten grounds and 265 check-ins, so it is rare.
+    // It still matters, because a cofounder Ground only works if neither side
+    // believes the other set the tool up to build a case. The site now says
+    // this out loud rather than claiming perfect symmetry.
+    //
+    // What must stay true: it is a QUESTION to ask, never a verdict, and it
+    // never carries anything the person actually wrote.
+    const reports = readFileSync(
+      join(__dirname, '..', '..', '..', 'src/modules/reports/reports.service.ts'), 'utf8',
+    );
+    const i = reports.indexOf('arcAdvisories');
+    expect(i).toBeGreaterThan(-1);
+    const block = reports.slice(reports.indexOf('const advisories'), i + 400);
+    expect(block).toMatch(/Worth asking about/);
+    expect(block).not.toMatch(/recordEntry|conversationTurn|\.text\b/);
+    // And it is stripped for everyone else.
+    expect(reports).toMatch(/if \(!isInitiator && !isOrgAdmin\) \{\s*\n\s*delete base\.arcSignals;/);
+  });
+});

@@ -248,7 +248,7 @@ export const SITUATION_CARDS = [
   {
     group: 'planning',
     label: 'Setting shared goals',
-    detail: "A team agreeing on what matters most this period, so effort doesn't spread in different directions.",
+    detail: "A team agreeing on what matters most this period, each person's own view, not just the room's consensus, so effort doesn't spread in different directions.",
     message: 'We are setting shared goals for this period and I want everyone aligned on what matters most.',
     timelineHint: 'typically 90 days',
     examples: [
@@ -270,11 +270,11 @@ export const SITUATION_CARDS = [
   {
     group: 'negative',
     label: "Someone's work is off track",
-    detail: 'Deadlines or expectations are slipping, and you want the exact gap named before the conversation.',
+    detail: "Deadlines or expectations are slipping. Both of you give your honest account of what's happening, so the conversation starts from the same facts, not one side's version.",
     message: 'A team member is not delivering and I need to address it. I want to make sure I have the full picture before we talk.',
     timelineHint: 'typically 90 days',
     examples: [
-      'A senior hire is not delivering what they were brought in to do.',
+      "A senior hire's delivery is slipping and you both want the real picture before the conversation.",
       'Deadlines keep slipping and you want the specific gap named before the conversation.',
       'You are putting someone on a formal improvement plan and want both sides on the concern and what good looks like.',
     ],
@@ -293,12 +293,12 @@ export const SITUATION_CARDS = [
   {
     group: 'negative',
     label: 'You and someone see it differently',
-    detail: 'Close the gap before it grows. Each of you gives your honest read first.',
+    detail: 'From working off different priorities to a real rift between partners. Each of you gives your honest read first, so you start from the same picture instead of resentment, and close the gap before it grows.',
     message: 'I need to realign with a team member. I think we see the current situation differently and want to get both our accounts on record.',
     timelineHint: 'typically 60 days',
     examples: [
       'Priorities shifted and you two are working off different ideas of what matters now.',
-      'You and a co-founder or partner see contributions or direction differently and want both accounts first.',
+      "You and your cofounder are quietly at odds over who's carrying more, and neither of you has said it.",
     ],
   },
 
@@ -334,8 +334,11 @@ export const SITUATION_CARDS = [
     message: 'We are onboarding a group of people into the same role at the same time and I want to see how each of them is doing without them swaying each other.',
     timelineHint: 'typically 90 days',
     examples: [
+      // Visible slot first. A new starter opening this should not meet the word
+      // "probation"; the leader running one still finds the card, and the
+      // example below still names it.
+      'Several people starting the same role and you want to see how each is settling in.',
       'A cohort of managers hired to run clinics, on a three-month probation.',
-      'Several field officers who start together and do not work with each other.',
     ],
   },
   {
@@ -400,7 +403,7 @@ export const SITUATION_CARDS = [
     message: 'A contract is coming up for renewal and I want both sides to give an honest account of how the term went before we agree the next one.',
     timelineHint: 'typically two weeks',
     examples: [
-      'A contractor whose term is ending and you are unsure whether to renew.',
+      'A contractor whose term is ending and both of you want an honest account of how it went.',
       'A renewal where you and they would describe the last year differently.',
     ],
   },
