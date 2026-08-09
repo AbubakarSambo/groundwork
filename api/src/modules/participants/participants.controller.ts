@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Param, Query, Body } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Param, Query, Body, Req } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { IsString, IsNotEmpty, IsOptional, MaxLength, Length } from 'class-validator';
 import { ParticipantsService } from './participants.service';
@@ -34,20 +34,6 @@ class UpdateEmailDto {
   email: string;
 }
 
-class SaveIntakeDto {
-  @IsOptional() @IsString() @MaxLength(4000) foundingIntent?: string;
-  @IsOptional() @IsString() @MaxLength(4000) roleIntent?: string;
-  @IsOptional() @IsString() @MaxLength(4000) personalIntent?: string;
-  @IsOptional() @IsString() @MaxLength(4000) exitIntent?: string;
-  @IsOptional() @IsString() @MaxLength(4000) compensationAsk?: string;
-  @IsOptional() @IsString() @MaxLength(4000) autonomyAsk?: string;
-  @IsOptional() @IsString() @MaxLength(4000) recognitionAsk?: string;
-  @IsOptional() @IsString() @MaxLength(4000) growthAsk?: string;
-  @IsOptional() @IsString() @MaxLength(4000) relationshipAsk?: string;
-  @IsOptional() @IsString() @MaxLength(4000) financialFloor?: string;
-  @IsOptional() @IsString() @MaxLength(4000) stressTolerance?: string;
-  @IsOptional() @IsString() @MaxLength(4000) relationalTolerance?: string;
-}
 
 @ApiTags('Participants')
 @Controller('participants')
@@ -64,8 +50,20 @@ export class ParticipantsController {
   @Public()
   @Post('accept')
   @ApiOperation({ summary: 'Accept an invite - returns an auth token and the check-in to enter' })
-  async accept(@Body() dto: AcceptInviteDto) {
-    return this.participants.accept(dto.token, { firstName: dto.firstName, lastName: dto.lastName });
+  async accept(@Body() dto: AcceptInviteDto, @Req() req: any) {
+    /**
+     * Who is asking, if anyone.
+     *
+     * An accepted invite mints no session on its own. It resumes only for the
+     * participant's own signed-in browser - the session they got when they
+     * joined - and that is what this carries. The route stays public: a first-time
+     * joiner has no session, and requiring one would defeat the invite entirely.
+     */
+    return this.participants.accept(
+      dto.token,
+      { firstName: dto.firstName, lastName: dto.lastName },
+      req?.user?.id ?? req?.user?.sub ?? null,
+    );
   }
 
   @ApiBearerAuth()
@@ -90,13 +88,4 @@ export class ParticipantsController {
     return this.participants.updateEmail(id, userId, dto.email);
   }
 
-  @Patch(':checkInId/intake')
-  @ApiOperation({ summary: 'Save cofounder pre-check-in intake fields (owner-scoped by check-in)' })
-  async saveIntake(
-    @Param('checkInId') checkInId: string,
-    @Body() dto: SaveIntakeDto,
-    @CurrentUser('id') userId: string,
-  ) {
-    return this.participants.saveIntake(checkInId, userId, dto);
-  }
 }
