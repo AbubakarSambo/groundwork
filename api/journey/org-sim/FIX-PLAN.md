@@ -470,3 +470,589 @@ These need a test run, not a fix. Listing them so they are not mistaken for pass
 
 **F4 + F1 + F2 is roughly two days** and moves admin value off 6.4 and participant value off
 7.4 more than everything below them combined.
+
+---
+
+# OPEN — from the Ground 1 read-through, 9 August 2026
+
+Everything below came out of reading a finished twelve-session ground as a person
+would, rather than checking whether it rendered. Items marked **Done** were built
+the same day; the rest are open, in the order they are worth doing.
+
+| | Item | Status |
+|---|---|---|
+| G1 | Names, decided by who is reading. The report was written in "the initiator" and "participant A" while the same page named both people three times over. Names are now added back at the read for the reader entitled to them: the lead sees everyone, everyone else sees themselves and the lead. | **Done** |
+| G2 | The court-case voice. Nine of ten alignment entries opened with "The record shows". The prompt now asks for plain sentences and the exact opener is stripped in code. | **Done** |
+| G3 | The lead decides, the hire sees. A new hire was shown "Let them go" and asked to pick it, and the ground could not close until he did. Six scenarios with a subject are now lead-decides; peers still both have to agree. | **Done** |
+| G4 | Say what a participant is. Each person gives their own account of the shared work, including their own part in it. Never a panel assembled to judge someone. | **Done** |
+| G5 | Tell colleagues what they are joining, at the join point and in plain words. | **Done** |
+| G6 | Never count the accounts. "Three of the four described the same delay" is a verdict by arithmetic. Forbidden in the prompt, detected and logged if it slips through. | **Done** |
+| G7 | The board in the tab row rather than one floating pill. | **Done** |
+| G8 | The specificity signal read a record full of numbers as "low". Word-numbers, unanchored month matching, and missing completion words all fixed and measured. | **Done** |
+| **G9** | **Say WHY a record scored the way it did.** A bare "low specificity" tells someone their account was thin without saying what would have made it fuller. The average stays (decided: it is the right summary), but the five dimensions behind it - delivery, evidence, enablement, coverage, commitment - should be shown, so the label becomes something a person can act on rather than a mark. | **Open (S)** |
+| **G10** | **Nothing for the leader to weigh.** The report describes what happened and gives no help deciding. Built from their own words, shown at the close. Full spec below. | **Open (M)** |
+| **G11** | **A fortnightly ground offers its next session immediately.** The cadence is decorative: you can finish a ninety-day ground in an afternoon. Soft gate rather than a hard block - show the date it opens, with a quieter way to start early that is recorded as early. Deliberately deferred until after the eighteen grounds, because gating on dates means the journey needs to simulate time passing, and that is the one simulated element it would have to declare. | **Open (M), parked by decision** |
+| **G12** | **Google, end to end.** The logic is built and tested at the seam, on both the sign-in flow and the entry flow. The handshake itself has never run, because no credentials are configured. Not covered until it has been. | **Blocked on credentials** |
+
+
+## G10 in full: what a leader can weigh, and where it goes
+
+### The problem
+
+A ground is opened to answer a question, usually "should we keep going with this
+person or this work". Twelve weeks later the report tells the story accurately
+and readably, and then the decision is made against prose. Nothing lays out the
+thing actually being decided.
+
+### What it is
+
+One section, built ENTIRELY from words the parties already gave, in three parts:
+
+1. **What you said doing well means.** The lead's own SUCCESS_DEFINITION entries,
+   quoted back. On the ground this came from, that was "I can hand him a messy
+   client problem and not think about it again. Judgement, not just delivery" and
+   "owning at least one client relationship end to end by month three", both
+   recorded twelve weeks before the decision.
+2. **What the record holds on that.** The entries from every account bearing on
+   it.
+3. **What nobody has evidence for.** Parts of the stated definition the record
+   never touched, and claims no other account or artefact supports.
+
+### What can be weighed, and what cannot
+
+Weighable, because each is either the person's own standard or something someone
+put on the record themselves:
+
+- SUCCESS_DEFINITION: the yardstick, from each party separately. The whole point
+  of this ground was that hers said judgement and his said queue.
+- COMMITMENT and TIMEFRAME: what was promised, by when, and what the record says
+  next. Checkable in a way an impression is not.
+- ASK: what someone asked for and never got. His was implicit for six weeks -
+  nobody had told him he could own a client - which is a fact about the manager
+  as much as the hire.
+- TOLERANCE: where a person's line actually is. Most useful exactly at a decision.
+- WORRY, both sides. Hers, that he was not taking ownership. His, that a falling
+  ticket count looked like failure. Neither said it to the other, and that is the
+  most decision-relevant thing in the ground.
+- TENSION: where the work rubbed, in their own words.
+- The divergence and its atStake: what happens to the WORK if this holds.
+- Agreements: where a decision usually already lives.
+- Movement across sessions: session 1 against session 12. Here the change was not
+  gradual; it happened the week she said what she meant.
+
+**Never weighable, and deliberately absent from the screen:**
+
+- The specificity label. It measures how a person WRITES, not how they work.
+  Someone plain-spoken scores low and someone who lists numbers scores high, so
+  using it as a proxy for performance would be exactly the quiet unfairness this
+  product exists to prevent. It belongs to the person as feedback on their own
+  record. See G9.
+- Session counts and participation. Turning up is not contribution, and a report
+  that treated activity as alignment has already been found wrong once.
+- Anything a colleague said, attributed to them. The substance can be weighed;
+  testimony cannot be handed over.
+- The pattern feed as findings. Those are shapes worth asking about, not
+  conclusions.
+
+Express the exclusions BY OMISSION. Do not put a "what not to weigh" list on the
+screen: it draws attention to precisely the thing it warns against.
+
+### Where it goes
+
+**On the overview, at the close, beside the resolution panel.** That is the moment
+it serves, and the decision panel currently has no material next to it.
+
+**Not before the closing round.** The overview is seen every week of a ground. A
+"what to weigh about this person" panel sitting there from week two turns every
+visit into an evaluation exercise and invites a verdict long before the record can
+support one.
+
+**One source, not two.** If it renders on the overview and again in the report
+they will drift, and two versions of "what the record holds" inside a decision
+about someone's job is worse than one. Build it once; render it once.
+
+### Open question for Hafsah, not to be decided in code
+
+**Does the subject see it too?**
+
+Everything in it comes from shared record entries and the lead's own stated
+definition, so there is nothing in it the subject has not effectively seen
+already. For: they learn what the decision was actually measured against, which
+is the fairest version of being assessed. Against: "what your manager is weighing
+about you", read alone the night before a decision, is a heavy thing to hand
+someone with no conversation attached.
+
+A middle option is the same content under a different frame for them, closer to
+"what this ground was measured against" - true, useful, and not addressed at them
+as a subject.
+
+**Recommendation: show them, under the neutral frame.** The premise of the whole
+product is that nobody is assessed from material they cannot see. But this is a
+judgement call about how it lands, not a technical one, so it waits for a decision
+rather than being settled by whoever writes the component.
+
+### Care
+
+- Do not silently reframe the definition. If she said "judgement" and the record
+  holds delivery, delivery must not be presented as evidence of judgement.
+  Wrong-but-tidy is the failure mode.
+- An empty "no evidence for" list means the record does not cover it, never that
+  there is nothing to worry about. Word it so it cannot be read the second way.
+- It informs the decision. It must never become a checklist someone feels obliged
+  to satisfy.
+
+### Why it comes last
+
+It leans on record entries being right, which needed the extraction fix, and on
+the specificity signal being honest, which needed G8. Building it on either while
+broken would bake the error into the thing someone uses to decide about a person's
+job.
+
+
+---
+
+## G37. A ground can be created off a single sentence
+
+Seen live, 9 August 2026, on a clean Ground 1 run. The whole setup conversation:
+
+```
+person:  I have a new hire starting and want to make sure we set clear
+         expectations from the beginning.
+engine:  That's a great way to get things started on the right foot. Who is the
+         new person you'll be working with?
+person:  Abubakar. He's joining as a delivery lead, starting Monday.
+engine:  Thank you. That gives me what I need to set this up for you.
+```
+
+That was the entire thing. The engine never asked her role, never asked why now,
+never asked how long it runs or how often people check in - a rule that was added
+to the prompt earlier the same day and did not fire. The header then read
+**"1 session planned"** on what was meant to be a ninety-day ground.
+
+**Why it happens.** The path buttons appear when `ready` is true, and `ready` is
+`mode && initial && whoInvolved && decision` from an extraction that runs
+alongside each reply. The extraction can fill all four optimistically from one
+sentence, so the gate opens whatever the engine has actually asked. The wrap-up
+instruction and the readiness gate are two different mechanisms and only one of
+them controls the screen.
+
+**Why it matters more than it looks.** Everything downstream is measured against
+what was captured here. A ground built from one sentence has no duration, no
+rhythm, no sense of who else the work depends on, and no stated definition of
+doing well beyond a job title. The report at the end is then asked to support a
+decision about somebody's job.
+
+This is the strongest single argument for section A and B of this plan. It also
+means the readiness gate needs to consult what was ASKED, not only what was
+extracted, or the context interview can be skipped by an optimistic extraction in
+exactly the way the setup conversation just was.
+
+**Open (S for the gate, and section A/B for the rest).**
+
+
+---
+
+# CONTEXT, WORRIES AND PRIVACY
+
+## G38. Open context and closed context, named as such
+
+Two destinations, and naming them makes the rule explainable to a user rather
+than only to us.
+
+**Open context** is the ground's shared page. What this is for, what has to be
+true for it to work, who is in it and why, what everyone can see. Every party
+reads the same thing.
+
+**Closed context** is the lead's own. Their read of the situation, what they are
+worried about, the things that should shape what gets probed. It never appears in
+a report, is never quoted, and is never attributed to anyone.
+
+The precedent already exists: the synthesis prompt treats lead-supplied context as
+direction and never as a claim (rule 13). This makes that split a first-class
+thing a person can see and reason about, instead of an internal convention.
+
+## G39. Ask what they are worried about, per person and per scenario
+
+The real reason a ground exists is usually a worry, and it is usually unsaid. A
+manager opening a new hire ground is rarely curious in the abstract; they have
+noticed something. Asking directly, into CLOSED context, surfaces the thing that
+should shape the probing.
+
+Per scenario, because the worry on a new hire ground is not the worry on a
+cofounder ground, and a generic question gets a generic answer.
+
+**This is the most prejudicial data in the system** and the guarding is the whole
+design. One person's private, unverified concern about a named colleague,
+recorded before that colleague has said a word. Three rules, and after two
+prompt-only guardrails leaked in a single day, all three are structural:
+
+1. It never enters a report, quoted or paraphrased, in any form.
+2. It never reaches the person it is about, including through the post-report
+   guide.
+3. It steers what gets ASKED. It never becomes a finding.
+
+Get this wrong and the product becomes a place to file private complaints about
+colleagues, which is the worst possible version of it.
+
+**DECIDED, 9 August 2026: the person it is about is NOT told that private
+context exists.**
+
+The reasoning, and it is sound: being told a note exists that you cannot see
+creates worry with no remedy, and it would change what someone writes in the very
+check-in the note is meant to inform. A person who suspects they are being
+written about writes defensively, and a defensive account is worth less than no
+account. Guarded means guarded.
+
+**Two consequences that follow from that decision, and both raise the bar rather
+than lower it.**
+
+First, the three rules above stop being good practice and become the only thing
+protecting the person. They cannot object to what they cannot see, cannot correct
+it, and cannot weigh it. Every one of them must be structural, tested, and
+bite-checked, because there is no human backstop behind them.
+
+Second, a data-protection note, stated accurately and flagged once rather than
+to reopen the decision.
+
+An opinion one person records about an identifiable other person is personal data
+about BOTH of them. The author's identity and their own wording belong to the
+author and are routinely redacted. The substance, being information relating to
+the person it describes, falls inside the scope of a request from that person.
+This is not a grey area: the definition covers "any information relating to" an
+identifiable person, and opinions about someone are explicitly included.
+
+In practice that means IN SCOPE BUT HEAVILY REDACTABLE. Somebody making a request
+would not be handed their manager's note. They might receive the substance with
+the source removed, and some regimes allow withholding altogether where
+disclosure would prejudice management planning.
+
+So the exposure is not "someone finds out we hid it". It is that a request may
+arrive and an answer has to exist. Two things worth deciding separately, later,
+neither of which blocks building this:
+
+  - Keep closed context to the WORK and the SITUATION rather than to assessments
+    of a person. Better material for steering probes anyway, and it narrows what
+    any request would reach.
+  - Know what the answer to such a request is before the first enterprise
+    customer asks, rather than during.
+
+## G40. Say what happens to what people write, before the first question
+
+Not a footer, and not only copy. People write differently depending on what they
+believe happens next, so this determines the quality of the record itself. It
+belongs before anyone is asked anything.
+
+**What is true today, and all of it is testable:**
+
+- Nobody in your organisation can read what you write. Not your manager, not the
+  person who set the ground up, not an admin.
+- Our own support tools cannot show it either. When we look at a ground to help,
+  we see whether people checked in, never what they said. This is enforced and
+  tested: the platform-admin view excludes raw turns, record entries, solo
+  artifacts, lead context notes and the report body, and the test poisons the
+  query with all of them to prove none leaks.
+- Nothing anyone writes is used to train models.
+
+**What must NOT be said, because it is not true today:** "we cannot see your
+conversations". Turns are stored unencrypted in Postgres, so anyone with database
+access can read them, and transcripts are sent to Google for processing through
+Vertex. A founder or investor who asks one technical question finds this out, and
+a privacy claim caught being false costs more than never making it.
+
+## G41. Make the stronger privacy claim true
+
+To say "we cannot see your conversations" and mean it:
+
+- Encrypt conversation turns and record entries at rest, so a database dump is
+  useless without the key.
+- Decide and document who holds the key and under what circumstances it is used.
+- Account honestly for processing: content reaching Google through Vertex is a
+  real limit on any absolute claim, and it should be stated rather than omitted.
+
+Worth doing on its own merits. It is also the only route to the sentence you
+actually want to write.
+
+**Open (L). Nothing here blocks G40, which is true today as written.**
+
+
+---
+
+## Thresholds, deliberately untouched
+
+The specificity SCALE may still be wrong. It was left alone because changing a
+scale to make one record come out better is how you get a differently wrong
+answer. Fix what the scorer can see first, gather more grounds, then look again.
+
+
+---
+
+# THE REALITY ENGINE PASS
+
+Everything below came from reading The Reality Engine manifesto against Groundwork,
+line by line, plus the Ground 1 read-through. The manifesto is for a different
+product; what transfers is its Reality Engine, and what does not is its Behaviour
+Engine. That division is at the bottom and it is not a matter of taste.
+
+The worked example throughout is the twelve-session new hire ground run on
+9 August 2026. Hafsah's definition of doing well was judgement and client
+ownership. Abubakar's was clearing the ticket queue, because it was the only
+number anyone had named. Six weeks were lost. Everything here is measured against
+whether it would have surfaced that in week one.
+
+---
+
+## A. New objects in the record. Everything else reads these.
+
+These are data model changes, not screens, and they upgrade every future report
+rather than adding a panel to the end of one. Build order matters: this section
+first.
+
+**G13. An objective per person, not one per ground.**
+Today a ground holds one success definition and it belongs to the lead. Abubakar
+never had an objective of his own, so he inferred one. That is not a
+communication failure, it is a missing field: nowhere in the system was there a
+place for "what success looks like for Abubakar, stated to Abubakar". With this,
+the week-one report can show that his objective and hers do not connect, which is
+the entire finding, twelve weeks early.
+
+**G14. Current reality, captured as a baseline.**
+"Why now" is captured; "where this stands today" is not. Without a baseline the
+report can only show where accounts differ from each other, never distance
+travelled. The arc is the product's core value and it is currently inferred from
+session 1 by accident rather than recorded on purpose.
+
+**G15. Conditions required.**
+The missing middle between the desired future and twelve weeks of check-ins. On
+the worked example: give him a client, tell him it is his to own, tell him
+throughput is not the measure. All three were the manager's to supply and all
+three were absent for six weeks. Named at setup, that is an unmet condition
+visible in week one instead of a misunderstanding discovered in week seven.
+
+**G16. Whether the conditions actually exist.**
+From "determine whether supporting teams already exist". A readiness check on
+reality, not on information. Is there a client available to give him. Does an
+onboarding process exist. Is there anyone to hand over from. If the answer is no,
+the objective is not reachable and the ground is about to measure someone against
+something the organisation never provided. A different kind of gap from a missing
+answer, and more serious.
+
+**G17. Who is required, not just who is involved.**
+Groundwork asks who is part of this. The manifesto asks who the objective depends
+on. This is the principled answer to whether colleagues get added: you add the
+people the outcome depends on, and their absence becomes a visible risk rather
+than an unnoticed hole.
+
+**G18. Learning required.**
+What this person needs to know for the objective to be reachable. For a new hire
+this is most of the job. On the worked example the thing he needed to learn was
+never named: that ownership was the measure. Recorded, its absence is trackable.
+
+**G19. The gap between now and the goal, as its own axis.**
+Groundwork computes the gap between PEOPLE. The manifesto's capability gap is
+between NOW and the OBJECTIVE. Two people can agree perfectly and still be
+nowhere near the goal, and today the report cannot say so. For a leader deciding
+something this is often the more useful axis.
+
+**G20. A living contribution record, which is not a capability profile.**
+I first rejected "living capability profile" outright as a persistent score on a
+person, and any grading version stays rejected. But a living record of what a
+person is here to contribute, updated as it changes, is role clarity rather than
+a score, and it is exactly what Abubakar did not have. The two were thrown out
+together and should not have been.
+
+---
+
+## B. How the context gets gathered
+
+**G21. An interview, after setup, not a longer setup.**
+Setup stays light because that is where someone decides whether this is worth
+their evening. The depth arrives once the ground exists and they are invested.
+The frame is the manifesto's: the AI INTERVIEWS the lead. It drives, follows up,
+and decides when it has enough, the way a check-in already does and setup does
+not. Needs a stop condition: target list, ask once, accept a vague answer, move
+on, and say plainly what is still unfilled rather than nagging.
+
+**G22. "What would change your mind", asked in week one.**
+The highest-value single question on this list. "I would keep him if he owns a
+client end to end by month three", recorded before anything has happened, is the
+standard the week-twelve decision is measured against. She set it, before she
+knew the answer, so it cannot be accused of moving.
+
+**G23. Recommend the materials, do not only accept them.**
+The manifesto recommends onboarding materials rather than waiting for uploads.
+For a new hire ground that is the role description, the team's current
+priorities, and whatever the last person in the role left behind. It also makes
+the strength read concrete: not "your context is thin" but "you have not given us
+the role description".
+
+**G24. Documents extracted into context, with four hard rules.**
+1. A document is CONTEXT, never an ACCOUNT. A job description is the
+   organisation's claim, not a party's account of how the work is going. Nothing
+   extracted is ever quotable as someone's position or usable as evidence inside
+   a divergence. If this leaks, the independent-accounts premise collapses.
+2. Who uploaded it is part of what it is. A lead's role description is visibly
+   the lead's standard, not neutral fact. "Hafsah set these" and "the conditions
+   are" read differently and only one is true.
+3. Upload asks where it goes, and defaults to private. Shared ground context and
+   private lead context are different destinations. A performance plan dropped
+   into shared context would happen in the first hurried week.
+4. Extraction is inference, so it is confirmed rather than adopted. Same rule as
+   the cadence: propose it, show it, let them correct it.
+
+**G25. The context strength read.**
+Not a test and not a score. A statement of what this ground will and will not be
+able to answer, given what it holds:
+   "The report will be able to show where your accounts differ and what each of
+    you meant by doing well. It will not be able to tell you whether the
+    conditions you set were met, because none have been named. It will not be
+    able to say whose work this depended on, because only you and Abubakar are
+    in it."
+It is about the product's limits, not the person's competence, and it makes
+reading the context section motivated rather than obedient. Never mandatory,
+never graded, revisited whenever the context changes.
+
+---
+
+## C. What people see, and when
+
+**G26. A context page, one per ground, the same page for everyone.**
+What this is for, what was said would have to be true, who is in it and why, what
+everyone can see. It also gives documents somewhere to belong instead of a
+Documents tab nobody opens.
+
+**G27. Purpose before performance, as an ordering rule.**
+"Every participant begins by understanding why they matter BEFORE being asked to
+perform." This is sequencing, not content. Today the join flow takes a name and
+drops someone into a check-in, with the explanation arriving alongside the ask if
+at all. Reversing the order costs nothing and changes what people write.
+
+**G28. Light participant onboarding: four things, one screen.**
+What this ground is for in the lead's words. Why you specifically, which is where
+G17 earns its keep. What happens to what you write. What you will see and when.
+Then a link to the context page for anyone who wants more. Nothing front-loaded.
+
+**G29. Check the participant path on a phone.**
+"Mobile-first experience for every participant." Participants are the people most
+likely to check in from a phone between other things, and the flow has only ever
+been driven at 1280 wide. Unverified, so it goes on the list as a check rather
+than a claim.
+
+---
+
+## D. Protecting the picture
+
+The manifesto names five mechanisms: evidence provenance, explainability,
+contradiction detection, independent validation, continuous revision. Groundwork
+has parts of three.
+
+**G30. Confidence, not certainty.**
+Reframe specificity and verifiability as confidence in the PICTURE rather than a
+mark on the PERSON. Same measurement, pointed at the right object, and the
+cleanest answer to G9. "Low specificity" reads as a judgement of someone;
+"we are not confident this part of the picture is complete" is the same fact
+without the verdict.
+
+**G31. Provenance at the point of a claim.**
+Inferences are already separated from quotes. What is missing is showing, where
+something is read, that it came from one account in session 4 and nothing else
+supports it. This is the honest basis for G10's "what nobody has evidence for",
+and it makes the report harder to over-read.
+
+**G32. Contradiction inside one person's own record, across sessions.**
+Divergence between parties exists. A party contradicting themselves between
+session 3 and session 9 does not surface, and on a long ground it is at least as
+informative. Not as a gotcha: as something worth asking about.
+
+**G33. Continuous revision, stated as such.**
+"The organisation must continuously reconstruct reality rather than assume it
+already knows it." Reports are regenerated but presented as settled. A report
+should say what changed since the last one and why, so the picture is visibly
+alive rather than replaced in silence.
+
+**G34. Harder to fool, INCLUDING BY ITSELF.**
+The manifesto's success condition, and the half that gets forgotten. The lead
+deceiving themselves is the most likely failure in a workplace ground, and
+Groundwork has no surface for it. Candidates: their own position changing without
+them noticing, evidence they asked for and never got, a condition they set and
+never supplied. On the worked example, all three applied to Hafsah, and the
+product told her nothing about any of them until she said it herself in week
+eleven.
+
+**G35. A board that increases confidence without increasing accuracy is a
+liability.**
+"Dashboards often increase confidence without increasing accuracy" is a direct
+warning about the team board. Every number on it should be answerable: what it
+counts, what it excludes, and what it cannot see. Anything that cannot answer
+that should be removed rather than left to look authoritative.
+
+---
+
+## E. What the decision gets
+
+**G10** is specified in full above and is unchanged, except that it now consumes
+G13 (each person's objective), G15 (conditions), G19 (the gap to the goal) and
+G22 (the pre-registered standard). It is last because it reads everything else.
+
+**G36. Trade-off clarification.**
+From the Behaviour Engine, and one of the few things in that chapter that is not
+manipulation. Helping someone SEE the trade-off they are already making is not
+steering them: "keeping the queue clear and expecting client ownership in the
+same quarter are in tension, and nothing in the record says which one gives".
+Naming a tension is inside the guardrail. Pushing toward a resolution is not.
+
+---
+
+## F. Deliberately not taking
+
+The Behaviour Engine, with one exception noted at G36.
+
+Loss aversion to prevent decay, endowment effect to build ownership, urgency tied
+to consequences, social reinforcement, small wins and momentum, risk-aversion
+coaching, personalised coaching for every role, living capability profiles as
+scores, game theory for coalitions.
+
+In a campaign these are legitimate persuasion among people who chose to be there
+for a shared goal. In a workplace record they engineer the behaviour of somebody
+who did not choose to participate, inside a system their manager controls, that
+may inform a decision about their job. It fails the same test as scoring them,
+from the other side: rather than judging the person, you steer them.
+
+**The line: take the Reality Engine, leave the Behaviour Engine.**
+
+Relationship mechanics (trust and reciprocity tracking, introduction pathways,
+emerging influence, who to meet and when) are campaign machinery and do not
+transfer. Two cousins already exist here in a legitimate form and should be left
+where they are: waiting-on handoffs are the bottleneck idea, and a ground going
+quiet is the decay idea.
+
+---
+
+## G. Open decisions. Mine to implement, not to settle.
+
+1. **Does the subject see G10?** Recommendation on record: show them, under a
+   neutral frame ("what this ground was measured against"). The premise of the
+   product is that nobody is assessed from material they cannot see. It waits for
+   a decision rather than being settled by whoever writes the component.
+2. **Do conditions and required people get asked at setup or in the lead's first
+   check-in?** Instinct is the first check-in, to protect the funnel. Settled by
+   whoever knows the funnel.
+3. **The vocabulary sweep.** "The record", "your account", "on record" run
+   through the whole product. Currently only the lines people meet at the door
+   have been made plain. Whether to sweep the rest is undecided.
+
+---
+
+## H. Order, by what depends on what
+
+1. Section A, the new objects. Nothing else works properly without them.
+2. G21 and G22, the interview that collects them.
+3. G23, G24, G25: materials, documents, strength read.
+4. Section C: the context page, ordering, participant onboarding, the phone check.
+5. Section D: confidence, provenance, contradiction, revision, self-deception,
+   the board audit.
+6. G10 and G36 last, because they consume all of it.
+7. G9 folds into G30. G11 stays parked until after the eighteen grounds. G12
+   stays blocked on credentials.
+
+This is a programme, not an afternoon. Section A alone is the largest change to
+the record since it was built.
