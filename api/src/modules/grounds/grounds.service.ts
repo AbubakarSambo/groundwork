@@ -951,7 +951,36 @@ export class GroundsService {
   async addParticipant(groundId: string, organizationId: string, initiatorId: string, dto: AddParticipantDto) {
     const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId } });
     if (!ground) throw new NotFoundException('Ground not found');
-    if (ground.initiatorId !== initiatorId) throw new ForbiddenException('Only the initiator can add a participant');
+
+    /**
+     * THE SETTING-UP ADMIN CAN ADD PEOPLE TOO, NOT ONLY THE INITIATOR.
+     *
+     * This check used to be `ground.initiatorId !== initiatorId` alone, and it
+     * made the ordinary first-run journey impossible.
+     *
+     * An admin who chooses "I'm setting this up for my team - someone else will
+     * run it" hands the ground to a lead: the LEAD becomes `initiatorId`, and the
+     * admin is recorded as `createdByUserId`. She is then the only person signed
+     * in, the lead has not accepted yet, and she is the one holding the list of
+     * people to invite - and the old check refused her, on a ground she created,
+     * in an organisation she owns. An eighteen-ground run stopped dead here: the
+     * participant could not be added by anyone, so no check-in, report or board
+     * downstream was reachable.
+     *
+     * It was worse than a plain refusal, because the page simultaneously showed
+     * her the add-participant control. She filled in a colleague's name and email
+     * and was told "Access denied" afterwards.
+     *
+     * `board.service.ts` already made exactly this allowance for READING
+     * (`isSetupAdmin`). This is the same allowance for the matching write. The
+     * ground is still scoped to the caller's organisation by the query above, so
+     * this cannot reach another org's ground.
+     */
+    const isInitiator = ground.initiatorId === initiatorId;
+    const isSetupAdmin = !!ground.createdByUserId && ground.createdByUserId === initiatorId;
+    if (!isInitiator && !isSetupAdmin) {
+      throw new ForbiddenException('Only the lead or the admin who set this ground up can add a participant');
+    }
 
     const initiator = await this.prisma.user.findUnique({ where: { id: initiatorId } });
 
@@ -1043,7 +1072,33 @@ export class GroundsService {
         data: { groundId, participantId: participant.id, sessionNumber: 1, status: CheckInStatus.NOT_STARTED, availableFrom: session1AvailableFrom },
       });
 
-      await tx.ground.update({ where: { id: groundId }, data: { status: GroundStatus.AWAITING_PARTIES } });
+      /**
+       * ADDING A PARTICIPANT MUST NOT SKIP THE LEAD'S CONFIRMATION.
+       *
+       * This used to set AWAITING_PARTIES unconditionally, which quietly broke
+       * the hand-off whenever the admin added someone before the lead had opened
+       * their invitation - now the common order, since the admin is the one
+       * holding the list of people to invite.
+       *
+       * The damage was silent and total. `confirmLead` requires status
+       * AWAITING_LEAD, so once this moved the ground past it the lead could never
+       * confirm; and `confirmLead` is the ONLY place a non-managing lead's own
+       * check-in is created. The lead ended up recorded as a party
+       * (`managingOnly = false`) with no session to give an account in, and was
+       * never asked the one question that is hers to answer: "I'm also checking
+       * in" or "Managing only".
+       *
+       * On a two-party ground that means the report is built from one side. Seen
+       * live on a "New hire starting" ground - whose whole promise is getting a
+       * manager and a hire to mean the same thing by "doing well" - where the
+       * manager had no way to say what she meant. GW-016.
+       *
+       * A ground still waiting on its lead stays waiting. The participant is
+       * added and invited either way.
+       */
+      if (ground.status !== GroundStatus.AWAITING_LEAD) {
+        await tx.ground.update({ where: { id: groundId }, data: { status: GroundStatus.AWAITING_PARTIES } });
+      }
 
       return participant;
     });

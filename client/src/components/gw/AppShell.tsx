@@ -1,3 +1,4 @@
+import { plannedSessionsFor } from '@/lib/sessionCount'
 import { useState, useRef, useEffect } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -34,7 +35,10 @@ const NAV_ITEMS = [
     ),
   },
   {
-    label: 'Team',
+    // "Team" and "Teams" sat side by side, one letter apart, pointing at
+    // different pages - a coin-flip for anyone looking for the list of people in
+    // their org. Named for what each one actually is. GW-011.
+    label: 'People',
     to: '/org/members',
     adminOnly: true,
     icon: (active: boolean) => (
@@ -47,7 +51,7 @@ const NAV_ITEMS = [
     ),
   },
   {
-    label: 'Teams',
+    label: 'Roster',
     to: '/org/roster',
     adminOnly: true,
     icon: (active: boolean) => (
@@ -467,8 +471,7 @@ export function AppSidebar() {
               const sessions = new Set((g.checkIns ?? []).map((c: any) => c.sessionNumber)).size
               // Respect the ground's real cadence. Hardcoding /14 said "7 sessions"
               // for a 90-day WEEKLY ground that actually runs ~13.
-              const cadenceDays = ({ DAILY: 1, WEEKLY: 7, FORTNIGHTLY: 14, MONTHLY: 30 } as Record<string, number>)[(g as any).cadence] ?? 14
-              const planned = (g as any).maxSessions ?? (g.timelineDays ? Math.ceil(g.timelineDays / cadenceDays) : null)
+              const planned = plannedSessionsFor(g.timelineDays, (g as any).cadence, (g as any).maxSessions)
               // Never show fewer planned than have already happened.
               const maxSessions = planned != null ? Math.max(planned, sessions) : null
               return (
@@ -537,7 +540,11 @@ export function AppSidebar() {
         {/* Collapsed: nav icons */}
         {collapsed && (
           <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '4px 0' }}>
-            {NAV_ITEMS.map(item => {
+            {/* Same two gates the expanded nav applies. This list rendered
+                NavLinks directly rather than going through NavItem, so it skipped
+                the adminOnly check entirely and showed People / Roster / Billing
+                to every member whose sidebar happened to be collapsed. */}
+            {NAV_ITEMS.filter(item => (!item.adminOnly || user?.role === 'ADMIN') && !(item as any).platformAdminOnly).map(item => {
               const active = window.location.pathname.startsWith(item.to)
               return (
                 <NavLink key={item.to} to={item.to} title={item.label}
@@ -624,8 +631,16 @@ export function AppSidebar() {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
-  const location = useLocation()
-  const showSidebar = isAuthenticated || location.pathname === '/start'
+  /**
+   * Signed-out visitors do not get the signed-in navigation.
+   *
+   * `/start` was excepted so the entry flow had some chrome, but the effect was
+   * that someone with no account saw Grounds / Feed / Profile while describing
+   * their situation - destinations that mean nothing to them and lead out of the
+   * flow they are halfway through. The entry page has its own header and step
+   * tracker, so it loses nothing by dropping the app shell. GW-004.
+   */
+  const showSidebar = isAuthenticated
 
   if (!showSidebar) return <>{children}</>
 
