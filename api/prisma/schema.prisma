@@ -274,6 +274,46 @@ model User {
 // from the entry page (org name, contributors typed after the email was
 // sent). consumedAt + groundId make commit idempotent.
 // ---------------------------------------------------------------------------
+// A signup that has been asked for but not yet proved.
+//
+// NOTHING IS PROVISIONED UNTIL THE ADDRESS IS VERIFIED. Before this model
+// existed, submitting an email on the entry flow's save panel immediately created
+// a User with role ADMIN and an Organization, both live, with
+// `is_email_verified = false`. Typing a stranger's work address provisioned an
+// organisation and an admin account in their name, and they learned about it only
+// if they happened to read the activation mail.
+//
+// Everything the signup needs now waits here - the address, the person's name,
+// the organisation name if they typed one, and the whole anonymous session
+// transcript - keyed to the verification token. The Organization, the User and
+// the EntryDraft are created in one transaction when, and only when, the link in
+// the mail is opened.
+//
+// `email` is unique so a second attempt refreshes the pending record rather than
+// stacking duplicates. It is deliberately NOT a foreign key to anything: a
+// pending signup is not yet a member of anything.
+//
+// See GW-001 in journey/run18/ISSUES-LOG.md.
+model PendingSignup {
+  id         String   @id @default(uuid())
+  email      String   @unique
+  token      String   @unique
+  firstName  String   @map("first_name")
+  orgName    String?  @map("org_name")
+  // The anonymous session, carried verbatim so the ground can be built after
+  // verification from any browser - not only the one that started it.
+  payload    Json?
+  history    Json?
+  // The draft token the entry page keeps, so post-email edits (the org name
+  // arrives this way) can still reach this record before there is a user.
+  draftToken String?  @unique @map("draft_token")
+  expiresAt  DateTime @map("expires_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@map("pending_signups")
+}
+
 model EntryDraft {
   id         String    @id @default(uuid())
   userId     String    @unique @map("user_id")
@@ -444,6 +484,83 @@ model Ground {
   @@index([organizationId])
   @@index([status])
   @@map("grounds")
+  // Versioned targets. A goal change is a new chapter, not an overwrite.
+  baselines           GroundBaseline[]
+}
+
+ // WHAT A PERSON WAS LAST ASKED TO DO, AND WHAT HAPPENED TO IT.
+ //
+ // Coaching is one small step, then a wait, then the next step chosen from what
+ // actually happened. That only works if the step survives between sessions, so
+ // this is the memory the whole mechanic rests on.
+ //
+ // PRIVATE BY CONSTRUCTION. One row per person per ground, readable only by that
+ // person. It never reaches a report, a board, or a lead, and it must never be
+ // reachable from a resolution: a firing is the ultimate verdict on a person and
+ // this product does not produce verdicts. If somebody reviewing the code could
+ // wire this into a termination justification, the wall is not built right.
+ // People would never answer honestly again if their own coaching could be used
+ // against them.
+ // WHAT THE GROUND WAS AIMING AT, AND WHEN THAT CHANGED.
+ //
+ // Real work does not hold still: priorities shift, a project's definition of
+ // done moves, a hire's role is redefined. The coach must not keep coaching
+ // toward a superseded goal, and must never read the period before a pivot as
+ // failure against a bar that did not exist yet.
+ //
+ // That needs the target to be VERSIONED rather than overwritten. A goal change
+ // is a new chapter with a marked transition, never an erasure of the old one:
+ // effort toward the old goal stays real, and banked success stays banked.
+ //
+ // HARD GUARDRAIL: a goal change must never become a way to erase somebody's
+ // record or to manufacture failure. "The goal changed" cannot wipe a win and
+ // cannot declare anyone behind.
+model GroundBaseline {
+  id            String   @id @default(uuid())
+  groundId      String   @map("ground_id")
+  ground        Ground   @relation(fields: [groundId], references: [id], onDelete: Cascade)
+
+  // Sequential. Version 1 is what the ground was created with.
+  version       Int      @default(1)
+  // What success looks like, in the lead's own words, at this version.
+  successLooksLike String? @map("success_looks_like")
+  // What has to be true for it to be reachable.
+  conditions    Json?
+  // Why it changed, if they said. Never inferred, never invented.
+  changeReason  String?  @map("change_reason")
+
+  // When this version took effect. Everything before it belongs to the last one.
+  effectiveFrom DateTime @default(now()) @map("effective_from")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@unique([groundId, version])
+  @@index([groundId])
+  @@map("ground_baselines")
+}
+
+model CoachingState {
+  id                String   @id @default(uuid())
+  participantId     String   @unique @map("participant_id")
+  participant       GroundParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  // The single step last given. One at a time, never a list.
+  currentStep       String?  @map("current_step")
+  // Which session it was given in, so the next one can open on it.
+  stepGivenAt       Int?     @map("step_given_at")
+  // Which staircase they are on, and how far up.
+  staircase         String?
+  staircasePosition Int      @default(0) @map("staircase_position")
+   // Prior steps and what became of them: done, not done, did more, sideways.
+   //
+   // Kept because "you have not managed this twice" is the moment to shrink the
+   // step or change tack, and without the history the coach repeats itself at
+   // somebody, which is the failure this mechanic exists to avoid.
+  history           Json?
+
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@map("coaching_states")
 }
 
 model GroundParticipant {
@@ -488,21 +605,45 @@ model GroundParticipant {
   // coordination and clearing blockers reads as functionally PROJECT_MANAGEMENT.
   // Confidence stays low until the pattern is consistent, and a low-confidence
   // profile must not be coached from - see role-maps.ts.
+   // WHEN THEY ARRIVED, WENT AWAY, AND LEFT.
+   //
+   // The three-period rule is only fair while every period was one this person
+   // was present for and able to answer in. Without dates the engine cannot tell
+   // "said nothing" from "was not there", and the naive read is unkind in every
+   // direction: a joiner is behind for weeks before they existed here, somebody
+   // on parental leave accrues "went quiet", and a person who has left keeps
+   // being coached and keeps being read.
+   //
+   // See participation-timeline.ts, which is the arithmetic these feed.
+  joinedAt             DateTime? @map("joined_at")   // null = present from the start
+  leftAt               DateTime? @map("left_at")     // quit, removed, or let go. Freeze, never erase.
+   // Authorized absence: the DATES ONLY.
+   //
+   // The engine must never store, infer, or surface the REASON. Medical,
+   // parental, bereavement, sabbatical: none of it is the engine's business, all
+   // of it is a liability, and "on leave" is the entire fact it needs. Shape is
+   // [{ from, to }], to null while still away.
+  leavePeriods         Json?     @map("leave_periods")
+  coachingState        CoachingState?
   detectedFunction     String?   @map("detected_function")
   detectedFunctionConfidence Float? @map("detected_function_confidence")
   detectedFunctionAt   DateTime? @map("detected_function_at")
-  foundingIntent      String? @db.Text @map("founding_intent")
-  roleIntent          String? @db.Text @map("role_intent")
-  personalIntent      String? @db.Text @map("personal_intent")
-  exitIntent          String? @db.Text @map("exit_intent")
-  compensationAsk     String? @db.Text @map("compensation_ask")
-  autonomyAsk         String? @db.Text @map("autonomy_ask")
-  recognitionAsk      String? @db.Text @map("recognition_ask")
-  growthAsk           String? @db.Text @map("growth_ask")
-  relationshipAsk     String? @db.Text @map("relationship_ask")
-  financialFloor      String? @db.Text @map("financial_floor")
-  stressTolerance     String? @db.Text @map("stress_tolerance")
-  relationalTolerance String? @db.Text @map("relational_tolerance")
+  // THE COFOUNDER INTAKE IS GONE. Twelve free-text columns lived here -
+  // founding/role/personal/exit intent, compensation/autonomy/recognition/
+  // growth/relationship asks, financial floor, stress and relational tolerance -
+  // each up to 4000 characters.
+  //
+  // They were written by a PATCH route, from a client function no page ever
+  // called, and read by nothing: no report, no board, no prompt. The single
+  // apparent reader was `hasIntake = !!foundingIntent`, which was returned to
+  // the client and consumed by nothing either.
+  //
+  // So the schema stood ready to store someone's salary floor and how much
+  // stress they can take, in a column no feature opened. Unused personal data is
+  // not neutral - it is a liability that grows quietly, and this is a product
+  // whose landing page makes promises about what happens to what people tell it.
+  // The engine already learns this in conversation, where it is probed, evidenced
+  // and visible to the person in their own record.
   createdAt          DateTime  @default(now()) @map("created_at")
 
   ground            Ground             @relation(fields: [groundId], references: [id], onDelete: Cascade)

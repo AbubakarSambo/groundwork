@@ -81,6 +81,24 @@ export interface RoleMap {
   protectAgainst: string;
   /** Universal modes this function most often expresses. */
   commonModes: UniversalMode[];
+  /**
+   * The observable behaviours the coach NOTICES, in this function's own terms.
+   *
+   * Deliberately concrete. "Avoids the hard conversation" is a behaviour a
+   * person can recognise in their own week and do something about; "avoidant" is
+   * a label stapled to a person and is the thing this product refuses to
+   * produce. The difference between the two is the entire design.
+   *
+   * Paired by index: failureSignals[n] is the thing going wrong and
+   * successSignals[n] is what it looks like when it goes right. That pairing is
+   * what makes a staircase possible - the coach always knows what it is coaching
+   * TOWARD, not just what it noticed.
+   *
+   * Optional while the maps are being filled in. A map without them still works:
+   * it reads against onTrackMeans and asks its neutral probes, exactly as today.
+   */
+  failureSignals?: string[];
+  successSignals?: string[];
 }
 
 export const ROLE_MAPS: Record<RoleFunction, RoleMap> = {
@@ -245,6 +263,42 @@ export const ROLE_MAPS: Record<RoleFunction, RoleMap> = {
     protectAgainst:
       'Management is a different competency from the craft. A strong individual contributor made lead is failing at a NEW skill, not regressing at their old one.',
     commonModes: [UniversalMode.DIFFUSION, UniversalMode.AVOIDANCE],
+    // Paired by index: failure[n] is the thing going wrong, success[n] is what
+    // it looks like when it goes right, so the coach always knows what it is
+    // coaching TOWARD. Management is filled first because it is the highest
+    // value coaching in the system and the only map that is lead-only.
+    failureSignals: [
+      'Does the work themselves instead of delegating it',
+      "Redoes the team's work, lets nobody truly own anything",
+      'Assigns tasks rather than getting people to author their own commitments',
+      'Lets commitments slip quietly, never closes the loop',
+      'Defers the hard conversation, the feedback, the performance call',
+      'Gives vague direction, then is frustrated when it is not met',
+      'Never develops anyone, so the team stays dependent and the manager stays the bottleneck',
+      'Takes the credit, or lets it go to the loudest rather than the real contributor',
+      'Manages everyone identically, ignoring what each person needs',
+      'Avoids conflict on the team and lets tension sit',
+      'Rewards visible busyness over real contribution',
+      'Hoards decisions, so the team waits on them for everything',
+      'Protects a poor performer by never confronting them, and loads the good ones instead',
+      'Tries once on a people problem, then tolerates it or reorganises around it',
+    ],
+    successSignals: [
+      'Hands over real ownership, not just tasks, and then lets go',
+      'Lets people do it their own way without redoing it',
+      'Gets each person to author their own commitments, in their own words',
+      'Notices a slip and asks about it, with care',
+      'Has the hard conversation on time, kindly and clearly',
+      'Gives direction specific enough that somebody can own it and meet it',
+      'Develops people toward independence and removes themselves as the bottleneck',
+      'Credits the real contributor, including the quiet one',
+      'Manages each person to what that person actually needs',
+      'Surfaces team tension and works it before it festers',
+      'Can tell real contribution from busyness, and rewards the first',
+      'Pushes decisions down so the team moves without waiting',
+      'Confronts the poor performer and protects the people carrying the load',
+      'Stays with a people problem until it is genuinely resolved',
+    ],
   },
 };
 
@@ -360,4 +414,51 @@ ${probes}
 NEVER name a failure mode in a question. Do not ask "are you avoiding this" or "are you being vague". Ask about the work; how they answer is the signal, and it is yours to read, not theirs to be told.
 
 Be fair to this function specifically: ${map.protectAgainst}${hedge}`;
+}
+
+/**
+ * A NOTICED BEHAVIOUR, WITH WHAT IT WOULD LOOK LIKE GOING RIGHT, AND WHY IT WAS
+ * NOTICED AT ALL.
+ *
+ * The reason is not decoration and it is not optional. A read shown without it
+ * is an accusation: "avoids the hard conversation" lands as a character
+ * judgement. The same read with its reason attached is a description of a record
+ * that a person can look at and disagree with:
+ *
+ *   "Hard conversations have come up in three check-ins and none has happened
+ *    yet, and nothing in your account says you were blocked."
+ *
+ * That difference is also what protects the person who is blocked rather than
+ * avoiding. Any read that cannot state its reason has not earned the right to
+ * be shown, so this returns null rather than guessing.
+ *
+ * Paired by index with the success signal, so the coach always knows what it is
+ * coaching TOWARD, rather than only what it noticed.
+ */
+export interface SignalRead {
+  /** What was noticed, in the function's own terms. Never a label. */
+  noticed: string;
+  /** What the same thing looks like when it goes right. The destination. */
+  lookingLike: string;
+  /** Why this was noticed. Always shown with it, never separable. */
+  reason: string;
+}
+
+export function signalRead(
+  fn: string | null | undefined,
+  index: number,
+  reason: string,
+): SignalRead | null {
+  const map = roleMapFor(fn);
+  if (!map?.failureSignals?.length || !map.successSignals?.length) return null;
+  if (index < 0 || index >= map.failureSignals.length) return null;
+
+  // A read with no reason is an accusation. Refuse rather than surface one.
+  if (!reason?.trim()) return null;
+
+  return {
+    noticed: map.failureSignals[index],
+    lookingLike: map.successSignals[index],
+    reason: reason.trim(),
+  };
 }

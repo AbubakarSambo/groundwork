@@ -13,6 +13,24 @@ export const appConfig = registerAs("app", () => ({
   // no UI surface yet, so it is OFF by default to avoid paying for output nothing
   // renders. Flip to true once a client component shows each participant their guide.
   postReportGuideEnabled: process.env.POST_REPORT_GUIDE_ENABLED === "true",
+  /**
+   * THE COACHING LAYER. Off unless explicitly turned on, and off is the default
+   * everywhere including production.
+   *
+   * Detection already ships: the role maps, the seven universal modes, the
+   * function stored on a participant, and the neutral probes that reach the
+   * prompt are all live today and are NOT behind this flag, because they are
+   * existing behaviour and gating them would change what current grounds do.
+   *
+   * What this gates is the layer built on top of detection: coaching state, one
+   * step per session, the staircases, and anything that reads back what somebody
+   * was asked to do last time. That layer speaks directly to a person about
+   * their own work, so it stays off until its traces have been read by a human.
+   *
+   * The test that matters is not that it works when on. It is that a check-in
+   * with this off behaves EXACTLY as it did before any of it existed.
+   */
+  coachingEnabled: process.env.COACHING_ENABLED === "true",
 }));
 
 export const databaseConfig = registerAs("database", () => ({
