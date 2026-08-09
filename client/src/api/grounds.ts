@@ -133,4 +133,39 @@ export const groundsApi = {
   // shared report.
   signOff: (groundId: string) =>
     apiClient.post<{ signedOffAt: string }>(`/grounds/${groundId}/sign-off`).then(r => r.data),
+
+  /**
+   * The current invite link for someone who has not joined yet.
+   *
+   * This existed on the API with no caller, which made "I never got the email"
+   * a support request instead of a click. Initiator only, and it returns the
+   * live link rather than minting a new one - so reading it cannot invalidate
+   * the link already sitting in someone's inbox.
+   */
+  getParticipantInviteUrl: (groundId: string, participantId: string) =>
+    apiClient
+      .get<{ inviteUrl: string }>(`/grounds/${groundId}/participants/${participantId}/invite-url`)
+      .then(r => r.data),
+
+  /**
+   * Where THIS person stands on this ground - their own sessions and nothing
+   * about anyone else. Safe by construction: the endpoint resolves the
+   * participant from the caller's own user id, so it cannot be pointed at
+   * another party.
+   */
+  getMyCheckinStatus: (groundId: string) =>
+    apiClient
+      .get<{
+        participantId: string
+        partyType: string
+        checkIns: { id: string; sessionNumber: number; status: string; completedAt: string | null }[]
+        latestStatus: string | null
+        latestSessionNumber: number | null
+      }>(`/grounds/${groundId}/my-checkin-status`, {
+        // A ground you can view but are not a party to returns 403 here. That is
+        // a normal state for this call, not a failure worth interrupting anyone
+        // with, so it must not raise the global toast.
+        skipForbiddenToast: true,
+      })
+      .then(r => r.data),
 }

@@ -89,7 +89,14 @@ export const entryApi = {
 
   onboard: (messages: ChatTurn[]): Promise<{
     reply: string;
-    extracted: { mode?: string; initial?: string; whoInvolved?: string; decision?: string; goals?: string[]; brief?: string };
+    extracted: {
+      mode?: string; initial?: string; whoInvolved?: string; decision?: string;
+      goals?: string[]; brief?: string;
+      // What they actually said about rhythm and length. Absent when they did
+      // not say - never guessed. GW-017.
+      cadence?: 'DAILY' | 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'ONE_TIME';
+      timelineDays?: number;
+    };
     ready: boolean;
   }> =>
     apiClient.post('/entry/onboard', { messages }).then(r => r.data),

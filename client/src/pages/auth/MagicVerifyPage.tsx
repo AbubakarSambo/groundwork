@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { queryClient } from '@/lib/queryClient'
 import { authApi } from '@/api/auth'
 import { entryApi } from '@/api/entry'
 import { useAuthStore } from '@/stores/auth'
@@ -87,6 +88,20 @@ export function MagicVerifyPage() {
   async function commitFlow(payload: any, user: { jobTitle?: string | null; role?: string }, hadEntryIntent: boolean): Promise<VerifyOutcome> {
     try {
       const result = await entryApi.commit(payload)
+
+      /**
+       * The sidebar has to learn the ground exists.
+       *
+       * The grounds list is cached with a 30 second staleTime, and it is usually
+       * fetched the moment the shell mounts - which is BEFORE this commit creates
+       * the first ground. Without an invalidation the sidebar sat on its empty
+       * result and told a person who had just created their first ground "No
+       * grounds yet", while they were looking at that very ground. Caught by a
+       * Playwright run, whose accessibility snapshot showed both on screen at
+       * once. GW-019.
+       */
+      queryClient.invalidateQueries({ queryKey: ['grounds'] })
+
       localStorage.removeItem(COMMIT_KEY)
       localStorage.removeItem('gw_entry_session')
       localStorage.removeItem('gw_draft_token')

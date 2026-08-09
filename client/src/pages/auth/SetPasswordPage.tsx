@@ -42,8 +42,20 @@ export function SetPasswordPage() {
       <div className="gw-bd" style={{ maxWidth: 420, margin: '0 auto', width: '100%', paddingTop: 32 }}>
         <div className="gw-ttl">One last step</div>
         <div className="gw-sub-t" style={{ marginBottom: 6 }}>Set a password so you can sign back in to see your record and receive the report when it is ready.</div>
+        {/*
+          This used to say "Your account and check-in are already saved."
+          It is reached by two different people. One has just finished a session
+          in the anonymous entry flow, and for them it was true. The other has
+          been invited by an admin - as a lead or a participant - and has not
+          answered a single question yet. Telling that person their check-in is
+          saved is simply untrue, and it makes them wonder what was recorded in
+          their name before they had said anything. GW-014.
+
+          This page cannot tell the two apart from the token alone, so the copy
+          now claims only what is true for both.
+        */}
         <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 20, padding: '10px 12px', background: 'var(--gw-blue-bg)', borderRadius: 8, border: '0.5px solid var(--gw-blue-b)' }}>
-          Your account and check-in are already saved. This password secures your access to Groundwork going forward.
+          Your account is ready. This password secures your access to Groundwork going forward. Anything you have already written is saved.
         </div>
 
         <div className="gw-fld">

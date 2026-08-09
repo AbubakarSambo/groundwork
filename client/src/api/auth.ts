@@ -73,4 +73,20 @@ export const authApi = {
    */
   renameOrganization: (name: string) =>
     apiClient.patch<{ id: string; name: string }>('/users/organization', { name }).then(r => r.data),
+
+  /**
+   * Which sign-in methods this deployment can actually complete.
+   *
+   * Google sign-in is fully built on both sides but inert until
+   * GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are set on the server - and the
+   * server is the only side that knows. Asking means the button appears the
+   * moment credentials are provisioned, with no client change, and never appears
+   * while pressing it would land someone on a Google error page.
+   */
+  methods: () =>
+    apiClient.get<{ magicLink: boolean; google: boolean }>('/auth/methods').then(r => r.data),
+
+  /** Trade the one-time OAuth code from the redirect for a real JWT. */
+  googleExchange: (code: string) =>
+    apiClient.get<{ accessToken: string }>(`/auth/google/exchange?code=${encodeURIComponent(code)}`).then(r => r.data),
 }

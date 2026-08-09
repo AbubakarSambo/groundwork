@@ -22,8 +22,6 @@ export const participantsApi = {
     apiClient.get<InvitePreview>('/participants/invite', { params: { token } }).then((r) => r.data),
   accept: (token: string, names?: { firstName?: string; lastName?: string }) =>
     apiClient.post<AcceptInviteResponse>('/participants/accept', { token, ...names }).then((r) => r.data),
-  saveIntake: (checkInId: string, data: object) =>
-    apiClient.patch<{ ok: boolean }>(`/participants/${checkInId}/intake`, data).then((r) => r.data),
   // Fix a bounced/wrong address and resend the invite. Server-guarded:
   // initiator only, and rejected once the participant has accepted.
   updateEmail: (participantId: string, email: string) =>
