@@ -1,3 +1,4 @@
+import { plannedSessionsFor, everySessionDone } from '@/lib/sessionCount'
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -183,6 +184,29 @@ export function GroundAdminPage() {
     onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Could not update the email.'),
   })
 
+  /**
+   * "I never got the email."
+   *
+   * The endpoint to answer that has always existed and nothing called it, so the
+   * only recovery was resending to the same address that already failed, or a
+   * support request. This fetches the live link and puts it on the clipboard, so
+   * the lead can pass it on by any channel they like.
+   *
+   * It does NOT mint a new link. Reading it leaves the one already sitting in
+   * their inbox working, so a person who finds the original email later is not
+   * met with a dead link.
+   */
+  const copyInviteLink = useMutation({
+    mutationFn: async (participantId: string) => {
+      const { inviteUrl } = await groundsApi.getParticipantInviteUrl(id!, participantId)
+      await navigator.clipboard.writeText(inviteUrl)
+      return inviteUrl
+    },
+    onSuccess: () => toast.success('Invite link copied. It is the same link as their email - send it however you like.'),
+    onError: (e: any) =>
+      toast.error(e?.response?.data?.message ?? 'Could not get the invite link.'),
+  })
+
   const updateRole = useMutation({
     mutationFn: ({ participantId, role }: { participantId: string; role: string }) =>
       participantsApi.updateRole(participantId, role),
@@ -241,7 +265,21 @@ export function GroundAdminPage() {
   if (isLoading) return <Shell><div style={{ padding: 24, fontSize: 13, color: 'var(--gw-muted)' }}>Loading…</div></Shell>
   if (!ground) return <Shell><div style={{ padding: 24, fontSize: 13, color: 'var(--gw-muted)' }}>Ground not found.</div></Shell>
 
-  if (ground.status === 'AWAITING_LEAD') {
+  /**
+   * ONLY THE LEAD SEES THE LEAD'S CONFIRMATION.
+   *
+   * This used to be `status === 'AWAITING_LEAD'` alone, so anyone who opened the
+   * ground got the lead's page - including the admin who had just handed it off.
+   * She was shown "You lead this ground / An admin set this up and named you to
+   * lead it" (she IS the admin), a live "Confirm and begin" button, and the
+   * lead's own choice about whether to give an account. Those are the lead's
+   * decisions about the lead's participation, and the hand-off exists precisely
+   * so the lead makes them.
+   *
+   * The admin still needs to see the ground she set up - she is coordinating it -
+   * so she gets the waiting state below rather than nothing.
+   */
+  if (ground.status === 'AWAITING_LEAD' && isInitiator) {
     return (
       <LeadConfirmView
         ground={ground}
@@ -258,22 +296,144 @@ export function GroundAdminPage() {
     )
   }
 
+  /**
+   * The coordinating admin's view while the lead has not yet confirmed.
+   *
+   * She set this up and handed it over, so the honest thing to show her is the
+   * state of the hand-off: who it went to, and that nothing starts until they
+   * accept. Previously she was shown the lead's own confirmation screen (see
+   * above); the opposite mistake would be to show her nothing at all, which
+   * makes a ground she just created look like it failed to save.
+   */
+  if (ground.status === 'AWAITING_LEAD') {
+    const lead = (ground.participants ?? []).find((p: any) => p.partyType === 'INITIATOR')
+    return (
+      <Shell>
+        <div style={{ maxWidth: 560, margin: '0 auto', padding: '48px 20px' }}>
+          <div style={{ fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-sub)', fontWeight: 700, marginBottom: 8 }}>Waiting for your lead</div>
+          <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--gw-navy)', margin: '0 0 6px', letterSpacing: '-.01em' }}>{ground.label}</h1>
+          <p style={{ fontSize: 13.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 16 }}>
+            You set this ground up and asked {lead?.email ?? "your lead"} to run it.
+            They have been emailed a link. Nothing starts until they open it and confirm, and
+            they choose their own start time.
+          </p>
+          <div className="gw-box gw-box-blue" style={{ marginBottom: 24 }}>
+            You will see who has checked in, and the shared report once it releases. You will
+            not see what anyone wrote - accounts stay private until the report is ready.
+          </div>
+          {/*
+            A real control, not a promise. The first version of this waiting
+            state said "you can add the other people now" and offered no way to
+            do it - which is the same failure as GW-013 in a new coat: telling
+            the admin she may do something the screen does not let her do.
+
+            This is the write that GW-013 unblocked server-side, so it belongs
+            here: she is the one holding the list of people to invite, and the
+            lead may not open their mail for days.
+          */}
+          <div style={{ fontSize: 12.5, color: 'var(--gw-muted)', marginBottom: 10 }}>
+            You can add the other people now, or leave it to your lead.
+          </div>
+
+          {/*
+            Say that it worked.
+            
+            A Playwright run added a participant here successfully - the row was
+            created and the invitation email went out - and the screen was
+            unchanged afterwards: still just "+ Add someone", with the person
+            nowhere on it. The admin has no way to tell the difference between
+            "added" and "silently failed", and the obvious response is to add them
+            again. The main ground view already confirms this way; the waiting view
+            did not. GW-018.
+          */}
+          {lastInvitedEmail && (
+            <div style={{ background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 8, padding: '10px 12px', marginBottom: 12 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#085041' }}>Invite sent to {lastInvitedEmail}</div>
+              <div style={{ fontSize: 12, color: '#085041', marginTop: 2 }}>
+                They check in on their own, and nothing is shown to them until the report is ready.
+              </div>
+            </div>
+          )}
+
+          {(ground.participants ?? []).filter((p: any) => p.partyType !== 'INITIATOR').length > 0 && (
+            <div style={{ marginBottom: 12 }}>
+              {(ground.participants ?? []).filter((p: any) => p.partyType !== 'INITIATOR').map((p: any) => (
+                <div key={p.id} style={{ fontSize: 13, color: 'var(--gw-text)', padding: '6px 0', borderBottom: '1px solid var(--gw-border)' }}>
+                  {p.email}{p.roleAsDescribed ? ` · ${p.roleAsDescribed}` : ''}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {addingParticipant ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <input
+                autoFocus
+                type="email"
+                value={newParticipantEmail}
+                onChange={e => setNewParticipantEmail(e.target.value)}
+                placeholder="email@company.com"
+                style={{ padding: '10px 12px', borderRadius: 7, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', outline: 'none' }}
+              />
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  disabled={!newParticipantEmail.includes('@') || addParticipantMut.isPending}
+                  onClick={() => addParticipantMut.mutate()}
+                  style={{ padding: '8px 16px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: newParticipantEmail.includes('@') ? 1 : 0.5 }}
+                >
+                  {addParticipantMut.isPending ? 'Adding…' : 'Add'}
+                </button>
+                <button
+                  onClick={() => { setAddingParticipant(false); setNewParticipantEmail('') }}
+                  style={{ padding: '8px 14px', borderRadius: 7, background: 'none', color: 'var(--gw-sub)', border: '1px solid var(--gw-border)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => setAddingParticipant(true)}
+              style={{ fontSize: 13, color: 'var(--gw-navy)', background: 'none', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '8px 14px', cursor: 'pointer', fontFamily: 'inherit' }}
+            >
+              + Add someone
+            </button>
+          )}
+        </div>
+      </Shell>
+    )
+  }
+
   // The report's own read, or nothing at all. "{conf}/5 {band}" counted
   // completed check-ins and called the result "Aligned".
   const alignRead = alignmentLabel((ground as any).alignment)
 
-  // Distinct session numbers that are finished, against the plan. Counting
-  // check-in rows would say "26 sessions" for a 13-session two-party ground.
-  const doneSessions = new Set(
-    (ground.checkIns ?? []).filter((c: any) => c.status === 'COMPLETED').map((c: any) => c.sessionNumber),
-  ).size
   // The ground payload carries no planned-session count, only the timeline and
-  // the cadence - so derive it the same way the sidebar does.
-  const cadenceDays = ({ DAILY: 1, WEEKLY: 7, FORTNIGHTLY: 14, MONTHLY: 30 } as Record<string, number>)[(ground as any).cadence] ?? null
-  const plannedSessions = (ground as any).maxSessions
-    ?? (ground as any).totalSessions
-    ?? (cadenceDays && ground.timelineDays ? Math.ceil(ground.timelineDays / cadenceDays) : null)
-  const allSessionsDone = plannedSessions != null && doneSessions >= plannedSessions
+  // the cadence - so derive it the same way every other surface does.
+  const plannedSessions = plannedSessionsFor(
+    ground.timelineDays,
+    (ground as any).cadence,
+    (ground as any).maxSessions ?? (ground as any).totalSessions,
+  )
+  // Every party, every session - not "twelve distinct numbers are complete
+  // somewhere". See everySessionDone: the short version closed a ground over a
+  // missing closing account.
+  const allSessionsDone = everySessionDone(ground.participants as any, ground.checkIns as any, plannedSessions)
+  /**
+   * The round EVERYONE has finished - the person furthest behind sets the pace.
+   *
+   * Counting the highest session anyone has done would say "Session 12 of 12"
+   * while one party had only reached 4, which is the same optimism that let a
+   * ground close over a missing account.
+   */
+  const perParticipantDone = (ground.participants ?? []).map((p: any) =>
+    new Set(
+      (ground.checkIns ?? [])
+        .filter((c: any) => c.participantId === p.id && c.status === 'COMPLETED')
+        .map((c: any) => c.sessionNumber),
+    ).size,
+  )
+  const sessionsDone = perParticipantDone.length > 0 ? Math.min(...perParticipantDone) : 0
   // contact-visibility toggle state (default: hidden). true = peers cannot see each other's email.
   const contactHidden = ground.restrictExternalVisibility !== false
 
@@ -320,26 +480,48 @@ export function GroundAdminPage() {
           {ground.resolutionState && (
             <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: 'var(--gw-blue-bg)', color: 'var(--gw-navy)' }}>{ground.resolutionState}</span>
           )}
-          {/* Time remaining is only news while there are still sessions to
-              run. A ground with all thirteen of its sessions finished was
-              reading "90 days remaining", which describes the calendar and
-              not the work. */}
-          {!allSessionsDone && ground.daysLeft != null && ground.daysLeft <= 3 ? (
-            <span style={{ fontWeight: 700, color: '#791F1F' }}>{ground.daysLeft === 0 ? 'Due today' : `${ground.daysLeft} day${ground.daysLeft === 1 ? '' : 's'} remaining`}</span>
-          ) : !allSessionsDone && ground.daysLeft != null ? (
-            <span>{ground.daysLeft} days remaining</span>
-          ) : allSessionsDone ? (
+          {/* PROGRESS IS COUNTED IN SESSIONS, NOT DAYS.
+              A ground eight sessions into twelve read "90 days remaining",
+              which is arithmetically true - the calendar really had not moved -
+              and useless, because the work is measured in check-ins. Sessions
+              lead; the calendar follows in the quieter line, and only while it
+              still has something to say. */}
+          {allSessionsDone ? (
             <span>every session done</span>
-          ) : null}
+          ) : (
+            <>
+              {plannedSessions != null && (
+                <span style={{ fontWeight: 700 }}>Session {Math.min(sessionsDone + 1, plannedSessions)} of {plannedSessions}</span>
+              )}
+              {ground.daysLeft != null && ground.daysLeft <= 3 ? (
+                <span style={{ fontWeight: 700, color: '#791F1F' }}>{ground.daysLeft === 0 ? 'Due today' : `${ground.daysLeft} day${ground.daysLeft === 1 ? '' : 's'} remaining`}</span>
+              ) : ground.daysLeft != null ? (
+                <span style={{ color: 'var(--gw-sub)' }}>{ground.daysLeft} days remaining</span>
+              ) : null}
+            </>
+          )}
         </div>
 
-        {/* Tabs */}
+        {/* Tabs.
+            THE BOARD BELONGS HERE, WITH THE OTHER PLACES YOU GO.
+            It was a small dark pill floating up beside the ground's status and
+            nowhere else in the product, so someone who did not happen to notice
+            it on that one row had no way of knowing the board existed at all.
+            Board is per-ground, so a global nav entry would have to guess which
+            ground someone meant; this row is where a person already looks for
+            the parts of a ground. It only appears when the server says this
+            ground has one (boardRenders), same as before. */}
         <div style={{ display: 'flex', borderTop: '0.5px solid var(--gw-border)', overflowX: 'auto' }}>
           {(['overview', 'checkins', 'docs', 'report', 'settings'] as Tab[]).map(t => (
             <button key={t} className={`gw-tab${tab === t ? ' active' : ''}`} onClick={() => setTab(t)}>
               {{ overview: 'Overview', checkins: 'Check-ins', docs: 'Documents', report: 'Report', settings: 'Settings' }[t]}
             </button>
           ))}
+          {(ground as any).boardRenders && (
+            <button className="gw-tab" onClick={() => navigate(`/grounds/${id}/board`)}>
+              Team board
+            </button>
+          )}
         </div>
       </div>
 
@@ -489,6 +671,19 @@ export function GroundAdminPage() {
                             {p.inviteDeliveryStatus === 'DELIVERED' ? 'Invite delivered' : 'Invite pending'}
                           </span>
                         ) : null}
+                        {/* Available for anyone who has not joined yet, whatever
+                            the delivery status says - "delivered" only means the
+                            mail server accepted it, not that a person saw it. */}
+                        {isInitiator && !p.userId && (
+                          <button
+                            disabled={copyInviteLink.isPending}
+                            onClick={() => copyInviteLink.mutate(p.id)}
+                            style={{ fontSize: 11, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+                            title="Copy their invite link so you can send it yourself"
+                          >
+                            {copyInviteLink.isPending && copyInviteLink.variables === p.id ? 'Copying...' : 'Copy invite link'}
+                          </button>
+                        )}
                       </div>
                       {fixingEmailId === p.id && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6, marginLeft: 40 }}>
