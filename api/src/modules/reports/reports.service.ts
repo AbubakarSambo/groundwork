@@ -1,6 +1,10 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
+import { forbiddenNames, sanitiseGuide, PostReportGuide } from './guide-sanitiser';
+import { labelsForParties, namesVisibleTo, withNames } from './party-labels';
+import { tallyInReport } from './counts-accounts';
+import { forensicInReport, withoutDashes } from './forensic-voice';
 import { PrismaService } from '../prisma/prisma.service';
 import { computeArcSignals, tierCopy, ArcSignals } from './arc-features';
 import { endStatesFor } from '../resolution/end-states';
@@ -49,7 +53,7 @@ const SOLO_ARTIFACT_PROMPT =
 // Post-report conversation guide schema (#99).
 const POST_REPORT_GUIDE_SCHEMA = {
   name: 'emit_post_report_guide',
-  description: 'Emit a short post-report guide to help each party walk into the conversation.',
+  description: 'Emit a short guide to help each person walk into the conversation.',
   input_schema: {
     type: 'object',
     properties: {
@@ -63,15 +67,42 @@ const POST_REPORT_GUIDE_SCHEMA = {
       },
       toAcknowledge: {
         type: 'string',
-        description: "One specific thing from the other party's record that this person should acknowledge, even if they see it differently.",
+        description: "One specific thing the other person said that this person should take seriously, even if they see it differently.",
       },
     },
     required: ['openingLine', 'questionToCarry', 'toAcknowledge'],
   },
 };
 
-const POST_REPORT_GUIDE_PROMPT =
-  'You are Groundwork. A shared report has just been released to both parties. Given one party\'s record entries and the shared synthesis, produce a short, specific post-report guide for THIS party only. Three things: (1) one opening line they can use to start the real conversation - grounded, not defensive; (2) one question to carry into the room - genuine, not a challenge; (3) one concrete thing from the other side\'s record they should acknowledge, even if they see it differently. Brief, direct - no more than 3 sentences per item.';
+export const POST_REPORT_GUIDE_PROMPT = [
+  "You are Groundwork. A shared report has just gone out to everyone in this ground. Given one person's own check-in entries and the shared picture, write a short, specific guide for that one person.",
+  '',
+  'Three things: (1) one opening line they can use to start the real conversation - grounded, not defensive; (2) one question to carry - genuine, not a challenge; (3) one concrete thing someone else said that they should take seriously, even if they see it differently.',
+  '',
+  'NEVER NAME ANYONE AND NEVER QUOTE ANYONE. Not a first name, not a role label, not "the lead", and not a phrase in quotation marks - including a two-word phrase you found in a record. Say "the other view" or "how someone else saw it". Naming who said what is the one thing this product promises it never does, and a form of words lifted from a private check-in identifies its author just as surely as a name does. Anything carrying a name or a quotation is discarded before the person sees it, so a guide written that way is simply lost.',
+  '',
+  'LEAD WITH THE GAP, NOT WITH REASSURANCE. The FIRST CLAUSE of the opening line must be about what is not settled. Not the second clause after a "but" - the first.',
+  '',
+  'These are all wrong, and all were produced on a ground whose entire finding was that people disagreed about what success meant:',
+  '  "It is great that we have a shared handle on the concrete tasks and we are making progress. I think it would be helpful to connect..."',
+  '  "It is good to see so much progress on our shared list; I want to make sure we are all clear on..."',
+  '  "I am glad our tracking against the list is solid, but it feels important to talk about..."',
+  '',
+  'Each opens by congratulating the team on the part that was never in question, which buries the finding and makes whoever raises it sound like the difficult one. This is right:',
+  '  "It looks like we have different views of what success is for the quarter."',
+  '',
+  'Do not open with: it is great, it is good, I am glad, well done, we are aligned, we are tracking well, we are making progress, good progress, solid. Do not soften the gap by pairing it with praise. Warmth is fine and belongs in HOW the difference is put; it is not a preamble to be got through first.',
+  '',
+  'ANCHOR THE OPENING IN WHAT THIS PERSON THEMSELVES SAID, NOT IN THE GAP AS A HEADLINE. Everyone is being handed a guide about the same gap, so an opening that only restates the gap comes out near-identical for all of them - and two colleagues comparing notes then find they were given the same sentence, which makes the whole thing read as generated rather than considered.',
+  '',
+  'So start from what THIS person has been working on or pressing for, in their own terms, and let the difference arrive out of that. "The weekly list has been my measure of whether we are on track, and I am not sure it is the same measure everyone else is using" leads with the gap AND could only have been written for the person who kept the list. This is still about the work, never about the other side: describe your own position and what is unsettled about it, never characterise anyone else\'s.',
+  '',
+  'Do not say which side of the gap anyone else is on, or how many people hold each view. Counting sides is taking a register of who agrees with whom, which is exactly the thing this report does not do.',
+  '',
+  'DO NOT ASSUME A MEETING. There may be no conversation scheduled, and there may never be a room. Never write "in the room", "in our meeting", "on the call", or "this session". The opening line is something they could say in a corridor, a message, or a one-to-one - so write it as words they could use, not as an agenda item for an event that may not exist.',
+  '',
+  'Brief and direct - no more than 3 sentences per item.',
+].join('\n');
 
 // Admin profile - extract preference signals from an initiator's check-in records.
 const SIGNAL_EXTRACTION_PROMPT =
@@ -106,7 +137,7 @@ export const REPORT_SCHEMA = {
     type: 'object',
     properties: {
       sharedPicture: { type: 'string', description: 'Plain-language synthesis of the situation from both records.' },
-      agreements: { type: 'array', items: { type: 'string' }, description: 'Where both accounts agree.' },
+      agreements: { type: 'array', items: { type: 'string' }, description: 'What everyone sees the same way.' },
       divergences: {
         type: 'array',
         items: {
@@ -115,12 +146,12 @@ export const REPORT_SCHEMA = {
             topic: { type: 'string' },
             positions: {
               type: 'array',
-              description: "Every diverging party's position on this topic. Two for a two-party ground; more for a project / team ground.",
+              description: "Where each person stands on this topic. Two on a two-person ground; more on a project or team ground.",
               items: {
                 type: 'object',
                 properties: {
-                  participantLabel: { type: 'string', description: "The party's role label (e.g. 'the initiator', 'the project owner', 'participant A') - never a personal name." },
-                  view: { type: 'string', description: 'How this party described the topic.' },
+                  participantLabel: { type: 'string', description: "How to refer to this person: their role if they have one (e.g. 'the project owner'), otherwise 'the initiator' or 'participant A'. Never a personal name. The reader's own copy substitutes real names in place of these, so write naturally around the label." },
+                  view: { type: 'string', description: 'How this person described it, in plain language.' },
                 },
                 required: ['participantLabel', 'view'],
               },
@@ -128,12 +159,31 @@ export const REPORT_SCHEMA = {
             evidence: {
               type: 'array',
               items: { type: 'string' },
-              description: "1-2 short supporting references for this gap, drawn from the parties' own records (brief paraphrase or short quote). Grounds the gap in what was actually said; omit if nothing supports it.",
+              description: "1-2 short supporting references for this gap, taken from what people actually said (brief paraphrase or short quote). Grounds the gap in what was actually said; omit if nothing supports it.",
+            },
+            atStake: {
+              type: 'string',
+              description:
+                "One sentence on what happens TO THE WORK if this gap holds. About the work, never about a person: no fault, no prediction about anyone's behaviour, no consequence for an individual. Conditional, because it has not happened yet - \"if this holds, the quarter could end with...\". Say it plainly enough that a busy reader knows why this one is worth their attention. Write one for every gap you report: a gap that cleared the evidence bar almost always supports one. If and only if you would have to invent a consequence the record does not point to, return an empty string - never a filler sentence, and never something dramatic to fill the space.",
             },
           },
-          required: ['topic', 'positions'],
+          // atStake is REQUIRED, and the empty string is how the model declines it.
+          //
+          // It was optional first, with an instruction to write one for every
+          // gap. Across three real grounds it came back on one gap out of three,
+          // including one where ten sessions of deferred decisions plainly
+          // supported it - and rewording the instruction changed nothing,
+          // because an optional field in a structured-output schema is one the
+          // model can skip without ever weighing whether it should.
+          //
+          // Required forces the decision to happen. The escape survives as ''
+          // rather than as absence, so declining is a thing the model does on
+          // purpose rather than by omission, and the renderer treats '' exactly
+          // as it treated a missing field.
+          required: ['topic', 'positions', 'atStake'],
         },
-        description: 'The gap. For each topic, every party\'s position - never framed as one side being right.',
+        description:
+          "The gap. For each topic, where each person stands - never framed as one side being right.\n\nORDER MATTERS: put the gap that matters most FIRST, and order the rest after it. Significance is about the WORK: how much of the ground's purpose is exposed if the gap holds, how many people it reaches, and whether it undermines something the other agreements depend on. It is never about who is more at fault - you are ranking gaps, not people.",
       },
       centralQuestion: { type: 'string', description: 'The one question that, answered honestly, moves things forward.' },
       inferences: {
@@ -143,7 +193,7 @@ export const REPORT_SCHEMA = {
           properties: {
             id: { type: 'string', description: 'A short unique slug for this inference (e.g. "initiator-ownership-1").' },
             text: { type: 'string', description: 'The inferred statement as it appears in the report.' },
-            participantLabel: { type: 'string', description: 'The party label this inference is about.' },
+            participantLabel: { type: 'string', description: 'Who this inference is about, using the same label as above.' },
             reason: { type: 'string', description: 'Brief explanation of why this was inferred rather than directly quoted.' },
           },
           required: ['id', 'text', 'participantLabel', 'reason'],
@@ -160,19 +210,19 @@ export const REPORT_SCHEMA = {
           },
           required: ['label', 'evidence'],
         },
-        description: "People whose input, work, or decisions are referenced in a party's record but who are not themselves a party with their own account on this ground - i.e. someone contributing behind the scenes with no voice here. Empty array if none.",
+        description: "People whose input, work, or decisions come up in someone's check-in but who are not in this ground themselves - i.e. someone contributing behind the scenes with no voice here. Empty array if none.",
       },
       concernFlags: {
         type: 'array',
         items: {
           type: 'object',
           properties: {
-            label: { type: 'string', description: "The party's label this observation is about." },
+            label: { type: 'string', description: 'Who this observation is about, using the same label as above.' },
             observation: { type: 'string', description: 'A factual, evidence-based observation - never an accusation or verdict.' },
           },
           required: ['label', 'observation'],
         },
-        description: "Factual observations, grounded only in what is in the record, where one party's contribution shows reduced follow-through, unmet commitments, or is notably thinner than other parties' on this same ground. Frame as an observation about the record, never a judgement of the person. Empty array if nothing in the record supports this.",
+        description: "Plain observations, grounded only in what people actually said, where someone's contribution shows less follow-through, unmet commitments, or is noticeably thinner than others on this same ground. Say what is missing from the work, never pass judgement on the person. Empty array if nothing in the record supports this.",
       },
       leadershipGaps: {
         type: 'array',
@@ -184,13 +234,13 @@ export const REPORT_SCHEMA = {
               enum: LEADERSHIP_PATTERNS.map((p) => p.pattern),
               description: 'Which of the named leadership patterns this is. Use only these; do not invent one.',
             },
-            gap: { type: 'string', description: 'The difference between the two accounts, stated as a gap. Never quote either side and never name who said what.' },
+            gap: { type: 'string', description: 'The difference, stated as a gap in the work. Never quote either side and never name who said what.' },
             note: { type: 'string', description: 'One sentence on why this is worth a conversation rather than a correction.' },
             periods: { type: 'integer', description: 'How many distinct sessions/periods the pattern is visible across. One period is NOT a pattern - if you only see it once, do not report it.' },
           },
           required: ['pattern', 'gap', 'note', 'periods'],
         },
-        description: "Where one party's account of how they are LEADING differs from another party's account of how they are BEING LED, matched to one of the named leadership patterns. Only where the pattern's stated signature is genuinely met across more than one period. Empty array if there is no manager relationship here, or no pattern.",
+        description: "Where one person's sense of how they are LEADING differs from another's sense of how they are BEING LED, matched to one of the named leadership patterns. Only where the pattern's stated signature is genuinely met across more than one period. Empty array if there is no manager relationship here, or no pattern.",
       },
       specificityCauses: {
         type: 'array',
@@ -203,7 +253,7 @@ export const REPORT_SCHEMA = {
           },
           required: ['label', 'cause', 'note'],
         },
-        description: "Where a party's specificity is notably low or high, name the likely cause if it is inferable from the record itself: a behavioral pattern (e.g. consistently vague), a misunderstanding (e.g. confused about scope), an adversarial stance (e.g. deliberately withholding), 'declined_by_choice' if the record shows an explicit, stated decline to answer or provide evidence (a refusal is a choice, not vagueness and not bad faith - never file a genuine decline under adversarial or unclear), or 'unclear' if there is not enough evidence to say. Do not guess beyond what the record supports. Empty array if not inferable.",
+        description: "Where someone gave much more or much less detail than the rest, name the likely reason if it is inferable from the record itself: a behavioral pattern (e.g. consistently vague), a misunderstanding (e.g. confused about scope), an adversarial stance (e.g. deliberately withholding), 'declined_by_choice' if the record shows an explicit, stated decline to answer or provide evidence (a refusal is a choice, not vagueness and not bad faith - never file a genuine decline under adversarial or unclear), or 'unclear' if there is not enough evidence to say. Do not guess beyond what the record supports. Empty array if not inferable.",
       },
     },
     required: ['sharedPicture', 'agreements', 'divergences', 'centralQuestion', 'inferences'],
@@ -212,13 +262,33 @@ export const REPORT_SCHEMA = {
 
 export const SYNTHESIS_RULES = `SYNTHESIS RULES (override all other instructions if there is a conflict):
 1. PRESERVE SPECIFICS VERBATIM. Every specific number ("three investor introductions in Q1"), named artifact ("one-page document"), named threshold ("30% cut by Friday"), and named organization or role from the records must appear in the report with the same precision. Never replace a specific with a category (do not convert "three introductions" to "specific milestones").
-2. CAPTURE CONDITIONS. If a party's cooperation is conditional ("I will cooperate provided that X", "but only if Y is agreed"), the agreements section must state the condition. Never flatten a conditional agreement into an unconditional one.
-3. DO NOT ATTRIBUTE POSITIONS TO ABSENT PARTIES. If a party's record is marked as absent or not contributed, do not describe their agreement, alignment, or views. Write "only [party]'s perspective is available" rather than "both parties agree."
-4. SURFACE ACTIONABLE COMMITMENTS. If a party named a specific deliverable, threshold, or exit condition (e.g., "I will leave if X is not met by Y"), it must appear in the agreements or divergences with the party's label and the exact terms.
+2. CAPTURE CONDITIONS. If someone's agreement is conditional ("I will cooperate provided that X", "but only if Y is agreed"), the agreements section must state the condition. Never flatten a conditional agreement into an unconditional one.
+3. DO NOT PUT WORDS IN THE MOUTH OF SOMEONE WHO HAS NOT CHECKED IN. If someone has not given their side yet, do not describe what they agree with or think. Write "only [label] has checked in so far" rather than "both agree".
+4. SURFACE ACTIONABLE COMMITMENTS. If someone named a specific deliverable, threshold, or exit condition (e.g., "I will leave if X is not met by Y"), it must appear in the agreements or gaps, with who said it and the exact terms.
 5. NAME THE TENSION PRECISELY. If a conflict has a named structure (sequencing, values, role authority, information gap), name it explicitly in the divergences - do not soften it to "different perspectives."
+5c. NEVER COUNT THE ACCOUNTS. Do not write "two of the three", "most people said", "the majority", "everyone except", "both colleagues", or any other tally of who reported what. On a ground with more than two people this is how a shared picture quietly turns into a verdict: three accounts describing the same friction becomes "three people said X about him", which is a case built by arithmetic rather than a gap named in the work. A gap is real because the record supports it, not because a number of people mentioned it. Write the divergence itself and the evidence for it. If several accounts point the same way, that shows in the evidence you cite; it is never the claim.
+
+5b. WRITE LIKE A PERSON, NOT LIKE A CASE FILE. This is the register rule and it governs every sentence you write.
+
+NEVER narrate through the record or the accounts. Banned openings: "The record shows", "The record describes", "The record contains", "Both records describe", "Both parties' records show", "The accounts differ", "Another account describes", "One account states". The reader knows where this came from. Announcing it every time reads like disclosure in litigation, which is the opposite of what this is: a shared picture of work, not a case being built against somebody.
+
+Say the thing:
+  WRITE: "For the first seven weeks the two of them were working to different ideas of what doing well meant."
+  NOT:   "Both parties' records describe a period in which the parties operated with different definitions of success."
+
+  WRITE: "Deadlines slipped in October and nobody flagged it."
+  NOT:   "The record shows that deadlines were missed and no escalation is evidenced."
+
+  WRITE: "He sees success as clearing the queue. She sees it as owning a client end to end."
+  NOT:   "One account defines success as queue clearance; another account describes ownership."
+
+Same facts every time. The second version of each sounds like a lawyer wrote it about strangers.
+
+Do not say "party" or "parties" in anything the reader sees. Say the person's label, "the two of you", "everyone in this ground", or just name what happened. Do not say "evidence", "testimony", "as stated", "per the account", "submitted", or "opted out".
+
 6. LABEL INFERENCES. Any claim you make that is not a direct quote from the record is an inference. List every inference in the inferences array with its id, text, participantLabel, and reason. An inference is anything you concluded from context, implied meaning, or pattern - not from an explicit statement. If a claim appears in the report body and is not a direct quote, it must appear in inferences. An empty inferences array means everything in the report is directly quoted.
 7. CROSS-REFERENCE SESSIONS. Each record entry is labeled with the session it came from (e.g. "[the initiator session 1]", "[participant A session 3]"). If the same party's position has changed across sessions, name that change explicitly - "in session 1 the initiator described X; by session 3 they described Y." If a commitment from an earlier session has not been followed up in later sessions, name it. The longitudinal arc is the product's core value. A report that reads as a snapshot of only the latest session has failed.
-8. NO FALSE CONSENSUS. Do not write "both parties agree" or "all parties are aligned" unless every party's record contains explicit matching statements on that specific point. If parties described the same topic differently in any session, that is a divergence - surface it. Smoothing a disagreement into apparent consensus is a more serious error than noting the gap.
+8. NO FALSE CONSENSUS. Do not write "both agree" or "everyone is aligned" unless every party's record contains explicit matching statements on that specific point. If parties described the same topic differently in any session, that is a divergence - surface it. Smoothing a disagreement into apparent consensus is a more serious error than noting the gap.
 9. SURFACE HIDDEN CONTRIBUTORS. If any party's record references someone else's input, work, or decisions - someone who is not themselves a party with their own account on this ground - name them in hiddenContributors with the evidence. Do not invent a hidden contributor; only surface what is explicitly referenced.
 10. FLAG CONCERN PATTERNS FACTUALLY, NEVER AS ACCUSATION. If the record shows one party's follow-through, commitments, or contribution is notably thinner than other parties' on the same ground, note it in concernFlags as a plain factual observation about the record - not a judgement of the person. Do not speculate about motive.
 11. NAME THE CAUSE OF LOW OR HIGH SPECIFICITY WHEN INFERABLE. If a party's specificity is notably low or high, use specificityCauses to say why if the record supports an inference: a behavioral pattern, a misunderstanding, an adversarial stance, "declined_by_choice" if the record shows an explicit, stated decline to answer (a refusal is a choice, never file it as adversarial or unclear), or "unclear" if the record does not support a specific cause.
@@ -251,6 +321,84 @@ export class ReportsService {
    * place two parties' data meet, and the output is a NEW document (the
    * synthesis), not either party's words verbatim beyond quoted exact words.
    */
+  /**
+   * Give each gap a sentence on what it costs the work, in place.
+   *
+   * Runs after synthesis, one call per gap that does not already have one, so
+   * a gap the synthesis pass DID manage to answer is left alone rather than
+   * re-asked. Every call is independent, so one failure costs one sentence and
+   * never the report: a gap with no atStake renders exactly as it did before
+   * this existed.
+   *
+   * Deliberately given ONLY the gap - the topic and the positions - and never
+   * the party labels, the records, or the rest of the report. It cannot name a
+   * person it was never told about, which is a stronger guarantee than asking
+   * it not to.
+   */
+  private async fillAtStake(divergences: any[]): Promise<void> {
+    if (!Array.isArray(divergences) || divergences.length === 0) return;
+
+    const AT_STAKE_PROMPT = [
+      'A shared report has found a gap: two or more people described the same thing differently.',
+      'Say in ONE sentence what happens TO THE WORK if that gap is never closed.',
+      '',
+      'It is about the work, never about a person. No fault. No consequence for an individual.',
+      'Never a prediction about what anyone will do. You have not been told who these people',
+      'are and you must not guess - write about the work itself, not the parties.',
+      '',
+      'Conditional, because it has not happened yet: "if this holds, the quarter could end with',
+      'the weekly tasks done and the outcome the strategy needed unowned."',
+      '',
+      'Plain enough that a busy reader knows why this gap is worth their attention. Do not',
+      'restate the gap - the reader has just read it. Say what it costs.',
+      '',
+      'If saying anything would mean inventing a consequence this gap does not point to,',
+      'return an empty string. Never a filler sentence, and never something dramatic to fill',
+      'the space - reaching is the worse failure of the two.',
+    ].join('\n');
+
+    const AT_STAKE_SCHEMA = {
+      name: 'emit_at_stake',
+      description: 'Emit one sentence on what this gap costs the work, or an empty string.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          atStake: {
+            type: 'string',
+            description:
+              'One conditional sentence about the work. Empty string if the gap does not support one.',
+          },
+        },
+        required: ['atStake'],
+      },
+    };
+
+    await Promise.all(
+      divergences.map(async (d) => {
+        if (!d || typeof d !== 'object') return;
+        if (typeof d.atStake === 'string' && d.atStake.trim()) return;
+
+        const positions = Array.isArray(d.positions)
+          ? d.positions.map((p: any) => `- ${p?.view ?? ''}`).join('\n')
+          : '';
+        if (!d.topic && !positions.trim()) return;
+
+        try {
+          const res = await this.anthropic.extract<{ atStake: string }>(
+            AT_STAKE_PROMPT,
+            [{ role: 'user', content: `THE GAP: ${d.topic ?? ''}\n\nHOW EACH ACCOUNT DESCRIBED IT:\n${positions}` }],
+            AT_STAKE_SCHEMA,
+          );
+          const text = res?.atStake?.trim();
+          if (text) d.atStake = text;
+        } catch (err: any) {
+          // One gap loses its sentence; the report is unaffected.
+          this.logger?.warn?.(`atStake pass failed for a gap: ${err?.message}`);
+        }
+      }),
+    );
+  }
+
   async synthesize(groundId: string) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, include: { participants: true } });
     if (!ground) throw new NotFoundException('Ground not found');
@@ -331,38 +479,9 @@ Close the report by framing - neutrally, without recommending one - the choice n
       orderBy: { createdAt: 'asc' },
       select: { id: true, partyType: true, roleAsDescribed: true },
     });
-    let participantIdx = 0;
-    const labelById = new Map<string, string>();
-    // Count how many non-initiators share each role, so we can disambiguate
-    // same-role people (e.g. six "Field officer"s become "Field officer A/B/...").
-    const roleCounts = new Map<string, number>();
-    for (const p of parties) {
-      if (p.partyType !== PartyType.INITIATOR) {
-        const role = p.roleAsDescribed?.trim();
-        if (role) roleCounts.set(role.toLowerCase(), (roleCounts.get(role.toLowerCase()) ?? 0) + 1);
-      }
-    }
-    const roleSeen = new Map<string, number>();
-    for (const p of parties) {
-      if (p.partyType === PartyType.INITIATOR) {
-        labelById.set(p.id, p.roleAsDescribed?.trim() || 'the initiator');
-      } else {
-        const role = p.roleAsDescribed?.trim();
-        if (role) {
-          // If more than one party holds this role, append a distinguishing letter.
-          if ((roleCounts.get(role.toLowerCase()) ?? 0) > 1) {
-            const n = (roleSeen.get(role.toLowerCase()) ?? 0);
-            roleSeen.set(role.toLowerCase(), n + 1);
-            labelById.set(p.id, `${role} ${String.fromCharCode(65 + n)}`);
-          } else {
-            labelById.set(p.id, role);
-          }
-        } else {
-          const letter = String.fromCharCode(65 + participantIdx++);
-          labelById.set(p.id, `participant ${letter}`);
-        }
-      }
-    }
+    // One labelling rule, shared with the read path so a stored label always
+    // resolves back to the same person. See party-labels.ts.
+    const labelById = labelsForParties(parties as any);
 
     const records = await this.prisma.recordEntry.findMany({
       where: { participant: { groundId } },
@@ -671,6 +790,28 @@ Close the report by framing - neutrally, without recommending one - the choice n
       if (retry) result = retry;
     }
 
+    // SECOND PASS: what is at stake, one gap at a time.
+    //
+    // Asking for atStake inside the synthesis schema did not work. It was tried
+    // as an optional field with an instruction to write one for every gap (1 of
+    // 3 real gaps came back with one), reworded (no change), then made
+    // `required` (no change - the field came back absent, not even the empty
+    // string the instruction offered). The synthesis call is doing a great deal
+    // at once and this clause is what it drops.
+    //
+    // One small call per gap gets it reliably, which is the shape of task the
+    // model is good at. It also reaches every scenario: NEW_STARTING,
+    // RECOGNITION and DRIFT use their own report schemas that never had an
+    // atStake field at all, and they all share this divergence shape.
+    //
+    // The guardrail travels WITH the call, not just in the synthesis prompt.
+    // This pass is the one most likely to break it: it is handed a single gap,
+    // out of the context of the rest of the report, and asked what it costs -
+    // which is exactly the framing that invites naming whoever is responsible.
+    // So the instruction below restates the whole rule rather than assuming any
+    // of it carried over.
+    await this.fillAtStake(result.divergences);
+
     // Engagement-quality + confidence header (B4/B5a). Factual, not a verdict -
     // it tells both parties what the report is built on (session counts, record
     // depth, documents, absentees) and carries the "not independently verified"
@@ -741,7 +882,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
       documentBackedPct,
       coverageBand,
       difficultyDisclosures,
-      note: `This report is built from each party's self-reported account - it is not independently verified.${absent.length ? ` ${absent.length} invited part${absent.length === 1 ? 'y has' : 'ies have'} not yet contributed a record - the picture below reflects only the accounts that are present. Do not read any shared positions or agreements as bilateral until all parties have checked in.` : ''}`,
+      note: `This report is built from what each person said themselves - it is not independently verified.${absent.length ? ` ${absent.length} invited part${absent.length === 1 ? 'y has' : 'ies have'} not yet contributed a record - the picture below reflects only the accounts that are present. Do not read any shared positions or agreements as bilateral until all parties have checked in.` : ''}`,
       parties: engagementParties,
     };
 
@@ -860,6 +1001,48 @@ Close the report by framing - neutrally, without recommending one - the choice n
       where: { groundId },
       create: {
         groundId,
+        // A tally is how a shared picture becomes a verdict by arithmetic. It
+        // cannot be stripped the way a stiff opener can - cutting "two of the
+        // three" out of a sentence changes what the sentence says - so it is
+        // reported and a person decides. See counts-accounts.ts.
+        ...(((): {} => {
+          // The register check. The prompt forbids all of this at length, but a
+          // model under load reverts to the voice it was trained on, and a report
+          // that reads like a filing changes what the next person writes.
+          const forensic = forensicInReport(result as any);
+          if (forensic) {
+            /**
+             * WARN, DO NOT REWRITE, AND DO NOT BLOCK.
+             *
+             * This fired five times across one twelve-session run, so the prompt
+             * rule holds most of the time and not always. Three options and only
+             * one of them is right:
+             *
+             *   REWRITE  cutting "both records describe" out of a sentence
+             *            leaves something that says a different thing. Silently
+             *            altering a claim inside an accountability record is far
+             *            worse than a stiff sentence.
+             *   BLOCK    refusing to release the report means the ground goes
+             *            quiet at exactly the moment two people are waiting for
+             *            it, over a matter of tone.
+             *   WARN     the phrase and its reason, where a person can see it.
+             *
+             * So this is an alarm on the prompt, not a filter on the output. If
+             * it fires often, the instruction needs work; that is a decision for
+             * somebody, not something to paper over per report.
+             */
+            this.logger.warn(
+              `Report for ground ${groundId} reads like a case file, in ${forensic.field}: "${forensic.hit.phrase}" (${forensic.hit.why}). The prompt asked for plain language and did not get it - worth a look if this recurs.`,
+            );
+          }
+          const tally = tallyInReport(result as any);
+          if (tally) {
+            this.logger.warn(
+              `Report for ground ${groundId} establishes something by counting accounts, in ${tally.field}: "${tally.phrase}". A gap is real because the record supports it, not because a number of people mentioned it.`,
+            );
+          }
+          return {};
+        })()),
         sharedPicture: result.sharedPicture,
         agreements: result.agreements as any,
         divergences: result.divergences as any,
@@ -1005,10 +1188,88 @@ Close the report by framing - neutrally, without recommending one - the choice n
    * any other party's access. The initiator always sees the full report
    * once released - they are the one who released it.
    */
+
+  /**
+   * PUT THE NAMES BACK, FOR THE PEOPLE ALLOWED TO SEE THEM.
+   *
+   * Reports are stored without personal names: the model is told never to use
+   * one, and the parties reach it as "the initiator" and "participant A". That
+   * is a good property to keep, because an artefact with no names in it cannot
+   * leak one wherever it ends up.
+   *
+   * But it made the report unreadable for the person it is mostly for. A lead
+   * opening a report about their own team, on a page that already shows both
+   * names in the header, was reading "the initiator" and "participant A"
+   * describing a conversation they had themselves.
+   *
+   * So names are added on the way out, and only for the reader entitled to them:
+   * the lead sees everyone, anybody else sees themselves and the lead. A new
+   * hire must never find "Kavon said the handover was late" - a colleague's
+   * account, attributed to them, in front of the person it is about. The
+   * colleague stays behind their role label, which still says honestly where the
+   * account came from without saying who gave it.
+   *
+   * This is access control, not wording, so it lives here in code rather than in
+   * an instruction to a model.
+   */
+  private applyNames<T extends Record<string, any>>(
+    report: T,
+    parties: any[],
+    viewerParticipantId: string | null,
+    viewerIsLead: boolean,
+  ): T {
+    // An org admin reads with the lead's eyes; they already see the whole ground.
+    const asWhom = viewerIsLead
+      ? (parties.find((p) => p.partyType === PartyType.INITIATOR)?.id ?? viewerParticipantId)
+      : viewerParticipantId;
+    const visible = namesVisibleTo(asWhom, parties);
+    // Deliberately NO early return when there are no names to put back. The
+    // dash cleanup below runs on every report, and an invited participant who
+    // has not joined yet has no name - which is exactly a report that would
+    // otherwise keep its em dashes because nobody could be named in it.
+
+    /**
+     * Names in, dashes out, at the same moment and for the same reason: this is
+     * the last place the text is touched before somebody reads it.
+     *
+     * The dash fix is safe in code because nothing about it is a judgement:
+     * a dash between clauses is a comma. The forensic phrases are NOT safe that
+     * way - cutting "both records describe" out of a sentence changes what the
+     * sentence says - so those are still detected and logged for a person.
+     */
+    const t = (v: any): any =>
+      typeof v === 'string' ? withoutDashes(withNames(v, visible)) : v;
+    const walk = (v: any): any => {
+      if (typeof v === 'string') return t(v);
+      if (Array.isArray(v)) return v.map(walk);
+      if (v && typeof v === 'object') {
+        const out: Record<string, any> = {};
+        for (const [k, val] of Object.entries(v)) out[k] = walk(val);
+        return out;
+      }
+      return v;
+    };
+
+    return {
+      ...report,
+      sharedPicture: t(report.sharedPicture),
+      centralQuestion: t(report.centralQuestion),
+      agreements: walk(report.agreements),
+      divergences: walk(report.divergences),
+      finalSynthesis: walk(report.finalSynthesis),
+      leadershipGaps: walk(report.leadershipGaps),
+    };
+  }
+
   async get(groundId: string, requestingUserId: string, requestingUserOrgId?: string) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
-      include: { participants: true, report: true },
+      include: {
+        // The user is included so labels can be resolved to names for the
+        // readers entitled to them - see nameFor() below and party-labels.ts.
+        participants: { include: { user: { select: { firstName: true, lastName: true, email: true } } } },
+        report: true,
+      },
     });
     if (!ground?.report) throw new NotFoundException('Report not found');
 
@@ -1041,7 +1302,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
         ? (() => { try { return JSON.parse(participant.soloArtifact!); } catch { return null; } })()
         : null;
       return {
-        ...ground.report,
+        ...this.applyNames(ground.report as any, ground.participants as any, participant?.id ?? null, isInitiator || isOrgAdmin),
         activated: true,
         forming: true,
         nextStep: isInitiator ? 'release' : isOrgAdmin ? 'wait' : undefined,
@@ -1083,7 +1344,12 @@ Close the report by framing - neutrally, without recommending one - the choice n
     // only the initiator / org admin sees it, and only when the negative tier
     // fired. Participants receive the neutral record-shape line inside the
     // report body itself; arcSignals never leave the admin surface.
-    const base: any = { ...ground.report, activated: true, postReportGuide, soloArtifact };
+    const base: any = {
+      ...this.applyNames(ground.report as any, ground.participants as any, participant?.id ?? null, isInitiator || isOrgAdmin),
+      activated: true,
+      postReportGuide,
+      soloArtifact,
+    };
     if (!isInitiator && !isOrgAdmin) {
       delete base.arcSignals;
     } else if (base.arcSignals && typeof base.arcSignals === 'object') {
@@ -1235,12 +1501,23 @@ Close the report by framing - neutrally, without recommending one - the choice n
     report: { groundId: string; sharedPicture: string; agreements: any; divergences: any; centralQuestion: string; engagement: any },
     participantIds: string[],
   ): Promise<void> {
-    // GATED: post-report guide generation is disabled until it is wired to a UI.
-    // It makes one Gemini call per participant per report release, and today NOTHING
-    // renders the result, so every call is spend into a void. Full state and the
-    // wire-up brief: groundwork_local_test/FEATURE_post_report_guide.md.
-    // TO RE-ENABLE: set POST_REPORT_GUIDE_ENABLED=true (app.postReportGuideEnabled) once a
-    // participant-facing surface consumes the guide. The feature is otherwise fully built below.
+    // ON as of 2026-08-08 (POST_REPORT_GUIDE_ENABLED). One Gemini call per
+    // participant per report release.
+    //
+    // It stayed off through two rounds of review, and the reason is worth keeping:
+    // the first real preview produced "I want to acknowledge Eric's consistent
+    // focus" for two participants, with the prompt forbidding exactly that. One
+    // party being told by name what another said in their private check-in. The
+    // gate is what caught it - nothing had reached a real person.
+    //
+    // What changed before this was turned on: the name and quote strip became
+    // STRUCTURAL (guide-sanitiser.ts, applied below between extraction and
+    // storage, built from this ground's own participants), and a re-reviewed
+    // preview over real records showed zero names, zero quotes, and per-party
+    // openings that lead on the gap rather than on reassurance.
+    //
+    // The flag remains the off switch. If a leak is ever seen, set it to false and
+    // generation stops the same release - do not patch the prompt and hope.
     if (!this.config.get<boolean>('app.postReportGuideEnabled')) {
       this.logger.debug(`Post-report guide generation skipped for ground ${report.groundId} (POST_REPORT_GUIDE_ENABLED off)`);
       return;
@@ -1254,7 +1531,32 @@ Close the report by framing - neutrally, without recommending one - the choice n
       `Central question: ${report.centralQuestion}`,
     ].join('\n');
 
-    const guides: Record<string, { openingLine: string; questionToCarry: string; toAcknowledge: string }> = {};
+    const guides: Record<string, PostReportGuide> = {};
+
+    /**
+     * Every name on the ground, so no guide can carry one.
+     *
+     * ENFORCED HERE, not merely requested in the prompt. On a real seven-party
+     * ground this feature produced "I want to acknowledge Eric's consistent
+     * focus..." for two different participants - one party told, by name, what
+     * another said in their private check-in - while the prompt forbidding
+     * exactly that was in place. See guide-sanitiser.ts for the full account.
+     *
+     * The model has to see the party's own record, which names colleagues, so
+     * withholding the names is not available the way it was for the atStake
+     * pass. The strip therefore happens on the way out.
+     */
+    const parties = await this.prisma.groundParticipant.findMany({
+      where: { groundId: report.groundId },
+      select: { email: true, user: { select: { firstName: true, lastName: true } } },
+    });
+    const names = forbiddenNames(
+      parties.map((p) => ({
+        firstName: p.user?.firstName,
+        lastName: p.user?.lastName,
+        email: p.email,
+      })),
+    );
 
     await Promise.all(
       participantIds.map(async (participantId) => {
@@ -1269,14 +1571,27 @@ Close the report by framing - neutrally, without recommending one - the choice n
           const partyRecord = entries.map((e) => `(${e.type}) ${e.text}`).join('\n');
           const corpus = `SHARED SYNTHESIS:\n${synthesisText}\n\nTHIS PARTY'S RECORD:\n${partyRecord}`;
 
-          const result = await this.anthropic.extract<{ openingLine: string; questionToCarry: string; toAcknowledge: string }>(
+          const result = await this.anthropic.extract<PostReportGuide>(
             POST_REPORT_GUIDE_PROMPT,
             [{ role: 'user', content: corpus }],
             POST_REPORT_GUIDE_SCHEMA,
           );
           if (!result) return;
 
-          guides[participantId] = result;
+          const { guide, dropped } = sanitiseGuide(result, names);
+          for (const d of dropped) {
+            // Logged, because a field being dropped often means the prompt needs
+            // work - and a silent strip would hide that the model is still
+            // reaching for names.
+            this.logger.warn(
+              `Dropped post-report guide field ${d.field} for participant ${participantId}: ${d.reason}.`,
+            );
+          }
+          // A guide stripped to nothing is no guide. Storing an empty object
+          // would render as a heading with nothing under it.
+          if (Object.keys(guide).length === 0) return;
+
+          guides[participantId] = guide;
         } catch (err: any) {
           this.logger.error(`Post-report guide failed for participant ${participantId}: ${err.message}`);
         }
