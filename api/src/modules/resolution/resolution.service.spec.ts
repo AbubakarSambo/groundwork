@@ -1,5 +1,5 @@
 import { ResolutionService } from './resolution.service';
-import { GroundStatus, GroundScenario } from '@prisma/client';
+import { GroundStatus, GroundScenario, PartyType } from '@prisma/client';
 
 /**
  * GW-16: when a party re-proposes with a DIFFERENT end state, all other
@@ -13,16 +13,31 @@ describe('ResolutionService.propose - GW-16 confirmation reset on re-propose', (
   const RESOLUTION_ID = 'r1';
   const USER_ID = 'u1';
 
+  /**
+   * A COFOUNDER ground, deliberately.
+   *
+   * This file is about clearing other parties' stale confirmations when a
+   * proposal changes, which only has meaning where several people confirm. On a
+   * ground with a subject - a new hire, a performance plan - only the lead
+   * confirms now, so there are no other confirmations to clear and the scenario
+   * would be testing nothing. See the-lead-decides-a-persons-role.spec.ts.
+   */
   function makeGround(endState?: string) {
     return {
       id: GROUND_ID,
       status: GroundStatus.ACTIVE,
-      scenario: GroundScenario.NEW_HIRE,
+      scenario: GroundScenario.NEW_COFOUNDER,
     };
   }
 
   function makeParticipant() {
-    return { id: PARTICIPANT_ID, email: 'a@test.com', roleAsDescribed: 'the founder', userId: USER_ID };
+    return {
+      id: PARTICIPANT_ID,
+      email: 'a@test.com',
+      roleAsDescribed: 'the founder',
+      userId: USER_ID,
+      partyType: PartyType.PARTICIPANT,
+    };
   }
 
   function makePrisma({ existingEndState, existingOtherConfirmation }: { existingEndState?: string; existingOtherConfirmation?: boolean }) {
@@ -47,7 +62,7 @@ describe('ResolutionService.propose - GW-16 confirmation reset on re-propose', (
           findUnique: jest.fn(async () =>
             existingEndState ? { id: RESOLUTION_ID, endState: existingEndState } : null,
           ),
-          upsert: jest.fn(async () => ({ id: RESOLUTION_ID, endState: 'KEEP' })),
+          upsert: jest.fn(async () => ({ id: RESOLUTION_ID, endState: 'CONTINUE' })),
         },
         resolutionConfirmation: {
           deleteMany: jest.fn(async (args: any) => { deleted.push(args); return {}; }),
@@ -63,13 +78,13 @@ describe('ResolutionService.propose - GW-16 confirmation reset on re-propose', (
   }
 
   it('deletes other parties confirmations when the end state changes', async () => {
-    const { prisma, deleted } = makePrisma({ existingEndState: 'EXIT', existingOtherConfirmation: true });
+    const { prisma, deleted } = makePrisma({ existingEndState: 'SEPARATE', existingOtherConfirmation: true });
     const intelligence: any = { recordOutcome: jest.fn() };
     const email: any = { sendResolutionProposal: jest.fn(async () => {}), sendGroundClosed: jest.fn() };
     const config: any = { get: jest.fn(() => 'http://localhost:5173') };
     const service = new ResolutionService(prisma, intelligence, email, config);
 
-    await service.propose(GROUND_ID, USER_ID, 'KEEP');
+    await service.propose(GROUND_ID, USER_ID, 'CONTINUE');
 
     expect(deleted).toHaveLength(1);
     expect(deleted[0]).toMatchObject({
@@ -78,13 +93,13 @@ describe('ResolutionService.propose - GW-16 confirmation reset on re-propose', (
   });
 
   it('does NOT delete other confirmations when the same end state is re-proposed', async () => {
-    const { prisma, deleted } = makePrisma({ existingEndState: 'KEEP', existingOtherConfirmation: true });
+    const { prisma, deleted } = makePrisma({ existingEndState: 'CONTINUE', existingOtherConfirmation: true });
     const intelligence: any = { recordOutcome: jest.fn() };
     const email: any = { sendResolutionProposal: jest.fn(async () => {}), sendGroundClosed: jest.fn() };
     const config: any = { get: jest.fn(() => 'http://localhost:5173') };
     const service = new ResolutionService(prisma, intelligence, email, config);
 
-    await service.propose(GROUND_ID, USER_ID, 'KEEP');
+    await service.propose(GROUND_ID, USER_ID, 'CONTINUE');
 
     expect(deleted).toHaveLength(0);
   });
@@ -96,7 +111,7 @@ describe('ResolutionService.propose - GW-16 confirmation reset on re-propose', (
     const config: any = { get: jest.fn(() => 'http://localhost:5173') };
     const service = new ResolutionService(prisma, intelligence, email, config);
 
-    await service.propose(GROUND_ID, USER_ID, 'KEEP');
+    await service.propose(GROUND_ID, USER_ID, 'CONTINUE');
 
     expect(deleted).toHaveLength(0);
   });

@@ -47,6 +47,11 @@ export function ResolutionPanel({ groundId }: { groundId: string }) {
     onError: () => toast.error('Could not record that. Please try again.'),
   })
 
+  const leadDecides = !!(data as any)?.leadDecides
+  const viewerIsLead = !!(data as any)?.viewerIsLead
+  /** Can the person looking at this actually choose? */
+  const canChoose = !leadDecides || viewerIsLead
+
   if (isLoading || error || !data) return null
 
   const { options, confirmations, confirmedCount, totalActive, resolution } = data
@@ -72,9 +77,22 @@ export function ResolutionPanel({ groundId }: { groundId: string }) {
         </div>
       ) : (
         <>
+          {/* WHO DECIDES, SAID PLAINLY, AND ONLY THE RIGHT PERSON IS ASKED.
+              A new hire was shown "Let them go" with a button asking him to
+              choose it, and the ground could not close until he picked the same
+              option as his manager. He still sees what is coming; he is no
+              longer asked to agree to his own exit. */}
           <div style={{ fontSize: 12.5, color: '#6B6560', lineHeight: 1.6, marginBottom: 12 }}>
-            Each person picks the outcome they think the record supports. The ground closes only when
-            everyone picks the same one — nobody closes it alone.
+            {!leadDecides ? (
+              <>Each person picks the outcome they think the record supports. The ground closes only when
+              everyone picks the same one, and nobody closes it alone.</>
+            ) : viewerIsLead ? (
+              <>This one is yours to decide. Everyone in the ground can see the possible outcomes and
+              where things stand, and their accounts stay on the record whichever way you go.</>
+            ) : (
+              <>These are the outcomes this ground can reach. Your lead decides which one it is. Your
+              account stays on the record either way, and you can still correct or add to it.</>
+            )}
           </div>
 
           {split && (
@@ -88,9 +106,11 @@ export function ResolutionPanel({ groundId }: { groundId: string }) {
             {options.map(o => (
               <button
                 key={o.value}
-                onClick={() => setPicked(o.value)}
+                onClick={() => canChoose && setPicked(o.value)}
+                disabled={!canChoose}
                 style={{
-                  textAlign: 'left', padding: '10px 12px', borderRadius: 8, cursor: 'pointer',
+                  textAlign: 'left', padding: '10px 12px', borderRadius: 8,
+                  cursor: canChoose ? 'pointer' : 'default',
                   fontFamily: 'inherit', fontSize: 13,
                   border: picked === o.value ? '2px solid #0C447C' : '1px solid #E2E0DB',
                   background: picked === o.value ? '#EEF4FB' : 'white',
@@ -104,6 +124,7 @@ export function ResolutionPanel({ groundId }: { groundId: string }) {
             ))}
           </div>
 
+          {canChoose && (
           <button
             onClick={() => picked && proposeMut.mutate(picked)}
             disabled={!picked || proposeMut.isPending}
@@ -117,6 +138,7 @@ export function ResolutionPanel({ groundId }: { groundId: string }) {
           >
             {proposeMut.isPending ? 'Recording…' : myChoiceExists ? 'Change my answer' : 'This is my answer'}
           </button>
+          )}
         </>
       )}
 
