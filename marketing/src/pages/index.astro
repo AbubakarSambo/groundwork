@@ -217,7 +217,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
 .l-feed-item:last-child{border-bottom:none}
 
 /* ── NET BG ────────────────────────────────────────────────── */
-.l-net{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:.07}
+/* The decorative net has no viewBox, so its children are literal pixel
+   coordinates - the longest line ends at x=800. Below about 800px wide that
+   line sticks out past the viewport and the whole page scrolls sideways
+   (measured: scrollWidth 697 against clientWidth 637). Clipping it keeps the
+   decoration and stops it dragging the page. GW-008. */
+.l-net{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:.07;overflow:hidden}
 
 /* ── SECTIONS ──────────────────────────────────────────────── */
 .l-sec{width:100%}
@@ -330,6 +335,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
   .l-wrap-sm{padding:52px 20px}
   .l-cta-h2{font-size:32px}
   .l-footer-inner{justify-content:center;text-align:center}
+}
+
+/* ══ NARROW LAPTOP / TABLET (≤820px) ═══════════════════════════ */
+/* The nav is logo + page links + two CTAs on one row. Below about 820px that
+   row is wider than the viewport, so the page scrolled sideways and the
+   "Get started" button was clipped off the right edge - the first thing a
+   visitor on a small laptop or a tablet saw. The mobile rule already solves
+   this by dropping the page links, but it only applied at 620px, leaving a
+   200px band where the nav overflowed. Same fix, applied where it starts to
+   be needed. GW-008. */
+@media(max-width:820px){
+  .l-nav-links{display:none}
 }
 
 /* ══ MOBILE (≤620px) ═══════════════════════════════════════════ */
@@ -492,7 +509,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
              is not lost, it just stopped competing with the headline.
              2: the problem lines now carry a consequence, merged with the old
              "growing for weeks" line rather than saying both. -->
-        <p class="l-hero-problem" style="font-size:15px;color:rgba(255,255,255,0.62);line-height:1.8;margin:0 auto 22px;max-width:560px">Meetings only tell you part of the story. Updates get filtered. People remember things differently.<br><br>By the time you find out, you have often already lost your best people, hired wrong, missed a deadline, or spent weeks solving the wrong problem.</p>
+        <p class="l-hero-problem" style="font-size:15px;color:rgba(255,255,255,0.62);line-height:1.8;margin:0 auto 22px;max-width:560px">Meetings only tell you part of the story. Updates get filtered. People remember things differently.<br><br>By the time you find out, you have often already lost your best people, hired wrong, missed a goal, or spent weeks solving the wrong problem.</p>
         <h1 class="l-hero-h1" style="min-height:auto;line-height:1.12;letter-spacing:-.02em;margin:6px 0 14px;font-size:42px">Know what's really happening.</h1>
         <!-- Three subheads, rotated per visitor and held for that visitor. The
              second and third reframe the first away from any "I am watching
@@ -549,7 +566,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
       <p style="font-size:15px;color:#4A5568;line-height:1.8;margin-bottom:26px">Seven people gave their own account, separately. Here is what came back.</p>
 
       <div style="background:#fff;border:1px solid #E2E0DB;border-radius:12px;padding:26px 28px;box-shadow:0 1px 3px rgba(0,0,0,.04)">
-        <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#9B9590;margin-bottom:14px">Where the accounts differ</div>
+        <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#9B9590;margin-bottom:14px">Where you see it differently</div>
         <div style="font-size:16px;font-weight:700;color:#1A1916;margin-bottom:16px">Definition of success</div>
 
         <div style="border-left:2px solid #E2E0DB;padding-left:16px;margin-bottom:14px">
@@ -695,7 +712,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
       <h2 class="l-sec-h2" style="margin-bottom:18px">You leave for two weeks.</h2>
       <p style="font-size:15px;color:#4A5568;line-height:1.8;margin-bottom:16px">Instead of asking ten people for updates and assembling the picture yourself, it is already there:</p>
       <ul style="font-size:15px;color:#4A5568;line-height:1.9;margin:0 0 16px;padding-left:20px">
-        <li>where people's accounts have started to differ, and on what</li>
+        <li>where people have started to see it differently, and on what</li>
         <li>who owns what, and who is waiting on someone else</li>
         <li>the decisions that are sitting unmade</li>
         <li>the one question worth asking before anything else</li>
@@ -729,7 +746,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
       <div class="l-step"><div class="l-step-num">7</div><div><div class="l-step-title">Close the Ground</div><div class="l-step-desc">When the work reaches its end, Groundwork compares the final outcome with the starting point and produces a clear conclusion: objectives against what was delivered, how expectations changed, the key decisions, the evidence, what was learned, and the complete history of the Ground. The closed Ground stays on record for everyone who was in it, so the next conversation starts from what happened rather than from memory.</div></div></div>
     </div>
     <div style="background:#F5F3EF;border-radius:10px;padding:24px;border-left:3px solid #0C447C;margin-bottom:32px">
-      <h3 style="font-size:16px;font-weight:700;color:#1A1916;margin-bottom:8px">Where the accounts stand</h3>
+      <h3 style="font-size:16px;font-weight:700;color:#1A1916;margin-bottom:8px">Where things stand</h3>
       <p style="font-size:13px;color:#6B6560;line-height:1.7;margin-bottom:16px">Every report says how many areas the accounts agree on and how many are still open, counted from the areas that report actually names. It is not a score, and it is not a grade out of five. When the record does not yet hold enough to say anything, it says nothing rather than rounding up.</p>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
         <div style="text-align:center;padding:12px 8px;background:white;border-radius:6px;border:1px solid #E2E0DB"><div style="font-size:12px;font-weight:700;color:#085041">Agreed on all 5 areas</div><div style="font-size:10px;color:#B4B2A9;margin-top:3px">nothing left open</div></div>

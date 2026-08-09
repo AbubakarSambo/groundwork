@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { entryApi } from '@/api/entry'
 import { authApi } from '@/api/auth'
 import { useEntryStore } from '@/stores/entry'
@@ -9,6 +9,8 @@ import { VennIcon } from '@/components/gw/VennIcon'
 import { toast } from 'sonner'
 
 const STORAGE_KEY = 'gw_entry_session'
+/** Where the API lives, for the one place we hand the browser away (Google). */
+const API_ORIGIN = import.meta.env.VITE_API_URL ?? ''
 
 interface Turn { role: 'user' | 'assistant'; content: string }
 interface EntrySession {
@@ -438,6 +440,35 @@ const QUICK_ACTIONS = [
   { label: 'Cross-reference', msg: 'Cross-reference what I have shared with what you know about how the other party sees this situation.' },
 ]
 
+/**
+ * A ground's name when nobody typed one.
+ *
+ * The fallback used to be the literal string "My first ground". That is not an
+ * internal placeholder: it becomes the subject line the lead receives - "Sahar
+ * asked you to lead a ground: My first ground" - which tells them nothing about
+ * what they are being asked to lead. Every second ground would carry the same
+ * name, so two invitations are indistinguishable in an inbox. GW-010.
+ *
+ * Everything needed for a real name was already said in the conversation, so we
+ * use it: the classified scenario if the engine reached one, otherwise the first
+ * thing the person typed, trimmed to something an inbox can show.
+ */
+export function fallbackGroundName(classifiedScenario?: string, firstDescription?: string): string {
+  const fromScenario = (classifiedScenario ?? '')
+    .trim()
+    .replace(/_/g, ' ')
+    .toLowerCase()
+    .replace(/^\w/, (c) => c.toUpperCase())
+  if (fromScenario) return fromScenario
+
+  const said = (firstDescription ?? '').trim().replace(/\s+/g, ' ')
+  if (said) {
+    const clipped = said.length > 60 ? said.slice(0, 57).trimEnd() + '...' : said
+    return clipped.replace(/^\w/, (c) => c.toUpperCase())
+  }
+  return 'Untitled ground'
+}
+
 export function EntryChatPage() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
@@ -548,6 +579,29 @@ export function EntryChatPage() {
   const [checkInBy, setCheckInBy] = useState('')
   const [lastCheckInBy, setLastCheckInBy] = useState('')
   const [cadence, setCadence] = useState<'DAILY' | 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'ONE_TIME' | 'SEQUENTIAL'>('FORTNIGHTLY')
+  /**
+   * Did anyone actually choose this rhythm?
+   *
+   * The picker showed FORTNIGHTLY already selected whether or not the person had
+   * ever mentioned a cadence, so a value nobody had chosen was indistinguishable
+   * from one they had. It decides the length of the whole ground - ninety days
+   * weekly is twelve check-ins, fortnightly is six - and it was being settled by
+   * a useState default that read as a decision.
+   *
+   * This does not change what the ground gets if they say nothing. It changes
+   * whether the screen claims they picked it.
+   */
+  const [cadenceChosen, setCadenceChosen] = useState(false)
+
+  /**
+   * Does this deployment have Google credentials? Only the server knows, and a
+   * button shown without them sends people to Google's own error page.
+   */
+  const { data: authMethods } = useQuery({
+    queryKey: ['auth-methods'],
+    queryFn: () => authApi.methods(),
+    staleTime: 5 * 60 * 1000,
+  })
   const [cadenceAnchorDay, setCadenceAnchorDay] = useState<number | null>(null) // 0=Sun..6=Sat for "every Monday"
   const [bulkInviteMode, setBulkInviteMode] = useState(false)
   const [bulkInviteText, setBulkInviteText] = useState('')
@@ -859,6 +913,32 @@ export function EntryChatPage() {
           ...(res.extracted.goals ? { goals: res.extracted.goals! } : {}),
           ...(res.extracted.brief !== undefined ? { brief: res.extracted.brief! } : {}),
         }))
+
+        /**
+         * Use the rhythm and length they actually said.
+         *
+         * `cadence` was a useState('FORTNIGHTLY') that nothing ever updated, so
+         * someone who said "90 days, weekly check-ins" got a FORTNIGHTLY ground -
+         * about six sessions instead of twelve. Their words were captured
+         * correctly in the brief and then dropped on the way to the enum, which
+         * made it a mapping failure rather than a comprehension one. GW-017.
+         *
+         * Only applied when the extraction actually found something: the prompt
+         * is told never to guess, so an absent field means they did not say, and
+         * the existing default stands rather than being overwritten with a
+         * fabricated one.
+         *
+         * This also gives the header a real number to show instead of the
+         * placeholder that read "1/1 sessions" (GW-005).
+         */
+        if (res.extracted.cadence) { setCadence(res.extracted.cadence); setCadenceChosen(true) }
+        if (res.extracted.timelineDays && res.extracted.timelineDays > 0) {
+          const days = res.extracted.timelineDays
+          const c = res.extracted.cadence ?? cadence
+          const perSession = c === 'DAILY' ? 1 : c === 'WEEKLY' ? 7 : c === 'FORTNIGHTLY' ? 14 : c === 'MONTHLY' ? 30 : 0
+          if (perSession > 0) setSessions(Math.max(1, Math.round(days / perSession)))
+          else if (c === 'ONE_TIME') setSessions(1)
+        }
         // Background classify intent when we have initial
         if (res.extracted.initial) {
           entryApi.classifyIntent(res.extracted.initial, res.extracted.mode).then(r => {
@@ -917,20 +997,40 @@ export function EntryChatPage() {
     sendOnboarding(composed)
   }
 
-  // Kick off the AI onboarding with the intro message on mount (if onboarding history is empty)
+  /**
+   * Kick off the onboarding with the intro - WITHOUT clobbering a restored one.
+   *
+   * This effect depends on `phase`, and the restore path sets `phase` to
+   * 'onboarding'. So on a refresh it fired with a stale `onboardingHistory.length`
+   * of 0, from the render before the restore applied, and overwrote the restored
+   * conversation with the single intro turn.
+   *
+   * The visible result was the bug in GW-003: refresh mid-conversation and the
+   * seventeen-card picker comes back (it renders when the history has exactly one
+   * turn), the conversation is gone from the screen, and there is no input to
+   * continue in - while all the turns are still sitting in localStorage. Someone
+   * who refreshes, or returns to the tab, starts over.
+   *
+   * The functional update is the fix: it reads the CURRENT history rather than the
+   * one captured when the effect was created, so it cannot overwrite anything that
+   * is already there. The early return above is kept as a cheap first check, but it
+   * is no longer what makes this safe.
+   */
   useEffect(() => {
-    if (phase !== 'onboarding' || onboardingHistory.length > 0) return
+    if (phase !== 'onboarding') return
     const INTRO = `What brings you here? Scroll for the full list of situations, pick the one that fits, or describe your own at the bottom.`
     // If URL params pre-populate, inject as first user message
     if (urlInitial) {
-      const preloadedHistory: Turn[] = [
-        { role: 'assistant', content: INTRO },
-        { role: 'user', content: urlInitial },
-      ]
-      setOnboardingHistory(preloadedHistory)
-      sendOnboarding(urlInitial)
+      setOnboardingHistory(prev => {
+        if (prev.length > 0) return prev
+        sendOnboarding(urlInitial)
+        return [
+          { role: 'assistant', content: INTRO },
+          { role: 'user', content: urlInitial },
+        ]
+      })
     } else {
-      setOnboardingHistory([{ role: 'assistant', content: INTRO }])
+      setOnboardingHistory(prev => (prev.length > 0 ? prev : [{ role: 'assistant', content: INTRO }]))
     }
   }, [phase])
 
@@ -1006,24 +1106,17 @@ export function EntryChatPage() {
     sendMut.mutate([...history, userTurn])
   }
 
-  async function handleSave() {
-    const trimmed = email.trim()
-    if (!trimmed || !trimmed.includes('@')) { setEmailError('Please enter a valid email address.'); return }
-    // NOTE: a hard "set a date first" gate used to live here, but the date
-    // field only renders AFTER the email is sent (the admin section below is
-    // emailSent-gated) - so the gate deadlocked every anonymous save. The
-    // start date is optional at commit (dto.checkInBy is optional) and can be
-    // set in the admin section once it appears.
-    setEmailError('')
-    // Build the commit payload BEFORE calling entry-save: the same request
-    // that registers the email also stores a SERVER-SIDE DRAFT of the session
-    // (this payload + the transcript). Giving the email is the ISSUE-17
-    // consent moment - nothing is persisted server-side before it. The draft
-    // is what makes the post-verification commit work no matter which browser
-    // opens the magic link; the localStorage copies below are only the
-    // same-browser mirror (and the legacy path for old links).
-    const commitPayload = {
-        groundLabel: groundName || scenario || 'My first ground',
+  /**
+   * The ground, as it will be created - built once and used by both ways out.
+   *
+   * There are two now: the emailed link, and Google. Google skips the email
+   * round trip entirely (the address is already verified by Google), so the same
+   * payload has to be reachable from a click that leaves the page immediately.
+   * Duplicating it would guarantee the two paths drift.
+   */
+  function buildCommitPayload() {
+    return {
+        groundLabel: groundName || scenario || fallbackGroundName(onboardingSelections.classifiedScenario, onboardingSelections.initial),
         orgName: orgName.trim() || undefined,
         // Prefer the AI-classified scenario; fall back to mode key, then URL param.
         scenario: onboardingSelections.classifiedScenario || onboardingSelections.mode || scenario || undefined,
@@ -1050,6 +1143,44 @@ export function EntryChatPage() {
             }
           : {}),
       }
+  }
+
+
+  /**
+   * Hand the browser to Google, carrying the ground with it.
+   *
+   * The payload and transcript go into localStorage first because the page is
+   * about to be replaced by Google's. Coming back, GoogleCallbackPage finds them
+   * and commits - same browser, so nothing needs to survive on the server, and
+   * nothing is persisted anywhere until the person has actually signed in.
+   */
+  function continueWithGoogle() {
+    try {
+      localStorage.setItem('gw_entry_pending_commit', JSON.stringify({
+        payload: buildCommitPayload(),
+        history,
+      }))
+    } catch { /* storage full or blocked - the sign-in still works, the ground is re-creatable */ }
+    window.location.href = `${API_ORIGIN}/api/v1/auth/google`
+  }
+
+  async function handleSave() {
+    const trimmed = email.trim()
+    if (!trimmed || !trimmed.includes('@')) { setEmailError('Please enter a valid email address.'); return }
+    // NOTE: a hard "set a date first" gate used to live here, but the date
+    // field only renders AFTER the email is sent (the admin section below is
+    // emailSent-gated) - so the gate deadlocked every anonymous save. The
+    // start date is optional at commit (dto.checkInBy is optional) and can be
+    // set in the admin section once it appears.
+    setEmailError('')
+    // Build the commit payload BEFORE calling entry-save: the same request
+    // that registers the email also stores a SERVER-SIDE DRAFT of the session
+    // (this payload + the transcript). Giving the email is the ISSUE-17
+    // consent moment - nothing is persisted server-side before it. The draft
+    // is what makes the post-verification commit work no matter which browser
+    // opens the magic link; the localStorage copies below are only the
+    // same-browser mirror (and the legacy path for old links).
+    const commitPayload = buildCommitPayload()
       try {
       const res = await authApi.entrySave(trimmed, { payload: commitPayload, history })
       setEmailSent(true)
@@ -1071,7 +1202,7 @@ export function EntryChatPage() {
     if (!emailSent || !draftToken) return
     const t = setTimeout(() => {
       const patch = {
-        groundLabel: groundName || scenario || 'My first ground',
+        groundLabel: groundName || scenario || fallbackGroundName(onboardingSelections.classifiedScenario, onboardingSelections.initial),
         orgName: orgName.trim() || undefined,
         cadence,
         cadenceAnchorDay: (cadence === 'WEEKLY' || cadence === 'FORTNIGHTLY' || cadence === 'MONTHLY') && cadenceAnchorDay != null ? cadenceAnchorDay : undefined,
@@ -1237,7 +1368,11 @@ export function EntryChatPage() {
                 </>
               ) : (
                 <button onClick={() => { setRenameInput(''); setRenamingGround(true) }} style={{ background: 'none', border: '1px dashed var(--gw-border)', borderRadius: 5, color: 'var(--gw-sub)', cursor: 'pointer', fontSize: 12, padding: '2px 10px', fontFamily: 'inherit', fontWeight: 500 }}>
-                  Name this ground ✎
+                  {/* "Name this ground" used the product's own word for a thing
+                      the reader has not met yet - on the first screen a stranger
+                      sees, before anything explains what a ground is. Judged
+                      against the weakest reader, as briefed. GW-007. */}
+                  Give this a name ✎
                 </button>
               )}
             </div>
@@ -1282,8 +1417,25 @@ export function EntryChatPage() {
               style={{ background: 'none', border: '1px solid var(--gw-border)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit' }}
               title="Edit number of sessions"
             >
-              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-text)' }}>1/{sessions}</span>
-              <span style={{ fontSize: 10, color: 'var(--gw-sub)', marginLeft: 4 }}>sessions</span>
+              {/*
+                This read "1/{sessions}" - so during setup, before anyone has
+                checked in, it said "1/1 sessions". A user who had just told the
+                engine "90 day period, weekly check-ins" saw a header claiming
+                one. Two separate problems in one label: the "1/" prefix implies
+                a session in progress when none has happened, and the total is
+                whatever this control was last set to rather than anything the
+                conversation said. GW-005.
+
+                The prefix is gone and the number is labelled as the plan, which
+                is what it actually is - an editable estimate. The engine does not
+                yet extract cadence from the conversation (the /entry/onboard
+                response carries no session or duration field), so the number
+                still has to be set here rather than inferred.
+              */}
+              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-text)' }}>{sessions}</span>
+              <span style={{ fontSize: 10, color: 'var(--gw-sub)', marginLeft: 4 }}>
+                {sessions === 1 ? 'session planned' : 'sessions planned'}
+              </span>
             </button>
           )}
         </div>
@@ -1365,7 +1517,7 @@ export function EntryChatPage() {
             {onboardingHistory.length <= 1 && (
               <div style={{ background: 'var(--gw-blue-bg)', borderBottom: '1px solid var(--gw-blue-b)', padding: '12px 20px', flexShrink: 0 }}>
                 <div style={{ maxWidth: 680, margin: '0 auto' }}>
-                  <h1 style={{ fontSize: 15, fontWeight: 800, color: 'var(--gw-navy)', margin: '0 0 3px', letterSpacing: '-.01em' }}>Set up your Groundwork</h1>
+                  <h1 style={{ fontSize: 15, fontWeight: 800, color: 'var(--gw-navy)', margin: '0 0 3px', letterSpacing: '-.01em' }}>Set this up</h1>
                   <div style={{ fontSize: 13, color: 'var(--gw-navy)', lineHeight: 1.6 }}>
                     Answer a few questions about the situation. You get a private summary now; a shared report follows once the other people check in.
                   </div>
@@ -2191,6 +2343,35 @@ export function EntryChatPage() {
                 <div style={{ fontSize: 11.5, color: '#9B9590', lineHeight: 1.5, textAlign: 'center', paddingTop: 8 }}>
                   We'll email you a confirmation link. Your report is saved and your invites go out the moment you open it.
                 </div>
+
+                {/* SIGNING UP WITH GOOGLE, AT THE MOMENT SIGNING UP HAPPENS.
+                    Sign-up in this flow is the last step, not the first - the
+                    whole conversation happens before anyone is asked who they
+                    are. So this belongs beside the email box, not at the top of
+                    the page.
+                    Google has already verified the address, so this path skips
+                    the emailed confirmation entirely: the ground is created on
+                    the way back. Only shown where the deployment actually has
+                    Google configured - the button is otherwise a link to
+                    Google's own error page. */}
+                {authMethods?.google && (
+                  <>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 0 8px' }}>
+                      <div style={{ flex: 1, height: 1, background: '#E2E0DB' }} />
+                      <span style={{ fontSize: 11, color: '#9B9590' }}>or</span>
+                      <div style={{ flex: 1, height: 1, background: '#E2E0DB' }} />
+                    </div>
+                    <button
+                      onClick={continueWithGoogle}
+                      style={{ width: '100%', padding: '11px 16px', borderRadius: 8, background: 'white', color: 'var(--gw-text)', fontSize: 14, fontWeight: 700, border: '1px solid #E2E0DB', cursor: 'pointer', fontFamily: 'inherit' }}
+                    >
+                      Continue with Google
+                    </button>
+                    <div style={{ fontSize: 11.5, color: '#9B9590', lineHeight: 1.5, textAlign: 'center', paddingTop: 8 }}>
+                      No confirmation email needed - your ground is created as soon as you come back.
+                    </div>
+                  </>
+                )}
                 <div onClick={() => setShowSave(false)} style={{ textAlign: 'center', fontSize: 12, color: '#9B9590', cursor: 'pointer', paddingTop: 10 }}>
                   Not now
                 </div>
@@ -2199,9 +2380,15 @@ export function EntryChatPage() {
               <div style={{ background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 10, padding: '14px 16px', marginBottom: 20 }}>
                 <div style={{ fontSize: 14, fontWeight: 700, color: '#085041', marginBottom: 4 }}>Check your email</div>
                 <div style={{ fontSize: 13, color: '#085041', lineHeight: 1.6 }}>We sent a link to <strong>{email}</strong>. Click it to finish setting up and get your invite link.</div>
-                {inviteAdded.length > 0 && (
+                {inviteAdded.length > 0 ? (
                   <div style={{ fontSize: 12, color: '#085041', lineHeight: 1.6, marginTop: 8, paddingTop: 8, borderTop: '1px solid #B6E8D4' }}>
                     <strong>Waiting to send ({inviteAdded.length}):</strong> {inviteAdded.map(e => e.split(' - ')[0]).join(', ')}. Invites go out when you confirm your email.
+                  </div>
+                ) : (
+                  /* Saying nothing here read as "you have left something
+                     undone". Nobody added is a perfectly good place to stop. */
+                  <div style={{ fontSize: 12, color: '#085041', lineHeight: 1.6, marginTop: 8, paddingTop: 8, borderTop: '1px solid #B6E8D4' }}>
+                    No one added yet. You can invite people whenever you're ready.
                   </div>
                 )}
               </div>
@@ -2225,16 +2412,21 @@ export function EntryChatPage() {
                 onChange={e => setOrgName(e.target.value)}
                 style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #E2E0DB', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none', marginBottom: 8 }}
               />
-              <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 4 }}>How often do contributors check in?</div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 4 }}>
+                How often do contributors check in?
+                {!cadenceChosen && (
+                  <span style={{ fontWeight: 500, color: '#8A7B66' }}> Not set yet - this ground will run every 2 weeks unless you pick.</span>
+                )}
+              </div>
               <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
                 {(['ONE_TIME', 'DAILY', 'WEEKLY', 'FORTNIGHTLY', 'MONTHLY', 'SEQUENTIAL'] as const).map(c => {
                   const labels: Record<string, string> = { ONE_TIME: 'One time', DAILY: 'Daily', WEEKLY: 'Weekly', FORTNIGHTLY: 'Every 2 weeks', MONTHLY: 'Monthly', SEQUENTIAL: 'When I check in' }
                   return (
-                  <button key={c} onClick={() => setCadence(c)} style={{
+                  <button key={c} onClick={() => { setCadence(c); setCadenceChosen(true) }} style={{
                     flex: '1 0 30%', padding: '9px 4px', borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-                    border: `1px solid ${cadence === c ? '#0C447C' : '#E2E0DB'}`,
-                    background: cadence === c ? '#EEF4FB' : 'white',
-                    color: cadence === c ? '#0C447C' : '#6B6560',
+                    border: `1px solid ${cadenceChosen && cadence === c ? '#0C447C' : '#E2E0DB'}`,
+                    background: cadenceChosen && cadence === c ? '#EEF4FB' : 'white',
+                    color: cadenceChosen && cadence === c ? '#0C447C' : '#6B6560',
                   }}>
                     {labels[c]}
                   </button>
@@ -2323,8 +2515,8 @@ export function EntryChatPage() {
               ].some(k => s.includes(k))
               const inviteHeading = isSensitive ? 'Let them share their side' : 'Invite contributors'
               const inviteSubtext = isSensitive
-                ? 'Send them a link so they can share their account independently. They cannot see what you wrote. When both sides are in, the report shows where you agree and where the conversation still needs to happen.'
-                : 'Each person checks in independently. Nobody reads anyone else\'s words directly. When all accounts are in, the report shows where everyone agrees, where they differ, and what the gap means.'
+                ? 'Send them a link so they can give their own account of the same work. They cannot see what you wrote. When both sides are in, the report shows where you agree and where the conversation still needs to happen. It does not score anyone.'
+                : 'Each person gives their own account of the shared work, including their own part in it. Nobody reads anyone else\'s words directly. When all the accounts are in, the report shows where people agree, where they differ, and what the gap means for the work.'
               return (
             <div style={{ borderBottom: '1px solid #E2E0DB', marginBottom: 16, paddingBottom: 16 }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 4 }}>{inviteHeading}</div>
@@ -2333,6 +2525,18 @@ export function EntryChatPage() {
               </div>
               <div style={{ fontSize: 12, color: '#0C447C', background: '#EEF4FB', border: '1px solid #CFE2F5', borderRadius: 8, padding: '8px 11px', lineHeight: 1.5, marginBottom: 10 }}>
                 Add them here now. Invites don't go out yet — they're sent once you save this ground and confirm your email.
+              </div>
+              {/* THERE IS A LATER, AND IT SHOULD SAY SO.
+                  Adding people has always been optional - the commit defaults
+                  contributors to an empty list and the ground page has its own
+                  "+ Add someone" - but nothing here said that, and "Add them
+                  here now" reads as an instruction.
+                  It matters most for exactly the people most likely to want a
+                  night to think: someone opening a PIP or a co-founder dispute
+                  is being asked to name the other party at the moment they are
+                  least sure, and silence about a later made that feel final. */}
+              <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.55, marginBottom: 10 }}>
+                Not ready? You can add people any time from the ground itself. Nothing goes out until you do.
               </div>
               {(() => {
                 const s = onboardingSelections.classifiedScenario || onboardingSelections.mode || scenario
@@ -2450,14 +2654,28 @@ export function EntryChatPage() {
             </div>
             )}
 
-            {closed ? (
+            {/*
+              "Done" is only offered once the email has actually been sent.
+
+              It used to render whenever the session had closed, which meant a
+              user who had not yet saved saw THREE controls at once: "Save my
+              ground →", "Not now", and a second primary-styled "Done" beneath it.
+              Two of those dismiss the panel and one saves, and the dismiss action
+              carried the visual weight of the finishing action - so the obvious
+              way to press "I have finished" was the way to leave without saving.
+              GW-006.
+
+              With the email sent, "Done" is honest: the ground is saved and this
+              just closes the panel.
+            */}
+            {closed && emailSent ? (
               <div style={{ textAlign: 'center', paddingTop: 8 }}>
                 <button onClick={() => setShowSave(false)} style={{ padding: '11px 28px', borderRadius: 8, background: '#0C447C', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
                   Done
                 </button>
                 <div style={{ fontSize: 11.5, color: '#9B9590', paddingTop: 8 }}>You can reopen this any time from the bar below.</div>
               </div>
-            ) : (
+            ) : closed ? null : (
               <div onClick={() => setShowSave(false)} style={{ textAlign: 'center', fontSize: 12, color: '#9B9590', cursor: 'pointer', paddingTop: 4 }}>
                 Later
               </div>

@@ -179,14 +179,18 @@ export const PATTERN_DETECTION_PROMPT = `You analyse ONE party's check-in for a 
 
 Hard rules:
 - Emit a code ONLY when its signal is genuinely present in this period's evidence. When the work is genuine and verified, emit NOTHING - recognising real work matters as much as detecting managed submissions.
-- Each observation must be written at the PATTERN level, in plain language, describing what the record shows - NEVER a verdict, never "this person is X". Example: "The record describes completion without downstream confirmation." Never name the person.
+- Each observation must be written at the PATTERN level, in plain language, and must NEVER be a verdict, never "this person is X". Never name the person.
+- SAY THE THING, DO NOT ANNOUNCE THAT THE RECORD SAYS IT. Opening every observation with "The record shows", "The record describes", "The record contains" reads like disclosure in a court case, which is the opposite of what this is - a shared picture of work, not evidence assembled against somebody. Ten observations in a row all opening that way was the state of it.
+  Write: "Work marked finished without anyone downstream confirming it."
+  Not:   "The record shows work was marked finished without downstream confirmation."
+  The observation is already about the record; saying so adds nothing but distance.
 - Do not infer intent. A pattern is a reason to have a specific conversation, not a conclusion.
 - One data point is not a pattern. You are emitting a per-period observation; the system applies the three-period rule across periods. Do not claim a pattern is established.
 
 The pattern codes and their signals:
 ${BAD_FAITH_CODES.map((c) => `- ${c.code} (${c.name}): ${c.signal}`).join('\n')}
 
-Return the codes whose signal is present this period, each with a one-sentence plain-language observation of what the record shows.`;
+Return the codes whose signal is present this period, each with a one-sentence plain-language observation. Say what happened, plainly, without prefacing it.`;
 
 export const PATTERN_DETECTION_SCHEMA = {
   name: 'emit_pattern_signals',
@@ -200,7 +204,7 @@ export const PATTERN_DETECTION_SCHEMA = {
           type: 'object',
           properties: {
             code: { type: 'string', enum: BAD_FAITH_CODES.map((c) => c.code), description: 'The pattern code.' },
-            observation: { type: 'string', description: 'Plain-language, pattern-level description of what the record shows. Never names the person; never a verdict.' },
+            observation: { type: 'string', description: 'Plain-language, pattern-level description of what happened. Do NOT open with "The record shows/describes/contains" - say the thing directly. Never names the person; never a verdict.' },
           },
           required: ['code', 'observation'],
         },

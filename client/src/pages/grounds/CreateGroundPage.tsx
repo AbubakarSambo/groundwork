@@ -95,7 +95,7 @@ export const SCENARIOS: ScenarioCard[] = [
   { cardKey: 'PULSE_CHECK', scenario: 'PULSE_CHECK', label: 'A regular read on live work', tag: 'Recurring', tagBg: '#E8F8F5', tagColor: '#085041',
     desc: 'A fast, repeatable read from each person: what is moving, what is stuck, what has changed. About five minutes.',
     examples: [
-      'A fast fortnightly read from each person on what is moving and what is stuck.',
+      'A quick read every two weeks from each person on what is moving and what is stuck.',
       'You want a lightweight recurring signal without calling a meeting.',
     ] },
   { cardKey: 'DRIFT', scenario: 'DRIFT', label: 'Something\'s off track', tag: 'Off track', tagBg: '#FDF3E3', tagColor: '#8A5C1A',

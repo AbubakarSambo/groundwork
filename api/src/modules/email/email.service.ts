@@ -207,7 +207,7 @@ export class EmailService {
   async sendGroundActivated(email: string, firstName: string, groundLabel: string, groundUrl: string): Promise<void> {
     await this.sendEmail({
       to: email,
-      subject: `Both accounts are in - your shared report is ready: ${groundLabel}`,
+      subject: `You have both checked in - your shared report is ready: ${groundLabel}`,
       html: this.layout(
         `<p>Hi ${firstName},</p>
          <p>All parties have checked in on <strong>${groundLabel}</strong>. Your shared report is ready.</p>
@@ -234,7 +234,7 @@ export class EmailService {
     };
     const subject = (scenario && subjectMap[scenario]) || 'Your check-in is waiting';
     const otherPartyNote = otherPartyCompleted
-      ? `<p><strong>The other party has already submitted their version. Your record is the only thing missing.</strong></p>`
+      ? `<p><strong>They have already shared their side. Yours is the last one we are waiting for.</strong></p>`
       : '';
     await this.sendEmail({
       to: email,
@@ -271,7 +271,7 @@ export class EmailService {
   async sendLateCorrectionNotice(email: string, groundLabel: string, groundUrl: string): Promise<void> {
     await this.sendEmail({
       to: email,
-      subject: `An account was updated on "${groundLabel}"`,
+      subject: `Someone added to what they said on "${groundLabel}"`,
       html: this.layout(
         `<p>One of the parties on <strong>${groundLabel}</strong> corrected their account after you had already seen the shared report.</p>
          <p>The report now shows this as an update, flagged with when it happened - it does not show what was changed in their own words.</p>
@@ -317,7 +317,7 @@ export class EmailService {
   async sendParticipantCheckedIn(adminEmail: string, participantEmail: string, groundLabel: string, groundUrl: string, stillPending?: number): Promise<void> {
     const pendingNote = stillPending && stillPending > 0
       ? `<p>${stillPending} ${stillPending === 1 ? 'party has' : 'parties have'} not yet checked in. The report generates once everyone is in.</p>`
-      : `<p>All parties have now checked in. The shared report is ready to release.</p>`;
+      : `<p>Everyone has now checked in. The shared report is ready to go out.</p>`;
     await this.sendEmail({
       to: adminEmail,
       subject: `${participantEmail} has checked in on ${groundLabel}`,

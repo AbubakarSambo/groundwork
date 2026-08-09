@@ -116,7 +116,7 @@ function AdminCrossRef({ report, closed }: { report: Report; closed: boolean }) 
   const openAreas: Area[] = (report.divergences ?? []).map(d => ({
     title: d.topic,
     observation: d.positions.map(p => `${p.participantLabel}: ${p.view}`).join(' - '),
-    whyItMatters: d.evidence?.[0] ?? 'Diverging accounts on this topic can become harder to align the longer they stay implicit.',
+    whyItMatters: d.evidence?.[0] ?? 'The longer this stays unsaid, the harder it gets to sort out.',
     move: 'Surface this explicitly next session. Name what each of you expects and write it down.',
   }))
 
@@ -252,7 +252,7 @@ function ParticipantCrossRef({ report, closed }: { report: Report; closed: boole
         <>
           {assumptions.length > 0 && (
             <div style={{ marginBottom: 14 }}>
-              <SecH>The assumptions in your account</SecH>
+              <SecH>The assumptions in what you said</SecH>
               <BulletList items={assumptions} />
             </div>
           )}
@@ -279,8 +279,8 @@ function ParticipantCrossRef({ report, closed }: { report: Report; closed: boole
           </div>
           <div style={{ fontSize: 12, color: 'var(--gw-sub)', background: '#F4F1EA', border: '1px solid #E5DFD2', borderRadius: 8, padding: '10px 12px', lineHeight: 1.55 }}>
             {report.releasedAt
-              ? 'The full comparison is now open - both parties read the same report at the same moment.'
-              : 'You still see only your own account. The full comparison opens when you both activate the report.'}
+              ? 'The full comparison is now open, and you both read the same report at the same moment.'
+              : 'You can still only see your own. The full comparison opens once you have both opened the report.'}
           </div>
         </>
       )}

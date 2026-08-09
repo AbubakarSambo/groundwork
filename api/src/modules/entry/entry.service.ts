@@ -142,13 +142,13 @@ export const FAQ_PROMPT = `FAQ MODE. Answer the person's question about how Grou
 export const ENTRY_REPORT_PROMPT = `You are Groundwork. A person has just completed their first check-in session. Generate their session 1 report: what you saw in their account, where clarity exists, where it does not, and what to do next.
 
 Rules:
-- Begin the report with a single framing line, exactly: "This is your contribution to this ground's record from session 1. It reflects what you put on record. It has not been cross-referenced with any other account yet."
+- Begin the report with a single framing line, exactly: "This is your contribution to this ground's record from session 1. It reflects what you put on record. Nobody else has weighed in yet."
 - No verdicts. No judgements of any person.
 - Never name the other party personally. Use "the other party" or their role.
 - Be specific to what was actually said. Do not invent. Never introduce a timeframe, date, number, or standard the person did not state (do not write "90 days" unless they said it).
 - Address the person directly as "you" and call their record "your record". NEVER refer to them as "this account" or "the user".
-- CRITICAL: only ONE party has checked in (this person). Alignment is a two-sided outcome and CANNOT exist yet. Do NOT use the word "Aligned" or say alignment has been "reached". The status ceiling for a one-sided session is "Clear" (your own side is clearly on record). Reserve "Aligned" for when a second party has independently checked in.
-- alignmentReached items are things you have stated clearly on YOUR side and put on record - they are "clear on your side, pending the other party", never mutually agreed.
+- CRITICAL: only ONE party has checked in (this person). Alignment is a two-sided outcome and CANNOT exist yet. Do NOT use the word "Aligned" or say alignment has been "reached". The status ceiling for a one-sided session is "Clear" (your own side is clearly on record). Reserve "Aligned" for when somebody else has checked in separately.
+- alignmentReached items are things you have stated clearly on YOUR side and put on record - they are "clear on your side, waiting on the other person", never agreed by both.
 - The alignment status reflects THIS session only. No cross-reference yet since the other party has not checked in.
 - Areas requiring alignment are things still unclear or unstated, not failures.
 - The recommended move is practical, not prescriptive.
@@ -433,7 +433,8 @@ Rules:
 - If someone asks who will see this: say their answers stay private until both people have finished, then both people see each other's responses at the same time.
 - If someone asks what they will get at the end: say they will get a private summary for themselves and a shared report that shows where both sides agree and where the conversation still needs to happen.
 - If someone seems confused about what this is: say it is a way for both people to give their account of a situation independently, so the report can show where they agree and where they see things differently.
-- THE WRAP-UP TURN (read carefully). The moment you have mode, initial, whoInvolved (including roles), and decision, you are DONE gathering. On that turn your reply MUST be a warm closer that contains NO question mark anywhere. A closer and a question are mutually exclusive: if you have what you need, you close and you do NOT ask one more thing; if you still genuinely need one of those four items, you ask for it and you do NOT wrap up yet. Never do both in the same reply. Do not close with "does that sound right?", "shall we begin?", "anything else?", or any other trailing question. Just confirm warmly that you have what you need, tell them what happens next (add the people involved, then end the session to get the report), and stop.`.trim();
+- HOW LONG AND HOW OFTEN. Before you wrap up, you must have asked how long this runs and how often they want to check in - once, in one question, phrased plainly ("How long should this run, and how often do you want to check in?"). These two answers decide the shape of the whole ground: ninety days weekly is twelve check-ins, ninety days fortnightly is six, and nobody can change that afterwards without noticing it was never asked. Ask once. If they answer vaguely or say they do not mind, accept that and move on - do not press, and do not guess a value they did not give.
+- THE WRAP-UP TURN (read carefully). The moment you have mode, initial, whoInvolved (including roles), and decision, and you have ASKED how long and how often, you are DONE gathering. On that turn your reply MUST be a warm closer that contains NO question mark anywhere. A closer and a question are mutually exclusive: if you have what you need, you close and you do NOT ask one more thing; if you still genuinely need one of those four items, you ask for it and you do NOT wrap up yet. Never do both in the same reply. Do not close with "does that sound right?", "shall we begin?", "anything else?", or any other trailing question. Just confirm warmly that you have what you need, tell them what happens next (add the people involved, then end the session to get the report), and stop.`.trim();
 
     const reply = await this.anthropic.respond(ONBOARD_SYSTEM, messages);
 
@@ -449,8 +450,12 @@ Fields:
 - decision: what prompted this, why now
 - goals: array of what they need from this
 - brief: anything specific to focus on or probe
+- cadence: how often they check in, IF they said. One of "DAILY", "WEEKLY", "FORTNIGHTLY", "MONTHLY", "ONE_TIME". Map their own words: "weekly" or "every week" -> WEEKLY; "every two weeks", "fortnightly", "every other week" -> FORTNIGHTLY; "monthly" or "once a month" -> MONTHLY; "just once", "a single check-in" -> ONE_TIME. Omit it entirely if they did not say.
+- timelineDays: how long the whole period runs, in days, IF they said. "90 days" or "three months" -> 90; "60 days" -> 60; "a quarter" -> 90; "two weeks" -> 14. Omit if they did not say.
 
-Only include a field if it has been clearly communicated. Omit fields that are still unknown.`;
+Only include a field if it has been clearly communicated. Omit fields that are still unknown.
+Never guess a cadence or a duration. Somebody who did not mention how often, or for how long,
+must come back with those fields absent - a wrong number here silently sets up the wrong ground.`;
 
     const EXTRACT_TOOL = {
       name: 'extract_onboarding',
@@ -464,12 +469,19 @@ Only include a field if it has been clearly communicated. Omit fields that are s
           decision: { type: 'string' },
           goals: { type: 'array', items: { type: 'string' } },
           brief: { type: 'string' },
+          // GW-017: the cadence used to be decided by a client-side
+          // useState('FORTNIGHTLY') that nothing ever updated, so a person who
+          // said "90 days, weekly check-ins" got a fortnightly ground - half the
+          // sessions they asked for. Their words were recorded correctly in the
+          // brief and then dropped on the way to the enum.
+          cadence: { type: 'string', enum: ['DAILY', 'WEEKLY', 'FORTNIGHTLY', 'MONTHLY', 'ONE_TIME'] },
+          timelineDays: { type: 'number' },
         },
       },
     };
 
     const allMessages: ChatTurn[] = [...messages, { role: 'assistant', content: reply }];
-    let extracted: { mode?: string; initial?: string; whoInvolved?: string; decision?: string; goals?: string[]; brief?: string } = {};
+    let extracted: { mode?: string; initial?: string; whoInvolved?: string; decision?: string; goals?: string[]; brief?: string; cadence?: string; timelineDays?: number } = {};
     try {
       const result = await this.anthropic.extract<typeof extracted>(EXTRACT_SYSTEM, allMessages, EXTRACT_TOOL);
       if (result) extracted = result;
@@ -813,6 +825,33 @@ STRICT RULES:
     if (!draftToken || typeof draftToken !== 'string') throw new BadRequestException('draftToken required');
     if (!payload || typeof payload !== 'object' || Array.isArray(payload)) throw new BadRequestException('payload must be an object');
     if (JSON.stringify(payload).length > 200_000) throw new BadRequestException('payload too large');
+
+    /**
+     * The draft may still be a PENDING SIGNUP, with no user behind it yet.
+     *
+     * Post-email edits arrive through here - the organisation name is the main
+     * one - and they used to land on an EntryDraft that `entrySave` had already
+     * created. Since GW-001, a brand-new address creates nothing until the
+     * verification link is opened, so between pressing save and opening the mail
+     * the only thing holding the session is `pendingSignup`. Without this branch
+     * every such edit 404s, and the org name the person typed is silently lost
+     * at commit.
+     */
+    const pending = await this.prisma.pendingSignup.findUnique({ where: { draftToken } });
+    if (pending) {
+      const mergedPending = { ...((pending.payload ?? {}) as Record<string, any>), ...payload };
+      const typedOrgName = typeof payload.orgName === 'string' ? payload.orgName.trim().slice(0, 120) : undefined;
+      await this.prisma.pendingSignup.update({
+        where: { id: pending.id },
+        data: {
+          payload: mergedPending as any,
+          // Kept as a column too, because verifyEmail names the organisation
+          // from it before any draft is read.
+          ...(typedOrgName ? { orgName: typedOrgName } : {}),
+        },
+      });
+      return { ok: true };
+    }
 
     const draft = await this.prisma.entryDraft.findUnique({ where: { draftToken } });
     if (!draft || draft.consumedAt) throw new NotFoundException('Draft not found');

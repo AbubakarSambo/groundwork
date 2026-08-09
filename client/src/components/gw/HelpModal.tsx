@@ -31,7 +31,7 @@ function Tab0({ onNext }: { onNext: () => void }) {
           <div style={{ fontSize: 13, color: '#6B6560', lineHeight: 1.65 }}>Not the organisation. Not the platform. The person. Your words are private until you both activate the report. Your record survives the relationship. Both parties keep it forever.</div>
         </div>
         <div style={{ background: '#F5F3EF', borderRadius: 8, padding: 16, borderLeft: '3px solid #E8A94A' }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: '#1A1916', marginBottom: 6 }}>The alignment status tells you where you stand</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#1A1916', marginBottom: 6 }}>This tells you where things stand</div>
           <div style={{ fontSize: 13, color: '#6B6560', lineHeight: 1.65 }}>Every ground carries an alignment status: Unresolved, Mixed, Emerging, Clear, or Aligned. It is a plain summary of how many areas are settled and how many are still open.</div>
         </div>
       </div>
@@ -114,8 +114,8 @@ function Tab2({ onBack, onNext }: { onBack: () => void; onNext: () => void }) {
 
 const REPORT_ITEMS = [
   { title: 'Resolution summary',          body: 'One sentence. Auto-generated. The thing neither party named directly but both records implied. This is the most valuable line in the report. It is what the conversation needs to be about.' },
-  { title: 'Where both accounts aligned', body: 'The areas of genuine agreement. Plain language. Both parties see the same list at the same time.' },
-  { title: 'Where the accounts diverged', body: 'What each party said. Where the difference lies. Not which party is right. The product never decides. It describes.' },
+  { title: 'Where you agreed', body: 'What you genuinely agree on. Plain language, and you both see the same list at the same time.' },
+  { title: 'Where you saw it differently', body: 'What each party said. Where the difference lies. Not which party is right. The product never decides. It describes.' },
   { title: 'Resolution state',            body: 'The end state both parties agreed to before the ground started. The report closes with the resolution state that was agreed. Whether the ground evidence supports it.' },
   { title: 'The credential',              body: 'A shareable verified record. End state. Alignment status. Duration. Two-party confirmed. Both parties keep it permanently. It belongs to the people who built it.' },
 ]

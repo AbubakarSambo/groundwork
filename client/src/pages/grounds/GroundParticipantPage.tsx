@@ -1,3 +1,4 @@
+import { plannedSessionsFor } from '@/lib/sessionCount'
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -260,13 +261,12 @@ export function GroundParticipantPage() {
   // (floor(timelineDays / cadence interval)), from the timelineDays + cadence
   // the ground carries. Previously this fell back to a hardcoded 6, so a
   // 90-day monthly ground (really 3 sessions) displayed "of 6".
-  const CADENCE_DAYS: Record<string, number> = { DAILY: 1, WEEKLY: 7, FORTNIGHTLY: 14, MONTHLY: 30 }
-  const cadenceDays = CADENCE_DAYS[(ground as any).cadence as string]
-  const derivedTotalSessions =
-    (ground as any).timelineDays && cadenceDays
-      ? Math.max(1, Math.floor((ground as any).timelineDays / cadenceDays))
-      : undefined
-  const totalSessions = (ground as any).totalSessions ?? derivedTotalSessions ?? 6
+  // Same rule as everywhere else now - see lib/sessionCount, which the server's
+  // totalSessionsFor is the authority for. This page already rounded down; the
+  // admin page and sidebar rounded up, and a ground could never call itself
+  // finished as a result.
+  const totalSessions =
+    plannedSessionsFor((ground as any).timelineDays, (ground as any).cadence, (ground as any).totalSessions) ?? 6
   const lastCompleted = completedCheckIns[0]
 
   const signals: any[] = ground.signals ?? []
@@ -351,13 +351,13 @@ export function GroundParticipantPage() {
               </div>
             )}
 
-            {/* Where the accounts stand.
+            {/* Where things stand.
                 This was "Ground confidence", a 5-dot meter over "{conf}/5
                 Aligned" - all of it computed from how many check-ins had
                 happened. A participant reading it had no way to know it said
                 nothing about whether anyone agreed. */}
             <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '14px 16px' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: '#9B9590', marginBottom: 6 }}>Where the accounts stand</div>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: '#9B9590', marginBottom: 6 }}>Where things stand</div>
               {alignRead ? (
                 <>
                   <div style={{ fontSize: 15, fontWeight: 700, color: '#0C447C', marginBottom: 4 }}>{alignRead}</div>
@@ -482,7 +482,7 @@ export function GroundParticipantPage() {
                 nothing when the report names nothing. */}
             {completedCheckIns.length >= 1 && alignRead && (
               <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '14px 16px' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: '#9B9590', marginBottom: 8 }}>Where the accounts stand</div>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: '#9B9590', marginBottom: 8 }}>Where things stand</div>
                 <div style={{ fontSize: 14, fontWeight: 700, color: '#0C447C', marginBottom: 4 }}>{alignRead}</div>
                 <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.5 }}>
                   Counted from the areas this report names, after {completedCheckIns.length} session{completedCheckIns.length !== 1 ? 's' : ''}.

@@ -19,8 +19,17 @@ describe('cadence is named the same way everywhere', () => {
     expect(new Set(labels).size).toBe(labels.length)
   })
 
-  it('calls the fourteen-day cadence Fortnightly, not two different things', () => {
-    expect(cadenceLabel('FORTNIGHTLY')).toBe('Fortnightly')
+  it('calls the fourteen-day cadence one thing, and that thing reads instantly', () => {
+    /**
+     * The rule this pins is unchanged: ONE label for the fourteen-day cadence,
+     * not "Fortnightly" here and "Every 2 weeks" there.
+     *
+     * What changed is which one. "Fortnightly" is correct English and is not
+     * read instantly by everyone, particularly across our markets and by
+     * international readers. The bar is "reads instantly for everyone", not "is
+     * correct English", so the label is now the one nobody has to pause on.
+     */
+    expect(cadenceLabel('FORTNIGHTLY')).toBe('Every 2 weeks')
   })
 
   it('excludes the lead-triggered cadence from the timed list, because it has no interval', () => {

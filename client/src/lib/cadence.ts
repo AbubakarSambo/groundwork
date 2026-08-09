@@ -23,7 +23,7 @@ export interface CadenceOption {
 export const CADENCES: CadenceOption[] = [
   { cadence: 'DAILY', label: 'Daily', days: 1 },
   { cadence: 'WEEKLY', label: 'Weekly', days: 7 },
-  { cadence: 'FORTNIGHTLY', label: 'Fortnightly', days: 14 },
+  { cadence: 'FORTNIGHTLY', label: 'Every 2 weeks', days: 14 },
   { cadence: 'MONTHLY', label: 'Monthly', days: 30 },
   { cadence: 'SEQUENTIAL', label: 'When the lead checks in', days: null },
 ]
