@@ -37,10 +37,43 @@ import { observeStyle, mergeStyle, styleGuidance } from './person-style';
 const NEGATION = /\b(nothing|not|no|none|never|without|yet to|hasn'?t|haven'?t|didn'?t|cannot|can'?t|couldn'?t|unable|still (waiting|pushing|working)|nowhere)\b/i;
 
 export function countCheckableSpecifics(text: string): number {
-  // Count clause by clause, so a negated clause cannot contribute. Splitting on
-  // sentence and clause boundaries keeps "Loop signed, nothing else closed" as
-  // one positive and one negative rather than two positives.
-  const clauses = text.split(/[.!?;]|\bbut\b|\bthough\b|,\s*(?=nothing|no |not )/i);
+  /**
+   * Count clause by clause, so a negated clause cannot contribute - and so a
+   * negated clause cannot poison the positive one sitting next to it.
+   *
+   * "and" USED NOT TO SPLIT, and that single omission erased people's work.
+   *
+   *   "I closed 22 tickets in my first three weeks."                     -> 3
+   *   "I closed 22 tickets in my first three weeks
+   *    AND nothing has slipped past its date."                           -> 0
+   *
+   * Identical achievement, scored three or zero depending on whether the person
+   * also mentioned something that had NOT gone wrong. The whole sentence became
+   * one clause, the word "nothing" made it negated, and the numbers in the first
+   * half were never counted.
+   *
+   * That is how careful people report progress - "I did X and nothing broke",
+   * "we shipped A and there were no regressions" - so the filter systematically
+   * discarded the contributions of anyone who reports honestly, while rewarding
+   * anyone who only states positives. Because an entry that counts zero
+   * specifics is dropped as a non-answer, their words never reached the record
+   * at all, and the shared report then told their manager they had contributed
+   * nothing.
+   *
+   * Measured in the eighteen-ground run, after the fact:
+   *
+   *   hafeezah@org.test | 16 completed sessions | 0 record entries
+   *   kavon@org.test    |  7 completed sessions | 0 record entries
+   *
+   * Hafeezah's was a performance improvement plan. Sixteen sessions of her
+   * account, erased, on the one record where that matters most.
+   *
+   * The original rule stands and is still right: an absence is not an
+   * achievement. "nothing closed and nothing shipped" is still two negated
+   * clauses and still counts zero. Splitting on the conjunctions only stops the
+   * absence swallowing the achievement beside it.
+   */
+  const clauses = text.split(/[.!?;]|\bbut\b|\bthough\b|\band\b|\bwhile\b|\balthough\b|\bwhereas\b|,\s*(?=nothing|no |not )/i);
   let total = 0;
   for (const clause of clauses) {
     if (!clause.trim()) continue;
@@ -159,8 +192,6 @@ export class ConversationService {
       where: { id: checkIn.groundId },
       select: { label: true, scenario: true },
     });
-    // hasIntake: true when the participant has submitted the cofounder pre-check-in intake.
-    const hasIntake = !!checkIn.participant.foundingIntent;
 
     // Reopen (#3): when this is a self-correction session, surface the prior
     // session's turns so the person can SEE what they said before adding to it.
@@ -228,7 +259,6 @@ export class ConversationService {
         ...checkIn,
         groundLabel: ground?.label ?? null,
         scenario: ground?.scenario ?? null,
-        hasIntake,
       },
       turns,
       priorTurns,
@@ -483,7 +513,7 @@ export class ConversationService {
     // record". No phrase list is ever complete, so the model says it outright
     // instead. Costs nothing: it rides on the reply it was already generating.
     const signalled = hadCloseMarker || this.detectSessionComplete(reply);
-    const sessionComplete = signalled ? await this.mayClose(checkIn.id) : false;
+    const sessionComplete = signalled ? await this.mayClose(checkIn.id, !!(checkIn as any).isSelfCorrection) : false;
 
     return { reply: aiTurn.content, sessionComplete };
   }
@@ -498,7 +528,7 @@ export class ConversationService {
    * nothing, and then never again in that session. Nobody gets trapped in a loop
    * to extract a specific that does not exist.
    */
-  private async mayClose(checkInId: string): Promise<boolean> {
+  private async mayClose(checkInId: string, isSelfCorrection = false): Promise<boolean> {
     const turns = await this.prisma.conversationTurn.findMany({
       where: { checkInId },
       orderBy: { createdAt: 'asc' },
@@ -510,7 +540,10 @@ export class ConversationService {
     const aiTurns = turns.filter((t) => t.role === TurnRole.AI).length;
     const alreadyProbed = aiTurns > personSaid.length;
 
-    const verdict = closeReadiness(personSaid, alreadyProbed);
+    // The same floor complete() enforces, so the engine never offers to close
+    // something the server will then refuse. See close-readiness.ts.
+    const minTurns = isSelfCorrection ? 1 : 3;
+    const verdict = closeReadiness(personSaid, alreadyProbed, minTurns);
     if (!verdict.ready) {
       this.logger.log(`Holding the close on ${checkInId}: ${verdict.reason}`);
     }
@@ -585,7 +618,7 @@ export class ConversationService {
         await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { status: CheckInStatus.IN_PROGRESS, startedAt: new Date() } });
       }
       const signalled = strippedStream.hadMarker || this.detectSessionComplete(reply);
-      yield { type: 'done', reply, sessionComplete: signalled ? await this.mayClose(checkIn.id) : false };
+      yield { type: 'done', reply, sessionComplete: signalled ? await this.mayClose(checkIn.id, !!(checkIn as any).isSelfCorrection) : false };
     } catch (err) {
       await this.prisma.conversationTurn.delete({ where: { id: personTurn.id } }).catch(() => undefined);
       throw err;
@@ -1263,6 +1296,31 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const step = cadenceDays[ground?.cadence ?? ''] ?? 0;
     const planned = step > 0 && ground ? Math.max(1, Math.floor(ground.timelineDays / step)) : null;
     const isFinal = planned != null && sessionNumber >= planned;
+
+    /**
+     * A GROUND THAT HAS RUN ITS PLAN IS OVER.
+     *
+     * isFinal was computed here and then used only to change the wording of the
+     * closing session's opening message. Nothing consulted it before making the
+     * NEXT one, and the only stop conditions above are ONE_TIME and an endsAt
+     * date that is usually null - so completing the final session created
+     * another, which created another.
+     *
+     * Seen live on a ninety-day weekly ground, which plans twelve check-ins:
+     *
+     *     session 12  COMPLETED  isFinal  <- the plan ends here
+     *     session 13  COMPLETED  isFinal
+     *     session 14  COMPLETED  isFinal
+     *     session 15  IN_PROGRESS
+     *
+     * Every one of those is a real ask of two real people, and the ground could
+     * never report itself finished because there was always one more waiting.
+     * A person would be asked to check in on a closed piece of work forever.
+     *
+     * Past the plan, no next session.
+     */
+    if (planned != null && sessionNumber > planned) return;
+
     await this.prisma.checkIn.create({ data: { groundId, participantId, sessionNumber, status: CheckInStatus.NOT_STARTED, availableFrom, isFinal } });
   }
 
@@ -1366,7 +1424,30 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     // 43 and the person who delivered all quarter scored 45. Saying nothing was
     // being counted as contributing.
     const NON_ANSWER = /^(nothing (new|much|else)|no( real)? (update|change|progress)|same as (before|last|above)|not (really |much )?(sure|applicable)|n\/?a|none|tbd|as (before|discussed))\b/i;
-    const isNonAnswer = (text: string) => {
+
+    /**
+     * SOME ENTRY TYPES ARE NOT SUPPOSED TO CONTAIN NUMBERS.
+     *
+     * The checkable-specifics test asks "is there a name, number, date or
+     * outcome in here" - the right question for a claim about DELIVERY, and the
+     * wrong one for a statement of meaning.
+     *
+     *   SUCCESS_DEFINITION  "doing well means clearing the queue each week"
+     *   INTENT              "nobody has told me I own a client; I assumed that
+     *                        came later, once I had proved I could deliver"
+     *
+     * Neither has a number in it. Both are exactly what this product exists to
+     * capture - the second IS the gap on a new-hire ground, the difference
+     * between throughput and ownership. Requiring a metric of them dropped the
+     * substance and kept the arithmetic.
+     *
+     * So evidence-shaped types are still held to evidence. Meaning-shaped types
+     * are held to being a real answer: long enough to say something, and not one
+     * of the stock non-answers.
+     */
+    const EVIDENCE_TYPES = new Set(['COMMITMENT', 'TIMEFRAME']);
+
+    const isNonAnswer = (text: string, type?: string) => {
       // Strip the model's own [INFERRED: ...] commentary before judging. The
       // extractor appends its reasoning to thin answers ("just a lot going on
       // [INFERRED: is making it harder to close these deals]"), which made an
@@ -1374,6 +1455,9 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       const t = text.replace(/\[INFERRED:[^\]]*\]/gi, '').trim().replace(/[.!]+$/, '');
       if (t.length < 12) return true;                 // "ok", "fine", "yes"
       if (NON_ANSWER.test(t)) return true;
+      // Only a claim about delivery has to be checkable. A definition or an
+      // assumption is judged on whether it actually says something.
+      if (type && !EVIDENCE_TYPES.has(type)) return false;
       // Nothing checkable in it at all - no name, number, date or outcome.
       return countCheckableSpecifics(t) === 0;
     };
@@ -1382,7 +1466,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       (e) =>
         e.text?.trim() &&
         (Object.values(RecordEntryType) as string[]).includes(e.type) &&
-        !isNonAnswer(e.text),
+        !isNonAnswer(e.text, e.type),
     );
     if (valid.length === 0) return;
 

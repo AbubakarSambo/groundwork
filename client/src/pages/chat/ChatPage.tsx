@@ -132,6 +132,14 @@ export function ChatPage() {
   const [confirmingFinish, setConfirmingFinish] = useState(false)
   const [openFailed, setOpenFailed]   = useState(false)
   const openedRef = useRef(false)
+  /**
+   * Mirrors the `opened` STATE for the watchdog below.
+   *
+   * openedRef is a different thing - a re-entry guard that says "an open attempt
+   * is scheduled", and it is deliberately reset in cleanup. This one answers the
+   * question the watchdog actually needs to ask: did a session ever open?
+   */
+  const hasOpenedRef = useRef(false)
 
   // Doc context
   const [pendingDoc, setPendingDoc]   = useState<File | null>(null)
@@ -176,6 +184,8 @@ export function ChatPage() {
     return () => clearInterval(tick)
   }, [msgs])
 
+  useEffect(() => { hasOpenedRef.current = opened }, [opened])
+
   useEffect(() => {
     if (msgsRef.current) msgsRef.current.scrollTop = msgsRef.current.scrollHeight
   }, [displayedMsgs, loading])
@@ -198,7 +208,29 @@ export function ChatPage() {
   const complete = useMutation({
     mutationFn: () => conversationApi.complete(checkInId!),
     onSuccess: () => setCompleted(true),
-    onError: (err: any) => toast.error(err?.response?.data?.message ?? 'Could not complete this session.'),
+    /**
+     * ALREADY COMPLETE IS NOT A FAILURE.
+     *
+     * The engine can close a session itself, on the person's last answer. When it
+     * does, the record is written and the check-in is COMPLETED before they press
+     * anything - and this button then asks the server to complete it a second
+     * time, which correctly refuses with "This check-in is already complete".
+     *
+     * Treating that refusal as an error left `completed` false, so the confirm
+     * panel stayed up with a live "Finish check-in" button that could never
+     * succeed. The person's account was safely on record and the screen showed
+     * them an unfinished session for as long as they were willing to wait. Four
+     * separate thirteen-session runs died here, and the first read of it was that
+     * the answers had been lost - they had not, the save had already happened.
+     *
+     * The end state the person asked for is the end state they are in, so this
+     * agrees with the server rather than arguing with it.
+     */
+    onError: (err: any) => {
+      const message: string = err?.response?.data?.message ?? ''
+      if (/already complete/i.test(message)) { setCompleted(true); return }
+      toast.error(message || 'Could not complete this session.')
+    },
   })
 
   const uploadDoc = useMutation({
@@ -279,7 +311,43 @@ export function ChatPage() {
         } catch { /* no transcript yet or fetch failed - fall through to open() */ }
         if (!cancelled) openSession.mutate()
       }, jitter)
-      return () => { cancelled = true; clearTimeout(t); openedRef.current = false }
+
+      /**
+       * A WATCHDOG, because an opening that never arrives is a dead screen.
+       *
+       * `openFailed` is only set when the open request comes BACK with an error.
+       * If it never returns - or never fires at all, because the transcript fetch
+       * ahead of it hangs - then nothing sets it: no message, no "Try again", no
+       * composer. The person sits in front of an empty check-in with nothing on
+       * screen suggesting anything is wrong and no way forward but a reload.
+       *
+       * Seen live at sessions 5 and 9 of a thirteen-session ground: the check-in
+       * NOT_STARTED, no turns, no error logged anywhere, blank indefinitely.
+       *
+       * Forty-five seconds is deliberately generous - the opening question is a
+       * real model call and twenty seconds is normal - but past that, saying so
+       * and offering the retry beats waiting in silence.
+       */
+      const watchdog = setTimeout(() => {
+        if (cancelled || hasOpenedRef.current) return
+        setOpenFailed(true)
+        /**
+         * Reset the mutation too, or the retry is offered and unusable.
+         *
+         * The retry button is disabled while the open request is in flight, and
+         * reads "Opening..." rather than "Try again". A request that never comes
+         * back is in flight forever, so without this the person gets the banner
+         * telling them something went wrong, above a greyed-out button that will
+         * never re-enable. Informed and still stuck.
+         *
+         * Resetting puts the mutation back to idle so the button becomes live.
+         * The original request is not cancelled - if it does eventually land,
+         * onSuccess still opens the session, which is the outcome they wanted.
+         */
+        openSession.reset()
+      }, 45_000)
+
+      return () => { cancelled = true; clearTimeout(t); clearTimeout(watchdog); openedRef.current = false }
     }
   }, [checkInId, opened])
 
@@ -289,7 +357,26 @@ export function ChatPage() {
     if (!checkInId) return
     setLoading(true)
     const aiId = `ai-${Date.now()}`
-    setMsgs(v => [...v, { id: Date.now().toString(), role: 'PERSON', content: message }, { id: aiId, role: 'AI', content: '…' }])
+    /**
+     * The person's own line is echoed locally, before the server has seen it.
+     *
+     * That is right for the chat - it should feel instant - but it means this
+     * message exists on screen whether or not it ever landed. Anything that
+     * COUNTS messages to decide what the person may do next has to know the
+     * difference, so the optimistic echo is marked as such. See the completion
+     * fallback below.
+     */
+    const localId = `local-${Date.now()}`
+    setMsgs(v => [...v, { id: localId, role: 'PERSON', content: message }, { id: aiId, role: 'AI', content: '…' }])
+    /**
+     * Promote the echo once the server has actually answered.
+     *
+     * The reply is the proof: it can only exist if the turn was stored. Until
+     * then the message stays marked local, so nothing that counts landed
+     * answers counts this one.
+     */
+    const acknowledge = () =>
+      setMsgs(v => v.map(m => (m.id === localId ? { ...m, id: `sent-${localId}` } : m)))
     let acc = ''
     let started = false
     streamingRef.current = true
@@ -302,6 +389,7 @@ export function ChatPage() {
           setDisplayedMsgs(v => v.map(m => m.id === aiId ? { ...m, content: acc } : m))
         },
         onDone: (r) => {
+          acknowledge()
           setMsgs(v => v.map(m => m.id === aiId ? { ...m, content: r.reply } : m))
           setDisplayedMsgs(v => v.map(m => m.id === aiId ? { ...m, content: r.reply } : m))
           if (r.sessionComplete) setDone(true)
@@ -317,6 +405,7 @@ export function ChatPage() {
         setMsgs(v => v.filter(m => m.id !== aiId)) // drop the empty AI bubble; keep the person's message
         try {
           const res = await conversationApi.send(checkInId, message)
+          acknowledge()
           setMsgs(v => v.concat({ id: `ai-${Date.now()}`, role: 'AI', content: res.reply }))
           if (res.sessionComplete) setDone(true)
         } catch {
@@ -567,7 +656,16 @@ export function ChatPage() {
               leaving no way to complete. Once there's a real record built,
               offer a manual path - the backend's own readiness gate is the
               actual authority and returns a clear message if it's too early. */}
-          {!done && !completed && !confirmingFinish && opened && msgs.filter(m => m.role === 'PERSON').length >= 3 && (
+          {/* COUNT WHAT LANDED, NOT WHAT WAS TYPED.
+              This counted every PERSON message on screen, including the ones
+              echoed locally on send. So a dropped send inflated the count, this
+              offered "Complete session", and the server then refused it: "a few
+              more exchanges are needed before this check-in can close". The
+              person is invited to finish and immediately turned down.
+              Seen four times in one twelve-session run. Only messages the server
+              has acknowledged are counted now, so the offer appears exactly when
+              the server will honour it. */}
+          {!done && !completed && !confirmingFinish && opened && msgs.filter(m => m.role === 'PERSON' && !m.id.startsWith('local-')).length >= 3 && (
             <div style={{ textAlign: 'center', padding: '6px 0' }}>
               <button
                 onClick={() => setConfirmingFinish(true)}
