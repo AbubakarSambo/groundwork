@@ -69,7 +69,7 @@ export class IntelligenceService {
   async submitOutcomeFeedback(
     groundId: string,
     userId: string,
-    dto: { rating: number; whatWorked?: string; whatDidnt?: string; wouldUseAgain: boolean },
+    dto: { rating: number; feltFair: boolean; whatWorked?: string; whatDidnt?: string; wouldUseAgain: boolean },
   ) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId } });
     if (!ground) throw new NotFoundException('Ground not found');
@@ -83,17 +83,24 @@ export class IntelligenceService {
     });
     if (existing) throw new ForbiddenException('You have already submitted feedback for this ground');
 
+    // wouldUseAgain lives in the note with the rest of the survey. It used to be
+    // written into the feltFair COLUMN, which is the column every fairness
+    // metric reads - see the note on GroundFeedbackDto. Keeping it here means
+    // the answer is still recorded and still analysable, without standing in for
+    // a question it is not.
     const note = JSON.stringify({
       rating: dto.rating,
       whatWorked: dto.whatWorked ?? null,
       whatDidnt: dto.whatDidnt ?? null,
+      wouldUseAgain: dto.wouldUseAgain,
     });
 
     return this.prisma.outcomeFeedback.create({
       data: {
         groundId,
         participantId: participant.id,
-        feltFair: dto.wouldUseAgain,
+        // The answer to the fairness question, and nothing else.
+        feltFair: dto.feltFair,
         note,
       },
     });

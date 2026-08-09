@@ -14,11 +14,31 @@ class OutcomeFeedbackDto {
   note?: string;
 }
 
+/**
+ * The longer survey. Writes the same OutcomeFeedback row as the short route.
+ *
+ * `feltFair` IS ITS OWN QUESTION, and that is the fix here. This route used to
+ * store `feltFair: dto.wouldUseAgain`, so the only column any fairness metric
+ * reads was being filled from "would you use this again" - two questions a
+ * person can answer in opposite directions. Someone can find a process fair and
+ * still not want to repeat it, and someone can find it unfair and use it again
+ * because their manager asked them to. `avgFairnessRate` in the outcome-learning
+ * summary reads this column, so the conflation would have reported enthusiasm as
+ * fairness on the one number that says whether this product is safe for the
+ * people inside it.
+ *
+ * Nothing called this route, so no real answer was ever miscounted. It is being
+ * fixed rather than left because a caller would inherit the bug silently.
+ */
 class GroundFeedbackDto {
   @IsInt()
   @Min(1)
   @Max(5)
   rating: number;
+
+  /** Required, and asked as a fairness question. Never inferred from anything else. */
+  @IsBoolean()
+  feltFair: boolean;
 
   @IsOptional()
   @IsString()

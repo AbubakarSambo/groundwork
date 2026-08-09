@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/auth'
+import { patternAccuracyApi } from '@/api/prompts'
 
 // ── Design tokens (mirrors AdminPage) ────────────────────────────────────────
 
@@ -368,6 +369,76 @@ function UsageBreakdownSection({ breakdown }: { breakdown: FreeReasonBreakdown }
 
 // ── Feedback section ──────────────────────────────────────────────────────────
 
+/**
+ * IS THE DETECTION ANY GOOD?
+ *
+ * Admins have been rating pattern detections for accuracy all along, and the
+ * endpoint that summarises those ratings was never called - so the ratings went
+ * into a table nobody read. A code that fires often and rates badly is a prompt
+ * that needs work, and this is the only place that becomes visible.
+ *
+ * Internal, and it stays internal: the summary aggregates across every org, so
+ * it lives on the platform dashboard and must never reach a customer surface.
+ * Sorted worst-first, because the bad ones are the reason to look.
+ */
+function DetectionAccuracySection() {
+  const { data = [], isLoading } = useQuery({
+    queryKey: ['pattern-accuracy'],
+    queryFn: patternAccuracyApi.summary,
+    staleTime: 5 * 60 * 1000,
+  })
+
+  // Unrated codes last: "no rating yet" is not a bad score, it is no score.
+  const rows = [...data].sort((a, b) => {
+    if (a.accuracyRate == null && b.accuracyRate == null) return b.surfaced - a.surfaced
+    if (a.accuracyRate == null) return 1
+    if (b.accuracyRate == null) return -1
+    return a.accuracyRate - b.accuracyRate
+  })
+
+  return (
+    <section>
+      <div style={SL}>Detection accuracy{rows.length > 0 ? ` (${rows.length} codes)` : ''}</div>
+      {isLoading ? (
+        <div style={{ ...C, fontSize: 13, color: 'var(--gw-muted)', textAlign: 'center', padding: 24 }}>Loading…</div>
+      ) : rows.length === 0 ? (
+        <div style={{ ...C, fontSize: 13, color: 'var(--gw-muted)', textAlign: 'center', padding: 24 }}>
+          No detections have been surfaced yet.
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {rows.map(r => {
+            const pct = r.accuracyRate == null ? null : Math.round(r.accuracyRate * 100)
+            return (
+              <div key={r.code} style={{ ...C, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                <span style={{ fontSize: 12, fontFamily: 'ui-monospace, monospace', color: 'var(--gw-text)' }}>{r.code}</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 10, whiteSpace: 'nowrap' }}>
+                  <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}>
+                    surfaced {r.surfaced} · rated {r.rated}
+                  </span>
+                  {pct == null ? (
+                    <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 20, background: 'var(--gw-border)', color: 'var(--gw-muted)' }}>
+                      Not rated yet
+                    </span>
+                  ) : (
+                    <span style={{
+                      fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 20,
+                      background: pct >= 75 ? 'var(--gw-green-bg)' : pct >= 50 ? '#FDF3E3' : '#F8ECEA',
+                      color: pct >= 75 ? 'var(--gw-green-t)' : pct >= 50 ? '#8A5C1A' : '#8B1A1A',
+                    }}>
+                      {pct}% accurate
+                    </span>
+                  )}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </section>
+  )
+}
+
 function FeedbackSection({ feedback }: { feedback: AdminFeedback[] }) {
   function timeAgo(date: string): string {
     const ms = Date.now() - new Date(date).getTime()
@@ -606,6 +677,8 @@ export function AdminDashboardPage() {
             <UsageBreakdownSection breakdown={data.freeReasonBreakdown} />
 
             <FeedbackSection feedback={data.feedback} />
+
+            <DetectionAccuracySection />
 
             <AdminManagementSection onAdd={handleAddAdmin} />
 

@@ -23,6 +23,7 @@ import {
 import { MIN_COACHING_CONFIDENCE, roleMapFor } from './role-maps';
 import { ReadInput, buildContribution, buildCoverage, dedupeDependencies } from './reads';
 import { PATTERN_NAME_BY_CODE } from '../patterns/pattern-library';
+import { forbiddenNames, namesAnyone, ForbiddenName } from '../reports/guide-sanitiser';
 
 /**
  * The board: a delivery-shaped rendering of the delivery-relevant parts of the
@@ -163,6 +164,21 @@ export class BoardService {
       title: ground.label,
       scenario: ground.scenario,
       coverageVariant: variant,
+      /**
+       * What everyone agreed this ground was FOR, set at creation, before a
+       * single check-in existed.
+       *
+       * `startingState` has been in the DELIVERY family's section list since the
+       * board was built, with no data behind it and no renderer - so the board
+       * showed where the work had got to with nothing to compare it against. The
+       * agreed intent is the comparison, and it is the one thing on the board
+       * that no check-in can revise: everything else here is what people said
+       * later, this is what they said at the start.
+       *
+       * Null when the ground was created without one, and the section is then
+       * not rendered at all rather than shown empty.
+       */
+      startingState: (ground as any).resolutionState ?? null,
       // Which participant row is the caller, so the client knows whose poll chip
       // is theirs to toggle. Null for an org admin reading without being a party.
       myParticipantId: me?.id ?? null,
@@ -370,7 +386,18 @@ export class BoardService {
     if (has('contribution')) {
       // Only meaningful where someone actually manages someone: needs a manager
       // and at least one report, both with accounts on record.
-      const alignment = this.buildManagerAlignment(reportSafe);
+      // The forbidden-name list is built from THIS ground's participants. See
+      // buildManagerAlignment for why the board needs one at all.
+      const alignment = this.buildManagerAlignment(
+        reportSafe,
+        forbiddenNames(
+          ground.participants.map((p: any) => ({
+            firstName: p.user?.firstName,
+            lastName: p.user?.lastName,
+            email: p.email,
+          })),
+        ),
+      );
       if (alignment.length) out.managerAlignment = alignment;
     }
 
@@ -528,7 +555,10 @@ export class BoardService {
    * This method only shapes what synthesis produced for display. It adds no
    * detection of its own.
    */
-  private buildManagerAlignment(reportSafe: Record<string, any> | null): ManagerAlignmentRead[] {
+  private buildManagerAlignment(
+    reportSafe: Record<string, any> | null,
+    names: ForbiddenName[],
+  ): ManagerAlignmentRead[] {
     const raw = reportSafe?.leadershipGaps;
     if (!Array.isArray(raw)) return [];
     return raw
@@ -544,17 +574,64 @@ export class BoardService {
         // that must not drift: a two-word quote still tells the other person
         // exactly what was said. Anything carrying a quote or a party label is
         // dropped rather than shown.
+        // BOTH FIELDS, and names as well as labels. Two defects were found here.
+        //
+        // Only `gap` was ever checked, and `note` renders directly beneath it on
+        // the same shared card. A real record from a live run reads "The pattern
+        // of deferral is visible in the lead's record over time" - in the note,
+        // so it went straight through the rule written to stop exactly that.
+        //
+        // And neither field was checked against actual participant NAMES. The
+        // rule caught "Party A" and "the lead" but not "Eric", which is the form
+        // a leak actually takes: across four real leadership gaps the model did
+        // say "One account", so nothing had gone wrong yet - but that was the
+        // prompt behaving, not a guarantee. The same feature elsewhere in this
+        // codebase produced "I want to acknowledge Eric's consistent focus"
+        // under an equivalent instruction.
+        //
+        // Names come from `forbiddenNames`, which matches most case-insensitively
+        // but collision-prone ones ("Success", "Grace", "Will" - common given
+        // names in this product's markets) case-sensitively. Without that, a
+        // participant called Success would silently empty this section of every
+        // board about a quarter's success.
         const gapText = String(g.gap);
-        // Possessive apostrophes are not quotations ("another party's remit"),
-        // so strip them before looking for quoted speech.
-        const withoutPossessives = gapText.replace(/(\w)['\u2019]s\b/gi, '$1s');
-        if (/["\u201c\u201d]|['\u2018][^'\u2019]{2,}['\u2019]/.test(withoutPossessives)) {
-          this.logger.warn('Dropping a leadership gap containing a quotation - the no-quote rule is absolute.');
-          return null;
-        }
-        if (/\b(party [A-Z]|the lead|the manager|the initiator)\b/i.test(gapText)) {
-          this.logger.warn('Dropping a leadership gap that identifies a party.');
-          return null;
+
+        /**
+         * MODEL OUTPUT IS FILTERED. OUR OWN COPY IS NOT.
+         *
+         * `spec.why` is the hand-written fallback from the pattern map, used when
+         * the model returns no note. It is vetted static copy in which "the
+         * manager" is a generic role inside an explanation - "the team cannot own
+         * what is still being done for them, and the manager stays the bottleneck"
+         * - not an identification of anyone on this ground.
+         *
+         * Running it through a filter built for model output made the board drop
+         * every gap that fell back to it, which is a filter rejecting the product's
+         * own words. So only `g.note` is checked, and only when the model actually
+         * supplied one.
+         */
+        const modelNote = g.note == null ? null : String(g.note);
+        const noteText = modelNote ?? String(spec.why);
+
+        const toCheck: [string, string][] = [['gap', gapText]];
+        if (modelNote !== null) toCheck.push(['note', modelNote]);
+
+        for (const [field, text] of toCheck) {
+          // Word-internal apostrophes are contractions and possessives, not
+          // quotation marks: "we're" and "another party's remit" are both fine.
+          const withoutWordInternal = text.replace(/(\w)['\u2019](\w)/g, '$1$2');
+          if (/["\u201c\u201d]|['\u2018][^'\u2019]{2,}['\u2019]/.test(withoutWordInternal)) {
+            this.logger.warn(`Dropping a leadership gap: ${field} contains a quotation - the no-quote rule is absolute.`);
+            return null;
+          }
+          if (/\b(party [A-Z]|the lead|the manager|the initiator)\b/i.test(text)) {
+            this.logger.warn(`Dropping a leadership gap: ${field} identifies a party by role.`);
+            return null;
+          }
+          if (namesAnyone(text, names)) {
+            this.logger.warn(`Dropping a leadership gap: ${field} names a participant.`);
+            return null;
+          }
         }
         // One period is not a pattern. The same three-period discipline that
         // governs every other negative read governs this one, and this is the
@@ -570,7 +647,7 @@ export class BoardService {
           pole: spec.pole,
           label: spec.label,
           gap: String(g.gap),
-          note: String(g.note ?? spec.why),
+          note: noteText,
           periods,
         };
       })
