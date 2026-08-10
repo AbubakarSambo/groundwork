@@ -753,6 +753,41 @@ export function ReportPage() {
                 </div>
               )}
 
+              {/* LEADERSHIP GAPS, WHICH NOTHING HAS EVER RENDERED.
+                  The synthesis routes findings here deliberately - a deferred
+                  conversation, a commitment nobody was held to, work not handed
+                  over, a contribution not seen - and its own prompt says the two
+                  surfaces are "read on different surfaces for different
+                  purposes". Nothing implemented the second surface. The API
+                  returned them to every party and this page referenced the field
+                  nowhere, so the most sensitive thing the synthesis produces was
+                  being handed to five colleagues by an endpoint nobody was
+                  reading.
+
+                  The API side is fixed - they reach the lead only now. This is
+                  the surface that was missing. Shown to the lead, framed as
+                  something about how the work was led rather than a judgement on
+                  the person leading it, because that is what the prompt is
+                  instructed to produce and the framing has to match or the whole
+                  thing reads as an appraisal. */}
+              {isAdmin && Array.isArray((report as any).leadershipGaps) && (report as any).leadershipGaps.length > 0 && (
+                <div style={{ marginBottom: 16 }}>
+                  <SecH>Worth your attention as the person leading this</SecH>
+                  <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
+                    Only you see this part. It is about how the work was led, not about anyone in it, and nobody is quoted or named.
+                  </div>
+                  {(report as any).leadershipGaps.map((g: any, i: number) => (
+                    <AreaBlock
+                      key={i}
+                      title={g.pattern ?? g.title ?? 'A pattern in how this ran'}
+                      observation={g.observation ?? g.text ?? ''}
+                      whyItMatters={g.atStake ?? g.whyItMatters}
+                      recommendedMove={g.recommendedMove}
+                    />
+                  ))}
+                </div>
+              )}
+
               {/* Alignment reached */}
               {agreements.length > 0 && (
                 <div style={{ marginBottom: 16 }}>

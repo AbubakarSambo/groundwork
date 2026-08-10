@@ -476,6 +476,97 @@ export function ChatPage() {
     ? `Closing session ${sessionNumber} · This is the last word on the record. Take the time to be thorough - what you document here is what the final report weighs.`
     : `Session ${sessionNumber} · Your words are private until you both activate the report.`
 
+  /**
+   * WHAT HAPPENS TO WHAT YOU WRITE, BEFORE YOU ARE ASKED ANYTHING. (G40)
+   *
+   * Not a footer and not only copy. People write differently depending on what
+   * they believe happens next, so this decides the quality of the record itself
+   * - and a one-line "your words are private" under the header is doing that job
+   * badly, because it answers a question nobody asked in the terms they wanted.
+   *
+   * Shown once, on the first session only. Anyone who has already seen it and
+   * checked in is not made to read it again; a promise repeated every week stops
+   * being read and starts being furniture.
+   *
+   * EVERY LINE IS TRUE AND TESTABLE TODAY, which is the whole constraint:
+   *
+   *   Nobody in your organisation can read this. Enforced by the report and
+   *   board read paths, not by policy.
+   *   Our own support tools cannot show it. The platform-admin view excludes
+   *   raw turns, record entries, solo artifacts, lead context notes and the
+   *   report body, and its test poisons the query with all five to prove it.
+   *   Nothing written here trains a model.
+   *
+   * AND WHAT IS DELIBERATELY NOT SAID: "we cannot see your conversations".
+   * Turns are stored unencrypted and transcripts go to Google for processing.
+   * One technical question from a founder or an investor finds that out, and a
+   * privacy claim caught being false costs more than one never made. G41 is the
+   * work that would make the stronger claim true; until it lands, this says the
+   * true version.
+   */
+  const [privacyAcknowledged, setPrivacyAcknowledged] = useState(() => {
+    try { return localStorage.getItem('gw_privacy_seen') === '1' } catch { return false }
+  })
+  /**
+   * AND IT MUST NOT SWALLOW A FAILURE TO OPEN.
+   *
+   * The state this screen appears in - first session, nothing said yet - is
+   * exactly the state a check-in that failed to open is also in. The first
+   * version returned early on both, so somebody whose session never opened sat
+   * looking at a privacy explainer with no error, no "Try again", and no way to
+   * tell that anything was wrong. Caught by the open-watchdog tests, which is
+   * precisely what they were written for.
+   *
+   * An explainer can wait. An error cannot.
+   */
+  const showPrivacyFirst = sessionNumber === 1 && !privacyAcknowledged && msgs.length === 0 && !openFailed
+
+  if (showPrivacyFirst) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
+        <div className="gw-hdr">
+          <div>
+            <div className="gw-logo">{groundLabel || 'Before you start'}</div>
+            <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>Session {sessionNumber}</div>
+          </div>
+        </div>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 20px' }}>
+          <div style={{ maxWidth: 520, width: '100%' }}>
+            <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-text)', margin: '0 0 6px', letterSpacing: '-.02em' }}>What happens to what you write</h1>
+            <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.7, margin: '0 0 18px' }}>Worth thirty seconds before the first question, because it changes what is worth writing.</p>
+
+            <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '16px 18px', marginBottom: 12 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 4 }}>Nobody you work with reads it</div>
+              <p style={{ fontSize: 13.5, color: 'var(--gw-sub)', lineHeight: 1.65, margin: 0 }}>Not your manager, not whoever set this up, not an admin. What they see is the shared report, which is built by comparing everyone's accounts. Your own words about your own work can appear in it. Anything you say about somebody else never does, and it never says who said what about whom.</p>
+            </div>
+
+            <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '16px 18px', marginBottom: 12 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 4 }}>We cannot show it to ourselves either</div>
+              <p style={{ fontSize: 13.5, color: 'var(--gw-sub)', lineHeight: 1.65, margin: 0 }}>When we look at a ground to help with something, we can see whether people checked in and never what they said. That is enforced in the code and tested, not a policy we are asking you to trust.</p>
+            </div>
+
+            <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '16px 18px', marginBottom: 12 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 4 }}>Nothing here trains a model</div>
+              <p style={{ fontSize: 13.5, color: 'var(--gw-sub)', lineHeight: 1.65, margin: 0 }}>Your answers are used to build your ground's record and nothing else.</p>
+            </div>
+
+            <div style={{ background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px', marginBottom: 18 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-sub)', marginBottom: 4 }}>And the part we are not going to dress up</div>
+              <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.65, margin: 0 }}>Your answers are stored on our servers, and they are processed by Google's models to build the record. We are not going to tell you they are unreadable to any human being anywhere, because that would not be true yet.</p>
+            </div>
+
+            <button
+              onClick={() => { try { localStorage.setItem('gw_privacy_seen', '1') } catch { /* private mode: shown again, which is the safe direction */ } setPrivacyAcknowledged(true) }}
+              style={{ width: '100%', padding: '12px 0', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+            >
+              Start my check-in
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
       {/* Header */}

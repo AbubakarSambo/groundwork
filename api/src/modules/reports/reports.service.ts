@@ -1132,7 +1132,10 @@ Close the report by framing - neutrally, without recommending one - the choice n
               `Report for ground ${groundId} reads like a case file, in ${forensic.field}: "${forensic.hit.phrase}" (${forensic.hit.why}). The prompt asked for plain language and did not get it - worth a look if this recurs.`,
             );
           }
-          const tally = tallyInReport(result as any);
+          // A cohort is told apart here, not inside the detector's patterns: on a
+          // ground where nobody sees anybody else's work, a tally is the finding
+          // rather than a verdict. See counts-accounts.ts.
+          const tally = tallyInReport(result as any, ground.peopleWorkTogether !== false);
           if (tally) {
             this.logger.warn(
               `Report for ground ${groundId} establishes something by counting accounts, in ${tally.field}: "${tally.phrase}". A gap is real because the record supports it, not because a number of people mentioned it.`,
