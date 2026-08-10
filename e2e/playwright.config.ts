@@ -14,10 +14,12 @@ import { defineConfig } from '@playwright/test';
  */
 export default defineConfig({
   testDir: '.',
-  // A ground with real model calls is slow, and a ground is a FULL CADENCE: six
-  // fortnightly check-ins each for two people, every answer a live model call.
-  // Fifteen minutes covered a single session and cut the rest off mid-run.
-  timeout: 60 * 60 * 1000,
+  // A ground with real model calls is slow, and a ground is a FULL CADENCE:
+  // every session, for every person, every answer a live model call. Ground 1
+  // was 24 check-ins in 42 minutes. Ground 2 is 48, with six people signing in
+  // and out around them, so an hour does not cover it - and a journey cut off
+  // mid-run tells you nothing except that it was cut off.
+  timeout: 4 * 60 * 60 * 1000,
   expect: { timeout: 30 * 1000 },
   fullyParallel: false,
   workers: 1,

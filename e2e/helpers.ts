@@ -51,6 +51,40 @@ export async function clearMail(): Promise<void> {
   await fetch(`${MAILCATCHER}/clear`, { method: 'POST' });
 }
 
+/**
+ * The link out of a SPECIFIC email, chosen by what its subject says.
+ *
+ * linkFor() takes the newest message, which is right when a person has one thing
+ * waiting for them. On a six-person ground it is not: by the time the fourth
+ * person opens their invitation, other mail has landed on top of it, and taking
+ * the newest opens something else entirely.
+ *
+ * That is how the release bug surfaced, and it is worth saying which part was
+ * the product and which was the harness. Eric really was sent "Your shared record
+ * is ready" before he had checked in - that is the product, and it is fixed. What
+ * the harness did was follow that email instead of his invitation, and then report
+ * a missing join page. Following the wrong link would have been a real person's
+ * mistake too, but a journey should say which envelope it opened.
+ */
+export async function linkFromEmail(to: string, subjectFragment: string): Promise<string> {
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const res = await fetch(`${MAILCATCHER}/messages?to=${encodeURIComponent(to)}`);
+    if (res.ok) {
+      const messages = (await res.json()) as { subject: string; links: string[] }[];
+      const wanted = messages.find(
+        (m) => m.subject?.toLowerCase().includes(subjectFragment.toLowerCase()) && m.links?.length,
+      );
+      if (wanted) return wanted.links[0];
+    }
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+  const res = await fetch(`${MAILCATCHER}/messages?to=${encodeURIComponent(to)}`);
+  const seen = res.ok ? ((await res.json()) as { subject: string }[]).map((m) => m.subject) : [];
+  throw new Error(
+    `No email to ${to} with "${subjectFragment}" in the subject arrived within 20s. What did arrive: ${seen.join(' | ') || 'nothing'}`,
+  );
+}
+
 export async function allMail(): Promise<{ to_header: string; subject: string }[]> {
   const res = await fetch(`${MAILCATCHER}/messages`);
   return res.ok ? ((await res.json()) as any[]) : [];
