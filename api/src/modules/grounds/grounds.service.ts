@@ -8,8 +8,9 @@ import { BillingService } from '../billing';
 import { UsageService } from '../usage/usage.service';
 import { CreateGroundDto, AddParticipantDto, CreateGroundForLeadDto } from './dto';
 import { GroundworkEvents, GroundActivatedEvent } from '../../common';
-import { GroundScenario, GroundStatus, PartyType, CheckInStatus, Cadence, UsageEventType, TokenType } from '@prisma/client';
+import { GroundScenario, GroundStatus, PartyType, CheckInStatus, Cadence, UsageEventType, TokenType, Prisma } from '@prisma/client';
 import { endStatesFor } from '../resolution/end-states';
+import { canSignIn } from './can-sign-in';
 import { defaultModeFor, boardRendersFor } from '../board/board-families';
 import { BoardFamily, familyFor } from '../board/board-families';
 
@@ -234,10 +235,23 @@ export class GroundsService {
     }
 
     const leadEmail = dto.leadEmail.toLowerCase();
-    const leadUser = await this.findOrCreateUserForEmail(organizationId, leadEmail, dto.leadName);
 
     const pendingInvites: { email: string; token: string; participantId: string }[] = [];
+    /**
+     * THE LEAD'S USER ROW IS CREATED INSIDE THE TRANSACTION, WITH EVERYTHING ELSE.
+     *
+     * It used to be created just above this line, outside it. When anything
+     * further down failed, the ground rolled back and the person did not: a real
+     * account, in the organisation, verified, with no password and no ground - a
+     * half-person left behind by an operation that reported failure.
+     *
+     * That is bad on its own and it also poisons the retry, because the next
+     * attempt finds an existing row and treats them as an established user.
+     * Either the whole ground exists or none of it does.
+     */
+    let leadUser!: { id: string; isNewUser: boolean; canSignIn: boolean };
     const ground = await this.prisma.$transaction(async (tx) => {
+      leadUser = await this.findOrCreateUserForEmail(organizationId, leadEmail, dto.leadName, tx);
       const isFreeGround = canCreate.freeReason !== undefined;
       const ground = await tx.ground.create({
         data: {
@@ -320,12 +334,34 @@ export class GroundsService {
       );
     }
 
-    // Notify the lead - a password-setup link if they're brand new, otherwise
-    // a direct link to confirm. Best-effort: a failed email must not silently
-    // leave the ground stuck with no way for the lead to ever find out.
-    const url = leadUser.isNewUser
-      ? await this.buildPasswordSetupUrl(leadUser.id)
-      : `${this.config.get<string>('resend.frontendUrl') ?? ''}/grounds/${ground.id}`;
+    /**
+     * Notify the lead, with a link they can actually use.
+     *
+     * THE TEST IS "CAN THIS PERSON SIGN IN", NOT "WAS THIS ROW CREATED JUST NOW",
+     * and getting that wrong strands the lead completely.
+     *
+     * It sent a bare /grounds/:id link to anybody whose user row already existed.
+     * That page is behind auth, so a lead with no password lands on the sign-in
+     * form and is asked for a password they have never had. The invitation is the
+     * only thing that was supposed to get them in, and it hands them a locked
+     * door. Nothing on that screen leads anywhere useful: "Forgot your password?"
+     * is wrong because they never had one, and the only escape - "New here? Get a
+     * sign-in link instead" - is the one line they have no reason to read, being
+     * neither new nor stuck in their own mind.
+     *
+     * A user row can exist without any way in for several ordinary reasons: they
+     * were added to a ground and never accepted, they were invited to the org, or
+     * a previous attempt at this very call left them behind. So the question to
+     * ask is whether they have a password or a Google identity, and the answer
+     * decides the link.
+     *
+     * Found on ground 2 of the eighteen: Kennedy was named lead, the first
+     * attempt failed on an unrelated error, the second treated him as an existing
+     * user, and he could not accept a ground that had been created for him.
+     */
+    const url = leadUser.canSignIn
+      ? `${this.config.get<string>('resend.frontendUrl') ?? ''}/grounds/${ground.id}`
+      : await this.buildPasswordSetupUrl(leadUser.id);
     const admin = await this.prisma.user.findUnique({ where: { id: adminUserId }, select: { firstName: true } });
     await this.email.sendLeadInvite(leadEmail, admin?.firstName ?? 'An admin', dto.label, url).catch((err: any) =>
       this.logger.error(`Lead invite email failed for ground ${ground.id}: ${err.message}`),
@@ -415,16 +451,30 @@ export class GroundsService {
    * same pattern used when a participant accepts their invite (accept() in
    * ParticipantsService). Needed here because Ground.initiatorId is a required
    * FK to an existing User; it cannot point at an unaccepted invite. */
-  private async findOrCreateUserForEmail(organizationId: string, email: string, name?: string): Promise<{ id: string; isNewUser: boolean }> {
-    const existing = await this.prisma.user.findUnique({ where: { email } });
-    if (existing) return { id: existing.id, isNewUser: false };
+  private async findOrCreateUserForEmail(
+    organizationId: string,
+    email: string,
+    name?: string,
+    /** The enclosing transaction, when there is one, so a rollback takes the
+        user with it rather than leaving a stranger in the organisation. */
+    client?: Prisma.TransactionClient,
+  ): Promise<{ id: string; isNewUser: boolean; canSignIn: boolean }> {
+    const db = client ?? this.prisma;
+    const existing = await db.user.findUnique({ where: { email } });
+    if (existing) {
+      return {
+        id: existing.id,
+        isNewUser: false,
+        canSignIn: canSignIn(existing),
+      };
+    }
 
     const local = email.split('@')[0] ?? 'there';
     const firstName = name ?? local.charAt(0).toUpperCase() + local.slice(1);
-    const created = await this.prisma.user.create({
+    const created = await db.user.create({
       data: { organizationId, email, firstName, lastName: '', role: 'MEMBER', isEmailVerified: true, passwordHash: null },
     });
-    return { id: created.id, isNewUser: true };
+    return { id: created.id, isNewUser: true, canSignIn: false };
   }
 
   private async buildPasswordSetupUrl(userId: string): Promise<string> {
@@ -1512,9 +1562,14 @@ export class GroundsService {
 
   /**
    * Returns true once every ACTIVE party has completed the given session number.
-   * "Active" = a party who accepted their invite (userId set);
-   * invited-but-never-accepted no-shows never block the report.
-   * Works for two-party and multi-party grounds.
+   *
+   * "Active" = anybody who accepted their invite, anybody who has already
+   * completed this session, and anybody whose invitation is still live. Only a
+   * lapsed invitation drops somebody out of the count, so a no-show cannot hold
+   * the round open forever and a person still on their way cannot be skipped.
+   *
+   * Works for two-party and multi-party grounds, and the difference between the
+   * two is where this went wrong before - see the comment on the query.
    */
   async isSessionReadyForReport(groundId: string, sessionNumber: number): Promise<boolean> {
     // A participant is "active" if they accepted the invite (userId set) OR if
@@ -1529,6 +1584,33 @@ export class GroundsService {
     // completed-check-in loop below forever (they have no check-in to
     // complete), so the ground would wait for a report that can never
     // release. A managing-only lead is not a party to the comparison.
+    /**
+     * SOMEBODY WHOSE INVITATION IS STILL OPEN HAS NOT DECLINED. THEY ARE ON
+     * THEIR WAY, AND THE ROUND IS NOT OVER.
+     *
+     * The clause that used to be here counted only people who had ACCEPTED, so
+     * anybody still holding an unopened invitation was invisible to the count.
+     * On a two-party ground that never shows: there is no third person hovering
+     * between invited and accepted for long enough to matter.
+     *
+     * On ground 2 of the eighteen it showed immediately, and badly. Six people
+     * were invited. Three accepted and checked in within the hour. The other
+     * three had not opened their email yet, so the round was declared complete at
+     * three of six: the shared record released, the ground went ACTIVE, and Eric
+     * - who had not written a word - received
+     *
+     *     "Your shared record is ready: Atlas build, scope and ownership"
+     *
+     * about work he is part of, built entirely from other people's accounts of
+     * it. Session 1 had passed him by. That is the exact failure this product
+     * exists to prevent, arriving by email with the product's name on it.
+     *
+     * So the round now waits on anybody with a LIVE invitation as well. It still
+     * does not wait forever, and that was the real point of the original clause:
+     * once an invitation has expired, that person drops out of the count and the
+     * others are not held hostage. The ground waits exactly as long as the
+     * invitation is good for and not a day longer.
+     */
     const active = await this.prisma.groundParticipant.findMany({
       where: {
         groundId,
@@ -1536,6 +1618,12 @@ export class GroundsService {
         OR: [
           { userId: { not: null } },
           { checkIns: { some: { sessionNumber, status: CheckInStatus.COMPLETED } } },
+          // Invited, not yet accepted, and the invitation has not run out.
+          {
+            userId: null,
+            invitedAt: { not: null },
+            inviteTokenExpiresAt: { gt: new Date() },
+          },
         ],
       },
       select: { id: true },

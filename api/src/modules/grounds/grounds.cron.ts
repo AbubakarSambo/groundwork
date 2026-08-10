@@ -467,7 +467,7 @@ export class GroundsCron {
     for (const p of pendingReveal) {
       if (p.user?.emailNotifications === false) continue;
       try {
-        await this.email.sendActivationRevealReminder(p.email, p.ground.label, `${frontend}/report/${p.ground.id}`);
+        await this.email.sendActivationRevealReminder(p.email, p.ground.label, `${frontend}/grounds/${p.ground.id}/report`);
         await this.prisma.groundParticipant.update({ where: { id: p.id }, data: { lastNudgedAt: now } });
         revealReminders++;
       } catch (err: any) {
