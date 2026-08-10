@@ -1563,7 +1563,11 @@ export function EntryChatPage() {
                       matters MORE as the list gets longer. What was missing is
                       any signal that the first screen is not the whole set. */}
                   <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 8 }}>
-                    {SITUATION_CARDS.length} situations, grouped. Scroll for the rest, or describe your own at the bottom.
+                    {SITUATION_CARDS.length} situations, grouped. Scroll for the rest, or{' '}
+                    <button
+                      onClick={() => setPickedSituation('other')}
+                      style={{ font: 'inherit', fontSize: 11, color: 'var(--gw-navy)', background: 'none', border: 'none', padding: 0, textDecoration: 'underline', cursor: 'pointer' }}
+                    >describe your own</button>.
                   </div>
 
                   {/* One block per group, driven by SITUATION_GROUPS. This was
@@ -1621,16 +1625,31 @@ export function EntryChatPage() {
                         border and full-strength label now, like every other
                         card; the tinted background is the only thing marking it
                         as the catch-all rather than a situation of its own. */}
+                    {/* STILL HARD TO SEE, BECAUSE LOOKING LIKE THE OTHERS IS THE
+                        PROBLEM. The last fix made it look like every other card,
+                        which cured it reading as disabled and left it eighteenth
+                        in a scrolling list of near-identical tiles. Anyone whose
+                        situation is not on the list has to get all the way to the
+                        bottom and then notice that one of the tiles is different
+                        in kind rather than in topic.
+
+                        So it stops being a tile. Full width, an accent edge, an
+                        arrow, and a line that speaks to the person who has just
+                        read seventeen things and recognised none of them. */}
                     <button
                       onClick={() => setPickedSituation('other')}
                       style={{
-                        textAlign: 'left', padding: '8px 11px', borderRadius: 10,
-                        border: '1px solid var(--gw-border)', background: 'var(--gw-bg)',
-                        cursor: 'pointer', fontFamily: 'inherit',
+                        gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: 12,
+                        textAlign: 'left', padding: '14px 16px', borderRadius: 10,
+                        border: '1.5px solid var(--gw-navy)', background: 'white',
+                        cursor: 'pointer', fontFamily: 'inherit', marginTop: 4,
                       }}
                     >
-                      <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--gw-text)', marginBottom: 1 }}>My situation is different - I will describe it</div>
-                      <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', lineHeight: 1.4 }}>Tell it in your own words and we set up from there.</div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 2 }}>None of these? Describe your own situation</div>
+                        <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.45 }}>Tell it in your own words. We work out the rest from what you say.</div>
+                      </div>
+                      <span style={{ fontSize: 16, color: 'var(--gw-navy)', flexShrink: 0 }}>&rarr;</span>
                     </button>
                   </div>
                 </div>

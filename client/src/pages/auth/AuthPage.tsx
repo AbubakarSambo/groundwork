@@ -177,7 +177,7 @@ export function AuthPage() {
                 style={{ color: 'var(--gw-navy)', textDecoration: 'underline', cursor: 'pointer' }}
                 onClick={() => { setError(''); setView('link') }}
               >
-                New here? Get a sign-in link instead
+                No password? Get a sign-in link instead
               </span>
             </div>
           </>

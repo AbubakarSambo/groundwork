@@ -732,8 +732,8 @@ export function CreateGroundPage() {
             <div className="gw-ttl">How long will this ground run?</div>
             <div className="gw-sub-t">Set the timeframe and how often each party checks in.</div>
             <div className="gw-fld">
-              <label className="gw-label">Timeframe</label>
-              <select className="gw-select" value={timelineDays} onChange={e => setTimelineDays(+e.target.value)}>
+              <label className="gw-label" htmlFor="gw-timeframe">Timeframe</label>
+              <select id="gw-timeframe" className="gw-select" value={timelineDays} onChange={e => setTimelineDays(+e.target.value)}>
                 <option value={7}>1 week</option>
                 <option value={14}>2 weeks</option>
                 <option value={30}>30 days</option>
@@ -744,8 +744,8 @@ export function CreateGroundPage() {
               </select>
             </div>
             <div className="gw-fld">
-              <label className="gw-label">Check-in cadence</label>
-              <select className="gw-select" value={cadence} onChange={e => setCadence(e.target.value as GroundCadence)}>
+              <label className="gw-label" htmlFor="gw-cadence">Check-in cadence</label>
+              <select id="gw-cadence" className="gw-select" value={cadence} onChange={e => setCadence(e.target.value as GroundCadence)}>
                 {TIMED_CADENCES.map(c => <option key={c.cadence} value={c.cadence}>{c.label}</option>)}
               </select>
             </div>
@@ -977,8 +977,9 @@ export function CreateGroundPage() {
             )}
 
             <div className="gw-fld" style={{ marginTop: 16 }}>
-              <label className="gw-label">Ground name <span style={{ fontWeight: 400, color: 'var(--gw-muted)' }}>(optional)</span></label>
+              <label className="gw-label" htmlFor="gw-ground-name">Ground name <span style={{ fontWeight: 400, color: 'var(--gw-muted)' }}>(optional)</span></label>
               <input
+                id="gw-ground-name"
                 className="gw-input"
                 value={groundName}
                 onChange={e => setGroundName(e.target.value)}
