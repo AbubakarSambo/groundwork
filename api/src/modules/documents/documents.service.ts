@@ -6,6 +6,7 @@ const mammoth = require('mammoth') as { extractRawText: (opts: { buffer: Buffer 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const XLSX = require('xlsx') as typeof import('xlsx');
 import { ConfigService } from '@nestjs/config';
+import { documentWhereFor } from './who-can-see-a-document';
 import { PrismaService } from '../prisma/prisma.service';
 import { AnthropicService } from '../conversation/anthropic.service';
 import { RecordEntryType, EvidenceType } from '@prisma/client';
@@ -275,10 +276,31 @@ export class DocumentsService {
     }
   }
 
+  /**
+   * WHAT THIS READER CAN SEE, WHICH USED TO BE ONE ANSWER FOR THREE QUESTIONS.
+   *
+   * `participantId: participant.id` meant every document was private to whoever
+   * uploaded it - including from the lead. Nobody chose that; it is a participant
+   * guard that ended up in a list query. Right for a participant's own evidence,
+   * backwards for the lead's brief or a grant's terms, which reach nobody and are
+   * exactly the things everybody should be working from.
+   *
+   * documentWhereFor answers it properly and carries the CONTEXT_ENABLED flag
+   * inside it, so with the flag off this query is byte-for-byte the old one. See
+   * who-can-see-a-document.ts.
+   */
   async list(groundId: string, userId: string) {
     const participant = await this.assertParticipant(groundId, userId);
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { initiatorId: true },
+    });
     const docs = await this.prisma.groundDocument.findMany({
-      where: { groundId, participantId: participant.id },
+      where: documentWhereFor(
+        groundId,
+        { participantId: participant.id, isLead: ground?.initiatorId === userId },
+        this.config.get<boolean>('app.contextEnabled') === true,
+      ) as any,
       select: { id: true, fileName: true, mimeType: true, createdAt: true },
       orderBy: { createdAt: 'asc' },
     });
@@ -320,6 +342,14 @@ export class DocumentsService {
     return toDocShape(doc);
   }
 
+  /**
+   * DELIBERATELY UNCHANGED BY THE VISIBILITY WORK.
+   *
+   * Being able to READ a document is not being able to delete it. Once the lead
+   * can see open context, the obvious next step is letting them tidy it up, and
+   * that would mean somebody's evidence for their own account disappearing
+   * without them doing it. Deletion stays with the uploader.
+   */
   async remove(groundId: string, docId: string, userId: string) {
     const participant = await this.assertParticipant(groundId, userId);
     const doc = await this.prisma.groundDocument.findFirst({

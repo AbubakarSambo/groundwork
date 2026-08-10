@@ -60,6 +60,26 @@ test('Ground 1: new hire, from a stranger landing to a shared report', async ({ 
 
   await clearMail();
 
+  /**
+   * THIS GROUND ASSUMES A CLEAN ORGANISATION, SO IT SAYS SO OUT LOUD.
+   *
+   * Ground 1 is the first-run story: a stranger signs up, and the screens she
+   * sees are the first-ground versions of themselves. Run it twice into the same
+   * database and the second run legitimately gets the RETURNING versions - the
+   * welcome panel is skipped, because the org already has grounds - and the
+   * failure then looks like a product defect rather than a dirty database.
+   *
+   * That cost a run. The check is one request and it names the real problem.
+   */
+  const existing = await request.get('http://localhost:3000/api/v1/grounds').then(
+    async (r) => (r.ok() ? ((await r.json())?.data ?? []).length : 0),
+    () => 0,
+  );
+  expect(
+    existing,
+    'this database already holds grounds, so the first-run screens will not appear. Create a fresh one before running Ground 1.',
+  ).toBe(0);
+
   // ── Sahar lands, having never heard of this ────────────────────────────────
   await page.goto('http://localhost:4321/');
   await shot(page, 'landing');
@@ -319,12 +339,59 @@ test('Ground 1: new hire, from a stranger landing to a shared report', async ({ 
   await expect(composer(page)).toBeVisible({ timeout: 120_000 });
   await shot(page, 'participant-checkin-open');
 
+  /**
+   * A DOCUMENT, ATTACHED BY A PERSON, THROUGH THE SCREEN. (N5)
+   *
+   * documentsAttached has been 0 in every run of every ground, so the whole
+   * document-backed half of the record has never once been exercised: not the
+   * upload, not the extraction, not the coverage percentage that the board and
+   * the report both quote. A number that is always zero looks like a working
+   * feature reporting honestly, which is why nobody noticed.
+   *
+   * Attached at the start of his first check-in, because that is when somebody
+   * with a handover note or a job description actually has one to hand.
+   */
+  /**
+   * AND HE IS ON A PHONE FOR IT. (G29)
+   *
+   * Participants are the people most likely to be on one - they get a link in an
+   * email and open it wherever they are - and not one run has ever driven the
+   * participant path at a phone width. The lead sets a ground up at a desk; the
+   * person being asked to account for their work does it on a train.
+   *
+   * Set here, before his first check-in, and left for the whole of it: the
+   * composer, the attach control, the two-step completion and the record card all
+   * get exercised at 375px rather than only the landing page.
+   */
+  await page.setViewportSize({ width: 375, height: 812 });
+  const sidewaysOnMobile = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+  );
+  expect(sidewaysOnMobile, 'the check-in scrolls sideways on a phone').toBe(false);
+  await shot(page, 'participant-checkin-on-a-phone');
+
+  await attachADocument(page);
+
   await finishCheckIn(page, [
     'Doing well means clearing the ticket queue each week and not being the reason anything is late.',
     'I closed 22 tickets in my first three weeks and nothing has slipped past its date.',
     'Nobody has told me I own a client. I assumed that came later, once I had proved I could deliver.',
   ]);
   await shot(page, 'participant-checkin-complete');
+
+  /**
+   * BACK TO A DESK, HERE, NOT LATER.
+   *
+   * The phone width was set for HIS check-in, which is the realistic place for
+   * one. It was then left on for the lead signing back in - and at 375px the
+   * ground list lives behind a hamburger, so openGround waited half a minute for
+   * a sidebar item that was correctly hidden. Playwright even said so: "locator
+   * resolved to <span>New hire</span> ... element is not visible".
+   *
+   * Not a product defect. A collapsed sidebar on a phone is right. The harness
+   * was asking a desktop question of a mobile screen.
+   */
+  await page.setViewportSize({ width: 1280, height: 900 });
 
   // ── The report both of them are waiting for ────────────────────────────────
   // Hafsah comes back to read the report. She signs in with the password she set
@@ -466,6 +533,108 @@ test('Ground 1: new hire, from a stranger landing to a shared report', async ({ 
   await page.getByRole('link', { name: /Team board/i }).click().catch(() => undefined);
   await page.waitForTimeout(2000);
   await shot(page, 'board-full-length');
+
+  /**
+   * WAVE 1: PROVE THE FIXES, BY NAME, AGAINST THE REAL PAYLOAD.
+   *
+   * Thirteen fixes went in without a live run behind them, and "the run passed"
+   * proves none of them individually - a green journey is compatible with any
+   * number of them having quietly stopped working. Each assertion below names the
+   * defect it is holding shut, and reads the API response the client actually
+   * gets rather than looking at the screen, because two of these are about what
+   * is ABSENT from a payload and absence does not render.
+   */
+  const leadToken = await page.evaluate(() => {
+    try { return JSON.parse(localStorage.getItem('auth-storage-v2') || '{}')?.state?.token ?? null; } catch { return null; }
+  });
+  expect(leadToken, 'signed in as the lead, so there is a token to read the report with').toBeTruthy();
+
+  const groundId = page.url().match(/\/grounds\/([0-9a-f-]{8,})/)?.[1];
+  expect(groundId, 'the ground id is in the URL').toBeTruthy();
+
+  const asLead = await (await request.get(`http://localhost:3000/api/v1/grounds/${groundId}/report`, {
+    headers: { Authorization: `Bearer ${leadToken}` },
+  })).json();
+  const lead = asLead.data ?? asLead;
+
+  // P6: the private guides were destroyed by every re-synthesis, so before this
+  // fix a twelve-session ground ended with none at all.
+  const guides = lead?.engagement?.postReportGuides ?? null;
+  expect(guides, 'the private post-report guides did not survive twelve sessions').toBeTruthy();
+  expect(Object.keys(guides).length, 'a guide for each party').toBeGreaterThan(1);
+  for (const [pid, guide] of Object.entries<any>(guides)) {
+    for (const field of ['openingLine', 'questionToCarry', 'toAcknowledge']) {
+      expect(guide?.[field], `${pid}'s guide is missing ${field}`).toBeTruthy();
+    }
+    // The rule the guide prompt is built around, checked on real output rather
+    // than trusted: no names, no quotation marks lifted from a check-in.
+    const text = Object.values(guide).join(' ');
+    expect(text, 'a guide names somebody').not.toMatch(/\b(Hafsah|Abubakar|Sahar)\b/);
+  }
+
+  // P8: the specificity label was computed from character count, so a record of
+  // terse checkable facts scored "low". It must now come from the scored read.
+  const parties: any[] = lead?.engagement?.parties ?? [];
+  expect(parties.length, 'both parties are in the engagement block').toBe(2);
+  for (const p of parties) {
+    expect(
+      ['high', 'moderate', 'low', 'not scored yet'],
+      `unexpected specificity label ${p.specificityLabel}`,
+    ).toContain(p.specificityLabel);
+  }
+  console.log(`[wave1] specificity now reads: ${parties.map((p) => `${p.label}=${p.specificityLabel}`).join(', ')}`);
+
+  // P9: the dimension notes were "the initiator was managed on coverage in
+  // session 12". They must read as sentences about the record.
+  const notes: any[] = lead?.engagement?.specificityNotes ?? [];
+  for (const party of notes) {
+    for (const d of party.dimensions ?? []) {
+      expect(d.note, `a dimension note still reads as a label: "${d.note}"`)
+        .not.toMatch(/\bwas (vague|managed|directional|specific) on\b/);
+    }
+  }
+
+  /**
+   * P5: THE ONE THAT MATTERS MOST, AND THE ONLY WAY TO CHECK IT IS AS THE
+   * PARTICIPANT.
+   *
+   * Before this fix the shared report carried a five-dimension quality read and
+   * a closing tier for EVERY party, to every reader. Read as Abubakar: his own
+   * may be there, Hafsah's must not be, and neither must concernFlags or
+   * leadershipGaps.
+   */
+  await signIn(page, ABUBAKAR, PASSWORD);
+  const partToken = await page.evaluate(() => {
+    try { return JSON.parse(localStorage.getItem('auth-storage-v2') || '{}')?.state?.token ?? null; } catch { return null; }
+  });
+  const asPart = await (await request.get(`http://localhost:3000/api/v1/grounds/${groundId}/report`, {
+    headers: { Authorization: `Bearer ${partToken}` },
+  })).json();
+  const part = asPart.data ?? asPart;
+
+  const partNotes: any[] = part?.engagement?.specificityNotes ?? [];
+  expect(
+    partNotes.length,
+    'a participant is reading a quality read for more than one party - other people\'s reads leaked',
+  ).toBeLessThanOrEqual(1);
+
+  expect(part?.engagement?.concernFlags, 'concernFlags reached a participant').toBeUndefined();
+  expect(part?.leadershipGaps, 'leadershipGaps reached a participant').toBeUndefined();
+
+  const partTiers = part?.finalSynthesis?.tiers ?? {};
+  expect(
+    Object.keys(partTiers).length,
+    'a participant can see a closing tier for somebody other than themselves',
+  ).toBeLessThanOrEqual(1);
+
+  // And the lead still gets the whole picture, which is the other half of the
+  // rule: a fix that hid it from everybody would pass every assertion above.
+  expect(
+    Object.keys(lead?.finalSynthesis?.tiers ?? {}).length,
+    'the lead lost sight of the closing tiers, which they are meant to have',
+  ).toBeGreaterThan(1);
+
+  console.log('[wave1] every fix asserted against the live payload, as both the lead and the participant.');
 });
 
 /**
@@ -693,4 +862,74 @@ async function onboardingState(page: import('@playwright/test').Page): Promise<{
     }
     return {};
   });
+}
+
+/**
+ * Attach a real file through the real control, the way a person would.
+ *
+ * Written as its own step rather than folded into finishCheckIn because it must
+ * be able to FAIL LOUDLY. An upload that silently does nothing is exactly the
+ * shape of the bug this is here to catch, and a swallowed error would leave
+ * documentsAttached at zero while the run stayed green - which is the situation
+ * it is meant to end.
+ */
+async function attachADocument(page: import('@playwright/test').Page): Promise<void> {
+  const box = composer(page);
+  await expect(box, 'the check-in never opened, so there is nothing to attach to').toBeVisible({ timeout: 120_000 });
+  await expect(box).toBeEnabled({ timeout: 180_000 });
+
+  const upload = page.locator('#doc-upload');
+  await expect(upload, 'the check-in offers no way to attach anything').toHaveCount(1);
+
+  await upload.setInputFiles({
+    name: 'onboarding-plan.txt',
+    mimeType: 'text/plain',
+    buffer: Buffer.from(
+      [
+        'Delivery lead onboarding plan - first 90 days',
+        '',
+        'Weeks 1-4: clear the support queue each week. Shadow two client accounts.',
+        'No direct client contact before month two.',
+        'Week 6 review: ticket throughput and whether anything has slipped its date.',
+        'By day 90: owning at least one client relationship end to end.',
+      ].join('\n'),
+    ),
+  });
+
+  /**
+   * ATTACHING IS TWO STEPS, AND THE SECOND ONE IS THE INTERESTING ONE.
+   *
+   * Choosing the file opens a sheet: "What context does this document support
+   * from what you have shared so far?" with a box, Cancel, and "Add to session".
+   * That is the product refusing to let a file in as an unexplained artefact -
+   * a document is CONTEXT, and the person attaching it says what it is for.
+   *
+   * My first version treated the filename appearing as done and immediately
+   * typed the next answer, and the sheet swallowed the click. Worth recording
+   * because it is the same mistake in a new place: an intermediate state read as
+   * a finished one.
+   */
+  await expect(
+    page.getByText(/What context does this document support/i),
+    'choosing a file did not ask what it is for',
+  ).toBeVisible({ timeout: 60_000 });
+  await shot(page, 'participant-document-context-sheet');
+
+  await page.getByPlaceholder(/This is the brief/i).fill(
+    'This is the onboarding plan I was given in week one. It is what I have been working to.',
+  );
+  await page.getByRole('button', { name: /Add to session/i }).click();
+
+  /**
+   * The engine acknowledges a fresh upload with a real follow-up, so its reply is
+   * the proof the file landed - the same rule the rest of this journey uses. A
+   * filename appearing on screen would only prove the browser read it.
+   */
+  await expect(
+    page.getByText(/What context does this document support/i),
+    'the sheet never closed, so the document was never added',
+  ).toBeHidden({ timeout: 60_000 });
+  await expect(box, 'the composer never came back after attaching').toBeEnabled({ timeout: 180_000 });
+  await shot(page, 'participant-attached-a-document');
+  console.log('[wave1] a document was attached through the interface, for the first time in any run.');
 }

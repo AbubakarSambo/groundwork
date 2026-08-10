@@ -836,8 +836,14 @@ export function ChatPage() {
       </div>
 
       {/* Paste text overlay */}
+      {/* zIndex 9100, ABOVE THE FLOATING HELP BUTTON, which is fixed at 8000.
+          These sheets were at 50. At 375px each one asks for text in a box that
+          runs the full width, and the "?" button sat directly on top of its right
+          edge - over a field somebody is being asked to type in. Found the first
+          time any run drove the participant path at a phone width, which is what
+          that was for. */}
       {pasteMode && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)', zIndex: 50, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)', zIndex: 9100, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
           <div style={{ background: 'white', borderRadius: '14px 14px 0 0', padding: '20px 20px 32px', width: '100%', maxWidth: 560 }}>
             <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--gw-border)', margin: '0 auto 16px' }} />
             <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)', marginBottom: 4 }}>📋 Paste text</div>
@@ -871,8 +877,10 @@ export function ChatPage() {
       )}
 
       {/* Doc context overlay */}
+      {/* Same z-index correction as the paste sheet above: both were at 50,
+          under the fixed help button at 8000. */}
       {docContextMode && pendingDoc && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)', zIndex: 50, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)', zIndex: 9100, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
           <div style={{ background: 'white', borderRadius: '14px 14px 0 0', padding: '20px 20px 32px', width: '100%', maxWidth: 560 }}>
             <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--gw-border)', margin: '0 auto 16px' }} />
             <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)', marginBottom: 4 }}>📎 {pendingDoc.name}</div>

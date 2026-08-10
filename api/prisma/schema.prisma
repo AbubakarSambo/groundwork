@@ -1214,6 +1214,21 @@ model ContributorCodeRedemption {
   @@map("contributor_code_redemptions")
 }
 
+/// Who a document is for. Three answers, because there are three real cases and
+/// the product currently answers all of them the same way by accident.
+///
+/// OPEN    everyone in the ground. The brief, the plan, the terms - the things a
+///         ground is measured against, which are useless if only one person has
+///         them.
+/// CLOSED  the lead only. What they know that is not everybody's to read.
+/// OWN     the uploader only. A participant's evidence for their own account,
+///         which is the current behaviour for every document and the default.
+enum DocumentVisibility {
+  OPEN
+  CLOSED
+  OWN
+}
+
 model GroundDocument {
   id            String   @id @default(uuid())
   groundId      String   @map("ground_id")
@@ -1222,6 +1237,16 @@ model GroundDocument {
   mimeType      String   @map("mime_type")
   content       String   @db.Text
   assessment    Json?    // { suggests: string[], willDo: string[] } - Gemini's read of the doc, correctable
+
+  // WHO CAN SEE THIS. Nobody decided the current behaviour: documents.list
+  // filters on participantId, so every document is private to whoever uploaded
+  // it. Right for a participant's own evidence, backwards for the lead's - a job
+  // description or a grant's terms reach nobody, and those are exactly the things
+  // everybody should be working from.
+  //
+  // OWN is the default so existing documents keep behaving as they do and
+  // CONTEXT_ENABLED off is genuinely the old product. See DocumentVisibility.
+  visibility    DocumentVisibility @default(OWN)
 
   createdAt DateTime @default(now()) @map("created_at")
 

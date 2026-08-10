@@ -1127,6 +1127,41 @@ built on top of them, they get exercised.
 
 ---
 
+## What Wave 1 found before it finished
+
+Recorded here rather than only in a commit message, because two of these are the
+kind of thing that comes back.
+
+**A floating help button on top of a field somebody is typing in.** Both bottom
+sheets in a check-in - paste text, and the document context question - sat at
+`zIndex: 50` while the help button is fixed at `8000`. At 375px the "?" landed
+directly on the textarea's right edge. Nothing had ever driven the participant
+path at a phone width, and participants are the people most likely to be on one:
+they get a link in an email and open it wherever they are. **G29's first look
+found it.**
+
+**Attaching a document is two steps, and the second one is the product being
+right.** Choosing a file opens a sheet asking "what context does this document
+support from what you have shared so far?" - because a document is CONTEXT and
+the person attaching it says what it is for. Worth knowing before Wave 2 builds
+on it: that question already exists, and G24's four rules have somewhere to live.
+
+**`documentsAttached` was 0 in every run of every ground because nothing had ever
+uploaded one.** A number that is always zero looks like a working feature
+reporting honestly, which is exactly why it survived. The upload, the context
+sheet, the extraction and the document-backed percentage the board and report
+both quote had never been exercised end to end.
+
+**Two of the failures were mine and both were the same shape.** Running the
+journey twice into one database made the second run get the RETURNING screens,
+correctly, and read as a product defect - Ground 1 now asserts the org is empty
+before it starts. And leaving the phone width on past the participant's check-in
+made the lead click a sidebar that was correctly collapsed behind a hamburger.
+Playwright said so in as many words: "locator resolved to <span>New hire</span>
+... element is not visible". Neither was the product.
+
+---
+
 ## Wave 2 — CONTEXT, behind `CONTEXT_ENABLED` (the largest, and the one that changes the product most)
 
 Seven items that are one thing seen from seven angles. Today the whole of context

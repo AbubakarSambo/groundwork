@@ -31,6 +31,29 @@ export const appConfig = registerAs("app", () => ({
    * with this off behaves EXACTLY as it did before any of it existed.
    */
   coachingEnabled: process.env.COACHING_ENABLED === "true",
+
+  /**
+   * CONTEXT. Off by default, on the same terms as the coaching flag above.
+   *
+   * What it gates: the Documents tab becoming a Context tab, open and closed
+   * context as named things, per-person worries, documents read into context,
+   * the context strength read, and the context chat that probes for what setup
+   * did not capture.
+   *
+   * This one changes what people SEE ABOUT EACH OTHER, which is why it needs a
+   * switch more than the coaching layer did. Today every document is private to
+   * whoever uploaded it - not by policy, but because a participant guard was
+   * applied to a list query - so turning this on is the first time the lead's
+   * material reaches anybody. If that lands wrong, it lands wrong in the most
+   * sensitive direction this product has.
+   *
+   * OFF MEANS THE OLD PRODUCT, NOT A DEGRADED ONE. The tab says Documents,
+   * documents stay private to their uploader, and nothing asks anybody what they
+   * are worried about. Additive only: new column, new tables, no changed meaning
+   * for anything that exists. The test that matters is the one that proves that,
+   * not the one that proves the feature works.
+   */
+  contextEnabled: process.env.CONTEXT_ENABLED === "true",
 }));
 
 export const databaseConfig = registerAs("database", () => ({
