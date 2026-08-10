@@ -113,7 +113,9 @@ describe('GW-PATTERN-PROBE-NOT-STATEMENT: patterns sharpen questions live, never
       checkIn: { findMany: jest.fn(async () => []), findFirst: jest.fn(async () => null), count: jest.fn(async () => 1) },
       groundDocument: { groupBy: jest.fn(async () => []), count: jest.fn(async () => 0), findMany: jest.fn(async () => []) },
       patternDetection: { findMany: jest.fn(async () => [{ participantId: 'p1', code: 'D1', observationText: D1_OBSERVATION }]) },
-      report: { upsert: jest.fn(async (args: any) => ({ id: 'r1', ...args.create })) },
+      // findUnique: synthesize reads prior engagement back so the private
+      // post-report guides survive a re-synthesis. No prior report here.
+      report: { findUnique: jest.fn(async () => null), upsert: jest.fn(async (args: any) => ({ id: 'r1', ...args.create })) },
     };
     const reportPrompts: any = { getActive: jest.fn(async () => ({ id: 'pv-1', content: 'base synthesis prompt.' })) };
     let reportCorpus = '';

@@ -18,7 +18,7 @@ import { runIntake } from './intake';
 import { boardRendersFor } from '../board/board-families';
 import { buildRoleProbeBlock } from '../board/role-maps';
 import { detectFunction } from '../board/function-detection';
-import { closeReadiness } from './close-readiness';
+import { closeReadiness, askedToFinish } from './close-readiness';
 import { observeStyle, mergeStyle, styleGuidance } from './person-style';
 
 /**
@@ -1108,8 +1108,25 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       where: { checkInId: checkIn.id, role: TurnRole.PERSON },
       select: { content: true },
     });
+    /**
+     * THE TURN FLOOR HAS THE SAME ESCAPE HATCH THE ENGINE HAS.
+     *
+     * closeReadiness lets somebody out below the floor the moment they say they
+     * are done - "that's everything from me", "I need to go". That is right: it
+     * is their session and nothing should trap them in it.
+     *
+     * This end did not know about that. So the engine accepted the sentence,
+     * showed a "Complete session" button, and the server then refused the same
+     * session for being one turn short. Invited to finish, then declined, on the
+     * words that had just been honoured. It fired around forty times in one
+     * six-person run and reads as a broken product, because from the outside it
+     * is one.
+     *
+     * The record is still protected: the substance gate below is unconditional,
+     * so somebody can leave early but cannot leave nothing behind.
+     */
     const minTurns = checkIn.isSelfCorrection ? 1 : 3;
-    if (personTurnRows.length < minTurns) {
+    if (personTurnRows.length < minTurns && !askedToFinish(personTurnRows.map((t) => t.content ?? ''))) {
       throw new BadRequestException(
         'A few more exchanges are needed before this check-in can close - the record is still thin. Answer one or two more questions, then complete.',
       );

@@ -26,7 +26,7 @@ const SAYS_NOTHING_TO_ADD =
   /\b(nothing (to add|much|really|this week|new)|no (real )?(update|progress|change)|not much|same as (last|before)|quiet week|nothing (has )?(happened|moved)|haven'?t (done|had) )/i;
 
 /** Someone declining, or asking to stop. Always honoured immediately. */
-const WANTS_OUT =
+export const WANTS_OUT =
   /\b(that'?s (it|me|all)|i'?m done|done for now|need to go|got to go|can we (stop|finish)|later|another time|skip this)/i;
 
 export interface CloseReadiness {
@@ -39,6 +39,22 @@ export interface CloseReadiness {
  * @param personTurns everything this person has said this session, in order
  * @param alreadyProbed whether a close has already been held back once
  */
+/**
+ * Did this person ask to finish?
+ *
+ * Exported because BOTH ends of the close have to agree about it. The engine
+ * honours it here and lets somebody out below the turn floor, which is right -
+ * it is their session. complete() did not, so the person who said "that's
+ * everything from me" was shown a completion button by the engine and then
+ * refused by the server for being one turn short. The screen offered and the
+ * server declined, on the exact sentence the engine had just accepted.
+ *
+ * Around forty times in one six-person run.
+ */
+export function askedToFinish(personTurns: string[]): boolean {
+  return WANTS_OUT.test(personTurns[personTurns.length - 1] ?? '');
+}
+
 export function closeReadiness(
   personTurns: string[],
   alreadyProbed: boolean,
@@ -47,7 +63,7 @@ export function closeReadiness(
   const said = personTurns.join(' \n ');
 
   // Asked to stop. Their session, their call - no gate applies.
-  if (WANTS_OUT.test(personTurns[personTurns.length - 1] ?? '')) {
+  if (askedToFinish(personTurns)) {
     return { ready: true, reason: 'the person asked to finish' };
   }
 
