@@ -493,6 +493,10 @@ the same day; the rest are open, in the order they are worth doing.
 | **G10** | **Nothing for the leader to weigh.** The report describes what happened and gives no help deciding. Built from their own words, shown at the close. Full spec below. | **Open (M)** |
 | **G11** | **A fortnightly ground offers its next session immediately.** The cadence is decorative: you can finish a ninety-day ground in an afternoon. Soft gate rather than a hard block - show the date it opens, with a quieter way to start early that is recorded as early. Deliberately deferred until after the eighteen grounds, because gating on dates means the journey needs to simulate time passing, and that is the one simulated element it would have to declare. | **Open (M), parked by decision** |
 | **G12** | **Google, end to end.** The logic is built and tested at the seam, on both the sign-in flow and the entry flow. The handshake itself has never run, because no credentials are configured. Not covered until it has been. | **Blocked on credentials** |
+| **G42** | **The coaching tables are in the database and nothing writes to them.** `coaching_states` and `ground_baselines` ship with the migration, `COACHING_ENABLED` defaults off, and no code path fills either one. Deliberate, so the schema lands before the behaviour, but it means the wall tests prove the absence of a leak in a feature that has never produced a single row. Not covered until a real multi-session trace has run with the flag on. Also unfinished underneath it: signal depth exists for MANAGEMENT only, the other eight role maps have none, and Phase 3 is not wired. | **Open (L), gated off** |
+| **G44** | **The report speaks in field names.** "Where you see it differently", "the question this turns on", "3 agreed, 1 still open" are what the product prints, and they read as jargon to anybody who has not used it. The marketing site now shows the plain versions - "Where the team saw it differently", "The one thing to settle first", "3 things settled, 1 still open" - so the site is briefly ahead of the product. The report itself should catch up rather than the site quietly promising a voice the product does not have. The same entry now covers a second gap found the same way: the marketing panel opens on a **consequence line** - what the gap costs and when it was caught, against when it would otherwise have surfaced - because a category heading like "where you see it differently" leaves a chief executive to assemble the consequence themselves. The engine produces the divergences, the owner gap and the closing question, but not that summary line. It should. | **Open (S)** |
+| **G45** | **The never-count rule has no cohort exception.** "Four of the six described the same delay" is a verdict by arithmetic on shared work, and `countsAccounts()` detects it. On a COHORT it is the opposite: fourteen people who have never met, given the same induction, and nine of them describing the same rule the same wrong way - the count is the diagnosis, and it points at the briefing rather than at anybody in it. A correct cohort report would trip the detector today. The detector needs to know `peopleWorkTogether`, and the synthesis prompt needs to permit counting in exactly that case and nowhere else. | **Open (S)** |
+| **G43** | **The tests were the weak part, not the code.** Ground 1 took ten runs, and four separate times a check could not have failed: a run passed having done one session of twelve, a landing check counted clicks rather than arrivals, then counted words the chat echoes locally before anything is stored, and a guard used a case the code could never see. The habit that caught all four is breaking the fix first and confirming red. It is not optional on the remaining grounds, and it is worth applying backwards to any guard written before it became the rule. | **Standing practice** |
 
 
 ## G10 in full: what a leader can weigh, and where it goes
@@ -1056,3 +1060,196 @@ quiet is the decay idea.
 
 This is a programme, not an afternoon. Section A alone is the largest change to
 the record since it was built.
+
+---
+
+# THE BUILD PLAN — every open item, in the order it should be done
+
+Written 10 August 2026, after Ground 1 and Ground 2 both passed. Forty-two open
+items, grouped into waves by what depends on what, with the approach for each
+rather than a restatement of the problem.
+
+## The rule that governs the big waves: one flag, default off, additive only
+
+The coaching engine shipped behind `COACHING_ENABLED` and that turned out to be
+the most useful decision on it. The flag is not a convenience, it is what makes
+it safe to build something opinionated inside a product people are trusting with
+private accounts: if the new behaviour is wrong in a way nobody predicted, it
+goes off in one environment variable and the product is exactly what it was
+yesterday.
+
+Every wave below that adds a new surface gets the same treatment.
+
+**What the flag has to mean, in all of them:**
+
+1. **Off is the old product, not a degraded one.** No empty tab, no disabled
+   button, no "this feature is unavailable". With the flag off, the Context tab
+   is the Documents tab exactly as it is today.
+2. **Additive only.** New tables and new columns, never a changed meaning for an
+   existing one. Nothing that exists today may start behaving differently when
+   the flag is on, or turning it off would not restore anything.
+3. **Off is the default,** in code, not only in .env. A missing variable is off.
+4. **The kill switch has its own test.** Not "does the feature work" but "with
+   the flag off, does the old path still produce exactly what it produced" -
+   which is the thing you actually need at the moment you reach for it.
+5. **Write paths gate too, not just reads.** A flag that hides a surface while
+   still writing to it leaves a half-populated database behind when it goes off.
+
+---
+
+## Wave 0 — things that are untrue or uncommitted (hours)
+
+Nothing here is a feature. It is the set of things that are wrong on a live page
+or missing from git, and every one is small.
+
+| | Item | Approach |
+|---|---|---|
+| N7 | Nothing is committed | Several commits, split by subject, in the pattern already used on this branch |
+| N1 | "Groundwork never shares individual answers" is false | The report quotes people with session numbers. Replace with the true and stronger claim: it quotes what people said about their own work, and never says who said what about anybody else. Add a guard test that reads the live copy against the report schema |
+| N2 | "The same picture goes to everyone in it" is wrong for a cohort | The product is already right (`viewerIsLead \|\| isSelf \|\| isLead`). Make the copy conditional on the scenario, or state it as the rule it actually is |
+| N3 | `leadershipGaps` rendered by nothing | Decide: show it to the lead on the report page, or stop producing it. Do not leave a field the synthesis fills and nobody reads |
+| G44 | The report speaks in field names | The plain labels are already on the marketing page. Move them into the report schema descriptions and the client, so the site stops being ahead of the product |
+| G45 | Never-count has no cohort exception | `countsAccounts()` takes `peopleWorkTogether`. Counting is a violation on shared work and the finding on a cohort |
+| G40 | Say what happens to what people write, before the first question | One screen before the first check-in question, not a link. Three sentences: who reads this, who never does, what leaves this page |
+
+---
+
+## Wave 1 — prove what is already built (one journey run)
+
+Thirteen fixes went in without a live run behind them. Before anything new is
+built on top of them, they get exercised.
+
+| | Item | Approach |
+|---|---|---|
+| P1-P13 | The session's fixes | Re-run Grounds 1 and 2 into one org. Assert per fix, not by eye: a participant's report payload carries no other party's specificity, the guides exist after eight sessions, no completion 400s |
+| N5 | No journey has ever uploaded a document | Add a real upload to the participant path. `documentsAttached` has been 0 in every run, so document-backed coverage is entirely untested |
+| G29 | The participant path on a phone | Run the participant half of the journey at 375px. Participants are the people most likely to be on one, and nothing has ever checked it |
+
+---
+
+## Wave 2 — CONTEXT, behind `CONTEXT_ENABLED` (the largest, and the one that changes the product most)
+
+Seven items that are one thing seen from seven angles. Today the whole of context
+is a 500-character textarea labelled "Context notes" on a Documents tab, and every
+document is private to whoever uploaded it - which means the lead's job
+description, strategy paper or grant terms reach nobody.
+
+**Step 1. The Documents tab becomes the Context tab, and visibility becomes a
+property rather than an accident.**
+
+| | Who sees it | What it holds |
+|---|---|---|
+| Open context | everyone in the ground | what this is for, what has to be true, the documents everyone works from |
+| Closed context | the lead only | what they know that is not everyone's to read, including anything about a person |
+| Your own evidence | you only, as today | what you attach to back your own account |
+
+`GroundDocument` gains a `visibility` column defaulting to the current behaviour,
+so existing documents keep being private and nothing shifts under anyone.
+
+**Step 2 (G24). Documents are read into context, under four hard rules.** A
+document is CONTEXT and never an ACCOUNT. It cannot corroborate a person. It
+cannot become evidence in a divergence. What it contributes is visible as having
+come from a document, with the document named.
+
+**Step 3 (G38). Open and closed context, named as such in the interface**, so
+nobody is guessing who reads what. The distinction is the reason people will put
+real context in at all.
+
+**Step 4 (G39). Ask what each person is worried about**, per person and per
+scenario, heavily guarded. A worry is closed context by default and never appears
+in a shared report. Its subject never learns it was said.
+
+**Step 5 (G25). The context strength read.** Not a score. A statement of what
+this ground will and will not be able to tell you, given what it has - shown
+before the first session, when it can still be fixed.
+
+**Step 6 (G26). One context page per ground, the same page for everyone**, with
+the closed part visibly absent rather than silently missing.
+
+**Step 7 (G37, G23). The context chat.** It probes for what setup did not
+capture, and recommends the materials rather than waiting for uploads. This is
+what stops a ground being created off one sentence, which is a live defect: a
+real Ground 1 run produced a ninety-day ground from a single answer with no
+duration, no rhythm and no sense of who was involved.
+
+**The flag:** off, the tab is Documents, documents are private, no chat, no
+worries, no strength read. On, all seven. The kill-switch test asserts the old
+tab renders and the old upload path behaves identically.
+
+---
+
+## Wave 3 — OBJECTIVES AND BASELINE, behind `OBJECTIVES_ENABLED`
+
+G13 to G19 are one body of work. Every one of them is a consequence of the same
+missing thing: a ground has one success definition, it belongs to the lead, and
+there is no record of where things stood on day one.
+
+| | Item | Approach |
+|---|---|---|
+| G13 | An objective per person | Each participant states what they are trying to achieve. The lead's is one of them, not the ground's |
+| G14 | Current reality as a baseline | Captured at setup and frozen. Without it nothing can show movement, only position |
+| G19 | The gap to the goal as its own axis | Distinct from the gap between people, which is all the product measures today |
+| G15 | Conditions required | What has to be true for the objective to be reachable - the missing middle between the goal and twelve weeks of check-ins |
+| G16 | Whether those conditions exist | A readiness check at setup, not a judgement later |
+| G17 | Who is required, not just who is involved | What the objective depends on, which is often somebody nobody invited |
+| G18 | Learning required | What this person needs to know for the objective to be reachable |
+
+Built in that order: the objective and the baseline first, because the other five
+are all relative to them.
+
+---
+
+## Wave 4 — CONFIDENCE AND PROVENANCE, behind `CONFIDENCE_ENABLED`
+
+The honesty layer. This is where the product stops presenting a picture and
+starts saying how much of it it can stand behind.
+
+| | Item | Approach |
+|---|---|---|
+| G30 | Confidence, not certainty. **G9 folds into this** | Reframe specificity as confidence in the PICTURE rather than a mark on a person. The plain dimension wording is already done; this is the framing around it |
+| G31 | Provenance at the point of a claim | Where a line rests on one account, one document, or an inference, say so on the line rather than in a footnote |
+| G32 | Contradiction inside one person's own record | Divergence between parties exists; a person contradicting themselves across sessions does not. Handled as a question to them, never as a catch |
+| G33 | Continuous revision, stated as such | The report is the current best reading, not a verdict, and says so |
+| G34 | Harder to fool, including by itself | The half that gets forgotten: the engine must be able to be wrong about its own read |
+| G35 | A board that raises confidence without raising accuracy is a liability | The design rule this wave is measured against, not a feature |
+
+---
+
+## Wave 5 — WHAT A LEADER CAN WEIGH, behind `DECISION_ENABLED`
+
+Everything that helps somebody decide, which is deliberately last because it
+leans on the record being right and the confidence read being honest.
+
+| | Item | Approach |
+|---|---|---|
+| G10 | What a leader can weigh at the close | Full spec already in this document. Built from their own words, shown at the close, never a checklist |
+| G22 | "What would change your mind", asked in week one | The highest-value single question on the whole list, and one of the smallest to build |
+| G36 | Trade-off clarification | Where two things the ground wants are in tension, name the tension rather than scoring both |
+| G20 | A living contribution record | Explicitly not a capability profile and not a persistent score on a person |
+| G21 | An interview after setup | Setup stays light because that is where somebody decides whether this is worth their time |
+| G27 | Purpose before performance | An ordering rule: everyone understands why they matter before being asked to account for anything |
+| G28 | Light participant onboarding: four things, one screen | Small, and it is the first thing a participant ever sees |
+
+---
+
+## Wave 6 — carried, blocked, or somebody else's turn
+
+| | Item | State |
+|---|---|---|
+| G11 | Cadence is decorative | Parked by decision until the eighteen grounds are done, because gating on dates means simulating time |
+| G12 | Google end to end | Blocked on credentials |
+| G42 | Coaching wiring: signal depth for eight role maps, Phase 3, a real trace with the flag on | Open, and gated off, so it harms nothing while it waits |
+| N4 | The marketing page shows things the engine does not produce | Resolves as Waves 2 and 4 land. Until then it is a promise with a date on it |
+| N6 | Grounds 3 to 18 | Written as the waves land, so each one exercises what was just built |
+| G43 | The tests were the weak part | Standing practice, not a task. Break the fix, confirm red, restore, confirm green |
+
+---
+
+## What I would do first
+
+Wave 0 in one sitting - it is hours, and one item on it is a false claim on a
+live page. Then Wave 1, because thirteen fixes are currently unproven and
+building on unproven fixes is how you get a bug you cannot locate.
+
+Then Wave 2, which is the one that changes the product most, and the one where
+the flag matters most.
