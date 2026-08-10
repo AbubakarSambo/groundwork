@@ -3,6 +3,7 @@ import { Cron } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 import { forbiddenNames, sanitiseGuide, PostReportGuide } from './guide-sanitiser';
 import { labelsForParties, namesVisibleTo, withNames } from './party-labels';
+import { withoutOtherPeoplesReads } from './own-reads-only';
 import { tallyInReport } from './counts-accounts';
 import { forensicInReport, withoutDashes } from './forensic-voice';
 import { PrismaService } from '../prisma/prisma.service';
@@ -826,9 +827,45 @@ Close the report by framing - neutrally, without recommending one - the choice n
           this.prisma.groundDocument.count({ where: { groundId, participantId: p.id } }),
         ]);
         const recordEntries = allEntries.length;
-        const specificEntries = allEntries.filter((e) => e.text.length > 120).length;
-        const specificityRatio = recordEntries > 0 ? specificEntries / recordEntries : 0;
-        const specificityLabel: 'high' | 'moderate' | 'low' = specificityRatio > 0.65 ? 'high' : specificityRatio > 0.35 ? 'moderate' : 'low';
+
+        /**
+         * THE SCORE WAS MEASURING HOW LONG PEOPLE WROTE.
+         *
+         * specificityLabel counted record entries over 120 characters. The
+         * completion gate learned this lesson already and says so at length:
+         * "SUBSTANCE, NOT LENGTH. Counting characters rejected two of one
+         * person's real check-ins - answers that named a buyer, a number and a
+         * blocker, but tersely. Length was measuring the wrong thing." One half
+         * of this codebase knew, and the half that produces the number people
+         * actually see did not.
+         *
+         * It reads exactly backwards, because record ENTRIES are extracted
+         * facts, not prose. From Ground 1's twelve-session run: 69 entries,
+         * average 101 characters, 10 of them over 120. So both parties scored
+         * "low" - on a ground whose per-session dimensions came out mostly
+         * "managed" and whose report was good. The better the extraction, the
+         * shorter the entry, the worse the score.
+         *
+         *   "[VERIFIABILITY:HIGH] owning at least one client relationship end to end"
+         *
+         * 52 characters, checkable, and it counted against them.
+         *
+         * The engine already scores this properly per session, weighing whether
+         * something can be checked rather than how long it is - specificityLevel
+         * on each check-in, from scoreSessionSpecificity. That is the read the
+         * headline label is built from now.
+         */
+        const scored = await this.prisma.checkIn.findMany({
+          where: { participantId: p.id, status: CheckInStatus.COMPLETED, specificityLevel: { not: null } },
+          select: { specificityLevel: true },
+        });
+        const RANK: Record<string, number> = { vague: 0, directional: 1, managed: 2, specific: 3 };
+        const ranks = scored.map((c) => RANK[String(c.specificityLevel)] ?? 0);
+        const mean = ranks.length ? ranks.reduce((a, b) => a + b, 0) / ranks.length : 0;
+        // No sessions scored yet is not a bad record, it is no record. "low"
+        // would be a verdict on somebody who has not been asked anything.
+        const specificityLabel: 'high' | 'moderate' | 'low' | 'not scored yet' =
+          !ranks.length ? 'not scored yet' : mean >= 2 ? 'high' : mean >= 1 ? 'moderate' : 'low';
         return { label: labelById.get(p.id) ?? 'a party', sessions, recordEntries, documentsAttached, contributed: contributorIds.has(p.id), specificityLabel };
       }),
     );
@@ -886,6 +923,42 @@ Close the report by framing - neutrally, without recommending one - the choice n
       parties: engagementParties,
     };
 
+    /**
+     * The five dimensions in words. Each says what the RECORD holds or does not
+     * hold, never what the person is - and the ones a reader is meant to act on
+     * say what would change it.
+     */
+    const PLAIN_DIMENSION: Record<string, Record<string, string>> = {
+      vague: {
+        coverage: 'Parts of the work are not described yet',
+        delivery: 'What was actually finished is not clear from this',
+        evidence: 'Nothing here can be checked against anything',
+        commitment: 'No next step with a date on it',
+        enablement: 'What is needed from other people is not named',
+      },
+      directional: {
+        coverage: 'The shape of the work is here, the detail is not',
+        delivery: 'Progress is described, without what landed',
+        evidence: 'Some of this could be checked, most could not',
+        commitment: 'Intentions named, no dates yet',
+        enablement: 'Dependencies hinted at rather than named',
+      },
+      managed: {
+        coverage: 'The work is described across the board',
+        delivery: 'Clear on what was finished',
+        evidence: 'Most of this can be checked',
+        commitment: 'Next steps named, some with dates',
+        enablement: 'Clear about what is needed from others',
+      },
+      specific: {
+        coverage: 'Every part of the work is accounted for',
+        delivery: 'Precise about what was finished and when',
+        evidence: 'All of this can be checked',
+        commitment: 'Next steps named with dates',
+        enablement: 'What is needed from others is named and dated',
+      },
+    };
+
     const specificityNotes: { label: string; dimensions: { dim: string; level: string; note: string }[] }[] = [];
     for (const p of parties) {
       const lastCheckIn = await this.prisma.checkIn.findFirst({
@@ -902,7 +975,20 @@ Close the report by framing - neutrally, without recommending one - the choice n
         dimensions: Object.entries(dims).map(([dim, level]) => ({
           dim,
           level,
-          note: `${label} was ${level} on ${dim} in session ${lastCheckIn.sessionNumber}.`,
+          /**
+           * WRITTEN AS A SENTENCE SOMEBODY WOULD SAY.
+           *
+           * It read "the initiator was managed on coverage in session 12" - a
+           * label, a dimension and a session number in a sentence shape. Nobody
+           * talks like that, and a person reading it about themselves cannot
+           * tell whether it is praise, a complaint, or a system message.
+           *
+           * It also read as a grade on a PERSON. The subject is the record, so
+           * the record is what the sentence is about now.
+           */
+          note: PLAIN_DIMENSION[level] && PLAIN_DIMENSION[level][dim]
+            ? `${PLAIN_DIMENSION[level][dim]} (session ${lastCheckIn.sessionNumber})`
+            : `In session ${lastCheckIn.sessionNumber}, what was said about ${dim} was ${level}.`,
         })),
       });
     }
@@ -997,6 +1083,17 @@ Close the report by framing - neutrally, without recommending one - the choice n
 
     const inferences = ((result as any).inferences ?? []) as Array<{ id: string; text: string; participantLabel: string; reason: string }>;
 
+    /**
+     * The private per-person guides, read back before the write that would
+     * otherwise erase them. Everything else in engagement is rebuilt from this
+     * synthesis; these are not, so they are the one thing carried across.
+     */
+    const priorEngagement = (await this.prisma.report.findUnique({
+      where: { groundId },
+      select: { engagement: true },
+    }))?.engagement as Record<string, any> | null | undefined;
+    const existingGuides = priorEngagement?.postReportGuides;
+
     const report = await this.prisma.report.upsert({
       where: { groundId },
       create: {
@@ -1047,6 +1144,24 @@ Close the report by framing - neutrally, without recommending one - the choice n
         agreements: result.agreements as any,
         divergences: result.divergences as any,
         centralQuestion: result.centralQuestion,
+        /**
+         * PRIVATE GUIDES SURVIVE A RE-SYNTHESIS.
+         *
+         * engagement was overwritten wholesale on every session, and the
+         * per-person post-report guides live inside it under postReportGuides.
+         * So a guide written when session 1 released was destroyed by session
+         * 2's synthesis, and every session after it - and release() returns
+         * early once releasedAt is set, so nothing ever wrote them again.
+         *
+         * Found on Ground 2's real report: six people, eight sessions, and no
+         * postReportGuides key at all. The one surface that exists to tell
+         * somebody privately what they might do differently produced nothing for
+         * anybody, and it did so silently, because the write that erased it was
+         * a normal successful update.
+         *
+         * The guides are the only part of engagement not derived from this
+         * synthesis, so they are the only part carried across.
+         */
         engagement: enrichedEngagement as any,
         inferences: inferences as any,
         leadershipGaps: (((result as any).leadershipGaps ?? []).length ? (result as any).leadershipGaps : undefined) as any,
@@ -1062,7 +1177,9 @@ Close the report by framing - neutrally, without recommending one - the choice n
         agreements: result.agreements as any,
         divergences: result.divergences as any,
         centralQuestion: result.centralQuestion,
-        engagement: enrichedEngagement as any,
+        // Carry the private guides across. See the note on the create branch:
+        // this write is what destroyed them on every session after the first.
+        engagement: { ...enrichedEngagement, ...(existingGuides ? { postReportGuides: existingGuides } : {}) } as any,
         inferences: inferences as any,
         leadershipGaps: (((result as any).leadershipGaps ?? []).length ? (result as any).leadershipGaps : undefined) as any,
         promptVersionId: synthesisVersion.id,
@@ -1153,7 +1270,19 @@ Close the report by framing - neutrally, without recommending one - the choice n
     // notified. Partial failure (one email bounces) is still logged but does
     // not block the release - a hard stop would be worse than a logged gap.
     const frontend = this.config.get<string>('resend.frontendUrl');
-    const reportUrl = `${frontend}/report/${groundId}`;
+    /**
+     * THE ROUTE IS /grounds/:id/report, AND THIS SAID /report/:id.
+     *
+     * Every "your shared record is ready" email ever sent pointed at a path the
+     * client has no route for, so the link opened the not-found page. The one
+     * email in the product whose entire job is to bring somebody back to read
+     * the thing they have been waiting for.
+     *
+     * Found by following the link out of a real inbox on ground 2. It cannot be
+     * found any other way: nothing in the API knows what the client's routes are,
+     * and the string looks perfectly reasonable sitting here.
+     */
+    const reportUrl = `${frontend}/grounds/${groundId}/report`;
     const emailResults = await Promise.allSettled(
       ground.participants.map((p) => this.email.sendReportReady(p.email, ground.label, reportUrl)),
     );
@@ -1344,8 +1473,23 @@ Close the report by framing - neutrally, without recommending one - the choice n
     // only the initiator / org admin sees it, and only when the negative tier
     // fired. Participants receive the neutral record-shape line inside the
     // report body itself; arcSignals never leave the admin surface.
+    /**
+     * OTHER PEOPLE'S READS COME OUT BEFORE ANYTHING ELSE HAPPENS.
+     *
+     * engagement carried a five-dimension quality read for every party, and
+     * finalSynthesis a closing tier for every party, to every reader. See
+     * own-reads-only.ts for what that looked like on a real report and why it
+     * is worse than it appears.
+     */
     const base: any = {
-      ...this.applyNames(ground.report as any, ground.participants as any, participant?.id ?? null, isInitiator || isOrgAdmin),
+      ...withoutOtherPeoplesReads(
+        this.applyNames(ground.report as any, ground.participants as any, participant?.id ?? null, isInitiator || isOrgAdmin) as any,
+        {
+          viewerLabel: participant ? (labelsForParties(ground.participants as any).get(participant.id) ?? null) : null,
+          viewerParticipantId: participant?.id ?? null,
+          viewerIsLead: isInitiator || isOrgAdmin,
+        },
+      ),
       activated: true,
       postReportGuide,
       soloArtifact,

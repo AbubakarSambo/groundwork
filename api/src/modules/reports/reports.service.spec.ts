@@ -11,7 +11,7 @@ describe('ReportsService.release - org scoping (GW-02)', () => {
   function makeService(groundRow: any) {
     const prisma: any = {
       ground: { findFirst: jest.fn(async (args: any) => (groundRow && groundRow.organizationId === args.where.organizationId ? groundRow : null)) },
-      report: { update: jest.fn(async () => ({ releasedAt: new Date() })) },
+      report: { findUnique: jest.fn(async () => null), update: jest.fn(async () => ({ releasedAt: new Date() })) },
     };
     const email: any = { sendReportReady: jest.fn(async () => undefined) };
     const config: any = { get: () => 'http://localhost:5173' };
@@ -75,6 +75,9 @@ describe('ReportsService.synthesize - promptVersionId stamping (GW-41)', () => {
       adminProfile: { findUnique: jest.fn(async () => null), upsert: jest.fn(async () => ({})) },
       leadContextNote: { findMany: jest.fn(async () => []) },
       report: {
+        // synthesize reads prior engagement back so the private post-report
+        // guides survive a re-synthesis. Nothing prior in this test.
+        findUnique: jest.fn(async () => null),
         upsert: jest.fn(async (args: any) => {
           upsertedCreate = args.create;
           return { id: 'r1' };
