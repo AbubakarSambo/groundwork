@@ -2,6 +2,7 @@ import { plannedSessionsFor, everySessionDone } from '@/lib/sessionCount'
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { whatThisGroundCanTellYou } from '@/lib/contextStrength'
 import { useAuthStore } from '@/stores/auth'
 import { groundsApi, type GroundCadence } from '@/api/grounds'
 import { TIMED_CADENCES, sessionsFor } from '@/lib/cadence'
@@ -115,12 +116,37 @@ export function GroundAdminPage() {
     onError: () => toast.error('Upload failed.'),
   })
 
+  const setDocVisibility = useMutation({
+    mutationFn: ({ docId, visibility }: { docId: string; visibility: 'OPEN' | 'OWN' }) =>
+      documentsApi.setVisibility(id!, docId, visibility),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['docs', id] }),
+    onError: () => toast.error('Could not change who can see that.'),
+  })
+
   const deleteDoc = useMutation({
     mutationFn: (docId: string) => documentsApi.remove(id!, docId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['docs', id] }),
   })
 
   const isInitiator = !!ground && user?.id === ground.initiatorId
+  // Sent with the ground, because the client cannot read an environment variable
+  // and a screen that guesses whether a feature is on renders half of it.
+  const contextEnabled = (ground as any)?.contextEnabled === true
+  /**
+   * Computed on the client from what the ground already carries, rather than
+   * added as another endpoint. Every input is a count or a presence - nothing
+   * here inspects a person, and no branch depends on who anybody is.
+   */
+  const contextStrength = ground ? whatThisGroundCanTellYou({
+    partyCount: (ground.participants ?? []).filter((p: any) => !p.managingOnly).length,
+    hasSuccessDefinition: !!(ground as any).brief?.trim(),
+    conditionCount: 0,
+    hasBaseline: false,
+    perPersonObjectiveCount: ((ground as any).objectives ?? []).length,
+    openDocumentCount: docs.filter((d: any) => d.visibility === 'OPEN').length,
+    peopleWorkTogether: (ground as any).peopleWorkTogether !== false,
+    plannedSessions: (ground as any).sessionCounts?.total ?? (ground as any).totalSessions ?? 1,
+  }) : null
 
   const { data: pendingRequests = [] } = useQuery({
     queryKey: ['participant-requests', id],
@@ -514,7 +540,11 @@ export function GroundAdminPage() {
         <div style={{ display: 'flex', borderTop: '0.5px solid var(--gw-border)', overflowX: 'auto' }}>
           {(['overview', 'checkins', 'docs', 'report', 'settings'] as Tab[]).map(t => (
             <button key={t} className={`gw-tab${tab === t ? ' active' : ''}`} onClick={() => setTab(t)}>
-              {{ overview: 'Overview', checkins: 'Check-ins', docs: 'Documents', report: 'Report', settings: 'Settings' }[t]}
+              {/* THE TAB IS CALLED CONTEXT ONCE THERE IS CONTEXT IN IT. (G38, G26)
+                  With CONTEXT_ENABLED off it says Documents and behaves exactly as
+                  it did, which is what makes the flag honest - off has to be the
+                  old product rather than a renamed one. */}
+              {{ overview: 'Overview', checkins: 'Check-ins', docs: contextEnabled ? 'Context' : 'Documents', report: 'Report', settings: 'Settings' }[t]}
             </button>
           ))}
           {(ground as any).boardRenders && (
@@ -941,6 +971,46 @@ export function GroundAdminPage() {
         {/* DOCUMENTS */}
         {tab === 'docs' && (
           <div>
+            {/* WHAT THIS GROUND WILL AND WILL NOT BE ABLE TO TELL YOU. (G25)
+                Above the upload, because it is the reason to bother with any of
+                it. Not a score and not a completeness bar: a statement about the
+                REPORT'S limits, given what the ground holds.
+
+                "Your context is 40% complete" makes somebody feel marked at the
+                exact moment they are deciding whether this product is on their
+                side, and tells them nothing about what the effort buys. "It will
+                not be able to tell you whether the conditions were met, because
+                none have been named" carries the same information, names the
+                missing thing, and is a fact about a tool rather than a judgement
+                on a reader.
+
+                Never mandatory and never graded. A ground with thin context is
+                still a real ground; this exists so nobody is surprised in month
+                three by a question the record was never able to answer. */}
+            {contextEnabled && contextStrength && (
+              <div style={{ background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--gw-sub)', marginBottom: 8 }}>
+                  What this ground can tell you
+                </div>
+                {contextStrength.can.length > 0 && (
+                  <div style={{ marginBottom: contextStrength.cannot.length ? 10 : 0 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: '#085041', marginBottom: 4 }}>It will be able to</div>
+                    <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.7 }}>
+                      {contextStrength.can.map((line: string, i: number) => <li key={i}>{line}</li>)}
+                    </ul>
+                  </div>
+                )}
+                {contextStrength.cannot.length > 0 && (
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: '#8A5C1A', marginBottom: 4 }}>It will not be able to</div>
+                    <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.7 }}>
+                      {contextStrength.cannot.map((line: string, i: number) => <li key={i}>{line}</li>)}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div
               style={{ border: '1.5px dashed var(--gw-border)', borderRadius: 8, padding: 20, textAlign: 'center', cursor: 'pointer', marginBottom: 16, background: 'var(--gw-bg)' }}
               onClick={() => document.getElementById('ga-doc-upload')?.click()}
@@ -952,13 +1022,59 @@ export function GroundAdminPage() {
             </div>
 
             {docs.length === 0 && <div style={{ fontSize: 13, color: 'var(--gw-muted)', textAlign: 'center', padding: 16 }}>No documents uploaded yet.</div>}
+
+            {/* OPEN AND CLOSED, NAMED AS SUCH. (G38)
+                Nobody puts real context into a box whose readership they are
+                guessing at, so the destinations are labelled rather than implied.
+                Everything defaults to private (G24 rule 3) and moving something
+                to open is a deliberate act: a performance plan dropped into
+                shared context in a hurried first week cannot be undone, because
+                the others have already read it. */}
+            {contextEnabled && docs.length > 0 && (
+              <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, background: 'var(--gw-bg)', borderRadius: 8, padding: '10px 12px', marginBottom: 10 }}>
+                Everything you add starts private to you. <b>Open</b> means everyone in this ground can read it, which is what the brief and the plan are for. <b>Only me</b> keeps it yours.
+              </div>
+            )}
             {docs.map(doc => (
               <div key={doc.id} style={{ background: 'white', border: '0.5px solid var(--gw-border)', borderRadius: 8, padding: '11px 14px', marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 600 }}>{doc.name}</div>
                   <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>{new Date(doc.uploadedAt).toLocaleDateString()}</div>
                 </div>
-                <button onClick={() => deleteDoc.mutate(doc.id)} style={{ fontSize: 12, color: 'var(--gw-red-t)', background: 'none', border: 'none', cursor: 'pointer' }}>Delete</button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  {/* WHO CAN READ THIS, stated on the row rather than in a
+                      settings screen. Somebody deciding whether to attach a
+                      handover note needs the answer where they are, not two
+                      clicks away.
+
+                      Only shown with the flag on: with it off there is one
+                      answer for every document and a control offering a choice
+                      that does not exist would be a lie about the product. */}
+                  {contextEnabled && (
+                    <button
+                      onClick={() => setDocVisibility.mutate({
+                        docId: doc.id,
+                        visibility: (doc as any).visibility === 'OPEN' ? 'OWN' : 'OPEN',
+                      })}
+                      disabled={setDocVisibility.isPending || (doc as any).visibility === 'CLOSED'}
+                      title={(doc as any).visibility === 'CLOSED'
+                        ? 'This is your own context and stays with you'
+                        : (doc as any).visibility === 'OPEN'
+                          ? 'Everyone in this ground can read this. Click to make it yours only.'
+                          : 'Only you can read this. Click to share it with everyone in this ground.'}
+                      style={{
+                        fontSize: 11, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer',
+                        padding: '3px 9px', borderRadius: 20,
+                        border: `1px solid ${(doc as any).visibility === 'OPEN' ? '#A7D9CC' : 'var(--gw-border)'}`,
+                        background: (doc as any).visibility === 'OPEN' ? '#DFF1EA' : 'var(--gw-bg)',
+                        color: (doc as any).visibility === 'OPEN' ? '#085041' : 'var(--gw-sub)',
+                      }}
+                    >
+                      {(doc as any).visibility === 'OPEN' ? 'Everyone' : (doc as any).visibility === 'CLOSED' ? 'Only me' : 'Only me'}
+                    </button>
+                  )}
+                  <button onClick={() => deleteDoc.mutate(doc.id)} style={{ fontSize: 12, color: 'var(--gw-red-t)', background: 'none', border: 'none', cursor: 'pointer' }}>Delete</button>
+                </div>
               </div>
             ))}
 

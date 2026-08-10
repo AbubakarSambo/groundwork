@@ -451,6 +451,25 @@ export class GroundsService {
    * same pattern used when a participant accepts their invite (accept() in
    * ParticipantsService). Needed here because Ground.initiatorId is a required
    * FK to an existing User; it cannot point at an unaccepted invite. */
+  /**
+   * OFF WHEN WE CANNOT TELL, which is part of what "off by default" has to mean.
+   *
+   * Reading the flag directly threw where config was unavailable, and a feature
+   * flag that can throw is worse than one that is wrong: the ground page would
+   * return a 500 rather than quietly showing the old product, which is the exact
+   * opposite of what a kill switch is for.
+   *
+   * Surfaced by unit tests whose config mock has no get(), and it would have been
+   * a real outage the first time ConfigService was unavailable for any reason.
+   */
+  private contextEnabled(): boolean {
+    try {
+      return this.config?.get<boolean>('app.contextEnabled') === true;
+    } catch {
+      return false;
+    }
+  }
+
   private async findOrCreateUserForEmail(
     organizationId: string,
     email: string,
@@ -860,6 +879,16 @@ export class GroundsService {
       leadContextNotes,
       org: org ?? null,
       sessionProgress: sessionProgress ? { ...sessionProgress, requestingUserIsMissing } : null,
+      /**
+       * The context flag, sent with the ground because that is where the tab
+       * lives. The client cannot read an environment variable, and a screen that
+       * guesses whether a feature is on is how you get half of it rendering.
+       *
+       * Sent as a plain boolean, not as a list of capabilities: with the flag off
+       * the client renders exactly the Documents tab it rendered before, and
+       * there is nothing else to negotiate.
+       */
+      contextEnabled: this.contextEnabled(),
       // Whether this ground has a delivery board, so the client can show or hide
       // the link without duplicating the scenario-family table. The server owns
       // that routing; the client just reads the answer.
