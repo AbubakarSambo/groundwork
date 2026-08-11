@@ -2294,7 +2294,13 @@ export function EntryChatPage() {
                     <div style={{ fontSize: 10, letterSpacing: '.09em', textTransform: 'uppercase', color: '#9B9590', fontWeight: 700, marginBottom: 8 }}>People mentioned</div>
                     <div style={{ border: '1px solid #E2E0DB', borderRadius: 10, padding: '11px 13px', background: '#FAFAF8' }}>
                       <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.6, marginBottom: 10 }}>
-                        These people came up in this check-in. Adding them to the ground gives you a fuller picture.
+                        {/*
+                          W5. TWO PLACES TO ADD PEOPLE, NEITHER SAYING SO.
+                          This list and the invite screen below are the same
+                          queue with two entrances, which nobody could tell from
+                          either one. Both now say which queue they are.
+                        */}
+                        These people came up in this check-in. Adding one puts them on the same invite list as the screen below, so you will not send twice.
                       </div>
                       {sessionReport.mentionedPeople.map((p, i) => {
                         const key = `men-${i}-${p.name}`
@@ -2599,7 +2605,7 @@ export function EntryChatPage() {
                 {inviteSubtext}
               </div>
               <div style={{ fontSize: 12, color: '#0C447C', background: '#EEF4FB', border: '1px solid #CFE2F5', borderRadius: 8, padding: '8px 11px', lineHeight: 1.5, marginBottom: 10 }}>
-                Add them here now. Invites don't go out yet — they're sent once you save this ground and confirm your email.
+                Add them here now. Anyone you added from the report above is already on this list. Invites don't go out yet - they're sent once you save this ground and confirm your email.
               </div>
               {/* THERE IS A LATER, AND IT SHOULD SAY SO.
                   Adding people has always been optional - the commit defaults
