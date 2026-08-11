@@ -1956,6 +1956,67 @@ Close the report by framing - neutrally, without recommending one - the choice n
   // The comment above already claimed "08:00 UTC" but the decorator never
   // actually pinned a timeZone - implicit, same gap as grounds.cron.ts. Now
   // genuinely UTC, matching what the comment always said.
+  /**
+   * A CLOSING SYNTHESIS THAT NEVER LANDED, PICKED UP AND FINISHED.
+   *
+   * Found on a live twelve-session run and it is the worst failure shape in the
+   * product: every party finished their final session, the closing synthesis ran,
+   * the model returned prose instead of calling the tool, the listener logged an
+   * error nobody reads, and the report kept its mid-ground state PERMANENTLY.
+   *
+   * No closing tiers, no end states, no closingComplete - and nothing anywhere
+   * says so. The report opens and looks finished. A lead reads a twelve-week
+   * ground's summary that is missing the entire closing read and has no way to
+   * know it, which is exactly the "confident and wrong" failure G35 exists to
+   * refuse, arriving through an unhandled error instead of a bad inference.
+   *
+   * A retry at the model seam makes this rarer. It cannot make it impossible, so
+   * this closes the hole: any ground whose parties have all finished but whose
+   * report has no finalSynthesis gets synthesised again. Idempotent by
+   * construction - once it lands, the ground stops matching.
+   *
+   * HOURLY, not daily. The gap between a ground closing and its lead opening the
+   * report is usually minutes.
+   */
+  @Cron('20 * * * *', { timeZone: 'UTC' })
+  async finishClosingSynthesesThatFailed(): Promise<void> {
+    try {
+      const candidates = await this.prisma.ground.findMany({
+        where: {
+          report: { isNot: null },
+          participants: { some: { checkIns: { some: { isFinal: true, status: CheckInStatus.COMPLETED } } } },
+        },
+        select: {
+          id: true,
+          report: { select: { finalSynthesis: true } },
+          participants: {
+            select: {
+              id: true, userId: true,
+              checkIns: { where: { isFinal: true, status: CheckInStatus.COMPLETED }, select: { id: true } },
+            },
+          },
+        },
+      });
+
+      for (const g of candidates) {
+        if (g.report?.finalSynthesis) continue;
+        // The same test synthesize() uses: every ACCEPTED party has a completed
+        // final session. An invited party who never joined must not hold this open.
+        const accepted = g.participants.filter((p) => p.userId);
+        if (!accepted.length || !accepted.every((p) => p.checkIns.length > 0)) continue;
+
+        this.logger.warn(
+          `Ground ${g.id} finished its closing round and has no closing synthesis. Synthesising again - the first attempt failed and nothing retried it.`,
+        );
+        await this.synthesize(g.id).catch((err) =>
+          this.logger.error(`Repairing the closing synthesis for ${g.id} failed again: ${(err as Error)?.message}`),
+        );
+      }
+    } catch (err) {
+      this.logger.error(`Closing-synthesis repair sweep failed: ${(err as Error)?.message}`);
+    }
+  }
+
   @Cron('0 8 * * 1', { timeZone: 'UTC' })
   async weeklyOutcomeLearningReport(): Promise<void> {
     this.logger.log('Weekly outcome learning report: starting');
