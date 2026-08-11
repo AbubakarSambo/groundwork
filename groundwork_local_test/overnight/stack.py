@@ -12,6 +12,7 @@ assertion.
 from __future__ import annotations
 
 import getpass
+import re
 import os
 import shutil
 import signal
@@ -146,10 +147,43 @@ class Stack:
                 return []
             time.sleep(3)
         if not http_ok("http://127.0.0.1:3000/health"):
-            failures.append(f"API never became healthy (see {self.log_dir/'api.log'})")
+            # SAY WHY, NOT JUST THAT.
+            #
+            # "API never became healthy (see api.log)" is what this reported when
+            # main failed to compile, and it sent the diagnosis down the wrong path
+            # entirely: it reads as a broken branch or a slow boot, when the log
+            # held two exact TypeScript errors naming the field and the line. The
+            # log was attached to the run all along and the abort did not quote it.
+            #
+            # A compile failure is the most likely reason a boot never completes and
+            # the cheapest to report, so it gets named in the abort itself.
+            failures.append(
+                f"API never became healthy (see {self.log_dir/'api.log'})"
+                + self._compile_errors()
+            )
         if not http_ok("http://127.0.0.1:5173"):
             failures.append(f"client never served (see {self.log_dir/'client.log'})")
         return failures
+
+    def _compile_errors(self, limit: int = 4) -> str:
+        """The TypeScript errors from api.log, if it failed to compile.
+
+        Strips the ANSI colour codes nest's watch mode writes, since the raw log is
+        unreadable pasted into a run summary.
+        """
+        log = self.log_dir / "api.log"
+        if not log.exists():
+            return ""
+        try:
+            text = re.sub(r"\x1b\[[0-9;]*m", "", log.read_text(errors="replace"))
+        except Exception:
+            return ""
+        errs = [l.strip() for l in text.splitlines() if "error TS" in l]
+        if not errs:
+            return ""
+        shown = errs[:limit]
+        more = f" (+{len(errs) - len(shown)} more)" if len(errs) > len(shown) else ""
+        return " - IT DID NOT COMPILE: " + " | ".join(shown) + more
 
     def teardown(self):
         for p in self.procs:
