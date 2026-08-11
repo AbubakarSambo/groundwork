@@ -1344,9 +1344,13 @@ rendered product rather than the code.
 | **W6** | Invite screen | Labelled a performance improvement ground, with the HR notice | Fine, and correct - noted only to confirm it is deliberate. | none |
 | **W7** | After "Done" | Nothing said the sign-up link had been emailed, and no Google option appeared | The flow ends on a screen that looks like a dead end. The email was sent; the product did not say so. And the sign-in choice she has everywhere else in the product is missing at the one moment she is being asked to create an account. | M |
 
+| **W8** | Private report, "This isn't right - correct it" | The box says "we may ask a follow-up before the report updates", and the only control is **Send correction**. She typed "the dealine is wong" and it sent. | This is the one-shot correction the engine-mediated rework was supposed to replace, still on screen and still promising a follow-up it does not deliver. Either the loop is not reaching this entry point or it never asks - and a typed sentence with a typo in it, unchallenged, goes into the record as a correction to the record. It also shows why the loop matters: "the deadline is wrong" says nothing about what the deadline is. | **M** |
+
 **W2 is the one that matters.** The others are seams and wording. W2 is the engine
 writing a better version of what somebody said and then putting it on the record
 as theirs - a name that was never typed, and a causal claim ("led directly to")
 that she did not make. Every guardrail built this week is about not saying more
 than the record supports, and this is the engine doing it in the first session of
-the first flow anybody meets.
+the first flow anybody meets. **W8 is next to it**, because the two are the same failure from
+opposite ends: the engine adding what nobody said, and the product accepting what
+somebody said without asking what it means.
