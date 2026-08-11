@@ -113,17 +113,78 @@ def provider_unreachable(suite_file: str) -> bool:
 
 
 # ---- the sabotages (each one proven live during the build cycle) ------------
+#
+# EVERY SABOTAGE COUNTS THE ROWS IT TOUCHED.
+#
+# A sabotage that matches nothing produces a green suite, and a green suite under
+# sabotage is reported as "the guard no longer bites". The two are indistinguishable
+# from an exit code, they have opposite fixes, and both have now happened here in one
+# day: the class-2 label sabotage matched nothing in CI, and the class-1 draft
+# sabotage was found to have been matching nothing while the guard "bit" on an
+# unrelated pre-existing failure in the same suite. That second one is the dangerous
+# shape - a guard passing its own self-test for a reason that has nothing to do with
+# what it guards.
+#
+# So the loops write a running total of affected rows, and Guard reads it. Nothing
+# here judges the product; it judges whether the sabotage happened at all.
+
+HITS_DIR = HERE / "results"
+
+
+def _hits_file(name: str) -> Path:
+    return HITS_DIR / f".selftest-{name}-hits"
+
+
+def _counting_loop(name: str, statement: str, sleep: float, seconds: int = 400):
+    """
+    Run a data-modifying statement on a loop, recording rows affected.
+
+    `statement` must be a single SQL statement wrapped so its row count can be
+    selected - it is run as `with u as (<statement> returning 1) select count(*)`.
+    Any `$` in it must already be escaped for bash double quotes.
+    """
+    f = _hits_file(name)
+    HITS_DIR.mkdir(parents=True, exist_ok=True)
+    f.write_text("0")
+    return subprocess.Popen(
+        ["bash", "-c",
+         f"END=$((SECONDS+{seconds})); TOTAL=0; while [ $SECONDS -lt $END ]; do "
+         f"N=$(psql '{PSQL}' -tAc \"with u as ({statement} returning 1) select count(*) from u;\" 2>/dev/null); "
+         f"TOTAL=$((TOTAL+${{N:-0}})); printf %s \"$TOTAL\" > '{f}'; "
+         f"sleep {sleep}; done"],
+    )
+
+
+def _landed(name: str):
+    def check() -> bool:
+        try:
+            return int((_hits_file(name).read_text() or "0").strip() or "0") > 0
+        except Exception:
+            return False
+    return check
+
 
 def break_drafts_start():
-    """Vanish signature: a background loop deletes entry drafts as they are
-    written, so suite V's cross-context commit finds nothing server-side."""
-    proc = subprocess.Popen(
-        ["bash", "-c",
-         f"END=$((SECONDS+400)); while [ $SECONDS -lt $END ]; do "
-         f"psql '{PSQL}' -qc \"delete from entry_drafts using users where entry_drafts.user_id=users.id and users.email like '%example-test.invalid%';\" 2>/dev/null; "
-         f"sleep 0.5; done"],
+    """
+    Vanish signature: a background loop deletes entry drafts as they are written,
+    so suite V's cross-context commit finds nothing server-side.
+
+    THIS GUARD WAS BITING FOR THE WRONG REASON. Suite V had three pre-existing
+    criticals about the invite queue, so it exited non-zero whatever this sabotage
+    did - and "suite went red" is the whole test. The moment those criticals were
+    fixed, the guard reported NO BITE, which is how the sabotage's own reach came
+    into question at all. It had been proving nothing about draft deletion for as
+    long as those criticals existed.
+
+    Now counted, so the next run says which of the two it is: a sabotage that
+    matches no rows, or a suite that does not notice its data being deleted.
+    """
+    return _counting_loop(
+        "drafts",
+        "delete from entry_drafts using users where entry_drafts.user_id=users.id "
+        "and users.email like '%example-test.invalid%'",
+        sleep=0.5,
     )
-    return proc
 
 
 def break_drafts_stop(proc):
@@ -132,11 +193,6 @@ def break_drafts_stop(proc):
 
 
 SABOTAGE_SUFFIX = " - Add a session for $5"
-
-# How many labels the sabotage actually rewrote. Written by the loop, read after,
-# so a sabotage that lands on nothing can say so instead of looking like a guard
-# that has stopped working.
-LABEL_HITS = HERE / "results" / ".selftest-label-hits"
 
 # THE SUFFIX GOES INTO A BASH DOUBLE-QUOTED STRING, WHERE `$5` IS POSITIONAL
 # PARAMETER 5 AND EXPANDS TO NOTHING. The original sabotage escaped it for exactly
@@ -168,17 +224,11 @@ def break_labels_start():
     rewrote so that landing on nothing is reported as landing on nothing rather than
     as a guard that has stopped biting.
     """
-    LABEL_HITS.parent.mkdir(parents=True, exist_ok=True)
-    LABEL_HITS.write_text("0")
-    proc = subprocess.Popen(
-        ["bash", "-c",
-         f"END=$((SECONDS+400)); TOTAL=0; while [ $SECONDS -lt $END ]; do "
-         f"N=$(psql '{PSQL}' -tAc \"with u as (update grounds set label=label||'{BASH_SAFE_SUFFIX}' "
-         f"where label not like '%\\$5%' returning 1) select count(*) from u;\" 2>/dev/null); "
-         f"TOTAL=$((TOTAL+${{N:-0}})); printf %s \"$TOTAL\" > '{LABEL_HITS}'; "
-         f"sleep 0.3; done"],
+    return _counting_loop(
+        "labels",
+        f"update grounds set label=label||'{BASH_SAFE_SUFFIX}' where label not like '%\\$5%'",
+        sleep=0.3,
     )
-    return proc
 
 
 def break_labels_stop(proc):
@@ -187,14 +237,6 @@ def break_labels_stop(proc):
     subprocess.run(["psql", PSQL, "-qc",
                     f"update grounds set label=replace(label, '{SABOTAGE_SUFFIX}', '') where label like '%$5%';"],
                    capture_output=True)
-
-
-def label_sabotage_landed() -> bool:
-    """Whether the sabotage rewrote any label at all."""
-    try:
-        return int((LABEL_HITS.read_text() or "0").strip() or "0") > 0
-    except Exception:
-        return False
 
 
 def break_free_ground_charge_start():
@@ -331,10 +373,11 @@ asyncio.run(main())
 
 GUARDS = [
     Guard("class 1 data-loss: draft deletion reds suite V (vanish signature)",
-          "run_suite_v_vanish.py", break_drafts_start, break_drafts_stop),
+          "run_suite_v_vanish.py", break_drafts_start, break_drafts_stop,
+          landed=_landed("drafts")),
     Guard("class 2 wrongful-gate: '$5' in rendered content reds the tripwire",
           "run_suite_m_sessions.py", break_labels_start, break_labels_stop,
-          landed=label_sabotage_landed),
+          landed=_landed("labels")),
     Guard("class 4 wrongful-charge: purchase-session allowing a flipped-non-free ground reds suite B",
           "run_suite_b_billing.py", break_free_ground_charge_start, break_free_ground_charge_stop),
     Guard("class 3 banned-string: em-dash email reds the typography gate",
