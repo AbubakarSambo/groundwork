@@ -29,12 +29,26 @@ rec = Recorder("suite_s")
 STAMP = str(int(time.time()))
 EMAIL = f"s.sweep+{STAMP}@example-test.invalid"
 
-# The 17 create-picker cards, labels pinned verbatim (16 scenarios + describe).
+# The create-picker cards at /grounds/new, labels pinned verbatim.
+#
+# PINNED TO THE WRONG PAGE'S COPY, AND IT WENT RED WITHOUT ANYTHING BREAKING. This
+# list held the HOME page's labels while the check reads /grounds/new, so four
+# entries could never match: the two pages name the same scenarios differently, and
+# the branch reworded these four on the create page without touching the home page.
+# Reported as "missing: ['New partner or co-founder', 'New manager or lead', 'Quick
+# check-in', 'Cohort check-in']", which reads as four missing cards. All eighteen
+# cards were on screen.
+#
+# There is no shared constant to point at - the labels live inline in the component -
+# so the only honest fix is to pin THIS page's copy and say which page that is.
+# Eighteen, not seventeen: "Onboarding several people at once" was added and the
+# count in this comment was never updated either.
 CREATE_CARDS = [
-    "New hire", "New project", "New advisor or board member", "New partner or co-founder",
-    "New manager or lead", "Contract or renewal", "Raise, promotion, or recognition",
-    "Performance improvement plan", "Goals & planning", "Workplan & budget", "Quick check-in",
-    "Something's off track", "Board & leadership strategy", "Cohort check-in",
+    "New hire", "New project", "New advisor or board member", "A new partner or co-founder",
+    "A new manager taking over", "Contract or renewal", "Raise, promotion, or recognition",
+    "Performance improvement plan", "Goals & planning", "Workplan & budget",
+    "A regular read on live work", "Something's off track", "Board & leadership strategy",
+    "Many people in the same role", "Onboarding several people at once",
     "A shock just hit", "Get a team back on the same page", "Describe your own situation",
 ]
 
@@ -90,7 +104,7 @@ async def main() -> int:
         await page.wait_for_timeout(2500)
         body = await page.inner_text("body")
         missing = [c for c in CREATE_CARDS if c not in body]
-        rec.check("S1", not missing, "all 17 create-picker cards render with exact labels",
+        rec.check("S1", not missing, "all 18 create-picker cards render with exact labels",
                   f"missing: {missing}" if missing else "", hard=True, url=page.url)
         await rec.step(page, "17-card picker", "persona S")
         await browser.close()

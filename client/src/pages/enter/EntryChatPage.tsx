@@ -2751,7 +2751,29 @@ export function EntryChatPage() {
             */}
             {closed && emailSent ? (
               <div style={{ textAlign: 'center', paddingTop: 8 }}>
-                <button onClick={() => setShowSave(false)} style={{ padding: '11px 28px', borderRadius: 8, background: '#0C447C', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
+                {/*
+                  AND IT THREW AWAY THE PERSON SHE HAD JUST TYPED IN.
+                  Adding somebody takes two clicks: the email opens a note box,
+                  and "Add person" commits it to the list. Closing the panel with
+                  that box still open dropped them silently - no invite, no
+                  warning, and the closing line above cheerfully reported the
+                  invites it was about to send while omitting this one.
+
+                  Found in the overnight run's own screenshot: an email filled in,
+                  a note reading "On the build", "Add person" never pressed, and
+                  three failures downstream - no queue shown, no "Invited (1)", no
+                  invite email. It read as a broken invite queue. The queue was
+                  fine; the person never reached it.
+
+                  Somebody who typed an address and a note has told us who they
+                  mean, so "Done" now commits them rather than discarding them. The
+                  second click is a convenience for adding several people, not a
+                  consent gate - the consent was typing the address.
+                */}
+                <button
+                  onClick={() => { if (inviteContextFor) submitInviteContext(); setShowSave(false) }}
+                  style={{ padding: '11px 28px', borderRadius: 8, background: '#0C447C', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                >
                   Done
                 </button>
                 {/*
@@ -2762,7 +2784,17 @@ export function EntryChatPage() {
                   and a panel closing is what "Cancel" looks like.
                 */}
                 <div style={{ fontSize: 11.5, color: '#9B9590', paddingTop: 8, lineHeight: 1.6 }}>
-                  Nothing else to do here. The link is in your inbox at <strong>{email}</strong>{inviteAdded.length > 0 ? ` - opening it saves your ground and sends the ${inviteAdded.length} invite${inviteAdded.length === 1 ? '' : 's'}` : ' - opening it saves your ground'}. You can reopen this any time from the bar below.
+                  {/*
+                    Counts the person still sitting in the note box, because "Done"
+                    now commits them. Reading inviteAdded alone made this sentence
+                    quietly wrong by one: it promised to send 1 invite while two
+                    people had been named.
+                  */}
+                  Nothing else to do here. The link is in your inbox at <strong>{email}</strong>{(() => {
+                    const pending = inviteContextFor && !inviteAdded.some(e => e === inviteContextFor || e.startsWith(`${inviteContextFor} - `)) ? 1 : 0
+                    const n = inviteAdded.length + pending
+                    return n > 0 ? ` - opening it saves your ground and sends the ${n} invite${n === 1 ? '' : 's'}` : ' - opening it saves your ground'
+                  })()}. You can reopen this any time from the bar below.
                 </div>
               </div>
             ) : closed ? null : (

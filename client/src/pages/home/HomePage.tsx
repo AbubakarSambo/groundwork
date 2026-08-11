@@ -199,7 +199,7 @@ export function HomePage() {
                 { param: 'new hire',               label: 'New hire starting',        desc: 'Get you and a new hire on the same page about the role and what early success looks like.' },
                 { param: 'new project',            label: 'New project',              desc: 'Line everyone up on scope, ownership, and what "done" means before the work starts.' },
                 { param: 'new advisor or board member', label: 'New advisor or board member', desc: 'Pin down what the advisor will actually contribute, on what terms.' },
-                { param: 'new partner or co-founder', label: 'A new partner or cofounder', desc: 'Put what each of you expects to build, own, and contribute in writing, before assumptions collide.' },
+                { param: 'new partner or co-founder', label: 'A new partner or co-founder', desc: 'Put what each of you expects to build, own, and contribute in writing, before assumptions collide.' },
                 { param: 'new manager or lead',    label: 'A new manager or lead',    desc: 'Get clear on scope, reporting, and success for someone stepping into an existing team.' },
                 { param: 'contract or renewal',    label: 'Contract or renewal',      desc: 'Both sides give an honest account of how the term actually went, and what a fair next one looks like.' },
                 { param: 'raise, promotion, or recognition', label: 'Raise, promotion, or recognition', desc: 'Build the evidence behind the ask before the conversation.' },

@@ -54,7 +54,17 @@ ENTRY_CARDS = [
     "You and someone see it differently",
     "A shock just hit",
 ]
-DESCRIBE = "My situation is different"
+# The catch-all card's label, as /entry actually renders it.
+#
+# THIS SAID "My situation is different" AND THE CARD HAD BEEN REWORDED, so the check
+# reported "card text not found at all" at all three viewports. Read as the freeform
+# route having been removed or demoted - which is a serious thing, and was the reason
+# the PR gate showed it as critical. The card is there, full width, with a navy
+# accent; only the words changed.
+#
+# Kept as one constant referenced by every viewport check, so the next rewording is
+# one line here rather than three red checks that each look like a missing card.
+DESCRIBE = "None of these? Describe your own situation"
 
 # The first group, which must be visible the moment the page loads - nobody
 # should have to scroll to discover the picker exists at all.
