@@ -520,18 +520,33 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
 
 /* ══ MOBILE (≤620px) ═══════════════════════════════════════════ */
 @media(max-width:620px){
+  /* ══ TYPE AND TAP TARGETS, AUDITED ON A 390px PHONE ══
+     This block used to make the small things SMALLER on mobile, which is backwards:
+     a label that is 11px on a 1440px monitor viewed at arm's length is 9px on a phone
+     held closer but rendered on a much denser screen, in uppercase, with .14em of
+     letter-spacing. Measured across the live page, the labels came out at 9 and 10px
+     and the nav links at 15px TALL as tap targets.
+       9px  "Know what's really happening", "Why leaders miss problems",
+            "What Groundwork does", "What a report looks like"
+      10px  "Start well", the stat captions
+      20px  the hero headline, on a page whose whole job is that sentence
+     Apple asks for 44px of tap target and Google for 48. A 27px button is a miss for
+     anybody with large hands or a moving train.
+     So: labels legible, headline the size of a headline, and every button and tab at
+     least 44px tall. Nothing else about the mobile layout is touched. */
+
   /* Nav - keep both buttons, hide page links */
-  .l-nav{padding:0 14px;height:52px}
+  .l-nav{padding:0 14px;height:56px}
   .l-nav-links{display:none}
-  .l-btn-ghost{font-size:12px;padding:6px 10px}
-  .l-btn-solid{font-size:12px;padding:6px 10px}
+  .l-btn-ghost{font-size:13px;padding:11px 14px;min-height:44px;display:inline-flex;align-items:center}
+  .l-btn-solid{font-size:13px;padding:11px 14px;min-height:44px;display:inline-flex;align-items:center}
 
   /* Hero - mobile */
   .l-hero{padding:0}
   .l-hero-inner{padding:28px 16px 24px}
-  .l-hero-label{font-size:9px;margin-bottom:10px}
-  .l-hero-h1{font-size:20px !important;min-height:auto;margin-bottom:10px !important}
-  .l-hero-sub{font-size:13px;margin-bottom:6px;max-width:100%}
+  .l-hero-label{font-size:11px;letter-spacing:.1em;margin-bottom:12px}
+  .l-hero-h1{font-size:27px !important;line-height:1.15;min-height:auto;margin-bottom:12px !important}
+  .l-hero-sub{font-size:15px;margin-bottom:8px;max-width:100%}
   .l-hero-sub2{display:none}
   /* hero subtext smaller on mobile */
   .l-hero-inner p{font-size:14px !important;margin-bottom:16px !important}
@@ -539,7 +554,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
   /* Start-well steps stack to a single column on mobile */
   .l-startwell{flex-direction:column;gap:10px;margin-bottom:20px}
   .l-sw-step{min-width:0;width:100%;padding:14px 16px}
-  .l-sw-lead{font-size:10px;margin-bottom:10px}
+  .l-sw-lead{font-size:11.5px;letter-spacing:.08em;margin-bottom:10px}
 
   /* Functionality grid stacks on mobile */
   .l-fx-grid{grid-template-columns:1fr;gap:10px}
@@ -549,6 +564,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
   .l-prose{max-width:none}
   .l-fx{padding:16px 18px}
   .l-fx-lead h3{font-size:16px}
+
+  /* The scenario tabs are the only way to change report on a phone, since the
+     horizontal strip is off below 768px - so they have to be properly hittable. */
+  .l-case-tab{font-size:13px;padding:11px 15px;min-height:44px}
+  .l-stat-lbl{font-size:10.5px}
 
   /* Primary CTAs - primary full width, sign in text link */
   .l-hero-btns{flex-direction:column;gap:8px;margin-bottom:0}
@@ -588,7 +608,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
   .l-what-desc{font-size:13px !important;text-align:left !important;line-height:1.7 !important}
   .l-what-list{text-align:left !important;font-size:12px !important}
   .l-sec-h2{font-size:26px}
-  .l-sec-label{font-size:9px}
+  .l-sec-label{font-size:11px;letter-spacing:.1em}
 
   /* Problem */
   .l-prob-grid{grid-template-columns:1fr}
