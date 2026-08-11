@@ -6,6 +6,7 @@ import {
   type AccountShape,
   type SoftSpot,
 } from './harder-to-fool';
+import { aboutAPerson } from '../../common/is-this-about-a-person';
 
 /**
  * THE FAILURE MODE IS NOT A BAD REPORT. IT IS A CONFIDENT ONE. (G34, G35)
@@ -68,17 +69,16 @@ describe('where the record is easiest to be wrong about', () => {
     const all = softSpots({ sessions: 6, corroborated: 0, specifics: 5, repeatedSpecifics: 5, documents: 2, documentsReferredTo: 0 });
     expect(all).toHaveLength(3);
     for (const { line } of all) {
-      for (const pattern of [
-        /gam(?:e|ing|ed)\b/i, /cheat/i, /fak(?:e|ing|ed)/i, /dishonest/i, /misleading/i,
-        /suspicious/i, /appears? to be/i, /deliberate/i, /inflat/i, /\bthey\b/i,
-      ]) {
-        // The "they" ban caught "They are not doing any work in this picture",
-        // where "they" was the documents. Rather than narrow the pattern, the
-        // line names the documents - because in a paragraph about a person's
-        // record, an unattached "they" is genuinely ambiguous to a reader too,
-        // and the reader is the one this is for.
-        expect({ line, pattern: String(pattern), hit: pattern.test(line) }).toMatchObject({ hit: false });
-      }
+      /**
+       * THE MOTIVE LIST NOW LIVES IN ONE PLACE, with the other seven copies of
+       * this question - see common/is-this-about-a-person.ts. This file had an
+       * exact duplicate of it, plus a bare /\bthey\b/ that caught "They are not
+       * doing any work in this picture", where "they" was the documents.
+       */
+      expect({ line, hit: aboutAPerson(line, ['motive']) }).toMatchObject({ hit: null });
+      // And the unattached pronoun, which is ambiguous to a reader too and so is
+      // fixed in the line rather than banned by a pattern.
+      expect({ line, loosePronoun: /^They\b/.test(line) }).toMatchObject({ loosePronoun: false });
     }
   });
 });

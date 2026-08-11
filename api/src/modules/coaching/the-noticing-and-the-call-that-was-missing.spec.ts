@@ -26,10 +26,13 @@ function makeService({
   fn = RoleFunction.MANAGEMENT,
   observed = { index: 0, reason: 'three of the four things named were things the team was meant to own', lastStepOutcome: null as any },
   personSays = 'I ran the Meridian handover myself again on Tuesday, and closed two of the three tickets.',
+  joinedAt = null,
+  leftAt = null,
+  leavePeriods = null,
 }: any = {}) {
   const upserts: any[] = [];
   const prisma: any = {
-    groundParticipant: { findUnique: jest.fn(async () => ({ detectedFunction: fn, detectedFunctionConfidence: confidence })) },
+    groundParticipant: { findUnique: jest.fn(async () => ({ detectedFunction: fn, detectedFunctionConfidence: confidence, joinedAt, leftAt, leavePeriods })) },
     conversationTurn: {
       findMany: jest.fn(async () => [
         { role: 'AI', content: 'What did you spend the week on?' },
@@ -119,6 +122,80 @@ describe('what the session showed', () => {
     // because a coerced outcome puts a fact in the record nobody said.
     const { service, prisma, upserts } = makeService({
       observed: { index: null, reason: null, lastStepOutcome: 'partially done, good effort' },
+    });
+    prisma.coachingState.findUnique = jest.fn(async () => ({
+      currentStep: 'a step', stepGivenAt: 3, staircase: null, staircasePosition: 0,
+      history: [{ step: 'a step', givenAtSession: 3, outcome: null }],
+    }));
+    await observe(service);
+    expect(upserts[0].update.history[0].outcome).toBeNull();
+  });
+
+  it('never coaches somebody who is on leave', async () => {
+    /**
+     * FOUND BY THE UNWIRED-MODULE RULE, IN CODE I HAD JUST WRITTEN.
+     * participation-timeline.ts has said this since it was written and nothing
+     * had ever called it, so the coaching path would have offered a step to
+     * somebody on parental leave. Its own comment names it: the tone-deaf thing
+     * that ends trust in a product permanently.
+     */
+    const { service, anthropic, upserts } = makeService({
+      leavePeriods: [{ from: new Date(Date.now() - 86400000).toISOString(), to: null }],
+    });
+    await observe(service);
+    expect(anthropic.extract).not.toHaveBeenCalled();
+    expect(upserts).toHaveLength(0);
+  });
+
+  it('and never coaches somebody who has left', async () => {
+    // A coaching prompt firing at somebody who is gone is both absurd and a leak.
+    const { service, upserts } = makeService({ leftAt: new Date(Date.now() - 86400000) });
+    await observe(service);
+    expect(upserts).toHaveLength(0);
+  });
+
+  it('coaches somebody whose leave has ended', async () => {
+    // The guard must not be a one-way door.
+    const { service, upserts } = makeService({
+      leavePeriods: [{ from: new Date(Date.now() - 2 * 86400000).toISOString(), to: new Date(Date.now() - 86400000).toISOString() }],
+    });
+    await observe(service);
+    expect(upserts[0].create.currentStep).toMatch(MANAGEMENT_STEP);
+  });
+
+  it('survives a malformed leave record rather than refusing to coach anybody', async () => {
+    // Json columns hold whatever was written into them, and a bad row must not
+    // silently switch coaching off for a whole ground.
+    const { service, upserts } = makeService({ leavePeriods: [{ from: 'not a date' }, 'nonsense'] });
+    await observe(service);
+    expect(upserts[0].create.currentStep).toMatch(MANAGEMENT_STEP);
+  });
+
+  it('reads the outcome from their own words when the model says nothing', async () => {
+    /**
+     * coaching-step.ts was written for exactly this and had never been called by
+     * anything. A regex over what somebody actually typed is better evidence than
+     * a model asked to classify it, so it is the fallback rather than the other
+     * way round - and its spelling ("not_done") is mapped to the machine's at the
+     * one point they meet.
+     */
+    const { service, prisma, upserts } = makeService({
+      observed: { index: null, reason: null, lastStepOutcome: null },
+      personSays: "I didn't get round to it, ran out of time, but I closed two of the three tickets.",
+    });
+    prisma.coachingState.findUnique = jest.fn(async () => ({
+      currentStep: 'a step', stepGivenAt: 3, staircase: null, staircasePosition: 0,
+      history: [{ step: 'a step', givenAtSession: 3, outcome: null }],
+    }));
+    await observe(service);
+    expect(upserts[0].update.history[0].outcome).toBe('not done');
+  });
+
+  it('and leaves it unsaid when their words are unclear', async () => {
+    // 'unclear' becomes null rather than a guess.
+    const { service, prisma, upserts } = makeService({
+      observed: { index: null, reason: null, lastStepOutcome: null },
+      personSays: 'The Meridian numbers came in at four hundred and twelve on Tuesday.',
     });
     prisma.coachingState.findUnique = jest.fn(async () => ({
       currentStep: 'a step', stepGivenAt: 3, staircase: null, staircasePosition: 0,

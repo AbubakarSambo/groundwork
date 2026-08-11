@@ -1,3 +1,4 @@
+import { aboutAPerson } from '../../common/is-this-about-a-person';
 /**
  * WHAT HAS TO BE TRUE FOR AN OBJECTIVE TO BE REACHABLE. (G15, G16, G17, G18, G19)
  *
@@ -56,22 +57,22 @@ export interface Condition {
  * place where "shows initiative" is a tracked requirement, and there is no way
  * back from that.
  */
-const JUDGEMENT = [
-  /\b(?:shows?|demonstrates?|displays?|exhibits?)\b/i,
-  /\b(?:attitude|mindset|willingness|eagerness|enthusiasm|initiative|proactive|proactivity)\b/i,
-  /\b(?:hard[- ]working|reliable|dependable|committed|motivated|coachable|team player)\b/i,
-  /\bis (?:a |an )?(?:good|strong|weak|poor|excellent)\b/i,
-  /\b(?:capable|competent|incompetent|able) (?:of|to)\b/i,
-  /\bfits? in\b/i,
-];
+/**
+ * WAS EIGHT SEPARATE LISTS, NOW ONE, AND THE GROUPS SAY WHICH RULE THIS IS.
+ *
+ * A condition is about the world. What this refuses is a judgement about a person
+ * wearing a condition's clothes - character, capability, and quality words applied
+ * to somebody. It deliberately does NOT refuse grades or motives: neither has ever
+ * been typed into a conditions field, and a list that bans things nobody says is a
+ * list people stop reading.
+ *
+ * See common/is-this-about-a-person.ts for why there is one list, and for the four
+ * real sentences a per-file blacklist got wrong.
+ */
+const CONDITION_RULES = ['character', 'capability', 'quality of a person'] as const;
 
 export function readsAsAJudgement(text: string): string | null {
-  if (!text) return null;
-  for (const pattern of JUDGEMENT) {
-    const hit = text.match(pattern);
-    if (hit) return hit[0];
-  }
-  return null;
+  return aboutAPerson(text, CONDITION_RULES);
 }
 
 /**

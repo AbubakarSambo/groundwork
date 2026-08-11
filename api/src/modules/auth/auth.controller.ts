@@ -7,8 +7,31 @@ import { AuthService } from './auth.service';
 import { RegisterDto, LoginDto, AuthResponseDto, VerifyEmailDto, SetPasswordDto, ResendVerificationDto, ForgotPasswordDto, ResetPasswordDto, MagicLinkRegisterDto, MemberSigninDto, UpdateProfileDto } from './dto';
 import { Public, CurrentUser, CurrentUserData, Roles, Role } from '../../common';
 
+/**
+ * HOW MANY SIGN-INS A MINUTE, AND WHY IT IS A KNOB.
+ *
+ * Ten per minute per address is right for people and wrong for a twelve-session
+ * journey, which signs two people in and out roughly twenty-four times inside an
+ * hour and trips it around session eleven. That cost a two-hour run a minute per
+ * trip while it waited the limit out.
+ *
+ * THE DEFAULT IS UNCHANGED, deliberately. This is not a security decision dressed
+ * up as a convenience: production keeps ten, and a journey environment can raise
+ * it by setting LOGIN_RATE_LIMIT. Turning the limiter down for everybody so a test
+ * runs faster would mean the journey no longer runs against the product that
+ * ships - and the ThrottlerException screen it produced was a real bug, only
+ * visible because a run hit it.
+ *
+ * The right long-term fix is to throttle FAILED attempts rather than all of them,
+ * since brute force is a failure-path problem and a correct password is not an
+ * attack. That is a build, not a constant, so it is written down here rather than
+ * half-done.
+ */
+const SIGN_IN_LIMIT = Number(process.env.LOGIN_RATE_LIMIT) || 10;
+
 @ApiTags('Auth')
 @Controller('auth')
+
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
@@ -47,7 +70,7 @@ export class AuthController {
   @Public()
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  @Throttle({ global: { limit: 10, ttl: 60000 } })
+  @Throttle({ global: { limit: SIGN_IN_LIMIT, ttl: 60000 } })
   @ApiOperation({ summary: 'Login with email and password' })
   @ApiResponse({ status: 200, description: 'Login successful', type: AuthResponseDto })
   @ApiResponse({ status: 401, description: 'Invalid credentials' })

@@ -22,6 +22,18 @@ import { IntelligenceModule } from './modules/intelligence';
 import { DocumentsModule } from './modules/documents/documents.module';
 import { EntryModule } from './modules/entry/entry.module';
 import { AdminModule } from './modules/admin/admin.module';
+/**
+ * FEEDBACK WAS NEVER REGISTERED, AND THE CLIENT HAS BEEN POSTING TO IT.
+ *
+ * FeedbackModule existed, with a controller on /feedback and a service behind it,
+ * and app.module never imported it - so every request to that route 404'd. The
+ * client's AppShell posts feedback and swallows the failure on purpose ("best
+ * effort"), which means every piece of feedback anybody has ever submitted from
+ * inside the product went nowhere and nobody saw an error.
+ *
+ * Found by the unwired-module rule, not by anybody noticing.
+ */
+import { FeedbackModule } from './modules/feedback/feedback.module';
 import { JwtAuthGuard, RolesGuard, GlobalExceptionFilter, TransformInterceptor } from './common';
 
 @Module({
@@ -45,6 +57,7 @@ import { JwtAuthGuard, RolesGuard, GlobalExceptionFilter, TransformInterceptor }
     ResolutionModule,
     BillingModule,
     IntelligenceModule,
+    FeedbackModule,
     DocumentsModule,
     EntryModule,
     AdminModule,

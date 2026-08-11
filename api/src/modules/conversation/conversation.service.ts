@@ -24,6 +24,8 @@ import {
 import { detectFunction } from '../board/function-detection';
 import { closeReadiness, askedToFinish } from './close-readiness';
 import { observeStyle, mergeStyle, styleGuidance } from './person-style';
+import { readOutcome, isGenericStep } from './coaching-step';
+import { mayCoach } from './participation-timeline';
 import { restoreTheirWords, causalClaimNobodyMade, ASK_INSTEAD_OF_CONCLUDING } from './the-record-holds-what-was-said';
 
 /**
@@ -1029,8 +1031,36 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
     const participant = await this.prisma.groundParticipant.findUnique({
       where: { id: participantId },
-      select: { detectedFunction: true, detectedFunctionConfidence: true },
+      select: {
+        detectedFunction: true, detectedFunctionConfidence: true,
+        joinedAt: true, leftAt: true, leavePeriods: true,
+      },
     });
+
+    /**
+     * NOBODY IS COACHED WHILE THEY ARE AWAY, OR AFTER THEY HAVE GONE.
+     *
+     * participation-timeline.ts has said this since it was written, and nothing
+     * had ever called it - so the coaching path I built an hour ago would happily
+     * have offered a step to somebody on parental leave, or to somebody who had
+     * left the company. Its own comment names both: the first is the tone-deaf
+     * thing that ends trust in a product permanently, and the second is absurd.
+     *
+     * Found by the unwired-module rule, in code I had just written.
+     */
+    const leaves = Array.isArray(participant?.leavePeriods)
+      ? (participant!.leavePeriods as any[])
+          .map((l) => ({ from: new Date(l?.from), to: l?.to ? new Date(l.to) : null }))
+          .filter((l) => !isNaN(l.from.getTime()))
+      : [];
+    if (!mayCoach(new Date(), {
+      joinedAt: participant?.joinedAt ?? null,
+      leftAt: participant?.leftAt ?? null,
+      leaves,
+    })) {
+      return;
+    }
+
     const map = roleMapFor(participant?.detectedFunction);
     const confident = (participant?.detectedFunctionConfidence ?? 0) >= MIN_COACHING_CONFIDENCE;
     if (!map?.failureSignals?.length || !confident) return;
@@ -1060,18 +1090,45 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     // reason - and returns null rather than something to hand a person.
     const read = signalRead(participant?.detectedFunction, observed?.index ?? -1, observed?.reason ?? '');
 
+    /**
+     * TWO VOCABULARIES FOR THE SAME FOUR OUTCOMES, RECONCILED AT THE BOUNDARY.
+     *
+     * coaching-step.ts already read these from a person's own words - written
+     * before my state machine and never wired to anything, so I built a second set
+     * spelled with spaces where its are spelled with underscores. Both are right;
+     * having two is not. The existing reader is the fallback here, because a regex
+     * over what somebody actually typed is better evidence than a model asked to
+     * classify it, and its spelling is mapped to the machine's at this one point.
+     */
+    const FROM_READER: Record<string, StepOutcome> = {
+      done: 'done', did_more: 'did more', not_done: 'not done', sideways: 'sideways',
+    };
     const OUTCOMES = ['done', 'not done', 'did more', 'sideways'];
-    const outcome = OUTCOMES.includes(String(observed?.lastStepOutcome))
+    let outcome: StepOutcome | null = OUTCOMES.includes(String(observed?.lastStepOutcome))
       ? (observed!.lastStepOutcome as StepOutcome)
       : null;
+
+    // The model said nothing about the last step. Read their own words instead,
+    // which is what coaching-step.ts is for. 'unclear' stays null - guessing an
+    // outcome puts a fact in the record nobody said.
+    if (!outcome) {
+      const fromWords = readOutcome(personSaid.join(' '));
+      outcome = FROM_READER[fromWords] ?? null;
+    }
+
+    // A step that could have gone to anybody is not coaching, it is a slogan.
+    // Every step here comes from a role map so this should never fire, which is
+    // exactly why it is cheap to keep: if a map entry is ever edited into
+    // something generic, nothing offers it.
+    const offerable = read && !isGenericStep(read.lookingLike);
 
     await this.recordCoachingStep(
       participantId,
       sessionNumber,
       {
-        noticed: read?.noticed ?? null,
-        lookingLike: read?.lookingLike ?? null,
-        reason: read?.reason ?? null,
+        noticed: offerable ? read!.noticed : null,
+        lookingLike: offerable ? read!.lookingLike : null,
+        reason: offerable ? read!.reason : null,
         // The same substance test the completion gate uses, rather than a second
         // definition of "said something real".
         hadSubstance: personSaid.some((t) => countCheckableSpecifics(t) > 0),

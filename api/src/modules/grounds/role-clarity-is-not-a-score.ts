@@ -1,3 +1,4 @@
+import { aboutAPerson } from '../../common/is-this-about-a-person';
 /**
  * A LIVING CONTRIBUTION RECORD, WHICH IS NOT A CAPABILITY PROFILE. (G20, G36)
  *
@@ -37,13 +38,16 @@ export interface Contribution {
   lastRestatedAtSession: number;
 }
 
-const ABOUT_A_PERSON = [
-  /\b(?:strong|weak|excellent|poor|developing|emerging)\b/i,
-  /\b(?:good|bad) at\b/i,
-  /\b(?:strengths?|weakness(?:es)?|areas? for (?:growth|development)|potential)\b/i,
-  /\b(?:level|band|tier|rating|grade)\b/i,
-  /\bneeds? to (?:improve|develop|work on)\b/i,
-];
+/**
+ * A contribution record refuses quality words, capability claims and grades - the
+ * three ways "what somebody is here to do" turns into "how somebody is doing". It
+ * does not refuse character words, because "shows initiative" is caught by the
+ * quality and capability groups anyway and a lead writing a job description says
+ * "owns" far more often than "demonstrates".
+ *
+ * One list, in common/is-this-about-a-person.ts, for the reason given there.
+ */
+const PROFILE_RULES = ['quality of a person', 'capability', 'grade'] as const;
 
 /**
  * The one check that keeps this a record and not a profile.
@@ -53,11 +57,7 @@ const ABOUT_A_PERSON = [
  * because it is the vocabulary everything else in their working life uses.
  */
 export function readsAsAProfile(text: string): string | null {
-  for (const p of ABOUT_A_PERSON) {
-    const hit = text.match(p);
-    if (hit) return hit[0];
-  }
-  return null;
+  return aboutAPerson(text, PROFILE_RULES);
 }
 
 export function whyThisIsNotAContribution(text: string): string | null {
@@ -131,16 +131,8 @@ export function nameTheTension(t: Tension): string {
  * sentence is easy to write by accident because it is what a helpful person would
  * say next.
  */
-const A_RECOMMENDATION = [
-  /\byou should\b/i, /\bwe recommend\b/i, /\bprioriti[sz]e\b/i,
-  /\bfocus on\b/i, /\bthe right (?:call|answer|choice)\b/i,
-  /\bought to\b/i, /\bbetter to\b/i, /\bdrop\b/i,
-];
-
 export function suggestsAnAnswer(line: string): string | null {
-  for (const p of A_RECOMMENDATION) {
-    const hit = line.match(p);
-    if (hit) return hit[0];
-  }
-  return null;
+  // "drop" was in the old local list and is not in the shared one: it caught
+  // "dropped the handover", which is a description of what happened.
+  return aboutAPerson(line, ['recommendation']) ?? (/\bjust drop\b/i.exec(line)?.[0] ?? null);
 }

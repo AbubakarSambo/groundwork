@@ -2,6 +2,9 @@ import { Injectable, Logger, BadRequestException, UnauthorizedException, NotFoun
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { GroundScenario, GroundMoment, TurnRole, CheckInStatus, PartyType, Cadence, TokenType } from '@prisma/client';
 import { splitMentions } from './a-client-is-not-a-colleague';
+import {
+  restoreTheirWords, causalClaimNobodyMade, ASK_INSTEAD_OF_CONCLUDING,
+} from '../conversation/the-record-holds-what-was-said';
 import * as crypto from 'crypto';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
@@ -524,7 +527,7 @@ STRICT RULES:
 - Off-topic or very brief first messages: name that gently and redirect - "This check-in is to get your perspective on ${ground.label}. In a sentence or two, what would you want on record?"
 
 ` + buildEntrySystemPrompt(joinScenario, ground.label, PartyType.PARTICIPANT);
-        return this.anthropic.respond(joinPrompt, messages);
+        return this.guardedReply(joinPrompt, messages);
       }
     }
 
@@ -533,11 +536,41 @@ STRICT RULES:
     // and only for short messages - long context blocks from startCheckin are never FAQ questions.
     const conversationStarted = messages.filter(m => m.role === 'user').length > 1;
     if (!conversationStarted && lastUser && lastUser.content.length <= 200 && isLikelyQuestion(lastUser.content)) {
-      return this.anthropic.respond(FAQ_PROMPT, messages);
+      return this.guardedReply(FAQ_PROMPT, messages);
     }
 
     const mapped = resolveScenario(scenario);
-    return this.anthropic.respond(buildEntrySystemPrompt(mapped, groundLabel || scenario || ''), messages);
+    return this.guardedReply(buildEntrySystemPrompt(mapped, groundLabel || scenario || ''), messages);
+  }
+
+
+  /**
+   * EVERY REPLY THIS FLOW PRODUCES, WITH HER WORD PUT BACK. (W2, and the half I missed)
+   *
+   * The restore was built and tested and wired into conversation.service, which
+   * serves logged-in check-ins. Her walkthrough was /entry - a separate path that
+   * calls anthropic.respond directly - so the fix reached everything except the
+   * flow she found it in, and "microchipshit" would still have come back as
+   * "Microchip Solutions" to the next stranger who typed it.
+   *
+   * ONE HELPER RATHER THAN THREE CALL SITES. chat() has three exits today (the
+   * join-link branch, the FAQ branch, the ordinary one) and the next branch
+   * somebody adds would not have the restore on it. Going through here means a new
+   * exit is guarded by default and forgetting is the unusual act.
+   */
+  private async guardedReply(system: string, messages: ChatTurn[]): Promise<string> {
+    const reply = await this.anthropic.respond(system, messages);
+    const personSaid = messages.filter((m) => m.role === 'user').map((m) => m.content ?? '');
+    const restored = restoreTheirWords(reply, personSaid);
+
+    // The causal upgrade cannot be repaired by substitution - there is no word of
+    // theirs to put back, because the causation was invented whole. Logged, as on
+    // the other path, rather than edited into prose that reads as a lost thread.
+    const invented = causalClaimNobodyMade(restored, personSaid);
+    if (invented.length) {
+      this.logger.warn(`Causal claim nobody made on the entry path: ${invented.join(', ')}. ${ASK_INSTEAD_OF_CONCLUDING}`);
+    }
+    return restored;
   }
 
   async report(messages: ChatTurn[], scenario?: string, groundLabel?: string): Promise<EntryReport | null> {
@@ -572,12 +605,35 @@ STRICT RULES:
      * Nothing is dropped - everything the extractor found is still on the page.
      */
     const split = splitMentions(report.mentionedPeople ?? []);
-    return {
+
+    /**
+     * W2 REACHES THE REPORT TOO, and this is where she actually read it: her
+     * private report said "Microchip Solutions" in the summary, in the two
+     * findings, and twice in the people-mentioned list. Restoring the chat reply
+     * alone would have left the invented name in the document that gets kept.
+     *
+     * Walked over every string in the payload rather than a named list of fields,
+     * because the report shape has grown four times and the next field added would
+     * not be on any list.
+     */
+    const personSaid = trimmed.filter((m) => m.role === 'user').map((m) => m.content ?? '');
+    const restore = (v: any): any => {
+      if (typeof v === 'string') return restoreTheirWords(v, personSaid);
+      if (Array.isArray(v)) return v.map(restore);
+      if (v && typeof v === 'object') {
+        const out: Record<string, any> = {};
+        for (const [k, val] of Object.entries(v)) out[k] = restore(val);
+        return out;
+      }
+      return v;
+    };
+
+    return restore({
       ...report,
       mentionedPeople: split.couldBeAdded,
       alsoCameUp: split.alsoCameUp,
       alsoCameUpNote: split.note,
-    };
+    });
   }
 
   /**
