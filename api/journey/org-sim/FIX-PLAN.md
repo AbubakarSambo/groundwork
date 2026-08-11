@@ -1363,3 +1363,47 @@ somebody said without asking what it means.
 |---|---|---|---|---|
 | **R1** | Sign-in screen | The form showed **"ThrottlerException: Too Many Requests"** in red, under the button | Nest puts its own exception CLASS NAME in the message, the global filter passed it through untouched, and the sign-in page renders whatever it is handed. At the one moment somebody is already stuck - they cannot get in - the product answers in the vocabulary of its own stack trace. Fixed in the filter, not on the screen, because otherwise every screen that shows an error needs the same fix and the next one added will not have it. It now says what to do: wait about a minute. | **S, done** |
 | **R2** | The journey itself | A twelve-session run signs two people in and out about twenty-four times inside an hour, and trips the limiter around session eleven | The limiter is right, and this is not. Waited out rather than raised or disabled: turning it down for tests would mean the journey no longer runs against the product that ships - and R1 was only visible because the run hit it. | **S, done** |
+
+---
+
+## Inventory close-out, 2026-08-11
+
+Everything on the G list that could be built has been built. What is left is left
+for a stated reason, not because it was missed.
+
+| Wave | Items | State |
+|---|---|---|
+| **1** | G1-G8, G29, G40, G41, G44, G45, G43 | Done, and proved on a live twelve-session run |
+| **2** | G24, G25, G38, G26, G39, G37, G23 | Done, behind `CONTEXT_ENABLED` |
+| **3** | G13, G14, G15-G19 | Done |
+| **4** | G30, G31, G32, G33, G34, G35, and G9 folded into G30 | Done, behind `CONFIDENCE_ENABLED` |
+| **5** | G10, G22, G21, G20, G36, G27, G28 | Done, G10 and G34 wired into the report read |
+| **6** | G42 | Signals for all nine role maps, the state machine, the noticing, and both wire-ups. Behind `COACHING_ENABLED` |
+
+**Genuinely open, and why.**
+
+| # | Why it is open |
+|---|---|
+| **G11** | Parked by Hafsah's decision until after the eighteen grounds, because gating on dates means the journey has to simulate time passing, and that is the one simulated element it would have to declare. |
+| **G12** | Blocked on Google credentials. The logic is built and tested at both seams; the handshake has never run because nothing is configured. Worth noting that her walkthrough found the visible half of this: the Google button is correctly absent, not missing. |
+| **G42's live trace** | The machine is built, wired and tested, and no ground has yet run with `COACHING_ENABLED=true`. Until one has, the wall tests still guard a feature that has produced no rows in anger. This is the next run, not a build. |
+| **N4, N6** | Grounds 3 to 18. Each is roughly an hour of live model calls, so they are runs rather than work. |
+
+**Three flags, all off, all the same shape.** `CONTEXT_ENABLED`, `CONFIDENCE_ENABLED`,
+`COACHING_ENABLED`. Off is the product as it shipped; each is read inside the rule
+rather than at the call site; each fails to off rather than throwing; and each has
+its own spec covering "TRUE" and " true", the two values that look correct in a
+deploy dashboard.
+
+**The lesson this batch kept teaching.** Four separate times, a guardrail written as
+a word blacklist caught correct prose - "a weak basis for a decision", "They are not
+doing any work in this picture" (the documents), "lives with how they are made" (the
+decisions), and "a direct report not delivering on client setup" (Daisy, removed from
+her own ground by the word describing her work). A blacklist cannot tell what a word
+is about. Every one of those patterns now names the thing it is actually banning.
+
+**And three times a change was proved against its own builder and reached nothing:**
+the name restore with the call removed from the live path, three modules with no
+consumer, and recordCoachingStep an hour after I wrote a commit about exactly that.
+All three are now bite-checked at the call site, which is the only place the claim
+is true or false.
