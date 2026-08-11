@@ -2515,3 +2515,117 @@ Recorded so consolidation does not overrun:
   a customer, and `/admin` already fails quietly in the wrong direction (W8-42).
 - **Billing stays a page** even though tiers are shared with Pricing. The plan, the grounds and the
   invoices belong to an account, not to a marketing page.
+
+---
+
+# Wave 8, ninth pass - the rail, evidence documents, and whether quality is measured
+
+Three questions from Hafsah, traced through the code rather than answered from memory.
+
+## W8-54 · How grounds show up in the left rail once check-ins move there - **M**, completes W8-31
+
+Today the rail is: a "New ground" button, then a list of grounds, then Grounds / Feed / Profile,
+then the account. With check-ins taking the rail (W8-31), grounds still need a home, and the
+answer is not "a second list".
+
+**The shape:**
+
+- **The rail lists check-ins**, newest first, like a chat list. A row names the ground it belongs
+  to as its subtitle, so the ground is visible without being the unit.
+- **Grounds become a destination, not a list in the rail.** One item, "Grounds", opening the
+  grounds page (target page 4). An admin who runs twenty grounds needs a table with columns, not
+  twenty rail rows.
+- **A ground you are actively in appears as a group header** over its check-ins when it has more
+  than one of yours, so a long-running ground reads as a thread rather than scattered rows.
+- **"New ground" stays at the top.** It is the one creative action and it is correctly placed.
+
+**Why not both lists:** two lists of the same objects at two levels of grouping is what the
+product does now between Grounds and Roster/Teams, and it is the thing that made the navigation
+unreadable (W8-30).
+
+## W8-55 · A document uploaded as evidence: two paths, and one of them keeps nothing - **M**
+
+Traced end to end. **It depends entirely on where you upload it, and the two paths do not meet.**
+
+### In an authenticated check-in - the document is kept
+
+`documentsApi.upload` writes a `GroundDocument`: `fileName`, `mimeType`, the full `content` as
+text, an AI `assessment` (`{ suggests: string[], willDo: string[] }`, which is correctable through
+`PATCH /documents/:docId/assessment`), and a `visibility`.
+
+Then `conversation.documentReceived` posts one AI turn into the check-in: it acknowledges the file
+by name and asks **"what does this document confirm about what you have described?"** - it is
+explicitly told not to summarise it and not to judge it. **Only the first 1000 characters reach
+that prompt** (`doc.content.slice(0, 1000)`).
+
+It then appears in the Documents list, and the report's evidence read counts it: the engagement
+section reports what percentage of each person's record is document-backed versus recall-based.
+
+### In the entry chat - the document is not kept
+
+The `+ Doc` control in `EntryChatPage` builds a **chat message**:
+
+    [Document: "name"] <content> Context from me: <what they typed>
+
+That text goes into the transcript. **No `GroundDocument` row is created.** So the words survive
+inside the conversation and the document does not: it will not appear in the Documents list, it
+cannot be given visibility, it gets no assessment, and it never counts as document-backed evidence
+in the report that measures exactly that.
+
+**This is the finding.** Somebody attaching a contract or a spec at the moment the product asks
+for evidence, in the flow most people meet first, has attached nothing the product will keep.
+
+### And the default visibility is backwards for the lead
+
+`visibility` defaults to `OWN`, so a document is private to whoever uploaded it. The schema
+comment already says this is wrong for a lead: a job description or a grant's terms reach nobody,
+"and those are exactly the things everybody should be working from."
+
+### What needs deciding
+
+1. Should the entry chat create a real document? (My view: yes, at commit, alongside the
+   transcript, or the evidence percentage is measuring a subset of the evidence.)
+2. Is 1000 characters the right window for the acknowledgement, and should the full text reach the
+   synthesis rather than only the acknowledgement?
+3. Does a lead's upload default to shared?
+
+## W8-56 · Is quality measured, or only output? - **it is measured, and it is not rated**
+
+Her question, from the reversed-manager scenario (W8-33): the manager was worried about **quality,
+not just output**. Does the product capture that, and does anybody rate it?
+
+**Nobody rates anything, by design.** There is no score, no grade, no star rating anywhere, and
+the prompt library forbids it in as many words: "Not a judgment. Not a score." The relevant rule
+is stronger than a style choice - "You are tracking contribution: not judging character."
+
+**But quality is not absent. It is captured as the shape of the evidence, in five reads, shown to
+both parties at once:**
+
+| Read | What it says |
+|---|---|
+| Session count | how many sessions each party completed. One each is thinner than three each |
+| Evidence type | what percentage of each record is document-backed versus recall-based |
+| Specificity signal | whether submissions were consistently specific or general across sessions |
+| Difficulty disclosures | whether either party disclosed hard weeks and blockers alongside good news. "A record with no difficulty disclosures across multiple periods is a signal both parties can see" |
+| Alignment gap | where activity and goals have drifted, and why |
+
+And the engine has a test aimed squarely at her manager's worry - the **independence test**: "Would
+this output still exist if this person forgot everything about this period? If yes: contribution
+evidence. The thing exists." Plus a language classification that separates thinking language from
+delivery evidence, because "high linguistic quality in thinking language is not the same as
+delivery evidence."
+
+**So the honest answer to her scenario:** the product can show a manager that the work is
+evidenced, specific, document-backed and independently real, or that it is none of those. That is
+adjacent to quality and it is not quality. **What it cannot do is say the work was good** - and
+that is deliberate, because a judgement of quality is the one thing the lead is supposed to make.
+
+**What is genuinely missing for W8-33 is not a rating. It is the standard.** If the manager never
+states what good looks like in this role, there is nothing for the evidence to be weighed against,
+and the staff member gets a well-evidenced record with no answer about quality. So the fix for her
+scenario stays what W8-33 said: get the lead's standard on record. Not a quality score.
+
+**One thing to check before building anything here:** `own-reads-only.ts` strips other people's
+reads, so a participant sees their own five reads and the lead sees all of them. In the reversed
+setup the subject is the one who wants the read, so confirm the person who set the ground up
+actually sees their own engagement quality, rather than it being filed as a lead-only surface.
