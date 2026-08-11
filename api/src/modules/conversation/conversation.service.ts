@@ -1896,6 +1896,37 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         detectedFunctionAt: new Date(),
       },
     });
+
+    /**
+     * WHEN DETECTION FINDS NOTHING, EVERYTHING ROLE-TUNED IS SILENTLY OFF.
+     *
+     * Found while watching a live run: seven sessions in, both participants had
+     * detectedFunction null and confidence 0, so the role probes never fired and
+     * the coaching layer could never produce a row. Nothing anywhere said so.
+     *
+     * The detection itself is behaving correctly. Its signals were deliberately
+     * tightened after an entire software team came out as SALES at 0.78 confidence
+     * and got read against "named buyers with budget and authority" - the comment
+     * there is right that a lens becomes a label the moment it is confidently
+     * wrong. Scoring zero on work no map covers is the honest answer.
+     *
+     * What was wrong is that it was INVISIBLE. A feature that quietly does nothing
+     * for a whole ground is indistinguishable from a feature that is broken, and I
+     * spent a probe and a database query working out which one this was. The same
+     * shape as the closing synthesis that failed and said nothing.
+     *
+     * The record on this run was a new hire clearing a support queue and shadowing
+     * client accounts. There is no support or customer-service function among the
+     * nine, which is a product decision rather than a bug - and it is now a
+     * decision somebody can see.
+     */
+    if (!result.fn || result.confidence < MIN_COACHING_CONFIDENCE) {
+      this.logger.log(
+        `No function is confident enough for participant ${participantId} (${result.fn ?? 'none'} at ${result.confidence}). ` +
+          `Role-tuned probes and coaching are OFF for them, which is correct and not a failure: ${result.basis} ` +
+          `If this holds for a whole ground, either the work is not covered by the nine role maps or nobody described the role at setup.`,
+      );
+    }
   }
 
   /**

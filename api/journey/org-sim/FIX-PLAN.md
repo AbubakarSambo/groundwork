@@ -1407,3 +1407,29 @@ the name restore with the call removed from the live path, three modules with no
 consumer, and recordCoachingStep an hour after I wrote a commit about exactly that.
 All three are now bite-checked at the call site, which is the only place the claim
 is true or false.
+
+---
+
+## Why run 7 cannot prove G42, found while it was still running
+
+Watched the all-flags run at seven sessions in and checked the coaching table: zero
+rows. The reason is not a bug, and it is worth writing down because it changes what
+the run can answer.
+
+| | |
+|---|---|
+| **What I found** | Both participants had `detectedFunction` null at confidence 0 after seven completed sessions. `MIN_COACHING_CONFIDENCE` is 0.5, so `observeForCoaching` returns before it ever calls the model. Role-tuned probes are off for the same reason. |
+| **Probed, not guessed** | Ran `detectFunction` over the participant's real fifteen-entry corpus. Zero hits on every function. With a stated role it falls back to 0.4, deliberately below the coaching threshold and held provisional. |
+| **The detection is right** | Its signals were tightened after a real misclassification: an entire software team came out SALES at 0.78 and was read against "named buyers with budget and authority". The comment there is correct that a lens becomes a label the moment it is confidently wrong. Scoring zero on work no map covers is the honest answer. |
+| **The gap** | The record is a new hire clearing a support queue and shadowing client accounts. **There is no support or customer-service function among the nine role maps.** That is a product decision - which functions Groundwork covers - and it is Hafsah's, not mine. Adding `ticket` and `queue` to OPS would classify a support hire as operations, which is a different claim rather than a fix. |
+| **What was actually wrong** | It was invisible. A feature that quietly does nothing for a whole ground is indistinguishable from one that is broken, and it took a probe and a database query to tell which. Same shape as the closing synthesis that failed and said nothing. Now logged, per person, saying plainly that coaching is off, that this is correct, and which of the two causes it is. |
+
+**So G42's live trace needs a ground whose work one of the nine maps covers** - a
+sales or engineering person - not ground 1's support-queue new hire. That is
+scheduling, not building. Run 7 still proves the three flags coexist, the closing
+synthesis lands, and the confidence read reaches a real report.
+
+**Open decision for Hafsah:** add a support or customer-service role map as a tenth
+function, or accept that people doing that work get the untuned product. The second
+is defensible and is what ships today; the first is a day's careful work and covers
+what is probably the most common junior hire there is.
