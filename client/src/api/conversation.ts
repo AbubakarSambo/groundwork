@@ -74,4 +74,38 @@ export const conversationApi = {
 
   remind: (checkInId: string) =>
     apiClient.post(`/check-ins/${checkInId}/remind`).then(r => r.data),
+
+  /**
+   * Download your own contribution record as a text file.
+   *
+   * The endpoint has always existed and nothing called it, so "this record is
+   * yours, it is portable and permanent" - which the report page says in those
+   * words - was true of the data and not of anything a person could do.
+   *
+   * Not apiClient: the response is a file with a Content-Disposition header
+   * rather than JSON, and the request still needs the bearer token, so it
+   * follows the same fetch-with-header shape as streamMessage above. Owner
+   * only, enforced server-side.
+   */
+  download: async (checkInId: string): Promise<void> => {
+    const token = localStorage.getItem('token')
+    const res = await fetch(`${API_BASE}/check-ins/${checkInId}/download`, {
+      headers: { Authorization: token ? `Bearer ${token}` : '' },
+    })
+    if (!res.ok) throw new Error(`Download failed: ${res.status}`)
+
+    const blob = await res.blob()
+    // Prefer the filename the server chose; fall back to the same shape it uses.
+    const disposition = res.headers.get('Content-Disposition') ?? ''
+    const named = /filename="([^"]+)"/.exec(disposition)?.[1]
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = named ?? `groundwork-record-${checkInId.slice(0, 8)}.txt`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    // Without this the blob is held for the life of the document.
+    URL.revokeObjectURL(url)
+  },
 }

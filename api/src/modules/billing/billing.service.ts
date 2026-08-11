@@ -10,10 +10,23 @@ import * as crypto from 'crypto';
 
 /**
  * Billing model:
- *   Per-session billing. First session on each ground is free (sessionsBalance starts at 1).
- *   Each additional session costs $5, purchased via Stripe one-time checkout.
- *   Free tier capped at 3 free grounds per org (freeSessionsUsed counter).
- *   Contributor codes allow admins to grant sessions to other grounds.
+ *   TEN free grounds per org, each with UNLIMITED sessions and reports. A
+ *   subscription lifts the ten-ground cap. Nothing is charged per session.
+ *   Contributor codes let an admin grant access without payment.
+ *
+ * This comment used to describe per-session billing at $5 and a three-ground
+ * free tier - a model that was dropped. canStartSession below has been the
+ * truth for a while (free grounds "are never metered or paywalled"), but the
+ * old description survived up here, and the UI kept quoting the old price at
+ * people. If you are changing this, change the comment WITH the code: the
+ * stale version was read as fact by the next person through, which is how a
+ * new user came to be told "additional sessions are $5 each" for a ground that
+ * costs nothing.
+ *
+ * purchaseSession() and the $5 line item are retained but unreferenced by any
+ * user-facing surface. They remain only because live Stripe records and
+ * webhooks may still point at them; do not treat their presence as evidence
+ * that sessions are sold.
  */
 @Injectable()
 export class BillingService {
@@ -61,7 +74,12 @@ export class BillingService {
 
       return {
         allowed: false,
-        reason: 'No sessions remaining. Add a session for $5 to continue.',
+        // Sessions are not sold, so "add a session for $5" was a dead end
+        // pointing at a button that no longer exists. Say what is true, and say
+        // the reassuring half out loud: the person who hits this wall is
+        // usually a participant who never chose to pay and never chose to
+        // cancel, and their record is safe.
+        reason: 'This ground is beyond your ten free grounds. Resubscribe to continue checking in - the report and board stay available either way.',
         sessionsBalance: 0,
         freeExtensionAvailable: !(org?.freeExtensionUsed ?? false),
       };
@@ -69,7 +87,7 @@ export class BillingService {
 
     const balance = ground?.sessionsBalance ?? 0;
     if (balance > 0) return { allowed: true, sessionsBalance: balance };
-    return { allowed: false, reason: 'No sessions remaining. Add a session for $5 to continue.', sessionsBalance: 0 };
+    return { allowed: false, reason: 'This ground is beyond your ten free grounds. Resubscribe to continue checking in - the report and board stay available either way.', sessionsBalance: 0 };
   }
 
   /** Free ground limit for organizations without a subscription. */
@@ -206,6 +224,37 @@ export class BillingService {
     [SubscriptionPlan.ENTERPRISE]: null, // unlimited
   };
 
+  /**
+   * The two messages a billing change owes somebody, wired where the change happens.
+   *
+   * Both existed as tested methods on the email service with no caller at all, which
+   * meant every billing transition in this product was silent: a code redeemed and
+   * nothing said it worked, a subscription cancelled and nothing said what stays
+   * available. Found by the dead-method rule rather than by anybody noticing, which
+   * is its own comment on how visible the gap was.
+   */
+  private async confirmTheCareFee(organizationId: string): Promise<void> {
+    const org = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { name: true, users: { where: { role: UserRole.ADMIN, deletedAt: null }, select: { email: true, firstName: true } } },
+    });
+    if (!org) return;
+    for (const u of org.users) {
+      await this.email.sendCareFeeConfirmation(u.email, u.firstName ?? 'there', org.name).catch(() => undefined);
+    }
+  }
+
+  private async tellThemBillingChanged(organizationId: string, what: string): Promise<void> {
+    const org = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { users: { where: { role: UserRole.ADMIN, deletedAt: null }, select: { email: true, firstName: true } } },
+    });
+    if (!org) return;
+    for (const u of org.users) {
+      await this.email.sendBillingChangeNotification(u.email, u.firstName ?? 'there', what).catch(() => undefined);
+    }
+  }
+
   /** Returns allowed: false if the org is at its plan member cap. */
   async canInviteMember(organizationId: string): Promise<{ allowed: boolean; reason?: string }> {
     const org = await this.prisma.organization.findUnique({
@@ -215,13 +264,44 @@ export class BillingService {
     if (!org?.subscriptionPlan || org.subscriptionStatus !== 'active') return { allowed: true };
     const cap = this.PLAN_MEMBER_CAPS[org.subscriptionPlan];
     if (cap === null) return { allowed: true };
-    if ((org._count.users ?? 0) >= cap) {
+    const count = org._count.users ?? 0;
+    if (count >= cap) {
+      /**
+       * THE WARNING FIRES WHERE THE CAP IS ACTUALLY HIT, not on a schedule.
+       *
+       * sendMemberCapWarning existed and nothing called it, so an organisation at
+       * its member cap was refused an invitation on screen and told nothing
+       * afterwards - the person who tried is often not the person who can upgrade.
+       *
+       * This is a read-path check called on every invite, so the email is fired
+       * only ON the refusal, which is already the exceptional case, and only to
+       * admins. Somebody hammering the invite button twice gets two emails; that is
+       * better than the silence it replaces, and a one-shot marker would need a
+       * schema field for a message nobody has ever received.
+       */
+      this.warnAboutTheMemberCap(organizationId, org.subscriptionPlan, count, cap).catch(() => undefined);
       return {
         allowed: false,
         reason: `Your ${org.subscriptionPlan.replace('_', ' ').toLowerCase()} plan supports up to ${cap} members. Upgrade your organization to add more.`,
       };
     }
     return { allowed: true };
+  }
+
+  /** Tells the people who can actually upgrade. Best-effort, never blocking. */
+  private async warnAboutTheMemberCap(
+    organizationId: string,
+    plan: SubscriptionPlan,
+    count: number,
+    cap: number,
+  ): Promise<void> {
+    const admins = await this.prisma.user.findMany({
+      where: { organizationId, role: UserRole.ADMIN, deletedAt: null },
+      select: { email: true },
+    });
+    for (const a of admins) {
+      await this.email.sendMemberCapWarning(a.email, plan, count, cap).catch(() => undefined);
+    }
   }
 
   /** Grants one free session extension to a ground if the org has not used it yet. Idempotent. */
@@ -252,6 +332,30 @@ export class BillingService {
       }),
     ]);
     this.logger.log(`Free extension claimed for org ${organizationId} on ground ${groundId}`);
+
+    /**
+     * SIX NOTIFICATION EMAILS EXISTED, WERE TESTED, AND NOTHING EVER SENT THEM.
+     * Found by the dead-method rule; this is the first of them wired.
+     *
+     * No guard needed here: freeExtensionUsed flips inside the same transaction and
+     * a second claim throws above, so this path runs exactly once per organisation.
+     */
+    try {
+      const [ground, admins] = await Promise.all([
+        this.prisma.ground.findUnique({ where: { id: groundId }, select: { label: true } }),
+        this.prisma.user.findMany({
+          where: { organizationId, role: UserRole.ADMIN, deletedAt: null },
+          select: { email: true },
+        }),
+      ]);
+      const url = `${this.config.get<string>('resend.frontendUrl') ?? ''}/grounds/${groundId}`;
+      for (const a of admins) {
+        await this.email.sendFreeExtensionClaimed(a.email, ground?.label ?? 'your ground', url);
+      }
+    } catch (err) {
+      // A notification must never undo a granted extension.
+      this.logger.warn(`Free extension granted but the email did not send: ${(err as Error)?.message}`);
+    }
   }
 
   /** Monthly prices in cents per subscription plan. */
@@ -546,6 +650,11 @@ export class BillingService {
       where: { id: organizationId },
       data: { careFeeStatus: CareFeeStatus.CANCELLED },
     });
+    // sendBillingChangeNotification existed and nothing called it. A cancellation is
+    // the change people most need in writing, and it was the one change that arrived
+    // as silence.
+    await this.tellThemBillingChanged(organizationId, 'Your subscription has been cancelled. Your reports and boards stay available; new check-ins are paused.')
+      .catch(() => undefined);
 
     const downloadUrl = `${this.config.get<string>('resend.frontendUrl') ?? ''}/users/me/export`;
     const orgUsers = await this.prisma.user.findMany({
@@ -660,6 +769,7 @@ export class BillingService {
           },
         });
         this.logger.log(`Legacy subscription activated for org ${organizationId}`);
+        await this.confirmTheCareFee(organizationId).catch(() => undefined);
         this.usage.emit(UsageEventType.BILLING_ACTIVATED, { organizationId }).catch(() => undefined);
         break;
       }
@@ -897,6 +1007,9 @@ export class BillingService {
       where: { id: organizationId },
       data: { careFeeStatus: CareFeeStatus.ACTIVE },
     });
+    // sendCareFeeConfirmation existed and nothing called it: somebody redeemed a
+    // code, the product changed state, and no message said it had worked.
+    await this.confirmTheCareFee(organizationId).catch(() => undefined);
     const admin = await this.prisma.user.findFirst({ where: { organizationId, role: UserRole.ADMIN }, select: { id: true } });
     if (admin) {
       await this.usage.emit(UsageEventType.BILLING_ACTIVATED, { organizationId, userId: admin.id });

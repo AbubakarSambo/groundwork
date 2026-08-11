@@ -73,6 +73,7 @@ function makeService(overrides: {
       }),
     },
     report: {
+      findUnique: jest.fn(async () => null),
       upsert: jest.fn(async (args: any) => {
         upsertedCreate = args.create;
         return { id: 'r1', ...args.create };

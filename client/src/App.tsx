@@ -1,11 +1,13 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { queryClient } from '@/lib/queryClient'
 import { Toaster } from 'sonner'
 import { useAuthStore } from '@/stores/auth'
 import { useSessionTimeout } from '@/lib/useSessionTimeout'
 import { AuthPage } from '@/pages/auth/AuthPage'
 import { MagicSentPage } from '@/pages/auth/MagicSentPage'
 import { MagicVerifyPage } from '@/pages/auth/MagicVerifyPage'
+import { GoogleCallbackPage } from '@/pages/auth/GoogleCallbackPage'
 import { SetPasswordPage } from '@/pages/auth/SetPasswordPage'
 import { ResetPasswordPage } from '@/pages/auth/ResetPasswordPage'
 import { SetupPage } from '@/pages/setup/SetupPage'
@@ -41,9 +43,8 @@ import { HelpModal, HelpButton } from '@/components/gw/HelpModal'
 import { AppShell } from '@/components/gw/AppShell'
 import type { JSX } from 'react'
 
-const qc = new QueryClient({
-  defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
-})
+// Shared so code outside the React tree can invalidate too - see lib/queryClient.
+const qc = queryClient
 
 function RequireAuth({ children }: { children: JSX.Element }) {
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
@@ -105,6 +106,10 @@ export default function App() {
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/auth/sent" element={<MagicSentPage />} />
             <Route path="/verify-email" element={<MagicVerifyPage />} />
+            {/* Where the server's Google OAuth redirect lands. Inert until
+                GOOGLE_CLIENT_ID/SECRET are set - the button that starts the flow
+                only renders when /auth/methods says google is available. */}
+            <Route path="/auth/google/callback" element={<GoogleCallbackPage />} />
             <Route path="/set-password" element={<SetPasswordPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/start" element={<EntryChatPage />} />

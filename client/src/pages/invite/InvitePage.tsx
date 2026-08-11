@@ -24,6 +24,8 @@ export function InvitePage() {
   const [params] = useSearchParams()
   const token = params.get('token') ?? ''
   const navigate = useNavigate()
+  /** Set when the server has emailed a fresh way in, instead of signing us in here. */
+  const [emailedTo, setEmailedTo] = useState<string | null>(null)
   const setAuth = useAuthStore((s) => s.setAuth)
   const qc = useQueryClient()
 
@@ -40,6 +42,31 @@ export function InvitePage() {
   const accept = useMutation({
     mutationFn: () => participantsApi.accept(token, { firstName: firstName || undefined, lastName: lastName || undefined }),
     onSuccess: (res) => {
+      /**
+       * THREE OUTCOMES, NOT ONE.
+       *
+       * The link used to be destroyed on first use, so this only ever had to
+       * handle a first-time join. Now it stays clickable forever - click, get
+       * distracted, come back - and the server decides what clicking means:
+       *
+       *   resumed  this browser already holds their session, carry straight on
+       *   emailed  a different browser, so nothing is minted here and a fresh
+       *            sign-in link has gone to the address that was invited
+       *   neither  a first-time join, exactly as before
+       *
+       * The middle case is the one that keeps a forwarded link worthless to
+       * whoever received it, without the link ever being worthless to its owner.
+       */
+      if ((res as any).resumed) {
+        const checkInId = (res as any).checkInId as string | null
+        const groundId = (res as any).groundId as string
+        navigate(checkInId ? `/checkin/${checkInId}` : `/grounds/${groundId}/p`, { replace: true })
+        return
+      }
+      if ((res as any).emailed) {
+        setEmailedTo((res as any).email as string)
+        return
+      }
       setAuth(res.user, res.accessToken)
       if ((res as any).existingAccount) {
         toast.info(`Welcome back - continuing as ${res.user.email}`)
@@ -65,9 +92,33 @@ export function InvitePage() {
     },
   })
 
+  /**
+   * A fresh way in has been emailed, because this is not the browser they joined
+   * on. Not an error, and not a dead end - just one more click, landing in the
+   * inbox that was actually invited.
+   */
+  if (emailedTo) {
+    return (
+      <InviteShell>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 28, marginBottom: 12 }}>📬</div>
+          <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>Check your email</div>
+          <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+            You have already joined this ground, and this is a new device or browser.
+            We have sent a sign-in link to <strong>{emailedTo}</strong> so only you can pick up where you left off.
+          </div>
+        </div>
+      </InviteShell>
+    )
+  }
+
   if (!token) return <InviteShell><ErrorCard msg="This invite link is missing its token." /></InviteShell>
   if (isLoading) return <InviteShell><LoadingCard /></InviteShell>
-  if (isError || !preview) return <InviteShell><ErrorCard msg="This invite link is invalid or has already been used." /></InviteShell>
+  if (isError || !preview) return (
+    <InviteShell>
+      <ErrorCard msg="We do not recognise this link. If you have already joined, sign in with your email - and if you have not, ask whoever added you to send a new invite." />
+    </InviteShell>
+  )
 
   if (preview.alreadyAccepted) {
     return (
@@ -76,8 +127,18 @@ export function InvitePage() {
           <div style={{ fontSize: 28, marginBottom: 12 }}>👋</div>
           <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>You've already joined</div>
           <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 20 }}>
-            Sign in to continue your check-in for <strong>{preview.groundLabel}</strong>.
+            Pick up your check-in for <strong>{preview.groundLabel}</strong>. If this is a new device we
+            will email you a sign-in link.
           </div>
+          <button
+            className="gw-btn"
+            style={{ display: 'inline-block', width: 'auto', padding: '10px 20px', marginBottom: 10 }}
+            disabled={accept.isPending}
+            onClick={() => accept.mutate()}
+          >
+            {accept.isPending ? 'One moment…' : 'Pick up where I left off →'}
+          </button>
+          <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 12 }}>or</div>
           <button className="gw-btn" style={{ display: 'inline-block', width: 'auto', padding: '10px 20px' }} onClick={() => navigate('/grounds')}>
             Sign in to continue →
           </button>
@@ -108,6 +169,51 @@ export function InvitePage() {
           Nobody ever reads what you write - not {preview.initiatorName}, not anyone.{' '}
           The shared report shows <strong>where your account and theirs agree or differ</strong>. It does not quote you.
           Your account stays private. Always.
+        </div>
+
+        {/* YOU ARE IN THIS, NOT REPORTING ON SOMEBODY ELSE.
+            Without saying so, an invitation to describe work involving another
+            person reads as being asked to give evidence about them. That is the
+            wrong idea of what this is and it changes what people write: they
+            either soften everything or aim it at the person. Saying your own
+            side is part of it, before anyone types anything, is the difference
+            between a shared picture and a witness statement. */}
+        <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 16 }}>
+          You'll be asked how the shared work is going, including your own side of it. This is not a
+          form about somebody else.
+        </div>
+
+        {/* FOUR THINGS, ONE SCREEN. (G28, and G27's ordering rule)
+            A participant gets a link in an email from somebody who did not
+            explain it, and decides in about four seconds whether this is a thing
+            that helps them or a thing being done to them. Everything above
+            answers what it is and what happens to their words. This answers the
+            three questions they actually have next, in the order they have them.
+
+            PURPOSE BEFORE PERFORMANCE (G27): why you specifically comes first.
+            Not what we want from you - what this is for and why your account
+            changes it. Somebody who understands why they matter writes a
+            different check-in from somebody complying with a request, and the
+            ordering is the whole of the difference. */}
+        <div style={{ background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
+          <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
+            <span style={{ fontSize: 13, flexShrink: 0 }}>&rarr;</span>
+            <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6 }}>
+              <b>Why you.</b> You are close enough to this work to know things nobody else in it can see. Without your account, the picture is everybody else's.
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
+            <span style={{ fontSize: 13, flexShrink: 0 }}>&rarr;</span>
+            <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6 }}>
+              <b>What it takes.</b> About ten minutes, in a chat, whenever suits you. It asks questions and you answer in your own words.
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <span style={{ fontSize: 13, flexShrink: 0 }}>&rarr;</span>
+            <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6 }}>
+              <b>What you get back.</b> The same report {preview.initiatorName} gets, at the same moment, plus a short private note meant only for you.
+            </div>
+          </div>
         </div>
 
         <form onSubmit={(e) => { e.preventDefault(); if (!accept.isPending) accept.mutate() }}>

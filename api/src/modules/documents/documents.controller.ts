@@ -64,6 +64,23 @@ export class DocumentsController {
     return this.docs.correctAssessment(groundId, docId, userId, dto);
   }
 
+  /**
+   * G38: open context and private context, named and switchable.
+   *
+   * Only the uploader may move a document, and CLOSED is not offered - see
+   * setVisibility for why both of those are deliberate.
+   */
+  @Patch(':docId/visibility')
+  @ApiOperation({ summary: 'Move your own document between open and private' })
+  setVisibility(
+    @Param('groundId') groundId: string,
+    @Param('docId') docId: string,
+    @CurrentUser('id') userId: string,
+    @Body() dto: { visibility: 'OPEN' | 'OWN' },
+  ) {
+    return this.docs.setVisibility(groundId, docId, userId, dto.visibility);
+  }
+
   @Delete(':docId')
   @ApiOperation({ summary: 'Delete a document' })
   remove(

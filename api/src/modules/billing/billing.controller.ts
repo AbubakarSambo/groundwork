@@ -87,7 +87,7 @@ export class BillingController {
   @Post('purchase-session')
   @ApiBearerAuth()
   @Roles(Role.ADMIN)
-  @ApiOperation({ summary: 'Create a Stripe Checkout session to purchase check-in sessions at $5 each' })
+  @ApiOperation({ summary: 'LEGACY - per-session purchase. Sessions are not sold; no user-facing surface calls this. Retained only because live Stripe records may reference it.' })
   async purchaseSession(
     @CurrentUser('organizationId') organizationId: string,
     @Body() body: { groundId: string; quantity?: number },

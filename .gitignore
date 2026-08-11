@@ -40,3 +40,7 @@ api/journey/out-cohort/
 api/journey/org-sim/out/*.json
 api/journey/org-sim/out-paid/
 api/journey/org-sim/out-verify/
+
+# TypeScript incremental build cache - a local artifact, not source.
+# It was tracked, so every typecheck showed up as a file change in every diff.
+*.tsbuildinfo

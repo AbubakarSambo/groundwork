@@ -2,9 +2,10 @@ import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestEx
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { IntelligenceService } from '../intelligence';
+import { ReportsService } from '../reports';
 import { EmailService } from '../email/email.service';
-import { endStatesFor, isValidEndState } from './end-states';
-import { GroundStatus } from '@prisma/client';
+import { endStatesFor, isValidEndState, closingNeedsEveryone } from './end-states';
+import { GroundStatus, PartyType } from '@prisma/client';
 
 /**
  * Resolution. A ground closes only when every ACTIVE party confirms the SAME
@@ -25,13 +26,14 @@ export class ResolutionService {
   constructor(
     private prisma: PrismaService,
     private intelligence: IntelligenceService,
+    private reports: ReportsService,
     private email: EmailService,
     private config: ConfigService,
   ) {}
 
   async get(groundId: string, userId: string) {
     await this.assertParty(groundId, userId);
-    return this.buildState(groundId);
+    return this.buildState(groundId, userId);
   }
 
   /**
@@ -48,6 +50,27 @@ export class ResolutionService {
     }
     if (!isValidEndState(ground.scenario, endState)) {
       throw new BadRequestException(`"${endState}" is not a valid end state for this scenario`);
+    }
+
+    /**
+     * ON A GROUND WITH A SUBJECT, THE DECISION IS THE LEAD'S.
+     *
+     * A new hire was being shown "Let them go" and asked to pick it, and the
+     * ground could not close until he picked the same option as his manager.
+     * He was handed a choice about his own dismissal and a veto over an
+     * employment decision that was never his.
+     *
+     * He still sees the options and what is coming, and keeps every other voice
+     * he had - his own account, his own corrections, the record standing beside
+     * his manager's. What he does not get is a button asking him to agree to his
+     * own exit.
+     *
+     * Cofounders and other peers are untouched: they still both have to agree.
+     */
+    if (!closingNeedsEveryone(ground.scenario) && participant.partyType !== PartyType.INITIATOR) {
+      throw new ForbiddenException(
+        'On this ground the lead decides how it ends. Your account and your corrections stand on the record beside theirs.',
+      );
     }
 
     // GW-16: detect a proposal change BEFORE upserting so we can clear stale
@@ -88,8 +111,20 @@ export class ResolutionService {
     const confirmations = await this.prisma.resolutionConfirmation.findMany({ where: { resolutionId: resolution.id } });
     const choiceByParticipant = new Map(confirmations.map((c) => [c.participantId, c.endState]));
 
-    const allConfirmed = active.length >= 2 && active.every((p) => choiceByParticipant.has(p.id));
-    const chosenStates = new Set(active.map((p) => choiceByParticipant.get(p.id)).filter((s): s is string => !!s));
+    /**
+     * Who has to have confirmed before this closes.
+     *
+     * Where the lead decides, their own confirmation is the whole of it - nobody
+     * else can confirm, so waiting for everyone would leave the ground open for
+     * ever. Where the parties are peers, every active party still has to agree.
+     */
+    const needsEveryone = closingNeedsEveryone(ground.scenario);
+    const allConfirmed = needsEveryone
+      ? active.length >= 2 && active.every((p) => choiceByParticipant.has(p.id))
+      : choiceByParticipant.has(participant.id);
+    const chosenStates = needsEveryone
+      ? new Set(active.map((p) => choiceByParticipant.get(p.id)).filter((s): s is string => !!s))
+      : new Set([endState]);
 
     if (allConfirmed && chosenStates.size === 1) {
       await this.finalize(groundId, [...chosenStates][0]);
@@ -187,6 +222,22 @@ export class ResolutionService {
       this.logger.error(`recordOutcome failed for ground ${groundId}: ${err.message}`),
     );
 
+    /**
+     * AND THE HALF OF THE LOOP THAT WAS NEVER CONNECTED.
+     *
+     * recordOutcome writes the Outcome row. recordOutcomeLearning enriches it with
+     * the session count and the fairness rate from the outcome feedback - and it had
+     * no caller anywhere, while the weekly learning cron selects precisely those
+     * columns. So the report that exists to tell us which prompt version produces
+     * fairer, shorter grounds has been reading fields nobody filled, every Monday,
+     * and reporting whatever that averages to.
+     *
+     * Found by the dead-method rule. Best-effort, after the close, like its sibling.
+     */
+    await this.reports.recordOutcomeLearning(groundId).catch((err) =>
+      this.logger.error(`recordOutcomeLearning failed for ground ${groundId}: ${err.message}`),
+    );
+
     // GW-50: close-confirmation email to all parties simultaneously.
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
@@ -212,7 +263,7 @@ export class ResolutionService {
    * confirmations (with each party's chosen end state), how many of the active
    * parties have confirmed, and the valid end-state options for this scenario.
    */
-  private async buildState(groundId: string) {
+  private async buildState(groundId: string, viewerUserId?: string) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId } });
     if (!ground) throw new NotFoundException('Ground not found');
 
@@ -244,6 +295,17 @@ export class ResolutionService {
       totalActive: active.length,
       options: endStatesFor(ground.scenario),
       groundStatus: ground.status,
+      /**
+       * Who closes this ground, so the screen can stop asking the wrong person.
+       *
+       * On a ground about one person's position the lead decides, and the other
+       * party sees the options without being handed a button that asks them to
+       * agree to their own exit. Both flags are sent because the panel needs to
+       * tell three states apart: "you decide", "your lead decides", and "we all
+       * decide together".
+       */
+      leadDecides: !closingNeedsEveryone(ground.scenario),
+      viewerIsLead: viewerUserId ? ground.initiatorId === viewerUserId : false,
     };
   }
 

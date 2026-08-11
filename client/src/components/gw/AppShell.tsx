@@ -1,3 +1,5 @@
+import { toast } from 'sonner'
+import { plannedSessionsFor } from '@/lib/sessionCount'
 import { useState, useRef, useEffect } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -7,6 +9,7 @@ import { groundsApi } from '@/api/grounds'
 import { useEntryStore } from '@/stores/entry'
 import { useFeedbackStore } from '@/stores/feedback'
 import type { Ground } from '@/types'
+import { alignmentShort } from '@/lib/alignment'
 
 const NAV_ITEMS = [
   {
@@ -33,7 +36,10 @@ const NAV_ITEMS = [
     ),
   },
   {
-    label: 'Team',
+    // "Team" and "Teams" sat side by side, one letter apart, pointing at
+    // different pages - a coin-flip for anyone looking for the list of people in
+    // their org. Named for what each one actually is. GW-011.
+    label: 'People',
     to: '/org/members',
     adminOnly: true,
     icon: (active: boolean) => (
@@ -46,7 +52,7 @@ const NAV_ITEMS = [
     ),
   },
   {
-    label: 'Teams',
+    label: 'Roster',
     to: '/org/roster',
     adminOnly: true,
     icon: (active: boolean) => (
@@ -72,7 +78,10 @@ const NAV_ITEMS = [
   {
     label: 'Admin',
     to: '/admin/dashboard',
-    adminOnly: true,
+    // Groundwork's own back-office, NOT the org admin's area. The route is
+    // wrapped in RequirePlatformAdmin, so gating this on `adminOnly` showed
+    // every org admin a door that bounced her straight back to /grounds.
+    platformAdminOnly: true,
     icon: (active: boolean) => (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
         <path d="M10 2.5L12.5 7.5H17.5L13.5 10.5L15 15.5L10 12.5L5 15.5L6.5 10.5L2.5 7.5H7.5L10 2.5Z"
@@ -132,7 +141,26 @@ function FeedbackWidget() {
       wrongText: tab === 'wrong' ? wrongText : undefined,
       contactEmail: contactEmail || undefined,
     }
-    try { await apiClient.post('/feedback', payload) } catch { /* swallow - best effort */ }
+    /**
+     * "SWALLOW - BEST EFFORT" IS HOW THIS HID FOR MONTHS.
+     *
+     * FeedbackModule was never registered in the API, so every post here 404'd, and
+     * this catch turned each one into a cheerful "thanks, that is on its way". Every
+     * piece of feedback anybody ever sent from inside the product went nowhere and
+     * nobody saw an error - found this morning by a rule about unwired modules, not
+     * by anybody noticing.
+     *
+     * The endpoint exists now. The swallow does not, because a person who took the
+     * trouble to write something is entitled to know it did not arrive - and because
+     * the next time this breaks, somebody should find out from a user rather than
+     * from a static analysis rule.
+     */
+    try {
+      await apiClient.post('/feedback', payload)
+    } catch {
+      toast.error('That did not send. Your note is still here - try again, or email us if it keeps failing.')
+      return
+    }
     setSent(true)
     setTimeout(() => { hidePanel(); setSent(false); setReaction(''); setBuildPick(''); setBuildDetail(''); setWrongText(''); setContactEmail('') }, 1800)
   }
@@ -274,6 +302,7 @@ function NavItem({ item, compact }: { item: typeof NAV_ITEMS[0]; compact?: boole
   const active = location.pathname.startsWith(item.to)
   const user = useAuthStore(s => s.user)
   if (item.adminOnly && user?.role !== 'ADMIN') return null
+  if ((item as any).platformAdminOnly && !user?.isPlatformAdmin) return null
 
   if (compact) {
     return (
@@ -462,13 +491,9 @@ export function AppSidebar() {
               const sessions = new Set((g.checkIns ?? []).map((c: any) => c.sessionNumber)).size
               // Respect the ground's real cadence. Hardcoding /14 said "7 sessions"
               // for a 90-day WEEKLY ground that actually runs ~13.
-              const cadenceDays = ({ DAILY: 1, WEEKLY: 7, FORTNIGHTLY: 14, MONTHLY: 30 } as Record<string, number>)[(g as any).cadence] ?? 14
-              const planned = (g as any).maxSessions ?? (g.timelineDays ? Math.ceil(g.timelineDays / cadenceDays) : null)
+              const planned = plannedSessionsFor(g.timelineDays, (g as any).cadence, (g as any).maxSessions)
               // Never show fewer planned than have already happened.
               const maxSessions = planned != null ? Math.max(planned, sessions) : null
-              // confidence is a 0-5 score, not a 0-1 fraction. Multiplying by 100
-              // produced "500%".
-              const confPct = g.confidence != null ? Math.min(100, Math.round((g.confidence / 5) * 100)) : null
               return (
                 <div key={g.id} style={{ marginBottom: 2, borderRadius: 8, overflow: 'hidden' }}>
                   <NavLink
@@ -508,16 +533,21 @@ export function AppSidebar() {
                       </div>
                     )}
 
-                    {/* Confidence + sessions */}
+                    {/* What the report holds, and how far along we are.
+                        This used to read "4/5 aligned · 13/13 sessions" - and
+                        the first number was a count of completed check-ins, not
+                        a measure of agreement. When there is no read yet, the
+                        sessions stand alone rather than being padded with a
+                        score nothing supports. */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                      {g.confidence != null && (
-                        <span style={{ fontSize: 11, color: 'rgba(255,255,255,.45)' }}>
-                          {confPct}% · {sessions}{maxSessions ? `/${maxSessions}` : ''} sessions
-                        </span>
-                      )}
-                      {g.confidence == null && (
-                        <span style={{ fontSize: 11, color: 'rgba(255,255,255,.35)' }}>{sessions}{maxSessions ? `/${maxSessions}` : ''} sessions</span>
-                      )}
+                      {(() => {
+                        const read = alignmentShort((g as any).alignment)
+                        return (
+                          <span style={{ fontSize: 11, color: `rgba(255,255,255,${read ? '.45' : '.35'})` }}>
+                            {read ? `${read} · ` : ''}{sessions}{maxSessions ? `/${maxSessions}` : ''} sessions
+                          </span>
+                        )
+                      })()}
                       <GroundStatusBadge status={g.status} />
                     </div>
                   </NavLink>
@@ -530,7 +560,11 @@ export function AppSidebar() {
         {/* Collapsed: nav icons */}
         {collapsed && (
           <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '4px 0' }}>
-            {NAV_ITEMS.map(item => {
+            {/* Same two gates the expanded nav applies. This list rendered
+                NavLinks directly rather than going through NavItem, so it skipped
+                the adminOnly check entirely and showed People / Roster / Billing
+                to every member whose sidebar happened to be collapsed. */}
+            {NAV_ITEMS.filter(item => (!item.adminOnly || user?.role === 'ADMIN') && !(item as any).platformAdminOnly).map(item => {
               const active = window.location.pathname.startsWith(item.to)
               return (
                 <NavLink key={item.to} to={item.to} title={item.label}
@@ -546,7 +580,9 @@ export function AppSidebar() {
         {/* Nav items - always visible in expanded sidebar */}
         {!collapsed && (
           <nav style={{ padding: '6px 8px', borderTop: '1px solid rgba(255,255,255,.07)', flexShrink: 0 }}>
-            {NAV_ITEMS.filter(item => !item.adminOnly).map(item => {
+            {/* Both gates, not just adminOnly: this nav is always visible, so
+                anything filtered only by the other list leaks in here. */}
+            {NAV_ITEMS.filter(item => !item.adminOnly && !(item as any).platformAdminOnly).map(item => {
               const active = location.pathname.startsWith(item.to)
               const canNav = isAuthenticated
               return (
@@ -615,8 +651,16 @@ export function AppSidebar() {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
-  const location = useLocation()
-  const showSidebar = isAuthenticated || location.pathname === '/start'
+  /**
+   * Signed-out visitors do not get the signed-in navigation.
+   *
+   * `/start` was excepted so the entry flow had some chrome, but the effect was
+   * that someone with no account saw Grounds / Feed / Profile while describing
+   * their situation - destinations that mean nothing to them and lead out of the
+   * flow they are halfway through. The entry page has its own header and step
+   * tracker, so it loses nothing by dropping the app shell. GW-004.
+   */
+  const showSidebar = isAuthenticated
 
   if (!showSidebar) return <>{children}</>
 

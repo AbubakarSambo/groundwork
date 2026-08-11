@@ -26,7 +26,14 @@ export const VAGUE_VERBS = [
   'facilitated', 'aligned', 'drove', 'led', 'managed', 'oversaw', 'supported', 'coordinated', 'championed',
   'worked on', 'helped with', 'involved in', 'contributed to', 'focused on', 'engaged with', 'collaborated on',
 ];
-export const COMPLETION_WORDS = ['complete', 'delivered', 'done', 'shipped', 'finished', 'live', 'launched'];
+/**
+ * "closed" and "resolved" were missing, which is odd company for "shipped" and
+ * "delivered" - closing a ticket, a deal or an issue is how a great deal of work
+ * is actually reported. Both already count as OUTPUT_VERBS below; leaving them
+ * out here meant a sentence like "I closed 22 tickets" produced no factual claim
+ * at all.
+ */
+export const COMPLETION_WORDS = ['complete', 'delivered', 'done', 'shipped', 'finished', 'live', 'launched', 'closed', 'resolved'];
 export const PROBLEM_WORDS = ['blocked', 'workaround', 'not working', 'failing', 'not usable', 'broken'];
 const STRATEGIC_NOISE = ['strategic', 'synergy', 'momentum', 'ecosystem', 'leverage', 'stakeholder', 'bandwidth', 'circle back', 'touch base', 'low-hanging'];
 const THINKING_VERBS = [
@@ -50,6 +57,14 @@ export interface IntakeResult {
   positiveSignal?: string;
 }
 
+/**
+ * Number words, so a person who writes "three weeks" is not treated as having
+ * given no number. Bounded to whole words: "one" must not fire on "money",
+ * "ten" must not fire on "often".
+ */
+const NUMBER_WORDS =
+  /\b(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|twenty|thirty|forty|fifty|hundred|dozen|half|twice|first|second|third)\b/i;
+
 export function runIntake(text: string): IntakeResult {
   if (!text) return { types: ['noise'], factualClaims: [], specificity: 0, vagueLanguage: [], thinkingScore: 0, outputScore: 0, meetingScore: 0, isAdvisoryOnly: false, hasIndependentOutput: false };
   const lower = text.toLowerCase();
@@ -61,8 +76,42 @@ export function runIntake(text: string): IntakeResult {
   if (RESCUE_WORDS.some((w) => lower.includes(w))) types.push('rescue');
   if (!types.length) types.push('noise');
 
-  const hasNumbers = /\d/.test(text);
-  const hasDate = /(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|\d{1,2}\/\d{1,2})/i.test(text);
+  /**
+   * NUMBERS PEOPLE WRITE AS WORDS ARE STILL NUMBERS.
+   *
+   * This was /\d/, so "three weeks", "by month three" and "at least one client
+   * relationship" all counted as no number at all. Measured on a real
+   * twelve-session ground, four of six substantive answers scored 0.00 for this
+   * reason alone and the whole record came out "low specificity" - on a record
+   * containing 22 tickets closed, two client accounts run end to end, and a
+   * count that dropped to 18 and then 15.
+   *
+   * That label sits on a performance conversation. Getting it backwards on
+   * somebody's account of their own work is worse than not showing it.
+   */
+  const hasNumbers = /\d/.test(text) || NUMBER_WORDS.test(text);
+
+  /**
+   * Anchored to word boundaries, because the month list matched inside ordinary
+   * words: "may" fired on "maybe" and "dismay", "mar" on "market" and "margin",
+   * "sep" on "separate". A record about a marketing plan scored as if it were
+   * full of dates.
+   *
+   * Also counts the time references people actually use for work - "each week",
+   * "by month three", "last quarter" - which carry as much checkable timing as
+   * a calendar date does.
+   */
+  const hasDate =
+    /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\b/i.test(text) ||
+    /\d{1,2}\/\d{1,2}/.test(text) ||
+    /\b(?:every|each|per|by|within|since|last|next|this)\s+(?:day|week|fortnight|month|quarter|year)\b/i.test(text) ||
+    /\b(?:day|week|fortnight|month|quarter|year)s?\s+(?:one|two|three|four|five|six|seven|eight|nine|ten|\d+)\b/i.test(text) ||
+    /\b(?:month|week|quarter|day)\s+(?:one|two|three|four|five|six|seven|eight|nine|ten|\d+)\b/i.test(text) ||
+    // The commonest form by far, and the one that was missing: "three weeks",
+    // "90 days", "two quarters". Measured on a real record, this alone was the
+    // difference between "I closed 22 tickets in my first three weeks" reading
+    // as timed and reading as undated.
+    /\b(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|\d+)\s+(?:day|week|fortnight|month|quarter|year)s?\b/i.test(text);
   const vagueCount = VAGUE_VERBS.filter((v) => lower.includes(v)).length;
   const noiseCount = STRATEGIC_NOISE.filter((v) => lower.includes(v)).length;
   const sentences = text.split(/[.!?]+/).filter((s) => s.trim().length > 10);

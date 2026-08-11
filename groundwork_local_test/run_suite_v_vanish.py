@@ -117,9 +117,23 @@ async def main() -> int:
         ctxbox = page.locator("input[placeholder*='other side of this'], textarea[placeholder*='other side of this']")
         if await ctxbox.count():
             await ctxbox.first.fill("On the build")
-            add = page.get_by_text("Add contributor", exact=True)
+            # IT LOOKED FOR A BUTTON THAT IS NOT THERE, so this never committed the
+            # person and three checks below failed as if the invite queue were
+            # broken. The confirm button is "Add person"; "Add contributor" is the
+            # control that OPENS this box, further up. Nothing pressed it, the note
+            # box stayed open, and the contributor never joined the list - visible
+            # in this run's own step-005 screenshot once anybody looked at it.
+            #
+            # Named explicitly rather than left as a lenient `if count()`, because a
+            # missing confirm button is now a failure worth seeing: the product also
+            # commits a pending person on Done, so a silent miss here would pass on
+            # that leniency and stop testing the button at all.
+            add = page.get_by_text("Add person", exact=True)
             if await add.count():
                 await add.first.click()
+            else:
+                rec.check("V1", False, "the 'Add person' confirm button exists on the invite box",
+                          "filled in an email and a note with no way to commit them", hard=True)
         await page.wait_for_timeout(2000)  # let the debounced draft PATCH fire
 
         await rec.step(page, "org name + contributor added AFTER email", "persona A")

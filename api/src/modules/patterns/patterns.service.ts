@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AnthropicService } from '../conversation';
 import { runIntake } from '../conversation/intake';
+import { plainVoice } from './plain-voice';
 import { PatternStatus, TurnRole, GroundStatus, CheckInStatus } from '@prisma/client';
 import {
   PATTERN_DETECTION_PROMPT,
@@ -154,7 +155,15 @@ export class PatternsService {
    * lastPeriodNumber + 1 (a gap), the streak resets to 1 and the detection
    * stays CANDIDATE regardless of total periodsObserved.
    */
-  async observe(groundId: string, participantId: string, code: string, observationText: string, periodNumber: number) {
+  async observe(groundId: string, participantId: string, code: string, rawObservation: string, periodNumber: number) {
+    /**
+     * Strip the courtroom opener before it is stored, not on the way out.
+     *
+     * Every surface that reads an observation would otherwise have to remember
+     * to do it, and one that forgets puts "The record shows..." back on screen.
+     * Storing the plain sentence means there is only one place it can go wrong.
+     */
+    const observationText = plainVoice(rawObservation);
     const existing = await this.prisma.patternDetection.findUnique({
       where: { participantId_code: { participantId, code } },
     });

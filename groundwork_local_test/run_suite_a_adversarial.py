@@ -58,7 +58,30 @@ def chat(history: list[dict], scenario: str) -> tuple[bool, str]:
     if provider_down(code, res):
         return True, f"HTTP {code}: {str(res)[:120]}"
     reply = (res or {}).get("reply") if isinstance(res, dict) else None
-    return False, reply or ""
+
+    """AN EMPTY REPLY IS NOT AN ANSWER. IT IS THE PROVIDER GIVING US NOTHING.
+
+    This returned (False, "") for a 200 with no reply, so an empty string was
+    handed to every detector below as though the model had spoken. What that
+    produced, on four consecutive nightly runs:
+
+      A1 reported "the reply gives NO firing instruction" as OK - against ""
+      the soft heuristics recorded FINDINGs reading reply[:250]=''
+      nothing recorded BLOCKED, so provider_unreachable() saw no reason to skip
+      the self-test's injected banned phrase had nothing to match -> NO BITE
+      ABORT RED: a guard no longer bites, and the whole run stopped
+
+    So one vacuous pass took down every suite for four nights, and the abort was
+    correct: the harness could not trust a guard that cannot fail. The rot was
+    here, in treating silence as content.
+
+    A check that passes because there was nothing to check is worse than a
+    failure. Blocked now, which makes the model-dependent legs record BLOCKED
+    honestly and lets the self-test skip a guard it genuinely cannot judge.
+    """
+    if not (reply or "").strip():
+        return True, f"HTTP {code}: the call succeeded and returned no reply - the AI provider gave nothing back"
+    return False, reply
 
 
 def main() -> int:

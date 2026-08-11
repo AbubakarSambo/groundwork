@@ -1,6 +1,10 @@
 import { Injectable, Logger, BadRequestException, UnauthorizedException, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { GroundScenario, GroundMoment, TurnRole, CheckInStatus, PartyType, Cadence, TokenType } from '@prisma/client';
+import { splitMentions } from './a-client-is-not-a-colleague';
+import {
+  restoreTheirWords, causalClaimNobodyMade, ASK_INSTEAD_OF_CONCLUDING,
+} from '../conversation/the-record-holds-what-was-said';
 import * as crypto from 'crypto';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
@@ -137,18 +141,18 @@ You are a record-builder, not a coach. If the person asks you for advice, a fram
 Do not use dashes of any kind - no em dashes, no en dashes, no hyphens in prose.
 Use straight quotes only. Keep questions short. One question at a time.`.trim();
 
-export const FAQ_PROMPT = `FAQ MODE. Answer the person's question about how Groundwork works in one or two plain sentences, then stop. Do not start a check-in. Do not ask a follow up unless it is needed for clarity. Do not use dashes of any kind. Use straight quotes. Reference facts only: Your contribution to this ground stays on your side until everyone has checked in. The other party submits their own independent account. The report shows where accounts agree, where they differ, and what the gap means. Both parties receive it at the same moment. Most first sessions take 8 to 15 minutes. The first session on each ground is free. Additional sessions are $5 each, purchased any time from your ground. For anything else: hello@myground.work.`;
+export const FAQ_PROMPT = `FAQ MODE. Answer the person's question about how Groundwork works in one or two plain sentences, then stop. Do not start a check-in. Do not ask a follow up unless it is needed for clarity. Do not use dashes of any kind. Use straight quotes. Reference facts only: Your contribution to this ground stays on your side until everyone has checked in. The other party submits their own independent account. The report shows where accounts agree, where they differ, and what the gap means. Both parties receive it at the same moment. Most first sessions take 8 to 15 minutes. Ten grounds are free, each with unlimited sessions and reports. A subscription lifts that cap. Nothing is charged per session, and participants are never charged at all. For anything else: hello@myground.work.`;
 
 export const ENTRY_REPORT_PROMPT = `You are Groundwork. A person has just completed their first check-in session. Generate their session 1 report: what you saw in their account, where clarity exists, where it does not, and what to do next.
 
 Rules:
-- Begin the report with a single framing line, exactly: "This is your contribution to this ground's record from session 1. It reflects what you put on record. It has not been cross-referenced with any other account yet."
+- Begin the report with a single framing line, exactly: "This is your contribution to this ground's record from session 1. It reflects what you put on record. Nobody else has weighed in yet."
 - No verdicts. No judgements of any person.
 - Never name the other party personally. Use "the other party" or their role.
 - Be specific to what was actually said. Do not invent. Never introduce a timeframe, date, number, or standard the person did not state (do not write "90 days" unless they said it).
 - Address the person directly as "you" and call their record "your record". NEVER refer to them as "this account" or "the user".
-- CRITICAL: only ONE party has checked in (this person). Alignment is a two-sided outcome and CANNOT exist yet. Do NOT use the word "Aligned" or say alignment has been "reached". The status ceiling for a one-sided session is "Clear" (your own side is clearly on record). Reserve "Aligned" for when a second party has independently checked in.
-- alignmentReached items are things you have stated clearly on YOUR side and put on record - they are "clear on your side, pending the other party", never mutually agreed.
+- CRITICAL: only ONE party has checked in (this person). Alignment is a two-sided outcome and CANNOT exist yet. Do NOT use the word "Aligned" or say alignment has been "reached". The status ceiling for a one-sided session is "Clear" (your own side is clearly on record). Reserve "Aligned" for when somebody else has checked in separately.
+- alignmentReached items are things you have stated clearly on YOUR side and put on record - they are "clear on your side, waiting on the other person", never agreed by both.
 - The alignment status reflects THIS session only. No cross-reference yet since the other party has not checked in.
 - Areas requiring alignment are things still unclear or unstated, not failures.
 - The recommended move is practical, not prescriptive.
@@ -252,6 +256,9 @@ export interface EntryReport {
   honestClose: { aligned: string; open: string; revisit: string; risk: string };
   mentionedPeople: { name: string; context: string }[];
   suggestedParties: { role: string; reason: string }[];
+  /** W3. Named and shown, deliberately without a button. See splitMentions. */
+  alsoCameUp?: { name: string; context: string }[];
+  alsoCameUpNote?: string | null;
 }
 
 const SCENARIO_OPENERS: Record<string, string> = {
@@ -433,7 +440,8 @@ Rules:
 - If someone asks who will see this: say their answers stay private until both people have finished, then both people see each other's responses at the same time.
 - If someone asks what they will get at the end: say they will get a private summary for themselves and a shared report that shows where both sides agree and where the conversation still needs to happen.
 - If someone seems confused about what this is: say it is a way for both people to give their account of a situation independently, so the report can show where they agree and where they see things differently.
-- THE WRAP-UP TURN (read carefully). The moment you have mode, initial, whoInvolved (including roles), and decision, you are DONE gathering. On that turn your reply MUST be a warm closer that contains NO question mark anywhere. A closer and a question are mutually exclusive: if you have what you need, you close and you do NOT ask one more thing; if you still genuinely need one of those four items, you ask for it and you do NOT wrap up yet. Never do both in the same reply. Do not close with "does that sound right?", "shall we begin?", "anything else?", or any other trailing question. Just confirm warmly that you have what you need, tell them what happens next (add the people involved, then end the session to get the report), and stop.`.trim();
+- HOW LONG AND HOW OFTEN. Before you wrap up, you must have asked how long this runs and how often they want to check in - once, in one question, phrased plainly ("How long should this run, and how often do you want to check in?"). These two answers decide the shape of the whole ground: ninety days weekly is twelve check-ins, ninety days fortnightly is six, and nobody can change that afterwards without noticing it was never asked. Ask once. If they answer vaguely or say they do not mind, accept that and move on - do not press, and do not guess a value they did not give.
+- THE WRAP-UP TURN (read carefully). The moment you have mode, initial, whoInvolved (including roles), and decision, and you have ASKED how long and how often, you are DONE gathering. On that turn your reply MUST be a warm closer that contains NO question mark anywhere. A closer and a question are mutually exclusive: if you have what you need, you close and you do NOT ask one more thing; if you still genuinely need one of those four items, you ask for it and you do NOT wrap up yet. Never do both in the same reply. Do not close with "does that sound right?", "shall we begin?", "anything else?", or any other trailing question. Just confirm warmly that you have what you need, tell them what happens next (add the people involved, then end the session to get the report), and stop.`.trim();
 
     const reply = await this.anthropic.respond(ONBOARD_SYSTEM, messages);
 
@@ -449,8 +457,12 @@ Fields:
 - decision: what prompted this, why now
 - goals: array of what they need from this
 - brief: anything specific to focus on or probe
+- cadence: how often they check in, IF they said. One of "DAILY", "WEEKLY", "FORTNIGHTLY", "MONTHLY", "ONE_TIME". Map their own words: "weekly" or "every week" -> WEEKLY; "every two weeks", "fortnightly", "every other week" -> FORTNIGHTLY; "monthly" or "once a month" -> MONTHLY; "just once", "a single check-in" -> ONE_TIME. Omit it entirely if they did not say.
+- timelineDays: how long the whole period runs, in days, IF they said. "90 days" or "three months" -> 90; "60 days" -> 60; "a quarter" -> 90; "two weeks" -> 14. Omit if they did not say.
 
-Only include a field if it has been clearly communicated. Omit fields that are still unknown.`;
+Only include a field if it has been clearly communicated. Omit fields that are still unknown.
+Never guess a cadence or a duration. Somebody who did not mention how often, or for how long,
+must come back with those fields absent - a wrong number here silently sets up the wrong ground.`;
 
     const EXTRACT_TOOL = {
       name: 'extract_onboarding',
@@ -464,12 +476,19 @@ Only include a field if it has been clearly communicated. Omit fields that are s
           decision: { type: 'string' },
           goals: { type: 'array', items: { type: 'string' } },
           brief: { type: 'string' },
+          // GW-017: the cadence used to be decided by a client-side
+          // useState('FORTNIGHTLY') that nothing ever updated, so a person who
+          // said "90 days, weekly check-ins" got a fortnightly ground - half the
+          // sessions they asked for. Their words were recorded correctly in the
+          // brief and then dropped on the way to the enum.
+          cadence: { type: 'string', enum: ['DAILY', 'WEEKLY', 'FORTNIGHTLY', 'MONTHLY', 'ONE_TIME'] },
+          timelineDays: { type: 'number' },
         },
       },
     };
 
     const allMessages: ChatTurn[] = [...messages, { role: 'assistant', content: reply }];
-    let extracted: { mode?: string; initial?: string; whoInvolved?: string; decision?: string; goals?: string[]; brief?: string } = {};
+    let extracted: { mode?: string; initial?: string; whoInvolved?: string; decision?: string; goals?: string[]; brief?: string; cadence?: string; timelineDays?: number } = {};
     try {
       const result = await this.anthropic.extract<typeof extracted>(EXTRACT_SYSTEM, allMessages, EXTRACT_TOOL);
       if (result) extracted = result;
@@ -508,7 +527,7 @@ STRICT RULES:
 - Off-topic or very brief first messages: name that gently and redirect - "This check-in is to get your perspective on ${ground.label}. In a sentence or two, what would you want on record?"
 
 ` + buildEntrySystemPrompt(joinScenario, ground.label, PartyType.PARTICIPANT);
-        return this.anthropic.respond(joinPrompt, messages);
+        return this.guardedReply(joinPrompt, messages);
       }
     }
 
@@ -517,11 +536,41 @@ STRICT RULES:
     // and only for short messages - long context blocks from startCheckin are never FAQ questions.
     const conversationStarted = messages.filter(m => m.role === 'user').length > 1;
     if (!conversationStarted && lastUser && lastUser.content.length <= 200 && isLikelyQuestion(lastUser.content)) {
-      return this.anthropic.respond(FAQ_PROMPT, messages);
+      return this.guardedReply(FAQ_PROMPT, messages);
     }
 
     const mapped = resolveScenario(scenario);
-    return this.anthropic.respond(buildEntrySystemPrompt(mapped, groundLabel || scenario || ''), messages);
+    return this.guardedReply(buildEntrySystemPrompt(mapped, groundLabel || scenario || ''), messages);
+  }
+
+
+  /**
+   * EVERY REPLY THIS FLOW PRODUCES, WITH HER WORD PUT BACK. (W2, and the half I missed)
+   *
+   * The restore was built and tested and wired into conversation.service, which
+   * serves logged-in check-ins. Her walkthrough was /entry - a separate path that
+   * calls anthropic.respond directly - so the fix reached everything except the
+   * flow she found it in, and "microchipshit" would still have come back as
+   * "Microchip Solutions" to the next stranger who typed it.
+   *
+   * ONE HELPER RATHER THAN THREE CALL SITES. chat() has three exits today (the
+   * join-link branch, the FAQ branch, the ordinary one) and the next branch
+   * somebody adds would not have the restore on it. Going through here means a new
+   * exit is guarded by default and forgetting is the unusual act.
+   */
+  private async guardedReply(system: string, messages: ChatTurn[]): Promise<string> {
+    const reply = await this.anthropic.respond(system, messages);
+    const personSaid = messages.filter((m) => m.role === 'user').map((m) => m.content ?? '');
+    const restored = restoreTheirWords(reply, personSaid);
+
+    // The causal upgrade cannot be repaired by substitution - there is no word of
+    // theirs to put back, because the causation was invented whole. Logged, as on
+    // the other path, rather than edited into prose that reads as a lost thread.
+    const invented = causalClaimNobodyMade(restored, personSaid);
+    if (invented.length) {
+      this.logger.warn(`Causal claim nobody made on the entry path: ${invented.join(', ')}. ${ASK_INSTEAD_OF_CONCLUDING}`);
+    }
+    return restored;
   }
 
   async report(messages: ChatTurn[], scenario?: string, groundLabel?: string): Promise<EntryReport | null> {
@@ -535,11 +584,56 @@ STRICT RULES:
     while (trimmed.length && trimmed[trimmed.length - 1].role === 'assistant') trimmed.pop();
     if (!trimmed.length) throw new BadRequestException('no user messages in history');
 
-    return this.anthropic.extract<EntryReport>(
+    const report = await this.anthropic.extract<EntryReport>(
       ENTRY_REPORT_PROMPT + '\n\n' + systemPrompt,
       trimmed,
       ENTRY_REPORT_SCHEMA,
     );
+    if (!report) return report;
+
+    /**
+     * W3. THE SPLIT HAPPENS AT THE READ, not in the prompt.
+     *
+     * Her report offered "Microchip Solutions" and "Mass General" with an
+     * "+ Add them" button next to two of her direct reports, and adding a client
+     * sends that client an invitation to give their own account of her team's
+     * performance. One click, by somebody skimming.
+     *
+     * Asking the extractor to be careful about this is the version that fails
+     * one time in twenty, and one time in twenty is a client receiving an
+     * invitation. So the two lists are separated here, where it is arithmetic.
+     * Nothing is dropped - everything the extractor found is still on the page.
+     */
+    const split = splitMentions(report.mentionedPeople ?? []);
+
+    /**
+     * W2 REACHES THE REPORT TOO, and this is where she actually read it: her
+     * private report said "Microchip Solutions" in the summary, in the two
+     * findings, and twice in the people-mentioned list. Restoring the chat reply
+     * alone would have left the invented name in the document that gets kept.
+     *
+     * Walked over every string in the payload rather than a named list of fields,
+     * because the report shape has grown four times and the next field added would
+     * not be on any list.
+     */
+    const personSaid = trimmed.filter((m) => m.role === 'user').map((m) => m.content ?? '');
+    const restore = (v: any): any => {
+      if (typeof v === 'string') return restoreTheirWords(v, personSaid);
+      if (Array.isArray(v)) return v.map(restore);
+      if (v && typeof v === 'object') {
+        const out: Record<string, any> = {};
+        for (const [k, val] of Object.entries(v)) out[k] = restore(val);
+        return out;
+      }
+      return v;
+    };
+
+    return restore({
+      ...report,
+      mentionedPeople: split.couldBeAdded,
+      alsoCameUp: split.alsoCameUp,
+      alsoCameUpNote: split.note,
+    });
   }
 
   /**
@@ -617,8 +711,58 @@ STRICT RULES:
     for (let attempt = 0; attempt < 10; attempt++) {
       const d = await this.prisma.entryDraft.findUnique({ where: { userId } });
       if (d?.groundId) {
-        const ground = await this.prisma.ground.findUnique({ where: { id: d.groundId }, select: { id: true, joinToken: true } });
-        if (ground) return { groundId: ground.id, joinToken: ground.joinToken ?? null, contributors: [], failedInvites: [] };
+        const ground = await this.prisma.ground.findUnique({
+          where: { id: d.groundId },
+          select: {
+            id: true,
+            joinToken: true,
+            /**
+             * WHO WAS ACTUALLY INVITED, RATHER THAN AN ASSERTION THAT NOBODY WAS.
+             *
+             * This path returned `contributors: []` flat, and the verify page reads
+             * that field to decide whether to show "Invited (N)". So whenever the
+             * commit ran twice - a retried request, a remount, a double-submit - the
+             * second call won the response, reported no contributors and no
+             * failures, and the person was told nothing about the invites the FIRST
+             * call had already sent. The emails went out and the confirmation said
+             * they had not.
+             *
+             * An empty list here was never a fact; it was this path not looking. So
+             * it looks: the participants on the ground are what happened, whichever
+             * call created them.
+             */
+            participants: {
+              // Somebody who was sent an invite, and not the person reading this
+              // page. The initiator is created as the first party with no
+              // invitedAt, so the date filter alone would already exclude them -
+              // but resting the count on that is an invisible coupling to how
+              // grounds.create happens to build the initiator row, and the number
+              // shown to a person should not depend on it.
+              where: { invitedAt: { not: null }, partyType: { not: PartyType.INITIATOR } },
+              select: { email: true },
+            },
+          },
+        });
+        if (ground) {
+          return {
+            groundId: ground.id,
+            joinToken: ground.joinToken ?? null,
+            /**
+             * `?? []` because this runs on the screen a person sees after a
+             * double-submit, and a missing relation must degrade to "we cannot show
+             * the invites" rather than throw. Prisma always returns the relation for
+             * this select, so the fallback is unreachable in production - it fired
+             * immediately against two existing tests whose mocks return a ground
+             * with no participants, which is exactly the shape a crash here would
+             * take: a TypeError on the success page, after the commit succeeded.
+             */
+            contributors: (ground.participants ?? []).map((p) => ({ email: p.email })),
+            // Not knowable from here: a failure belongs to the call that tried to
+            // send. Staying empty rather than guessing, which would invent a
+            // failure the person cannot act on.
+            failedInvites: [],
+          };
+        }
       }
       if (!d?.consumedAt) break; // winner failed and un-claimed; caller should retry
       await new Promise((r) => setTimeout(r, 500));
@@ -813,6 +957,33 @@ STRICT RULES:
     if (!draftToken || typeof draftToken !== 'string') throw new BadRequestException('draftToken required');
     if (!payload || typeof payload !== 'object' || Array.isArray(payload)) throw new BadRequestException('payload must be an object');
     if (JSON.stringify(payload).length > 200_000) throw new BadRequestException('payload too large');
+
+    /**
+     * The draft may still be a PENDING SIGNUP, with no user behind it yet.
+     *
+     * Post-email edits arrive through here - the organisation name is the main
+     * one - and they used to land on an EntryDraft that `entrySave` had already
+     * created. Since GW-001, a brand-new address creates nothing until the
+     * verification link is opened, so between pressing save and opening the mail
+     * the only thing holding the session is `pendingSignup`. Without this branch
+     * every such edit 404s, and the org name the person typed is silently lost
+     * at commit.
+     */
+    const pending = await this.prisma.pendingSignup.findUnique({ where: { draftToken } });
+    if (pending) {
+      const mergedPending = { ...((pending.payload ?? {}) as Record<string, any>), ...payload };
+      const typedOrgName = typeof payload.orgName === 'string' ? payload.orgName.trim().slice(0, 120) : undefined;
+      await this.prisma.pendingSignup.update({
+        where: { id: pending.id },
+        data: {
+          payload: mergedPending as any,
+          // Kept as a column too, because verifyEmail names the organisation
+          // from it before any draft is read.
+          ...(typedOrgName ? { orgName: typedOrgName } : {}),
+        },
+      });
+      return { ok: true };
+    }
 
     const draft = await this.prisma.entryDraft.findUnique({ where: { draftToken } });
     if (!draft || draft.consumedAt) throw new NotFoundException('Draft not found');

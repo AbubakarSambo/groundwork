@@ -132,6 +132,14 @@ export function ChatPage() {
   const [confirmingFinish, setConfirmingFinish] = useState(false)
   const [openFailed, setOpenFailed]   = useState(false)
   const openedRef = useRef(false)
+  /**
+   * Mirrors the `opened` STATE for the watchdog below.
+   *
+   * openedRef is a different thing - a re-entry guard that says "an open attempt
+   * is scheduled", and it is deliberately reset in cleanup. This one answers the
+   * question the watchdog actually needs to ask: did a session ever open?
+   */
+  const hasOpenedRef = useRef(false)
 
   // Doc context
   const [pendingDoc, setPendingDoc]   = useState<File | null>(null)
@@ -176,6 +184,8 @@ export function ChatPage() {
     return () => clearInterval(tick)
   }, [msgs])
 
+  useEffect(() => { hasOpenedRef.current = opened }, [opened])
+
   useEffect(() => {
     if (msgsRef.current) msgsRef.current.scrollTop = msgsRef.current.scrollHeight
   }, [displayedMsgs, loading])
@@ -198,7 +208,29 @@ export function ChatPage() {
   const complete = useMutation({
     mutationFn: () => conversationApi.complete(checkInId!),
     onSuccess: () => setCompleted(true),
-    onError: (err: any) => toast.error(err?.response?.data?.message ?? 'Could not complete this session.'),
+    /**
+     * ALREADY COMPLETE IS NOT A FAILURE.
+     *
+     * The engine can close a session itself, on the person's last answer. When it
+     * does, the record is written and the check-in is COMPLETED before they press
+     * anything - and this button then asks the server to complete it a second
+     * time, which correctly refuses with "This check-in is already complete".
+     *
+     * Treating that refusal as an error left `completed` false, so the confirm
+     * panel stayed up with a live "Finish check-in" button that could never
+     * succeed. The person's account was safely on record and the screen showed
+     * them an unfinished session for as long as they were willing to wait. Four
+     * separate thirteen-session runs died here, and the first read of it was that
+     * the answers had been lost - they had not, the save had already happened.
+     *
+     * The end state the person asked for is the end state they are in, so this
+     * agrees with the server rather than arguing with it.
+     */
+    onError: (err: any) => {
+      const message: string = err?.response?.data?.message ?? ''
+      if (/already complete/i.test(message)) { setCompleted(true); return }
+      toast.error(message || 'Could not complete this session.')
+    },
   })
 
   const uploadDoc = useMutation({
@@ -279,7 +311,43 @@ export function ChatPage() {
         } catch { /* no transcript yet or fetch failed - fall through to open() */ }
         if (!cancelled) openSession.mutate()
       }, jitter)
-      return () => { cancelled = true; clearTimeout(t); openedRef.current = false }
+
+      /**
+       * A WATCHDOG, because an opening that never arrives is a dead screen.
+       *
+       * `openFailed` is only set when the open request comes BACK with an error.
+       * If it never returns - or never fires at all, because the transcript fetch
+       * ahead of it hangs - then nothing sets it: no message, no "Try again", no
+       * composer. The person sits in front of an empty check-in with nothing on
+       * screen suggesting anything is wrong and no way forward but a reload.
+       *
+       * Seen live at sessions 5 and 9 of a thirteen-session ground: the check-in
+       * NOT_STARTED, no turns, no error logged anywhere, blank indefinitely.
+       *
+       * Forty-five seconds is deliberately generous - the opening question is a
+       * real model call and twenty seconds is normal - but past that, saying so
+       * and offering the retry beats waiting in silence.
+       */
+      const watchdog = setTimeout(() => {
+        if (cancelled || hasOpenedRef.current) return
+        setOpenFailed(true)
+        /**
+         * Reset the mutation too, or the retry is offered and unusable.
+         *
+         * The retry button is disabled while the open request is in flight, and
+         * reads "Opening..." rather than "Try again". A request that never comes
+         * back is in flight forever, so without this the person gets the banner
+         * telling them something went wrong, above a greyed-out button that will
+         * never re-enable. Informed and still stuck.
+         *
+         * Resetting puts the mutation back to idle so the button becomes live.
+         * The original request is not cancelled - if it does eventually land,
+         * onSuccess still opens the session, which is the outcome they wanted.
+         */
+        openSession.reset()
+      }, 45_000)
+
+      return () => { cancelled = true; clearTimeout(t); clearTimeout(watchdog); openedRef.current = false }
     }
   }, [checkInId, opened])
 
@@ -289,7 +357,26 @@ export function ChatPage() {
     if (!checkInId) return
     setLoading(true)
     const aiId = `ai-${Date.now()}`
-    setMsgs(v => [...v, { id: Date.now().toString(), role: 'PERSON', content: message }, { id: aiId, role: 'AI', content: '…' }])
+    /**
+     * The person's own line is echoed locally, before the server has seen it.
+     *
+     * That is right for the chat - it should feel instant - but it means this
+     * message exists on screen whether or not it ever landed. Anything that
+     * COUNTS messages to decide what the person may do next has to know the
+     * difference, so the optimistic echo is marked as such. See the completion
+     * fallback below.
+     */
+    const localId = `local-${Date.now()}`
+    setMsgs(v => [...v, { id: localId, role: 'PERSON', content: message }, { id: aiId, role: 'AI', content: '…' }])
+    /**
+     * Promote the echo once the server has actually answered.
+     *
+     * The reply is the proof: it can only exist if the turn was stored. Until
+     * then the message stays marked local, so nothing that counts landed
+     * answers counts this one.
+     */
+    const acknowledge = () =>
+      setMsgs(v => v.map(m => (m.id === localId ? { ...m, id: `sent-${localId}` } : m)))
     let acc = ''
     let started = false
     streamingRef.current = true
@@ -302,6 +389,7 @@ export function ChatPage() {
           setDisplayedMsgs(v => v.map(m => m.id === aiId ? { ...m, content: acc } : m))
         },
         onDone: (r) => {
+          acknowledge()
           setMsgs(v => v.map(m => m.id === aiId ? { ...m, content: r.reply } : m))
           setDisplayedMsgs(v => v.map(m => m.id === aiId ? { ...m, content: r.reply } : m))
           if (r.sessionComplete) setDone(true)
@@ -317,6 +405,7 @@ export function ChatPage() {
         setMsgs(v => v.filter(m => m.id !== aiId)) // drop the empty AI bubble; keep the person's message
         try {
           const res = await conversationApi.send(checkInId, message)
+          acknowledge()
           setMsgs(v => v.concat({ id: `ai-${Date.now()}`, role: 'AI', content: res.reply }))
           if (res.sessionComplete) setDone(true)
         } catch {
@@ -386,6 +475,97 @@ export function ChatPage() {
   const privacyLabel = isFinalSession
     ? `Closing session ${sessionNumber} · This is the last word on the record. Take the time to be thorough - what you document here is what the final report weighs.`
     : `Session ${sessionNumber} · Your words are private until you both activate the report.`
+
+  /**
+   * WHAT HAPPENS TO WHAT YOU WRITE, BEFORE YOU ARE ASKED ANYTHING. (G40)
+   *
+   * Not a footer and not only copy. People write differently depending on what
+   * they believe happens next, so this decides the quality of the record itself
+   * - and a one-line "your words are private" under the header is doing that job
+   * badly, because it answers a question nobody asked in the terms they wanted.
+   *
+   * Shown once, on the first session only. Anyone who has already seen it and
+   * checked in is not made to read it again; a promise repeated every week stops
+   * being read and starts being furniture.
+   *
+   * EVERY LINE IS TRUE AND TESTABLE TODAY, which is the whole constraint:
+   *
+   *   Nobody in your organisation can read this. Enforced by the report and
+   *   board read paths, not by policy.
+   *   Our own support tools cannot show it. The platform-admin view excludes
+   *   raw turns, record entries, solo artifacts, lead context notes and the
+   *   report body, and its test poisons the query with all five to prove it.
+   *   Nothing written here trains a model.
+   *
+   * AND WHAT IS DELIBERATELY NOT SAID: "we cannot see your conversations".
+   * Turns are stored unencrypted and transcripts go to Google for processing.
+   * One technical question from a founder or an investor finds that out, and a
+   * privacy claim caught being false costs more than one never made. G41 is the
+   * work that would make the stronger claim true; until it lands, this says the
+   * true version.
+   */
+  const [privacyAcknowledged, setPrivacyAcknowledged] = useState(() => {
+    try { return localStorage.getItem('gw_privacy_seen') === '1' } catch { return false }
+  })
+  /**
+   * AND IT MUST NOT SWALLOW A FAILURE TO OPEN.
+   *
+   * The state this screen appears in - first session, nothing said yet - is
+   * exactly the state a check-in that failed to open is also in. The first
+   * version returned early on both, so somebody whose session never opened sat
+   * looking at a privacy explainer with no error, no "Try again", and no way to
+   * tell that anything was wrong. Caught by the open-watchdog tests, which is
+   * precisely what they were written for.
+   *
+   * An explainer can wait. An error cannot.
+   */
+  const showPrivacyFirst = sessionNumber === 1 && !privacyAcknowledged && msgs.length === 0 && !openFailed
+
+  if (showPrivacyFirst) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
+        <div className="gw-hdr">
+          <div>
+            <div className="gw-logo">{groundLabel || 'Before you start'}</div>
+            <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>Session {sessionNumber}</div>
+          </div>
+        </div>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 20px' }}>
+          <div style={{ maxWidth: 520, width: '100%' }}>
+            <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-text)', margin: '0 0 6px', letterSpacing: '-.02em' }}>What happens to what you write</h1>
+            <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.7, margin: '0 0 18px' }}>Worth thirty seconds before the first question, because it changes what is worth writing.</p>
+
+            <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '16px 18px', marginBottom: 12 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 4 }}>Nobody you work with reads it</div>
+              <p style={{ fontSize: 13.5, color: 'var(--gw-sub)', lineHeight: 1.65, margin: 0 }}>Not your manager, not whoever set this up, not an admin. What they see is the shared report, which is built by comparing everyone's accounts. Your own words about your own work can appear in it. Anything you say about somebody else never does, and it never says who said what about whom.</p>
+            </div>
+
+            <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '16px 18px', marginBottom: 12 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 4 }}>We cannot show it to ourselves either</div>
+              <p style={{ fontSize: 13.5, color: 'var(--gw-sub)', lineHeight: 1.65, margin: 0 }}>When we look at a ground to help with something, we can see whether people checked in and never what they said. That is enforced in the code and tested, not a policy we are asking you to trust.</p>
+            </div>
+
+            <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '16px 18px', marginBottom: 12 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 4 }}>Nothing here trains a model</div>
+              <p style={{ fontSize: 13.5, color: 'var(--gw-sub)', lineHeight: 1.65, margin: 0 }}>Your answers are used to build your ground's record and nothing else.</p>
+            </div>
+
+            <div style={{ background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px', marginBottom: 18 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-sub)', marginBottom: 4 }}>And the part we are not going to dress up</div>
+              <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.65, margin: 0 }}>Your answers are stored on our servers, and they are processed by Google's models to build the record. We are not going to tell you they are unreadable to any human being anywhere, because that would not be true yet.</p>
+            </div>
+
+            <button
+              onClick={() => { try { localStorage.setItem('gw_privacy_seen', '1') } catch { /* private mode: shown again, which is the safe direction */ } setPrivacyAcknowledged(true) }}
+              style={{ width: '100%', padding: '12px 0', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+            >
+              Start my check-in
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
@@ -567,7 +747,16 @@ export function ChatPage() {
               leaving no way to complete. Once there's a real record built,
               offer a manual path - the backend's own readiness gate is the
               actual authority and returns a clear message if it's too early. */}
-          {!done && !completed && !confirmingFinish && opened && msgs.filter(m => m.role === 'PERSON').length >= 3 && (
+          {/* COUNT WHAT LANDED, NOT WHAT WAS TYPED.
+              This counted every PERSON message on screen, including the ones
+              echoed locally on send. So a dropped send inflated the count, this
+              offered "Complete session", and the server then refused it: "a few
+              more exchanges are needed before this check-in can close". The
+              person is invited to finish and immediately turned down.
+              Seen four times in one twelve-session run. Only messages the server
+              has acknowledged are counted now, so the offer appears exactly when
+              the server will honour it. */}
+          {!done && !completed && !confirmingFinish && opened && msgs.filter(m => m.role === 'PERSON' && !m.id.startsWith('local-')).length >= 3 && (
             <div style={{ textAlign: 'center', padding: '6px 0' }}>
               <button
                 onClick={() => setConfirmingFinish(true)}
@@ -647,8 +836,14 @@ export function ChatPage() {
       </div>
 
       {/* Paste text overlay */}
+      {/* zIndex 9100, ABOVE THE FLOATING HELP BUTTON, which is fixed at 8000.
+          These sheets were at 50. At 375px each one asks for text in a box that
+          runs the full width, and the "?" button sat directly on top of its right
+          edge - over a field somebody is being asked to type in. Found the first
+          time any run drove the participant path at a phone width, which is what
+          that was for. */}
       {pasteMode && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)', zIndex: 50, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)', zIndex: 9100, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
           <div style={{ background: 'white', borderRadius: '14px 14px 0 0', padding: '20px 20px 32px', width: '100%', maxWidth: 560 }}>
             <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--gw-border)', margin: '0 auto 16px' }} />
             <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)', marginBottom: 4 }}>📋 Paste text</div>
@@ -682,8 +877,10 @@ export function ChatPage() {
       )}
 
       {/* Doc context overlay */}
+      {/* Same z-index correction as the paste sheet above: both were at 50,
+          under the fixed help button at 8000. */}
       {docContextMode && pendingDoc && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)', zIndex: 50, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)', zIndex: 9100, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
           <div style={{ background: 'white', borderRadius: '14px 14px 0 0', padding: '20px 20px 32px', width: '100%', maxWidth: 560 }}>
             <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--gw-border)', margin: '0 auto 16px' }} />
             <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)', marginBottom: 4 }}>📎 {pendingDoc.name}</div>

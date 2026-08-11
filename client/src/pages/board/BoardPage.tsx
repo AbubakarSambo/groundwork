@@ -258,6 +258,22 @@ export function BoardPage() {
           </>
         )}
 
+        {/* What was agreed at the start, so the rest of the board has something
+            to be read against. This section has been in the DELIVERY family's
+            list since the board was built with nothing behind it - so a lead saw
+            where the work had got to and not what it was meant to be for. It is
+            the only block here that no check-in can revise. */}
+        {has('startingState') && b.startingState && (
+          <>
+            <Sec title="What was agreed at the start" src="set when the ground was opened, before any check-in" />
+            <Card>
+              <Row first>
+                <div style={{ fontSize: 13.5, color: 'var(--gw-dark)', lineHeight: 1.55 }}>{b.startingState}</div>
+              </Row>
+            </Card>
+          </>
+        )}
+
         {has('decisions') && b.decisions && b.decisions.length > 0 && (
           <>
             <Sec title="Decisions needed" src="from divergences and blockers" />
@@ -399,7 +415,7 @@ export function BoardPage() {
                   {b.divergence.items.map((d: any, i: number) => (
                     <Row key={i} first={i === 0}>
                       <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-dark)' }}>
-                        {d.topic ?? d.tag ?? 'A difference between accounts'}
+                        {d.topic ?? d.tag ?? 'Somewhere you see it differently'}
                         <span style={{ marginLeft: 8 }}><Pill tone="warn">differs</Pill></span>
                       </div>
                       {d.text && <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 3 }}>{d.text}</div>}

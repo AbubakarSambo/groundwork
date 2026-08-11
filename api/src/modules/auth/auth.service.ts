@@ -110,7 +110,16 @@ export class AuthService {
     const emailDomain = dto.email.toLowerCase().split('@')[1]?.split('.')[0] ?? 'org';
     const firstName = dto.firstName?.trim() || emailLocal.charAt(0).toUpperCase() + emailLocal.slice(1);
     const lastName = dto.lastName?.trim() || '';
-    const organizationName = dto.organizationName?.trim() || emailDomain.charAt(0).toUpperCase() + emailDomain.slice(1);
+    /**
+     * Same land-grab as in entrySave, in the other signup path: when no org name
+     * was given, this named the organisation after the EMAIL DOMAIN, so
+     * `sahar@meridianhealth.test` created an org literally called "Meridianhealth"
+     * and took that slug - before the address was verified. Falling back to the
+     * person's own name keeps an unverified stranger from claiming a company's
+     * identity. See GW-001.
+     */
+    const organizationName = dto.organizationName?.trim() || `${firstName}'s workspace`;
+    void emailDomain;
 
     const slug = await this.generateUniqueSlug(organizationName);
 
@@ -180,6 +189,72 @@ export class AuthService {
   }
 
   async verifyEmail(dto: VerifyEmailDto): Promise<AuthResponseDto> {
+    /**
+     * A pending signup becomes real here, and nowhere earlier.
+     *
+     * `entrySave` no longer creates anything for a new address - it parks the
+     * whole signup in `pendingSignup` against this token. Opening the link is
+     * the proof that the person owns the mailbox, so this is the first moment
+     * an Organization and a User may exist. See GW-001.
+     *
+     * Checked before `consumeToken`, because there is no EmailVerificationToken
+     * row for a pending signup yet - the token lives on the pending record.
+     */
+    const pending = await this.prisma.pendingSignup.findUnique({ where: { token: dto.token } });
+    if (pending) {
+      if (pending.expiresAt < new Date()) {
+        await this.prisma.pendingSignup.delete({ where: { id: pending.id } }).catch(() => undefined);
+        throw new BadRequestException('This verification link has expired. Please request a new one.');
+      }
+
+      // Someone may have signed up by another route in the meantime.
+      const already = await this.prisma.user.findUnique({ where: { email: pending.email }, include: { organization: true } });
+      if (already) {
+        await this.prisma.pendingSignup.delete({ where: { id: pending.id } }).catch(() => undefined);
+        return this.buildAuthResponse(already as unknown as UserWithOrg);
+      }
+
+      // The slug comes from the organisation NAME, never the email domain, so a
+      // company's namespace cannot be claimed from an address. See GW-001.
+      const orgName = pending.orgName?.trim() || `${pending.firstName}'s workspace`;
+      const slug = await this.generateUniqueSlug(orgName);
+
+      const created = await this.prisma.$transaction(async (tx) => {
+        const org = await tx.organization.create({ data: { name: orgName, slug } });
+        const u = await tx.user.create({
+          data: {
+            organizationId: org.id,
+            email: pending.email,
+            firstName: pending.firstName,
+            lastName: '',
+            role: 'ADMIN',
+            // Verified by construction: this only runs because the link opened.
+            isEmailVerified: true,
+          },
+          include: { organization: true },
+        });
+        if (pending.draftToken) {
+          await tx.entryDraft.create({
+            data: {
+              userId: u.id,
+              draftToken: pending.draftToken,
+              payload: (pending.payload ?? {}) as any,
+              history: (pending.history ?? []) as any,
+            },
+          });
+        }
+        // Connect any check-ins made under this address before the account existed.
+        await tx.groundParticipant.updateMany({
+          where: { email: pending.email, userId: null },
+          data: { userId: u.id },
+        });
+        await tx.pendingSignup.delete({ where: { id: pending.id } });
+        return u;
+      });
+
+      return this.buildAuthResponse(created as unknown as UserWithOrg);
+    }
+
     const tokenRecord = await this.consumeToken(dto.token, TokenType.EMAIL_VERIFICATION, { allowExpiredMessage: 'This verification link has expired. Please request a new one.' });
 
     const { user } = await this.prisma.$transaction(async (tx) => {
@@ -216,29 +291,17 @@ export class AuthService {
     return this.buildAuthResponse(user as unknown as UserWithOrg);
   }
 
-  async resendVerification(dto: ResendVerificationDto): Promise<{ message: string }> {
-    const message = 'If an account with that email exists, a verification email has been sent.';
-    const user = await this.prisma.user.findUnique({ where: { email: dto.email.toLowerCase() } });
-    if (!user || user.isEmailVerified) return { message };
+  /**
+   * resendVerification LIVED HERE AND NOTHING CALLED IT.
+   *
+   * The controller's own comment records why: the resend route was consolidated into
+   * register-magic-link, which mints the same verification token from one place. This
+   * was the method the removed route used to call, left behind by that
+   * consolidation - a fix applied to it would have reached nobody.
+   *
+   * Found by the dead-method rule.
+   */
 
-    const recentToken = await this.prisma.emailVerificationToken.findFirst({
-      where: { userId: user.id, type: TokenType.EMAIL_VERIFICATION, usedAt: null, createdAt: { gte: new Date(Date.now() - 10 * 60 * 1000) } },
-    });
-    if (recentToken) return { message };
-
-    await this.prisma.emailVerificationToken.updateMany({
-      where: { userId: user.id, type: TokenType.EMAIL_VERIFICATION, usedAt: null },
-      data: { usedAt: new Date() },
-    });
-
-    const token = crypto.randomBytes(32).toString('hex');
-    await this.prisma.emailVerificationToken.create({
-      data: { userId: user.id, token, type: TokenType.EMAIL_VERIFICATION, expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) },
-    });
-
-    this.emailService.sendVerificationEmail(user.email, user.firstName, token);
-    return { message };
-  }
 
   async entrySave(
     email: string,
@@ -262,35 +325,57 @@ export class AuthService {
     if (!user) {
       const localPart = lower.split('@')[0].replace(/[._\-+]/g, ' ').trim();
       const firstName = (localPart.charAt(0).toUpperCase() + localPart.slice(1).split(' ')[0]).slice(0, 40) || 'User';
-      const domainBase = lower.split('@')[1]?.split('.')[0] ?? 'workspace';
-      const slug = await this.generateUniqueSlug(domainBase);
-      // If the person already named their organisation, the org is born with
-      // that name - not "Firstname's workspace" (which read as a bug: "where
-      // did my org go?"). Usually the org name arrives later via the draft
-      // PATCH and is applied at commit.
+
+      /**
+       * NOTHING IS CREATED UNTIL THE ADDRESS IS PROVED.
+       *
+       * This branch used to create an Organization and a User with role ADMIN
+       * on the spot, both with `isEmailVerified: false`, plus the verification
+       * token and the EntryDraft. So typing a stranger's work address
+       * provisioned an organisation and an admin account in their name, and the
+       * person whose address it was found out only if they read the mail. The
+       * organisation was also named and slugged from their address without
+       * anybody being asked. GW-001.
+       *
+       * The whole signup now waits in `pendingSignup` - the address, the name,
+       * the org name if one was typed, and the entire anonymous transcript -
+       * keyed to the verification token. `verifyEmail` creates the org, the user
+       * and the draft in one transaction when the link is opened, so an
+       * unopened link leaves no trace anywhere a real person can see.
+       *
+       * Upsert on email: pressing save twice, or coming back a day later,
+       * refreshes the pending record and reissues the link rather than stacking
+       * duplicates or failing on the unique index.
+       */
+      const token = crypto.randomBytes(32).toString('hex');
+      const dt = draft ? crypto.randomBytes(32).toString('hex') : undefined;
       const typedOrgName = typeof draft?.payload?.orgName === 'string' ? draft.payload.orgName.trim().slice(0, 120) : '';
 
-      const result = await this.prisma.$transaction(async (tx) => {
-        const org = await tx.organization.create({ data: { name: typedOrgName || `${firstName}'s workspace`, slug } });
-        const u = await tx.user.create({
-          data: { organizationId: org.id, email: lower, firstName, lastName: '', role: 'ADMIN', isEmailVerified: false },
-        });
-        const token = crypto.randomBytes(32).toString('hex');
-        await tx.emailVerificationToken.create({
-          data: { userId: u.id, token, type: TokenType.EMAIL_VERIFICATION, expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) },
-        });
-        let dt: string | undefined;
-        if (draft) {
-          dt = crypto.randomBytes(32).toString('hex');
-          await tx.entryDraft.create({
-            data: { userId: u.id, draftToken: dt, payload: (draft.payload ?? {}) as any, history: (draft.history ?? []) as any },
-          });
-        }
-        return { user: u, token, dt };
+      await this.prisma.pendingSignup.upsert({
+        where: { email: lower },
+        create: {
+          email: lower,
+          token,
+          firstName,
+          orgName: typedOrgName || null,
+          payload: (draft?.payload ?? {}) as any,
+          history: (draft?.history ?? []) as any,
+          draftToken: dt ?? null,
+          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        },
+        update: {
+          token,
+          firstName,
+          orgName: typedOrgName || null,
+          payload: (draft?.payload ?? {}) as any,
+          history: (draft?.history ?? []) as any,
+          draftToken: dt ?? null,
+          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        },
       });
-      draftToken = result.dt;
+      draftToken = dt;
 
-      await this.emailService.sendMagicLinkEmail(lower, firstName, result.token);
+      await this.emailService.sendMagicLinkEmail(lower, firstName, token);
     } else {
       // Existing user saving a (new) anonymous session: last save wins. The
       // token rotates so only the most recent entry page can update the draft,
@@ -462,9 +547,34 @@ export class AuthService {
     return this.buildAuthResponse(user as unknown as UserWithOrg);
   }
 
-  async findOrCreateGoogleUser(googleUser: { googleId: string; email: string; firstName: string; lastName: string }): Promise<{ token: string; isNewUser: boolean }> {
+  /**
+   * Sign in with Google, and only invent an organisation when there is genuinely
+   * nobody expecting this person.
+   *
+   * There are three ways someone can arrive here and they deserve different
+   * answers:
+   *
+   *   they already have an account   -> sign in; link the googleId if it is new
+   *   they were invited to a ground  -> they belong to the org that invited them.
+   *                                     Creating a private workspace for them
+   *                                     would strand them next to the ground
+   *                                     they were actually asked to join.
+   *   nobody is expecting them       -> a new organisation, and we should ASK
+   *                                     what it is called rather than deciding
+   *
+   * The last case used to be the only one for anybody without an account: a
+   * fresh org named "<FirstName>'s Workspace", with no chance to say otherwise.
+   * That name then appears on every page their whole team sees. `needsOrgName`
+   * is returned so the caller can ask - optionally, because plenty of people
+   * genuinely are a workspace of one, and because someone joining an existing
+   * org should never be asked at all.
+   */
+  async findOrCreateGoogleUser(
+    googleUser: { googleId: string; email: string; firstName: string; lastName: string },
+  ): Promise<{ token: string; isNewUser: boolean; needsOrgName: boolean }> {
     const email = googleUser.email.toLowerCase();
     let isNewUser = false;
+    let needsOrgName = false;
 
     let user = await this.prisma.user.findFirst({ where: { googleId: googleUser.googleId }, include: { organization: true } });
 
@@ -478,6 +588,41 @@ export class AuthService {
         });
       } else {
         isNewUser = true;
+
+        /**
+         * Someone already asked for this person by name.
+         *
+         * An invited participant has a GroundParticipant row carrying their email
+         * and no user yet. If they turn up via Google before clicking the invite,
+         * they belong in the organisation that invited them - the same place
+         * accepting the invite would have put them - not in a workspace of their
+         * own with the ground they were invited to sitting somewhere else.
+         */
+        const invited = await this.prisma.groundParticipant.findFirst({
+          where: { email, userId: null },
+          select: { ground: { select: { organizationId: true } } },
+          orderBy: { createdAt: 'asc' },
+        });
+        if (invited?.ground?.organizationId) {
+          user = await this.prisma.user.create({
+            data: {
+              organizationId: invited.ground.organizationId,
+              email,
+              googleId: googleUser.googleId,
+              firstName: googleUser.firstName,
+              lastName: googleUser.lastName,
+              role: 'MEMBER',
+              isEmailVerified: true,
+            },
+            include: { organization: true },
+          });
+          if (!user.isActive) throw new UnauthorizedException('Account is deactivated');
+          return { token: this.generateToken(user), isNewUser, needsOrgName: false };
+        }
+
+        // Nobody is expecting them. Make an organisation so they have somewhere
+        // to be, and ask what it should be called.
+        needsOrgName = true;
         const orgName = `${googleUser.firstName}'s Workspace`;
         const slug = await this.generateUniqueSlug(orgName);
 
@@ -500,7 +645,7 @@ export class AuthService {
     }
 
     if (!user.isActive) throw new UnauthorizedException('Account is deactivated');
-    return { token: this.generateToken(user), isNewUser };
+    return { token: this.generateToken(user), isNewUser, needsOrgName };
   }
 
   async validateToken(token: string, type: string): Promise<{ valid: boolean; email?: string; firstName?: string }> {

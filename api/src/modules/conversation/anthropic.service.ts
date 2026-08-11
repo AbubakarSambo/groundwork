@@ -295,9 +295,55 @@ export class AnthropicService {
       throw engineUnavailable(err);
     }
 
-    const fnCall = res.candidates?.[0]?.content?.parts?.find((p: any) => p.functionCall);
+    let fnCall = res.candidates?.[0]?.content?.parts?.find((p: any) => p.functionCall);
+
+    /**
+     * ONE RETRY WHEN THE MODEL DOES NOT CALL THE TOOL, AND HERE IS WHAT IT COST
+     * NOT TO HAVE ONE.
+     *
+     * On a live twelve-session run, the CLOSING synthesis - the one that writes
+     * the closing tiers, the end states and closingComplete - failed on exactly
+     * this: the model returned prose instead of calling emit_report. One attempt,
+     * no retry, the listener logged the error, and the ground's report kept its
+     * mid-ground state permanently. Nothing told anybody, and the report looks
+     * finished.
+     *
+     * The tool config is `mode: 'ANY'` with a single allowed name, so a missing
+     * call is not the model disagreeing with the request - it is a transient
+     * failure of the kind a second attempt fixes. Retrying once is the cheapest
+     * honest fix, and it is at the seam rather than at the twelve call sites.
+     *
+     * One retry, not a loop: if the second attempt also comes back as prose,
+     * something about the request is wrong and hammering it would just spend
+     * money on the same answer.
+     */
     if (!fnCall?.functionCall) {
-      this.logger.warn(`extract(): model did not call tool ${tool.name}`);
+      this.logger.warn(`extract(): model did not call tool ${tool.name}. Trying once more.`);
+      try {
+        const again = await this.client.models.generateContent({
+          model: this.model,
+          contents,
+          config: {
+            systemInstruction: systemPrompt,
+            maxOutputTokens: 8192,
+            tools: [{ functionDeclarations: [this.convertTool(tool)] }],
+            toolConfig: {
+              functionCallingConfig: {
+                mode: 'ANY' as any,
+                allowedFunctionNames: [tool.name],
+              },
+            },
+          },
+        });
+        fnCall = again.candidates?.[0]?.content?.parts?.find((p: any) => p.functionCall);
+      } catch (err: any) {
+        this.logger.error(`extract() retry failed: ${err.message}`);
+        this.noteFailure('extract', err);
+      }
+    }
+
+    if (!fnCall?.functionCall) {
+      this.logger.warn(`extract(): model did not call tool ${tool.name} on either attempt`);
       return null;
     }
     // Enum values are passed through untouched - only schema.type is uppercased.

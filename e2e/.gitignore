@@ -1,0 +1,6 @@
+# Run output, not source. Screenshots are read once, while working out why a run
+# failed, and then they are stale - the next run overwrites them. Committing a
+# hundred of them per run buries the diff that matters.
+shots/
+artifacts/
+node_modules/

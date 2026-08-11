@@ -1,3 +1,4 @@
+import { forbiddenNames } from '../reports/guide-sanitiser';
 import { BoardService } from './board.service';
 import {
   LeadershipPattern,
@@ -29,8 +30,28 @@ import { REPORT_SCHEMA, SYNTHESIS_RULES } from '../reports/reports.service';
  * more than one period, and nothing is ever attributed or quoted.
  */
 
+/**
+ * The forbidden-name list these tests run against.
+ *
+ * `buildManagerAlignment` gained a required second parameter when the strip was
+ * hardened to check participant NAMES, not only role labels like "Party A" -
+ * because a first name is the form a leak actually takes, and one real record's
+ * note said "the lead's record" straight through the old rule.
+ *
+ * It is required rather than defaulted in the service on purpose: a caller that
+ * forgot to pass it would silently lose the protection. Supplied here in the test
+ * helper so the cases below, which are about SHAPING and not about names, read as
+ * they did before.
+ */
+const TEST_NAMES = forbiddenNames([
+  { firstName: 'Eric', lastName: 'Mensah', email: 'eric.mensah@meridian.test' },
+]);
+
 function boardOnly() {
-  return new BoardService({} as any) as any;
+  const svc = new BoardService({} as any) as any;
+  const raw = svc.buildManagerAlignment.bind(svc);
+  svc.buildManagerAlignment = (report: any, names: any = TEST_NAMES) => raw(report, names);
+  return svc;
 }
 
 const gap = (over: Record<string, any> = {}) => ({

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { entryApi } from '@/api/entry'
 import { authApi } from '@/api/auth'
 import { useEntryStore } from '@/stores/entry'
@@ -9,6 +9,8 @@ import { VennIcon } from '@/components/gw/VennIcon'
 import { toast } from 'sonner'
 
 const STORAGE_KEY = 'gw_entry_session'
+/** Where the API lives, for the one place we hand the browser away (Google). */
+const API_ORIGIN = import.meta.env.VITE_API_URL ?? ''
 
 interface Turn { role: 'user' | 'assistant'; content: string }
 interface EntrySession {
@@ -236,8 +238,8 @@ export const SITUATION_CARDS = [
   },
   {
     group: 'positive',
-    label: 'A new way of working together',
-    detail: 'Someone new is in the picture: a partner, a manager, a changed team. Say what each of you expects before those assumptions harden.',
+    label: 'A new partner, cofounder, or manager',
+    detail: 'Someone new is sharing the work or taking it over. Each of you says what you expect before those assumptions harden.',
     message: 'We have a new working arrangement starting and want to make sure we are set up well.',
     timelineHint: 'typically 90 days',
     examples: [
@@ -246,9 +248,9 @@ export const SITUATION_CARDS = [
     ],
   },
   {
-    group: 'positive',
+    group: 'planning',
     label: 'Setting shared goals',
-    detail: "A team agreeing on what matters most this period, so effort doesn't spread in different directions.",
+    detail: "A team agreeing on what matters most this period, each person's own view, not just the room's consensus, so effort doesn't spread in different directions.",
     message: 'We are setting shared goals for this period and I want everyone aligned on what matters most.',
     timelineHint: 'typically 90 days',
     examples: [
@@ -257,7 +259,7 @@ export const SITUATION_CARDS = [
     ],
   },
   {
-    group: 'positive',
+    group: 'planning',
     label: 'A big decision',
     detail: "A group making a real choice, each person's honest read before you commit.",
     message: 'We are making a big decision and I want each person\'s honest read before we commit.',
@@ -270,11 +272,11 @@ export const SITUATION_CARDS = [
   {
     group: 'negative',
     label: "Someone's work is off track",
-    detail: 'Deadlines or expectations are slipping, and you want the exact gap named before the conversation.',
+    detail: "Deadlines or expectations are slipping. Both of you give your honest account of what's happening, so the conversation starts from the same facts, not one side's version.",
     message: 'A team member is not delivering and I need to address it. I want to make sure I have the full picture before we talk.',
     timelineHint: 'typically 90 days',
     examples: [
-      'A senior hire is not delivering what they were brought in to do.',
+      "A senior hire's delivery is slipping and you both want the real picture before the conversation.",
       'Deadlines keep slipping and you want the specific gap named before the conversation.',
       'You are putting someone on a formal improvement plan and want both sides on the concern and what good looks like.',
     ],
@@ -293,14 +295,140 @@ export const SITUATION_CARDS = [
   {
     group: 'negative',
     label: 'You and someone see it differently',
-    detail: 'Close the gap before it grows. Each of you gives your honest read first.',
+    detail: 'From working off different priorities to a real rift between partners. Each of you gives your honest read first, so you start from the same picture instead of resentment, and close the gap before it grows.',
     message: 'I need to realign with a team member. I think we see the current situation differently and want to get both our accounts on record.',
     timelineHint: 'typically 60 days',
     examples: [
       'Priorities shifted and you two are working off different ideas of what matters now.',
-      'You and a co-founder or partner see contributions or direction differently and want both accounts first.',
+      "You and your cofounder are quietly at odds over who's carrying more, and neither of you has said it.",
     ],
   },
+
+  // ------------------------------------------------------------------
+  // The situations that were reachable only AFTER signing in.
+  //
+  // /grounds/new has carried all eighteen scenario cards for a while; this
+  // picker carried eight. Ten situations - including both cohort cards - were
+  // invisible to a first-time visitor, who is exactly the person with no
+  // account and no other way in. The two lists are maintained by hand in two
+  // files, which is how they drifted; entry-cards-parity.spec.ts now fails if
+  // they drift again.
+  //
+  // `message` is what ROUTES - it is sent to the model as the person's first
+  // turn. Write it as the person would say it, and never touch it in a copy
+  // pass.
+  // ------------------------------------------------------------------
+  {
+    group: 'positive',
+    label: 'New advisor or board member',
+    detail: 'Pin down what they will actually contribute, and on what terms, so "available" does not stand in for contributing.',
+    message: 'We are bringing on a new advisor or board member and I want to pin down what they will actually contribute and on what terms.',
+    timelineHint: 'typically 90 days',
+    examples: [
+      'An advisor joined months ago and you still could not say what they have contributed.',
+      'A board member you want to agree concrete terms with before the next quarter.',
+    ],
+  },
+  {
+    group: 'positive',
+    label: 'Onboarding several people at once',
+    detail: 'Several people starting the same role at once. Each answers on their own, so you see who is on track and who is stuck.',
+    message: 'We are onboarding a group of people into the same role at the same time and I want to see how each of them is doing without them swaying each other.',
+    timelineHint: 'typically 90 days',
+    examples: [
+      // Visible slot first. A new starter opening this should not meet the word
+      // "probation"; the leader running one still finds the card, and the
+      // example below still names it.
+      'Several people starting the same role and you want to see how each is settling in.',
+      'A cohort of managers hired to run clinics, on a three-month probation.',
+    ],
+  },
+  {
+    group: 'planning',
+    label: 'Workplan and budget',
+    detail: 'Each person builds their own plan and budget, and you see whether it holds up against what is actually available.',
+    message: 'We are setting a workplan and budget and I want each person to build their own and check it holds up against the resources we have.',
+    timelineHint: 'typically 90 days',
+    examples: [
+      'A quarter where every team submits a plan and the numbers have to add up together.',
+      'You suspect two teams have budgeted for the same thing.',
+    ],
+  },
+  {
+    group: 'planning',
+    label: 'Board and leadership strategy',
+    detail: 'Each leader gives their own read before the room debates it, so quiet disagreement shows up now and not after the decision.',
+    message: 'Our leadership team needs to align on strategy and I want each person to give their own read before the room debates it.',
+    timelineHint: 'typically two check-ins',
+    examples: [
+      'An offsite where you want the real positions before the discussion converges.',
+      'A leadership team that nods in the room and disagrees afterwards.',
+    ],
+  },
+  {
+    group: 'recurring',
+    label: 'A regular read on live work',
+    detail: 'A short, repeatable read from each person on what is moving, what is stuck, and what has changed since last time.',
+    message: 'I want a quick recurring check-in with my team on what is moving, what is stuck and what has changed.',
+    timelineHint: 'typically ongoing',
+    examples: [
+      'A weekly pulse across a delivery team instead of a status meeting.',
+      'You want the same few questions answered honestly every week.',
+    ],
+  },
+  {
+    group: 'recurring',
+    label: 'Many people in the same role',
+    detail: 'Field officers, branch managers, franchisees. Each answers on their own, so you see the pattern rather than the loudest voice.',
+    message: 'I have a group of people in the same role and I want an ongoing read from each of them separately so I can see the pattern of who is on track and who is stuck.',
+    timelineHint: 'typically ongoing',
+    examples: [
+      'Eight field officers doing the same job in different places.',
+      'A cohort where you need to know who is struggling before it shows in the numbers.',
+    ],
+  },
+  {
+    group: 'person',
+    label: 'Raise, promotion, or recognition',
+    detail: 'The person builds the evidence behind the ask and the decision maker reads the same record, so both start from the same picture.',
+    message: 'Someone is asking for a raise or promotion and I want us both working from the same evidence before the conversation.',
+    timelineHint: 'typically one check-in',
+    examples: [
+      'Someone has asked for a raise and you want their case in writing first.',
+      'You are deciding a promotion and want the record, not just your impression.',
+    ],
+  },
+  {
+    group: 'person',
+    label: 'Contract or renewal',
+    detail: 'Both sides give an honest account of how the term actually went and what a fair next one looks like.',
+    message: 'A contract is coming up for renewal and I want both sides to give an honest account of how the term went before we agree the next one.',
+    timelineHint: 'typically two weeks',
+    examples: [
+      'A contractor whose term is ending and both of you want an honest account of how it went.',
+      'A renewal where you and they would describe the last year differently.',
+    ],
+  },
+  {
+    group: 'negative',
+    label: 'A shock just hit',
+    detail: "Something jarring just happened. Get everyone's honest read of where things stand before anyone decides anything.",
+    message: 'Something has just happened that we did not expect and I want everyone\'s honest read of where things actually stand before we decide anything.',
+    timelineHint: 'typically one check-in',
+    examples: [
+      'A client pulled out overnight and everyone has a different account of why.',
+      'A sudden departure or loss where you need the real picture fast.',
+    ],
+  },
+]
+
+/** The picker's groups, in display order. */
+export const SITUATION_GROUPS: { key: string; heading: string }[] = [
+  { key: 'positive',  heading: 'Starting something' },
+  { key: 'planning',  heading: 'Goals, plans and decisions' },
+  { key: 'recurring', heading: 'Keeping a regular read' },
+  { key: 'person',    heading: 'A decision about someone' },
+  { key: 'negative',  heading: 'When something needs addressing' },
 ]
 
 // Quick actions shown after the check-in starts
@@ -311,6 +439,35 @@ const QUICK_ACTIONS = [
   { label: 'Review my goals', msg: 'Review the goals I set at the start of this ground and tell me where I stand against each one.' },
   { label: 'Cross-reference', msg: 'Cross-reference what I have shared with what you know about how the other party sees this situation.' },
 ]
+
+/**
+ * A ground's name when nobody typed one.
+ *
+ * The fallback used to be the literal string "My first ground". That is not an
+ * internal placeholder: it becomes the subject line the lead receives - "Sahar
+ * asked you to lead a ground: My first ground" - which tells them nothing about
+ * what they are being asked to lead. Every second ground would carry the same
+ * name, so two invitations are indistinguishable in an inbox. GW-010.
+ *
+ * Everything needed for a real name was already said in the conversation, so we
+ * use it: the classified scenario if the engine reached one, otherwise the first
+ * thing the person typed, trimmed to something an inbox can show.
+ */
+export function fallbackGroundName(classifiedScenario?: string, firstDescription?: string): string {
+  const fromScenario = (classifiedScenario ?? '')
+    .trim()
+    .replace(/_/g, ' ')
+    .toLowerCase()
+    .replace(/^\w/, (c) => c.toUpperCase())
+  if (fromScenario) return fromScenario
+
+  const said = (firstDescription ?? '').trim().replace(/\s+/g, ' ')
+  if (said) {
+    const clipped = said.length > 60 ? said.slice(0, 57).trimEnd() + '...' : said
+    return clipped.replace(/^\w/, (c) => c.toUpperCase())
+  }
+  return 'Untitled ground'
+}
 
 export function EntryChatPage() {
   const [params] = useSearchParams()
@@ -422,6 +579,29 @@ export function EntryChatPage() {
   const [checkInBy, setCheckInBy] = useState('')
   const [lastCheckInBy, setLastCheckInBy] = useState('')
   const [cadence, setCadence] = useState<'DAILY' | 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'ONE_TIME' | 'SEQUENTIAL'>('FORTNIGHTLY')
+  /**
+   * Did anyone actually choose this rhythm?
+   *
+   * The picker showed FORTNIGHTLY already selected whether or not the person had
+   * ever mentioned a cadence, so a value nobody had chosen was indistinguishable
+   * from one they had. It decides the length of the whole ground - ninety days
+   * weekly is twelve check-ins, fortnightly is six - and it was being settled by
+   * a useState default that read as a decision.
+   *
+   * This does not change what the ground gets if they say nothing. It changes
+   * whether the screen claims they picked it.
+   */
+  const [cadenceChosen, setCadenceChosen] = useState(false)
+
+  /**
+   * Does this deployment have Google credentials? Only the server knows, and a
+   * button shown without them sends people to Google's own error page.
+   */
+  const { data: authMethods } = useQuery({
+    queryKey: ['auth-methods'],
+    queryFn: () => authApi.methods(),
+    staleTime: 5 * 60 * 1000,
+  })
   const [cadenceAnchorDay, setCadenceAnchorDay] = useState<number | null>(null) // 0=Sun..6=Sat for "every Monday"
   const [bulkInviteMode, setBulkInviteMode] = useState(false)
   const [bulkInviteText, setBulkInviteText] = useState('')
@@ -733,6 +913,32 @@ export function EntryChatPage() {
           ...(res.extracted.goals ? { goals: res.extracted.goals! } : {}),
           ...(res.extracted.brief !== undefined ? { brief: res.extracted.brief! } : {}),
         }))
+
+        /**
+         * Use the rhythm and length they actually said.
+         *
+         * `cadence` was a useState('FORTNIGHTLY') that nothing ever updated, so
+         * someone who said "90 days, weekly check-ins" got a FORTNIGHTLY ground -
+         * about six sessions instead of twelve. Their words were captured
+         * correctly in the brief and then dropped on the way to the enum, which
+         * made it a mapping failure rather than a comprehension one. GW-017.
+         *
+         * Only applied when the extraction actually found something: the prompt
+         * is told never to guess, so an absent field means they did not say, and
+         * the existing default stands rather than being overwritten with a
+         * fabricated one.
+         *
+         * This also gives the header a real number to show instead of the
+         * placeholder that read "1/1 sessions" (GW-005).
+         */
+        if (res.extracted.cadence) { setCadence(res.extracted.cadence); setCadenceChosen(true) }
+        if (res.extracted.timelineDays && res.extracted.timelineDays > 0) {
+          const days = res.extracted.timelineDays
+          const c = res.extracted.cadence ?? cadence
+          const perSession = c === 'DAILY' ? 1 : c === 'WEEKLY' ? 7 : c === 'FORTNIGHTLY' ? 14 : c === 'MONTHLY' ? 30 : 0
+          if (perSession > 0) setSessions(Math.max(1, Math.round(days / perSession)))
+          else if (c === 'ONE_TIME') setSessions(1)
+        }
         // Background classify intent when we have initial
         if (res.extracted.initial) {
           entryApi.classifyIntent(res.extracted.initial, res.extracted.mode).then(r => {
@@ -791,20 +997,40 @@ export function EntryChatPage() {
     sendOnboarding(composed)
   }
 
-  // Kick off the AI onboarding with the intro message on mount (if onboarding history is empty)
+  /**
+   * Kick off the onboarding with the intro - WITHOUT clobbering a restored one.
+   *
+   * This effect depends on `phase`, and the restore path sets `phase` to
+   * 'onboarding'. So on a refresh it fired with a stale `onboardingHistory.length`
+   * of 0, from the render before the restore applied, and overwrote the restored
+   * conversation with the single intro turn.
+   *
+   * The visible result was the bug in GW-003: refresh mid-conversation and the
+   * seventeen-card picker comes back (it renders when the history has exactly one
+   * turn), the conversation is gone from the screen, and there is no input to
+   * continue in - while all the turns are still sitting in localStorage. Someone
+   * who refreshes, or returns to the tab, starts over.
+   *
+   * The functional update is the fix: it reads the CURRENT history rather than the
+   * one captured when the effect was created, so it cannot overwrite anything that
+   * is already there. The early return above is kept as a cheap first check, but it
+   * is no longer what makes this safe.
+   */
   useEffect(() => {
-    if (phase !== 'onboarding' || onboardingHistory.length > 0) return
-    const INTRO = `What brings you here? Pick the situation that fits or describe it below.`
+    if (phase !== 'onboarding') return
+    const INTRO = `What brings you here? Scroll for the full list of situations, pick the one that fits, or describe your own at the bottom.`
     // If URL params pre-populate, inject as first user message
     if (urlInitial) {
-      const preloadedHistory: Turn[] = [
-        { role: 'assistant', content: INTRO },
-        { role: 'user', content: urlInitial },
-      ]
-      setOnboardingHistory(preloadedHistory)
-      sendOnboarding(urlInitial)
+      setOnboardingHistory(prev => {
+        if (prev.length > 0) return prev
+        sendOnboarding(urlInitial)
+        return [
+          { role: 'assistant', content: INTRO },
+          { role: 'user', content: urlInitial },
+        ]
+      })
     } else {
-      setOnboardingHistory([{ role: 'assistant', content: INTRO }])
+      setOnboardingHistory(prev => (prev.length > 0 ? prev : [{ role: 'assistant', content: INTRO }]))
     }
   }, [phase])
 
@@ -880,24 +1106,17 @@ export function EntryChatPage() {
     sendMut.mutate([...history, userTurn])
   }
 
-  async function handleSave() {
-    const trimmed = email.trim()
-    if (!trimmed || !trimmed.includes('@')) { setEmailError('Please enter a valid email address.'); return }
-    // NOTE: a hard "set a date first" gate used to live here, but the date
-    // field only renders AFTER the email is sent (the admin section below is
-    // emailSent-gated) - so the gate deadlocked every anonymous save. The
-    // start date is optional at commit (dto.checkInBy is optional) and can be
-    // set in the admin section once it appears.
-    setEmailError('')
-    // Build the commit payload BEFORE calling entry-save: the same request
-    // that registers the email also stores a SERVER-SIDE DRAFT of the session
-    // (this payload + the transcript). Giving the email is the ISSUE-17
-    // consent moment - nothing is persisted server-side before it. The draft
-    // is what makes the post-verification commit work no matter which browser
-    // opens the magic link; the localStorage copies below are only the
-    // same-browser mirror (and the legacy path for old links).
-    const commitPayload = {
-        groundLabel: groundName || scenario || 'My first ground',
+  /**
+   * The ground, as it will be created - built once and used by both ways out.
+   *
+   * There are two now: the emailed link, and Google. Google skips the email
+   * round trip entirely (the address is already verified by Google), so the same
+   * payload has to be reachable from a click that leaves the page immediately.
+   * Duplicating it would guarantee the two paths drift.
+   */
+  function buildCommitPayload() {
+    return {
+        groundLabel: groundName || scenario || fallbackGroundName(onboardingSelections.classifiedScenario, onboardingSelections.initial),
         orgName: orgName.trim() || undefined,
         // Prefer the AI-classified scenario; fall back to mode key, then URL param.
         scenario: onboardingSelections.classifiedScenario || onboardingSelections.mode || scenario || undefined,
@@ -924,6 +1143,44 @@ export function EntryChatPage() {
             }
           : {}),
       }
+  }
+
+
+  /**
+   * Hand the browser to Google, carrying the ground with it.
+   *
+   * The payload and transcript go into localStorage first because the page is
+   * about to be replaced by Google's. Coming back, GoogleCallbackPage finds them
+   * and commits - same browser, so nothing needs to survive on the server, and
+   * nothing is persisted anywhere until the person has actually signed in.
+   */
+  function continueWithGoogle() {
+    try {
+      localStorage.setItem('gw_entry_pending_commit', JSON.stringify({
+        payload: buildCommitPayload(),
+        history,
+      }))
+    } catch { /* storage full or blocked - the sign-in still works, the ground is re-creatable */ }
+    window.location.href = `${API_ORIGIN}/api/v1/auth/google`
+  }
+
+  async function handleSave() {
+    const trimmed = email.trim()
+    if (!trimmed || !trimmed.includes('@')) { setEmailError('Please enter a valid email address.'); return }
+    // NOTE: a hard "set a date first" gate used to live here, but the date
+    // field only renders AFTER the email is sent (the admin section below is
+    // emailSent-gated) - so the gate deadlocked every anonymous save. The
+    // start date is optional at commit (dto.checkInBy is optional) and can be
+    // set in the admin section once it appears.
+    setEmailError('')
+    // Build the commit payload BEFORE calling entry-save: the same request
+    // that registers the email also stores a SERVER-SIDE DRAFT of the session
+    // (this payload + the transcript). Giving the email is the ISSUE-17
+    // consent moment - nothing is persisted server-side before it. The draft
+    // is what makes the post-verification commit work no matter which browser
+    // opens the magic link; the localStorage copies below are only the
+    // same-browser mirror (and the legacy path for old links).
+    const commitPayload = buildCommitPayload()
       try {
       const res = await authApi.entrySave(trimmed, { payload: commitPayload, history })
       setEmailSent(true)
@@ -945,7 +1202,7 @@ export function EntryChatPage() {
     if (!emailSent || !draftToken) return
     const t = setTimeout(() => {
       const patch = {
-        groundLabel: groundName || scenario || 'My first ground',
+        groundLabel: groundName || scenario || fallbackGroundName(onboardingSelections.classifiedScenario, onboardingSelections.initial),
         orgName: orgName.trim() || undefined,
         cadence,
         cadenceAnchorDay: (cadence === 'WEEKLY' || cadence === 'FORTNIGHTLY' || cadence === 'MONTHLY') && cadenceAnchorDay != null ? cadenceAnchorDay : undefined,
@@ -1111,7 +1368,11 @@ export function EntryChatPage() {
                 </>
               ) : (
                 <button onClick={() => { setRenameInput(''); setRenamingGround(true) }} style={{ background: 'none', border: '1px dashed var(--gw-border)', borderRadius: 5, color: 'var(--gw-sub)', cursor: 'pointer', fontSize: 12, padding: '2px 10px', fontFamily: 'inherit', fontWeight: 500 }}>
-                  Name this ground ✎
+                  {/* "Name this ground" used the product's own word for a thing
+                      the reader has not met yet - on the first screen a stranger
+                      sees, before anything explains what a ground is. Judged
+                      against the weakest reader, as briefed. GW-007. */}
+                  Give this a name ✎
                 </button>
               )}
             </div>
@@ -1156,8 +1417,25 @@ export function EntryChatPage() {
               style={{ background: 'none', border: '1px solid var(--gw-border)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit' }}
               title="Edit number of sessions"
             >
-              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-text)' }}>1/{sessions}</span>
-              <span style={{ fontSize: 10, color: 'var(--gw-sub)', marginLeft: 4 }}>sessions</span>
+              {/*
+                This read "1/{sessions}" - so during setup, before anyone has
+                checked in, it said "1/1 sessions". A user who had just told the
+                engine "90 day period, weekly check-ins" saw a header claiming
+                one. Two separate problems in one label: the "1/" prefix implies
+                a session in progress when none has happened, and the total is
+                whatever this control was last set to rather than anything the
+                conversation said. GW-005.
+
+                The prefix is gone and the number is labelled as the plan, which
+                is what it actually is - an editable estimate. The engine does not
+                yet extract cadence from the conversation (the /entry/onboard
+                response carries no session or duration field), so the number
+                still has to be set here rather than inferred.
+              */}
+              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-text)' }}>{sessions}</span>
+              <span style={{ fontSize: 10, color: 'var(--gw-sub)', marginLeft: 4 }}>
+                {sessions === 1 ? 'session planned' : 'sessions planned'}
+              </span>
             </button>
           )}
         </div>
@@ -1215,7 +1493,11 @@ export function EntryChatPage() {
       {showSessionsUpgrade && (
         <div style={{ background: 'var(--gw-blue-bg)', borderBottom: '1px solid var(--gw-blue-b)', padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
           <div style={{ flex: 1, fontSize: 13, color: 'var(--gw-navy)', lineHeight: 1.5 }}>
-            <strong>{sessions} sessions</strong> needs an account. First session is free. Additional sessions are $5 each. Save your session below to get set up.
+            {/* There is no per-session billing. The old copy told a brand-new
+                person "additional sessions are $5 each" at the moment they were
+                deciding whether to start - and it was not even true: their
+                first ground is free with unlimited sessions. */}
+            <strong>{sessions} sessions</strong> needs an account, and it is free. Save your session below to get set up.
           </div>
           <button onClick={() => { setShowSessionsUpgrade(false); setShowSave(true) }}
             style={{ flexShrink: 0, background: 'var(--gw-navy)', color: 'white', border: 'none', borderRadius: 7, padding: '7px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
@@ -1235,7 +1517,7 @@ export function EntryChatPage() {
             {onboardingHistory.length <= 1 && (
               <div style={{ background: 'var(--gw-blue-bg)', borderBottom: '1px solid var(--gw-blue-b)', padding: '12px 20px', flexShrink: 0 }}>
                 <div style={{ maxWidth: 680, margin: '0 auto' }}>
-                  <h1 style={{ fontSize: 15, fontWeight: 800, color: 'var(--gw-navy)', margin: '0 0 3px', letterSpacing: '-.01em' }}>Set up your Groundwork</h1>
+                  <h1 style={{ fontSize: 15, fontWeight: 800, color: 'var(--gw-navy)', margin: '0 0 3px', letterSpacing: '-.01em' }}>Set this up</h1>
                   <div style={{ fontSize: 13, color: 'var(--gw-navy)', lineHeight: 1.6 }}>
                     Answer a few questions about the situation. You get a private summary now; a shared report follows once the other people check in.
                   </div>
@@ -1273,88 +1555,101 @@ export function EntryChatPage() {
               {/* Situation cards - shown only before user has sent first message */}
               {onboardingHistory.length === 1 && !onboardingLoading && !pickedSituation && (
                 <div style={{ alignSelf: 'flex-start', width: '100%' }}>
-                  <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginBottom: 4, fontWeight: 500 }}>Starting something</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(235px, 1fr))', gap: 5, marginBottom: 8 }}>
-                    {SITUATION_CARDS.filter(c => c.group === 'positive').map(card => (
-                      <button
-                        key={card.label}
-                        onClick={() => { setPickedSituation(card.label); sendOnboarding(card.message) }}
-                        style={{
-                          textAlign: 'left', padding: '8px 11px', borderRadius: 10,
-                          border: '1px solid var(--gw-border)', background: 'white',
-                          cursor: 'pointer', fontFamily: 'inherit',
-                        }}
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 6, marginBottom: 1 }}>
-                          <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--gw-text)' }}>{card.label}</div>
-                          {card.timelineHint && (
-                            // Inline with the label, not a separate line - suite_l's
-                            // above-the-fold check at 1280x720 failed when this was
-                            // its own row (the extra height pushed the freeform card
-                            // below the fold). No added vertical footprint this way.
-                            <div style={{ fontSize: 9.5, color: 'var(--gw-muted)', fontStyle: 'italic', whiteSpace: 'nowrap', flexShrink: 0 }}>{card.timelineHint}</div>
-                          )}
-                        </div>
-                        <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', lineHeight: 1.4 }}>{card.detail}</div>
-                        {card.examples && card.examples.length > 0 && (
-                          <div style={{ marginTop: 3 }}>
-                            {card.examples.map((ex, i) => (
-                              // one visual line per recognizer keeps every card
-                              // above the fold; the full text stays in title
-                              <div key={i} title={`e.g. ${ex}`} style={{ fontSize: 10.5, color: 'var(--gw-muted)', lineHeight: 1.45, display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>e.g. {ex}</div>
-                            ))}
-                          </div>
-                        )}
-                      </button>
-                    ))}
+                  {/* Seventeen situations will not fit above the fold at a
+                      laptop height - measured: even stripping the descriptions
+                      leaves 152px over, so the old "everything visible at once"
+                      rule is unreachable rather than merely expensive. The
+                      descriptions stay, because recognising your own situation
+                      matters MORE as the list gets longer. What was missing is
+                      any signal that the first screen is not the whole set. */}
+                  <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 8 }}>
+                    {SITUATION_CARDS.length} situations, grouped. Scroll for the rest, or{' '}
+                    <button
+                      onClick={() => setPickedSituation('other')}
+                      style={{ font: 'inherit', fontSize: 11, color: 'var(--gw-navy)', background: 'none', border: 'none', padding: 0, textDecoration: 'underline', cursor: 'pointer' }}
+                    >describe your own</button>.
                   </div>
-                  <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginBottom: 5, fontWeight: 500 }}>When something needs addressing</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(235px, 1fr))', gap: 6 }}>
-                    {SITUATION_CARDS.filter(c => c.group === 'negative').map(card => (
-                      <button
-                        key={card.label}
-                        onClick={() => { setPickedSituation(card.label); sendOnboarding(card.message) }}
-                        style={{
-                          textAlign: 'left', padding: '8px 11px', borderRadius: 10,
-                          border: '1px solid var(--gw-border)', background: 'white',
-                          cursor: 'pointer', fontFamily: 'inherit',
-                        }}
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 6, marginBottom: 1 }}>
-                          <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--gw-text)' }}>{card.label}</div>
-                          {card.timelineHint && (
-                            // Inline with the label, not a separate line - suite_l's
-                            // above-the-fold check at 1280x720 failed when this was
-                            // its own row (the extra height pushed the freeform card
-                            // below the fold). No added vertical footprint this way.
-                            <div style={{ fontSize: 9.5, color: 'var(--gw-muted)', fontStyle: 'italic', whiteSpace: 'nowrap', flexShrink: 0 }}>{card.timelineHint}</div>
-                          )}
+
+                  {/* One block per group, driven by SITUATION_GROUPS. This was
+                      two hand-copied sixty-line blocks differing only by their
+                      filter, which is how this picker fell eight cards behind
+                      /grounds/new without anyone noticing. */}
+                  {SITUATION_GROUPS.map((group, gi) => {
+                    const cards = SITUATION_CARDS.filter(c => c.group === group.key)
+                    if (!cards.length) return null
+                    const last = gi === SITUATION_GROUPS.length - 1
+                    return (
+                      <div key={group.key}>
+                        <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginBottom: 4, fontWeight: 500 }}>{group.heading}</div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(235px, 1fr))', gap: 5, marginBottom: last ? 0 : 8 }}>
+                          {cards.map(card => (
+                            <button
+                              key={card.label}
+                              onClick={() => { setPickedSituation(card.label); sendOnboarding(card.message) }}
+                              style={{
+                                textAlign: 'left', padding: '8px 11px', borderRadius: 10,
+                                border: '1px solid var(--gw-border)', background: 'white',
+                                cursor: 'pointer', fontFamily: 'inherit',
+                              }}
+                            >
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 6, marginBottom: 1 }}>
+                                <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--gw-text)' }}>{card.label}</div>
+                                {card.timelineHint && (
+                                  <div style={{ fontSize: 9.5, color: 'var(--gw-muted)', fontStyle: 'italic', whiteSpace: 'nowrap', flexShrink: 0 }}>{card.timelineHint}</div>
+                                )}
+                              </div>
+                              <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', lineHeight: 1.4 }}>{card.detail}</div>
+                              {card.examples && card.examples.length > 0 && (
+                                <div style={{ marginTop: 3 }}>
+                                  {/* One visual line per recognizer; the full text
+                                      stays in the title attribute. With seventeen
+                                      cards this is what keeps the picker scannable. */}
+                                  <div title={card.examples.map(e => `e.g. ${e}`).join('\n')} style={{ fontSize: 10.5, color: 'var(--gw-muted)', lineHeight: 1.45, display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>e.g. {card.examples[0]}</div>
+                                </div>
+                              )}
+                            </button>
+                          ))}
                         </div>
-                        <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', lineHeight: 1.4 }}>{card.detail}</div>
-                        {card.examples && card.examples.length > 0 && (
-                          <div style={{ marginTop: 3 }}>
-                            {card.examples.map((ex, i) => (
-                              // one visual line per recognizer keeps every card
-                              // above the fold; the full text stays in title
-                              <div key={i} title={`e.g. ${ex}`} style={{ fontSize: 10.5, color: 'var(--gw-muted)', lineHeight: 1.45, display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>e.g. {ex}</div>
-                            ))}
-                          </div>
-                        )}
-                      </button>
-                    ))}
-                    {/* The describe-your-own option lives IN the grid: it
-                        fills the empty last-row slot and keeps the whole
-                        picker above the fold at laptop heights (suite L). */}
+                      </div>
+                    )
+                  })}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(235px, 1fr))', gap: 6 }}>
+                    {/* The describe-your-own option lives IN the grid, as a
+                        real choice.
+                        It used to be dashed-bordered, transparent, and greyed:
+                        the visual language of a DISABLED control, sat among
+                        white solid-bordered cards. It has always worked when
+                        clicked, but nothing said so - and this is the way in
+                        for anyone whose situation is not on the list, so it is
+                        the last card that should look switched off. Solid
+                        border and full-strength label now, like every other
+                        card; the tinted background is the only thing marking it
+                        as the catch-all rather than a situation of its own. */}
+                    {/* STILL HARD TO SEE, BECAUSE LOOKING LIKE THE OTHERS IS THE
+                        PROBLEM. The last fix made it look like every other card,
+                        which cured it reading as disabled and left it eighteenth
+                        in a scrolling list of near-identical tiles. Anyone whose
+                        situation is not on the list has to get all the way to the
+                        bottom and then notice that one of the tiles is different
+                        in kind rather than in topic.
+
+                        So it stops being a tile. Full width, an accent edge, an
+                        arrow, and a line that speaks to the person who has just
+                        read seventeen things and recognised none of them. */}
                     <button
                       onClick={() => setPickedSituation('other')}
                       style={{
-                        textAlign: 'left', padding: '8px 11px', borderRadius: 10,
-                        border: '1px dashed var(--gw-border)', background: 'transparent',
-                        cursor: 'pointer', fontFamily: 'inherit',
+                        gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: 12,
+                        textAlign: 'left', padding: '14px 16px', borderRadius: 10,
+                        border: '1.5px solid var(--gw-navy)', background: 'white',
+                        cursor: 'pointer', fontFamily: 'inherit', marginTop: 4,
                       }}
                     >
-                      <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--gw-sub)', marginBottom: 1 }}>My situation is different - I will describe it</div>
-                      <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.4 }}>Tell it in your own words and we set up from there.</div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 2 }}>None of these? Describe your own situation</div>
+                        <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.45 }}>Tell it in your own words. We work out the rest from what you say.</div>
+                      </div>
+                      <span style={{ fontSize: 16, color: 'var(--gw-navy)', flexShrink: 0 }}>&rarr;</span>
                     </button>
                   </div>
                 </div>
@@ -1382,7 +1677,7 @@ export function EntryChatPage() {
                     borderRadius: '4px 16px 16px 16px', padding: '10px 14px', fontSize: 14, lineHeight: 1.65,
                     boxShadow: '0 1px 3px rgba(0,0,0,.06)', marginBottom: 4,
                   }}>
-                    How do you want to run this?
+                    That is the setup done. One more thing before the check-in starts: how do you want to run this?
                   </div>
                   <button
                     onClick={startSelfPath}
@@ -1558,9 +1853,28 @@ export function EntryChatPage() {
               {startCheckin.isPending && (
                 <div style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', padding: 24 }}>Starting your check-in…</div>
               )}
+              {/*
+                W1. THE SEAM BETWEEN SETUP AND THE CHECK-IN.
+                Her run went "Thank you. That gives me what I need." then "How do
+                you want to run this?" then straight into a question of a
+                completely different kind - one that goes on her private record.
+                Nothing said the setup was finished, nothing said a check-in had
+                started, and nothing said this half is the private half. After
+                five setup questions, a person cannot tell that the sixth is a
+                different sort of question unless something says so.
+              */}
+              {!startCheckin.isPending && displayedHistory.length <= 2 && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '2px 12px 10px' }}>
+                  <div style={{ flex: 1, height: 1, background: 'var(--gw-border)' }} />
+                  <span style={{ fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--gw-sub)', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                    Setup done · your check-in starts here
+                  </span>
+                  <div style={{ flex: 1, height: 1, background: 'var(--gw-border)' }} />
+                </div>
+              )}
               {!startCheckin.isPending && displayedHistory.length <= 2 && (
                 <div style={{ fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', padding: '4px 12px 8px', lineHeight: 1.5 }}>
-                  About 10 minutes, a few exchanges (around 3 answers), then you can end the session to get your report.
+                  What you say from here is your own account, and it goes on your private record. About 10 minutes, a few exchanges (around 3 answers), then you can end the session to get your report.
                 </div>
               )}
               {!startCheckin.isPending && displayedHistory.length <= 2 && (
@@ -1811,7 +2125,16 @@ export function EntryChatPage() {
                   ) : (
                     <div style={{ marginTop: 10 }}>
                       <div style={{ fontSize: 12, color: 'rgba(255,255,255,.75)', marginBottom: 6 }}>
-                        What did we get wrong? Say it plainly - we may ask a follow-up before the report updates.
+                        {/*
+                          W8. "We may ask a follow-up" reads like a warning that
+                          something might go wrong, and next to a button marked
+                          "Send correction" it reads as one-shot - which is what
+                          it looked like to Hafsah, on a flow where the follow-up
+                          loop is in fact wired. Saying plainly that this is a
+                          conversation is the difference between "the deadline is
+                          wrong" and a correction the record can act on.
+                        */}
+                        What did we get wrong? Say it plainly. This is a conversation, not a form - we will usually ask one thing back before the report changes, because "the deadline is wrong" does not say what the deadline is.
                       </div>
                       {correctionExchange.length > 0 && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 8 }}>
@@ -1849,7 +2172,7 @@ export function EntryChatPage() {
                           disabled={!correctionText.trim() || correctionLoading || generatingReport}
                           style={{ padding: '7px 14px', borderRadius: 7, background: '#5DCAA5', color: '#0A1628', fontSize: 12, fontWeight: 700, border: 'none', cursor: !correctionText.trim() || correctionLoading || generatingReport ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: !correctionText.trim() || correctionLoading || generatingReport ? 0.6 : 1 }}
                         >
-                          {generatingReport ? 'Redoing your report...' : correctionLoading ? 'Sending...' : correctionExchange.length > 0 ? 'Send' : 'Send correction'}
+                          {generatingReport ? 'Redoing your report...' : correctionLoading ? 'Sending...' : correctionExchange.length > 0 ? 'Send' : 'Start'}
                         </button>
                         {correctionExchange.length > 0 && (
                           <button
@@ -1971,7 +2294,13 @@ export function EntryChatPage() {
                     <div style={{ fontSize: 10, letterSpacing: '.09em', textTransform: 'uppercase', color: '#9B9590', fontWeight: 700, marginBottom: 8 }}>People mentioned</div>
                     <div style={{ border: '1px solid #E2E0DB', borderRadius: 10, padding: '11px 13px', background: '#FAFAF8' }}>
                       <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.6, marginBottom: 10 }}>
-                        These people came up in this check-in. Adding them to the ground gives you a fuller picture.
+                        {/*
+                          W5. TWO PLACES TO ADD PEOPLE, NEITHER SAYING SO.
+                          This list and the invite screen below are the same
+                          queue with two entrances, which nobody could tell from
+                          either one. Both now say which queue they are.
+                        */}
+                        These people came up in this check-in. Adding one puts them on the same invite list as the screen below, so you will not send twice.
                       </div>
                       {sessionReport.mentionedPeople.map((p, i) => {
                         const key = `men-${i}-${p.name}`
@@ -2008,6 +2337,34 @@ export function EntryChatPage() {
                   </div>
                 )}
 
+                {/*
+                  W3. ALSO CAME UP, AND DELIBERATELY WITHOUT A BUTTON.
+                  Her report offered "Microchip Solutions" and "Mass General"
+                  with "+ Add them" next to them, and adding a client sends that
+                  client an invitation to give their own account of her team's
+                  performance. The split is made on the server, where it is
+                  arithmetic rather than a prompt hoping to be careful. Nothing
+                  is dropped: both are still named and still described here.
+                */}
+                {sessionReport.alsoCameUp && sessionReport.alsoCameUp.length > 0 && (
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ fontSize: 10, letterSpacing: '.09em', textTransform: 'uppercase', color: '#9B9590', fontWeight: 700, marginBottom: 8 }}>Also came up</div>
+                    <div style={{ border: '1px solid #E2E0DB', borderRadius: 10, padding: '11px 13px', background: '#FAFAF8' }}>
+                      {sessionReport.alsoCameUpNote && (
+                        <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.6, marginBottom: 10 }}>
+                          {sessionReport.alsoCameUpNote}
+                        </div>
+                      )}
+                      {sessionReport.alsoCameUp.map((p, i) => (
+                        <div key={i} style={{ padding: '8px 0', borderTop: i > 0 ? '0.5px solid #E2E0DB' : undefined }}>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: '#1A1916', marginBottom: 2 }}>{p.name}</div>
+                          <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.4 }}>{p.context}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Where this leaves you — the one-glance summary of the detail above */}
                 <div style={{ marginBottom: 16 }}>
                   <div style={{ fontSize: 10, letterSpacing: '.09em', textTransform: 'uppercase', color: '#9B9590', fontWeight: 700, marginBottom: 4 }}>Where this leaves you</div>
@@ -2027,7 +2384,7 @@ export function EntryChatPage() {
                   </div>
                   <div style={{ fontSize: 11.5, color: '#9B9590', marginTop: 8 }}>
                     {uploadedDoc
-                      ? `On record: ${uploadedDoc.name}. No contributor documents yet.`
+                      ? `On record: ${uploadedDoc.name}. Nobody else has attached anything yet.`
                       : 'On record: your account. No documents uploaded yet.'}
                   </div>
                 </div>
@@ -2067,6 +2424,35 @@ export function EntryChatPage() {
                 <div style={{ fontSize: 11.5, color: '#9B9590', lineHeight: 1.5, textAlign: 'center', paddingTop: 8 }}>
                   We'll email you a confirmation link. Your report is saved and your invites go out the moment you open it.
                 </div>
+
+                {/* SIGNING UP WITH GOOGLE, AT THE MOMENT SIGNING UP HAPPENS.
+                    Sign-up in this flow is the last step, not the first - the
+                    whole conversation happens before anyone is asked who they
+                    are. So this belongs beside the email box, not at the top of
+                    the page.
+                    Google has already verified the address, so this path skips
+                    the emailed confirmation entirely: the ground is created on
+                    the way back. Only shown where the deployment actually has
+                    Google configured - the button is otherwise a link to
+                    Google's own error page. */}
+                {authMethods?.google && (
+                  <>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 0 8px' }}>
+                      <div style={{ flex: 1, height: 1, background: '#E2E0DB' }} />
+                      <span style={{ fontSize: 11, color: '#9B9590' }}>or</span>
+                      <div style={{ flex: 1, height: 1, background: '#E2E0DB' }} />
+                    </div>
+                    <button
+                      onClick={continueWithGoogle}
+                      style={{ width: '100%', padding: '11px 16px', borderRadius: 8, background: 'white', color: 'var(--gw-text)', fontSize: 14, fontWeight: 700, border: '1px solid #E2E0DB', cursor: 'pointer', fontFamily: 'inherit' }}
+                    >
+                      Continue with Google
+                    </button>
+                    <div style={{ fontSize: 11.5, color: '#9B9590', lineHeight: 1.5, textAlign: 'center', paddingTop: 8 }}>
+                      No confirmation email needed - your ground is created as soon as you come back.
+                    </div>
+                  </>
+                )}
                 <div onClick={() => setShowSave(false)} style={{ textAlign: 'center', fontSize: 12, color: '#9B9590', cursor: 'pointer', paddingTop: 10 }}>
                   Not now
                 </div>
@@ -2075,9 +2461,15 @@ export function EntryChatPage() {
               <div style={{ background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 10, padding: '14px 16px', marginBottom: 20 }}>
                 <div style={{ fontSize: 14, fontWeight: 700, color: '#085041', marginBottom: 4 }}>Check your email</div>
                 <div style={{ fontSize: 13, color: '#085041', lineHeight: 1.6 }}>We sent a link to <strong>{email}</strong>. Click it to finish setting up and get your invite link.</div>
-                {inviteAdded.length > 0 && (
+                {inviteAdded.length > 0 ? (
                   <div style={{ fontSize: 12, color: '#085041', lineHeight: 1.6, marginTop: 8, paddingTop: 8, borderTop: '1px solid #B6E8D4' }}>
                     <strong>Waiting to send ({inviteAdded.length}):</strong> {inviteAdded.map(e => e.split(' - ')[0]).join(', ')}. Invites go out when you confirm your email.
+                  </div>
+                ) : (
+                  /* Saying nothing here read as "you have left something
+                     undone". Nobody added is a perfectly good place to stop. */
+                  <div style={{ fontSize: 12, color: '#085041', lineHeight: 1.6, marginTop: 8, paddingTop: 8, borderTop: '1px solid #B6E8D4' }}>
+                    No one added yet. You can invite people whenever you're ready.
                   </div>
                 )}
               </div>
@@ -2101,16 +2493,21 @@ export function EntryChatPage() {
                 onChange={e => setOrgName(e.target.value)}
                 style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #E2E0DB', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none', marginBottom: 8 }}
               />
-              <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 4 }}>How often do contributors check in?</div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 4 }}>
+                How often does everyone check in?
+                {!cadenceChosen && (
+                  <span style={{ fontWeight: 500, color: '#8A7B66' }}> Not set yet - this ground will run every 2 weeks unless you pick.</span>
+                )}
+              </div>
               <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
                 {(['ONE_TIME', 'DAILY', 'WEEKLY', 'FORTNIGHTLY', 'MONTHLY', 'SEQUENTIAL'] as const).map(c => {
                   const labels: Record<string, string> = { ONE_TIME: 'One time', DAILY: 'Daily', WEEKLY: 'Weekly', FORTNIGHTLY: 'Every 2 weeks', MONTHLY: 'Monthly', SEQUENTIAL: 'When I check in' }
                   return (
-                  <button key={c} onClick={() => setCadence(c)} style={{
+                  <button key={c} onClick={() => { setCadence(c); setCadenceChosen(true) }} style={{
                     flex: '1 0 30%', padding: '9px 4px', borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-                    border: `1px solid ${cadence === c ? '#0C447C' : '#E2E0DB'}`,
-                    background: cadence === c ? '#EEF4FB' : 'white',
-                    color: cadence === c ? '#0C447C' : '#6B6560',
+                    border: `1px solid ${cadenceChosen && cadence === c ? '#0C447C' : '#E2E0DB'}`,
+                    background: cadenceChosen && cadence === c ? '#EEF4FB' : 'white',
+                    color: cadenceChosen && cadence === c ? '#0C447C' : '#6B6560',
                   }}>
                     {labels[c]}
                   </button>
@@ -2197,10 +2594,10 @@ export function EntryChatPage() {
                 "Someone's work is off track", 'Running a performance improvement plan', 'Co-founder or partner disagreement', 'A project is off track', 'You and a team member see it differently',
                 'Running a PIP', 'Team member not delivering', 'Cofounder or partner dispute',
               ].some(k => s.includes(k))
-              const inviteHeading = isSensitive ? 'Let them share their side' : 'Invite contributors'
+              const inviteHeading = isSensitive ? 'Let them share their side' : 'Invite people'
               const inviteSubtext = isSensitive
-                ? 'Send them a link so they can share their account independently. They cannot see what you wrote. When both sides are in, the report shows where you agree and where the conversation still needs to happen.'
-                : 'Each person checks in independently. Nobody reads anyone else\'s words directly. When all accounts are in, the report shows where everyone agrees, where they differ, and what the gap means.'
+                ? 'Send them a link so they can give their own account of the same work. They cannot see what you wrote. When both sides are in, the report shows where you agree and where the conversation still needs to happen. It does not score anyone.'
+                : 'Each person gives their own account of the shared work, including their own part in it. Nobody reads anyone else\'s words directly. When all the accounts are in, the report shows where people agree, where they differ, and what the gap means for the work.'
               return (
             <div style={{ borderBottom: '1px solid #E2E0DB', marginBottom: 16, paddingBottom: 16 }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 4 }}>{inviteHeading}</div>
@@ -2208,7 +2605,19 @@ export function EntryChatPage() {
                 {inviteSubtext}
               </div>
               <div style={{ fontSize: 12, color: '#0C447C', background: '#EEF4FB', border: '1px solid #CFE2F5', borderRadius: 8, padding: '8px 11px', lineHeight: 1.5, marginBottom: 10 }}>
-                Add them here now. Invites don't go out yet — they're sent once you save this ground and confirm your email.
+                Add them here now. Anyone you added from the report above is already on this list. Invites don't go out yet - they're sent once you save this ground and confirm your email.
+              </div>
+              {/* THERE IS A LATER, AND IT SHOULD SAY SO.
+                  Adding people has always been optional - the commit defaults
+                  contributors to an empty list and the ground page has its own
+                  "+ Add someone" - but nothing here said that, and "Add them
+                  here now" reads as an instruction.
+                  It matters most for exactly the people most likely to want a
+                  night to think: someone opening a PIP or a co-founder dispute
+                  is being asked to name the other party at the moment they are
+                  least sure, and silence about a later made that feel final. */}
+              <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.55, marginBottom: 10 }}>
+                Not ready? You can add people any time from the ground itself. Nothing goes out until you do.
               </div>
               {(() => {
                 const s = onboardingSelections.classifiedScenario || onboardingSelections.mode || scenario
@@ -2256,7 +2665,7 @@ export function EntryChatPage() {
                       const [next, ...rest] = bulkQueue
                       if (next) { setBulkQueue(rest); setInviteContextFor(next) } else { setInviteContextFor(null) }
                     }} style={{ padding: '8px 14px', borderRadius: 7, background: 'none', border: '1px solid #E2E0DB', color: '#6B6560', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Skip</button>
-                    <button onClick={submitInviteContext} style={{ flex: 1, padding: '8px 14px', borderRadius: 7, background: '#0C447C', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Add contributor</button>
+                    <button onClick={submitInviteContext} style={{ flex: 1, padding: '8px 14px', borderRadius: 7, background: '#0C447C', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Add person</button>
                   </div>
                 </div>
               ) : bulkInviteMode ? (
@@ -2326,14 +2735,69 @@ export function EntryChatPage() {
             </div>
             )}
 
-            {closed ? (
+            {/*
+              "Done" is only offered once the email has actually been sent.
+
+              It used to render whenever the session had closed, which meant a
+              user who had not yet saved saw THREE controls at once: "Save my
+              ground →", "Not now", and a second primary-styled "Done" beneath it.
+              Two of those dismiss the panel and one saves, and the dismiss action
+              carried the visual weight of the finishing action - so the obvious
+              way to press "I have finished" was the way to leave without saving.
+              GW-006.
+
+              With the email sent, "Done" is honest: the ground is saved and this
+              just closes the panel.
+            */}
+            {closed && emailSent ? (
               <div style={{ textAlign: 'center', paddingTop: 8 }}>
-                <button onClick={() => setShowSave(false)} style={{ padding: '11px 28px', borderRadius: 8, background: '#0C447C', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
+                {/*
+                  AND IT THREW AWAY THE PERSON SHE HAD JUST TYPED IN.
+                  Adding somebody takes two clicks: the email opens a note box,
+                  and "Add person" commits it to the list. Closing the panel with
+                  that box still open dropped them silently - no invite, no
+                  warning, and the closing line above cheerfully reported the
+                  invites it was about to send while omitting this one.
+
+                  Found in the overnight run's own screenshot: an email filled in,
+                  a note reading "On the build", "Add person" never pressed, and
+                  three failures downstream - no queue shown, no "Invited (1)", no
+                  invite email. It read as a broken invite queue. The queue was
+                  fine; the person never reached it.
+
+                  Somebody who typed an address and a note has told us who they
+                  mean, so "Done" now commits them rather than discarding them. The
+                  second click is a convenience for adding several people, not a
+                  consent gate - the consent was typing the address.
+                */}
+                <button
+                  onClick={() => { if (inviteContextFor) submitInviteContext(); setShowSave(false) }}
+                  style={{ padding: '11px 28px', borderRadius: 8, background: '#0C447C', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                >
                   Done
                 </button>
-                <div style={{ fontSize: 11.5, color: '#9B9590', paddingTop: 8 }}>You can reopen this any time from the bar below.</div>
+                {/*
+                  W7. "DONE" CLOSED THE PANEL AND SAID NOTHING ABOUT THE EMAIL.
+                  She pressed it and was left on the report with no sign that
+                  anything had been sent, on a flow whose whole next step happens
+                  in her inbox. The panel closing is the only feedback there was,
+                  and a panel closing is what "Cancel" looks like.
+                */}
+                <div style={{ fontSize: 11.5, color: '#9B9590', paddingTop: 8, lineHeight: 1.6 }}>
+                  {/*
+                    Counts the person still sitting in the note box, because "Done"
+                    now commits them. Reading inviteAdded alone made this sentence
+                    quietly wrong by one: it promised to send 1 invite while two
+                    people had been named.
+                  */}
+                  Nothing else to do here. The link is in your inbox at <strong>{email}</strong>{(() => {
+                    const pending = inviteContextFor && !inviteAdded.some(e => e === inviteContextFor || e.startsWith(`${inviteContextFor} - `)) ? 1 : 0
+                    const n = inviteAdded.length + pending
+                    return n > 0 ? ` - opening it saves your ground and sends the ${n} invite${n === 1 ? '' : 's'}` : ' - opening it saves your ground'
+                  })()}. You can reopen this any time from the bar below.
+                </div>
               </div>
-            ) : (
+            ) : closed ? null : (
               <div onClick={() => setShowSave(false)} style={{ textAlign: 'center', fontSize: 12, color: '#9B9590', cursor: 'pointer', paddingTop: 4 }}>
                 Later
               </div>

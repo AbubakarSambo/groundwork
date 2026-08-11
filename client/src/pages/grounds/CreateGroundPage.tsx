@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { endStatesFor } from '@/lib/end-states'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { groundsApi, type GroundScenario, type GroundMoment, type GroundCadence } from '@/api/grounds'
 import { TIMED_CADENCES, sessionsFor } from '@/lib/cadence'
 import { billingApi, FREE_GROUND_LIMIT } from '@/api/billing'
@@ -50,13 +50,13 @@ export const SCENARIOS: ScenarioCard[] = [
       'Bringing on an advisor for equity and you want it clear what they will actually do for it.',
       'A new board member joining, each side writing what they expect from the relationship.',
     ] },
-  { cardKey: 'NEW_COFOUNDER', scenario: 'NEW_COFOUNDER', label: 'New partner or co-founder', tag: 'Starting', tagBg: '#E8F8F5', tagColor: '#085041',
+  { cardKey: 'NEW_COFOUNDER', scenario: 'NEW_COFOUNDER', label: 'A new partner or co-founder', tag: 'Starting', tagBg: '#E8F8F5', tagColor: '#085041',
     desc: 'Put what each of you expects to build, own, and contribute in writing, before those assumptions collide.',
     examples: [
       'You and a co-founder splitting equity and roles and want the assumptions said out loud first.',
       'A new equal partner joining the founding team.',
     ] },
-  { cardKey: 'NEW_MANAGER', scenario: 'NEW_MANAGER', label: 'New manager or lead', tag: 'Starting', tagBg: '#E8F8F5', tagColor: '#085041',
+  { cardKey: 'NEW_MANAGER', scenario: 'NEW_MANAGER', label: 'A new manager taking over', tag: 'Starting', tagBg: '#E8F8F5', tagColor: '#085041',
     desc: 'Get clear on scope, reporting, and success for someone stepping into an existing team or role.',
     examples: [
       'An interim leader stepping into an existing team for six months.',
@@ -92,10 +92,10 @@ export const SCENARIOS: ScenarioCard[] = [
       'Start of the quarter and you want each person\'s plan and budget to hold up against real resources.',
       'A plan that looks fine on paper but you suspect the budget behind it was assumed, not approved.',
     ] },
-  { cardKey: 'PULSE_CHECK', scenario: 'PULSE_CHECK', label: 'Quick check-in', tag: 'Recurring', tagBg: '#E8F8F5', tagColor: '#085041',
+  { cardKey: 'PULSE_CHECK', scenario: 'PULSE_CHECK', label: 'A regular read on live work', tag: 'Recurring', tagBg: '#E8F8F5', tagColor: '#085041',
     desc: 'A fast, repeatable read from each person: what is moving, what is stuck, what has changed. About five minutes.',
     examples: [
-      'A fast fortnightly read from each person on what is moving and what is stuck.',
+      'A quick read every two weeks from each person on what is moving and what is stuck.',
       'You want a lightweight recurring signal without calling a meeting.',
     ] },
   { cardKey: 'DRIFT', scenario: 'DRIFT', label: 'Something\'s off track', tag: 'Off track', tagBg: '#FDF3E3', tagColor: '#8A5C1A',
@@ -111,7 +111,7 @@ export const SCENARIOS: ScenarioCard[] = [
       'Before a strategy offsite, you want each leader\'s real read so quiet disagreement shows up early.',
       'The board looks aligned in the room but you suspect it is not on one big bet.',
     ] },
-  { cardKey: 'COHORT_CHECK', scenario: 'COHORT_CHECK', label: 'Cohort check-in', tag: 'Recurring', tagBg: '#E8F8F5', tagColor: '#085041',
+  { cardKey: 'COHORT_CHECK', scenario: 'COHORT_CHECK', label: 'Many people in the same role', tag: 'Recurring', tagBg: '#E8F8F5', tagColor: '#085041',
     desc: 'An ongoing read from many people in the same role, each answering on their own. See the pattern, who is on track and who is stuck, without them swaying each other. For a group who are new, use "Onboarding a group" instead.',
     examples: [
       'Twenty field officers each answering the same question so you can see the pattern.',
@@ -129,7 +129,7 @@ export const SCENARIOS: ScenarioCard[] = [
   // situation to describe. It runs on the cohort machinery, which is the correct
   // shape - separate people, same questions, no swaying each other - and says so
   // in language the person actually has in their head.
-  { cardKey: 'COHORT_ONBOARDING', scenario: 'COHORT_CHECK', label: 'Onboarding a group', tag: 'Starting', tagBg: '#E8F8F5', tagColor: '#085041',
+  { cardKey: 'COHORT_ONBOARDING', scenario: 'COHORT_CHECK', label: 'Onboarding several people at once', tag: 'Starting', tagBg: '#E8F8F5', tagColor: '#085041',
     desc: 'Several people starting the same role at once, each answering on their own. Settle them in, and see early who is finding it and who is struggling, before the end of the period decides anything.',
     examples: [
       'Four new managers on a three month onboarding that is also their probation.',
@@ -201,6 +201,16 @@ const SCENARIO_FROM_LABEL: Record<string, GroundScenario> = {
   "something's off track": 'DRIFT',
   'board & leadership strategy': 'BOARD_STRATEGY',
   'get a team back on the same page': 'REALIGN_TEAM',
+  /**
+   * CRISIS_ALIGNMENT WAS THE ONE SCENARIO NOTHING ON THE HOME PAGE COULD REACH.
+   *
+   * Found by listing every GroundScenario against every routing key rather than by
+   * reading the list, which is why it survived: sixteen of seventeen resolved, and
+   * a missing entry looks like nothing at all. The /entry picker has had "A big
+   * decision" all along, so the situation was reachable from one entrance and not
+   * the other.
+   */
+  'a big decision': 'CRISIS_ALIGNMENT',
   'describe your own situation': 'REALIGN_TEAM',
 }
 
@@ -214,6 +224,12 @@ function scenarioFromParam(param: string | null): GroundScenario | null {
 const TOTAL_STEPS = 6
 
 export function CreateGroundPage() {
+  // Asked once, on load, so the answer is on screen before any effort is spent.
+  const canCreate = useQuery({
+    queryKey: ['can-create-ground'],
+    queryFn: () => billingApi.checkCanCreateGround(),
+    retry: false,
+  })
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [step, setStep] = useState(1)
@@ -450,6 +466,28 @@ export function CreateGroundPage() {
         {/* Step 1: Scenario + Moment */}
         {step === 1 && (
           <div>
+            {/* Say the limit is reached BEFORE the setup work, not after it.
+                The API refuses an eleventh ground correctly, but it refused it
+                at submit - so the admin picked a card, named the ground, set
+                the timeline and the people, and only then was told she could
+                not. The block was right; the timing made it feel like a trick. */}
+            {canCreate.data && !canCreate.data.allowed && (
+              <div style={{ background: '#FDF3E3', border: '1px solid #F0DFC0', borderRadius: 8, padding: '12px 14px', marginBottom: 14 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#8A5C1A', marginBottom: 4 }}>
+                  You have used all {FREE_GROUND_LIMIT} of your free grounds
+                </div>
+                <div style={{ fontSize: 12.5, color: '#6B6560', lineHeight: 1.6, marginBottom: 10 }}>
+                  {canCreate.data.reason ?? 'Subscribe to open more grounds.'} You can still look
+                  around here, but this one cannot be created until then.
+                </div>
+                <button
+                  onClick={() => navigate('/billing')}
+                  style={{ padding: '8px 16px', borderRadius: 7, background: '#0A1628', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                >
+                  See plans
+                </button>
+              </div>
+            )}
             <div className="gw-ttl">What is this ground for?</div>
             <div className="gw-sub-t">Select the situation that fits best.</div>
             <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 10 }}>Choose one that best describes your situation.</div>
@@ -704,8 +742,8 @@ export function CreateGroundPage() {
             <div className="gw-ttl">How long will this ground run?</div>
             <div className="gw-sub-t">Set the timeframe and how often each party checks in.</div>
             <div className="gw-fld">
-              <label className="gw-label">Timeframe</label>
-              <select className="gw-select" value={timelineDays} onChange={e => setTimelineDays(+e.target.value)}>
+              <label className="gw-label" htmlFor="gw-timeframe">Timeframe</label>
+              <select id="gw-timeframe" className="gw-select" value={timelineDays} onChange={e => setTimelineDays(+e.target.value)}>
                 <option value={7}>1 week</option>
                 <option value={14}>2 weeks</option>
                 <option value={30}>30 days</option>
@@ -716,8 +754,8 @@ export function CreateGroundPage() {
               </select>
             </div>
             <div className="gw-fld">
-              <label className="gw-label">Check-in cadence</label>
-              <select className="gw-select" value={cadence} onChange={e => setCadence(e.target.value as GroundCadence)}>
+              <label className="gw-label" htmlFor="gw-cadence">Check-in cadence</label>
+              <select id="gw-cadence" className="gw-select" value={cadence} onChange={e => setCadence(e.target.value as GroundCadence)}>
                 {TIMED_CADENCES.map(c => <option key={c.cadence} value={c.cadence}>{c.label}</option>)}
               </select>
             </div>
@@ -949,8 +987,9 @@ export function CreateGroundPage() {
             )}
 
             <div className="gw-fld" style={{ marginTop: 16 }}>
-              <label className="gw-label">Ground name <span style={{ fontWeight: 400, color: 'var(--gw-muted)' }}>(optional)</span></label>
+              <label className="gw-label" htmlFor="gw-ground-name">Ground name <span style={{ fontWeight: 400, color: 'var(--gw-muted)' }}>(optional)</span></label>
               <input
+                id="gw-ground-name"
                 className="gw-input"
                 value={groundName}
                 onChange={e => setGroundName(e.target.value)}

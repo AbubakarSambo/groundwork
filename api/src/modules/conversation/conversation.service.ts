@@ -7,7 +7,7 @@ import { totalSessionsFor } from '../grounds/session-count';
 import { PromptsService } from '../prompts';
 import { AnthropicService, ChatTurn, houseStyle } from './anthropic.service';
 import { ConversationContextService } from './context.service';
-import { SESSION_CLOSE_MARKER, stripCloseMarker, buildIntakeBlock, RECORD_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_SCHEMA, WORK_MENTION_PROMPT, WORK_MENTION_SCHEMA } from './prompt-library';
+import { COACHING_OBSERVATION_PROMPT, COACHING_OBSERVATION_SCHEMA, SESSION_CLOSE_MARKER, stripCloseMarker, buildIntakeBlock, RECORD_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_SCHEMA, WORK_MENTION_PROMPT, WORK_MENTION_SCHEMA } from './prompt-library';
 import { GroundworkEvents, CheckInCompletedEvent } from '../../common';
 import { DocumentsService } from '../documents/documents.service';
 import { BillingService } from '../billing/billing.service';
@@ -16,10 +16,17 @@ import { UsageService } from '../usage/usage.service';
 import { CheckInStatus, TurnRole, RecordEntryType, Cadence, GroundStatus, UsageEventType, PartyType, GroundMode, DependencyStatus, WorkMentionKind } from '@prisma/client';
 import { runIntake } from './intake';
 import { boardRendersFor } from '../board/board-families';
-import { buildRoleProbeBlock } from '../board/role-maps';
+import { buildRoleProbeBlock, roleMapFor, signalRead, MIN_COACHING_CONFIDENCE } from '../board/role-maps';
+import {
+  nextMove, coachingBlockFor, afterOffering, afterOutcome, EMPTY,
+  type CoachingStateShape, type StepOutcome,
+} from '../coaching/one-step-at-a-time';
 import { detectFunction } from '../board/function-detection';
-import { closeReadiness } from './close-readiness';
+import { closeReadiness, askedToFinish } from './close-readiness';
 import { observeStyle, mergeStyle, styleGuidance } from './person-style';
+import { readOutcome, isGenericStep } from './coaching-step';
+import { mayCoach } from './participation-timeline';
+import { restoreTheirWords, causalClaimNobodyMade, ASK_INSTEAD_OF_CONCLUDING } from './the-record-holds-what-was-said';
 
 /**
  * How many things in this text could actually be checked by someone later.
@@ -37,10 +44,43 @@ import { observeStyle, mergeStyle, styleGuidance } from './person-style';
 const NEGATION = /\b(nothing|not|no|none|never|without|yet to|hasn'?t|haven'?t|didn'?t|cannot|can'?t|couldn'?t|unable|still (waiting|pushing|working)|nowhere)\b/i;
 
 export function countCheckableSpecifics(text: string): number {
-  // Count clause by clause, so a negated clause cannot contribute. Splitting on
-  // sentence and clause boundaries keeps "Loop signed, nothing else closed" as
-  // one positive and one negative rather than two positives.
-  const clauses = text.split(/[.!?;]|\bbut\b|\bthough\b|,\s*(?=nothing|no |not )/i);
+  /**
+   * Count clause by clause, so a negated clause cannot contribute - and so a
+   * negated clause cannot poison the positive one sitting next to it.
+   *
+   * "and" USED NOT TO SPLIT, and that single omission erased people's work.
+   *
+   *   "I closed 22 tickets in my first three weeks."                     -> 3
+   *   "I closed 22 tickets in my first three weeks
+   *    AND nothing has slipped past its date."                           -> 0
+   *
+   * Identical achievement, scored three or zero depending on whether the person
+   * also mentioned something that had NOT gone wrong. The whole sentence became
+   * one clause, the word "nothing" made it negated, and the numbers in the first
+   * half were never counted.
+   *
+   * That is how careful people report progress - "I did X and nothing broke",
+   * "we shipped A and there were no regressions" - so the filter systematically
+   * discarded the contributions of anyone who reports honestly, while rewarding
+   * anyone who only states positives. Because an entry that counts zero
+   * specifics is dropped as a non-answer, their words never reached the record
+   * at all, and the shared report then told their manager they had contributed
+   * nothing.
+   *
+   * Measured in the eighteen-ground run, after the fact:
+   *
+   *   hafeezah@org.test | 16 completed sessions | 0 record entries
+   *   kavon@org.test    |  7 completed sessions | 0 record entries
+   *
+   * Hafeezah's was a performance improvement plan. Sixteen sessions of her
+   * account, erased, on the one record where that matters most.
+   *
+   * The original rule stands and is still right: an absence is not an
+   * achievement. "nothing closed and nothing shipped" is still two negated
+   * clauses and still counts zero. Splitting on the conjunctions only stops the
+   * absence swallowing the achievement beside it.
+   */
+  const clauses = text.split(/[.!?;]|\bbut\b|\bthough\b|\band\b|\bwhile\b|\balthough\b|\bwhereas\b|,\s*(?=nothing|no |not )/i);
   let total = 0;
   for (const clause of clauses) {
     if (!clause.trim()) continue;
@@ -148,6 +188,48 @@ export class ConversationService {
     private config: ConfigService,
   ) {}
 
+  /** Best-effort, and never the reason a refusal fails to reach the person refused. */
+  private async tellAnAdminToAddACard(groundId: string): Promise<void> {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { organizationId: true, organization: { select: { name: true } } },
+    });
+    if (!ground) return;
+    const admins = await this.prisma.user.findMany({
+      where: { organizationId: ground.organizationId, role: 'ADMIN' as any, deletedAt: null },
+      select: { email: true },
+    });
+    for (const a of admins) {
+      await this.email
+        .sendPaymentRequestEmail(a.email, ground.organization?.name ?? 'your organisation', groundId)
+        .catch(() => undefined);
+    }
+  }
+
+  /**
+   * One session left, said once, to the people who can do something about it.
+   *
+   * Best-effort by construction: a notification must never be the reason a check-in
+   * cannot start, and the balance has already been decremented by the time this
+   * runs.
+   */
+  private async warnIfNearlyOutOfSessions(groundId: string): Promise<void> {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { label: true, sessionsBalance: true, organizationId: true },
+    });
+    if (!ground || ground.sessionsBalance !== 1) return;
+
+    const admins = await this.prisma.user.findMany({
+      where: { organizationId: ground.organizationId, role: 'ADMIN' as any, deletedAt: null },
+      select: { email: true },
+    });
+    const url = `${this.config?.get<string>('resend.frontendUrl') ?? ''}/grounds/${groundId}`;
+    for (const a of admins) {
+      await this.email.sendApproachingSessionLimit(a.email, ground.label ?? 'your ground', url).catch(() => undefined);
+    }
+  }
+
   /** Returns the transcript for a check-in - owner-scoped only. */
   async getTranscript(checkInId: string, requestingUserId: string) {
     const checkIn = await this.loadOwnedCheckIn(checkInId, requestingUserId);
@@ -159,8 +241,6 @@ export class ConversationService {
       where: { id: checkIn.groundId },
       select: { label: true, scenario: true },
     });
-    // hasIntake: true when the participant has submitted the cofounder pre-check-in intake.
-    const hasIntake = !!checkIn.participant.foundingIntent;
 
     // Reopen (#3): when this is a self-correction session, surface the prior
     // session's turns so the person can SEE what they said before adding to it.
@@ -228,7 +308,6 @@ export class ConversationService {
         ...checkIn,
         groundLabel: ground?.label ?? null,
         scenario: ground?.scenario ?? null,
-        hasIntake,
       },
       turns,
       priorTurns,
@@ -359,6 +438,20 @@ export class ConversationService {
             const groundUrl = `${this.config.get<string>('resend.frontendUrl') ?? ''}/grounds/${g.id}`;
             this.email.sendParticipantBlockedNudge(initiatorEmail, g.label, participantEmail, groundUrl).catch(() => undefined);
           }).catch(() => undefined);
+
+          /**
+           * AND THE PERSON WHO CAN ACTUALLY PAY IS TOLD TO PAY.
+           *
+           * The nudge above goes to the ground's INITIATOR and says somebody is
+           * blocked. sendPaymentRequestEmail goes to the org ADMIN and says what to
+           * do about it - and it existed, tested, with no caller anywhere, which is
+           * its own documented purpose going unserved: "sent to the org admin when a
+           * ground's first free session is complete and the next requires payment".
+           *
+           * The initiator is often not the admin. Somebody was being stopped
+           * mid-check-in while the only person who could clear it heard nothing.
+           */
+          this.tellAnAdminToAddACard(checkIn.groundId).catch(() => undefined);
           throw new ForbiddenException({ message: gate.reason, freeExtensionAvailable: gate.freeExtensionAvailable ?? false });
         }
         // Metering runs ONLY for metered grounds. gate.sessionsBalance === -1
@@ -366,7 +459,7 @@ export class ConversationService {
         // never decremented and never hit the balance throw below. This is the
         // second gate: without this guard, a free-tier or subscribed ground whose
         // balance had already reached 0 (e.g. a returning session 2) would throw
-        // "No sessions remaining" here even though canStartSession allowed it.
+        // the over-limit message here even though canStartSession allowed it.
         if (gate.sessionsBalance !== -1) {
           // Atomic check-and-decrement: only succeeds when balance is still > 0,
           // preventing two concurrent requests from both passing canStartSession and
@@ -376,8 +469,21 @@ export class ConversationService {
             data: { sessionsBalance: { decrement: 1 } },
           });
           if (decremented.count === 0) {
-            throw new ForbiddenException('No sessions remaining. Add a session for $5 to continue.');
+            throw new ForbiddenException('This ground is beyond your ten free grounds. Resubscribe to continue checking in - the report and board stay available either way.');
           }
+          /**
+           * "YOU ARE ON YOUR LAST SESSION" - AT THE MOMENT IT BECOMES TRUE.
+           *
+           * sendApproachingSessionLimit existed, was tested, and nothing called it:
+           * a ground ran out of sessions and the first anybody knew was a refusal
+           * mid-check-in, which is the worst possible moment to learn about billing.
+           *
+           * Fired on the TRANSITION rather than from a check or a cron, so it is
+           * naturally once per crossing: the decrement above has just happened, and
+           * a balance of exactly 1 means this session was the second to last.
+           */
+          this.warnIfNearlyOutOfSessions(checkIn.groundId).catch(() => undefined);
+
           // Increment the free-sessions counter so the per-org cap is enforced.
           const groundMeta = await this.prisma.ground.findUnique({ where: { id: checkIn.groundId }, select: { isFreeGround: true, organizationId: true } });
           if (groundMeta?.isFreeGround) {
@@ -459,7 +565,35 @@ export class ConversationService {
       const rawReply = await this.anthropic.respond(fullSystem, history);
       // Strip the close marker before it is stored or shown - it is machinery.
       const stripped = stripCloseMarker(rawReply);
-      reply = stripped.text;
+      /**
+       * W2. THE NAME GOES BACK BEFORE THE SENTENCE IS STORED OR SHOWN.
+       *
+       * She typed "microchipshit" and the engine wrote "Microchip Solutions",
+       * then put it on her record. This product's whole claim is that it holds
+       * what people said, so the restore happens here - between the model and
+       * the database - rather than as a flag somebody reads afterwards, by which
+       * time she has already read a company name she never typed.
+       *
+       * It only ever puts back a word SHE typed. Where nothing of hers matches,
+       * the reply is left exactly as written, because a guard that picks its own
+       * replacement is committing the fault it exists to stop.
+       */
+      const personWords = turns
+        .filter((t) => t.role === TurnRole.PERSON)
+        .map((t) => t.content ?? '')
+        .concat(message);
+      reply = restoreTheirWords(stripped.text, personWords);
+
+      // The other half of W2 cannot be repaired by substitution, because there
+      // is no word of hers to put back - the causation was invented whole. It is
+      // logged rather than edited: silently deleting half a sentence would leave
+      // prose that reads as though the engine lost its train of thought.
+      const invented = causalClaimNobodyMade(reply, personWords);
+      if (invented.length) {
+        this.logger.warn(
+          `Causal claim nobody made on ${checkIn.id}: ${invented.join(', ')}. ${ASK_INSTEAD_OF_CONCLUDING}`,
+        );
+      }
       hadCloseMarker = stripped.hadMarker;
       aiTurn = await this.prisma.conversationTurn.create({
         data: { checkInId: checkIn.id, role: TurnRole.AI, content: reply },
@@ -483,7 +617,7 @@ export class ConversationService {
     // record". No phrase list is ever complete, so the model says it outright
     // instead. Costs nothing: it rides on the reply it was already generating.
     const signalled = hadCloseMarker || this.detectSessionComplete(reply);
-    const sessionComplete = signalled ? await this.mayClose(checkIn.id) : false;
+    const sessionComplete = signalled ? await this.mayClose(checkIn.id, !!(checkIn as any).isSelfCorrection) : false;
 
     return { reply: aiTurn.content, sessionComplete };
   }
@@ -498,7 +632,7 @@ export class ConversationService {
    * nothing, and then never again in that session. Nobody gets trapped in a loop
    * to extract a specific that does not exist.
    */
-  private async mayClose(checkInId: string): Promise<boolean> {
+  private async mayClose(checkInId: string, isSelfCorrection = false): Promise<boolean> {
     const turns = await this.prisma.conversationTurn.findMany({
       where: { checkInId },
       orderBy: { createdAt: 'asc' },
@@ -510,7 +644,10 @@ export class ConversationService {
     const aiTurns = turns.filter((t) => t.role === TurnRole.AI).length;
     const alreadyProbed = aiTurns > personSaid.length;
 
-    const verdict = closeReadiness(personSaid, alreadyProbed);
+    // The same floor complete() enforces, so the engine never offers to close
+    // something the server will then refuse. See close-readiness.ts.
+    const minTurns = isSelfCorrection ? 1 : 3;
+    const verdict = closeReadiness(personSaid, alreadyProbed, minTurns);
     if (!verdict.ready) {
       this.logger.log(`Holding the close on ${checkInId}: ${verdict.reason}`);
     }
@@ -585,7 +722,7 @@ export class ConversationService {
         await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { status: CheckInStatus.IN_PROGRESS, startedAt: new Date() } });
       }
       const signalled = strippedStream.hadMarker || this.detectSessionComplete(reply);
-      yield { type: 'done', reply, sessionComplete: signalled ? await this.mayClose(checkIn.id) : false };
+      yield { type: 'done', reply, sessionComplete: signalled ? await this.mayClose(checkIn.id, !!(checkIn as any).isSelfCorrection) : false };
     } catch (err) {
       await this.prisma.conversationTurn.delete({ where: { id: personTurn.id } }).catch(() => undefined);
       throw err;
@@ -862,7 +999,315 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       (checkIn.participant as any).detectedFunctionConfidence,
     );
 
-    return [systemPrompt, intakeBlock, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, dynamicContext, docContext, docPromptHint].filter(Boolean).join('\n\n');
+    /**
+     * G42. THE COACHING STEP, AND THE FIRST TIME ANYTHING HAS READ THESE ROWS.
+     *
+     * Behind COACHING_ENABLED, off in every environment, and it adds nothing at
+     * all when off - not an empty heading, not a blank line. Off is the check-in
+     * exactly as it is today.
+     *
+     * It also adds nothing when there is no step to raise, which is most sessions.
+     * A coaching block that always has something in it is a product that always
+     * has something to say about you.
+     */
+    const coachingBlock = await this.coachingBlock(checkIn.participantId, checkIn.sessionNumber);
+
+    return [systemPrompt, intakeBlock, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, dynamicContext, docContext, docPromptHint].filter(Boolean).join('\n\n');
+  }
+
+  /** The flag, read where it is used and failing to OFF. Same shape as the others. */
+  private coachingEnabled(): boolean {
+    try {
+      return this.config?.get<boolean>('app.coachingEnabled') === true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * What the coach has to say into THIS session, or nothing.
+   *
+   * Reads the state the last session left, asks the machine what the next move is,
+   * and turns that into instructions. The machine is pure and tested next door; all
+   * that happens here is the loading.
+   *
+   * The step is only ever asked ABOUT here. It is offered by
+   * recordCoachingStep(), after the session, because what to offer depends on what
+   * the session turned out to contain - and a step chosen before somebody speaks is
+   * chosen from their last week rather than this one.
+   */
+  private async coachingBlock(participantId: string, sessionNumber: number): Promise<string> {
+    if (!this.coachingEnabled()) return '';
+    try {
+      const row = await this.prisma.coachingState.findUnique({ where: { participantId } });
+      if (!row?.currentStep) return '';
+
+      const state: CoachingStateShape = {
+        currentStep: row.currentStep,
+        stepGivenAt: row.stepGivenAt ?? null,
+        staircase: row.staircase ?? null,
+        staircasePosition: row.staircasePosition ?? 0,
+        history: Array.isArray(row.history) ? (row.history as any[]) : [],
+      };
+
+      // A step given in THIS session is not something to ask about in this
+      // session, which would be the coach asking about a thing it has not yet
+      // said.
+      if (state.stepGivenAt !== null && state.stepGivenAt >= sessionNumber) return '';
+
+      const move = nextMove(state, {
+        noticed: null,
+        lookingLike: null,
+        // Enough to get past the guards: this call is only ever about the step
+        // already outstanding, never about choosing a new one.
+        reason: 'a step is outstanding from last session',
+        sessionNumber,
+        hadSubstance: true,
+      });
+      return coachingBlockFor(move) ?? '';
+    } catch (err) {
+      // Coaching must never be the reason somebody cannot start a check-in.
+      this.logger.warn(`Could not build the coaching block for ${participantId}: ${(err as Error)?.message}`);
+      return '';
+    }
+  }
+
+  /**
+   * Read this session against this person's own role map, and let the machine
+   * decide what to do about it.
+   *
+   * A MODEL CALL, for the same reason record extraction is one: the question is
+   * about meaning. A regex cannot tell "I did the demo myself because they were
+   * not ready" from "I did the demo myself again", and the difference is the whole
+   * read.
+   *
+   * WHAT IT WILL NOT DO.
+   *
+   * It never runs on a low-confidence function. A step chosen from a guess about
+   * what somebody's job is lands as a stranger's advice, and the same threshold
+   * already governs the role probes.
+   *
+   * It never invents the reason. The prompt takes it from what the person said,
+   * and the machine refuses a step without one - so a model that returns an index
+   * with no reason produces nothing rather than a verdict.
+   *
+   * It never decides whether they managed their last step. That comes back only if
+   * the transcript says so, in their words. Inferring it from a better-looking week
+   * would make the step a target.
+   */
+  private async observeForCoaching(checkInId: string, participantId: string, sessionNumber: number): Promise<void> {
+    if (!this.coachingEnabled()) return;
+
+    const participant = await this.prisma.groundParticipant.findUnique({
+      where: { id: participantId },
+      select: {
+        detectedFunction: true, detectedFunctionConfidence: true,
+        joinedAt: true, leftAt: true, leavePeriods: true,
+      },
+    });
+
+    /**
+     * NOBODY IS COACHED WHILE THEY ARE AWAY, OR AFTER THEY HAVE GONE.
+     *
+     * participation-timeline.ts has said this since it was written, and nothing
+     * had ever called it - so the coaching path I built an hour ago would happily
+     * have offered a step to somebody on parental leave, or to somebody who had
+     * left the company. Its own comment names both: the first is the tone-deaf
+     * thing that ends trust in a product permanently, and the second is absurd.
+     *
+     * Found by the unwired-module rule, in code I had just written.
+     */
+    const leaves = Array.isArray(participant?.leavePeriods)
+      ? (participant!.leavePeriods as any[])
+          .map((l) => ({ from: new Date(l?.from), to: l?.to ? new Date(l.to) : null }))
+          .filter((l) => !isNaN(l.from.getTime()))
+      : [];
+    if (!mayCoach(new Date(), {
+      joinedAt: participant?.joinedAt ?? null,
+      leftAt: participant?.leftAt ?? null,
+      leaves,
+    })) {
+      return;
+    }
+
+    const map = roleMapFor(participant?.detectedFunction);
+    const confident = (participant?.detectedFunctionConfidence ?? 0) >= MIN_COACHING_CONFIDENCE;
+    if (!map?.failureSignals?.length || !confident) return;
+
+    const turns = await this.prisma.conversationTurn.findMany({
+      where: { checkInId },
+      orderBy: { createdAt: 'asc' },
+      select: { role: true, content: true },
+    });
+    if (!turns.length) return;
+
+    const personSaid = turns.filter((t) => t.role === TurnRole.PERSON).map((t) => t.content ?? '');
+    const transcript = turns.map((t) => `${t.role === TurnRole.AI ? 'GROUNDWORK' : 'PERSON'}: ${t.content}`).join('\n');
+    const behaviours = map.failureSignals.map((b, i) => `${i}. ${b}`).join('\n');
+
+    /**
+     * THE LEAD'S ENTRY CAN DETERMINE WHAT SOMEBODY IS COACHED ON.
+     *
+     * I built this reading only the person's own transcript against their role map,
+     * and ignored the lead completely - the third time in one sitting I treated the
+     * lead's input as a liability rather than as an input. It is the opposite: a
+     * lead's note is usually WHY the ground exists, and their check-ins shape what
+     * matters as priorities move. A coaching layer that cannot hear "the handover is
+     * the thing that matters this month" is coaching last month's ground.
+     *
+     * a-hypothesis-is-not-a-finding.ts already drew the line and nothing had ever
+     * called it: mayShapeProbing is true for a hypothesis, mayBeSurfaced is not. So
+     * the note steers WHICH behaviour is looked for first, and the REASON still has
+     * to come from what the person said. That order is the whole guardrail:
+     *
+     *   the lead says where to look        allowed, and useful
+     *   the lead's words become the reason  never - the prompt takes the reason from
+     *                                       the transcript, and a step with no reason
+     *                                       is refused by the machine
+     *
+     * So a lead can point at ownership and the coach still says nothing unless this
+     * person's own session showed something about ownership.
+     */
+    // Optional chaining, and a catch, because a steer is an improvement to the
+    // question and must never be the reason nobody gets coached. My first version
+    // used .catch() alone, which does nothing when the accessor itself is missing -
+    // a synchronous TypeError, not a rejected promise.
+    const leadNotes = await (this.prisma.leadContextNote?.findMany({
+      where: { participantId },
+      select: { text: true },
+      orderBy: { createdAt: 'desc' },
+      take: 3,
+    }) ?? Promise.resolve([] as { text: string }[])).catch(() => [] as { text: string }[]);
+    const steer = leadNotes.length
+      ? `\n\nWHAT THE PERSON RUNNING THIS GROUND HAS SAID MATTERS (most recent first). Use this ONLY to decide which behaviour above to look at first. It is not evidence, it is never the reason, and if the transcript does not show the behaviour then the answer is still none:\n${leadNotes.map((n) => `- ${n.text}`).join('\n')}`
+      : '';
+
+    const observed = await this.anthropic.extract<{
+      index: number | null;
+      reason: string | null;
+      lastStepOutcome: string | null;
+    }>(
+      COACHING_OBSERVATION_PROMPT,
+      [{ role: 'user', content: `BEHAVIOURS FOR THIS KIND OF WORK:\n${behaviours}${steer}\n\nTRANSCRIPT:\n${transcript}` }],
+      COACHING_OBSERVATION_SCHEMA as any,
+    );
+
+    // signalRead applies the guards that matter - an index off the end, an empty
+    // reason - and returns null rather than something to hand a person.
+    const read = signalRead(participant?.detectedFunction, observed?.index ?? -1, observed?.reason ?? '');
+
+    /**
+     * TWO VOCABULARIES FOR THE SAME FOUR OUTCOMES, RECONCILED AT THE BOUNDARY.
+     *
+     * coaching-step.ts already read these from a person's own words - written
+     * before my state machine and never wired to anything, so I built a second set
+     * spelled with spaces where its are spelled with underscores. Both are right;
+     * having two is not. The existing reader is the fallback here, because a regex
+     * over what somebody actually typed is better evidence than a model asked to
+     * classify it, and its spelling is mapped to the machine's at this one point.
+     */
+    const FROM_READER: Record<string, StepOutcome> = {
+      done: 'done', did_more: 'did more', not_done: 'not done', sideways: 'sideways',
+    };
+    const OUTCOMES = ['done', 'not done', 'did more', 'sideways'];
+    let outcome: StepOutcome | null = OUTCOMES.includes(String(observed?.lastStepOutcome))
+      ? (observed!.lastStepOutcome as StepOutcome)
+      : null;
+
+    // The model said nothing about the last step. Read their own words instead,
+    // which is what coaching-step.ts is for. 'unclear' stays null - guessing an
+    // outcome puts a fact in the record nobody said.
+    if (!outcome) {
+      const fromWords = readOutcome(personSaid.join(' '));
+      outcome = FROM_READER[fromWords] ?? null;
+    }
+
+    // A step that could have gone to anybody is not coaching, it is a slogan.
+    // Every step here comes from a role map so this should never fire, which is
+    // exactly why it is cheap to keep: if a map entry is ever edited into
+    // something generic, nothing offers it.
+    const offerable = read && !isGenericStep(read.lookingLike);
+
+    await this.recordCoachingStep(
+      participantId,
+      sessionNumber,
+      {
+        noticed: offerable ? read!.noticed : null,
+        lookingLike: offerable ? read!.lookingLike : null,
+        reason: offerable ? read!.reason : null,
+        // The same substance test the completion gate uses, rather than a second
+        // definition of "said something real".
+        hadSubstance: personSaid.some((t) => countCheckableSpecifics(t) > 0),
+      },
+      outcome,
+    );
+  }
+
+  /**
+   * After a session: record what became of the last step, and choose the next.
+   *
+   * This is the write path, and the first thing in the product ever to put a row
+   * in coaching_states. Behind the same flag, and everything it does is additive:
+   * with the flag off the table stays empty and the check-in behaves exactly as it
+   * does today.
+   *
+   * WHAT IT WILL NOT DO. It does not decide whether somebody managed their step -
+   * only the person can say that, in their own words, and the outcome is written
+   * from what they said rather than inferred from whether the record looks better.
+   * Inferring it would make the step a target, and a target is the one thing a
+   * coaching mechanic must not become.
+   */
+  async recordCoachingStep(
+    participantId: string,
+    sessionNumber: number,
+    read: { noticed: string | null; lookingLike: string | null; reason: string | null; hadSubstance: boolean },
+    outcomeOfLastStep?: StepOutcome | null,
+  ): Promise<{ offered: string | null }> {
+    if (!this.coachingEnabled()) return { offered: null };
+    try {
+      const row = await this.prisma.coachingState.findUnique({ where: { participantId } });
+      let state: CoachingStateShape = row
+        ? {
+            currentStep: row.currentStep ?? null,
+            stepGivenAt: row.stepGivenAt ?? null,
+            staircase: row.staircase ?? null,
+            staircasePosition: row.staircasePosition ?? 0,
+            history: Array.isArray(row.history) ? (row.history as any[]) : [],
+          }
+        : { ...EMPTY };
+
+      if (outcomeOfLastStep && state.currentStep) state = afterOutcome(state, outcomeOfLastStep);
+
+      const move = nextMove(state, { ...read, sessionNumber });
+      let offered: string | null = null;
+      if (move.move === 'offer') {
+        offered = move.step;
+        state = afterOffering(state, move.step, sessionNumber);
+      }
+
+      await this.prisma.coachingState.upsert({
+        where: { participantId },
+        create: {
+          participantId,
+          currentStep: state.currentStep,
+          stepGivenAt: state.stepGivenAt,
+          staircase: state.staircase,
+          staircasePosition: state.staircasePosition,
+          history: state.history as any,
+        },
+        update: {
+          currentStep: state.currentStep,
+          stepGivenAt: state.stepGivenAt,
+          staircase: state.staircase,
+          staircasePosition: state.staircasePosition,
+          history: state.history as any,
+        },
+      });
+      return { offered };
+    } catch (err) {
+      this.logger.warn(`Could not record the coaching step for ${participantId}: ${(err as Error)?.message}`);
+      return { offered: null };
+    }
   }
 
   /**
@@ -910,6 +1355,18 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const lowDimCount = dims ? Object.values(dims).filter((v) => v === 'vague' || v === 'managed').length : 0;
     const lowSpecificity = priorSpecificity === 'vague' || priorSpecificity === 'managed' || lowDimCount >= 3;
 
+    // How many sessions IN A ROW came back thin, newest first. One thin week is
+    // a week; several in a row is a person who has not been shown what we mean.
+    const staleSessions = (() => {
+      let n = 0;
+      for (const ci of priorCheckIns) {
+        const lvl = ci.specificityLevel ?? null;
+        if (lvl === 'vague' || lvl === 'managed') n += 1;
+        else break;
+      }
+      return n;
+    })();
+
     const sessionRange = priorCheckIns.length > 1
       ? `sessions 1 through ${priorCheckIns[0].sessionNumber}`
       : `session ${priorCheckIns[0].sessionNumber}`;
@@ -927,6 +1384,24 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       lines.push(
         `SPECIFICITY NOTE: Their last session produced ${priorSpecificity} specificity.${dimNote} Do not open with the same framing as last time. Ask about one unexpected angle - what almost went wrong, what they wish had happened differently, or what they held back last time. Do not announce the change. Push for something concrete they can name.`,
       );
+
+      // SHOW, once asking has stopped working.
+      //
+      // An eighteen-ground run had someone reach eight check-ins with "nothing
+      // specific named yet" on their board. Every one of those sessions asked
+      // her a different way. Re-angling the question works on someone who has
+      // the answer and is not volunteering it; it does nothing for someone who
+      // does not know what a checkable answer looks like. That person is
+      // usually the one with the least practice at being asked - so the
+      // product noticing and never helping lands hardest exactly where it
+      // should land softest.
+      //
+      // Demonstrate, do not grade. Never say their answers have been thin.
+      if (staleSessions >= 2) {
+        lines.push(
+          `THIS HAS NOT WORKED FOR ${staleSessions} SESSIONS RUNNING. Stop re-asking and SHOW them instead. Once, early, offer one example of the KIND of answer that can be checked later - built from their own situation, not a generic one: "something like: I sent the draft to Priya on the 14th, and she has not come back yet." Then ask your question again. Do not tell them their answers have been vague, do not compare them to anyone, and do not repeat the example if they still cannot give one - take what they give you and move on. Someone who cannot yet name specifics is not failing; they may never have been asked to work this way before.`,
+        );
+      }
     } else {
       lines.push(`Open by naming this specifically. Ask what has changed since they last described it.`);
     }
@@ -1045,8 +1520,25 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       where: { checkInId: checkIn.id, role: TurnRole.PERSON },
       select: { content: true },
     });
+    /**
+     * THE TURN FLOOR HAS THE SAME ESCAPE HATCH THE ENGINE HAS.
+     *
+     * closeReadiness lets somebody out below the floor the moment they say they
+     * are done - "that's everything from me", "I need to go". That is right: it
+     * is their session and nothing should trap them in it.
+     *
+     * This end did not know about that. So the engine accepted the sentence,
+     * showed a "Complete session" button, and the server then refused the same
+     * session for being one turn short. Invited to finish, then declined, on the
+     * words that had just been honoured. It fired around forty times in one
+     * six-person run and reads as a broken product, because from the outside it
+     * is one.
+     *
+     * The record is still protected: the substance gate below is unconditional,
+     * so somebody can leave early but cannot leave nothing behind.
+     */
     const minTurns = checkIn.isSelfCorrection ? 1 : 3;
-    if (personTurnRows.length < minTurns) {
+    if (personTurnRows.length < minTurns && !askedToFinish(personTurnRows.map((t) => t.content ?? ''))) {
       throw new BadRequestException(
         'A few more exchanges are needed before this check-in can close - the record is still thin. Answer one or two more questions, then complete.',
       );
@@ -1106,6 +1598,18 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
     this.reviseDetectedFunction(checkIn.participantId).catch((err) =>
       this.logger.warn(`Function detection failed for participant ${checkIn.participantId}: ${err.message}`),
+    );
+
+    /**
+     * G42. THE NOTICING, and the call that stops recordCoachingStep from being a
+     * method nobody invokes - which is what it was an hour after being written,
+     * in the same session I committed a note about exactly that failure.
+     *
+     * Best-effort and last, like the others: nothing about coaching may delay or
+     * block a session completing.
+     */
+    this.observeForCoaching(checkIn.id, checkIn.participantId, checkIn.sessionNumber).catch((err) =>
+      this.logger.warn(`Coaching observation failed for check-in ${checkIn.id}: ${err.message}`),
     );
 
     await this.prisma.checkIn.update({
@@ -1233,6 +1737,31 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const step = cadenceDays[ground?.cadence ?? ''] ?? 0;
     const planned = step > 0 && ground ? Math.max(1, Math.floor(ground.timelineDays / step)) : null;
     const isFinal = planned != null && sessionNumber >= planned;
+
+    /**
+     * A GROUND THAT HAS RUN ITS PLAN IS OVER.
+     *
+     * isFinal was computed here and then used only to change the wording of the
+     * closing session's opening message. Nothing consulted it before making the
+     * NEXT one, and the only stop conditions above are ONE_TIME and an endsAt
+     * date that is usually null - so completing the final session created
+     * another, which created another.
+     *
+     * Seen live on a ninety-day weekly ground, which plans twelve check-ins:
+     *
+     *     session 12  COMPLETED  isFinal  <- the plan ends here
+     *     session 13  COMPLETED  isFinal
+     *     session 14  COMPLETED  isFinal
+     *     session 15  IN_PROGRESS
+     *
+     * Every one of those is a real ask of two real people, and the ground could
+     * never report itself finished because there was always one more waiting.
+     * A person would be asked to check in on a closed piece of work forever.
+     *
+     * Past the plan, no next session.
+     */
+    if (planned != null && sessionNumber > planned) return;
+
     await this.prisma.checkIn.create({ data: { groundId, participantId, sessionNumber, status: CheckInStatus.NOT_STARTED, availableFrom, isFinal } });
   }
 
@@ -1336,7 +1865,30 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     // 43 and the person who delivered all quarter scored 45. Saying nothing was
     // being counted as contributing.
     const NON_ANSWER = /^(nothing (new|much|else)|no( real)? (update|change|progress)|same as (before|last|above)|not (really |much )?(sure|applicable)|n\/?a|none|tbd|as (before|discussed))\b/i;
-    const isNonAnswer = (text: string) => {
+
+    /**
+     * SOME ENTRY TYPES ARE NOT SUPPOSED TO CONTAIN NUMBERS.
+     *
+     * The checkable-specifics test asks "is there a name, number, date or
+     * outcome in here" - the right question for a claim about DELIVERY, and the
+     * wrong one for a statement of meaning.
+     *
+     *   SUCCESS_DEFINITION  "doing well means clearing the queue each week"
+     *   INTENT              "nobody has told me I own a client; I assumed that
+     *                        came later, once I had proved I could deliver"
+     *
+     * Neither has a number in it. Both are exactly what this product exists to
+     * capture - the second IS the gap on a new-hire ground, the difference
+     * between throughput and ownership. Requiring a metric of them dropped the
+     * substance and kept the arithmetic.
+     *
+     * So evidence-shaped types are still held to evidence. Meaning-shaped types
+     * are held to being a real answer: long enough to say something, and not one
+     * of the stock non-answers.
+     */
+    const EVIDENCE_TYPES = new Set(['COMMITMENT', 'TIMEFRAME']);
+
+    const isNonAnswer = (text: string, type?: string) => {
       // Strip the model's own [INFERRED: ...] commentary before judging. The
       // extractor appends its reasoning to thin answers ("just a lot going on
       // [INFERRED: is making it harder to close these deals]"), which made an
@@ -1344,6 +1896,9 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       const t = text.replace(/\[INFERRED:[^\]]*\]/gi, '').trim().replace(/[.!]+$/, '');
       if (t.length < 12) return true;                 // "ok", "fine", "yes"
       if (NON_ANSWER.test(t)) return true;
+      // Only a claim about delivery has to be checkable. A definition or an
+      // assumption is judged on whether it actually says something.
+      if (type && !EVIDENCE_TYPES.has(type)) return false;
       // Nothing checkable in it at all - no name, number, date or outcome.
       return countCheckableSpecifics(t) === 0;
     };
@@ -1352,7 +1907,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       (e) =>
         e.text?.trim() &&
         (Object.values(RecordEntryType) as string[]).includes(e.type) &&
-        !isNonAnswer(e.text),
+        !isNonAnswer(e.text, e.type),
     );
     if (valid.length === 0) return;
 
@@ -1410,6 +1965,37 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         detectedFunctionAt: new Date(),
       },
     });
+
+    /**
+     * WHEN DETECTION FINDS NOTHING, EVERYTHING ROLE-TUNED IS SILENTLY OFF.
+     *
+     * Found while watching a live run: seven sessions in, both participants had
+     * detectedFunction null and confidence 0, so the role probes never fired and
+     * the coaching layer could never produce a row. Nothing anywhere said so.
+     *
+     * The detection itself is behaving correctly. Its signals were deliberately
+     * tightened after an entire software team came out as SALES at 0.78 confidence
+     * and got read against "named buyers with budget and authority" - the comment
+     * there is right that a lens becomes a label the moment it is confidently
+     * wrong. Scoring zero on work no map covers is the honest answer.
+     *
+     * What was wrong is that it was INVISIBLE. A feature that quietly does nothing
+     * for a whole ground is indistinguishable from a feature that is broken, and I
+     * spent a probe and a database query working out which one this was. The same
+     * shape as the closing synthesis that failed and said nothing.
+     *
+     * The record on this run was a new hire clearing a support queue and shadowing
+     * client accounts. There is no support or customer-service function among the
+     * nine, which is a product decision rather than a bug - and it is now a
+     * decision somebody can see.
+     */
+    if (!result.fn || result.confidence < MIN_COACHING_CONFIDENCE) {
+      this.logger.log(
+        `No function is confident enough for participant ${participantId} (${result.fn ?? 'none'} at ${result.confidence}). ` +
+          `Role-tuned probes and coaching are OFF for them, which is correct and not a failure: ${result.basis} ` +
+          `If this holds for a whole ground, either the work is not covered by the nine role maps or nobody described the role at setup.`,
+      );
+    }
   }
 
   /**
@@ -1615,7 +2201,23 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       [{ role: 'user', content: corpus }],
       SOLO_ARTIFACT_SCHEMA,
     );
-    if (!result?.summary) return;
+    /**
+     * THE PRIVATE RECORD SUMMARY IS THE FIRST THING A PERSON READS ABOUT THEIR OWN
+     * CHECK-IN, and this returned silently when the model gave nothing back.
+     *
+     * Since extract() now retries once, a null here means two failed attempts - and
+     * the person opens their report to find the summary simply absent, with nothing
+     * anywhere recording that it was meant to be there. Same shape as the closing
+     * synthesis that failed and said nothing, and as the detection that quietly
+     * switched off a whole feature.
+     */
+    if (!result?.summary) {
+      this.logger.warn(
+        `No private record summary for participant ${participantId} on ground ${groundId}: the model returned nothing twice. ` +
+          `Their report will open without the "what we heard from you" section. Re-running the check-in completion rebuilds it.`,
+      );
+      return;
+    }
 
     await this.prisma.groundParticipant.update({
       where: { id: participantId },

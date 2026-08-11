@@ -64,7 +64,14 @@ describe('BUG7: admin check-ins list labels each row by participant', () => {
       expect(screen.getByText('admin@example-test.invalid')).toBeTruthy()
       expect(screen.getByText('jordan@example-test.invalid')).toBeTruthy()
     })
-    // both rows are session 1, now distinguishable by participant
-    expect(screen.getAllByText(/Session 1/i).length).toBe(2)
+    /**
+     * Both rows are session 1, now distinguishable by participant.
+     *
+     * Counted with an EXACT match. A loose /Session 1/ also matches the header's
+     * progress line ("Session 1 of 12"), which was added later - so the loose
+     * version failed on a change that had nothing to do with these rows, and
+     * would have gone on being wrong in either direction as the page grew.
+     */
+    expect(screen.getAllByText(/^Session 1$/i).length).toBe(2)
   })
 })

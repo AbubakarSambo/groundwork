@@ -13,6 +13,75 @@ export const appConfig = registerAs("app", () => ({
   // no UI surface yet, so it is OFF by default to avoid paying for output nothing
   // renders. Flip to true once a client component shows each participant their guide.
   postReportGuideEnabled: process.env.POST_REPORT_GUIDE_ENABLED === "true",
+  /**
+   * THE COACHING LAYER. Off unless explicitly turned on, and off is the default
+   * everywhere including production.
+   *
+   * Detection already ships: the role maps, the seven universal modes, the
+   * function stored on a participant, and the neutral probes that reach the
+   * prompt are all live today and are NOT behind this flag, because they are
+   * existing behaviour and gating them would change what current grounds do.
+   *
+   * What this gates is the layer built on top of detection: coaching state, one
+   * step per session, the staircases, and anything that reads back what somebody
+   * was asked to do last time. That layer speaks directly to a person about
+   * their own work, so it stays off until its traces have been read by a human.
+   *
+   * The test that matters is not that it works when on. It is that a check-in
+   * with this off behaves EXACTLY as it did before any of it existed.
+   */
+  coachingEnabled: process.env.COACHING_ENABLED === "true",
+
+  /**
+   * CONTEXT. Off by default, on the same terms as the coaching flag above.
+   *
+   * What it gates: the Documents tab becoming a Context tab, open and closed
+   * context as named things, per-person worries, documents read into context,
+   * the context strength read, and the context chat that probes for what setup
+   * did not capture.
+   *
+   * This one changes what people SEE ABOUT EACH OTHER, which is why it needs a
+   * switch more than the coaching layer did. Today every document is private to
+   * whoever uploaded it - not by policy, but because a participant guard was
+   * applied to a list query - so turning this on is the first time the lead's
+   * material reaches anybody. If that lands wrong, it lands wrong in the most
+   * sensitive direction this product has.
+   *
+   * OFF MEANS THE OLD PRODUCT, NOT A DEGRADED ONE. The tab says Documents,
+   * documents stay private to their uploader, and nothing asks anybody what they
+   * are worried about. Additive only: new column, new tables, no changed meaning
+   * for anything that exists. The test that matters is the one that proves that,
+   * not the one that proves the feature works.
+   */
+  contextEnabled: process.env.CONTEXT_ENABLED === "true",
+  /**
+   * G30-G33. Off is today's product: the specificity signal, unchanged. On, the
+   * same measurement is said about the picture instead of about the person, and
+   * the report carries the line saying it is not final.
+   *
+   * A kill switch, because this changes sentences people read about themselves,
+   * and a wrong sentence there costs more than a missing one.
+   */
+  confidenceEnabled: process.env.CONFIDENCE_ENABLED === "true",
+
+  /**
+   * OBJECTIVES AND BASELINE. Off by default, same terms as the two above.
+   *
+   * What it gates: an objective per person rather than one per ground, and a
+   * day-one baseline recorded on purpose rather than inferred from session 1.
+   *
+   * WHY THIS ONE NEEDS THE SWITCH MOST. An objective field is a place to put a
+   * target and score somebody against it, which is what every other product in
+   * this category does. The rules that stop it - a proposal nobody has seen is
+   * never read against, an absent objective produces no read at all, and the
+   * only question asked of two objectives is whether they CONNECT - are the
+   * whole design, and if any of them turns out to be wrong in practice the
+   * damage is done to a person rather than to a screen.
+   *
+   * OFF MEANS THE OLD PRODUCT: one success definition belonging to the lead, and
+   * the arc inferred from session 1 as it is today.
+   */
+  objectivesEnabled: process.env.OBJECTIVES_ENABLED === "true",
 }));
 
 export const databaseConfig = registerAs("database", () => ({
@@ -59,7 +128,8 @@ export const whatsappConfig = registerAs("whatsapp", () => ({
   enabled: !!process.env.WHATSAPP_ACCESS_TOKEN && !!process.env.WHATSAPP_PHONE_NUMBER_ID,
 }));
 
-// Stripe, USD. Per-session billing: first session per ground is free, each additional is $5.
+// Stripe, USD. Subscription billing: ten free grounds per org with unlimited
+// sessions, a subscription lifts the cap. Nothing is charged per session.
 export const stripeConfig = registerAs("stripe", () => ({
   secretKey: process.env.STRIPE_SECRET_KEY,
   publishableKey: process.env.STRIPE_PUBLISHABLE_KEY,

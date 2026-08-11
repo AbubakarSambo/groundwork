@@ -126,3 +126,31 @@ export const promptsApi = {
   getDraft: (key: string) =>
     apiClient.get<PromptVersion | null>(`/prompts/draft/${encodeURIComponent(key)}`).then((r) => r.data),
 }
+
+/** One detection code's hit rate, as rated by the admins who saw it. */
+export interface CodeAccuracy {
+  code: string
+  /** How many times this code has been surfaced to a lead. */
+  surfaced: number
+  /** How many of those were rated accurate or not. */
+  rated: number
+  /** Share of rated detections marked accurate. Null when none rated yet. */
+  accuracyRate: number | null
+}
+
+/**
+ * IS THE DETECTION ANY GOOD?
+ *
+ * Every pattern code the engine can fire, with how often it fired and how often
+ * a human said it was right. This is the feedback loop for the prompt library:
+ * a code surfacing often and rating badly is a prompt to fix, and until now
+ * there was no way to see that - the endpoint existed and nothing called it, so
+ * the ratings admins were already giving went nowhere anyone could read.
+ *
+ * Platform admin only, and it must stay that way: the summary aggregates
+ * detections across every org, so it is internal engineering data and never a
+ * customer-facing number.
+ */
+export const patternAccuracyApi = {
+  summary: () => apiClient.get<CodeAccuracy[]>('/patterns/accuracy').then(r => r.data),
+}

@@ -179,30 +179,45 @@ export function HomePage() {
             <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-muted)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 12 }}>What you can do</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
               {[
-                // Labels double as routing params (?scenario=<label>), resolved by
-                // SCENARIO_FROM_LABEL in CreateGroundPage - the reframed labels are
-                // in that map, so these route to the same untouched scenario keys.
-                { label: 'New hire',               desc: 'Get you and a new hire on the same page about the role and what early success looks like.' },
-                { label: 'New project',            desc: 'Line everyone up on scope, ownership, and what "done" means before the work starts.' },
-                { label: 'New advisor or board member', desc: 'Pin down what the advisor will actually contribute, on what terms.' },
-                { label: 'New partner or co-founder', desc: 'Put what each of you expects to build, own, and contribute in writing, before assumptions collide.' },
-                { label: 'New manager or lead',    desc: 'Get clear on scope, reporting, and success for someone stepping into an existing team.' },
-                { label: 'Contract or renewal',    desc: 'Both sides give an honest account of how the term actually went, and what a fair next one looks like.' },
-                { label: 'Raise, promotion, or recognition', desc: 'Build the evidence behind the ask before the conversation.' },
-                { label: 'Performance improvement plan', desc: 'Run a fair plan with both sides on the concern, the support, and what success looks like.' },
-                { label: 'Goals & planning',       desc: 'Check everyone is genuinely on the same goals and plan before the cycle locks in.' },
-                { label: 'Workplan & budget',      desc: 'Check each person\'s plan and budget holds up against the resources available.' },
-                { label: 'Quick check-in',         desc: 'A fast, repeatable read from each person. What is moving, what is stuck, what has changed.' },
-                { label: 'Something\'s off track', desc: 'Name what was agreed, what actually happened, and the exact gap, so you can act on it.' },
-                { label: 'Board & leadership strategy', desc: 'Each leader gives their own read on strategy before the room debates it.' },
-                { label: 'Cohort check-in',        desc: 'Many people in the same role check in against a shared question, on a recurring cadence.' },
-                { label: 'A shock just hit',       desc: 'A jarring event just happened. Get everyone\'s honest read before anyone decides anything.' },
-                { label: 'Get a team back on the same page', desc: 'Each person gives their honest read before the group talks, so the conversation starts from a shared picture.' },
-                { label: 'Describe your own situation', desc: 'Not sure which fits? Describe it in your own words and we will set up the right ground for you.' },
+                /**
+                 * THE LABEL IS WHAT A PERSON READS. THE PARAM IS WHAT ROUTES.
+                 *
+                 * These two used to be the same string: the label was lowercased
+                 * and sent as ?scenario=, resolved by SCENARIO_FROM_LABEL in
+                 * CreateGroundPage. So the wording could not be improved without
+                 * either breaking the route or adding another key to that map, and
+                 * the result was predictable - this list drifted out of step with
+                 * the /entry picker, which had already been reworded. Somebody met
+                 * "New partner or co-founder" here and "A new partner, cofounder,
+                 * or manager" there, for the same thing.
+                 *
+                 * Splitting them means the copy is free to change and the links
+                 * that exist in the wild keep working. The guard next door holds
+                 * both halves: every param resolves, and every scenario is
+                 * reachable from this list.
+                 */
+                { param: 'new hire',               label: 'New hire starting',        desc: 'Get you and a new hire on the same page about the role and what early success looks like.' },
+                { param: 'new project',            label: 'New project',              desc: 'Line everyone up on scope, ownership, and what "done" means before the work starts.' },
+                { param: 'new advisor or board member', label: 'New advisor or board member', desc: 'Pin down what the advisor will actually contribute, on what terms.' },
+                { param: 'new partner or co-founder', label: 'A new partner or co-founder', desc: 'Put what each of you expects to build, own, and contribute in writing, before assumptions collide.' },
+                { param: 'new manager or lead',    label: 'A new manager or lead',    desc: 'Get clear on scope, reporting, and success for someone stepping into an existing team.' },
+                { param: 'contract or renewal',    label: 'Contract or renewal',      desc: 'Both sides give an honest account of how the term actually went, and what a fair next one looks like.' },
+                { param: 'raise, promotion, or recognition', label: 'Raise, promotion, or recognition', desc: 'Build the evidence behind the ask before the conversation.' },
+                { param: 'performance improvement plan', label: 'Performance improvement plan', desc: 'Run a fair plan with both sides on the concern, the support, and what success looks like.' },
+                { param: 'goals & planning',       label: 'Setting shared goals',     desc: 'Check everyone is genuinely on the same goals and plan before the cycle locks in.' },
+                { param: 'workplan & budget',      label: 'Workplan and budget',      desc: 'Check each person\'s plan and budget holds up against the resources available.' },
+                { param: 'quick check-in',         label: 'A regular read on live work', desc: 'A fast, repeatable read from each person. What is moving, what is stuck, what has changed.' },
+                { param: 'a big decision',         label: 'A big decision',           desc: 'A group making a real choice. Each person\'s honest read before you commit.' },
+                { param: 'something\'s off track', label: 'A project is off track',   desc: 'Name what was agreed, what actually happened, and the exact gap, so you can act on it.' },
+                { param: 'board & leadership strategy', label: 'Board and leadership strategy', desc: 'Each leader gives their own read on strategy before the room debates it.' },
+                { param: 'cohort check-in',        label: 'Many people in the same role', desc: 'Many people in the same role check in against a shared question, on a recurring cadence.' },
+                { param: 'a shock just hit',       label: 'A shock just hit',         desc: 'A jarring event just happened. Get everyone\'s honest read before anyone decides anything.' },
+                { param: 'get a team back on the same page', label: 'Get a team back on the same page', desc: 'Each person gives their honest read before the group talks, so the conversation starts from a shared picture.' },
+                { param: 'describe your own situation', label: 'Describe your own situation', desc: 'Not sure which fits? Describe it in your own words and we will set up the right ground for you.' },
               ].map(c => (
                 <div
-                  key={c.label}
-                  onClick={() => navigate(`/grounds/new?scenario=${encodeURIComponent(c.label.toLowerCase())}`)}
+                  key={c.param}
+                  onClick={() => navigate(`/grounds/new?scenario=${encodeURIComponent(c.param)}`)}
                   style={{ display: 'flex', alignItems: 'flex-start', gap: 10, background: 'white', border: '0.5px solid var(--gw-border)', borderRadius: 8, padding: '10px 12px', cursor: 'pointer' }}
                 >
                   <div style={{ flex: 1 }}>

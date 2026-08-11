@@ -7,24 +7,56 @@ import { AuthService } from './auth.service';
 import { RegisterDto, LoginDto, AuthResponseDto, VerifyEmailDto, SetPasswordDto, ResendVerificationDto, ForgotPasswordDto, ResetPasswordDto, MagicLinkRegisterDto, MemberSigninDto, UpdateProfileDto } from './dto';
 import { Public, CurrentUser, CurrentUserData, Roles, Role } from '../../common';
 
+/**
+ * HOW MANY SIGN-INS A MINUTE, AND WHY IT IS A KNOB.
+ *
+ * Ten per minute per address is right for people and wrong for a twelve-session
+ * journey, which signs two people in and out roughly twenty-four times inside an
+ * hour and trips it around session eleven. That cost a two-hour run a minute per
+ * trip while it waited the limit out.
+ *
+ * THE DEFAULT IS UNCHANGED, deliberately. This is not a security decision dressed
+ * up as a convenience: production keeps ten, and a journey environment can raise
+ * it by setting LOGIN_RATE_LIMIT. Turning the limiter down for everybody so a test
+ * runs faster would mean the journey no longer runs against the product that
+ * ships - and the ThrottlerException screen it produced was a real bug, only
+ * visible because a run hit it.
+ *
+ * The right long-term fix is to throttle FAILED attempts rather than all of them,
+ * since brute force is a failure-path problem and a correct password is not an
+ * attack. That is a build, not a constant, so it is written down here rather than
+ * half-done.
+ */
+const SIGN_IN_LIMIT = Number(process.env.LOGIN_RATE_LIMIT) || 10;
+
 @ApiTags('Auth')
 @Controller('auth')
+
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly configService: ConfigService,
   ) {}
 
-  @Public()
-  @Post('register')
-  @Throttle({ global: { limit: 5, ttl: 60000 } })
-  @ApiOperation({ summary: 'Register a new organization and super admin' })
-  @ApiResponse({ status: 201, description: 'Registration successful' })
-  @ApiResponse({ status: 409, description: 'Email or organization already exists' })
-  async register(@Body() dto: RegisterDto) {
-    return this.authService.register(dto);
-  }
-
+  /**
+   * TWO DEAD ROUTES REMOVED HERE: POST /auth/register and
+   * POST /auth/resend-verification.
+   *
+   * Sign-up is magic-link only. `register` took an email and a password, created
+   * an org and a super admin, and had no caller in the client, the marketing
+   * site, the seeds or the journey harnesses - `authService.register` was reached
+   * from that one route and nowhere else. `resend-verification` served the same
+   * superseded flow, and the live equivalent is already wired: MagicSentPage
+   * resends through `register-magic-link`, minting the same EMAIL_VERIFICATION
+   * token type.
+   *
+   * A public, unauthenticated, org-creating endpoint nobody uses is attack
+   * surface with no upside, which is why these went rather than being left.
+   *
+   * POST /auth/login STAYS, and is not dead: journey/run.ts and
+   * journey/org-sim/run-all.ts sign in with a password to drive the app as a real
+   * user. Deleting it would take the end-to-end harnesses with it.
+   */
   @Public()
   @Post('register-magic-link')
   @Throttle({ global: { limit: 5, ttl: 60000 } })
@@ -38,7 +70,7 @@ export class AuthController {
   @Public()
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  @Throttle({ global: { limit: 10, ttl: 60000 } })
+  @Throttle({ global: { limit: SIGN_IN_LIMIT, ttl: 60000 } })
   @ApiOperation({ summary: 'Login with email and password' })
   @ApiResponse({ status: 200, description: 'Login successful', type: AuthResponseDto })
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
@@ -65,16 +97,6 @@ export class AuthController {
   @ApiResponse({ status: 400, description: 'Invalid or expired token' })
   async setPassword(@Body() dto: SetPasswordDto): Promise<AuthResponseDto> {
     return this.authService.setPassword(dto);
-  }
-
-  @Public()
-  @Post('resend-verification')
-  @HttpCode(HttpStatus.OK)
-  @Throttle({ global: { limit: 3, ttl: 60000 } })
-  @ApiOperation({ summary: 'Resend verification email' })
-  @ApiResponse({ status: 200, description: 'Verification email sent if account exists' })
-  async resendVerification(@Body() dto: ResendVerificationDto) {
-    return this.authService.resendVerification(dto);
   }
 
   @Public()
@@ -119,6 +141,36 @@ export class AuthController {
     return this.authService.validateToken(token, type);
   }
 
+  /**
+   * Which sign-in methods this deployment can actually complete.
+   *
+   * Google sign-in has been fully built on both sides for a long time and no
+   * client ever offered it, because GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET
+   * are unset - and GoogleStrategy falls back to the literal placeholder
+   * 'google-oauth-disabled' when they are. A button wired unconditionally would
+   * not fail quietly: it would send a person to Google and land them on
+   * Google's own error page, which reads as "this company is broken".
+   *
+   * So the client asks. The server is the only side that knows whether the
+   * credentials exist, and the moment they are provisioned the button appears
+   * with no code change and no deploy of the client.
+   *
+   * Public by necessity - it is read on the sign-in page, before anyone has a
+   * token. It exposes only whether a method is available, never any credential.
+   */
+  @Public()
+  @Get('methods')
+  @ApiOperation({ summary: 'Which sign-in methods this deployment can complete' })
+  async methods(): Promise<{ magicLink: boolean; google: boolean }> {
+    const clientId = this.configService.get<string>('google.clientId');
+    const clientSecret = this.configService.get<string>('google.clientSecret');
+    return {
+      // Always available: it needs only outbound email.
+      magicLink: true,
+      google: !!clientId?.trim() && !!clientSecret?.trim(),
+    };
+  }
+
   @Public()
   @Get('google')
   @UseGuards(AuthGuard('google'))
@@ -134,10 +186,15 @@ export class AuthController {
   async googleCallback(@Req() req: any, @Res() res: any) {
     const frontendUrl = this.configService.get<string>('google.frontendUrl');
     try {
-      const { token, isNewUser } = await this.authService.findOrCreateGoogleUser(req.user);
+      const { token, isNewUser, needsOrgName } = await this.authService.findOrCreateGoogleUser(req.user);
       // Issue a short-lived (60s) exchange code so the full JWT is never in the URL.
       const code = await this.authService.createOAuthExchangeCode(token);
-      return res.redirect(`${frontendUrl}/auth/google/callback?code=${code}&new=${isNewUser}`);
+      // needsOrgName is false for anyone joining an org that already exists -
+      // an invited participant must never be asked to name someone else's
+      // organisation.
+      return res.redirect(
+        `${frontendUrl}/auth/google/callback?code=${code}&new=${isNewUser}&nameOrg=${needsOrgName}`,
+      );
     } catch {
       return res.redirect(`${frontendUrl}/login?error=google_auth_failed`);
     }

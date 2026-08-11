@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { queryClient } from '@/lib/queryClient'
 import { authApi } from '@/api/auth'
 import { entryApi } from '@/api/entry'
+import { groundsApi } from '@/api/grounds'
 import { useAuthStore } from '@/stores/auth'
 
 const COMMIT_KEY = 'gw_commit_payload'
@@ -61,6 +63,8 @@ export function MagicVerifyPage() {
   const [failedInvites, setFailedInvites] = useState<string[]>([])
   const [invited, setInvited] = useState<string[]>([])
   const [nextGroundId, setNextGroundId] = useState<string | null>(null)
+  // null while we do not know yet; the welcome panel waits rather than flashing.
+  const [isFirstGround, setIsFirstGround] = useState<boolean | null>(null)
   const [joinUrl, setJoinUrl] = useState<string | null>(null)
 
   const lastAttempt = useRef<{ token: string; payload: any; user: { jobTitle?: string | null; role?: string } } | null>(null)
@@ -87,6 +91,20 @@ export function MagicVerifyPage() {
   async function commitFlow(payload: any, user: { jobTitle?: string | null; role?: string }, hadEntryIntent: boolean): Promise<VerifyOutcome> {
     try {
       const result = await entryApi.commit(payload)
+
+      /**
+       * The sidebar has to learn the ground exists.
+       *
+       * The grounds list is cached with a 30 second staleTime, and it is usually
+       * fetched the moment the shell mounts - which is BEFORE this commit creates
+       * the first ground. Without an invalidation the sidebar sat on its empty
+       * result and told a person who had just created their first ground "No
+       * grounds yet", while they were looking at that very ground. Caught by a
+       * Playwright run, whose accessibility snapshot showed both on screen at
+       * once. GW-019.
+       */
+      queryClient.invalidateQueries({ queryKey: ['grounds'] })
+
       localStorage.removeItem(COMMIT_KEY)
       localStorage.removeItem('gw_entry_session')
       localStorage.removeItem('gw_draft_token')
@@ -179,6 +197,51 @@ export function MagicVerifyPage() {
     })
     return () => { mounted = false }
   }, [])
+
+  /**
+   * Count what they already have, once a ground id is in hand. One ground means
+   * this is the first run and the welcome panel is the right screen. More than
+   * one means they have been here before, so they go to their grounds list
+   * instead of being introduced to a product they already own.
+   */
+  useEffect(() => {
+    if (!nextGroundId) return
+    let mounted = true
+    groundsApi.list()
+      .then((grounds: any[]) => {
+        if (!mounted) return
+        const first = (grounds?.length ?? 0) <= 1
+        setIsFirstGround(first)
+        if (!first) navigate('/grounds', { replace: true })
+      })
+      // If the count cannot be fetched, show the welcome rather than a blank
+      // screen: being over-welcomed is a smaller failure than being stranded.
+      .catch(() => { if (mounted) setIsFirstGround(true) })
+    return () => { mounted = false }
+  }, [nextGroundId])
+
+  /**
+   * THE FIRST-RUN WELCOME IS FOR A FIRST GROUND.
+   *
+   * "Your ground is set up. Your session is on record and your account is live",
+   * a link to share, three steps explaining what happens next, and a button to
+   * "Go to your ground" - correct for somebody who has just made one, and wrong
+   * for the person who owns the organisation and is signing back in.
+   *
+   * On Ground 2, Sahar asked for a sign-in link, followed it, and was welcomed as
+   * though she had just arrived, with the button pointing at the ground she had
+   * closed weeks earlier. Nothing was broken. The whole screen was written for
+   * somebody else, which is its own kind of broken.
+   *
+   * So it is shown only when this really is the org's first ground. Anybody else
+   * goes where they were going.
+   */
+  if (nextGroundId && isFirstGround === false) {
+    return null   // returning user: the effect above has sent them to their grounds
+  }
+  if (nextGroundId && isFirstGround === null) {
+    return null   // still counting; better a blank moment than the wrong screen
+  }
 
   if (nextGroundId) {
     return (

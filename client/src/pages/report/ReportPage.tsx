@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { useQuery, useMutation } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { groundsApi } from '@/api/grounds'
 import { reportsApi } from '@/api/reports'
+import { conversationApi } from '@/api/conversation'
+import { outcomeFeedbackApi } from '@/api/feedback'
 import { apiClient } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
+import { alignmentLabel, alignmentShort } from '@/lib/alignment'
 import { participantLabel } from '@/lib/utils'
 import { InferenceReviewPanel } from '@/components/InferenceReviewPanel'
 import { VennIcon } from '@/components/gw/VennIcon'
@@ -68,43 +71,120 @@ function ResolutionSection({ groundId, resolutionState }: { groundId: string; re
   )
 }
 
-const LADDER_STEPS = ['Unresolved', 'Mixed', 'Emerging', 'Clear', 'Aligned'] as const
+/**
+ * The five-band ladder that used to sit here - Unresolved, Mixed, Emerging,
+ * Clear, Aligned, with a filled "n of 5" - is gone. Two reasons, and the second
+ * is the one that mattered.
+ *
+ * It read as a grade. The landing page says twice that this product does not
+ * score or rate, and a five-step bar with four segments lit is a score whatever
+ * the words on it say. A person opening their own report should not meet a
+ * number that looks like a mark out of five.
+ *
+ * And three of the five bands were invented. The report holds exactly two
+ * things: `agreements` and `divergences`. "Emerging" and "Mixed" were thresholds
+ * picked here in the client to fill a scale that the record cannot support -
+ * d <= 2 was a design decision, not a finding. So the page now says what the
+ * report actually holds, and when it holds nothing it says nothing. That last
+ * part is the point: an empty report used to render as a full ladder.
+ */
 
-function deriveStatus(agreements: string[], divergences: any[], contributedParties = 2): { label: string; steps: number } {
-  const a = agreements.length
-  const d = divergences.length
-  // Alignment is two-sided. With fewer than 2 parties on record, the ceiling is
-  // "Clear" (one side is clearly stated) - never "Aligned".
-  if (contributedParties < 2) {
-    if (a > 0 && d <= 1) return { label: 'Clear', steps: 4 }
-    if (a > 0 && d <= 2) return { label: 'Emerging', steps: 3 }
-    if (a > 0 || d > 0) return { label: 'Mixed', steps: 2 }
-    return { label: 'Unresolved', steps: 1 }
-  }
-  if (a > 0 && d === 0) return { label: 'Aligned', steps: 5 }
-  if (a > 0 && d <= 1) return { label: 'Clear', steps: 4 }
-  if (a > 0 && d <= 2) return { label: 'Emerging', steps: 3 }
-  if (a > 0 || d > 0) return { label: 'Mixed', steps: 2 }
-  return { label: 'Unresolved', steps: 1 }
-}
+/**
+ * DID THIS FEEL FAIR?
+ *
+ * The only question that tells anyone whether Groundwork worked, and until now
+ * there was no way for a party to answer it. Both verbs of
+ * `/grounds/:id/outcome-feedback` existed on the API and nothing called either,
+ * which means `avgFairnessRate` in the outcome-learning summary has been
+ * averaging an empty set since it was written.
+ *
+ * Three deliberate choices:
+ *
+ * ASKED ONLY AFTER THE GROUND CLOSES. Asking mid-ground is asking someone to
+ * rate a conversation they are still inside, and it would also tell them the
+ * process is over when it is not.
+ *
+ * THE ANSWER IS CHANGEABLE. The endpoint upserts, so a party who felt one way on
+ * the day and another a week later can say so. A first impression locked in
+ * forever is a worse record than a revisable one.
+ *
+ * "NO" IS AS EASY TO PRESS AS "YES". Both are plain buttons of equal weight. A
+ * feedback control that makes the negative answer the effortful one collects
+ * flattery, and flattery here would quietly corrupt the one number that says
+ * whether any of this is working.
+ */
+function OutcomeFeedbackSection({ groundId, closed }: { groundId: string; closed: boolean }) {
+  const qc = useQueryClient()
+  const [note, setNote] = useState('')
 
-function StatusLadder({ steps, label }: { steps: number; label: string }) {
-  const isAligned = label === 'Aligned'
+  const { data: mine } = useQuery({
+    queryKey: ['outcome-feedback', groundId],
+    queryFn: () => outcomeFeedbackApi.mine(groundId),
+    enabled: closed,
+    retry: false,
+  })
+
+  const submit = useMutation({
+    mutationFn: (feltFair: boolean) => outcomeFeedbackApi.submit(groundId, feltFair, note.trim() || undefined),
+    onSuccess: () => {
+      toast.success('Thank you - that is recorded.')
+      setNote('')
+      qc.invalidateQueries({ queryKey: ['outcome-feedback', groundId] })
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Could not record that. Please try again.'),
+  })
+
+  if (!closed) return null
+
+  const answered = !!mine
+
   return (
-    <div style={{ display: 'flex', gap: 4, marginTop: 10 }}>
-      {LADDER_STEPS.map((step, i) => {
-        const filled = i < steps
-        return (
-          <div key={step} style={{
-            flex: 1, textAlign: 'center', fontSize: 9, letterSpacing: '.03em',
-            textTransform: 'uppercase', padding: '5px 2px', borderRadius: 5, fontWeight: 700,
-            background: filled ? (isAligned ? '#085041' : '#0C447C') : '#EFEDE8',
-            color: filled ? '#fff' : '#9B9590',
-          }}>
-            {step}
-          </div>
-        )
-      })}
+    <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 12, padding: '16px 18px', marginBottom: 18 }}>
+      <div style={{ fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: '#9B9590', fontWeight: 700, marginBottom: 10 }}>
+        This ground has closed
+      </div>
+
+      {answered && (
+        <div style={{ fontSize: 13, marginBottom: 10 }}>
+          You said this process {mine!.feltFair ? 'felt fair' : 'did not feel fair'}.
+          {mine!.note && <span style={{ color: '#6B6560' }}> "{mine!.note}"</span>}
+          <span style={{ color: '#9B9590' }}> You can change that below.</span>
+        </div>
+      )}
+
+      <div style={{ fontSize: 13.5, marginBottom: 8, lineHeight: 1.55 }}>
+        Did this process feel fair, and grounded in what was actually said?
+      </div>
+      <div style={{ fontSize: 12, color: '#6B6560', marginBottom: 10, lineHeight: 1.5 }}>
+        Your answer is not shown to the other parties.
+      </div>
+
+      <textarea
+        value={note}
+        onChange={e => setNote(e.target.value)}
+        maxLength={2000}
+        rows={2}
+        placeholder="Anything you want to add (optional)"
+        style={{ width: '100%', boxSizing: 'border-box', fontSize: 13, padding: '8px 10px', borderRadius: 7, border: '1px solid #D6D2CA', fontFamily: 'inherit', outline: 'none', resize: 'vertical', marginBottom: 10 }}
+      />
+
+      <div style={{ display: 'flex', gap: 8 }}>
+        {/* Equal weight, deliberately. See the note above. */}
+        <button
+          disabled={submit.isPending}
+          onClick={() => submit.mutate(true)}
+          style={{ fontSize: 13, fontWeight: 700, color: '#085041', background: '#E7F6EF', border: '1px solid #BFE3D3', borderRadius: 8, padding: '8px 16px', cursor: 'pointer', fontFamily: 'inherit' }}
+        >
+          It felt fair
+        </button>
+        <button
+          disabled={submit.isPending}
+          onClick={() => submit.mutate(false)}
+          style={{ fontSize: 13, fontWeight: 700, color: '#8A5C1A', background: '#FDF3E3', border: '1px solid #F0DCB4', borderRadius: 8, padding: '8px 16px', cursor: 'pointer', fontFamily: 'inherit' }}
+        >
+          It did not
+        </button>
+      </div>
     </div>
   )
 }
@@ -371,6 +451,32 @@ export function ReportPage() {
     onError: (e: any) => toast.error(e?.response?.data?.message || 'Could not start a correction session. Please try again.'),
   })
 
+  /**
+   * The caller's OWN sessions, so the page can offer them their own record.
+   *
+   * `/my-checkin-status` resolves the participant from the caller's user id, so
+   * this cannot be pointed at another party - which is why it is safe to run on
+   * a page both parties open. It is also the only way to get the check-in ids
+   * needed for the download below; the shared report itself does not carry them,
+   * and it should not.
+   */
+  const { data: myStatus } = useQuery({
+    queryKey: ['my-checkin-status', id],
+    queryFn: () => groundsApi.getMyCheckinStatus(id!),
+    enabled: !!id,
+    retry: false,
+  })
+
+  /**
+   * "This record is yours. It is portable and permanent" - which the panel below
+   * has said all along, with no way to take it anywhere. The endpoint existed
+   * and nothing called it. Owner-only, enforced server-side.
+   */
+  const downloadRecord = useMutation({
+    mutationFn: (checkInId: string) => conversationApi.download(checkInId),
+    onError: () => toast.error('Could not download that record. Please try again.'),
+  })
+
   const PAGE_STYLE: React.CSSProperties = {
     minHeight: '100vh',
     background: '#EDECEA',
@@ -438,7 +544,13 @@ export function ReportPage() {
   const agreements = report.agreements ?? []
   const divergences = report.divergences ?? []
   const contributedParties = ((report.engagement ?? {}) as any).parties?.filter((p: any) => p.contributed).length ?? 2
-  const { label: statusLabel, steps: statusSteps } = deriveStatus(agreements, divergences, contributedParties)
+  // Null when the report names nothing, and the header renders nothing in that
+  // case rather than a reassuring placeholder.
+  const read = agreements.length + divergences.length > 0
+    ? { agreed: agreements.length, open: divergences.length }
+    : null
+  const statusLabel = alignmentLabel(read)
+  const statusShort = alignmentShort(read)
 
   const eng = (report.engagement ?? {}) as any
   const areas: any[] = eng.areas ?? []
@@ -456,12 +568,22 @@ export function ReportPage() {
     ? new Date(report.releasedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
     : null
 
-  const sessionPhrase =
-    statusLabel === 'Aligned' ? 'Aligned, and honest about what to watch.' :
-    statusLabel === 'Clear'   ? 'The substance is settled.' :
-    statusLabel === 'Emerging' ? 'A pattern is forming.' :
-    statusLabel === 'Mixed'   ? 'Some gaps remain.' :
-    'Getting started.'
+  /**
+   * Agreement is two-sided. If only one party has an account on record, the
+   * report can say what that account holds but cannot call any of it agreed -
+   * there is nothing yet for it to agree WITH. The old ladder handled this by
+   * capping the bar at "Clear", which still read as four-fifths of the way to
+   * aligned. Saying it in words is the honest version.
+   */
+  const oneSided = contributedParties < 2
+
+  const sessionPhrase = !statusLabel
+    ? 'Nothing to report on yet.'
+    : oneSided
+      ? 'One person has checked in so far. The second is what makes it a comparison.'
+      : divergences.length === 0
+        ? 'You see this the same way.'
+        : 'Where you see it differently is below, most important first.'
 
   return (
     <div style={PAGE_STYLE}>
@@ -537,8 +659,13 @@ export function ReportPage() {
         <div style={{ maxWidth: 1040, margin: '0 auto', padding: '0 20px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)' }}>
             {[
-              { h: 'What we heard', p: 'Every report opens with the pattern across the accounts - the thing no single person could see on their own.' },
-              { h: 'A move for every area', p: 'Each area carries an observation, why it matters, and a recommended move. The status is auditable, not a grade.' },
+              { h: 'What we heard', p: "Every report opens with what runs across everyone's answers, the thing no single person could see on their own." },
+              // This used to promise "a recommended move" for every area. The
+              // engine has never produced one: a divergence carries a topic,
+              // each party's position, the evidence behind it, and what is at
+              // stake if it holds. Naming those four is honest and is also the
+              // more useful claim - the move is the reader's to make.
+              { h: 'What matters most, first', p: 'Every gap names each side\'s position, the evidence behind it, and what is at stake if it holds. The most significant comes first.' },
               { h: 'Honest closes', p: 'Decisions rarely finish clean. Each report names what is aligned, what is open, what to revisit, and what risk remains.' },
             ].map((cell, i) => (
               <div key={i} style={{ padding: '18px 22px', borderRight: i < 2 ? '1px solid #E2E0DB' : 'none' }}>
@@ -566,6 +693,11 @@ export function ReportPage() {
 
         <ResolutionSection groundId={id!} resolutionState={(ground as any).resolutionState} />
 
+        <OutcomeFeedbackSection
+          groundId={id!}
+          closed={(ground as any).status === 'RESOLVED' || (ground as any).status === 'CLOSED'}
+        />
+
         {/* Cards - the toggle above picks which one shows; without a solo
             report to toggle to, the shared report is the only thing here. */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 18 }}>
@@ -581,21 +713,20 @@ export function ReportPage() {
 
               <PatternBlock label="What we heard" content={report.sharedPicture} />
 
-              {/* Alignment status */}
-              <div style={{ marginBottom: 16 }}>
-                <SecH>Alignment status</SecH>
-                <div style={{ fontSize: 18, fontWeight: 800 }}>{statusLabel}</div>
-                <div style={{ fontSize: 12.5, color: '#6B6560', marginTop: 2, lineHeight: 1.5 }}>
-                  {agreements.length > 0 && divergences.length > 0
-                    ? `${agreements.length} area${agreements.length !== 1 ? 's' : ''} aligned, ${divergences.length} requiring attention.`
-                    : agreements.length > 0
-                    ? `${agreements.length} area${agreements.length !== 1 ? 's' : ''} aligned.`
-                    : divergences.length > 0
-                    ? `${divergences.length} area${divergences.length !== 1 ? 's' : ''} require attention.`
-                    : 'Building the picture.'}
+              {/* Where things stand. Rendered only when the report holds
+                  something - an empty report says nothing here rather than
+                  reassuring anyone. */}
+              {statusLabel && (
+                <div style={{ marginBottom: 16 }}>
+                  <SecH>Where things stand</SecH>
+                  <div style={{ fontSize: 18, fontWeight: 800 }}>
+                    {oneSided ? `${agreements.length + divergences.length} areas on record` : statusLabel}
+                  </div>
+                  <div style={{ fontSize: 12.5, color: '#6B6560', marginTop: 2, lineHeight: 1.5 }}>
+                    {sessionPhrase}
+                  </div>
                 </div>
-                <StatusLadder steps={statusSteps} label={statusLabel} />
-              </div>
+              )}
 
               {/* What's still open */}
               {divergences.length > 0 && (
@@ -606,9 +737,54 @@ export function ReportPage() {
                         <AreaBlock key={i} title={area.title} observation={area.observation} whyItMatters={area.whyItMatters} recommendedMove={area.recommendedMove} />
                       ))
                     : divergences.map((d: any, i: number) => (
-                        <AreaBlock key={i} title={d.topic} observation={d.positions.map((p: any) => p.view).join(' ')} />
+                        // The engine now emits these ranked, most significant
+                        // first, so render order is the ranking - no re-sorting
+                        // here. `atStake` is what happens to the work if the gap
+                        // holds; it is omitted when the record could not support
+                        // saying anything, so it is conditional on being present.
+                        <AreaBlock
+                          key={i}
+                          title={d.topic}
+                          observation={d.positions.map((p: any) => p.view).join(' ')}
+                          whyItMatters={d.atStake}
+                        />
                       ))
                   }
+                </div>
+              )}
+
+              {/* LEADERSHIP GAPS, WHICH NOTHING HAS EVER RENDERED.
+                  The synthesis routes findings here deliberately - a deferred
+                  conversation, a commitment nobody was held to, work not handed
+                  over, a contribution not seen - and its own prompt says the two
+                  surfaces are "read on different surfaces for different
+                  purposes". Nothing implemented the second surface. The API
+                  returned them to every party and this page referenced the field
+                  nowhere, so the most sensitive thing the synthesis produces was
+                  being handed to five colleagues by an endpoint nobody was
+                  reading.
+
+                  The API side is fixed - they reach the lead only now. This is
+                  the surface that was missing. Shown to the lead, framed as
+                  something about how the work was led rather than a judgement on
+                  the person leading it, because that is what the prompt is
+                  instructed to produce and the framing has to match or the whole
+                  thing reads as an appraisal. */}
+              {isAdmin && Array.isArray((report as any).leadershipGaps) && (report as any).leadershipGaps.length > 0 && (
+                <div style={{ marginBottom: 16 }}>
+                  <SecH>Worth your attention as the person leading this</SecH>
+                  <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
+                    Only you see this part. It is about how the work was led, not about anyone in it, and nobody is quoted or named.
+                  </div>
+                  {(report as any).leadershipGaps.map((g: any, i: number) => (
+                    <AreaBlock
+                      key={i}
+                      title={g.pattern ?? g.title ?? 'A pattern in how this ran'}
+                      observation={g.observation ?? g.text ?? ''}
+                      whyItMatters={g.atStake ?? g.whyItMatters}
+                      recommendedMove={g.recommendedMove}
+                    />
+                  ))}
                 </div>
               )}
 
@@ -734,18 +910,37 @@ export function ReportPage() {
                   </div>
                 )}
 
-                <div style={{ marginBottom: 16 }}>
+                {statusShort && <div style={{ marginBottom: 16 }}>
                   <SecH>Your account, so far</SecH>
-                  <div style={{ fontSize: 18, fontWeight: 800 }}>{statusLabel}</div>
+                  <div style={{ fontSize: 18, fontWeight: 800 }}>{statusShort}</div>
                   <div style={{ fontSize: 12.5, color: '#6B6560', marginTop: 2, lineHeight: 1.5 }}>
-                    {agreements.length > 0
-                      ? `Clear on ${agreements.length} area${agreements.length !== 1 ? 's' : ''}${divergences.length > 0 ? `. ${divergences.length} still open.` : '.'}`
-                      : 'Building the picture.'}
+                    {sessionPhrase}
                   </div>
-                </div>
+                </div>}
 
                 <div style={{ fontSize: 12, color: '#6B6560', background: '#F4F1EA', border: '1px solid #E5DFD2', borderRadius: 8, padding: '10px 12px', lineHeight: 1.55 }}>
                   This record is yours. It is portable and permanent. You can add this ground to your Groundwork profile.
+                  {/* The sentence above claims portability, so give them the file.
+                      Completed sessions only - there is nothing settled to take
+                      away from a session still in progress. */}
+                  {(myStatus?.checkIns ?? []).some(c => c.completedAt) && (
+                    <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                      <span style={{ fontSize: 11, color: '#9B9590' }}>Download:</span>
+                      {(myStatus?.checkIns ?? [])
+                        .filter(c => c.completedAt)
+                        .map(c => (
+                          <button
+                            key={c.id}
+                            disabled={downloadRecord.isPending}
+                            onClick={() => downloadRecord.mutate(c.id)}
+                            style={{ fontSize: 11, fontWeight: 700, color: '#0C447C', background: 'white', border: '1px solid #D6D2CA', borderRadius: 12, padding: '3px 10px', cursor: 'pointer', fontFamily: 'inherit' }}
+                            title={`Download your session ${c.sessionNumber} record as a text file`}
+                          >
+                            Session {c.sessionNumber}
+                          </button>
+                        ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -769,7 +964,7 @@ export function ReportPage() {
                         : 'checked in, no record'}
                     </span>
                     {p.contributed && p.recordEntries > 0 && p.specificityLabel && (
-                      <span title="How concrete their account was" style={{ fontSize: 11, fontWeight: 700, borderRadius: 6, padding: '2px 8px',
+                      <span title="How concrete they were" style={{ fontSize: 11, fontWeight: 700, borderRadius: 6, padding: '2px 8px',
                         background: p.specificityLabel === 'high' ? '#E7F6EF' : p.specificityLabel === 'moderate' ? '#EEF4FB' : '#FDF3E3',
                         color: p.specificityLabel === 'high' ? '#085041' : p.specificityLabel === 'moderate' ? '#0C447C' : '#8A5C1A' }}>
                         {p.specificityLabel} specificity
@@ -796,7 +991,7 @@ export function ReportPage() {
               : ''}
             {myLatestCompletedSession != null
               ? 'For anything else in your own account, revisit your last session below. It opens a short follow-up that corrects or adds to your record. Your original answers are kept as they were, and the update flows into the next report.'
-              : 'Corrections to your own account are made from a session you have completed on this ground.'}
+              : 'To correct something you said, reopen a session you have already finished on this ground.'}
           </div>
           {myLatestCompletedSession != null && (
             <button

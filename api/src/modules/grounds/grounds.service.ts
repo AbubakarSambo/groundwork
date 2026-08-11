@@ -8,8 +8,9 @@ import { BillingService } from '../billing';
 import { UsageService } from '../usage/usage.service';
 import { CreateGroundDto, AddParticipantDto, CreateGroundForLeadDto } from './dto';
 import { GroundworkEvents, GroundActivatedEvent } from '../../common';
-import { GroundScenario, GroundStatus, PartyType, CheckInStatus, Cadence, UsageEventType, TokenType } from '@prisma/client';
+import { GroundScenario, GroundStatus, PartyType, CheckInStatus, Cadence, UsageEventType, TokenType, Prisma } from '@prisma/client';
 import { endStatesFor } from '../resolution/end-states';
+import { canSignIn } from './can-sign-in';
 import { defaultModeFor, boardRendersFor } from '../board/board-families';
 import { BoardFamily, familyFor } from '../board/board-families';
 
@@ -67,6 +68,31 @@ export const SAFE_PARTICIPANT_SELECT = {
   // no other user PII is pulled through this nested select.
   user: { select: { firstName: true, lastName: true } },
 } as const;
+
+/**
+ * What the parties actually agree on, and what is still open.
+ *
+ * The ground's old "confidence" was min(5, completedCheckIns) rendered as
+ * "5/5 Aligned". It measured ACTIVITY, not agreement, and could not tell the
+ * two apart: an advisor ground with five real agreements and zero divergences
+ * scored identically to a performance-improvement plan whose report contained
+ * nothing at all, which told both parties on a formal process that they were
+ * fully aligned.
+ *
+ * This reads the only place agreement is actually recorded - the report's own
+ * `agreements` and `divergences`. When neither holds anything there is nothing
+ * to say, and it returns null so the surface shows no read rather than
+ * rounding an empty record up to a score.
+ */
+export function alignmentRead(report: { agreements?: unknown; divergences?: unknown } | null | undefined):
+  { agreed: number; open: number } | null {
+  if (!report) return null;
+  const count = (v: unknown) => (Array.isArray(v) ? v.length : 0);
+  const agreed = count(report.agreements);
+  const open = count(report.divergences);
+  if (agreed + open === 0) return null;
+  return { agreed, open };
+}
 
 @Injectable()
 export class GroundsService {
@@ -209,10 +235,23 @@ export class GroundsService {
     }
 
     const leadEmail = dto.leadEmail.toLowerCase();
-    const leadUser = await this.findOrCreateUserForEmail(organizationId, leadEmail, dto.leadName);
 
     const pendingInvites: { email: string; token: string; participantId: string }[] = [];
+    /**
+     * THE LEAD'S USER ROW IS CREATED INSIDE THE TRANSACTION, WITH EVERYTHING ELSE.
+     *
+     * It used to be created just above this line, outside it. When anything
+     * further down failed, the ground rolled back and the person did not: a real
+     * account, in the organisation, verified, with no password and no ground - a
+     * half-person left behind by an operation that reported failure.
+     *
+     * That is bad on its own and it also poisons the retry, because the next
+     * attempt finds an existing row and treats them as an established user.
+     * Either the whole ground exists or none of it does.
+     */
+    let leadUser!: { id: string; isNewUser: boolean; canSignIn: boolean };
     const ground = await this.prisma.$transaction(async (tx) => {
+      leadUser = await this.findOrCreateUserForEmail(organizationId, leadEmail, dto.leadName, tx);
       const isFreeGround = canCreate.freeReason !== undefined;
       const ground = await tx.ground.create({
         data: {
@@ -295,12 +334,34 @@ export class GroundsService {
       );
     }
 
-    // Notify the lead - a password-setup link if they're brand new, otherwise
-    // a direct link to confirm. Best-effort: a failed email must not silently
-    // leave the ground stuck with no way for the lead to ever find out.
-    const url = leadUser.isNewUser
-      ? await this.buildPasswordSetupUrl(leadUser.id)
-      : `${this.config.get<string>('resend.frontendUrl') ?? ''}/grounds/${ground.id}`;
+    /**
+     * Notify the lead, with a link they can actually use.
+     *
+     * THE TEST IS "CAN THIS PERSON SIGN IN", NOT "WAS THIS ROW CREATED JUST NOW",
+     * and getting that wrong strands the lead completely.
+     *
+     * It sent a bare /grounds/:id link to anybody whose user row already existed.
+     * That page is behind auth, so a lead with no password lands on the sign-in
+     * form and is asked for a password they have never had. The invitation is the
+     * only thing that was supposed to get them in, and it hands them a locked
+     * door. Nothing on that screen leads anywhere useful: "Forgot your password?"
+     * is wrong because they never had one, and the only escape - "New here? Get a
+     * sign-in link instead" - is the one line they have no reason to read, being
+     * neither new nor stuck in their own mind.
+     *
+     * A user row can exist without any way in for several ordinary reasons: they
+     * were added to a ground and never accepted, they were invited to the org, or
+     * a previous attempt at this very call left them behind. So the question to
+     * ask is whether they have a password or a Google identity, and the answer
+     * decides the link.
+     *
+     * Found on ground 2 of the eighteen: Kennedy was named lead, the first
+     * attempt failed on an unrelated error, the second treated him as an existing
+     * user, and he could not accept a ground that had been created for him.
+     */
+    const url = leadUser.canSignIn
+      ? `${this.config.get<string>('resend.frontendUrl') ?? ''}/grounds/${ground.id}`
+      : await this.buildPasswordSetupUrl(leadUser.id);
     const admin = await this.prisma.user.findUnique({ where: { id: adminUserId }, select: { firstName: true } });
     await this.email.sendLeadInvite(leadEmail, admin?.firstName ?? 'An admin', dto.label, url).catch((err: any) =>
       this.logger.error(`Lead invite email failed for ground ${ground.id}: ${err.message}`),
@@ -390,16 +451,49 @@ export class GroundsService {
    * same pattern used when a participant accepts their invite (accept() in
    * ParticipantsService). Needed here because Ground.initiatorId is a required
    * FK to an existing User; it cannot point at an unaccepted invite. */
-  private async findOrCreateUserForEmail(organizationId: string, email: string, name?: string): Promise<{ id: string; isNewUser: boolean }> {
-    const existing = await this.prisma.user.findUnique({ where: { email } });
-    if (existing) return { id: existing.id, isNewUser: false };
+  /**
+   * OFF WHEN WE CANNOT TELL, which is part of what "off by default" has to mean.
+   *
+   * Reading the flag directly threw where config was unavailable, and a feature
+   * flag that can throw is worse than one that is wrong: the ground page would
+   * return a 500 rather than quietly showing the old product, which is the exact
+   * opposite of what a kill switch is for.
+   *
+   * Surfaced by unit tests whose config mock has no get(), and it would have been
+   * a real outage the first time ConfigService was unavailable for any reason.
+   */
+  private contextEnabled(): boolean {
+    try {
+      return this.config?.get<boolean>('app.contextEnabled') === true;
+    } catch {
+      return false;
+    }
+  }
+
+  private async findOrCreateUserForEmail(
+    organizationId: string,
+    email: string,
+    name?: string,
+    /** The enclosing transaction, when there is one, so a rollback takes the
+        user with it rather than leaving a stranger in the organisation. */
+    client?: Prisma.TransactionClient,
+  ): Promise<{ id: string; isNewUser: boolean; canSignIn: boolean }> {
+    const db = client ?? this.prisma;
+    const existing = await db.user.findUnique({ where: { email } });
+    if (existing) {
+      return {
+        id: existing.id,
+        isNewUser: false,
+        canSignIn: canSignIn(existing),
+      };
+    }
 
     const local = email.split('@')[0] ?? 'there';
     const firstName = name ?? local.charAt(0).toUpperCase() + local.slice(1);
-    const created = await this.prisma.user.create({
+    const created = await db.user.create({
       data: { organizationId, email, firstName, lastName: '', role: 'MEMBER', isEmailVerified: true, passwordHash: null },
     });
-    return { id: created.id, isNewUser: true };
+    return { id: created.id, isNewUser: true, canSignIn: false };
   }
 
   private async buildPasswordSetupUrl(userId: string): Promise<string> {
@@ -513,6 +607,10 @@ export class GroundsService {
         checkIns: {
           select: { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, createdAt: true },
         },
+        // A released report that nobody is told about is a report nobody reads.
+        // Ten grounds released theirs and not one person ever activated.
+        report: { select: { releasedAt: true, agreements: true, divergences: true } },
+        reportActivations: { select: { participantId: true, status: true } },
       },
     });
 
@@ -541,6 +639,8 @@ export class GroundsService {
             checkIns: {
               select: { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, createdAt: true },
             },
+            report: { select: { releasedAt: true, agreements: true, divergences: true } },
+            reportActivations: { select: { participantId: true, status: true } },
           },
         });
       }
@@ -550,7 +650,7 @@ export class GroundsService {
       .map(g => {
         const checkIns = g.checkIns;
         const completedCount = checkIns.filter(ci => ci.status === CheckInStatus.COMPLETED).length;
-        const confidence = completedCount > 0 ? Math.min(5, Math.max(1, completedCount)) : undefined;
+        const alignment = alignmentRead((g as any).report);
         const overdue = checkIns.filter(ci => ci.status === CheckInStatus.NOT_STARTED && ci.createdAt < threeDaysAgo).length;
         const checkInsToday = checkIns.filter(ci => ci.status === CheckInStatus.COMPLETED && ci.completedAt != null && ci.completedAt >= todayStart).length;
         const lastCompletion = checkIns
@@ -558,7 +658,25 @@ export class GroundsService {
           .filter((d): d is Date => d !== null)
           .sort((a, b) => b.getTime() - a.getTime())[0];
         const lastActivity = lastCompletion ?? g.updatedAt;
-        return { ...g, confidence, overdue, checkInsToday, lastActivity };
+
+        // Is a report sitting here that THIS viewer has not opened yet? Only
+        // meaningful for a party - an admin who is not in the ground has no
+        // report of her own to activate.
+        const mine = userId ? (g.participants ?? []).find((p: any) => p.userId === userId) : null;
+        // Same rule the report endpoint applies, or the badge contradicts the
+        // page: the INITIATOR is exempt - they released it and can always read
+        // it - and everyone else needs an ACTIVATED row, not merely a row.
+        const isInitiator = !!userId && g.initiatorId === userId;
+        const activated =
+          isInitiator ||
+          (!!mine &&
+            ((g as any).reportActivations ?? []).some(
+              (a: any) => a.participantId === mine.id && a.status === 'ACTIVATED',
+            ));
+        const reportWaitingForMe = !!mine && !!(g as any).report?.releasedAt && !activated;
+
+        const { reportActivations: _drop, ...rest } = g as any;
+        return { ...rest, alignment, overdue, checkInsToday, lastActivity, reportWaitingForMe };
       })
       .sort((a, b) => new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime());
   }
@@ -606,8 +724,7 @@ export class GroundsService {
     if (!ground) throw new NotFoundException('Ground not found');
 
     // Computed display fields - derived here so the client never needs to repeat the logic.
-    const completedCount = (ground.checkIns ?? []).filter((ci) => ci.status === CheckInStatus.COMPLETED).length;
-    const confidence = Math.min(5, Math.max(1, completedCount || 1));
+    const alignment = alignmentRead((ground as any).report);
 
     const daysLeft =
       ground.timelineDays != null
@@ -754,7 +871,7 @@ export class GroundsService {
       ...rest,
       joinToken: mayShareJoinLink ? (rest as any).joinToken ?? null : null,
       participants: participantsWithCheckIns,
-      confidence,
+      alignment,
       daysLeft,
       brief,
       signals,
@@ -762,6 +879,16 @@ export class GroundsService {
       leadContextNotes,
       org: org ?? null,
       sessionProgress: sessionProgress ? { ...sessionProgress, requestingUserIsMissing } : null,
+      /**
+       * The context flag, sent with the ground because that is where the tab
+       * lives. The client cannot read an environment variable, and a screen that
+       * guesses whether a feature is on is how you get half of it rendering.
+       *
+       * Sent as a plain boolean, not as a list of capabilities: with the flag off
+       * the client renders exactly the Documents tab it rendered before, and
+       * there is nothing else to negotiate.
+       */
+      contextEnabled: this.contextEnabled(),
       // Whether this ground has a delivery board, so the client can show or hide
       // the link without duplicating the scenario-family table. The server owns
       // that routing; the client just reads the answer.
@@ -903,7 +1030,36 @@ export class GroundsService {
   async addParticipant(groundId: string, organizationId: string, initiatorId: string, dto: AddParticipantDto) {
     const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId } });
     if (!ground) throw new NotFoundException('Ground not found');
-    if (ground.initiatorId !== initiatorId) throw new ForbiddenException('Only the initiator can add a participant');
+
+    /**
+     * THE SETTING-UP ADMIN CAN ADD PEOPLE TOO, NOT ONLY THE INITIATOR.
+     *
+     * This check used to be `ground.initiatorId !== initiatorId` alone, and it
+     * made the ordinary first-run journey impossible.
+     *
+     * An admin who chooses "I'm setting this up for my team - someone else will
+     * run it" hands the ground to a lead: the LEAD becomes `initiatorId`, and the
+     * admin is recorded as `createdByUserId`. She is then the only person signed
+     * in, the lead has not accepted yet, and she is the one holding the list of
+     * people to invite - and the old check refused her, on a ground she created,
+     * in an organisation she owns. An eighteen-ground run stopped dead here: the
+     * participant could not be added by anyone, so no check-in, report or board
+     * downstream was reachable.
+     *
+     * It was worse than a plain refusal, because the page simultaneously showed
+     * her the add-participant control. She filled in a colleague's name and email
+     * and was told "Access denied" afterwards.
+     *
+     * `board.service.ts` already made exactly this allowance for READING
+     * (`isSetupAdmin`). This is the same allowance for the matching write. The
+     * ground is still scoped to the caller's organisation by the query above, so
+     * this cannot reach another org's ground.
+     */
+    const isInitiator = ground.initiatorId === initiatorId;
+    const isSetupAdmin = !!ground.createdByUserId && ground.createdByUserId === initiatorId;
+    if (!isInitiator && !isSetupAdmin) {
+      throw new ForbiddenException('Only the lead or the admin who set this ground up can add a participant');
+    }
 
     const initiator = await this.prisma.user.findUnique({ where: { id: initiatorId } });
 
@@ -995,7 +1151,33 @@ export class GroundsService {
         data: { groundId, participantId: participant.id, sessionNumber: 1, status: CheckInStatus.NOT_STARTED, availableFrom: session1AvailableFrom },
       });
 
-      await tx.ground.update({ where: { id: groundId }, data: { status: GroundStatus.AWAITING_PARTIES } });
+      /**
+       * ADDING A PARTICIPANT MUST NOT SKIP THE LEAD'S CONFIRMATION.
+       *
+       * This used to set AWAITING_PARTIES unconditionally, which quietly broke
+       * the hand-off whenever the admin added someone before the lead had opened
+       * their invitation - now the common order, since the admin is the one
+       * holding the list of people to invite.
+       *
+       * The damage was silent and total. `confirmLead` requires status
+       * AWAITING_LEAD, so once this moved the ground past it the lead could never
+       * confirm; and `confirmLead` is the ONLY place a non-managing lead's own
+       * check-in is created. The lead ended up recorded as a party
+       * (`managingOnly = false`) with no session to give an account in, and was
+       * never asked the one question that is hers to answer: "I'm also checking
+       * in" or "Managing only".
+       *
+       * On a two-party ground that means the report is built from one side. Seen
+       * live on a "New hire starting" ground - whose whole promise is getting a
+       * manager and a hire to mean the same thing by "doing well" - where the
+       * manager had no way to say what she meant. GW-016.
+       *
+       * A ground still waiting on its lead stays waiting. The participant is
+       * added and invited either way.
+       */
+      if (ground.status !== GroundStatus.AWAITING_LEAD) {
+        await tx.ground.update({ where: { id: groundId }, data: { status: GroundStatus.AWAITING_PARTIES } });
+      }
 
       return participant;
     });
@@ -1409,9 +1591,14 @@ export class GroundsService {
 
   /**
    * Returns true once every ACTIVE party has completed the given session number.
-   * "Active" = a party who accepted their invite (userId set);
-   * invited-but-never-accepted no-shows never block the report.
-   * Works for two-party and multi-party grounds.
+   *
+   * "Active" = anybody who accepted their invite, anybody who has already
+   * completed this session, and anybody whose invitation is still live. Only a
+   * lapsed invitation drops somebody out of the count, so a no-show cannot hold
+   * the round open forever and a person still on their way cannot be skipped.
+   *
+   * Works for two-party and multi-party grounds, and the difference between the
+   * two is where this went wrong before - see the comment on the query.
    */
   async isSessionReadyForReport(groundId: string, sessionNumber: number): Promise<boolean> {
     // A participant is "active" if they accepted the invite (userId set) OR if
@@ -1426,6 +1613,33 @@ export class GroundsService {
     // completed-check-in loop below forever (they have no check-in to
     // complete), so the ground would wait for a report that can never
     // release. A managing-only lead is not a party to the comparison.
+    /**
+     * SOMEBODY WHOSE INVITATION IS STILL OPEN HAS NOT DECLINED. THEY ARE ON
+     * THEIR WAY, AND THE ROUND IS NOT OVER.
+     *
+     * The clause that used to be here counted only people who had ACCEPTED, so
+     * anybody still holding an unopened invitation was invisible to the count.
+     * On a two-party ground that never shows: there is no third person hovering
+     * between invited and accepted for long enough to matter.
+     *
+     * On ground 2 of the eighteen it showed immediately, and badly. Six people
+     * were invited. Three accepted and checked in within the hour. The other
+     * three had not opened their email yet, so the round was declared complete at
+     * three of six: the shared record released, the ground went ACTIVE, and Eric
+     * - who had not written a word - received
+     *
+     *     "Your shared record is ready: Atlas build, scope and ownership"
+     *
+     * about work he is part of, built entirely from other people's accounts of
+     * it. Session 1 had passed him by. That is the exact failure this product
+     * exists to prevent, arriving by email with the product's name on it.
+     *
+     * So the round now waits on anybody with a LIVE invitation as well. It still
+     * does not wait forever, and that was the real point of the original clause:
+     * once an invitation has expired, that person drops out of the count and the
+     * others are not held hostage. The ground waits exactly as long as the
+     * invitation is good for and not a day longer.
+     */
     const active = await this.prisma.groundParticipant.findMany({
       where: {
         groundId,
@@ -1433,6 +1647,12 @@ export class GroundsService {
         OR: [
           { userId: { not: null } },
           { checkIns: { some: { sessionNumber, status: CheckInStatus.COMPLETED } } },
+          // Invited, not yet accepted, and the invitation has not run out.
+          {
+            userId: null,
+            invitedAt: { not: null },
+            inviteTokenExpiresAt: { gt: new Date() },
+          },
         ],
       },
       select: { id: true },

@@ -1,7 +1,14 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { authApi } from '@/api/auth'
+
+/**
+ * Where the API lives, for the one navigation that cannot go through the axios
+ * client: OAuth starts by handing the browser to Google, so it must be a real
+ * page load. Empty in dev, where Vite proxies /api to the server.
+ */
+const API_ORIGIN = import.meta.env.VITE_API_URL ?? ''
 import { useAuthStore } from '@/stores/auth'
 
 const MARKETING_URL = import.meta.env.VITE_MARKETING_URL ?? 'https://myground.work'
@@ -23,6 +30,23 @@ export function AuthPage() {
   const [error, setError] = useState('')
   const [linkSent, setLinkSent] = useState(false)
   const [resetSent, setResetSent] = useState(false)
+
+  /**
+   * Does this deployment have Google credentials?
+   *
+   * Only the server knows - GoogleStrategy falls back to a placeholder client id
+   * when GOOGLE_CLIENT_ID/SECRET are unset, so an unconditional button would
+   * send people to Google's own error page. Asking means the button appears the
+   * moment credentials are provisioned, with no client change.
+   *
+   * A failed or pending check renders no button, which is the safe direction.
+   */
+  const { data: methods } = useQuery({
+    queryKey: ['auth-methods'],
+    queryFn: authApi.methods,
+    staleTime: 10 * 60 * 1000,
+    retry: false,
+  })
 
   const signIn = useMutation({
     mutationFn: () => authApi.login(email.trim().toLowerCase(), password),
@@ -120,6 +144,27 @@ export function AuthPage() {
               {error && <div className="gw-er" style={{ marginTop: 8 }}>{error}</div>}
             </form>
 
+              {/* Rendered only when the server confirms it can complete the
+                  flow. A full page navigation, not fetch: OAuth begins with a
+                  redirect the browser has to follow. */}
+              {methods?.google && (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '16px 0 12px' }}>
+                    <span style={{ flex: 1, height: 1, background: 'var(--gw-border)' }} />
+                    <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}>or</span>
+                    <span style={{ flex: 1, height: 1, background: 'var(--gw-border)' }} />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { window.location.href = `${API_ORIGIN}/api/v1/auth/google` }}
+                    style={{ width: '100%', padding: '10px 0', borderRadius: 7, background: 'white', color: 'var(--gw-text)', fontSize: 13, fontWeight: 600, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
+                  >
+                    Continue with Google
+                  </button>
+                </>
+              )}
+
+
             <div style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 14, lineHeight: 2 }}>
               <span
                 style={{ color: 'var(--gw-navy)', textDecoration: 'underline', cursor: 'pointer' }}
@@ -132,7 +177,7 @@ export function AuthPage() {
                 style={{ color: 'var(--gw-navy)', textDecoration: 'underline', cursor: 'pointer' }}
                 onClick={() => { setError(''); setView('link') }}
               >
-                New here? Get a sign-in link instead
+                No password? Get a sign-in link instead
               </span>
             </div>
           </>

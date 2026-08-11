@@ -8,6 +8,13 @@ declare module 'axios' {
     // (e.g. polling for a report that may not be synthesised yet) - skips
     // the global toast so the caller's own fallback UI isn't undercut by it.
     skipNotFoundToast?: boolean
+    /**
+     * For calls where a 403 is an expected answer rather than a failure - e.g.
+     * asking whether the viewer is a party to this ground. Without it, a page
+     * that merely ASKS the question pops "Access denied" at someone who did
+     * nothing wrong.
+     */
+    skipForbiddenToast?: boolean
   }
 }
 
@@ -58,7 +65,7 @@ apiClient.interceptors.response.use(
       return Promise.reject(error)
     }
 
-    if (error.response?.status === 403) {
+    if (error.response?.status === 403 && !error.config?.skipForbiddenToast) {
       toast.error('Access denied', {
         description: 'You do not have permission to perform this action',
       })

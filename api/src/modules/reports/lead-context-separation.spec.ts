@@ -99,7 +99,7 @@ describe('lead-context corpus separation (ReportsService.synthesize)', () => {
       adminProfile: { findUnique: jest.fn(async () => null), upsert: jest.fn(async () => ({})) },
       // the note lives in its OWN store, queried separately from any record entry
       leadContextNote: { findMany: jest.fn(async () => [{ participantId: 'p1', text: NOTE }]) },
-      report: { upsert: jest.fn(async () => ({ id: 'r1' })) },
+      report: { findUnique: jest.fn(async () => null), upsert: jest.fn(async () => ({ id: 'r1' })) },
     };
     const prompts: any = { getActive: jest.fn(async () => ({ id: 'pv1', content: 'synthesize this.' })) };
     const anthropic: any = {

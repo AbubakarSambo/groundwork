@@ -39,7 +39,27 @@ export class AdminService implements OnApplicationBootstrap {
 
     const user = await this.prisma.user.findUnique({ where: { email: bootstrapEmail.toLowerCase() } });
     if (!user) {
-      this.logger.warn(`Platform admin bootstrap: no user found for ${bootstrapEmail} - skipping`);
+      /**
+       * LOUD, not a shrug.
+       *
+       * This used to log "no user found - skipping" at WARN and carry on, so an
+       * operator who set the variable on a fresh install got no platform admin,
+       * no account, and no error - just one line in a busy boot log. The
+       * back-office review surfaces were unreachable for an entire eighteen-ground
+       * test run for exactly this reason, and the conclusion drawn at the time was
+       * that the feature did not exist. GW-002.
+       *
+       * It still does not CREATE the account: this promotes a real person who has
+       * signed up, and inventing a user with no password or verified address would
+       * be a worse answer than saying so. But it now says so unmistakably, and
+       * tells the operator the one thing they need to do next.
+       */
+      this.logger.error(
+        `Platform admin bootstrap FAILED: PLATFORM_ADMIN_BOOTSTRAP_EMAIL is set to "${bootstrapEmail}" ` +
+          'but no user has that address, so NO platform admin exists and the back-office is unreachable. ' +
+          'Sign that address up through the normal flow, then restart the API - this runs once, ' +
+          'and only while no platform admin exists.',
+      );
       return;
     }
 

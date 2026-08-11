@@ -1,10 +1,13 @@
+import { plannedSessionsFor, everySessionDone } from '@/lib/sessionCount'
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { whatThisGroundCanTellYou } from '@/lib/contextStrength'
 import { useAuthStore } from '@/stores/auth'
 import { groundsApi, type GroundCadence } from '@/api/grounds'
 import { TIMED_CADENCES, sessionsFor } from '@/lib/cadence'
 import { participantLabel } from '@/lib/utils'
+import { alignmentLabel } from '@/lib/alignment'
 import { reportsApi } from '@/api/reports'
 import { documentsApi } from '@/api/documents'
 import { conversationApi } from '@/api/conversation'
@@ -14,6 +17,7 @@ import type { ParticipantRequest } from '@/api/participantRequests'
 import { toast } from 'sonner'
 import { CodeShareCard } from '@/components/CodeShareCard'
 import { PostSessionPanel } from '@/components/PostSessionPanel'
+import { ResolutionPanel } from '@/components/gw/ResolutionPanel'
 import { billingApi, PLAN_MEMBER_LIMITS, type SubscriptionPlan } from '@/api/billing'
 
 const SCENARIO_LABELS: Record<string, string> = {
@@ -39,16 +43,7 @@ const MOMENT_LABELS: Record<string, string> = {
   RESOLUTION: 'Resolution',
 }
 
-const BANDS = ['', 'Unresolved', 'Mixed', 'Emerging', 'Clear', 'Aligned']
-function bandLabel(score?: number) { return BANDS[score ?? 1] ?? 'Unresolved' }
 
-const CONF_DESC: Record<number, string> = {
-  1: 'One account only. The other party is needed.',
-  2: 'Two accounts. Picture is forming.',
-  3: 'Three sessions. Pattern visible but not confirmed.',
-  4: 'Four sessions. Evidence strong. Recommendation defensible.',
-  5: 'Five sessions. Full picture. High confidence.',
-}
 
 type Tab = 'overview' | 'checkins' | 'docs' | 'report' | 'settings'
 type ReportSession = 's1' | 's2' | 'closing'
@@ -121,12 +116,37 @@ export function GroundAdminPage() {
     onError: () => toast.error('Upload failed.'),
   })
 
+  const setDocVisibility = useMutation({
+    mutationFn: ({ docId, visibility }: { docId: string; visibility: 'OPEN' | 'OWN' }) =>
+      documentsApi.setVisibility(id!, docId, visibility),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['docs', id] }),
+    onError: () => toast.error('Could not change who can see that.'),
+  })
+
   const deleteDoc = useMutation({
     mutationFn: (docId: string) => documentsApi.remove(id!, docId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['docs', id] }),
   })
 
   const isInitiator = !!ground && user?.id === ground.initiatorId
+  // Sent with the ground, because the client cannot read an environment variable
+  // and a screen that guesses whether a feature is on renders half of it.
+  const contextEnabled = (ground as any)?.contextEnabled === true
+  /**
+   * Computed on the client from what the ground already carries, rather than
+   * added as another endpoint. Every input is a count or a presence - nothing
+   * here inspects a person, and no branch depends on who anybody is.
+   */
+  const contextStrength = ground ? whatThisGroundCanTellYou({
+    partyCount: (ground.participants ?? []).filter((p: any) => !p.managingOnly).length,
+    hasSuccessDefinition: !!(ground as any).brief?.trim(),
+    conditionCount: 0,
+    hasBaseline: false,
+    perPersonObjectiveCount: ((ground as any).objectives ?? []).length,
+    openDocumentCount: docs.filter((d: any) => d.visibility === 'OPEN').length,
+    peopleWorkTogether: (ground as any).peopleWorkTogether !== false,
+    plannedSessions: (ground as any).sessionCounts?.total ?? (ground as any).totalSessions ?? 1,
+  }) : null
 
   const { data: pendingRequests = [] } = useQuery({
     queryKey: ['participant-requests', id],
@@ -190,6 +210,29 @@ export function GroundAdminPage() {
     onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Could not update the email.'),
   })
 
+  /**
+   * "I never got the email."
+   *
+   * The endpoint to answer that has always existed and nothing called it, so the
+   * only recovery was resending to the same address that already failed, or a
+   * support request. This fetches the live link and puts it on the clipboard, so
+   * the lead can pass it on by any channel they like.
+   *
+   * It does NOT mint a new link. Reading it leaves the one already sitting in
+   * their inbox working, so a person who finds the original email later is not
+   * met with a dead link.
+   */
+  const copyInviteLink = useMutation({
+    mutationFn: async (participantId: string) => {
+      const { inviteUrl } = await groundsApi.getParticipantInviteUrl(id!, participantId)
+      await navigator.clipboard.writeText(inviteUrl)
+      return inviteUrl
+    },
+    onSuccess: () => toast.success('Invite link copied. It is the same link as their email - send it however you like.'),
+    onError: (e: any) =>
+      toast.error(e?.response?.data?.message ?? 'Could not get the invite link.'),
+  })
+
   const updateRole = useMutation({
     mutationFn: ({ participantId, role }: { participantId: string; role: string }) =>
       participantsApi.updateRole(participantId, role),
@@ -233,7 +276,7 @@ export function GroundAdminPage() {
       setNewParticipantNote('')
       qc.invalidateQueries({ queryKey: ['ground', id] })
     },
-    onError: () => toast.error('Could not add contributor.'),
+    onError: () => toast.error('Could not add them.'),
   })
 
   useEffect(() => {
@@ -248,7 +291,21 @@ export function GroundAdminPage() {
   if (isLoading) return <Shell><div style={{ padding: 24, fontSize: 13, color: 'var(--gw-muted)' }}>Loading…</div></Shell>
   if (!ground) return <Shell><div style={{ padding: 24, fontSize: 13, color: 'var(--gw-muted)' }}>Ground not found.</div></Shell>
 
-  if (ground.status === 'AWAITING_LEAD') {
+  /**
+   * ONLY THE LEAD SEES THE LEAD'S CONFIRMATION.
+   *
+   * This used to be `status === 'AWAITING_LEAD'` alone, so anyone who opened the
+   * ground got the lead's page - including the admin who had just handed it off.
+   * She was shown "You lead this ground / An admin set this up and named you to
+   * lead it" (she IS the admin), a live "Confirm and begin" button, and the
+   * lead's own choice about whether to give an account. Those are the lead's
+   * decisions about the lead's participation, and the hand-off exists precisely
+   * so the lead makes them.
+   *
+   * The admin still needs to see the ground she set up - she is coordinating it -
+   * so she gets the waiting state below rather than nothing.
+   */
+  if (ground.status === 'AWAITING_LEAD' && isInitiator) {
     return (
       <LeadConfirmView
         ground={ground}
@@ -265,8 +322,144 @@ export function GroundAdminPage() {
     )
   }
 
-  const conf = ground.confidence ?? 1
-  const bl = bandLabel(conf)
+  /**
+   * The coordinating admin's view while the lead has not yet confirmed.
+   *
+   * She set this up and handed it over, so the honest thing to show her is the
+   * state of the hand-off: who it went to, and that nothing starts until they
+   * accept. Previously she was shown the lead's own confirmation screen (see
+   * above); the opposite mistake would be to show her nothing at all, which
+   * makes a ground she just created look like it failed to save.
+   */
+  if (ground.status === 'AWAITING_LEAD') {
+    const lead = (ground.participants ?? []).find((p: any) => p.partyType === 'INITIATOR')
+    return (
+      <Shell>
+        <div style={{ maxWidth: 560, margin: '0 auto', padding: '48px 20px' }}>
+          <div style={{ fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-sub)', fontWeight: 700, marginBottom: 8 }}>Waiting for your lead</div>
+          <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--gw-navy)', margin: '0 0 6px', letterSpacing: '-.01em' }}>{ground.label}</h1>
+          <p style={{ fontSize: 13.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 16 }}>
+            You set this ground up and asked {lead?.email ?? "your lead"} to run it.
+            They have been emailed a link. Nothing starts until they open it and confirm, and
+            they choose their own start time.
+          </p>
+          <div className="gw-box gw-box-blue" style={{ marginBottom: 24 }}>
+            You will see who has checked in, and the shared report once it releases. You will
+            not see what anyone wrote - accounts stay private until the report is ready.
+          </div>
+          {/*
+            A real control, not a promise. The first version of this waiting
+            state said "you can add the other people now" and offered no way to
+            do it - which is the same failure as GW-013 in a new coat: telling
+            the admin she may do something the screen does not let her do.
+
+            This is the write that GW-013 unblocked server-side, so it belongs
+            here: she is the one holding the list of people to invite, and the
+            lead may not open their mail for days.
+          */}
+          <div style={{ fontSize: 12.5, color: 'var(--gw-muted)', marginBottom: 10 }}>
+            You can add the other people now, or leave it to your lead.
+          </div>
+
+          {/*
+            Say that it worked.
+            
+            A Playwright run added a participant here successfully - the row was
+            created and the invitation email went out - and the screen was
+            unchanged afterwards: still just "+ Add someone", with the person
+            nowhere on it. The admin has no way to tell the difference between
+            "added" and "silently failed", and the obvious response is to add them
+            again. The main ground view already confirms this way; the waiting view
+            did not. GW-018.
+          */}
+          {lastInvitedEmail && (
+            <div style={{ background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 8, padding: '10px 12px', marginBottom: 12 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#085041' }}>Invite sent to {lastInvitedEmail}</div>
+              <div style={{ fontSize: 12, color: '#085041', marginTop: 2 }}>
+                They check in on their own, and nothing is shown to them until the report is ready.
+              </div>
+            </div>
+          )}
+
+          {(ground.participants ?? []).filter((p: any) => p.partyType !== 'INITIATOR').length > 0 && (
+            <div style={{ marginBottom: 12 }}>
+              {(ground.participants ?? []).filter((p: any) => p.partyType !== 'INITIATOR').map((p: any) => (
+                <div key={p.id} style={{ fontSize: 13, color: 'var(--gw-text)', padding: '6px 0', borderBottom: '1px solid var(--gw-border)' }}>
+                  {p.email}{p.roleAsDescribed ? ` · ${p.roleAsDescribed}` : ''}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {addingParticipant ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <input
+                autoFocus
+                type="email"
+                value={newParticipantEmail}
+                onChange={e => setNewParticipantEmail(e.target.value)}
+                placeholder="email@company.com"
+                style={{ padding: '10px 12px', borderRadius: 7, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', outline: 'none' }}
+              />
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  disabled={!newParticipantEmail.includes('@') || addParticipantMut.isPending}
+                  onClick={() => addParticipantMut.mutate()}
+                  style={{ padding: '8px 16px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: newParticipantEmail.includes('@') ? 1 : 0.5 }}
+                >
+                  {addParticipantMut.isPending ? 'Adding…' : 'Add'}
+                </button>
+                <button
+                  onClick={() => { setAddingParticipant(false); setNewParticipantEmail('') }}
+                  style={{ padding: '8px 14px', borderRadius: 7, background: 'none', color: 'var(--gw-sub)', border: '1px solid var(--gw-border)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => setAddingParticipant(true)}
+              style={{ fontSize: 13, color: 'var(--gw-navy)', background: 'none', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '8px 14px', cursor: 'pointer', fontFamily: 'inherit' }}
+            >
+              + Add someone
+            </button>
+          )}
+        </div>
+      </Shell>
+    )
+  }
+
+  // The report's own read, or nothing at all. "{conf}/5 {band}" counted
+  // completed check-ins and called the result "Aligned".
+  const alignRead = alignmentLabel((ground as any).alignment)
+
+  // The ground payload carries no planned-session count, only the timeline and
+  // the cadence - so derive it the same way every other surface does.
+  const plannedSessions = plannedSessionsFor(
+    ground.timelineDays,
+    (ground as any).cadence,
+    (ground as any).maxSessions ?? (ground as any).totalSessions,
+  )
+  // Every party, every session - not "twelve distinct numbers are complete
+  // somewhere". See everySessionDone: the short version closed a ground over a
+  // missing closing account.
+  const allSessionsDone = everySessionDone(ground.participants as any, ground.checkIns as any, plannedSessions)
+  /**
+   * The round EVERYONE has finished - the person furthest behind sets the pace.
+   *
+   * Counting the highest session anyone has done would say "Session 12 of 12"
+   * while one party had only reached 4, which is the same optimism that let a
+   * ground close over a missing account.
+   */
+  const perParticipantDone = (ground.participants ?? []).map((p: any) =>
+    new Set(
+      (ground.checkIns ?? [])
+        .filter((c: any) => c.participantId === p.id && c.status === 'COMPLETED')
+        .map((c: any) => c.sessionNumber),
+    ).size,
+  )
+  const sessionsDone = perParticipantDone.length > 0 ? Math.min(...perParticipantDone) : 0
   // contact-visibility toggle state (default: hidden). true = peers cannot see each other's email.
   const contactHidden = ground.restrictExternalVisibility !== false
 
@@ -296,11 +489,14 @@ export function GroundAdminPage() {
             </button>
           )}
           <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--gw-navy)' }}>{conf}/5</div>
-            <div style={{ fontSize: 11, color: 'var(--gw-sub)' }}>{bl}</div>
+            {alignRead
+              ? <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', maxWidth: 160, lineHeight: 1.35 }}>{alignRead}</div>
+              : <div style={{ fontSize: 11, color: 'var(--gw-sub)' }}>No read yet</div>}
           </div>
         </div>
 
+        {/* Sessions are per-participant-per-session, so count DISTINCT session
+            numbers, not check-in rows. */}
         <div style={{ display: 'flex', gap: 10, padding: '0 16px 10px', fontSize: 11, color: 'var(--gw-sub)', flexWrap: 'wrap', alignItems: 'center' }}>
           {ground.scenario && (
             <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: '#F0EEE9', color: '#4A4540' }}>
@@ -310,20 +506,52 @@ export function GroundAdminPage() {
           {ground.resolutionState && (
             <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: 'var(--gw-blue-bg)', color: 'var(--gw-navy)' }}>{ground.resolutionState}</span>
           )}
-          {ground.daysLeft != null && ground.daysLeft <= 3 ? (
-            <span style={{ fontWeight: 700, color: '#791F1F' }}>{ground.daysLeft === 0 ? 'Due today' : `${ground.daysLeft} day${ground.daysLeft === 1 ? '' : 's'} remaining`}</span>
-          ) : ground.daysLeft != null ? (
-            <span>{ground.daysLeft} days remaining</span>
-          ) : null}
+          {/* PROGRESS IS COUNTED IN SESSIONS, NOT DAYS.
+              A ground eight sessions into twelve read "90 days remaining",
+              which is arithmetically true - the calendar really had not moved -
+              and useless, because the work is measured in check-ins. Sessions
+              lead; the calendar follows in the quieter line, and only while it
+              still has something to say. */}
+          {allSessionsDone ? (
+            <span>every session done</span>
+          ) : (
+            <>
+              {plannedSessions != null && (
+                <span style={{ fontWeight: 700 }}>Session {Math.min(sessionsDone + 1, plannedSessions)} of {plannedSessions}</span>
+              )}
+              {ground.daysLeft != null && ground.daysLeft <= 3 ? (
+                <span style={{ fontWeight: 700, color: '#791F1F' }}>{ground.daysLeft === 0 ? 'Due today' : `${ground.daysLeft} day${ground.daysLeft === 1 ? '' : 's'} remaining`}</span>
+              ) : ground.daysLeft != null ? (
+                <span style={{ color: 'var(--gw-sub)' }}>{ground.daysLeft} days remaining</span>
+              ) : null}
+            </>
+          )}
         </div>
 
-        {/* Tabs */}
+        {/* Tabs.
+            THE BOARD BELONGS HERE, WITH THE OTHER PLACES YOU GO.
+            It was a small dark pill floating up beside the ground's status and
+            nowhere else in the product, so someone who did not happen to notice
+            it on that one row had no way of knowing the board existed at all.
+            Board is per-ground, so a global nav entry would have to guess which
+            ground someone meant; this row is where a person already looks for
+            the parts of a ground. It only appears when the server says this
+            ground has one (boardRenders), same as before. */}
         <div style={{ display: 'flex', borderTop: '0.5px solid var(--gw-border)', overflowX: 'auto' }}>
           {(['overview', 'checkins', 'docs', 'report', 'settings'] as Tab[]).map(t => (
             <button key={t} className={`gw-tab${tab === t ? ' active' : ''}`} onClick={() => setTab(t)}>
-              {{ overview: 'Overview', checkins: 'Check-ins', docs: 'Documents', report: 'Report', settings: 'Settings' }[t]}
+              {/* THE TAB IS CALLED CONTEXT ONCE THERE IS CONTEXT IN IT. (G38, G26)
+                  With CONTEXT_ENABLED off it says Documents and behaves exactly as
+                  it did, which is what makes the flag honest - off has to be the
+                  old product rather than a renamed one. */}
+              {{ overview: 'Overview', checkins: 'Check-ins', docs: contextEnabled ? 'Context' : 'Documents', report: 'Report', settings: 'Settings' }[t]}
             </button>
           ))}
+          {(ground as any).boardRenders && (
+            <button className="gw-tab" onClick={() => navigate(`/grounds/${id}/board`)}>
+              Team board
+            </button>
+          )}
         </div>
       </div>
 
@@ -332,6 +560,10 @@ export function GroundAdminPage() {
         {/* OVERVIEW */}
         {tab === 'overview' && (
           <div>
+            {/* How this ground ends. Renders nothing for a non-party (the API
+                403s them), so the setting-up admin sees the board and the
+                record but does not get a vote on the outcome. */}
+            <ResolutionPanel groundId={ground.id} />
             {/* Post-session decision panel: shown when session is complete, no balance, not subscribed */}
             {ground.status === 'REPORT_READY' && !postSessionDismissed &&
               !ground.isFreeGround &&
@@ -469,6 +701,19 @@ export function GroundAdminPage() {
                             {p.inviteDeliveryStatus === 'DELIVERED' ? 'Invite delivered' : 'Invite pending'}
                           </span>
                         ) : null}
+                        {/* Available for anyone who has not joined yet, whatever
+                            the delivery status says - "delivered" only means the
+                            mail server accepted it, not that a person saw it. */}
+                        {isInitiator && !p.userId && (
+                          <button
+                            disabled={copyInviteLink.isPending}
+                            onClick={() => copyInviteLink.mutate(p.id)}
+                            style={{ fontSize: 11, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+                            title="Copy their invite link so you can send it yourself"
+                          >
+                            {copyInviteLink.isPending && copyInviteLink.variables === p.id ? 'Copying...' : 'Copy invite link'}
+                          </button>
+                        )}
                       </div>
                       {fixingEmailId === p.id && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6, marginLeft: 40 }}>
@@ -602,7 +847,7 @@ export function GroundAdminPage() {
                 <div style={{ background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 10, padding: '14px 16px' }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: '#085041', marginBottom: 6 }}>Invite sent to {lastInvitedEmail}</div>
                   <div style={{ fontSize: 12, color: '#3A7A60', lineHeight: 1.6, marginBottom: 10 }}>
-                    They will get an email and do their own private check-in - about 10 minutes. You cannot see what they write. Once all contributors have checked in, the shared report releases to everyone at the same time.
+                    They will get an email and do their own private check-in - about 10 minutes. You cannot see what they write. Once everyone has checked in, the shared report releases to everyone at the same time.
                   </div>
                   <button onClick={() => { setLastInvitedEmail(null); setAddingParticipant(true) }}
                     style={{ padding: '7px 14px', borderRadius: 7, background: 'none', border: '1px solid #5DCAA5', color: '#085041', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
@@ -618,7 +863,7 @@ export function GroundAdminPage() {
                     if (limit !== null && limit !== undefined && memberCount >= limit) {
                       return (
                         <div style={{ background: '#FFF3E0', border: '1px solid #F5C56A', borderRadius: 8, padding: '10px 14px', marginBottom: 10, fontSize: 12, color: '#7A4B00', lineHeight: 1.55 }}>
-                          Your {plan?.replace('_', ' ').toLowerCase()} plan supports up to {limit} members. You have reached the limit. Upgrade your organization to add more contributors.
+                          Your {plan?.replace('_', ' ').toLowerCase()} plan supports up to {limit} members. You have reached the limit. Upgrade your organization to add more people.
                           <button onClick={() => navigate('/billing')} style={{ display: 'inline', marginLeft: 8, background: 'none', border: 'none', fontSize: 12, color: '#7A4B00', textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>
                             View plans
                           </button>
@@ -632,7 +877,7 @@ export function GroundAdminPage() {
                       invite people to it or declare the closing round. */}
                   {isInitiator && (
                     <button onClick={() => setAddingParticipant(true)} style={{ width: '100%', padding: '11px 16px', borderRadius: 8, background: 'none', color: 'var(--gw-navy)', fontSize: 13, fontWeight: 600, border: '1px dashed var(--gw-blue-b)', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                      <span style={{ fontSize: 16, fontWeight: 300 }}>+</span> Add a contributor
+                      <span style={{ fontSize: 16, fontWeight: 300 }}>+</span> Add a person
                     </button>
                   )}
                   {isInitiator && !['RESOLVED', 'CLOSED', 'STALLED', 'AWAITING_LEAD'].includes(ground.status) && (
@@ -656,7 +901,7 @@ export function GroundAdminPage() {
                 </>
               ) : (
                 <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px' }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Add a contributor</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Add a person</div>
                   <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 10, lineHeight: 1.5 }}>They will get an email invitation. You cannot see what they write in their check-in.</div>
                   <input type="email" placeholder="name@company.com" value={newParticipantEmail} onChange={e => setNewParticipantEmail(e.target.value)}
                     style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8, outline: 'none' }} />
@@ -696,7 +941,14 @@ export function GroundAdminPage() {
                 // with whose check-in it is, or two parties' session-1 rows read
                 // as an accidental duplicate.
                 const who = (ground.participants ?? []).find((p: any) => p.id === ci.participantId)
-                const whoLabel = who?.email ?? 'Unknown participant'
+                // Name, THEN email. `email` is null for anyone who has an
+                // account - their name lives on `user` - so reading email alone
+                // made every row in a signed-up org say "Unknown participant",
+                // and the admin's main view of who checked in could not name a
+                // single person. Email still covers someone invited but not yet
+                // registered.
+                const whoName = [who?.user?.firstName, who?.user?.lastName].filter(Boolean).join(' ').trim()
+                const whoLabel = whoName || who?.email || who?.roleAsDescribed?.trim() || 'Unknown participant'
                 return (
                 <div key={ci.id} style={{ background: 'white', border: '0.5px solid var(--gw-border)', borderRadius: 8, padding: '12px 14px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -719,6 +971,46 @@ export function GroundAdminPage() {
         {/* DOCUMENTS */}
         {tab === 'docs' && (
           <div>
+            {/* WHAT THIS GROUND WILL AND WILL NOT BE ABLE TO TELL YOU. (G25)
+                Above the upload, because it is the reason to bother with any of
+                it. Not a score and not a completeness bar: a statement about the
+                REPORT'S limits, given what the ground holds.
+
+                "Your context is 40% complete" makes somebody feel marked at the
+                exact moment they are deciding whether this product is on their
+                side, and tells them nothing about what the effort buys. "It will
+                not be able to tell you whether the conditions were met, because
+                none have been named" carries the same information, names the
+                missing thing, and is a fact about a tool rather than a judgement
+                on a reader.
+
+                Never mandatory and never graded. A ground with thin context is
+                still a real ground; this exists so nobody is surprised in month
+                three by a question the record was never able to answer. */}
+            {contextEnabled && contextStrength && (
+              <div style={{ background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--gw-sub)', marginBottom: 8 }}>
+                  What this ground can tell you
+                </div>
+                {contextStrength.can.length > 0 && (
+                  <div style={{ marginBottom: contextStrength.cannot.length ? 10 : 0 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: '#085041', marginBottom: 4 }}>It will be able to</div>
+                    <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.7 }}>
+                      {contextStrength.can.map((line: string, i: number) => <li key={i}>{line}</li>)}
+                    </ul>
+                  </div>
+                )}
+                {contextStrength.cannot.length > 0 && (
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: '#8A5C1A', marginBottom: 4 }}>It will not be able to</div>
+                    <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.7 }}>
+                      {contextStrength.cannot.map((line: string, i: number) => <li key={i}>{line}</li>)}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div
               style={{ border: '1.5px dashed var(--gw-border)', borderRadius: 8, padding: 20, textAlign: 'center', cursor: 'pointer', marginBottom: 16, background: 'var(--gw-bg)' }}
               onClick={() => document.getElementById('ga-doc-upload')?.click()}
@@ -730,13 +1022,59 @@ export function GroundAdminPage() {
             </div>
 
             {docs.length === 0 && <div style={{ fontSize: 13, color: 'var(--gw-muted)', textAlign: 'center', padding: 16 }}>No documents uploaded yet.</div>}
+
+            {/* OPEN AND CLOSED, NAMED AS SUCH. (G38)
+                Nobody puts real context into a box whose readership they are
+                guessing at, so the destinations are labelled rather than implied.
+                Everything defaults to private (G24 rule 3) and moving something
+                to open is a deliberate act: a performance plan dropped into
+                shared context in a hurried first week cannot be undone, because
+                the others have already read it. */}
+            {contextEnabled && docs.length > 0 && (
+              <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, background: 'var(--gw-bg)', borderRadius: 8, padding: '10px 12px', marginBottom: 10 }}>
+                Everything you add starts private to you. <b>Open</b> means everyone in this ground can read it, which is what the brief and the plan are for. <b>Only me</b> keeps it yours.
+              </div>
+            )}
             {docs.map(doc => (
               <div key={doc.id} style={{ background: 'white', border: '0.5px solid var(--gw-border)', borderRadius: 8, padding: '11px 14px', marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 600 }}>{doc.name}</div>
                   <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>{new Date(doc.uploadedAt).toLocaleDateString()}</div>
                 </div>
-                <button onClick={() => deleteDoc.mutate(doc.id)} style={{ fontSize: 12, color: 'var(--gw-red-t)', background: 'none', border: 'none', cursor: 'pointer' }}>Delete</button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  {/* WHO CAN READ THIS, stated on the row rather than in a
+                      settings screen. Somebody deciding whether to attach a
+                      handover note needs the answer where they are, not two
+                      clicks away.
+
+                      Only shown with the flag on: with it off there is one
+                      answer for every document and a control offering a choice
+                      that does not exist would be a lie about the product. */}
+                  {contextEnabled && (
+                    <button
+                      onClick={() => setDocVisibility.mutate({
+                        docId: doc.id,
+                        visibility: (doc as any).visibility === 'OPEN' ? 'OWN' : 'OPEN',
+                      })}
+                      disabled={setDocVisibility.isPending || (doc as any).visibility === 'CLOSED'}
+                      title={(doc as any).visibility === 'CLOSED'
+                        ? 'This is your own context and stays with you'
+                        : (doc as any).visibility === 'OPEN'
+                          ? 'Everyone in this ground can read this. Click to make it yours only.'
+                          : 'Only you can read this. Click to share it with everyone in this ground.'}
+                      style={{
+                        fontSize: 11, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer',
+                        padding: '3px 9px', borderRadius: 20,
+                        border: `1px solid ${(doc as any).visibility === 'OPEN' ? '#A7D9CC' : 'var(--gw-border)'}`,
+                        background: (doc as any).visibility === 'OPEN' ? '#DFF1EA' : 'var(--gw-bg)',
+                        color: (doc as any).visibility === 'OPEN' ? '#085041' : 'var(--gw-sub)',
+                      }}
+                    >
+                      {(doc as any).visibility === 'OPEN' ? 'Everyone' : (doc as any).visibility === 'CLOSED' ? 'Only me' : 'Only me'}
+                    </button>
+                  )}
+                  <button onClick={() => deleteDoc.mutate(doc.id)} style={{ fontSize: 12, color: 'var(--gw-red-t)', background: 'none', border: 'none', cursor: 'pointer' }}>Delete</button>
+                </div>
               </div>
             ))}
 
@@ -801,11 +1139,25 @@ export function GroundAdminPage() {
         {/* REPORT */}
         {tab === 'report' && (
           <div>
-            {/* Confidence band header */}
+            {/* What the accounts actually agree on. This was a big "4/5" over
+                a band name over a canned description - all three derived from
+                the number of completed check-ins. */}
             <div style={{ textAlign: 'center', padding: '20px 0 16px' }}>
-              <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--gw-navy)' }}>{conf}/5</div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--gw-sub)', marginTop: 2 }}>{bl}</div>
-              <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 4 }}>{CONF_DESC[conf] ?? ''}</div>
+              {alignRead ? (
+                <>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--gw-navy)' }}>{alignRead}</div>
+                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 4 }}>
+                    Counted from the areas this report names, not from how many check-ins have happened.
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--gw-sub)' }}>No read yet</div>
+                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 4 }}>
+                    The report has not named an area the accounts agree or differ on.
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Session switcher */}

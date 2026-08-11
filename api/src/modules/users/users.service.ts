@@ -302,4 +302,24 @@ export class UsersService {
       softDeletable: true,
     };
   }
+  /**
+   * Rename the organisation.
+   *
+   * An org is created the moment someone asks for a sign-in link, and if they
+   * did not come through the entry flow nobody ever asks what it is called - it
+   * is derived from the email ("brand.new.person@..." became "Brand's
+   * workspace"). That default is fine; having no way to correct it is not,
+   * because the name is on every page the whole team sees.
+   */
+  async renameOrganization(organizationId: string, name: string) {
+    const trimmed = name.trim();
+    if (trimmed.length < 2) throw new BadRequestException('An organization name needs at least two characters');
+    const org = await this.prisma.organization.update({
+      where: { id: organizationId },
+      data: { name: trimmed },
+      select: { id: true, name: true },
+    });
+    return org;
+  }
+
 }

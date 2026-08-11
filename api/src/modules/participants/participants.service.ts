@@ -43,7 +43,7 @@ export class ParticipantsService {
    * participant, clear the token, and return an auth token + the check-in to
    * enter. Idempotent if already accepted (re-issues a token + the check-in).
    */
-  async accept(token: string, names?: { firstName?: string; lastName?: string }) {
+  async accept(token: string, names?: { firstName?: string; lastName?: string }, returningUserId?: string | null) {
     const participant = await this.loadByToken(token);
     const ground = await this.prisma.ground.findUnique({ where: { id: participant.groundId } });
     if (!ground) throw new NotFoundException('Ground not found');
@@ -58,10 +58,62 @@ export class ParticipantsService {
     //
     // On first accept everyone is sent a password-setup link precisely so they
     // can return properly, so nothing is lost by refusing the second use.
+    /**
+     * ALREADY JOINED: RESUMABLE HERE, EMAIL ROUND TRIP ANYWHERE ELSE.
+     *
+     * The link used to be destroyed on first use, so someone who joined, got
+     * pulled away, and came back to their own email found a dead link telling
+     * them it was "invalid". That is a bad trade for a product people use in the
+     * middle of a working day - they should be able to click, get distracted,
+     * and come back.
+     *
+     * But the link mints a signed session, so a link that always works is a
+     * password that anyone forwarded the email can use - and what it opens is
+     * the participant's private account of a workplace situation, on a ground
+     * their manager is also in. That is the most sensitive thing here, and the
+     * person most likely to receive a forwarded participant invite is the
+     * manager.
+     *
+     * So the link now lives forever and what changes is what clicking it DOES:
+     *
+     *   never joined          -> join, account created, signed in
+     *   joined, this browser  -> straight back in, for as long as their session
+     *                            lasts (30 days, set below)
+     *   joined, anywhere else -> no session minted. A fresh sign-in link is sent
+     *                            to the address that was invited.
+     *
+     * Nobody meets a dead end, nobody is told their link is invalid, and a
+     * forwarded link is worth nothing to anyone but the owner of that inbox.
+     *
+     * "This browser" is their own session, already in this browser's storage
+     * from when they joined - not a new cookie layer. Presenting it is the proof.
+     */
     if (participant.userId) {
-      throw new BadRequestException(
-        'This invite link has already been used. Sign in with your email instead, or use the password link we sent you.',
-      );
+      if (returningUserId && returningUserId === participant.userId) {
+        const checkIn = await this.prisma.checkIn.findFirst({
+          where: { participantId: participant.id, status: { not: CheckInStatus.COMPLETED } },
+          orderBy: { sessionNumber: 'asc' },
+        });
+        return { resumed: true as const, groundId: participant.groundId, checkInId: checkIn?.id ?? null };
+      }
+
+      // A different browser. Send them a way in rather than a refusal.
+      const user = await this.prisma.user.findUnique({ where: { id: participant.userId } });
+      if (user) {
+        const magicToken = crypto.randomBytes(32).toString('hex');
+        await this.prisma.emailVerificationToken.create({
+          data: {
+            userId: user.id,
+            token: magicToken,
+            // Same kind of token the returning-user sign-in link uses, so this
+            // lands on the existing magic-link route rather than a new one.
+            type: TokenType.EMAIL_VERIFICATION,
+            expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+          },
+        });
+        this.email.sendMagicLinkEmail(user.email, user.firstName || '', magicToken).catch(() => null);
+      }
+      return { emailed: true as const, email: participant.email };
     }
 
     const email = participant.email.toLowerCase();
@@ -94,9 +146,13 @@ export class ParticipantsService {
 
       await tx.groundParticipant.update({
         where: { id: participant.id },
-        // Clear the invite token as the schema always said it should be
-        // ("cleared once accepted") - it never actually was.
-        data: { userId: user.id, inviteToken: null, inviteTokenExpiresAt: null },
+        /**
+         * The token STAYS. It is no longer a credential on its own - an accepted
+         * invite mints nothing without the participant's own session in the same
+         * browser (see the branch above) - and keeping it is what lets their own
+         * link go on working instead of dying the moment they first use it.
+         */
+        data: { userId: user.id },
       });
 
       return user;
@@ -161,54 +217,6 @@ export class ParticipantsService {
     };
   }
 
-  /**
-   * Save cofounder intake fields to the GroundParticipant record.
-   * Looked up by the check-in ID and the requesting user's ID so it is always
-   * owner-scoped - one party can never overwrite another party's intake.
-   */
-  async saveIntake(checkInId: string, userId: string, data: {
-    foundingIntent?: string;
-    roleIntent?: string;
-    personalIntent?: string;
-    exitIntent?: string;
-    compensationAsk?: string;
-    autonomyAsk?: string;
-    recognitionAsk?: string;
-    growthAsk?: string;
-    relationshipAsk?: string;
-    financialFloor?: string;
-    stressTolerance?: string;
-    relationalTolerance?: string;
-  }) {
-    const checkIn = await this.prisma.checkIn.findUnique({
-      where: { id: checkInId },
-      include: { participant: true },
-    });
-    if (!checkIn) throw new NotFoundException('Check-in not found');
-    if (checkIn.participant.userId !== userId) {
-      throw new NotFoundException('Check-in not found');
-    }
-
-    await this.prisma.groundParticipant.update({
-      where: { id: checkIn.participant.id },
-      data: {
-        foundingIntent:      data.foundingIntent      ?? undefined,
-        roleIntent:          data.roleIntent          ?? undefined,
-        personalIntent:      data.personalIntent      ?? undefined,
-        exitIntent:          data.exitIntent          ?? undefined,
-        compensationAsk:     data.compensationAsk     ?? undefined,
-        autonomyAsk:         data.autonomyAsk         ?? undefined,
-        recognitionAsk:      data.recognitionAsk      ?? undefined,
-        growthAsk:           data.growthAsk           ?? undefined,
-        relationshipAsk:     data.relationshipAsk     ?? undefined,
-        financialFloor:      data.financialFloor      ?? undefined,
-        stressTolerance:     data.stressTolerance     ?? undefined,
-        relationalTolerance: data.relationalTolerance ?? undefined,
-      },
-    });
-
-    return { ok: true };
-  }
 
   /** Update a participant's roleAsDescribed. Only the participant themselves or the ground initiator may call this. */
   async updateRole(participantId: string, userId: string, roleAsDescribed: string) {
@@ -253,7 +261,7 @@ export class ParticipantsService {
       data: {
         email,
         inviteToken: token,
-        inviteTokenExpiresAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+        inviteTokenExpiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
         notifiedAt: null,
         // recordSend() resets this to SENT when the fresh invite goes out
         inviteDeliveryStatus: null,
@@ -278,12 +286,41 @@ export class ParticipantsService {
   private async loadByToken(token: string) {
     const participant = await this.prisma.groundParticipant.findUnique({ where: { inviteToken: token } });
     if (!participant) {
-      throw new NotFoundException('This invite link is invalid or has already been used');
+      /**
+       * The link is genuinely dead, and that is deliberate - the token is
+       * cleared on first use so an emailed invite cannot serve as a permanent
+       * way in (see invite-single-use.spec.ts). Nothing here should hand a used
+       * link any access.
+       *
+       * What was wrong was only the wording. Someone who has already joined and
+       * comes back to their own link - a bookmark, the email again - was told
+       * their link was "invalid", which reads as something being broken, or as
+       * an accusation. It is neither: they are already in, and they were sent a
+       * password link when they joined.
+       *
+       * We cannot tell "used" from "never existed" here, because the row is
+       * found by the token and the token is gone - so the message has to cover
+       * both without guessing, and point to the way forward in each case.
+       */
+      throw new NotFoundException(
+        'This link has already been used, or it is not a link we recognise. If you have already joined, sign in with the password you set - check your email for the setup link. If you have not, ask the person who added you to send a new invite.',
+      );
     }
     // Skip expiry for participants who already accepted - they can always return via their link.
     const alreadyAccepted = !!participant.userId;
+    /**
+     * Ninety days, and only for an invite nobody ever accepted.
+     *
+     * Fourteen days was short enough to expire on ordinary human timescales -
+     * annual leave, a quarter that slipped, a ground set up ahead of a start
+     * date - and the reward for being late was a dead link and an instruction to
+     * go and ask a colleague to resend it. Nobody should have to chase someone
+     * to get into their own record.
+     */
     if (!alreadyAccepted && participant.inviteTokenExpiresAt && participant.inviteTokenExpiresAt < new Date()) {
-      throw new BadRequestException('This invite link has expired. Ask the person who added you to resend it.');
+      throw new BadRequestException(
+        'This invite link is very old and has expired. Use the "send me a new link" option, or ask whoever added you to invite you again.',
+      );
     }
     return participant;
   }

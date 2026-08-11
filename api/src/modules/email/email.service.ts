@@ -207,7 +207,7 @@ export class EmailService {
   async sendGroundActivated(email: string, firstName: string, groundLabel: string, groundUrl: string): Promise<void> {
     await this.sendEmail({
       to: email,
-      subject: `Both accounts are in - your shared report is ready: ${groundLabel}`,
+      subject: `You have both checked in - your shared report is ready: ${groundLabel}`,
       html: this.layout(
         `<p>Hi ${firstName},</p>
          <p>All parties have checked in on <strong>${groundLabel}</strong>. Your shared report is ready.</p>
@@ -234,7 +234,7 @@ export class EmailService {
     };
     const subject = (scenario && subjectMap[scenario]) || 'Your check-in is waiting';
     const otherPartyNote = otherPartyCompleted
-      ? `<p><strong>The other party has already submitted their version. Your record is the only thing missing.</strong></p>`
+      ? `<p><strong>They have already shared their side. Yours is the last one we are waiting for.</strong></p>`
       : '';
     await this.sendEmail({
       to: email,
@@ -271,7 +271,7 @@ export class EmailService {
   async sendLateCorrectionNotice(email: string, groundLabel: string, groundUrl: string): Promise<void> {
     await this.sendEmail({
       to: email,
-      subject: `An account was updated on "${groundLabel}"`,
+      subject: `Someone added to what they said on "${groundLabel}"`,
       html: this.layout(
         `<p>One of the parties on <strong>${groundLabel}</strong> corrected their account after you had already seen the shared report.</p>
          <p>The report now shows this as an update, flagged with when it happened - it does not show what was changed in their own words.</p>
@@ -317,7 +317,7 @@ export class EmailService {
   async sendParticipantCheckedIn(adminEmail: string, participantEmail: string, groundLabel: string, groundUrl: string, stillPending?: number): Promise<void> {
     const pendingNote = stillPending && stillPending > 0
       ? `<p>${stillPending} ${stillPending === 1 ? 'party has' : 'parties have'} not yet checked in. The report generates once everyone is in.</p>`
-      : `<p>All parties have now checked in. The shared report is ready to release.</p>`;
+      : `<p>Everyone has now checked in. The shared report is ready to go out.</p>`;
     await this.sendEmail({
       to: adminEmail,
       subject: `${participantEmail} has checked in on ${groundLabel}`,
@@ -396,7 +396,7 @@ export class EmailService {
       subject: 'Add a card to continue on Groundwork',
       html: this.layout(
         `<p>A ground in your workspace (<strong>${orgName}</strong>) has used its free session.</p>
-         <p>The first session on every ground is free. Each additional session is $5. Add a card now to keep the process running - the record you have already built is safe and waiting.</p>
+         <p>Every ground on the free tier runs unlimited sessions and reports. Subscribe to open more than ten grounds - the record you have already built is safe and waiting either way.</p>
          <p><a href="${billingUrl}">Add a card</a></p>`,
       ),
     });
@@ -409,7 +409,7 @@ export class EmailService {
       subject: `${participantEmail} tried to check in - add a session to unblock them`,
       html: this.layout(
         `<p><strong>${participantEmail}</strong> tried to check in on <strong>${groundLabel}</strong> but there are no sessions remaining.</p>
-         <p>Add a session ($5) or apply a contributor code to unblock them.</p>
+         <p>Resubscribe or apply a contributor code to unblock them. Their record and the report are safe in the meantime.</p>
          <p><a href="${groundUrl}">Go to the ground</a></p>`,
       ),
     });
@@ -478,7 +478,7 @@ export class EmailService {
       subject: 'Your Groundwork subscription has been cancelled',
       html: this.layout(
         `<p>Your <strong>${planLabel}</strong> subscription has been cancelled.</p>
-         <p>Your team can continue using Groundwork with per-session billing at $5 per session. Your records and all existing reports remain accessible.</p>
+         <p>Your team keeps ten free grounds, each with unlimited sessions and reports. Every record and report you already have stays accessible.</p>
          <p>If you want to continue as a team, you can resubscribe or buy sessions at any time.</p>
          <p><a href="${this.frontendUrl}/billing">Go to billing</a></p>`,
       ),
@@ -525,7 +525,7 @@ export class EmailService {
       subject: `Free session added to ${groundLabel}`,
       html: this.layout(
         `<p>Your free session extension has been added to <strong>${groundLabel}</strong>.</p>
-         <p>When you're ready to continue after this session, you can buy more sessions at $5 each or upgrade your organization for unlimited access.</p>
+         <p>Grounds on the free tier run unlimited sessions. Subscribe when your team needs more than ten grounds.</p>
          <p><a href="${groundUrl}">Go to your ground</a></p>`,
       ),
     });
@@ -538,7 +538,7 @@ export class EmailService {
       subject: `One session remaining on ${groundLabel}`,
       html: this.layout(
         `<p>Your ground <strong>${groundLabel}</strong> has one session remaining.</p>
-         <p>Add another session ($5) or upgrade your organization for unlimited sessions before your team's next check-in.</p>
+         <p>Subscribe before your team's next check-in to keep this ground running.</p>
          <p><a href="${groundUrl}">Go to your ground</a></p>`,
       ),
     });
@@ -650,7 +650,7 @@ export class EmailService {
       html: this.layout(
         `<p>Hi ${name},</p>
          <p>Your Groundwork subscription for <strong>${orgName}</strong> is now active.</p>
-         <p>The first session on every ground is free. Each additional session is $5, charged per ground - not per participant. You are only billed when a ground moves past its first session.</p>
+         <p>Ten grounds are free, each with unlimited sessions and reports. Your subscription lifts that cap - nobody is ever charged per session, and participants are never charged at all.</p>
          <p>Your records are always yours, regardless of plan status.</p>`,
       ),
     });

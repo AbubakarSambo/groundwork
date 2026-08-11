@@ -5,16 +5,24 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { EntryChatPage } from './EntryChatPage'
 
 /**
- * Close-label guard: after a completed check-in with the save card open, the
- * terminal action used to read "Close (you can reopen this from the bar
- * below)" - a muted grey link that reads as dismiss, not finish. It is now a
- * clear "Done" completion button, with the reopen note kept as secondary
- * text. Revert -> "Close (you can reopen" comes back and "Done" is gone ->
- * this bites.
+ * THE TERMINAL ACTION ON THE SAVE CARD.
  *
- * Reaches the save card via the lead-path restore (flowPath:'lead' + closed
- * -> leadReturnsToSaveCard -> showSave=true) so the terminal action renders
- * without driving the whole flow.
+ * Original guard: the finishing action used to be "Close (you can reopen this
+ * from the bar below)" - a muted grey link that read as dismiss rather than
+ * finish. It became a clear "Done" button with the reopen note as secondary
+ * text, and this file stops that regressing.
+ *
+ * PREMISE CORRECTED after the eighteen-ground run (GW-006). This test used to
+ * seed a session that was closed but NOT saved, and assert "Done" rendered
+ * anyway. That is the bug: on an unsaved ground the panel showed three controls
+ * at once - "Save my ground →", "Not now", and a primary-styled "Done" beneath
+ * them. Two dismiss the panel, one saves, and the dismiss carried the visual
+ * weight of the finishing action. The obvious way to press "I have finished" was
+ * the way to leave without saving.
+ *
+ * So "Done" is now offered only once the email has actually been sent, and the
+ * two cases are asserted separately below. The anti-regression on the old
+ * "Close (you can reopen" label is kept in both.
  */
 
 vi.mock('@/api/entry', () => ({
@@ -23,7 +31,8 @@ vi.mock('@/api/entry', () => ({
 vi.mock('@/api/auth', () => ({ authApi: { entrySave: vi.fn() } }))
 vi.mock('@/stores/auth', () => ({ useAuthStore: (sel: any) => sel({ user: null, isAuthenticated: false }) }))
 
-function seedLeadClosed() {
+/** Lead path, closed, save card open - reached via leadReturnsToSaveCard. */
+function seedLeadClosed(extra: Record<string, unknown> = {}) {
   localStorage.setItem('gw_entry_session', JSON.stringify({
     scenario: 'NEW_PROJECT',
     closed: true,
@@ -32,6 +41,7 @@ function seedLeadClosed() {
     history: [],
     lead: { email: 'lead@x.test', name: 'Lead' },
     onboardingSelections: { mode: 'new', initial: 'New project' },
+    ...extra,
   }))
 }
 
@@ -46,14 +56,26 @@ function renderPage() {
   )
 }
 
-describe('CLOSE-LABEL: finished save card shows a "Done" completion action', () => {
-  beforeEach(() => { localStorage.clear(); seedLeadClosed() })
+describe('CLOSE-LABEL: the save card\'s terminal action', () => {
+  beforeEach(() => { localStorage.clear() })
 
-  it('renders "Done" and not the old "Close (you can reopen" dismiss label', async () => {
+  it('offers no primary "Done" while the ground is still unsaved', async () => {
+    // GW-006. The save form is on screen with its own "Not now"; a second,
+    // primary-styled dismiss beside it is what made leaving look like finishing.
+    seedLeadClosed()
     renderPage()
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Done' })).toBeTruthy())
+    await waitFor(() => expect(screen.getByText(/Save my ground/i)).toBeTruthy())
+    expect(screen.queryByRole('button', { name: 'Done' })).toBeNull()
+    // The unsaved path keeps exactly one way out, and it is not styled as the
+    // finishing action.
+    expect(screen.getByText('Not now')).toBeTruthy()
+  })
+
+  it('never brings back the old "Close (you can reopen" dismiss label', async () => {
+    // The original guard, which still holds in both states.
+    seedLeadClosed()
+    renderPage()
+    await waitFor(() => expect(screen.getByText(/Save my ground/i)).toBeTruthy())
     expect(screen.queryByText(/Close \(you can reopen/i)).toBeNull()
-    // reopen reassurance kept, but as secondary text (not the action label)
-    expect(screen.getByText(/reopen this any time from the bar below/i)).toBeTruthy()
   })
 })

@@ -24,8 +24,22 @@ const HISTORY = [
   { role: 'assistant', content: 'noted' },
 ];
 
-function makeService(opts: { draft?: any; failAllInvites?: boolean } = {}) {
+function makeService(opts: { draft?: any; failAllInvites?: boolean; pendingSignup?: any } = {}) {
   const prisma: any = {
+    /**
+     * A draft token may belong to a PENDING SIGNUP rather than an EntryDraft.
+     *
+     * Since GW-001, a brand-new address creates nothing until the verification
+     * link is opened, so between pressing save and opening the mail the session
+     * lives only in `pendingSignup`. `patchDraft` checks there first - without it
+     * every post-email edit (the org name is the main one) would 404 for that
+     * whole window. Defaults to "no pending signup", so these cases exercise the
+     * EntryDraft path exactly as they did before.
+     */
+    pendingSignup: {
+      findUnique: jest.fn(async () => opts.pendingSignup ?? null),
+      update: jest.fn(async () => ({})),
+    },
     entryDraft: {
       findUnique: jest.fn(async () => opts.draft ?? null),
       updateMany: jest.fn(async () => ({ count: 1 })),
@@ -37,7 +51,14 @@ function makeService(opts: { draft?: any; failAllInvites?: boolean } = {}) {
     groundParticipant: { findFirst: jest.fn(async () => ({ id: 'p1' })), update: jest.fn(async () => ({})) },
     checkIn: { findFirst: jest.fn(async () => ({ id: 'ci1' })), update: jest.fn(async () => ({})) },
     conversationTurn: { createMany: jest.fn(async () => ({ count: 2 })) },
-    ground: { findUnique: jest.fn(async () => ({ id: 'g-existing', joinToken: 'jt-existing' })), update: jest.fn(async () => ({})) },
+    ground: {
+      // `participants` is part of the real shape: the idempotent path selects the
+      // invited participants so a second commit can still say who was invited,
+      // rather than reporting an empty list the verify page reads as "nobody".
+      // Without it this mock returns a ground Prisma would never return.
+      findUnique: jest.fn(async () => ({ id: 'g-existing', joinToken: 'jt-existing', participants: [] })),
+      update: jest.fn(async () => ({})),
+    },
     leadContextNote: { create: jest.fn(async () => ({})) },
   };
   const grounds: any = {
@@ -169,6 +190,51 @@ describe('solo-ACTIVE split: failure is not intent', () => {
     expect(res.failedInvites).toEqual(['a@x.test', 'b@x.test']);
     const activeFlips = prisma.ground.update.mock.calls.filter((c: any[]) => c[0]?.data?.status === 'ACTIVE');
     expect(activeFlips).toHaveLength(0); // stays OPEN - surfaced, not rebranded as solo
+  });
+});
+
+/**
+ * The window between saving an email and opening the link.
+ *
+ * Since GW-001 nothing is provisioned for a new address until verification, so
+ * during that window the session exists only as a pending signup. Post-email
+ * edits still have to land - the organisation name arrives this way - or the
+ * name the person typed is silently lost at commit.
+ */
+describe('patchDraft reaches a signup that has no user yet', () => {
+  it('updates the pending signup instead of 404ing', async () => {
+    const { service, prisma } = makeService({
+      pendingSignup: { id: 'ps1', payload: { groundLabel: 'New hire' } },
+    });
+    await expect(service.patchDraft('tok', { orgName: 'Meridian Health' })).resolves.toEqual({ ok: true });
+    expect(prisma.pendingSignup.update).toHaveBeenCalled();
+    // The EntryDraft path must not be touched - there is no draft yet.
+    expect(prisma.entryDraft.update).not.toHaveBeenCalled();
+  });
+
+  it('merges rather than replacing what was already parked', async () => {
+    const { service, prisma } = makeService({
+      pendingSignup: { id: 'ps1', payload: { groundLabel: 'New hire', cadence: 'WEEKLY' } },
+    });
+    await service.patchDraft('tok', { orgName: 'Meridian Health' });
+    const data = (prisma.pendingSignup.update as jest.Mock).mock.calls[0][0].data;
+    expect(data.payload).toEqual({ groundLabel: 'New hire', cadence: 'WEEKLY', orgName: 'Meridian Health' });
+  });
+
+  it('also lifts the org name onto its own column, which verification reads', async () => {
+    // verifyEmail names the organisation from `orgName` before any draft is
+    // read, so leaving it only inside the payload would lose it.
+    const { service, prisma } = makeService({ pendingSignup: { id: 'ps1', payload: {} } });
+    await service.patchDraft('tok', { orgName: 'Meridian Health' });
+    const data = (prisma.pendingSignup.update as jest.Mock).mock.calls[0][0].data;
+    expect(data.orgName).toBe('Meridian Health');
+  });
+
+  it('leaves the org name column alone when the patch does not carry one', async () => {
+    const { service, prisma } = makeService({ pendingSignup: { id: 'ps1', payload: {} } });
+    await service.patchDraft('tok', { groundLabel: 'New hire' });
+    const data = (prisma.pendingSignup.update as jest.Mock).mock.calls[0][0].data;
+    expect(data.orgName).toBeUndefined();
   });
 });
 

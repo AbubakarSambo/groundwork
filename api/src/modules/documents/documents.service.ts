@@ -6,6 +6,8 @@ const mammoth = require('mammoth') as { extractRawText: (opts: { buffer: Buffer 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const XLSX = require('xlsx') as typeof import('xlsx');
 import { ConfigService } from '@nestjs/config';
+import { documentWhereFor } from './who-can-see-a-document';
+import { defaultVisibilityForUpload } from './a-document-is-context';
 import { PrismaService } from '../prisma/prisma.service';
 import { AnthropicService } from '../conversation/anthropic.service';
 import { RecordEntryType, EvidenceType } from '@prisma/client';
@@ -98,8 +100,17 @@ const CLAIMS_TOOL = {
   },
 };
 
-function toDocShape(doc: { id: string; fileName: string; mimeType: string; createdAt: Date; assessment?: any }) {
-  return { id: doc.id, name: doc.fileName, mimeType: doc.mimeType, uploadedAt: doc.createdAt, assessment: doc.assessment ?? null };
+function toDocShape(doc: { id: string; fileName: string; mimeType: string; createdAt: Date; assessment?: any; visibility?: any }) {
+  return {
+    id: doc.id,
+    name: doc.fileName,
+    mimeType: doc.mimeType,
+    uploadedAt: doc.createdAt,
+    assessment: doc.assessment ?? null,
+    // Who can read it. Omitted rather than defaulted when the column was not
+    // selected, so a screen cannot mistake "not asked" for "private".
+    ...(doc.visibility !== undefined ? { visibility: doc.visibility } : {}),
+  };
 }
 
 @Injectable()
@@ -178,6 +189,9 @@ export class DocumentsService {
       data: {
         groundId,
         participantId: participant.id,
+        // G24 rule 3: private unless somebody says otherwise. See
+        // a-document-is-context.ts for why the lead is not an exception.
+        visibility: defaultVisibilityForUpload(),
         fileName: file.originalname,
         mimeType: file.mimetype,
         content,
@@ -275,11 +289,32 @@ export class DocumentsService {
     }
   }
 
+  /**
+   * WHAT THIS READER CAN SEE, WHICH USED TO BE ONE ANSWER FOR THREE QUESTIONS.
+   *
+   * `participantId: participant.id` meant every document was private to whoever
+   * uploaded it - including from the lead. Nobody chose that; it is a participant
+   * guard that ended up in a list query. Right for a participant's own evidence,
+   * backwards for the lead's brief or a grant's terms, which reach nobody and are
+   * exactly the things everybody should be working from.
+   *
+   * documentWhereFor answers it properly and carries the CONTEXT_ENABLED flag
+   * inside it, so with the flag off this query is byte-for-byte the old one. See
+   * who-can-see-a-document.ts.
+   */
   async list(groundId: string, userId: string) {
     const participant = await this.assertParticipant(groundId, userId);
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { initiatorId: true },
+    });
     const docs = await this.prisma.groundDocument.findMany({
-      where: { groundId, participantId: participant.id },
-      select: { id: true, fileName: true, mimeType: true, createdAt: true },
+      where: documentWhereFor(
+        groundId,
+        { participantId: participant.id, isLead: ground?.initiatorId === userId },
+        this.config.get<boolean>('app.contextEnabled') === true,
+      ) as any,
+      select: { id: true, fileName: true, mimeType: true, createdAt: true, visibility: true },
       orderBy: { createdAt: 'asc' },
     });
     return docs.map(toDocShape);
@@ -320,6 +355,54 @@ export class DocumentsService {
     return toDocShape(doc);
   }
 
+  /**
+   * MOVE A DOCUMENT BETWEEN OPEN AND PRIVATE. (G24 rule 3, G38)
+   *
+   * ONLY THE UPLOADER CAN. Not the lead, even for a document they can read. The
+   * person who put a file somewhere decides who reads it, and the alternative -
+   * a lead promoting somebody's private evidence into shared context - is the
+   * single worst thing this feature could do. Nobody would attach anything
+   * afterwards.
+   *
+   * CLOSED is not settable here on purpose. It means "the lead's own material",
+   * which is a fact about who uploaded it rather than a state to switch into: a
+   * participant moving their document to CLOSED would be handing it to the lead
+   * while believing they had made it more private.
+   */
+  async setVisibility(
+    groundId: string,
+    docId: string,
+    userId: string,
+    visibility: 'OPEN' | 'OWN',
+  ) {
+    if (this.config.get<boolean>('app.contextEnabled') !== true) {
+      throw new ForbiddenException('Context is not enabled on this deployment');
+    }
+    const participant = await this.assertParticipant(groundId, userId);
+    const doc = await this.prisma.groundDocument.findFirst({
+      where: { id: docId, groundId, participantId: participant.id },
+    });
+    // Deliberately the same message whether it does not exist or is not theirs:
+    // "not yours" tells somebody a document exists, which is itself a leak.
+    if (!doc) throw new NotFoundException('Document not found');
+
+    const updated = await this.prisma.groundDocument.update({
+      where: { id: docId },
+      data: { visibility: visibility as any },
+      select: { id: true, visibility: true },
+    });
+    this.logger.log(`Document ${docId} on ground ${groundId} moved to ${visibility} by its uploader.`);
+    return updated;
+  }
+
+  /**
+   * DELIBERATELY UNCHANGED BY THE VISIBILITY WORK.
+   *
+   * Being able to READ a document is not being able to delete it. Once the lead
+   * can see open context, the obvious next step is letting them tidy it up, and
+   * that would mean somebody's evidence for their own account disappearing
+   * without them doing it. Deletion stays with the uploader.
+   */
   async remove(groundId: string, docId: string, userId: string) {
     const participant = await this.assertParticipant(groundId, userId);
     const doc = await this.prisma.groundDocument.findFirst({

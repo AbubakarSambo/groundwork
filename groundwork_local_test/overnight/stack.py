@@ -12,6 +12,7 @@ assertion.
 from __future__ import annotations
 
 import getpass
+import re
 import os
 import shutil
 import signal
@@ -104,6 +105,34 @@ class Stack:
                 for line in txt.splitlines()) + "\n")
 
         api_env = {"DATABASE_URL": self.db_url, "NODE_ENV": "development", "PORT": "3000"}
+
+        # GENERATE THE PRISMA CLIENT FROM *THIS* CHECKOUT'S SCHEMA, ALWAYS.
+        #
+        # This step did not exist, and it cost a whole overnight run: main aborted
+        # with "API never became healthy" because it would not compile, on two
+        # references to GroundParticipant.foundingIntent that main's own schema
+        # declares. The field was missing from the GENERATED client, not from the
+        # schema.
+        #
+        # Two things combined. `npm ci` generates the client as a postinstall, so
+        # the client is whatever the schema said at install time - and with the
+        # lockfile unchanged, a cached node_modules restores a client older than the
+        # newest migration. Then the block above SYMLINKS the local node_modules
+        # into the main worktree when the lockfiles match, so both targets share one
+        # generated client and neither builds its own.
+        #
+        # The bite is asymmetric, which is why it read as "main is broken": a stale
+        # client only fails a target whose SOURCE uses the missing field. This branch
+        # declares foundingIntent and never reads it, so it compiled; main reads it,
+        # so it did not. Nothing was wrong with main.
+        #
+        # Generating here, per target, immediately before boot, is the only version
+        # that survives a shared node_modules: the targets boot sequentially, so each
+        # one regenerates from its own schema and cannot inherit the other's.
+        code, out = sh(["npx", "prisma", "generate"], cwd=api_dir, env=api_env, timeout=300)
+        if code != 0:
+            return [f"prisma generate failed: {out[-300:]}"]
+
         code, out = sh(["npx", "prisma", "migrate", "deploy"], cwd=api_dir, env=api_env, timeout=300)
         if code != 0:
             return [f"prisma migrate deploy failed: {out[-300:]}"]
@@ -118,10 +147,43 @@ class Stack:
                 return []
             time.sleep(3)
         if not http_ok("http://127.0.0.1:3000/health"):
-            failures.append(f"API never became healthy (see {self.log_dir/'api.log'})")
+            # SAY WHY, NOT JUST THAT.
+            #
+            # "API never became healthy (see api.log)" is what this reported when
+            # main failed to compile, and it sent the diagnosis down the wrong path
+            # entirely: it reads as a broken branch or a slow boot, when the log
+            # held two exact TypeScript errors naming the field and the line. The
+            # log was attached to the run all along and the abort did not quote it.
+            #
+            # A compile failure is the most likely reason a boot never completes and
+            # the cheapest to report, so it gets named in the abort itself.
+            failures.append(
+                f"API never became healthy (see {self.log_dir/'api.log'})"
+                + self._compile_errors()
+            )
         if not http_ok("http://127.0.0.1:5173"):
             failures.append(f"client never served (see {self.log_dir/'client.log'})")
         return failures
+
+    def _compile_errors(self, limit: int = 4) -> str:
+        """The TypeScript errors from api.log, if it failed to compile.
+
+        Strips the ANSI colour codes nest's watch mode writes, since the raw log is
+        unreadable pasted into a run summary.
+        """
+        log = self.log_dir / "api.log"
+        if not log.exists():
+            return ""
+        try:
+            text = re.sub(r"\x1b\[[0-9;]*m", "", log.read_text(errors="replace"))
+        except Exception:
+            return ""
+        errs = [l.strip() for l in text.splitlines() if "error TS" in l]
+        if not errs:
+            return ""
+        shown = errs[:limit]
+        more = f" (+{len(errs) - len(shown)} more)" if len(errs) > len(shown) else ""
+        return " - IT DID NOT COMPILE: " + " | ".join(shown) + more
 
     def teardown(self):
         for p in self.procs:

@@ -69,7 +69,7 @@ export class IntelligenceService {
   async submitOutcomeFeedback(
     groundId: string,
     userId: string,
-    dto: { rating: number; whatWorked?: string; whatDidnt?: string; wouldUseAgain: boolean },
+    dto: { rating: number; feltFair: boolean; whatWorked?: string; whatDidnt?: string; wouldUseAgain: boolean },
   ) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId } });
     if (!ground) throw new NotFoundException('Ground not found');
@@ -83,17 +83,24 @@ export class IntelligenceService {
     });
     if (existing) throw new ForbiddenException('You have already submitted feedback for this ground');
 
+    // wouldUseAgain lives in the note with the rest of the survey. It used to be
+    // written into the feltFair COLUMN, which is the column every fairness
+    // metric reads - see the note on GroundFeedbackDto. Keeping it here means
+    // the answer is still recorded and still analysable, without standing in for
+    // a question it is not.
     const note = JSON.stringify({
       rating: dto.rating,
       whatWorked: dto.whatWorked ?? null,
       whatDidnt: dto.whatDidnt ?? null,
+      wouldUseAgain: dto.wouldUseAgain,
     });
 
     return this.prisma.outcomeFeedback.create({
       data: {
         groundId,
         participantId: participant.id,
-        feltFair: dto.wouldUseAgain,
+        // The answer to the fairness question, and nothing else.
+        feltFair: dto.feltFair,
         note,
       },
     });
@@ -293,70 +300,17 @@ export class IntelligenceService {
   }
 
   /**
-   * Collusion detection for a single ground. Checks whether any pair of
-   * participants share an unusually high density of the same technical terms
-   * across 3+ consecutive check-ins, with all entries being UNANCHORED_RECALL
-   * (no document evidence). This pattern can indicate coordinated narrative
-   * construction rather than independent record-building.
+   * detectCollusion LIVED HERE AND NOTHING CALLED IT.
+   *
+   * COLLUSION_RISK was rebuilt as a cross-party detector in patterns.service, which
+   * is what actually runs - this was the superseded copy, left behind by the rebuild
+   * and still reading like the live one. The same shape as the solo artifact: two
+   * implementations of one detector, one dead, and no way to tell from the outside.
+   *
+   * Found by the dead-method rule, which exists because the file-level rule could
+   * not see inside a service everything imports.
    */
-  async detectCollusion(groundId: string): Promise<{ flagged: boolean; reason: string } | null> {
-    const COLLUSION_SHARED_TERMS = [
-      'api', 'payment', 'integration', 'onboarding', 'pipeline',
-      'deploy', 'infrastructure', 'automation', 'latency', 'database',
-    ];
 
-    // Load all participants in this ground with their record entries.
-    const participants = await this.prisma.groundParticipant.findMany({
-      where: { groundId },
-      select: {
-        id: true,
-        recordEntries: {
-          select: { text: true, evidenceType: true, checkInId: true },
-          orderBy: { createdAt: 'asc' },
-        },
-      },
-    });
-
-    if (participants.length < 2) return null;
-
-    // For each pair of participants, check term overlap and evidence quality.
-    for (let i = 0; i < participants.length; i++) {
-      for (let j = i + 1; j < participants.length; j++) {
-        const partyA = participants[i];
-        const partyB = participants[j];
-
-        if (!partyA.recordEntries.length || !partyB.recordEntries.length) continue;
-
-        // Count shared terms across all entries for each party.
-        const aText = partyA.recordEntries.map((r) => r.text).join(' ').toLowerCase();
-        const bText = partyB.recordEntries.map((r) => r.text).join(' ').toLowerCase();
-
-        const sharedTerms = COLLUSION_SHARED_TERMS.filter((t) => aText.includes(t) && bText.includes(t));
-
-        if (sharedTerms.length <= 3) continue;
-
-        // Check if they have 3+ consecutive check-in periods represented.
-        const aCheckInIds = new Set(partyA.recordEntries.map((r) => r.checkInId).filter(Boolean));
-        const bCheckInIds = new Set(partyB.recordEntries.map((r) => r.checkInId).filter(Boolean));
-        const sharedPeriods = Math.min(aCheckInIds.size, bCheckInIds.size);
-
-        if (sharedPeriods < 3) continue;
-
-        // Check if all entries are UNANCHORED_RECALL.
-        const allAUnanchored = partyA.recordEntries.every((r) => r.evidenceType === 'UNANCHORED_RECALL');
-        const allBUnanchored = partyB.recordEntries.every((r) => r.evidenceType === 'UNANCHORED_RECALL');
-
-        if (allAUnanchored && allBUnanchored) {
-          return {
-            flagged: true,
-            reason: 'High term overlap without document evidence across 3+ periods',
-          };
-        }
-      }
-    }
-
-    return null;
-  }
 
   private async synthesiseOrgNarrative(organizationId: string): Promise<void> {
     const thirtyDaysAgo = new Date();

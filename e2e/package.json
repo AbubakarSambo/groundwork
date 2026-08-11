@@ -1,0 +1,12 @@
+{
+  "name": "groundwork-e2e",
+  "private": true,
+  "description": "Playwright journeys that drive Groundwork the way a person does.",
+  "scripts": {
+    "ground1": "playwright test ground1.spec.ts --reporter=list",
+    "ground2": "playwright test ground2.spec.ts --reporter=list"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.62.1"
+  }
+}

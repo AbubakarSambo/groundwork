@@ -3,7 +3,6 @@ import { useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { billingApi } from '@/api/billing'
 import { groundsApi } from '@/api/grounds'
-import { toast } from 'sonner'
 
 export function PaymentPage() {
   const navigate = useNavigate()
@@ -26,28 +25,12 @@ export function PaymentPage() {
     enabled: !!groundId,
   })
 
-  const [count, setCount] = useState(1)
   const [showCode, setShowCode] = useState(false)
   const [code, setCode] = useState('')
   const [codeMsg, setCodeMsg] = useState<{ ok: boolean; text: string } | null>(null)
 
-  const total = count * 5
 
-  const checkout = useMutation({
-    mutationFn: () => {
-      if (!groundId) {
-        toast.error('Ground not found. Return to your ground and try again.')
-        return Promise.reject(new Error('groundId missing'))
-      }
-      return billingApi.purchaseSession(groundId, count)
-    },
-    onSuccess: r => {
-      if (r.checkoutUrl) window.location.href = r.checkoutUrl
-    },
-    onError: (err: any) => {
-      if (err?.message !== 'groundId missing') toast.error('Could not start checkout.')
-    },
-  })
+  // The session-purchase checkout went with the form above.
 
   const redeemCode = useMutation({
     mutationFn: () => {
@@ -90,41 +73,16 @@ export function PaymentPage() {
           </div>
         ) : (
           <>
-            {/* Free session notice */}
+            {/* The session-purchase form is gone: sessions are not sold.
+                A free ground has unlimited sessions and a subscription has
+                unlimited sessions, so there was never a quantity to buy. What
+                is left on this page is contributor-code redemption, which
+                grants access and costs nobody anything. */}
             <div style={{ background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 10, padding: '12px 16px', marginBottom: 14 }}>
               <div style={{ fontSize: 13, color: '#085041', lineHeight: 1.6 }}>
-                <strong>First session is always free.</strong> Add sessions here when your free session is used.
+                <strong>Sessions are not charged for.</strong> Every ground on the free tier runs
+                unlimited sessions and reports; a subscription lifts the ten-ground cap.
               </div>
-            </div>
-
-            {/* Session purchase */}
-            <div style={{ background: 'white', border: '0.5px solid #E2E0DB', borderRadius: 10, padding: 18, marginBottom: 14 }}>
-
-              <div style={{ marginBottom: 14 }}>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#6B6560', marginBottom: 6 }}>
-                  How many sessions?
-                </label>
-                <input
-                  type="number"
-                  min={1}
-                  max={20}
-                  value={count}
-                  onChange={e => setCount(Math.min(20, Math.max(1, Number(e.target.value))))}
-                  style={{ width: '100%', padding: '9px 11px', fontSize: 13, fontFamily: 'inherit', border: '1px solid #E2E0DB', borderRadius: 7, background: '#F5F3EF', color: '#0A1628', outline: 'none', boxSizing: 'border-box' }}
-                />
-              </div>
-
-              <div style={{ fontSize: 13, color: '#4A4540', lineHeight: 1.6, marginBottom: 16 }}>
-                {count} session{count !== 1 ? 's' : ''} × $5 = <strong>${total}</strong>
-              </div>
-
-              <button
-                onClick={() => checkout.mutate()}
-                disabled={checkout.isPending}
-                style={{ width: '100%', padding: '11px', borderRadius: 7, background: '#0A1628', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: checkout.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: checkout.isPending ? 0.7 : 1 }}
-              >
-                {checkout.isPending ? 'Redirecting to Stripe...' : `Pay $${total} - ${count} session${count !== 1 ? 's' : ''}`}
-              </button>
             </div>
           </>
         )}

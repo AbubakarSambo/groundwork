@@ -1,9 +1,11 @@
 import { GroundScenario } from '@prisma/client';
 
 /**
- * The end states each scenario builds toward (Part 8 / moment selector). The
- * ground closes only when BOTH parties confirm the same end state - no single
- * party has unilateral authority over it (especially cofounder grounds).
+ * The end states each scenario builds toward (Part 8 / moment selector).
+ *
+ * How a ground CLOSES depends on who the parties are to each other - see
+ * LEAD_DECIDES below. Two peers must agree; where one person's position is what
+ * the ground is about, the decision belongs to whoever holds it in real life.
  */
 export const END_STATES: Record<GroundScenario, { value: string; label: string; description?: string }[]> = {
   NEW_HIRE: [
@@ -118,4 +120,44 @@ export function endStatesFor(scenario: GroundScenario) {
 
 export function isValidEndState(scenario: GroundScenario, value: string): boolean {
   return endStatesFor(scenario).some((o) => o.value === value);
+}
+
+
+/**
+ * WHERE ONE PERSON IS THE SUBJECT, THE DECISION IS NOT SHARED.
+ *
+ * Every ground used to close the same way: both parties pick, and it closes only
+ * when they pick the SAME thing. For two cofounders that is exactly right, and
+ * the original comment said so - neither of them has authority over the other,
+ * and a partnership dispute one person can close alone is a worse product.
+ *
+ * On a new hire ground it was indefensible. The hire was shown "Let them go" and
+ * asked to choose it, and the ground could not close until he picked the same
+ * option as his manager. Two things wrong at once: he is handed a choice about
+ * his own dismissal, which is a cruel thing to put in front of someone, and he
+ * is given a veto over an employment decision that was never his to make.
+ *
+ * So: the lead proposes and confirms on the scenarios listed here. The other
+ * party still SEES the options and what is coming - being closed out without
+ * warning would be its own harm - and they keep every other voice they had:
+ * their own account, their own corrections, and the record standing beside the
+ * lead's. What they no longer get is a button asking them to agree to their own
+ * exit.
+ *
+ * The list is deliberately conservative. Anything not on it keeps both-must-agree,
+ * because getting this wrong toward "everyone agrees" only stalls a ground,
+ * while getting it wrong toward "the lead decides" takes away someone's say.
+ */
+export const LEAD_DECIDES: ReadonlySet<GroundScenario> = new Set([
+  GroundScenario.NEW_HIRE,          // probation: the employer decides
+  GroundScenario.PIP,               // a performance plan the employer runs
+  GroundScenario.NEW_MANAGER,       // an engagement the org extends or ends
+  GroundScenario.NEW_ADVISOR,       // likewise
+  GroundScenario.CONTRACT_RENEWAL,  // renewing is the counterparty's call
+  GroundScenario.RECOGNITION,       // granting or declining an ask
+]);
+
+/** Does closing this ground need every party to agree, or just the lead? */
+export function closingNeedsEveryone(scenario: GroundScenario): boolean {
+  return !LEAD_DECIDES.has(scenario);
 }

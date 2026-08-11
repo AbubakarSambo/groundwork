@@ -43,7 +43,13 @@ describe('GW-BEHAVIOR-ENTRY-C: the assembled entry prompt carries the entry rule
   it('FAQ mode answers plainly and states the free-first-session fact', () => {
     expect(FAQ_PROMPT).toContain('FAQ MODE');
     expect(FAQ_PROMPT).toContain('one or two plain sentences');
-    expect(FAQ_PROMPT).toContain('The first session on each ground is free.');
+    // The intent is that the FAQ states plainly what costs what, so the chatbot
+    // never has to improvise about money. The FACT changed: it used to tell
+    // people "additional sessions are $5 each", which is a price that does not
+    // exist - and the chatbot was saying it out loud to new users.
+    expect(FAQ_PROMPT).toContain('Ten grounds are free');
+    expect(FAQ_PROMPT).toContain('participants are never charged at all');
+    expect(FAQ_PROMPT).not.toMatch(/\$5/);
   });
 });
 
@@ -93,7 +99,9 @@ describe('GW-BEHAVIOR-REPORT-G: the synthesis rules carry the report voice', () 
     // the four failure modes the rules exist to prevent + the longitudinal promise
     expect(SYNTHESIS_RULES).toContain('PRESERVE SPECIFICS VERBATIM');
     expect(SYNTHESIS_RULES).toContain('NO FALSE CONSENSUS');
-    expect(SYNTHESIS_RULES).toContain('DO NOT ATTRIBUTE POSITIONS TO ABSENT PARTIES');
+    // Reworded in the plain-language pass, same rule: do not describe what
+    // somebody thinks when they have not spoken yet.
+    expect(SYNTHESIS_RULES).toContain('DO NOT PUT WORDS IN THE MOUTH OF SOMEONE WHO HAS NOT CHECKED IN');
     expect(SYNTHESIS_RULES).toContain('CROSS-REFERENCE SESSIONS');
     expect(SYNTHESIS_RULES).toContain('SURFACE HIDDEN CONTRIBUTORS');
     expect(SYNTHESIS_RULES).toContain('NEVER INVENT PARTY COUNTS OR ROLES');
@@ -117,8 +125,11 @@ describe('GW-BEHAVIOR-REPORT-G: the synthesis rules carry the report voice', () 
 // This is the canonical "a report that reflects reality, not assertion" on the solo path.
 // ---------------------------------------------------------------------------
 describe('GW-BEHAVIOR-ENTRY-REPORT-G: the one-sided entry report reflects reality, not assertion', () => {
-  it('opens by stating the record is NOT yet cross-referenced with any other account', () => {
-    expect(ENTRY_REPORT_PROMPT).toContain('has not been cross-referenced with any other account yet');
+  it('opens by saying plainly that nobody else has weighed in yet', () => {
+    // Was "has not been cross-referenced with any other account yet", which is
+    // how a database describes itself. The promise it pins is unchanged: a
+    // one-sided report must say it is one-sided, in the first breath.
+    expect(ENTRY_REPORT_PROMPT).toContain('Nobody else has weighed in yet');
   });
 
   it('forbids claiming alignment when only one party has checked in (no false consensus, solo path)', () => {

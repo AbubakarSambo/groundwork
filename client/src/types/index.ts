@@ -102,7 +102,12 @@ export interface Ground {
   status: GroundStatus
   timelineDays: number
   cadence: string
-  confidence?: number
+  /**
+   * What the report actually holds: areas agreed, areas still open. Null when
+   * there is no read yet. Replaced `confidence?: number`, which was a count of
+   * completed check-ins rendered as "5/5 Aligned".
+   */
+  alignment?: { agreed: number; open: number } | null
   resolutionState?: string | null
   brief?: string | null
   // initiator toggle: when true (default) participants cannot see each other's email

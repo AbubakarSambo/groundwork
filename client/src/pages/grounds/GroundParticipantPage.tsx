@@ -1,3 +1,4 @@
+import { plannedSessionsFor } from '@/lib/sessionCount'
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -9,18 +10,11 @@ import { documentsApi } from '@/api/documents'
 import { conversationApi } from '@/api/conversation'
 import { apiClient } from '@/api/client'
 import { participantLabel } from '@/lib/utils'
+import { alignmentLabel } from '@/lib/alignment'
 import { toast } from 'sonner'
+import { ResolutionPanel } from '@/components/gw/ResolutionPanel'
 
-const BANDS = ['', 'Unresolved', 'Mixed', 'Emerging', 'Clear', 'Aligned']
-function bandLabel(score?: number) { return BANDS[Math.min(Math.round(score ?? 1), 5)] ?? 'Unresolved' }
 
-function confidenceDescription(conf: number): string {
-  if (conf <= 1) return 'Just started. One more session will begin to show the picture.'
-  if (conf <= 2) return 'Building. Both parties are on record for the first time.'
-  if (conf <= 3) return 'Strong enough to generate a report.'
-  if (conf <= 4) return 'High confidence. Multiple sessions cross-referenced.'
-  return 'Full depth. Record is verifiable and complete.'
-}
 
 function timeAgo(date: string | Date): string {
   const ms = Date.now() - new Date(date).getTime()
@@ -155,11 +149,8 @@ export function GroundParticipantPage() {
     onError: () => toast.error('Could not sign off. Try again.'),
   })
 
-  const checkoutMut = useMutation({
-    mutationFn: () => billingApi.purchaseSession(id!),
-    onSuccess: (data: any) => { if (data?.checkoutUrl) window.location.href = data.checkoutUrl },
-    onError: () => toast.error('Could not start checkout. Please try again.'),
-  })
+  // The checkout mutation behind the deleted subscription CTA is gone with it.
+  // `purchaseSessionMut` below is the initiator's, and stays.
 
   const probeSession = useMutation({
     mutationFn: async (checkIn: any) => {
@@ -201,11 +192,7 @@ export function GroundParticipantPage() {
     onError: () => setPaywallCodeMsg({ ok: false, text: 'Something went wrong. Try again.' }),
   })
 
-  const purchaseSessionMut = useMutation({
-    mutationFn: () => billingApi.purchaseSession(id!),
-    onSuccess: r => { if (r.checkoutUrl) window.location.href = r.checkoutUrl },
-    onError: () => toast.error('Could not start checkout. Try again.'),
-  })
+  // purchaseSessionMut removed with the buy-a-session tier.
 
   const claimFreeExtensionMut = useMutation({
     mutationFn: () => billingApi.claimFreeExtension(id!),
@@ -249,8 +236,7 @@ export function GroundParticipantPage() {
   if (isLoading) return <div style={{ minHeight: '100vh', background: '#F5F3EF', padding: 24, fontSize: 13, color: '#9B9590' }}>Loading…</div>
   if (!ground) return <div style={{ minHeight: '100vh', background: '#F5F3EF', padding: 24, fontSize: 13, color: '#9B9590' }}>Ground not found.</div>
 
-  const conf = ground.confidence ?? 1
-  const bl = bandLabel(conf)
+  const alignRead = alignmentLabel((ground as any).alignment)
   const myParticipant = (ground.participants ?? []).find((p: any) => p.userId === user?.id)
 
   if (!myParticipant) {
@@ -275,13 +261,12 @@ export function GroundParticipantPage() {
   // (floor(timelineDays / cadence interval)), from the timelineDays + cadence
   // the ground carries. Previously this fell back to a hardcoded 6, so a
   // 90-day monthly ground (really 3 sessions) displayed "of 6".
-  const CADENCE_DAYS: Record<string, number> = { DAILY: 1, WEEKLY: 7, FORTNIGHTLY: 14, MONTHLY: 30 }
-  const cadenceDays = CADENCE_DAYS[(ground as any).cadence as string]
-  const derivedTotalSessions =
-    (ground as any).timelineDays && cadenceDays
-      ? Math.max(1, Math.floor((ground as any).timelineDays / cadenceDays))
-      : undefined
-  const totalSessions = (ground as any).totalSessions ?? derivedTotalSessions ?? 6
+  // Same rule as everywhere else now - see lib/sessionCount, which the server's
+  // totalSessionsFor is the authority for. This page already rounded down; the
+  // admin page and sidebar rounded up, and a ground could never call itself
+  // finished as a result.
+  const totalSessions =
+    plannedSessionsFor((ground as any).timelineDays, (ground as any).cadence, (ground as any).totalSessions) ?? 6
   const lastCompleted = completedCheckIns[0]
 
   const signals: any[] = ground.signals ?? []
@@ -366,18 +351,25 @@ export function GroundParticipantPage() {
               </div>
             )}
 
-            {/* Ground confidence */}
+            {/* Where things stand.
+                This was "Ground confidence", a 5-dot meter over "{conf}/5
+                Aligned" - all of it computed from how many check-ins had
+                happened. A participant reading it had no way to know it said
+                nothing about whether anyone agreed. */}
             <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '14px 16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: '#9B9590' }}>Ground confidence</div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: '#0C447C' }}>{conf}/5 <span style={{ fontSize: 12, fontWeight: 600, color: '#6B6560' }}>{bl}</span></div>
-              </div>
-              <div style={{ display: 'flex', gap: 3, marginBottom: 8 }}>
-                {[1,2,3,4,5].map(i => (
-                  <div key={i} style={{ flex: 1, height: 4, borderRadius: 2, background: i <= conf ? '#0C447C' : '#E2E0DB' }} />
-                ))}
-              </div>
-              <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.5 }}>{confidenceDescription(conf)}</div>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: '#9B9590', marginBottom: 6 }}>Where things stand</div>
+              {alignRead ? (
+                <>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: '#0C447C', marginBottom: 4 }}>{alignRead}</div>
+                  <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.5 }}>
+                    From the areas the report names. An open area is something to talk about, not a mark against anyone.
+                  </div>
+                </>
+              ) : (
+                <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.5 }}>
+                  No read yet. The report has not named an area the accounts agree or differ on.
+                </div>
+              )}
             </div>
 
             {/* My record quality (if has check-ins) */}
@@ -481,24 +473,19 @@ export function GroundParticipantPage() {
               </div>
             )}
 
-            {/* Alignment map */}
-            {completedCheckIns.length >= 1 && (
+            {/* This was an "Alignment map": a five-bar ladder from Unresolved
+                to Aligned that filled up as check-ins accumulated, over the
+                line "Currently at Aligned after 10 sessions." Nothing in it
+                measured agreement. A ladder that fills with attendance is worse
+                than no ladder, because it reads as progress toward a verdict.
+                What replaces it says only what the report names, and says
+                nothing when the report names nothing. */}
+            {completedCheckIns.length >= 1 && alignRead && (
               <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '14px 16px' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: '#9B9590', marginBottom: 10 }}>Alignment map</div>
-                <div style={{ display: 'flex', gap: 3, marginBottom: 10 }}>
-                  {[1,2,3,4,5].map(i => {
-                    const bandIndex = Math.min(Math.round(conf), 5)
-                    return (
-                      <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-                        <div style={{ width: '100%', height: 28, borderRadius: 4, background: i <= bandIndex ? '#0C447C' : '#E2E0DB', opacity: i <= bandIndex ? (0.4 + i * 0.12) : 1 }} />
-                        <div style={{ fontSize: 9, color: '#9B9590', textAlign: 'center', lineHeight: 1.2 }}>{BANDS[i]}</div>
-                      </div>
-                    )
-                  })}
-                </div>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: '#9B9590', marginBottom: 8 }}>Where things stand</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#0C447C', marginBottom: 4 }}>{alignRead}</div>
                 <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.5 }}>
-                  Currently at <strong>{bl}</strong> after {completedCheckIns.length} session{completedCheckIns.length !== 1 ? 's' : ''}.
-                  {conf < 3 ? ' More sessions will sharpen the picture.' : ' Strong enough to generate a full report.'}
+                  Counted from the areas this report names, after {completedCheckIns.length} session{completedCheckIns.length !== 1 ? 's' : ''}.
                 </div>
               </div>
             )}
@@ -597,31 +584,26 @@ export function GroundParticipantPage() {
         {/* MY RECORD TAB */}
         {tab === 'record' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {/* The participant gets an equal say in how the ground ends. */}
+            {id && <ResolutionPanel groundId={id} />}
 
-            {/* Unlock CTA - shown whether locked or not, but changes state */}
+            {/* The empty state, and NO price.
+                `insightsLocked` does not mean "unpaid" - it means "no completed
+                session yet", and the server says so: the first session of every
+                ground is free, so there is no billing gate here at all. A
+                monthly-subscription button had been attached to that empty
+                state anyway, shown to the one person who has contributed
+                nothing and is deciding whether to begin - and wired to a
+                ONE-OFF purchase call, so the label was wrong twice over.
+                Participants are never charged. The state is real; the price
+                was scaffolding. */}
             {myRecord?.insightsLocked !== false && (
               <div style={{ background: '#0C447C', borderRadius: 10, padding: '18px 20px' }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: 'white', marginBottom: 6 }}>Your record insights</div>
-                <div style={{ fontSize: 12, color: 'rgba(255,255,255,.75)', lineHeight: 1.6, marginBottom: 6 }}>
-                  Complete your first check-in to start building your record. After that, you can unlock your full record: specificity trend, confidence score, and observations across sessions.
+                <div style={{ fontSize: 12, color: 'rgba(255,255,255,.75)', lineHeight: 1.6 }}>
+                  Complete your first check-in to start building your record. Your specificity trend,
+                  confidence score, and observations across sessions appear here as you go.
                 </div>
-                {myRecord?.insightsLocked === true && (
-                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,.55)', lineHeight: 1.5, marginBottom: 14 }}>
-                    You have completed sessions. Upgrade to see your full record.
-                  </div>
-                )}
-                {myRecord?.insightsLocked === undefined && (
-                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,.55)', lineHeight: 1.5, marginBottom: 14 }}>
-                    Your insights will appear here once you complete a check-in.
-                  </div>
-                )}
-                <button
-                  onClick={() => checkoutMut.mutate()}
-                  disabled={checkoutMut.isPending}
-                  style={{ padding: '9px 18px', borderRadius: 7, background: 'white', color: '#0C447C', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
-                >
-                  {checkoutMut.isPending ? 'Opening…' : 'Unlock insights for $25/mo'}
-                </button>
               </div>
             )}
 
@@ -976,7 +958,7 @@ export function GroundParticipantPage() {
               </div>
               <div style={{ padding: '13px 16px', borderBottom: '1px solid #F0EEE9' }}>
                 <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Your role</div>
-                <div style={{ fontSize: 12, color: '#9B9590' }}>{myParticipant?.roleAsDescribed ?? 'Contributor'}</div>
+                <div style={{ fontSize: 12, color: '#9B9590' }}>{myParticipant?.roleAsDescribed ?? 'In this ground'}</div>
               </div>
               <div style={{ padding: '13px 16px', borderBottom: '1px solid #F0EEE9' }}>
                 <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Status</div>
@@ -1038,20 +1020,9 @@ export function GroundParticipantPage() {
                   </div>
                 )}
 
-                {/* Tier 2: Buy session */}
-                <div style={{ border: '1px solid #E2E0DB', borderRadius: 10, padding: '14px 16px', marginBottom: 12 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: '#0C447C', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 6 }}>Buy sessions</div>
-                  <div style={{ fontSize: 13, color: '#1A1916', lineHeight: 1.6, marginBottom: 12 }}>
-                    Groundwork helping your team? Continue this Ground with additional sessions whenever you need them. Pay only because you have experienced the value, not because a trial expired.
-                  </div>
-                  <button
-                    onClick={() => purchaseSessionMut.mutate()}
-                    disabled={purchaseSessionMut.isPending}
-                    style={{ width: '100%', padding: '10px', borderRadius: 7, background: '#0A1628', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: purchaseSessionMut.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: purchaseSessionMut.isPending ? 0.7 : 1 }}
-                  >
-                    {purchaseSessionMut.isPending ? 'Redirecting...' : 'Buy a session ($5)'}
-                  </button>
-                </div>
+                {/* Tier 2 was "Buy a session ($5)". Removed: there is no
+                    per-session billing. What remains is the free extension
+                    above and the org subscription below. */}
 
                 {/* Tier 3: Upgrade org */}
                 <div style={{ border: '1px solid #E2E0DB', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
@@ -1083,7 +1054,10 @@ export function GroundParticipantPage() {
               </>
             )}
 
-            {/* Contributor code */}
+            {/* Contributor code: an admin/lead instrument for bypassing a
+                payment block. It used to render for everyone, sending plain
+                participants hunting for a code they were never issued. */}
+            {myParticipant?.partyType === 'INITIATOR' && (
             <div style={{ borderTop: '1px solid #E2E0DB', paddingTop: 14 }}>
               <div style={{ fontSize: 12, color: '#9B9590', marginBottom: 8 }}>Have a contributor code?</div>
               <div style={{ display: 'flex', gap: 8 }}>
@@ -1106,6 +1080,7 @@ export function GroundParticipantPage() {
                 <div style={{ fontSize: 12, color: paywallCodeMsg.ok ? '#085041' : '#c0392b', marginTop: 6 }}>{paywallCodeMsg.text}</div>
               )}
             </div>
+            )}
 
             <button
               onClick={() => setShowPaywall(false)}

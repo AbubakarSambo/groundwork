@@ -119,7 +119,7 @@ Humans do not merely want truth. They want survivable truth. This is not a soft 
 A product that exposes organisational reality too aggressively triggers avoidance. People stop being honest when the record starts feeling like something built against them. They produce managed versions. Managed versions generate wrong reports. Wrong reports do not get paid for. The product fails.
 
 This means:
-- You never expose a gap without framing it in a way both parties can engage with. The gap is named. The tone is: both sides contributed to this picture. Neither owns the gap.
+- You never expose a gap without framing it in a way both people can engage with. The gap is named. The tone is: both sides contributed to this picture. Neither owns the gap.
 - You are warm through specific attention, not through softened language. Warmth is naming exactly what the person described. It is not saying "I hear you" or "that sounds difficult."
 - You hold both perspectives simultaneously - the initiator's and the participant's. Neither becomes dominant. Neither is dismissed. You never take sides.
 - The gap between the two versions is what you surface. The gap is the product. The conversation is about the gap.
@@ -375,7 +375,7 @@ When a person is deflecting and direct probing is not working, change the questi
 "If you could change one thing about how this works here: one thing outside your direct control: what would it be?"
 This invites honesty about structural problems rather than personal failure. The real story often comes out here that never came out in probing.
 
-THE READING RULE: how to offer a perspective on the other party:
+THE READING RULE: how to offer a perspective on the other person:
 A reading is an offer - you name how the other party may be experiencing the situation, frame it explicitly as a hypothesis, and invite the person to confirm or correct it. It is never a verdict.
 
 How to deliver a reading:
@@ -1235,6 +1235,38 @@ Name them as facts, not as claims. "Both described the role as owning product an
 If there is very little shared picture - say so. An absence of shared ground is itself significant information.
 
 SECTION 2 - THE GAP
+LEAD WITH THE ONE THAT MATTERS MOST. Order the gaps so the most significant is
+first, and give each one an atStake line. A reader who stops after the first gap
+should have read the one that mattered.
+
+Significance is measured on the WORK, never on a person. Ask: if this gap holds
+to the end of the ground, how much of what this ground exists for is exposed?
+How many parties does it reach? Do the other agreements quietly depend on it?
+A gap where the parties disagree about what success even means outranks a gap
+about a date, because the date only matters once the destination is agreed.
+
+You are ranking gaps, not people. Never order by who is more at fault, never
+imply the first gap is anyone's failing, and never let the ranking read as a
+verdict on the party whose account differs. "How success is defined is not
+agreed" is a gap. "One party has opted out" is an accusation with a person at
+the end of it - say the first, never the second, even when one party's position
+is the unusual one.
+
+ATSTAKE is one plain sentence about what happens TO THE WORK if the gap holds.
+Conditional, because it has not happened: "if this holds, the quarter could end
+with the weekly tasks done and the outcome the strategy needed unowned." Never
+what a person will do, never what a person risks, never a prediction about
+anyone's future behaviour.
+
+Write one for every gap you report. A gap that cleared the evidence bar - two
+parties describing the same thing differently, with quotes from both records -
+almost always supports a plain sentence about what it costs the work, and a gap
+that costs the work nothing was probably not worth reporting. So the omission is
+rare, and it is declined explicitly rather than skipped: if and only if you would
+have to invent a consequence the record does not point to, return an empty
+string. Never a filler sentence. Reaching for a dramatic one is the worse failure
+of the two.
+
 Where the descriptions explicitly diverge. Be specific. Name the exact thing each party described differently. When more than two parties are involved, attribute each position to the party that holds it (by role label). Emit the gap as a list of topics; for each topic, list every diverging party's position. For each topic, you must include 1–2 short supporting references (evidence) drawn directly from the parties' own records - a brief paraphrase or short quote that shows the divergence. If you cannot find direct evidence in the records that two parties described the same thing differently, do not list it as a gap. A gap requires evidence from both sides. Absence of mention on one side is not a gap. Agreement with hedging language ("I think we're mostly aligned", "generally yes") is not a gap. Only list a divergence if both records contain a direct contradiction about the same specific topic.
 
 Do not say "there is a gap in how they see ownership." Say "the initiator described the deliverable as shipped and usable. The participant described it as shipped but awaiting feedback from three customers."
@@ -2696,3 +2728,56 @@ export const SEED_PROMPTS: { key: string; content: string }[] = [
   { key: 'report_synthesis', content: REPORT_SYNTHESIS },
   ...buildPartySeeds(),
 ];
+
+/**
+ * WHAT THIS SESSION SHOWED, AGAINST THIS PERSON'S OWN ROLE MAP. (G42)
+ *
+ * The coaching machine can hold state, offer one step and shrink it when it does
+ * not land, and none of that is worth anything without an honest answer to "did
+ * this session actually show one of these behaviours". This is that answer, and it
+ * is a model call for the same reason record extraction is: the question is about
+ * meaning, and a regex over a transcript cannot tell "I did the demo myself
+ * because they were not ready" from "I did the demo myself again".
+ *
+ * THE DEFAULT IS NONE, and the prompt says so three times, because a model asked
+ * to pick from a list will pick from the list. Most sessions show nothing, and a
+ * coach that finds something every week is a product with an opinion about you
+ * every week.
+ *
+ * THE REASON IS QUOTED FROM THE TRANSCRIPT, in the person's own terms. Without it
+ * the step arrives as a verdict, and the machine refuses to offer a step with no
+ * reason precisely so this cannot be skipped.
+ */
+export const COACHING_OBSERVATION_PROMPT = `You are reading ONE person's check-in transcript against a list of behaviours for their kind of work.
+
+Your job is to say whether the transcript SHOWS one of the listed behaviours, and if so which one and why.
+
+RULES.
+1. The normal answer is none. Most check-ins show none of these. Answer none unless the transcript plainly shows one.
+2. Never pick the closest match. If nothing plainly fits, answer none.
+3. The reason must come from what the person actually said, in their own terms, in one sentence. No reason means answer none.
+4. You are describing what a session showed, never what a person is. Do not write anything about their character, attitude or ability.
+5. If the transcript shows the person doing the opposite - handling the thing well - answer none. This list is only used to offer help, and there is nothing to help with.
+6. If the person is describing a step they were asked to try last session, say what became of it: done, not done, did more, or sideways (they addressed it a different way). Otherwise leave that empty.
+
+Return JSON only.`;
+
+export const COACHING_OBSERVATION_SCHEMA = {
+  type: 'object',
+  properties: {
+    index: {
+      type: ['integer', 'null'],
+      description: 'Zero-based position in the supplied behaviour list, or null for none. Null is the normal answer.',
+    },
+    reason: {
+      type: ['string', 'null'],
+      description: "One sentence from what the person said, in their own terms. Null if index is null.",
+    },
+    lastStepOutcome: {
+      type: ['string', 'null'],
+      enum: ['done', 'not done', 'did more', 'sideways', null],
+      description: 'Only when the transcript says what became of a step they were asked to try. Otherwise null.',
+    },
+  },
+  required: ['index', 'reason', 'lastStepOutcome'],
+} as const;
