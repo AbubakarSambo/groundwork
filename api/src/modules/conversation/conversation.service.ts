@@ -7,7 +7,7 @@ import { totalSessionsFor } from '../grounds/session-count';
 import { PromptsService } from '../prompts';
 import { AnthropicService, ChatTurn, houseStyle } from './anthropic.service';
 import { ConversationContextService } from './context.service';
-import { SESSION_CLOSE_MARKER, stripCloseMarker, buildIntakeBlock, RECORD_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_SCHEMA, WORK_MENTION_PROMPT, WORK_MENTION_SCHEMA } from './prompt-library';
+import { COACHING_OBSERVATION_PROMPT, COACHING_OBSERVATION_SCHEMA, SESSION_CLOSE_MARKER, stripCloseMarker, buildIntakeBlock, RECORD_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_SCHEMA, WORK_MENTION_PROMPT, WORK_MENTION_SCHEMA } from './prompt-library';
 import { GroundworkEvents, CheckInCompletedEvent } from '../../common';
 import { DocumentsService } from '../documents/documents.service';
 import { BillingService } from '../billing/billing.service';
@@ -16,7 +16,7 @@ import { UsageService } from '../usage/usage.service';
 import { CheckInStatus, TurnRole, RecordEntryType, Cadence, GroundStatus, UsageEventType, PartyType, GroundMode, DependencyStatus, WorkMentionKind } from '@prisma/client';
 import { runIntake } from './intake';
 import { boardRendersFor } from '../board/board-families';
-import { buildRoleProbeBlock } from '../board/role-maps';
+import { buildRoleProbeBlock, roleMapFor, signalRead, MIN_COACHING_CONFIDENCE } from '../board/role-maps';
 import {
   nextMove, coachingBlockFor, afterOffering, afterOutcome, EMPTY,
   type CoachingStateShape, type StepOutcome,
@@ -1002,6 +1002,85 @@ The ground will close toward one of these end states: ${endStates || 'the partie
   }
 
   /**
+   * Read this session against this person's own role map, and let the machine
+   * decide what to do about it.
+   *
+   * A MODEL CALL, for the same reason record extraction is one: the question is
+   * about meaning. A regex cannot tell "I did the demo myself because they were
+   * not ready" from "I did the demo myself again", and the difference is the whole
+   * read.
+   *
+   * WHAT IT WILL NOT DO.
+   *
+   * It never runs on a low-confidence function. A step chosen from a guess about
+   * what somebody's job is lands as a stranger's advice, and the same threshold
+   * already governs the role probes.
+   *
+   * It never invents the reason. The prompt takes it from what the person said,
+   * and the machine refuses a step without one - so a model that returns an index
+   * with no reason produces nothing rather than a verdict.
+   *
+   * It never decides whether they managed their last step. That comes back only if
+   * the transcript says so, in their words. Inferring it from a better-looking week
+   * would make the step a target.
+   */
+  private async observeForCoaching(checkInId: string, participantId: string, sessionNumber: number): Promise<void> {
+    if (!this.coachingEnabled()) return;
+
+    const participant = await this.prisma.groundParticipant.findUnique({
+      where: { id: participantId },
+      select: { detectedFunction: true, detectedFunctionConfidence: true },
+    });
+    const map = roleMapFor(participant?.detectedFunction);
+    const confident = (participant?.detectedFunctionConfidence ?? 0) >= MIN_COACHING_CONFIDENCE;
+    if (!map?.failureSignals?.length || !confident) return;
+
+    const turns = await this.prisma.conversationTurn.findMany({
+      where: { checkInId },
+      orderBy: { createdAt: 'asc' },
+      select: { role: true, content: true },
+    });
+    if (!turns.length) return;
+
+    const personSaid = turns.filter((t) => t.role === TurnRole.PERSON).map((t) => t.content ?? '');
+    const transcript = turns.map((t) => `${t.role === TurnRole.AI ? 'GROUNDWORK' : 'PERSON'}: ${t.content}`).join('\n');
+    const behaviours = map.failureSignals.map((b, i) => `${i}. ${b}`).join('\n');
+
+    const observed = await this.anthropic.extract<{
+      index: number | null;
+      reason: string | null;
+      lastStepOutcome: string | null;
+    }>(
+      COACHING_OBSERVATION_PROMPT,
+      [{ role: 'user', content: `BEHAVIOURS FOR THIS KIND OF WORK:\n${behaviours}\n\nTRANSCRIPT:\n${transcript}` }],
+      COACHING_OBSERVATION_SCHEMA as any,
+    );
+
+    // signalRead applies the guards that matter - an index off the end, an empty
+    // reason - and returns null rather than something to hand a person.
+    const read = signalRead(participant?.detectedFunction, observed?.index ?? -1, observed?.reason ?? '');
+
+    const OUTCOMES = ['done', 'not done', 'did more', 'sideways'];
+    const outcome = OUTCOMES.includes(String(observed?.lastStepOutcome))
+      ? (observed!.lastStepOutcome as StepOutcome)
+      : null;
+
+    await this.recordCoachingStep(
+      participantId,
+      sessionNumber,
+      {
+        noticed: read?.noticed ?? null,
+        lookingLike: read?.lookingLike ?? null,
+        reason: read?.reason ?? null,
+        // The same substance test the completion gate uses, rather than a second
+        // definition of "said something real".
+        hadSubstance: personSaid.some((t) => countCheckableSpecifics(t) > 0),
+      },
+      outcome,
+    );
+  }
+
+  /**
    * After a session: record what became of the last step, and choose the next.
    *
    * This is the write path, and the first thing in the product ever to put a row
@@ -1356,6 +1435,18 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
     this.reviseDetectedFunction(checkIn.participantId).catch((err) =>
       this.logger.warn(`Function detection failed for participant ${checkIn.participantId}: ${err.message}`),
+    );
+
+    /**
+     * G42. THE NOTICING, and the call that stops recordCoachingStep from being a
+     * method nobody invokes - which is what it was an hour after being written,
+     * in the same session I committed a note about exactly that failure.
+     *
+     * Best-effort and last, like the others: nothing about coaching may delay or
+     * block a session completing.
+     */
+    this.observeForCoaching(checkIn.id, checkIn.participantId, checkIn.sessionNumber).catch((err) =>
+      this.logger.warn(`Coaching observation failed for check-in ${checkIn.id}: ${err.message}`),
     );
 
     await this.prisma.checkIn.update({
