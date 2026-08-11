@@ -2629,3 +2629,97 @@ scenario stays what W8-33 said: get the lead's standard on record. Not a quality
 reads, so a participant sees their own five reads and the lead sees all of them. In the reversed
 setup the subject is the one who wants the read, so confirm the person who set the ground up
 actually sees their own engagement quality, rather than it being filed as a lead-only surface.
+
+---
+
+# Wave 8, tenth pass - grounds as channels. This replaces W8-31.
+
+Hafsah: "why can't it be like slack where your grounds are open on the side like a channel and you
+come in and keep updating your checkins and when it is time to checkin the ground name turns red."
+
+## W8-57 · Grounds are channels, not a chat list. Her model is right and mine was wrong - **M**
+
+W8-31 proposed the ChatGPT shape: a flat list of check-ins, newest first. **That is the wrong
+model for this product**, and the reason is what a ground actually is.
+
+| | ChatGPT conversations | Groundwork |
+|---|---|---|
+| How many | hundreds, accumulating | a handful, 1 to 5 |
+| Lifespan | one sitting | 90 days, six sessions |
+| Relationship between them | unrelated | the same people, the same subject, in sequence |
+| Is there a "your turn"? | never | **every cadence period** |
+| Do you return to the same one? | rarely | that is the entire product |
+
+A ground is a **place you belong to that has a rhythm**. That is a channel. Check-ins are what
+happens inside it over time. A flat list of check-ins treats a 90-day ground as six unrelated
+conversations, which is exactly backwards - the value is that they are one thread.
+
+**And her model solves the thing mine could not.** In a flat list of past check-ins, where does
+"session 3 is due" live? It has to be a synthetic row or a badge on something that has not
+happened yet. In the channel model it is obvious: the ground is always in the rail, and its state
+changes when it is your turn. **That is the most important state in the product** - everything
+depends on people checking in when it is time - and the channel model gives it the only natural
+home.
+
+### What a ground opens to
+
+This is the part that makes the model pay for itself. A channel opens to its history with the
+composer at the bottom. So a ground opens to **your check-ins in that ground, in order, with the
+open one at the bottom ready to type into.**
+
+One scroll: session 1's conversation, its report, session 2's conversation, its report, and then
+either the live session or the invitation to start it.
+
+That single view closes four separate findings - W8-19 (the unlinked participant page), W8-20
+(nothing opens or starts a check-in), W8-21 (session history holds only the summary) and W8-14 (no
+way back to your chats). They were all symptoms of check-ins having no home.
+
+### Three things to get right
+
+**1. Red is for late, not for your turn.** Her mechanism is right and I would split the states:
+
+| State | Treatment |
+|---|---|
+| Nothing needed | plain |
+| Your turn, inside the window | **bold, with a dot** |
+| Overdue, past the window | **red** |
+| Waiting on other people | quiet count, "2 of 3 in", never red |
+
+The reason is this product's own tone rules: "Never say engagement is declining. Never say the
+person seems to be pulling back. These are surveillance observations. They make people feel
+watched not supported." A ground that goes red the moment it is your turn is a red mark against
+somebody for being on time. Red should mean the window closed, and even then it is about the
+ground's state rather than the person's character.
+
+**2. The badge means different things to a participant and an admin.** For a party, it is "your
+turn". For somebody who runs a ground they are not in, there is no turn - the state is "three of
+five have checked in" or "two people are overdue". Same rail, two meanings, and they must not be
+rendered identically or an admin will think they owe a check-in they do not.
+
+**3. Closed grounds have to leave.** Slack archives channels for a reason. A finished ground stops
+being a place and becomes a record: out of the rail, into the grounds page. Without that the rail
+fills with history and the live signal drowns.
+
+### What it does to the target page list
+
+W8-49 stands, with the rail changed. Grounds stay in the rail **as channels**, so the earlier
+worry about two lists of the same objects (W8-30, W8-54) does not apply: the rail is the live set
+you belong to, and the Grounds page is the full table for whoever runs them. Those are genuinely
+different things, which is why Slack has both a sidebar and a channel browser.
+
+**W8-54 is superseded** - it answered "where do grounds go once check-ins take the rail", and the
+answer is now that grounds never left.
+
+### And it makes the org picker consistent
+
+Slack's workspace switcher above the channel list is exactly the org chooser she asked for
+(W8-51). Same mental model, same place on screen: workspace at the top, channels below. That is a
+third argument for the channel model - it makes the multi-org story obvious instead of an extra
+concept.
+
+### What I would want to test before building it
+
+The model assumes people have few grounds. If a manager in a 38-seat org ends up in twenty, the
+rail becomes a list again and needs grouping or a "your turn first" sort. Worth checking against
+the real cohort numbers before the layout is fixed, because the answer changes whether the rail is
+flat or grouped.
