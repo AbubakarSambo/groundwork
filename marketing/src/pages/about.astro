@@ -2,7 +2,7 @@
 import Layout from '../layouts/Layout.astro';
 const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
 ---
-<Layout title="About · Groundwork" description="Groundwork is a workplace alignment tool. Each person checks in privately. The report shows where everyone agrees, where they differ, and what it means." canonicalPath="/about">
+<Layout title="About · Groundwork" description="Groundwork shows you what is really happening in a piece of work. Each person checks in privately. The report shows where everyone agrees, where they differ, and what it means." canonicalPath="/about">
   <style>
     *,*::before,*::after{box-sizing:border-box}
     body{margin:0;overflow-x:hidden}
@@ -50,7 +50,12 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
       <h1 style="font-size:32px;font-weight:800;color:#1A1916;line-height:1.2;margin-bottom:32px;">Built by people who kept running into the same problem.</h1>
 
       <div style="display:flex;flex-direction:column;gap:18px;margin-bottom:40px;">
-        <p style="font-size:15px;color:#4A5568;line-height:1.8;margin:0;">We built companies and kept hitting the same wall. Not arguments. Something quieter. Someone thought they understood what was expected. Someone thought the plan was agreed. Someone thought they were doing the right thing. None of it came out until it had already caused damage.</p>
+        <p style="font-size:15px;color:#4A5568;line-height:1.8;margin:0;">We kept discovering the same thing. Problems almost never started with bad people. They started because different people quietly believed different things, and nobody realised until it became expensive. Groundwork exists so leaders don't discover misalignment months after it starts.</p>
+
+        <!-- ITEM 3: first person, specific, and deliberately not polished. The
+             founder is the buyer, which is a real advantage worth stating
+             plainly. No claims about funding, size or customers. -->
+        <p style="font-size:15px;color:#4A5568;line-height:1.85;margin:20px 0 0;">We built Groundwork after repeatedly discovering problems months after they started. We hired too late. We missed disagreements that had quietly grown. We watched decisions get made from incomplete pictures, not because anyone was dishonest, but because there was no safe way to compare what everyone actually believed. Groundwork is the product we wanted.</p>
         <p style="font-size:15px;color:#4A5568;line-height:1.8;margin:0;">The problem was never the people. It was that there was no way to find out without a meeting, without confrontation, without someone having to say it to someone else's face.</p>
         <p style="font-size:15px;color:#4A5568;line-height:1.8;margin:0;">Groundwork is that place. You say what you need done. Your team says what they understood. You see where those two things match and where they do not. No meeting required.</p>
       </div>
@@ -58,6 +63,7 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
       <div style="border-left:3px solid #0C447C;padding:20px;background:#EEF4FB;border-radius:0 8px 8px 0;margin-bottom:36px;">
         <h3 style="font-size:15px;font-weight:700;color:#0C447C;margin-bottom:8px;">Why it works</h3>
         <p style="font-size:14px;color:#1A1916;line-height:1.75;font-style:italic;margin:0;">People tell the truth when they know nobody else will see their answer until the report is ready. That is the whole design. Private in, honest out.</p>
+        <p style="font-size:15px;color:#4A5568;line-height:1.85;margin:14px 0 0;">Nobody is scored, ranked or watched. Groundwork never shows anyone's raw answers and never says who said what about whom.</p>
       </div>
 
       <div style="background:#F5F3EF;border-radius:10px;padding:20px 24px;border:1px solid #E2E0DB;margin-bottom:36px;">
@@ -68,11 +74,11 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
       <div class="gw-about-grid">
         <div class="gw-about-card">
           <h3 style="font-size:14px;font-weight:700;color:#1A1916;margin-bottom:6px;">The product</h3>
-          <p style="font-size:12px;color:#6B6560;line-height:1.6;margin:0;">A private check-in for each person. One clear picture for the person running it. Works for two people or twenty. Runs on a regular cadence for as long as the situation requires.</p>
+          <p style="font-size:12px;color:#6B6560;line-height:1.6;margin:0;">Each person's own independent account, given privately. One clear picture for the person running it. Works for two people or twenty. Runs on a regular cadence for as long as the situation requires.</p>
         </div>
         <div class="gw-about-card">
           <h3 style="font-size:14px;font-weight:700;color:#1A1916;margin-bottom:6px;">The company</h3>
-          <p style="font-size:12px;color:#6B6560;line-height:1.6;margin:0;">Groundwork is an independent product built by Coamana. We built it because nothing else let every person give their own honest answer without the pressure of the room.</p>
+          <p style="font-size:12px;color:#6B6560;line-height:1.6;margin:0;">Groundwork is an independent product. We built it because nothing else let every person give their own honest answer without the pressure of the room.</p>
         </div>
       </div>
 
@@ -109,8 +115,7 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
         <a class="gw-footer-btn" href="/pricing">Pricing</a>
         <a class="gw-footer-btn" href="/about">About</a>
       </div>
-      <p style="font-size:11px;color:rgba(255,255,255,.2);margin:0;">&#169; 2025 Groundwork</p>
-      <p style="font-size:10px;color:rgba(255,255,255,.1);margin:8px 0 0;">Groundwork is a product of Coamana Ltd.</p>
+      <p style="font-size:11px;color:rgba(255,255,255,.2);margin:0;">&#169; 2026 Groundwork</p>
     </footer>
 
   </div>
