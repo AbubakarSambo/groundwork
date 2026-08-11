@@ -1433,3 +1433,24 @@ synthesis lands, and the confidence read reaches a real report.
 function, or accept that people doing that work get the untuned product. The second
 is defensible and is what ships today; the first is a day's careful work and covers
 what is probably the most common junior hire there is.
+
+---
+
+## Run 7: all three flags on, and what it proved
+
+24 of 24 check-ins, 50 minutes, `CONTEXT_ENABLED` + `CONFIDENCE_ENABLED` +
+`COACHING_ENABLED` together for the first time.
+
+| | |
+|---|---|
+| **The closing synthesis landed** | `final_synthesis` is not null. Run 6 failed on exactly this - the model returned prose instead of calling the tool, nothing retried, and the report kept its mid-ground state permanently. Zero `did not call tool` in this run's log, so the retry was not even needed; the sweep is there for when it is. |
+| **The private guides survived twelve sessions** | Both parties have one, with real content. That was P6 - guides destroyed by every re-synthesis, so a twelve-session ground ended with none. |
+| **Coaching produced no rows, correctly** | Diagnosed mid-run: no function reached the confidence threshold, because the record is support-queue work and no map covers it. Now logged per person rather than silent. |
+| **The one failure was my test, and the product was right** | The assertion demanded three fields on every guide. One party's `questionToCarry` was dropped because the model wrote a question containing a quotation - the no-quote rule firing exactly as designed, and logging why. An assertion cannot require a field a deliberate rule is allowed to remove. |
+
+**Two fixes came out of that last one.** The e2e now asserts what the product
+guarantees: a guide arrives with something in it, has an opening line, and no field is
+a stub. And the product retries once when a field is stripped, naming the field and
+the reason - which is a far better instruction than the original prompt could give,
+because it says what went wrong. Once, not a loop: a model that quotes twice is
+telling us the prompt needs work, and the log is what says so.

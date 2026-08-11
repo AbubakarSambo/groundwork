@@ -563,8 +563,24 @@ test('Ground 1: new hire, from a stranger landing to a shared report', async ({ 
   expect(guides, 'the private post-report guides did not survive twelve sessions').toBeTruthy();
   expect(Object.keys(guides).length, 'a guide for each party').toBeGreaterThan(1);
   for (const [pid, guide] of Object.entries<any>(guides)) {
-    for (const field of ['openingLine', 'questionToCarry', 'toAcknowledge']) {
-      expect(guide?.[field], `${pid}'s guide is missing ${field}`).toBeTruthy();
+    /**
+     * WHAT THE PRODUCT ACTUALLY GUARANTEES, WHICH IS NOT THREE FIELDS.
+     *
+     * This demanded openingLine, questionToCarry and toAcknowledge on every guide,
+     * and failed a run where the product was RIGHT: the model wrote a question
+     * containing a quotation, the no-quote rule dropped that field, and the log said
+     * so exactly as designed. An assertion cannot require a field that a deliberate
+     * rule is allowed to remove.
+     *
+     * The rules are: a guide reaches somebody with something in it, and nothing in it
+     * names anybody or quotes them. There is now a retry in the product for the
+     * dropped case, so three fields is the usual outcome - but the guarantee is the
+     * rule, not the count.
+     */
+    expect(Object.keys(guide ?? {}).length, `${pid}'s guide is empty`).toBeGreaterThan(0);
+    expect(guide?.openingLine, `${pid}'s guide has no opening line`).toBeTruthy();
+    for (const [field, text] of Object.entries<any>(guide)) {
+      expect(String(text).length, `${pid}'s ${field} is a stub`).toBeGreaterThan(20);
     }
     // The rule the guide prompt is built around, checked on real output rather
     // than trusted: no names, no quotation marks lifted from a check-in.

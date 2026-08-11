@@ -248,7 +248,16 @@ describe('the service applies it, and the flag stays off', () => {
   const SERVICE = readFileSync(join(__dirname, 'reports.service.ts'), 'utf8');
 
   it('sanitises before storing', () => {
-    expect(SERVICE).toMatch(/const \{ guide, dropped \} = sanitiseGuide\(result, names\)/);
+    /**
+     * MATCHES THE CALL, NOT THE DECLARATION KEYWORD. This asserted on
+     * `const { guide, dropped } = ...` and went red when the variables became
+     * reassignable to hold a retry - a real improvement failing a test about
+     * punctuation. What matters is that the sanitiser runs on the model's output
+     * before anything is stored, which is what the pattern says now.
+     */
+    expect(SERVICE).toMatch(/sanitiseGuide\(result, names\)/);
+    // And that a retry, if one happens, is sanitised too rather than trusted.
+    expect(SERVICE).toMatch(/sanitiseGuide\(retry, names\)/);
     // Stored value is the sanitised one, never the raw extraction.
     expect(SERVICE).toMatch(/guides\[participantId\] = guide;/);
     expect(SERVICE).not.toMatch(/guides\[participantId\] = result;/);

@@ -1896,13 +1896,62 @@ Close the report by framing - neutrally, without recommending one - the choice n
           );
           if (!result) return;
 
-          const { guide, dropped } = sanitiseGuide(result, names);
+          let { guide, dropped } = sanitiseGuide(result, names);
+
+          /**
+           * ONE MORE ATTEMPT WHEN A FIELD IS STRIPPED, AND HERE IS THE RUN THAT
+           * ASKED FOR IT.
+           *
+           * On the all-flags run, one party's guide came out with no
+           * questionToCarry: the model wrote a question containing a quotation, the
+           * no-quote rule dropped it, and the log said so exactly as designed. The
+           * product was right. The person still ended up with a guide that had
+           * nothing to carry into the conversation.
+           *
+           * The guide is the only private surface that tells somebody what they
+           * might do differently, and its question is the part they act on. Losing it
+           * to a rule the model can trivially satisfy on a second pass is a waste, so
+           * the second pass is asked for - naming the fields that were stripped and
+           * why, which is a far better instruction than the original prompt could
+           * give.
+           *
+           * Once, not a loop: a model that quotes twice is telling us the prompt
+           * needs work, and the log is what says so.
+           */
+          if (dropped.length) {
+            const why = dropped
+              .map((d) => `${d.field} (${d.reason === 'names-a-party' ? 'it named somebody' : 'it contained a quotation'})`)
+              .join(', ');
+            const retry = await this.anthropic
+              .extract<PostReportGuide>(
+                POST_REPORT_GUIDE_PROMPT,
+                [{
+                  role: 'user',
+                  content:
+                    `${corpus}
+
+A previous attempt had to be discarded in part. Rewrite it so that no field names any person and no field contains a quotation, direct or paraphrased. Discarded last time: ${why}. Write all three fields.`,
+                }],
+                POST_REPORT_GUIDE_SCHEMA,
+              )
+              .catch(() => null);
+            if (retry) {
+              const second = sanitiseGuide(retry, names);
+              // Only take the retry if it actually lost less. A worse second attempt
+              // is not an improvement, and the first one is already sanitised.
+              if (Object.keys(second.guide).length > Object.keys(guide).length) {
+                guide = second.guide;
+                dropped = second.dropped;
+              }
+            }
+          }
+
           for (const d of dropped) {
             // Logged, because a field being dropped often means the prompt needs
             // work - and a silent strip would hide that the model is still
             // reaching for names.
             this.logger.warn(
-              `Dropped post-report guide field ${d.field} for participant ${participantId}: ${d.reason}.`,
+              `Dropped post-report guide field ${d.field} for participant ${participantId}: ${d.reason}, and a second attempt did not recover it.`,
             );
           }
           // A guide stripped to nothing is no guide. Storing an empty object
