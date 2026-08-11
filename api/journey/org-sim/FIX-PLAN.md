@@ -2112,3 +2112,87 @@ account this session does not have), `/prompts` and `/prompts/test` (same), `/bi
 (needs a live Stripe session), `/auth/sent` and `/reset-password` and `/auth/google/callback`
 (reachable only mid-flow with a real token), `/demo/:persona` (needs a persona slug I would be
 guessing at).
+
+---
+
+# Wave 8, fifth pass - every control, where it goes, and whether it belongs there
+
+Every `navigate()` and `href` in `client/src/pages` extracted and checked against the route table
+in `App.tsx`, then the surprising ones opened in a browser. 38 routes defined, 23 distinct
+in-app destinations.
+
+**Method, and its one trap.** The first version of this check reported zero broken destinations,
+which was wrong: `<Route path="*">` (the 404) matches everything, so including it made every
+target look valid. Excluding the catch-all found the real one. Worth recording because any future
+version of this audit will hit the same trap.
+
+## W8-39 · The payment button lands on the 404 page - **S, and it is money**
+
+`BillingPage.tsx:261` navigates to **`/billing/payment`**. That route does not exist. The billing
+routes are `/billing`, `/billing/checkout` and `/billing/callback`.
+
+Confirmed in a browser: `/billing/payment` renders "PAGE NOT FOUND - There is nothing at this
+address."
+
+So the control for buying a session on a ground is dead, and it fails into the one page that
+tells the person they typed the address wrong. This is the only destination in the product that
+404s, and it is the one that takes money.
+
+## W8-40 · `?next=` is passed and never read - **S**
+
+`PricingPage` sends people to **`/auth?next=/pricing`**. `AuthPage` reads only `mode`; the string
+`next` does not appear in the file. On success it navigates to `/`.
+
+So somebody who clicks Subscribe on the pricing page, signs in, and expects to land back at the
+thing they were buying is put on the grounds list instead, with no explanation and no way back to
+the tier they had chosen.
+
+## W8-41 · Two contact addresses on two domains, one of them not ours - **S**
+
+| Address | Where |
+|---|---|
+| `hello@myground.work` | GroundAdminPage, archive request |
+| `support@myground.work` | BillingPage, enterprise enquiry |
+| **`hello@groundwork.so`** | **PricingPage** |
+
+`groundwork.so` is not the product's domain. Mail sent there by a customer asking about pricing
+goes to somebody else or nowhere. Same class as the sitemap naming a domain that did not exist
+(W8 wave 0), on the page where a buyer asks a question.
+
+## W8-42 · Controls that go somewhere reasonable but belong elsewhere - **S**
+
+Where a control works but is in the wrong place:
+
+| Control | Goes to | Why it does not belong |
+|---|---|---|
+| ResetPasswordPage, footer link | `/enter` | After resetting a password you are offered the **org code** page, part of the onboarding model the product left behind (W8-35). It should go to sign-in |
+| PinPage, "Back" | `/enter` | Correct within the orphaned model, meaningless outside it |
+| Account menu, "Admin" | `/admin` | Silently lands on the grounds list for anyone who is not a platform admin (W8, fourth pass). Either hide it or refuse it out loud |
+| GroundsListPage, "Start a ground" | `/start` | `/start` is the anonymous entry chat. A signed-in admin is sent through the flow designed for people with no account, rather than `/grounds/new` |
+| 404 page, "Start a Ground" | `/start` | Same. Reasonable for a stranger, wrong for the signed-in person who mistyped a URL |
+
+The last two are the same mistake and worth stating as a rule: **`/start` is for people with no
+account. A signed-in person should never be sent there.**
+
+## W8-43 · Everything that is correctly wired, for the record - **no action**
+
+Stated so this audit is not read as "the navigation is broken". Twenty-two of twenty-three
+destinations resolve, and the important chains are right:
+
+- `JoinPage` -> `/checkin/:id`, straight into the check-in. Correct.
+- `InvitePage` -> `/checkin/:id` or `/grounds/:id/p`. Correct, and it is the only page that links
+  to the participant view at all (W8-19).
+- `MagicVerifyPage` -> `/grounds/:id` or `/start`, depending on whether a ground was committed.
+- `WelcomePage` -> `/set-password?token=...&next=...`, the tokened path, which is the shape
+  `/set-password` should require (W8-36).
+- `GroundAdminPage` -> `/chat/:checkInId` **exists in the source**, which means the transcript is
+  reachable from that page in some state, and W8-20's "no control opens a check-in" is specific
+  to the state a fresh entry-chat ground is in rather than universal. Worth pinning down which
+  state exposes it before building anything.
+
+## Order
+
+W8-39 goes to the top of the wave with W8-26 and W8-25: it is hours of work, it is on the paid
+path, and a dead money button is worse than a missing one because the person believes they tried.
+W8-40 and W8-41 belong in the same sitting - all three are the purchase journey, and none is
+bigger than an hour.
