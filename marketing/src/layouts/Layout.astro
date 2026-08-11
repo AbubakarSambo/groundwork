@@ -1,10 +1,11 @@
 ---
+import { SITE } from '../site.mjs';
 const {
   title = 'Groundwork',
   description = 'Groundwork builds a shared picture from what everyone involved has seen, agreed, and committed to. Each person checks in independently. The report shows where you align and where you differ.',
   canonicalPath = '',
 } = Astro.props;
-const SITE = 'https://myground.work';
+
 const canonical = `${SITE}${canonicalPath}`;
 ---
 <!doctype html>

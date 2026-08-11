@@ -4,9 +4,10 @@
   "version": "0.0.1",
   "scripts": {
     "dev": "astro dev",
-    "build": "astro build",
+    "build": "astro build && node check-one-domain.mjs",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "check:domain": "node check-one-domain.mjs"
   },
   "dependencies": {
     "@astrojs/sitemap": "^3.7.3",
