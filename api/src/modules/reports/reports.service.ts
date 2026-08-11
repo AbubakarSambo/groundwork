@@ -3,6 +3,7 @@ import { Cron } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 import { confidenceInThePicture, CURRENT_BEST_READING } from './confidence-in-the-picture';
 import { softSpots, whatWouldRaiseIt } from './harder-to-fool';
+import { withoutWhatOnlyTheLeadSaid, whyItWasDropped } from './a-lead-note-is-not-evidence';
 import { whatALeaderCanWeigh, THIS_IS_MATERIAL_NOT_A_VERDICT } from './what-a-leader-can-weigh';
 import { accountShapeFor, standardsAndWhatTouchedThem, type EntryRow } from './what-the-record-actually-holds';
 import { forbiddenNames, sanitiseGuide, PostReportGuide } from './guide-sanitiser';
@@ -932,6 +933,42 @@ Close the report by framing - neutrally, without recommending one - the choice n
     // which is exactly the framing that invites naming whoever is responsible.
     // So the instruction below restates the whole rule rather than assuming any
     // of it carried over.
+    /**
+     * THE LEAD'S NOTE STOPS BEING A WALL MADE OF WORDING.
+     *
+     * The note reaches the model in a labelled section saying "never state it as
+     * an established fact", which is the exact shape of guardrail this codebase
+     * has watched leak twice in one day - and the module that states the rule
+     * properly had never been called by anything.
+     *
+     * So anything whose distinctive words come from a lead note and from no
+     * party's own account is dropped here, before atStake is filled and before
+     * anything is stored. Dropped rather than warned, unlike the tone check next
+     * door: a stiff sentence is a stiff sentence, and a finding that exists only
+     * because the manager said so is the specific harm this product was built to
+     * prevent, arriving inside a document that reads as neutral.
+     */
+    if (leadNotes.length) {
+      const partyEntries = records.map((r) => ({ text: r.text }));
+      const cleaned = withoutWhatOnlyTheLeadSaid(
+        result.divergences ?? [],
+        (d: any) => [d?.topic, d?.whatEachSaid, d?.note].filter(Boolean).join(' '),
+        leadNotes,
+        partyEntries,
+      );
+      for (const { text } of cleaned.dropped) this.logger.warn(whyItWasDropped(text));
+      result.divergences = cleaned.kept as any;
+
+      const cleanedAgreements = withoutWhatOnlyTheLeadSaid(
+        (result.agreements ?? []) as any[],
+        (a: any) => (typeof a === 'string' ? a : [a?.topic, a?.note].filter(Boolean).join(' ')),
+        leadNotes,
+        partyEntries,
+      );
+      for (const { text } of cleanedAgreements.dropped) this.logger.warn(whyItWasDropped(text));
+      result.agreements = cleanedAgreements.kept as any;
+    }
+
     await this.fillAtStake(result.divergences);
 
     // Engagement-quality + confidence header (B4/B5a). Factual, not a verdict -

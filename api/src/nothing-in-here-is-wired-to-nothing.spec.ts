@@ -55,7 +55,7 @@ const NOT_WIRED_ON_PURPOSE: Record<string, string> = {
   'what-setup-never-asked-for.ts': 'G37/G23 questions, awaiting the context chat surface',
   'an-interview-not-a-longer-setup.ts': 'G21/G22, awaiting the post-setup interview surface',
   'role-clarity-is-not-a-score.ts': 'G20/G36, awaiting the contribution record surface',
-  'a-hypothesis-is-not-a-finding.ts': "the lead-context corroboration rules. Genuinely unwired, and the most valuable thing on this list: nothing today checks mayBeSurfaced before a lead's read shapes a finding. Next build, not a listing to leave here.",
+  'a-hypothesis-is-not-a-finding.ts': "the lead-context corroboration rules, stated as a boundary and asserted by its spec. The behaviour it describes is now enforced by a-lead-note-is-not-evidence.ts, which does the arithmetic on real findings - so this stays as the statement of the rule rather than its implementation.",
 };
 
 function walk(dir: string, out: string[] = []): string[] {
