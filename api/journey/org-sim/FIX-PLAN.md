@@ -2019,3 +2019,96 @@ use.
 8. **Decisions before code:** W8-10 and W8-34 (many orgs), W8-9 (participants and their own
    grounds), W8-33 (the reversed setup). W8-33 is the one worth designing properly rather than
    quickly.
+
+---
+
+# Wave 8, fourth pass - the remaining pages, and an orphaned onboarding model
+
+The pages left from the sweep. The individual findings are small; what they add up to is not.
+
+## The pages
+
+| Page | Finding |
+|---|---|
+| `/enter` | **Green** header, a fifth chrome variant. Titled "Check in" and asks for an **org code** |
+| `/setup` | "Set up your org": name, organisation name, **org code**, role. Claims "Your team gets invited automatically" |
+| `/welcome` | Two lines: "Welcome, Hafsah" and "Open Groundwork". A whole route for one button |
+| `/profile` | Honest: "A profile that gathers them in one place is not built yet." Two empty-state lines saying the same thing ("No completed grounds yet", "Your record grows as grounds close") |
+| `/admin` | Silently lands on the grounds list for a non-platform-admin. No refusal, no explanation |
+| `/invite` | "Invalid invite. This invite link is missing its token." Correct, and the model the others should copy |
+| `/pin` | "Enter your PIN" and a Continue button. No explanation of what a PIN is or where it came from |
+
+## W8-35 · There are two onboarding models and one of them is orphaned - **M**
+
+`/setup` issues an **org code**. `/enter` asks for an **org code**. `/pin` asks for a **PIN**.
+Together they are a coherent onboarding: an admin sets up an org with a short code, people arrive
+with the code, a PIN identifies them.
+
+**The live product does none of that.** The entry chat creates the organisation automatically and
+names it after the person ("Hafsah's workspace"), and participants arrive by tokenised link from
+an invite email. Nothing in the live flow ever issues or asks for a code or a PIN.
+
+So three routes serve a model the product moved off, and they are not marked as such. The cost is
+not the dead code, it is that **the page most literally named "Check in" asks a participant for
+something they were never given** - which is very close to what Hafsah hit when she went looking
+for where to check in.
+
+**Decision needed:** is the org-code model coming back (it is the natural answer for field teams
+and shared devices), or do these three routes go? If it is coming back, `/enter` still must not
+be the thing a person finds when they want their own check-in.
+
+## W8-36 · Missing-token states are handled in opposite ways - **S**
+
+Same problem, two behaviours, in one product:
+
+| Page | With no token |
+|---|---|
+| `/invite` | "Invalid invite. This invite link is missing its token." |
+| `/set-password` | Renders a complete, usable password form |
+
+`/invite` is right. `/set-password` should say the same thing, and it is the more serious of the
+two because it accepts input.
+
+## W8-37 · Routes that exist for one line of content - **S**
+
+`/welcome` is a route, a page and a heading in order to show one button that goes to the grounds
+list. `/profile` is a nav item leading to a page that says the feature is not built. Neither is
+wrong, both cost a person a click to learn nothing.
+
+**Fix:** fold `/welcome` into wherever it is reached from. Either build `/profile` or take it out
+of the rail until it exists - a menu item that admits it does nothing teaches people the menu is
+unreliable.
+
+## W8-38 · Five chrome variants, counted - **S**, extends W8-28
+
+Now measured across the whole sweep:
+
+1. the ground page header (title, status pill, tabs)
+2. the participant page header (title, subtitle, different tabs)
+3. the feed's button row (Feedback / +Invite / Team / Back)
+4. the bare "Groundwork / Back" bar (settings, set-password, grounds/new)
+5. the **green** bar on `/enter`
+
+Plus the left sidebar rendering a ground list on Settings, Billing, Pricing, 404, `/enter`,
+`/setup` and `/set-password`, where it is meaningless or actively wrong - on `/set-password` and
+`/join` it shows a signed-in person's own grounds to a page meant for somebody arriving fresh.
+
+## What the fourth pass changes about the order
+
+Nothing moves above W8-26 (the participant blocker) or W8-25 (the pricing contradiction). But
+W8-35 joins the decisions, and it bears on W8-31: if the left rail becomes check-ins, `/enter`
+stops being the place people look for a check-in, which removes the worst symptom of the orphaned
+model without deciding its future.
+
+## Sweep coverage, final
+
+**Captured:** grounds list, ground Overview, Check-ins, Context, Report tab, Team board,
+`/chat/:id`, participant view, Session history, sign-in, sign-up, entry picker, entry report and
+save panel, feed, settings, roster, members, billing, pricing, grounds/new, join, set-password,
+404, enter, setup, welcome, profile, admin, invite, pin. **Thirty screens.**
+
+**Not captured, and why:** `/admin/dashboard` and the platform-admin pages (need a platform-admin
+account this session does not have), `/prompts` and `/prompts/test` (same), `/billing/checkout`
+(needs a live Stripe session), `/auth/sent` and `/reset-password` and `/auth/google/callback`
+(reachable only mid-flow with a real token), `/demo/:persona` (needs a persona slug I would be
+guessing at).
