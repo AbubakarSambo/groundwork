@@ -1325,3 +1325,28 @@ building on unproven fixes is how you get a bug you cannot locate.
 
 Then Wave 2, which is the one that changes the product most, and the one where
 the flag matters most.
+
+---
+
+## Live walkthrough findings, entry flow, 2026-08-11
+
+Hafsah's own run through `/entry` as a manager with two reports (Daisy and Duke),
+one client rescue story, up to the invite screen. Seven findings, all from the
+rendered product rather than the code.
+
+| # | Where | What happened | Why it is wrong | Size |
+|---|---|---|---|---|
+| **W1** | End of the setup chat | "Thank you. That gives me what I need to set this up for you." then straight into "How do you want to run this?" and then straight into the check-in | The handover from setup to check-in has no seam. Nothing says the setup is finished, nothing says a check-in is starting, and nothing says the check-in is the private one. A person who has just answered five questions cannot tell that the next question is a different kind of question. | S |
+| **W2** | First check-in, close | The model invented a resolution: it named the client "Microchip Solutions" when she typed "microchipshit", and wrote "that demo led directly to the client signing up" and "that is rescuing a sale" from "they finally got a demo... and signed-up" | Two separate faults. Silently correcting a name means the record does not hold what she said, and the one thing this product promises is that it holds what people said. Upgrading "they signed up" to "your intervention rescued a sale" is the engine agreeing with the person it is interviewing, which is the exact behaviour the divergence machinery exists to make impossible. | **M, and it is the serious one** |
+| **W3** | Private report, "People mentioned" | Microchip Solutions and Mass General are offered with "+ Add them", exactly like Daisy and Duke | They are clients, not people. The extractor is not distinguishing a person from an organisation, and inviting a client into a ground about your team's delivery would be a serious mistake made in one click. | M |
+| **W4** | Throughout | "participants" and "contributors" used interchangeably | Two words for one thing, and the invite screen uses the second while everything else uses the first. | S |
+| **W5** | Two screens | People can be added from the private report ("+ Add them") and again from the invite screen | Two places to do one thing, neither of which says whether the other has already been used. | S |
+| **W6** | Invite screen | Labelled a performance improvement ground, with the HR notice | Fine, and correct - noted only to confirm it is deliberate. | none |
+| **W7** | After "Done" | Nothing said the sign-up link had been emailed, and no Google option appeared | The flow ends on a screen that looks like a dead end. The email was sent; the product did not say so. And the sign-in choice she has everywhere else in the product is missing at the one moment she is being asked to create an account. | M |
+
+**W2 is the one that matters.** The others are seams and wording. W2 is the engine
+writing a better version of what somebody said and then putting it on the record
+as theirs - a name that was never typed, and a causal claim ("led directly to")
+that she did not make. Every guardrail built this week is about not saying more
+than the record supports, and this is the engine doing it in the first session of
+the first flow anybody meets.
