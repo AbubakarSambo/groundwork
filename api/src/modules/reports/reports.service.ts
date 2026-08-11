@@ -2,6 +2,9 @@ import { Injectable, NotFoundException, ForbiddenException, BadRequestException,
 import { Cron } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 import { confidenceInThePicture, CURRENT_BEST_READING } from './confidence-in-the-picture';
+import { softSpots, whatWouldRaiseIt } from './harder-to-fool';
+import { whatALeaderCanWeigh, THIS_IS_MATERIAL_NOT_A_VERDICT } from './what-a-leader-can-weigh';
+import { accountShapeFor, standardsAndWhatTouchedThem, type EntryRow } from './what-the-record-actually-holds';
 import { forbiddenNames, sanitiseGuide, PostReportGuide } from './guide-sanitiser';
 import { labelsForParties, namesVisibleTo, withNames } from './party-labels';
 import { withoutOtherPeoplesReads } from './own-reads-only';
@@ -317,6 +320,107 @@ export class ReportsService {
     private usage: UsageService,
     private grounds: GroundsService,
   ) {}
+
+  /**
+   * G10, G34 and G35, reaching a reader for the first time.
+   *
+   * Three modules were built with tests and no consumer. The arithmetic they need
+   * lives in what-the-record-actually-holds.ts; this is the join, and it is behind
+   * CONFIDENCE_ENABLED with everything else in that wave.
+   *
+   * WHAT IT REFUSES TO DO IS THE PART TO READ.
+   *
+   * G10 appears only at the close, and only for the lead or the subject - never
+   * for a colleague, because the material behind a decision about somebody else is
+   * the thing the wall exists to prevent. It appears at all only where the lead
+   * stated a standard, since without a yardstick it is just the record arranged to
+   * look like grounds for a decision.
+   *
+   * The soft spots go to nobody but the lead. They lower confidence in a picture,
+   * which is the lead's job to hold; handed to a participant they read as a note
+   * about a colleague, which is precisely what they are written not to be.
+   *
+   * Everything fails to nothing. A missing entry, a ground with no closing round,
+   * a participant with no id: the field is absent rather than empty, because an
+   * empty confidence read looks like a confident "no problems here".
+   */
+  private async whatTheRecordHolds(
+    groundId: string,
+    participants: { id: string; partyType: PartyType }[],
+    viewerIsLead: boolean,
+  ): Promise<Record<string, any>> {
+    try {
+      const lead = participants.find((p) => p.partyType === PartyType.INITIATOR);
+      if (!lead) return {};
+
+      const [rows, docs, closing] = await Promise.all([
+        this.prisma.recordEntry.findMany({
+          where: { participant: { groundId } },
+          select: { participantId: true, type: true, text: true, checkIn: { select: { sessionNumber: true } } },
+        }),
+        this.prisma.groundDocument.findMany({ where: { groundId }, select: { participantId: true, fileName: true } }),
+        this.prisma.ground.findUnique({ where: { id: groundId }, select: { status: true, resolutionState: true } }),
+      ]);
+
+      const entries: EntryRow[] = rows
+        .filter((r) => !!r.participantId)
+        .map((r) => ({
+          participantId: r.participantId as string,
+          type: String(r.type),
+          text: r.text,
+          sessionNumber: r.checkIn?.sessionNumber ?? 1,
+        }));
+      if (!entries.length) return {};
+
+      const out: Record<string, any> = {};
+
+      // G10. The closing round only, and never for a colleague.
+      const isClosing = closing?.status === GroundStatus.RESOLVED || !!closing?.resolutionState;
+      const { statedStandards, standardsTouched } = standardsAndWhatTouchedThem(lead.id, entries);
+      const section = whatALeaderCanWeigh({
+        statedStandards,
+        standardsTouched,
+        entries: entries.map((r) => ({ kind: r.type as any, text: r.text, session: r.sessionNumber })),
+        isClosing,
+      });
+      if (section) {
+        out.whatTheGroundCanTellYou = section;
+        out.whatTheGroundCanTellYouNote = THIS_IS_MATERIAL_NOT_A_VERDICT;
+      }
+
+      // G34. The lead's, and nobody else's.
+      if (viewerIsLead) {
+        const sessionsByParticipant = new Map<string, number>();
+        for (const e of entries) {
+          sessionsByParticipant.set(e.participantId, Math.max(sessionsByParticipant.get(e.participantId) ?? 0, e.sessionNumber));
+        }
+        const spots: Record<string, any[]> = {};
+        for (const p of participants) {
+          const shape = accountShapeFor(
+            p.id,
+            entries,
+            // The column is fileName; the read wants a name. Mapped here rather
+            // than renaming either, because both names are right where they are.
+            docs.map((d) => ({ participantId: d.participantId, name: d.fileName })),
+            sessionsByParticipant.get(p.id) ?? 0,
+          );
+          const found = softSpots(shape);
+          if (found.length) {
+            // G34's guarantee, joined here rather than trusted: a soft spot never
+            // travels without what would raise it.
+            spots[p.id] = found.map((f) => ({ ...f, wouldRaiseIt: whatWouldRaiseIt(f.spot) }));
+          }
+        }
+        if (Object.keys(spots).length) out.softSpots = spots;
+      }
+
+      return out;
+    } catch (err) {
+      // A read that adds material must never be the reason a report page 500s.
+      this.logger.warn(`Could not build the record read for ${groundId}: ${(err as Error)?.message}`);
+      return {};
+    }
+  }
 
   /**
    * G30's kill switch, read where it is used rather than at the call site, and
@@ -1533,6 +1637,9 @@ Close the report by framing - neutrally, without recommending one - the choice n
       activated: true,
       postReportGuide,
       soloArtifact,
+      ...(this.confidenceEnabled()
+        ? await this.whatTheRecordHolds(groundId, ground.participants as any, isInitiator || isOrgAdmin)
+        : {}),
     };
     if (!isInitiator && !isOrgAdmin) {
       delete base.arcSignals;
