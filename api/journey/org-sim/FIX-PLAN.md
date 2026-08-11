@@ -2717,9 +2717,25 @@ Slack's workspace switcher above the channel list is exactly the org chooser she
 third argument for the channel model - it makes the multi-org story obvious instead of an extra
 concept.
 
-### What I would want to test before building it
+### Grouping: decided, and deferred
 
-The model assumes people have few grounds. If a manager in a 38-seat org ends up in twenty, the
-rail becomes a list again and needs grouping or a "your turn first" sort. Worth checking against
-the real cohort numbers before the layout is fixed, because the answer changes whether the rail is
-flat or grouped.
+**Decision (Hafsah, 2026-08-12): the rail is flat. No grouping.**
+
+I had flagged that the model assumes few grounds per person, and that a manager in a 38-seat org
+holding twenty grounds would turn the rail back into a list needing grouping or a "your turn
+first" sort. Her call: that is a future problem, build flat.
+
+Which is the right call for now - grouping is a solution to a scale nobody has yet, and designing
+for it would cost the simplicity that makes the channel model worth having.
+
+**What to watch for, so it is noticed rather than discovered.** The signal that the day has come is
+not the number of grounds, it is somebody having to scroll the rail to find the one that needs
+them. Two cheap things keep that far away without any grouping:
+
+- **Sort by attention, not recency.** Your turn first, then overdue, then quiet. A flat rail stays
+  usable much longer when the rows that need you are always at the top.
+- **Closed grounds leave the rail** (already in this item). Most rail growth is finished work, not
+  live work.
+
+If both are in place from the start, the grouping question probably never arrives. Recorded here so
+the next person to look at a crowded rail knows the decision was made deliberately, not missed.
