@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
+import { confidenceInThePicture, CURRENT_BEST_READING } from './confidence-in-the-picture';
 import { forbiddenNames, sanitiseGuide, PostReportGuide } from './guide-sanitiser';
 import { labelsForParties, namesVisibleTo, withNames } from './party-labels';
 import { withoutOtherPeoplesReads } from './own-reads-only';
@@ -316,6 +317,22 @@ export class ReportsService {
     private usage: UsageService,
     private grounds: GroundsService,
   ) {}
+
+  /**
+   * G30's kill switch, read where it is used rather than at the call site, and
+   * failing to OFF.
+   *
+   * A flag that can throw would take the whole report down, which is a worse
+   * outcome than the flag being wrong - and one spec's mock config is not a
+   * reason to make production fragile.
+   */
+  private confidenceEnabled(): boolean {
+    try {
+      return this.config?.get<boolean>('app.confidenceEnabled') === true;
+    } catch {
+      return false;
+    }
+  }
 
   /**
    * Generate the report from BOTH parties' private records. This is the only
@@ -866,7 +883,13 @@ Close the report by framing - neutrally, without recommending one - the choice n
         // would be a verdict on somebody who has not been asked anything.
         const specificityLabel: 'high' | 'moderate' | 'low' | 'not scored yet' =
           !ranks.length ? 'not scored yet' : mean >= 2 ? 'high' : mean >= 1 ? 'moderate' : 'low';
-        return { label: labelById.get(p.id) ?? 'a party', sessions, recordEntries, documentsAttached, contributed: contributorIds.has(p.id), specificityLabel };
+        return {
+          label: labelById.get(p.id) ?? 'a party', sessions, recordEntries, documentsAttached,
+          contributed: contributorIds.has(p.id), specificityLabel,
+          // G30. The same two numbers, said about the picture rather than the
+          // person. Computed always, attached only behind the flag below.
+          confidence: confidenceInThePicture(ranks.length, mean),
+        };
       }),
     );
 
@@ -919,6 +942,20 @@ Close the report by framing - neutrally, without recommending one - the choice n
       documentBackedPct,
       coverageBand,
       difficultyDisclosures,
+      ...(this.confidenceEnabled()
+        ? {
+            /**
+             * G30/G33, behind the switch. Not a replacement for
+             * specificitySignal - that stays, because things read it. What
+             * changes is that the report now also carries a sentence about the
+             * PICTURE, and a reader who sees both has the honest one available.
+             */
+            pictureConfidence: Object.fromEntries(
+              engagementParties.map((p) => [p.label, p.confidence]),
+            ),
+            currentBestReading: CURRENT_BEST_READING,
+          }
+        : {}),
       note: `This report is built from what each person said themselves - it is not independently verified.${absent.length ? ` ${absent.length} invited part${absent.length === 1 ? 'y has' : 'ies have'} not yet contributed a record - the picture below reflects only the accounts that are present. Do not read any shared positions or agreements as bilateral until all parties have checked in.` : ''}`,
       parties: engagementParties,
     };

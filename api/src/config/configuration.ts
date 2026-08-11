@@ -54,6 +54,15 @@ export const appConfig = registerAs("app", () => ({
    * not the one that proves the feature works.
    */
   contextEnabled: process.env.CONTEXT_ENABLED === "true",
+  /**
+   * G30-G33. Off is today's product: the specificity signal, unchanged. On, the
+   * same measurement is said about the picture instead of about the person, and
+   * the report carries the line saying it is not final.
+   *
+   * A kill switch, because this changes sentences people read about themselves,
+   * and a wrong sentence there costs more than a missing one.
+   */
+  confidenceEnabled: process.env.CONFIDENCE_ENABLED === "true",
 
   /**
    * OBJECTIVES AND BASELINE. Off by default, same terms as the two above.
