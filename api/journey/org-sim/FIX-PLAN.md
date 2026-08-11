@@ -1703,3 +1703,113 @@ W8-17, because a blocked participant is the worst state in the list and it is st
 report. Then W8-3 and W8-13, which are hours and remove the cause of W8-2. Then W8-11 and W8-6.
 W8-9 and W8-10 need decisions before any code, and W8-10 should be decided soon whether or not
 it is built soon.
+
+---
+
+# Wave 8, second pass - how a person gets to their own check-in
+
+Added after Hafsah said "I have no way to come in and do my checkin & see my chats" and asked
+for the best way to do it inside the existing UX. Everything here was found in a browser on a
+booted stack, on a real ground created through the entry chat.
+
+## W8-19 · There are two ground pages and the better one is unlinked - **S to link, M to finish**
+
+The same ground renders at two routes, with different tabs:
+
+| Route | Tabs | Linked from |
+|---|---|---|
+| `/grounds/:id` (`GroundAdminPage`) | Overview, Check-ins, Context, Report, Settings, Team board | the grounds list |
+| `/grounds/:id/p` (`GroundParticipantPage`) | **Check-in, Session history, My record, Report, Documents**, Settings | nothing |
+
+The second is very close to what she asked for unprompted: check-in first, session history, a
+documents tab. It is built and it works. Nothing in the product links to it, so the only way in
+is to type the URL.
+
+**This is the cheapest large improvement available in the product right now.** The work is
+routing and a switch, not new screens.
+
+## W8-20 · Nothing opens a check-in, and nothing reopens the one you did - **S**
+
+Three separate dead ends, all confirmed on the ground page:
+
+- **The Session 1 card on the Check-ins tab is a plain `<div>`**, computed cursor `auto`. Not a
+  link, not a button. Clicking it does nothing.
+- **No control anywhere starts the next check-in.** Every button and link on the page was
+  matched against start / next / continue / check in / open: zero hits. The header says
+  "Session 2 of 6" and nothing acts on it.
+- **`/chat/:checkInId` works by direct URL** and renders the whole transcript with the private
+  report below it. Also unlinked.
+
+So a person finishes the entry chat and the product has no route back in, while holding a page
+that would serve them.
+
+## W8-21 · Session history holds the summary, not the conversation - **S**
+
+The participant view's Session history lists "Session 1, Completed 11 Aug 2026" with one link,
+"What we heard from you", which opens the summary. The transcript is not reachable from the one
+screen named after the history of the sessions.
+
+## W8-22 · A truncated assistant reply is saved to the record - **M**, and it corrects W8-18
+
+**W8-18 said the dropped chat could not be reproduced and was probably a reply still streaming.
+That was wrong.** The stored transcript on the completed check-in ends with the assistant
+message:
+
+    You've nam
+
+Ten characters. Ending the session while a reply was streaming persisted the partial message,
+and it is what the record now shows. This is her "the chat dropped mid chat and I had to put ...
+to get it started again": the visible conversation genuinely stops mid-word.
+
+**Fix direction, not decided:** either finish or discard the in-flight turn when a session ends,
+and never store a partial assistant message as a record entry. The record is the product; a
+half-written sentence in it is worse than a missing one.
+
+## W8-23 · Two tabs render as active at once - **S**
+
+On `/grounds/:id`, after switching tabs, Check-ins and Context were both underlined in the same
+screenshot. The active-tab state is not exclusive.
+
+## W8-24 · The interface has no hierarchy - **M, design**
+
+Observed across every page captured. Not a defect list, a pattern:
+
+- **No screen has a primary action.** Cards share one border, one background, one weight, so
+  nothing reads as "do this next". On the Overview tab that puts "Bringing this ground to an
+  end" and the ground summary at equal weight, and the destructive one is on top (W8-5).
+- **Empty states explain absence instead of offering the action.** "No read yet", "No documents
+  uploaded yet", "After your first session you will see how specific your contributions are" -
+  three cards in a column, each describing something that has not happened.
+- **The copy leads with caveats.** Clearest on the Context tab: one line of what the ground can
+  tell you, seven of what it cannot (W8-7).
+
+**What is genuinely good and should not be lost in any redesign:** the writing. "Your
+contribution to this ground is yours until the report releases", the private-record framing
+throughout, and the invite email are plain, calm and trust-building. The hierarchy problem is
+visual, not verbal.
+
+## The recommendation, in order
+
+1. **Make `/grounds/:id/p` the page you land on**, with a switch in the header between the
+   participant view and the admin view. Both pages exist; this is routing plus a control, and it
+   is also her "buttons at the top to take you to the admin view or checkin overview".
+2. **One "Your check-ins" list in the left menu, above Grounds.** Grounds is an admin idea;
+   check-ins are the job. Each row carries the ground, the session, and a single action: Start,
+   Continue, or View.
+3. **Every session row opens its chat.** The transcript page already renders, from both the
+   participant Session history and the admin Check-ins tab.
+4. **Put "Start session N" where the page already says a session is due.** The header computes
+   "Session 2 of 6" and nothing offers to begin it.
+
+Steps 1 and 3 are hours. Step 2 is the only new screen, and it is a list.
+
+## Coverage note on this pass
+
+Pages captured: grounds list, ground Overview, Check-ins, Context, the transcript at
+`/chat/:id`, the participant view, Session history, sign-in, sign-up, the entry picker, the
+entry report and save panel.
+
+**Not captured yet:** Report tab, Team board, Feed, Settings, Roster, Members, Billing, Pricing,
+Profile, `/enter`, `/pin`, `/join`, `/invite`, `/setup`, `/welcome`, `/demo/:persona`, the 404,
+and the platform-admin pages, which need an account this session does not have. Recorded so this
+pass is not mistaken for a full sweep.
