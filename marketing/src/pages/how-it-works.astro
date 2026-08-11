@@ -65,8 +65,8 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
         <div style="display:flex;gap:20px;padding:24px 0;border-bottom:1px solid #E2E0DB;">
           <div style="width:36px;height:36px;background:#0C447C;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;font-weight:800;color:#fff;">3</div>
           <div>
-            <div style="font-size:16px;font-weight:700;color:#1A1916;margin-bottom:6px;">What stays private, what is shared</div>
-            <div style="font-size:14px;color:#6B6560;line-height:1.7;">Your check-in stays private to you. Groundwork uses everyone's responses to build the shared report, which shows where people agree, where they understand things differently, and what needs attention. It never shows anyone's raw answers, and it never identifies who said what about another person. The shared report appears once everyone has checked in. This is what makes people comfortable being honest, which is what makes the Ground worth having.</div>
+            <div style="font-size:16px;font-weight:700;color:#1A1916;margin-bottom:6px;">Why people tell Groundwork things they won't say in meetings</div>
+            <div style="font-size:14px;color:#6B6560;line-height:1.7;">Nobody else sees your answers. Nobody sees who said what about anyone. Groundwork only ever shares the picture that emerges once every account has been compared, and the shared report appears once everyone has checked in. That is why people are honest, and the honesty is why the reports are worth reading.</div>
           </div>
         </div>
         <div style="display:flex;gap:20px;padding:24px 0;border-bottom:1px solid #E2E0DB;">
@@ -94,21 +94,26 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
           <div style="width:36px;height:36px;background:#085041;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;font-weight:800;color:#fff;">7</div>
           <div>
             <div style="font-size:16px;font-weight:700;color:#1A1916;margin-bottom:6px;">Close the Ground</div>
-            <div style="font-size:14px;color:#6B6560;line-height:1.7;">When the work reaches its end, Groundwork compares the final outcome with the starting point and produces a clear conclusion: objectives against what was delivered, how expectations changed, the key decisions, the evidence, what was learned, and the complete history of the Ground. Every Ground gives the next manager, team, or project a clearer place to start.</div>
+            <div style="font-size:14px;color:#6B6560;line-height:1.7;">When the work reaches its end, Groundwork compares the final outcome with the starting point and produces a clear conclusion: objectives against what was delivered, how expectations changed, the key decisions, the evidence, what was learned, and the complete history of the Ground. The closed Ground stays on record for everyone who was in it, so the next conversation starts from what happened rather than from memory.</div>
           </div>
         </div>
       </div>
 
       <div style="background:#F5F3EF;border-radius:10px;padding:24px;border-left:3px solid #0C447C;margin-bottom:40px;">
-        <h3 style="font-size:16px;font-weight:700;color:#1A1916;margin-bottom:8px;">Alignment status</h3>
-        <p style="font-size:13px;color:#6B6560;line-height:1.7;margin-bottom:16px;">Every report carries a clear read on where things stand. It is not a grade out of five. It is a plain summary of how many areas are aligned, how many are partly there, and how many are still open.</p>
-        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;">
-          <div style="text-align:center;padding:10px 6px;background:white;border-radius:6px;border:1px solid #E2E0DB;"><div style="font-size:12px;font-weight:700;color:#8A5C1A;">Unresolved</div></div>
-          <div style="text-align:center;padding:10px 6px;background:white;border-radius:6px;border:1px solid #E2E0DB;"><div style="font-size:12px;font-weight:700;color:#9B9590;">Mixed</div></div>
-          <div style="text-align:center;padding:10px 6px;background:white;border-radius:6px;border:1px solid #E2E0DB;"><div style="font-size:12px;font-weight:700;color:#0C447C;">Emerging</div></div>
-          <div style="text-align:center;padding:10px 6px;background:white;border-radius:6px;border:1px solid #E2E0DB;"><div style="font-size:12px;font-weight:700;color:#0C447C;">Clear</div></div>
-          <div style="text-align:center;padding:10px 6px;background:#085041;border-radius:6px;"><div style="font-size:12px;font-weight:700;color:white;">Aligned</div></div>
-        </div>
+      <!-- 7b: a visitor can arrive here from a search and never see the
+           homepage, so the reassurance has to be reachable here too. One clear
+           touch, not the homepage's full treatment. -->
+      <div style="background:#F5F3EF;border:1px solid #E2E0DB;border-radius:10px;padding:18px 20px;margin-bottom:32px;">
+        <p style="font-size:14px;color:#4A5568;line-height:1.75;margin:0;">Nobody is scored, ranked or watched. Groundwork never shows anyone's raw answers and never says who said what about whom. The shared picture goes to the people it is about; on a cohort, where people work in different places and have never met, each person reads their own and the lead reads the whole.</p>
+      </div>
+
+      <h3 style="font-size:16px;font-weight:700;color:#1A1916;margin-bottom:8px">Where things stand</h3>
+      <p style="font-size:13px;color:#6B6560;line-height:1.7;margin-bottom:16px">Every report says how many areas the accounts agree on and how many are still open, counted from the areas that report actually names. It is not a score, and it is not a grade out of five. When the record does not yet hold enough to say anything, it says nothing rather than rounding up.</p>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+        <div style="text-align:center;padding:12px 8px;background:white;border-radius:6px;border:1px solid #E2E0DB"><div style="font-size:12px;font-weight:700;color:#085041">Agreed on all 5 areas</div><div style="font-size:10px;color:#B4B2A9;margin-top:3px">nothing left open</div></div>
+        <div style="text-align:center;padding:12px 8px;background:white;border-radius:6px;border:1px solid #E2E0DB"><div style="font-size:12px;font-weight:700;color:#0C447C">4 agreed, 1 still open</div><div style="font-size:10px;color:#B4B2A9;margin-top:3px">one thing to talk about</div></div>
+        <div style="text-align:center;padding:12px 8px;background:white;border-radius:6px;border:1px solid #E2E0DB"><div style="font-size:12px;font-weight:700;color:#9B9590">No read yet</div><div style="font-size:10px;color:#B4B2A9;margin-top:3px">the record does not say</div></div>
+      </div>
       </div>
 
       <div style="background:#EEF4FB;border:1px solid #B5D4F4;border-radius:10px;padding:16px 20px;margin-bottom:40px;">
@@ -136,7 +141,7 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
         <a class="gw-footer-btn" href="/pricing">Pricing</a>
         <a class="gw-footer-btn" href="/about">About</a>
       </div>
-      <p style="font-size:11px;color:rgba(255,255,255,.2);margin:0;">&#169; 2025 Groundwork.</p>
+      <p style="font-size:11px;color:rgba(255,255,255,.2);margin:0;">&#169; 2026 Groundwork</p>
     </footer>
 
   </div>

@@ -2,7 +2,7 @@
 import Layout from '../layouts/Layout.astro';
 const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
 ---
-<Layout title="Use cases · Groundwork" description="New hires, partnerships, project kick-offs, leadership transitions. Groundwork builds alignment records for any situation where expectations need to be clear." canonicalPath="/use-cases">
+<Layout title="Use cases · Groundwork" description="New hires, partnerships, project kick-offs, leadership transitions. Groundwork builds a shared record for any situation where expectations need to be clear." canonicalPath="/use-cases">
   <style>
     *,*::before,*::after{box-sizing:border-box}
     body{margin:0;overflow-x:hidden}
@@ -51,29 +51,50 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
       <h1 style="font-size:32px;font-weight:800;color:#1A1916;line-height:1.2;margin-bottom:16px;">Where Groundwork earns its place.</h1>
       <p style="font-size:16px;color:#6B6560;line-height:1.7;margin-bottom:8px;">The shape is the same every time. Each person gives their own account, independently. Groundwork shows where they match, where they differ, and what to do about it. Here is what that looks like across the moments it helps most.</p>
 
-      <h3 class="gw-section-label" style="margin-top:36px;">Starting something</h3>
-      <div class="gw-case-card"><div class="gw-case-title">New hire</div><p class="gw-case-body">A new hire and their manager each describe what success looks like in the first ninety days, independently. Groundwork shows where the two pictures match and where they quietly differ, before month three turns a small gap into a hard review conversation.</p></div>
-      <div class="gw-case-card"><div class="gw-case-title">New project</div><p class="gw-case-body">Everyone joining a new project sets out scope, ownership, and what done looks like, on their own. Groundwork surfaces the assumptions that do not line up, so the project starts on agreed ground rather than discovering the mismatch at delivery.</p></div>
-      <div class="gw-case-card"><div class="gw-case-title">New board member or advisor</div><p class="gw-case-body">A new board member and the team each set out what the role is for and what good looks like. Groundwork shows where expectations diverge, so the relationship is defined before it starts costing more than it returns.</p></div>
-      <div class="gw-case-card"><div class="gw-case-title">New partner or cofounder</div><p class="gw-case-body">Each founder records their own account of roles, contribution, and what success means. Groundwork shows where they agree and where they differ, so equity and authority rest on something written, not on memory.</p></div>
-      <div class="gw-case-card"><div class="gw-case-title">Contract renewal</div><p class="gw-case-body">Both sides of a contract describe what was delivered against what was expected, independently. Groundwork builds the record the renewal or exit decision rests on, rather than leaving it to relationship management.</p></div>
-      <div class="gw-case-card"><div class="gw-case-title">New direction</div><p class="gw-case-body">Before a pivot, each person sets out the goals, responsibilities, and risks as they see them. Groundwork surfaces where the new direction is understood differently, so the team commits to the same plan.</p></div>
-      <div class="gw-case-card"><div class="gw-case-title">PIP</div><p class="gw-case-body">Both accounts on record before the process starts - the concern, the support available, and what success looks like. Groundwork gives the process a fair foundation without waiting until things have already gone wrong.</p></div>
-      <div class="gw-case-card"><div class="gw-case-title">Goals & planning</div><p class="gw-case-body">Not to set goals - to check whether everyone is actually aligned on the ones you have. Each person says what they understood. Groundwork shows where the plan means different things to different people before the work begins.</p></div>
-      <div class="gw-case-card"><div class="gw-case-title">Pulse check</div><p class="gw-case-body">A quick independent read from each person. What is moving, what is stuck, and what has changed. No meeting required. Groundwork builds the picture from everyone's account and shows you where the ground has shifted.</p></div>
+      <!-- ITEM 4: these cards ARE the picker's cards. The page had drifted to
+           sixteen cards with different labels, different descriptions and its
+           own grouping scheme, so a visitor read one product here and met
+           another when they started. The picker is the source of truth; labels,
+           descriptions and groups are copied from it verbatim.
+           ITEM 7b: the anti-surveillance touch below, so someone landing here
+           cold from a search does not read a page of situations with no
+           reassurance anywhere. -->
+      <p style="font-size:12px;font-weight:700;color:#9B9590;text-transform:uppercase;letter-spacing:.07em;margin:36px 0 14px;">Starting something</p>
+      <div class="gw-case-grid">
+        <div class="gw-case-card"><div class="gw-case-title">New hire starting</div><p class="gw-case-body">Get you and a new hire meaning the same thing by "doing well", before anything drifts.</p></div>
+        <div class="gw-case-card"><div class="gw-case-title">New project</div><p class="gw-case-body">Line everyone up on goals, roles, and what "done" means before the work starts.</p></div>
+        <div class="gw-case-card"><div class="gw-case-title">A new partner, cofounder, or manager</div><p class="gw-case-body">Someone new is sharing the work or taking it over. Each of you says what you expect before those assumptions harden.</p></div>
+        <div class="gw-case-card"><div class="gw-case-title">New advisor or board member</div><p class="gw-case-body">Pin down what they will actually contribute, and on what terms, so "available" does not stand in for contributing.</p></div>
+        <div class="gw-case-card"><div class="gw-case-title">Onboarding several people at once</div><p class="gw-case-body">Several people starting the same role at once. Each answers on their own, so you see who is on track and who is stuck.</p></div>
+      </div>
+      <p style="font-size:12px;font-weight:700;color:#9B9590;text-transform:uppercase;letter-spacing:.07em;margin:36px 0 14px;">Goals, plans and decisions</p>
+      <div class="gw-case-grid">
+        <div class="gw-case-card"><div class="gw-case-title">Setting shared goals</div><p class="gw-case-body">A team agreeing on what matters most this period, each person's own view, not just the room's consensus, so effort doesn't spread in different directions.</p></div>
+        <div class="gw-case-card"><div class="gw-case-title">A big decision</div><p class="gw-case-body">A group making a real choice, each person's honest read before you commit.</p></div>
+        <div class="gw-case-card"><div class="gw-case-title">Workplan and budget</div><p class="gw-case-body">Each person builds their own plan and budget, and you see whether it holds up against what is actually available.</p></div>
+        <div class="gw-case-card"><div class="gw-case-title">Board and leadership strategy</div><p class="gw-case-body">Each leader gives their own read before the room debates it, so quiet disagreement shows up now and not after the decision.</p></div>
+      </div>
+      <p style="font-size:12px;font-weight:700;color:#9B9590;text-transform:uppercase;letter-spacing:.07em;margin:36px 0 14px;">Keeping a regular read</p>
+      <div class="gw-case-grid">
+        <div class="gw-case-card"><div class="gw-case-title">A regular read on live work</div><p class="gw-case-body">A short, repeatable read from each person on what is moving, what is stuck, and what has changed since last time.</p></div>
+        <div class="gw-case-card"><div class="gw-case-title">Many people in the same role</div><p class="gw-case-body">Field officers, branch managers, franchisees. Each answers on their own, so you see the pattern rather than the loudest voice.</p></div>
+      </div>
+      <p style="font-size:12px;font-weight:700;color:#9B9590;text-transform:uppercase;letter-spacing:.07em;margin:36px 0 14px;">A decision about someone</p>
+      <div class="gw-case-grid">
+        <div class="gw-case-card"><div class="gw-case-title">Raise, promotion, or recognition</div><p class="gw-case-body">The person builds the evidence behind the ask and the decision maker reads the same record, so both start from the same picture.</p></div>
+        <div class="gw-case-card"><div class="gw-case-title">Contract or renewal</div><p class="gw-case-body">Both sides give an honest account of how the term actually went and what a fair next one looks like.</p></div>
+      </div>
+      <p style="font-size:12px;font-weight:700;color:#9B9590;text-transform:uppercase;letter-spacing:.07em;margin:36px 0 14px;">When something needs addressing</p>
+      <div class="gw-case-grid">
+        <div class="gw-case-card"><div class="gw-case-title">Someone's work is off track</div><p class="gw-case-body">Deadlines or expectations are slipping. Both of you give your honest account of what's happening, so the conversation starts from the same facts, not one side's version.</p></div>
+        <div class="gw-case-card"><div class="gw-case-title">A project is off track</div><p class="gw-case-body">What was agreed and what exists no longer match. Get each person's honest read before the group talks.</p></div>
+        <div class="gw-case-card"><div class="gw-case-title">You and someone see it differently</div><p class="gw-case-body">From working off different priorities to a real rift between partners. Each of you gives your honest read first, so you start from the same picture instead of resentment, and close the gap before it grows.</p></div>
+        <div class="gw-case-card"><div class="gw-case-title">A shock just hit</div><p class="gw-case-body">Something jarring just happened. Get everyone's honest read of where things stand before anyone decides anything.</p></div>
+      </div>
 
-      <h3 class="gw-section-label">Recognition</h3>
-      <div class="gw-case-card"><div class="gw-case-title">Asking for a raise</div><p class="gw-case-body">The person and their manager each account for what was contributed over the period, independently. Groundwork builds the case from a record made over time, not assembled the night before the conversation.</p></div>
-      <div class="gw-case-card"><div class="gw-case-title">Promotion or role change</div><p class="gw-case-body">Both sides describe the scope and impact of the role as it actually ran. Groundwork shows where the accounts agree, so the case is built from the record rather than from who argues best in the moment.</p></div>
-      <div class="gw-case-card"><div class="gw-case-title">Equity negotiation</div><p class="gw-case-body">Each party documents contribution and expectation before the negotiation. Groundwork puts both accounts side by side, so the conversation starts from a shared picture instead of two competing memories.</p></div>
-
-      <h3 class="gw-section-label">When performance expectations need to be on record</h3>
-      <div class="gw-case-card"><div class="gw-case-title">Performance improvement</div><p class="gw-case-body">Before a PIP is issued, the manager and the person each set out what good performance looks like and where the gaps are, independently. Groundwork shows where expectations match and where they don't, so the conversation starts from a shared picture rather than a surprise. The record is there from the beginning, not assembled after things have already gone wrong.</p></div>
-
-      <h3 class="gw-section-label">When you need everyone seeing the same thing</h3>
-      <div class="gw-case-card"><div class="gw-case-title">Team realignment</div><p class="gw-case-body">Each person checks in on where the team is and what matters most, independently. Groundwork shows where people are pulling in different directions without realising it, so the team can reset to one outcome.</p></div>
-      <div class="gw-case-card"><div class="gw-case-title">Multi-stakeholder programme</div><p class="gw-case-body">Teams, partners, funders, and implementers each give their own account, with no one seeing the others. Groundwork builds one shared picture across all of them, so a programme with many parties moves on the same facts.</p></div>
-      <div class="gw-case-card"><div class="gw-case-title">Progress review</div><p class="gw-case-body">Everyone records what was agreed, what was delivered, and what should happen next. Groundwork shows where those accounts line up and where they do not, so the review produces decisions rather than debate.</p></div>
+      <div style="background:#F5F3EF;border:1px solid #E2E0DB;border-radius:10px;padding:18px 20px;margin-top:36px;">
+        <p style="font-size:14px;color:#4A5568;line-height:1.75;margin:0;">Whichever one you start, the shape is the same. Everyone gives their own account, privately. Nobody is scored, ranked or watched, and no one sees anyone else's raw answers.</p>
+      </div>
 
       <div style="text-align:center;margin-top:40px;">
         <a class="gw-btn-solid" href={`${APP_URL}/start`} style="padding:13px 28px;font-size:14px;">Start a Ground</a>
@@ -96,7 +117,7 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
         <a class="gw-footer-btn" href="/pricing">Pricing</a>
         <a class="gw-footer-btn" href="/about">About</a>
       </div>
-      <p style="font-size:11px;color:rgba(255,255,255,.2);margin:0;">&#169; 2025 Groundwork.</p>
+      <p style="font-size:11px;color:rgba(255,255,255,.2);margin:0;">&#169; 2026 Groundwork</p>
     </footer>
 
   </div>
