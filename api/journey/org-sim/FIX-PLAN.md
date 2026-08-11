@@ -2401,3 +2401,117 @@ Written as rules because the page count grew by nobody breaking one:
 5. **W8-47 point 1**, one noun per thing.
 6. The remaining merges, cheapest first: `/chat` + `/checkin`, Auth, Arrive, Pricing + Billing,
    `/welcome`, `/profile`.
+
+---
+
+# Wave 8, eighth pass - the org picker, and nothing gets lost in the merge
+
+## W8-51 · "Org code" reinterpreted: it is workspace selection, like Slack - **corrects W8-35**
+
+Hafsah, 2026-08-11: "org code is that you get to select the org tied to your email like in slack."
+
+**W8-35 called `/enter`, `/pin` and `/setup` an orphaned onboarding model and asked whether to
+delete them. That framing was wrong.** They are the unfinished front of the thing she has asked
+for twice: an organisation chooser tied to the address you sign in with.
+
+So this is not a dead flow to remove. It is W8-34 (signing in with more than one organisation)
+arriving from the other direction, and the two items are one:
+
+| Piece | Today | Wanted |
+|---|---|---|
+| Which orgs is this address in? | unanswerable - `User.organizationId` is one column (W8-10) | a membership per organisation |
+| Choosing between them | `/enter` asks you to type a code | a list of your workspaces after sign-in, chosen by clicking |
+| Switching later | nothing | a switcher in the header |
+| `/pin` | a PIN with no explanation | drop, unless it is for shared devices, which is a separate decision |
+
+**What this changes about the plan:** `/enter` does not get deleted, it gets rebuilt as the
+chooser and absorbed into **Auth** (page 11), shown only when the address has more than one
+membership. `/setup` stays as the "create an organisation" path, folded into the same page. The
+blocker is unchanged and is still hers: the membership migration in W8-10, which the JWT depends
+on.
+
+**One thing to get right that Slack gets right:** never make somebody choose when there is only
+one answer. With a single membership the chooser must not appear at all.
+
+## W8-52 · Nothing gets lost: the function inventory the merge must satisfy - **the safety net**
+
+Her instruction: "make sure the ux change does not break or lose important functions and pages."
+
+So here is what the four ground pages actually do, read off their API calls rather than from
+memory. **45 distinct operations.** Any merge that cannot host all of these is not ready to
+start, and this list is the acceptance test for W8-49 page 3.
+
+### `/grounds/:id` (admin) - 23 operations
+
+| Group | Must survive |
+|---|---|
+| Ground state | `get`, `update`, `confirmLead`, `beginClosingRound` |
+| People | `addParticipant`, `getParticipantInviteUrl`, `participantsApi.updateEmail`, `participantsApi.updateRole` |
+| Requests | `participantRequests.list`, `participantRequests.update` |
+| Documents | `documents.list`, `upload`, `remove`, `setVisibility` |
+| Context | `addLeadContext` |
+| Privacy switches | `setExternalVisibility`, `setPeopleWorkTogether` |
+| Reports | `reports.get`, `reports.release`, `reports.activationStatus` |
+| Nudging | `conversation.remind` |
+| Billing | `getContributorCodeShareCard` |
+
+### `/grounds/:id/p` (participant) - 15 operations
+
+| Group | Must survive |
+|---|---|
+| My record | `getMyRecord`, `getMySoloReport`, `getMySpecificity`, `setMySoloReportShared` |
+| My session | `conversation.artifact`, `startSelfCorrection`, `signOff` |
+| Documents | `documents.list`, `upload` |
+| Reports | `reports.get`, `reports.activate` |
+| Billing, as a participant | `claimFreeExtension`, `createSubscription`, `redeemContributorCode` |
+
+### `/grounds/:id/report` - 9 operations
+
+`reports.get`, `getMyCheckinStatus`, `startSelfCorrection`, `addParticipant`,
+`participantRequests.create`, `outcomeFeedback.mine`, `outcomeFeedback.submit`,
+`conversation.download`, `grounds.get`
+
+**Two of these exist nowhere else and are the reason the report cannot simply be dropped into the
+board:** `outcomeFeedback` (did the ground actually help) and `conversation.download`.
+
+### `/grounds/:id/board` - 6 operations
+
+`board.get`, `createObjective`, `updateObjective`, `deleteObjective`, `upsertPoll`, `togglePoll`
+
+### The rules that fall out of the inventory
+
+1. **The report is not only a document.** It carries outcome feedback and download. If it opens
+   from the board, those two have to come with it, or the board becomes a report that cannot be
+   downloaded or judged.
+2. **Billing appears inside a participant's ground page**, three ways. A participant hits money
+   at the point of use, not on `/billing`, and the merge must keep that - moving it to Billing
+   would break the paid path for the person who is not the admin.
+3. **Documents are on three of the four pages** with different capabilities - the admin can
+   `remove` and `setVisibility`, the participant can only `list` and `upload`. The merged Context
+   tab must keep that asymmetry rather than granting the participant the admin's controls.
+4. **Two report-visibility concepts, not one.** `reports.release` (admin releases to everyone) and
+   `reports.activate` plus `setMySoloReportShared` (a person shares their own). Collapsing them
+   would either leak a private record or make release meaningless.
+5. **`confirmLead` and `signOff` are one-time state transitions.** They must not become
+   re-clickable in a merged page.
+
+### How to prove nothing was lost
+
+Before the merge lands, a spec that asserts the merged page issues every operation in this
+inventory, from the right role. Cheaper than discovering a missing one in a live ground, and it is
+the same shape as the two structural rules already in the suite (nothing-wired-to-nothing,
+no-method-in-here-is-dead) which have caught nine real bugs between them.
+
+## W8-53 · Pages that must not be merged, and why - **the other half of the safety net**
+
+Recorded so consolidation does not overrun:
+
+- **Start (the entry chat) stays separate from Auth.** It runs with no account by design and that
+  is a permanent product rule, not a layout choice.
+- **A check-in stays its own page.** It is a conversation. Putting it in a tab beside settings
+  would make the main activity of the product feel like an administrative screen.
+- **The board stays its own tab** (her decision, W8-49).
+- **Platform admin stays walled off.** Merging it toward org admin risks showing internal tools to
+  a customer, and `/admin` already fails quietly in the wrong direction (W8-42).
+- **Billing stays a page** even though tiers are shared with Pricing. The plan, the grounds and the
+  invoices belong to an account, not to a marketing page.
