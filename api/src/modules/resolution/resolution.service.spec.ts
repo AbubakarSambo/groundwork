@@ -80,9 +80,11 @@ describe('ResolutionService.propose - GW-16 confirmation reset on re-propose', (
   it('deletes other parties confirmations when the end state changes', async () => {
     const { prisma, deleted } = makePrisma({ existingEndState: 'SEPARATE', existingOtherConfirmation: true });
     const intelligence: any = { recordOutcome: jest.fn() };
+    // The other half of the learning loop, wired after the dead-method rule found it.
+    const reports: any = { recordOutcomeLearning: jest.fn(async () => {}) };
     const email: any = { sendResolutionProposal: jest.fn(async () => {}), sendGroundClosed: jest.fn() };
     const config: any = { get: jest.fn(() => 'http://localhost:5173') };
-    const service = new ResolutionService(prisma, intelligence, email, config);
+    const service = new ResolutionService(prisma, intelligence, reports, email, config);
 
     await service.propose(GROUND_ID, USER_ID, 'CONTINUE');
 
@@ -95,9 +97,11 @@ describe('ResolutionService.propose - GW-16 confirmation reset on re-propose', (
   it('does NOT delete other confirmations when the same end state is re-proposed', async () => {
     const { prisma, deleted } = makePrisma({ existingEndState: 'CONTINUE', existingOtherConfirmation: true });
     const intelligence: any = { recordOutcome: jest.fn() };
+    // The other half of the learning loop, wired after the dead-method rule found it.
+    const reports: any = { recordOutcomeLearning: jest.fn(async () => {}) };
     const email: any = { sendResolutionProposal: jest.fn(async () => {}), sendGroundClosed: jest.fn() };
     const config: any = { get: jest.fn(() => 'http://localhost:5173') };
-    const service = new ResolutionService(prisma, intelligence, email, config);
+    const service = new ResolutionService(prisma, intelligence, reports, email, config);
 
     await service.propose(GROUND_ID, USER_ID, 'CONTINUE');
 
@@ -107,9 +111,11 @@ describe('ResolutionService.propose - GW-16 confirmation reset on re-propose', (
   it('does NOT delete confirmations on a brand-new proposal (no prior resolution)', async () => {
     const { prisma, deleted } = makePrisma({ existingEndState: undefined });
     const intelligence: any = { recordOutcome: jest.fn() };
+    // The other half of the learning loop, wired after the dead-method rule found it.
+    const reports: any = { recordOutcomeLearning: jest.fn(async () => {}) };
     const email: any = { sendResolutionProposal: jest.fn(async () => {}), sendGroundClosed: jest.fn() };
     const config: any = { get: jest.fn(() => 'http://localhost:5173') };
-    const service = new ResolutionService(prisma, intelligence, email, config);
+    const service = new ResolutionService(prisma, intelligence, reports, email, config);
 
     await service.propose(GROUND_ID, USER_ID, 'CONTINUE');
 

@@ -2,6 +2,7 @@ import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestEx
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { IntelligenceService } from '../intelligence';
+import { ReportsService } from '../reports';
 import { EmailService } from '../email/email.service';
 import { endStatesFor, isValidEndState, closingNeedsEveryone } from './end-states';
 import { GroundStatus, PartyType } from '@prisma/client';
@@ -25,6 +26,7 @@ export class ResolutionService {
   constructor(
     private prisma: PrismaService,
     private intelligence: IntelligenceService,
+    private reports: ReportsService,
     private email: EmailService,
     private config: ConfigService,
   ) {}
@@ -218,6 +220,22 @@ export class ResolutionService {
     // Seed the learning loop. Best-effort - never block the close.
     await this.intelligence.recordOutcome(groundId, endState).catch((err) =>
       this.logger.error(`recordOutcome failed for ground ${groundId}: ${err.message}`),
+    );
+
+    /**
+     * AND THE HALF OF THE LOOP THAT WAS NEVER CONNECTED.
+     *
+     * recordOutcome writes the Outcome row. recordOutcomeLearning enriches it with
+     * the session count and the fairness rate from the outcome feedback - and it had
+     * no caller anywhere, while the weekly learning cron selects precisely those
+     * columns. So the report that exists to tell us which prompt version produces
+     * fairer, shorter grounds has been reading fields nobody filled, every Monday,
+     * and reporting whatever that averages to.
+     *
+     * Found by the dead-method rule. Best-effort, after the close, like its sibling.
+     */
+    await this.reports.recordOutcomeLearning(groundId).catch((err) =>
+      this.logger.error(`recordOutcomeLearning failed for ground ${groundId}: ${err.message}`),
     );
 
     // GW-50: close-confirmation email to all parties simultaneously.

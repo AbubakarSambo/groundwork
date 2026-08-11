@@ -188,6 +188,48 @@ export class ConversationService {
     private config: ConfigService,
   ) {}
 
+  /** Best-effort, and never the reason a refusal fails to reach the person refused. */
+  private async tellAnAdminToAddACard(groundId: string): Promise<void> {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { organizationId: true, organization: { select: { name: true } } },
+    });
+    if (!ground) return;
+    const admins = await this.prisma.user.findMany({
+      where: { organizationId: ground.organizationId, role: 'ADMIN' as any, deletedAt: null },
+      select: { email: true },
+    });
+    for (const a of admins) {
+      await this.email
+        .sendPaymentRequestEmail(a.email, ground.organization?.name ?? 'your organisation', groundId)
+        .catch(() => undefined);
+    }
+  }
+
+  /**
+   * One session left, said once, to the people who can do something about it.
+   *
+   * Best-effort by construction: a notification must never be the reason a check-in
+   * cannot start, and the balance has already been decremented by the time this
+   * runs.
+   */
+  private async warnIfNearlyOutOfSessions(groundId: string): Promise<void> {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { label: true, sessionsBalance: true, organizationId: true },
+    });
+    if (!ground || ground.sessionsBalance !== 1) return;
+
+    const admins = await this.prisma.user.findMany({
+      where: { organizationId: ground.organizationId, role: 'ADMIN' as any, deletedAt: null },
+      select: { email: true },
+    });
+    const url = `${this.config?.get<string>('resend.frontendUrl') ?? ''}/grounds/${groundId}`;
+    for (const a of admins) {
+      await this.email.sendApproachingSessionLimit(a.email, ground.label ?? 'your ground', url).catch(() => undefined);
+    }
+  }
+
   /** Returns the transcript for a check-in - owner-scoped only. */
   async getTranscript(checkInId: string, requestingUserId: string) {
     const checkIn = await this.loadOwnedCheckIn(checkInId, requestingUserId);
@@ -396,6 +438,20 @@ export class ConversationService {
             const groundUrl = `${this.config.get<string>('resend.frontendUrl') ?? ''}/grounds/${g.id}`;
             this.email.sendParticipantBlockedNudge(initiatorEmail, g.label, participantEmail, groundUrl).catch(() => undefined);
           }).catch(() => undefined);
+
+          /**
+           * AND THE PERSON WHO CAN ACTUALLY PAY IS TOLD TO PAY.
+           *
+           * The nudge above goes to the ground's INITIATOR and says somebody is
+           * blocked. sendPaymentRequestEmail goes to the org ADMIN and says what to
+           * do about it - and it existed, tested, with no caller anywhere, which is
+           * its own documented purpose going unserved: "sent to the org admin when a
+           * ground's first free session is complete and the next requires payment".
+           *
+           * The initiator is often not the admin. Somebody was being stopped
+           * mid-check-in while the only person who could clear it heard nothing.
+           */
+          this.tellAnAdminToAddACard(checkIn.groundId).catch(() => undefined);
           throw new ForbiddenException({ message: gate.reason, freeExtensionAvailable: gate.freeExtensionAvailable ?? false });
         }
         // Metering runs ONLY for metered grounds. gate.sessionsBalance === -1
@@ -415,6 +471,19 @@ export class ConversationService {
           if (decremented.count === 0) {
             throw new ForbiddenException('This ground is beyond your ten free grounds. Resubscribe to continue checking in - the report and board stay available either way.');
           }
+          /**
+           * "YOU ARE ON YOUR LAST SESSION" - AT THE MOMENT IT BECOMES TRUE.
+           *
+           * sendApproachingSessionLimit existed, was tested, and nothing called it:
+           * a ground ran out of sessions and the first anybody knew was a refusal
+           * mid-check-in, which is the worst possible moment to learn about billing.
+           *
+           * Fired on the TRANSITION rather than from a check or a cron, so it is
+           * naturally once per crossing: the decrement above has just happened, and
+           * a balance of exactly 1 means this session was the second to last.
+           */
+          this.warnIfNearlyOutOfSessions(checkIn.groundId).catch(() => undefined);
+
           // Increment the free-sessions counter so the per-org cap is enforced.
           const groundMeta = await this.prisma.ground.findUnique({ where: { id: checkIn.groundId }, select: { isFreeGround: true, organizationId: true } });
           if (groundMeta?.isFreeGround) {

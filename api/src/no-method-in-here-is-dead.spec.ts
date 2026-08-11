@@ -49,29 +49,21 @@ const NO_CALLER_ON_PURPOSE: Record<string, string> = {
    * rest are the same thing in two flavours, and both are worth a line rather than
    * a silent exemption:
    *
-   *   BUILT AND NEVER TRIGGERED. Six notification emails exist, are tested, and
-   *   nothing in the product ever sends them - so a customer approaching their
-   *   session limit, an organisation hitting its member cap, and anybody whose
-   *   billing changed are all told nothing. That is a product gap with working code
-   *   sitting behind it, and wiring each one is a decision about when it should
-   *   fire, not a refactor.
+   *   THE SIX NOTIFICATION EMAILS ARE NOW WIRED, each at the transition where the
+   *   thing it describes actually happens rather than on a schedule or a read-path
+   *   check - so each is naturally once per crossing without a new schema field. They
+   *   came off this list rather than staying on it with a reason, which is what the
+   *   list is for.
    *
    *   BUILT AHEAD OF ITS SURFACE. pauseGround, the anonymised rollup, the org-wide
    *   mention view: written before the screen that would call them.
    */
-  'email.service.ts#sendApproachingSessionLimit': 'built and tested, nothing triggers it - a customer near their session limit is currently told nothing',
-  'email.service.ts#sendMemberCapWarning': 'built and tested, nothing triggers it - an organisation at its member cap is currently told nothing',
-  'email.service.ts#sendBillingChangeNotification': 'built and tested, nothing triggers it',
-  'email.service.ts#sendPaymentRequestEmail': 'built and tested, nothing triggers it',
-  'email.service.ts#sendFreeExtensionClaimed': 'built and tested, nothing triggers it',
-  'email.service.ts#sendCareFeeConfirmation': 'built and tested, nothing triggers it',
   'billing.service.ts#isBillingReady': 'a readiness check with no caller; the paths that would use it check their own preconditions',
   'stripe.service.ts#cancelSubscriptionAtPeriodEnd': 'no cancellation surface exists yet, and cancelling is not a thing to wire in speculatively',
   'grounds.service.ts#pauseGround': 'built before the surface that would offer pausing',
   'intelligence.service.ts#rollupAnonymised': 'built before the org-wide intelligence surface',
   'intelligence.service.ts#detectForceMultiplier': 'built before the surface that would show it',
   'patterns.service.ts#getOrgWideMentions': 'built before the org-wide view',
-  'reports.service.ts#recordOutcomeLearning': 'the outcome-learning write path; the weekly cron reads outcomes but nothing records one yet',
   'whatsapp.service.ts#setPhoneNumber': 'admin toggle plumbing, waiting on the number being provisioned',
 };
 
