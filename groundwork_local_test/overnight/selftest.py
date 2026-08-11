@@ -49,7 +49,8 @@ class Guard:
     """One break -> expect-red -> restore -> expect-green cycle."""
 
     def __init__(self, name: str, suite: str, brk, restore, env: dict | None = None,
-                 fast_env: dict | None = None, needs_model: bool = False):
+                 fast_env: dict | None = None, needs_model: bool = False,
+                 landed=None):
         self.name = name
         self.suite = suite
         self.brk = brk
@@ -57,6 +58,11 @@ class Guard:
         self.env = env or {}
         self.fast_env = fast_env or {}
         self.needs_model = needs_model
+        # Optional: did the sabotage actually change anything? A sabotage that
+        # matched nothing produces a green suite, which is indistinguishable from a
+        # guard that has stopped biting - and it aborted a whole nightly run being
+        # reported as the latter. When this says no, the finding is the sabotage.
+        self.landed = landed
 
     def check(self) -> dict:
         bit = False
@@ -75,6 +81,12 @@ class Guard:
         if not bit and self.needs_model and provider_unreachable(self.suite):
             return {"name": self.name, "suite": self.suite, "bit": None,
                     "skipped": "provider unreachable in this environment"}
+        # A SABOTAGE THAT CHANGED NOTHING IS NOT A GUARD THAT STOPPED BITING.
+        # Reported as its own failure, by name, because the two look identical from
+        # the suite's exit code and one of them wasted a night's run.
+        if not bit and self.landed and not self.landed():
+            return {"name": self.name + "  [the SABOTAGE matched nothing - fix the sabotage, not the guard]",
+                    "suite": self.suite, "bit": False, "sabotage_missed": True}
         return {"name": self.name, "suite": self.suite, "bit": bit}
 
 
@@ -119,13 +131,51 @@ def break_drafts_stop(proc):
         proc.terminate()
 
 
+SABOTAGE_SUFFIX = " - Add a session for $5"
+
+# How many labels the sabotage actually rewrote. Written by the loop, read after,
+# so a sabotage that lands on nothing can say so instead of looking like a guard
+# that has stopped working.
+LABEL_HITS = HERE / "results" / ".selftest-label-hits"
+
+# THE SUFFIX GOES INTO A BASH DOUBLE-QUOTED STRING, WHERE `$5` IS POSITIONAL
+# PARAMETER 5 AND EXPANDS TO NOTHING. The original sabotage escaped it for exactly
+# this reason and my rewrite dropped the escape, which produced a loop that looked
+# busy and did nothing: it appended " - Add a session for " with no marker, so the
+# "not already marked" test matched every row again, and it rewrote all 226 grounds
+# three times a second while zero of them ever carried '$5'. Caught only by watching
+# the row count instead of the loop's own tally - the tally said 2712 rewrites and
+# the truth was none that mattered.
+BASH_SAFE_SUFFIX = SABOTAGE_SUFFIX.replace("$", "\\$")
+
+
 def break_labels_start():
-    """Banned-string signature: rename grounds to carry '$5' so the wrongful-
-    gate tripwire sees paywall copy in rendered content (suite M's grep)."""
+    """
+    Banned-string signature: put '$5' into the label of the ground suite M is
+    looking at, so the wrongful-gate tripwire sees paywall copy in rendered
+    content (suite M's own grep).
+
+    IT USED TO MATCH ON `label='My first ground'`, WHICH IS A GUESS ABOUT WHAT THE
+    SUITE WILL CREATE. That label does still exist in a long-lived dev database (118
+    rows here), which is exactly what makes the old form untrustworthy: it works
+    locally off accumulated data and lands on nothing in CI, where the database is
+    fresh and holds only what suite M provisions on this run. A sabotage whose reach
+    depends on leftovers is a sabotage that reports differently in the two places it
+    runs.
+
+    So it stops naming a ground. It appends the marker to every ground not already
+    carrying it, which needs no assumption about naming, and it counts the rows it
+    rewrote so that landing on nothing is reported as landing on nothing rather than
+    as a guard that has stopped biting.
+    """
+    LABEL_HITS.parent.mkdir(parents=True, exist_ok=True)
+    LABEL_HITS.write_text("0")
     proc = subprocess.Popen(
         ["bash", "-c",
-         f"END=$((SECONDS+400)); while [ $SECONDS -lt $END ]; do "
-         f"psql '{PSQL}' -qc \"update grounds set label='My first ground - Add a session for \\$5' where label='My first ground';\" 2>/dev/null; "
+         f"END=$((SECONDS+400)); TOTAL=0; while [ $SECONDS -lt $END ]; do "
+         f"N=$(psql '{PSQL}' -tAc \"with u as (update grounds set label=label||'{BASH_SAFE_SUFFIX}' "
+         f"where label not like '%\\$5%' returning 1) select count(*) from u;\" 2>/dev/null); "
+         f"TOTAL=$((TOTAL+${{N:-0}})); printf %s \"$TOTAL\" > '{LABEL_HITS}'; "
          f"sleep 0.3; done"],
     )
     return proc
@@ -135,8 +185,16 @@ def break_labels_stop(proc):
     if proc:
         proc.terminate()
     subprocess.run(["psql", PSQL, "-qc",
-                    "update grounds set label=replace(label, ' - Add a session for $5', '') where label like '%$5%';"],
+                    f"update grounds set label=replace(label, '{SABOTAGE_SUFFIX}', '') where label like '%$5%';"],
                    capture_output=True)
+
+
+def label_sabotage_landed() -> bool:
+    """Whether the sabotage rewrote any label at all."""
+    try:
+        return int((LABEL_HITS.read_text() or "0").strip() or "0") > 0
+    except Exception:
+        return False
 
 
 def break_free_ground_charge_start():
@@ -275,7 +333,8 @@ GUARDS = [
     Guard("class 1 data-loss: draft deletion reds suite V (vanish signature)",
           "run_suite_v_vanish.py", break_drafts_start, break_drafts_stop),
     Guard("class 2 wrongful-gate: '$5' in rendered content reds the tripwire",
-          "run_suite_m_sessions.py", break_labels_start, break_labels_stop),
+          "run_suite_m_sessions.py", break_labels_start, break_labels_stop,
+          landed=label_sabotage_landed),
     Guard("class 4 wrongful-charge: purchase-session allowing a flipped-non-free ground reds suite B",
           "run_suite_b_billing.py", break_free_ground_charge_start, break_free_ground_charge_stop),
     Guard("class 3 banned-string: em-dash email reds the typography gate",

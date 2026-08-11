@@ -102,6 +102,25 @@ def run_suites(target: TargetReport, suites, out_dir: Path, db_url: str):
             shutil.copytree(src, tdir / rec_dir, dirs_exist_ok=True)
 
 
+def guards_that_failed(selftest: dict) -> list[str]:
+    """
+    Only the guards that stopped biting, plus a one-line tally of the rest.
+
+    THE ABORT USED TO NAME ALL SIX. Both call sites passed every guard into
+    abort_red, which prefixes each line with "ABORT:" - so a run where exactly one
+    guard had stopped biting printed five lines reading "ABORT: BIT: ..." and one
+    reading "ABORT: NO BITE: ...". Five healthy guards looked broken, and the one
+    real failure sat in the middle of them.
+
+    Cost real time on 2026-08-11: the log read as a total collapse of the self-test
+    when the self-test was in fact working perfectly and reporting one honest
+    failure.
+    """
+    failed = [g["name"] for g in selftest["guards"] if not g["bit"]]
+    bit = len(selftest["guards"]) - len(failed)
+    return [f"NO BITE: {n}" for n in failed] + [f"({bit} other guards bit as expected)"]
+
+
 def abort_red(out_dir: Path, title: str, lines: list[str], code: int) -> int:
     (out_dir / "CRITICAL-ISSUES.md").write_text(f"# Overnight run ABORTED RED - {title}\n\n" +
                                                 "\n".join(f"- {l}" for l in lines) + "\n")
@@ -172,7 +191,7 @@ def main() -> int:
                     print(("  BIT      " if g["bit"] else "  NO BITE  ") + g["name"])
                 if not selftest["all_bit"]:
                     return abort_red(out_dir, "a guard no longer bites",
-                                     [("BIT: " if g["bit"] else "NO BITE: ") + g["name"] for g in selftest["guards"]], 3)
+                                     guards_that_failed(selftest), 3)
 
             run_suites(local_report, suites, out_dir, db_url)
             if local_stack:
@@ -205,7 +224,7 @@ def main() -> int:
                 selftest = run_selftest(db_url=db_url)
                 if not selftest["all_bit"]:
                     return abort_red(out_dir, "a guard no longer bites",
-                                     [("BIT: " if g["bit"] else "NO BITE: ") + g["name"] for g in selftest["guards"]], 3)
+                                     guards_that_failed(selftest), 3)
             run_suites(main_report, suites, out_dir, db_url)
             main_stack.teardown()
             main_stack = None

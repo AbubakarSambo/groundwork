@@ -34,15 +34,44 @@ import { join } from 'path'
  */
 const SRC = readFileSync(join(__dirname, 'EntryChatPage.tsx'), 'utf8')
 
-/** The describe-your-own button, from its onClick to its closing tag. */
+/**
+ * The describe-your-own CARD, from its opening tag to its closing one.
+ *
+ * ANCHORED ON THE CARD'S OWN LABEL, AND IT REFUSES TO FIND ANYTHING ELSE.
+ *
+ * The first version searched for `setPickedSituation('other')` and fell back to
+ * the FIRST match if it could not locate the card. Two things call that setter:
+ * this card, and the 11px underlined "describe your own" shortcut in the count
+ * line above the grid. So deleting the card did not turn this file red - it
+ * silently re-pointed every assertion at the shortcut link, and four of the six
+ * tests went on passing about a control that no longer existed. Proved by
+ * cutting the card out: 2 failed, 4 passed, including "states its label at full
+ * strength" - which sliced around a label that was gone and asserted on an empty
+ * string.
+ *
+ * That is the failure this whole file exists to catch, so there is no fallback
+ * now. If the card is not there, this throws by name and every test in the file
+ * goes red at once.
+ */
+const CARD_LABEL = 'None of these? Describe your own situation'
 const BLOCK = (() => {
-  const i = SRC.indexOf("setPickedSituation('other')")
-  expect(i).toBeGreaterThan(-1)
-  // The CARD, not the shortcut link above the grid - both call the same setter.
-  const cardIdx = SRC.indexOf("setPickedSituation('other')", SRC.indexOf('None of these?') - 900)
-  const start = SRC.lastIndexOf('<button', cardIdx > -1 ? cardIdx : i)
-  const end = SRC.indexOf('</button>', cardIdx > -1 ? cardIdx : i)
-  return SRC.slice(start, end)
+  const anchor = SRC.indexOf(CARD_LABEL)
+  if (anchor === -1) {
+    throw new Error(
+      `The describe-your-own CARD is gone from EntryChatPage.tsx: no "${CARD_LABEL}". ` +
+        'The 11px "describe your own" shortcut in the count line is not a substitute - ' +
+        'it is a text link at the top, not the full-width route for anyone the list does not fit.',
+    )
+  }
+  const start = SRC.lastIndexOf('<button', anchor)
+  const end = SRC.indexOf('</button>', anchor)
+  const block = SRC.slice(start, end)
+  // Belt and braces: the card's own setter must be inside the slice, so a
+  // restructure that leaves the label but detaches the click cannot pass.
+  if (!block.includes("setPickedSituation('other')")) {
+    throw new Error('Found the card label but no setPickedSituation(\'other\') inside its button.')
+  }
+  return block
 })()
 
 describe('the describe-your-own card', () => {
@@ -62,7 +91,12 @@ describe('the describe-your-own card', () => {
   })
 
   it('states its label at full strength, not in the muted grey', () => {
-    const label = BLOCK.slice(BLOCK.indexOf('None of these?') - 220, BLOCK.indexOf('None of these?'))
+    // The slice is taken BACKWARDS from the label, so it is empty when the label
+    // is missing - and an empty string satisfies every not.toMatch below. Hence
+    // the positive assertion first: there has to be something here to judge.
+    const at = BLOCK.indexOf(CARD_LABEL)
+    expect(at).toBeGreaterThan(0)
+    const label = BLOCK.slice(at - 220, at)
     expect(label).toMatch(/color:\s*'var\(--gw-navy\)'/)
     expect(label).not.toMatch(/color:\s*'var\(--gw-(sub|muted)\)'/)
   })

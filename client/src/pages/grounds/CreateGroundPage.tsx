@@ -201,6 +201,16 @@ const SCENARIO_FROM_LABEL: Record<string, GroundScenario> = {
   "something's off track": 'DRIFT',
   'board & leadership strategy': 'BOARD_STRATEGY',
   'get a team back on the same page': 'REALIGN_TEAM',
+  /**
+   * CRISIS_ALIGNMENT WAS THE ONE SCENARIO NOTHING ON THE HOME PAGE COULD REACH.
+   *
+   * Found by listing every GroundScenario against every routing key rather than by
+   * reading the list, which is why it survived: sixteen of seventeen resolved, and
+   * a missing entry looks like nothing at all. The /entry picker has had "A big
+   * decision" all along, so the situation was reachable from one entrance and not
+   * the other.
+   */
+  'a big decision': 'CRISIS_ALIGNMENT',
   'describe your own situation': 'REALIGN_TEAM',
 }
 
