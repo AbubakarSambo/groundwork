@@ -1813,3 +1813,209 @@ entry report and save panel.
 Profile, `/enter`, `/pin`, `/join`, `/invite`, `/setup`, `/welcome`, `/demo/:persona`, the 404,
 and the platform-admin pages, which need an account this session does not have. Recorded so this
 pass is not mistaken for a full sweep.
+
+---
+
+# Wave 8, third pass - every page, how they link, and two gaps in the model
+
+Twelve more pages captured in a browser, plus the structural review Hafsah asked for: how
+things are linked, the hierarchy, the flow. Two findings at the end are not defects but missing
+pieces of the model, and both need her decision.
+
+## The pages, one line each
+
+| Page | Finding |
+|---|---|
+| `/grounds/:id/report` | "Your report will appear here once at least one person has checked in" - one person HAS. The copy contradicts the state, on an otherwise empty screen |
+| `/grounds/:id/board` | **The best page in the product.** Dark identity header, an explicit "how to read and use this board", four stat tiles, then detail. Two defects: `- to -` renders as an empty date range, and one tile reads "SOLID? unknown" |
+| `/feed` | About 600px of empty grey between the welcome line and the composer. A fourth distinct header pattern (Feedback / +Invite / Team / Back) |
+| `/settings` | Clean and honest: "If you signed up without being asked for it, we guessed it from your email address." The ground list in the sidebar is meaningless here |
+| `/org/roster` | Titled **Teams**, sidebar calls it **Roster**, URL says roster. Reports "0 members" on a ground that has the initiator in it. Lists grounds, which the Grounds page already does |
+| `/org/members` | Titled **Team members**, sidebar calls it **People**. Otherwise clean |
+| `/billing` | Free plan claims "unlimited sessions and reports". Subscribe buttons are **purple** where every other primary action in the product is navy |
+| `/pricing` | "Simple, honest pricing" above "Unlimited sessions and reports on every Ground" |
+| `/grounds/new` | A six-step wizard of radio cards about 450px tall, two visible at a time |
+| `/join` | Good. Names the inviter, explains that nobody reads your words, names optional. Fine print promises a password email |
+| `/set-password` | Renders a complete working form **with no token in the URL** and no invalid-link state. Headed "One last step" when it is the first thing a participant meets |
+| `/nothing-here` (404) | Good, and the best example of hierarchy in the product: one sentence, one button |
+
+## W8-25 · Pricing contradicts the product's own pricing rule, on two pages - **S, and it is money**
+
+`/pricing` and `/billing` both say the free tier includes unlimited sessions. The recorded
+constraint is: **first session on each ground is free, each additional session is $5 per ground.**
+
+Either both pages are wrong or the constraint is stale. One of them has to move, and until it
+does the product is advertising something it may charge for, under a headline that says "Simple,
+honest pricing".
+
+## W8-26 · `/set-password` is the participant blocker, and it renders without a token - **S**
+
+Her report was "I could not checkin as a participant to a ground i was added to, it asked me to
+setup password etc". Located:
+
+- `/join` promises it in fine print: "We'll email you a link to set a password for returning
+  later."
+- `/set-password` then greets a person who came to CHECK IN with "One last step - Set a password
+  so you can sign back in", before they have contributed anything.
+- The same page renders a full, usable form with **no token at all** in the URL. No expired-link
+  state, no explanation.
+
+**Two things to fix and they are different.** The ordering (check in first, secure the account
+after, or at least say why the password comes first) and the missing token state.
+
+## W8-27 · Four names for two concepts - **S**
+
+| Sidebar says | Page says | What it lists |
+|---|---|---|
+| People | Team members | people with accounts |
+| Roster | Teams | grounds |
+
+Two of those four words are wrong for what the page holds, and "Teams" listing grounds collides
+with the Grounds page doing the same.
+
+## W8-28 · Chrome and colour are inconsistent across pages - **S**
+
+- **Four header patterns** across the app: the ground page header, the participant page header,
+  the feed's button row, and the bare "Groundwork / Back" bar.
+- **The left sidebar shows the ground list on Settings, Billing, Pricing and the 404**, where it
+  means nothing.
+- **Primary actions are navy everywhere except Billing**, where Subscribe is purple.
+
+## W8-29 · Hierarchy: the board is the design system, the rest has not caught up - **M, design**
+
+One page gets it right and it is worth naming why, because it is the template for the others.
+`/grounds/:id/board` uses: a dark header carrying identity, an explicit panel telling you how to
+read the page, four stat tiles for the glance, then the detail underneath. The eye lands in the
+right order without effort.
+
+Everywhere else is a flat column of cards sharing one border, one background and one weight, so
+nothing reads as "do this next" and the reader has to price every card themselves. On the ground
+Overview that is actively harmful: "Bringing this ground to an end" sits above the summary at
+equal weight (W8-5).
+
+**The 404 is the second-best example in the product**: one sentence, one button. That is the
+standard to hold every screen to.
+
+## W8-30 · How things are linked - the map is the problem, not the pages - **M**
+
+Drawn out, the navigation is not a hierarchy. It is several overlapping lists of the same thing:
+
+- **Grounds** (sidebar) lists grounds.
+- **Roster/Teams** lists grounds again, with different metadata.
+- **Feed** is a chat about grounds.
+- The ground itself has **two pages** with different tabs, one of them unlinked (W8-19).
+- **Check-ins**, the thing a person actually comes to do, appears as a tab inside a ground, and
+  the cards on it are not clickable (W8-20).
+
+So the unit the product is organised around is the ground, which is an admin's unit. The unit a
+person lives in is their own check-in, and it has no home.
+
+## W8-31 · Check-ins should open from the left menu, the way chat products work - **M** (her model)
+
+Hafsah's words: "I assumed the checkins will be the ones to open from the left menu in the way
+that chatgpt or claude chats functions and you have things in other places."
+
+That is the correct model for this product and it should be adopted rather than argued with. A
+check-in is a conversation, it is the thing you return to, and every product shaped like this
+puts conversations in a left rail.
+
+**What that means concretely:**
+
+- The left rail lists **check-ins**, newest first, each row naming its ground and session, the
+  way a chat list names a conversation.
+- Clicking a row opens the conversation itself (`/chat/:checkInId` already renders it).
+- An open check-in is distinguished from a finished one, and the next one due is offered in the
+  rail rather than found inside a ground.
+- Grounds do not disappear; they move to being the container you open from a check-in or from an
+  admin view, not the primary rail.
+
+**This subsumes W8-19, W8-20 and W8-21.** They are three symptoms of the rail being wrong.
+
+## W8-32 · The org admin view should differ, and today it barely does - **M**, needs W8-9
+
+Her expectation: "I assume org admin view will differ slightly." Today the difference is
+subtraction - the same ground page with gated pieces removed - and the participant page that
+would genuinely differ is the unlinked one. With the rail changed to check-ins (W8-31), the two
+views separate cleanly:
+
+- **A person's view:** my check-ins, my record, my reports.
+- **An org admin's view:** every ground, who has checked in, what is overdue, the boards.
+
+The switch belongs in the header, which is also what she asked for.
+
+## W8-33 · The reversed setup: the person being assessed sets up the ground - **L, and there is no path for it**
+
+Her scenario, in her words: a staff member wants to give clarity to a manager who is too busy and
+unhappy; he is delivering but it looks like box-ticking; the manager is probably unhappy about
+quality; and **the staff member is the one setting up the situation and the context, so the
+calibration is reversed and he needs to know how his manager will read it.**
+
+**There is no path for this, and the reason is structural.** The entry flow offers exactly two:
+
+| `flowPath` | Meaning | Does the setter check in? |
+|---|---|---|
+| `self` | This is my situation, I give my account now | yes |
+| `lead` | I am setting this up for my team, someone else runs it | **no** (`skippedCheckin = flowPath === 'lead'`) |
+
+And the lead invitation is only sent when the path is `lead` (`flowPath === 'lead' && leadEmail`).
+So a person **cannot both give their own account and name their manager as the lead**. The moment
+you name a lead, you step out of the ground.
+
+Her case needs both at once: I am a party, I am the subject, and the other party is the person
+whose standard defines whether my work is good.
+
+**Why the calibration matters and is not just plumbing.** The lead is the source of the
+standard - the target, the expected contribution, the "should". Every read that says whether
+somebody is meeting the bar assumes the bar came from the lead. If the subject sets up the
+ground, there is no bar in the record, so the product can describe what he did and cannot tell
+him the one thing he came for: how his manager will see it.
+
+**What it would take, sketched, not decided:**
+
+1. A third path: *I am a party and the other party is my lead.* The setter checks in AND a lead
+   is invited.
+2. The lead's first contribution is asked for as the standard, not as an account of events - the
+   target and what good looks like - so the record has a bar to read against.
+3. Until the lead has answered, the subject's report says plainly that no standard is on record
+   yet, rather than implying his account is the whole picture.
+4. The anticipation he actually wants ("how will my manager read this") is only honest once the
+   lead has answered. Before that the product should offer the gap, not a guess: here is what you
+   have evidenced, here is what a manager in this role usually asks for, and these are the parts
+   nobody has confirmed. This must not become the product predicting a person's opinion.
+
+**This is the most interesting finding of the pass** because it is a real use of the product that
+the model cannot express, and because getting it wrong in the other direction - guessing what a
+manager thinks - would be exactly the thing this product exists not to do.
+
+## W8-34 · Signing in with more than one organisation - **L**, and it depends on W8-10
+
+Her question: "how do you login if you have multiple orgs, you may need that org option after
+sign-in it tells you what org to go into coamana or NAVCDP etc."
+
+**Today there is no answer, because the model cannot hold it.** `User.organizationId` is one
+column with one relation and the JWT carries `organizationId` as a scalar (W8-10). One address
+belongs to exactly one organisation, so the picker she is describing has nothing to pick from.
+
+**The shape, if it is wanted:** a membership table (user, organisation, role), an active
+organisation in the session rather than in the user row, an org chooser after sign-in when there
+is more than one, and a switcher in the header afterwards. Every read that takes
+`organizationId` off the user or the token becomes a read of the active membership.
+
+**This is a migration, and it touches auth.** It should be decided before more code assumes one
+org, which is the same argument as W8-10 and is now the second time it has come up from her own
+use.
+
+## Revised order, with the new items folded in
+
+1. **W8-26** the participant blocker. Somebody who cannot check in cannot use the product.
+2. **W8-25** the pricing contradiction. Hours, and it is money.
+3. **W8-3** and **W8-13**, the invisible confirmation and the missing one, which together caused
+   the lost ground.
+4. **W8-31** the left rail of check-ins, taking W8-19, W8-20 and W8-21 with it. The largest
+   improvement per hour in the product, because the pages already exist.
+5. **W8-27**, **W8-28**, **W8-23**, the naming, the chrome and the double-active tab. Cheap.
+6. **W8-11** asking who the people in the organisations are.
+7. **W8-29** hierarchy, using the board as the template.
+8. **Decisions before code:** W8-10 and W8-34 (many orgs), W8-9 (participants and their own
+   grounds), W8-33 (the reversed setup). W8-33 is the one worth designing properly rather than
+   quickly.
