@@ -711,8 +711,58 @@ STRICT RULES:
     for (let attempt = 0; attempt < 10; attempt++) {
       const d = await this.prisma.entryDraft.findUnique({ where: { userId } });
       if (d?.groundId) {
-        const ground = await this.prisma.ground.findUnique({ where: { id: d.groundId }, select: { id: true, joinToken: true } });
-        if (ground) return { groundId: ground.id, joinToken: ground.joinToken ?? null, contributors: [], failedInvites: [] };
+        const ground = await this.prisma.ground.findUnique({
+          where: { id: d.groundId },
+          select: {
+            id: true,
+            joinToken: true,
+            /**
+             * WHO WAS ACTUALLY INVITED, RATHER THAN AN ASSERTION THAT NOBODY WAS.
+             *
+             * This path returned `contributors: []` flat, and the verify page reads
+             * that field to decide whether to show "Invited (N)". So whenever the
+             * commit ran twice - a retried request, a remount, a double-submit - the
+             * second call won the response, reported no contributors and no
+             * failures, and the person was told nothing about the invites the FIRST
+             * call had already sent. The emails went out and the confirmation said
+             * they had not.
+             *
+             * An empty list here was never a fact; it was this path not looking. So
+             * it looks: the participants on the ground are what happened, whichever
+             * call created them.
+             */
+            participants: {
+              // Somebody who was sent an invite, and not the person reading this
+              // page. The initiator is created as the first party with no
+              // invitedAt, so the date filter alone would already exclude them -
+              // but resting the count on that is an invisible coupling to how
+              // grounds.create happens to build the initiator row, and the number
+              // shown to a person should not depend on it.
+              where: { invitedAt: { not: null }, partyType: { not: PartyType.INITIATOR } },
+              select: { email: true },
+            },
+          },
+        });
+        if (ground) {
+          return {
+            groundId: ground.id,
+            joinToken: ground.joinToken ?? null,
+            /**
+             * `?? []` because this runs on the screen a person sees after a
+             * double-submit, and a missing relation must degrade to "we cannot show
+             * the invites" rather than throw. Prisma always returns the relation for
+             * this select, so the fallback is unreachable in production - it fired
+             * immediately against two existing tests whose mocks return a ground
+             * with no participants, which is exactly the shape a crash here would
+             * take: a TypeError on the success page, after the commit succeeded.
+             */
+            contributors: (ground.participants ?? []).map((p) => ({ email: p.email })),
+            // Not knowable from here: a failure belongs to the call that tried to
+            // send. Staying empty rather than guessing, which would invent a
+            // failure the person cannot act on.
+            failedInvites: [],
+          };
+        }
       }
       if (!d?.consumedAt) break; // winner failed and un-claimed; caller should retry
       await new Promise((r) => setTimeout(r, 500));

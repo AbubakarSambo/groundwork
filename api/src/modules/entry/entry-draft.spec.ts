@@ -51,7 +51,14 @@ function makeService(opts: { draft?: any; failAllInvites?: boolean; pendingSignu
     groundParticipant: { findFirst: jest.fn(async () => ({ id: 'p1' })), update: jest.fn(async () => ({})) },
     checkIn: { findFirst: jest.fn(async () => ({ id: 'ci1' })), update: jest.fn(async () => ({})) },
     conversationTurn: { createMany: jest.fn(async () => ({ count: 2 })) },
-    ground: { findUnique: jest.fn(async () => ({ id: 'g-existing', joinToken: 'jt-existing' })), update: jest.fn(async () => ({})) },
+    ground: {
+      // `participants` is part of the real shape: the idempotent path selects the
+      // invited participants so a second commit can still say who was invited,
+      // rather than reporting an empty list the verify page reads as "nobody".
+      // Without it this mock returns a ground Prisma would never return.
+      findUnique: jest.fn(async () => ({ id: 'g-existing', joinToken: 'jt-existing', participants: [] })),
+      update: jest.fn(async () => ({})),
+    },
     leadContextNote: { create: jest.fn(async () => ({})) },
   };
   const grounds: any = {
