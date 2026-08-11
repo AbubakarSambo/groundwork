@@ -15,14 +15,62 @@ const MARKETING_URL = import.meta.env.VITE_MARKETING_URL ?? 'https://myground.wo
 
 type View = 'password' | 'link' | 'forgot'
 
+/**
+ * The small text controls under a form ("Forgot your password?", "Create an
+ * account").
+ *
+ * THEY WERE <span onClick>, SO THE KEYBOARD COULD NOT REACH THEM. Found while
+ * verifying the new sign-up door in a browser: read_page listed only the two inputs
+ * and the submit button, because a span with a click handler is not a control. It is
+ * not in the tab order, screen readers do not announce it as actionable, and Enter
+ * does nothing on it.
+ *
+ * On this screen that meant the ONLY route to creating an account was a mouse click.
+ * Buttons, styled to look the same.
+ */
+function TextAction({ onClick, strong, children }: { onClick: () => void; strong?: boolean; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        color: 'var(--gw-navy)', textDecoration: 'underline', cursor: 'pointer',
+        background: 'none', border: 'none', padding: 0, font: 'inherit',
+        fontWeight: strong ? 700 : undefined,
+      }}
+    >
+      {children}
+    </button>
+  )
+}
+
 export function AuthPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const setAuth = useAuthStore((s) => s.setAuth)
 
-  // Contributors arriving via ?mode=member go straight to the link view
-  // since they may not have set a password yet
-  const defaultView: View = searchParams.get('mode') === 'member' ? 'link' : 'password'
+  /**
+   * Contributors arriving via ?mode=member go straight to the link view since they
+   * may not have set a password yet.
+   *
+   * AND SO DOES ANYONE SIGNING UP, because signing up had no front door.
+   *
+   * Creating an account has always worked from the link view - one email, one link,
+   * and the account exists, no entry chat needed. But this page opens on a
+   * password-only "Sign in" screen, and the only route to that view was a small
+   * underlined line reading "No password? Get a sign-in link instead", which
+   * describes signing IN. Somebody with no account had to read a sign-in offer and
+   * guess it would also register them. Meanwhile "Get started" on the marketing site
+   * pointed at the entry chat, so there was no path from the front page to signing up
+   * at all.
+   *
+   * That was mine to misread too: I took the "no auth before session 1" rule as
+   * site-wide and concluded the missing sign-up page was correct. It is not. The rule
+   * governs the ENTRY CHAT; normal sign-up and sign-in work as on any product.
+   */
+  const mode = searchParams.get('mode')
+  const isSignup = mode === 'signup'
+  const defaultView: View = mode === 'member' || isSignup ? 'link' : 'password'
 
   const [view, setView] = useState<View>(defaultView)
   const [email, setEmail] = useState('')
@@ -111,7 +159,7 @@ export function AuthPage() {
 
       <div className="gw-bd" style={{ maxWidth: 480, margin: '0 auto', width: '100%', paddingTop: 28 }}>
 
-        <div className="gw-ttl">{view === 'link' ? 'Sign in or create account' : 'Sign in'}</div>
+        <div className="gw-ttl">{view === 'link' ? (isSignup ? 'Create your account' : 'Sign in or create account') : 'Sign in'}</div>
 
         {view === 'password' && (
           <>
@@ -166,19 +214,16 @@ export function AuthPage() {
 
 
             <div style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 14, lineHeight: 2 }}>
-              <span
-                style={{ color: 'var(--gw-navy)', textDecoration: 'underline', cursor: 'pointer' }}
-                onClick={() => { setError(''); setView('forgot') }}
-              >
-                Forgot your password?
-              </span>
+              <TextAction onClick={() => { setError(''); setView('forgot') }}>Forgot your password?</TextAction>
               <br />
-              <span
-                style={{ color: 'var(--gw-navy)', textDecoration: 'underline', cursor: 'pointer' }}
-                onClick={() => { setError(''); setView('link') }}
-              >
-                No password? Get a sign-in link instead
-              </span>
+              <TextAction onClick={() => { setError(''); setView('link') }}>No password? Get a sign-in link instead</TextAction>
+              <br />
+              {/*
+                THE MISSING DOOR. "Get a sign-in link" was the only way through to
+                the view that also registers people, and it reads as sign-in. Anybody
+                without an account had nothing on this screen addressed to them.
+              */}
+              <TextAction strong onClick={() => { setError(''); setView('link') }}>New here? Create an account</TextAction>
             </div>
           </>
         )}
@@ -186,7 +231,9 @@ export function AuthPage() {
         {view === 'link' && !linkSent && (
           <>
             <div className="gw-sub-t" style={{ marginBottom: 20 }}>
-              Enter your email. We will send you a link. It signs you in, or creates an account if you do not have one.
+              {isSignup
+                ? 'Enter your email. We will send you a link that creates your account. No password to choose.'
+                : 'Enter your email. We will send you a link. It signs you in, or creates an account if you do not have one.'}
             </div>
 
             <form onSubmit={submitLink}>
@@ -209,12 +256,7 @@ export function AuthPage() {
             </form>
 
             <div style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 14 }}>
-              <span
-                style={{ color: 'var(--gw-navy)', textDecoration: 'underline', cursor: 'pointer' }}
-                onClick={() => { setError(''); setView('password') }}
-              >
-                Sign in with password instead
-              </span>
+              <TextAction onClick={() => { setError(''); setView('password') }}>Sign in with password instead</TextAction>
             </div>
           </>
         )}

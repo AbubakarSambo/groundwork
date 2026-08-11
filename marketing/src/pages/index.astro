@@ -705,7 +705,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
   </div>
   <div class="l-nav-ctas">
     <a class="l-btn-ghost" href={`${APP_URL}/auth?mode=member`}>Sign in</a>
-    <a class="l-btn-solid" href={`${APP_URL}/start`}>Get started</a>
+    <!--
+      "Get started" now goes to sign-up, not into the entry chat.
+      It pointed at /start, so the only thing the front page could offer was the
+      anonymous conversation - somebody who wanted an account had nowhere to click.
+      The hero button below is the entry chat's front door and says so ("Start your
+      first Ground"); this one is for people who came to sign up.
+    -->
+    <a class="l-btn-solid" href={`${APP_URL}/auth?mode=signup`}>Get started</a>
   </div>
 </nav>
 
