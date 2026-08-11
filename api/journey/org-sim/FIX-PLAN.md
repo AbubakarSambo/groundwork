@@ -1213,6 +1213,43 @@ tab renders and the old upload path behaves identically.
 
 ---
 
+## Wave 2, as built
+
+`CONTEXT_ENABLED`, off by default, off-is-the-old-product asserted as a property
+rather than claimed.
+
+| | Item | Where |
+|---|---|---|
+| **G24** | Four rules. A document is context and never an account; who uploaded it is part of what it is; upload defaults to private; extraction is confirmed rather than adopted | `a-document-is-context.ts` |
+| **G25** | What this ground can and cannot tell you, above the upload, worded as a limit rather than a mark | `what-this-ground-can-tell-you.ts` |
+| **G38** | Open and private, named on the row, only the uploader can move a document, CLOSED not offered to anybody | `documents.service`, `GroundAdminPage` |
+| **G26** | The tab is Context when there is context in it | `GroundAdminPage` |
+| **G39** | A worry reaches two surfaces out of six, its author reads it and nobody else, and a leak detector runs on output | `a-worry-steers-questions-not-findings.ts` |
+| **G27, G28** | Four things on one screen at the join point, purpose before effort, asserted as an ORDER | `InvitePage` |
+
+**Three things it found on the way.**
+
+`participantId: null` in a Prisma where matches every ORPHANED document, and
+documents get orphaned because the participant relation is `onDelete: SetNull`.
+Found by testing the query against the predicate for every combination rather
+than against hand-written expectations. The rule had it right; the query did not.
+
+The flag read could THROW where config was unavailable, which is worse than a
+wrong flag: the ground page would 500 rather than quietly showing the old
+product, the exact opposite of what a kill switch is for. Off by default has to
+include off when we cannot tell.
+
+Attaching a document is already two steps, and the second is the product being
+right: it asks what context the document supports. G24's four rules have
+somewhere to live that already exists.
+
+**Still open in this wave.** G37 and G23 - the context chat that probes for what
+setup did not capture and recommends the materials rather than waiting for
+uploads. It is the largest single piece left in Wave 2 and the one that needs a
+live model in the loop, so it wants its own run rather than a corner of this one.
+
+---
+
 ## Wave 3 — OBJECTIVES AND BASELINE, behind `OBJECTIVES_ENABLED`
 
 G13 to G19 are one body of work. Every one of them is a consequence of the same

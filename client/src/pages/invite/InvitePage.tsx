@@ -183,6 +183,39 @@ export function InvitePage() {
           form about somebody else.
         </div>
 
+        {/* FOUR THINGS, ONE SCREEN. (G28, and G27's ordering rule)
+            A participant gets a link in an email from somebody who did not
+            explain it, and decides in about four seconds whether this is a thing
+            that helps them or a thing being done to them. Everything above
+            answers what it is and what happens to their words. This answers the
+            three questions they actually have next, in the order they have them.
+
+            PURPOSE BEFORE PERFORMANCE (G27): why you specifically comes first.
+            Not what we want from you - what this is for and why your account
+            changes it. Somebody who understands why they matter writes a
+            different check-in from somebody complying with a request, and the
+            ordering is the whole of the difference. */}
+        <div style={{ background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
+          <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
+            <span style={{ fontSize: 13, flexShrink: 0 }}>&rarr;</span>
+            <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6 }}>
+              <b>Why you.</b> You are close enough to this work to know things nobody else in it can see. Without your account, the picture is everybody else's.
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
+            <span style={{ fontSize: 13, flexShrink: 0 }}>&rarr;</span>
+            <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6 }}>
+              <b>What it takes.</b> About ten minutes, in a chat, whenever suits you. It asks questions and you answer in your own words.
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <span style={{ fontSize: 13, flexShrink: 0 }}>&rarr;</span>
+            <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6 }}>
+              <b>What you get back.</b> The same report {preview.initiatorName} gets, at the same moment, plus a short private note meant only for you.
+            </div>
+          </div>
+        </div>
+
         <form onSubmit={(e) => { e.preventDefault(); if (!accept.isPending) accept.mutate() }}>
           <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginBottom: 8, lineHeight: 1.5 }}>
             Your name is optional - the other party will see it on the shared report if you add it.
