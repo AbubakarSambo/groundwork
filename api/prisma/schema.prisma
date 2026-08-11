@@ -471,6 +471,8 @@ model Ground {
   outcomeFeedback          OutcomeFeedback[]
   billingEvents            BillingEvent[]
   documents                GroundDocument[]
+  personObjectives         PersonObjective[]
+  baselineEntries          GroundBaselineEntry[]
   leadContextNotes         LeadContextNote[]
   disclaimerAcknowledgements DisclaimerAcknowledgement[]
   reportActivations          ReportActivation[]
@@ -653,6 +655,7 @@ model GroundParticipant {
   patternDetections PatternDetection[]
   outcomeFeedback   OutcomeFeedback[]
   documents         GroundDocument[]
+  personObjectives  PersonObjective[]
   leadContextNotes  LeadContextNote[]
   resolutionConfirmations ResolutionConfirmation[]
   reportActivations       ReportActivation[]
@@ -1227,6 +1230,60 @@ enum DocumentVisibility {
   OPEN
   CLOSED
   OWN
+}
+
+/// What one person is trying to achieve, in their words. (G13)
+///
+/// A ground holds one success definition and it belongs to the lead, so a hire
+/// with no objective of their own infers one from whatever number was named -
+/// which is exactly what Ground 1's report closed on. This is the missing field.
+///
+/// authoredBy and seenBySubject are not metadata. A proposal nobody has seen is
+/// never read against, and the two columns are what makes that arithmetic rather
+/// than an instruction. See an-objective-belongs-to-a-person.ts.
+model PersonObjective {
+  id            String   @id @default(uuid())
+  groundId      String   @map("ground_id")
+  participantId String   @map("participant_id")
+
+  text          String   @db.Text
+  /// 'lead' or 'self'. Who wrote the CURRENT text.
+  authoredBy    String   @map("authored_by")
+  /// Whether the person it belongs to has seen the current text.
+  seenBySubject Boolean  @default(false) @map("seen_by_subject")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  ground      Ground            @relation(fields: [groundId], references: [id], onDelete: Cascade)
+  participant GroundParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  @@unique([groundId, participantId])
+  @@map("person_objectives")
+}
+
+/// Where this stood on day one, recorded on purpose. (G14)
+///
+/// DELIBERATELY HAS NO updatedAt AND NO EDIT PATH. Somebody will want to correct
+/// it - the first session usually reveals the day-one description was wrong, and
+/// fixing it feels like accuracy. It is the opposite: half the findings this
+/// product makes are the distance between what people believed at the start and
+/// what turned out to be true. Corrected, a baseline becomes a second
+/// description of the present and the arc disappears. A correction goes in as a
+/// new row with its own date.
+model GroundBaselineEntry {
+  id        String   @id @default(uuid())
+  groundId  String   @map("ground_id")
+
+  text      String   @db.Text
+  capturedAtSession Int @map("captured_at_session")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  ground Ground @relation(fields: [groundId], references: [id], onDelete: Cascade)
+
+  @@index([groundId, createdAt])
+  @@map("ground_baseline_entries")
 }
 
 model GroundDocument {

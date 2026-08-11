@@ -54,6 +54,25 @@ export const appConfig = registerAs("app", () => ({
    * not the one that proves the feature works.
    */
   contextEnabled: process.env.CONTEXT_ENABLED === "true",
+
+  /**
+   * OBJECTIVES AND BASELINE. Off by default, same terms as the two above.
+   *
+   * What it gates: an objective per person rather than one per ground, and a
+   * day-one baseline recorded on purpose rather than inferred from session 1.
+   *
+   * WHY THIS ONE NEEDS THE SWITCH MOST. An objective field is a place to put a
+   * target and score somebody against it, which is what every other product in
+   * this category does. The rules that stop it - a proposal nobody has seen is
+   * never read against, an absent objective produces no read at all, and the
+   * only question asked of two objectives is whether they CONNECT - are the
+   * whole design, and if any of them turns out to be wrong in practice the
+   * damage is done to a person rather than to a screen.
+   *
+   * OFF MEANS THE OLD PRODUCT: one success definition belonging to the lead, and
+   * the arc inferred from session 1 as it is today.
+   */
+  objectivesEnabled: process.env.OBJECTIVES_ENABLED === "true",
 }));
 
 export const databaseConfig = registerAs("database", () => ({
