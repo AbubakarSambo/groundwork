@@ -1454,3 +1454,252 @@ a stub. And the product retries once when a field is stripped, naming the field 
 the reason - which is a far better instruction than the original prompt could give,
 because it says what went wrong. Once, not a loop: a model that quotes twice is
 telling us the prompt needs work, and the log is what says so.
+
+# Wave 8 - the live walkthrough of 2026-08-11, after the merge
+
+Hafsah walked the product herself on `main` after PR #130 landed and reported eleven things,
+then asked for a second pass on nine more. This wave is all of it. Everything below was
+reproduced in a real browser against a booted stack unless the row says otherwise, and the
+"evidence" lines are measurements, not impressions.
+
+**Two are already fixed and are recorded here only so the wave is complete.** Everything else
+is open.
+
+**The regression framing is worth keeping.** The nightly was green on both targets when every
+one of these was live. That is not a contradiction, it is the finding: the suites cover the
+paths that were being repaired and not the paths a person actually walks. Wave 8 should end
+with coverage for the flows below, or the next walkthrough finds the next eleven.
+
+## Sizes
+
+`S` under a day. `M` a day or two. `L` more, or needs a decision first. `D` is a decision,
+not an implementation, and is Hafsah's to make.
+
+---
+
+## W8-1 · Sign-up had no door on it - **DONE**
+
+`/auth` opened on a password-only "Sign in" screen. Creating an account has always worked from
+the link view (one email, one link, account exists, no entry chat needed) but the only route to
+that view read "No password? Get a sign-in link instead", which describes signing IN. Meanwhile
+"Get started" on the marketing site pointed at `/start`, the entry chat, so the front page
+offered the anonymous conversation and nothing else.
+
+Fixed: `?mode=signup` opens the create-account view with its own title and copy, "New here?
+Create an account" is on the sign-in screen, and the marketing header button points at sign-up.
+The hero button still goes to the entry chat and says what it is.
+
+**And the three text links were not controls.** `<span onClick>`, so not in the tab order and
+not announced as actionable - on that screen a mouse was the only way to reach account creation.
+All three are real buttons now.
+
+**My error, recorded so it is not repeated.** I read the "no auth before session 1" constraint
+as site-wide and told her the missing sign-up page was correct behaviour. It governs the ENTRY
+CHAT only. Corrected in the memory note.
+
+## W8-2 · The ground made in the entry chat disappeared - **DONE, and it was silent data loss**
+
+`entrySave` holds the whole anonymous session in `pendingSignup` until the address is proved,
+which is right (GW-001). But the upsert's update branch wrote `payload: draft?.payload ?? {}`
+and `history: draft?.history ?? []` unconditionally, so a call with NO draft replaced a real
+stored session with an empty object and an empty array. `/auth`'s "Send link" button calls
+exactly that: `authApi.entrySave(email)`, no draft.
+
+The sequence, reproduced:
+
+1. Finish the entry chat, type your email. Transcript stored, no account yet.
+2. Miss the confirmation (W8-3 - it is 1678px down a 720px panel).
+3. Come back later, ask for a sign-in link with the same address. payload and history blanked.
+4. Open that link. Account created from an empty record. No ground, no transcript.
+
+Which is exactly "I sign in, my ground that I created via the entry chat was not there", and
+W8-3 is what makes step 2 likely. Fixed: the session fields are written only when a session is
+supplied. Bite-checked, 2 of 5 tests red on the old write.
+
+**Not reproducible any other way.** Through the normal path the ground appears correctly in
+both `/api/v1/grounds` and the grounds page. I also briefly read "0 grounds" and nearly
+reported a second critical: that was my own wrong API path (`api/v1` is the prefix).
+
+## W8-3 · You cannot see that the email was sent - **S, and it causes W8-2**
+
+**Evidence.** After pressing "Save my ground", the "We sent a link to ..." confirmation renders
+at **1678px** inside a panel whose viewport is **720px** tall, and nothing scrolls to it. The
+top of the screen is unchanged. Her words: "I didn't know where it went, I forgot I had put my
+email."
+
+**Fix.** Scroll the confirmation into view on success, and put a short line where the button
+was. The panel already knows the address; it just says so a thousand pixels away.
+
+## W8-4 · Sessions: the number shown disagrees with the number used - **S** (decision settled)
+
+**Decision (Hafsah, 2026-08-11): derived wins.** Sessions are computed from the timeline and
+the rhythm and that is correct behaviour:
+
+    sessions = timelineDays / perSession        90 days / 14 = about 6
+
+**So the defect is not the arithmetic, it is that three places disagree.** Measured on one
+ground: the entry chat header said "1 session planned", the created ground says "Session 2 of 6"
+in its header and "1/6 sessions" in the sidebar, and only one session had happened.
+
+**Fix.** One reading of a ground, computed once and shown everywhere: the entry header shows the
+derived number as soon as the timeline and rhythm are known, and "Session N of M" and "N/M"
+agree on what N is. Also settle whether N counts sessions completed or the session now open -
+"Session 2 of 6" after one check-in reads as though a session was skipped.
+
+## W8-5 · Bringing this ground to an end, offered at session 2 of 6 - **S**
+
+**Evidence.** It is the FIRST card on the Overview tab. At "Session 2 of 6", with one
+participant, it offers Mark complete / Continue / Descope / Stop the project, says "Each person
+picks the outcome they think the record supports. The ground closes only when everyone picks the
+same one, and nobody closes it alone", and reports "0 of 1 person has answered".
+
+Three things wrong at once: it is top of the page when it is the last thing that should happen,
+it is offered five sessions early, and the copy describes a group agreement in a ground with one
+person in it.
+
+**Fix.** Show it when the ground is at or near its last session, or when somebody asks to close
+early. Below the summary, not above it. Single-participant copy that does not talk about
+everyone agreeing.
+
+## W8-6 · The Context tab exists, nothing tells you it exists - **S**
+
+She said the ground never told her there was a place for more context and documents. There is:
+the Context tab has upload (PDF, DOCX, JPEG, PNG, CSV, XLSX) and context notes.
+
+**Fix.** Say so at the end of setup and in the ground-ready email. This is the cheapest item in
+the wave and it changes whether the feature is used at all.
+
+## W8-7 · What the Context tab promises against what it does - **M**
+
+**Evidence.** Its main card, "What this ground can tell you", carries **one** line of what it
+can do and **seven** of what it cannot. And it contradicts itself inside those seven: "only one
+person is in this ground" and four lines later "only the two of you are in it".
+
+Her wider point stands and is a design item, not a bug: it does not read as a place to hold a
+conversation, put context in, or attach documents. She wants context sitting next to the
+participant it belongs to, rather than as a page of caveats.
+
+**Fix.** Lead with what the ground CAN tell you. Keep the limits, shorter, below. Fix the
+one-person/two-of-you contradiction. Then the layout question: context per participant.
+
+## W8-8 · Where the check-ins are, and what the tabs are for - **M**
+
+Current order: Overview | Check-ins | Context | Report | Settings | Team board. Left menu lists
+grounds. Her account, which I agree with:
+
+- the check-in board should be the first tab, not the second, and not Overview
+- the left menu should list her check-ins, since that is what she is here to do
+- the top should carry the switch between admin view and check-in overview
+
+**Fix.** Reorder, and move the admin/participant switch to the header. Worth doing with W8-9,
+since "what an admin sees versus what a participant sees" is the same question.
+
+## W8-9 · Participants, admins, and their own grounds - **D then M**
+
+**Evidence.** Two roles exist, `ADMIN` and `MEMBER`. Three ground endpoints are admin-gated. The
+grounds list narrows for non-admins to grounds they initiated or are a participant in.
+
+**What is not settled, and needs a decision before code:**
+
+- A MEMBER is not stopped from creating a ground. They already have an org - whoever invited
+  them - so their ground lands inside that company's organisation. Almost certainly not intended.
+- Does a participant who wants their own ground get their own organisation? If so, at what
+  moment, and what happens to the membership they already had?
+- Do participants see the same ground page as an admin, minus the gated bits, or a different
+  page? Today it is the same page with pieces removed.
+
+## W8-10 · One person cannot belong to two organisations - **L, structural**
+
+**The biggest finding of the pass.** `User.organizationId` is a single column with a single
+relation. There is no join table. So a person invited into a second company's ground cannot be
+in both: they need a second account on a second address, or they collide.
+
+**Why it matters now rather than later.** This is a migration, not a refactor. Every query that
+reads `organizationId` off the user or the JWT assumes one org - the JWT itself carries
+`organizationId` as a scalar. The longer it waits the more code assumes it.
+
+**Decision needed before any work:** is one person in many orgs a real case for this product? If
+it is, the shape is a membership table plus an active-org switch in the session, and the JWT
+changes.
+
+## W8-11 · It never asks who the people in the organisations are - **M**
+
+**Reproduced.** Asked "Who else is on the team with you?" I answered with five organisations
+(Afrimash, Bridge Merchant, Aquaresh, NABG, Bayer). It replied "That sounds like an important
+group of partners", asked one more question, then said "Thank you. That gives me what I need"
+and ended setup. It never asked who the people are.
+
+**The parts that already work, so they are not touched:** the chat and the report treat them
+correctly as organisations throughout, and "People mentioned" extracted only Kennedy, correctly,
+because he was the only human named.
+
+**Her instruction:** listing organisations is fine. It should then ask who is responsible within
+each one, not stop at whichever person happened to be mentioned.
+
+**Fix.** When the involved parties come back as organisations, ask for the person accountable in
+each before setup can complete. Five orgs should produce five invitations, not one.
+
+## W8-12 · Two places to add participants - **S**
+
+**Evidence.** "+ Add them" in the report's People mentioned section, and an email field 550px
+below it, with a note claiming they share one list. Both work; both are on screen at once.
+
+**Fix.** One list, one place to type into. If the report's suggestions stay, they add to the list
+below rather than being a second entrance.
+
+## W8-13 · No confirmation after setup - **S**
+
+No pop-up or panel at the end of the entry chat and setup confirming what was created and what
+happens next. Related to W8-3 but distinct: W8-3 is the email being invisible, this is the whole
+setup completing without acknowledgement.
+
+## W8-14 · No way back to your own check-ins, and the report cannot be edited - **M**
+
+She could not find her past chats and could not edit her report. Correction on the same session
+is built (`startSelfCorrectionSession`, and the report's "This isn't right - correct it"), so the
+gap is reaching it: nothing lists a person's own check-ins as a place to return to.
+
+**Fix.** A list of your check-ins, with the correction route on each. Overlaps W8-8's left menu.
+
+## W8-15 · The report tab is confusing - **M, needs her detail**
+
+Recorded as reported. I have not yet reproduced what specifically misleads, and guessing at a
+redesign would waste the finding. Worth ten minutes with her on the page.
+
+## W8-16 · Response times, measured - **M**
+
+Not the 20 seconds felt in the setup chat. Measured against the booted API:
+
+| Call | Time |
+|---|---|
+| `entry/onboard`, one setup turn | 4.4s |
+| `entry/chat`, one check-in turn | 5.3s to 6.6s |
+| End session, report generation | about 35s |
+
+One model call per turn plus a background classify, so the setup turns are 4 to 6 seconds and
+the long wait is the closing report. **Fix in two parts:** make the 35s honest with progress that
+names what is happening, and look at whether the closing synthesis can start earlier or stream.
+
+## W8-17 · Participant check-in asked for a password - **NOT YET REPRODUCED**
+
+She could not check in as a participant on a ground she was added to: it asked her to set up a
+password. The invite email itself is right - subject "X invited you to check in on: Y", body
+explains a short private check-in of about ten minutes, that nobody reads what you write, that
+honesty is wanted rather than balance, and that declining is never held against you.
+
+**Next step, not a fix:** walk a real invite end to end (add a participant, read the mail, open
+the join link in a clean context) and find where the password gate appears. This is the highest
+of the open items, since it stops a participant contributing at all.
+
+## W8-18 · Things reported that I could not reproduce - recorded honestly
+
+- **The chat dropping mid-conversation.** I saw a reply cut off mid-word and thought I had it;
+  it was still streaming and completed correctly. Needs the conditions she hit.
+- **"Describe the situation in a random box."** Not yet located.
+
+## What I would do first
+
+W8-17, because a blocked participant is the worst state in the list and it is still only her
+report. Then W8-3 and W8-13, which are hours and remove the cause of W8-2. Then W8-11 and W8-6.
+W8-9 and W8-10 need decisions before any code, and W8-10 should be decided soon whether or not
+it is built soon.
