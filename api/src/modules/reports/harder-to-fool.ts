@@ -39,6 +39,15 @@ export interface AccountShape {
   sessions: number;
   /** How many of their statements anybody else's account also touches. */
   corroborated: number;
+  /**
+   * How many of their statements anybody else COULD have touched.
+   *
+   * Targets are excluded upstream, because only the person who set one can state it.
+   * Without this number a lead who correctly spent the ground stating targets is
+   * indistinguishable from somebody whose account nobody could reach - opposite
+   * situations, same zero.
+   */
+  corroborable?: number;
   /** How many statements carry a checkable specific at all. */
   specifics: number;
   /** Of those, how many repeat a specific already given in an earlier session. */
@@ -67,7 +76,15 @@ export function softSpots(a: AccountShape): { spot: SoftSpot; line: string }[] {
   // A whole account nobody else's account reaches. Usually means the others
   // simply worked elsewhere, which is exactly why this lowers confidence rather
   // than raising suspicion.
-  if (a.sessions >= 2 && a.corroborated === 0) {
+  /**
+   * TWO CORROBORABLE STATEMENTS BEFORE THIS CAN FIRE, and the reason is a probe
+   * rather than a theory: a lead stating targets across five sessions came back
+   * with corroborated: 0 and got this spot, which lowered confidence in the picture
+   * because they had done their job. Where the number is absent, the old behaviour
+   * stands - callers written before this existed are not silently changed.
+   */
+  const couldHaveBeenChecked = a.corroborable ?? Infinity;
+  if (a.sessions >= 2 && a.corroborated === 0 && couldHaveBeenChecked >= 2) {
     out.push({
       spot: 'nothing else touches it',
       line: 'Nothing else in this ground touches any part of this account. That does not make it wrong, it makes it unchecked: it rests entirely on one person having described it accurately.',

@@ -68,6 +68,16 @@ export interface EntryRow {
   sessionNumber: number;
 }
 
+/**
+ * Entry types only their author can state, so corroboration is the wrong question.
+ *
+ * SUCCESS_DEFINITION is the target somebody was given or set for themselves.
+ * TIMEFRAME is the when of it. Both are acts of communication rather than
+ * descriptions of events, and asking a colleague's account to confirm one is asking
+ * the wrong thing - the answer is always no, and the no reads as a weakness.
+ */
+export const ONLY_ONE_PERSON_CAN_SAY_IT = ['SUCCESS_DEFINITION', 'TIMEFRAME'];
+
 export interface DocumentRow {
   participantId: string | null;
   name: string;
@@ -87,7 +97,23 @@ export function accountShapeFor(
   const mine = entries.filter((e) => e.participantId === participantId);
   const theirs = entries.filter((e) => e.participantId !== participantId);
 
-  const corroborated = mine.filter((m) => theirs.some((t) => touches(m.text, t.text))).length;
+  /**
+   * YOU CANNOT BE MARKED UNCHECKED ON A STATEMENT NOBODY ELSE COULD CHECK.
+   *
+   * Probed after Hafsah pointed out the same mistake three times: a lead who does
+   * exactly the right thing - states the target, restates it when priorities move -
+   * came back with `corroborated: 0` and a soft spot saying their whole account
+   * rests on one person having described it accurately. It lowered confidence in
+   * the picture BECAUSE they had done their job.
+   *
+   * A target is uncorroborable by design. The lead is the only possible source for
+   * what the lead asked of somebody, which is what makes it a target rather than a
+   * shared observation - so it must not sit in the denominator of a corroboration
+   * test. What CAN be corroborated is a description of what happened, and that is
+   * what the test is for.
+   */
+  const corroborable = mine.filter((m) => !ONLY_ONE_PERSON_CAN_SAY_IT.includes(m.type));
+  const corroborated = corroborable.filter((m) => theirs.some((t) => touches(m.text, t.text))).length;
 
   // A specific is something the engine already scored as checkable. Reusing that
   // read rather than inventing a second one, because two definitions of
@@ -118,6 +144,13 @@ export function accountShapeFor(
   return {
     sessions,
     corroborated,
+    /**
+     * How many of their statements anybody COULD have touched. Carried out of here
+     * so softSpots can tell "nobody corroborated a corroborable account" from
+     * "this person only stated targets", which are opposite situations that a bare
+     * zero cannot distinguish.
+     */
+    corroborable: corroborable.length,
     specifics: specifics.length,
     repeatedSpecifics,
     documents: myDocs.length,

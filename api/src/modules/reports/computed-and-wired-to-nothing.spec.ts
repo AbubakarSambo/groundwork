@@ -98,10 +98,53 @@ describe('the shape of one account, from rows', () => {
     expect(shape.documentsReferredTo).toBe(1);
   });
 
+  it('does not mark a lead unchecked for stating targets nobody else can state', () => {
+    /**
+     * THE FOURTH TIME IN ONE SITTING I TREATED THE LEAD'S INPUT AS A LIABILITY, and
+     * this one was found by probing rather than by reading. A lead who does exactly
+     * the right thing - states the target, restates it when priorities move - came
+     * back with corroborated: 0 and a soft spot saying their whole account rested on
+     * one person having described it accurately. Confidence in the picture went DOWN
+     * because they had done their job.
+     *
+     * A target is uncorroborable by design. Asking a colleague's account to confirm
+     * what the lead asked of somebody is the wrong question, and the no reads as a
+     * weakness.
+     */
+    const leadEntries = [
+      e('lead', 'SUCCESS_DEFINITION', '[VERIFIABILITY:HIGH] own one client relationship end to end by month three', 1),
+      e('lead', 'SUCCESS_DEFINITION', '[VERIFIABILITY:HIGH] the handover to support is what matters this month', 5),
+      e('lead', 'COMMITMENT', '[VERIFIABILITY:HIGH] I will free up the Anvil account for him by week six', 5),
+      e('hire', 'COMMITMENT', '[VERIFIABILITY:HIGH] I closed forty tickets and drafted the runbook', 5),
+    ];
+    const shape = accountShapeFor('lead', leadEntries, [], 5);
+    expect(shape.corroborated).toBe(0);
+    // One corroborable statement, so there is nothing to conclude from the zero.
+    expect(shape.corroborable).toBe(1);
+    expect(softSpots(shape)).toEqual([]);
+  });
+
+  it('but still notices a real account nothing touched', () => {
+    // The other half: this must not become an excuse. Somebody describing events
+    // across sessions that nobody else's account reaches is exactly what the spot is
+    // for, and targets are the only thing exempted.
+    const alone = [
+      e('p', 'COMMITMENT', 'I rebuilt the pricing sheet and sent it to finance', 2),
+      e('p', 'WORRY', 'The Anvil renewal has no owner since the reorganisation', 3),
+      e('other', 'COMMITMENT', 'I have been running the support rota all month', 3),
+    ];
+    const shape = accountShapeFor('p', alone, [], 3);
+    expect(shape.corroborable).toBe(2);
+    expect(softSpots(shape)[0].spot).toBe('nothing else touches it');
+  });
+
   it('and the shape produces a soft spot that reads about the record', () => {
     // THE SEAM. The arithmetic being right is half of it; the sentence it
     // produces is the half a person reads.
-    const lonely = accountShapeFor('nobody', [e('nobody', 'WORRY', 'The audit trail is incomplete somewhere', 2)], [], 3);
+    const lonely = accountShapeFor('nobody', [
+      e('nobody', 'WORRY', 'The audit trail is incomplete somewhere', 2),
+      e('nobody', 'COMMITMENT', 'I finished the reconciliation myself on Friday', 3),
+    ], [], 3);
     const [spot] = softSpots({ ...lonely, sessions: 3 });
     expect(spot.spot).toBe('nothing else touches it');
     expect(spot.line).toMatch(/does not make it wrong, it makes it unchecked/);
