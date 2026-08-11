@@ -104,6 +104,34 @@ class Stack:
                 for line in txt.splitlines()) + "\n")
 
         api_env = {"DATABASE_URL": self.db_url, "NODE_ENV": "development", "PORT": "3000"}
+
+        # GENERATE THE PRISMA CLIENT FROM *THIS* CHECKOUT'S SCHEMA, ALWAYS.
+        #
+        # This step did not exist, and it cost a whole overnight run: main aborted
+        # with "API never became healthy" because it would not compile, on two
+        # references to GroundParticipant.foundingIntent that main's own schema
+        # declares. The field was missing from the GENERATED client, not from the
+        # schema.
+        #
+        # Two things combined. `npm ci` generates the client as a postinstall, so
+        # the client is whatever the schema said at install time - and with the
+        # lockfile unchanged, a cached node_modules restores a client older than the
+        # newest migration. Then the block above SYMLINKS the local node_modules
+        # into the main worktree when the lockfiles match, so both targets share one
+        # generated client and neither builds its own.
+        #
+        # The bite is asymmetric, which is why it read as "main is broken": a stale
+        # client only fails a target whose SOURCE uses the missing field. This branch
+        # declares foundingIntent and never reads it, so it compiled; main reads it,
+        # so it did not. Nothing was wrong with main.
+        #
+        # Generating here, per target, immediately before boot, is the only version
+        # that survives a shared node_modules: the targets boot sequentially, so each
+        # one regenerates from its own schema and cannot inherit the other's.
+        code, out = sh(["npx", "prisma", "generate"], cwd=api_dir, env=api_env, timeout=300)
+        if code != 0:
+            return [f"prisma generate failed: {out[-300:]}"]
+
         code, out = sh(["npx", "prisma", "migrate", "deploy"], cwd=api_dir, env=api_env, timeout=300)
         if code != 0:
             return [f"prisma migrate deploy failed: {out[-300:]}"]
