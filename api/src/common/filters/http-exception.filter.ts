@@ -40,6 +40,27 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       );
     }
 
+    /**
+     * A PERSON READ "ThrottlerException: Too Many Requests" ON THE SIGN-IN
+     * SCREEN.
+     *
+     * Caught on a live run: the rate limiter fires, Nest puts its own exception
+     * CLASS NAME in the message, the filter passes it through untouched and the
+     * sign-in page renders whatever it is given. So the one moment somebody is
+     * already stuck - they cannot get in - the product answers in the vocabulary
+     * of its own stack trace.
+     *
+     * Rewritten here rather than on the screen, because every screen that shows
+     * an error would otherwise need the same fix, and the next one added would
+     * not have it.
+     */
+    if (status === HttpStatus.TOO_MANY_REQUESTS) {
+      message = 'Too many tries in a short time. Wait about a minute and try again.';
+    } else if (typeof message === 'string' && /^[A-Z]\w*(Exception|Error):\s/.test(message)) {
+      // Anything else that leaks a class name. Same fault, different exception.
+      message = message.replace(/^[A-Z]\w*(Exception|Error):\s*/, '');
+    }
+
     response.status(status).json({
       success: false,
       statusCode: status,

@@ -1354,3 +1354,12 @@ than the record supports, and this is the engine doing it in the first session o
 the first flow anybody meets. **W8 is next to it**, because the two are the same failure from
 opposite ends: the engine adding what nobody said, and the product accepting what
 somebody said without asking what it means.
+
+---
+
+## Found by the run itself, 2026-08-11
+
+| # | Where | What happened | Why it is wrong | Size |
+|---|---|---|---|---|
+| **R1** | Sign-in screen | The form showed **"ThrottlerException: Too Many Requests"** in red, under the button | Nest puts its own exception CLASS NAME in the message, the global filter passed it through untouched, and the sign-in page renders whatever it is handed. At the one moment somebody is already stuck - they cannot get in - the product answers in the vocabulary of its own stack trace. Fixed in the filter, not on the screen, because otherwise every screen that shows an error needs the same fix and the next one added will not have it. It now says what to do: wait about a minute. | **S, done** |
+| **R2** | The journey itself | A twelve-session run signs two people in and out about twenty-four times inside an hour, and trips the limiter around session eleven | The limiter is right, and this is not. Waited out rather than raised or disabled: turning it down for tests would mean the journey no longer runs against the product that ships - and R1 was only visible because the run hit it. | **S, done** |

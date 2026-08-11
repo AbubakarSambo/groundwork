@@ -28,8 +28,33 @@ export async function signIn(page: Page, email: string, password: string): Promi
   // nothing and the run dies on a blank sign-in form.
   await page.getByPlaceholder(/you@company/i).fill(email);
   await page.getByPlaceholder('••••••••').fill(password);
-  await page.getByRole('button', { name: /^Sign in$/i }).click();
-  await page.waitForURL(/\/grounds|\/$/, { timeout: 60_000 });
+
+  /**
+   * THE RATE LIMITER IS REAL, AND A TWELVE-SESSION JOURNEY TRIPS IT.
+   *
+   * A run died here at session eleven, forty minutes in, on the sign-in form
+   * showing "ThrottlerException: Too Many Requests" - because this journey signs
+   * two people in and out roughly twenty-four times inside an hour, which no
+   * real person does and the limiter is right to refuse.
+   *
+   * So the limit is waited out rather than raised or switched off. Turning it
+   * down for tests would mean the journey no longer runs against the product
+   * that ships, and this is exactly the sort of thing worth finding: the screen
+   * it produced was a bug, and it was only visible because the run hit it.
+   */
+  for (let attempt = 0; attempt < 4; attempt++) {
+    await page.getByRole('button', { name: /^Sign in$/i }).click();
+    try {
+      await page.waitForURL(/\/grounds|\/$/, { timeout: 20_000 });
+      return;
+    } catch {
+      const rateLimited = await page.getByText(/too many/i).count();
+      if (!rateLimited) throw new Error(`sign-in did not go through for ${email}`);
+      console.log('[note] the rate limiter refused a sign-in. Waiting it out, as a person would.');
+      await page.waitForTimeout(65_000);
+    }
+  }
+  throw new Error(`sign-in stayed rate limited for ${email}`);
 }
 
 /**
