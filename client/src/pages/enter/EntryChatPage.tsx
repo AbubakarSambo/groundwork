@@ -2106,7 +2106,16 @@ export function EntryChatPage() {
                   ) : (
                     <div style={{ marginTop: 10 }}>
                       <div style={{ fontSize: 12, color: 'rgba(255,255,255,.75)', marginBottom: 6 }}>
-                        What did we get wrong? Say it plainly - we may ask a follow-up before the report updates.
+                        {/*
+                          W8. "We may ask a follow-up" reads like a warning that
+                          something might go wrong, and next to a button marked
+                          "Send correction" it reads as one-shot - which is what
+                          it looked like to Hafsah, on a flow where the follow-up
+                          loop is in fact wired. Saying plainly that this is a
+                          conversation is the difference between "the deadline is
+                          wrong" and a correction the record can act on.
+                        */}
+                        What did we get wrong? Say it plainly. This is a conversation, not a form - we will usually ask one thing back before the report changes, because "the deadline is wrong" does not say what the deadline is.
                       </div>
                       {correctionExchange.length > 0 && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 8 }}>
@@ -2144,7 +2153,7 @@ export function EntryChatPage() {
                           disabled={!correctionText.trim() || correctionLoading || generatingReport}
                           style={{ padding: '7px 14px', borderRadius: 7, background: '#5DCAA5', color: '#0A1628', fontSize: 12, fontWeight: 700, border: 'none', cursor: !correctionText.trim() || correctionLoading || generatingReport ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: !correctionText.trim() || correctionLoading || generatingReport ? 0.6 : 1 }}
                         >
-                          {generatingReport ? 'Redoing your report...' : correctionLoading ? 'Sending...' : correctionExchange.length > 0 ? 'Send' : 'Send correction'}
+                          {generatingReport ? 'Redoing your report...' : correctionLoading ? 'Sending...' : correctionExchange.length > 0 ? 'Send' : 'Start'}
                         </button>
                         {correctionExchange.length > 0 && (
                           <button
