@@ -70,6 +70,25 @@ export function AuthPage() {
    */
   const mode = searchParams.get('mode')
   const isSignup = mode === 'signup'
+
+  /**
+   * WHERE TO GO AFTER SIGNING IN.
+   *
+   * PricingPage sends people to `/auth?next=/pricing`, and this file read only
+   * `mode` - the string `next` appeared nowhere. So somebody who clicked Subscribe
+   * on a tier, signed in, and expected to land back on the thing they were buying
+   * was put on the grounds list with no explanation and no way back to their tier.
+   *
+   * Only same-origin paths are honoured. An absolute URL in a query parameter is
+   * how an open redirect gets built, and this one is reachable by anybody with a
+   * link.
+   */
+  const nextPath = (() => {
+    const raw = searchParams.get('next')
+    if (!raw) return null
+    if (!raw.startsWith('/') || raw.startsWith('//')) return null
+    return raw
+  })()
   const defaultView: View = mode === 'member' || isSignup ? 'link' : 'password'
 
   const [view, setView] = useState<View>(defaultView)
@@ -104,7 +123,7 @@ export function AuthPage() {
       // App.tsx). There is no /home route, so signing in used to land every
       // single user on "There is nothing at this address" - the first thing
       // they saw after giving us their password.
-      navigate('/')
+      navigate(nextPath ?? '/')
     },
     onError: (err: any) => {
       const msg = err?.response?.data?.message

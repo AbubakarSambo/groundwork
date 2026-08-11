@@ -132,7 +132,7 @@ export function PricingPage() {
               {PLAN_DESCRIPTIONS.ENTERPRISE}
             </p>
           </div>
-          <a href="mailto:hello@groundwork.so" style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-accent)', background: 'none', border: '1px solid var(--gw-accent)', borderRadius: 9, padding: '10px 20px', textDecoration: 'none', whiteSpace: 'nowrap' }}>
+          <a href="mailto:hello@myground.work" style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-accent)', background: 'none', border: '1px solid var(--gw-accent)', borderRadius: 9, padding: '10px 20px', textDecoration: 'none', whiteSpace: 'nowrap' }}>
             Contact us
           </a>
         </div>
