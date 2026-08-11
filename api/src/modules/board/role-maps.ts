@@ -40,6 +40,20 @@ export enum RoleFunction {
   CEO = 'CEO',
   MARKETING = 'MARKETING',
   FINANCE = 'FINANCE',
+  /**
+   * THE TENTH, ADDED BECAUSE A LIVE RUN COULD NOT SEE THE MOST COMMON JUNIOR HIRE.
+   *
+   * A twelve-session ground about a new hire clearing a support queue and shadowing
+   * client accounts scored ZERO on all nine functions. Detection was behaving
+   * correctly - its signals were tightened after an entire software team came out as
+   * SALES at 0.78 - so the gap was not a loose regex. There simply was no map for
+   * the work.
+   *
+   * The consequence was silent and total: no role-tuned probes and no coaching, for
+   * everybody doing support or customer-facing work, which is a very large number of
+   * the people this product is for.
+   */
+  SUPPORT = 'SUPPORT',
 }
 
 /**
@@ -490,6 +504,70 @@ export const ROLE_MAPS: Record<RoleFunction, RoleMap> = {
       'Stays with a people problem until it is genuinely resolved',
     ],
   },
+
+  /**
+   * SUPPORT AND CUSTOMER-FACING WORK.
+   *
+   * The function whose failure mode is the opposite of sales: not avoidance but
+   * absorption. A good support person makes problems disappear, and the better they
+   * are at it the less anybody can see - which is why the SUCCESS half of the signals
+   * here matters more than in any other map, and why protectAgainst is about being
+   * read as low-value rather than being read as failing.
+   */
+  [RoleFunction.SUPPORT]: {
+    fn: RoleFunction.SUPPORT,
+    label: 'Support and customer-facing work',
+    rootFailure:
+      'Absorption without a trace. Everything gets handled, nothing gets fixed at the cause, and the person becomes the fix.',
+    rootSuccess:
+      'Handles what is in front of them and makes the next one unnecessary. The queue gets shorter because the causes do.',
+    onTrackMeans:
+      'Named customers unblocked, the repeated problem traced to a cause somebody else can fix, and what was learned written where the team can find it.',
+    goingWrongLooksLike:
+      'A very full week, a queue the same length as last week, and nothing anybody else could pick up.',
+    neutralProbes: [
+      'Which of those came back a second time, and what was the underlying thing?',
+      'Who else could have handled that one, and what would they have needed?',
+      'What did you learn this week that is not written down anywhere?',
+      'Which customer is still waiting, and on what?',
+    ],
+    protectAgainst:
+      'Support work is invisible when it goes well: the reward for solving something cleanly is that nobody hears about it. So this person is routinely read as low-value by people counting outputs, and their real contribution - the escalations that never happened - leaves no record unless somebody asks for it.',
+    /**
+     * INVISIBILITY, not a mode called absorption - there is no such mode, and
+     * reaching for one I had imagined was worth catching: the seven universal modes
+     * are fixed, and support's failure expresses itself as work nobody can see
+     * (INVISIBILITY) and work that belongs to nobody (DIFFUSION).
+     */
+    commonModes: [UniversalMode.INVISIBILITY, UniversalMode.DIFFUSION],
+    // Paired by index, so the coach always knows what it is coaching TOWARD.
+    // Written to absorption rather than avoidance: nearly every line here is
+    // somebody doing too much of the right thing in the wrong place.
+    failureSignals: [
+      'Fixes the same kind of problem repeatedly without naming the cause',
+      'Handles a ticket that belonged to somebody else rather than routing it',
+      'Keeps the workaround in their head instead of writing it down',
+      'Absorbs an angry customer and tells nobody it happened',
+      'Lets a customer wait while working on something easier to finish',
+      'Escalates with the customer\'s words and no read of what is actually wrong',
+      'Closes a ticket the customer has not agreed is resolved',
+      'Works through the queue in the order it arrived rather than by what is at stake',
+      'Never asks the team that caused the problem to fix it',
+      'Says the week was fine when it was survived',
+    ],
+    successSignals: [
+      'Traces the repeat to a cause and hands it to whoever can remove it',
+      'Routes what is not theirs, with enough context that it does not bounce back',
+      'Writes the workaround down where the next person will find it',
+      'Says a customer was angry, and what it was about, without dressing it up',
+      'Tells the customer who is waiting where they stand, before they ask',
+      'Escalates with a read: what is broken, who is affected, what they tried',
+      'Closes it when the customer says it is done',
+      'Takes the one that costs the most first, and says why the others waited',
+      'Goes back to the team that caused it and asks for the fix',
+      'Says plainly when a week was survived rather than worked',
+    ],
+  },
 };
 
 /**
@@ -541,6 +619,23 @@ export function priorFunctionFromRole(
   }
   if (/\b(product manager|product owner|product lead|head of product|product)\b/.test(t)) {
     return { fn: RoleFunction.PRODUCT, confidence: 0.4 };
+  }
+  /**
+   * SUPPORT TITLES GO FIRST, and a probe is why rather than a theory.
+   *
+   * With this branch after the engineer one, "Support engineer, new hire" matched
+   * \bengineer\b and resolved to ENGINEERING - so on the very record that prompted
+   * this map, the stated role DISAGREED with the account and knocked 0.1 off the
+   * confidence. The title was right, the account was right, and the ordering made
+   * them argue.
+   *
+   * Same trap the file already warns about for "project manager" and "product
+   * manager". Support titles are nearly all compounds that another branch claims:
+   * support engineer, customer success manager, service desk analyst, technical
+   * support lead, account manager.
+   */
+  if (/\b(support|customer success|customer service|service desk|help ?desk|technical support|csm|customer experience|account manager)\b/.test(t)) {
+    return { fn: RoleFunction.SUPPORT, confidence: 0.4 };
   }
   if (/\b(engineer|engineering|developer|dev|technical lead|tech lead|cto|architect)\b/.test(t)) {
     return { fn: RoleFunction.ENGINEERING, confidence: 0.4 };

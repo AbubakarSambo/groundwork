@@ -43,6 +43,22 @@ const FUNCTION_SIGNALS: Record<RoleFunction, RegExp[]> = {
     /\b(ship|shipped|deploy|merge[ds]?|refactor|bug|regression|staging|production|test[s]?|api|migration|infra)\b/i,
     /\b(pull request|code review|latency|build|release)\b/i,
   ],
+  /**
+   * SUPPORT SIGNALS, AND THE REASON THEY ARE NOT JUST "ticket".
+   *
+   * A twelve-session record about clearing a support queue scored zero on all nine
+   * functions, so this list exists. But the lesson that made SALES strict applies
+   * here too: `account` is a bank account and an account of events, `case` is a
+   * legal case and a use case, `customer` appears in every commercial conversation.
+   * So the words are the ones only this work uses, or are paired with an object that
+   * makes them unambiguous.
+   */
+  [RoleFunction.SUPPORT]: [
+    /\b(ticket[s]?|queue|triage[ds]?|escalation|sla|first response|resolution time)\b/i,
+    /\b(customer|client) (?:waiting|complained|reported|raised|chased|churn)\b/i,
+    /\b(workaround|known issue|root cause|repeat (?:issue|problem)|came back again)\b/i,
+    /\b(help ?desk|service desk|support (?:rota|inbox|queue|request))\b/i,
+  ],
   [RoleFunction.OPS]: [
     /\b(process|handoff|onboard(ing)?|payroll|policy|compliance|vendor|supplier|rota|incident)\b/i,
     /\b(hiring|exit|performance conversation|contract admin)\b/i,
