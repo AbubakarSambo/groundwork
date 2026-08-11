@@ -214,8 +214,32 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
    the shorter ones carried two thousand pixels of empty white underneath. You
    scroll, and scroll, and nothing is there. That is what "I cannot get to the
    other pages" actually was. */
-.l-cases{display:flex;align-items:flex-start;gap:24px;overflow-x:auto;scroll-snap-type:x mandatory;scroll-behavior:smooth;padding:2px 2px 10px;margin:0 -2px;-webkit-overflow-scrolling:touch}
+/* overflow-y:hidden IS THE FIX, AND overflow-x:auto IS WHY IT WAS NEEDED.
+   A box with overflow-x:auto and a visible y axis has its y coerced to auto by CSS -
+   so this strip was a VERTICAL scroll container, and with its height animated by the
+   script below it swallowed the wheel. Measured on the live site: six wheel ticks
+   asking for 1200px during the .25s height transition moved the page 0px, while the
+   document shrank 7490 -> 6118 underneath. "The vertical scroll acts funny."
+   hidden is a legal partner for auto and is not coerced, so the y axis stops being a
+   scroll container and the wheel goes to the page where it belongs. The script sizes
+   the strip to the active case, so there is nothing to clip. */
+.l-cases{display:flex;align-items:flex-start;gap:24px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scroll-behavior:smooth;padding:2px 2px 10px;margin:0 -2px;-webkit-overflow-scrolling:touch}
 .l-case{flex:0 0 100%;min-width:0;scroll-snap-align:start}
+/* ON A PHONE THE TABS ARE THE WHOLE NAVIGATION, AND THE STRIP GOES AWAY.
+   A horizontal scroll-snap container inside a vertically scrolling page competes for
+   the same downward drag on touch: a finger moving down over a report can be claimed
+   by the strip instead of the page, which is the hook felt when scrolling downwards.
+   A mouse wheel and a finger are not the same instrument, so this is a touch-width
+   decision rather than a global one - the swipe stays where a pointer is precise and
+   goes where it fights the page. Nothing is lost: the four tabs sit directly above
+   and already switch cases.
+   :where() keeps this at zero specificity so the script's inline height, which is
+   set on the strip, is not fighting a selector. */
+@media (max-width: 767px) {
+  .l-cases{display:block;overflow-x:visible;scroll-snap-type:none;height:auto !important}
+  .l-case{display:none}
+  .l-case.is-on{display:block}
+}
 .l-cases::-webkit-scrollbar{height:8px}
 .l-cases::-webkit-scrollbar-thumb{background:#D8D5CF;border-radius:8px}
 .l-case-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px}
@@ -882,7 +906,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
       <div style="font-size:11.5px;color:var(--gw-muted,#9B9590);margin-bottom:14px">Pick a scenario, or scroll sideways.</div>
 
       <div class="l-cases" id="l-cases">
-        <div class="l-case">
+        <div class="l-case is-on">
       <h2 class="l-sec-h2" style="margin-bottom:10px">Every pipeline review said the quarter was on track.</h2>
       <p class="l-prose" style="font-size:15px;color:#4A5568;line-height:1.8;margin-bottom:8px">Eight people on the same sales team gave their own account, separately. Here is what came back.</p>
       <!-- THIS SAID "IT NEVER QUOTES ANYONE" AND THAT IS NOT TRUE.
@@ -1609,11 +1633,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
           if (!row) return;
           var tabs = Array.prototype.slice.call(document.querySelectorAll('.l-case-tab'));
           var cases = Array.prototype.slice.call(row.children);
+          /* The tab does both, because the two layouts need different things: under
+             768px the strip is a plain block and is-on decides what shows; above it
+             the strip scrolls and is-on is inert. One handler, no width checks in JS
+             - the CSS decides which half matters. */
+          function markOn(i) {
+            cases.forEach(function (c, n) { c.classList.toggle('is-on', n === i); });
+          }
           tabs.forEach(function (t, i) {
             t.addEventListener('click', function () {
+              markOn(i);
               row.scrollTo({ left: cases[i].offsetLeft - row.offsetLeft, behavior: 'smooth' });
             });
           });
+          markOn(0);
           /**
            * THE ROW'S HEIGHT HAS TO FOLLOW THE CASE YOU ARE LOOKING AT.
            *
@@ -1637,11 +1670,25 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
               if (d < best) { best = d; nearest = i; }
             });
             tabs.forEach(function (t, i) { t.setAttribute('aria-selected', String(i === nearest)); });
-            row.style.height = cases[nearest].getBoundingClientRect().height + 'px';
+            /* Plus the horizontal scrollbar's own height. With overflow-y:hidden a
+               strip sized to the case exactly would clip the last few pixels of the
+               report behind the scrollbar. */
+            /* Only where the strip is actually a strip. Under 768px it is a block
+               with height:auto and one visible case, so an explicit height would put
+               the empty space straight back. */
+            if (window.matchMedia('(min-width: 768px)').matches) {
+              var scrollbar = row.offsetHeight - row.clientHeight;
+              row.style.height = (cases[nearest].getBoundingClientRect().height + scrollbar) + 'px';
+            } else {
+              row.style.height = '';
+            }
             return nearest;
           }
 
-          row.style.transition = 'height .25s ease';
+          /* NO HEIGHT TRANSITION. It animated the page's total height for 250ms, and
+             a wheel inside that window did nothing at all - the layout was moving
+             under the browser while it tried to scroll. A switch that is instant has
+             no such window, and reads as a switch rather than a slide. */
           // Images and fonts settle after first paint, so measure once more.
           fitHeight();
           window.addEventListener('load', fitHeight);
