@@ -2196,3 +2196,128 @@ W8-39 goes to the top of the wave with W8-26 and W8-25: it is hours of work, it 
 path, and a dead money button is worse than a missing one because the person believes they tried.
 W8-40 and W8-41 belong in the same sitting - all three are the purchase journey, and none is
 bigger than an hour.
+
+---
+
+# Wave 8, sixth pass - what merges, what clarifies, and the design system already written
+
+Thirty screens and 38 routes reviewed together rather than one at a time. Three questions: what
+can be merged, how the product gets clearer, and how to spread the board's design language.
+
+## W8-44 · The design system exists and is trapped in one file - **M, and it is the unlock**
+
+`BoardPage.tsx` defines its own component vocabulary, at the bottom of the file, used nowhere
+else in the product:
+
+    Zone   Sec   Card   Row   Pill   btn   miniBtn   btnGhost   td
+
+That is why the board is the best page: **it is the only page built from components instead of
+inline styles.** Its tokens, read off the source:
+
+| Element | Spec |
+|---|---|
+| Section label | 12.5px, uppercase, `letterSpacing: .4px`, `--gw-muted`, weight 700 |
+| Stat value | **Georgia serif**, 24px, `lineHeight: 1`, 5px under its label |
+| Row value | Georgia serif, 17px, `--gw-navy` |
+| Zone | titled band with a rule, grouping sections |
+
+The serif numeral against the sans label is the whole reason the glance row reads instantly. No
+other page in the product uses Georgia at all.
+
+**The move:** lift those nine into `components/gw/` and rebuild the other pages from them. That is
+not a redesign, it is extraction. Every page then inherits the hierarchy for free, and "make it
+look like the board" becomes an import rather than a judgement call.
+
+## W8-45 · There are two AppShells, one of them dead - **S**
+
+- `components/gw/AppShell.tsx`, 689 lines, wraps **every route** in `App.tsx:101`.
+- `components/layout/AppShell.tsx`, 311 lines, mounted nowhere. Its own comment says so.
+
+**And the live one wraps routes it should not.** It renders the signed-in left rail with the
+person's ground list on `/join`, `/set-password`, `/pricing`, `/enter`, `/setup` and the 404 -
+pages meant for somebody arriving with no account, or with somebody else's. A stranger following
+an invite link sees a sidebar of grounds.
+
+Correcting my own earlier note (W8-28, W8-38): the shell IS shared. The five chrome variants come
+from each page hand-rolling **its own header inside** the shared shell, not from five shells. The
+fix is one header component with slots, and making the shell conditional on whether the person is
+signed in.
+
+## W8-46 · Pages that should merge - **38 routes to about 24**
+
+### The ground: four routes into one page
+
+| Today | Note |
+|---|---|
+| `/grounds/:id` | admin tabs, including a Report tab and a Team board tab |
+| `/grounds/:id/p` | participant tabs, unlinked (W8-19) |
+| `/grounds/:id/report` | the same content as the Report **tab** |
+| `/grounds/:id/board` | the same content as the Team board **tab** |
+
+The report and the board exist twice each, once as a tab and once as a route. One ground page, one
+tab set, a person/admin switch in the header (W8-31, W8-32). The tab is the canonical place; the
+routes become deep links to a tab.
+
+### The same component on two routes
+
+`/chat/:checkInId` and `/checkin/:checkInId` both render `ChatPage`. One of them should go, and
+`/checkin/:id` is the one the invite and join flows use, so keep that name.
+
+### Arriving by token
+
+`/invite` and `/join` do the same job: resolve a token, put the person into their check-in. Two
+pages, two token kinds, one purpose. One page that accepts either token, with one missing-token
+state (W8-36).
+
+### Passwords
+
+`/set-password` and `/reset-password` are the same form with different reasons, and `/auth/sent`
+is a **state** of `/auth`, not a place. Three routes into one auth page with modes, plus one
+password page.
+
+### People and grounds
+
+`/org/members` (accounts) and `/org/roster` (grounds, titled "Teams") - the roster's ground list
+duplicates `/grounds` outright. Keep one people page; the roster's per-ground metadata becomes a
+column on the grounds list.
+
+### Money
+
+`/pricing` and `/billing` both render the tier cards. One component, shown publicly at `/pricing`
+and inside the account at `/billing`, so the tiers can never disagree again (W8-25).
+
+### Fold away entirely
+
+- `/welcome` - a route for one button. Fold into where it is reached from.
+- `/profile` - admits it is not built (W8, fourth pass). Fold into `/settings`, which already
+  shows the profile block, and take it out of the rail until it is real.
+- `/admin` and `/admin/dashboard` - two pages for one job.
+- `/enter`, `/pin`, `/setup` - the orphaned org-code model, pending the decision in W8-35.
+
+## W8-47 · How the product gets clearer - **the four moves that do most of it**
+
+1. **One noun per thing, everywhere.** Today: People/Team members, Roster/Teams, contributors/
+   participants, check-in/session. Pick one word for each and use it in the rail, the page title
+   and the copy. This is the cheapest clarity in the product and it is currently costing the most.
+2. **The rail holds check-ins, not grounds** (W8-31). The unit a person lives in gets the home.
+3. **Every screen answers three questions in order:** what is this, what is its state, what do I
+   do next. The board does; most pages answer only the first. The stat row is the "state" answer
+   and it belongs on the ground page and the grounds list, not only the board.
+4. **One primary action per screen, and only one.** Most screens have none. Where there is nothing
+   to do, say so in a line rather than filling the space with three cards about absence (W8-24).
+
+## W8-48 · The order to do it in
+
+Extraction first, because everything else gets cheaper afterwards:
+
+1. **W8-44** lift the board's nine components into `components/gw/`. Nothing changes visually.
+2. **W8-45** one header component, and stop wrapping stranger-facing pages in the signed-in shell.
+   Delete the dead AppShell.
+3. **W8-46** the ground merge (four routes to one) and `/chat` + `/checkin`. Highest confusion
+   removed per hour, and it carries W8-19 to W8-21 with it.
+4. **W8-47 point 1**, the naming. Hours, and it makes every later conversation about the product
+   easier.
+5. The rest of the merges, in any order.
+
+**What must not happen in this pass:** rewriting the copy. The writing is the strongest thing in
+the product (W8-24). This is a structural and visual pass; the words stay.
