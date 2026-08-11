@@ -21,6 +21,9 @@ export interface EntryReport {
   alignmentReached: { title: string; note: string }[]
   honestClose: { aligned: string; open: string; revisit: string; risk: string }
   mentionedPeople: { name: string; context: string }[]
+  /** W3. Named, described, and not invitable. See a-client-is-not-a-colleague.ts. */
+  alsoCameUp?: { name: string; context: string }[]
+  alsoCameUpNote?: string | null
   suggestedParties: { role: string; reason: string }[]
 }
 

@@ -1,6 +1,7 @@
 import { Injectable, Logger, BadRequestException, UnauthorizedException, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { GroundScenario, GroundMoment, TurnRole, CheckInStatus, PartyType, Cadence, TokenType } from '@prisma/client';
+import { splitMentions } from './a-client-is-not-a-colleague';
 import * as crypto from 'crypto';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
@@ -252,6 +253,9 @@ export interface EntryReport {
   honestClose: { aligned: string; open: string; revisit: string; risk: string };
   mentionedPeople: { name: string; context: string }[];
   suggestedParties: { role: string; reason: string }[];
+  /** W3. Named and shown, deliberately without a button. See splitMentions. */
+  alsoCameUp?: { name: string; context: string }[];
+  alsoCameUpNote?: string | null;
 }
 
 const SCENARIO_OPENERS: Record<string, string> = {
@@ -547,11 +551,33 @@ STRICT RULES:
     while (trimmed.length && trimmed[trimmed.length - 1].role === 'assistant') trimmed.pop();
     if (!trimmed.length) throw new BadRequestException('no user messages in history');
 
-    return this.anthropic.extract<EntryReport>(
+    const report = await this.anthropic.extract<EntryReport>(
       ENTRY_REPORT_PROMPT + '\n\n' + systemPrompt,
       trimmed,
       ENTRY_REPORT_SCHEMA,
     );
+    if (!report) return report;
+
+    /**
+     * W3. THE SPLIT HAPPENS AT THE READ, not in the prompt.
+     *
+     * Her report offered "Microchip Solutions" and "Mass General" with an
+     * "+ Add them" button next to two of her direct reports, and adding a client
+     * sends that client an invitation to give their own account of her team's
+     * performance. One click, by somebody skimming.
+     *
+     * Asking the extractor to be careful about this is the version that fails
+     * one time in twenty, and one time in twenty is a client receiving an
+     * invitation. So the two lists are separated here, where it is arithmetic.
+     * Nothing is dropped - everything the extractor found is still on the page.
+     */
+    const split = splitMentions(report.mentionedPeople ?? []);
+    return {
+      ...report,
+      mentionedPeople: split.couldBeAdded,
+      alsoCameUp: split.alsoCameUp,
+      alsoCameUpNote: split.note,
+    };
   }
 
   /**

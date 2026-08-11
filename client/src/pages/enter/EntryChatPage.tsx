@@ -2312,6 +2312,34 @@ export function EntryChatPage() {
                   </div>
                 )}
 
+                {/*
+                  W3. ALSO CAME UP, AND DELIBERATELY WITHOUT A BUTTON.
+                  Her report offered "Microchip Solutions" and "Mass General"
+                  with "+ Add them" next to them, and adding a client sends that
+                  client an invitation to give their own account of her team's
+                  performance. The split is made on the server, where it is
+                  arithmetic rather than a prompt hoping to be careful. Nothing
+                  is dropped: both are still named and still described here.
+                */}
+                {sessionReport.alsoCameUp && sessionReport.alsoCameUp.length > 0 && (
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ fontSize: 10, letterSpacing: '.09em', textTransform: 'uppercase', color: '#9B9590', fontWeight: 700, marginBottom: 8 }}>Also came up</div>
+                    <div style={{ border: '1px solid #E2E0DB', borderRadius: 10, padding: '11px 13px', background: '#FAFAF8' }}>
+                      {sessionReport.alsoCameUpNote && (
+                        <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.6, marginBottom: 10 }}>
+                          {sessionReport.alsoCameUpNote}
+                        </div>
+                      )}
+                      {sessionReport.alsoCameUp.map((p, i) => (
+                        <div key={i} style={{ padding: '8px 0', borderTop: i > 0 ? '0.5px solid #E2E0DB' : undefined }}>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: '#1A1916', marginBottom: 2 }}>{p.name}</div>
+                          <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.4 }}>{p.context}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Where this leaves you — the one-glance summary of the detail above */}
                 <div style={{ marginBottom: 16 }}>
                   <div style={{ fontSize: 10, letterSpacing: '.09em', textTransform: 'uppercase', color: '#9B9590', fontWeight: 700, marginBottom: 4 }}>Where this leaves you</div>
