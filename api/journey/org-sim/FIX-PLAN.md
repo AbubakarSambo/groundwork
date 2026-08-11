@@ -1455,6 +1455,117 @@ the reason - which is a far better instruction than the original prompt could gi
 because it says what went wrong. Once, not a loop: a model that quotes twice is
 telling us the prompt needs work, and the log is what says so.
 
+# WAVE 8 - INDEX. Every item, its size, and what it depends on.
+
+Fifty-seven items across ten passes, in one table, because a fix list spread over ten sections is a
+diary rather than a list. Statuses are honest: DONE means merged and bite-checked, OPEN means
+nothing has been built, DECISION means it cannot start until Hafsah answers.
+
+**Read the SUPERSEDED column before starting anything.** Four items were replaced by later findings,
+including two of my own proposals that turned out to be wrong.
+
+## Do these first
+
+| # | Item | Size | Status | Note |
+|---|---|---|---|---|
+| W8-26 | `/set-password` blocks a participant, and renders with no token | S | OPEN | a person who cannot check in cannot use the product |
+| W8-39 | the payment button 404s | S | OPEN | the only destination in the product that 404s, and it takes money |
+| W8-25 | pricing contradicts the $5-per-session rule, on two pages | S | OPEN | same sitting as W8-39 and W8-40 |
+| W8-40 | `?next=` passed and never read | S | OPEN | same sitting |
+| W8-41 | `hello@groundwork.so` is not our domain | S | OPEN | same sitting |
+| W8-3 | the "we sent a link" confirmation is 1678px down a 720px panel | S | OPEN | causes W8-2, which was data loss |
+| W8-13 | no confirmation at all after setup | S | OPEN | with W8-3 |
+
+## The structural pass, in dependency order
+
+| # | Item | Size | Status | Depends on |
+|---|---|---|---|---|
+| W8-44 | extract the board's nine components into `components/gw/` | M | OPEN | nothing. Do it first, everything else gets cheaper |
+| W8-45 | one header, shell only on signed-in routes, delete the dead AppShell | S | OPEN | W8-44 |
+| W8-57 | grounds as channels in the rail, a ground opens to its own history | M | OPEN | W8-44, W8-45 |
+| W8-49 | the target page list, 38 routes to 14 pages | L | OPEN | W8-52 must pass first |
+| W8-52 | the 45-operation inventory the ground merge must satisfy | M | OPEN | acceptance test for W8-49 |
+| W8-47 | one noun per thing | S | OPEN | nothing |
+
+## Product defects, open
+
+| # | Item | Size | Status |
+|---|---|---|---|
+| W8-4 | sessions: three places disagree (1, 6, "2 of 6") | S | OPEN |
+| W8-5 | "bringing this ground to an end" offered at session 2 of 6, top of the page | S | OPEN |
+| W8-6 | nothing tells you the Context tab exists | S | OPEN |
+| W8-7 | the Context tab is 1 line of what it can do against 7 of what it cannot, and contradicts itself | M | OPEN |
+| W8-11 | never asks who the people inside the organisations are | M | OPEN |
+| W8-12 | two places to add participants, 550px apart | S | OPEN |
+| W8-16 | the 35s closing report has no honest progress | M | OPEN |
+| W8-22 | a truncated assistant reply ("You've nam") is saved into the record | M | OPEN |
+| W8-23 | two tabs render active at once | S | OPEN |
+| W8-27 | four names for two concepts | S | OPEN |
+| W8-36 | `/invite` and `/set-password` handle a missing token in opposite ways | S | OPEN |
+| W8-37 | `/welcome` and `/profile` exist for one line of content | S | OPEN |
+| W8-42 | controls that work but sit in the wrong place, including two sending signed-in people to `/start` | S | OPEN |
+| W8-55 | a document uploaded in the entry chat is never kept as a document | M | OPEN |
+
+## Design, open
+
+| # | Item | Size | Status |
+|---|---|---|---|
+| W8-24 | no screen has a primary action; empty states explain absence | M | OPEN |
+| W8-29 | the board is the design system; the rest has not caught up | M | OPEN |
+| W8-32 | the org admin view should differ, today it is subtraction | M | OPEN |
+| W8-50 | the two rules that keep the page count down | - | reference |
+| W8-53 | the pages that must NOT merge | - | reference |
+
+## Decisions before code. Hafsah's.
+
+| # | Question | Size once decided |
+|---|---|---|
+| W8-10 + W8-34 + W8-51 | can one person belong to several organisations? The Slack-style workspace picker needs a membership table; the JWT carries one org as a scalar | L, a migration touching auth |
+| W8-9 | does a participant who creates a ground get their own organisation, or does it land in the org of whoever invited them (today's behaviour)? | M |
+| W8-33 | the reversed setup: the subject sets up the ground and needs to know how their manager will read it. No path exists; `flowPath` is `self` or `lead` and never both | L |
+| W8-35 | are `/enter`, `/pin`, `/setup` rebuilt as the org picker (W8-51) or removed? | M |
+| W8-15 | what specifically is confusing about the report tab? Ten minutes on the page would replace a guess | M |
+
+## Superseded and corrected. Do not work from these.
+
+| # | Was | Now |
+|---|---|---|
+| W8-31 | my proposal: a flat list of check-ins in the rail, ChatGPT style | **W8-57.** Wrong model. A ground is a channel, not a conversation |
+| W8-54 | where grounds go once check-ins take the rail | **W8-57.** Grounds never leave the rail |
+| W8-35 | `/enter`, `/pin`, `/setup` called an orphaned model to delete | **W8-51.** They are the unfinished org picker she has asked for twice |
+| W8-18 | the dropped chat recorded as unreproducible, probably streaming | **W8-22.** The record holds "You've nam". It was real |
+| W8-28, W8-38 | five chrome variants, implying five shells | **W8-45.** One shared shell; each page hand-rolls its header inside it |
+| W8-20 | "nothing anywhere opens a check-in" | **W8-43.** `GroundAdminPage` does contain a `/chat/:checkInId` navigate. True of the state a fresh entry-chat ground is in, not universal |
+
+## Done
+
+| # | Item |
+|---|---|
+| W8-1 | sign-up had no door on it, and three text links were not keyboard-reachable |
+| W8-2 | the entry-chat ground disappeared: `entrySave` blanked a stored session when called without a draft |
+
+## Checked and NOT a defect. Recorded so nobody re-reports them.
+
+- **Situation cards have accessible names.** `read_page` listed them unlabelled, which was a tool
+  artifact. Measured on `/start`: 23 visible buttons, **0** with no accessible name.
+- **The five-organisation conversation handles them correctly.** The chat calls them partners, the
+  report calls them organisations, and "People mentioned" extracted only the one human named. The
+  defect is narrower: it never asks who the people inside them are (W8-11).
+- **The ground does appear after the magic link**, in `/api/v1/grounds` and on the page. W8-2's loss
+  had a specific cause, not a general one. My "0 grounds" reading was my own wrong API path.
+- **22 of 23 navigation destinations resolve** (W8-43).
+- **Quality is measured, deliberately never rated** (W8-56).
+
+## Still not captured
+
+Eight routes: `/admin/dashboard`, `/prompts`, `/prompts/test` (need a platform-admin account),
+`/billing/checkout` (needs a live Stripe session), `/auth/sent`, `/reset-password`,
+`/auth/google/callback` (only exist mid-flow with a real token), `/demo/:persona` (needs a persona
+slug). Also unreviewed: the floating **?** help modal and the **Feedback** widget, which appear on
+every page and were never opened.
+
+---
+
 # Wave 8 - the live walkthrough of 2026-08-11, after the merge
 
 Hafsah walked the product herself on `main` after PR #130 landed and reported eleven things,
@@ -2696,9 +2807,28 @@ turn". For somebody who runs a ground they are not in, there is no turn - the st
 five have checked in" or "two people are overdue". Same rail, two meanings, and they must not be
 rendered identically or an admin will think they owe a check-in they do not.
 
-**3. Closed grounds have to leave.** Slack archives channels for a reason. A finished ground stops
-being a place and becomes a record: out of the rail, into the grounds page. Without that the rail
-fills with history and the live signal drowns.
+**3. Closed grounds leave the rail, but not immediately.**
+
+**Decision (Hafsah, 2026-08-12): a closed ground stays in the rail for about three months, then
+drops out.**
+
+Slack archives channels for a reason, but archiving the instant a ground closes is wrong here and
+her rule is better. A ground closes at the moment it matters most - the report has just landed, the
+resolution has just been agreed, people are still acting on it and still coming back to reread it.
+Removing it that day would hide the thing they were about to open.
+
+So it fades rather than disappears: closed but recent stays in the rail, visually quieter than the
+live ones and never carrying an attention state. After roughly three months it leaves the rail and
+lives on the grounds page, which is a record rather than a place.
+
+**Two things to pin down when this is built:**
+
+- **Three months from what.** Closing date is the obvious anchor, but a ground whose report was
+  released weeks after it closed should probably count from the release, since that is when people
+  actually started using it.
+- **Nothing is deleted, ever.** Leaving the rail is a display rule. The ground, its check-ins, its
+  documents and its reports stay reachable from the grounds page and by URL, which the record
+  promise in the product's own copy requires: "stays open to you after it closes.
 
 ### What it does to the target page list
 
