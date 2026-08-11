@@ -17,6 +17,10 @@ import { CheckInStatus, TurnRole, RecordEntryType, Cadence, GroundStatus, UsageE
 import { runIntake } from './intake';
 import { boardRendersFor } from '../board/board-families';
 import { buildRoleProbeBlock } from '../board/role-maps';
+import {
+  nextMove, coachingBlockFor, afterOffering, afterOutcome, EMPTY,
+  type CoachingStateShape, type StepOutcome,
+} from '../coaching/one-step-at-a-time';
 import { detectFunction } from '../board/function-detection';
 import { closeReadiness, askedToFinish } from './close-readiness';
 import { observeStyle, mergeStyle, styleGuidance } from './person-style';
@@ -924,7 +928,144 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       (checkIn.participant as any).detectedFunctionConfidence,
     );
 
-    return [systemPrompt, intakeBlock, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, dynamicContext, docContext, docPromptHint].filter(Boolean).join('\n\n');
+    /**
+     * G42. THE COACHING STEP, AND THE FIRST TIME ANYTHING HAS READ THESE ROWS.
+     *
+     * Behind COACHING_ENABLED, off in every environment, and it adds nothing at
+     * all when off - not an empty heading, not a blank line. Off is the check-in
+     * exactly as it is today.
+     *
+     * It also adds nothing when there is no step to raise, which is most sessions.
+     * A coaching block that always has something in it is a product that always
+     * has something to say about you.
+     */
+    const coachingBlock = await this.coachingBlock(checkIn.participantId, checkIn.sessionNumber);
+
+    return [systemPrompt, intakeBlock, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, dynamicContext, docContext, docPromptHint].filter(Boolean).join('\n\n');
+  }
+
+  /** The flag, read where it is used and failing to OFF. Same shape as the others. */
+  private coachingEnabled(): boolean {
+    try {
+      return this.config?.get<boolean>('app.coachingEnabled') === true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * What the coach has to say into THIS session, or nothing.
+   *
+   * Reads the state the last session left, asks the machine what the next move is,
+   * and turns that into instructions. The machine is pure and tested next door; all
+   * that happens here is the loading.
+   *
+   * The step is only ever asked ABOUT here. It is offered by
+   * recordCoachingStep(), after the session, because what to offer depends on what
+   * the session turned out to contain - and a step chosen before somebody speaks is
+   * chosen from their last week rather than this one.
+   */
+  private async coachingBlock(participantId: string, sessionNumber: number): Promise<string> {
+    if (!this.coachingEnabled()) return '';
+    try {
+      const row = await this.prisma.coachingState.findUnique({ where: { participantId } });
+      if (!row?.currentStep) return '';
+
+      const state: CoachingStateShape = {
+        currentStep: row.currentStep,
+        stepGivenAt: row.stepGivenAt ?? null,
+        staircase: row.staircase ?? null,
+        staircasePosition: row.staircasePosition ?? 0,
+        history: Array.isArray(row.history) ? (row.history as any[]) : [],
+      };
+
+      // A step given in THIS session is not something to ask about in this
+      // session, which would be the coach asking about a thing it has not yet
+      // said.
+      if (state.stepGivenAt !== null && state.stepGivenAt >= sessionNumber) return '';
+
+      const move = nextMove(state, {
+        noticed: null,
+        lookingLike: null,
+        // Enough to get past the guards: this call is only ever about the step
+        // already outstanding, never about choosing a new one.
+        reason: 'a step is outstanding from last session',
+        sessionNumber,
+        hadSubstance: true,
+      });
+      return coachingBlockFor(move) ?? '';
+    } catch (err) {
+      // Coaching must never be the reason somebody cannot start a check-in.
+      this.logger.warn(`Could not build the coaching block for ${participantId}: ${(err as Error)?.message}`);
+      return '';
+    }
+  }
+
+  /**
+   * After a session: record what became of the last step, and choose the next.
+   *
+   * This is the write path, and the first thing in the product ever to put a row
+   * in coaching_states. Behind the same flag, and everything it does is additive:
+   * with the flag off the table stays empty and the check-in behaves exactly as it
+   * does today.
+   *
+   * WHAT IT WILL NOT DO. It does not decide whether somebody managed their step -
+   * only the person can say that, in their own words, and the outcome is written
+   * from what they said rather than inferred from whether the record looks better.
+   * Inferring it would make the step a target, and a target is the one thing a
+   * coaching mechanic must not become.
+   */
+  async recordCoachingStep(
+    participantId: string,
+    sessionNumber: number,
+    read: { noticed: string | null; lookingLike: string | null; reason: string | null; hadSubstance: boolean },
+    outcomeOfLastStep?: StepOutcome | null,
+  ): Promise<{ offered: string | null }> {
+    if (!this.coachingEnabled()) return { offered: null };
+    try {
+      const row = await this.prisma.coachingState.findUnique({ where: { participantId } });
+      let state: CoachingStateShape = row
+        ? {
+            currentStep: row.currentStep ?? null,
+            stepGivenAt: row.stepGivenAt ?? null,
+            staircase: row.staircase ?? null,
+            staircasePosition: row.staircasePosition ?? 0,
+            history: Array.isArray(row.history) ? (row.history as any[]) : [],
+          }
+        : { ...EMPTY };
+
+      if (outcomeOfLastStep && state.currentStep) state = afterOutcome(state, outcomeOfLastStep);
+
+      const move = nextMove(state, { ...read, sessionNumber });
+      let offered: string | null = null;
+      if (move.move === 'offer') {
+        offered = move.step;
+        state = afterOffering(state, move.step, sessionNumber);
+      }
+
+      await this.prisma.coachingState.upsert({
+        where: { participantId },
+        create: {
+          participantId,
+          currentStep: state.currentStep,
+          stepGivenAt: state.stepGivenAt,
+          staircase: state.staircase,
+          staircasePosition: state.staircasePosition,
+          history: state.history as any,
+        },
+        update: {
+          currentStep: state.currentStep,
+          stepGivenAt: state.stepGivenAt,
+          staircase: state.staircase,
+          staircasePosition: state.staircasePosition,
+          history: state.history as any,
+        },
+      });
+      return { offered };
+    } catch (err) {
+      this.logger.warn(`Could not record the coaching step for ${participantId}: ${(err as Error)?.message}`);
+      return { offered: null };
+    }
   }
 
   /**
