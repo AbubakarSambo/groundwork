@@ -627,10 +627,30 @@ test('Ground 1: new hire, from a stranger landing to a shared report', async ({ 
     'a participant can see a closing tier for somebody other than themselves',
   ).toBeLessThanOrEqual(1);
 
-  // And the lead still gets the whole picture, which is the other half of the
-  // rule: a fix that hid it from everybody would pass every assertion above.
+  /*
+   * And the lead still gets the whole picture, which is the other half of the
+   * rule: a fix that hid it from everybody would pass every assertion above.
+   *
+   * RE-FETCHED, AND THE FIRST VERSION OF THIS FAILED BECAUSE IT WAS NOT.
+   * `lead` was captured far above, before the closing synthesis had written
+   * finalSynthesis.tiers, so this asserted on a snapshot that predated the thing
+   * it was checking for and reported the product as broken. Proved by fetching
+   * the same lead payload afterwards: both tiers were there.
+   *
+   * Which is the whole reason this file reads the API rather than the screen -
+   * and the reason a payload read once and asserted on much later is a trap,
+   * because everything about it looks correct.
+   */
+  await signIn(page, HAFSAH, PASSWORD);
+  const leadTokenNow = await page.evaluate(() => {
+    try { return JSON.parse(localStorage.getItem('auth-storage-v2') || '{}')?.state?.token ?? null; } catch { return null; }
+  });
+  const asLeadNow = await (await request.get(`http://localhost:3000/api/v1/grounds/${groundId}/report`, {
+    headers: { Authorization: `Bearer ${leadTokenNow}` },
+  })).json();
+  const leadNow = asLeadNow.data ?? asLeadNow;
   expect(
-    Object.keys(lead?.finalSynthesis?.tiers ?? {}).length,
+    Object.keys(leadNow?.finalSynthesis?.tiers ?? {}).length,
     'the lead lost sight of the closing tiers, which they are meant to have',
   ).toBeGreaterThan(1);
 
