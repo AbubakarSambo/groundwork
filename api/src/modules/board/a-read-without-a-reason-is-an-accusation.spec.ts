@@ -42,10 +42,25 @@ describe('a signal read', () => {
     expect(signalRead(RoleFunction.MANAGEMENT, 4, '   ')).toBeNull();
   });
 
-  it('says nothing for a function whose signals are not written yet', () => {
-    // Eight maps still have no signal lists. Silence is correct; inventing a
-    // behaviour to fill the slot would be worse than saying nothing.
-    expect(signalRead(RoleFunction.SALES, 0, 'a real reason')).toBeNull();
+  it('now reads for every function, because all nine maps are filled', () => {
+    /**
+     * THIS TEST USED TO ASSERT THE GAP. It said "eight maps still have no signal
+     * lists" and checked SALES came back null, which was true and was the
+     * honest state at the time - management was filled first because it is the
+     * highest-value coaching in the system.
+     *
+     * The gap is closed, so the assertion inverts. The RULE it was protecting -
+     * silence rather than an invented behaviour - is still covered, by the
+     * out-of-range and unknown-role cases below, which is where it actually
+     * belongs: a map either has its signals or it does not, and that is a fact
+     * about the data rather than a behaviour of this function.
+     */
+    for (const fn of Object.values(RoleFunction)) {
+      const read = signalRead(fn, 0, 'a real reason');
+      expect({ fn, read: !!read }).toMatchObject({ read: true });
+      expect(read!.noticed).toBeTruthy();
+      expect(read!.lookingLike).toBeTruthy();
+    }
   });
 
   it('says nothing for a role it does not know', () => {
@@ -59,7 +74,57 @@ describe('a signal read', () => {
   });
 });
 
-describe('the management map, which is filled', () => {
+describe('every map, now that all nine are filled', () => {
+  it('pairs every failure with a success, in every function', () => {
+    // The pairing is the whole reason the lists exist: a failure with no paired
+    // success leaves the coach able to name a problem and unable to name the
+    // destination. One unpaired entry anywhere breaks that silently, because
+    // signalRead would read past the end of the shorter list.
+    for (const fn of Object.values(RoleFunction)) {
+      const m = ROLE_MAPS[fn];
+      expect({ fn, fail: m.failureSignals?.length, succ: m.successSignals?.length })
+        .toMatchObject({ fail: m.successSignals?.length });
+      expect(m.failureSignals?.length ?? 0).toBeGreaterThanOrEqual(8);
+    }
+  });
+
+  it('never states a signal as something a person IS', () => {
+    // THE LINE THE WHOLE FEATURE SITS ON. "Avoids the hard conversation" is a
+    // thing somebody did last week and can do differently. "Avoidant" is a label
+    // stapled to a person, and eight new maps written in one sitting is exactly
+    // where one would slip in.
+    //
+    // A BARE "they are" BAN CATCHES CORRECT PROSE, and this is the third time in
+    // one sitting: "weak basis for a decision", "They are not doing any work in
+    // this picture" (the documents), and now "lives with how they are made" (the
+    // decisions). A word blacklist cannot tell what a word is about, so each
+    // pattern names the person-label it is actually banning.
+    for (const fn of Object.values(RoleFunction)) {
+      const m = ROLE_MAPS[fn];
+      for (const line of [...(m.failureSignals ?? []), ...(m.successSignals ?? [])]) {
+        for (const p of [
+          /\b(?:is|was|seems|appears) (?:a |an )?(?:avoidant|lazy|weak|poor|disorganised|unreliable|passive)\b/i,
+          /\bthey are (?:just |simply |too |not )*(?:avoidant|lazy|weak|slow|difficult|disorganised|unreliable|passive|junior)\b/i,
+          /\bpersonality\b/i, /\battitude\b/i, /\bnot capable\b/i,
+          /\blacks (?:the )?(?:ability|confidence|drive|skill)\b/i, /\bunable to\b/i,
+        ]) {
+          expect({ fn, line, p: String(p), hit: p.test(line) }).toMatchObject({ hit: false });
+        }
+      }
+    }
+  });
+
+  it('and every line reads as a behaviour, starting with a verb', () => {
+    // Cheap, and it catches the one that got written as a noun phrase.
+    for (const fn of Object.values(RoleFunction)) {
+      for (const line of [...(ROLE_MAPS[fn].failureSignals ?? []), ...(ROLE_MAPS[fn].successSignals ?? [])]) {
+        expect({ fn, line, ok: /^[A-Z][a-z]+(s|es|ies)?\b/.test(line) }).toMatchObject({ ok: true });
+      }
+    }
+  });
+});
+
+describe('the management map, which was filled first', () => {
   const map = ROLE_MAPS[RoleFunction.MANAGEMENT];
 
   it('pairs every failure with what it looks like going right', () => {

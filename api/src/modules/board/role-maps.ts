@@ -118,6 +118,34 @@ export const ROLE_MAPS: Record<RoleFunction, RoleMap> = {
     protectAgainst:
       'A rep is made to feel like a failure by a broken internal clock: the buyer-side process takes weeks and none of it is visible to them. Silence is usually a stage, not a rejection.',
     commonModes: [UniversalMode.AVOIDANCE, UniversalMode.UNDER_PERSISTENCE, UniversalMode.VAGUENESS],
+    // Paired by index, so the coach always knows what it is coaching TOWARD.
+    // Sales is where the coaching is most valuable and most dangerous, because
+    // the failure is nearly always fear and fear is not a character flaw. Every
+    // line here is a thing somebody did last week, not a thing they are.
+    failureSignals: [
+      'Works the friendly contact rather than the person who can sign',
+      'Counts conversations as pipeline',
+      'Lets a deal go quiet and calls it a maybe',
+      'Spends the week on admin, CRM tidying and internal decks',
+      'Chases many small easy targets instead of the few that matter',
+      'Describes next steps with no date and no owner',
+      'Discounts early to keep a deal warm',
+      'Blames the market, the product or marketing for a flat month',
+      'Avoids the deal that has gone wrong rather than reopening it',
+      'Reports the pipeline as healthier than it is',
+    ],
+    successSignals: [
+      'Gets to the person with budget and authority, even when it is awkward',
+      'Counts a deal as real only when somebody who can decide has said what happens next',
+      'Follows up after silence, more than once, without apologising for existing',
+      'Spends the week in front of buyers, and does the admin around it',
+      'Picks the accounts worth the effort and stays on them',
+      'Leaves every conversation with a dated next action somebody agreed to',
+      'Holds the price and finds out what is actually blocking the decision',
+      'Names what they would do differently, then does it',
+      'Goes back to the lost deal and asks what really happened',
+      'Says plainly which deals are not going to happen',
+    ],
   },
 
   [RoleFunction.PRODUCT]: {
@@ -136,6 +164,29 @@ export const ROLE_MAPS: Record<RoleFunction, RoleMap> = {
     protectAgainst:
       'Product runs on slow feedback. Punishing it with a fast metric reads a normal feedback lag as failure.',
     commonModes: [UniversalMode.NON_COMMITMENT, UniversalMode.VAGUENESS],
+    // Paired by index, so the coach always knows what it is coaching TOWARD.
+    // Product fails quietly, because a decision not made looks like
+    // diligence and shipping nothing looks like care.
+    failureSignals: [
+      'Gathers more input rather than making the call',
+      'Ships a spec, not a working thing anybody uses',
+      'Keeps everything on the roadmap so nothing is cut',
+      'Takes requirements from whoever asked loudest',
+      'Reports progress as work in flight rather than as a change a user would notice',
+      'Leaves the trade-off unstated so nobody objects',
+      'Hands engineering an unresolved question and calls it a brief',
+      'Never revisits a shipped thing to see whether it worked',
+    ],
+    successSignals: [
+      'Makes the call with what is known and says what would change it',
+      'Gets something real in front of a user and watches what happens',
+      'Cuts the things that will not happen and says so out loud',
+      'Traces the requirement to somebody the product is actually for',
+      'Reports what a user can now do that they could not before',
+      'Names the trade-off and who it costs',
+      'Resolves the question, or says plainly that it is open and why',
+      'Goes back and checks whether it did the thing it was for',
+    ],
   },
 
   [RoleFunction.ENGINEERING]: {
@@ -154,6 +205,30 @@ export const ROLE_MAPS: Record<RoleFunction, RoleMap> = {
     protectAgainst:
       'The invisible load-bearer and the blocked-not-slacking person both look like low contribution on a naive read. Foundational work must be surfaced and credited, and blocked must never read as behind.',
     commonModes: [UniversalMode.ILLEGIBILITY, UniversalMode.INVISIBILITY],
+    // Paired by index, so the coach always knows what it is coaching TOWARD.
+    // Engineering's coaching risk is the opposite of sales: the work is
+    // legible, so it is easy to notice the wrong things. None of these is about
+    // how fast anybody is.
+    failureSignals: [
+      'Reports work as done when nobody else can use it',
+      'Rebuilds rather than asks the person who knows',
+      'Sits on a blocker rather than raising it',
+      'Polishes the part that is interesting and leaves the part that is needed',
+      'Estimates to please rather than to inform',
+      'Leaves the thing they know is fragile unmentioned',
+      'Works alone on something several people depend on',
+      'Treats a review comment as an attack, or skips review',
+    ],
+    successSignals: [
+      'Calls it done when somebody else has used it',
+      'Asks early, and goes back to building',
+      'Raises the blocker the day it blocks, without treating it as a confession',
+      'Finishes the needed part first, then improves it',
+      'Gives the real estimate and says what it depends on',
+      'Names the fragile part before it breaks, in writing',
+      'Brings the dependents in early enough to change it',
+      'Uses review to find the thing they missed',
+    ],
   },
 
   [RoleFunction.OPS]: {
@@ -172,6 +247,29 @@ export const ROLE_MAPS: Record<RoleFunction, RoleMap> = {
     protectAgainst:
       'Ops is noticed only when something breaks, so a good period looks like an empty account. Preventive work has to be actively credited or the role reads as low contribution for doing its job well.',
     commonModes: [UniversalMode.INVISIBILITY, UniversalMode.AVOIDANCE],
+    // Paired by index, so the coach always knows what it is coaching TOWARD.
+    // Operations is the function most often invisible when it works, which is
+    // why the success half matters more here than anywhere.
+    failureSignals: [
+      'Firefights the same failure repeatedly without fixing the cause',
+      'Holds the process in their own head',
+      'Absorbs everybody else\'s slack silently',
+      'Reports that things ran, not what nearly did not',
+      'Adds a check rather than removing the thing that fails',
+      'Becomes the only person who can do it',
+      'Chases people for updates instead of changing where the update lives',
+      'Says yes to every request and lets the queue decide',
+    ],
+    successSignals: [
+      'Fixes the cause once, and says what will now not happen again',
+      'Writes it down so somebody else can run it',
+      'Says what they absorbed and what it cost',
+      'Names the near miss while it is still cheap',
+      'Removes the failing step where it can be removed',
+      'Trains a second person on purpose',
+      'Makes the state visible so nobody has to be chased',
+      'Says what will not happen this period, and to whom',
+    ],
   },
 
   [RoleFunction.PROJECT_MANAGEMENT]: {
@@ -189,6 +287,29 @@ export const ROLE_MAPS: Record<RoleFunction, RoleMap> = {
     protectAgainst:
       'A PM with no real authority can be blamed for slippage they could not prevent. Read what they drove, not only what slipped.',
     commonModes: [UniversalMode.DIFFUSION, UniversalMode.UNDER_PERSISTENCE],
+    // Paired by index, so the coach always knows what it is coaching TOWARD.
+    // Project management fails by reporting rather than by moving. The
+    // signal is nearly always the gap between the status and the state.
+    failureSignals: [
+      'Reports status rather than moving the blocked thing',
+      'Keeps the plan green by moving the dates',
+      'Chases updates from everyone and decides nothing',
+      'Escalates without a recommendation',
+      'Tracks tasks nobody is actually blocked on',
+      'Lets a dependency on another team sit unnamed',
+      'Holds the meeting because it is in the calendar',
+      'Owns the plan and nothing in it',
+    ],
+    successSignals: [
+      'Goes and unblocks the blocked thing, then reports it',
+      'Says the date has moved and what it means for everything after it',
+      'Makes the small decisions so the work does not wait on a meeting',
+      'Escalates with a recommendation and what they need decided',
+      'Tracks the few things everything else waits on',
+      'Names the other team, the person, and the date',
+      'Cancels the meeting when there is nothing it can decide',
+      'Owns an outcome, not a document',
+    ],
   },
 
   [RoleFunction.CEO]: {
@@ -207,6 +328,29 @@ export const ROLE_MAPS: Record<RoleFunction, RoleMap> = {
     protectAgainst:
       'A founder is carrying genuine ambiguity nobody else can resolve. Reading "unresolved" as avoidance misses that some calls honestly cannot be made yet.',
     commonModes: [UniversalMode.DIFFUSION, UniversalMode.AVOIDANCE, UniversalMode.NON_COMMITMENT],
+    // Paired by index, so the coach always knows what it is coaching TOWARD.
+    // The chief executive is the hardest to coach and the easiest to flatter, so
+    // these are deliberately the things nobody else in the company will say.
+    failureSignals: [
+      'Works on the part of the business they enjoy',
+      'Keeps every decision, so everything waits',
+      'Talks to the friendly customers and investors',
+      'Reorganises around a people problem rather than resolving it',
+      'Announces a direction and does not repeat it',
+      'Reports the story rather than the numbers',
+      'Hires slowly for the gap they personally fill',
+      'Protects a long-serving person past the point it is fair to everyone else',
+    ],
+    successSignals: [
+      'Works on the part the business most needs, including the dull part',
+      'Gives real decisions away and lives with how they are made',
+      'Talks to the ones who said no, and listens',
+      'Has the conversation, and makes the call',
+      'Says the same direction until people can say it back',
+      'Says the number, then the story',
+      'Hires for their own weakest area first',
+      'Acts on it, and says why, kindly',
+    ],
   },
 
   [RoleFunction.MARKETING]: {
@@ -225,6 +369,29 @@ export const ROLE_MAPS: Record<RoleFunction, RoleMap> = {
     protectAgainst:
       'Brand and positioning work pays off slowly and indirectly. Demanding an immediate revenue line for every activity punishes the work that compounds.',
     commonModes: [UniversalMode.ILLEGIBILITY, UniversalMode.NON_COMMITMENT],
+    // Paired by index, so the coach always knows what it is coaching TOWARD.
+    // Marketing is measured on the easiest numbers to move, so the failure is
+    // usually a real result nobody can trace to a real person.
+    failureSignals: [
+      'Reports reach rather than anybody who came closer to buying',
+      'Produces more content rather than finding out what worked',
+      'Rewrites the message without talking to a customer',
+      'Runs the campaign the team enjoys planning',
+      'Hands sales leads nobody has qualified',
+      'Keeps a channel because it is set up',
+      'Claims a result the numbers do not support',
+      'Waits for the brand to be finished before going out',
+    ],
+    successSignals: [
+      'Reports the people who came closer, by name where possible',
+      'Finds out what worked and does that again',
+      'Takes the words from a customer and uses theirs',
+      'Runs the one the buyers respond to',
+      'Hands over leads with what is known about them and why they might buy',
+      'Stops the channel that is not working and says so',
+      'Says what the numbers do and do not show',
+      'Goes out with what exists and improves it in public',
+    ],
   },
 
   [RoleFunction.FINANCE]: {
@@ -243,6 +410,29 @@ export const ROLE_MAPS: Record<RoleFunction, RoleMap> = {
     protectAgainst:
       'Finance is often the messenger for bad news it did not cause. Reading the delivery of a hard truth as negativity punishes exactly the behaviour the role exists for.',
     commonModes: [UniversalMode.AVOIDANCE, UniversalMode.NON_COMMITMENT],
+    // Paired by index, so the coach always knows what it is coaching TOWARD.
+    // Finance goes wrong by being accurate and late, or accurate and unread.
+    // None of these is about arithmetic.
+    failureSignals: [
+      'Reports the numbers after the decision was made',
+      'Tracks the burn without saying what it means',
+      'Sends a report nobody reads',
+      'Says no without an alternative',
+      'Waits for a request rather than raising the risk',
+      'Keeps the model where only they can use it',
+      'Chases a small variance and misses a large exposure',
+      'Softens bad news until it is unactionable',
+    ],
+    successSignals: [
+      'Gets the number in front of the decision, even if it is rough',
+      'Says how long the money lasts, in weeks, plainly',
+      'Says the one thing in it somebody has to act on',
+      'Says what could be afforded instead',
+      'Raises the risk before anybody asks',
+      'Makes it something the team can ask questions of',
+      'Works on the exposure that could actually hurt',
+      'Delivers bad news early and clearly, with the options',
+    ],
   },
 
   [RoleFunction.MANAGEMENT]: {
