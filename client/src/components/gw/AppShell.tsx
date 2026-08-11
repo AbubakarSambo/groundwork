@@ -1,3 +1,4 @@
+import { toast } from 'sonner'
 import { plannedSessionsFor } from '@/lib/sessionCount'
 import { useState, useRef, useEffect } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
@@ -140,7 +141,26 @@ function FeedbackWidget() {
       wrongText: tab === 'wrong' ? wrongText : undefined,
       contactEmail: contactEmail || undefined,
     }
-    try { await apiClient.post('/feedback', payload) } catch { /* swallow - best effort */ }
+    /**
+     * "SWALLOW - BEST EFFORT" IS HOW THIS HID FOR MONTHS.
+     *
+     * FeedbackModule was never registered in the API, so every post here 404'd, and
+     * this catch turned each one into a cheerful "thanks, that is on its way". Every
+     * piece of feedback anybody ever sent from inside the product went nowhere and
+     * nobody saw an error - found this morning by a rule about unwired modules, not
+     * by anybody noticing.
+     *
+     * The endpoint exists now. The swallow does not, because a person who took the
+     * trouble to write something is entitled to know it did not arrive - and because
+     * the next time this breaks, somebody should find out from a user rather than
+     * from a static analysis rule.
+     */
+    try {
+      await apiClient.post('/feedback', payload)
+    } catch {
+      toast.error('That did not send. Your note is still here - try again, or email us if it keeps failing.')
+      return
+    }
     setSent(true)
     setTimeout(() => { hidePanel(); setSent(false); setReaction(''); setBuildPick(''); setBuildDetail(''); setWrongText(''); setContactEmail('') }, 1800)
   }

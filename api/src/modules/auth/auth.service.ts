@@ -291,29 +291,17 @@ export class AuthService {
     return this.buildAuthResponse(user as unknown as UserWithOrg);
   }
 
-  async resendVerification(dto: ResendVerificationDto): Promise<{ message: string }> {
-    const message = 'If an account with that email exists, a verification email has been sent.';
-    const user = await this.prisma.user.findUnique({ where: { email: dto.email.toLowerCase() } });
-    if (!user || user.isEmailVerified) return { message };
+  /**
+   * resendVerification LIVED HERE AND NOTHING CALLED IT.
+   *
+   * The controller's own comment records why: the resend route was consolidated into
+   * register-magic-link, which mints the same verification token from one place. This
+   * was the method the removed route used to call, left behind by that
+   * consolidation - a fix applied to it would have reached nobody.
+   *
+   * Found by the dead-method rule.
+   */
 
-    const recentToken = await this.prisma.emailVerificationToken.findFirst({
-      where: { userId: user.id, type: TokenType.EMAIL_VERIFICATION, usedAt: null, createdAt: { gte: new Date(Date.now() - 10 * 60 * 1000) } },
-    });
-    if (recentToken) return { message };
-
-    await this.prisma.emailVerificationToken.updateMany({
-      where: { userId: user.id, type: TokenType.EMAIL_VERIFICATION, usedAt: null },
-      data: { usedAt: new Date() },
-    });
-
-    const token = crypto.randomBytes(32).toString('hex');
-    await this.prisma.emailVerificationToken.create({
-      data: { userId: user.id, token, type: TokenType.EMAIL_VERIFICATION, expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) },
-    });
-
-    this.emailService.sendVerificationEmail(user.email, user.firstName, token);
-    return { message };
-  }
 
   async entrySave(
     email: string,

@@ -1,3 +1,4 @@
+import { toast } from 'sonner'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { authApi } from '@/api/auth'
@@ -119,7 +120,21 @@ export function GoogleCallbackPage() {
       const trimmed = orgName.trim()
       if (trimmed.length >= 2) {
         setSavingOrg(true)
-        try { await authApi.renameOrganization(trimmed) } catch { /* the default stands */ }
+        /**
+         * A NAME SOMEBODY TYPED, SILENTLY DISCARDED.
+         *
+         * "The default stands" was the whole error handling: a person types their
+         * company name, the call fails, and every page their team sees keeps the
+         * concatenated default - with no sign that the thing they just did came to
+         * nothing. The point of asking was that the name was chosen rather than
+         * generated, and swallowing the failure gives back exactly what the question
+         * existed to avoid.
+         */
+        try {
+          await authApi.renameOrganization(trimmed)
+        } catch {
+          toast.error('Could not save that name just yet. You can change it any time from settings.')
+        }
       }
       navigate('/start', { replace: true })
     }
