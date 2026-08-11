@@ -1076,13 +1076,50 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const transcript = turns.map((t) => `${t.role === TurnRole.AI ? 'GROUNDWORK' : 'PERSON'}: ${t.content}`).join('\n');
     const behaviours = map.failureSignals.map((b, i) => `${i}. ${b}`).join('\n');
 
+    /**
+     * THE LEAD'S ENTRY CAN DETERMINE WHAT SOMEBODY IS COACHED ON.
+     *
+     * I built this reading only the person's own transcript against their role map,
+     * and ignored the lead completely - the third time in one sitting I treated the
+     * lead's input as a liability rather than as an input. It is the opposite: a
+     * lead's note is usually WHY the ground exists, and their check-ins shape what
+     * matters as priorities move. A coaching layer that cannot hear "the handover is
+     * the thing that matters this month" is coaching last month's ground.
+     *
+     * a-hypothesis-is-not-a-finding.ts already drew the line and nothing had ever
+     * called it: mayShapeProbing is true for a hypothesis, mayBeSurfaced is not. So
+     * the note steers WHICH behaviour is looked for first, and the REASON still has
+     * to come from what the person said. That order is the whole guardrail:
+     *
+     *   the lead says where to look        allowed, and useful
+     *   the lead's words become the reason  never - the prompt takes the reason from
+     *                                       the transcript, and a step with no reason
+     *                                       is refused by the machine
+     *
+     * So a lead can point at ownership and the coach still says nothing unless this
+     * person's own session showed something about ownership.
+     */
+    // Optional chaining, and a catch, because a steer is an improvement to the
+    // question and must never be the reason nobody gets coached. My first version
+    // used .catch() alone, which does nothing when the accessor itself is missing -
+    // a synchronous TypeError, not a rejected promise.
+    const leadNotes = await (this.prisma.leadContextNote?.findMany({
+      where: { participantId },
+      select: { text: true },
+      orderBy: { createdAt: 'desc' },
+      take: 3,
+    }) ?? Promise.resolve([] as { text: string }[])).catch(() => [] as { text: string }[]);
+    const steer = leadNotes.length
+      ? `\n\nWHAT THE PERSON RUNNING THIS GROUND HAS SAID MATTERS (most recent first). Use this ONLY to decide which behaviour above to look at first. It is not evidence, it is never the reason, and if the transcript does not show the behaviour then the answer is still none:\n${leadNotes.map((n) => `- ${n.text}`).join('\n')}`
+      : '';
+
     const observed = await this.anthropic.extract<{
       index: number | null;
       reason: string | null;
       lastStepOutcome: string | null;
     }>(
       COACHING_OBSERVATION_PROMPT,
-      [{ role: 'user', content: `BEHAVIOURS FOR THIS KIND OF WORK:\n${behaviours}\n\nTRANSCRIPT:\n${transcript}` }],
+      [{ role: 'user', content: `BEHAVIOURS FOR THIS KIND OF WORK:\n${behaviours}${steer}\n\nTRANSCRIPT:\n${transcript}` }],
       COACHING_OBSERVATION_SCHEMA as any,
     );
 

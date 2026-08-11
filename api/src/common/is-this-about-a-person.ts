@@ -86,6 +86,28 @@ const MOTIVE = [
   /\binflat/i,
 ];
 
+/**
+ * HOW SOMEBODY IS GETTING ON, which is a verdict even when no adjective appears.
+ *
+ * Added after "slow to take ownership" sailed through every group above - the
+ * sentence that started the whole lead-note correction, and the vocabulary was
+ * looking for quality words when the judgement was carried by a verb.
+ *
+ * This is deliberately about a PERSON'S progress, not about work being late. "The
+ * migration is behind" is a fact about a migration. "He is behind on the migration"
+ * is a read on him.
+ */
+const PROGRESS_ON_A_PERSON = [
+  /\b(?:slow|quick) to\b/i,
+  /\b(?:he|she|they|the \w+) (?:has|have|had) not (?:yet )?(?:taken|shown|demonstrated|managed|got|started)\b/i,
+  /\bstruggl(?:es|ing|ed)\b/i,
+  /\b(?:is|are|has been|have been) behind\b/i,
+  /\bfail(?:s|ing|ed) to\b/i,
+  /\bnot (?:proactive|responsive|forthcoming|engaged)\b/i,
+  /\bnot (?:yet )?(?:stepping|stepped) up\b/i,
+  /\bno(?:t much)? (?:sign of|evidence of) (?:him|her|them)\b/i,
+];
+
 /** Telling somebody what to do about a decision that is theirs to make. */
 const RECOMMENDATION = [
   /\byou should\b/i,
@@ -102,6 +124,7 @@ export const GROUPS = {
   character: CHARACTER,
   capability: CAPABILITY,
   grade: GRADE,
+  'progress on a person': PROGRESS_ON_A_PERSON,
   motive: MOTIVE,
   recommendation: RECOMMENDATION,
 } as const;

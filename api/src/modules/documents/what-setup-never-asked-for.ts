@@ -21,11 +21,34 @@
  * empty documents tab and a useful one. So every prompt below names a thing that
  * exists somewhere rather than asking for a category.
  *
- * AND THE LINE IT MUST NOT CROSS. This asks about the WORK. It never asks the
- * lead for their read on a person, their concerns about somebody, or what they
- * expect this ground to show. Those are the questions a form like this drifts
- * towards, they are the ones a lead would happily answer, and each one turns
- * setup into a place where a case gets built before anybody has said anything.
+ * AND THE LINE, WHICH I DREW IN THE WRONG PLACE FIRST. My original list banned
+ * asking the lead "what do you think the problem is". That is not a case being
+ * built - it is the starting context, the reason the ground exists, and refusing to
+ * hear it makes the product worse at the only thing setup is for. It was the same
+ * mistake three times in one sitting: treating the lead's input as a liability
+ * rather than as an input.
+ *
+ * What must not be asked is narrower, and it is about what the answer would be USED
+ * for rather than about the subject:
+ *
+ *   what is the situation, including what you think is wrong    ASK. It is why
+ *                                                              they are here.
+ *   what has changed about what matters                         ASK. Priorities
+ *                                                              move, and a ground
+ *                                                              reading last
+ *                                                              month's priorities
+ *                                                              is reading the
+ *                                                              wrong ground.
+ *   how is so-and-so doing                                     do not. That is a
+ *                                                              verdict being
+ *                                                              collected before
+ *                                                              anybody has spoken.
+ *   what do you expect this report to show                     do not. That is
+ *                                                              asking for the
+ *                                                              conclusion in
+ *                                                              advance, and a
+ *                                                              product told the
+ *                                                              answer finds it.
  */
 
 export interface GroundShape {
@@ -137,21 +160,53 @@ export function nextAsk(g: GroundShape, alreadyAsked: string[] = []): Ask | null
  * case is built about somebody before they have said a word.
  */
 export const NEVER_ASK = [
-  'how somebody is doing',
-  'what the lead expects this ground to show',
-  'who the lead is worried about',
-  'what the lead thinks the problem is with a person',
+  'how somebody is doing, as a judgement rather than as a fact about the work',
+  'what the lead expects this ground to show, which is the conclusion in advance',
   'anything the lead would not say in front of the person it is about',
+];
+
+/**
+ * And the other half, written down because a rule that only lists prohibitions
+ * teaches the wrong lesson. These are the lead's to state and the ground is worse
+ * without them.
+ */
+export const ALWAYS_WORTH_ASKING = [
+  'what the situation is, including what the lead thinks is going wrong',
+  'what the lead has asked of somebody, and by when',
+  'what has changed about what matters since the ground opened',
+  'what the lead is unsure about in how they have set it up',
 ];
 
 const OFF_LIMITS = [
   /\bhow is (?:\w+ )?(?:doing|performing|getting on)\b/i,
-  /\b(?:concerns?|worried|worry) about\b/i,
-  /\bwhat do you (?:think|expect) (?:is )?(?:the )?(?:problem|issue)\b/i,
   /\bunderperform/i,
   /\bexpect this (?:ground|report) to show\b/i,
   /\bweakness(?:es)?\b/i,
+  // "Rate", "score", "how would you describe them" - collecting a verdict.
+  /\brate (?:him|her|them|\w+) (?:on|out of)\b/i,
+  /\bhow would you describe (?:him|her|them)\b/i,
 ];
+
+/**
+ * THREE PATTERNS CAME OFF THIS LIST, and why matters more than that they did.
+ *
+ *   /what do you (think|expect) is the problem/   the starting context. Banning it
+ *                                                 meant setup could not ask why the
+ *                                                 lead opened the ground.
+ *   /concerns? about/                             "what are you concerned about in
+ *                                                 the handover" is a question about
+ *                                                 work. The pattern could not tell
+ *                                                 that from "concerns about Tobi",
+ *                                                 which is the fifth time in one
+ *                                                 sitting a blacklist was asked what
+ *                                                 a word was about.
+ *   /worry|worried about/                         same, and WORRY is a record entry
+ *                                                 type this product collects on
+ *                                                 purpose.
+ *
+ * What is left is the narrow thing: collecting a VERDICT on a person, or asking for
+ * the report's conclusion before anybody has checked in.
+ */
 
 /**
  * Whether a question is one of the forbidden ones. Used on anything generated

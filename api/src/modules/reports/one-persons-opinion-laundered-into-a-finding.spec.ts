@@ -1,5 +1,7 @@
 import {
   whatThisRestsOn,
+  whatKindOfNote,
+  provenanceOfATarget,
   withoutWhatOnlyTheLeadSaid,
   whyItWasDropped,
   type LeadNote,
@@ -29,6 +31,10 @@ const NOTES: LeadNote[] = [
   { participantId: 'p2', text: 'Abubakar has been slow to take ownership of client relationships.' },
 ];
 
+const TARGET_NOTE: LeadNote[] = [
+  { participantId: 'p2', text: 'I told him at the start he needs to own one client relationship end to end by month three.' },
+];
+
 const RECORD = [
   { text: 'I have been working through the ticket queue, about forty a week.' },
   { text: 'The Meridian handover is still with me and I have not been able to pass it on.' },
@@ -40,11 +46,32 @@ describe('what a finding rests on', () => {
       .toBe('the record');
   });
 
-  it('the lead alone, when only the note said it', () => {
+  it('the lead alone, when only the note said it AND it is a read on a person', () => {
     // THE REGRESSION. This sentence is the lead's opinion in the report's voice,
     // and by the time anybody notices it is in a document read as neutral.
     expect(whatThisRestsOn('Slow to take ownership of client relationships', NOTES, RECORD))
-      .toBe('the lead alone');
+      .toBe('the lead alone, and it is a read on a person');
+  });
+
+  it('but a TARGET the lead set stays, uncorroborated, which is the whole correction', () => {
+    /**
+     * THE FIRST VERSION OF THIS FILE WAS BACKWARDS IN BOTH DIRECTIONS, and a probe
+     * against the real function proved it:
+     *
+     *   "own one client relationship end to end by month three"   dropped
+     *   "he has been slow to take ownership"                       kept
+     *
+     * It dropped the fact and kept the opinion. Requiring a party's account to
+     * corroborate a target is incoherent - the lead is the ONLY possible source for
+     * what the lead said, which is what makes it a target rather than a shared
+     * observation. G22 depends on exactly this: the standard set in week one is
+     * worth reading against precisely because the lead set it.
+     */
+    expect(whatThisRestsOn(
+      'Ownership of one client relationship end to end by month three was the stated expectation',
+      TARGET_NOTE,
+      RECORD,
+    )).toBe('a target the lead set');
   });
 
   it('and neither, which is most sentences and is fine', () => {
@@ -68,12 +95,67 @@ describe('what a finding rests on', () => {
   });
 });
 
+describe('a target given, against a verdict on actions', () => {
+  it.each([
+    'I told him he needs to own one client end to end by month three',
+    'The expectation was two lab leads recruited before the second site opens',
+    'He is responsible for the handover to support',
+    'Owns the migration',
+  ])('is a target that was set: %s', (text) => {
+    expect(whatKindOfNote(text)).toBe('a target that was set');
+  });
+
+  it.each([
+    'He has been slow to take ownership',
+    'Not proactive enough about raising blockers',
+    'Strong on delivery, weak on judgement',
+    'Currently operating at a mid level',
+  ])('is a read on a person: %s', (text) => {
+    expect(whatKindOfNote(text)).toBe('a read on a person');
+  });
+
+  it('and a target with a verdict stapled to it counts as the verdict', () => {
+    // THE DANGEROUS SENTENCE, and the reason the verdict test wins ties. "I told him
+    // to take ownership and he has been slow to" is a legitimate target carrying an
+    // illegitimate conclusion, and the conclusion is the half that must not be
+    // stated as established.
+    expect(whatKindOfNote('I told him to take ownership and he has been slow to demonstrate it'))
+      .toBe('a read on a person');
+  });
+});
+
+describe('a target carries whether the person saw it', () => {
+  it('says so when they have', () => {
+    expect(provenanceOfATarget(true)).toMatch(/has seen it/);
+  });
+
+  it('and says what to read it as when they have not', () => {
+    // G13's honest half. Reading somebody against a target they never saw is the
+    // definition of an unfair review, and a report that does not say which one it is
+    // has quietly turned a proposal into a commitment.
+    expect(provenanceOfATarget(false)).toMatch(/what was expected rather than as what was agreed/);
+  });
+
+  it('and does not pretend to know when nobody recorded it', () => {
+    expect(provenanceOfATarget(null)).toMatch(/Nobody has recorded whether/);
+  });
+});
+
 describe('stripping them from a report', () => {
   const divergences = [
     { topic: 'The handover', whatEachSaid: 'One says the Meridian handover is still with them.' },
     { topic: 'Ownership', whatEachSaid: 'Slow to take ownership of client relationships.' },
   ];
   const textOf = (d: any) => [d.topic, d.whatEachSaid].join(' ');
+
+  it('keeps a target the lead set, even with nothing corroborating it', () => {
+    const withTarget = [
+      { topic: 'The expectation', whatEachSaid: 'He was told to own one client end to end by month three.' },
+    ];
+    const { kept, dropped } = withoutWhatOnlyTheLeadSaid(withTarget, textOf, TARGET_NOTE, RECORD);
+    expect(kept).toHaveLength(1);
+    expect(dropped).toHaveLength(0);
+  });
 
   it('drops the laundered one and keeps the real one', () => {
     const { kept, dropped } = withoutWhatOnlyTheLeadSaid(divergences, textOf, NOTES, RECORD);
@@ -109,8 +191,11 @@ describe('what the log tells the person reading it', () => {
     // Written for whoever reads it wondering why a report is thinner than they
     // expected. Most of the time the lead is right and nobody has asked yet.
     const line = whyItWasDropped('Slow to take ownership of client relationships');
-    expect(line).toMatch(/rested on the lead's private note/);
+    expect(line).toMatch(/resting on their private note/);
     expect(line).toMatch(/not the lead being wrong/);
-    expect(line).toMatch(/a question in the next check-in, not a sentence in this report/);
+    // And says the thing Hafsah had to point out, so nobody reading the log has to
+    // wonder whether their targets are being thrown away too.
+    expect(line).toMatch(/it is not about targets they set - those stay/);
+    expect(line).toMatch(/a question in the next check-in rather than a sentence in this report/);
   });
 });

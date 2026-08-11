@@ -3,6 +3,7 @@ import {
   nextAsk,
   isOffLimits,
   NEVER_ASK,
+  ALWAYS_WORTH_ASKING,
   type GroundShape,
 } from './what-setup-never-asked-for';
 
@@ -122,20 +123,44 @@ describe('one at a time', () => {
 });
 
 describe('the questions this chat is never allowed to ask', () => {
-  it('refuses every one of them', () => {
-    // THE DRIFT THIS FILE EXISTS TO STOP, and it is not hypothetical: a lead
-    // would answer all of these willingly, at length, and they would make the
-    // first report look sharper. Each one turns setup into a place where a case
-    // is built about somebody before they have said a word.
+  it('refuses the ones that collect a verdict, or the conclusion in advance', () => {
     for (const q of [
       'Before we start, how is Tobi doing?',
-      'Any concerns about the team you want me to look into?',
-      'What do you think the problem is here?',
       'Is anybody underperforming?',
       'What do you expect this report to show?',
       'Where are their weaknesses?',
+      'How would you describe him?',
+      'Rate her out of five on ownership.',
     ]) {
       expect({ q, hit: isOffLimits(q) }).not.toMatchObject({ hit: null });
+    }
+  });
+
+  it('and ASKS the ones I wrongly banned, which are why the ground exists', () => {
+    /**
+     * I DREW THIS LINE IN THE WRONG PLACE, and Hafsah named it: a lead can state
+     * targets they gave, their check-ins shape evolving priorities, and their entry
+     * is the starting context. Three patterns came off the list:
+     *
+     *   "what do you think the problem is"  the reason they opened the ground.
+     *                                       Banning it meant setup could not ask.
+     *   "concerns about"                    "what are you concerned about in the
+     *                                       handover" is a question about work. The
+     *                                       pattern could not tell that from
+     *                                       "concerns about Tobi" - the fifth time
+     *                                       in one sitting a blacklist was asked
+     *                                       what a word was about.
+     *   "worried about"                     same, and WORRY is a record entry type
+     *                                       this product collects on purpose.
+     */
+    for (const q of [
+      'What do you think the problem is here?',
+      'What are you most concerned about in the handover?',
+      'What has changed about what matters since you opened this?',
+      'What did you ask them to do, and by when?',
+      'What are you worried might slip?',
+    ]) {
+      expect({ q, hit: isOffLimits(q) }).toMatchObject({ hit: null });
     }
   });
 
@@ -146,6 +171,11 @@ describe('the questions this chat is never allowed to ask', () => {
     })) {
       expect({ id: ask.id, hit: isOffLimits(ask.question) }).toMatchObject({ hit: null });
     }
+  });
+
+  it('and the other half is written down too, because a list of prohibitions teaches the wrong lesson', () => {
+    expect(ALWAYS_WORTH_ASKING).toContain('what the situation is, including what the lead thinks is going wrong');
+    expect(ALWAYS_WORTH_ASKING).toContain('what has changed about what matters since the ground opened');
   });
 
   it('and the rule is written down where a person will read it', () => {
