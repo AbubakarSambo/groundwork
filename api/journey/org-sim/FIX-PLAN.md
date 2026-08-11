@@ -2321,3 +2321,83 @@ Extraction first, because everything else gets cheaper afterwards:
 
 **What must not happen in this pass:** rewriting the copy. The writing is the strongest thing in
 the product (W8-24). This is a structural and visual pass; the words stay.
+
+---
+
+# Wave 8, seventh pass - the target page list
+
+Hafsah's decisions, 2026-08-11:
+
+- **The board stays**, as its own thing. It is the best page in the product and it keeps its
+  identity rather than being absorbed.
+- **Reports open from the board.** The report stops being a separate top-level tab and becomes
+  something the board leads you to, which is the natural reading order anyway: the glance row
+  says where things stand, and the report is the detail behind it.
+- Everything else in W8-46 goes on the list.
+
+## W8-49 · The target page list - 38 routes to 14 pages
+
+Deep links are not lost. `/grounds/:id/report` and the rest survive as URLs that resolve to a tab
+or a section; what goes away is the second implementation behind them.
+
+### The app, signed in
+
+| Page | Holds | Replaces |
+|---|---|---|
+| **1. Your check-ins** | the rail's home. Every check-in of yours, newest first, each row naming its ground and session, with one action: Start, Continue or View | new (W8-31) |
+| **2. A check-in** | the conversation itself, and the private report under it | `/chat/:id` + `/checkin/:id` |
+| **3. A ground** | one page, one tab set: **Check-ins, Context, Board, Settings**. Person/admin switch in the header. **The report opens from the Board** | `/grounds/:id` + `/grounds/:id/p` + `/grounds/:id/report` + `/grounds/:id/board` |
+| **4. Grounds** | every ground in the org, for whoever runs them, with the roster's per-ground metadata as columns | `/grounds` + `/org/roster` |
+| **5. Feed** | ask about your team, request a report, ask about a person | `/feed` |
+| **6. People** | everyone with an account, and the invite box | `/org/members` |
+| **7. Billing** | your plan, your grounds, the tiers | `/billing` + `/billing/checkout` + `/billing/callback` |
+| **8. Settings** | profile, organisation, email, WhatsApp | `/settings` + `/profile` |
+| **9. Platform admin** | internal only: the dashboard and the prompt tools as tabs | `/admin` + `/admin/dashboard` + `/prompts` + `/prompts/test` |
+
+**Four tabs on a ground, not six.** Report leaves (it opens from the Board, per her decision) and
+Overview leaves - it held the resolution card, which belongs at the end of a ground rather than at
+the top of it (W8-5), and the ground summary, which belongs in the header.
+
+### Arriving, not signed in
+
+| Page | Holds | Replaces |
+|---|---|---|
+| **10. Start** | the anonymous entry chat. **Never shown to a signed-in person** (W8-42) | `/start` |
+| **11. Auth** | sign in, create an account, link sent, set or reset a password - one page, modes | `/auth` + `/auth/sent` + `/set-password` + `/reset-password` + `/login` |
+| **12. Arrive** | resolve any token - invite, join, email verification - and put the person where they belong, with one missing-token state | `/invite` + `/join` + `/verify-email` |
+| **13. Pricing** | the same tier component as Billing, rendered publicly, so the two can never disagree | `/pricing` |
+| **14. Not found** | one sentence, one action. Already right | `*` |
+
+Plus `/demo/:persona`, which is marketing rather than product, and `/auth/google/callback`, which
+is a redirect target with no interface.
+
+### What that removes
+
+- **Both duplicate implementations** of the report and the board (tab and route).
+- **The dead `components/layout/AppShell.tsx`**, 311 lines (W8-45).
+- **`/welcome`**, a route for one button.
+- **`/enter`, `/pin`, `/setup`** if the org-code model is not coming back (W8-35, still hers to
+  decide). If it is, they become one page inside **Arrive**, not three.
+
+## W8-50 · The two rules that keep the count down afterwards
+
+Written as rules because the page count grew by nobody breaking one:
+
+1. **A state is not a page.** "We sent you a link", "your report is not ready", "invalid token"
+   are states of the page that caused them. `/auth/sent` and `/welcome` both exist because a state
+   was given a route.
+2. **One implementation per thing, reachable from many URLs.** The report and the board each exist
+   twice because a deep link was built as a second page instead of pointing at the first. Routes
+   are cheap; implementations are not.
+
+## Order, revised with her decision
+
+1. **W8-44** extract the board's components into `components/gw/`. Nothing changes visually and
+   everything after gets cheaper.
+2. **W8-45** one header, shell only for signed-in routes, delete the dead shell.
+3. **W8-49 page 3**, the ground merge: four routes to one page, four tabs, report opening from the
+   board. This is the largest single reduction in confusion and it carries W8-19 to W8-21.
+4. **W8-49 pages 1 and 2**, the check-in rail and the check-in page.
+5. **W8-47 point 1**, one noun per thing.
+6. The remaining merges, cheapest first: `/chat` + `/checkin`, Auth, Arrive, Pricing + Billing,
+   `/welcome`, `/profile`.
