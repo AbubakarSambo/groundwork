@@ -2132,7 +2132,23 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       [{ role: 'user', content: corpus }],
       SOLO_ARTIFACT_SCHEMA,
     );
-    if (!result?.summary) return;
+    /**
+     * THE PRIVATE RECORD SUMMARY IS THE FIRST THING A PERSON READS ABOUT THEIR OWN
+     * CHECK-IN, and this returned silently when the model gave nothing back.
+     *
+     * Since extract() now retries once, a null here means two failed attempts - and
+     * the person opens their report to find the summary simply absent, with nothing
+     * anywhere recording that it was meant to be there. Same shape as the closing
+     * synthesis that failed and said nothing, and as the detection that quietly
+     * switched off a whole feature.
+     */
+    if (!result?.summary) {
+      this.logger.warn(
+        `No private record summary for participant ${participantId} on ground ${groundId}: the model returned nothing twice. ` +
+          `Their report will open without the "what we heard from you" section. Re-running the check-in completion rebuilds it.`,
+      );
+      return;
+    }
 
     await this.prisma.groundParticipant.update({
       where: { id: participantId },

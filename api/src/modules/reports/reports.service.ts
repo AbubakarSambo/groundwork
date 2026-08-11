@@ -1784,35 +1784,25 @@ Close the report by framing - neutrally, without recommending one - the choice n
   // ---------------------------------------------------------------------------
 
   /**
-   * Generate (or re-generate) the single-party "Your private record shows:"
-   * artifact for a participant. Called after each check-in completes via the
-   * conversation service, and can also be called directly (e.g. if an earlier
-   * run failed). Owner-scoped - reads only this participant's own record.
+   * generateSoloArtifact USED TO LIVE HERE, AND NOTHING CALLED IT.
+   *
+   * Its own comment said "called after each check-in completes via the conversation
+   * service". The conversation service has its own near-identical copy,
+   * buildSoloArtifact, and calls that. So this one had never run - a dead
+   * near-duplicate of a user-visible artifact, with a docstring asserting it was the
+   * live path.
+   *
+   * That is worse than an unused function. Anybody improving the private-record
+   * summary would have read this comment, edited this method, tested it, and shipped
+   * a change that reached nobody - which happened three separate times today for
+   * other reasons. Deleted rather than wired, because the live one works and two
+   * implementations of one artifact drift.
+   *
+   * A LIMIT OF THE UNWIRED-MODULE RULE, worth knowing: it checks files, not methods.
+   * reports.service.ts is imported everywhere, so a dead method inside it is
+   * invisible to that check. This one was found by following a silent early return.
    */
-  async generateSoloArtifact(participantId: string, groundId: string): Promise<void> {
-    const entries = await this.prisma.recordEntry.findMany({
-      where: { participantId, participant: { groundId } },
-      orderBy: { createdAt: 'asc' },
-      select: { type: true, text: true },
-    });
-    if (entries.length === 0) return;
 
-    const corpus = entries.map((e) => `(${e.type}) ${e.text}`).join('\n');
-    const result = await this.anthropic.extract<{ summary: string; whatToCarry?: string }>(
-      SOLO_ARTIFACT_PROMPT,
-      [{ role: 'user', content: corpus }],
-      SOLO_ARTIFACT_SCHEMA,
-    );
-    if (!result?.summary) return;
-
-    await this.prisma.groundParticipant.update({
-      where: { id: participantId },
-      data: {
-        soloArtifact: JSON.stringify({ summary: result.summary, whatToCarry: result.whatToCarry ?? '' }),
-        soloArtifactAt: new Date(),
-      },
-    });
-  }
 
   // ---------------------------------------------------------------------------
   // #99 - Post-report conversation guide
