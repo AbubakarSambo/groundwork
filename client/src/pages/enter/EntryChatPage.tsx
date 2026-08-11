@@ -1677,7 +1677,7 @@ export function EntryChatPage() {
                     borderRadius: '4px 16px 16px 16px', padding: '10px 14px', fontSize: 14, lineHeight: 1.65,
                     boxShadow: '0 1px 3px rgba(0,0,0,.06)', marginBottom: 4,
                   }}>
-                    How do you want to run this?
+                    That is the setup done. One more thing before the check-in starts: how do you want to run this?
                   </div>
                   <button
                     onClick={startSelfPath}
@@ -1853,9 +1853,28 @@ export function EntryChatPage() {
               {startCheckin.isPending && (
                 <div style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', padding: 24 }}>Starting your check-in…</div>
               )}
+              {/*
+                W1. THE SEAM BETWEEN SETUP AND THE CHECK-IN.
+                Her run went "Thank you. That gives me what I need." then "How do
+                you want to run this?" then straight into a question of a
+                completely different kind - one that goes on her private record.
+                Nothing said the setup was finished, nothing said a check-in had
+                started, and nothing said this half is the private half. After
+                five setup questions, a person cannot tell that the sixth is a
+                different sort of question unless something says so.
+              */}
+              {!startCheckin.isPending && displayedHistory.length <= 2 && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '2px 12px 10px' }}>
+                  <div style={{ flex: 1, height: 1, background: 'var(--gw-border)' }} />
+                  <span style={{ fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--gw-sub)', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                    Setup done · your check-in starts here
+                  </span>
+                  <div style={{ flex: 1, height: 1, background: 'var(--gw-border)' }} />
+                </div>
+              )}
               {!startCheckin.isPending && displayedHistory.length <= 2 && (
                 <div style={{ fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', padding: '4px 12px 8px', lineHeight: 1.5 }}>
-                  About 10 minutes, a few exchanges (around 3 answers), then you can end the session to get your report.
+                  What you say from here is your own account, and it goes on your private record. About 10 minutes, a few exchanges (around 3 answers), then you can end the session to get your report.
                 </div>
               )}
               {!startCheckin.isPending && displayedHistory.length <= 2 && (
@@ -2359,7 +2378,7 @@ export function EntryChatPage() {
                   </div>
                   <div style={{ fontSize: 11.5, color: '#9B9590', marginTop: 8 }}>
                     {uploadedDoc
-                      ? `On record: ${uploadedDoc.name}. No contributor documents yet.`
+                      ? `On record: ${uploadedDoc.name}. Nobody else has attached anything yet.`
                       : 'On record: your account. No documents uploaded yet.'}
                   </div>
                 </div>
@@ -2469,7 +2488,7 @@ export function EntryChatPage() {
                 style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #E2E0DB', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none', marginBottom: 8 }}
               />
               <div style={{ fontSize: 11, fontWeight: 600, color: '#6B6560', marginBottom: 4 }}>
-                How often do contributors check in?
+                How often does everyone check in?
                 {!cadenceChosen && (
                   <span style={{ fontWeight: 500, color: '#8A7B66' }}> Not set yet - this ground will run every 2 weeks unless you pick.</span>
                 )}
@@ -2569,7 +2588,7 @@ export function EntryChatPage() {
                 "Someone's work is off track", 'Running a performance improvement plan', 'Co-founder or partner disagreement', 'A project is off track', 'You and a team member see it differently',
                 'Running a PIP', 'Team member not delivering', 'Cofounder or partner dispute',
               ].some(k => s.includes(k))
-              const inviteHeading = isSensitive ? 'Let them share their side' : 'Invite contributors'
+              const inviteHeading = isSensitive ? 'Let them share their side' : 'Invite people'
               const inviteSubtext = isSensitive
                 ? 'Send them a link so they can give their own account of the same work. They cannot see what you wrote. When both sides are in, the report shows where you agree and where the conversation still needs to happen. It does not score anyone.'
                 : 'Each person gives their own account of the shared work, including their own part in it. Nobody reads anyone else\'s words directly. When all the accounts are in, the report shows where people agree, where they differ, and what the gap means for the work.'
@@ -2640,7 +2659,7 @@ export function EntryChatPage() {
                       const [next, ...rest] = bulkQueue
                       if (next) { setBulkQueue(rest); setInviteContextFor(next) } else { setInviteContextFor(null) }
                     }} style={{ padding: '8px 14px', borderRadius: 7, background: 'none', border: '1px solid #E2E0DB', color: '#6B6560', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Skip</button>
-                    <button onClick={submitInviteContext} style={{ flex: 1, padding: '8px 14px', borderRadius: 7, background: '#0C447C', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Add contributor</button>
+                    <button onClick={submitInviteContext} style={{ flex: 1, padding: '8px 14px', borderRadius: 7, background: '#0C447C', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Add person</button>
                   </div>
                 </div>
               ) : bulkInviteMode ? (
@@ -2729,7 +2748,16 @@ export function EntryChatPage() {
                 <button onClick={() => setShowSave(false)} style={{ padding: '11px 28px', borderRadius: 8, background: '#0C447C', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
                   Done
                 </button>
-                <div style={{ fontSize: 11.5, color: '#9B9590', paddingTop: 8 }}>You can reopen this any time from the bar below.</div>
+                {/*
+                  W7. "DONE" CLOSED THE PANEL AND SAID NOTHING ABOUT THE EMAIL.
+                  She pressed it and was left on the report with no sign that
+                  anything had been sent, on a flow whose whole next step happens
+                  in her inbox. The panel closing is the only feedback there was,
+                  and a panel closing is what "Cancel" looks like.
+                */}
+                <div style={{ fontSize: 11.5, color: '#9B9590', paddingTop: 8, lineHeight: 1.6 }}>
+                  Nothing else to do here. The link is in your inbox at <strong>{email}</strong>{inviteAdded.length > 0 ? ` - opening it saves your ground and sends the ${inviteAdded.length} invite${inviteAdded.length === 1 ? '' : 's'}` : ' - opening it saves your ground'}. You can reopen this any time from the bar below.
+                </div>
               </div>
             ) : closed ? null : (
               <div onClick={() => setShowSave(false)} style={{ textAlign: 'center', fontSize: 12, color: '#9B9590', cursor: 'pointer', paddingTop: 4 }}>

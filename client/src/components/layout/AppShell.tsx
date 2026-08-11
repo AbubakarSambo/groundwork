@@ -79,7 +79,7 @@ export function AppShell({ children }: AppShellProps) {
     ? `${user.firstName?.[0] ?? ''}${user.lastName?.[0] ?? ''}`.toUpperCase() || '?'
     : '?'
 
-  const roleLabel = isAdmin ? 'Admin' : 'Contributor'
+  const roleLabel = isAdmin ? 'Admin' : 'Member'
 
   const parties = (g: Ground) => {
     // Identify by NAME, never by email. Email may be null (contact-hiding), so the old

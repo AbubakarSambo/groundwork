@@ -276,7 +276,7 @@ export function GroundAdminPage() {
       setNewParticipantNote('')
       qc.invalidateQueries({ queryKey: ['ground', id] })
     },
-    onError: () => toast.error('Could not add contributor.'),
+    onError: () => toast.error('Could not add them.'),
   })
 
   useEffect(() => {
@@ -847,7 +847,7 @@ export function GroundAdminPage() {
                 <div style={{ background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 10, padding: '14px 16px' }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: '#085041', marginBottom: 6 }}>Invite sent to {lastInvitedEmail}</div>
                   <div style={{ fontSize: 12, color: '#3A7A60', lineHeight: 1.6, marginBottom: 10 }}>
-                    They will get an email and do their own private check-in - about 10 minutes. You cannot see what they write. Once all contributors have checked in, the shared report releases to everyone at the same time.
+                    They will get an email and do their own private check-in - about 10 minutes. You cannot see what they write. Once everyone has checked in, the shared report releases to everyone at the same time.
                   </div>
                   <button onClick={() => { setLastInvitedEmail(null); setAddingParticipant(true) }}
                     style={{ padding: '7px 14px', borderRadius: 7, background: 'none', border: '1px solid #5DCAA5', color: '#085041', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
@@ -863,7 +863,7 @@ export function GroundAdminPage() {
                     if (limit !== null && limit !== undefined && memberCount >= limit) {
                       return (
                         <div style={{ background: '#FFF3E0', border: '1px solid #F5C56A', borderRadius: 8, padding: '10px 14px', marginBottom: 10, fontSize: 12, color: '#7A4B00', lineHeight: 1.55 }}>
-                          Your {plan?.replace('_', ' ').toLowerCase()} plan supports up to {limit} members. You have reached the limit. Upgrade your organization to add more contributors.
+                          Your {plan?.replace('_', ' ').toLowerCase()} plan supports up to {limit} members. You have reached the limit. Upgrade your organization to add more people.
                           <button onClick={() => navigate('/billing')} style={{ display: 'inline', marginLeft: 8, background: 'none', border: 'none', fontSize: 12, color: '#7A4B00', textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>
                             View plans
                           </button>
@@ -877,7 +877,7 @@ export function GroundAdminPage() {
                       invite people to it or declare the closing round. */}
                   {isInitiator && (
                     <button onClick={() => setAddingParticipant(true)} style={{ width: '100%', padding: '11px 16px', borderRadius: 8, background: 'none', color: 'var(--gw-navy)', fontSize: 13, fontWeight: 600, border: '1px dashed var(--gw-blue-b)', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                      <span style={{ fontSize: 16, fontWeight: 300 }}>+</span> Add a contributor
+                      <span style={{ fontSize: 16, fontWeight: 300 }}>+</span> Add a person
                     </button>
                   )}
                   {isInitiator && !['RESOLVED', 'CLOSED', 'STALLED', 'AWAITING_LEAD'].includes(ground.status) && (
@@ -901,7 +901,7 @@ export function GroundAdminPage() {
                 </>
               ) : (
                 <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px' }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Add a contributor</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Add a person</div>
                   <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 10, lineHeight: 1.5 }}>They will get an email invitation. You cannot see what they write in their check-in.</div>
                   <input type="email" placeholder="name@company.com" value={newParticipantEmail} onChange={e => setNewParticipantEmail(e.target.value)}
                     style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8, outline: 'none' }} />
