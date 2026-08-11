@@ -214,8 +214,32 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
    the shorter ones carried two thousand pixels of empty white underneath. You
    scroll, and scroll, and nothing is there. That is what "I cannot get to the
    other pages" actually was. */
-.l-cases{display:flex;align-items:flex-start;gap:24px;overflow-x:auto;scroll-snap-type:x mandatory;scroll-behavior:smooth;padding:2px 2px 10px;margin:0 -2px;-webkit-overflow-scrolling:touch}
+/* overflow-y:hidden IS THE FIX, AND overflow-x:auto IS WHY IT WAS NEEDED.
+   A box with overflow-x:auto and a visible y axis has its y coerced to auto by CSS -
+   so this strip was a VERTICAL scroll container, and with its height animated by the
+   script below it swallowed the wheel. Measured on the live site: six wheel ticks
+   asking for 1200px during the .25s height transition moved the page 0px, while the
+   document shrank 7490 -> 6118 underneath. "The vertical scroll acts funny."
+   hidden is a legal partner for auto and is not coerced, so the y axis stops being a
+   scroll container and the wheel goes to the page where it belongs. The script sizes
+   the strip to the active case, so there is nothing to clip. */
+.l-cases{display:flex;align-items:flex-start;gap:24px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scroll-behavior:smooth;padding:2px 2px 10px;margin:0 -2px;-webkit-overflow-scrolling:touch}
 .l-case{flex:0 0 100%;min-width:0;scroll-snap-align:start}
+/* ON A PHONE THE TABS ARE THE WHOLE NAVIGATION, AND THE STRIP GOES AWAY.
+   A horizontal scroll-snap container inside a vertically scrolling page competes for
+   the same downward drag on touch: a finger moving down over a report can be claimed
+   by the strip instead of the page, which is the hook felt when scrolling downwards.
+   A mouse wheel and a finger are not the same instrument, so this is a touch-width
+   decision rather than a global one - the swipe stays where a pointer is precise and
+   goes where it fights the page. Nothing is lost: the four tabs sit directly above
+   and already switch cases.
+   :where() keeps this at zero specificity so the script's inline height, which is
+   set on the strip, is not fighting a selector. */
+@media (max-width: 767px) {
+  .l-cases{display:block;overflow-x:visible;scroll-snap-type:none;height:auto !important}
+  .l-case{display:none}
+  .l-case.is-on{display:block}
+}
 .l-cases::-webkit-scrollbar{height:8px}
 .l-cases::-webkit-scrollbar-thumb{background:#D8D5CF;border-radius:8px}
 .l-case-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px}
@@ -351,7 +375,46 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
    characters a line. Past about 75 the eye loses its place coming back for the
    next line, which was most of why the argument sections felt heavy. Headings
    keep the full width; only running text is capped. Not a word changes. */
-.l-prose{max-width:600px}
+/* ONE WIDTH PER SECTION, WHICH THE REPORT SCENARIOS WERE THE ONLY EXCEPTION TO.
+   Measured at 1728 wide, inside a single report case:
+     tabs 960   headline 960   the report card 960
+     the private note 640      every paragraph 600
+   Four widths, all flush left, so the right edge stepped in three times and left a
+   ragged column with a field of empty space beside it. Every OTHER section on this
+   page already matches - "It shows you what meetings miss" has heading 960 and prose
+   960 - so the reports were the odd ones out rather than the rule.
+   A 600px measure is good for reading and would be right if it were centred or set
+   against something. Flush left under a 960px heading and a 960px card it does not
+   read as a measure, it reads as a mistake. */
+.l-case .l-prose,
+.l-case > p{max-width:none}
+
+/* AND THE HEADING JOINS THE COLUMN IT INTRODUCES.
+   The rule above this one says "headings keep the full width; only running text is
+   capped", and that is what produced the thing Hafsah photographed: at 1728 wide,
+   "Every update you get has been through someone else first." runs to 960px while
+   every paragraph under it stops at 600, so the heading overhangs its own argument by
+   360px and the right third of the section is empty.
+   The 600px measure is right and stays - past about 75 characters the eye loses its
+   place coming back. What was wrong is that the heading was not part of the same
+   column. A heading and the paragraphs it introduces are one block of text, and
+   nothing else in this section is competing for that space.
+   Panels, grids and the report cards still get the full width, which is what they
+   wanted: .l-case un-caps below, because there a 960px heading sits over a 960px
+   report and belongs with it. */
+.l-sec-h2{max-width:680px}
+.l-prose{max-width:680px}
+/* The argument sections use two different treatments for the same kind of content:
+   some paragraphs carry .l-prose and some are plain inline-styled <p>. That is the
+   inconsistency underneath the ragged edge - "It shows you what meetings miss" ran
+   its prose to the full 960 while the section above it stopped at 600, and my first
+   attempt at this capped only the headings, which made the 960 one WORSE by leaving
+   its prose wider than its own heading. One measure for running text, whatever class
+   it happens to carry. */
+.l-wrap-sm > p{max-width:680px}
+.l-case .l-sec-h2,
+.l-case .l-prose,
+.l-case > p{max-width:none}
 
 /* SECTION 3's OBJECT: three beats.
    The three lines are the memorable part of "why leaders miss problems" and
@@ -496,18 +559,33 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
 
 /* ══ MOBILE (≤620px) ═══════════════════════════════════════════ */
 @media(max-width:620px){
+  /* ══ TYPE AND TAP TARGETS, AUDITED ON A 390px PHONE ══
+     This block used to make the small things SMALLER on mobile, which is backwards:
+     a label that is 11px on a 1440px monitor viewed at arm's length is 9px on a phone
+     held closer but rendered on a much denser screen, in uppercase, with .14em of
+     letter-spacing. Measured across the live page, the labels came out at 9 and 10px
+     and the nav links at 15px TALL as tap targets.
+       9px  "Know what's really happening", "Why leaders miss problems",
+            "What Groundwork does", "What a report looks like"
+      10px  "Start well", the stat captions
+      20px  the hero headline, on a page whose whole job is that sentence
+     Apple asks for 44px of tap target and Google for 48. A 27px button is a miss for
+     anybody with large hands or a moving train.
+     So: labels legible, headline the size of a headline, and every button and tab at
+     least 44px tall. Nothing else about the mobile layout is touched. */
+
   /* Nav - keep both buttons, hide page links */
-  .l-nav{padding:0 14px;height:52px}
+  .l-nav{padding:0 14px;height:56px}
   .l-nav-links{display:none}
-  .l-btn-ghost{font-size:12px;padding:6px 10px}
-  .l-btn-solid{font-size:12px;padding:6px 10px}
+  .l-btn-ghost{font-size:13px;padding:11px 14px;min-height:44px;display:inline-flex;align-items:center}
+  .l-btn-solid{font-size:13px;padding:11px 14px;min-height:44px;display:inline-flex;align-items:center}
 
   /* Hero - mobile */
   .l-hero{padding:0}
   .l-hero-inner{padding:28px 16px 24px}
-  .l-hero-label{font-size:9px;margin-bottom:10px}
-  .l-hero-h1{font-size:20px !important;min-height:auto;margin-bottom:10px !important}
-  .l-hero-sub{font-size:13px;margin-bottom:6px;max-width:100%}
+  .l-hero-label{font-size:11px;letter-spacing:.1em;margin-bottom:12px}
+  .l-hero-h1{font-size:27px !important;line-height:1.15;min-height:auto;margin-bottom:12px !important}
+  .l-hero-sub{font-size:15px;margin-bottom:8px;max-width:100%}
   .l-hero-sub2{display:none}
   /* hero subtext smaller on mobile */
   .l-hero-inner p{font-size:14px !important;margin-bottom:16px !important}
@@ -515,7 +593,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
   /* Start-well steps stack to a single column on mobile */
   .l-startwell{flex-direction:column;gap:10px;margin-bottom:20px}
   .l-sw-step{min-width:0;width:100%;padding:14px 16px}
-  .l-sw-lead{font-size:10px;margin-bottom:10px}
+  .l-sw-lead{font-size:11.5px;letter-spacing:.08em;margin-bottom:10px}
 
   /* Functionality grid stacks on mobile */
   .l-fx-grid{grid-template-columns:1fr;gap:10px}
@@ -525,6 +603,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
   .l-prose{max-width:none}
   .l-fx{padding:16px 18px}
   .l-fx-lead h3{font-size:16px}
+
+  /* The scenario tabs are the only way to change report on a phone, since the
+     horizontal strip is off below 768px - so they have to be properly hittable. */
+  .l-case-tab{font-size:13px;padding:11px 15px;min-height:44px}
+  .l-stat-lbl{font-size:10.5px}
 
   /* Primary CTAs - primary full width, sign in text link */
   .l-hero-btns{flex-direction:column;gap:8px;margin-bottom:0}
@@ -564,7 +647,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
   .l-what-desc{font-size:13px !important;text-align:left !important;line-height:1.7 !important}
   .l-what-list{text-align:left !important;font-size:12px !important}
   .l-sec-h2{font-size:26px}
-  .l-sec-label{font-size:9px}
+  .l-sec-label{font-size:11px;letter-spacing:.1em}
 
   /* Problem */
   .l-prob-grid{grid-template-columns:1fr}
@@ -845,10 +928,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
         <button class="l-case-tab" role="tab" aria-selected="false" data-case="2">Onboarding a whole cohort</button>
         <button class="l-case-tab" role="tab" aria-selected="false" data-case="3">A new hire in probation period</button>
       </div>
-      <div style="font-size:11.5px;color:var(--gw-muted,#9B9590);margin-bottom:14px">Scroll sideways for the other one.</div>
+      <div style="font-size:11.5px;color:var(--gw-muted,#9B9590);margin-bottom:14px">Pick a scenario, or scroll sideways.</div>
 
       <div class="l-cases" id="l-cases">
-        <div class="l-case">
+        <div class="l-case is-on">
       <h2 class="l-sec-h2" style="margin-bottom:10px">Every pipeline review said the quarter was on track.</h2>
       <p class="l-prose" style="font-size:15px;color:#4A5568;line-height:1.8;margin-bottom:8px">Eight people on the same sales team gave their own account, separately. Here is what came back.</p>
       <!-- THIS SAID "IT NEVER QUOTES ANYONE" AND THAT IS NOT TRUE.
@@ -866,7 +949,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
            somebody else's opinion of you cannot. Saying the first part wrongly
            was worse than useless, because the promise people actually need is the
            second one and a false claim next to it makes both look like marketing. -->
-      <p style="font-size:13.5px;color:#6B6560;line-height:1.7;margin-bottom:22px">An extract from a shared report, as the person running it sees it. Everyone in the Ground reads the same one. It quotes what people said about their own work, and it never says who said what about anybody else.</p>
+      <p style="font-size:13.5px;color:#6B6560;line-height:1.7;margin-bottom:22px">An extract from a shared report, as the person running it sees it. The people in it read this same shared picture. The private note under it is only ever their own. It quotes what people said about their own work, and it never says who said what about anybody else.</p>
 
       <!-- A SALES TEAM, BECAUSE EVERYBODY HAS ONE AND EVERYBODY RECOGNISES IT.
            The earlier version used a product launch. It was concrete but narrow:
@@ -1081,7 +1164,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
            naming or quoting anyone even here, in a document only one person ever
            sees. So these say "the other view" and "someone else", the way the
            product does. -->
-      <div style="max-width:640px;margin:18px 0 0;background:#FAF9F7;border:1px dashed #C9C5BE;border-radius:10px;padding:16px 18px">
+      <div style="margin:18px 0 0;background:#FAF9F7;border:1px dashed #C9C5BE;border-radius:10px;padding:16px 18px">
         <div style="font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:#9B9590;margin-bottom:10px">What only Yusuf sees</div>
 
         <!-- SAY WHAT IT IS, NOT THAT IT IS SECRET.
@@ -1138,7 +1221,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
         <div class="l-case">
           <h2 class="l-sec-h2" style="margin-bottom:10px">Day 62 of a 90 day handover.</h2>
           <p class="l-prose" style="font-size:15px;color:#4A5568;line-height:1.8;margin-bottom:8px">A new chief executive at Kaya Labs, a franchise of eleven small HIV research sites. Her board chair, her lab network director and her funder lead each gave their own account, separately.</p>
-          <p style="font-size:13.5px;color:#6B6560;line-height:1.7;margin-bottom:22px">An extract from a shared report, as the person running it sees it. Everyone in the Ground reads the same one.</p>
+          <p style="font-size:13.5px;color:#6B6560;line-height:1.7;margin-bottom:22px">An extract from a shared report, as the person running it sees it. The people in it read this same shared picture. The private note under it is only ever their own.</p>
 
           <div style="background:#fff;border:1px solid #D8D5CF;border-radius:12px;overflow:hidden;box-shadow:0 4px 16px rgba(26,25,22,.07)">
 
@@ -1232,7 +1315,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
                naming or quoting anyone even here, in a document only one person ever
                sees. So these say "the other view" and "someone else", the way the
                product does. -->
-          <div style="max-width:640px;margin:18px 0 0;background:#FAF9F7;border:1px dashed #C9C5BE;border-radius:10px;padding:16px 18px">
+          <div style="margin:18px 0 0;background:#FAF9F7;border:1px dashed #C9C5BE;border-radius:10px;padding:16px 18px">
             <div style="font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:#9B9590;margin-bottom:10px">What only Nomsa sees</div>
 
             <!-- SAY WHAT IT IS, NOT THAT IT IS SECRET.
@@ -1287,7 +1370,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
         <div class="l-case">
           <h2 class="l-sec-h2" style="margin-bottom:10px">Fourteen people started the same job in the same month.</h2>
           <p class="l-prose" style="font-size:15px;color:#4A5568;line-height:1.8;margin-bottom:8px">New field officers on a twelve week probation, one per district. They have never met each other. Each gave their own account, separately, to the one programme manager they all report to.</p>
-          <p style="font-size:13.5px;color:#6B6560;line-height:1.7;margin-bottom:22px">An extract from a shared report, as the person running it sees it. Everyone in the Ground reads the same one.</p>
+          <p style="font-size:13.5px;color:#6B6560;line-height:1.7;margin-bottom:22px">An extract from a shared report, as the person running it sees it. On a cohort nobody reads anybody else: each person reads their own, and the lead reads the whole.</p>
 
           <div style="background:#fff;border:1px solid #D8D5CF;border-radius:12px;overflow:hidden;box-shadow:0 4px 16px rgba(26,25,22,.07)">
 
@@ -1358,7 +1441,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
                naming or quoting anyone even here, in a document only one person ever
                sees. So these say "the other view" and "someone else", the way the
                product does. -->
-          <div style="max-width:640px;margin:18px 0 0;background:#FAF9F7;border:1px dashed #C9C5BE;border-radius:10px;padding:16px 18px">
+          <div style="margin:18px 0 0;background:#FAF9F7;border:1px dashed #C9C5BE;border-radius:10px;padding:16px 18px">
             <div style="font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:#9B9590;margin-bottom:10px">What only Zainab sees</div>
 
             <!-- SAY WHAT IT IS, NOT THAT IT IS SECRET.
@@ -1412,7 +1495,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
         <div class="l-case">
           <h2 class="l-sec-h2" style="margin-bottom:10px">Week seven of a ninety day probation.</h2>
           <p class="l-prose" style="font-size:15px;color:#4A5568;line-height:1.8;margin-bottom:8px">Tobi joined as a delivery lead and is seven weeks into a ninety day probation. His manager, a colleague who works alongside him, and Tobi each gave their own account, separately.</p>
-          <p style="font-size:13.5px;color:#6B6560;line-height:1.7;margin-bottom:22px">An extract from a shared report, as the person running it sees it. Everyone in the Ground reads the same one.</p>
+          <p style="font-size:13.5px;color:#6B6560;line-height:1.7;margin-bottom:22px">An extract from a shared report, as the person running it sees it. The people in it read this same shared picture. The private note under it is only ever their own.</p>
 
           <div style="background:#fff;border:1px solid #D8D5CF;border-radius:12px;overflow:hidden;box-shadow:0 4px 16px rgba(26,25,22,.07)">
 
@@ -1546,7 +1629,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
                real postReportGuide: something you could say, something to ask,
                something someone else raised worth taking seriously - and like the
                real one, naming and quoting nobody. -->
-          <div style="max-width:640px;margin:18px 0 0;background:#FAF9F7;border:1px dashed #C9C5BE;border-radius:10px;padding:16px 18px">
+          <div style="margin:18px 0 0;background:#FAF9F7;border:1px dashed #C9C5BE;border-radius:10px;padding:16px 18px">
             <div style="font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:#9B9590;margin-bottom:10px">What only Tobi sees</div>
             <p style="font-size:12.5px;color:#6B6560;line-height:1.6;margin:0 0 12px">Everyone in the Ground gets one of these each time a report lands, drawn only from their own record. Nobody reads anybody else's, and neither does the person running it.</p>
             <div style="margin-bottom:11px">
@@ -1575,11 +1658,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
           if (!row) return;
           var tabs = Array.prototype.slice.call(document.querySelectorAll('.l-case-tab'));
           var cases = Array.prototype.slice.call(row.children);
+          /* The tab does both, because the two layouts need different things: under
+             768px the strip is a plain block and is-on decides what shows; above it
+             the strip scrolls and is-on is inert. One handler, no width checks in JS
+             - the CSS decides which half matters. */
+          function markOn(i) {
+            cases.forEach(function (c, n) { c.classList.toggle('is-on', n === i); });
+          }
           tabs.forEach(function (t, i) {
             t.addEventListener('click', function () {
+              markOn(i);
               row.scrollTo({ left: cases[i].offsetLeft - row.offsetLeft, behavior: 'smooth' });
             });
           });
+          markOn(0);
           /**
            * THE ROW'S HEIGHT HAS TO FOLLOW THE CASE YOU ARE LOOKING AT.
            *
@@ -1603,11 +1695,25 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
               if (d < best) { best = d; nearest = i; }
             });
             tabs.forEach(function (t, i) { t.setAttribute('aria-selected', String(i === nearest)); });
-            row.style.height = cases[nearest].getBoundingClientRect().height + 'px';
+            /* Plus the horizontal scrollbar's own height. With overflow-y:hidden a
+               strip sized to the case exactly would clip the last few pixels of the
+               report behind the scrollbar. */
+            /* Only where the strip is actually a strip. Under 768px it is a block
+               with height:auto and one visible case, so an explicit height would put
+               the empty space straight back. */
+            if (window.matchMedia('(min-width: 768px)').matches) {
+              var scrollbar = row.offsetHeight - row.clientHeight;
+              row.style.height = (cases[nearest].getBoundingClientRect().height + scrollbar) + 'px';
+            } else {
+              row.style.height = '';
+            }
             return nearest;
           }
 
-          row.style.transition = 'height .25s ease';
+          /* NO HEIGHT TRANSITION. It animated the page's total height for 250ms, and
+             a wheel inside that window did nothing at all - the layout was moving
+             under the browser while it tried to scroll. A switch that is instant has
+             no such window, and reads as a switch rather than a slide. */
           // Images and fonts settle after first paint, so measure once more.
           fitHeight();
           window.addEventListener('load', fitHeight);

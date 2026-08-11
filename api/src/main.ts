@@ -38,9 +38,20 @@ async function bootstrap() {
 
   app.setGlobalPrefix('api/v1');
 
+  // CORS - allow configured origins (plus this project's Vercel previews) or all in development
   const allowedOrigins = configService.get<string>('app.corsOrigins');
+  const staticOrigins = allowedOrigins ? allowedOrigins.split(',') : [];
+  const vercelPreviewPattern = /^https:\/\/groundwork-[a-z0-9-]+-collecta-s-projects\.vercel\.app$/;
+
   app.enableCors({
-    origin: allowedOrigins ? allowedOrigins.split(',') : true,
+    origin: !allowedOrigins
+      ? true
+      : (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+          if (!origin || staticOrigins.includes(origin) || vercelPreviewPattern.test(origin)) {
+            return callback(null, true);
+          }
+          callback(new Error(`Origin ${origin} not allowed by CORS`));
+        },
     credentials: true,
   });
 
