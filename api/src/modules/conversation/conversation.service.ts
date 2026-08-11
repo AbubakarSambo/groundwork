@@ -20,6 +20,7 @@ import { buildRoleProbeBlock } from '../board/role-maps';
 import { detectFunction } from '../board/function-detection';
 import { closeReadiness, askedToFinish } from './close-readiness';
 import { observeStyle, mergeStyle, styleGuidance } from './person-style';
+import { restoreTheirWords, causalClaimNobodyMade, ASK_INSTEAD_OF_CONCLUDING } from './the-record-holds-what-was-said';
 
 /**
  * How many things in this text could actually be checked by someone later.
@@ -489,7 +490,35 @@ export class ConversationService {
       const rawReply = await this.anthropic.respond(fullSystem, history);
       // Strip the close marker before it is stored or shown - it is machinery.
       const stripped = stripCloseMarker(rawReply);
-      reply = stripped.text;
+      /**
+       * W2. THE NAME GOES BACK BEFORE THE SENTENCE IS STORED OR SHOWN.
+       *
+       * She typed "microchipshit" and the engine wrote "Microchip Solutions",
+       * then put it on her record. This product's whole claim is that it holds
+       * what people said, so the restore happens here - between the model and
+       * the database - rather than as a flag somebody reads afterwards, by which
+       * time she has already read a company name she never typed.
+       *
+       * It only ever puts back a word SHE typed. Where nothing of hers matches,
+       * the reply is left exactly as written, because a guard that picks its own
+       * replacement is committing the fault it exists to stop.
+       */
+      const personWords = turns
+        .filter((t) => t.role === TurnRole.PERSON)
+        .map((t) => t.content ?? '')
+        .concat(message);
+      reply = restoreTheirWords(stripped.text, personWords);
+
+      // The other half of W2 cannot be repaired by substitution, because there
+      // is no word of hers to put back - the causation was invented whole. It is
+      // logged rather than edited: silently deleting half a sentence would leave
+      // prose that reads as though the engine lost its train of thought.
+      const invented = causalClaimNobodyMade(reply, personWords);
+      if (invented.length) {
+        this.logger.warn(
+          `Causal claim nobody made on ${checkIn.id}: ${invented.join(', ')}. ${ASK_INSTEAD_OF_CONCLUDING}`,
+        );
+      }
       hadCloseMarker = stripped.hadMarker;
       aiTurn = await this.prisma.conversationTurn.create({
         data: { checkInId: checkIn.id, role: TurnRole.AI, content: reply },
