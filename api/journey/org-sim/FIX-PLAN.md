@@ -2869,3 +2869,83 @@ them. Two cheap things keep that far away without any grouping:
 
 If both are in place from the start, the grouping question probably never arrives. Recorded here so
 the next person to look at a crowded rail knows the decision was made deliberately, not missed.
+
+---
+
+# Wave 8, eleventh pass - the help modal and the feedback widget
+
+The last two things on every page and never opened. Both are good, and one of them contradicts the
+product.
+
+## W8-58 · The help modal is the second-best designed thing in the product - **no action, use it**
+
+Four tabs: **What it is, How to use it, Use cases, Reports.** Dark identity header, coloured
+left-accent cards, a primary button that advances to the next tab, Back on the later ones. It has
+the hierarchy the rest of the app lacks, and it explains the product better than any page does:
+
+- "A shared record of contribution. Both parties check in independently. Neither sees what the
+  other wrote... The gap between them is usually the conversation that needed to happen months
+  earlier."
+- "The record belongs to you. Permanently. Not the organisation. Not the platform. The person."
+
+**Two things to take from it:** it is the third example of the house style done right (with the
+board, W8-29, and the 404), and its content is wasted behind a floating button. The "What it is"
+cards would carry the empty grounds list far better than three cards about absence (W8-24).
+
+## W8-59 · The help documents two things the product does not do - **S, and one is W8-33's answer**
+
+Read against the live product, two of its claims are not true yet.
+
+**1. "Set a resolution state before the ground starts."** Step 2 of How to use it:
+
+> "Before the first check-in, both parties agree on what a successful outcome looks like.
+> Alignment confirmed. Promotion recommended. Brief revised. Agreeing on the end state before you
+> start changes the quality of every session."
+
+**The product offers the opposite.** Choosing the outcome appears as "Bringing this ground to an
+end" - the FIRST card on the Overview tab, at session 2 of 6, with one participant (W8-5). The help
+says agree the end state at the start; the product asks at the start whether to close.
+
+**And this is the answer to W8-33.** The reversed setup needed a standard on record before the
+subject's evidence can be weighed, and the product's own help already prescribes exactly that,
+before the first check-in, from both parties. So W8-33's "third path" is smaller than it looked:
+the mechanism is described, it is simply asked at the wrong end of the ground.
+
+**2. "Every ground carries an alignment status: Unresolved, Mixed, Emerging, Clear, or Aligned."**
+Those five words appear nowhere I saw in the interface. The ground page says "No read yet", the
+grounds list says "No read yet", the board's tile says "no gaps open". If the status exists, it is
+not shown in the vocabulary the help teaches; if it does not, the help is teaching a concept the
+product dropped.
+
+## W8-60 · The feedback widget works, and there are two of it - **S**
+
+Opens as a panel with three tabs - **Reaction, Build request, Something went wrong** - reaction
+pills ("This clicked", "I could see myself using this", "Interesting but I am not sure", "Not for
+me"), an optional email, Cancel and Send. Well made, and the reaction pills are a genuinely good
+way to get a signal from somebody who will not write a sentence.
+
+**But `components/FeedbackWidget.tsx`, 189 lines, is imported by nothing.** The live one is a local
+`function FeedbackWidget()` inside `components/gw/AppShell.tsx:110`, mounted at line 673. Same
+pattern as the dead AppShell (W8-45): a component extracted into its own file, then reimplemented
+inline, and the file left behind.
+
+**So there are now two known dead duplicates**, 500 lines between them:
+
+| File | Lines | Status |
+|---|---|---|
+| `components/layout/AppShell.tsx` | 311 | mounted nowhere |
+| `components/FeedbackWidget.tsx` | 189 | imported nowhere |
+
+Worth a sweep for the rest of the class before the extraction work in W8-44, since that pass will
+be creating shared components and the codebase already has a habit of abandoning them.
+
+## W8-61 · Live confirmation of the W8-2 fix, unplanned - **DONE**
+
+Both browser tabs lost their session mid-review, so I signed in again through the normal flow:
+`POST /auth/entry-save` with the same address and **no draft** - which is precisely the call that
+used to blank a stored session.
+
+The magic link opened on "Your ground is set up" with the **same join token** as before
+(`a55b4a97...`), and the ground, its check-in and its report were all intact.
+
+That is the W8-2 data-loss path walked accidentally, against the fix, in a browser. It held.
