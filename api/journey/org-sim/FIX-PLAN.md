@@ -1898,6 +1898,39 @@ Measured, not remembered. Everything below was checked against the code or the s
 
 ## W12 - the last of the small ones, and a live signup bug found by chasing an orphan
 
+## W12-5 · The org admin view differs by ADDITION, not subtraction - **W8-32**
+
+Her note was "the org admin view should differ, today it is subtraction". The gate built earlier
+decides who gets in - the lead of that ground, or an org admin - and for an admin who was not the
+lead the view was still identical, including the two actions that cannot be undone.
+
+**Hiding those controls would have been the subtraction she was describing**, and worse: it removes
+the only oversight an admin has. An admin who cannot see that a report has sat unreleased for three
+weeks cannot do anything about it.
+
+So they see everything, and the view says what they are: "You are looking at this as an admin, not
+as its lead", naming who runs it, that releasing the report and closing the ground are that person's
+decisions, and that nothing the admin does here is hidden from them. The two irreversible controls
+relabel themselves - "Release on the lead's behalf" - and closing says outright that it ends
+something somebody else is running.
+
+## W12-6 · Empty states, and how little of W8-24 was left
+
+W8-24 said "no screen has a primary action; empty states explain absence instead of offering the
+action". Checked page by page: the primary actions arrived across the intervening waves - the
+grounds list opens a ground, the ground opens its conversation, People invites, Billing subscribes -
+and most of the absence-copy went with the cards.
+
+Two were left, and they need opposite treatment:
+
+- **Documents on the Context tab** said "No documents uploaded yet" directly under an upload control
+  that already lists the file types. It uses the one moment somebody is looking at an empty list to
+  tell them it is empty. It now names what to add and why it matters: anything opened to the ground
+  is read by every check-in before it asks a question.
+- **Waiting on, on the board** said "Nobody has named a handoff yet." There is nothing to offer -
+  handoffs are extracted from check-ins, and no button produces one - so it says where they come
+  from instead. An empty state implying an action that does not exist sends people looking for it.
+
 ## W12-1 · A new admin's first screen asked for a code they have never had - **fixed**
 
 Chasing `/setup` as an orphan found it was not one. `MagicVerifyPage` did
@@ -2145,9 +2178,9 @@ now cost two investigations, and the second one nearly went into this document a
 
 | # | Item | Size | Status |
 |---|---|---|---|
-| W8-24 | no screen has a primary action; empty states explain absence | M | OPEN |
+| W8-24 | no screen has a primary action; empty states explain absence | M | DONE - mostly done across earlier waves; two absence-states left, now fixed |
 | W8-29 | the board is the design system; the rest has not caught up | M | OPEN |
-| W8-32 | the org admin view should differ, today it is subtraction | M | OPEN |
+| W8-32 | the org admin view should differ, today it is subtraction | M | DONE - the frame is added rather than controls removed |
 | W8-50 | the two rules that keep the page count down | - | reference |
 | W8-53 | the pages that must NOT merge | - | reference |
 

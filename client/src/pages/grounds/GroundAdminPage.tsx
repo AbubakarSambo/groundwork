@@ -688,6 +688,35 @@ export function GroundAdminPage() {
           </div>
         )}
 
+        {/*
+          AN ORG ADMIN LOOKING AT SOMEBODY ELSE'S GROUND. W8-32.
+          
+          Her note: "the org admin view should differ, today it is subtraction." The
+          gate now decides WHO gets in - the lead of the ground, or an org admin - and
+          for an admin who is not the lead the view was still identical to the lead's,
+          including the two actions that cannot be undone.
+          
+          This ADDS the frame rather than removing controls. Hiding them is the
+          subtraction she was describing, and it also removes the only oversight an
+          admin has: an admin who cannot see that a report is sitting unreleased for
+          three weeks cannot do anything about it. So they see everything, and they are
+          told plainly whose ground it is and which decisions belong to that person.
+        */}
+        {isOrgAdmin && !isInitiator && (
+          <div style={{ background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 10, padding: '12px 15px', marginBottom: 16 }}>
+            <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 3 }}>
+              You are looking at this as an admin, not as its lead
+            </div>
+            <div style={{ fontSize: 12.5, color: 'var(--gw-navy)', lineHeight: 1.6 }}>
+              {(() => {
+                const lead = (ground.participants ?? []).find((p: any) => p.partyType === 'INITIATOR')
+                const who = lead?.email ? lead.email.split('@')[0] : 'its lead'
+                return `${who} runs this ground. You can see everything here, which is the point of being an admin - but releasing the report and closing the ground are theirs to decide, and nothing you do here is hidden from them.`
+              })()}
+            </div>
+          </div>
+        )}
+
         {tab === 'overview' && (
           <div>
             {/*
@@ -1258,7 +1287,20 @@ export function GroundAdminPage() {
                 onChange={e => { const f = e.target.files?.[0]; if (f) uploadDoc.mutate(f); e.target.value = '' }} />
             </div>
 
-            {docs.length === 0 && <div style={{ fontSize: 13, color: 'var(--gw-muted)', textAlign: 'center', padding: 16 }}>No documents uploaded yet.</div>}
+            {/*
+              AN EMPTY STATE THAT SAYS WHAT TO ADD, NOT THAT NOTHING IS THERE. W8-24.
+              
+              "No documents uploaded yet." is a sentence about absence, sitting directly
+              under an upload control that already says PDF, DOCX, JPEG. It uses the one
+              moment somebody is looking at an empty list to tell them it is empty.
+            */}
+            {docs.length === 0 && (
+              <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, padding: '14px 16px', background: 'var(--gw-bg)', borderRadius: 8, border: '1px solid var(--gw-border)' }}>
+                The brief, the plan, the scope, the grant terms, or the message that started
+                this. Anything you open to the ground is read by every check-in before it asks
+                a question, so it shapes what people are asked.
+              </div>
+            )}
 
             {/* OPEN AND CLOSED, NAMED AS SUCH. (G38)
                 Nobody puts real context into a box whose readership they are
@@ -1599,7 +1641,7 @@ export function GroundAdminPage() {
                   {!showReleaseConfirm ? (
                     <button onClick={() => setShowReleaseConfirm(true)}
                       style={{ width: '100%', padding: 12, borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
-                      Release report to everybody
+                      {isOrgAdmin && !isInitiator ? 'Release on the lead\'s behalf' : 'Release report to everybody'}
                     </button>
                   ) : (
                     <div style={{ background: '#FDF3E3', border: '1px solid #E8A94A', borderRadius: 8, padding: '14px 16px' }}>
@@ -1795,7 +1837,10 @@ export function GroundAdminPage() {
             </button>
             <div style={{ padding: 14, background: 'var(--gw-red-bg)', border: '0.5px solid var(--gw-red-b)', borderRadius: 8 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-red-t)', marginBottom: 6 }}>Close ground</div>
-              <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>Closing a ground permanently archives it. All parties keep their records. This action cannot be undone.</div>
+              <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
+                Closing a ground permanently archives it. All parties keep their records. This action cannot be undone.
+                {isOrgAdmin && !isInitiator && ' You are not the lead of this ground - closing it ends something somebody else is running.'}
+              </div>
               <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 8 }}>
                 Self-serve close is coming. For now, email{' '}
                 <a href={`mailto:hello@myground.work?subject=Archive ground: ${encodeURIComponent(ground.label)}`} style={{ color: 'var(--gw-navy)', textDecoration: 'underline' }}>hello@myground.work</a>
