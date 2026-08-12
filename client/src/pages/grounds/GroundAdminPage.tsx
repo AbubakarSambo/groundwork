@@ -1293,6 +1293,20 @@ export function GroundAdminPage() {
                 * somebody else's is not theirs to read.
                 */
               viewerIsParty={(ground.participants ?? []).some((p: any) => p.userId === user?.id)}
+              /* The same roster the participant view now shows. W13-5. */
+              parties={(ground.participants ?? [])
+                .filter((p: any) => !p.managingOnly)
+                .map((p: any) => {
+                  const current = myOpenCheckIn?.sessionNumber ?? plannedSessions ?? 1
+                  const theirs = ((ground.checkIns ?? []) as any[]).filter(
+                    (c) => c.participantId === p.id && (c.sessionNumber ?? 0) >= current && c.status === 'COMPLETED',
+                  )
+                  return {
+                    name: nameOfParticipant(p.id) ?? 'A participant',
+                    done: theirs.length > 0,
+                    isSelf: p.userId === user?.id,
+                  }
+                })}
               history={[...(ground.checkIns ?? [])]
                 .reduce((acc: any[], ci: any) => {
                   const n = ci.sessionNumber ?? 1

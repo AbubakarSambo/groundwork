@@ -411,6 +411,30 @@ export function GroundParticipantPage() {
             brief={(ground as any).brief}
             alignment={alignmentLabel((ground as any).alignment)}
             sessionsDone={completedCheckIns.length}
+            /**
+             * WHO IS IN THIS, for the person who could not see it. W13-5.
+             *
+             * `ground.participants` already carries only the people this reader is allowed
+             * to know about - the service filters the others out when peers are hidden - and
+             * each one carries their own check-ins. So this is a read of the payload, not a
+             * new permission.
+             *
+             * "Done" means done for the session number this person is on, so a roster on
+             * session 3 answers "is anybody else doing session 3", which is the question.
+             */
+            parties={(ground.participants ?? [])
+              .filter((p: any) => !p.managingOnly)
+              .map((p: any) => {
+                const currentSession = openCheckIn?.sessionNumber ?? completedCheckIns.length
+                const theirs = ((p.checkIns ?? []) as any[]).filter(
+                  (c) => (c.sessionNumber ?? 0) >= currentSession && c.status === 'COMPLETED',
+                )
+                return {
+                  name: participantLabel(p),
+                  done: theirs.length > 0,
+                  isSelf: p.userId === user?.id,
+                }
+              })}
             signals={((ground.signals ?? []) as any[])
               .filter((sig: any) => sig.observationText)
               .map((sig: any) => ({

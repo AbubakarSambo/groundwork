@@ -1,3 +1,4 @@
+import { plannedSessionsFor } from '@/lib/sessionCount'
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -85,9 +86,35 @@ function GroundCard({ g, onClick }: { g: Ground; onClick: () => void }) {
             const lead = (g.participants ?? []).find((p: any) => p.partyType === 'INITIATOR')
             const first = (lead?.user?.firstName ?? (lead as any)?.firstName ?? '').trim()
             const who = first || (lead?.email ? lead.email.split('@')[0] : null)
+            /**
+             * THE SESSION COUNT, ON THE CARD SOMEBODY CHOOSES FROM. W13-6.
+             *
+             * "12 of 12 sessions done" is the clearest thing on the ground page and it
+             * appeared nowhere a person decides WHICH ground to open. Derived here from the
+             * timeline and rhythm the list already sends, the same way the ground page does
+             * it, rather than a new field.
+             *
+             * The RAIL is deliberately left alone: it lists names only, by her decision that
+             * a channel list is names, with the count on each row's tooltip. This is the card,
+             * which is where the choosing happens.
+             */
+            const planned = plannedSessionsFor(
+              g.timelineDays,
+              (g as any).cadence,
+              (g as any).maxSessions ?? (g as any).totalSessions,
+            )
+            // `roundsDone` comes from the list endpoint: rounds where EVERY party is
+            // complete, not a count of check-in rows.
+            const doneRounds = (g as any).roundsDone as number | undefined
+            const sessions = planned != null && doneRounds != null
+              ? `${doneRounds} of ${planned} sessions done`
+              : planned != null
+                ? `${planned} sessions`
+                : null
+            const people = `${g.participants.length} participant${g.participants.length !== 1 ? 's' : ''}`
             return who
-              ? `Led by ${who} · ${g.participants.length} participant${g.participants.length !== 1 ? 's' : ''}`
-              : `${g.participants.length} participant${g.participants.length !== 1 ? 's' : ''}`
+              ? `Led by ${who} · ${people}${sessions ? ` · ${sessions}` : ''}`
+              : `${people}${sessions ? ` · ${sessions}` : ''}`
           })()}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>

@@ -763,7 +763,24 @@ export class GroundsService {
         const reportWaitingForMe = !!mine && !!(g as any).report?.releasedAt && !activated;
 
         const { reportActivations: _drop, ...rest } = g as any;
-        return { ...rest, alignment, overdue, checkInsToday, lastActivity, reportWaitingForMe, otherOrgName };
+        /**
+         * ROUNDS EVERYBODY HAS FINISHED, for the card a person chooses from. W13-6.
+         *
+         * "12 of 12 sessions done" is the clearest line on the ground page, and the list had
+         * no version of it - so somebody deciding which ground to open saw a status pill and
+         * nothing about progress.
+         *
+         * A round is done when EVERY party's check-in for it is COMPLETED, which is the rule
+         * the ground page uses. Counting check-in rows instead reads as double on a two-party
+         * ground, which is the bug this file already carries a note about ("24 of 12").
+         */
+        const roundsDone = (() => {
+          const numbers = [...new Set(checkIns.map(ci => ci.sessionNumber))];
+          return numbers.filter(n =>
+            checkIns.filter(ci => ci.sessionNumber === n).every(ci => ci.status === CheckInStatus.COMPLETED),
+          ).length;
+        })();
+        return { ...rest, alignment, overdue, checkInsToday, roundsDone, lastActivity, reportWaitingForMe, otherOrgName };
       })
       .sort((a, b) => new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime());
   }

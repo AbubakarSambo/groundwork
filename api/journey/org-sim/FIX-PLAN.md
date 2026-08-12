@@ -4587,21 +4587,46 @@ lines and "Get started free" clipped off the edge, so the links are `nowrap` and
 
 ## Then: the things a person cannot see
 
-### W13-5 · A participant cannot see who else is in their ground, or how far along it is - **M**
+### W13-5 · A participant cannot see who else is in their ground, or how far along it is - **DONE**
 
 The lead sees every party and every session. The participant sees their own tabs. The two
 things that would settle somebody's nerves before they write honestly - who is going to read
 this, and is anybody else actually doing it - are the two things they cannot see.
 
-Do: on the participant view, show the other parties by name where the ground's visibility
-settings allow it, and the session count the lead already sees ("12 of 12 sessions done").
-Both are already in the payload. Nothing about this crosses the wall: it is who is here, not
-what they wrote.
+Done as **Who is in this** in the topic card that both the participant and the lead views
+share: each party as a pill, named, marked *checked in* or *waiting* for the session the reader
+is on, with the reader shown as "You" rather than having their own name read back at them.
 
-### W13-6 · The session count is the clearest thing on the ground page and appears nowhere else - **S**
+**The count was already there** - the participant page passes their own completed sessions to
+the same card, and it renders "12 of 12 sessions done". So half of this item was another case of
+the audit describing a page I had not looked at closely enough.
 
-"12 of 12 sessions done" tells a person whether to open a ground. The rail lists grounds by
-name only; the list card shows a status pill. Add the count to both.
+**No permission check in the component, on purpose.** `grounds.service.ts` decides whether
+parties see each other and FILTERS THE OTHERS OUT OF THE PAYLOAD when they must not - hidden by
+default on evaluation and cohort grounds, where a roster tells four people exactly who they are
+measured against. Whatever reaches the component is already permitted, and a second rule there
+would be a second place to get it wrong. That is pinned: the guard fails if `GroundChat` ever
+mentions `peersVisible`, `restrictExternalVisibility` or `hidePeers`.
+
+It is coverage and never content: that somebody checked in, never a word of what they said.
+A ground with one party renders nothing at all, because a heading over an empty list advertises
+that there is something you cannot see.
+
+### W13-6 · The session count is the clearest thing on the ground page and appears nowhere else - **DONE**
+
+Now on the list card: "Led by Hafsah · 2 participants · 12 of 12 sessions done".
+
+**Only the card, not the rail** - I was about to do both and stopped. The rail lists names only
+by her decision that a channel list is names, with the count already on each row's tooltip. The
+card is where somebody chooses which ground to open, which is the moment the count is worth
+something.
+
+It needed a real API addition rather than a client sum: `roundsDone` on the list payload, counting
+rounds where EVERY party is complete. Counting check-in rows instead reads as double on a
+two-party ground - the "24 of 12 sessions done" bug from W8-66, which I would have reproduced
+exactly. My first attempt read a `sessionCounts` field that does not exist on that endpoint and
+silently fell back to "6 sessions"; caught by printing the payload rather than trusting the
+name.
 
 ### W13-7 · The report opens with prose; the board opens with what differs - **M**
 
