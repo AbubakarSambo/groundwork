@@ -1464,6 +1464,43 @@ nothing has been built, DECISION means it cannot start until Hafsah answers.
 **Read the SUPERSEDED column before starting anything.** Four items were replaced by later findings,
 including two of my own proposals that turned out to be wrong.
 
+## SHIPPED, 2026-08-12 (branch gw-12-followups)
+
+Everything below is merged on the branch, tested and bite-checked. The index rows above still
+describe the problem; this is the record of the repair.
+
+| # | What shipped |
+|---|---|
+| W8-39 | the payment button pointed at `/billing/payment`, which does not exist. Now `/billing/checkout` |
+| W8-40 | `?next=` is honoured, same-origin only, so signing in to subscribe returns you to your tier |
+| W8-41 | `hello@groundwork.so` corrected to `myground.work` |
+| W8-26 | `/set-password` with no token says so instead of rendering a working form |
+| W8-42 | the grounds list and the 404 no longer send signed-in people into the anonymous entry chat |
+| W8-45, W8-60 | the dead AppShell and the dead FeedbackWidget deleted, 500 lines |
+| W8-20 | **the real cause**: a ground made in the entry chat never scheduled session 2, because `ensureNextSession` runs on completion and the entry flow marks session 1 complete directly. It was never a missing button |
+| W8-19 | "My check-ins →" in the ground header, so `/grounds/:id/p` is reachable |
+| W8-21 | your own session rows open their transcript. Only your own: an admin opening a participant's would break the promise the product makes on every screen |
+| W8-3 | the "we sent a link" confirmation scrolls itself into view |
+| W8-6 | the Context tab is announced where somebody is reading about what to do next |
+| W8-5 | "bringing this ground to an end" appears near the end, not as the first card on day one |
+| W8-4 | the rail counts completed sessions and says "1/6 done", so it agrees with the header |
+| W8-27 | the roster and members pages are named what the rail calls them |
+| W8-55 | documents attached in the entry chat are kept as real records instead of only as chat text |
+
+**New guards, all bite-checked:** every `navigate()` resolves to a real route (carrying the
+catch-all trap that fooled the audit), the entry commit schedules session 2 **inside
+`commitInner`**, and the exit panel stays gated.
+
+**Withdrawn after measurement:** W8-25 (pricing was correct, my memory note was stale), W8-22
+(the record was intact, I photographed a typewriter animation), W8-23 (exactly one tab carries
+the active class).
+
+**Two mistakes worth keeping.** The `ensureNextSession` fix first went into `joinCommit` and its
+guard passed anyway, because the guard asked whether the call appeared anywhere in the file. And I
+committed a batch before running the API suite, which was red on six mocks. Both are the same
+lesson the plan keeps recording: prove the fix on the path it was meant to repair, before saying
+it is done.
+
 ## Do these first
 
 | # | Item | Size | Status | Note |
