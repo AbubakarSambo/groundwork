@@ -34,7 +34,6 @@ import { PromptVersioningPage } from '@/pages/prompts/PromptVersioningPage'
 import { PromptTestPage } from '@/pages/prompts/PromptTestPage'
 import { AdminPage } from '@/pages/admin/AdminPage'
 import { AdminDashboardPage } from '@/pages/admin/AdminDashboardPage'
-import { DemoConversationPage } from '@/pages/demo/DemoConversationPage'
 import { SettingsPage } from '@/pages/settings/SettingsPage'
 import { OrgMembersPage } from '@/pages/org/OrgMembersPage'
 import { NotFoundPage } from '@/pages/notfound/NotFoundPage'
@@ -126,7 +125,6 @@ export default function App() {
             <Route path="/start" element={<EntryChatPage />} />
             <Route path="/invite" element={<InvitePage />} />
             <Route path="/join" element={<JoinPage />} />
-            <Route path="/demo/:persona" element={<DemoConversationPage />} />
 
             {/* Post-auth setup */}
 

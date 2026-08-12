@@ -32,11 +32,13 @@ const REACHED_FROM_OUTSIDE_THE_APP: Record<string, string> = {
   '/billing/callback': 'the payment provider redirects here',
   '/join': 'the broadcast link an admin copies off the ground page and sends',
   /**
-   * Kept deliberately unlinked. It renders a scripted conversation for a named
-   * persona and is opened by pasting the URL - in a pitch, a deck or a demo - not
-   * by anyone using the product.
+   * `/demo/:persona` used to be exempted here as "pasted by hand when showing the
+   * product". It is deleted, and so is the exemption. Five scripted conversations for a
+   * fictional company, unlinked from anywhere, whose founder screen labelled named people
+   * with pattern codes - CEO-Pleasing, Contributor Suppression, False Completion Reporting.
+   * That is the read of a person as a type, which is the one thing the engine's own rules
+   * forbid, kept alive as a sales asset. Her call: delete.
    */
-  '/demo/:persona': 'pasted by hand when showing the product',
   /**
    * `/profile/:id?` used to be exempted here, described as "the one real gap". It is
    * deleted: a page nobody could open, whose own copy said the feature was not built,

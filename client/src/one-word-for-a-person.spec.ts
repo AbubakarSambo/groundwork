@@ -77,8 +77,8 @@ function withoutComments(text: string): string {
 describe('the product has one word for a person in a ground', () => {
   const offenders: string[] = []
   for (const f of files(SRC)) {
-    // The demo page renders a fictional report written for a pitch, not product copy.
-    if (f.includes('demoData')) continue
+    // The `demoData` exemption is gone with the demo page it was written for: a fictional
+    // pitch report is no longer a reason for this rule to have a hole in it.
     withoutComments(readFileSync(f, 'utf8')).split('\n').forEach((line, i) => {
       if (THE_WORD.test(line) && !isAllowed(line)) {
         offenders.push(`${f.replace(SRC, 'src')}:${i + 1}  ${line.trim().slice(0, 120)}`)
