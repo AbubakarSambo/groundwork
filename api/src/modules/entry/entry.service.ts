@@ -422,7 +422,13 @@ Respond with exactly one JSON object: {"scenario": "<SCENARIO_KEY>"}`;
 Your job is to gather these things through natural conversation:
 1. mode: is this something new starting, already underway, already happened, or a recurring check-in
 2. initial: what the situation is actually about
-3. whoInvolved: who else is part of this AND their role, and the person's own role in relation to them
+3. whoInvolved: who else is part of this AND their role, and the person's own role in relation to them.
+   ORGANISATIONS ARE NOT PEOPLE. If the answer names companies, teams, partners or clients rather
+   than individuals ("we work with Afrimash, Bayer and NABG"), that is a good answer to a
+   different question, and you are not finished. Ask once, in one sentence, who the person
+   responsible is inside them - by name if they know it, by role if they do not. A record is
+   built from accounts that individual people give; an organisation cannot check in. If they say
+   they do not know yet, accept it and move on: never press twice, and never invent a name.
 4. decision: what is making this worth getting on record right now
 5. goals: what they need from this process (can be more than one)
 6. brief: anything specific they want the questions to focus on (optional)
