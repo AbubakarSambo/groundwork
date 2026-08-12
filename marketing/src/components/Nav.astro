@@ -96,9 +96,32 @@ const LINKS = [
 
   /* The links collapse before the buttons do: on a narrow screen the two things worth
      keeping are the wordmark and the way in. */
-  /* Raised from 620px: with five links and two buttons the row stops fitting at about
-     860, and an overflowing nav is worse than a collapsed one. */
+  /**
+   * NARROW SCREENS GET THE LINKS ON A SECOND ROW, NOT NOWHERE.
+   *
+   * The old rule was `display: none` under 620px, and I widened it to 860 because five links
+   * and two buttons overflow the bar. Then I looked at it on a phone: the ☰ beside the wordmark
+   * is part of the logo, not a menu button, so hiding the links leaves a mobile visitor with no
+   * navigation at all - and my widening handed that to more people than before.
+   *
+   * So the bar wraps instead. Brand and buttons on the first line, links on the second, all
+   * still reachable, no JavaScript and no menu to build.
+   */
   @media (max-width: 860px) {
-    .gw-nav-links { display: none; }
+    .gw-nav {
+      height: auto;
+      flex-wrap: wrap;
+      padding: 8px 16px 10px;
+      row-gap: 6px;
+    }
+    .gw-nav-brand { order: 1; }
+    .gw-nav-ctas { order: 2; margin-left: auto; }
+    .gw-nav-links {
+      order: 3;
+      flex-basis: 100%;
+      flex-wrap: wrap;
+      gap: 0 2px;
+      margin-left: -9px; /* the first link's own padding, so it lines up with the wordmark */
+    }
   }
 </style>

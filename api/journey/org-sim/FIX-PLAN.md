@@ -4797,6 +4797,19 @@ instead of "this is broken". Both halves had been there since W9-7.
 **And of the third:** I trusted one screenshot at one window width. The home page's nav had
 collapsed behind its hamburger at 800px, so I recorded it as absent.
 
+### One thing my own fix broke, found by looking at a phone
+
+Widening the marketing nav's collapse breakpoint from 620px to 860px - needed, because five links
+and two buttons overflow the bar - handed **more** visitors a page with no navigation at all. The
+`☰` beside the wordmark is part of the logo, not a menu button, so `display: none` on the links
+left a phone with nothing but Sign in and Get started.
+
+The bar wraps now: brand and buttons on the first line, links on the second, everything reachable
+at every width, no JavaScript and no menu to build. Verified at 375px and 1280px.
+
+That is the second time in this wave that a change looked right in the tests and wrong on a
+screen. Both were caught by opening it.
+
 ### Six things the work found that the audit had not
 
 1. **`GET /users/privacy-audit` read across organisations.** It took a user id off the query string
