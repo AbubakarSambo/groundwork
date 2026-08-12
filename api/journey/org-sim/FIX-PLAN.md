@@ -1898,6 +1898,18 @@ Measured, not remembered. Everything below was checked against the code or the s
 
 ## W12 - the last of the small ones, and a live signup bug found by chasing an orphan
 
+## W12-7 · One look, not five - **W8-29**
+
+The board's pieces are in `components/gw/kit.tsx` and the grounds list, the ground page and now the
+record tab use them. The record tab had four hand-rolled section labels - same job as the kit's
+`Sec`, each with its own size, its own letter-spacing and a hardcoded grey.
+
+**The tripwire matters more than the four replacements.** Hand-rolling a section label is four lines
+and importing one is one, so the four lines keep winning - which is how five variants existed in the
+first place. `one-look-not-five.spec.ts` fails when a page that imports the kit also reimplements
+its components inline. It does not police colour or spacing generally: a page with a real reason to
+look different should be able to. It catches the specific failure, and it is bite-checked.
+
 ## W12-5 · The org admin view differs by ADDITION, not subtraction - **W8-32**
 
 Her note was "the org admin view should differ, today it is subtraction". The gate built earlier
@@ -2179,7 +2191,7 @@ now cost two investigations, and the second one nearly went into this document a
 | # | Item | Size | Status |
 |---|---|---|---|
 | W8-24 | no screen has a primary action; empty states explain absence | M | DONE - mostly done across earlier waves; two absence-states left, now fixed |
-| W8-29 | the board is the design system; the rest has not caught up | M | OPEN |
+| W8-29 | the board is the design system; the rest has not caught up | M | DONE - kit on four surfaces, plus a tripwire against hand-rolling it |
 | W8-32 | the org admin view should differ, today it is subtraction | M | DONE - the frame is added rather than controls removed |
 | W8-50 | the two rules that keep the page count down | - | reference |
 | W8-53 | the pages that must NOT merge | - | reference |

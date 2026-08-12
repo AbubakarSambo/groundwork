@@ -10,6 +10,7 @@ import { documentsApi } from '@/api/documents'
 import { GroundChat } from '@/components/gw/GroundChat'
 import { whatThisGroundCanTellYou } from '@/lib/contextStrength'
 import { ContextStrength } from '@/components/gw/ContextStrength'
+import { Sec } from '@/components/gw/kit'
 import { apiClient } from '@/api/client'
 import { participantLabel } from '@/lib/utils'
 import { alignmentLabel } from '@/lib/alignment'
@@ -427,7 +428,7 @@ export function GroundParticipantPage() {
             {/* Session history summary - always visible */}
             {(myRecord?.sessions ?? []).length > 0 && (
               <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '14px 16px' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: '#9B9590', marginBottom: 10 }}>Sessions on record</div>
+                <Sec title="Sessions on record" />
                 {(myRecord?.sessions ?? []).map(s => (
                   <div key={s.sessionNumber} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderTop: '1px solid #F0EEE9' }}>
                     <div style={{ fontSize: 13, fontWeight: 600, color: '#1A1916' }}>Session {s.sessionNumber}</div>
@@ -442,7 +443,7 @@ export function GroundParticipantPage() {
             {/* Specificity trend - unlocked only */}
             {myRecord && !myRecord.insightsLocked && myRecord.specificity && (
               <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '14px 16px' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: '#9B9590', marginBottom: 8 }}>Specificity across sessions</div>
+                <Sec title="Specificity across sessions" />
                 <div style={{ display: 'flex', gap: 3, marginBottom: 8 }}>
                   {myRecord.specificity.scores.map((s, i) => (
                     <div key={i} title={`Session ${i + 1}`} style={{ flex: 1, height: 6, borderRadius: 3, background: s >= 0.65 ? '#5DCAA5' : s >= 0.35 ? '#E8A94A' : '#E2E0DB' }} />
@@ -462,7 +463,7 @@ export function GroundParticipantPage() {
             {myRecord && !myRecord.insightsLocked && myRecord.confidence && (
               <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '14px 16px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: '#9B9590' }}>Record confidence</div>
+                  <Sec title="Record confidence" />
                   <div style={{ fontSize: 16, fontWeight: 800, color: '#0C447C' }}>{myRecord.confidence.label}</div>
                 </div>
                 <div style={{ display: 'flex', gap: 3, marginBottom: 8 }}>
@@ -477,7 +478,7 @@ export function GroundParticipantPage() {
             {/* Pattern observations - unlocked, diplomatic */}
             {myRecord && !myRecord.insightsLocked && myRecord.patterns && myRecord.patterns.length > 0 && (
               <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '14px 16px' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: '#9B9590', marginBottom: 4 }}>Observations from your record</div>
+                <Sec title="Observations from your record" />
                 <div style={{ fontSize: 12, color: '#9B9590', marginBottom: 10, lineHeight: 1.5 }}>
                   These are patterns Groundwork has noticed across your check-ins. They are observations, not verdicts. Worth being aware of as your record builds.
                 </div>
