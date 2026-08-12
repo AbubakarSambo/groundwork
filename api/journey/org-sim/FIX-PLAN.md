@@ -3874,3 +3874,40 @@ that wrong on one of the two routes and that link is permanently dead.
 URLs, one page - but each resolves a different kind of token against a different endpoint, so it is
 a bigger read than the password pair and is worth doing on its own rather than at the end of this
 one.
+
+### W8-62b · The arrival pages, and the dead end she named - **DONE**
+
+`/invite`, `/join` and `/verify-email` do not merge into one page. Each resolves a
+different kind of token at a different endpoint and ends somewhere different - a
+check-in, a participant ground view, or a "your ground is set up" screen that can also
+commit an entry draft. Forcing them together makes one 800-line file that is harder to
+follow than three, which is the opposite of the point.
+
+**What they did share was the failure, and W8-49 named it: one missing-token state.**
+
+Her words: "We have deadend pages that trop you there." This was the worst instance:
+
+| Route | When the link did not work |
+|---|---|
+| `/join` | A red ✕, "Invalid link", one sentence, **nothing to press** |
+| `/invite` | A red ✕, "Invalid invite", one sentence, **nothing to press** |
+| `/verify-email` | Had a way out - the only one of the three |
+
+That is the first thing somebody sees of this product, arriving from a link a colleague
+sent them, and two thirds of the ways in ended in a full stop.
+
+All three now use `components/gw/LinkProblem.tsx`. What it says is the honest thing
+rather than the reassuring one: **an invite or join link can only be reissued by the
+person who created it**, because no endpoint reissues one to an unauthenticated stranger
+and none should. So it names who can help and offers the two doors that do work - sign
+in, and the product's front page. A sign-in link is different, and that one does get
+"Get a new link".
+
+It also does not say **which** of the three failures it was. Missing from the URL,
+expired, and already used are the same instruction to the person reading it, and telling
+an unauthenticated caller which one it was is a small oracle about a link they do not
+hold.
+
+Pinned in `no-arrival-is-a-dead-end.spec.tsx`, which checks both that the shared state
+has a control and that none of the three pages has gone back to rolling its own without
+one. Both arms bite-checked.

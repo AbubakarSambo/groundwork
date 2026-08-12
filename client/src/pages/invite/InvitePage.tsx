@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { participantsApi } from '@/api'
 import { useAuthStore } from '@/stores/auth'
 import { GroundworkLogo } from '@/components/gw/GroundworkLogo'
+import { LinkProblem } from '@/components/gw/LinkProblem'
 import { toast } from 'sonner'
 
 /**
@@ -273,14 +274,13 @@ function InviteShell({ children }: { children: React.ReactNode }) {
   )
 }
 
+/**
+ * Was a dead end: a red tick, one sentence, nothing to press. W8-62.
+ * `msg` is kept because the caller distinguishes a missing token from a failed
+ * preview, but the way out is now the same in both.
+ */
 function ErrorCard({ msg }: { msg: string }) {
-  return (
-    <div style={{ textAlign: 'center' }}>
-      <div style={{ fontSize: 28, marginBottom: 12 }}>✕</div>
-      <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>Invalid invite</div>
-      <div style={{ fontSize: 13, color: 'var(--gw-sub)' }}>{msg}</div>
-    </div>
-  )
+  return <LinkProblem kind="invite" detail={msg} />
 }
 
 function LoadingCard() {

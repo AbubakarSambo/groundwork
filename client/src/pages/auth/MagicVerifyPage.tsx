@@ -4,6 +4,7 @@ import { queryClient } from '@/lib/queryClient'
 import { authApi } from '@/api/auth'
 import { entryApi } from '@/api/entry'
 import { groundsApi } from '@/api/grounds'
+import { LinkProblem } from '@/components/gw/LinkProblem'
 import { useAuthStore } from '@/stores/auth'
 
 const COMMIT_KEY = 'gw_commit_payload'
@@ -397,12 +398,10 @@ export function MagicVerifyPage() {
           <div style={{ fontSize: 14, color: 'var(--gw-sub)' }}>Setting up your ground…</div>
         </div>
       ) : (
-        <div style={{ textAlign: 'center', maxWidth: 340, padding: '0 20px' }}>
-          <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>Link invalid</div>
-          <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 20, lineHeight: 1.6 }}>{error}</div>
-          <button className="gw-btn" style={{ display: 'inline-block', width: 'auto', padding: '10px 24px' }} onClick={() => navigate('/auth')}>
-            Get a new link
-          </button>
+        <div style={{ padding: '0 20px' }}>
+          {/* This one already had a way out. It uses the shared version so all three
+              arrival routes say the same thing. W8-62. */}
+          <LinkProblem kind="sign-in" detail={error} />
         </div>
       )}
     </div>
