@@ -1657,7 +1657,21 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    * Sets availableFrom based on the ground's cadence so session 2 respects
    * the fortnightly / weekly / monthly schedule.
    */
-  private async ensureNextSession(groundId: string, participantId: string, sessionNumber: number) {
+  /**
+   * PUBLIC because the entry flow needs it too.
+   *
+   * This runs when a session COMPLETES, and the anonymous entry flow never
+   * completes one - it writes session 1 straight to COMPLETED at commit time
+   * (`entry.service.ts`, "Create and mark session 1 complete"). So a ground made
+   * through the entry chat, which is the flow most people meet first, was created
+   * with exactly one check-in and nothing ever scheduled a second.
+   *
+   * The visible symptom was the whole of "I have no way to come in and do my
+   * checkin": the ground page offers "Session N is ready for you" only when an
+   * open check-in row exists, and for these grounds none ever did. It read as a
+   * missing button. The button was fine; there was no session for it to open.
+   */
+  async ensureNextSession(groundId: string, participantId: string, sessionNumber: number) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       select: { cadence: true, cadenceAnchorDay: true, endsAt: true },

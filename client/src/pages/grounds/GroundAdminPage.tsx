@@ -478,6 +478,24 @@ export function GroundAdminPage() {
               </div>
             </div>
           </div>
+          {/*
+            MY VIEW. The participant page at /grounds/:id/p was reachable by
+            nothing at all - not a link, not a tab, not a menu - while being the
+            page with Check-in, Session history, My record and Documents on it.
+            The only way in was typing the URL.
+
+            Shown only to somebody who is actually a party to this ground: an
+            admin who is not in it has no record of their own to look at, and the
+            page would be empty and confusing.
+          */}
+          {ground.participants?.some((p: any) => p.userId === user?.id) && (
+            <button
+              onClick={() => navigate(`/grounds/${id}/p`)}
+              style={{ fontSize: 11, fontWeight: 700, padding: '4px 11px', borderRadius: 20, background: 'white', color: 'var(--gw-navy)', border: '1px solid var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit' }}
+            >
+              My check-ins →
+            </button>
+          )}
           {/* Delivery board: only on shared-mode grounds whose scenario family has one.
               The server decides (boardRenders); the client does not duplicate the table. */}
           {(ground as any).boardRenders && (
@@ -949,11 +967,34 @@ export function GroundAdminPage() {
                 // registered.
                 const whoName = [who?.user?.firstName, who?.user?.lastName].filter(Boolean).join(' ').trim()
                 const whoLabel = whoName || who?.email || who?.roleAsDescribed?.trim() || 'Unknown participant'
+                /**
+                 * YOUR OWN ROWS OPEN. NOBODY ELSE'S EVER DOES.
+                 *
+                 * These were plain divs with cursor:auto, so a completed session
+                 * was a dead card - the transcript renders fine at /chat/:id and
+                 * nothing in the product linked to it. That was most of "I have
+                 * no way to see my chats".
+                 *
+                 * Only the viewer's own check-ins become clickable. An admin
+                 * opening a participant's transcript would break the promise the
+                 * product makes on every screen - "Nobody reads what you write" -
+                 * so the guard is on identity, not on a permission flag.
+                 */
+                const isMine = !!user?.id && who?.userId === user.id
+                const openMine = () => navigate(`/chat/${ci.id}`)
                 return (
-                <div key={ci.id} style={{ background: 'white', border: '0.5px solid var(--gw-border)', borderRadius: 8, padding: '12px 14px' }}>
+                <div
+                  key={ci.id}
+                  onClick={isMine ? openMine : undefined}
+                  onKeyDown={isMine ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openMine() } } : undefined}
+                  role={isMine ? 'button' : undefined}
+                  tabIndex={isMine ? 0 : undefined}
+                  title={isMine ? 'Open your check-in' : undefined}
+                  style={{ background: 'white', border: '0.5px solid var(--gw-border)', borderRadius: 8, padding: '12px 14px', cursor: isMine ? 'pointer' : 'default' }}
+                >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div>
-                      <div style={{ fontSize: 13, fontWeight: 600 }}>Session {ci.sessionNumber}</div>
+                      <div style={{ fontSize: 13, fontWeight: 600 }}>Session {ci.sessionNumber}{isMine ? ' ·  yours' : ''}</div>
                       <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 2 }}>{whoLabel}</div>
                     </div>
                     <span className={`gw-pill ${ci.status === 'COMPLETED' ? 'gw-pill-green' : ci.status === 'IN_PROGRESS' ? 'gw-pill-amber' : 'gw-pill-gray'}`}>

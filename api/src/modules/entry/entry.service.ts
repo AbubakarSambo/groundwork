@@ -1095,6 +1095,28 @@ STRICT RULES:
       },
     });
 
+    /**
+     * AND SCHEDULE SESSION 2, WHICH NOTHING DID.
+     *
+     * Session 2 onwards is created by `ensureNextSession`, which runs when a
+     * check-in COMPLETES through the conversation service. This path never
+     * completes one - it writes session 1 straight to COMPLETED, above - so a
+     * ground made through the entry chat was created with exactly one check-in
+     * and no second was ever scheduled.
+     *
+     * The ground page offers "Session N is ready for you" only when an open
+     * check-in exists, so for these grounds it never appeared, and the Check-ins
+     * tab showed one completed row with nothing to do. It read as a missing
+     * button; there was simply no session for a button to open.
+     *
+     * Best-effort on purpose: a ground that exists with a saved record is worth
+     * more than one that fails to commit because the follow-up could not be
+     * scheduled. A cadence of ONE_TIME correctly schedules nothing.
+     */
+    await this.conversation
+      .ensureNextSession(ground.id, participant.id, 1)
+      .catch((e) => this.logger.error(`entry commit: could not schedule session 2 for ground ${ground.id}: ${e?.message ?? e}`));
+
     // Save conversation turns.
     if (dto.history.length > 0) {
       await this.prisma.conversationTurn.createMany({
