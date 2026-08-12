@@ -625,10 +625,25 @@ export function ReportPage() {
           <h1 style={{ fontSize: 30, lineHeight: 1.1, letterSpacing: '-.02em', margin: '0 0 12px', fontWeight: 800 }}>
             {tab === 'own' ? 'What your own account holds.' : "Where everyone's accounts agree or differ."}
           </h1>
+          {/*
+            THE HERO WAS STILL THE PROSE. W13-7, second half.
+
+            I reordered the card below so what is unresolved comes before the summary, updated
+            the legend to match, and the page still OPENED with the same paragraph - because this
+            block prints `sharedPicture` too. Half a fix, and the half a person sees first.
+
+            Found by opening the page rather than by the source-order test I had just written,
+            which is the rule this plan keeps re-learning.
+
+            The hero now says what the report holds: how many areas are open, how many agreed.
+            The paragraph is in the card, once, where the reorder put it.
+          */}
           <p style={{ fontSize: 15, color: 'rgba(255,255,255,.72)', maxWidth: 640, margin: 0 }}>
             {tab === 'own'
               ? 'Only you can see this. It is built from what you said, and nobody else reads your words.'
-              : report.sharedPicture}
+              : divergences.length + agreements.length > 0
+                ? `${divergences.length} ${divergences.length === 1 ? 'thing is' : 'things are'} still open. ${agreements.length} ${agreements.length === 1 ? 'is' : 'are'} agreed.`
+                : 'Everyone has checked in. This is what runs across their accounts.'}
           </p>
           <div style={{ marginTop: 20, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {[

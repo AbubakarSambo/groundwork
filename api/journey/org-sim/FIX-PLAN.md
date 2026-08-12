@@ -4797,6 +4797,19 @@ instead of "this is broken". Both halves had been there since W9-7.
 **And of the third:** I trusted one screenshot at one window width. The home page's nav had
 collapsed behind its hamburger at 800px, so I recorded it as absent.
 
+### And one fix that was only half applied, found the same way
+
+W13-7 reordered the report's card so what is unresolved comes before the summary, updated the
+legend to match, and I wrote a source-order test that passed. Then I opened the page: **it still
+opened with the same paragraph**, because a hero block above the card prints `sharedPicture` too.
+Half a fix, and the half a person sees first.
+
+The hero now says what the report holds - "1 thing is still open. 3 are agreed." - and the
+paragraph appears once, in the card, where the reorder put it. Verified on a real released report.
+
+My own test could not see it because I had written it about the card. The lesson is the one this
+plan keeps re-learning, and it cost two rounds in one wave.
+
 ### One thing my own fix broke, found by looking at a phone
 
 Widening the marketing nav's collapse breakpoint from 620px to 860px - needed, because five links

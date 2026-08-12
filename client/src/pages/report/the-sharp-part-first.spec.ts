@@ -39,6 +39,26 @@ describe('the order of the shared report', () => {
     expect(at('<SecH>Where things stand</SecH>')).toBeLessThan(at("<SecH>What's still open</SecH>"))
   })
 
+  it('the page does not OPEN with the prose either', () => {
+    /**
+     * THE HALF I MISSED. I reordered the card, updated the legend, wrote this file - and the
+     * page still opened with the same paragraph, because the hero block prints `sharedPicture`
+     * too. Found by opening the page, not by the test I had just written.
+     *
+     * The hero now says what the report holds: how many things are open, how many agreed.
+     */
+    // Anchored on strings that exist: my first attempt sliced to '{ground.label,' which is
+    // written with a newline between the brace and the name, so the slice was empty and the
+    // test failed against a correct file.
+    const hero = SRC.slice(
+      SRC.indexOf("Where everyone's accounts agree or differ."),
+      SRC.indexOf('releasedDate ?'),
+    )
+    expect(hero.length, 'the hero block moved - re-anchor this check').toBeGreaterThan(200)
+    expect(hero).not.toContain('report.sharedPicture')
+    expect(hero).toMatch(/still open/)
+  })
+
   it('the prose is still there - this was a reorder, not a deletion', () => {
     expect(SRC).toContain('label="What we heard" content={report.sharedPicture}')
   })
