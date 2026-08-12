@@ -64,8 +64,19 @@ export const groundsApi = {
   list: () =>
     apiClient.get<Ground[]>('/grounds').then(r => r.data),
 
+  /**
+   * `skipNotFoundToast`: THE PAGE ALREADY SAYS THIS. W8-66.
+   *
+   * A ground you cannot see now renders `GroundGone` - a heading, the reason, and a way
+   * back. The client's axios layer ALSO raised a red "Not found / Ground not found" toast
+   * for the same 404, so you got the explanation twice, and the toast outlived the
+   * navigation: it sat over the grounds list's stat tiles on the page you landed on next,
+   * describing something that had already been handled.
+   *
+   * One 404, one answer, in the place the person is looking.
+   */
   get: (id: string) =>
-    apiClient.get<Ground>(`/grounds/${id}`).then(r => r.data),
+    apiClient.get<Ground>(`/grounds/${id}`, { skipNotFoundToast: true } as any).then(r => r.data),
 
   // Initiator-only: whether participants can see each other's email. restrict=true hides.
   setExternalVisibility: (id: string, restrict: boolean) =>

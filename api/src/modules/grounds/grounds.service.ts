@@ -610,6 +610,8 @@ export class GroundsService {
           const completed = p.checkIns.filter((c) => c.status === CheckInStatus.COMPLETED).sort((a, b) => b.sessionNumber - a.sessionNumber);
           return {
             email: p.email,
+            // Display name only, so the client never has to make one out of the address.
+            firstName: (p as any).user?.firstName ?? null,
             partyType: p.partyType,
             roleAsDescribed: p.roleAsDescribed,
             accepted: p.userId != null,
@@ -646,7 +648,19 @@ export class GroundsService {
     const orgGrounds = await this.prisma.ground.findMany({
       where: orgGroundWhere,
       include: {
-        participants: { select: { id: true, email: true, partyType: true, userId: true } },
+        /**
+         * THE NAME, SO NOTHING HAS TO INVENT ONE FROM THE ADDRESS. W8-66.
+         *
+         * Three separate places were rendering a person by splitting their email at the
+         * @ - "Led by hafsah" on the list, "hafsah runs this ground" in the admin banner,
+         * and the check-in rows. That is the W10-2 mistake: an address is not what
+         * somebody is called, and for a viewer who is not the lead the email is nulled
+         * anyway, so the guess produced a blank.
+         *
+         * Same nested select as `SAFE_PARTICIPANT_SELECT`: display name only, no other
+         * user field comes through.
+         */
+        participants: { select: { id: true, email: true, partyType: true, userId: true, user: { select: { firstName: true, lastName: true } } } },
         checkIns: {
           select: { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, createdAt: true },
         },
@@ -691,7 +705,19 @@ export class GroundsService {
              * nothing says why. So the name comes along and the card can say it.
              */
             organization: { select: { name: true } },
-            participants: { select: { id: true, email: true, partyType: true, userId: true } },
+            /**
+         * THE NAME, SO NOTHING HAS TO INVENT ONE FROM THE ADDRESS. W8-66.
+         *
+         * Three separate places were rendering a person by splitting their email at the
+         * @ - "Led by hafsah" on the list, "hafsah runs this ground" in the admin banner,
+         * and the check-in rows. That is the W10-2 mistake: an address is not what
+         * somebody is called, and for a viewer who is not the lead the email is nulled
+         * anyway, so the guess produced a blank.
+         *
+         * Same nested select as `SAFE_PARTICIPANT_SELECT`: display name only, no other
+         * user field comes through.
+         */
+        participants: { select: { id: true, email: true, partyType: true, userId: true, user: { select: { firstName: true, lastName: true } } } },
             checkIns: {
               select: { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, createdAt: true },
             },

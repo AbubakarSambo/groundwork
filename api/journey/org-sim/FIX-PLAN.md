@@ -4125,3 +4125,43 @@ renders them with dividers - which also closes my own outstanding gap of never h
 the multi-session dividers on a real ground.
 
 Worth recording because I nearly "fixed" it.
+
+## W8-69 · The 404 on every admin's grounds page - **DONE, NOT MERGED**
+
+Found by reading the network log on a page that looked fine apart from a red toast sitting
+over its own stat tiles.
+
+**`GET /grounds/awaiting-approval` has answered 404 to every caller since it was written.**
+It is declared below `@Get(':id')`, and Nest matches routes in declaration order, so the
+path was read as a ground whose id is the string "awaiting-approval". `get()` found no such
+ground and threw NotFound.
+
+Two consequences, both live:
+
+1. **The ground-approval requirement she asked for (W9-7) could not work.** The queue an
+   admin approves from could never load.
+2. **Every org admin got "Not found - Ground not found" over the grounds page, every
+   visit**, because the rail asks for the queue on mount. The toast then outlived the
+   navigation and sat on top of whatever page came next, describing nothing the person had
+   done. A large part of "the pages look a mess".
+
+Nothing catches this class: it compiles, and a unit test that calls the controller method
+directly passes - the method is fine, the routing is not. `org-roster` is a static path too
+and works, because it happens to sit above `:id`; this one was appended next to its POST
+siblings, where reading top to bottom makes it look correctly placed.
+
+`a-route-cannot-be-shadowed.spec.ts` now checks every controller in the API for a static
+path declared after a `:param` route of the same verb and depth. One instance across
+sixteen controllers, and it was this one. Bite-checked by moving it back.
+
+**And a third comment trap.** My first version of that sweep reported the file it had just
+fixed, because the doc comment explaining the fix contains the words `@Get(':id')`. Comments
+are stripped, as in the other two.
+
+### The rest of the same pass
+
+| Fixed | Was |
+|---|---|
+| "Led by Hafsah" on the grounds list | "Led by hafsah" - the third place building a name out of an email address. `grounds.list` now sends the display name, so nothing has to guess. |
+| One answer per 404 | `groundsApi.get` raised a red toast AND the page rendered `GroundGone`. The toast also outlived the navigation. |
+| The org switcher, seen at last | It only renders with more than one organisation, so nobody had ever seen it. Given a second membership on a local database it appears at the bottom of the rail with both organisations, their roles, and a dot on the active one - which is what she asked for ("org can switch at the bottom too"). Not a fix; a confirmation that it works.

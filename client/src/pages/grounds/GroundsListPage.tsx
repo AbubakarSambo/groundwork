@@ -74,8 +74,17 @@ function GroundCard({ g, onClick }: { g: Ground; onClick: () => void }) {
         */}
         <div style={{ fontSize: 11, color: 'var(--gw-sub)' }}>
           {(() => {
+            /**
+             * "LED BY HAFSAH", LOWERCASE, FROM AN EMAIL ADDRESS. W8-66.
+             *
+             * The third place doing this. An address is not what somebody is called, and
+             * for a viewer who is not the ground's lead the API nulls the email on
+             * purpose - so the guess produced either a lowercase fragment or nothing at
+             * all. `grounds.list` now sends the display name.
+             */
             const lead = (g.participants ?? []).find((p: any) => p.partyType === 'INITIATOR')
-            const who = lead ? (lead.email ?? '').split('@')[0] : null
+            const first = (lead?.user?.firstName ?? (lead as any)?.firstName ?? '').trim()
+            const who = first || (lead?.email ? lead.email.split('@')[0] : null)
             return who
               ? `Led by ${who} · ${g.participants.length} participant${g.participants.length !== 1 ? 's' : ''}`
               : `${g.participants.length} participant${g.participants.length !== 1 ? 's' : ''}`
