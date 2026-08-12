@@ -1530,7 +1530,7 @@ it is done.
 | W8-45 | one header, delete the dead AppShell (shell-on-stranger-pages half withdrawn) | S | OPEN | W8-44 |
 | W8-57 | grounds as channels in the rail, a ground opens to its own history | M | OPEN | W8-44, W8-45 |
 | W8-49 | the target page list, 38 routes to 14 pages | L | OPEN | W8-52 must pass first |
-| W8-52 | the 45-operation inventory the ground merge must satisfy | M | OPEN | acceptance test for W8-49 |
+| W8-52 | the ground-merge inventory, now an executable test (43 distinct ops) | M | DONE | unblocks W8-49 |
 | W8-47 | one noun per thing | S | OPEN | nothing |
 
 ## Product defects, open
@@ -2744,8 +2744,20 @@ one answer. With a single membership the chooser must not appear at all.
 Her instruction: "make sure the ux change does not break or lose important functions and pages."
 
 So here is what the four ground pages actually do, read off their API calls rather than from
-memory. **45 distinct operations.** Any merge that cannot host all of these is not ready to
-start, and this list is the acceptance test for W8-49 page 3.
+memory. Any merge that cannot host all of these is not ready to start, and this list is the
+acceptance test for W8-49 page 3.
+
+**The inventory is now a test, 2026-08-12:** `client/src/pages/grounds/nothing-gets-lost-in-the-merge.spec.ts`.
+An inventory in a document is a safety net nobody is standing under, and the way an operation
+disappears in a four-page refactor is quietly, in a branch nobody re-read. Merge the pages however
+the design wants; if a capability stops being wired to anything, that spec goes red and names it.
+It proves a call is still wired, not that it is reachable or correctly gated - the floor, not the
+ceiling, and a merge still has to be driven in a browser.
+
+**And the count is 43, not the 45 written here.** The prose total added the four pages up
+separately, so `reports.get` and `grounds.get` were each counted more than once. Distinct
+capabilities is the number that matters for a merge, because that is what has to survive. Nothing
+is missing; the number was.
 
 ### `/grounds/:id` (admin) - 23 operations
 
