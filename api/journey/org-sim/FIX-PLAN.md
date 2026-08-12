@@ -1545,6 +1545,33 @@ carries an `id="lp-..."` copy of another page, or goes back to `lNav()` buttons.
 bite-checked. It guards the shipped artefact rather than the source, which is the only place this
 was ever visible.
 
+## W8-63 - "Contributor" was not retired. I said it was - **fixed and guarded**
+
+I wrote in a commit that renaming the access code "retires contributor as a competing word for a
+person". I had changed two places. Seven more were on screen, including the line under the
+**sign-in form** - "Your contributions stay private from other contributors" - which is the first
+sentence about privacy anybody reads.
+
+Fixed: the sign-in page, the org-code page's badge and footnote, "Invite a contributor" on the
+save card, "a report for each contributor" in ground setup, "Contributors get their invite" in the
+post-setup guide, and the REALIGN_TEAM warning. The word a person gets is **participant**, which
+is what the schema, the ground page and the invite emails already say.
+
+Still legal, and different things: **contribution** (what a person puts in - the product's own
+phrase), and `hiddenContributors`, the report's name for somebody whose contribution is not
+visible upward. That one is a finding, not a role, and never reaches the screen: the heading says
+"People who may be missing".
+
+**Guarded, and the guard was wrong first.** `one-word-for-a-person.spec.ts` scans for the word
+with comments blanked out. Its first version allowed `contributors[:.]` so object keys and
+property access would pass - which also allowed *"...private from other contributors."*, because
+an English sentence ends in a full stop. I put the word back on the sign-in page and the spec
+stayed green. The allow-list is structural now (`contributors:` a key, `contributors.` followed by
+an identifier, argument and destructuring positions), and the same sabotage now fails it.
+
+Worth keeping: **the bite-check is the only reason that hole was found.** A guard written for a
+mistake I had just made, which did not catch the mistake I had just made.
+
 ## W8-62 - The same sweep, run on the app: one real gap - **guarded**
 
 The marketing bug had a shape worth hunting for: something built, deployed, and reachable by

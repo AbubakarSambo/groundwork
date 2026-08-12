@@ -28,7 +28,7 @@ export function EnterPage() {
 
       <div className="gw-bd" style={{ maxWidth: 480, margin: '0 auto', width: '100%', paddingTop: 28 }}>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--gw-green-bg)', border: '0.5px solid var(--gw-green-b)', borderRadius: 20, padding: '4px 12px', fontSize: 11, fontWeight: 600, color: 'var(--gw-green-t)', marginBottom: 20, letterSpacing: '.02em' }}>
-          Contributor
+          Participant
         </div>
 
         <div className="gw-ttl">Check in</div>
@@ -56,7 +56,7 @@ export function EnterPage() {
         </div>
 
         <div style={{ fontSize: 11, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 20, paddingTop: 16, borderTop: '0.5px solid var(--gw-border)' }}>
-          Your full account stays private from other contributors. Alignment and gaps emerge as everyone checks in.
+          Your full account stays private from the other participants. Alignment and gaps emerge as everyone checks in.
         </div>
       </div>
     </div>

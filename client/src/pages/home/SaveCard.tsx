@@ -254,7 +254,7 @@ export function SaveCard({ mode, variant = 'admin', onClear, email: initialEmail
       {/* Section 3: send directly by email */}
       <div style={{ padding: '14px 16px' }}>
         <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-muted)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 8 }}>
-          Invite a contributor
+          Invite a participant
         </div>
         <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5, marginBottom: 10 }}>
           Add their email and we will send them an invite once your account is set up.

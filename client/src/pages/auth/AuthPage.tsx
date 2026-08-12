@@ -353,7 +353,7 @@ export function AuthPage() {
         )}
 
         <div style={{ fontSize: 11, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 24, paddingTop: 16, borderTop: '0.5px solid var(--gw-border)', lineHeight: 1.6 }}>
-          Your contributions stay private from other contributors. Alignment, gaps, and confidence emerge from everyone's check-ins together.
+          Your contributions stay private from the other participants. Alignment, gaps, and confidence emerge from everyone's check-ins together.
         </div>
 
       </div>

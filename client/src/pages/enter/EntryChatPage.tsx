@@ -2688,8 +2688,8 @@ export function EntryChatPage() {
                 const s = onboardingSelections.classifiedScenario || onboardingSelections.mode || scenario
                 const notices: Record<string, string> = {
                   PIP: 'Performance improvement grounds document a process. They do not replace formal HR procedures, employment policy, or legal obligation. Ensure your organisation\'s HR process is followed in parallel.',
-                  DRIFT: 'This ground was opened on a situation that has already moved off course. Inviting contributors now means their account will reflect the current state, not the original agreement. Make sure that is what you want on record.',
-                  REALIGN_TEAM: 'Realignment grounds surface disagreement directly. Contributors will give independent accounts that may differ significantly from yours. The report will show those gaps without filtering them.',
+                  DRIFT: 'This ground was opened on a situation that has already moved off course. Inviting people now means their account will reflect the current state, not the original agreement. Make sure that is what you want on record.',
+                  REALIGN_TEAM: 'Realignment grounds surface disagreement directly. The other participants will give independent accounts that may differ significantly from yours. The report will show those gaps without filtering them.',
                 }
                 const notice = notices[s ?? '']
                 return notice ? (
