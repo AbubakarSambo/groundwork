@@ -41,7 +41,10 @@ function makeService(ground: any, existingParticipantCount: number) {
   };
   const email: any = { sendParticipantInvite: jest.fn(async () => ({})) };
   const usage: any = { emit: () => Promise.resolve() };
-  return new GroundsService(prisma, email, {} as any, { emit: () => Promise.resolve() } as any, usage, {} as any);
+  return new GroundsService(prisma, email, {} as any, { emit: () => Promise.resolve() } as any, usage, {} as any,
+      // 7th dep: the model, for the context chat (G37/G23). Unused here.
+      { respond: async () => '' } as any,
+    );
 }
 
 const FREE_GROUND = { id: 'g1', initiatorId: 'admin', label: 'Test', isFreeGround: true, freeParticipantCap: 4, cadence: 'FORTNIGHTLY' };

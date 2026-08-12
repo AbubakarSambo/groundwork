@@ -31,7 +31,10 @@ describe('GroundsService - participant serialization (GW-01)', () => {
       user: { findUnique: jest.fn(async () => ({ role: 'MEMBER', organizationId: 'org1' })) },
       groundParticipant: { findMany: jest.fn(async () => []) },
     };
-    const service = new GroundsService(prisma, {} as any, {} as any, {} as any, { emit: () => Promise.resolve() } as any, {} as any);
+    const service = new GroundsService(prisma, {} as any, {} as any, {} as any, { emit: () => Promise.resolve() } as any, {} as any,
+      // 7th dep: the model, for the context chat (G37/G23). Unused here.
+      { respond: async () => '' } as any,
+    );
     await service.get('g1', 'org1');
 
     expect(prisma.ground.findFirst).toHaveBeenCalled();
@@ -50,7 +53,10 @@ describe('GroundsService - participant serialization (GW-01)', () => {
       user: { findUnique: jest.fn(async () => ({ role: 'MEMBER', organizationId: 'org1' })) },
       groundParticipant: { findMany: jest.fn(async () => []) },
     };
-    const service = new GroundsService(prisma, {} as any, {} as any, {} as any, { emit: () => Promise.resolve() } as any, {} as any);
+    const service = new GroundsService(prisma, {} as any, {} as any, {} as any, { emit: () => Promise.resolve() } as any, {} as any,
+      // 7th dep: the model, for the context chat (G37/G23). Unused here.
+      { respond: async () => '' } as any,
+    );
     await service.get('g1', 'org-A');
     expect(prisma.ground.findFirst.mock.calls[0][0].where.organizationId).toBe('org-A');
   });
@@ -85,7 +91,10 @@ describe('GroundsService.resendParticipantInvite - GW-24', () => {
     const emailSent: any[] = [];
     const email: any = { sendParticipantInvite: jest.fn(async (...args: any[]) => { emailSent.push(args); }) };
 
-    const service = new GroundsService(prisma, email, {} as any, {} as any, { emit: () => Promise.resolve() } as any, {} as any);
+    const service = new GroundsService(prisma, email, {} as any, {} as any, { emit: () => Promise.resolve() } as any, {} as any,
+      // 7th dep: the model, for the context chat (G37/G23). Unused here.
+      { respond: async () => '' } as any,
+    );
     const result = await service.resendParticipantInvite('g1', 'p1', 'org1');
 
     expect(result.message).toBe('Invite resent');
@@ -99,7 +108,10 @@ describe('GroundsService.resendParticipantInvite - GW-24', () => {
     const participant = { id: 'p1', groundId: 'g1', email: 'x@test.com', userId: 'already-set' };
     const { prisma } = makePrisma(ground, participant, null);
     const { BadRequestException } = await import('@nestjs/common');
-    const service = new GroundsService(prisma, {} as any, {} as any, {} as any, { emit: () => Promise.resolve() } as any, {} as any);
+    const service = new GroundsService(prisma, {} as any, {} as any, {} as any, { emit: () => Promise.resolve() } as any, {} as any,
+      // 7th dep: the model, for the context chat (G37/G23). Unused here.
+      { respond: async () => '' } as any,
+    );
 
     await expect(service.resendParticipantInvite('g1', 'p1', 'org1')).rejects.toBeInstanceOf(BadRequestException);
   });
@@ -133,7 +145,10 @@ describe('GroundsService.get - org boundary (GW-ORG-BOUNDARY)', () => {
   it('throws NotFoundException for a requester in a different org with no participant link', async () => {
     const { NotFoundException } = await import('@nestjs/common');
     const prisma = makePrisma({ findFirstResult: null, participantLink: null, findUniqueResult: null });
-    const service = new GroundsService(prisma, {} as any, {} as any, {} as any, { emit: () => Promise.resolve() } as any, {} as any);
+    const service = new GroundsService(prisma, {} as any, {} as any, {} as any, { emit: () => Promise.resolve() } as any, {} as any,
+      // 7th dep: the model, for the context chat (G37/G23). Unused here.
+      { respond: async () => '' } as any,
+    );
 
     await expect(service.get('g1', 'org-B', 'user-outsider')).rejects.toBeInstanceOf(NotFoundException);
     // The org-scoped lookup must have been tried first, scoped to the requester's own org.
@@ -147,7 +162,10 @@ describe('GroundsService.get - org boundary (GW-ORG-BOUNDARY)', () => {
   it('throws NotFoundException even with no requestingUserId at all (anonymous/service call)', async () => {
     const { NotFoundException } = await import('@nestjs/common');
     const prisma = makePrisma({ findFirstResult: null, participantLink: null, findUniqueResult: null });
-    const service = new GroundsService(prisma, {} as any, {} as any, {} as any, { emit: () => Promise.resolve() } as any, {} as any);
+    const service = new GroundsService(prisma, {} as any, {} as any, {} as any, { emit: () => Promise.resolve() } as any, {} as any,
+      // 7th dep: the model, for the context chat (G37/G23). Unused here.
+      { respond: async () => '' } as any,
+    );
 
     await expect(service.get('g1', 'org-B')).rejects.toBeInstanceOf(NotFoundException);
   });
@@ -158,7 +176,10 @@ describe('GroundsService.get - org boundary (GW-ORG-BOUNDARY)', () => {
       participantLink: { id: 'p1', groundId: 'g1', userId: 'user-linked' },
       findUniqueResult: { ...GROUND },
     });
-    const service = new GroundsService(prisma, {} as any, {} as any, {} as any, { emit: () => Promise.resolve() } as any, {} as any);
+    const service = new GroundsService(prisma, {} as any, {} as any, {} as any, { emit: () => Promise.resolve() } as any, {} as any,
+      // 7th dep: the model, for the context chat (G37/G23). Unused here.
+      { respond: async () => '' } as any,
+    );
 
     const result = await service.get('g1', 'org-B', 'user-linked');
     expect(result.id).toBe('g1');
@@ -167,7 +188,10 @@ describe('GroundsService.get - org boundary (GW-ORG-BOUNDARY)', () => {
 
   it('succeeds for a same-org requester via the primary org-scoped lookup', async () => {
     const prisma = makePrisma({ findFirstResult: { ...GROUND }, participantLink: null, findUniqueResult: null });
-    const service = new GroundsService(prisma, {} as any, {} as any, {} as any, { emit: () => Promise.resolve() } as any, {} as any);
+    const service = new GroundsService(prisma, {} as any, {} as any, {} as any, { emit: () => Promise.resolve() } as any, {} as any,
+      // 7th dep: the model, for the context chat (G37/G23). Unused here.
+      { respond: async () => '' } as any,
+    );
 
     const result = await service.get('g1', 'org-A', 'user-member');
     expect(result.id).toBe('g1');

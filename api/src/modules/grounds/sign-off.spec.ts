@@ -21,7 +21,10 @@ function makeService(participant: any) {
       update,
     },
   };
-  const service = new GroundsService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any);
+  const service = new GroundsService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any,
+      // 7th dep: the model, for the context chat (G37/G23). Unused here.
+      { respond: async () => '' } as any,
+    );
   return { service, prisma, update };
 }
 

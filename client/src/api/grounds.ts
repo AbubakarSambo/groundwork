@@ -232,4 +232,14 @@ export const groundsApi = {
 
   declineGround: (groundId: string, reason?: string) =>
     apiClient.post<{ id: string; status: string; alreadyDecided: boolean }>(`/grounds/${groundId}/decline`, { reason }).then(r => r.data),
+
+  /**
+   * The lead's setup conversation. Stateless: the client holds the history and sends
+   * it back, and nothing said here is stored - it is about the ground's setup, not
+   * anybody's account of anything.
+   */
+  contextChat: (groundId: string, history: { role: 'user' | 'assistant'; content: string }[]) =>
+    apiClient
+      .post<{ reply: string; gaps: string[]; done: boolean }>(`/grounds/${groundId}/context-chat`, { history })
+      .then(r => r.data),
 }

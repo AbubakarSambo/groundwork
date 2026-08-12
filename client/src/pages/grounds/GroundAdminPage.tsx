@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { whatThisGroundCanTellYou } from '@/lib/contextStrength'
 import { ContextStrength } from '@/components/gw/ContextStrength'
+import { ContextChat } from '@/components/gw/ContextChat'
 import { useAuthStore } from '@/stores/auth'
 import { groundsApi, type GroundCadence } from '@/api/grounds'
 import { TIMED_CADENCES, sessionsFor } from '@/lib/cadence'
@@ -1243,6 +1244,9 @@ export function GroundAdminPage() {
                 still a real ground; this exists so nobody is surprised in month
                 three by a question the record was never able to answer. */}
             {contextEnabled && contextStrength && <ContextStrength read={contextStrength} />}
+
+            {/* G37/G23, and the lead's only - it is about setting the ground up. */}
+            {contextEnabled && isInitiator && <ContextChat groundId={id!} />}
 
             <div
               style={{ border: '1.5px dashed var(--gw-border)', borderRadius: 8, padding: 20, textAlign: 'center', cursor: 'pointer', marginBottom: 16, background: 'var(--gw-bg)' }}

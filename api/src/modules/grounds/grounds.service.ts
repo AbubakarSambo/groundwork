@@ -3,6 +3,8 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
+import { contextGaps, contextChatPrompt } from './the-context-chat';
+import { AnthropicService } from '../conversation/anthropic.service';
 import { EmailService } from '../email/email.service';
 import { BillingService } from '../billing';
 import { UsageService } from '../usage/usage.service';
@@ -105,6 +107,12 @@ export class GroundsService {
     private events: EventEmitter2,
     private usage: UsageService,
     private config: ConfigService,
+    /**
+     * The context chat needs a model. Injected here rather than routed through
+     * ConversationService because that service is about check-ins - somebody's
+     * account - and this conversation is deliberately not one.
+     */
+    private anthropic: AnthropicService,
   ) {}
 
   /**
@@ -938,6 +946,72 @@ export class GroundsService {
    * It DIRECTS and WEIGHTS synthesis; it is never shown to the person it is about
    * and never becomes a stated claim in the report (see reports.service synthesis).
    */
+  /**
+   * THE CONTEXT CHAT. G37, G23 - the last of Wave 2's seven and the largest.
+   *
+   * It probes for what setup did not capture and recommends the material rather than
+   * waiting for uploads. A real run produced a ninety-day ground from one sentence,
+   * with no duration, no rhythm and no sense of who was involved; this is the thing
+   * that stops that.
+   *
+   * The lead's only, because it is about the ground rather than about anybody's
+   * account - and because the failure mode is a lead using it to say things about a
+   * person. See the-context-chat.ts for the refusals that guard against that.
+   */
+  async contextChat(
+    groundId: string,
+    requestingUserId: string,
+    history: { role: 'user' | 'assistant'; content: string }[],
+  ) {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: {
+        id: true, label: true, scenario: true, initiatorId: true, timelineDays: true,
+        cadence: true, brief: true,
+        participants: { select: { id: true, managingOnly: true } },
+        objectives: { select: { id: true } },
+      },
+    });
+    if (!ground) throw new NotFoundException('Ground not found');
+    if (ground.initiatorId !== requestingUserId) {
+      throw new ForbiddenException('Setting this ground up is the lead\'s. Your own check-ins are on your page.');
+    }
+
+    const openDocumentCount = await this.prisma.groundDocument.count({
+      where: { groundId, visibility: 'OPEN' },
+    });
+
+    const gaps = contextGaps({
+      timelineDays: ground.timelineDays,
+      cadence: ground.cadence,
+      brief: ground.brief,
+      partyCount: ground.participants.filter((p) => !p.managingOnly).length,
+      perPersonObjectiveCount: ground.objectives.length,
+      openDocumentCount,
+    });
+
+    // Nothing to ask about. Saying so and stopping is the right answer - a setup
+    // conversation that will not end teaches people to skip setup.
+    if (gaps.length === 0 && history.length === 0) {
+      return {
+        reply:
+          'This ground has what it needs: how long it runs, how often people check in, what doing well looks like, who is in it, and something in writing for everybody to work from. Nothing here needs fixing before the first session.',
+        gaps: [],
+        done: true,
+      };
+    }
+
+    const systemPrompt = contextChatPrompt(ground.label, ground.scenario, gaps);
+    const reply = await this.anthropic.respond(
+      systemPrompt,
+      history.length
+        ? history.map((h) => ({ role: h.role === 'user' ? ('user' as const) : ('assistant' as const), content: h.content }))
+        : [{ role: 'user' as const, content: 'Start.' }],
+    );
+
+    return { reply, gaps: gaps.map((g: { key: string }) => g.key), done: gaps.length === 0 };
+  }
+
   async addLeadContext(groundId: string, requestingUserId: string, dto: { participantId?: string | null; text: string }) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { initiatorId: true } });
     if (!ground) throw new NotFoundException('Ground not found');

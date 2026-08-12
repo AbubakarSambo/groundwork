@@ -49,6 +49,9 @@ describe('a ground created by somebody who is not an admin', () => {
     // the billing stub where email goes and the failure read as a missing method.
     const service = new GroundsService(
       prisma, email, billing, { emit: () => undefined } as any, { emit: async () => undefined } as any, config,
+    
+      // 7th dep: the model, for the context chat (G37/G23). Unused here.
+      { respond: async () => '' } as any,
     );
     return { service, prisma, email, created };
   }
@@ -90,6 +93,9 @@ describe('while a ground is waiting to be accepted', () => {
     const service = new GroundsService(
       prisma, email, { canCreateGround: jest.fn() } as any,
       { emit: () => undefined } as any, { emit: async () => undefined } as any, { get: () => '' } as any,
+    
+      // 7th dep: the model, for the context chat (G37/G23). Unused here.
+      { respond: async () => '' } as any,
     );
     return { service, email };
   }

@@ -85,6 +85,25 @@ class DeclineGroundDto {
   reason?: string;
 }
 
+class ContextChatTurnDto {
+  @IsString()
+  role!: 'user' | 'assistant';
+
+  @IsString()
+  @MaxLength(4000)
+  content!: string;
+}
+
+class ContextChatDto {
+  /**
+   * Stateless, like the check-in engine's own chat: the client holds the history and
+   * sends it back. Nothing here is stored, which is the point - this conversation is
+   * about the ground's setup and is not anybody's account of anything.
+   */
+  @IsOptional()
+  history?: ContextChatTurnDto[];
+}
+
 @ApiTags('Grounds')
 @ApiBearerAuth()
 @Controller('grounds')
@@ -225,6 +244,12 @@ export class GroundsController {
   @ApiOperation({ summary: 'Decline a ground. It closes, and nobody is ever invited to it.' })
   async decline(@Param('id') id: string, @CurrentUser() user: CurrentUserData, @Body() dto: DeclineGroundDto) {
     return this.grounds.declineGround(id, user.organizationId, user.id, dto.reason);
+  }
+
+  @Post(':id/context-chat')
+  @ApiOperation({ summary: "The lead's setup conversation: what context is missing, and the material that would settle it" })
+  async contextChat(@Param('id') id: string, @CurrentUser('id') userId: string, @Body() dto: ContextChatDto) {
+    return this.grounds.contextChat(id, userId, dto.history ?? []);
   }
 
   @Get(':id/my-notes')

@@ -79,7 +79,10 @@ function prismaWith(people: Participant[]) {
 }
 
 const service = (people: Participant[]) =>
-  new GroundsService(prismaWith(people) as any, {} as any, {} as any, {} as any, {} as any, {} as any);
+  new GroundsService(prismaWith(people) as any, {} as any, {} as any, {} as any, {} as any, {} as any,
+      // 7th dep: the model, for the context chat (G37/G23). Unused here.
+      { respond: async () => '' } as any,
+    );
 
 const person = (id: string, over: Partial<Participant> = {}): Participant => ({
   id,

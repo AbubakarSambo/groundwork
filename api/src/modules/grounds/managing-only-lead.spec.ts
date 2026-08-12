@@ -40,7 +40,10 @@ function makeService(overrides: any = {}) {
     checkIn: { create: checkInCreate },
     $transaction: jest.fn(async (ops: any[]) => Promise.all(ops)),
   };
-  const service = new GroundsService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any);
+  const service = new GroundsService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any,
+      // 7th dep: the model, for the context chat (G37/G23). Unused here.
+      { respond: async () => '' } as any,
+    );
   return { service, prisma, groundParticipantUpdate, checkInCreate };
 }
 
@@ -100,14 +103,20 @@ describe('isSessionReadyForReport: a managing-only lead must not block release',
 
   it('with a managing-only lead present: 2 real participants completed -> report IS ready (release is not blocked)', async () => {
     const prisma: any = prismaForReadiness(true);
-    const service = new GroundsService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any);
+    const service = new GroundsService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any,
+      // 7th dep: the model, for the context chat (G37/G23). Unused here.
+      { respond: async () => '' } as any,
+    );
     const ready = await service.isSessionReadyForReport('g1', 1);
     expect(ready).toBe(true);
   });
 
   it('sanity: without the managing-only lead in the mix, the same 2 real participants still make it ready (unaffected)', async () => {
     const prisma: any = prismaForReadiness(false);
-    const service = new GroundsService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any);
+    const service = new GroundsService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any,
+      // 7th dep: the model, for the context chat (G37/G23). Unused here.
+      { respond: async () => '' } as any,
+    );
     const ready = await service.isSessionReadyForReport('g1', 1);
     expect(ready).toBe(true);
   });

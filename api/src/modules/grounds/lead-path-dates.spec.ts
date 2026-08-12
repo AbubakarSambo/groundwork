@@ -19,7 +19,10 @@ function makeService(ground: any) {
     checkIn: { create: checkInCreate },
     $transaction: jest.fn(async (ops: any[]) => Promise.all(ops)),
   };
-  const service = new GroundsService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any);
+  const service = new GroundsService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any,
+      // 7th dep: the model, for the context chat (G37/G23). Unused here.
+      { respond: async () => '' } as any,
+    );
   return { service, checkInCreate };
 }
 
