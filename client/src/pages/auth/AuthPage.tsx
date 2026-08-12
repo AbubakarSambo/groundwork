@@ -13,7 +13,12 @@ import { useAuthStore } from '@/stores/auth'
 
 const MARKETING_URL = import.meta.env.VITE_MARKETING_URL ?? 'https://myground.work'
 
-type View = 'password' | 'link' | 'forgot'
+/**
+ * `create` is new, and it is the point of W10-1: there was no view that was only
+ * about making an account. `link` did it, under a heading that said "Sign in or
+ * create account", reachable from the fourth line of small print.
+ */
+type View = 'password' | 'link' | 'create' | 'forgot'
 
 /**
  * The small text controls under a form ("Forgot your password?", "Create an
@@ -89,14 +94,20 @@ export function AuthPage() {
     if (!raw.startsWith('/') || raw.startsWith('//')) return null
     return raw
   })()
-  const defaultView: View = mode === 'member' || isSignup ? 'link' : 'password'
+  const defaultView: View = isSignup ? 'create' : mode === 'member' ? 'link' : 'password'
 
   const [view, setView] = useState<View>(defaultView)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  // Asked for at last. Without them the organisation ends up called "Sam's
+  // workspace", derived from the address, and nobody was ever asked. W10-2.
+  const [firstName, setFirstName] = useState('')
+  const [orgName, setOrgName] = useState('')
   const [error, setError] = useState('')
   const [linkSent, setLinkSent] = useState(false)
   const [resetSent, setResetSent] = useState(false)
+  /** Set when the server says this account has no password and a link is on its way. */
+  const [passwordlessNotice, setPasswordlessNotice] = useState('')
 
   /**
    * Does this deployment have Google credentials?
@@ -126,22 +137,113 @@ export function AuthPage() {
       navigate(nextPath ?? '/')
     },
     onError: (err: any) => {
-      const msg = err?.response?.data?.message
-      if (Array.isArray(msg)) setError(msg[0])
-      else setError(msg ?? 'Incorrect email or password.')
+      const raw = err?.response?.data?.message
+      const msg: string = Array.isArray(raw) ? raw[0] : (raw ?? 'Incorrect email or password.')
+      /**
+       * "YOU HAVE NO PASSWORD" IS NOT A WRONG PASSWORD. W10-2.
+       *
+       * A participant added to a ground has an account and no password. `login` spots
+       * that, emails them a setup link, and says so - but it arrived as red text under
+       * the password field, which reads as "you typed it wrong" and invites them to
+       * try again with a password that has never existed.
+       *
+       * DELIBERATELY NOT A LOOKUP BEFORE THEY SUBMIT. An endpoint that answers "does
+       * this address have a password" is an account-enumeration oracle, and avoiding
+       * exactly that is why the other answers on this page are generic. The server
+       * already tells us after a real attempt; this just stops mislabelling it.
+       */
+      if (/emailed you a link|set (your |a )?password|Google Sign-In/i.test(msg)) {
+        setPasswordlessNotice(msg)
+        setError('')
+        return
+      }
+      setError(msg)
     },
   })
 
   const sendLink = useMutation({
     mutationFn: () => authApi.entrySave(email.trim().toLowerCase()),
     onSuccess: () => setLinkSent(true),
-    onError: () => setLinkSent(true),
+    /**
+     * A FAILURE IS NOT A SUCCESS. W10-2.
+     *
+     * This said `setLinkSent(true)` on error, so a network failure, a 500 or a
+     * rejected address all showed "Check your email".
+     *
+     * The generic answer is right for SIGN-IN and for the reset below: telling a
+     * stranger "no such account" tells them which addresses are registered. It is
+     * wrong here, because this form also CREATES accounts - somebody whose account
+     * was never made was sent away to wait for an email that would never arrive, and
+     * the product had told them everything was fine.
+     *
+     * A transport failure gives away nothing about the address, so saying so is safe
+     * and it is the difference between a person retrying and a person giving up.
+     */
+    onError: (err: any) => {
+      const status = err?.response?.status
+      // No response at all, or the server broke. Neither says anything about whether
+      // this address has an account.
+      if (!status || status >= 500) {
+        setError('That did not send - something went wrong on our side. Try again.')
+        return
+      }
+      if (status === 429) {
+        setError('Too many attempts. Wait a minute and try again.')
+        return
+      }
+      // A 4xx about the address itself stays generic: this is also the sign-in door.
+      setLinkSent(true)
+    },
+  })
+
+  /**
+   * CREATING AN ACCOUNT, WITH THE THINGS THAT MAKE IT THEIRS.
+   *
+   * Same endpoint as the link view - `entrySave` has always been the thing that
+   * creates an account, which is exactly the problem: it was only reachable through a
+   * door labelled "get a sign-in link". This one is labelled what it is, and it sends
+   * the name and the organisation so neither has to be guessed from the address.
+   *
+   * Still nothing is created until the link is opened (GW-001). This fills in the
+   * pending signup, it does not make a user.
+   */
+  const createAccount = useMutation({
+    mutationFn: () => authApi.entrySave(email.trim().toLowerCase(), {
+      payload: {
+        ...(firstName.trim() ? { firstName: firstName.trim() } : {}),
+        ...(orgName.trim() ? { orgName: orgName.trim() } : {}),
+      },
+    }),
+    onSuccess: () => setLinkSent(true),
+    onError: (err: any) => {
+      const status = err?.response?.status
+      if (!status || status >= 500) {
+        setError('That did not send - something went wrong on our side. Try again.')
+        return
+      }
+      if (status === 429) {
+        setError('Too many attempts. Wait a minute and try again.')
+        return
+      }
+      // A 409 means the address already has an account, and saying so here is safe:
+      // they just told us they are new, so it is the useful answer rather than a leak.
+      if (status === 409) {
+        setError('That address already has an account. Sign in instead.')
+        return
+      }
+      setLinkSent(true)
+    },
   })
 
   const sendReset = useMutation({
     mutationFn: () => authApi.forgotPassword(email.trim().toLowerCase()),
     onSuccess: () => setResetSent(true),
-    onError: () => setResetSent(true), // generic message regardless
+    /**
+     * Reset stays generic on every failure, deliberately. Unlike the link above it
+     * never creates anything, so the only thing an honest error could reveal is
+     * whether the address is registered.
+     */
+    onError: () => setResetSent(true),
   })
 
   function submitPassword(e: React.FormEvent) {
@@ -178,14 +280,28 @@ export function AuthPage() {
 
       <div className="gw-bd" style={{ maxWidth: 480, margin: '0 auto', width: '100%', paddingTop: 28 }}>
 
-        <div className="gw-ttl">{view === 'link' ? (isSignup ? 'Create your account' : 'Sign in or create account') : 'Sign in'}</div>
+        <div className="gw-ttl">
+          {view === 'create' ? 'Create your account' : view === 'link' ? 'Get a sign-in link' : 'Sign in'}
+        </div>
+
+        {view === 'password' && passwordlessNotice && (
+          <div style={{ background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 10, padding: '13px 15px', marginBottom: 16 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 4 }}>
+              Check your email
+            </div>
+            <div style={{ fontSize: 12.5, color: 'var(--gw-navy)', lineHeight: 1.6 }}>
+              {passwordlessNotice}
+            </div>
+          </div>
+        )}
 
         {view === 'password' && (
           <>
             <form onSubmit={submitPassword}>
               <div className="gw-fld">
-                <label className="gw-label">Email</label>
+                <label className="gw-label" htmlFor="signin-email">Email</label>
                 <input
+                  id="signin-email"
                   className="gw-input"
                   type="email"
                   placeholder="you@company.com"
@@ -195,8 +311,9 @@ export function AuthPage() {
                 />
               </div>
               <div className="gw-fld">
-                <label className="gw-label">Password</label>
+                <label className="gw-label" htmlFor="signin-password">Password</label>
                 <input
+                  id="signin-password"
                   className="gw-input"
                   type="password"
                   placeholder="••••••••"
@@ -242,7 +359,75 @@ export function AuthPage() {
                 the view that also registers people, and it reads as sign-in. Anybody
                 without an account had nothing on this screen addressed to them.
               */}
-              <TextAction strong onClick={() => { setError(''); setView('link') }}>New here? Create an account</TextAction>
+              {/*
+                ONE DOOR EACH. Both of these used to open the same view: "no password"
+                read as a workaround and "create an account" as registration, and they
+                were the same form. Now the first is a sign-in aid and the second goes
+                to a page that is only about creating an account.
+              */}
+              <TextAction strong onClick={() => { setError(''); setView('create') }}>New here? Create an account</TextAction>
+            </div>
+          </>
+        )}
+
+        {view === 'create' && !linkSent && (
+          <>
+            <div className="gw-sub-t" style={{ marginBottom: 20 }}>
+              No password to choose. We send you a link, and your account is made when you open it.
+            </div>
+
+            <form onSubmit={e => { e.preventDefault(); setError(''); if (!email.trim().includes('@')) { setError('Enter a valid email address.'); return } createAccount.mutate() }}>
+              <div className="gw-fld">
+                <label className="gw-label" htmlFor="signup-name">Your name</label>
+                <input
+                  id="signup-name"
+                  className="gw-input"
+                  placeholder="Sam Taylor"
+                  value={firstName}
+                  onChange={e => { setFirstName(e.target.value); setError('') }}
+                  autoFocus
+                />
+              </div>
+              <div className="gw-fld">
+                <label className="gw-label" htmlFor="signup-email">Work email</label>
+                <input
+                  id="signup-email"
+                  className="gw-input"
+                  type="email"
+                  placeholder="you@company.com"
+                  value={email}
+                  onChange={e => { setEmail(e.target.value); setError('') }}
+                />
+              </div>
+              <div className="gw-fld">
+                {/*
+                  ASKED, NOT GUESSED. Left empty this becomes "Sam's workspace" from
+                  the name - which is the current behaviour for everybody, because
+                  nothing ever asked. It is optional because a person signing up to
+                  try it should not be stopped by a naming decision.
+                */}
+                <label className="gw-label" htmlFor="signup-org">Your organisation <span style={{ color: 'var(--gw-muted)', fontWeight: 400 }}>(optional)</span></label>
+                <input
+                  id="signup-org"
+                  className="gw-input"
+                  placeholder="Acme Ltd"
+                  value={orgName}
+                  onChange={e => { setOrgName(e.target.value); setError('') }}
+                />
+                <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', marginTop: 5, lineHeight: 1.5 }}>
+                  What your workspace will be called. You can change it later.
+                </div>
+              </div>
+
+              {error && <div className="gw-er" style={{ marginBottom: 10 }}>{error}</div>}
+
+              <button className="gw-btn" type="submit" disabled={createAccount.isPending}>
+                {createAccount.isPending ? 'Sending…' : 'Create my account →'}
+              </button>
+            </form>
+
+            <div style={{ textAlign: 'center', marginTop: 16 }}>
+              <TextAction onClick={() => { setError(''); setView('password') }}>Already have an account? Sign in</TextAction>
             </div>
           </>
         )}

@@ -325,8 +325,21 @@ export class AuthService {
     let draftToken: string | undefined;
 
     if (!user) {
+      /**
+       * THE NAME THEY GAVE, IF THEY GAVE ONE. W10-2.
+       *
+       * Derived from the address otherwise, which is what this always did -
+       * `sam.taylor@` becomes "Sam". That is a decent guess and it was the only
+       * option, because nothing ever asked. The create-account view asks now, and it
+       * arrives the same way the org name always has: on the draft payload.
+       *
+       * It matters more than a greeting. `verifyEmail` names the organisation
+       * `${firstName}'s workspace` when none was typed, so a guessed name became the
+       * company's name.
+       */
       const localPart = lower.split('@')[0].replace(/[._\-+]/g, ' ').trim();
-      const firstName = (localPart.charAt(0).toUpperCase() + localPart.slice(1).split(' ')[0]).slice(0, 40) || 'User';
+      const typedFirstName = typeof draft?.payload?.firstName === 'string' ? draft.payload.firstName.trim().slice(0, 40) : '';
+      const firstName = typedFirstName || (localPart.charAt(0).toUpperCase() + localPart.slice(1).split(' ')[0]).slice(0, 40) || 'User';
 
       /**
        * NOTHING IS CREATED UNTIL THE ADDRESS IS PROVED.

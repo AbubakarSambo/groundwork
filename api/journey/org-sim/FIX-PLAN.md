@@ -1757,14 +1757,45 @@ and throws "We've emailed you a link to set your password" - which is right. But
 typing into is the *password* form, so they had to guess that entering a password they never chose
 was the way to be told they do not have one.
 
-**5. `/auth?mode=member` exists and nothing links to it.** It is how a participant is supposed to
-arrive; the marketing site's "Sign in" goes to plain `/auth`.
+**5. The same "Sign in" button lands in two different places.** I first wrote here that nothing
+links to `?mode=member`. **That was wrong** - the marketing HOME page's Sign in uses it, and the
+Sign in on how-it-works, pricing and use-cases goes to plain `/auth`. So one label, two landing
+views, depending which page you happened to click it from. Corrected after checking every marketing
+page rather than one.
 
 **6. The verification email is the whole product.** No account exists until the link is opened, and
 `MagicSentPage` had no way back to the form until today (W9-3), so a mistyped address was a dead
 end: resend went to the same wrong address.
 
-## W10-3 · What to do, in order
+## W10-3 · Done, 2026-08-12
+
+All five, in the order below. What each one turned out to need:
+
+1. **The four characters fixed.** A transport failure or a 500 now says "that did not send" - it
+   gives away nothing about the address, and it is the difference between a person retrying and a
+   person giving up. A 4xx about the address itself stays generic, because this form is also the
+   sign-in door. Reset stays generic on everything, deliberately: it never creates anything, so the
+   only thing an honest error could reveal is whether the address is registered.
+2. **A create view of its own**, heading "Create your account", asking for the name and the
+   organisation. Both were guessed before and not harmlessly: the name came from the address and
+   `verifyEmail` named the organisation "<name>'s workspace", so somebody signing up to run a team
+   landed in a company nobody named. The org is optional - a naming decision should not block
+   signing up - and `entrySave` takes `firstName` on the draft payload the same way it always took
+   `orgName`.
+3. **One door each.** "No password? Get a link" is a sign-in aid; "New here? Create an account" goes
+   to the create view. They used to open the same form.
+4. **"You have no password" is no longer shown as "wrong password".** The server already says it;
+   it arrived as red text under the password field, which invites another go at a password that has
+   never existed. It is a "Check your email" panel now. **Deliberately not a lookup before they
+   submit**: an endpoint answering "does this address have a password" is an account-enumeration
+   oracle, and avoiding exactly that is why the rest of this page is generic.
+5. **The marketing Sign in is consistent** - all five pages go to `/auth`.
+
+**And a thing found on the way: the labels were not attached to their inputs.** No `htmlFor`, no
+`id`, on any field on this page. Broken for a screen reader and for clicking the label, and it is
+why the first version of the test could not find them. Fixed on all five fields.
+
+## W10-3b · The original plan, for the record
 
 1. **Stop reporting failure as success, for sign-up only.** Keep the generic answer for sign-in and
    reset. Sign-up should say "that did not send - try again" when it did not send. Smallest change,

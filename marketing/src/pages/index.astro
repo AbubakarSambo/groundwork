@@ -720,7 +720,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
     <a class="l-nav-link" href="/about">About</a>
   </div>
   <div class="l-nav-ctas">
-    <a class="l-btn-ghost" href={`${APP_URL}/auth?mode=member`}>Sign in</a>
+    <!-- Sign in goes to sign-in. This said `?mode=member`, which lands on the
+         send-me-a-link view, while the same button on how-it-works, pricing and
+         use-cases went to plain /auth and the password form - one label, two
+         behaviours depending which page you happened to click it from. Somebody with
+         no password is now told so properly by the page itself (W10-2). -->
+    <a class="l-btn-ghost" href={`${APP_URL}/auth`}>Sign in</a>
     <!--
       "Get started" now goes to sign-up, not into the entry chat.
       It pointed at /start, so the only thing the front page could offer was the
