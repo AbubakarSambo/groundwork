@@ -1487,6 +1487,15 @@ describe the problem; this is the record of the repair.
 | W8-27 | the roster and members pages are named what the rail calls them |
 | W8-55 | documents attached in the entry chat are kept as real records instead of only as chat text |
 
+| W8-57 | grounds behave like channels: a dot and bold when it is your turn, red only once the window has closed, the rail ordered by what needs you, closed grounds fading out after about three months |
+| W8-44 | the board's components lifted into `components/gw/kit`, values unchanged, so other pages can be rebuilt from them |
+| W8-7 | a solo ground no longer says "the two of you", and the Context card leads with what the ground can do |
+| W8-16 | the 35s closing report names the work it is doing instead of one unchanging sentence |
+| W8-24 | three cards explaining absence on the participant page cut to one, shown only before the first session |
+| W8-37 | `/welcome` removed (unreachable), Profile out of the rail until the page exists |
+| W8-11 | setup asks who is responsible inside an organisation, once, never inventing a name |
+| report | the shared report's empty state no longer tells somebody who has checked in that nobody has |
+
 **New guards, all bite-checked:** every `navigate()` resolves to a real route (carrying the
 catch-all trap that fooled the audit), the entry commit schedules session 2 **inside
 `commitInner`**, and the exit panel stays gated.
