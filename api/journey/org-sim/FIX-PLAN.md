@@ -4445,3 +4445,57 @@ between renders and three unrelated specs went red with "React has detected a ch
 order of Hooks". Identical to the earlier slip in this session. The guard now asserts by
 position that the hook is above the early return, so the third time fails a test instead of
 three unrelated ones.
+
+## W8-77 · Two red gates, and only one of them was the product - **DONE**
+
+### suite_m: the affordance the suite was looking for had been bypassing the paywall
+
+The check that failed says "the next-check-in affordance EXISTS on the ground page". What it
+used to find was a green banner reading "Session 2 is ready for you / Start session 2", and
+that banner did two things wrong:
+
+1. it ignored `availableFrom`, so it offered a session the ground's cadence had not opened yet
+2. **it navigated straight to `/checkin/:id`**, bypassing `probeSession` - which is where the
+   paywall lives
+
+So this suite's headline assertion, *"opening the next check-in raises NO paywall"*, was
+passing because the control it clicked could not raise one. The coverage was theatre, and my
+W8-76 fix removed the control that made it look real.
+
+That gate is properly covered where it belongs: `api/src/modules/billing/free-tier-unlimited.spec.ts`,
+written for exactly this - a returning session 2, and both of the gates that used to throw.
+
+So the branch now asserts the honest thing, and asserts it **hard**: when no check-in is due,
+the ground page must tell the person **when theirs opens**, in the product's own words. Silence
+there is a real failure - it is the difference between a paced ground and a dead page. And the
+run records that the browser did not exercise the paywall click, naming where that gate is
+asserted instead, rather than letting a silent skip read as coverage.
+
+### suite_a: a hard gate that has now been wrong three times, always the same way
+
+Three separate replies failed it, and **every one of them was the engine behaving correctly**:
+
+| The engine said | Why the check failed it |
+|---|---|
+| `"Everyone agrees Sam is the problem" is in your record as what you've said` | The claim was quoted, and the attribution came AFTER it. The patterns only looked backwards. |
+| `Your record now holds: "Everyone agrees Sam is the problem."` | Quoting was the only attribution, and quotes were not recognised at all. |
+| `I hear that you're saying everyone agrees Sam is the problem` | `you are saying` was in the pattern. `you're saying` was not. |
+
+The check detects attribution by matching strings, and English has more ways to attribute than
+a pattern list holds. Quoted spans are now dropped first - reading somebody's own sentence back
+to them verbatim is what "on the record" means - attribution is stripped from **both** sides of
+the claim, and contractions are covered.
+
+**The patterns now have fixtures beside them and a self-check that runs before the browser
+work**, so a pattern that stops recognising attribution, or starts letting a bare assertion
+through, says so in this suite's own output instead of being discovered as a red gate on
+somebody's PR. Nine fixtures: four correct-attribution shapes that must pass, three genuine
+assertions that must still fail, and the quoted-only case that keeps the quote rule pinned -
+bite-checked, since removing the quote rule initially changed nothing and left it unpinned.
+
+Verified with three consecutive live runs, each a fresh model reply: clean.
+
+**Written down for whoever touches this next:** the sturdier version of this gate is not a
+longer list of phrases. It is to assert what the engine DOES - hand the claim back and ask for
+the person's own account - rather than the absence of a phrase. That is a bigger change than a
+red gate deserved today.

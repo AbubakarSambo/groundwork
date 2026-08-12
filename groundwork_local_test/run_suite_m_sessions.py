@@ -148,9 +148,43 @@ async def main() -> int:
             await page.screenshot(path=str(rec.results_dir / "returning_path.png"), full_page=True)
             await rec.step(page, "returning path: next check-in, no paywall", "persona M")
         else:
-            rec.check("M2", False, "the next-check-in affordance EXISTS on the ground page (hard - absence is a failure, not a shrug)",
-                       f"looked for {candidates} - if the label changed, update the suite; "
-                       "if the affordance is gone, that is a product finding", hard=True)
+            # ----------------------------------------------------------------
+            # NO SESSION IS DUE YET, AND THAT IS THE CORRECT PRODUCT STATE.
+            #
+            # This branch used to be a hard failure reading "the affordance is
+            # gone". It fired on a ground where session 2 legitimately opens
+            # later, because the ground's cadence paces it - a person cannot
+            # start their next check-in early, and should not be offered one.
+            #
+            # What the old affordance actually was: a green banner with "Start
+            # session 2" that ignored `availableFrom` AND navigated straight to
+            # /checkin/:id - bypassing `probeSession`, which is where the
+            # paywall lives. So this suite's headline assertion, "opening the
+            # next check-in raises NO paywall", was passing because the button
+            # it clicked could not raise one. The coverage was theatre.
+            #
+            # That gate is properly covered where it belongs, in a unit test
+            # named for it: api/src/modules/billing/free-tier-unlimited.spec.ts,
+            # which is explicitly about a returning session 2 and both of the
+            # gates that used to throw.
+            #
+            # So this branch now asserts the honest thing, and asserts it hard:
+            # a person who cannot check in yet must be TOLD when they can, in
+            # the product's own words. Silence there is a real failure - it is
+            # the difference between a paced ground and a dead page.
+            # ----------------------------------------------------------------
+            told = await page.get_by_text(re.compile(r"next check-in opens", re.I)).count()
+            rec.check("M2", told > 0,
+                      "with no check-in due, the ground page says when theirs opens",
+                      "no affordance and no date: the page tells a returning person nothing. "
+                      f"Looked for a check-in control {candidates} and for the words "
+                      "'next check-in opens'", hard=True, url=page.url)
+            rec.record("M2", "OK",
+                       "returning-path paywall not exercised in the browser this run",
+                       "no session was due on a same-day ground, which is correct behaviour. "
+                       "That gate is asserted in api free-tier-unlimited.spec.ts rather than "
+                       "silently skipped here.")
+            await rec.step(page, "returning path: nothing due yet, date shown", "persona M")
 
         # ---- M3: self-correction reachable (on the PARTICIPANT view, /p) ----
         ground_url = page.url.split("?")[0].rstrip("/")
