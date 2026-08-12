@@ -3832,3 +3832,45 @@ The magic link opened on "Your ground is set up" with the **same join token** as
 (`a55b4a97...`), and the ground, its check-in and its report were all intact.
 
 That is the W8-2 data-loss path walked accidentally, against the fix, in a browser. It held.
+
+## W8-62 · The auth merge, and the constraint the target list missed - **PART DONE**
+
+W8-49's plan folded five auth routes into one page and three arrival routes into another. Half of
+that cannot be done, and finding out why is the useful part.
+
+**Four of those URLs are sent in emails.** `email.service.ts` and `grounds.service.ts` build links
+to `/invite`, `/set-password`, `/reset-password` and `/verify-email`, and `/join` links are copied
+and pasted by admins into their own messages. Those URLs are in inboxes and chat histories we do not
+control, and they have to keep resolving for as long as the links live. A merge that changes them is
+not a merge, it is a 404 for everybody who was invited last week.
+
+So the target changes from **fewer routes** to **fewer pages**, which was the actual point. A route
+is a string; a page is a thing somebody has to maintain and keep consistent. Every URL stays, and
+several of them now render the same page.
+
+**Done in this pass:**
+
+| Was | Now | What it was hiding |
+|---|---|---|
+| `/auth/sent` as `MagicSentPage` (100 lines) | `/auth` in its link-sent state, via `LinkSentPanel` | Two versions of "a link is on its way", and the **worse one was on `/auth`** - a tick and one sentence, no resend, no countdown, and no way back for somebody who mistyped their address. Which one you got depended on which button you pressed. |
+| `/set-password` + `/reset-password` as two pages (243 lines) | both render `ChoosePasswordPage` | Three defects on the reset copy, below. |
+
+**The three defects the second copy had drifted into**, all live until now:
+
+1. After submitting a **new password** it said "Check your inbox. We've sent a reset link to your
+   email." Nothing had been sent. That message belongs to the step before, on another page.
+2. It set that screen on submit, **before the request returned**. So an expired token told the
+   person to go and check their email, and the real error rendered underneath a screen they had
+   already left. The same shape as the sign-up flow's `onError: () => setLinkSent(true)` (W10-1).
+3. With no token in the URL it rendered the whole form - two fields, the rule about uppercase
+   letters, and a button that could only ever fail. `/set-password` had already learned that
+   lesson and said so up front. One product, two behaviours, one problem.
+
+Pinned in `ChoosePasswordPage.spec.tsx` and `one-page-for-one-moment.spec.tsx`; four arms
+bite-checked, including that the reset link still hits `resetPassword` and not `setPassword` - get
+that wrong on one of the two routes and that link is permanently dead.
+
+**Still open:** `/invite`, `/join` and `/verify-email` as one arrival page. Same approach - three
+URLs, one page - but each resolves a different kind of token against a different endpoint, so it is
+a bigger read than the password pair and is worth doing on its own rather than at the end of this
+one.

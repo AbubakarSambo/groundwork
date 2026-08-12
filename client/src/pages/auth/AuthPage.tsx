@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { authApi } from '@/api/auth'
 
@@ -10,6 +10,7 @@ import { authApi } from '@/api/auth'
  */
 const API_ORIGIN = import.meta.env.VITE_API_URL ?? ''
 import { useAuthStore } from '@/stores/auth'
+import { LinkSentPanel } from './LinkSentPanel'
 
 const MARKETING_URL = import.meta.env.VITE_MARKETING_URL ?? 'https://myground.work'
 
@@ -97,14 +98,20 @@ export function AuthPage() {
   const defaultView: View = isSignup ? 'create' : mode === 'member' ? 'link' : 'password'
 
   const [view, setView] = useState<View>(defaultView)
-  const [email, setEmail] = useState('')
+  /**
+   * `/auth/sent?email=...` is this page in its link-sent state, not a page of its own.
+   * `SaveCard` on the marketing home still sends people to that URL, so it keeps
+   * working - it just arrives here now. W8-49.
+   */
+  const arrivedSent = useLocation().pathname === '/auth/sent'
+  const [email, setEmail] = useState(arrivedSent ? (searchParams.get('email') ?? '') : '')
   const [password, setPassword] = useState('')
   // Asked for at last. Without them the organisation ends up called "Sam's
   // workspace", derived from the address, and nobody was ever asked. W10-2.
   const [firstName, setFirstName] = useState('')
   const [orgName, setOrgName] = useState('')
   const [error, setError] = useState('')
-  const [linkSent, setLinkSent] = useState(false)
+  const [linkSent, setLinkSent] = useState(arrivedSent)
   const [resetSent, setResetSent] = useState(false)
   /** Set when the server says this account has no password and a link is on its way. */
   const [passwordlessNotice, setPasswordlessNotice] = useState('')
@@ -519,22 +526,11 @@ export function AuthPage() {
           </div>
         )}
 
-        {view === 'link' && linkSent && (
-          <div style={{ textAlign: 'center', paddingTop: 12 }}>
-            <div style={{ fontSize: 22, marginBottom: 8 }}>✓</div>
-            <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 6 }}>Check your email</div>
-            <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-              A link is on its way to <strong>{email}</strong>. Check your inbox and click it to continue.
-            </div>
-            <div style={{ marginTop: 16 }}>
-              <span
-                style={{ fontSize: 13, color: 'var(--gw-navy)', textDecoration: 'underline', cursor: 'pointer' }}
-                onClick={() => { setLinkSent(false); setView('password') }}
-              >
-                Back to sign in
-              </span>
-            </div>
-          </div>
+        {linkSent && (
+          <LinkSentPanel
+            email={email}
+            onUseDifferent={() => { setLinkSent(false); setView(defaultView === 'create' ? 'create' : 'link') }}
+          />
         )}
 
         <div style={{ fontSize: 11, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 24, paddingTop: 16, borderTop: '0.5px solid var(--gw-border)', lineHeight: 1.6 }}>

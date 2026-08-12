@@ -5,11 +5,9 @@ import { Toaster } from 'sonner'
 import { useAuthStore } from '@/stores/auth'
 import { useSessionTimeout } from '@/lib/useSessionTimeout'
 import { AuthPage } from '@/pages/auth/AuthPage'
-import { MagicSentPage } from '@/pages/auth/MagicSentPage'
 import { MagicVerifyPage } from '@/pages/auth/MagicVerifyPage'
 import { GoogleCallbackPage } from '@/pages/auth/GoogleCallbackPage'
-import { SetPasswordPage } from '@/pages/auth/SetPasswordPage'
-import { ResetPasswordPage } from '@/pages/auth/ResetPasswordPage'
+import { ChoosePasswordPage } from '@/pages/auth/ChoosePasswordPage'
 import { EntryChatPage } from '@/pages/enter/EntryChatPage'
 import { ChatPage } from '@/pages/chat/ChatPage'
 
@@ -104,14 +102,16 @@ export default function App() {
             <Route path="/" element={<RootRoute />} />
             <Route path="/login" element={<Navigate to="/auth" replace />} />
             <Route path="/auth" element={<AuthPage />} />
-            <Route path="/auth/sent" element={<MagicSentPage />} />
+            {/* The link-sent state of /auth, not a page of its own. W8-49. */}
+            <Route path="/auth/sent" element={<AuthPage />} />
             <Route path="/verify-email" element={<MagicVerifyPage />} />
             {/* Where the server's Google OAuth redirect lands. Inert until
                 GOOGLE_CLIENT_ID/SECRET are set - the button that starts the flow
                 only renders when /auth/methods says google is available. */}
             <Route path="/auth/google/callback" element={<GoogleCallbackPage />} />
-            <Route path="/set-password" element={<SetPasswordPage />} />
-            <Route path="/reset-password" element={<ResetPasswordPage />} />
+            {/* One page, two links. Both URLs are sent in emails, so both keep resolving. W8-49. */}
+            <Route path="/set-password" element={<ChoosePasswordPage />} />
+            <Route path="/reset-password" element={<ChoosePasswordPage />} />
             <Route path="/start" element={<EntryChatPage />} />
             <Route path="/invite" element={<InvitePage />} />
             <Route path="/join" element={<JoinPage />} />
