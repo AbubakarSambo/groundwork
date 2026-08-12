@@ -18,6 +18,8 @@ export interface CreateGroundBody {
   timelineDays?: number
   cadence?: GroundCadence
   cadenceAnchorDay?: number
+  /** Rounds where every party has completed their check-in. W13-6. */
+  roundsDone?: number
   startsAt?: string
   endsAt?: string
   resolutionState?: string

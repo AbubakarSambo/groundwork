@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, HttpCode, HttpStatus, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { CreateUserDto, UpdateUserDto } from './dto';
@@ -36,13 +36,19 @@ export class UsersController {
     return this.usersService.leaveOrg(userId);
   }
 
-  @Get('privacy-audit')
-  @Roles(Role.ADMIN)
-  @ApiOperation({ summary: 'Privacy audit for a user - admin only diagnostic (GW-privacy)' })
-  async getPrivacyAudit(@Query('userId') userId: string) {
-    if (!userId) throw new BadRequestException('userId query parameter is required');
-    return this.usersService.getPrivacyAudit(userId);
-  }
+  /**
+   * `GET /users/privacy-audit` IS DELETED, AND NOT BECAUSE IT WAS UNUSED. W13-14.
+   *
+   * The audit flagged it as an admin endpoint no page calls, and the plan said surface it or
+   * drop it. Reading it decided the question: `getPrivacyAudit(userId)` took a user id straight
+   * off the query string and **never checked that user was in the caller's organisation**. So
+   * any org admin could ask whether an arbitrary user - in any company on the platform - has a
+   * record, and across how many grounds.
+   *
+   * Thin data, but it is the wrong shape: a cross-organisation read reachable by every admin.
+   * Wiring it to a page would have shipped that; the endpoint went instead. What it returned is
+   * derivable from `GET /users` and a ground list, both properly scoped.
+   */
 
   @Get('me/export')
   @ApiOperation({ summary: 'Export all personal data for the current user (GDPR Article 15)' })

@@ -65,13 +65,30 @@ import { toast } from 'sonner'
  * first session too - a ground runs ninety days and "what was this for again" is a
  * question people have in week eight, not just week one.
  */
-function GroundTopic({ label, scenario, brief, alignment, sessionsDone, totalSessions }: {
+function GroundTopic({ label, scenario, brief, alignment, sessionsDone, totalSessions, parties }: {
   label: string
   scenario?: string | null
   brief?: string | null
   alignment?: string | null
   sessionsDone: number
   totalSessions: number | null
+  /**
+   * WHO ELSE IS IN THIS, AND WHETHER THEY ARE DOING IT. W13-5.
+   *
+   * A participant saw their own tabs and nothing else. The two things that would settle
+   * somebody's nerves before they write honestly - who is going to read this, and is
+   * anybody else actually doing it - were the two things only the lead could see.
+   *
+   * NO CLIENT-SIDE GATE HERE ON PURPOSE. `grounds.service.ts` decides whether parties see
+   * each other, and when they do not it FILTERS THEM OUT OF THE PAYLOAD - hidden by
+   * default on evaluation and cohort grounds, where a roster tells four people exactly who
+   * they are measured against. So whatever reaches this component is already permitted,
+   * and a second rule here would be a second place to get it wrong.
+   *
+   * It is coverage, not content: that somebody has checked in, never a word of what they
+   * said.
+   */
+  parties?: { name: string; done: boolean; isSelf: boolean }[]
 }) {
   const situation = scenario
     ? scenario.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c: string) => c.toUpperCase())
@@ -107,6 +124,30 @@ function GroundTopic({ label, scenario, brief, alignment, sessionsDone, totalSes
       {brief && (
         <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, borderTop: '1px solid var(--gw-border)', paddingTop: 9, marginTop: 9 }}>
           {brief}
+        </div>
+      )}
+      {(parties ?? []).length > 1 && (
+        <div style={{ borderTop: '1px solid var(--gw-border)', paddingTop: 9, marginTop: 9 }}>
+          <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 5 }}>
+            Who is in this
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {(parties ?? []).map((p, i) => (
+              <span
+                key={i}
+                title={p.done ? 'Has checked in for the current session' : 'Has not checked in yet'}
+                style={{
+                  fontSize: 12, padding: '3px 9px', borderRadius: 20,
+                  background: p.done ? 'var(--gw-green-bg, #E7F6EF)' : 'var(--gw-bg)',
+                  border: `1px solid ${p.done ? 'var(--gw-green-b, #B6E8D4)' : 'var(--gw-border)'}`,
+                  color: 'var(--gw-text)',
+                }}
+              >
+                {p.isSelf ? 'You' : p.name}
+                <span style={{ color: 'var(--gw-sub)' }}>{p.done ? ' · checked in' : ' · waiting'}</span>
+              </span>
+            ))}
+          </div>
         </div>
       )}
       <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.6, marginTop: 8 }}>
@@ -415,7 +456,7 @@ function Composer({ groundId, openCheckInId, openSessionNumber, totalSessions, n
 export function GroundChat({
   groundId, openCheckInId, openSessionNumber, totalSessions, nextOpensAt, onOpenSession, openPending,
   label, scenario, brief, alignment, sessionsDone, signals,
-  viewerIsParty, history,
+  viewerIsParty, history, parties,
 }: {
   groundId: string
   openCheckInId: string | null
@@ -454,6 +495,8 @@ export function GroundChat({
   viewerIsParty?: boolean
   /** The ground's sessions, for the reader who is not a party. Newest last. */
   history?: { sessionNumber: number; date: string; people: string[] }[]
+  /** Who is in the ground, and whether each has checked in for the open session. */
+  parties?: { name: string; done: boolean; isSelf: boolean }[]
 }) {
   const isParty = viewerIsParty !== false
   const { data, isLoading, isError } = useQuery({
@@ -492,6 +535,7 @@ export function GroundChat({
           alignment={alignment}
           sessionsDone={sessionsDone}
           totalSessions={totalSessions}
+          parties={parties}
         />
 
         {/*

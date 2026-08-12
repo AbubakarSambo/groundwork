@@ -20,6 +20,11 @@
  * guards the artefact that actually ships rather than the source that produced it.
  */
 import { readFileSync, readdirSync, statSync, existsSync } from 'fs';
+
+/** Set by the nav check, read by the closing log line. */
+let navsByPageCount = 0;
+let navLinkCount = 0;
+const firstNavLen = (m) => ([...m.values()][0] ?? []).length;
 import { join, relative } from 'path';
 import { SITE } from './src/site.mjs';
 
@@ -90,20 +95,59 @@ if (existsSync(home)) {
       .map((p) => p === '/' || p === '' ? '/' : p),
   );
 
-  // Astro stamps a scope attribute onto every element, so the opening tag is
-  // `<div class="l-nav-links" data-astro-cid-...>` in the artefact and
-  // `<div class="l-nav-links">` in the source. Match the class, not the tag.
-  const navBlock = html.match(/<div class="l-nav-links"[^>]*>([\s\S]*?)<\/div>/)?.[1] ?? '';
-  if (!navBlock.trim()) fail('the home page has no nav-links block - the header changed shape, so this check cannot see it.');
-
-  const anchors = [...navBlock.matchAll(/<a\b[^>]*href="([^"]+)"/g)].map((m) => m[1]);
-  if (anchors.length < 4) {
-    fail(`the home nav has only ${anchors.length} link(s). It should link to every page; buttons that swap hidden divs are how /about became unreachable.`);
+  /**
+   * EVERY PAGE'S NAV, NOT JUST THE HOME PAGE'S. W13-4.
+   *
+   * This used to read the home page alone, and the home page was the one that was
+   * RIGHT. The other four hand-wrote their own nav with four links and dropped Use
+   * cases, so the best answer the site has to "is this for me" could not be reached
+   * from any page except the home page - including from itself.
+   *
+   * Nobody would find that by looking: a nav with four plausible items reads as
+   * finished, and the missing fifth is only visible if you compare two pages side by
+   * side. So this compares them.
+   *
+   * Astro stamps a scope attribute onto every element, so the opening tag is
+   * `<div class="gw-nav-links" data-astro-cid-...>`. Match the class, not the tag.
+   */
+  navsByPageCount = 0;
+  const navsByPage = new Map();
+  for (const f of files.filter((x) => x.endsWith('index.html'))) {
+    const page = '/' + relative(DIST, f).replace(/index\.html$/, '').replace(/\/$/, '');
+    const pageHtml = readFileSync(f, 'utf8');
+    const block = pageHtml.match(/<div class="gw-nav-links"[^>]*>([\s\S]*?)<\/div>/)?.[1] ?? '';
+    if (!block.trim()) {
+      fail(`${page || '/'} has no nav-links block - the header changed shape, so this check cannot see it.`);
+      continue;
+    }
+    navsByPage.set(page || '/', [...block.matchAll(/<a\b[^>]*href="([^"]+)"/g)].map((m) => m[1]));
   }
-  for (const href of anchors) {
-    if (!href.startsWith('/')) continue; // external or app links are not ours to check
-    const clean = href.split(/[?#]/)[0].replace(/\/$/, '') || '/';
-    if (!built.has(clean)) fail(`the home nav links to ${href}, and the build produced no such page.`);
+
+  navsByPageCount = navsByPage.size;
+  navLinkCount = firstNavLen(navsByPage);
+  if (navsByPage.size < 5) {
+    fail(`only ${navsByPage.size} page(s) have a nav. Every page must carry one, or a visitor can land somewhere with no way onward.`);
+  }
+
+  const [firstPage, firstNav] = [...navsByPage.entries()][0] ?? ['/', []];
+  if (firstNav.length < 5) {
+    fail(`the nav on ${firstPage} has only ${firstNav.length} link(s). It should link to every page; a nav that lists four of five is how /use-cases became unreachable.`);
+  }
+
+  for (const [page, nav] of navsByPage) {
+    if (nav.join('|') !== firstNav.join('|')) {
+      fail(`${page} has a different nav from ${firstPage}: ${nav.join(', ')} vs ${firstNav.join(', ')}. One nav, used everywhere - five hand-written copies is how one of them lost a page.`);
+    }
+    for (const href of nav) {
+      if (!href.startsWith('/')) continue; // external or app links are not ours to check
+      const clean = href.split(/[?#]/)[0].replace(/\/$/, '') || '/';
+      if (!built.has(clean)) fail(`${page}'s nav links to ${href}, and the build produced no such page.`);
+    }
+    // A page whose own nav does not list it cannot be found from itself, which is
+    // exactly what /use-cases did.
+    if (!nav.map((h) => h.split(/[?#]/)[0].replace(/\/$/, '') || '/').includes(page)) {
+      fail(`${page} is missing from its own nav, so it cannot be reached from itself or from any sibling.`);
+    }
   }
 
   // The mechanism itself, in the artefact that ships.
@@ -116,4 +160,4 @@ if (existsSync(home)) {
 }
 
 console.log(`[one-domain] sitemap, canonicals and social tags all on ${SITE}.`);
-console.log('[one-nav] the home nav links to real pages, and no page hides a copy of another.');
+console.log(`[one-nav] all ${navsByPageCount} pages share one nav of ${navLinkCount} real links, and no page hides a copy of another.`);

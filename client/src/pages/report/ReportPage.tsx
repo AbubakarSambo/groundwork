@@ -625,10 +625,25 @@ export function ReportPage() {
           <h1 style={{ fontSize: 30, lineHeight: 1.1, letterSpacing: '-.02em', margin: '0 0 12px', fontWeight: 800 }}>
             {tab === 'own' ? 'What your own account holds.' : "Where everyone's accounts agree or differ."}
           </h1>
+          {/*
+            THE HERO WAS STILL THE PROSE. W13-7, second half.
+
+            I reordered the card below so what is unresolved comes before the summary, updated
+            the legend to match, and the page still OPENED with the same paragraph - because this
+            block prints `sharedPicture` too. Half a fix, and the half a person sees first.
+
+            Found by opening the page rather than by the source-order test I had just written,
+            which is the rule this plan keeps re-learning.
+
+            The hero now says what the report holds: how many areas are open, how many agreed.
+            The paragraph is in the card, once, where the reorder put it.
+          */}
           <p style={{ fontSize: 15, color: 'rgba(255,255,255,.72)', maxWidth: 640, margin: 0 }}>
             {tab === 'own'
               ? 'Only you can see this. It is built from what you said, and nobody else reads your words.'
-              : report.sharedPicture}
+              : divergences.length + agreements.length > 0
+                ? `${divergences.length} ${divergences.length === 1 ? 'thing is' : 'things are'} still open. ${agreements.length} ${agreements.length === 1 ? 'is' : 'are'} agreed.`
+                : 'Everyone has checked in. This is what runs across their accounts.'}
           </p>
           <div style={{ marginTop: 20, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {[
@@ -681,7 +696,10 @@ export function ReportPage() {
         <div style={{ maxWidth: 1040, margin: '0 auto', padding: '0 20px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)' }}>
             {[
-              { h: 'What we heard', p: "Every report opens with what runs across everyone's answers, the thing no single person could see on their own." },
+              // This said "every report OPENS with what runs across everyone's answers".
+              // It does not any more, and a legend that describes a different page is worse
+              // than no legend. W13-7.
+              { h: 'What is open, first', p: "Every report leads with what is still unresolved and what everyone already agrees on. The full account of what runs across everyone's answers follows it." },
               // This used to promise "a recommended move" for every area. The
               // engine has never produced one: a divergence carries a topic,
               // each party's position, the evidence behind it, and what is at
@@ -733,8 +751,18 @@ export function ReportPage() {
             </div>
             <div style={{ padding: '16px 18px 18px' }}>
 
-              <PatternBlock label="What we heard" content={report.sharedPicture} />
+              {/*
+                THE PROSE MOVED TO THE END. W13-7.
 
+                The report opened with a paragraph and the board opened with what differs -
+                and the board is the better-written document, while the report is the product.
+                A person opening this wants to know what is unresolved, not to read a summary
+                first and find the gaps three screens down.
+
+                So the order is now: where things stand, what is still open, what is agreed,
+                and then the full account. Nothing is removed; the paragraph is the fuller
+                read for somebody who wants it after the sharp part.
+              */}
               {/* Where things stand. Rendered only when the report holds
                   something - an empty report says nothing here rather than
                   reassuring anyone. */}
@@ -828,6 +856,9 @@ export function ReportPage() {
               )}
 
               <HonestClose aligned={honestClose.aligned} open={honestClose.open} revisit={honestClose.revisit} risk={honestClose.risk} />
+
+              {/* The full account, after the sharp part. W13-7. */}
+              <PatternBlock label="What we heard" content={report.sharedPicture} />
 
               {report.centralQuestion && (
                 <div style={{ marginTop: 16, background: '#EEF4FB', borderRadius: 8, padding: '10px 12px' }}>

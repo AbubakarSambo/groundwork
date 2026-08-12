@@ -4525,25 +4525,40 @@ person first, then things that hide from them, then duplication, then removals.
 
 ## Now: the things that tell somebody something untrue
 
-### W13-2 · A lead is never told their ground is waiting for approval - **S**
+### W13-2 · A lead is never told their ground is waiting for approval - **WRONG, IT ALREADY WAS**
 
 `POST /grounds` returns `AWAITING_APPROVAL` for a member, and the creator's own view says
 nothing about it. They finish the six-step wizard, land on a ground that looks made, and
 nobody is invited. **The invite suppression works; the explanation does not exist.**
 
-Do: on the ground page, when `status === 'AWAITING_APPROVAL'`, replace the invite controls
-with one line naming what it is waiting for and who can do it. Verify by creating a ground as
-a MEMBER and reading the page.
+**My audit was wrong.** I created a ground as a MEMBER through the real API and opened it as
+them: the banner exists, says "Waiting for an admin to accept this ground", explains that
+nobody has been contacted and nothing shared, and the rail labels the ground "Awaiting
+approval" underneath its name. All of it was built in W9-7.
 
-### W13-3 · An admin is never told a ground is waiting for them - **S**
+Why I got it wrong: the approval-queue endpoint was returning 404 (W8-69), so the admin's half
+rendered empty, and I concluded the feature did not exist rather than that it was broken.
 
-The other half. The queue endpoint works now (W8-69) but nothing surfaces it.
+**One real thing found while checking:** the admin's "Active grounds" tile counted the pending
+ground. So the same eyeful said "waiting for you, nothing goes out until you say so" and
+"active grounds 2". A ground waiting on an approval, or on its lead accepting it, has not
+started - `AWAITING_APPROVAL`, `AWAITING_LEAD` and `DECLINED` are now excluded from that count.
 
-Do: spend the **Feed** slot in the rail on it - "2 grounds waiting for you" - since the feed's
-three counts are already the grounds list's three stat tiles. One nav entry currently answers
-nothing; this makes the approval rule real and gives an admin a reason to return.
+### W13-3 · An admin is never told a ground is waiting for them - **WRONG TOO**
 
-### W13-4 · The marketing nav is five hand-written copies and only one is right - **S**
+Also already built, and better than what I proposed. The admin's grounds list opens with
+**WAITING FOR YOU**: "Somebody has set up a ground and nobody has been invited to it yet.
+Nothing goes out until you say so", then the ground, who set it up, its length and rhythm, and
+three controls - **Approve**, **Not this one**, **Look at it first**.
+
+Verified by approving a real pending ground end to end. So the rail-slot idea in my plan was
+solving a problem that did not exist: the queue is on the page an admin lands on, which is
+where it belongs.
+
+**The lesson, and it is the same one as W13-2:** I read a broken endpoint as a missing feature.
+Both halves of the approval rule existed the whole time; only the 404 was real.
+
+### W13-4 · The marketing nav is five hand-written copies and only one is right - **DONE**
 
 | Page | Its nav |
 |---|---|
@@ -4554,84 +4569,194 @@ So `/use-cases` - fifteen written situations, the best answer the site has to "i
 cannot be found from any page except the home page, **including from itself**. Every page also
 carries a footer that links it, except the home page, which has no footer at all.
 
-Do: one nav in `Layout.astro`, used by all five. The postbuild check in
-`marketing/check-one-domain.mjs` already asserts the nav has real links that resolve; extend it
-to assert every page's nav has the same set.
+Done as `components/Nav.astro`, used by all five pages, taking the current path so a renamed
+page cannot silently lose its highlight. Two smaller inconsistencies went with it: the button
+said "Get started" on the home page and "Get started free" on the other four, and Sign in
+pointed at `/login` from four pages and `/auth` from one - `/login` only redirects to `/auth`,
+so that was a wasted hop for four fifths of visitors.
+
+`check-one-domain.mjs` now reads **every** page's nav rather than the home page's, and fails on
+three things: a nav with fewer than five links, two pages whose navs differ, and **a page
+missing from its own nav** - which is precisely what `/use-cases` did. Three arms bite-checked.
+
+Two things the build caught that I had not expected. An `import` after a `const` in Astro
+frontmatter fails to parse, which is why the first attempt reported an unterminated string 20
+lines away. And five links plus two buttons overflow the bar: "How it works" wrapped to three
+lines and "Get started free" clipped off the edge, so the links are `nowrap` and collapse at
+860px rather than 620.
 
 ## Then: the things a person cannot see
 
-### W13-5 · A participant cannot see who else is in their ground, or how far along it is - **M**
+### W13-5 · A participant cannot see who else is in their ground, or how far along it is - **DONE**
 
 The lead sees every party and every session. The participant sees their own tabs. The two
 things that would settle somebody's nerves before they write honestly - who is going to read
 this, and is anybody else actually doing it - are the two things they cannot see.
 
-Do: on the participant view, show the other parties by name where the ground's visibility
-settings allow it, and the session count the lead already sees ("12 of 12 sessions done").
-Both are already in the payload. Nothing about this crosses the wall: it is who is here, not
-what they wrote.
+Done as **Who is in this** in the topic card that both the participant and the lead views
+share: each party as a pill, named, marked *checked in* or *waiting* for the session the reader
+is on, with the reader shown as "You" rather than having their own name read back at them.
 
-### W13-6 · The session count is the clearest thing on the ground page and appears nowhere else - **S**
+**The count was already there** - the participant page passes their own completed sessions to
+the same card, and it renders "12 of 12 sessions done". So half of this item was another case of
+the audit describing a page I had not looked at closely enough.
 
-"12 of 12 sessions done" tells a person whether to open a ground. The rail lists grounds by
-name only; the list card shows a status pill. Add the count to both.
+**No permission check in the component, on purpose.** `grounds.service.ts` decides whether
+parties see each other and FILTERS THE OTHERS OUT OF THE PAYLOAD when they must not - hidden by
+default on evaluation and cohort grounds, where a roster tells four people exactly who they are
+measured against. Whatever reaches the component is already permitted, and a second rule there
+would be a second place to get it wrong. That is pinned: the guard fails if `GroundChat` ever
+mentions `peersVisible`, `restrictExternalVisibility` or `hidePeers`.
 
-### W13-7 · The report opens with prose; the board opens with what differs - **M**
+It is coverage and never content: that somebody checked in, never a word of what they said.
+A ground with one party renders nothing at all, because a heading over an empty list advertises
+that there is something you cannot see.
+
+### W13-6 · The session count is the clearest thing on the ground page and appears nowhere else - **DONE**
+
+Now on the list card: "Led by Hafsah · 2 participants · 12 of 12 sessions done".
+
+**Only the card, not the rail** - I was about to do both and stopped. The rail lists names only
+by her decision that a channel list is names, with the count already on each row's tooltip. The
+card is where somebody chooses which ground to open, which is the moment the count is worth
+something.
+
+It needed a real API addition rather than a client sum: `roundsDone` on the list payload, counting
+rounds where EVERY party is complete. Counting check-in rows instead reads as double on a
+two-party ground - the "24 of 12 sessions done" bug from W8-66, which I would have reproduced
+exactly. My first attempt read a `sessionCounts` field that does not exist on that endpoint and
+silently fell back to "6 sessions"; caught by printing the payload rather than trusting the
+name.
+
+### W13-7 · The report opens with prose; the board opens with what differs - **DONE**
 
 The board leads with **where accounts differ** and **the question this turns on**. The report
 leads with a paragraph. The board is the better-written document, and the report is the
 product.
 
-Do: lead the shared report with the same two things, then the prose. No new content - a
-reordering of what synthesis already produces.
+Reordered: **where things stand**, then **what is still open**, then **alignment reached**, then
+the full account. Nothing removed - the paragraph is the fuller read for somebody who wants it
+after the sharp part.
+
+The legend at the top of the page had to change with it. It promised "every report OPENS with
+what runs across everyone's answers", which would have quietly become false, and a legend
+describing a different page is worse than no legend. It now says the report leads with what is
+unresolved and that the full account follows.
+
+Pinned by source order in `the-sharp-part-first.spec.ts`, including the legend, and
+bite-checked by putting the prose back on top.
 
 ## Then: duplication
 
-### W13-8 · One word for one screen - **S**
+### W13-8 · One word for one screen - **DONE**
 
 The lead's first tab is **Chat**. The participant's first tab is **Check-in**. Same component,
 same content, adjacent pages. Somebody being walked through the product by their manager sees
 two words for one screen.
 
-Do: use **Check-in** in both. It is the word the rest of the product uses - the email says your
-check-in is due, the header says My check-ins, the button now says Check in.
+Both are **Check-in** now. It is the word every other surface uses - the email says your check-in
+is due, the header says My check-ins, the button says Check in. "Chat" was mine, from the wave
+that built the conversation view.
 
-### W13-9 · "Settings" means two different things - **S**
+**The card list had to be renamed too, and that was not in the plan.** Leaving it as "Check-ins"
+would have put "Check-in" and "Check-ins" side by side in one tab row, which is worse than the
+problem being fixed. It is **Sessions**, which is what it holds: one row per person per session.
+Three existing specs asserted the old labels and now carry the reason for the new ones.
 
-Ground &rarr; Settings and /settings. Rename the ground's tab to **Ground settings**. One word,
-removes a real ambiguity.
+### W13-9 · "Settings" means two different things - **DONE**
 
-### W13-10 · `/pricing` exists twice, in two repositories - **M**
+Both ground views now say **Ground settings**. `/settings` is the account, and one word for both
+sent people the wrong way in both directions: somebody looking for their notification
+preferences opened a ground, and somebody looking for a ground's visibility rules left the
+ground entirely.
 
-The same tiers written twice, in two places that must agree and have no way of knowing when
-they do not. Do: one source. Either the app reads the marketing page's data, or both read a
-shared file, or the in-app page goes and Billing links out.
+### W13-10 · `/pricing` exists twice, in two repositories - **DONE, differently**
 
-### W13-11 · Six in-app pages draw a second Groundwork header inside the shell - **S**
+The app side already has one source - `client/src/api/billing.ts` holds the labels, prices, seat
+caps and features, read by both the in-app pricing page and Billing. The marketing site
+hand-writes the same numbers in HTML.
 
-A band of vertical space on every page, doing nothing, plus a second wordmark under the first.
-Consistent and long-standing, so this is hers to want. Remove the page-level `gw-hdr` from the
-in-app pages and keep each page's Back link where it earns its place.
+**I did not make them share a module, which is what this item said.** They are separate packages
+with separate builds, so importing across them means either build coupling or a copied file that
+drifts exactly as badly. What prevents the harm is not sharing the data, it is making disagreement
+FAIL - so `the-two-pricing-pages-agree.spec.ts` reads the marketing page and checks every paid
+tier's price and seat cap against `billing.ts`, plus the free tier's "10 Grounds" and "unlimited
+sessions".
+
+Two arms bite-checked, and the failure message is the one a person needs: *"the app says Small
+Team is $50/mo and the marketing page does not mention $50"*.
+
+**What it deliberately does not claim:** that either page matches what is actually CHARGED.
+`billing.service.ts` decides that, and a price living in three places is a separate problem. This
+checks that the two things a customer can READ agree.
+
+### W13-11 · Six in-app pages draw a second Groundwork header inside the shell - **DONE, and it was four**
+
+**Four, not six.** Of the pages using the `gw-hdr` class inside the shell, the feed's shows the
+ORGANISATION's name and the prompt page's says "Prompt management" - both are page titles that
+happen to share a class, and both are useful. Only the grounds list, the create wizard, settings
+and the not-found page printed a literal second "Groundwork".
+
+**And the bar stays.** My plan said remove the header; the headers hold real controls - Settings
+and Sign out, Back links, the feedback button, "+ Invite". Deleting them to reclaim a strip of
+vertical space would have removed navigation to save 56 pixels, which is the mistake this whole
+wave is about. The wordmark is replaced by the page's own name - "Your grounds", "New ground",
+"Settings", "Not found" - which is the thing a second line of chrome can usefully carry.
+
+Verified on `/settings`: one "Groundwork" on the page, and the bar reads "Settings · Back".
 
 ## Then: removals
 
-### W13-12 · `components/layout/AppShell.tsx` (311 lines) and `components/FeedbackWidget.tsx` (189) - **S**
+### W13-12 · The dead components, and the guard - **DONE, and it found two more**
 
-Mounted nowhere and imported nowhere; the live versions of both are inside
-`components/gw/AppShell.tsx`. Delete. **Then add the guard**, because this is the repo's
-signature bug - a component extracted into a file, reimplemented inline, and the file left to
-rot. A test that fails on a `.tsx` under `components/` that nothing imports would have caught
-both, and would have caught the dead `stores/view.ts` too.
+Both files were **already gone** - deleted in an earlier wave - so the deletion half of this item
+was stale. The guard was the valuable half, and writing it found two more nobody knew about:
 
-### W13-13 · `/feed` - **M, after W13-3**
+| File | What it was |
+|---|---|
+| `components/ConfDots.tsx` | A confidence-dot display, from a scoring model the product retired |
+| `components/gw/GwBrand.tsx` | A wordmark component - while six pages hand-wrote their own, which is W13-11 |
 
-Once the approval queue has the rail slot and the team list moves onto a ground, the page is
-three counts that exist on the grounds list. Delete it then, not before.
+Both deleted. `nothing-is-left-behind.spec.ts` now fails on any `.tsx` under `components/` that
+no non-spec file imports, and states why it is not a lint rule: `noUnusedLocals` sees inside a
+file, and every one of these type-checked perfectly. The question is about the import graph.
 
-### W13-14 · `GET /users/privacy-audit` - **S**
+A component whose only importer is its own test counts as dead, because that is the shape that
+survives longest. Bite-checked by planting an orphan, which it named.
 
-An admin endpoint no page calls. Either surface it in Settings, where an admin looking for
-"what does this product hold about my people" would look, or delete it.
+### W13-13 · `/feed` - **DONE**
+
+Gone, and the condition was met a different way than I planned: the approval queue never needed
+the rail slot (it lives on the grounds list, W13-3), and the team list moved onto each ground as
+"Who is in this" (W13-5). So the page was three counts the grounds list already shows as tiles.
+
+The API side went with it - `AlignmentController`, `AlignmentNarrativeController` and
+`AlignmentService`, whose only caller was that page. An endpoint nothing calls is the same rot as
+a component nothing imports, and git holds all of it if the feed idea comes back.
+
+**The dead-method guard then caught a knock-on I would have missed:**
+`patterns.service.ts#surfacedForGround` had no caller left, because the feed's service was its
+only one. Deleted too, with the reason - the ground page reads the same detections through
+`patternDetections` on the ground itself, so one query had two shapes and only one had a reader.
+That guard doing its job unprompted is the argument for W13-12's new one.
+
+The rail is now Grounds, People, Billing - and the floating feedback button no longer hides
+itself on a page that does not exist.
+
+### W13-14 · `GET /users/privacy-audit` - **DELETED, and not for being unused**
+
+Reading it decided the question. `getPrivacyAudit(userId)` took a user id **straight off the query
+string and never checked that user was in the caller's organisation**. So any org admin could ask
+whether an arbitrary user - in any company on the platform - has a record, and across how many
+grounds.
+
+Thin data, but the wrong shape: a cross-organisation read reachable by every admin. Surfacing it
+in Settings, which is what my own plan proposed, would have shipped that. The endpoint and its
+service method went instead, and what it returned is derivable from `GET /users` and a ground
+list, both properly scoped.
+
+**Worth noticing:** the audit found this by asking "which endpoints have no page", not by looking
+for security bugs. The unused-thing sweep is where this class hides.
 
 ## Not to be touched
 
@@ -4652,3 +4777,84 @@ because the report-ready email points at it. Same reason `/auth/sent`, `/set-pas
 
 Every S is an afternoon or less. The two that change what a person can do are W13-2 and W13-3,
 and they are both small, which is the argument for doing them first.
+
+## Wave 13 · What running the plan changed about the plan
+
+Fourteen items, all closed. Four of them were not what the audit said they were, and that is the
+most useful thing to come out of the wave.
+
+| Item | The plan said | What was true |
+|---|---|---|
+| W13-2 | A lead is never told their ground is waiting | **Already built.** The banner, the copy, and an "Awaiting approval" label in the rail |
+| W13-3 | An admin is never told a ground is waiting | **Already built, and better than my proposal** - "WAITING FOR YOU" with Approve / Not this one / Look at it first, on the page they land on |
+| W13-4 | The home page hides its nav; `/use-cases` is unlinked | **Inverted.** The home page had the FULLEST nav; the other four dropped Use cases, including its own page |
+| W13-12 | Delete two dead components | Already deleted. Writing the guard instead found **two more** nobody knew about |
+
+**The common cause of the first two:** I read a broken endpoint as a missing feature. The approval
+queue was 404ing (W8-69), so the admin's half rendered empty, and I wrote "this does not exist"
+instead of "this is broken". Both halves had been there since W9-7.
+
+**And of the third:** I trusted one screenshot at one window width. The home page's nav had
+collapsed behind its hamburger at 800px, so I recorded it as absent.
+
+### And one fix that was only half applied, found the same way
+
+W13-7 reordered the report's card so what is unresolved comes before the summary, updated the
+legend to match, and I wrote a source-order test that passed. Then I opened the page: **it still
+opened with the same paragraph**, because a hero block above the card prints `sharedPicture` too.
+Half a fix, and the half a person sees first.
+
+The hero now says what the report holds - "1 thing is still open. 3 are agreed." - and the
+paragraph appears once, in the card, where the reorder put it. Verified on a real released report.
+
+My own test could not see it because I had written it about the card. The lesson is the one this
+plan keeps re-learning, and it cost two rounds in one wave.
+
+### One thing my own fix broke, found by looking at a phone
+
+Widening the marketing nav's collapse breakpoint from 620px to 860px - needed, because five links
+and two buttons overflow the bar - handed **more** visitors a page with no navigation at all. The
+`☰` beside the wordmark is part of the logo, not a menu button, so `display: none` on the links
+left a phone with nothing but Sign in and Get started.
+
+The bar wraps now: brand and buttons on the first line, links on the second, everything reachable
+at every width, no JavaScript and no menu to build. Verified at 375px and 1280px.
+
+That is the second time in this wave that a change looked right in the tests and wrong on a
+screen. Both were caught by opening it.
+
+### Six things the work found that the audit had not
+
+1. **`GET /users/privacy-audit` read across organisations.** It took a user id off the query string
+   and never checked the caller's org. My plan said "surface it in Settings" - which would have
+   shipped it. Deleted.
+2. **"Active grounds 2" counted a ground waiting for approval**, on the same screen as "nothing
+   goes out until you say so".
+3. **`patterns.service.ts#surfacedForGround` died** when the feed's service went, and the existing
+   dead-method guard said so immediately. That guard working unprompted is the argument for the new
+   one.
+4. **The report's legend promised the prose came first** and would have silently become false.
+5. **Five links and two buttons overflow the marketing nav** - "How it works" wrapped to three
+   lines and the CTA clipped off the edge.
+6. **An `import` after a `const` in Astro frontmatter fails to parse**, reporting an unterminated
+   string twenty lines away.
+
+### Two things I did smaller than planned, on purpose
+
+- **The in-app headers (W13-11).** The plan said remove them. They hold Settings, Sign out, Back
+  links and the feedback button; removing them to reclaim 56 pixels would have deleted navigation.
+  Only the duplicate wordmark went, replaced by the page's own name.
+- **The session count (W13-6).** The plan said the rail and the card. The rail lists names only by
+  her decision that a channel list is names, with the count on the tooltip - so only the card,
+  which is where somebody chooses.
+
+### One I did differently
+
+**Pricing (W13-10).** The plan said one shared source across the two repositories. They are
+separate builds; sharing means coupling or a copy that drifts anyway. A test that fails when the
+two pages disagree gets the whole benefit and none of the coupling.
+
+### State
+
+api 1590 tests / 167 suites, client 546 / 88 files, marketing builds with both postbuild checks
+green. Every guard bite-checked in both directions. Twelve new or rewritten guards across the wave.

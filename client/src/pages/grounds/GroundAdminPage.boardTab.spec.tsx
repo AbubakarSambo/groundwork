@@ -100,7 +100,11 @@ describe('finding the team board', () => {
     renderPage()
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'Overview' })).toBeTruthy())
-    for (const label of ['Overview', 'Check-ins', 'Documents', 'Report', 'Settings']) {
+    // "Check-ins" became "Sessions" when the conversation tab took the product's own word.
+    // W13-8.
+    // "Settings" is "Ground settings" since W13-9: /settings is the account, and one word for
+    // both sent people to the wrong page in both directions.
+    for (const label of ['Overview', 'Sessions', 'Documents', 'Report', 'Ground settings']) {
       expect(screen.getByRole('button', { name: label })).toBeTruthy()
     }
   })

@@ -1,3 +1,4 @@
+import { plannedSessionsFor } from '@/lib/sessionCount'
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -85,9 +86,35 @@ function GroundCard({ g, onClick }: { g: Ground; onClick: () => void }) {
             const lead = (g.participants ?? []).find((p: any) => p.partyType === 'INITIATOR')
             const first = (lead?.user?.firstName ?? (lead as any)?.firstName ?? '').trim()
             const who = first || (lead?.email ? lead.email.split('@')[0] : null)
+            /**
+             * THE SESSION COUNT, ON THE CARD SOMEBODY CHOOSES FROM. W13-6.
+             *
+             * "12 of 12 sessions done" is the clearest thing on the ground page and it
+             * appeared nowhere a person decides WHICH ground to open. Derived here from the
+             * timeline and rhythm the list already sends, the same way the ground page does
+             * it, rather than a new field.
+             *
+             * The RAIL is deliberately left alone: it lists names only, by her decision that
+             * a channel list is names, with the count on each row's tooltip. This is the card,
+             * which is where the choosing happens.
+             */
+            const planned = plannedSessionsFor(
+              g.timelineDays,
+              (g as any).cadence,
+              (g as any).maxSessions ?? (g as any).totalSessions,
+            )
+            // `roundsDone` comes from the list endpoint: rounds where EVERY party is
+            // complete, not a count of check-in rows.
+            const doneRounds = (g as any).roundsDone as number | undefined
+            const sessions = planned != null && doneRounds != null
+              ? `${doneRounds} of ${planned} sessions done`
+              : planned != null
+                ? `${planned} sessions`
+                : null
+            const people = `${g.participants.length} participant${g.participants.length !== 1 ? 's' : ''}`
             return who
-              ? `Led by ${who} · ${g.participants.length} participant${g.participants.length !== 1 ? 's' : ''}`
-              : `${g.participants.length} participant${g.participants.length !== 1 ? 's' : ''}`
+              ? `Led by ${who} · ${people}${sessions ? ` · ${sessions}` : ''}`
+              : `${people}${sessions ? ` · ${sessions}` : ''}`
           })()}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -137,7 +164,20 @@ export function GroundsListPage() {
   // depends on what the org is paying any more.
 
   // checkoutMut removed with the two "Unlock insights" upsells.
-  const active = grounds.filter(g => g.status !== 'CLOSED' && g.status !== 'RESOLVED')
+  /**
+   * "ACTIVE GROUNDS 2" WITH ONE OF THEM NOT STARTED. W13-2.
+   *
+   * `active` was everything not closed, which counts a ground that is sitting in the
+   * approval queue directly above this tile - nobody invited, nothing happening, and it
+   * is being reported to the admin as work in progress in the same eyeful as
+   * "waiting for you".
+   *
+   * A ground waiting on an approval, or on its lead accepting it, has not started.
+   */
+  const NOT_STARTED_YET = ['AWAITING_APPROVAL', 'AWAITING_LEAD', 'DECLINED']
+  const active = grounds.filter(
+    g => g.status !== 'CLOSED' && g.status !== 'RESOLVED' && !NOT_STARTED_YET.includes(g.status),
+  )
   const checkInsToday = grounds.reduce((n, g) => n + (g.checkInsToday ?? 0), 0)
   // Count reports waiting for THIS person. The old count was grounds in
   // REPORT_READY status, which is a different thing and sat permanently at
@@ -185,7 +225,10 @@ export function GroundsListPage() {
             <rect x="2" y="6" width="18" height="3" rx="1.5" fill="#0C447C" opacity="0.72" />
             <rect x="0" y="12" width="22" height="3" rx="1.5" fill="#0C447C" />
           </svg>
-          <a href="https://myground.work" target="_blank" rel="noopener noreferrer" style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-navy)', letterSpacing: '-.02em', textDecoration: 'none' }}>Groundwork</a>
+          {/* The rail already says Groundwork two inches to the left. This said it again, so
+              the page's own name is here instead - which is the thing a second line of
+              chrome could usefully carry. W13-11. */}
+              <span className="gw-logo">Your grounds</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-navy)', background: 'var(--gw-blue-bg)', border: '0.5px solid var(--gw-blue-b)', borderRadius: 20, padding: '3px 10px' }}>

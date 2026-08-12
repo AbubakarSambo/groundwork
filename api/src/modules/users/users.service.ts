@@ -278,30 +278,6 @@ export class UsersService {
    * Returns a summary of what data is held for a user and confirms the
    * product promise: records are always exportable and users are soft-deletable.
    */
-  async getPrivacyAudit(userId: string) {
-    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { id: true } });
-    if (!user) throw new NotFoundException('User not found');
-
-    const participantLinks = await this.prisma.groundParticipant.findMany({
-      where: { userId },
-      select: { id: true, groundId: true },
-    });
-    const participantIds = participantLinks.map((p) => p.id);
-    const groundIds = [...new Set(participantLinks.map((p) => p.groundId))];
-
-    const [recordCount, groundCount] = await Promise.all([
-      this.prisma.recordEntry.count({ where: { participantId: { in: participantIds } } }),
-      Promise.resolve(groundIds.length),
-    ]);
-
-    return {
-      userId,
-      hasRecord: recordCount > 0,
-      groundCount,
-      canExport: true,
-      softDeletable: true,
-    };
-  }
   /**
    * Rename the organisation.
    *

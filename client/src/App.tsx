@@ -17,7 +17,6 @@ function ChatRedirect() {
   const { checkInId } = useParams()
   return <Navigate to={`/checkin/${checkInId}`} replace />
 }
-import { AlignmentFeedPage } from '@/pages/feed/AlignmentFeedPage'
 import { GroundsListPage } from '@/pages/grounds/GroundsListPage'
 import { CreateGroundPage } from '@/pages/grounds/CreateGroundPage'
 import { GroundAdminPage } from '@/pages/grounds/GroundAdminPage'
@@ -145,7 +144,6 @@ export default function App() {
             */}
             <Route path="/chat/:checkInId" element={<ChatRedirect />} />
             <Route path="/checkin/:checkInId" element={<RequireAuth><ChatPage /></RequireAuth>} />
-            <Route path="/feed" element={<RequireAuth><AlignmentFeedPage /></RequireAuth>} />
             <Route path="/billing" element={<RequireAuth><BillingPage /></RequireAuth>} />
             <Route path="/pricing" element={<PricingPage />} />
             <Route path="/billing/checkout" element={<RequireAuth><PaymentPage /></RequireAuth>} />

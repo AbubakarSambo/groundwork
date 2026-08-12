@@ -585,17 +585,16 @@ export class PatternsService {
   }
 
   /**
-   * Surfaced observations for a ground - plain language only. Never the raw
-   * codes, never a count, never a verdict, never who said what.
+   * `surfacedForGround` is deleted with the alignment feed that was its only caller. W13-13.
+   *
+   * It returned each surfaced pattern's observation text for one ground, which the feed showed
+   * as a list. The ground page reads the same detections through `patternDetections` on the
+   * ground itself, so nothing lost a capability - one query had two shapes and only one of them
+   * had a reader.
+   *
+   * Found by the dead-method guard the moment the feed's service went, which is the guard
+   * working exactly as intended.
    */
-  async surfacedForGround(groundId: string) {
-    const surfaced = await this.prisma.patternDetection.findMany({
-      where: { groundId, status: PatternStatus.SURFACED },
-      select: { observationText: true, lastSeenAt: true },
-      orderBy: { lastSeenAt: 'desc' },
-    });
-    return surfaced.map((s) => ({ observation: s.observationText, lastSeenAt: s.lastSeenAt }));
-  }
 
   /**
    * Gap #30 - Build a DetectionInput for the F1 composite check using the
