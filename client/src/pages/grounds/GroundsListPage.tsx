@@ -137,7 +137,20 @@ export function GroundsListPage() {
   // depends on what the org is paying any more.
 
   // checkoutMut removed with the two "Unlock insights" upsells.
-  const active = grounds.filter(g => g.status !== 'CLOSED' && g.status !== 'RESOLVED')
+  /**
+   * "ACTIVE GROUNDS 2" WITH ONE OF THEM NOT STARTED. W13-2.
+   *
+   * `active` was everything not closed, which counts a ground that is sitting in the
+   * approval queue directly above this tile - nobody invited, nothing happening, and it
+   * is being reported to the admin as work in progress in the same eyeful as
+   * "waiting for you".
+   *
+   * A ground waiting on an approval, or on its lead accepting it, has not started.
+   */
+  const NOT_STARTED_YET = ['AWAITING_APPROVAL', 'AWAITING_LEAD', 'DECLINED']
+  const active = grounds.filter(
+    g => g.status !== 'CLOSED' && g.status !== 'RESOLVED' && !NOT_STARTED_YET.includes(g.status),
+  )
   const checkInsToday = grounds.reduce((n, g) => n + (g.checkInsToday ?? 0), 0)
   // Count reports waiting for THIS person. The old count was grounds in
   // REPORT_READY status, which is a different thing and sat permanently at

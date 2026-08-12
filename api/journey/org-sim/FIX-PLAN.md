@@ -4525,25 +4525,40 @@ person first, then things that hide from them, then duplication, then removals.
 
 ## Now: the things that tell somebody something untrue
 
-### W13-2 · A lead is never told their ground is waiting for approval - **S**
+### W13-2 · A lead is never told their ground is waiting for approval - **WRONG, IT ALREADY WAS**
 
 `POST /grounds` returns `AWAITING_APPROVAL` for a member, and the creator's own view says
 nothing about it. They finish the six-step wizard, land on a ground that looks made, and
 nobody is invited. **The invite suppression works; the explanation does not exist.**
 
-Do: on the ground page, when `status === 'AWAITING_APPROVAL'`, replace the invite controls
-with one line naming what it is waiting for and who can do it. Verify by creating a ground as
-a MEMBER and reading the page.
+**My audit was wrong.** I created a ground as a MEMBER through the real API and opened it as
+them: the banner exists, says "Waiting for an admin to accept this ground", explains that
+nobody has been contacted and nothing shared, and the rail labels the ground "Awaiting
+approval" underneath its name. All of it was built in W9-7.
 
-### W13-3 · An admin is never told a ground is waiting for them - **S**
+Why I got it wrong: the approval-queue endpoint was returning 404 (W8-69), so the admin's half
+rendered empty, and I concluded the feature did not exist rather than that it was broken.
 
-The other half. The queue endpoint works now (W8-69) but nothing surfaces it.
+**One real thing found while checking:** the admin's "Active grounds" tile counted the pending
+ground. So the same eyeful said "waiting for you, nothing goes out until you say so" and
+"active grounds 2". A ground waiting on an approval, or on its lead accepting it, has not
+started - `AWAITING_APPROVAL`, `AWAITING_LEAD` and `DECLINED` are now excluded from that count.
 
-Do: spend the **Feed** slot in the rail on it - "2 grounds waiting for you" - since the feed's
-three counts are already the grounds list's three stat tiles. One nav entry currently answers
-nothing; this makes the approval rule real and gives an admin a reason to return.
+### W13-3 · An admin is never told a ground is waiting for them - **WRONG TOO**
 
-### W13-4 · The marketing nav is five hand-written copies and only one is right - **S**
+Also already built, and better than what I proposed. The admin's grounds list opens with
+**WAITING FOR YOU**: "Somebody has set up a ground and nobody has been invited to it yet.
+Nothing goes out until you say so", then the ground, who set it up, its length and rhythm, and
+three controls - **Approve**, **Not this one**, **Look at it first**.
+
+Verified by approving a real pending ground end to end. So the rail-slot idea in my plan was
+solving a problem that did not exist: the queue is on the page an admin lands on, which is
+where it belongs.
+
+**The lesson, and it is the same one as W13-2:** I read a broken endpoint as a missing feature.
+Both halves of the approval rule existed the whole time; only the 404 was real.
+
+### W13-4 · The marketing nav is five hand-written copies and only one is right - **DONE**
 
 | Page | Its nav |
 |---|---|
@@ -4554,9 +4569,21 @@ So `/use-cases` - fifteen written situations, the best answer the site has to "i
 cannot be found from any page except the home page, **including from itself**. Every page also
 carries a footer that links it, except the home page, which has no footer at all.
 
-Do: one nav in `Layout.astro`, used by all five. The postbuild check in
-`marketing/check-one-domain.mjs` already asserts the nav has real links that resolve; extend it
-to assert every page's nav has the same set.
+Done as `components/Nav.astro`, used by all five pages, taking the current path so a renamed
+page cannot silently lose its highlight. Two smaller inconsistencies went with it: the button
+said "Get started" on the home page and "Get started free" on the other four, and Sign in
+pointed at `/login` from four pages and `/auth` from one - `/login` only redirects to `/auth`,
+so that was a wasted hop for four fifths of visitors.
+
+`check-one-domain.mjs` now reads **every** page's nav rather than the home page's, and fails on
+three things: a nav with fewer than five links, two pages whose navs differ, and **a page
+missing from its own nav** - which is precisely what `/use-cases` did. Three arms bite-checked.
+
+Two things the build caught that I had not expected. An `import` after a `const` in Astro
+frontmatter fails to parse, which is why the first attempt reported an unterminated string 20
+lines away. And five links plus two buttons overflow the bar: "How it works" wrapped to three
+lines and "Get started free" clipped off the edge, so the links are `nowrap` and collapse at
+860px rather than 620.
 
 ## Then: the things a person cannot see
 

@@ -1,0 +1,104 @@
+---
+/**
+ * THE ONE NAV. W13-4.
+ *
+ * There were five, hand-written into five pages, and only one of them was right. The home
+ * page listed all five destinations; the other four listed four and dropped Use cases - so
+ * fifteen written situations, which is the best answer the site has to "is this for me",
+ * could not be reached from any page except the home page. Including from itself: the Use
+ * cases page's own nav did not list it.
+ *
+ * Nobody would find that by looking. Every page's nav LOOKS complete, because a nav with
+ * four plausible items reads as finished, and the missing fifth is only visible if you
+ * compare two pages side by side.
+ *
+ * Two smaller inconsistencies went with it: the button said "Get started" on the home page
+ * and "Get started free" on the rest, and Sign in pointed at /login from four pages and
+ * /auth from one. `/login` only redirects to `/auth`, so that was a wasted hop.
+ *
+ * `current` marks the active item. Pass the path, not a label, so a renamed page cannot
+ * silently lose its highlight.
+ */
+const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
+
+interface Props {
+  current?: string;
+}
+const { current = '' } = Astro.props;
+
+const LINKS = [
+  { href: '/', label: 'Home' },
+  { href: '/how-it-works', label: 'How it works' },
+  { href: '/use-cases', label: 'Use cases' },
+  { href: '/pricing', label: 'Pricing' },
+  { href: '/about', label: 'About' },
+];
+---
+
+<nav class="gw-nav">
+  <a class="gw-nav-brand" href="/">
+    <svg width="20" height="16" viewBox="0 0 22 17" fill="none" aria-hidden="true">
+      <rect x="5" y="0" width="12" height="3" rx="1.5" fill="#0C447C" opacity="0.45" />
+      <rect x="2" y="6" width="18" height="3" rx="1.5" fill="#0C447C" opacity="0.72" />
+      <rect x="0" y="12" width="22" height="3" rx="1.5" fill="#0C447C" />
+    </svg>
+    <span>Groundwork</span>
+  </a>
+
+  <div class="gw-nav-links">
+    {LINKS.map(l => (
+      <a class:list={['gw-nav-link', { active: l.href === current }]} href={l.href}>{l.label}</a>
+    ))}
+  </div>
+
+  <div class="gw-nav-ctas">
+    <a class="gw-btn-ghost" href={`${APP_URL}/auth`}>Sign in</a>
+    <a class="gw-btn-solid" href={`${APP_URL}/start`}>Get started free</a>
+  </div>
+</nav>
+
+<style>
+  .gw-nav {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(237, 236, 234, .96);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid #E2E0DB;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 20px; height: 56px;
+  }
+  .gw-nav-brand { display: flex; align-items: center; gap: 9px; text-decoration: none; }
+  .gw-nav-brand span { font-size: 15px; font-weight: 700; color: #0C447C; letter-spacing: -.02em; }
+
+  .gw-nav-links { display: flex; align-items: center; gap: 2px; }
+  .gw-nav-link {
+    font-size: 13px; font-weight: 500; color: #6B6660;
+    padding: 7px 11px; border-radius: 6px; text-decoration: none;
+    transition: background .15s, color .15s;
+    /* "How it works" wrapped to three lines the moment the nav grew from four links to
+       five, which pushed "Get started free" off the edge. W13-4. */
+    white-space: nowrap;
+  }
+  .gw-nav-link:hover { background: #E8E6E3; color: #1A1916; }
+  .gw-nav-link.active { background: #E8E6E3; color: #1A1916; font-weight: 600; }
+  .gw-nav-link:focus-visible { outline: 2px solid #0C447C; outline-offset: 2px; }
+
+  .gw-nav-ctas { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .gw-btn-ghost, .gw-btn-solid {
+    font-size: 13px; padding: 7px 14px; border-radius: 6px;
+    text-decoration: none; display: inline-block; white-space: nowrap;
+    font-family: inherit; transition: background .15s;
+  }
+  .gw-btn-ghost { font-weight: 600; color: #0C447C; background: none; border: 1px solid #B5D4F4; }
+  .gw-btn-ghost:hover { background: #EEF4FB; }
+  .gw-btn-solid { font-weight: 700; color: #fff; background: #0C447C; border: none; }
+  .gw-btn-solid:hover { background: #1557A0; }
+  .gw-btn-ghost:focus-visible, .gw-btn-solid:focus-visible { outline: 2px solid #0C447C; outline-offset: 2px; }
+
+  /* The links collapse before the buttons do: on a narrow screen the two things worth
+     keeping are the wordmark and the way in. */
+  /* Raised from 620px: with five links and two buttons the row stops fitting at about
+     860, and an overflowing nav is worse than a collapsed one. */
+  @media (max-width: 860px) {
+    .gw-nav-links { display: none; }
+  }
+</style>
