@@ -1702,6 +1702,116 @@ navigation, which is also how it stayed undiscovered.
 `addLeadContext` is lead-only on the server and the participant Context page offers no note box -
 only uploads, plus the line saying the lead may hold context they cannot read.
 
+# Wave 9 - the audit she asked for after the chat view landed
+
+Her list: "all the things that were there are gone e.g. session count, changing ground name if you
+are the lead etc. The navigations are all broken, i have no way to get back to anywhere from the
+board. Also we were meant to have people be able to switch orgs at the top somehow but we dont have
+it there. We have deadend pages that trap you there. We have a page with all grounds that may be
+redundant... Also org admin has to accept a create ground. Do we remove availability poling on the
+board?"
+
+Measured, not remembered. Everything below was checked against the code or the screen.
+
+## W9-1 · What the retired card view actually took with it - **S, and it is my regression**
+
+The card view rendered eight things. Diffed against the commit that removed it:
+
+| It held | Where it is now |
+|---|---|
+| Session open / Session complete | the composer at the bottom of the conversation |
+| Carried over | superseded - the conversation shows the actual history |
+| The report is ready + Reveal report | **safe.** There were two `activateMutation.mutate` calls; one was in the card view, one is on the Report tab and survives |
+| Your record quality | **safe.** The record tab carries specificity, confidence and patterns |
+| **Session count** | **LOST when nothing is due.** The only place a total renders now is the "Continue session 2 of 6" button, which appears only when a check-in is open. Between sessions there is nothing anywhere saying this ground has six |
+| **About this ground** | **LOST.** The label, the scenario and the admin's brief, which is what oriented somebody before their first session |
+| **Where things stand** | **LOST.** The alignment read |
+| **Alignment feed** | **LOST.** The signal events - divergence and convergence as they were detected |
+
+**And the guard I wrote for exactly this did not catch it.** `nothing-gets-lost-in-the-merge` asserts
+each of the 43 operations still appears in the watched files. `activateMutation` is *declared* in
+the page, so the spec was green - it cannot tell a declared mutation from a reachable button. It
+caught `conversationApi.artifact` only because that call *moved out of the file*. The lesson is the
+same one as `probeSession`: presence in a file is not reachability, and my inventory checks
+presence.
+
+## W9-2 · Nothing gets you back from the board - **S**
+
+`BoardPage` has "Back to grounds" and "Back to the ground" in its **error** state and its
+**no-board-here** state. The state a person actually reaches - a board that renders - has neither.
+The rail is there, so you are not trapped in the app, but there is no way back to the ground you
+came from, which is what she hit.
+
+## W9-3 · Pages with no way out of them - **S**
+
+Checked every page for any internal link, `navigate` or `<Link>`:
+
+| Page | State |
+|---|---|
+| `MagicSentPage` | **zero** internal links. "We sent you a link" and nothing else - no way back to sign-in if the address was wrong |
+| `OrgMembersPage` | **zero.** It has the rail, so not a trap, but no way to the thing you were doing |
+| `AuthPage`, `JoinPage` | no internal links **by design** - a signed-out stranger has nowhere to go yet |
+| `PaymentPage`, `ReportPage`, `DemoConversationPage` | have links; fine |
+
+## W9-4 · Switching organisation, which was always meant to be at the top - **M, and it is the one that needs a migration**
+
+`grep` for an org switcher across the shell and the auth client: **nothing**. It has never been
+built. This is the multi-org membership work already flagged three times in this plan - a person
+can belong to more than one organisation, the JWT carries a single `organizationId`, and the
+switcher she is describing needs: a membership table, an active org on the session, a chooser after
+sign-in, and the switcher in the header. It touches the token, so it wants its own branch and its
+own migration.
+
+## W9-5 · "All grounds" is redundant for the only person who can see it - **S**
+
+`grounds.list` already returns **every** ground in the organisation when the caller's role is
+ADMIN - no participant filter. `/org/roster` ("All grounds") returns the same set. The difference is
+columns: the roster adds per-ground lead, member count, roles and alignment.
+
+So there are not two audiences, there is one page with two levels of detail. Options, cheapest
+first:
+
+1. **Fold the roster's columns into `/grounds` for an admin** and delete `/org/roster`. One page,
+   more detail if you are an admin. Removes a rail item and a route.
+2. Keep both but make `/grounds` participant-scoped even for admins, so the two pages have
+   genuinely different answers ("mine" vs "the organisation's").
+3. Leave it. It is not broken, only duplicated.
+
+Recommendation: 1. It is the only option that reduces anything, and the roster's extra columns are
+the reason an admin opens a list at all.
+
+## W9-6 · Other redundancy worth naming, now the card view is gone
+
+- **`/feed`** - an org-wide activity stream. The rail now shows what needs you, and the ground shows
+  its own history. Worth asking what the feed answers that neither does.
+- **`/grounds/:id/report` and the Report tab** are the same content at two addresses (W8-49 already
+  had this).
+- **`/enter`, `/pin`, `/setup`** - the org-code model. Still orphaned, still hers to kill or revive.
+- **`/profile/:id?`** - reachable by nothing (W8-62).
+
+## W9-7 · An org admin has to accept a ground before it starts - **M, new requirement**
+
+Not built. Today `POST /grounds` creates an ACTIVE ground immediately, and the lead invite goes out
+in the same request. Her requirement puts an approval between those two: a ground is created
+PENDING, an org admin approves it, and only then does anybody get invited.
+
+What it needs: a status ahead of ACTIVE (`AWAITING_APPROVAL`), a decision endpoint gated to ADMIN,
+the invite suppressed until approval, somewhere for an admin to see what is waiting, and a state on
+the creator's own view that says what it is waiting for. The one to get right is the invite: if it
+fires before approval the approval means nothing.
+
+## W9-8 · The availability poll on the board - **her question**
+
+It is the **only** thing anybody can add to the board; everything else is generated from check-ins
+(`upsertPoll`, `togglePoll`, and the form behind them). So removing it makes the board purely a
+read - which is arguably what a board should be, and it is one fewer thing to maintain and explain.
+
+Against removing it: the poll is the one place a team coordinates *forward* rather than reporting
+backward, and "when can we all meet" is a real question a board is a sensible place to ask.
+
+No recommendation without knowing whether anybody has used it. That is answerable: count the polls
+in production before deciding.
+
 ## A note on verifying against the local API
 
 Twice now a browser check has looked like a product bug and was not. The local API process was
