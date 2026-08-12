@@ -632,16 +632,32 @@ export function GroundAdminPage() {
               somewhere further down.
             */}
             <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
+              {/*
+                BOTH CAPTIONS NAME THE SESSION THEY ARE COUNTING, AND THAT IS THE
+                WHOLE POINT OF THEM.
+
+                Found by rendering this rather than reading it. On a ground with
+                session 1 done and session 2 open, the row read "SESSIONS 1 of 6"
+                and "THIS ROUND 0 of 1 - still to check in" directly under a
+                header saying "Session 2 of 6" and a tab saying 1 person had
+                checked in. Every one of those numbers is correct and together
+                they read as three contradictions, because nothing said which
+                session each was about.
+              */}
               <Stat
-                label="Sessions"
+                label="Sessions done"
                 value={plannedSessions != null ? `${sessionsDone} of ${plannedSessions}` : String(sessionsDone)}
-                caption={allSessionsDone ? 'Every session done' : 'Counted from the person furthest behind'}
+                caption={allSessionsDone
+                  ? 'Every session done'
+                  : `Finished by everyone. Session ${openRound} is the open one.`}
                 tone={allSessionsDone ? 'good' : undefined}
               />
               <Stat
-                label="This round"
+                label={`Session ${openRound}`}
                 value={`${roundDone} of ${(ground.participants ?? []).length}`}
-                caption={roundDone < (ground.participants ?? []).length ? 'Still to check in' : 'Everybody is in'}
+                caption={roundDone < (ground.participants ?? []).length
+                  ? 'Have checked in so far'
+                  : 'Everybody is in'}
                 tone={roundDone === (ground.participants ?? []).length && roundDone > 0 ? 'good' : undefined}
               />
               <Stat label="Report" value={reportState.value} caption={reportState.caption} tone={reportState.tone} />
@@ -1050,10 +1066,18 @@ export function GroundAdminPage() {
               than inventing a third way of showing a number.
             */}
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 16 }}>
+              {/*
+                THE CAPTION DESCRIBED A DIFFERENT NUMBER TO THE ONE ABOVE IT.
+                It read "2 of 6" over "counting the session everyone has
+                finished" - but everyone had finished ONE. The value is the round
+                now OPEN, which is one past the last one everybody completed, and
+                the caption was written for the other reading. Seen on screen,
+                not in the source.
+              */}
               <Stat
                 label="This round"
                 value={plannedSessions != null ? `${Math.min(sessionsDone + 1, plannedSessions)} of ${plannedSessions}` : String(sessionsDone + 1)}
-                caption="counting the session everyone has finished"
+                caption="the round now open, one past the last everyone finished"
               />
               <Stat
                 label="Checked in"

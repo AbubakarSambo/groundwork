@@ -2615,6 +2615,14 @@ and inside the account at `/billing`, so the tiers can never disagree again (W8-
    ground page had no state answer at all - it named the ground and went straight to cards - and
    now opens with sessions done, how many have checked in this round, and what the report is doing.
    Nothing new is fetched; every number was already on screen further down.
+
+   **And rendering it found two things reading the source would not have.** The first version of
+   the row said "SESSIONS 1 of 6" and "THIS ROUND 0 of 1 - still to check in" under a header
+   saying "Session 2 of 6" and a tab saying one person had checked in. All four numbers correct,
+   read together as contradictions, because nothing said which session each was about. Both
+   captions now name their session. The second was already live on the Check-ins tab: "THIS ROUND
+   2 of 6" captioned "counting the session everyone has finished", when everyone had finished one -
+   the value is the round now open and the caption was written for the other reading.
 4. **One primary action per screen, and only one.** Most screens have none. Where there is nothing
    to do, say so in a line rather than filling the space with three cards about absence (W8-24).
 
