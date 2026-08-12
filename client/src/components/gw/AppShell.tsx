@@ -90,16 +90,16 @@ const NAV_ITEMS = [
       </svg>
     ),
   },
-  {
-    label: 'Profile',
-    to: '/profile',
-    icon: (active: boolean) => (
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-        <circle cx="10" cy="7" r="3.5" stroke="currentColor" strokeWidth="1.5" fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.15 : 0} />
-        <path d="M3 17c0-3.314 3.134-6 7-6s7 2.686 7 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-      </svg>
-    ),
-  },
+  /**
+   * PROFILE IS NOT IN THE RAIL, because the page says it does not exist yet:
+   * "A profile that gathers them in one place is not built yet." A permanent menu
+   * item that admits it does nothing teaches people the menu is unreliable, and
+   * this rail is about to become the main way around the product.
+   *
+   * The route stays - /profile/:id? still renders, and links to a person's profile
+   * keep working. Only the standing invitation to visit an empty room is gone.
+   * Put it back the moment the page has something in it.
+   */
 ]
 
 type FbTab = 'reaction' | 'build' | 'wrong'

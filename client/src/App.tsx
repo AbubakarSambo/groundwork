@@ -14,7 +14,6 @@ import { SetupPage } from '@/pages/setup/SetupPage'
 import { EnterPage } from '@/pages/enter/EnterPage'
 import { PinPage } from '@/pages/enter/PinPage'
 import { EntryChatPage } from '@/pages/enter/EntryChatPage'
-import { WelcomePage } from '@/pages/welcome/WelcomePage'
 import { ChatPage } from '@/pages/chat/ChatPage'
 import { AlignmentFeedPage } from '@/pages/feed/AlignmentFeedPage'
 import { GroundsListPage } from '@/pages/grounds/GroundsListPage'
@@ -121,7 +120,6 @@ export default function App() {
 
             {/* Post-auth setup */}
             <Route path="/setup" element={<SetupPage />} />
-            <Route path="/welcome" element={<WelcomePage />} />
 
             {/* Main app - require auth */}
             <Route path="/grounds" element={<RequireAuth><GroundsListPage /></RequireAuth>} />
