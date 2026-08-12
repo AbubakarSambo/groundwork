@@ -580,8 +580,32 @@ export function GroundAdminPage() {
           <div>
             {/* How this ground ends. Renders nothing for a non-party (the API
                 403s them), so the setting-up admin sees the board and the
-                record but does not get a vote on the outcome. */}
-            <ResolutionPanel groundId={ground.id} />
+                record but does not get a vote on the outcome.
+
+                NOT AT THE TOP, AND NOT AT SESSION 2 OF 6.
+
+                This was the FIRST card on the page from the moment a ground
+                existed. On a fresh ground it read "Each person picks the outcome
+                they think the record supports. The ground closes only when
+                everyone picks the same one" above four buttons including "Stop
+                the project", with one participant and one session done, and
+                nothing else on screen competing with it.
+
+                Two problems in one. The first thing a person saw about their new
+                ground was how to end it, and the copy described a group agreement
+                in a ground that had a group of one.
+
+                It now appears when the ground is actually near its end - every
+                session done, or the last planned round reached - or when it has
+                already been started, so a ground mid-decision never hides it. The
+                product's own help says the OPPOSITE thing belongs at the start:
+                "Set a resolution state before the ground starts... agreeing on the
+                end state before you start changes the quality of every session."
+                That is a different panel and it is W8-59; this one is the exit,
+                and the exit belongs at the exit. */}
+            {(allSessionsDone || (plannedSessions != null && sessionsDone >= plannedSessions - 1) || ground.resolutionState) && (
+              <ResolutionPanel groundId={ground.id} />
+            )}
             {/* Post-session decision panel: shown when session is complete, no balance, not subscribed */}
             {ground.status === 'REPORT_READY' && !postSessionDismissed &&
               !ground.isFreeGround &&

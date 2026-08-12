@@ -301,8 +301,18 @@ export function MagicVerifyPage() {
               </div>
             ))}
           </div>
-          <div style={{ fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', marginBottom: 8 }}>
-            Track their check-ins on your ground page:
+          {/*
+            NOTHING EVER MENTIONED THE CONTEXT TAB.
+            It holds document upload and context notes, and Hafsah finished a
+            whole setup without learning it existed: "It didnt ask me or tell me
+            that there a space to add more context and documents once i am done
+            setting up the ground." The feature is built; this is the sentence
+            that makes it findable, at the one moment somebody is looking at
+            what to do next.
+          */}
+          <div style={{ fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', marginBottom: 8, lineHeight: 1.6 }}>
+            Track their check-ins on your ground page, and add documents or notes
+            for everyone to work from under <strong>Context</strong>.
           </div>
           <button
             onClick={() => navigate(`/grounds/${nextGroundId}`, { replace: true })}
