@@ -6,6 +6,7 @@ import { authApi } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
 import type { Ground } from '@/types'
 import { alignmentLabel } from '@/lib/alignment'
+import { Stat } from '@/components/gw/kit'
 import { toast } from 'sonner'
 
 
@@ -134,10 +135,9 @@ export function GroundsListPage() {
                 { val: checkInsToday,    label: 'Participant sessions today' },
                 { val: reportsReady,     label: 'Reports ready' },
               ].map(s => (
-                <div key={s.label} style={{ background: 'var(--gw-bg)', border: '0.5px solid var(--gw-border)', borderRadius: 8, padding: '10px 14px', flex: 1, minWidth: 100 }}>
-                  <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--gw-navy)' }}>{s.val}</div>
-                  <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginTop: 2 }}>{s.label}</div>
-                </div>
+                // The board's own stat tile, so the same number does not have two
+                // different looks depending on which page you opened it from.
+                <Stat key={s.label} label={s.label} value={String(s.val)} />
               ))}
             </div>
 

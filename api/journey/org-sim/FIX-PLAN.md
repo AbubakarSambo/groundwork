@@ -1527,7 +1527,7 @@ it is done.
 | # | Item | Size | Status | Depends on |
 |---|---|---|---|---|
 | W8-44 | extract the board's nine components into `components/gw/` | M | OPEN | nothing. Do it first, everything else gets cheaper |
-| W8-45 | one header, shell only on signed-in routes, delete the dead AppShell | S | OPEN | W8-44 |
+| W8-45 | one header, delete the dead AppShell (shell-on-stranger-pages half withdrawn) | S | OPEN | W8-44 |
 | W8-57 | grounds as channels in the rail, a ground opens to its own history | M | OPEN | W8-44, W8-45 |
 | W8-49 | the target page list, 38 routes to 14 pages | L | OPEN | W8-52 must pass first |
 | W8-52 | the 45-operation inventory the ground merge must satisfy | M | OPEN | acceptance test for W8-49 |
@@ -2460,10 +2460,12 @@ look like the board" becomes an import rather than a judgement call.
 - `components/gw/AppShell.tsx`, 689 lines, wraps **every route** in `App.tsx:101`.
 - `components/layout/AppShell.tsx`, 311 lines, mounted nowhere. Its own comment says so.
 
-**And the live one wraps routes it should not.** It renders the signed-in left rail with the
-person's ground list on `/join`, `/set-password`, `/pricing`, `/enter`, `/setup` and the 404 -
-pages meant for somebody arriving with no account, or with somebody else's. A stranger following
-an invite link sees a sidebar of grounds.
+**Half of this is WITHDRAWN, measured 2026-08-12.** `components/gw/AppShell.tsx` already reads
+`const showSidebar = isAuthenticated` and returns bare `children` when false. A stranger following
+an invite link sees no rail. I made the original observation while signed in and mistook my own
+session for everyone's. What remains true: a person who IS signed in and opens `/join`,
+`/set-password` or the 404 keeps their rail, which is their own grounds and is fine. The dead
+`components/layout/AppShell.tsx` deletion stands, and so does the one-header work below.
 
 Correcting my own earlier note (W8-28, W8-38): the shell IS shared. The five chrome variants come
 from each page hand-rolling **its own header inside** the shared shell, not from five shells. The
