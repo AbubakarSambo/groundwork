@@ -34,6 +34,56 @@ function specificityQualityLabel(score: number): { label: string; color: string;
 
 type Tab = 'checkin' | 'history' | 'record' | 'report' | 'docs' | 'settings'
 
+/**
+ * THE CONVERSATION ITSELF, WHICH SESSION HISTORY DID NOT HOLD. W8-21, W8-57.
+ *
+ * "Session history" listed a session number, a date and a summary of what we
+ * heard - everything except the thing that happened. Hafsah: "I have no way to
+ * go back and see my chats." A ground is meant to be a place you return to, and
+ * returning to a list of dates is not returning to anything.
+ *
+ * The transcript endpoint already existed and is owner-only on the server, so
+ * this shows a person their own words and nobody else's. Loaded when opened
+ * rather than with the page: on a twelve-session ground that is twelve requests
+ * nobody asked for.
+ */
+function SessionConversation({ checkInId }: { checkInId: string }) {
+  const [open, setOpen] = useState(false)
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['transcript', checkInId],
+    queryFn: () => conversationApi.transcript(checkInId),
+    enabled: open,
+  })
+  const turns = data?.turns ?? []
+  return (
+    <div style={{ marginTop: 6 }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{ fontSize: 11, color: '#0C447C', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit', fontWeight: 600 }}
+      >
+        {open ? 'Hide the conversation' : 'Read the conversation'}
+      </button>
+      {open && (
+        <div style={{ marginTop: 8, background: '#F5F3EF', borderRadius: 7, padding: '10px 12px', maxHeight: 420, overflowY: 'auto' }}>
+          {isLoading && <div style={{ fontSize: 12, color: '#9B9590' }}>Loading…</div>}
+          {isError && <div style={{ fontSize: 12, color: '#9B9590' }}>That conversation could not be loaded. Try again in a moment.</div>}
+          {!isLoading && !isError && turns.length === 0 && (
+            <div style={{ fontSize: 12, color: '#9B9590' }}>Nothing was said in this session.</div>
+          )}
+          {turns.map((t: any, i: number) => (
+            <div key={t.id ?? i} style={{ marginBottom: 10 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', color: '#9B9590', marginBottom: 3 }}>
+                {t.role === 'PERSON' ? 'You' : 'Groundwork'}
+              </div>
+              <div style={{ fontSize: 12.5, color: '#3A3630', lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>{t.content}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function SoloArtifactBlock({ checkInId, groundId, sessionNumber }: { checkInId: string; groundId: string; sessionNumber: number }) {
   const [open, setOpen] = useState(false)
   const navigate = useNavigate()
@@ -605,6 +655,7 @@ export function GroundParticipantPage() {
                         </div>
                       )}
                       {isComplete && <SoloArtifactBlock checkInId={ci.id} groundId={id!} sessionNumber={ci.sessionNumber} />}
+                      <SessionConversation checkInId={ci.id} />
                     </div>
                   )
                 })}

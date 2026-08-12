@@ -2957,6 +2957,14 @@ That single view closes four separate findings - W8-19 (the unlinked participant
 (nothing opens or starts a check-in), W8-21 (session history holds only the summary) and W8-14 (no
 way back to your chats). They were all symptoms of check-ins having no home.
 
+**Progress 2026-08-12.** The rail half is built - `lib/rail-attention.ts` with `railAttention`,
+`railRank` and `stillInRail`, wired into `AppShell` so grounds sort by what needs you and drop out
+three months after closing. W8-21 and W8-14 are closed now too: every completed session in Session
+history offers "Read the conversation", which fetches the owner-only transcript on expand rather
+than pulling twelve of them with the page. What is left of this item is the single-scroll shape -
+session 1, its report, session 2, its report, then the live one - rather than a tab holding cards
+that each expand.
+
 ### Three things to get right
 
 **1. Red is for late, not for your turn.** Her mechanism is right and I would split the states:
