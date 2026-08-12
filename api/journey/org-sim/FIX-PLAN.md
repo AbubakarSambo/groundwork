@@ -1829,6 +1829,30 @@ board?"
 
 Measured, not remembered. Everything below was checked against the code or the screen.
 
+## W9-1b · Two more the card view took, both found by the persona gate - **fixed**
+
+The audit in W9-1 diffed the card view against what replaced it and found four losses. It missed
+two, and both were found by the gate rather than by me:
+
+**1. Every ground from the entry chat was held pending.** My approval gate fails closed when no
+role is passed, which is right, and `entry.service` calls `grounds.create` without one - so
+`addParticipant` refused and no contributor was ever invited. The person leaving the entry chat is
+the admin of the organisation created for them seconds earlier; there is nobody else to approve it.
+The suite reported it as "expected both the confirmed contributor and the one left in the note box",
+which reads as the vanish bug and says nothing about an approval.
+
+**2. The self-correction went behind a disclosure, and changed its words.** Moving it into "what we
+heard from you" meant somebody who believed the record had them wrong had to open a summary before
+finding out they were allowed to fix it. And I had reworded it from "Something wrong here? Continue
+this session to correct it" to "This is not right - add to it" - so the check looking for the
+affordance found nothing. It is on the row now, unhidden, in the words the product has always used.
+
+**What both have in common, and it is the same lesson as `activateMutation`:** my inventory checks
+that a capability is present and now that it is invoked. It cannot check that a person can SEE it,
+or that a code path is reachable given a status. The persona suite can, and does, five minutes
+later - so each of these now also has a unit guard that says it in a second and names the right
+thing.
+
 ## W9-1 · What the retired card view actually took with it - **S, and it is my regression**
 
 The card view rendered eight things. Diffed against the commit that removed it:

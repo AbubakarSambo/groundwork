@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { GroundChat } from './GroundChat'
 import { groundsApi } from '@/api/grounds'
+import { reportsApi } from '@/api/reports'
 
 /**
  * A GROUND READ AS A CONVERSATION.
@@ -23,6 +24,7 @@ vi.mock('@/api/grounds', () => ({
   groundsApi: { myTranscript: vi.fn(), myNotes: vi.fn(), addMyNote: vi.fn(), deleteMyNote: vi.fn() },
 }))
 vi.mock('@/api/documents', () => ({ documentsApi: { upload: vi.fn() } }))
+vi.mock('@/api/reports', () => ({ reportsApi: { startSelfCorrection: vi.fn() } }))
 vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn() } }))
 
 const session = (n: number, date: string, turns: [string, string][]) => ({
@@ -58,6 +60,7 @@ function renderChat(props: Partial<Parameters<typeof GroundChat>[0]> = {}) {
 beforeEach(() => {
   vi.clearAllMocks()
   ;(groundsApi.myNotes as any).mockResolvedValue([])
+  ;(reportsApi.startSelfCorrection as any).mockResolvedValue({ checkInId: 'c-new' })
   ;(groundsApi.myTranscript as any).mockResolvedValue({
     sessions: [
       session(1, '2026-08-10T00:00:00.000Z', [['PERSON', 'The scope moved.'], ['AI', 'Who agreed to that?']]),
@@ -193,5 +196,42 @@ describe('reading a past check-in', () => {
     renderChat()
     await waitFor(() => expect(screen.getByText('mid sentence')).toBeTruthy())
     expect(screen.queryByRole('button', { name: /What we heard from you/ })).toBeNull()
+  })
+})
+
+/**
+ * THE WAY TO FIX A SESSION IS VISIBLE, NOT BEHIND A DISCLOSURE.
+ *
+ * Retiring the card view moved the self-correction inside "what we heard from you", so
+ * somebody who believed the record had them wrong had to open a summary before finding
+ * out they were allowed to correct it. The persona suite caught it as an absence - "the
+ * self-correction affordance EXISTS (hard - absence is a failure, not a shrug)" - five
+ * minutes after the push, and it was right twice: the wording had drifted too, from
+ * "correct it" to something I had reworded.
+ *
+ * This says it in a second, and pins the words the product has always used.
+ */
+describe('correcting a session that got you wrong', () => {
+  it('is offered on every completed session without opening anything', async () => {
+    renderChat()
+    const buttons = await waitFor(() => screen.getAllByRole('button', { name: /correct it/i }))
+    // Two completed sessions in the fixture, so two offers.
+    expect(buttons).toHaveLength(2)
+  })
+
+  it('and starts a correction against that session', async () => {
+    renderChat()
+    const buttons = await waitFor(() => screen.getAllByRole('button', { name: /correct it/i }))
+    fireEvent.click(buttons[0])
+    await waitFor(() => expect(reportsApi.startSelfCorrection).toHaveBeenCalledWith('g1', 1))
+  })
+
+  it('but not on a session that is still open - there is nothing to correct yet', async () => {
+    ;(groundsApi.myTranscript as any).mockResolvedValue({
+      sessions: [{ ...session(1, '2026-08-10T00:00:00.000Z', [['PERSON', 'mid sentence']]), status: 'IN_PROGRESS' }],
+    })
+    renderChat()
+    await waitFor(() => expect(screen.getByText('mid sentence')).toBeTruthy())
+    expect(screen.queryByRole('button', { name: /correct it/i })).toBeNull()
   })
 })

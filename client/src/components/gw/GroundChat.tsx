@@ -134,12 +134,33 @@ function SessionSummary({ checkInId, groundId, sessionNumber }: {
   })
   return (
     <div style={{ alignSelf: 'stretch' }}>
-      <button
-        onClick={() => setOpen(o => !o)}
-        style={{ fontSize: 11.5, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit', fontWeight: 600 }}
-      >
-        {open ? 'Hide what we heard' : 'What we heard from you'}
-      </button>
+      {/*
+        THE WAY TO FIX A SESSION IS NOT HIDDEN BEHIND A DISCLOSURE.
+
+        Retiring the card view moved this inside "what we heard from you", so
+        somebody who believed the record had them wrong had to open a summary before
+        they could find out they were allowed to correct it. The persona suite caught
+        it as an absence - "the self-correction affordance EXISTS (hard - absence is a
+        failure, not a shrug)" - and it was right twice: the words had changed too.
+
+        Both live on the row now, and the correction says what the product has always
+        said rather than something I reworded.
+      */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <button
+          onClick={() => setOpen(o => !o)}
+          style={{ fontSize: 11.5, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit', fontWeight: 600 }}
+        >
+          {open ? 'Hide what we heard' : 'What we heard from you'}
+        </button>
+        <button
+          onClick={() => correct.mutate()}
+          disabled={correct.isPending}
+          style={{ fontSize: 11.5, color: 'var(--gw-sub)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}
+        >
+          {correct.isPending ? 'Opening…' : 'Something wrong here? Continue this session to correct it'}
+        </button>
+      </div>
       {open && (
         <div style={{ marginTop: 8, background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '10px 12px' }}>
           {isLoading && <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>Loading…</div>}
@@ -151,13 +172,6 @@ function SessionSummary({ checkInId, groundId, sessionNumber }: {
                   Carry forward: {data.artifact.whatToCarry}
                 </div>
               )}
-              <button
-                onClick={() => correct.mutate()}
-                disabled={correct.isPending}
-                style={{ marginTop: 10, fontSize: 11.5, color: 'var(--gw-navy)', background: 'none', border: '1px solid var(--gw-border)', borderRadius: 6, padding: '5px 10px', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}
-              >
-                {correct.isPending ? 'Opening…' : 'This is not right - add to it'}
-              </button>
             </>
           ) : !isLoading && (
             <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>No summary was written for this session.</div>
