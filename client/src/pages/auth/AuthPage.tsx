@@ -287,11 +287,15 @@ export function AuthPage() {
 
       <div className="gw-bd" style={{ maxWidth: 480, margin: '0 auto', width: '100%', paddingTop: 28 }}>
 
-        <div className="gw-ttl">
-          {view === 'create' ? 'Create your account' : view === 'link' ? 'Get a sign-in link' : 'Sign in'}
-        </div>
+        {/* The link-sent panel carries its own heading, so "Sign in" above it read as
+            two screens stacked. W8-62. */}
+        {!linkSent && (
+          <div className="gw-ttl">
+            {view === 'create' ? 'Create your account' : view === 'link' ? 'Get a sign-in link' : 'Sign in'}
+          </div>
+        )}
 
-        {view === 'password' && passwordlessNotice && (
+        {view === 'password' && !linkSent && passwordlessNotice && (
           <div style={{ background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 10, padding: '13px 15px', marginBottom: 16 }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 4 }}>
               Check your email
@@ -302,7 +306,8 @@ export function AuthPage() {
           </div>
         )}
 
-        {view === 'password' && (
+        {/* `!linkSent`: on /auth/sent this whole form rendered above the panel. W8-62. */}
+        {view === 'password' && !linkSent && (
           <>
             <form onSubmit={submitPassword}>
               <div className="gw-fld">
@@ -472,7 +477,7 @@ export function AuthPage() {
           </>
         )}
 
-        {view === 'forgot' && !resetSent && (
+        {view === 'forgot' && !linkSent && !resetSent && (
           <>
             <div className="gw-sub-t" style={{ marginBottom: 20 }}>
               Enter your email and we will send you a link to reset your password.

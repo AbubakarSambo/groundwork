@@ -78,6 +78,26 @@ describe('/auth/sent is a state of /auth, not a second page', () => {
     expect(screen.queryByText(/A link is on its way to/)).toBeNull()
   })
 
+  it('and nothing else renders around it', async () => {
+    /**
+     * FOUND IN A BROWSER, NOT BY A TEST. My first version of this merge asserted the
+     * panel was there and the old copy was gone, and both held - but the sign-in form
+     * still rendered ABOVE it, because the password view was gated on `view` and never
+     * on `linkSent`. So /auth/sent showed an email field, a password field, "Sign in",
+     * "Forgot your password?", "Create an account", and then "Check your email"
+     * underneath all of it. Two screens stacked.
+     *
+     * The lesson is the one already in the plan: prove it at the render, not at the
+     * assertions you happened to write.
+     */
+    renderAt('/auth/sent?email=sam%40acme.test')
+    await waitFor(() => screen.getByText('Check your email'))
+    expect(screen.queryByLabelText(/^Password/i)).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Sign in$/ })).toBeNull()
+    expect(screen.queryByText(/Forgot your password/)).toBeNull()
+    expect(screen.queryByText(/New here\? Create an account/)).toBeNull()
+  })
+
   it('and /auth itself does not open in the sent state', async () => {
     // The state is keyed on the path. If it were not, the sign-in form would be
     // replaced by "check your email" for everybody who ever visited.

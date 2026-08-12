@@ -3911,3 +3911,39 @@ hold.
 Pinned in `no-arrival-is-a-dead-end.spec.tsx`, which checks both that the shared state
 has a control and that none of the three pages has gone back to rolling its own without
 one. Both arms bite-checked.
+
+### W8-62c · Two things the browser caught that the tests could not - **DONE**
+
+Both found by opening the merged pages rather than reading the assertions I had written
+for them, which is the rule already in the plan and one I had just broken again.
+
+**1. `/auth/sent` rendered the sign-in form above the panel.** My spec asserted the
+panel was there and the old thin copy was gone. Both held. But the password view was
+gated on `view` and never on `linkSent`, so the page showed an email field, a password
+field, "Sign in", "Forgot your password?", "New here? Create an account", and then
+"Check your email" underneath all of it. Two screens stacked, and the heading said
+"Sign in" over a panel about an email. Now gated, and the missing assertion is in
+`one-page-for-one-moment.spec.tsx` with the reason written next to it.
+
+**2. `consumeToken`'s messages were about a database row.** Driving a bad token through
+the merged password page against the live API produced the single word pair **"Invalid
+token"** under the password field. That string, plus "This token has already been used"
+and "Invalid token type", is rendered verbatim to whoever clicked a link in an email.
+
+`participants.service.ts` had already learnt this and says the useful thing; this had
+not. Now:
+
+| Case | What it says |
+|---|---|
+| Not a link we know, or the wrong kind | "Password links are single use and they expire - open the most recent one from your inbox, or ask for a new one from the sign-in page." |
+| Already used | "This link has already been used, so your password is set. Sign in with it - or use Forgot your password if you cannot remember it." |
+| Expired | Still the caller's own wording, since each caller knows what its link was for |
+
+"Used" stays a separate answer because it is the one case where the instruction genuinely
+differs: they already have a password, so "ask for a new link" would send them round a
+loop.
+
+Pinned in `a-link-that-failed-says-what-to-do.spec.ts`, as text and with comments
+stripped first - my own comment explaining what the old strings were made the check fail
+on the explanation of the fix, and a rule that punishes writing down the reason is a rule
+that gets the reason deleted.
