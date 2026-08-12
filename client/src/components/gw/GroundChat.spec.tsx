@@ -46,6 +46,8 @@ function renderChat(props: Partial<Parameters<typeof GroundChat>[0]> = {}) {
           openSessionNumber={null}
           totalSessions={6}
           nextOpensAt={null}
+          label="Chain proof"
+          sessionsDone={2}
           {...props}
         />
       </MemoryRouter>

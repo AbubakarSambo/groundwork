@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/api/client'
 import { authApi } from '@/api/auth'
@@ -21,6 +22,7 @@ function fetchMembers(): Promise<{ data: OrgMember[]; meta: { total: number } }>
 }
 
 export function OrgMembersPage() {
+  const navigate = useNavigate()
   const { user } = useAuthStore()
   const qc = useQueryClient()
   const [inviteEmail, setInviteEmail] = useState('')
@@ -60,6 +62,17 @@ export function OrgMembersPage() {
 
   return (
     <div style={{ padding: '40px 32px', maxWidth: 720 }}>
+      {/* This page had no internal link of any kind. The rail is there, so nobody was
+          trapped, but an admin who came here to invite somebody had no way back to the
+          thing they were doing. */}
+      <div style={{ marginBottom: 12 }}>
+        <button
+          onClick={() => navigate('/grounds')}
+          style={{ background: 'none', border: 'none', padding: 0, fontSize: 13, color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit' }}
+        >
+          ← Back to grounds
+        </button>
+      </div>
       <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--gw-navy)', marginBottom: 6, letterSpacing: '-.02em' }}>
         People
       </h1>

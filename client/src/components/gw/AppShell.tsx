@@ -52,25 +52,14 @@ const NAV_ITEMS = [
       </svg>
     ),
   },
-  {
-    /**
-     * "Roster" lists grounds, not people, which is the opposite of what the word
-     * suggests next to "People" directly above it. W8-27. Named for what it
-     * holds. It does not collide with Grounds in the rail because that one is
-     * the grounds you are in and this one is every ground in the organisation -
-     * which the subtitle on the page says.
-     */
-    label: 'All grounds',
-    to: '/org/roster',
-    adminOnly: true,
-    icon: (active: boolean) => (
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-        <rect x="2" y="3" width="16" height="4" rx="1" stroke="currentColor" strokeWidth="1.5" fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.12 : 0} />
-        <rect x="2" y="9" width="16" height="4" rx="1" stroke="currentColor" strokeWidth="1.5" fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.12 : 0} />
-        <rect x="2" y="15" width="10" height="3" rx="1" stroke="currentColor" strokeWidth="1.5" fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.12 : 0} />
-      </svg>
-    ),
-  },
+  /**
+   * "All grounds" is gone. W9-5.
+   *
+   * `grounds.list` already returns every ground in the organisation when the caller
+   * is an admin, so the roster was the same data at a second address - one page with
+   * two levels of detail, not two audiences. The one column it added that mattered,
+   * who leads each ground, is on the grounds card now.
+   */
   {
     label: 'Billing',
     to: '/billing',

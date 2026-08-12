@@ -43,8 +43,23 @@ function GroundCard({ g, onClick }: { g: Ground; onClick: () => void }) {
       </div>
       {g.brief && <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5, marginBottom: 10 }}>{g.brief}</div>}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        {/*
+          WHO LEADS IT, WHICH IS WHY /org/roster EXISTED. W9-5.
+          
+          `grounds.list` already returns every ground in the organisation when the
+          caller is an admin, so "All grounds" was the same data at a second address -
+          one page with two levels of detail, not two audiences. The lead was the one
+          column it added that mattered, and it is derivable here from the participant
+          the server already sends.
+        */}
         <div style={{ fontSize: 11, color: 'var(--gw-sub)' }}>
-          {g.participants.length} participant{g.participants.length !== 1 ? 's' : ''}
+          {(() => {
+            const lead = (g.participants ?? []).find((p: any) => p.partyType === 'INITIATOR')
+            const who = lead ? (lead.email ?? '').split('@')[0] : null
+            return who
+              ? `Led by ${who} · ${g.participants.length} participant${g.participants.length !== 1 ? 's' : ''}`
+              : `${g.participants.length} participant${g.participants.length !== 1 ? 's' : ''}`
+          })()}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           {g.status === 'ACTIVE' && g.participants.length > 1 && !(g.checkIns ?? []).some(c => c.status === 'COMPLETED') && (g.overdue ?? 0) === 0 && <span style={{ fontSize: 11, fontWeight: 600, color: '#7A5200', background: '#FFF8EC', borderRadius: 20, padding: '2px 8px' }}>No check-ins yet</span>}

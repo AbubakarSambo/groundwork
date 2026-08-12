@@ -12,6 +12,7 @@ import { whatThisGroundCanTellYou } from '@/lib/contextStrength'
 import { ContextStrength } from '@/components/gw/ContextStrength'
 import { apiClient } from '@/api/client'
 import { participantLabel } from '@/lib/utils'
+import { alignmentLabel } from '@/lib/alignment'
 import { toast } from 'sonner'
 import { ResolutionPanel } from '@/components/gw/ResolutionPanel'
 
@@ -364,6 +365,18 @@ export function GroundParticipantPage() {
             nextOpensAt={opensLater ? openAvailableFrom : null}
             onOpenSession={() => dueNow && probeSession.mutate(openCheckIn)}
             openPending={probeSession.isPending}
+            label={ground.label}
+            scenario={(ground as any).scenario}
+            brief={(ground as any).brief}
+            alignment={alignmentLabel((ground as any).alignment)}
+            sessionsDone={completedCheckIns.length}
+            signals={((ground.signals ?? []) as any[])
+              .filter((sig: any) => sig.observationText)
+              .map((sig: any) => ({
+                label: sig.code?.startsWith('D') ? 'Divergence' : 'Convergence',
+                text: sig.observationText,
+                session: sig.lastPeriodNumber ?? 1,
+              }))}
           />
         </div>
       )}

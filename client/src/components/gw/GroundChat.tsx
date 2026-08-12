@@ -53,6 +53,70 @@ import { toast } from 'sonner'
  * Fetched on expand. Twelve of these on load would be twelve requests for
  * something most people will not open.
  */
+/**
+ * WHAT THIS GROUND IS, AT THE TOP OF ITS CONVERSATION.
+ *
+ * The card view opened with "About this ground" - the label, the situation, and the
+ * promise about privacy - and it was the only thing orienting somebody before their
+ * first check-in. Retiring the cards took it, which was my mistake, not a decision.
+ *
+ * It comes back as a channel topic rather than a card: the first thing in the scroll,
+ * above the earliest session, where a channel puts its purpose. It stays after the
+ * first session too - a ground runs ninety days and "what was this for again" is a
+ * question people have in week eight, not just week one.
+ */
+function GroundTopic({ label, scenario, brief, alignment, sessionsDone, totalSessions }: {
+  label: string
+  scenario?: string | null
+  brief?: string | null
+  alignment?: string | null
+  sessionsDone: number
+  totalSessions: number | null
+}) {
+  const situation = scenario
+    ? scenario.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c: string) => c.toUpperCase())
+    : null
+  return (
+    <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '14px 16px', marginBottom: 6 }}>
+      <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 6 }}>
+        About this ground
+      </div>
+      <div style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 3 }}>{label}</div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--gw-sub)' }}>
+        {situation && <span>{situation}</span>}
+        {/*
+          THE SESSION COUNT, WHICH HAD NOWHERE TO LIVE BETWEEN SESSIONS. The only
+          place a total rendered after the cards went was the "Continue session 2 of
+          6" button, and that button is only there when a check-in is open - so for
+          thirteen days out of fourteen nothing said this ground had six.
+        */}
+        {totalSessions != null && (
+          <>
+            <span style={{ color: 'var(--gw-border)' }}>·</span>
+            <span>{sessionsDone} of {totalSessions} sessions done</span>
+          </>
+        )}
+        {alignment && (
+          <>
+            <span style={{ color: 'var(--gw-border)' }}>·</span>
+            {/* "Where things stand" - the report's read, not a count of check-ins. */}
+            <span>{alignment}</span>
+          </>
+        )}
+      </div>
+      {brief && (
+        <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, borderTop: '1px solid var(--gw-border)', paddingTop: 9, marginTop: 9 }}>
+          {brief}
+        </div>
+      )}
+      <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.6, marginTop: 8 }}>
+        What you say stays on your side until everyone has checked in. The report goes to
+        everybody at the same time, so nobody reads it before anybody else.
+      </div>
+    </div>
+  )
+}
+
 function SessionSummary({ checkInId, groundId, sessionNumber }: {
   checkInId: string; groundId: string; sessionNumber: number
 }) {
@@ -323,7 +387,10 @@ function Composer({ groundId, openCheckInId, openSessionNumber, totalSessions, n
   )
 }
 
-export function GroundChat({ groundId, openCheckInId, openSessionNumber, totalSessions, nextOpensAt, onOpenSession, openPending }: {
+export function GroundChat({
+  groundId, openCheckInId, openSessionNumber, totalSessions, nextOpensAt, onOpenSession, openPending,
+  label, scenario, brief, alignment, sessionsDone, signals,
+}: {
   groundId: string
   openCheckInId: string | null
   openSessionNumber: number | null
@@ -331,6 +398,14 @@ export function GroundChat({ groundId, openCheckInId, openSessionNumber, totalSe
   nextOpensAt: string | null
   onOpenSession?: () => void
   openPending?: boolean
+  /** The topic at the top of the scroll: what this ground is, and where it stands. */
+  label: string
+  scenario?: string | null
+  brief?: string | null
+  alignment?: string | null
+  sessionsDone: number
+  /** What Groundwork has noticed, in the order it noticed it. */
+  signals?: { label: string; text: string; session: number }[]
 }) {
   const { data, isLoading, isError } = useQuery({
     queryKey: ['my-transcript', groundId],
@@ -355,6 +430,42 @@ export function GroundChat({ groundId, openCheckInId, openSessionNumber, totalSe
             Nothing on record yet. Your first check-in starts the conversation, and everything
             you say in it stays here for you to come back to.
           </div>
+        )}
+
+        <GroundTopic
+          label={label}
+          scenario={scenario}
+          brief={brief}
+          alignment={alignment}
+          sessionsDone={sessionsDone}
+          totalSessions={totalSessions}
+        />
+
+        {/*
+          WHAT GROUNDWORK HAS NOTICED - the alignment feed, which the card view held
+          and I removed with it.
+          
+          In a conversation these are system notes, not cards: they are things the
+          product observed rather than things anybody said, so they are centred, quiet
+          and clearly not a message. Folded away by default because on a ground with
+          real history there can be a lot of them, and they are context rather than the
+          thing you came to read.
+        */}
+        {(signals ?? []).length > 0 && (
+          <details style={{ alignSelf: 'stretch' }}>
+            <summary style={{ fontSize: 11.5, color: 'var(--gw-sub)', cursor: 'pointer', fontWeight: 600 }}>
+              What Groundwork has noticed ({(signals ?? []).length})
+            </summary>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
+              {(signals ?? []).map((sig, i) => (
+                <div key={i} style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55, background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '8px 11px' }}>
+                  <span style={{ fontWeight: 700, color: 'var(--gw-text)' }}>{sig.label}</span>
+                  <span style={{ color: 'var(--gw-muted)' }}> · session {sig.session}</span>
+                  <div style={{ marginTop: 3 }}>{sig.text}</div>
+                </div>
+              ))}
+            </div>
+          </details>
         )}
 
         {sessions.map(s => (
