@@ -4676,21 +4676,39 @@ The same tiers written twice, in two places that must agree and have no way of k
 they do not. Do: one source. Either the app reads the marketing page's data, or both read a
 shared file, or the in-app page goes and Billing links out.
 
-### W13-11 · Six in-app pages draw a second Groundwork header inside the shell - **S**
+### W13-11 · Six in-app pages draw a second Groundwork header inside the shell - **DONE, and it was four**
 
-A band of vertical space on every page, doing nothing, plus a second wordmark under the first.
-Consistent and long-standing, so this is hers to want. Remove the page-level `gw-hdr` from the
-in-app pages and keep each page's Back link where it earns its place.
+**Four, not six.** Of the pages using the `gw-hdr` class inside the shell, the feed's shows the
+ORGANISATION's name and the prompt page's says "Prompt management" - both are page titles that
+happen to share a class, and both are useful. Only the grounds list, the create wizard, settings
+and the not-found page printed a literal second "Groundwork".
+
+**And the bar stays.** My plan said remove the header; the headers hold real controls - Settings
+and Sign out, Back links, the feedback button, "+ Invite". Deleting them to reclaim a strip of
+vertical space would have removed navigation to save 56 pixels, which is the mistake this whole
+wave is about. The wordmark is replaced by the page's own name - "Your grounds", "New ground",
+"Settings", "Not found" - which is the thing a second line of chrome can usefully carry.
+
+Verified on `/settings`: one "Groundwork" on the page, and the bar reads "Settings · Back".
 
 ## Then: removals
 
-### W13-12 · `components/layout/AppShell.tsx` (311 lines) and `components/FeedbackWidget.tsx` (189) - **S**
+### W13-12 · The dead components, and the guard - **DONE, and it found two more**
 
-Mounted nowhere and imported nowhere; the live versions of both are inside
-`components/gw/AppShell.tsx`. Delete. **Then add the guard**, because this is the repo's
-signature bug - a component extracted into a file, reimplemented inline, and the file left to
-rot. A test that fails on a `.tsx` under `components/` that nothing imports would have caught
-both, and would have caught the dead `stores/view.ts` too.
+Both files were **already gone** - deleted in an earlier wave - so the deletion half of this item
+was stale. The guard was the valuable half, and writing it found two more nobody knew about:
+
+| File | What it was |
+|---|---|
+| `components/ConfDots.tsx` | A confidence-dot display, from a scoring model the product retired |
+| `components/gw/GwBrand.tsx` | A wordmark component - while six pages hand-wrote their own, which is W13-11 |
+
+Both deleted. `nothing-is-left-behind.spec.ts` now fails on any `.tsx` under `components/` that
+no non-spec file imports, and states why it is not a lint rule: `noUnusedLocals` sees inside a
+file, and every one of these type-checked perfectly. The question is about the import graph.
+
+A component whose only importer is its own test counts as dead, because that is the shape that
+survives longest. Bite-checked by planting an orphan, which it named.
 
 ### W13-13 · `/feed` - **M, after W13-3**
 

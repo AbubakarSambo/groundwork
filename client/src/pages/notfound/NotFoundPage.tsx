@@ -25,7 +25,10 @@ export function NotFoundPage() {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
       <div className="gw-hdr">
-        <Link to="/" className="gw-logo" style={{ textDecoration: 'none', color: 'inherit' }}>Groundwork</Link>
+        {/* The rail already says Groundwork two inches to the left. This said it again, so
+              the page's own name is here instead - which is the thing a second line of
+              chrome could usefully carry. W13-11. */}
+              <span className="gw-logo">Not found</span>
       </div>
       <div className="gw-bd" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '70vh', maxWidth: 420, margin: '0 auto', width: '100%' }}>
         <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-muted)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 12 }}>

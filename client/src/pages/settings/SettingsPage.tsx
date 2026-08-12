@@ -60,7 +60,10 @@ export function SettingsPage() {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
       <div className="gw-hdr">
-        <div className="gw-logo" style={{ cursor: 'pointer' }} onClick={() => navigate('/grounds')}>Groundwork</div>
+        {/* The rail already says Groundwork two inches to the left. This said it again, so
+              the page's own name is here instead - which is the thing a second line of
+              chrome could usefully carry. W13-11. */}
+              <div className="gw-logo">Settings</div>
         <span
           onClick={() => navigate('/grounds')}
           style={{ fontSize: 13, color: 'var(--gw-sub)', cursor: 'pointer' }}

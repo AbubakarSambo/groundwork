@@ -451,7 +451,10 @@ export function CreateGroundPage() {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
       <div className="gw-hdr">
-        <a href="https://myground.work" target="_blank" rel="noopener noreferrer" className="gw-logo" style={{ textDecoration: 'none', color: 'inherit' }}>Groundwork</a>
+        {/* The rail already says Groundwork two inches to the left. This said it again, so
+              the page's own name is here instead - which is the thing a second line of
+              chrome could usefully carry. W13-11. */}
+              <span className="gw-logo">New ground</span>
         <button className="gw-back" onClick={back}>← Back</button>
       </div>
 
