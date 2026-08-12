@@ -610,13 +610,25 @@ export function ReportPage() {
           </button>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
             <span style={{ background: 'white', borderRadius: 4, padding: '3px 4px', display: 'inline-flex' }}><VennIcon size={24} /></span>
-            <span style={{ fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase', color: '#5DCAA5', fontWeight: 700 }}>Shared report</span>
+            {/*
+              THE HEADER SAID "Shared report" WHILE YOU WERE READING YOUR OWN.
+              The toggle below switches the body between two genuinely different
+              documents, and the eyebrow, the headline and the summary above it
+              never changed - so the page insisted it was the shared report on both
+              settings. Hafsah: "i dont know if its our shared report or my report".
+              Whichever one is on screen now says so, in all three places.
+            */}
+            <span style={{ fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase', color: '#5DCAA5', fontWeight: 700 }}>
+              {tab === 'own' ? 'Your report, private to you' : 'Shared report'}
+            </span>
           </div>
           <h1 style={{ fontSize: 30, lineHeight: 1.1, letterSpacing: '-.02em', margin: '0 0 12px', fontWeight: 800 }}>
-            Where everyone's accounts agree or differ.
+            {tab === 'own' ? 'What your own account holds.' : "Where everyone's accounts agree or differ."}
           </h1>
           <p style={{ fontSize: 15, color: 'rgba(255,255,255,.72)', maxWidth: 640, margin: 0 }}>
-            {report.sharedPicture}
+            {tab === 'own'
+              ? 'Only you can see this. It is built from what you said, and nobody else reads your words.'
+              : report.sharedPicture}
           </p>
           <div style={{ marginTop: 20, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {[

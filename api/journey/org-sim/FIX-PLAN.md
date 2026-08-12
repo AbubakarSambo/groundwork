@@ -1562,6 +1562,43 @@ it is done.
 | W8-50 | the two rules that keep the page count down | - | reference |
 | W8-53 | the pages that must NOT merge | - | reference |
 
+## DECISIONS TAKEN, 2026-08-12
+
+| Question | Her answer |
+|---|---|
+| Can one person belong to several organisations? | **Yes.** |
+| Where does a ground created by a participant land? | **In the organisation of whoever invited them.** So somebody in more than one org signs in and chooses which one they are working in. |
+| Red in the rail | Built as bold-plus-dot for your turn and red only once the window has closed, which is a deliberate departure from "turn red when it is time" - the engine's own rules forbid surveillance signals, and red at "your turn" marks somebody for being on time. One line to change if she disagrees. |
+| Closed grounds in the rail | About three months, then out. |
+| Grouping the rail | Deferred. Flat, sorted by attention. |
+| Sessions | Derived from timeline and cadence. The defect was three places disagreeing, not the arithmetic. |
+
+**What the first two unlock, and what they cost.** W8-10, W8-34 and W8-51 are now one approved piece of work: a membership table (user, organisation, role), the active organisation moved from the user row into the session, an org chooser after sign-in shown only when there is more than one, and a switcher in the header. `/enter` becomes that chooser rather than being deleted, and `/setup` becomes the create-an-organisation path on the same page.
+
+**It is a migration that touches auth.** The JWT carries `organizationId` as a scalar and every read that takes the org off the user or the token becomes a read of the active membership. That is the whole reason it is worth doing deliberately rather than alongside other work - it is the one change in this plan that can log everybody out if it goes wrong.
+
+## W8-15 · The report tab - **PART FIXED**, with what is still unknown
+
+Her account: "the reports tab shows multiple buttons and access, i dont know if its our
+shared report or my report, I dont know what M is for the manager."
+
+**Fixed: the page insisted it was the shared report on both settings.** The toggle switches the
+body between two genuinely different documents, and the eyebrow ("SHARED REPORT"), the headline
+("Where everyone's accounts agree or differ") and the summary underneath never changed with it.
+So somebody reading their own private report was told, in three places at once, that they were
+looking at the shared one. All three now say which report is on screen, and the private one says
+plainly that only they can see it.
+
+**Not found: the bare "M".** Every label path traced - `participantLabel` in the client,
+`labelsForParties` on the server - falls back to a name, then a role, then "a teammate", and the
+server's report labels are "the initiator" or "participant A", never a single letter. The avatar
+circles do render one letter, from the first character of an email, but always with the name and
+address beside them.
+
+So there is a surface showing a lone letter that I have not located. **What would settle it in
+one minute: which page, and a screenshot.** Guessing at a redesign of the wrong component is how
+the last two withdrawn findings happened.
+
 ## Decisions before code. Hafsah's.
 
 | # | Question | Size once decided |
