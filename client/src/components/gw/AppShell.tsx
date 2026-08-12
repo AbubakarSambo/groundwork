@@ -1,4 +1,5 @@
 import { toast } from 'sonner'
+import { railAttention, railRank, stillInRail } from '@/lib/rail-attention'
 import { plannedSessionsFor } from '@/lib/sessionCount'
 import { useState, useRef, useEffect } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
@@ -485,7 +486,21 @@ export function AppSidebar() {
             {!isEntryPage && grounds.length === 0 && (
               <div style={{ fontSize: 12, color: 'rgba(255,255,255,.3)', padding: '8px 6px' }}>No grounds yet</div>
             )}
-            {grounds.map(g => {
+            {/*
+              THE RAIL IS A CHANNEL LIST, so it is ordered by what needs you and it
+              drops grounds that closed long ago.
+
+              Attention first (overdue, then your turn, then waiting on others), and
+              a closed ground stays about three months before leaving - long enough
+              that the report and the resolution are still where people expect them.
+              Sorting by attention is most of why a flat rail can stay flat: the rows
+              that need you are always at the top, whatever the count.
+            */}
+            {grounds
+              .filter(g => stillInRail(g as any))
+              .slice()
+              .sort((a, b) => railRank(railAttention(a as any, user?.id)) - railRank(railAttention(b as any, user?.id)))
+              .map(g => {
               // DISTINCT session numbers, not the number of check-in rows: with 5
               // people over 13 sessions this counted 65 "sessions".
               //
@@ -502,6 +517,8 @@ export function AppSidebar() {
               const planned = plannedSessionsFor(g.timelineDays, (g as any).cadence, (g as any).maxSessions)
               // Never show fewer planned than have already happened.
               const maxSessions = planned != null ? Math.max(planned, sessions) : null
+              // What this ground needs from you, if anything. See lib/rail-attention.
+              const attention = railAttention(g as any, user?.id)
               return (
                 <div key={g.id} style={{ marginBottom: 2, borderRadius: 8, overflow: 'hidden' }}>
                   <NavLink
@@ -530,7 +547,29 @@ export function AppSidebar() {
                       />
                     ) : (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <span style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,.88)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                        {/*
+                          BOLD AND A DOT WHEN IT IS YOUR TURN, RED ONLY WHEN LATE.
+                          Hafsah asked for the name to turn red when it is time to
+                          check in; this splits that in two deliberately. A ground
+                          going red the moment it is your turn puts a red mark
+                          against somebody for being on time, and the engine's own
+                          rules forbid surveillance signals of exactly that shape.
+                        */}
+                        {(attention.kind === 'yours' || attention.kind === 'overdue') && (
+                          <span
+                            title={attention.kind === 'overdue' ? `Session ${attention.sessionNumber} is ${attention.daysLate} days past its date` : `Session ${attention.sessionNumber} is ready for you`}
+                            style={{
+                              width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
+                              background: attention.kind === 'overdue' ? '#F87171' : '#5DCAA5',
+                            }}
+                          />
+                        )}
+                        <span style={{
+                          fontSize: 13,
+                          fontWeight: attention.kind === 'yours' || attention.kind === 'overdue' ? 800 : 600,
+                          color: attention.kind === 'overdue' ? '#FCA5A5' : attention.kind === 'yours' ? 'white' : 'rgba(255,255,255,.88)',
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1,
+                        }}>
                           {g.label}
                         </span>
                         <button
