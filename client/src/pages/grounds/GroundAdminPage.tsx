@@ -326,7 +326,7 @@ export function GroundAdminPage() {
           // own admin view instead of trying to open a check-in that does
           // not exist. also-checking-in -> unchanged, straight into the
           // real engine.
-          if (checkInId) navigate(`/chat/${checkInId}`)
+          if (checkInId) navigate(`/checkin/${checkInId}`)
           else qc.invalidateQueries({ queryKey: ['ground', id] })
         }}
       />
@@ -1032,7 +1032,7 @@ export function GroundAdminPage() {
                  * YOUR OWN ROWS OPEN. NOBODY ELSE'S EVER DOES.
                  *
                  * These were plain divs with cursor:auto, so a completed session
-                 * was a dead card - the transcript renders fine at /chat/:id and
+                 * was a dead card - the transcript renders fine at /checkin/:id and
                  * nothing in the product linked to it. That was most of "I have
                  * no way to see my chats".
                  *
@@ -1042,7 +1042,7 @@ export function GroundAdminPage() {
                  * so the guard is on identity, not on a permission flag.
                  */
                 const isMine = !!user?.id && who?.userId === user.id
-                const openMine = () => navigate(`/chat/${ci.id}`)
+                const openMine = () => navigate(`/checkin/${ci.id}`)
                 return (
                 <div
                   key={ci.id}
