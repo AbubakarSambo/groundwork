@@ -114,4 +114,32 @@ describe('the wiring itself', () => {
     const src = require('fs').readFileSync(require('path').join(__dirname, 'entry.service.ts'), 'utf8');
     expect(src).toMatch(/this\.conversation[\s\S]{0,40}\.ensureNextSession\(/);
   });
+
+  it('IN commitInner, not merely somewhere in the file', () => {
+    /**
+     * THE ASSERTION THAT WOULD HAVE CAUGHT MY OWN MISTAKE.
+     *
+     * The first version of this fix went into `joinCommit` - the path for
+     * somebody joining by broadcast link - and this spec passed, because it only
+     * asked whether the call appeared anywhere in the file. The initiator's own
+     * commit, which is the one that creates the ground from the entry chat, still
+     * scheduled nothing. Green test, unfixed bug, and the exact shape of error
+     * this codebase has hit repeatedly: a fix proved against its builder rather
+     * than against the path it was meant to repair.
+     *
+     * So the call has to be inside commitInner, checked by slicing that method
+     * out of the file rather than by trusting the whole-file match above.
+     */
+    const src: string = require('fs').readFileSync(require('path').join(__dirname, 'entry.service.ts'), 'utf8');
+    const start = src.indexOf('private async commitInner(');
+    expect(start).toBeGreaterThan(-1);
+    // The next method declaration at class-member indent ends this one.
+    const rest = src.slice(start + 10);
+    const nextDecl = rest.search(/\n  (?:private )?async [a-zA-Z]/);
+    const body = nextDecl === -1 ? rest : rest.slice(0, nextDecl);
+
+    expect(body).toMatch(/ensureNextSession\(ground\.id, participant\.id, 1\)/);
+    // And the documents from the entry chat are kept in the same method.
+    expect(body).toMatch(/groundDocument[\s\S]{0,80}create\(/);
+  });
 });

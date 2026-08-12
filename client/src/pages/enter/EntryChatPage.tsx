@@ -1134,6 +1134,18 @@ export function EntryChatPage() {
           if (dashIdx === -1) return { email: entry }
           return { email: entry.slice(0, dashIdx), context: entry.slice(dashIdx + 3) }
         }),
+        /**
+         * THE DOCUMENT SURVIVES AS A DOCUMENT, not just as words in the chat.
+         *
+         * "+ Doc" folds the file into the conversation as
+         * `[Document: "name"] <text> Context from me: ...`, which is right for the
+         * conversation and was the ONLY thing that happened to it. No record was
+         * created, so a contract attached at the moment the product asks for
+         * evidence never reached the Documents list, carried no visibility, got no
+         * assessment, and did not count toward the document-backed share of the
+         * record - a figure the report shows to both parties.
+         */
+        documents: uploadedDoc ? [{ fileName: uploadedDoc.name, content: uploadedDoc.content }] : undefined,
         // Coordinator/lead path: the lead runs the first check-in; the
         // onboarding context travels as the brief (there is no transcript).
         ...(flowPath === 'lead' && leadEmail.trim().includes('@')

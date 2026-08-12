@@ -658,6 +658,8 @@ STRICT RULES:
       brief?: string;
       lead?: { email: string; name?: string; contextNote?: string };
       history: ChatTurn[];
+      /** Documents attached during the anonymous chat, kept as real records. */
+      documents?: { fileName: string; content: string; mimeType?: string }[];
       report?: EntryReport | null;
       contributors: { email: string; context?: string; inviteToken?: string; note?: string }[];
     },
@@ -898,6 +900,48 @@ STRICT RULES:
         completedAt: new Date(),
       },
     });
+
+    /**
+     * KEEP THE DOCUMENTS THE PERSON ATTACHED.
+     *
+     * The entry chat's "+ Doc" control folded a document into the transcript as
+     * text and created no record of it, so evidence attached in the flow most
+     * people meet first was not evidence as far as the product was concerned: no
+     * entry in Documents, no visibility, no assessment, and it never counted
+     * toward the document-backed share of the record that the report measures and
+     * shows to both parties.
+     */
+    for (const doc of dto.documents ?? []) {
+      await this.prisma.groundDocument
+        .create({
+          data: {
+            groundId: ground.id,
+            participantId: participant.id,
+            fileName: doc.fileName,
+            mimeType: doc.mimeType ?? 'text/plain',
+            content: doc.content,
+          },
+        })
+        .catch((e) => this.logger.error(`entry commit: could not keep document "${doc.fileName}": ${e?.message ?? e}`));
+    }
+
+    /**
+     * AND SCHEDULE SESSION 2.
+     *
+     * Sessions after the first come from `ensureNextSession`, which runs when a
+     * check-in COMPLETES through the conversation service. This path completes one
+     * with a direct `update`, so it never fired: a ground made through the entry
+     * chat had exactly one check-in and nothing scheduled a second. The ground page
+     * offers "Session N is ready for you" only when an open check-in exists, so it
+     * never appeared, and it read as a missing button rather than a missing session.
+     *
+     * Best-effort: a ground that exists with a saved record is worth more than one
+     * that fails to commit because the follow-up could not be scheduled. ONE_TIME
+     * correctly schedules nothing.
+     */
+    await this.conversation
+      .ensureNextSession(ground.id, participant.id, 1)
+      .catch((e) => this.logger.error(`entry commit: could not schedule session 2 for ground ${ground.id}: ${e?.message ?? e}`));
 
     // Extract structured record entries for the initiator so report synthesis can read them.
     if (dto.history.length > 0) {
