@@ -667,6 +667,26 @@ export function GroundAdminPage() {
       <div className="gw-bd" style={{ paddingTop: 12, maxWidth: 600, margin: '0 auto', width: '100%' }}>
 
         {/* OVERVIEW */}
+        {/*
+          THE PERSON WHO SET IT UP HAS TO KNOW WHAT IT IS WAITING FOR. W9-7.
+          
+          Holding the invites is right, and silently holding them is not: without this
+          the creator sees a ground that looks finished, adds somebody, and gets a
+          refusal with no explanation of who has to act.
+        */}
+        {(ground as any).status === 'AWAITING_APPROVAL' && (
+          <div style={{ background: '#FDF8E3', border: '1px solid #E8D9A0', borderRadius: 10, padding: '13px 15px', marginBottom: 16 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#8A5C1A', marginBottom: 4 }}>
+              Waiting for an admin to accept this ground
+            </div>
+            <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+              You can keep editing it, and nobody can be invited until it is accepted - so nobody
+              has been contacted and nothing has been shared. An admin in your organisation sees it
+              on their grounds page.
+            </div>
+          </div>
+        )}
+
         {tab === 'overview' && (
           <div>
             {/*

@@ -77,6 +77,14 @@ class AddNoteDto {
   text!: string;
 }
 
+class DeclineGroundDto {
+  /** Optional, and worth asking for: "no" with no reason is what stops people asking. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  reason?: string;
+}
+
 @ApiTags('Grounds')
 @ApiBearerAuth()
 @Controller('grounds')
@@ -108,7 +116,8 @@ export class GroundsController {
   @Post()
   @ApiOperation({ summary: 'Open a new alignment ground' })
   async create(@CurrentUser() user: CurrentUserData, @Body() dto: CreateGroundDto) {
-    return this.grounds.create(user.organizationId, user.id, dto);
+    // The role decides whether this ground waits for an admin to accept it.
+    return this.grounds.create(user.organizationId, user.id, dto, user.role);
   }
 
   @Post('for-lead')
@@ -195,6 +204,27 @@ export class GroundsController {
   @ApiOperation({ summary: 'Return the requesting user\'s own check-in status for this ground' })
   async myCheckinStatus(@Param('id') id: string, @CurrentUser('id') userId: string) {
     return this.grounds.getMyCheckinStatus(id, userId);
+  }
+
+  @Get('awaiting-approval')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Grounds a member has set up that are waiting for an admin to accept them' })
+  async awaitingApproval(@CurrentUser('organizationId') organizationId: string) {
+    return this.grounds.listAwaitingApproval(organizationId);
+  }
+
+  @Post(':id/approve')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Accept a ground so its people can be invited' })
+  async approve(@Param('id') id: string, @CurrentUser() user: CurrentUserData) {
+    return this.grounds.approve(id, user.organizationId, user.id);
+  }
+
+  @Post(':id/decline')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Decline a ground. It closes, and nobody is ever invited to it.' })
+  async decline(@Param('id') id: string, @CurrentUser() user: CurrentUserData, @Body() dto: DeclineGroundDto) {
+    return this.grounds.declineGround(id, user.organizationId, user.id, dto.reason);
   }
 
   @Get(':id/my-notes')

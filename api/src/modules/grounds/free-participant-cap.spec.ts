@@ -17,7 +17,18 @@ function makeService(ground: any, existingParticipantCount: number) {
     ground: { update: jest.fn(async () => ({})) },
   };
   const prisma: any = {
-    ground: { findFirst: jest.fn(async () => ground) },
+    ground: {
+      /**
+       * The mock has to answer the QUESTION it was asked, not return the same row to
+       * everything. `addParticipant` now begins by asking "is this ground waiting for
+       * an admin to accept it" - a findFirst with `status: AWAITING_APPROVAL` in its
+       * where - and a mock that ignores the where answered yes, so every add was
+       * blocked and two cap tests failed on a gate they are not about.
+       */
+      findFirst: jest.fn(async (args: any) =>
+        args?.where?.status === 'AWAITING_APPROVAL' ? null : ground,
+      ),
+    },
     user: { findUnique: jest.fn(async () => ({ id: 'admin', firstName: 'Admin' })) },
     groundParticipant: {
       findFirst: jest.fn(async () => null), // no existing participant with this email

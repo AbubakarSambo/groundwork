@@ -84,6 +84,10 @@ enum GroundMoment {
 }
 
 enum GroundStatus {
+  /// A member created this and an org admin has not accepted it yet. Nothing has
+  /// been invited and no check-in can open: the approval is worthless if anybody
+  /// has already been asked to take part. Admin-created grounds skip this.
+  AWAITING_APPROVAL
   AWAITING_LEAD // admin created this for a lead; lead invited but has not confirmed yet
   OPEN // created, parties may not all be added
   AWAITING_PARTIES // waiting on check-ins
@@ -489,6 +493,12 @@ model Ground {
   // Versioned targets. A goal change is a new chapter, not an overwrite.
   baselines           GroundBaseline[]
   participantNotes ParticipantNote[]
+  /// Who accepted or declined this ground, and when. Null on a ground that never
+  /// needed accepting - an admin's own, or one created before the gate existed.
+  approvedById   String?   @map("approved_by_id")
+  approvedAt     DateTime? @map("approved_at")
+  /// Why it was declined, in the admin's words. Shown to whoever created it.
+  declineReason  String?   @map("decline_reason") @db.Text
 }
 
  // WHAT A PERSON WAS LAST ASKED TO DO, AND WHAT HAPPENED TO IT.

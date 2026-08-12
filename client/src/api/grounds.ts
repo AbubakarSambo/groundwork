@@ -217,4 +217,19 @@ export const groundsApi = {
 
   deleteMyNote: (groundId: string, noteId: string) =>
     apiClient.delete<{ deleted: boolean }>(`/grounds/${groundId}/my-notes/${noteId}`).then(r => r.data),
+
+  /** Grounds a member set up that an admin has not accepted yet. Admin only. */
+  awaitingApproval: () =>
+    apiClient
+      .get<{
+        id: string; label: string; scenario: string; createdAt: string
+        timelineDays: number | null; cadence: string | null; createdBy: string
+      }[]>('/grounds/awaiting-approval', { skipForbiddenToast: true })
+      .then(r => r.data),
+
+  approve: (groundId: string) =>
+    apiClient.post<{ id: string; status: string; alreadyDecided: boolean }>(`/grounds/${groundId}/approve`, {}).then(r => r.data),
+
+  declineGround: (groundId: string, reason?: string) =>
+    apiClient.post<{ id: string; status: string; alreadyDecided: boolean }>(`/grounds/${groundId}/decline`, { reason }).then(r => r.data),
 }

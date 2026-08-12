@@ -180,6 +180,42 @@ export class EmailService {
    * `url` is pre-resolved by the caller: a password-setup link for a brand new
    * user, or a direct link to the ground's confirm-lead screen for someone who
    * already has an account. */
+  /**
+   * An admin accepted the ground somebody set up.
+   *
+   * Without this the creator watches a page that says "waiting" and has no idea
+   * whether anything happened - and the whole point of holding the invites is that
+   * they cannot just carry on regardless.
+   */
+  async sendGroundApproved(email: string, firstName: string, groundLabel: string, url: string): Promise<void> {
+    await this.sendEmail({
+      to: email,
+      subject: `Your ground is approved: ${groundLabel}`,
+      html: this.layout(
+        `<p>Hi ${firstName},</p>
+         <p>An admin in your organisation has approved <strong>${groundLabel}</strong>. You can invite the people involved now, and their check-ins can begin.</p>
+         <p><a href="${url}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Open the ground →</a></p>`,
+      ),
+    });
+  }
+
+  /**
+   * Declined. The reason is included when there is one, because "no" without a reason
+   * is the thing that makes people stop asking.
+   */
+  async sendGroundDeclined(email: string, firstName: string, groundLabel: string, reason: string | null): Promise<void> {
+    await this.sendEmail({
+      to: email,
+      subject: `Your ground was not approved: ${groundLabel}`,
+      html: this.layout(
+        `<p>Hi ${firstName},</p>
+         <p>An admin in your organisation has not approved <strong>${groundLabel}</strong>, so it will not run and nobody has been invited to it.</p>
+         ${reason ? `<p style="border-left:3px solid #E2E0DB;padding:8px 14px;color:#4A4540;">${reason}</p>` : ''}
+         <p>Nothing you wrote has been shared with anybody. If this was a misunderstanding, the fastest way through it is a conversation with whoever administers Groundwork for your organisation.</p>`,
+      ),
+    });
+  }
+
   async sendLeadInvite(email: string, adminName: string, groundLabel: string, url: string, context?: DeliveryContext): Promise<{ devUrl?: string }> {
     const devUrl = await this.sendEmail({
       to: email,

@@ -107,7 +107,13 @@ export class GroundsService {
     private config: ConfigService,
   ) {}
 
-  async create(organizationId: string, initiatorId: string, dto: CreateGroundDto) {
+  /**
+   * @param creatorRole the caller's role in the organisation. A ground created by
+   *   somebody who is not an ADMIN waits for one to accept it - her requirement, and
+   *   the reason it is a parameter rather than a lookup is that the controller already
+   *   has it on the token and a second read could disagree with the guard.
+   */
+  async create(organizationId: string, initiatorId: string, dto: CreateGroundDto, creatorRole?: string) {
     // --- Billing gate ---
     // Resolve whether this org may create a ground right now, and how.
     const canCreate = await this.billing.canCreateGround(organizationId, dto.accessCode);
@@ -135,7 +141,18 @@ export class GroundsService {
         cadenceAnchorDay: dto.cadenceAnchorDay ?? null,
         startsAt: dto.startsAt ? new Date(dto.startsAt) : null,
         endsAt: dto.endsAt ? new Date(dto.endsAt) : null,
-        status: GroundStatus.OPEN,
+        /**
+         * AN ORG ADMIN ACCEPTS A GROUND BEFORE ANYBODY IS INVITED TO IT.
+         *
+         * A member's ground waits. An admin's does not - they are the approver, and
+         * making them approve their own work is a step that teaches people to click
+         * through steps.
+         *
+         * The status is the whole gate: `addParticipant` refuses while it holds, so
+         * nobody can be invited, and an approval nobody could pre-empt is the only
+         * kind worth having.
+         */
+        status: creatorRole === 'ADMIN' ? GroundStatus.OPEN : GroundStatus.AWAITING_APPROVAL,
         resolutionState: dto.resolutionState ?? null,
         brief: dto.brief ?? null,
         joinToken: crypto.randomBytes(24).toString('hex'),
@@ -1046,6 +1063,24 @@ export class GroundsService {
    * (magic link) and stamp notifiedAt. (OPTION FOUR RULE, Part 1.)
    */
   async addParticipant(groundId: string, organizationId: string, initiatorId: string, dto: AddParticipantDto) {
+    /**
+     * NOBODY IS INVITED TO A GROUND THAT HAS NOT BEEN ACCEPTED.
+     *
+     * This is where the approval either means something or does not. Blocking the
+     * status change alone would leave the invite path open, and an invite that has
+     * already gone out cannot be recalled by declining afterwards - the person has
+     * read it.
+     */
+    const pending = await this.prisma.ground.findFirst({
+      where: { id: groundId, organizationId, status: GroundStatus.AWAITING_APPROVAL },
+      select: { id: true },
+    });
+    if (pending) {
+      throw new BadRequestException(
+        'This ground is waiting for an admin in your organisation to accept it. Nobody can be invited until then.',
+      );
+    }
+
     const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId } });
     if (!ground) throw new NotFoundException('Ground not found');
 
@@ -1509,6 +1544,100 @@ export class GroundsService {
    * somebody else's account. This is carried into the next session as something to
    * ASK about instead.
    */
+  /**
+   * AN ADMIN ACCEPTS A GROUND, AND ONLY THEN CAN ANYBODY BE ASKED TO TAKE PART.
+   *
+   * Idempotent on purpose: two admins opening the same list and both clicking accept
+   * is a normal race, and the second one should not see an error for agreeing.
+   */
+  async approve(groundId: string, organizationId: string, adminUserId: string) {
+    const ground = await this.prisma.ground.findFirst({
+      where: { id: groundId, organizationId },
+      select: { id: true, status: true, label: true, initiatorId: true },
+    });
+    if (!ground) throw new NotFoundException('Ground not found');
+    if (ground.status !== GroundStatus.AWAITING_APPROVAL) {
+      // Already accepted, or never needed accepting. Either way there is nothing to do.
+      return { id: ground.id, status: ground.status, alreadyDecided: true };
+    }
+
+    const updated = await this.prisma.ground.update({
+      where: { id: groundId },
+      data: { status: GroundStatus.OPEN, approvedById: adminUserId, approvedAt: new Date() },
+      select: { id: true, status: true },
+    });
+
+    // The person who set it up is waiting on this, and nothing else would tell them.
+    const creator = await this.prisma.user.findUnique({
+      where: { id: ground.initiatorId },
+      select: { email: true, firstName: true },
+    });
+    const url = `${this.config.get<string>('resend.frontendUrl') ?? ''}/grounds/${ground.id}`;
+    if (creator?.email) {
+      await this.email
+        .sendGroundApproved(creator.email, creator.firstName ?? 'there', ground.label, url)
+        .catch((err: any) => this.logger.error(`Approval email failed for ground ${ground.id}: ${err.message}`));
+    }
+    return { ...updated, alreadyDecided: false };
+  }
+
+  /**
+   * Declined. The ground is CLOSED rather than deleted: somebody wrote it, and a row
+   * that vanishes is indistinguishable from a bug to the person who created it.
+   */
+  async declineGround(groundId: string, organizationId: string, adminUserId: string, reason?: string) {
+    const ground = await this.prisma.ground.findFirst({
+      where: { id: groundId, organizationId },
+      select: { id: true, status: true, label: true, initiatorId: true },
+    });
+    if (!ground) throw new NotFoundException('Ground not found');
+    if (ground.status !== GroundStatus.AWAITING_APPROVAL) {
+      return { id: ground.id, status: ground.status, alreadyDecided: true };
+    }
+    const updated = await this.prisma.ground.update({
+      where: { id: groundId },
+      data: {
+        status: GroundStatus.CLOSED,
+        closedAt: new Date(),
+        approvedById: adminUserId,
+        approvedAt: new Date(),
+        declineReason: reason?.trim() || null,
+      },
+      select: { id: true, status: true },
+    });
+    const creator = await this.prisma.user.findUnique({
+      where: { id: ground.initiatorId },
+      select: { email: true, firstName: true },
+    });
+    if (creator?.email) {
+      await this.email
+        .sendGroundDeclined(creator.email, creator.firstName ?? 'there', ground.label, reason?.trim() || null)
+        .catch((err: any) => this.logger.error(`Decline email failed for ground ${ground.id}: ${err.message}`));
+    }
+    return { ...updated, alreadyDecided: false };
+  }
+
+  /** What is waiting on an admin. Oldest first: the longest wait is the worst one. */
+  async listAwaitingApproval(organizationId: string) {
+    const rows = await this.prisma.ground.findMany({
+      where: { organizationId, status: GroundStatus.AWAITING_APPROVAL },
+      orderBy: { createdAt: 'asc' },
+      select: {
+        id: true, label: true, scenario: true, createdAt: true, timelineDays: true, cadence: true,
+        initiator: { select: { firstName: true, lastName: true, email: true } },
+      },
+    });
+    return rows.map((g) => ({
+      id: g.id,
+      label: g.label,
+      scenario: g.scenario,
+      createdAt: g.createdAt,
+      timelineDays: g.timelineDays,
+      cadence: g.cadence,
+      createdBy: [g.initiator.firstName, g.initiator.lastName].filter(Boolean).join(' ') || g.initiator.email,
+    }));
+  }
+
   async addMyNote(groundId: string, userId: string, text: string) {
     const trimmed = (text ?? '').trim();
     if (!trimmed) throw new BadRequestException('A note needs some words in it.');
