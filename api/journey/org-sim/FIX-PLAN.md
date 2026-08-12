@@ -4777,3 +4777,58 @@ because the report-ready email points at it. Same reason `/auth/sent`, `/set-pas
 
 Every S is an afternoon or less. The two that change what a person can do are W13-2 and W13-3,
 and they are both small, which is the argument for doing them first.
+
+## Wave 13 · What running the plan changed about the plan
+
+Fourteen items, all closed. Four of them were not what the audit said they were, and that is the
+most useful thing to come out of the wave.
+
+| Item | The plan said | What was true |
+|---|---|---|
+| W13-2 | A lead is never told their ground is waiting | **Already built.** The banner, the copy, and an "Awaiting approval" label in the rail |
+| W13-3 | An admin is never told a ground is waiting | **Already built, and better than my proposal** - "WAITING FOR YOU" with Approve / Not this one / Look at it first, on the page they land on |
+| W13-4 | The home page hides its nav; `/use-cases` is unlinked | **Inverted.** The home page had the FULLEST nav; the other four dropped Use cases, including its own page |
+| W13-12 | Delete two dead components | Already deleted. Writing the guard instead found **two more** nobody knew about |
+
+**The common cause of the first two:** I read a broken endpoint as a missing feature. The approval
+queue was 404ing (W8-69), so the admin's half rendered empty, and I wrote "this does not exist"
+instead of "this is broken". Both halves had been there since W9-7.
+
+**And of the third:** I trusted one screenshot at one window width. The home page's nav had
+collapsed behind its hamburger at 800px, so I recorded it as absent.
+
+### Six things the work found that the audit had not
+
+1. **`GET /users/privacy-audit` read across organisations.** It took a user id off the query string
+   and never checked the caller's org. My plan said "surface it in Settings" - which would have
+   shipped it. Deleted.
+2. **"Active grounds 2" counted a ground waiting for approval**, on the same screen as "nothing
+   goes out until you say so".
+3. **`patterns.service.ts#surfacedForGround` died** when the feed's service went, and the existing
+   dead-method guard said so immediately. That guard working unprompted is the argument for the new
+   one.
+4. **The report's legend promised the prose came first** and would have silently become false.
+5. **Five links and two buttons overflow the marketing nav** - "How it works" wrapped to three
+   lines and the CTA clipped off the edge.
+6. **An `import` after a `const` in Astro frontmatter fails to parse**, reporting an unterminated
+   string twenty lines away.
+
+### Two things I did smaller than planned, on purpose
+
+- **The in-app headers (W13-11).** The plan said remove them. They hold Settings, Sign out, Back
+  links and the feedback button; removing them to reclaim 56 pixels would have deleted navigation.
+  Only the duplicate wordmark went, replaced by the page's own name.
+- **The session count (W13-6).** The plan said the rail and the card. The rail lists names only by
+  her decision that a channel list is names, with the count on the tooltip - so only the card,
+  which is where somebody chooses.
+
+### One I did differently
+
+**Pricing (W13-10).** The plan said one shared source across the two repositories. They are
+separate builds; sharing means coupling or a copy that drifts anyway. A test that fails when the
+two pages disagree gets the whole benefit and none of the coupling.
+
+### State
+
+api 1590 tests / 167 suites, client 546 / 88 files, marketing builds with both postbuild checks
+green. Every guard bite-checked in both directions. Twelve new or rewritten guards across the wave.
