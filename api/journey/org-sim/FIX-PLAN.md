@@ -2686,6 +2686,14 @@ the top of it (W8-5), and the ground summary, which belongs in the header.
 | **11. Auth** | sign in, create an account, link sent, set or reset a password - one page, modes | `/auth` + `/auth/sent` + `/set-password` + `/reset-password` + `/login` |
 | **12. Arrive** | resolve any token - invite, join, email verification - and put the person where they belong, with one missing-token state | `/invite` + `/join` + `/verify-email` |
 | **13. Pricing** | the same tier component as Billing, rendered publicly, so the two can never disagree | `/pricing` |
+
+**Page 13 is already true inside the app, and there was a fourth copy nobody counted.** `/pricing`
+and `/billing` both read `PLAN_PRICES`, `PLAN_MEMBER_CAPS` and `PLAN_FEATURES` from
+`client/src/api/billing.ts`. The marketing site does not: `marketing/src/pages/pricing.astro`
+writes the same five prices and five seat caps into hand-written HTML in a separate build, so a
+price change in the app would leave myground.work advertising the old one to the people who have
+not signed up yet. They agree today. `the-price-is-the-same-everywhere.spec.ts` now fails if they
+stop, without coupling the two builds to each other.
 | **14. Not found** | one sentence, one action. Already right | `*` |
 
 Plus `/demo/:persona`, which is marketing rather than product, and `/auth/google/callback`, which
