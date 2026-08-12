@@ -171,6 +171,21 @@ export function GroundAdminPage() {
    * Falls back to the email's local part only when there is no linked user - which is a
    * participant who has not accepted yet, so there genuinely is no name to use.
    */
+  /**
+   * MY OWN OPEN CHECK-IN, if I am a party to this ground. W8-76.
+   *
+   * A check-in is per participant per session, so "the open one" only means anything once
+   * it is narrowed to the person asking.
+   */
+  const myParticipantId = (ground?.participants ?? []).find((p: any) => p.userId === user?.id)?.id ?? null
+  const myOpenCheckIn = myParticipantId
+    ? ((ground?.checkIns ?? []) as any[])
+        .filter((c) => c.participantId === myParticipantId && c.status !== 'COMPLETED')
+        .sort((a, b) => (a.sessionNumber ?? 0) - (b.sessionNumber ?? 0))[0] ?? null
+    : null
+  const myOpenAvailableFrom = (myOpenCheckIn as any)?.availableFrom ?? null
+  const myOpenOpensLater = !!myOpenAvailableFrom && new Date(myOpenAvailableFrom).getTime() > Date.now()
+
   const nameOfParticipant = (participantId: string | null | undefined): string | null => {
     if (!participantId) return null
     const p: any = (ground?.participants ?? []).find((x: any) => x.id === participantId)
@@ -1242,11 +1257,28 @@ export function GroundAdminPage() {
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
             <GroundChat
               groundId={id!}
-              openCheckInId={null}
-              openSessionNumber={null}
+              /**
+               * THE WAY TO CHECK IN CAME OFF THE PAGE, AND THE GATE CAUGHT IT. W8-76.
+               *
+               * I made Chat the landing tab and passed `openCheckInId={null}`, so a lead who
+               * is also a party - the commonest kind - opened their ground and had no way to
+               * start their own check-in from the tab they land on. suite_m failed on exactly
+               * that: "the next-check-in affordance EXISTS on the ground page (hard - absence
+               * is a failure, not a shrug)". It was right.
+               *
+               * WHY THE BUTTON HANDS OFF INSTEAD OF OPENING. Starting a check-in goes through
+               * `probeSession`, which carries the paywall: a 403 becomes the free-extension /
+               * access-code / subscribe modal. That lives on the participant page, and
+               * copying it here would be a second copy of the payment path - the thing this
+               * plan already records nearly losing once. So the button hands off with
+               * `?open=1` and that page fires its own probe immediately: one click, one
+               * implementation of the paywall.
+               */
+              openCheckInId={myOpenCheckIn && !myOpenOpensLater ? myOpenCheckIn.id : null}
+              openSessionNumber={myOpenCheckIn && !myOpenOpensLater ? myOpenCheckIn.sessionNumber : null}
               totalSessions={plannedSessions ?? null}
-              nextOpensAt={null}
-              onOpenSession={() => {}}
+              nextOpensAt={myOpenOpensLater ? myOpenAvailableFrom : null}
+              onOpenSession={() => navigate(`/grounds/${id}/p?open=1`)}
               openPending={false}
               /**
                 * HER POINT, AND IT IS THE COMMON CASE: "what if sets themselves as

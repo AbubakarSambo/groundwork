@@ -1,5 +1,5 @@
 import { plannedSessionsFor } from '@/lib/sessionCount'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { GroundGone } from '@/components/gw/GroundGone'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -197,6 +197,42 @@ export function GroundParticipantPage() {
   const contextEnabled = (ground as any)?.contextEnabled === true
 
 
+  /**
+   * `?open=1`: THE HANDOFF FROM THE GROUND PAGE'S CHAT. W8-76.
+   *
+   * The lead's Chat tab shows "Check in for session N" but cannot open it there: opening goes
+   * through `probeSession`, which carries the paywall, and that lives on this page. Rather
+   * than a second copy of the payment path, that button sends them here with this flag and
+   * this fires the probe once, so it is one click for the person.
+   *
+   * ABOVE THE EARLY RETURNS, and that is not a style choice. My first version sat next to
+   * `dueNow` further down, below `if (isLoading) return` - so on the first render the hooks
+   * ran and on the second they did not, and React reported "a change in the order of Hooks"
+   * while three unrelated specs went red. That is the second time in this session; the rule
+   * is that every hook goes above every conditional return, without exception.
+   *
+   * Guarded by a ref rather than by the query key, because `probeSession` navigates on
+   * success and a re-render before the navigation lands would fire it twice - two sessions
+   * opened from one click, one of them chargeable.
+   */
+  const autoOpenFired = useRef(false)
+  const myOpenForAutoOpen = (() => {
+    const mine = (ground?.participants ?? []).find((p: any) => p.userId === user?.id)
+    const rows = ((mine as any)?.checkIns ?? []) as any[]
+    const next = rows.filter((c) => c.status !== 'COMPLETED').sort((a, b) => (a.sessionNumber ?? 0) - (b.sessionNumber ?? 0))[0]
+    if (!next) return null
+    const from = next.availableFrom ?? null
+    if (from && new Date(from).getTime() > Date.now()) return null
+    return next
+  })()
+  useEffect(() => {
+    if (autoOpenFired.current) return
+    if (new URLSearchParams(window.location.search).get('open') !== '1') return
+    if (!myOpenForAutoOpen) return
+    autoOpenFired.current = true
+    probeSession.mutate(myOpenForAutoOpen)
+  }, [myOpenForAutoOpen, probeSession])
+
   if (isLoading) return <div style={{ minHeight: '100vh', background: '#F5F3EF', padding: 24, fontSize: 13, color: '#9B9590' }}>Loading…</div>
   // Was the bare words "Ground not found." with nothing to press, in two hardcoded
   // colours of its own. W8-65.
@@ -236,6 +272,7 @@ export function GroundParticipantPage() {
   const openAvailableFrom = (openCheckIn as any)?.availableFrom ?? null
   const opensLater = !!openAvailableFrom && new Date(openAvailableFrom).getTime() > Date.now()
   const dueNow = !!openCheckIn && !opensLater
+
 
   // Derive the session total the same way the create wizard does
   // (floor(timelineDays / cadence interval)), from the timelineDays + cadence

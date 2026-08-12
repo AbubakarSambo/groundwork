@@ -4397,3 +4397,51 @@ cleanup script with no `user_id` predicate moved a test user into somebody else'
 organisation.
 
 Throwaway databases dropped afterwards.
+
+## W8-76 · The gate caught me removing the way to check in - **DONE, NOT MERGED**
+
+The persona gate went red on `suite_m`:
+
+> 🔴 the next-check-in affordance EXISTS on the ground page (hard - absence is a failure, not
+> a shrug)
+
+It was right, and it was mine. Making Chat the landing tab on the lead's ground page (W8-67) I
+passed `openCheckInId={null}`, so **a lead who is also a party opened their ground and had no
+way to start their own check-in** from the tab they land on. That is the commonest kind of
+lead, since setup offers "I am a party. Let's begin." - her own point two messages earlier.
+
+Worth saying plainly: I verified that change in a browser and did not catch this, because the
+ground I looked at had every session finished, so no affordance was due either way. The gate
+had a ground with one open.
+
+### Three things fixed
+
+**The wiring.** The lead's Chat tab now gets their own open check-in, narrowed by
+`participantId`, and does not offer a session whose `availableFrom` is still in the future.
+
+**The word.** The button said "Continue session 3 of 12". Every other surface uses the
+product's own noun - the tab is Check-ins, the email says your check-in is due, the header
+says My check-ins - so the gate looking for "check in" was doing its job. It now reads "Check
+in for session 3 of 12".
+
+**"Session 13 of 12."** Seen for real while verifying, on a twelve-session ground with a
+thirteenth check-in open. A ground CAN run past its plan - a paid extension does exactly that
+- and the counter read as broken rather than as extra work. "of N" is now dropped once the
+session number passes N.
+
+### The paywall stays in one place
+
+Opening a check-in goes through `probeSession`, where a 403 becomes the free-extension,
+access-code or subscribe modal. Copying that onto the lead's page would be a second copy of
+the payment path, which this plan already records nearly losing once. So the button hands off
+with `?open=1` and the participant page fires its own probe: one click for the person, one
+implementation of the paywall. Pinned, including that the lead's page does NOT grow
+`freeExtensionAvailable` or `setShowPaywall` of its own.
+
+### And the same hook mistake, twice in one session
+
+My first version of that auto-open sat below `if (isLoading) return`, so the hook order changed
+between renders and three unrelated specs went red with "React has detected a change in the
+order of Hooks". Identical to the earlier slip in this session. The guard now asserts by
+position that the hook is above the early return, so the third time fails a test instead of
+three unrelated ones.

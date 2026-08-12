@@ -106,20 +106,31 @@ describe('the conversation', () => {
 describe('the bottom of the scroll', () => {
   it('offers the open session, with how many there are', async () => {
     renderChat({ openCheckInId: 'c9', openSessionNumber: 2 })
-    await waitFor(() => expect(screen.getByRole('button', { name: /Continue session 2 of 6/ })).toBeTruthy())
+    await waitFor(() => expect(screen.getByRole('button', { name: /Check in for session 2 of 6/ })).toBeTruthy())
   })
 
   it('and takes a note when nothing is open', async () => {
     renderChat()
     await waitFor(() => expect(screen.getByPlaceholderText(/Note something/)).toBeTruthy())
-    expect(screen.queryByRole('button', { name: /Continue session/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Check in for session/ })).toBeNull()
+  })
+
+  it('drops "of N" once the session number passes N', async () => {
+    /**
+     * A ground can run past its plan - a paid extension does exactly that - and "Check in for
+     * session 13 of 12" reads as a broken counter rather than as extra work. Seen for real
+     * while verifying the affordance on a twelve-session ground with a thirteenth open.
+     */
+    renderChat({ openCheckInId: 'c9', openSessionNumber: 13, totalSessions: 12 })
+    await waitFor(() => expect(screen.getByRole('button', { name: /Check in for session 13 →/ })).toBeTruthy())
+    expect(screen.queryByRole('button', { name: /of 12/ })).toBeNull()
   })
 
   it('never offers a note box while a session is open', async () => {
     // Two places to type would split a person's account in half, with only one of
     // them on record.
     renderChat({ openCheckInId: 'c9', openSessionNumber: 2 })
-    await waitFor(() => expect(screen.getByRole('button', { name: /Continue session/ })).toBeTruthy())
+    await waitFor(() => expect(screen.getByRole('button', { name: /Check in for session/ })).toBeTruthy())
     expect(screen.queryByPlaceholderText(/Note something/)).toBeNull()
   })
 

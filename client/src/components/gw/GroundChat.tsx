@@ -324,11 +324,22 @@ function Composer({ groundId, openCheckInId, openSessionNumber, totalSessions, n
               open-session card; in a conversation there is nowhere else for "how
               many of these are there" to be, and it is the thing that tells
               somebody whether they are at the start of this or near the end. */}
+          {/*
+            IT NEVER SAID "CHECK IN". W8-76.
+
+            The label was "Continue session 3 of 12", and the persona gate looks for the
+            product's own word on the ground page - as it should, because that is the word
+            every other surface uses: the tab is Check-ins, the email says your check-in is
+            due, the header button says My check-ins. "Session 3" is our internal noun.
+          */}
           {openPending
             ? 'Opening…'
             : openSessionNumber != null
-              ? `Continue session ${openSessionNumber}${totalSessions ? ` of ${totalSessions}` : ''} →`
-              : 'Continue your check-in →'}
+              // "of N" is dropped once the session number passes N, because a ground CAN
+              // run past its plan - a paid extension does exactly that - and "session 13 of
+              // 12" reads as a broken counter rather than as extra work. W8-76.
+              ? `Check in for session ${openSessionNumber}${totalSessions && openSessionNumber <= totalSessions ? ` of ${totalSessions}` : ''} →`
+              : 'Check in now →'}
         </button>
       </div>
     )
