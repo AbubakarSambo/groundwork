@@ -4858,3 +4858,160 @@ two pages disagree gets the whole benefit and none of the coupling.
 
 api 1590 tests / 167 suites, client 546 / 88 files, marketing builds with both postbuild checks
 green. Every guard bite-checked in both directions. Twelve new or rewritten guards across the wave.
+
+---
+
+# Wave 14 · From a 6 to a 9.5
+
+Her brief: the peer-visibility toggle, billing that reads as ground setup when it is
+organisation setup, one design language everywhere including the marketing site, links and APIs
+that go nowhere, the conversation engine against today's changes, and a check on whether the
+things I called orphans were things we actually want.
+
+**The honest headline.** Wave 13 fixed what a person trips over. What is left is a different
+class: **the server computes materially more than the product shows**, and the parts that decide
+who sees what are half-wired. That is what keeps this at a 6. None of it is exotic; most of it
+is connecting things that already exist.
+
+## First: she was right about the orphans
+
+I deleted components because nothing imported them. That test was too weak, and here is the
+proof.
+
+**`ConfDots` was not dead weight.** The API has a live confidence feature - `CONFIDENCE_ENABLED`,
+`what-a-leader-can-weigh.ts`, and `whatTheRecordHolds()` returning `whatTheGroundCanTellYou` and
+`softSpots` - and **the client renders none of it**. `ConfDots` was the display half of a feature
+that exists on the server and was never wired up. Deleting it removed the last trace of unfinished
+work rather than dead weight, and the CSS for it is still sitting in `index.css`.
+
+**The rule I should have used:** unimported is not unwanted. Before deleting a component, ask
+whether the server still computes the thing it displays. If it does, the component is a to-do
+with a filename.
+
+| What I deleted | Verdict now |
+|---|---|
+| `ConfDots` | **Wrong call.** Restore when W14-1 wires the confidence read. It is eleven lines; the loss is the signal, not the code |
+| `GwBrand` | Fine. W13-11 replaced in-app wordmarks with page names, so nothing wants it |
+| `/demo/:persona` | Her call, and its founder screen labelled named people with pattern codes |
+| `/feed` + `AlignmentService` | Defensible - three counts the grounds list already shows - but it was the only org-level view in the product. If the answer to "how is my organisation doing" should exist, it comes back as something better, not as that page |
+| `GET /users/privacy-audit` | Right to delete: it read across organisations. **But the capability is worth having** - see W14-9 |
+| `surfacedForGround` | Fine, the ground page reads the same detections |
+
+## The theme: built on the server, invisible in the product
+
+Six substantial capabilities the API computes and **no client file mentions**:
+
+| What the server produces | Where it should surface |
+|---|---|
+| `whatTheGroundCanTellYou` + `softSpots` (confidence) | The report, and the lead's view before a decision |
+| `specificityLevel`, `specificityHistory`, `specificitySignal` | The lead's Sessions tab: who is giving checkable answers |
+| `detectedFunction` + `detectedFunctionConfidence` | The contribution read - what this person's role actually looks like |
+| `patternDetections`, `periodsObserved`, `consecutivePeriods` | Already partly on the board; nothing on the ground page |
+| `groundAuditLog` | Nowhere. An audit trail nobody can read is not an audit trail |
+| `toAcknowledge`, `resolvable`, `resolvedState` | The resolution step |
+
+**This is the difference between a 6 and a 9.5.** The product's promise is that it sees things a
+person cannot; a large part of that seeing currently stops at the database.
+
+### W14-1 · Wire the confidence read - **M**
+`whatTheGroundCanTellYou` says what the record can and cannot support, and `softSpots` says where
+it is thin and what would firm it up. Both are computed for the lead already. Put them on the
+report above the areas, restore a dots component for the strength read, and delete the CSS if the
+answer is that we do not want it after all. **Do not ship the label as a verdict** - the API's own
+`THIS_IS_MATERIAL_NOT_A_VERDICT` note exists for that reason and should be rendered with it.
+
+### W14-2 · Surface specificity where the lead acts - **M**
+The engine scores how checkable each person's answers are, per session, and keeps the history. The
+Sessions tab shows status pills. One column, and a lead can see who is giving evidence and who is
+giving adjectives - which is the thing they cannot get from a meeting.
+
+### W14-3 · The audit trail has no reader - **S**
+`groundAuditLog` records who changed what on a ground. Put it on Ground settings, newest first.
+Small, and it is the difference between "trust us" and "look".
+
+## Who sees what is half-wired
+
+### W14-4 · The peer-visibility toggle does not exist in the product - **S**
+`PATCH /grounds/:id/peer-visibility` is live, tested, and **called by nothing**. Its default is
+computed per scenario family - hidden on evaluation and cohort grounds, shown elsewhere - so today
+the lead cannot see the rule, let alone change it. `peopleWorkTogether` and
+`restrictExternalVisibility` both have controls; this one, the one that decides whether people can
+see each other at all, does not.
+
+Put all three on Ground settings as one group, each with the sentence that says what it does, and
+show the current default and why it is the default.
+
+### W14-5 · A participant is not told the rule that governs them - **S**
+W13-5 shows "Who is in this" when the payload permits it. On a ground where peers are hidden the
+roster silently does not appear, so a participant cannot tell whether nobody else is here or
+whether they are not allowed to know. One line either way.
+
+## Billing is organisation setup wearing ground clothes
+
+### W14-6 · A paying organisation with no open grounds cannot manage its subscription - **S, and it is a bug**
+`BillingPage` derives the subscription from `grounds[0].org`, because `GET /billing/status`
+returns only active grounds and a card. So an organisation that has closed its grounds sees
+**"Free · No subscription"** and loses Pause, Resume and Cancel entirely.
+
+Add the organisation's subscription to `getStatus` - plan, status, period end, people counted
+against the cap - and read it there. Then reorganise the page: the plan and the people are the
+organisation's, the session balances are per ground, and today those are mixed into one list.
+
+### W14-7 · Seat counting is invisible until it bites - **S**
+Every plan is priced by people ("Up to 20 people") and nothing shows how many the organisation has.
+Put it next to the plan: 14 of 20. It is the number that decides whether they upgrade.
+
+## One design language
+
+### W14-8 · Four pages of twenty-eight use the board's kit - **L, but splittable**
+`components/gw/kit.tsx` - Zone, Sec, Card, Row, Pill, Stat - is the board's vocabulary and reads
+better than everything else. It is used by the board, the two ground pages and the grounds list.
+Everything else hand-rolls, and the marketing site shares nothing at all: every page inlines its
+own hex values, and the nav I extracted yesterday is the first shared component it has ever had.
+
+Do it in three passes, not one:
+1. **Tokens first.** One palette and type scale as CSS variables, imported by both the app and the
+   marketing site. Today the same navy is written as `#0C447C` in about forty places across two
+   repositories.
+2. **The app's remaining pages onto the kit** - settings, billing, people, prompts, not-found,
+   auth. `one-look-not-five.spec.ts` already fails a page that imports the kit and hand-rolls it;
+   extend it to fail a page that hand-rolls a section label at all.
+3. **The marketing site onto the same tokens**, keeping its own layout. It is a different job -
+   selling, not operating - and it should look like the same company, not like the same screen.
+
+## Ready to ship, or not
+
+### W14-9 · There is no answer to "what do you hold about me" - **M**
+I deleted the privacy audit because it read across organisations. The capability is worth having
+and the product claims it: the marketing site says a person's answers stay theirs. Build it
+properly - scoped to the caller's organisation, reachable from Settings, showing what is held,
+which grounds it came from, and the export and delete that already exist as endpoints.
+
+### W14-10 · The engine has not been run end to end since 4 August - **L, and this is the shipping gate**
+The last full journey artifact is nine days old. Since then: the report's name substitution
+changed twice, `ENGINE_RULES` gained a rule about claims made against a colleague, the report and
+board were reordered, and a dozen pages moved. The persona suites cover single turns and one
+returning path; **nothing has walked twelve sessions on the current code.**
+
+Her own pending task says this. It is the gate: a report is the product, and the only proof that
+twelve sessions of real conversation still produce a good one is to run twelve sessions.
+
+### W14-11 · The known entry-flow bug is still open - **M**
+"A ground made in the entry chat goes missing after sign-in" is recorded and unfixed. That is the
+first five minutes of the product for every new person.
+
+### W14-12 · Session pacing has never been seen at rest - **S**
+Everything I verified used a ground whose sessions were all complete or all open. Nobody has
+watched a ground sit between sessions with a date in the future, which is where most grounds spend
+most of their life.
+
+## Sizing
+
+| | S | M | L |
+|---|---|---|---|
+| Count | 6 | 4 | 2 |
+| What they are | a toggle, a line of copy, a column, a count, an audit list | wiring a computed read, billing's org shape, the privacy answer, the entry bug | the design pass, the twelve-session run |
+
+**To reach 9.5:** W14-10 is the gate and W14-6 is a live bug, so those first. Then the four
+capability wirings (W14-1 to W14-4), which are where the product starts doing what it says. The
+design pass is the longest and the least urgent, and it is the one that makes it feel finished.
