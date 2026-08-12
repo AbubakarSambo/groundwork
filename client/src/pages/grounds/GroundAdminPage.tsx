@@ -1065,13 +1065,24 @@ export function GroundAdminPage() {
                     </ul>
                   </div>
                 )}
+                {/*
+                  THE LIMITS ARE REAL AND THEY WERE SHOUTING.
+                  On a new ground this card carried ONE line of what it can do and
+                  SEVEN of what it cannot, all at the same size, which reads as a
+                  product apologising for itself on the page where somebody is
+                  deciding whether to bother. Every "cannot" line names something
+                  you can add, so they are worth keeping - but as the answer to
+                  "what would make this stronger", folded away until asked.
+                */}
                 {contextStrength.cannot.length > 0 && (
-                  <div>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: '#8A5C1A', marginBottom: 4 }}>It will not be able to</div>
-                    <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.7 }}>
+                  <details>
+                    <summary style={{ fontSize: 12, fontWeight: 700, color: '#8A5C1A', marginBottom: 4, cursor: 'pointer' }}>
+                      What would make it stronger ({contextStrength.cannot.length})
+                    </summary>
+                    <ul style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.7 }}>
                       {contextStrength.cannot.map((line: string, i: number) => <li key={i}>{line}</li>)}
                     </ul>
-                  </div>
+                  </details>
                 )}
               </div>
             )}
