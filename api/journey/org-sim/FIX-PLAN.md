@@ -3947,3 +3947,42 @@ Pinned in `a-link-that-failed-says-what-to-do.spec.ts`, as text and with comment
 stripped first - my own comment explaining what the old strings were made the check fail
 on the explanation of the fix, and a rule that punishes writing down the reason is a rule
 that gets the reason deleted.
+
+## W8-63 · W9-6 asked what `/feed` answers. It answered by crashing - **DONE**
+
+W9-6 left this open: "an org-wide activity stream. The rail now shows what needs you, and
+the ground shows its own history. Worth asking what the feed answers that neither does."
+
+I opened it and typed one question. **The entire app went white.**
+
+`GET /alignment/narrative` returns `{ summary, activeGrounds, surfacedPatterns }`. The
+page read `res.narrative ?? res`, and with no `narrative` field it fell through to the
+OBJECT, which React cannot render: "Objects are not valid as a React child", uncaught, no
+error boundary, blank page. Every user, one message in, on a page that is in the rail.
+
+**And the endpoint reads no question at all.** It counts active grounds, stalled grounds
+and surfaced patterns and writes those three numbers into a sentence. The `q` parameter
+the page sends is read by nothing. So four things around the crash promised something else:
+
+| Promise | Reality |
+|---|---|
+| "Ask about your team, request a report, or ask about a specific person" (welcome) | Returns the same three counts whatever you type |
+| The same sentence again as the input placeholder | Same |
+| Chips: "Show team overview", "Who is overdue?", "Which grounds are at risk?" | Three questions, one answer - which reads as the product not understanding you |
+| Silent failure for every non-admin | The endpoint is `@Roles(Role.ADMIN)`; "Feed" is in the rail for everybody, so a participant clicking it, asking something and watching the dots disappear was the designed behaviour |
+
+The "ask about a specific person" one is worth naming twice: on a product whose whole
+point is that nobody reads anybody's account, an admin page offering to discuss a named
+person is the wrong promise even when it works.
+
+**Fixed:** reads `summary`, coerces anything unexpected rather than handing it to React,
+says what it actually does, two honest controls instead of three misleading ones, and a
+403 now says "This overview is for organisation admins" instead of nothing.
+
+Pinned in `the-feed-does-not-promise-what-it-cannot-do.spec.tsx`, comments stripped first
+for the same reason as the API guard, three arms bite-checked.
+
+**Her decision, still hers:** whether `/feed` should exist. What it does now is honest but
+thin - three counts and a team list built from every ground's participants. My read is
+that the counts belong on the grounds list and the team list belongs to a ground, which
+would make this page removable. It is no longer urgent, because it no longer breaks.

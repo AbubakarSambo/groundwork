@@ -28,7 +28,16 @@ export function AlignmentFeedPage() {
   const user = useAuthStore(s => s.user)
   const showFeedback = useFeedbackStore(s => s.show)
   const [msgs, setMsgs] = useState<Msg[]>([
-    { id: '0', role: 'AI', content: 'Welcome to the alignment feed. Ask about your team, request a report, or ask about a specific person.' },
+    /**
+     * IT SAID "ask about a specific person" AND COULD NOT. W8-63.
+     *
+     * `GET /alignment/narrative` takes no question - it counts active grounds,
+     * stalled grounds and surfaced patterns for the organisation and writes those
+     * three numbers into a sentence. The `q` parameter this page sends is read by
+     * nothing. So every question, about anybody, returned the same briefing, and the
+     * welcome line invited exactly the two questions it cannot answer.
+     */
+    { id: '0', role: 'AI', content: 'This gives you the state of alignment across your grounds - how many are moving, how many have stalled, and what has been surfaced. Send anything to get the current picture. It does not answer questions about a particular person; a ground is where that lives.' },
   ])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -59,12 +68,45 @@ export function AlignmentFeedPage() {
       setLoading(true)
       setMsgs(v => [...v, { id: Date.now().toString(), role: 'ADMIN', content }, { id: 'loading', role: 'AI', content: '…' }])
     },
+    /**
+     * THIS WHITE-SCREENED THE WHOLE APP, ONE MESSAGE IN. W8-63.
+     *
+     * The endpoint returns `{ summary, activeGrounds, surfacedPatterns }`. This read
+     * `res.narrative ?? res`, and since there is no `narrative` field it fell through
+     * to the OBJECT, which React cannot render - "Objects are not valid as a React
+     * child", uncaught, blank page, everything gone. Found by typing one question
+     * into it in a browser.
+     *
+     * So it reads the field that exists, and anything unexpected is coerced rather
+     * than handed to React, because a briefing being unhelpful is survivable and the
+     * app disappearing is not.
+     */
     onSuccess: (res: any) => {
-      setMsgs(v => v.filter(m => m.id !== 'loading').concat({ id: Date.now().toString(), role: 'AI', content: res.narrative ?? res }))
+      const text = typeof res === 'string'
+        ? res
+        : (res?.summary ?? res?.narrative ?? 'No picture available right now.')
+      setMsgs(v => v.filter(m => m.id !== 'loading').concat({
+        id: Date.now().toString(),
+        role: 'AI',
+        content: typeof text === 'string' ? text : JSON.stringify(text),
+      }))
       setLoading(false)
     },
-    onError: () => {
-      setMsgs(v => v.filter(m => m.id !== 'loading'))
+    /**
+     * AND A FAILURE SAID NOTHING AT ALL. The endpoint is `@Roles(Role.ADMIN)`, and
+     * "Feed" is in the rail for everybody, so a participant clicking it, typing a
+     * question and getting a silent deletion of the loading dots was the designed
+     * behaviour. It now says which of the two it was.
+     */
+    onError: (err: any) => {
+      const forbidden = err?.response?.status === 403
+      setMsgs(v => v.filter(m => m.id !== 'loading').concat({
+        id: Date.now().toString(),
+        role: 'AI',
+        content: forbidden
+          ? 'This overview is for organisation admins. Your own grounds are on the Grounds list.'
+          : 'Could not fetch the picture just now. Try again in a moment.',
+      }))
       setLoading(false)
     },
   })
@@ -151,16 +193,27 @@ export function AlignmentFeedPage() {
           ))}
         </div>
 
+        {/*
+          THREE CHIPS FOR ONE ANSWER. W8-63.
+
+          These were "Show team overview", "Who is overdue?" and "Which grounds are at
+          risk?", and all three sent their text to an endpoint that reads no question.
+          So three different questions produced the same count of active grounds, which
+          reads as the product not understanding what you asked. The team overview is a
+          real thing on this page, so that one becomes the button it always was, and the
+          other two are replaced by the one honest action.
+        */}
         <div className="gw-chat-actions">
-          {['Show team overview', 'Who is overdue?', 'Which grounds are at risk?'].map(q => (
-            <button key={q} className="gw-btn-sm" onClick={() => { setInput(q); setTimeout(submit, 0) }}>{q}</button>
-          ))}
+          <button className="gw-btn-sm" onClick={() => setShowTeam(true)}>Show team overview</button>
+          <button className="gw-btn-sm" onClick={() => { setInput('Current picture'); setTimeout(submit, 0) }}>
+            Refresh the picture
+          </button>
         </div>
 
         <div className="gw-chat-bar">
           <textarea
             className="gw-chat-ta"
-            placeholder="Ask about your team, request a report, or ask about a specific person."
+            placeholder="Send anything to get the current picture"
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit() } }}
