@@ -2090,6 +2090,18 @@ setup password etc". Located:
 **Two things to fix and they are different.** The ordering (check in first, secure the account
 after, or at least say why the password comes first) and the missing token state.
 
+**Measured 2026-08-12, and the ordering half is not the shape I described.** Nothing sends a
+participant to `/set-password` on the way to a check-in. `sendParticipantInvite` sends them to
+`/invite`, which routes straight to `/checkin/{id}` with no password at all. The three senders of
+`/set-password` are the team invite, the add-a-password email, and the lead invite - none of them
+has a check-in on the other side. So there is no ordering to fix.
+
+What was real, and is now fixed: the **lead** invite says "review the ground I set up for you",
+and setting the password dropped them on the whole grounds list. `next` was read by the page and
+passed by nobody. `buildPasswordSetupUrl` now carries `next=/grounds/{id}`, and the page ignores
+any `next` that is not a plain in-app path - `//evil.example` passes a naive `startsWith('/')`,
+which is what the bite-check went red on.
+
 ## W8-27 · Four names for two concepts - **S**
 
 | Sidebar says | Page says | What it lists |

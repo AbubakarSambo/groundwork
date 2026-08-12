@@ -13,7 +13,17 @@ export function SetPasswordPage() {
   const [confirm, setConfirm] = useState('')
   const [error, setError] = useState('')
 
-  const next = params.get('next') ?? '/grounds?welcome=1'
+  /**
+   * `next` IS A DESTINATION INSIDE THIS APP, AND ONLY THAT.
+   *
+   * The lead invite now sends `next=/grounds/{id}` so somebody who was told about
+   * one ground lands on that ground instead of the whole list. Anything that is
+   * not a plain in-app path is ignored: `//evil.example` and `https://evil.example`
+   * both read as "somewhere else" and would turn a password page we email people
+   * into a way of forwarding them off the product.
+   */
+  const requested = params.get('next') ?? ''
+  const next = /^\/(?!\/)/.test(requested) ? requested : '/grounds?welcome=1'
 
   const save = useMutation({
     mutationFn: () => authApi.setPassword(token, password),
