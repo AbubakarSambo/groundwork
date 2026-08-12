@@ -1514,11 +1514,11 @@ it is done.
 
 | # | Item | Size | Status | Note |
 |---|---|---|---|---|
-| W8-26 | `/set-password` blocks a participant, and renders with no token | S | OPEN | a person who cannot check in cannot use the product |
-| W8-39 | the payment button 404s | S | OPEN | the only destination in the product that 404s, and it takes money |
-| W8-25 | pricing contradicts the $5-per-session rule, on two pages | S | OPEN | same sitting as W8-39 and W8-40 |
-| W8-40 | `?next=` passed and never read | S | OPEN | same sitting |
-| W8-41 | `hello@groundwork.so` is not our domain | S | OPEN | same sitting |
+| W8-26 | `/set-password` blocks a participant, and renders with no token | S | DONE - lead lands on their ground, no-token state shipped, ordering half was not real | a person who cannot check in cannot use the product |
+| W8-39 | the payment button 404s | S | DONE | the only destination in the product that 404s, and it takes money |
+| W8-25 | pricing contradicts the $5-per-session rule, on two pages | S | WITHDRAWN - pricing was correct | same sitting as W8-39 and W8-40 |
+| W8-40 | `?next=` passed and never read | S | DONE | same sitting |
+| W8-41 | `hello@groundwork.so` is not our domain | S | DONE | same sitting |
 | W8-3 | the "we sent a link" confirmation is 1678px down a 720px panel | S | OPEN | causes W8-2, which was data loss |
 | W8-13 | no confirmation at all after setup | S | OPEN | with W8-3 |
 
@@ -1526,7 +1526,7 @@ it is done.
 
 | # | Item | Size | Status | Depends on |
 |---|---|---|---|---|
-| W8-44 | extract the board's nine components into `components/gw/` | M | OPEN | nothing. Do it first, everything else gets cheaper |
+| W8-44 | extract the board's nine components into `components/gw/` | M | DONE - components/gw/kit.tsx | nothing. Do it first, everything else gets cheaper |
 | W8-45 | one header, delete the dead AppShell (shell-on-stranger-pages half withdrawn) | S | OPEN | W8-44 |
 | W8-57 | grounds as channels in the rail, a ground opens to its own history | M | OPEN | W8-44, W8-45 |
 | W8-49 | the target page list, 38 routes to 14 pages | L | OPEN | W8-52 must pass first |
@@ -1537,20 +1537,20 @@ it is done.
 
 | # | Item | Size | Status |
 |---|---|---|---|
-| W8-4 | sessions: three places disagree (1, 6, "2 of 6") | S | OPEN |
-| W8-5 | "bringing this ground to an end" offered at session 2 of 6, top of the page | S | OPEN |
+| W8-4 | sessions: three places disagree (1, 6, "2 of 6") | S | DONE |
+| W8-5 | "bringing this ground to an end" offered at session 2 of 6, top of the page | S | DONE |
 | W8-6 | nothing tells you the Context tab exists | S | OPEN |
 | W8-7 | the Context tab is 1 line of what it can do against 7 of what it cannot, and contradicts itself | M | OPEN |
 | W8-11 | never asks who the people inside the organisations are | M | OPEN |
 | W8-12 | two places to add participants, 550px apart | S | OPEN |
 | W8-16 | the 35s closing report has no honest progress | M | OPEN |
-| W8-22 | a truncated assistant reply ("You've nam") is saved into the record | M | OPEN |
-| W8-23 | two tabs render active at once | S | OPEN |
+| W8-22 | a truncated assistant reply ("You've nam") is saved into the record | M | WITHDRAWN |
+| W8-23 | two tabs render active at once | S | WITHDRAWN |
 | W8-27 | four names for two concepts | S | OPEN |
-| W8-36 | `/invite` and `/set-password` handle a missing token in opposite ways | S | OPEN |
+| W8-36 | `/invite` and `/set-password` handle a missing token in opposite ways | S | DONE |
 | W8-37 | `/welcome` and `/profile` exist for one line of content | S | OPEN |
 | W8-42 | controls that work but sit in the wrong place, including two sending signed-in people to `/start` | S | OPEN |
-| W8-55 | a document uploaded in the entry chat is never kept as a document | M | OPEN |
+| W8-55 | a document uploaded in the entry chat is never kept as a document | M | DONE |
 
 ## Design, open
 
