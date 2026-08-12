@@ -168,4 +168,47 @@ export const groundsApi = {
         skipForbiddenToast: true,
       })
       .then(r => r.data),
+
+  /**
+   * Every turn you have said in this ground, sessions oldest first.
+   *
+   * One request rather than one per check-in: this is what a ground opens to, so a
+   * twelve-session ground firing twelve requests on load is not acceptable. The
+   * server enforces that these are only ever your own turns.
+   */
+  myTranscript: (groundId: string) =>
+    apiClient
+      .get<{
+        sessions: {
+          checkInId: string
+          sessionNumber: number
+          status: string
+          /** What the divider shows: finished-on for a complete session, opened-on otherwise. */
+          date: string
+          isSelfCorrection: boolean
+          correctionOf: number | null
+          turns: { id: string; role: 'AI' | 'PERSON'; content: string }[]
+        }[]
+      }>(`/grounds/${groundId}/my-transcript`, { skipForbiddenToast: true })
+      .then(r => r.data),
+
+  /** Your own between-session notes. Private: never in a report, never to the lead. */
+  myNotes: (groundId: string) =>
+    apiClient
+      .get<{ id: string; text: string; createdAt: string; carriedIntoCheckInId: string | null }[]>(
+        `/grounds/${groundId}/my-notes`,
+        { skipForbiddenToast: true },
+      )
+      .then(r => r.data),
+
+  addMyNote: (groundId: string, text: string) =>
+    apiClient
+      .post<{ id: string; text: string; createdAt: string; carriedIntoCheckInId: string | null }>(
+        `/grounds/${groundId}/my-notes`,
+        { text },
+      )
+      .then(r => r.data),
+
+  deleteMyNote: (groundId: string, noteId: string) =>
+    apiClient.delete<{ deleted: boolean }>(`/grounds/${groundId}/my-notes/${noteId}`).then(r => r.data),
 }
