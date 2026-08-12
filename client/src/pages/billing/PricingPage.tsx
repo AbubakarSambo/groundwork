@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
-import { billingApi, PLAN_LABELS, PLAN_PRICES, PLAN_MEMBER_CAPS, type SubscriptionPlan } from '@/api/billing'
+import { billingApi, PLAN_LABELS, PLAN_PRICES, PLAN_MEMBER_CAPS, type SubscriptionPlan, PLAN_FEATURES } from '@/api/billing'
 import { useAuthStore } from '@/stores/auth'
 
 const PLANS: SubscriptionPlan[] = ['STARTER', 'SMALL_TEAM', 'GROWTH', 'BUSINESS', 'SCALE']
@@ -15,14 +15,6 @@ const PLAN_DESCRIPTIONS: Record<SubscriptionPlan, string> = {
   ENTERPRISE: 'For organizations with custom needs, volume pricing, or dedicated support.',
 }
 
-const PLAN_FEATURES: Record<SubscriptionPlan, string[]> = {
-  STARTER: ['Unlimited Grounds', 'Unlimited sessions', 'Unlimited reports', 'Up to 5 people', 'Admin dashboard'],
-  SMALL_TEAM: ['Unlimited Grounds', 'Unlimited sessions', 'Unlimited reports', 'Up to 20 people', 'Admin dashboard'],
-  GROWTH: ['Unlimited Grounds', 'Unlimited sessions', 'Unlimited reports', 'Up to 100 people', 'Admin dashboard'],
-  BUSINESS: ['Unlimited Grounds', 'Unlimited sessions', 'Unlimited reports', 'Up to 250 people', 'Admin dashboard'],
-  SCALE: ['Unlimited Grounds', 'Unlimited sessions', 'Unlimited reports', 'Up to 1,000 people', 'Admin dashboard'],
-  ENTERPRISE: ['Unlimited Grounds', 'Unlimited sessions', 'Unlimited reports', 'Unlimited people', 'Dedicated account manager'],
-}
 
 export function PricingPage() {
   const navigate = useNavigate()

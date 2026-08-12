@@ -238,6 +238,8 @@ export function GroundParticipantPage() {
 
   const alignRead = alignmentLabel((ground as any).alignment)
   const myParticipant = (ground.participants ?? []).find((p: any) => p.userId === user?.id)
+  /** Whether this person runs the ground, and so has an admin view to switch to. */
+  const isInitiator = myParticipant?.partyType === 'INITIATOR'
 
   if (!myParticipant) {
     return (
@@ -300,6 +302,25 @@ export function GroundParticipantPage() {
             <div style={{ fontSize: 15, fontWeight: 700, color: '#1A1916', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ground.label}</div>
             <div style={{ fontSize: 11, color: '#9B9590' }}>Your contribution to this ground is yours until the report releases.</div>
           </div>
+          {/*
+            THE OTHER HALF OF THE SWITCH.
+            The ground page now links here ("My check-ins"), and this page had no
+            way back - so the two views of one ground were a one-way trip. Her ask
+            was "at the top you can click the buttons to take you to the admin view
+            or checkin overview", which needs both directions.
+
+            Only for somebody who runs the ground. A participant who is not the
+            initiator has no admin view to switch to, and offering one would send
+            them to a page that refuses them.
+          */}
+          {isInitiator && (
+            <button
+              onClick={() => navigate(`/grounds/${id}`)}
+              style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, padding: '5px 11px', borderRadius: 20, background: 'white', color: '#0C447C', border: '1px solid #0C447C', cursor: 'pointer', fontFamily: 'inherit' }}
+            >
+              Admin view →
+            </button>
+          )}
           {/* Delivery board: only on shared-mode grounds whose scenario family has
               one. The server decides (boardRenders); the client does not duplicate
               the routing table. */}
