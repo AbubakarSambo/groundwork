@@ -1633,6 +1633,43 @@ failure state.
 Not urgent - it only shows when the API is broken - but it is two minutes and it is the difference
 between a product that says "try again" and one that shows you a stack of plumbing.
 
+## W8-65 - Who gets the admin view, and the Context page's missing half - **partly fixed**
+
+Her questions: "there's confusion between how to go to admin view and participant view and back.
+And who gets admin view, the leads or the org admin or both" and "I gave you a whole bunch of
+things to do on the context page".
+
+**Who gets the admin view: it was everyone in the organisation.** `/grounds/:id` is behind
+`RequireAuth` only and `grounds.get` resolves any ground in your org, so somebody who is not in a
+ground at all could open its setup, its participant list and its nudges - not by finding a hole,
+just by opening the URL. The controls inside were gated on `isInitiator`; the page was not.
+
+Her decision: **the lead of that ground, and org admins for any ground.** Done on the client, with
+a refusal that says who the view is for and offers the participant page to anybody who is a party
+to the ground - because the likeliest person to land there is a participant who followed a link.
+The server read stays open to org members on purpose: the participant view and the grounds list
+both need it, so the read is not the thing to close.
+
+**The Context page, against the seven steps of Wave 2 rather than against memory:**
+
+| Her step | State before today |
+|---|---|
+| Open / closed / own visibility (G24, G38) | built |
+| Documents as context, four rules | built |
+| People context - per-person worries (G39) | built, admin side |
+| **Context summary, G25** | built, **admin page only** - zero occurrences on the participant page |
+| **One page for everyone, closed part visibly absent (G26)** | **never done.** The participant Context was a different, thinner page |
+| Notes | lead only, `addLeadContext` |
+| **Context chat - targets, exploring more (G37, G23)** | **not built.** This plan already said it is "the largest single piece left in Wave 2 and the one that needs a live model in the loop" |
+
+Fixed today: the context read is a shared `ContextStrength` component on both pages, and a
+participant now sees an explicit line that the lead may hold context they cannot read - G26's
+"visibly absent" rather than silently missing. The tab is called Context on both.
+
+**Still open, and it is the piece she is actually missing: G37/G23, the context chat.** Setting
+targets, probing for what setup did not capture, recommending materials rather than waiting for
+uploads. It needs its own run.
+
 ## A note on verifying against the local API
 
 Twice now a browser check has looked like a product bug and was not. The local API process was

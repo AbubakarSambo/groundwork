@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { whatThisGroundCanTellYou } from '@/lib/contextStrength'
+import { ContextStrength } from '@/components/gw/ContextStrength'
 import { useAuthStore } from '@/stores/auth'
 import { groundsApi, type GroundCadence } from '@/api/grounds'
 import { TIMED_CADENCES, sessionsFor } from '@/lib/cadence'
@@ -140,6 +141,24 @@ export function GroundAdminPage() {
   })
 
   const isInitiator = !!ground && user?.id === ground.initiatorId
+
+  /**
+   * WHO GETS THE ADMIN VIEW. Her decision: the lead of that ground, and org admins
+   * for any ground. Nobody else, and refused out loud rather than half-working.
+   *
+   * It was open to EVERY org member, because the route is `RequireAuth` and
+   * `grounds.get` resolves any ground in your organisation. So somebody who is not
+   * in a ground at all could open its setup, its participant list and its nudges -
+   * not by finding a hole, just by opening the URL. The controls inside were gated
+   * on `isInitiator`; the page was not.
+   *
+   * This is the client half. The server still answers `grounds.get` for any org
+   * member, which is right for the participant view and for the grounds list, so
+   * the read itself is not the thing to close. What must not happen is this page
+   * rendering for somebody it was not built for.
+   */
+  const isOrgAdmin = user?.role === 'ADMIN'
+  const canRunThisGround = isInitiator || isOrgAdmin
   /**
    * ONE READING OF HOW MANY SESSIONS THIS GROUND HAS. W8-4.
    *
@@ -316,6 +335,39 @@ export function GroundAdminPage() {
 
   if (isLoading) return <Shell><div style={{ padding: 24, fontSize: 13, color: 'var(--gw-muted)' }}>Loading…</div></Shell>
   if (!ground) return <Shell><div style={{ padding: 24, fontSize: 13, color: 'var(--gw-muted)' }}>Ground not found.</div></Shell>
+
+  /**
+   * REFUSED OUT LOUD, WITH SOMEWHERE TO GO.
+   *
+   * A blank page or a silent redirect both read as a bug. This says who the view is
+   * for, and offers the view they DO have if they are a party to this ground -
+   * because the most likely person to land here is a participant who followed a
+   * link, and their own page is the one they wanted.
+   */
+  if (!canRunThisGround) {
+    const amAParty = (ground.participants ?? []).some((p: any) => p.userId === user?.id)
+    return (
+      <Shell>
+        <div style={{ maxWidth: 460, margin: '48px auto', padding: '0 20px' }}>
+          <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 8 }}>
+            This view is for whoever runs this ground.
+          </div>
+          <div style={{ fontSize: 13.5, color: 'var(--gw-sub)', lineHeight: 1.7, marginBottom: 18 }}>
+            Setting up a ground, inviting people and releasing the report belong to its lead, or to
+            an admin in your organisation. {amAParty
+              ? 'Your own check-ins and your record are on your page.'
+              : 'You are not a party to this ground, so there is nothing here for you.'}
+          </div>
+          <button
+            onClick={() => navigate(amAParty ? `/grounds/${id}/p` : '/grounds')}
+            style={{ padding: '11px 18px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 13.5, fontWeight: 700, fontFamily: 'inherit' }}
+          >
+            {amAParty ? 'Go to my check-ins →' : 'Back to grounds'}
+          </button>
+        </div>
+      </Shell>
+    )
+  }
 
   /**
    * ONLY THE LEAD SEES THE LEAD'S CONFIRMATION.
@@ -1170,40 +1222,7 @@ export function GroundAdminPage() {
                 Never mandatory and never graded. A ground with thin context is
                 still a real ground; this exists so nobody is surprised in month
                 three by a question the record was never able to answer. */}
-            {contextEnabled && contextStrength && (
-              <div style={{ background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--gw-sub)', marginBottom: 8 }}>
-                  What this ground can tell you
-                </div>
-                {contextStrength.can.length > 0 && (
-                  <div style={{ marginBottom: contextStrength.cannot.length ? 10 : 0 }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: '#085041', marginBottom: 4 }}>It will be able to</div>
-                    <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.7 }}>
-                      {contextStrength.can.map((line: string, i: number) => <li key={i}>{line}</li>)}
-                    </ul>
-                  </div>
-                )}
-                {/*
-                  THE LIMITS ARE REAL AND THEY WERE SHOUTING.
-                  On a new ground this card carried ONE line of what it can do and
-                  SEVEN of what it cannot, all at the same size, which reads as a
-                  product apologising for itself on the page where somebody is
-                  deciding whether to bother. Every "cannot" line names something
-                  you can add, so they are worth keeping - but as the answer to
-                  "what would make this stronger", folded away until asked.
-                */}
-                {contextStrength.cannot.length > 0 && (
-                  <details>
-                    <summary style={{ fontSize: 12, fontWeight: 700, color: '#8A5C1A', marginBottom: 4, cursor: 'pointer' }}>
-                      What would make it stronger ({contextStrength.cannot.length})
-                    </summary>
-                    <ul style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.7 }}>
-                      {contextStrength.cannot.map((line: string, i: number) => <li key={i}>{line}</li>)}
-                    </ul>
-                  </details>
-                )}
-              </div>
-            )}
+            {contextEnabled && contextStrength && <ContextStrength read={contextStrength} />}
 
             <div
               style={{ border: '1.5px dashed var(--gw-border)', borderRadius: 8, padding: 20, textAlign: 'center', cursor: 'pointer', marginBottom: 16, background: 'var(--gw-bg)' }}

@@ -10,6 +10,8 @@ import { documentsApi } from '@/api/documents'
 import { conversationApi } from '@/api/conversation'
 import { GroundChat } from '@/components/gw/GroundChat'
 import { useViewStore } from '@/stores/view'
+import { whatThisGroundCanTellYou } from '@/lib/contextStrength'
+import { ContextStrength } from '@/components/gw/ContextStrength'
 import { apiClient } from '@/api/client'
 import { participantLabel } from '@/lib/utils'
 import { alignmentLabel } from '@/lib/alignment'
@@ -352,6 +354,7 @@ export function GroundParticipantPage() {
    */
   const contextEnabled = (ground as any)?.contextEnabled === true
 
+
   if (isLoading) return <div style={{ minHeight: '100vh', background: '#F5F3EF', padding: 24, fontSize: 13, color: '#9B9590' }}>Loading…</div>
   if (!ground) return <div style={{ minHeight: '100vh', background: '#F5F3EF', padding: 24, fontSize: 13, color: '#9B9590' }}>Ground not found.</div>
 
@@ -402,6 +405,25 @@ export function GroundParticipantPage() {
   const totalSessions =
     plannedSessionsFor((ground as any).timelineDays, (ground as any).cadence, (ground as any).totalSessions) ?? 6
   const lastCompleted = completedCheckIns[0]
+
+  /**
+   * THE SAME CONTEXT READ THE LEAD SEES. G25 on this page, G26 as the reason.
+   *
+   * "One context page per ground, the same page for everyone, with the closed part
+   * visibly absent rather than silently missing." It was on the admin page only, so
+   * a participant opening Context got a file picker and no idea what the ground
+   * could do with what they gave it. Same function, same inputs, same component.
+   */
+  const contextStrength = ground ? whatThisGroundCanTellYou({
+    partyCount: (ground.participants ?? []).filter((p: any) => !p.managingOnly).length,
+    hasSuccessDefinition: !!(ground as any).brief?.trim(),
+    conditionCount: 0,
+    hasBaseline: false,
+    perPersonObjectiveCount: ((ground as any).objectives ?? []).length,
+    openDocumentCount: (docs ?? []).filter((d: any) => d.visibility === 'OPEN').length,
+    peopleWorkTogether: (ground as any).peopleWorkTogether !== false,
+    plannedSessions: totalSessions ?? 1,
+  }) : null
 
   const signals: any[] = ground.signals ?? []
   const feedEvents = signals.map((s: any) => ({
@@ -494,7 +516,9 @@ export function GroundParticipantPage() {
         what makes a stack of cards readable.
       */}
       {tab === 'checkin' && view === 'chat' && (
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, maxWidth: 900, margin: '0 auto', width: '100%', padding: '0 16px 16px' }}>
+        // GroundChat owns its own reading column and scroll, the same as the
+        // entry chat. Wrapping it in a second centred column fought with that.
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           <GroundChat
             groundId={id!}
             openCheckInId={dueNow ? openCheckIn.id : null}
@@ -1053,7 +1077,13 @@ export function GroundParticipantPage() {
         {/* DOCUMENTS TAB */}
         {tab === 'docs' && (
           <div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#1A1916', marginBottom: 4 }}>{contextEnabled ? 'Context' : 'Documents'}</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#1A1916', marginBottom: 10 }}>{contextEnabled ? 'Context' : 'Documents'}</div>
+
+            {/* G25 + G26: what the ground can tell you, and an honest line about the
+                part of context that is the lead's. */}
+            {contextEnabled && contextStrength && (
+              <ContextStrength read={contextStrength} closedNote={!isInitiator} />
+            )}
             <div style={{ fontSize: 12, color: '#9B9590', lineHeight: 1.6, marginBottom: 14, background: 'white', borderRadius: 8, padding: '10px 12px', border: '1px solid #E2E0DB' }}>
               {contextEnabled
                 ? "This is where the background lives. Anything the lead has opened to the ground appears here, and your check-in has read it. What you upload is yours until the report is released, and it shapes the questions you get asked."

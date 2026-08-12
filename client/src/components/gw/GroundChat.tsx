@@ -8,6 +8,13 @@ import { toast } from 'sonner'
 /**
  * A GROUND, READ AS A CONVERSATION.
  *
+ * THE LAYOUT IS THE ENTRY CHAT'S, NOT ONE I CHOSE. Her answer when I asked what it
+ * should look like: the setup chat at /start, with some of the live check-in. So:
+ * a 680px reading column that scrolls inside `flex: 1`, gap 12 between bubbles,
+ * 82% wide, and the place to type pinned underneath rather than floating after the
+ * last message. Two earlier attempts at this were my own approximations and both
+ * read as a different product.
+ *
  * Hafsah's model: a ground is a channel you come back to and keep adding to, and
  * a channel opens to what has been said with the place to type at the bottom. This
  * is that view - every session's turns in order, session dividers between them,
@@ -69,17 +76,20 @@ function Message({ role, content }: { role: 'AI' | 'PERSON'; content: string }) 
   return (
     <div
       style={{
-        maxWidth: '80%',
+        maxWidth: '82%',
         alignSelf: mine ? 'flex-end' : 'flex-start',
         background: mine ? 'var(--gw-navy)' : 'white',
         color: mine ? 'white' : 'var(--gw-text)',
-        border: mine ? 'none' : '0.5px solid var(--gw-border)',
-        borderRadius: mine ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+        border: mine ? 'none' : '1px solid var(--gw-border)',
+        // The assistant's bubble squares its TOP-left, not its bottom-left. Copied
+        // rather than guessed: I had it the other way round, which is a small thing
+        // that makes a familiar surface feel like a different one.
+        borderRadius: mine ? '16px 16px 4px 16px' : '4px 16px 16px 16px',
         padding: '10px 14px',
         fontSize: 14,
-        lineHeight: 1.6,
+        lineHeight: 1.65,
         whiteSpace: 'pre-wrap',
-        boxShadow: mine ? 'none' : '0 1px 3px rgba(0,0,0,.05)',
+        boxShadow: mine ? 'none' : '0 1px 3px rgba(0,0,0,.06)',
       }}
     >
       {content}
@@ -246,33 +256,37 @@ export function GroundChat({ groundId, openCheckInId, openSessionNumber, totalSe
   const sessions = (data?.sessions ?? []).filter(s => s.turns.length > 0)
 
   return (
-    <div>
-      {isLoading && <div style={{ fontSize: 13, color: 'var(--gw-muted)', padding: '20px 0' }}>Loading your check-ins…</div>}
-      {isError && (
-        <div style={{ fontSize: 13, color: 'var(--gw-sub)', padding: '20px 0' }}>
-          Your check-ins could not be loaded. Try again in a moment.
-        </div>
-      )}
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+      {/* The conversation scrolls; the composer below it does not. */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 680, width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
+        {isLoading && <div style={{ fontSize: 13, color: 'var(--gw-muted)' }}>Loading your check-ins…</div>}
+        {isError && (
+          <div style={{ fontSize: 13, color: 'var(--gw-sub)' }}>
+            Your check-ins could not be loaded. Try again in a moment.
+          </div>
+        )}
 
-      {!isLoading && !isError && sessions.length === 0 && (
-        <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, padding: '18px 0' }}>
-          Nothing on record yet. Your first check-in starts the conversation, and everything
-          you say in it stays here for you to come back to.
-        </div>
-      )}
+        {!isLoading && !isError && sessions.length === 0 && (
+          <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+            Nothing on record yet. Your first check-in starts the conversation, and everything
+            you say in it stays here for you to come back to.
+          </div>
+        )}
 
-      {sessions.map(s => (
-        <div key={s.checkInId} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <SessionDivider
-            sessionNumber={s.sessionNumber}
-            date={s.date}
-            isCorrection={s.isSelfCorrection}
-            correctionOf={s.correctionOf}
-          />
-          {s.turns.map(t => <Message key={t.id} role={t.role} content={t.content} />)}
-        </div>
-      ))}
+        {sessions.map(s => (
+          <div key={s.checkInId} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <SessionDivider
+              sessionNumber={s.sessionNumber}
+              date={s.date}
+              isCorrection={s.isSelfCorrection}
+              correctionOf={s.correctionOf}
+            />
+            {s.turns.map(t => <Message key={t.id} role={t.role} content={t.content} />)}
+          </div>
+        ))}
+      </div>
 
+      <div style={{ maxWidth: 680, width: '100%', margin: '0 auto', padding: '0 20px 16px', boxSizing: 'border-box', flexShrink: 0 }}>
       <Composer
         groundId={groundId}
         openCheckInId={openCheckInId}
@@ -280,6 +294,7 @@ export function GroundChat({ groundId, openCheckInId, openSessionNumber, totalSe
         totalSessions={totalSessions}
         nextOpensAt={nextOpensAt}
       />
+      </div>
     </div>
   )
 }
