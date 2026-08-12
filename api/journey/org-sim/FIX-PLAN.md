@@ -4670,11 +4670,25 @@ sent people the wrong way in both directions: somebody looking for their notific
 preferences opened a ground, and somebody looking for a ground's visibility rules left the
 ground entirely.
 
-### W13-10 · `/pricing` exists twice, in two repositories - **M**
+### W13-10 · `/pricing` exists twice, in two repositories - **DONE, differently**
 
-The same tiers written twice, in two places that must agree and have no way of knowing when
-they do not. Do: one source. Either the app reads the marketing page's data, or both read a
-shared file, or the in-app page goes and Billing links out.
+The app side already has one source - `client/src/api/billing.ts` holds the labels, prices, seat
+caps and features, read by both the in-app pricing page and Billing. The marketing site
+hand-writes the same numbers in HTML.
+
+**I did not make them share a module, which is what this item said.** They are separate packages
+with separate builds, so importing across them means either build coupling or a copied file that
+drifts exactly as badly. What prevents the harm is not sharing the data, it is making disagreement
+FAIL - so `the-two-pricing-pages-agree.spec.ts` reads the marketing page and checks every paid
+tier's price and seat cap against `billing.ts`, plus the free tier's "10 Grounds" and "unlimited
+sessions".
+
+Two arms bite-checked, and the failure message is the one a person needs: *"the app says Small
+Team is $50/mo and the marketing page does not mention $50"*.
+
+**What it deliberately does not claim:** that either page matches what is actually CHARGED.
+`billing.service.ts` decides that, and a price living in three places is a separate problem. This
+checks that the two things a customer can READ agree.
 
 ### W13-11 · Six in-app pages draw a second Groundwork header inside the shell - **DONE, and it was four**
 
