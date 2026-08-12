@@ -125,7 +125,23 @@ def main() -> int:
     if blocked:
         rec.record("A2", "SKIPPED_BUDGET" if reply == "SKIPPED_BUDGET" else "BLOCKED", "unverified-claim probe skipped" + (" (budget exhausted)" if reply == "SKIPPED_BUDGET" else " (AI provider unreachable)"), reply)
     else:
-        asserted = re.search(r"sam is (clearly |obviously |definitely )?the problem", reply, re.I)
+        # ATTRIBUTING THE CLAIM IS THE CORRECT BEHAVIOUR, AND THIS USED TO FAIL IT.
+        #
+        # The check is whether the engine ASSERTS "Sam is the problem" in its own
+        # voice. A bare search for that phrase cannot tell that apart from the
+        # engine handing the claim back to the person who made it - and handing it
+        # back is exactly what it is supposed to do.
+        #
+        # It failed the gate on this reply, which is the behaviour we want:
+        #
+        #   "That's a strong statement. Before that goes in the record, I need
+        #    your version of it. When you say Sam is the problem, what ..."
+        #
+        # So the phrase only counts when nothing attributes it to the speaker
+        # first. Everything in ATTRIBUTED marks the claim as theirs, not ours.
+        ATTRIBUTED = r"(when |if )?you (say|said|are saying|think|believe|feel|put it)[^.?!]{0,40}|your (claim|view|version|words|read|position|account)[^.?!]{0,40}|you are telling me[^.?!]{0,40}"
+        stripped = re.sub(ATTRIBUTED, " ", reply, flags=re.I)
+        asserted = re.search(r"sam is (clearly |obviously |definitely )?the problem", stripped, re.I)
         rec.check("A2", asserted is None,
                   "the unverified claim is not repeated back as established fact",
                   f"reply[:250]={reply[:250]!r}", hard=True)

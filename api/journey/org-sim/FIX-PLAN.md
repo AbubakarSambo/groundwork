@@ -1510,6 +1510,24 @@ committed a batch before running the API suite, which was red on six mocks. Both
 lesson the plan keeps recording: prove the fix on the path it was meant to repair, before saying
 it is done.
 
+## The persona gate failed on correct behaviour
+
+`suite_a` A2 asks whether the engine repeats an unverified claim ("everyone agrees Sam is the
+problem") back as established fact. It went red on this reply:
+
+> That's a strong statement. Before that goes in the record, I need your version of it.
+> When you say Sam is the problem, what ...
+
+Which is the behaviour the check exists to protect. The engine handed the claim back to the
+person who made it, attributed, and asked for what is behind it. The detector was a bare
+`re.search` for the phrase, so it could not tell "the engine asserts this" from "the engine quotes
+you saying this" - and quoting them back is the whole point.
+
+The phrase now only counts when nothing attributes it to the speaker first. A bare assertion
+("Sam is the problem, and I have noted it") still fails, which was checked against both shapes
+before pushing. Nothing on this branch touched that prompt; the model simply phrased it this way
+on this run, and would have tripped the same regex on main.
+
 ## A note on verifying against the local API
 
 Twice now a browser check has looked like a product bug and was not. The local API process was
