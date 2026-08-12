@@ -18,6 +18,7 @@ import { toast } from 'sonner'
 import { CodeShareCard } from '@/components/CodeShareCard'
 import { PostSessionPanel } from '@/components/PostSessionPanel'
 import { ResolutionPanel } from '@/components/gw/ResolutionPanel'
+import { Stat } from '@/components/gw/kit'
 import { billingApi, PLAN_MEMBER_LIMITS, type SubscriptionPlan } from '@/api/billing'
 
 const SCENARIO_LABELS: Record<string, string> = {
@@ -53,7 +54,17 @@ export function GroundAdminPage() {
   const navigate = useNavigate()
   const qc = useQueryClient()
   const user = useAuthStore(s => s.user)
-  const [tab, setTab] = useState<Tab>('overview')
+  /**
+   * CHECK-INS FIRST, because that is what a ground is for.
+   *
+   * The page opened on Overview, which is the summary and the admin furniture, so
+   * the first thing anybody saw about a live ground was a description of it rather
+   * than the state of the work. Hafsah: "the checkin board should be the first tab
+   * on these."
+   *
+   * The participant view already opens on Check-in; this makes the two agree.
+   */
+  const [tab, setTab] = useState<Tab>('checkins')
   const [reportSession, setReportSession] = useState<ReportSession>('s1')
   const [ctxNote, setCtxNote] = useState('')
   const [groundLabel, setGroundLabel] = useState('')
@@ -556,7 +567,7 @@ export function GroundAdminPage() {
             the parts of a ground. It only appears when the server says this
             ground has one (boardRenders), same as before. */}
         <div style={{ display: 'flex', borderTop: '0.5px solid var(--gw-border)', overflowX: 'auto' }}>
-          {(['overview', 'checkins', 'docs', 'report', 'settings'] as Tab[]).map(t => (
+          {(['checkins', 'overview', 'docs', 'report', 'settings'] as Tab[]).map(t => (
             <button key={t} className={`gw-tab${tab === t ? ' active' : ''}`} onClick={() => setTab(t)}>
               {/* THE TAB IS CALLED CONTEXT ONCE THERE IS CONTEXT IN IT. (G38, G26)
                   With CONTEXT_ENABLED off it says Documents and behaves exactly as
@@ -973,6 +984,32 @@ export function GroundAdminPage() {
         {/* CHECK-INS */}
         {tab === 'checkins' && (
           <div>
+            {/*
+              THE GLANCE ROW, from the board's own components.
+              This tab is now the first thing anybody sees about a ground, and it
+              was a bare list of session rows - true, but it answered "what
+              happened" without answering "where does this stand". The board has
+              solved that problem already, so this uses the same Stat tile rather
+              than inventing a third way of showing a number.
+            */}
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 16 }}>
+              <Stat
+                label="This round"
+                value={plannedSessions != null ? `${Math.min(sessionsDone + 1, plannedSessions)} of ${plannedSessions}` : String(sessionsDone + 1)}
+                caption="counting the session everyone has finished"
+              />
+              <Stat
+                label="Checked in"
+                value={`${(ground.checkIns ?? []).filter((c: any) => c.status === 'COMPLETED').length}`}
+                caption={`across ${(ground.participants ?? []).length} ${(ground.participants ?? []).length === 1 ? 'person' : 'people'}`}
+              />
+              <Stat
+                label="Still to come"
+                value={`${(ground.checkIns ?? []).filter((c: any) => c.status !== 'COMPLETED').length}`}
+                caption="open check-ins on this ground"
+                tone={(ground.checkIns ?? []).filter((c: any) => c.status !== 'COMPLETED').length > 0 ? 'warn' : undefined}
+              />
+            </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {(ground.checkIns ?? []).length === 0 && (
                 <div style={{ fontSize: 13, color: 'var(--gw-muted)', textAlign: 'center', padding: 24 }}>No check-ins yet.</div>
