@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { groundsApi } from '@/api/grounds'
+import { documentsApi } from '@/api/documents'
 import { toast } from 'sonner'
 
 /**
@@ -112,6 +113,23 @@ function Composer({ groundId, openCheckInId, openSessionNumber, totalSessions, n
     onSuccess: () => qc.invalidateQueries({ queryKey: ['my-notes', groundId] }),
   })
 
+  /**
+   * A DOCUMENT BETWEEN SESSIONS, WHICH IS THE OTHER HALF OF "SOMETHING TO ADD".
+   *
+   * The upload already existed on the Documents tab and nowhere near the moment
+   * somebody actually has the file - which is when a meeting has just happened and
+   * they still have the notes open. Same endpoint, same default: it is private to
+   * the uploader until they choose otherwise on the Documents tab.
+   */
+  const upload = useMutation({
+    mutationFn: (file: File) => documentsApi.upload(groundId, file),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['docs', groundId] })
+      toast.success('Added. Your next check-in can draw on it.')
+    },
+    onError: () => toast.error('That file did not upload. Try again.'),
+  })
+
   // Notes no session has raised yet. Once one has been picked up it belongs to the
   // conversation above, not to the pile of things still waiting.
   const waiting = notes.filter(n => !n.carriedIntoCheckInId)
@@ -178,6 +196,18 @@ function Composer({ groundId, openCheckInId, openSessionNumber, totalSessions, n
             : 'No check-in is open right now. '}
           Notes are yours alone. They are not part of your record, and the next check-in will ask you about them.
         </div>
+        <label
+          title="Attach a document for your next check-in"
+          style={{ flexShrink: 0, fontSize: 12.5, fontWeight: 600, color: 'var(--gw-navy)', cursor: upload.isPending ? 'wait' : 'pointer', padding: '9px 6px' }}
+        >
+          {upload.isPending ? 'Adding…' : '+ Document'}
+          <input
+            type="file"
+            accept=".pdf,.docx,.jpeg,.jpg,.png,.csv,.xlsx"
+            style={{ display: 'none' }}
+            onChange={e => { const f = e.target.files?.[0]; if (f) upload.mutate(f); e.target.value = '' }}
+          />
+        </label>
         <button
           onClick={() => text.trim() && add.mutate(text.trim())}
           disabled={!text.trim() || add.isPending}

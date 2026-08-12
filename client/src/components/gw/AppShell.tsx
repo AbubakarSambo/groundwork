@@ -537,6 +537,18 @@ export function AppSidebar() {
                 <div key={g.id} style={{ marginBottom: 2, borderRadius: 8, overflow: 'hidden' }}>
                   <NavLink
                     to={`/grounds/${g.id}`}
+                    title={[
+                      g.label,
+                      `${sessions}${maxSessions ? ` of ${maxSessions}` : ''} sessions done`,
+                      alignmentShort((g as any).alignment) || null,
+                      attention.kind === 'overdue'
+                        ? `Session ${attention.sessionNumber} is ${attention.daysLate} days past its date`
+                        : attention.kind === 'yours'
+                          ? `Session ${attention.sessionNumber} is ready for you`
+                          : attention.kind === 'waiting'
+                            ? `${attention.done} of ${attention.total} have checked in`
+                            : null,
+                    ].filter(Boolean).join(' · ')}
                     style={({ isActive }) => ({
                       display: 'block', padding: renamingId === g.id ? '6px 10px 4px' : '9px 10px 6px', borderRadius: 8,
                       textDecoration: 'none',
@@ -594,23 +606,26 @@ export function AppSidebar() {
                       </div>
                     )}
 
-                    {/* What the report holds, and how far along we are.
-                        This used to read "4/5 aligned · 13/13 sessions" - and
-                        the first number was a count of completed check-ins, not
-                        a measure of agreement. When there is no read yet, the
-                        sessions stand alone rather than being padded with a
-                        score nothing supports. */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                      {(() => {
-                        const read = alignmentShort((g as any).alignment)
-                        return (
-                          <span style={{ fontSize: 11, color: `rgba(255,255,255,${read ? '.45' : '.35'})` }}>
-                            {read ? `${read} · ` : ''}{sessions}{maxSessions ? `/${maxSessions}` : ''} done
-                          </span>
-                        )
-                      })()}
-                      <GroundStatusBadge status={g.status} />
-                    </div>
+                    {/*
+                      ONE LINE PER GROUND, WHICH IS WHAT MAKES IT A CHANNEL LIST.
+
+                      This row carried a second line - "no read yet · 1/6 done" and
+                      a status pill - under every name. Three facts about a ground
+                      you are not looking at, on every row, in a rail whose job is
+                      to tell you which one needs you. A channel list is names; the
+                      state belongs on the ground, and the ground page now opens
+                      with it (sessions done, who has checked in, the report).
+
+                      NOTHING IS LOST, IT MOVED. The count and the read are on the
+                      row's tooltip for anyone who wants them without navigating,
+                      and a ground that is not ACTIVE still says so, because "this
+                      one is closed" changes whether you click at all.
+                    */}
+                    {g.status !== 'ACTIVE' && (
+                      <div style={{ marginTop: 3 }}>
+                        <GroundStatusBadge status={g.status} />
+                      </div>
+                    )}
                   </NavLink>
                 </div>
               )

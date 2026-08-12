@@ -1614,6 +1614,25 @@ The phrase now only counts when nothing attributes it to the speaker first. A ba
 before pushing. Nothing on this branch touched that prompt; the model simply phrased it this way
 on this run, and would have tripped the same regex on main.
 
+## W8-64 - One failure, two error surfaces - **OPEN, small**
+
+Seen while photographing the chat view against a stale local API. The transcript
+request 404s, and the person gets both:
+
+- the component's own state, which is the useful one: "Your check-ins could not be loaded. Try
+  again in a moment."
+- and the global red toast, about 400px of it, covering the right half of the page and quoting the
+  URL: "Not found - Cannot GET /api/v1/grounds/0874730e.../my-transcript".
+
+The global toast is right for a call nobody is watching. It is wrong on top of a component that
+has already said the same thing in plainer words, and quoting a path at somebody is the shape of
+an error that was written for whoever built it. `apiClient` already supports `skipForbiddenToast`
+for exactly this reason on 403; the same idea is needed for a read whose component owns its own
+failure state.
+
+Not urgent - it only shows when the API is broken - but it is two minutes and it is the difference
+between a product that says "try again" and one that shows you a stack of plumbing.
+
 ## A note on verifying against the local API
 
 Twice now a browser check has looked like a product bug and was not. The local API process was
