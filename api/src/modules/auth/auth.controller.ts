@@ -1,6 +1,7 @@
 import { Controller, Post, Get, Patch, Body, Query, HttpCode, HttpStatus, UseGuards, Req, Res } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
+import { IsString } from 'class-validator';
 import { AuthGuard } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
@@ -28,6 +29,16 @@ import { Public, CurrentUser, CurrentUserData, Roles, Role } from '../../common'
  * half-done.
  */
 const SIGN_IN_LIMIT = Number(process.env.LOGIN_RATE_LIMIT) || 10;
+
+class SwitchOrganizationDto {
+  /**
+   * Never trusted. `switchOrganization` looks up a membership for this id and the
+   * caller's own user id, so an id belonging to somebody else's organisation is
+   * refused rather than granted.
+   */
+  @IsString()
+  organizationId!: string;
+}
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -207,6 +218,20 @@ export class AuthController {
   @ApiOperation({ summary: 'Exchange a one-time OAuth code for a JWT' })
   async googleExchange(@Query('code') code: string) {
     return this.authService.redeemOAuthExchangeCode(code);
+  }
+
+  @Get('my-organizations')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'The organisations this person belongs to, with the active one marked' })
+  async myOrganizations(@CurrentUser() user: CurrentUserData) {
+    return this.authService.myOrganizations(user.id);
+  }
+
+  @Post('switch-organization')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Switch the active organisation. Returns a new token scoped to it.' })
+  async switchOrganization(@CurrentUser() user: CurrentUserData, @Body() dto: SwitchOrganizationDto) {
+    return this.authService.switchOrganization(user.id, dto.organizationId);
   }
 
   @Get('me')

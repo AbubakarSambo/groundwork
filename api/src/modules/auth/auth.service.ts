@@ -3,6 +3,8 @@ import {
   ConflictException,
   UnauthorizedException,
   BadRequestException,
+  ForbiddenException,
+  NotFoundException,
   Logger,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -790,6 +792,84 @@ export class AuthService {
     if (!entry || entry.expiresAt < Date.now()) throw new BadRequestException('Invalid or expired exchange code');
     this.oauthCodes.delete(code);
     return { accessToken: entry.token };
+  }
+
+  /**
+   * THE ORGANISATIONS THIS PERSON BELONGS TO.
+   *
+   * Their own is always among them: the migration backfilled a membership for every
+   * existing user from the org they were already in, so this is never empty for
+   * somebody who can sign in. If it ever is, that is a broken account rather than a
+   * person with no organisation, and returning an empty list quietly would hide it -
+   * so the active org is added back in if it is missing.
+   */
+  async myOrganizations(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { organizationId: true, role: true },
+    });
+    if (!user) throw new NotFoundException('User not found');
+
+    const memberships = await this.prisma.organizationMembership.findMany({
+      where: { userId },
+      select: { organizationId: true, role: true, organization: { select: { id: true, name: true, slug: true } } },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    const rows = memberships.map((m) => ({
+      id: m.organization.id,
+      name: m.organization.name,
+      slug: m.organization.slug,
+      role: m.role,
+      active: m.organizationId === user.organizationId,
+    }));
+
+    // Self-healing rather than silently wrong: a user whose active org has no
+    // membership row would otherwise see a switcher that does not list where they
+    // currently are, which reads as data loss.
+    if (!rows.some((r) => r.active)) {
+      const own = await this.prisma.organization.findUnique({
+        where: { id: user.organizationId },
+        select: { id: true, name: true, slug: true },
+      });
+      if (own) rows.unshift({ ...own, role: user.role, active: true });
+    }
+    return rows;
+  }
+
+  /**
+   * SWITCH THE ACTIVE ORGANISATION.
+   *
+   * Every org-scoped query in the product reads `organizationId` off the token, so
+   * this is a new token rather than a rewrite of those queries. Two things it must
+   * not do: trust the id it was given, and carry the old role.
+   *
+   * The role comes from the MEMBERSHIP, not from the user row. Somebody can administer
+   * their own company and be an ordinary member of a client's - keeping the old role
+   * across the switch would hand them admin of an organisation that never gave it.
+   */
+  async switchOrganization(userId: string, organizationId: string) {
+    const membership = await this.prisma.organizationMembership.findUnique({
+      where: { userId_organizationId: { userId, organizationId } },
+      select: { role: true, organization: { select: { id: true, name: true, slug: true } } },
+    });
+    if (!membership) {
+      // Not "not found": from the caller's side this is being refused, and saying so
+      // plainly is better than implying the organisation does not exist.
+      throw new ForbiddenException('You are not a member of that organisation');
+    }
+
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: { organizationId, role: membership.role },
+      select: { id: true, email: true, firstName: true, lastName: true, organizationId: true, role: true, isPlatformAdmin: true },
+    });
+
+    return {
+      accessToken: this.generateToken(user),
+      user,
+      organization: membership.organization,
+    };
   }
 
   private generateToken(user: { id: string; email: string; organizationId: string; role: string }) {

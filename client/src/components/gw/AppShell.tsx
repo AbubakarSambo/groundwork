@@ -1,9 +1,10 @@
 import { toast } from 'sonner'
+import { authApi } from '@/api/auth'
 import { railAttention, railRank, stillInRail } from '@/lib/rail-attention'
 import { plannedSessionsFor } from '@/lib/sessionCount'
 import { useState, useRef, useEffect } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/auth'
 import { apiClient } from '@/api/client'
 import { groundsApi } from '@/api/grounds'
@@ -373,6 +374,28 @@ export function AppSidebar() {
   const qc = useQueryClient()
   const user = useAuthStore(s => s.user)
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
+
+  /**
+   * The organisations this person belongs to. Only asked when signed in: before that
+   * it is a guaranteed 401 and a toast nobody caused.
+   */
+  const { data: myOrgs = [] } = useQuery({
+    queryKey: ['my-organizations'],
+    queryFn: authApi.myOrganizations,
+    enabled: isAuthenticated,
+    retry: false,
+  })
+  const setAuth = useAuthStore(s => s.setAuth)
+  const switchOrg = useMutation({
+    mutationFn: (organizationId: string) => authApi.switchOrganization(organizationId),
+    onSuccess: (res) => {
+      setAuth(res.user, res.accessToken)
+      // A full reload rather than invalidating queries: a half-switched app still
+      // showing the previous organisation's grounds is worse than a second of waiting.
+      window.location.assign('/grounds')
+    },
+    onError: () => toast.error('Could not switch organisation. Try again.'),
+  })
   const { data: grounds = [] } = useQuery<Ground[]>({
     queryKey: ['grounds'],
     queryFn: groundsApi.list,
@@ -676,6 +699,48 @@ export function AppSidebar() {
               )
             })}
           </nav>
+        )}
+
+        {/*
+          SWITCHING ORGANISATION, AT THE BOTTOM WITH THE PERSON. W9-4.
+
+          Her call that the bottom is fine, and it belongs next to who you are because
+          that is what it changes: not a filter on one page, but whose organisation
+          every page is about. It appears only when there is somewhere to switch TO - a
+          switcher listing one thing is a control that does nothing.
+
+          The role shown is per organisation. Somebody can run their own company and be
+          an ordinary member of a client's, and the token carries the membership's role,
+          not the person's.
+        */}
+        {isAuthenticated && !collapsed && myOrgs.length > 1 && (
+          <div style={{ padding: '10px 12px', borderTop: '1px solid rgba(255,255,255,.07)', flexShrink: 0 }}>
+            <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '.5px', color: 'rgba(255,255,255,.3)', fontWeight: 700, marginBottom: 6 }}>
+              Organisation
+            </div>
+            {myOrgs.map(o => (
+              <button
+                key={o.id}
+                onClick={() => !o.active && switchOrg.mutate(o.id)}
+                disabled={switchOrg.isPending}
+                title={o.active ? 'You are in this organisation' : `Switch to ${o.name}`}
+                style={{
+                  width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 7,
+                  padding: '6px 8px', marginBottom: 2, borderRadius: 6, border: 'none',
+                  background: o.active ? 'rgba(255,255,255,.09)' : 'transparent',
+                  color: o.active ? 'white' : 'rgba(255,255,255,.6)',
+                  cursor: o.active ? 'default' : 'pointer', fontFamily: 'inherit',
+                  fontSize: 12.5, fontWeight: o.active ? 700 : 500,
+                }}
+              >
+                <span style={{ width: 5, height: 5, borderRadius: '50%', flexShrink: 0, background: o.active ? '#34d399' : 'transparent' }} />
+                <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.name}</span>
+                <span style={{ fontSize: 10, color: 'rgba(255,255,255,.3)', textTransform: 'capitalize', flexShrink: 0 }}>
+                  {o.role.toLowerCase()}
+                </span>
+              </button>
+            ))}
+          </div>
         )}
 
         {/* User profile / sign in */}

@@ -89,4 +89,25 @@ export const authApi = {
   /** Trade the one-time OAuth code from the redirect for a real JWT. */
   googleExchange: (code: string) =>
     apiClient.get<{ accessToken: string }>(`/auth/google/exchange?code=${encodeURIComponent(code)}`).then(r => r.data),
+
+  /** The organisations this person belongs to, with the active one marked. */
+  myOrganizations: () =>
+    apiClient
+      .get<{ id: string; name: string; slug: string; role: string; active: boolean }[]>(
+        '/auth/my-organizations',
+        { skipForbiddenToast: true, skipNotFoundToast: true },
+      )
+      .then(r => r.data),
+
+  /**
+   * Switch the active organisation. Returns a NEW token - every org-scoped query
+   * reads the org off the token, so the old one still points at the old org.
+   */
+  switchOrganization: (organizationId: string) =>
+    apiClient
+      .post<{ accessToken: string; user: any; organization: { id: string; name: string; slug: string } }>(
+        '/auth/switch-organization',
+        { organizationId },
+      )
+      .then(r => r.data),
 }

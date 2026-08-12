@@ -225,6 +225,7 @@ model Organization {
 
   @@map("organizations")
   styleProfiles PersonStyleProfile[]
+  memberships    OrganizationMembership[]
 }
 
 model User {
@@ -265,6 +266,7 @@ model User {
   @@index([organizationId])
   @@map("users")
   styleProfiles PersonStyleProfile[]
+  memberships     OrganizationMembership[]
 }
 
 // ---------------------------------------------------------------------------
@@ -1522,4 +1524,34 @@ model ParticipantNote {
 
   @@index([participantId, carriedIntoCheckInId])
   @@map("participant_notes")
+}
+
+/// SOMEBODY CAN BELONG TO MORE THAN ONE ORGANISATION.
+///
+/// `User.email` is globally unique, so one address is one row - which is why there
+/// was no way to be in two organisations at once. Rather than break that (and every
+/// lookup that depends on it), membership becomes its own table and
+/// `User.organizationId` becomes the ACTIVE one: the org whose data the token scopes
+/// every query to.
+///
+/// That is what makes the switch tractable. Every org-scoped query in the product
+/// already reads `organizationId` off the token, so switching means issuing a new
+/// token - not rewriting the queries.
+///
+/// The role is per membership. Somebody can administer their own company and be an
+/// ordinary member of a client's organisation, and flattening that to one role would
+/// either over-grant or under-grant in one of them.
+model OrganizationMembership {
+  id             String   @id @default(uuid())
+  userId         String   @map("user_id")
+  organizationId String   @map("organization_id")
+  role           UserRole @default(MEMBER)
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+  @@index([userId])
+  @@map("organization_memberships")
 }
