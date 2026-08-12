@@ -189,7 +189,13 @@ export const groundsApi = {
           correctionOf: number | null
           turns: { id: string; role: 'AI' | 'PERSON'; content: string }[]
         }[]
-      }>(`/grounds/${groundId}/my-transcript`, { skipForbiddenToast: true })
+      }>(`/grounds/${groundId}/my-transcript`, {
+        // GroundChat renders its own "could not be loaded" line, so the global red
+        // toast quoting the URL on top of it is the same failure said twice - once
+        // in plain words and once in plumbing. W8-64.
+        skipForbiddenToast: true,
+        skipNotFoundToast: true,
+      })
       .then(r => r.data),
 
   /** Your own between-session notes. Private: never in a report, never to the lead. */
@@ -197,7 +203,7 @@ export const groundsApi = {
     apiClient
       .get<{ id: string; text: string; createdAt: string; carriedIntoCheckInId: string | null }[]>(
         `/grounds/${groundId}/my-notes`,
-        { skipForbiddenToast: true },
+        { skipForbiddenToast: true, skipNotFoundToast: true },
       )
       .then(r => r.data),
 

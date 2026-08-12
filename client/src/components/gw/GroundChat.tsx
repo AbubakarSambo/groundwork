@@ -54,24 +54,35 @@ function SessionDivider({ sessionNumber, date, isCorrection, correctionOf }: {
 }
 
 function Message({ role, content }: { role: 'AI' | 'PERSON'; content: string }) {
+  /**
+   * THE SAME BUBBLE AS THE CHECK-IN, TO THE PIXEL.
+   *
+   * The first version of this invented its own: uppercase YOU / GROUNDWORK labels
+   * above each turn, different radii, different type size. So reading your history
+   * looked like a different product from the conversation that produced it, which
+   * is the opposite of the point - it is meant to be the same thread.
+   *
+   * Copied from ChatPage's message style deliberately rather than approximated. If
+   * that one changes, this should change with it.
+   */
   const mine = role === 'PERSON'
   return (
-    <div style={{ display: 'flex', justifyContent: mine ? 'flex-end' : 'flex-start', marginBottom: 10 }}>
-      <div
-        style={{
-          maxWidth: '78%',
-          background: mine ? 'var(--gw-navy)' : 'white',
-          color: mine ? 'white' : 'var(--gw-text)',
-          border: mine ? 'none' : '1px solid var(--gw-border)',
-          borderRadius: 12,
-          padding: '10px 13px',
-          fontSize: 13.5,
-          lineHeight: 1.6,
-          whiteSpace: 'pre-wrap',
-        }}
-      >
-        {content}
-      </div>
+    <div
+      style={{
+        maxWidth: '80%',
+        alignSelf: mine ? 'flex-end' : 'flex-start',
+        background: mine ? 'var(--gw-navy)' : 'white',
+        color: mine ? 'white' : 'var(--gw-text)',
+        border: mine ? 'none' : '0.5px solid var(--gw-border)',
+        borderRadius: mine ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+        padding: '10px 14px',
+        fontSize: 14,
+        lineHeight: 1.6,
+        whiteSpace: 'pre-wrap',
+        boxShadow: mine ? 'none' : '0 1px 3px rgba(0,0,0,.05)',
+      }}
+    >
+      {content}
     </div>
   )
 }
@@ -251,7 +262,7 @@ export function GroundChat({ groundId, openCheckInId, openSessionNumber, totalSe
       )}
 
       {sessions.map(s => (
-        <div key={s.checkInId}>
+        <div key={s.checkInId} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <SessionDivider
             sessionNumber={s.sessionNumber}
             date={s.date}

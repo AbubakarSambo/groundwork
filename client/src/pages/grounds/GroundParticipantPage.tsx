@@ -9,6 +9,7 @@ import { reportsApi } from '@/api/reports'
 import { documentsApi } from '@/api/documents'
 import { conversationApi } from '@/api/conversation'
 import { GroundChat } from '@/components/gw/GroundChat'
+import { useViewStore } from '@/stores/view'
 import { apiClient } from '@/api/client'
 import { participantLabel } from '@/lib/utils'
 import { alignmentLabel } from '@/lib/alignment'
@@ -330,31 +331,10 @@ export function GroundParticipantPage() {
   })
 
   /**
-   * CHAT OR MORE, AND CHAT IS WHAT YOU LAND ON.
-   *
-   * Hafsah: "make the first thing you land on on the chat/checkins be the chat,
-   * but at the top you can switch, so what we see stays the same." The card scroll
-   * is not replaced - it moves behind a toggle, and nothing it does is lost.
-   *
-   * It is called MORE rather than "Summaries", her correction: it holds the
-   * summaries, and it is also the way to the record, the report, the documents and
-   * the settings. "Summaries" would name a quarter of it.
-   *
-   * DECLARED UP HERE, ABOVE THE LOADING RETURNS, because it is a hook. Sitting it
-   * next to the derived values below - which is where it reads better - put it
-   * after `if (isLoading) return`, so the first render had one fewer hook than the
-   * second and React reported a changed hook order. Found by three existing specs
-   * going red on a session count that was never the problem.
+   * The app's Chat-or-More mode, set at the top of the rail. Not this page's own
+   * state: the switch changes the rail as well, so one page owning it was the bug.
    */
-  const VIEW_KEY = 'gw:groundView'
-  const [view, setView] = useState<'chat' | 'more'>(() => {
-    const remembered = typeof localStorage !== 'undefined' ? localStorage.getItem(VIEW_KEY) : null
-    return remembered === 'more' ? 'more' : 'chat'
-  })
-  function chooseView(v: 'chat' | 'more') {
-    setView(v)
-    try { localStorage.setItem(VIEW_KEY, v) } catch { /* private browsing; the default is fine */ }
-  }
+  const view = useViewStore(s => s.view)
 
   if (isLoading) return <div style={{ minHeight: '100vh', background: '#F5F3EF', padding: 24, fontSize: 13, color: '#9B9590' }}>Loading…</div>
   if (!ground) return <div style={{ minHeight: '100vh', background: '#F5F3EF', padding: 24, fontSize: 13, color: '#9B9590' }}>Ground not found.</div>
@@ -490,26 +470,6 @@ export function GroundParticipantPage() {
         {/* CHECK-IN TAB */}
         {tab === 'checkin' && (
           <div>
-            {/* Chat or More. The toggle sits at the top of the ground, so switching
-                is one click and neither view is buried behind the other. */}
-            <div style={{ display: 'inline-flex', background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: 2, marginBottom: 14 }}>
-              {(['chat', 'more'] as const).map(v => (
-                <button
-                  key={v}
-                  onClick={() => chooseView(v)}
-                  style={{
-                    padding: '6px 16px', borderRadius: 6, border: 'none', cursor: 'pointer', fontFamily: 'inherit',
-                    fontSize: 12.5, fontWeight: 700,
-                    background: view === v ? 'white' : 'transparent',
-                    color: view === v ? 'var(--gw-navy)' : 'var(--gw-sub)',
-                    boxShadow: view === v ? '0 1px 3px rgba(0,0,0,.08)' : 'none',
-                  }}
-                >
-                  {v === 'chat' ? 'Chat' : 'More'}
-                </button>
-              ))}
-            </div>
-
             {view === 'chat' && (
               <GroundChat
                 groundId={id!}
