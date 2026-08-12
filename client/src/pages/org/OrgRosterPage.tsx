@@ -59,7 +59,7 @@ export function OrgRosterPage() {
 
   return (
     <div style={{ padding: '40px 32px', maxWidth: 920 }}>
-      <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--gw-navy)', marginBottom: 6, letterSpacing: '-.02em' }}>Roster</h1>
+      <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--gw-navy)', marginBottom: 6, letterSpacing: '-.02em' }}>All grounds</h1>
       <p style={{ fontSize: 14, color: 'var(--gw-sub)', marginBottom: 32, lineHeight: 1.6 }}>
         Every ground in your organization - who leads it, who is in it, and where alignment stands.
       </p>

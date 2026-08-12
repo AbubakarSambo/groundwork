@@ -53,7 +53,14 @@ const NAV_ITEMS = [
     ),
   },
   {
-    label: 'Roster',
+    /**
+     * "Roster" lists grounds, not people, which is the opposite of what the word
+     * suggests next to "People" directly above it. W8-27. Named for what it
+     * holds. It does not collide with Grounds in the rail because that one is
+     * the grounds you are in and this one is every ground in the organisation -
+     * which the subtitle on the page says.
+     */
+    label: 'All grounds',
     to: '/org/roster',
     adminOnly: true,
     icon: (active: boolean) => (

@@ -1546,7 +1546,7 @@ it is done.
 | W8-16 | the 35s closing report has no honest progress | M | OPEN |
 | W8-22 | a truncated assistant reply ("You've nam") is saved into the record | M | WITHDRAWN |
 | W8-23 | two tabs render active at once | S | WITHDRAWN |
-| W8-27 | four names for two concepts | S | OPEN |
+| W8-27 | four names for two concepts | S | DONE |
 | W8-36 | `/invite` and `/set-password` handle a missing token in opposite ways | S | DONE |
 | W8-37 | `/welcome` and `/profile` exist for one line of content | S | DONE |
 | W8-42 | controls that work but sit in the wrong place, including two sending signed-in people to `/start` | S | DONE |
@@ -2136,6 +2136,12 @@ which is what the bite-check went red on.
 
 Two of those four words are wrong for what the page holds, and "Teams" listing grounds collides
 with the Grounds page doing the same.
+
+**Done 2026-08-12.** The sidebar and the page already agreed on "People" from an earlier pass.
+The remaining one was "Roster", which sits directly under "People" in the rail and lists grounds -
+the opposite of what the word suggests in that position. It is "All grounds" now, at both ends.
+That does not collide with Grounds: one is the grounds you are in, the other is every ground in
+the organisation, which is what the page's own subtitle says.
 
 ## W8-28 · Chrome and colour are inconsistent across pages - **S**
 
