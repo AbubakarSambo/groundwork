@@ -4369,3 +4369,31 @@ costs the person who has to act on the report. The real boundary is per-person q
 material - recall notes, specificity, concerns - which `own-reads-only.ts` strips from every
 reader including the lead, and which stays stripped. Bite-checked by narrowing one call site
 to the lead alone.
+
+## W8-75 · The migrations, checked the way production will meet them - **DONE**
+
+Three migrations ship with this branch, and `start:prod` runs `migrate deploy` on boot, so a
+migration that fails takes the API down rather than degrading it. Checked before merge, on
+throwaway databases, in the two states that matter:
+
+**From empty.** All migrations apply cleanly in order.
+
+**From the state production is actually in**, which is the one worth the trouble: every
+migration EXCEPT this branch's three, with real organisations and users already in the tables,
+and only then the three applied. That is the path the backfill in
+`20260812080000_organization_memberships` takes, and it is the one that cannot be undone by
+rolling back a deploy.
+
+| Existing user | Their role | Membership after the backfill |
+|---|---|---|
+| a@x.test | ADMIN | ADMIN in their own org |
+| b@x.test | MEMBER | MEMBER in their own org |
+| c@x.test (second org) | ADMIN | ADMIN in their own org |
+
+Every existing user gets exactly one membership, in the organisation they are already in, with
+the role they already have. Nobody is moved and no role is elevated - which is the specific
+failure to fear here, and the same shape as the mistake recorded earlier in this plan where a
+cleanup script with no `user_id` predicate moved a test user into somebody else's
+organisation.
+
+Throwaway databases dropped afterwards.
