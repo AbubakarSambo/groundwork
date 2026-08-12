@@ -1702,6 +1702,91 @@ navigation, which is also how it stayed undiscovered.
 `addLeadContext` is lead-only on the server and the participant Context page offers no note box -
 only uploads, plus the line saying the lead may hold context they cannot read.
 
+# Wave 10 - sign-up and sign-in, the assessment she asked for
+
+Her words: "the sign-up flow still just says sign-in, no create an account options etc. Please do
+a thorough assessment of how people sign-in/sign-up and all the different flows and failures, ux
+challenges... We seem to be failing to get this wrong with you."
+
+Read off the code, not remembered. She is right, and the reason is structural rather than a missing
+button: **there is no sign-up flow. There is a sign-in page with a sign-up hidden inside one of its
+modes.**
+
+## W10-1 · The shape of it today
+
+`/auth` is one page with three views held in local state:
+
+| View | What it is | How you reach it |
+|---|---|---|
+| `password` | email + password sign-in | the default |
+| `link` | **this is also the sign-up** | "No password? Get a sign-in link instead" or "New here? Create an account" |
+| `reset` | forgot password | "Forgot your password?" |
+
+The heading changes with the view: "Sign in", or "Sign in or create account". There is no route, no
+page and no heading that is only about creating an account - `?mode=signup` changes the same page's
+default view and its wording, nothing more.
+
+So a first-time visitor lands on a form asking for a password they do not have, under a heading that
+says Sign in, and the way forward is the fourth line of small print.
+
+## W10-2 · The failures, worst first
+
+**1. Every failure is reported as success.** `sendLink` and `sendReset` both do
+`onError: () => setLinkSent(true)`. A network failure, a 500, a rejected address - all of them show
+"Check your email". For sign-in that is a deliberate and correct choice, because saying "no such
+account" tells a stranger which addresses are registered. **For sign-up it is a trap**: somebody
+whose account was never created is told to go and wait for an email that will never arrive, and the
+product has told them everything is fine. This is the worst thing in the flow and it is four
+characters of code.
+
+**2. Sign-up asks for nothing but an email.** No name, no organisation. `entrySave` derives the
+first name from the address (`sam.taylor@` becomes "Sam") and `verifyEmail` names the organisation
+`${firstName}'s workspace`. That is a deliberate improvement on the old behaviour, which took the
+company's name from the email domain before the address was proved (GW-001) - but the result is that
+somebody signing up to run a team lands in an organisation called "Sam's workspace" and was never
+asked. For the entry-chat path the org name is captured in conversation; for a straight sign-up
+nothing asks.
+
+**3. Two doors to the same view, worded as different things.** "No password? Get a sign-in link
+instead" and "New here? Create an account" both call `setView('link')`. One reads as a workaround
+for a forgotten password, the other as registration. They are the same form.
+
+**4. Nothing distinguishes "you have no account" from "you have no password".** A participant who
+was added to a ground has a user row and no password. `login` sees that, emails them a setup link,
+and throws "We've emailed you a link to set your password" - which is right. But the form they were
+typing into is the *password* form, so they had to guess that entering a password they never chose
+was the way to be told they do not have one.
+
+**5. `/auth?mode=member` exists and nothing links to it.** It is how a participant is supposed to
+arrive; the marketing site's "Sign in" goes to plain `/auth`.
+
+**6. The verification email is the whole product.** No account exists until the link is opened, and
+`MagicSentPage` had no way back to the form until today (W9-3), so a mistyped address was a dead
+end: resend went to the same wrong address.
+
+## W10-3 · What to do, in order
+
+1. **Stop reporting failure as success, for sign-up only.** Keep the generic answer for sign-in and
+   reset. Sign-up should say "that did not send - try again" when it did not send. Smallest change,
+   largest effect.
+2. **A real create-account view**, with its own heading, that asks for **name and organisation**
+   before the link goes out. Not a route necessarily - the same page is fine - but one clear door
+   rather than two pieces of small print, and the org named by the person who owns it.
+3. **One door, not two.** "No password? Get a link" becomes a sign-in aid; "Create an account" goes
+   to the create view.
+4. **Say which situation somebody is in.** If the address has an account with no password, the
+   password form should say so rather than letting them submit and be told.
+5. **Point `mode=member` at something**, or delete it.
+
+## W10-4 · What is genuinely right, and should not be lost
+
+- Nothing is created until the address is proved (GW-001). The whole signup waits in
+  `pendingSignup`, so an unopened link leaves no trace - no organisation named after somebody's
+  company, no admin account in their name.
+- The generic answer on **sign-in** and **reset** is correct and should stay.
+- A participant with no password is auto-sent a setup link rather than being stuck.
+- The link view genuinely creates an account. The plumbing works; it is the door that is missing.
+
 # Wave 9 - the audit she asked for after the chat view landed
 
 Her list: "all the things that were there are gone e.g. session count, changing ground name if you
