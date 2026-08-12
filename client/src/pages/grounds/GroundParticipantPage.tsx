@@ -34,6 +34,56 @@ function specificityQualityLabel(score: number): { label: string; color: string;
 
 type Tab = 'checkin' | 'history' | 'record' | 'report' | 'docs' | 'settings'
 
+/**
+ * THE CONVERSATION ITSELF, WHICH SESSION HISTORY DID NOT HOLD. W8-21, W8-57.
+ *
+ * "Session history" listed a session number, a date and a summary of what we
+ * heard - everything except the thing that happened. Hafsah: "I have no way to
+ * go back and see my chats." A ground is meant to be a place you return to, and
+ * returning to a list of dates is not returning to anything.
+ *
+ * The transcript endpoint already existed and is owner-only on the server, so
+ * this shows a person their own words and nobody else's. Loaded when opened
+ * rather than with the page: on a twelve-session ground that is twelve requests
+ * nobody asked for.
+ */
+function SessionConversation({ checkInId }: { checkInId: string }) {
+  const [open, setOpen] = useState(false)
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['transcript', checkInId],
+    queryFn: () => conversationApi.transcript(checkInId),
+    enabled: open,
+  })
+  const turns = data?.turns ?? []
+  return (
+    <div style={{ marginTop: 6 }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{ fontSize: 11, color: '#0C447C', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit', fontWeight: 600 }}
+      >
+        {open ? 'Hide the conversation' : 'Read the conversation'}
+      </button>
+      {open && (
+        <div style={{ marginTop: 8, background: '#F5F3EF', borderRadius: 7, padding: '10px 12px', maxHeight: 420, overflowY: 'auto' }}>
+          {isLoading && <div style={{ fontSize: 12, color: '#9B9590' }}>Loading…</div>}
+          {isError && <div style={{ fontSize: 12, color: '#9B9590' }}>That conversation could not be loaded. Try again in a moment.</div>}
+          {!isLoading && !isError && turns.length === 0 && (
+            <div style={{ fontSize: 12, color: '#9B9590' }}>Nothing was said in this session.</div>
+          )}
+          {turns.map((t: any, i: number) => (
+            <div key={t.id ?? i} style={{ marginBottom: 10 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', color: '#9B9590', marginBottom: 3 }}>
+                {t.role === 'PERSON' ? 'You' : 'Groundwork'}
+              </div>
+              <div style={{ fontSize: 12.5, color: '#3A3630', lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>{t.content}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function SoloArtifactBlock({ checkInId, groundId, sessionNumber }: { checkInId: string; groundId: string; sessionNumber: number }) {
   const [open, setOpen] = useState(false)
   const navigate = useNavigate()
@@ -605,6 +655,7 @@ export function GroundParticipantPage() {
                         </div>
                       )}
                       {isComplete && <SoloArtifactBlock checkInId={ci.id} groundId={id!} sessionNumber={ci.sessionNumber} />}
+                      <SessionConversation checkInId={ci.id} />
                     </div>
                   )
                 })}
@@ -1058,20 +1109,20 @@ export function GroundParticipantPage() {
 
                 {/* Tier 3: Upgrade org */}
                 <div style={{ border: '1px solid #E2E0DB', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: '#6B4FA0', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 6 }}>Upgrade organization</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-navy)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 6 }}>Upgrade organization</div>
                   <div style={{ fontSize: 13, color: '#1A1916', lineHeight: 1.6, marginBottom: 12 }}>
                     Your team is getting value from Groundwork. Unlock unlimited Grounds and unlimited sessions for everyone in your organization with one simple monthly subscription.
                   </div>
                   <button
                     onClick={() => createSubscriptionMut.mutate('STARTER')}
                     disabled={createSubscriptionMut.isPending}
-                    style={{ width: '100%', padding: '10px', borderRadius: 7, background: '#6B4FA0', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: createSubscriptionMut.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: createSubscriptionMut.isPending ? 0.7 : 1, marginBottom: 8 }}
+                    style={{ width: '100%', padding: '10px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: createSubscriptionMut.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: createSubscriptionMut.isPending ? 0.7 : 1, marginBottom: 8 }}
                   >
                     {createSubscriptionMut.isPending ? 'Redirecting...' : 'Upgrade organization'}
                   </button>
                   <button
                     onClick={() => navigate('/pricing')}
-                    style={{ width: '100%', padding: '8px', borderRadius: 7, background: 'none', color: '#6B4FA0', fontSize: 12, fontWeight: 600, border: '1px solid #D4C8EC', cursor: 'pointer', fontFamily: 'inherit' }}
+                    style={{ width: '100%', padding: '8px', borderRadius: 7, background: 'none', color: 'var(--gw-navy)', fontSize: 12, fontWeight: 600, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
                   >
                     View all plans
                   </button>
@@ -1086,12 +1137,12 @@ export function GroundParticipantPage() {
               </>
             )}
 
-            {/* Contributor code: an admin/lead instrument for bypassing a
+            {/* Access code: an admin/lead instrument for bypassing a
                 payment block. It used to render for everyone, sending plain
                 participants hunting for a code they were never issued. */}
             {myParticipant?.partyType === 'INITIATOR' && (
             <div style={{ borderTop: '1px solid #E2E0DB', paddingTop: 14 }}>
-              <div style={{ fontSize: 12, color: '#9B9590', marginBottom: 8 }}>Have a contributor code?</div>
+              <div style={{ fontSize: 12, color: '#9B9590', marginBottom: 8 }}>Have an access code?</div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <input
                   type="text"

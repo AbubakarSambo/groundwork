@@ -46,10 +46,10 @@ describe('nothing on the participant page asks them for money', () => {
     expect(CODE).toMatch(/insightsLocked/) // the flag is legitimate: "no completed session yet"
   })
 
-  it('keeps the contributor code inside the initiator branch', () => {
+  it('keeps the access code inside the initiator branch', () => {
     // The code exists and is legitimate - for admins and leads. What must not
     // happen is a participant being shown the field.
-    const i = CODE.indexOf('Have a contributor code')
+    const i = CODE.indexOf('Have an access code')
     expect(i).toBeGreaterThan(-1)
     const before = CODE.slice(0, i)
     const lastGuard = before.lastIndexOf("myParticipant?.partyType === 'INITIATOR'")

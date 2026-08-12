@@ -53,7 +53,7 @@ export function CodeShareCard({ code, expiresAt, daysRemaining, note, allowCodeC
       {/* Top label row */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,.45)' }}>
-          Contributor code
+          Access code
         </span>
         {allowCodeCreation && (
           <span style={{

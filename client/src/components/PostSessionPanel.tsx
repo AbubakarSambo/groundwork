@@ -71,8 +71,8 @@ export function PostSessionPanel({ groundId, freeExtensionUsed, onDismiss }: Pro
             unlimited sessions, and nothing in between is sold by the session. */}
 
         {/* Upgrade org */}
-        <div style={{ background: 'white', border: '1px solid #D4C8EC', borderRadius: 10, padding: '14px 16px' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#6B4FA0', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 5 }}>
+        <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-navy)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 5 }}>
             Upgrade organization
           </div>
           <div style={{ fontSize: 13, color: '#1A1916', lineHeight: 1.6, marginBottom: 12 }}>
@@ -82,13 +82,13 @@ export function PostSessionPanel({ groundId, freeExtensionUsed, onDismiss }: Pro
             <button
               onClick={() => createSubscriptionMut.mutate('STARTER')}
               disabled={createSubscriptionMut.isPending}
-              style={{ padding: '9px 18px', borderRadius: 7, background: '#6B4FA0', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: createSubscriptionMut.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: createSubscriptionMut.isPending ? 0.7 : 1 }}
+              style={{ padding: '9px 18px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: createSubscriptionMut.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: createSubscriptionMut.isPending ? 0.7 : 1 }}
             >
               {createSubscriptionMut.isPending ? 'Redirecting...' : 'Upgrade organization'}
             </button>
             <button
               onClick={() => navigate('/pricing')}
-              style={{ padding: '9px 18px', borderRadius: 7, background: 'none', color: '#6B4FA0', fontSize: 13, fontWeight: 600, border: '1px solid #D4C8EC', cursor: 'pointer', fontFamily: 'inherit' }}
+              style={{ padding: '9px 18px', borderRadius: 7, background: 'none', color: 'var(--gw-navy)', fontSize: 13, fontWeight: 600, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
             >
               View all plans
             </button>

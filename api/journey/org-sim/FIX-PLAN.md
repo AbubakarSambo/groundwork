@@ -1510,6 +1510,128 @@ committed a batch before running the API suite, which was red on six mocks. Both
 lesson the plan keeps recording: prove the fix on the path it was meant to repair, before saying
 it is done.
 
+## W8-61 - The marketing nav went to stubs, so /about was unreachable - **FIXED**
+
+Hafsah: "the about page doesn't have the profiles i gave you... it is not visible at all."
+
+She was right and I was wrong to answer that it was live. It is live at `/about`; she had not
+been to `/about`. The home page's nav was **buttons calling `lNav()`**, which hid the home page
+and revealed a thinner inline copy of each section further down the same file:
+
+| | The real page | The stub the nav showed |
+|---|---|---|
+| about | `about.astro`, 14.7KB, the team on it | `#lp-about`, 3.4KB, no team |
+| pricing | `pricing.astro`, 17.8KB | `#lp-pricing`, 2.6KB |
+| how it works | `how-it-works.astro`, 14.4KB | `#lp-how`, 6.2KB |
+| use cases | `use-cases.astro`, 11.8KB | `#lp-usecases`, 8.0KB |
+
+Her screenshot shows it exactly: URL `myground.work` with no path, tab title "Groundwork - A clear
+picture" (the HOME title, not "About - Groundwork"), the About nav item boxed as active, and card
+copy - "A private check-in for each person" - that appears **only** in `index.astro`. Four pages
+were written, deployed, and reachable by nobody who used the site.
+
+**Why nothing caught it.** Both versions were real HTML in one file, both looked finished, and
+clicking About genuinely showed you something headed About with the same heading word for word.
+The link-existence tripwire from July checks that hrefs resolve - these were not hrefs. My own
+check was worse than useless: I fetched `/about`, found the bios, and told her they were live,
+which was true and answered a question she had not asked.
+
+**Fixed.** The nav and footer are real links to the real pages. The four stubs and `lNav` are
+deleted - about 130 lines. The four pages already carry their own header and footer.
+
+**Guarded.** `check-one-domain.mjs` runs after every build, including the deploy, and now fails
+it if the home nav has fewer than four links, links to a page the build did not produce, still
+carries an `id="lp-..."` copy of another page, or goes back to `lNav()` buttons. All three arms
+bite-checked. It guards the shipped artefact rather than the source, which is the only place this
+was ever visible.
+
+## W8-63 - "Contributor" was not retired. I said it was - **fixed and guarded**
+
+I wrote in a commit that renaming the access code "retires contributor as a competing word for a
+person". I had changed two places. Seven more were on screen, including the line under the
+**sign-in form** - "Your contributions stay private from other contributors" - which is the first
+sentence about privacy anybody reads.
+
+Fixed: the sign-in page, the org-code page's badge and footnote, "Invite a contributor" on the
+save card, "a report for each contributor" in ground setup, "Contributors get their invite" in the
+post-setup guide, and the REALIGN_TEAM warning. The word a person gets is **participant**, which
+is what the schema, the ground page and the invite emails already say.
+
+Still legal, and different things: **contribution** (what a person puts in - the product's own
+phrase), and `hiddenContributors`, the report's name for somebody whose contribution is not
+visible upward. That one is a finding, not a role, and never reaches the screen: the heading says
+"People who may be missing".
+
+**Guarded, and the guard was wrong first.** `one-word-for-a-person.spec.ts` scans for the word
+with comments blanked out. Its first version allowed `contributors[:.]` so object keys and
+property access would pass - which also allowed *"...private from other contributors."*, because
+an English sentence ends in a full stop. I put the word back on the sign-in page and the spec
+stayed green. The allow-list is structural now (`contributors:` a key, `contributors.` followed by
+an identifier, argument and destructuring positions), and the same sabotage now fails it.
+
+Worth keeping: **the bite-check is the only reason that hole was found.** A guard written for a
+mistake I had just made, which did not catch the mistake I had just made.
+
+## W8-62 - The same sweep, run on the app: one real gap - **guarded**
+
+The marketing bug had a shape worth hunting for: something built, deployed, and reachable by
+nobody. `every-destination-exists.spec.ts` already checks the forward direction - everything the
+app navigates to is a real route. The reverse had never been checked.
+
+Of 37 routes, 8 are linked from nowhere. Six are correct: `/verify-email`, `/set-password`,
+`/reset-password` open from emails, `/auth/google/callback` and `/billing/callback` are redirect
+targets, and `/join` is the broadcast link an admin copies off the ground page. `/demo/:persona`
+is pasted by hand when showing the product, which is deliberate.
+
+**One is a real gap: `/profile/:id?`.** The rail dropped it because the page admits the feature is
+not built, and I wrote at the time that the route should stay because "links to a person's profile
+keep working". There are no such links. Not one. It is a page that can only be opened by typing
+its URL, kept for callers that do not exist - the same mistake as the marketing nav, found the same
+way, by checking instead of assuming. Left in place rather than deleted because that is a call for
+Hafsah, and the page is three sentences of true copy that would be worth linking the moment a
+person's name becomes clickable.
+
+**Guarded.** `every-page-can-be-reached.spec.ts` fails if a route is neither linked nor listed
+with the thing that opens it, and fails if the list names a route that no longer exists. Both
+bite-checked. The comment in `AppShell` that justified the route on a false premise now says what
+is actually true.
+
+## The persona gate failed on correct behaviour
+
+`suite_a` A2 asks whether the engine repeats an unverified claim ("everyone agrees Sam is the
+problem") back as established fact. It went red on this reply:
+
+> That's a strong statement. Before that goes in the record, I need your version of it.
+> When you say Sam is the problem, what ...
+
+Which is the behaviour the check exists to protect. The engine handed the claim back to the
+person who made it, attributed, and asked for what is behind it. The detector was a bare
+`re.search` for the phrase, so it could not tell "the engine asserts this" from "the engine quotes
+you saying this" - and quoting them back is the whole point.
+
+The phrase now only counts when nothing attributes it to the speaker first. A bare assertion
+("Sam is the problem, and I have noted it") still fails, which was checked against both shapes
+before pushing. Nothing on this branch touched that prompt; the model simply phrased it this way
+on this run, and would have tripped the same regex on main.
+
+## A note on verifying against the local API
+
+Twice now a browser check has looked like a product bug and was not. The local API process was
+started **11 August 12:23** and has been serving that build ever since; `npm run start:dev` was
+not left in watch mode, so `dist/` being rebuilt changes nothing about what is running. Node does
+not reload a module it has already loaded.
+
+The most recent case: a ground on localhost showed session 1 complete and no session 2, which is
+exactly the `ensureNextSession` failure this wave fixed. The database agreed - one check-in row,
+nothing scheduled. But the ground was created at 04:00 today **by the pre-fix server**, so it is
+evidence about a build from yesterday, not about the code on this branch.
+
+**What this means in practice.** Client changes verify honestly in the browser: Vite hot-reloads,
+and the stat rows, the renames and the captions in this wave were all read off the running page.
+**API behaviour cannot be verified this way until the process is restarted** - only from the test
+suite, or a throwaway environment booted for the purpose. Written down because the same trap has
+now cost two investigations, and the second one nearly went into this document as a defect.
+
 ## Do these first
 
 | # | Item | Size | Status | Note |
@@ -1530,7 +1652,7 @@ it is done.
 | W8-45 | one header, delete the dead AppShell (shell-on-stranger-pages half withdrawn) | S | OPEN | W8-44 |
 | W8-57 | grounds as channels in the rail, a ground opens to its own history | M | OPEN | W8-44, W8-45 |
 | W8-49 | the target page list, 38 routes to 14 pages | L | OPEN | W8-52 must pass first |
-| W8-52 | the 45-operation inventory the ground merge must satisfy | M | OPEN | acceptance test for W8-49 |
+| W8-52 | the ground-merge inventory, now an executable test (43 distinct ops) | M | DONE | unblocks W8-49 |
 | W8-47 | one noun per thing | S | OPEN | nothing |
 
 ## Product defects, open
@@ -1543,10 +1665,10 @@ it is done.
 | W8-7 | the Context tab is 1 line of what it can do against 7 of what it cannot, and contradicts itself | M | DONE - can leads, limits fold away, contradiction fixed |
 | W8-11 | never asks who the people inside the organisations are | M | DONE - in ONBOARD_SYSTEM, proved at the prompt |
 | W8-12 | two places to add participants, 550px apart | S | DONE - one queue, both ends say so |
-| W8-16 | the 35s closing report has no honest progress | M | OPEN |
+| W8-16 | the 35s closing report has no honest progress | M | DONE - both paths; streaming still open |
 | W8-22 | a truncated assistant reply ("You've nam") is saved into the record | M | WITHDRAWN |
 | W8-23 | two tabs render active at once | S | WITHDRAWN |
-| W8-27 | four names for two concepts | S | OPEN |
+| W8-27 | four names for two concepts | S | DONE |
 | W8-36 | `/invite` and `/set-password` handle a missing token in opposite ways | S | DONE |
 | W8-37 | `/welcome` and `/profile` exist for one line of content | S | DONE |
 | W8-42 | controls that work but sit in the wrong place, including two sending signed-in people to `/start` | S | DONE |
@@ -1899,6 +2021,13 @@ One model call per turn plus a background classify, so the setup turns are 4 to 
 the long wait is the closing report. **Fix in two parts:** make the 35s honest with progress that
 names what is happening, and look at whether the closing synthesis can start earlier or stream.
 
+**First part done, on both paths, 2026-08-12.** The entry flow already named the steps. The
+signed-in finish - the path everybody is on from session two onwards - showed "Saving…" and then
+nothing for half a minute, which reads as a hang; `complete()` awaits two model calls before it
+answers, so the wait is real. Both now use `components/gw/SlowStep`, which never claims to be
+nearly done and sits on the last honest step rather than running off the end. The second part,
+starting or streaming the synthesis earlier, is still open.
+
 ## W8-17 · Participant check-in asked for a password - **NOT YET REPRODUCED**
 
 She could not check in as a participant on a ground she was added to: it asked her to set up a
@@ -2035,6 +2164,13 @@ Observed across every page captured. Not a defect list, a pattern:
 - **The copy leads with caveats.** Clearest on the Context tab: one line of what the ground can
   tell you, seven of what it cannot (W8-7).
 
+**Two of the concrete ones are done, 2026-08-12.** The roster's "0 members" on a ground that
+plainly had a lead in it: `memberCount` counted only PARTICIPANT rows while `members` maps every
+participant, so one object carried two counts of one list and they disagreed on screen. And the
+purple: the subscribe buttons were the only purple in the product, a hardcoded hex in three files
+with no token behind it, on the pages where somebody is deciding whether to trust us with money.
+They are navy like every other primary action. The hierarchy items below remain.
+
 **What is genuinely good and should not be lost in any redesign:** the writing. "Your
 contribution to this ground is yours until the report releases", the private-record framing
 throughout, and the invite email are plain, calm and trust-building. The hierarchy problem is
@@ -2136,6 +2272,12 @@ which is what the bite-check went red on.
 
 Two of those four words are wrong for what the page holds, and "Teams" listing grounds collides
 with the Grounds page doing the same.
+
+**Done 2026-08-12.** The sidebar and the page already agreed on "People" from an earlier pass.
+The remaining one was "Roster", which sits directly under "People" in the rail and lists grounds -
+the opposite of what the word suggests in that position. It is "All grounds" now, at both ends.
+That does not collide with Grounds: one is the grounds you are in, the other is every ground in
+the organisation, which is what the page's own subtitle says.
 
 ## W8-28 · Chrome and colour are inconsistent across pages - **S**
 
@@ -2576,10 +2718,33 @@ and inside the account at `/billing`, so the tiers can never disagree again (W8-
 1. **One noun per thing, everywhere.** Today: People/Team members, Roster/Teams, contributors/
    participants, check-in/session. Pick one word for each and use it in the rail, the page title
    and the copy. This is the cheapest clarity in the product and it is currently costing the most.
+
+   **Three of the four are done, 2026-08-12.** People says People at both ends; Roster is now All
+   grounds at both ends (W8-27); and "contributor" is gone as a competing word for a person - the
+   report card said "Contributor report" where the tab above it says your report, and the access
+   code was called a contributor code in the product while the email that delivers it has always
+   called it "your Groundwork access code". It is an access code everywhere now, in the app and in
+   the two emails that mention it. **Check-in and session are deliberately still both here**: they
+   are not synonyms. A session is the numbered slot the ground plans; a check-in is what a person
+   does inside it. Collapsing them would lose the distinction "Session 3 of 6" depends on.
 2. **The rail holds check-ins, not grounds** (W8-31). The unit a person lives in gets the home.
 3. **Every screen answers three questions in order:** what is this, what is its state, what do I
    do next. The board does; most pages answer only the first. The stat row is the "state" answer
    and it belongs on the ground page and the grounds list, not only the board.
+
+   **Done for both, 2026-08-12.** The grounds list had its own smaller stat tile and now uses the
+   kit's, so the same number does not change shape depending on which page you opened it from. The
+   ground page had no state answer at all - it named the ground and went straight to cards - and
+   now opens with sessions done, how many have checked in this round, and what the report is doing.
+   Nothing new is fetched; every number was already on screen further down.
+
+   **And rendering it found two things reading the source would not have.** The first version of
+   the row said "SESSIONS 1 of 6" and "THIS ROUND 0 of 1 - still to check in" under a header
+   saying "Session 2 of 6" and a tab saying one person had checked in. All four numbers correct,
+   read together as contradictions, because nothing said which session each was about. Both
+   captions now name their session. The second was already live on the Check-ins tab: "THIS ROUND
+   2 of 6" captioned "counting the session everyone has finished", when everyone had finished one -
+   the value is the round now open and the caption was written for the other reading.
 4. **One primary action per screen, and only one.** Most screens have none. Where there is nothing
    to do, say so in a line rather than filling the space with three cards about absence (W8-24).
 
@@ -2643,6 +2808,14 @@ the top of it (W8-5), and the ground summary, which belongs in the header.
 | **11. Auth** | sign in, create an account, link sent, set or reset a password - one page, modes | `/auth` + `/auth/sent` + `/set-password` + `/reset-password` + `/login` |
 | **12. Arrive** | resolve any token - invite, join, email verification - and put the person where they belong, with one missing-token state | `/invite` + `/join` + `/verify-email` |
 | **13. Pricing** | the same tier component as Billing, rendered publicly, so the two can never disagree | `/pricing` |
+
+**Page 13 is already true inside the app, and there was a fourth copy nobody counted.** `/pricing`
+and `/billing` both read `PLAN_PRICES`, `PLAN_MEMBER_CAPS` and `PLAN_FEATURES` from
+`client/src/api/billing.ts`. The marketing site does not: `marketing/src/pages/pricing.astro`
+writes the same five prices and five seat caps into hand-written HTML in a separate build, so a
+price change in the app would leave myground.work advertising the old one to the people who have
+not signed up yet. They agree today. `the-price-is-the-same-everywhere.spec.ts` now fails if they
+stop, without coupling the two builds to each other.
 | **14. Not found** | one sentence, one action. Already right | `*` |
 
 Plus `/demo/:persona`, which is marketing rather than product, and `/auth/google/callback`, which
@@ -2715,8 +2888,20 @@ one answer. With a single membership the chooser must not appear at all.
 Her instruction: "make sure the ux change does not break or lose important functions and pages."
 
 So here is what the four ground pages actually do, read off their API calls rather than from
-memory. **45 distinct operations.** Any merge that cannot host all of these is not ready to
-start, and this list is the acceptance test for W8-49 page 3.
+memory. Any merge that cannot host all of these is not ready to start, and this list is the
+acceptance test for W8-49 page 3.
+
+**The inventory is now a test, 2026-08-12:** `client/src/pages/grounds/nothing-gets-lost-in-the-merge.spec.ts`.
+An inventory in a document is a safety net nobody is standing under, and the way an operation
+disappears in a four-page refactor is quietly, in a branch nobody re-read. Merge the pages however
+the design wants; if a capability stops being wired to anything, that spec goes red and names it.
+It proves a call is still wired, not that it is reachable or correctly gated - the floor, not the
+ceiling, and a merge still has to be driven in a browser.
+
+**And the count is 43, not the 45 written here.** The prose total added the four pages up
+separately, so `reports.get` and `grounds.get` were each counted more than once. Distinct
+capabilities is the number that matters for a merge, because that is what has to survive. Nothing
+is missing; the number was.
 
 ### `/grounds/:id` (admin) - 23 operations
 
@@ -2950,6 +3135,14 @@ either the live session or the invitation to start it.
 That single view closes four separate findings - W8-19 (the unlinked participant page), W8-20
 (nothing opens or starts a check-in), W8-21 (session history holds only the summary) and W8-14 (no
 way back to your chats). They were all symptoms of check-ins having no home.
+
+**Progress 2026-08-12.** The rail half is built - `lib/rail-attention.ts` with `railAttention`,
+`railRank` and `stillInRail`, wired into `AppShell` so grounds sort by what needs you and drop out
+three months after closing. W8-21 and W8-14 are closed now too: every completed session in Session
+history offers "Read the conversation", which fetches the owner-only transcript on expand rather
+than pulling twelve of them with the page. What is left of this item is the single-scroll shape -
+session 1, its report, session 2, its report, then the live one - rather than a tab holding cards
+that each expand.
 
 ### Three things to get right
 

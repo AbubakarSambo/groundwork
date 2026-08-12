@@ -7,6 +7,7 @@ import { useEntryStore } from '@/stores/entry'
 import { useAuthStore } from '@/stores/auth'
 import { VennIcon } from '@/components/gw/VennIcon'
 import { plannedSessionsFor } from '@/lib/sessionCount'
+import { SlowStep, CLOSING_STEPS } from '@/components/gw/SlowStep'
 import { toast } from 'sonner'
 
 const STORAGE_KEY = 'gw_entry_session'
@@ -478,31 +479,6 @@ export function fallbackGroundName(classifiedScenario?: string, firstDescription
  * steps advance on a timer because they describe stages of one request, and the
  * last one stays until the report arrives however long that takes.
  */
-function ReportProgress() {
-  const STEPS = [
-    'Reading back what you said',
-    'Checking what is specific enough to stand on',
-    'Finding what is still open',
-    'Writing your private report',
-  ]
-  const [step, setStep] = useState(0)
-  useEffect(() => {
-    const t = setInterval(() => setStep(s => Math.min(s + 1, STEPS.length - 1)), 9000)
-    return () => clearInterval(t)
-  }, [])
-  return (
-    <div style={{ background: '#F5F3EF', borderRadius: 10, padding: '14px 16px', marginBottom: 18, fontSize: 13, color: '#6B6560' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span className="gw-dot" /><span className="gw-dot" /><span className="gw-dot" />
-        <span>{STEPS[step]}…</span>
-      </div>
-      <div style={{ fontSize: 11.5, color: '#9B9590', marginTop: 6, lineHeight: 1.5 }}>
-        This one takes about half a minute. It is the only slow step.
-      </div>
-    </div>
-  )
-}
-
 export function EntryChatPage() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
@@ -2146,7 +2122,9 @@ export function EntryChatPage() {
               work, not a progress bar pretending to know.
             */}
             {generatingReport && !sessionReport && (
-              <ReportProgress />
+              <div style={{ marginBottom: 18 }}>
+                <SlowStep steps={CLOSING_STEPS} note="This one takes about half a minute. It is the only slow step." />
+              </div>
             )}
 
             {/* ISSUE 15: report failed - show retry option */}
@@ -2710,8 +2688,8 @@ export function EntryChatPage() {
                 const s = onboardingSelections.classifiedScenario || onboardingSelections.mode || scenario
                 const notices: Record<string, string> = {
                   PIP: 'Performance improvement grounds document a process. They do not replace formal HR procedures, employment policy, or legal obligation. Ensure your organisation\'s HR process is followed in parallel.',
-                  DRIFT: 'This ground was opened on a situation that has already moved off course. Inviting contributors now means their account will reflect the current state, not the original agreement. Make sure that is what you want on record.',
-                  REALIGN_TEAM: 'Realignment grounds surface disagreement directly. Contributors will give independent accounts that may differ significantly from yours. The report will show those gaps without filtering them.',
+                  DRIFT: 'This ground was opened on a situation that has already moved off course. Inviting people now means their account will reflect the current state, not the original agreement. Make sure that is what you want on record.',
+                  REALIGN_TEAM: 'Realignment grounds surface disagreement directly. The other participants will give independent accounts that may differ significantly from yours. The report will show those gaps without filtering them.',
                 }
                 const notice = notices[s ?? '']
                 return notice ? (

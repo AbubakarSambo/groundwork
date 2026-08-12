@@ -479,6 +479,26 @@ export function GroundAdminPage() {
     ).size,
   )
   const sessionsDone = perParticipantDone.length > 0 ? Math.min(...perParticipantDone) : 0
+  /**
+   * How many people have finished the round that is currently open. The round is
+   * `sessionsDone + 1` - the one the header already names - so this and the
+   * header cannot disagree about which round is being counted.
+   */
+  const openRound = sessionsDone + 1
+  const roundDone = (ground.checkIns ?? []).filter(
+    (c: any) => c.sessionNumber === openRound && c.status === 'COMPLETED',
+  ).length
+  /**
+   * The report has three states worth telling apart, and only the last is good
+   * news. "Waiting" is not a failure and does not get a warning colour - it is
+   * the normal condition of a ground that is running.
+   */
+  const reportState: { value: string; caption: string; tone?: 'good' | 'warn' | 'bad' } =
+    (ground as any).report?.releasedAt
+      ? { value: 'Released', caption: 'Everybody can read it', tone: 'good' }
+      : (ground as any).report
+        ? { value: 'Ready', caption: 'Generated, not released yet', tone: 'warn' }
+        : { value: 'Waiting', caption: 'Builds as accounts come in' }
   // contact-visibility toggle state (default: hidden). true = peers cannot see each other's email.
   const contactHidden = ground.restrictExternalVisibility !== false
 
@@ -597,6 +617,51 @@ export function GroundAdminPage() {
         {/* OVERVIEW */}
         {tab === 'overview' && (
           <div>
+            {/*
+              WHAT STATE IS THIS GROUND IN, IN ONE LOOK. W8-24, W8-47.
+
+              Every screen should answer three things in order: what is this,
+              what is its state, what do I do next. This page answered the first
+              in its header and then went straight to cards, so the state had to
+              be assembled by reading them. The board already answers it with a
+              stat row and is the best page in the product for exactly that
+              reason; this is the same row, from the same kit, on the page people
+              actually open.
+
+              Nothing new is fetched. Every number here was already on screen
+              somewhere further down.
+            */}
+            <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
+              {/*
+                BOTH CAPTIONS NAME THE SESSION THEY ARE COUNTING, AND THAT IS THE
+                WHOLE POINT OF THEM.
+
+                Found by rendering this rather than reading it. On a ground with
+                session 1 done and session 2 open, the row read "SESSIONS 1 of 6"
+                and "THIS ROUND 0 of 1 - still to check in" directly under a
+                header saying "Session 2 of 6" and a tab saying 1 person had
+                checked in. Every one of those numbers is correct and together
+                they read as three contradictions, because nothing said which
+                session each was about.
+              */}
+              <Stat
+                label="Sessions done"
+                value={plannedSessions != null ? `${sessionsDone} of ${plannedSessions}` : String(sessionsDone)}
+                caption={allSessionsDone
+                  ? 'Every session done'
+                  : `Finished by everyone. Session ${openRound} is the open one.`}
+                tone={allSessionsDone ? 'good' : undefined}
+              />
+              <Stat
+                label={`Session ${openRound}`}
+                value={`${roundDone} of ${(ground.participants ?? []).length}`}
+                caption={roundDone < (ground.participants ?? []).length
+                  ? 'Have checked in so far'
+                  : 'Everybody is in'}
+                tone={roundDone === (ground.participants ?? []).length && roundDone > 0 ? 'good' : undefined}
+              />
+              <Stat label="Report" value={reportState.value} caption={reportState.caption} tone={reportState.tone} />
+            </div>
             {/* How this ground ends. Renders nothing for a non-party (the API
                 403s them), so the setting-up admin sees the board and the
                 record but does not get a vote on the outcome.
@@ -1001,10 +1066,18 @@ export function GroundAdminPage() {
               than inventing a third way of showing a number.
             */}
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 16 }}>
+              {/*
+                THE CAPTION DESCRIBED A DIFFERENT NUMBER TO THE ONE ABOVE IT.
+                It read "2 of 6" over "counting the session everyone has
+                finished" - but everyone had finished ONE. The value is the round
+                now OPEN, which is one past the last one everybody completed, and
+                the caption was written for the other reading. Seen on screen,
+                not in the source.
+              */}
               <Stat
                 label="This round"
                 value={plannedSessions != null ? `${Math.min(sessionsDone + 1, plannedSessions)} of ${plannedSessions}` : String(sessionsDone + 1)}
-                caption="counting the session everyone has finished"
+                caption="the round now open, one past the last everyone finished"
               />
               <Stat
                 label="Checked in"
@@ -1699,7 +1772,7 @@ export function GroundAdminPage() {
         >
           <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 400 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <span style={{ fontSize: 14, fontWeight: 700, color: 'white' }}>Share contributor code</span>
+              <span style={{ fontSize: 14, fontWeight: 700, color: 'white' }}>Share an access code</span>
               <button onClick={() => setShareCodeModalOpen(false)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,.6)', fontSize: 18, cursor: 'pointer', lineHeight: 1 }}>×</button>
             </div>
             {shareCardLoading && (

@@ -124,7 +124,7 @@ export function BillingPage() {
 
         <div style={{ fontSize: 22, fontWeight: 800, color: '#0A1628', marginBottom: 4 }}>Billing</div>
         <div style={{ fontSize: 13, color: '#6B6560', marginBottom: 28, lineHeight: 1.6 }}>
-          Manage sessions for your grounds and generate contributor codes.
+          Manage sessions for your grounds and generate access codes.
         </div>
 
         {/* Current plan */}
@@ -300,10 +300,14 @@ export function BillingPage() {
                 {isSubscribed && orgSub?.subscriptionPlan === plan ? (
                   <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: '#E7F6EF', color: '#085041' }}>Current</span>
                 ) : (
+                  /* One primary colour in the product. The subscribe buttons were
+                     the only purple thing in it - a hardcoded hex in three files
+                     with no token behind it, on the pages where somebody is
+                     deciding whether to trust us with money. W8-24. */
                   <button
                     onClick={() => createSubscriptionMut.mutate(plan)}
                     disabled={createSubscriptionMut.isPending}
-                    style={{ padding: '7px 14px', borderRadius: 7, background: '#6B4FA0', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: createSubscriptionMut.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: createSubscriptionMut.isPending ? 0.7 : 1 }}
+                    style={{ padding: '7px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: createSubscriptionMut.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: createSubscriptionMut.isPending ? 0.7 : 1 }}
                   >
                     {createSubscriptionMut.isPending ? '...' : 'Subscribe'}
                   </button>
@@ -346,8 +350,8 @@ export function BillingPage() {
           </ul>
         </div>
 
-        {/* Contributor codes */}
-        <div style={{ fontSize: 15, fontWeight: 700, color: '#0A1628', marginBottom: 12 }}>Contributor codes</div>
+        {/* Access codes */}
+        <div style={{ fontSize: 15, fontWeight: 700, color: '#0A1628', marginBottom: 12 }}>Access codes</div>
 
         {codes.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>

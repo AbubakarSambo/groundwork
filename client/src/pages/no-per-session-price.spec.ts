@@ -65,8 +65,8 @@ describe('no surface quotes a per-session price', () => {
     expect(entry).toMatch(/needs an account, and it is free/)
   })
 
-  it('keeps contributor-code redemption, which grants access and costs nothing', () => {
+  it('keeps access-code redemption, which grants access and costs nothing', () => {
     const payment = readFileSync(join(__dirname, 'billing/PaymentPage.tsx'), 'utf8')
-    expect(payment).toMatch(/[Cc]ontributor code/)
+    expect(payment).toMatch(/[Aa]ccess code/)
   })
 })

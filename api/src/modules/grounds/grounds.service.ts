@@ -570,7 +570,15 @@ export class GroundsService {
         cadence: g.cadence,
         createdByAdmin: g.createdByUserId != null,
         lead: { id: g.initiator.id, firstName: g.initiator.firstName, lastName: g.initiator.lastName, email: g.initiator.email },
-        memberCount: g.participants.filter((p) => p.partyType === PartyType.PARTICIPANT).length,
+        /**
+         * THE COUNT AND THE LIST HAVE TO BE THE SAME LIST. W8-24.
+         *
+         * This counted only PARTICIPANT rows while `members` below maps every
+         * participant including the initiator, so the roster said "0 members"
+         * directly above a row naming the person leading it. Two counts of one
+         * list, in one object, disagreeing on screen.
+         */
+        memberCount: g.participants.length,
         members: g.participants.map((p) => {
           // Specificity from the most recently COMPLETED session, not the most
           // recent row (which is often the freshly-spawned NOT_STARTED next one).

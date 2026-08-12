@@ -87,18 +87,18 @@ export function PaymentPage() {
           </>
         )}
 
-        {/* Contributor code */}
+        {/* Access code */}
         <div style={{ background: 'white', border: '0.5px solid #E2E0DB', borderRadius: 10, padding: 18, marginBottom: 16 }}>
           {!showCode ? (
             <button
               onClick={() => setShowCode(true)}
               style={{ background: 'none', border: 'none', fontSize: 12, color: '#9B9590', cursor: 'pointer', fontFamily: 'inherit', padding: 0, textDecoration: 'underline' }}
             >
-              Have a contributor code?
+              Have an access code?
             </button>
           ) : (
             <div>
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#1A1916', marginBottom: 10 }}>Contributor code</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#1A1916', marginBottom: 10 }}>Access code</div>
               <input
                 type="text"
                 value={code}

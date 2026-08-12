@@ -288,7 +288,7 @@ export function MagicVerifyPage() {
           <div style={{ background: 'white', border: '0.5px solid var(--gw-border)', borderRadius: 12, padding: '18px 20px', marginBottom: 16 }}>
             <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gw-sub)', marginBottom: 14 }}>What happens next</div>
             {[
-              { n: '1', title: 'Contributors get their invite', body: 'Anyone you added will receive an email with a private link. They check in independently - they never see your account.' },
+              { n: '1', title: 'Participants get their invite', body: 'Anyone you added will receive an email with a private link. They check in independently - they never see your account.' },
               { n: '2', title: 'Their account comes in', body: 'Once they submit, Groundwork builds a picture across accounts. Nobody reads anyone else\'s words directly. The report shows where accounts agree and where they differ.' },
               { n: '3', title: 'You release the report', body: 'When you are ready, you release the report to both parties at the same time. Neither sees it before the other.' },
             ].map(s => (
