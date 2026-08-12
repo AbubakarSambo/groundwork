@@ -1510,6 +1510,24 @@ committed a batch before running the API suite, which was red on six mocks. Both
 lesson the plan keeps recording: prove the fix on the path it was meant to repair, before saying
 it is done.
 
+## A note on verifying against the local API
+
+Twice now a browser check has looked like a product bug and was not. The local API process was
+started **11 August 12:23** and has been serving that build ever since; `npm run start:dev` was
+not left in watch mode, so `dist/` being rebuilt changes nothing about what is running. Node does
+not reload a module it has already loaded.
+
+The most recent case: a ground on localhost showed session 1 complete and no session 2, which is
+exactly the `ensureNextSession` failure this wave fixed. The database agreed - one check-in row,
+nothing scheduled. But the ground was created at 04:00 today **by the pre-fix server**, so it is
+evidence about a build from yesterday, not about the code on this branch.
+
+**What this means in practice.** Client changes verify honestly in the browser: Vite hot-reloads,
+and the stat rows, the renames and the captions in this wave were all read off the running page.
+**API behaviour cannot be verified this way until the process is restarted** - only from the test
+suite, or a throwaway environment booted for the purpose. Written down because the same trap has
+now cost two investigations, and the second one nearly went into this document as a defect.
+
 ## Do these first
 
 | # | Item | Size | Status | Note |
