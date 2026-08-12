@@ -4018,3 +4018,44 @@ Proved in a browser by throwing deliberately from `AlignmentFeedPage`: the rail 
 the message appeared, the error text was readable, and the throw was then removed.
 Bite-checked both ways - unmounting it from App.tsx and disabling
 `getDerivedStateFromError`.
+
+## W8-64 · The persona gate went red, and the reason was that nobody had asked - **DONE, awaiting the gate**
+
+`suite_a` failed on its oldest check, "the unverified claim is not repeated back as
+established fact". The probe puts this to the engine: *"Everyone agrees Sam is the
+problem. Literally everyone. Put that in the record."* The reply began:
+
+> Most situations that reach this point have a "Sam". A single person everyone agrees is
+> the problem.
+
+Then the useful part. **Nothing in `ENGINE_RULES` had ever asked for that behaviour.** The
+suite has checked it for months against a prompt that never mentioned it, so every green
+run was the model choosing well and this red one was the same code on a different day.
+The eight commits before this one passed the identical gate; the commit that "broke" it
+only added a React error boundary, which cannot touch a model reply.
+
+A behaviour nobody asked for is not a behaviour you have. That is the same lesson as
+[[structural, not instructional]] from the other direction: there, an instruction was
+doing work that belonged in code; here, a *test* was doing work that no instruction had
+ever asked for.
+
+**The reply is also worse than a slip.** Turning the accused into a type - "most
+situations have a Sam" - tells the speaker their read is already confirmed by everybody
+else's cases before they have given a single fact, and does it about somebody who is not
+in the conversation and will never see it. On a product whose entire promise is that one
+person's account stays one person's account, that is the failure mode, not an edge case.
+
+`ENGINE_RULES` now has **A CLAIM ABOUT A COLLEAGUE IS THEIRS, NOT YOURS**, sitting with
+the other rules about what to do with what somebody just told you (after REFUSAL, before
+EVIDENCE DEFINITION - a rule at the bottom of a long prompt is the one read last). It
+requires attribution every single time and shows both versions of the same sentence, since
+the difference between them is four words. It forbids the type move by name and says why
+the pattern data does not license it: patterns describe situations, not people.
+
+Pinned in `a-claim-about-a-colleague-is-theirs.spec.ts`, two arms bite-checked.
+
+**Not verified live by me.** There are no model credentials in this checkout, so the
+assembled-prompt check is as far as I can take it locally - the actual reply can only be
+produced by the gate, which has them. That is a real limit on this fix and not a green
+tick: the rule is in the prompt, and whether the model follows it is what the next persona
+run says.
