@@ -4499,3 +4499,156 @@ Verified with three consecutive live runs, each a fresh model reply: clean.
 longer list of phrases. It is to assert what the engine DOES - hand the claim back and ask for
 the person's own account - rather than the absence of a phrase. That is a bigger change than a
 red gate deserved today.
+
+---
+
+# Wave 13 · What the page and permission audit found
+
+Thirty-three app routes and five marketing pages, walked as an org admin who is not a party,
+a lead who is also a party, a participant, and a signed-out visitor. The audit itself is at
+`https://claude.ai/code/artifact/8a45d774-ae94-48ec-b616-fa6ba1c7ab60`; this is the work it
+implies, in the order I would do it.
+
+**Ordering principle:** the product's spine works. What is broken is the signposting around
+it, and the cheapest fixes there are worth more than any new page. So: things that lie to a
+person first, then things that hide from them, then duplication, then removals.
+
+## Done already
+
+- **W13-1 · Delete `/demo/:persona`** - **DONE**. Five scripted conversations for a fictional
+  company, linked from nowhere. Her call, and the right one: its founder screen labelled named
+  people with pattern codes (*CEO-Pleasing*, *Contributor Suppression*, *False Completion
+  Reporting*), which is a person read as a type - the one thing `ENGINE_RULES` now forbids
+  (W8-64). Keeping it as a sales asset meant keeping a version of the product we have moved
+  away from. Both test exemptions written for it are gone too: the reachability allow-list
+  entry, and the hole it punched in the one-word-for-a-person rule.
+
+## Now: the things that tell somebody something untrue
+
+### W13-2 · A lead is never told their ground is waiting for approval - **S**
+
+`POST /grounds` returns `AWAITING_APPROVAL` for a member, and the creator's own view says
+nothing about it. They finish the six-step wizard, land on a ground that looks made, and
+nobody is invited. **The invite suppression works; the explanation does not exist.**
+
+Do: on the ground page, when `status === 'AWAITING_APPROVAL'`, replace the invite controls
+with one line naming what it is waiting for and who can do it. Verify by creating a ground as
+a MEMBER and reading the page.
+
+### W13-3 · An admin is never told a ground is waiting for them - **S**
+
+The other half. The queue endpoint works now (W8-69) but nothing surfaces it.
+
+Do: spend the **Feed** slot in the rail on it - "2 grounds waiting for you" - since the feed's
+three counts are already the grounds list's three stat tiles. One nav entry currently answers
+nothing; this makes the approval rule real and gives an admin a reason to return.
+
+### W13-4 · The marketing nav is five hand-written copies and only one is right - **S**
+
+| Page | Its nav |
+|---|---|
+| Home | Home · How it works · **Use cases** · Pricing · About |
+| How it works, Pricing, About, **Use cases** | Home · How it works · Pricing · About |
+
+So `/use-cases` - fifteen written situations, the best answer the site has to "is this for me" -
+cannot be found from any page except the home page, **including from itself**. Every page also
+carries a footer that links it, except the home page, which has no footer at all.
+
+Do: one nav in `Layout.astro`, used by all five. The postbuild check in
+`marketing/check-one-domain.mjs` already asserts the nav has real links that resolve; extend it
+to assert every page's nav has the same set.
+
+## Then: the things a person cannot see
+
+### W13-5 · A participant cannot see who else is in their ground, or how far along it is - **M**
+
+The lead sees every party and every session. The participant sees their own tabs. The two
+things that would settle somebody's nerves before they write honestly - who is going to read
+this, and is anybody else actually doing it - are the two things they cannot see.
+
+Do: on the participant view, show the other parties by name where the ground's visibility
+settings allow it, and the session count the lead already sees ("12 of 12 sessions done").
+Both are already in the payload. Nothing about this crosses the wall: it is who is here, not
+what they wrote.
+
+### W13-6 · The session count is the clearest thing on the ground page and appears nowhere else - **S**
+
+"12 of 12 sessions done" tells a person whether to open a ground. The rail lists grounds by
+name only; the list card shows a status pill. Add the count to both.
+
+### W13-7 · The report opens with prose; the board opens with what differs - **M**
+
+The board leads with **where accounts differ** and **the question this turns on**. The report
+leads with a paragraph. The board is the better-written document, and the report is the
+product.
+
+Do: lead the shared report with the same two things, then the prose. No new content - a
+reordering of what synthesis already produces.
+
+## Then: duplication
+
+### W13-8 · One word for one screen - **S**
+
+The lead's first tab is **Chat**. The participant's first tab is **Check-in**. Same component,
+same content, adjacent pages. Somebody being walked through the product by their manager sees
+two words for one screen.
+
+Do: use **Check-in** in both. It is the word the rest of the product uses - the email says your
+check-in is due, the header says My check-ins, the button now says Check in.
+
+### W13-9 · "Settings" means two different things - **S**
+
+Ground &rarr; Settings and /settings. Rename the ground's tab to **Ground settings**. One word,
+removes a real ambiguity.
+
+### W13-10 · `/pricing` exists twice, in two repositories - **M**
+
+The same tiers written twice, in two places that must agree and have no way of knowing when
+they do not. Do: one source. Either the app reads the marketing page's data, or both read a
+shared file, or the in-app page goes and Billing links out.
+
+### W13-11 · Six in-app pages draw a second Groundwork header inside the shell - **S**
+
+A band of vertical space on every page, doing nothing, plus a second wordmark under the first.
+Consistent and long-standing, so this is hers to want. Remove the page-level `gw-hdr` from the
+in-app pages and keep each page's Back link where it earns its place.
+
+## Then: removals
+
+### W13-12 · `components/layout/AppShell.tsx` (311 lines) and `components/FeedbackWidget.tsx` (189) - **S**
+
+Mounted nowhere and imported nowhere; the live versions of both are inside
+`components/gw/AppShell.tsx`. Delete. **Then add the guard**, because this is the repo's
+signature bug - a component extracted into a file, reimplemented inline, and the file left to
+rot. A test that fails on a `.tsx` under `components/` that nothing imports would have caught
+both, and would have caught the dead `stores/view.ts` too.
+
+### W13-13 · `/feed` - **M, after W13-3**
+
+Once the approval queue has the rail slot and the team list moves onto a ground, the page is
+three counts that exist on the grounds list. Delete it then, not before.
+
+### W13-14 · `GET /users/privacy-audit` - **S**
+
+An admin endpoint no page calls. Either surface it in Settings, where an admin looking for
+"what does this product hold about my people" would look, or delete it.
+
+## Not to be touched
+
+Four routes look dead and are not: `/billing/callback` and `/auth/google/callback` are where a
+payment provider and Google redirect to, and `/chat/:id` and `/login` keep old links working.
+Deleting any of them breaks something silently.
+
+And `/grounds/:id/report` stays a real URL even though the Report tab shows the same thing,
+because the report-ready email points at it. Same reason `/auth/sent`, `/set-password`,
+`/reset-password` and `/invite` cannot be renamed: those URLs are in inboxes nobody controls.
+
+## Sizing
+
+| | S | M |
+|---|---|---|
+| Count | 8 | 5 |
+| What they are | copy, a rename, a nav, a delete, a count in two places | a payload change, a reorder, a shared source, a page removal |
+
+Every S is an afternoon or less. The two that change what a person can do are W13-2 and W13-3,
+and they are both small, which is the argument for doing them first.
