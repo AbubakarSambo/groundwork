@@ -27,17 +27,6 @@ const NAV_ITEMS = [
     ),
   },
   {
-    label: 'Feed',
-    to: '/feed',
-    icon: (active: boolean) => (
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-        <path d="M3 5h14M3 10h10M3 15h7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-        {active && <circle cx="16" cy="10" r="2.5" fill="currentColor" />}
-        {!active && <circle cx="16" cy="10" r="2.5" stroke="currentColor" strokeWidth="1.5" />}
-      </svg>
-    ),
-  },
-  {
     // "Team" and "Teams" sat side by side, one letter apart, pointing at
     // different pages - a coin-flip for anyone looking for the list of people in
     // their org. Named for what each one actually is. GW-011.
@@ -115,10 +104,10 @@ const BUILD_OPTIONS    = ['Reminder / email nudge', 'Mobile app', 'Slack integra
 function FeedbackWidget() {
   const location = useLocation()
   const isChatPage = location.pathname.startsWith('/chat/') || location.pathname.startsWith('/checkin/') || location.pathname === '/start'
-  // /feed has its own header button (styled via .gw-feedback-btn to match this
-  // trigger exactly) that opens this same panel via the shared store below, so
-  // the floating trigger is suppressed there to avoid showing two of them.
-  const hideTrigger = location.pathname === '/feed'
+  // `/feed` used to draw its own feedback button in its header, so the floating one was
+  // hidden there to avoid two. The page is gone (W13-13), so the floating trigger is
+  // simply always on.
+  const hideTrigger = false
   const open = useFeedbackStore(s => s.open)
   const showPanel = useFeedbackStore(s => s.show)
   const hidePanel = useFeedbackStore(s => s.hide)
@@ -815,7 +804,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
    * Signed-out visitors do not get the signed-in navigation.
    *
    * `/start` was excepted so the entry flow had some chrome, but the effect was
-   * that someone with no account saw Grounds / Feed / Profile while describing
+   * that someone with no account saw Grounds / Profile while describing
    * their situation - destinations that mean nothing to them and lead out of the
    * flow they are halfway through. The entry page has its own header and step
    * tracker, so it loses nothing by dropping the app shell. GW-004.

@@ -4710,15 +4710,39 @@ file, and every one of these type-checked perfectly. The question is about the i
 A component whose only importer is its own test counts as dead, because that is the shape that
 survives longest. Bite-checked by planting an orphan, which it named.
 
-### W13-13 · `/feed` - **M, after W13-3**
+### W13-13 · `/feed` - **DONE**
 
-Once the approval queue has the rail slot and the team list moves onto a ground, the page is
-three counts that exist on the grounds list. Delete it then, not before.
+Gone, and the condition was met a different way than I planned: the approval queue never needed
+the rail slot (it lives on the grounds list, W13-3), and the team list moved onto each ground as
+"Who is in this" (W13-5). So the page was three counts the grounds list already shows as tiles.
 
-### W13-14 · `GET /users/privacy-audit` - **S**
+The API side went with it - `AlignmentController`, `AlignmentNarrativeController` and
+`AlignmentService`, whose only caller was that page. An endpoint nothing calls is the same rot as
+a component nothing imports, and git holds all of it if the feed idea comes back.
 
-An admin endpoint no page calls. Either surface it in Settings, where an admin looking for
-"what does this product hold about my people" would look, or delete it.
+**The dead-method guard then caught a knock-on I would have missed:**
+`patterns.service.ts#surfacedForGround` had no caller left, because the feed's service was its
+only one. Deleted too, with the reason - the ground page reads the same detections through
+`patternDetections` on the ground itself, so one query had two shapes and only one had a reader.
+That guard doing its job unprompted is the argument for W13-12's new one.
+
+The rail is now Grounds, People, Billing - and the floating feedback button no longer hides
+itself on a page that does not exist.
+
+### W13-14 · `GET /users/privacy-audit` - **DELETED, and not for being unused**
+
+Reading it decided the question. `getPrivacyAudit(userId)` took a user id **straight off the query
+string and never checked that user was in the caller's organisation**. So any org admin could ask
+whether an arbitrary user - in any company on the platform - has a record, and across how many
+grounds.
+
+Thin data, but the wrong shape: a cross-organisation read reachable by every admin. Surfacing it
+in Settings, which is what my own plan proposed, would have shipped that. The endpoint and its
+service method went instead, and what it returned is derivable from `GET /users` and a ground
+list, both properly scoped.
+
+**Worth noticing:** the audit found this by asking "which endpoints have no page", not by looking
+for security bugs. The unused-thing sweep is where this class hides.
 
 ## Not to be touched
 

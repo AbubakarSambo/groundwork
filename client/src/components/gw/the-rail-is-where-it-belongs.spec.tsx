@@ -43,7 +43,9 @@ describe('which pages stand alone', () => {
   it('and the app itself is not', () => {
     // The opposite mistake, and the worse one: this is what "side menu has vanished"
     // would actually look like if the list grew carelessly.
-    for (const p of ['/', '/grounds', '/feed', '/billing', '/team', '/admin']) {
+    // `/feed` is gone (W13-13), so it is no longer in this list - not because it became
+    // chromeless, but because the page does not exist.
+    for (const p of ['/', '/grounds', '/billing', '/team', '/admin']) {
       expect(listed, `${p} is the app and must keep the rail`).not.toContain(p)
     }
   })
