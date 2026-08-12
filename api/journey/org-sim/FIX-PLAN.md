@@ -1650,7 +1650,7 @@ now cost two investigations, and the second one nearly went into this document a
 |---|---|---|---|---|
 | W8-44 | extract the board's nine components into `components/gw/` | M | DONE - components/gw/kit.tsx | nothing. Do it first, everything else gets cheaper |
 | W8-45 | one header, delete the dead AppShell (shell-on-stranger-pages half withdrawn) | S | OPEN | W8-44 |
-| W8-57 | grounds as channels in the rail, a ground opens to its own history | M | OPEN | W8-44, W8-45 |
+| W8-57 | grounds as channels in the rail, a ground opens to its own history | M | DONE | rail + the single scroll |
 | W8-49 | the target page list, 38 routes to 14 pages | L | OPEN | W8-52 must pass first |
 | W8-52 | the ground-merge inventory, now an executable test (43 distinct ops) | M | DONE | unblocks W8-49 |
 | W8-47 | one noun per thing | S | OPEN | nothing |
@@ -3138,11 +3138,23 @@ way back to your chats). They were all symptoms of check-ins having no home.
 
 **Progress 2026-08-12.** The rail half is built - `lib/rail-attention.ts` with `railAttention`,
 `railRank` and `stillInRail`, wired into `AppShell` so grounds sort by what needs you and drop out
-three months after closing. W8-21 and W8-14 are closed now too: every completed session in Session
-history offers "Read the conversation", which fetches the owner-only transcript on expand rather
-than pulling twelve of them with the page. What is left of this item is the single-scroll shape -
-session 1, its report, session 2, its report, then the live one - rather than a tab holding cards
-that each expand.
+three months after closing. W8-21 and W8-14 are closed now too: every completed session offers
+"Read the conversation", which fetches the owner-only transcript on expand rather than pulling
+twelve of them with the page.
+
+**And the single scroll is built, 2026-08-12.** The Check-in tab now opens to the ground's own
+history - each past session with what we heard from you and the conversation itself if you want
+it, oldest first - and then either the live session or the invitation to start it, at the bottom.
+The separate "Session history" tab is gone, because everything it held is in the scroll; that tab
+had been telling people "your in-progress session is on the Check-in tab", which is a product
+explaining that it has been split in two. The session card was extracted rather than rewritten, so
+the quality badge, the commitment, the summary and the conversation all moved together.
+
+Verified on screen, signed in as a real user on a real ground: tabs read Check-in / My record /
+Report / Documents / Settings, the scroll shows "Session 1 - Completed 12 Aug 2026 - COMPLETE",
+expanding it loads the transcript labelled YOU and GROUNDWORK, and the closing card sits below it.
+Three properties are pinned by `a-ground-opens-to-its-history.spec.ts` and bite-checked: oldest
+first, the open session never listed twice, and the card keeping everything the old tab rendered.
 
 ### Three things to get right
 
