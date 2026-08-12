@@ -6,6 +6,7 @@ import { authApi } from '@/api/auth'
 import { useEntryStore } from '@/stores/entry'
 import { useAuthStore } from '@/stores/auth'
 import { VennIcon } from '@/components/gw/VennIcon'
+import { plannedSessionsFor } from '@/lib/sessionCount'
 import { toast } from 'sonner'
 
 const STORAGE_KEY = 'gw_entry_session'
@@ -467,6 +468,39 @@ export function fallbackGroundName(classifiedScenario?: string, firstDescription
     return clipped.replace(/^\w/, (c) => c.toUpperCase())
   }
   return 'Untitled ground'
+}
+
+/**
+ * What the closing report is doing, while it does it.
+ *
+ * No percentage and no estimate: the work is a model call whose length nobody can
+ * predict, and a bar that stalls at 90% is worse than a sentence that is true. The
+ * steps advance on a timer because they describe stages of one request, and the
+ * last one stays until the report arrives however long that takes.
+ */
+function ReportProgress() {
+  const STEPS = [
+    'Reading back what you said',
+    'Checking what is specific enough to stand on',
+    'Finding what is still open',
+    'Writing your private report',
+  ]
+  const [step, setStep] = useState(0)
+  useEffect(() => {
+    const t = setInterval(() => setStep(s => Math.min(s + 1, STEPS.length - 1)), 9000)
+    return () => clearInterval(t)
+  }, [])
+  return (
+    <div style={{ background: '#F5F3EF', borderRadius: 10, padding: '14px 16px', marginBottom: 18, fontSize: 13, color: '#6B6560' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span className="gw-dot" /><span className="gw-dot" /><span className="gw-dot" />
+        <span>{STEPS[step]}…</span>
+      </div>
+      <div style={{ fontSize: 11.5, color: '#9B9590', marginTop: 6, lineHeight: 1.5 }}>
+        This one takes about half a minute. It is the only slow step.
+      </div>
+    </div>
+  )
 }
 
 export function EntryChatPage() {
@@ -933,11 +967,17 @@ export function EntryChatPage() {
          */
         if (res.extracted.cadence) { setCadence(res.extracted.cadence); setCadenceChosen(true) }
         if (res.extracted.timelineDays && res.extracted.timelineDays > 0) {
-          const days = res.extracted.timelineDays
-          const c = res.extracted.cadence ?? cadence
-          const perSession = c === 'DAILY' ? 1 : c === 'WEEKLY' ? 7 : c === 'FORTNIGHTLY' ? 14 : c === 'MONTHLY' ? 30 : 0
-          if (perSession > 0) setSessions(Math.max(1, Math.round(days / perSession)))
-          else if (c === 'ONE_TIME') setSessions(1)
+          /**
+           * THE SAME ARITHMETIC AS THE SERVER, NOT A FOURTH COPY OF IT. W8-4.
+           *
+           * This had its own switch and rounded to nearest, while the server and
+           * every other screen round down. Twenty days of weekly check-ins is
+           * two whole weeks with six days left over: this page promised three
+           * and the server then created two, so the first thing the ground did
+           * was contradict the number the person had just agreed to.
+           */
+          const planned = plannedSessionsFor(res.extracted.timelineDays, res.extracted.cadence ?? cadence)
+          if (planned != null) setSessions(planned)
         }
         // Background classify intent when we have initial
         if (res.extracted.initial) {
@@ -1134,6 +1174,18 @@ export function EntryChatPage() {
           if (dashIdx === -1) return { email: entry }
           return { email: entry.slice(0, dashIdx), context: entry.slice(dashIdx + 3) }
         }),
+        /**
+         * THE DOCUMENT SURVIVES AS A DOCUMENT, not just as words in the chat.
+         *
+         * "+ Doc" folds the file into the conversation as
+         * `[Document: "name"] <text> Context from me: ...`, which is right for the
+         * conversation and was the ONLY thing that happened to it. No record was
+         * created, so a contract attached at the moment the product asks for
+         * evidence never reached the Documents list, carried no visibility, got no
+         * assessment, and did not count toward the document-backed share of the
+         * record - a figure the report shows to both parties.
+         */
+        documents: uploadedDoc ? [{ fileName: uploadedDoc.name, content: uploadedDoc.content }] : undefined,
         // Coordinator/lead path: the lead runs the first check-in; the
         // onboarding context travels as the brief (there is no transcript).
         ...(flowPath === 'lead' && leadEmail.trim().includes('@')
@@ -2078,11 +2130,23 @@ export function EntryChatPage() {
 
           <div style={{ padding: '18px 20px 28px' }}>
 
-            {/* Generating state */}
+            {/*
+              Generating state.
+
+              THIS IS THE LONGEST WAIT IN THE PRODUCT and it said one line for all
+              of it. Measured against the booted API: a setup turn is 4.4s, a
+              check-in turn 5.3 to 6.6s, and the closing report about 35s. Hafsah
+              read that as the whole product being slow ("the chat load time is too
+              long, it is taking like 20 seconds") when the conversation is not
+              where the time goes.
+
+              Thirty-five seconds of an unchanging sentence reads as a hang. So it
+              says what is actually happening, in the order it happens, and it
+              never claims to be nearly done - the steps are honest names for real
+              work, not a progress bar pretending to know.
+            */}
             {generatingReport && !sessionReport && (
-              <div style={{ background: '#F5F3EF', borderRadius: 10, padding: '14px 16px', marginBottom: 18, fontSize: 13, color: '#6B6560' }}>
-                Generating your session report…
-              </div>
+              <ReportProgress />
             )}
 
             {/* ISSUE 15: report failed - show retry option */}
@@ -2458,7 +2522,30 @@ export function EntryChatPage() {
                 </div>
               </div>
             ) : (
-              <div style={{ background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 10, padding: '14px 16px', marginBottom: 20 }}>
+              /**
+               * SCROLLED TO, BECAUSE NOBODY EVER SAW IT.
+               *
+               * This confirmation renders about 1678px down a panel whose viewport
+               * is 720px tall, and nothing moved the view. Pressing "Save my
+               * ground" left the top of the screen unchanged, so the only feedback
+               * that anything had happened was a thousand pixels below the fold.
+               *
+               * Hafsah: "When i added my email when i got to report page, i didnt
+               * know where it went, i forgot i had put my email." That is not a
+               * cosmetic miss. Forgetting you gave an address is how the ground was
+               * lost: the link went unopened, and a later sign-in request wiped the
+               * saved session (the entrySave bug, now fixed). This is the other
+               * half of that failure.
+               */
+              <div
+                ref={(el) => {
+                  // Optional-call because jsdom has no scrollIntoView: an
+                  // unguarded call throws inside the ref, React unmounts the
+                  // subtree, and four unrelated specs went red on a scroll.
+                  if (el) el.scrollIntoView?.({ behavior: 'smooth', block: 'center' })
+                }}
+                style={{ background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 10, padding: '14px 16px', marginBottom: 20 }}
+              >
                 <div style={{ fontSize: 14, fontWeight: 700, color: '#085041', marginBottom: 4 }}>Check your email</div>
                 <div style={{ fontSize: 13, color: '#085041', lineHeight: 1.6 }}>We sent a link to <strong>{email}</strong>. Click it to finish setting up and get your invite link.</div>
                 {inviteAdded.length > 0 ? (

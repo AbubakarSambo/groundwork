@@ -93,7 +93,7 @@ async function assemble(opts: AssembleOpts): Promise<{ system: string; history: 
   };
   const prompts: any = { getActiveContent: jest.fn(async (k: string) => (k === 'system' ? ENGINE_RULES : null)) };
   const context = new ConversationContextService(prisma);
-  const service = new ConversationService(prisma, prompts, anthropic, context, { emit: () => undefined } as any, {} as any, {} as any, {} as any, {} as any, {} as any);
+  const service = new ConversationService(prisma, prompts, anthropic, context, { emit: () => undefined } as any, { get: () => undefined } as any, { get: () => undefined } as any, { get: () => undefined } as any, { get: () => undefined } as any, { get: () => undefined } as any);
   await service.sendMessage('ci1', 'user-1', opts.message ?? 'We are missing our targets and I do not think we agree on what they are.');
   return { system: capturedSystem, history: capturedHistory };
 }

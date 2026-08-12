@@ -363,14 +363,44 @@ export class AuthService {
           draftToken: dt ?? null,
           expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
         },
+        /**
+         * A SECOND SAVE WITHOUT A DRAFT MUST NOT ERASE THE FIRST ONE'S WORK.
+         *
+         * This wrote `payload: draft?.payload ?? {}` and `history: draft?.history ?? []`
+         * unconditionally, so calling entrySave again with no draft replaced the whole
+         * stored session with an empty object and an empty array. And there is a
+         * button that does exactly that: /auth's "Send link" calls
+         * `authApi.entrySave(email)` with no draft at all.
+         *
+         * THE SEQUENCE THAT LOSES A GROUND, which is what Hafsah hit:
+         *   1. Finish the entry chat, type your email. The transcript is held here,
+         *      correctly, until the address is proved (GW-001).
+         *   2. Miss the confirmation - it renders 1678px down a 720px-tall panel and
+         *      nothing scrolls to it, so the screen looks unchanged after you press
+         *      save. Easy to forget you ever gave an address.
+         *   3. Come back later, go to sign in, ask for a link with the same address.
+         *      entrySave runs with no draft and blanks payload and history.
+         *   4. Open that link: the account is created from an empty pending record.
+         *      No ground, no transcript. "I signed in and my ground was not there."
+         *
+         * So the session fields are only written when a session was actually supplied.
+         * A bare re-request now does what it says - reissues the link - and touches
+         * nothing else. The name and org are preserved for the same reason: with no
+         * draft, `firstName` is re-derived from the email and typedOrgName is empty, so
+         * an unconditional write would also throw away the org name she typed.
+         */
         update: {
           token,
-          firstName,
-          orgName: typedOrgName || null,
-          payload: (draft?.payload ?? {}) as any,
-          history: (draft?.history ?? []) as any,
-          draftToken: dt ?? null,
           expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+          ...(draft
+            ? {
+                firstName,
+                orgName: typedOrgName || null,
+                payload: (draft.payload ?? {}) as any,
+                history: (draft.history ?? []) as any,
+                draftToken: dt ?? null,
+              }
+            : {}),
         },
       });
       draftToken = dt;

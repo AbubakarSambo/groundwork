@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useEffect } from 'react'
+import { useAuthStore } from '@/stores/auth'
 
 /**
  * Rendered for any path that matches no route. Previously the wildcard route
@@ -11,6 +12,7 @@ import { useEffect } from 'react'
  * gives the visitor a way forward.
  */
 export function NotFoundPage() {
+  const isAuthenticated = useAuthStore(s => s.isAuthenticated)
   const location = useLocation()
 
   useEffect(() => {
@@ -36,8 +38,14 @@ export function NotFoundPage() {
           The link you followed may be out of date, or the address may have been typed incorrectly.
         </div>
 
-        <Link to="/start" className="gw-btn" style={{ textDecoration: 'none', textAlign: 'center' }}>
-          Start a Ground
+        {/*
+          Where "start a ground" means depends on who mistyped the URL. A
+          stranger belongs in the anonymous entry chat; somebody signed in
+          belongs in the picker, since /start would ask them to save with an
+          email they have already given.
+        */}
+        <Link to={isAuthenticated ? '/grounds' : '/start'} className="gw-btn" style={{ textDecoration: 'none', textAlign: 'center' }}>
+          {isAuthenticated ? 'Back to your grounds' : 'Start a Ground'}
         </Link>
       </div>
     </div>

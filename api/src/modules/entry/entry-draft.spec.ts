@@ -69,7 +69,11 @@ function makeService(opts: { draft?: any; failAllInvites?: boolean; pendingSignu
       return { devUrl: undefined };
     }),
   };
-  const conversation: any = { extractRecordEntries: jest.fn(async () => []) };
+  const conversation: any = {
+    extractRecordEntries: jest.fn(async () => []),
+    // The commit schedules session 2 now, so the mock has to answer for it.
+    ensureNextSession: jest.fn(async () => undefined),
+  };
   const events: any = { emit: jest.fn() };
   const service = new EntryService(
     { respond: jest.fn(async () => 'ok') } as any, // anthropic

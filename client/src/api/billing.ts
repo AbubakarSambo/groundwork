@@ -50,6 +50,32 @@ export const PLAN_PRICES: Record<SubscriptionPlan, string> = {
   ENTERPRISE: 'Contact us',
 }
 
+/**
+ * WHAT EACH PLAN INCLUDES, IN ONE PLACE.
+ *
+ * These lived inside PricingPage while the prices, labels and seat caps beside them
+ * were already shared - so a plan could be described one way on /pricing and another
+ * inside Billing, and there was nothing to notice it.
+ *
+ * That is not hypothetical. Reviewing this product I read a stale note, concluded the
+ * free tier's "unlimited sessions" claim contradicted the billing rules, and had
+ * rewritten BOTH pages to advertise "$5 per extra session" before checking
+ * `billing.service.ts` - which says free-tier grounds are never metered, deliberately.
+ * The copy was right. But two independent copies of a pricing claim is how that kind
+ * of mistake ships.
+ *
+ * The source of truth for what is CHARGED is billing.service.ts on the API. This is
+ * the source of truth for how it is DESCRIBED.
+ */
+export const PLAN_FEATURES: Record<SubscriptionPlan, string[]> = {
+  STARTER: ['Unlimited Grounds', 'Unlimited sessions', 'Unlimited reports', 'Up to 5 people', 'Admin dashboard'],
+  SMALL_TEAM: ['Unlimited Grounds', 'Unlimited sessions', 'Unlimited reports', 'Up to 20 people', 'Admin dashboard'],
+  GROWTH: ['Unlimited Grounds', 'Unlimited sessions', 'Unlimited reports', 'Up to 100 people', 'Admin dashboard'],
+  BUSINESS: ['Unlimited Grounds', 'Unlimited sessions', 'Unlimited reports', 'Up to 250 people', 'Admin dashboard'],
+  SCALE: ['Unlimited Grounds', 'Unlimited sessions', 'Unlimited reports', 'Up to 1,000 people', 'Admin dashboard'],
+  ENTERPRISE: ['Unlimited Grounds', 'Unlimited sessions', 'Unlimited reports', 'Unlimited people', 'Dedicated account manager'],
+}
+
 export const PLAN_MEMBER_CAPS: Record<SubscriptionPlan, string> = {
   STARTER: 'Up to 5 people',
   SMALL_TEAM: 'Up to 20 people',

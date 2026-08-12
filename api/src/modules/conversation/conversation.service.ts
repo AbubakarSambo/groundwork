@@ -22,6 +22,7 @@ import {
   type CoachingStateShape, type StepOutcome,
 } from '../coaching/one-step-at-a-time';
 import { detectFunction } from '../board/function-detection';
+import { documentWhereFor } from '../documents/who-can-see-a-document';
 import { closeReadiness, askedToFinish } from './close-readiness';
 import { observeStyle, mergeStyle, styleGuidance } from './person-style';
 import { readOutcome, isGenericStep } from './coaching-step';
@@ -895,8 +896,28 @@ export class ConversationService {
         latestMessage,
         checkInId: checkIn.id,
       }),
+      /**
+       * THE SESSION MUST SEE THE SAME DOCUMENTS THE PERSON CAN SEE. W8-6.
+       *
+       * This asked for `participantId: checkIn.participantId` - the reader's own
+       * uploads and nothing else. `documents.list` was moved onto
+       * `documentWhereFor` so an OPEN document, the lead's brief or a grant's
+       * terms, reaches everybody on the ground; this query was left behind. So a
+       * participant could open the Context tab, read the brief the lead had
+       * shared with them, start their check-in, and be interviewed by something
+       * that had never seen it. The one case OPEN exists for was the one case it
+       * did not reach.
+       *
+       * Same function as the list, so the two cannot drift, and it carries the
+       * CONTEXT_ENABLED flag inside it - with the flag off this is byte for byte
+       * the query above.
+       */
       this.prisma.groundDocument.findMany({
-        where: { groundId: checkIn.groundId, participantId: checkIn.participantId },
+        where: documentWhereFor(
+          checkIn.groundId,
+          { participantId: checkIn.participantId, isLead: ground.initiatorId === checkIn.participant.userId },
+          this.config.get<boolean>('app.contextEnabled') === true,
+        ) as any,
         select: { fileName: true, content: true },
         orderBy: { createdAt: 'asc' },
       }),
@@ -1657,7 +1678,21 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    * Sets availableFrom based on the ground's cadence so session 2 respects
    * the fortnightly / weekly / monthly schedule.
    */
-  private async ensureNextSession(groundId: string, participantId: string, sessionNumber: number) {
+  /**
+   * PUBLIC because the entry flow needs it too.
+   *
+   * This runs when a session COMPLETES, and the anonymous entry flow never
+   * completes one - it writes session 1 straight to COMPLETED at commit time
+   * (`entry.service.ts`, "Create and mark session 1 complete"). So a ground made
+   * through the entry chat, which is the flow most people meet first, was created
+   * with exactly one check-in and nothing ever scheduled a second.
+   *
+   * The visible symptom was the whole of "I have no way to come in and do my
+   * checkin": the ground page offers "Session N is ready for you" only when an
+   * open check-in row exists, and for these grounds none ever did. It read as a
+   * missing button. The button was fine; there was no session for it to open.
+   */
+  async ensureNextSession(groundId: string, participantId: string, sessionNumber: number) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       select: { cadence: true, cadenceAnchorDay: true, endsAt: true },

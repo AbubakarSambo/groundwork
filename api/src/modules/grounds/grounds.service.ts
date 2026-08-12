@@ -361,7 +361,7 @@ export class GroundsService {
      */
     const url = leadUser.canSignIn
       ? `${this.config.get<string>('resend.frontendUrl') ?? ''}/grounds/${ground.id}`
-      : await this.buildPasswordSetupUrl(leadUser.id);
+      : await this.buildPasswordSetupUrl(leadUser.id, `/grounds/${ground.id}`);
     const admin = await this.prisma.user.findUnique({ where: { id: adminUserId }, select: { firstName: true } });
     await this.email.sendLeadInvite(leadEmail, admin?.firstName ?? 'An admin', dto.label, url).catch((err: any) =>
       this.logger.error(`Lead invite email failed for ground ${ground.id}: ${err.message}`),
@@ -496,12 +496,22 @@ export class GroundsService {
     return { id: created.id, isNewUser: true, canSignIn: false };
   }
 
-  private async buildPasswordSetupUrl(userId: string): Promise<string> {
+  /**
+   * WHERE THE PASSWORD PAGE SENDS THEM AFTERWARDS.
+   *
+   * The email says "review the ground I set up for you". Setting the password
+   * then dropped them on `/grounds?welcome=1`, the whole list, because that is
+   * `SetPasswordPage`'s default and nobody had ever passed it anything else. The
+   * lead arrives having been told about one ground and has to go and find it.
+   * `next` was already read by that page; it just had no sender.
+   */
+  private async buildPasswordSetupUrl(userId: string, next?: string): Promise<string> {
     const setupToken = crypto.randomBytes(32).toString('hex');
     await this.prisma.emailVerificationToken.create({
       data: { userId, token: setupToken, type: TokenType.PASSWORD_SETUP, expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000) },
     });
-    return `${this.config.get<string>('resend.frontendUrl') ?? ''}/set-password?token=${setupToken}`;
+    const base = `${this.config.get<string>('resend.frontendUrl') ?? ''}/set-password?token=${setupToken}`;
+    return next ? `${base}&next=${encodeURIComponent(next)}` : base;
   }
 
   /** Public: resolve a ground-level join token → name + scenario for the join page. */

@@ -13,7 +13,17 @@ export function SetPasswordPage() {
   const [confirm, setConfirm] = useState('')
   const [error, setError] = useState('')
 
-  const next = params.get('next') ?? '/grounds?welcome=1'
+  /**
+   * `next` IS A DESTINATION INSIDE THIS APP, AND ONLY THAT.
+   *
+   * The lead invite now sends `next=/grounds/{id}` so somebody who was told about
+   * one ground lands on that ground instead of the whole list. Anything that is
+   * not a plain in-app path is ignored: `//evil.example` and `https://evil.example`
+   * both read as "somewhere else" and would turn a password page we email people
+   * into a way of forwarding them off the product.
+   */
+  const requested = params.get('next') ?? ''
+  const next = /^\/(?!\/)/.test(requested) ? requested : '/grounds?welcome=1'
 
   const save = useMutation({
     mutationFn: () => authApi.setPassword(token, password),
@@ -34,6 +44,34 @@ export function SetPasswordPage() {
     if (!/[A-Z]/.test(password) || !/[a-z]/.test(password)) { setError('Password must contain at least 1 uppercase and 1 lowercase letter.'); return }
     if (password !== confirm) { setError('Passwords do not match.'); return }
     save.mutate()
+  }
+
+  /**
+   * NO TOKEN, NO FORM.
+   *
+   * This page rendered a complete, usable password form with no token in the URL
+   * at all - two fields, a rule about uppercase letters, and a submit button that
+   * could only ever fail. The only sign anything was wrong came after typing a
+   * password and pressing the button.
+   *
+   * `/invite` already does this properly ("This invite link is missing its
+   * token"), so the product held both behaviours for the same problem. This is the
+   * more serious of the two, because it accepts input.
+   */
+  if (!token) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
+        <div className="gw-hdr"><a href="https://myground.work" target="_blank" rel="noopener noreferrer" className="gw-logo" style={{ textDecoration: 'none', color: 'inherit' }}>Groundwork</a></div>
+        <div className="gw-bd" style={{ maxWidth: 420, margin: '0 auto', width: '100%', paddingTop: 32 }}>
+          <div className="gw-ttl">This link is missing its token.</div>
+          <div className="gw-sub-t" style={{ marginBottom: 20 }}>
+            Password links are single use and expire. Open the most recent one from your inbox, or
+            ask for a new one below.
+          </div>
+          <button className="gw-btn" onClick={() => navigate('/auth')}>Get a new link</button>
+        </div>
+      </div>
+    )
   }
 
   return (

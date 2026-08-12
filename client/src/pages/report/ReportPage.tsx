@@ -328,7 +328,7 @@ function HiddenContributorsSection({
 
   return (
     <div style={{ marginTop: 16, background: '#F4F7FC', border: '1px solid #CFE2F5', borderRadius: 8, padding: '12px 14px' }}>
-      <SecH>Possible missing contributors</SecH>
+      <SecH>People who may be missing</SecH>
       <div style={{ fontSize: 12.5, color: '#4A5568', lineHeight: 1.55, marginBottom: 10 }}>
         The record references people who are not themselves a party on this ground.
       </div>
@@ -506,7 +506,17 @@ export function ReportPage() {
   if (!report || (!(report as any).sharedPicture && !(report as any).forming)) {
     return (
       <div style={{ ...PAGE_STYLE, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
-        <div style={{ fontSize: 13, color: '#9B9590' }}>Your report will appear here once at least one person has checked in.</div>
+        {/*
+          IT SAID "once at least one person has checked in" TO SOMEBODY WHO HAD.
+          This is the SHARED report, which needs every party in before it can show
+          where accounts agree or differ - so the old sentence was measuring the
+          wrong thing, and on a ground where session 1 was complete it read as the
+          product having lost the check-in.
+        */}
+        <div style={{ fontSize: 13, color: '#9B9590', maxWidth: 380, textAlign: 'center', lineHeight: 1.6 }}>
+          The shared report appears once everybody has checked in. Your own record is on
+          your ground page in the meantime.
+        </div>
         <button onClick={() => navigate(-1)} style={{ fontSize: 12, color: '#0C447C', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>Go back</button>
       </div>
     )
@@ -600,13 +610,25 @@ export function ReportPage() {
           </button>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
             <span style={{ background: 'white', borderRadius: 4, padding: '3px 4px', display: 'inline-flex' }}><VennIcon size={24} /></span>
-            <span style={{ fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase', color: '#5DCAA5', fontWeight: 700 }}>Shared report</span>
+            {/*
+              THE HEADER SAID "Shared report" WHILE YOU WERE READING YOUR OWN.
+              The toggle below switches the body between two genuinely different
+              documents, and the eyebrow, the headline and the summary above it
+              never changed - so the page insisted it was the shared report on both
+              settings. Hafsah: "i dont know if its our shared report or my report".
+              Whichever one is on screen now says so, in all three places.
+            */}
+            <span style={{ fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase', color: '#5DCAA5', fontWeight: 700 }}>
+              {tab === 'own' ? 'Your report, private to you' : 'Shared report'}
+            </span>
           </div>
           <h1 style={{ fontSize: 30, lineHeight: 1.1, letterSpacing: '-.02em', margin: '0 0 12px', fontWeight: 800 }}>
-            Where everyone's accounts agree or differ.
+            {tab === 'own' ? 'What your own account holds.' : "Where everyone's accounts agree or differ."}
           </h1>
           <p style={{ fontSize: 15, color: 'rgba(255,255,255,.72)', maxWidth: 640, margin: 0 }}>
-            {report.sharedPicture}
+            {tab === 'own'
+              ? 'Only you can see this. It is built from what you said, and nobody else reads your words.'
+              : report.sharedPicture}
           </p>
           <div style={{ marginTop: 20, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {[

@@ -18,6 +18,7 @@ import { toast } from 'sonner'
 import { CodeShareCard } from '@/components/CodeShareCard'
 import { PostSessionPanel } from '@/components/PostSessionPanel'
 import { ResolutionPanel } from '@/components/gw/ResolutionPanel'
+import { Stat } from '@/components/gw/kit'
 import { billingApi, PLAN_MEMBER_LIMITS, type SubscriptionPlan } from '@/api/billing'
 
 const SCENARIO_LABELS: Record<string, string> = {
@@ -53,7 +54,17 @@ export function GroundAdminPage() {
   const navigate = useNavigate()
   const qc = useQueryClient()
   const user = useAuthStore(s => s.user)
-  const [tab, setTab] = useState<Tab>('overview')
+  /**
+   * CHECK-INS FIRST, because that is what a ground is for.
+   *
+   * The page opened on Overview, which is the summary and the admin furniture, so
+   * the first thing anybody saw about a live ground was a description of it rather
+   * than the state of the work. Hafsah: "the checkin board should be the first tab
+   * on these."
+   *
+   * The participant view already opens on Check-in; this makes the two agree.
+   */
+  const [tab, setTab] = useState<Tab>('checkins')
   const [reportSession, setReportSession] = useState<ReportSession>('s1')
   const [ctxNote, setCtxNote] = useState('')
   const [groundLabel, setGroundLabel] = useState('')
@@ -129,6 +140,21 @@ export function GroundAdminPage() {
   })
 
   const isInitiator = !!ground && user?.id === ground.initiatorId
+  /**
+   * ONE READING OF HOW MANY SESSIONS THIS GROUND HAS. W8-4.
+   *
+   * This page held two. The header derived it from the timeline and the rhythm
+   * with `plannedSessionsFor`, and the context strength read
+   * `sessionCounts.total ?? totalSessions ?? 1` off the payload - which is how a
+   * ground could say "Session 2 of 6" at the top while the panel below planned
+   * for one. Hafsah's call was that derived wins, so it is derived once, here,
+   * and everything on the page reads this.
+   */
+  const plannedSessions = plannedSessionsFor(
+    ground?.timelineDays,
+    (ground as any)?.cadence,
+    (ground as any)?.maxSessions ?? (ground as any)?.totalSessions,
+  )
   // Sent with the ground, because the client cannot read an environment variable
   // and a screen that guesses whether a feature is on renders half of it.
   const contextEnabled = (ground as any)?.contextEnabled === true
@@ -145,7 +171,7 @@ export function GroundAdminPage() {
     perPersonObjectiveCount: ((ground as any).objectives ?? []).length,
     openDocumentCount: docs.filter((d: any) => d.visibility === 'OPEN').length,
     peopleWorkTogether: (ground as any).peopleWorkTogether !== false,
-    plannedSessions: (ground as any).sessionCounts?.total ?? (ground as any).totalSessions ?? 1,
+    plannedSessions: plannedSessions ?? 1,
   }) : null
 
   const { data: pendingRequests = [] } = useQuery({
@@ -315,7 +341,7 @@ export function GroundAdminPage() {
           // own admin view instead of trying to open a check-in that does
           // not exist. also-checking-in -> unchanged, straight into the
           // real engine.
-          if (checkInId) navigate(`/chat/${checkInId}`)
+          if (checkInId) navigate(`/checkin/${checkInId}`)
           else qc.invalidateQueries({ queryKey: ['ground', id] })
         }}
       />
@@ -434,13 +460,6 @@ export function GroundAdminPage() {
   // completed check-ins and called the result "Aligned".
   const alignRead = alignmentLabel((ground as any).alignment)
 
-  // The ground payload carries no planned-session count, only the timeline and
-  // the cadence - so derive it the same way every other surface does.
-  const plannedSessions = plannedSessionsFor(
-    ground.timelineDays,
-    (ground as any).cadence,
-    (ground as any).maxSessions ?? (ground as any).totalSessions,
-  )
   // Every party, every session - not "twelve distinct numbers are complete
   // somewhere". See everySessionDone: the short version closed a ground over a
   // missing closing account.
@@ -478,6 +497,24 @@ export function GroundAdminPage() {
               </div>
             </div>
           </div>
+          {/*
+            MY VIEW. The participant page at /grounds/:id/p was reachable by
+            nothing at all - not a link, not a tab, not a menu - while being the
+            page with Check-in, Session history, My record and Documents on it.
+            The only way in was typing the URL.
+
+            Shown only to somebody who is actually a party to this ground: an
+            admin who is not in it has no record of their own to look at, and the
+            page would be empty and confusing.
+          */}
+          {ground.participants?.some((p: any) => p.userId === user?.id) && (
+            <button
+              onClick={() => navigate(`/grounds/${id}/p`)}
+              style={{ fontSize: 11, fontWeight: 700, padding: '4px 11px', borderRadius: 20, background: 'white', color: 'var(--gw-navy)', border: '1px solid var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit' }}
+            >
+              My check-ins →
+            </button>
+          )}
           {/* Delivery board: only on shared-mode grounds whose scenario family has one.
               The server decides (boardRenders); the client does not duplicate the table. */}
           {(ground as any).boardRenders && (
@@ -538,7 +575,7 @@ export function GroundAdminPage() {
             the parts of a ground. It only appears when the server says this
             ground has one (boardRenders), same as before. */}
         <div style={{ display: 'flex', borderTop: '0.5px solid var(--gw-border)', overflowX: 'auto' }}>
-          {(['overview', 'checkins', 'docs', 'report', 'settings'] as Tab[]).map(t => (
+          {(['checkins', 'overview', 'docs', 'report', 'settings'] as Tab[]).map(t => (
             <button key={t} className={`gw-tab${tab === t ? ' active' : ''}`} onClick={() => setTab(t)}>
               {/* THE TAB IS CALLED CONTEXT ONCE THERE IS CONTEXT IN IT. (G38, G26)
                   With CONTEXT_ENABLED off it says Documents and behaves exactly as
@@ -562,8 +599,32 @@ export function GroundAdminPage() {
           <div>
             {/* How this ground ends. Renders nothing for a non-party (the API
                 403s them), so the setting-up admin sees the board and the
-                record but does not get a vote on the outcome. */}
-            <ResolutionPanel groundId={ground.id} />
+                record but does not get a vote on the outcome.
+
+                NOT AT THE TOP, AND NOT AT SESSION 2 OF 6.
+
+                This was the FIRST card on the page from the moment a ground
+                existed. On a fresh ground it read "Each person picks the outcome
+                they think the record supports. The ground closes only when
+                everyone picks the same one" above four buttons including "Stop
+                the project", with one participant and one session done, and
+                nothing else on screen competing with it.
+
+                Two problems in one. The first thing a person saw about their new
+                ground was how to end it, and the copy described a group agreement
+                in a ground that had a group of one.
+
+                It now appears when the ground is actually near its end - every
+                session done, or the last planned round reached - or when it has
+                already been started, so a ground mid-decision never hides it. The
+                product's own help says the OPPOSITE thing belongs at the start:
+                "Set a resolution state before the ground starts... agreeing on the
+                end state before you start changes the quality of every session."
+                That is a different panel and it is W8-59; this one is the exit,
+                and the exit belongs at the exit. */}
+            {(allSessionsDone || (plannedSessions != null && sessionsDone >= plannedSessions - 1) || ground.resolutionState) && (
+              <ResolutionPanel groundId={ground.id} />
+            )}
             {/* Post-session decision panel: shown when session is complete, no balance, not subscribed */}
             {ground.status === 'REPORT_READY' && !postSessionDismissed &&
               !ground.isFreeGround &&
@@ -931,6 +992,32 @@ export function GroundAdminPage() {
         {/* CHECK-INS */}
         {tab === 'checkins' && (
           <div>
+            {/*
+              THE GLANCE ROW, from the board's own components.
+              This tab is now the first thing anybody sees about a ground, and it
+              was a bare list of session rows - true, but it answered "what
+              happened" without answering "where does this stand". The board has
+              solved that problem already, so this uses the same Stat tile rather
+              than inventing a third way of showing a number.
+            */}
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 16 }}>
+              <Stat
+                label="This round"
+                value={plannedSessions != null ? `${Math.min(sessionsDone + 1, plannedSessions)} of ${plannedSessions}` : String(sessionsDone + 1)}
+                caption="counting the session everyone has finished"
+              />
+              <Stat
+                label="Checked in"
+                value={`${(ground.checkIns ?? []).filter((c: any) => c.status === 'COMPLETED').length}`}
+                caption={`across ${(ground.participants ?? []).length} ${(ground.participants ?? []).length === 1 ? 'person' : 'people'}`}
+              />
+              <Stat
+                label="Still to come"
+                value={`${(ground.checkIns ?? []).filter((c: any) => c.status !== 'COMPLETED').length}`}
+                caption="open check-ins on this ground"
+                tone={(ground.checkIns ?? []).filter((c: any) => c.status !== 'COMPLETED').length > 0 ? 'warn' : undefined}
+              />
+            </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {(ground.checkIns ?? []).length === 0 && (
                 <div style={{ fontSize: 13, color: 'var(--gw-muted)', textAlign: 'center', padding: 24 }}>No check-ins yet.</div>
@@ -949,11 +1036,34 @@ export function GroundAdminPage() {
                 // registered.
                 const whoName = [who?.user?.firstName, who?.user?.lastName].filter(Boolean).join(' ').trim()
                 const whoLabel = whoName || who?.email || who?.roleAsDescribed?.trim() || 'Unknown participant'
+                /**
+                 * YOUR OWN ROWS OPEN. NOBODY ELSE'S EVER DOES.
+                 *
+                 * These were plain divs with cursor:auto, so a completed session
+                 * was a dead card - the transcript renders fine at /checkin/:id and
+                 * nothing in the product linked to it. That was most of "I have
+                 * no way to see my chats".
+                 *
+                 * Only the viewer's own check-ins become clickable. An admin
+                 * opening a participant's transcript would break the promise the
+                 * product makes on every screen - "Nobody reads what you write" -
+                 * so the guard is on identity, not on a permission flag.
+                 */
+                const isMine = !!user?.id && who?.userId === user.id
+                const openMine = () => navigate(`/checkin/${ci.id}`)
                 return (
-                <div key={ci.id} style={{ background: 'white', border: '0.5px solid var(--gw-border)', borderRadius: 8, padding: '12px 14px' }}>
+                <div
+                  key={ci.id}
+                  onClick={isMine ? openMine : undefined}
+                  onKeyDown={isMine ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openMine() } } : undefined}
+                  role={isMine ? 'button' : undefined}
+                  tabIndex={isMine ? 0 : undefined}
+                  title={isMine ? 'Open your check-in' : undefined}
+                  style={{ background: 'white', border: '0.5px solid var(--gw-border)', borderRadius: 8, padding: '12px 14px', cursor: isMine ? 'pointer' : 'default' }}
+                >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div>
-                      <div style={{ fontSize: 13, fontWeight: 600 }}>Session {ci.sessionNumber}</div>
+                      <div style={{ fontSize: 13, fontWeight: 600 }}>Session {ci.sessionNumber}{isMine ? ' ·  yours' : ''}</div>
                       <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 2 }}>{whoLabel}</div>
                     </div>
                     <span className={`gw-pill ${ci.status === 'COMPLETED' ? 'gw-pill-green' : ci.status === 'IN_PROGRESS' ? 'gw-pill-amber' : 'gw-pill-gray'}`}>
@@ -1000,13 +1110,24 @@ export function GroundAdminPage() {
                     </ul>
                   </div>
                 )}
+                {/*
+                  THE LIMITS ARE REAL AND THEY WERE SHOUTING.
+                  On a new ground this card carried ONE line of what it can do and
+                  SEVEN of what it cannot, all at the same size, which reads as a
+                  product apologising for itself on the page where somebody is
+                  deciding whether to bother. Every "cannot" line names something
+                  you can add, so they are worth keeping - but as the answer to
+                  "what would make this stronger", folded away until asked.
+                */}
                 {contextStrength.cannot.length > 0 && (
-                  <div>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: '#8A5C1A', marginBottom: 4 }}>It will not be able to</div>
-                    <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.7 }}>
+                  <details>
+                    <summary style={{ fontSize: 12, fontWeight: 700, color: '#8A5C1A', marginBottom: 4, cursor: 'pointer' }}>
+                      What would make it stronger ({contextStrength.cannot.length})
+                    </summary>
+                    <ul style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.7 }}>
                       {contextStrength.cannot.map((line: string, i: number) => <li key={i}>{line}</li>)}
                     </ul>
-                  </div>
+                  </details>
                 )}
               </div>
             )}

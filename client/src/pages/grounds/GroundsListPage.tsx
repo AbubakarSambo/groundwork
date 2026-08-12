@@ -6,6 +6,7 @@ import { authApi } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
 import type { Ground } from '@/types'
 import { alignmentLabel } from '@/lib/alignment'
+import { Stat } from '@/components/gw/kit'
 import { toast } from 'sonner'
 
 
@@ -134,10 +135,9 @@ export function GroundsListPage() {
                 { val: checkInsToday,    label: 'Participant sessions today' },
                 { val: reportsReady,     label: 'Reports ready' },
               ].map(s => (
-                <div key={s.label} style={{ background: 'var(--gw-bg)', border: '0.5px solid var(--gw-border)', borderRadius: 8, padding: '10px 14px', flex: 1, minWidth: 100 }}>
-                  <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--gw-navy)' }}>{s.val}</div>
-                  <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginTop: 2 }}>{s.label}</div>
-                </div>
+                // The board's own stat tile, so the same number does not have two
+                // different looks depending on which page you opened it from.
+                <Stat key={s.label} label={s.label} value={String(s.val)} />
               ))}
             </div>
 
@@ -246,8 +246,15 @@ export function GroundsListPage() {
               <div style={{ fontSize: 16, fontWeight: 700 }}>
                 {grounds.length > 0 ? `Your grounds (${grounds.length})` : 'Your grounds'}
               </div>
+              {/*
+                A SIGNED-IN PERSON MUST NOT BE SENT TO /start.
+                /start is the anonymous entry chat: no account, transcript in
+                localStorage, and a save card at the end asking for the email of
+                somebody who is already signed in. An admin who wants a ground
+                belongs in the picker at /grounds/new.
+              */}
               <button
-                onClick={() => navigate('/start')}
+                onClick={() => navigate('/grounds/new')}
                 style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 + Open a ground
@@ -267,7 +274,7 @@ export function GroundsListPage() {
                   You will see grounds here when someone invites you, or when you open one yourself.
                 </div>
                 <button
-                  onClick={() => navigate('/start')}
+                  onClick={() => navigate('/grounds/new')}
                   style={{ padding: '12px 24px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
                 >
                   Open a ground

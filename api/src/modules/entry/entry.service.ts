@@ -422,7 +422,13 @@ Respond with exactly one JSON object: {"scenario": "<SCENARIO_KEY>"}`;
 Your job is to gather these things through natural conversation:
 1. mode: is this something new starting, already underway, already happened, or a recurring check-in
 2. initial: what the situation is actually about
-3. whoInvolved: who else is part of this AND their role, and the person's own role in relation to them
+3. whoInvolved: who else is part of this AND their role, and the person's own role in relation to them.
+   ORGANISATIONS ARE NOT PEOPLE. If the answer names companies, teams, partners or clients rather
+   than individuals ("we work with Afrimash, Bayer and NABG"), that is a good answer to a
+   different question, and you are not finished. Ask once, in one sentence, who the person
+   responsible is inside them - by name if they know it, by role if they do not. A record is
+   built from accounts that individual people give; an organisation cannot check in. If they say
+   they do not know yet, accept it and move on: never press twice, and never invent a name.
 4. decision: what is making this worth getting on record right now
 5. goals: what they need from this process (can be more than one)
 6. brief: anything specific they want the questions to focus on (optional)
@@ -658,6 +664,8 @@ STRICT RULES:
       brief?: string;
       lead?: { email: string; name?: string; contextNote?: string };
       history: ChatTurn[];
+      /** Documents attached during the anonymous chat, kept as real records. */
+      documents?: { fileName: string; content: string; mimeType?: string }[];
       report?: EntryReport | null;
       contributors: { email: string; context?: string; inviteToken?: string; note?: string }[];
     },
@@ -899,6 +907,48 @@ STRICT RULES:
       },
     });
 
+    /**
+     * KEEP THE DOCUMENTS THE PERSON ATTACHED.
+     *
+     * The entry chat's "+ Doc" control folded a document into the transcript as
+     * text and created no record of it, so evidence attached in the flow most
+     * people meet first was not evidence as far as the product was concerned: no
+     * entry in Documents, no visibility, no assessment, and it never counted
+     * toward the document-backed share of the record that the report measures and
+     * shows to both parties.
+     */
+    for (const doc of dto.documents ?? []) {
+      await this.prisma.groundDocument
+        .create({
+          data: {
+            groundId: ground.id,
+            participantId: participant.id,
+            fileName: doc.fileName,
+            mimeType: doc.mimeType ?? 'text/plain',
+            content: doc.content,
+          },
+        })
+        .catch((e) => this.logger.error(`entry commit: could not keep document "${doc.fileName}": ${e?.message ?? e}`));
+    }
+
+    /**
+     * AND SCHEDULE SESSION 2.
+     *
+     * Sessions after the first come from `ensureNextSession`, which runs when a
+     * check-in COMPLETES through the conversation service. This path completes one
+     * with a direct `update`, so it never fired: a ground made through the entry
+     * chat had exactly one check-in and nothing scheduled a second. The ground page
+     * offers "Session N is ready for you" only when an open check-in exists, so it
+     * never appeared, and it read as a missing button rather than a missing session.
+     *
+     * Best-effort: a ground that exists with a saved record is worth more than one
+     * that fails to commit because the follow-up could not be scheduled. ONE_TIME
+     * correctly schedules nothing.
+     */
+    await this.conversation
+      .ensureNextSession(ground.id, participant.id, 1)
+      .catch((e) => this.logger.error(`entry commit: could not schedule session 2 for ground ${ground.id}: ${e?.message ?? e}`));
+
     // Extract structured record entries for the initiator so report synthesis can read them.
     if (dto.history.length > 0) {
       this.conversation.extractRecordEntries(checkIn.id, participant.id)
@@ -1094,6 +1144,28 @@ STRICT RULES:
         completedAt: new Date(),
       },
     });
+
+    /**
+     * AND SCHEDULE SESSION 2, WHICH NOTHING DID.
+     *
+     * Session 2 onwards is created by `ensureNextSession`, which runs when a
+     * check-in COMPLETES through the conversation service. This path never
+     * completes one - it writes session 1 straight to COMPLETED, above - so a
+     * ground made through the entry chat was created with exactly one check-in
+     * and no second was ever scheduled.
+     *
+     * The ground page offers "Session N is ready for you" only when an open
+     * check-in exists, so for these grounds it never appeared, and the Check-ins
+     * tab showed one completed row with nothing to do. It read as a missing
+     * button; there was simply no session for a button to open.
+     *
+     * Best-effort on purpose: a ground that exists with a saved record is worth
+     * more than one that fails to commit because the follow-up could not be
+     * scheduled. A cadence of ONE_TIME correctly schedules nothing.
+     */
+    await this.conversation
+      .ensureNextSession(ground.id, participant.id, 1)
+      .catch((e) => this.logger.error(`entry commit: could not schedule session 2 for ground ${ground.id}: ${e?.message ?? e}`));
 
     // Save conversation turns.
     if (dto.history.length > 0) {

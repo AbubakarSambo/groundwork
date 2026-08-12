@@ -97,6 +97,13 @@ class EntryReportSummaryDto {
   whatGroundworkSaw: string;
 }
 
+export class EntryDocumentDto {
+  @IsString() @MaxLength(300) fileName: string;
+  /** Plain text only. The entry chat extracts text client-side before upload. */
+  @IsString() @MaxLength(500_000) content: string;
+  @IsOptional() @IsString() @MaxLength(120) mimeType?: string;
+}
+
 export class EntryCommitDto {
   @IsString() groundLabel: string;
   @IsOptional() @IsString() orgName?: string;
@@ -127,6 +134,23 @@ export class EntryCommitDto {
 
   @IsOptional()
   report?: any;
+
+  /**
+   * DOCUMENTS ATTACHED DURING THE ENTRY CHAT.
+   *
+   * Without this the entry flow's "+ Doc" control produced nothing durable. It
+   * built a chat message - `[Document: "name"] <text> Context from me: ...` - which
+   * landed in the transcript and created no GroundDocument. So somebody attaching a
+   * contract at the exact moment the product asks for evidence had attached nothing
+   * the product keeps: no entry in Documents, no visibility setting, no assessment,
+   * and it never counted toward the document-backed share of the record, which the
+   * report measures and shows to both parties.
+   */
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => EntryDocumentDto)
+  documents?: EntryDocumentDto[];
 
   @IsArray()
   @ValidateNested({ each: true })

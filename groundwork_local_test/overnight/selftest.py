@@ -135,12 +135,19 @@ def _hits_file(name: str) -> Path:
     return HITS_DIR / f".selftest-{name}-hits"
 
 
-def _counting_loop(name: str, statement: str, sleep: float, seconds: int = 400):
+def _counting_loop(name: str, statement: str, sleep: float, seconds: int = 400, wrap: bool = True):
     """
     Run a data-modifying statement on a loop, recording rows affected.
 
-    `statement` must be a single SQL statement wrapped so its row count can be
-    selected - it is run as `with u as (<statement> returning 1) select count(*)`.
+    With `wrap` (the default) the statement is a single data-modifying statement and
+    is run as `with u as (<statement> returning 1) select count(*) from u`.
+
+    With `wrap=False` the statement must ALREADY be a complete query returning one
+    number - needed when the sabotage touches more than one table, since a statement
+    with its own CTEs cannot be nested inside the wrapper. Getting that wrong is a
+    silent no-op: psql errors go to /dev/null, the count stays 0, and the guard
+    reports the sabotage as having matched nothing.
+
     Any `$` in it must already be escaped for bash double quotes.
     """
     f = _hits_file(name)
@@ -149,7 +156,7 @@ def _counting_loop(name: str, statement: str, sleep: float, seconds: int = 400):
     return subprocess.Popen(
         ["bash", "-c",
          f"END=$((SECONDS+{seconds})); TOTAL=0; while [ $SECONDS -lt $END ]; do "
-         f"N=$(psql '{PSQL}' -tAc \"with u as ({statement} returning 1) select count(*) from u;\" 2>/dev/null); "
+         f"N=$(psql '{PSQL}' -tAc \"{statement if not wrap else 'with u as (' + statement + ' returning 1) select count(*) from u'};\" 2>/dev/null); "
          f"TOTAL=$((TOTAL+${{N:-0}})); printf %s \"$TOTAL\" > '{f}'; "
          f"sleep {sleep}; done"],
     )
@@ -166,8 +173,22 @@ def _landed(name: str):
 
 def break_drafts_start():
     """
-    Vanish signature: a background loop deletes entry drafts as they are written,
-    so suite V's cross-context commit finds nothing server-side.
+    Vanish signature: a background loop deletes the saved anonymous session as it is
+    written, so suite V's cross-context commit finds nothing server-side.
+
+    IT WAS DELETING THE WRONG TABLE, and had been since GW-001 changed where a saved
+    session lives. For a NEW address - which is every suite V run, since the fixture
+    is timestamped - nothing is created until the magic link is opened: the whole
+    session waits in `pending_signups`, keyed to the verification token. `entry_drafts`
+    only holds sessions for addresses that already have an account.
+
+    So the loop deleted rows (the counter proved it landed, on leftovers from other
+    fixtures) while suite V's own session sat untouched in another table. Suite V
+    passed, correctly, and the self-test read that as the guard having rotted. Exactly
+    the class-2 failure again: a sabotage aimed at where the product used to keep
+    something.
+
+    Both tables now, so the sabotage survives whichever path a fixture takes.
 
     THIS GUARD WAS BITING FOR THE WRONG REASON. Suite V had three pre-existing
     criticals about the invite queue, so it exited non-zero whatever this sabotage
@@ -181,9 +202,12 @@ def break_drafts_start():
     """
     return _counting_loop(
         "drafts",
-        "delete from entry_drafts using users where entry_drafts.user_id=users.id "
-        "and users.email like '%example-test.invalid%'",
+        "with a as (delete from entry_drafts using users where entry_drafts.user_id=users.id "
+        "and users.email like '%example-test.invalid%' returning 1), "
+        "b as (delete from pending_signups where email like '%example-test.invalid%' returning 1) "
+        "select (select count(*) from a) + (select count(*) from b)",
         sleep=0.5,
+        wrap=False,
     )
 
 

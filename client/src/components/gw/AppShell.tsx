@@ -1,4 +1,5 @@
 import { toast } from 'sonner'
+import { railAttention, railRank, stillInRail } from '@/lib/rail-attention'
 import { plannedSessionsFor } from '@/lib/sessionCount'
 import { useState, useRef, useEffect } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
@@ -90,16 +91,16 @@ const NAV_ITEMS = [
       </svg>
     ),
   },
-  {
-    label: 'Profile',
-    to: '/profile',
-    icon: (active: boolean) => (
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-        <circle cx="10" cy="7" r="3.5" stroke="currentColor" strokeWidth="1.5" fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.15 : 0} />
-        <path d="M3 17c0-3.314 3.134-6 7-6s7 2.686 7 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-      </svg>
-    ),
-  },
+  /**
+   * PROFILE IS NOT IN THE RAIL, because the page says it does not exist yet:
+   * "A profile that gathers them in one place is not built yet." A permanent menu
+   * item that admits it does nothing teaches people the menu is unreliable, and
+   * this rail is about to become the main way around the product.
+   *
+   * The route stays - /profile/:id? still renders, and links to a person's profile
+   * keep working. Only the standing invitation to visit an empty room is gone.
+   * Put it back the moment the page has something in it.
+   */
 ]
 
 type FbTab = 'reaction' | 'build' | 'wrong'
@@ -485,15 +486,39 @@ export function AppSidebar() {
             {!isEntryPage && grounds.length === 0 && (
               <div style={{ fontSize: 12, color: 'rgba(255,255,255,.3)', padding: '8px 6px' }}>No grounds yet</div>
             )}
-            {grounds.map(g => {
+            {/*
+              THE RAIL IS A CHANNEL LIST, so it is ordered by what needs you and it
+              drops grounds that closed long ago.
+
+              Attention first (overdue, then your turn, then waiting on others), and
+              a closed ground stays about three months before leaving - long enough
+              that the report and the resolution are still where people expect them.
+              Sorting by attention is most of why a flat rail can stay flat: the rows
+              that need you are always at the top, whatever the count.
+            */}
+            {grounds
+              .filter(g => stillInRail(g as any))
+              .slice()
+              .sort((a, b) => railRank(railAttention(a as any, user?.id)) - railRank(railAttention(b as any, user?.id)))
+              .map(g => {
               // DISTINCT session numbers, not the number of check-in rows: with 5
               // people over 13 sessions this counted 65 "sessions".
-              const sessions = new Set((g.checkIns ?? []).map((c: any) => c.sessionNumber)).size
+              //
+              // AND ONLY THE COMPLETED ONES, so this agrees with the ground page.
+              // It counted every check-in row including NOT_STARTED, so the rail
+              // said "1/6" for a ground whose header said "Session 2 of 6" - two
+              // readings of the same ground, one counting what exists and the
+              // other what is done. The label below now says which it is.
+              const sessions = new Set(
+                (g.checkIns ?? []).filter((c: any) => c.status === 'COMPLETED').map((c: any) => c.sessionNumber),
+              ).size
               // Respect the ground's real cadence. Hardcoding /14 said "7 sessions"
               // for a 90-day WEEKLY ground that actually runs ~13.
               const planned = plannedSessionsFor(g.timelineDays, (g as any).cadence, (g as any).maxSessions)
               // Never show fewer planned than have already happened.
               const maxSessions = planned != null ? Math.max(planned, sessions) : null
+              // What this ground needs from you, if anything. See lib/rail-attention.
+              const attention = railAttention(g as any, user?.id)
               return (
                 <div key={g.id} style={{ marginBottom: 2, borderRadius: 8, overflow: 'hidden' }}>
                   <NavLink
@@ -522,7 +547,29 @@ export function AppSidebar() {
                       />
                     ) : (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <span style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,.88)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                        {/*
+                          BOLD AND A DOT WHEN IT IS YOUR TURN, RED ONLY WHEN LATE.
+                          Hafsah asked for the name to turn red when it is time to
+                          check in; this splits that in two deliberately. A ground
+                          going red the moment it is your turn puts a red mark
+                          against somebody for being on time, and the engine's own
+                          rules forbid surveillance signals of exactly that shape.
+                        */}
+                        {(attention.kind === 'yours' || attention.kind === 'overdue') && (
+                          <span
+                            title={attention.kind === 'overdue' ? `Session ${attention.sessionNumber} is ${attention.daysLate} days past its date` : `Session ${attention.sessionNumber} is ready for you`}
+                            style={{
+                              width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
+                              background: attention.kind === 'overdue' ? '#F87171' : '#5DCAA5',
+                            }}
+                          />
+                        )}
+                        <span style={{
+                          fontSize: 13,
+                          fontWeight: attention.kind === 'yours' || attention.kind === 'overdue' ? 800 : 600,
+                          color: attention.kind === 'overdue' ? '#FCA5A5' : attention.kind === 'yours' ? 'white' : 'rgba(255,255,255,.88)',
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1,
+                        }}>
                           {g.label}
                         </span>
                         <button
@@ -544,7 +591,7 @@ export function AppSidebar() {
                         const read = alignmentShort((g as any).alignment)
                         return (
                           <span style={{ fontSize: 11, color: `rgba(255,255,255,${read ? '.45' : '.35'})` }}>
-                            {read ? `${read} · ` : ''}{sessions}{maxSessions ? `/${maxSessions}` : ''} sessions
+                            {read ? `${read} · ` : ''}{sessions}{maxSessions ? `/${maxSessions}` : ''} done
                           </span>
                         )
                       })()}

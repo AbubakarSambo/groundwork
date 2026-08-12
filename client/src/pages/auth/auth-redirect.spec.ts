@@ -26,8 +26,18 @@ describe('GW-AUTH-REDIRECT: post-sign-in destination must exist', () => {
   })
 
   it('AuthPage sends people somewhere that exists (tripwire)', () => {
+    /**
+     * WIDENED, because the destination stopped being a bare literal and this
+     * spec went quietly to zero targets rather than red.
+     *
+     * `?next=` support turned `navigate('/')` into `navigate(nextPath ?? '/')`,
+     * which the old pattern could not see - so it matched nothing, and a
+     * tripwire that matches nothing asserts nothing. The `toBeGreaterThan(0)`
+     * below is the only reason that surfaced at all, and it is why the line
+     * exists: a source-scanning rule has to prove it still found something.
+     */
     const src = read('AuthPage.tsx')
-    const targets = [...src.matchAll(/navigate\((?:'|")(\/[^'"]*)(?:'|")\)/g)].map((m) => m[1])
+    const targets = [...src.matchAll(/navigate\(\s*(?:[a-zA-Z]+\s*\?\?\s*)?(?:'|")(\/[^'"]*)(?:'|")\s*\)/g)].map((m) => m[1])
     expect(targets.length).toBeGreaterThan(0)
     for (const t of targets) {
       const known = definedPaths.has(t) || [...definedPaths].some((p) => p !== '*' && t.startsWith(p.split('/:')[0]) && p.includes(':'))
@@ -37,5 +47,17 @@ describe('GW-AUTH-REDIRECT: post-sign-in destination must exist', () => {
 
   it('nothing navigates to /home any more', () => {
     expect(read('AuthPage.tsx')).not.toContain("'/home'")
+  })
+
+  it('and ?next= cannot be turned into an open redirect', () => {
+    /**
+     * `next` is read from the query string, so anybody can put anything in it.
+     * Without the same-origin check, `/auth?next=https://evil.test` would hand a
+     * freshly signed-in person to another site, and the link would look like
+     * ours.
+     */
+    const src = read('AuthPage.tsx')
+    expect(src).toMatch(/startsWith\('\/'\)/)
+    expect(src).toMatch(/startsWith\('\/\/'\)/)
   })
 })

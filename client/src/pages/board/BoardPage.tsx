@@ -3,6 +3,9 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { boardApi, type BoardPresent, type CoverageVariant } from '@/api/board'
 import { toast } from 'sonner'
+// The board's own vocabulary now lives in components/gw/kit so every other page
+// can be rebuilt from it. Values unchanged: this is an extraction, not a redesign.
+import { Zone, Sec, Card, Row, Pill, td, btn, miniBtn, btnGhost } from '@/components/gw/kit'
 
 /**
  * The delivery board.
@@ -22,51 +25,10 @@ import { toast } from 'sonner'
 
 // ---------------------------------------------------------------- primitives
 
-function Zone({ label }: { label: string }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '30px 2px 2px' }}>
-      <span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.7px', fontWeight: 800, color: 'var(--gw-navy)' }}>{label}</span>
-      <span style={{ flex: 1, height: 1, background: 'var(--gw-border)' }} />
-    </div>
-  )
-}
 
-function Sec({ title, src }: { title: string; src?: string }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, margin: '16px 2px 8px' }}>
-      <h2 style={{ fontSize: 12.5, letterSpacing: '.4px', textTransform: 'uppercase', color: 'var(--gw-sub)', fontWeight: 700 }}>{title}</h2>
-      {src && <span style={{ fontSize: 10.5, color: 'var(--gw-muted)', marginLeft: 'auto', whiteSpace: 'nowrap' }}>{src}</span>}
-    </div>
-  )
-}
 
-function Card({ children, pad = true }: { children: React.ReactNode; pad?: boolean }) {
-  return (
-    <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, boxShadow: '0 1px 2px rgba(20,24,40,.05)', padding: pad ? '6px 16px' : 0 }}>
-      {children}
-    </div>
-  )
-}
 
-function Row({ children, first }: { children: React.ReactNode; first?: boolean }) {
-  return <div style={{ padding: '11px 0', borderTop: first ? 'none' : '1px solid var(--gw-border)' }}>{children}</div>
-}
 
-function Pill({ children, tone = 'flat' }: { children: React.ReactNode; tone?: 'good' | 'warn' | 'bad' | 'info' | 'flat' }) {
-  const m: Record<string, { bg: string; fg: string }> = {
-    good: { bg: 'var(--gw-green-bg)', fg: 'var(--gw-green-t)' },
-    warn: { bg: 'var(--gw-amber-bg)', fg: 'var(--gw-amber-t)' },
-    bad: { bg: 'var(--gw-red-bg)', fg: 'var(--gw-red-t)' },
-    info: { bg: 'var(--gw-blue-bg)', fg: 'var(--gw-blue-t)' },
-    flat: { bg: '#EEF0F4', fg: 'var(--gw-sub)' },
-  }
-  const c = m[tone] ?? m.flat
-  return (
-    <span style={{ fontSize: 10.5, fontWeight: 700, padding: '2px 9px', borderRadius: 11, background: c.bg, color: c.fg, whiteSpace: 'nowrap' }}>
-      {children}
-    </span>
-  )
-}
 
 const dshort = (iso?: string | null) =>
   iso ? new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : '—'
@@ -194,7 +156,21 @@ export function BoardPage() {
                     : b.family === 'ONBOARDING' ? 'Settling into the role'
                     : 'A period being reviewed'}
                 </span>
-                {b.phaseSpine && <span>{dshort(b.phaseSpine.startsAt)} to {dshort(b.phaseSpine.endsAt)} · session {b.phaseSpine.currentSession}</span>}
+                {/*
+                  A ground with no dates set rendered "— to — · session 1", which is
+                  two em dashes standing in for information nobody entered, in the
+                  header of the best page in the product - and em dashes are against
+                  house style anyway. Say the session, and only mention dates when
+                  there are dates.
+                */}
+                {b.phaseSpine && (
+                  <span>
+                    {b.phaseSpine.startsAt || b.phaseSpine.endsAt
+                      ? `${dshort(b.phaseSpine.startsAt)} to ${dshort(b.phaseSpine.endsAt)} · `
+                      : ''}
+                    session {b.phaseSpine.currentSession}
+                  </span>
+                )}
               </div>
             </div>
             <div style={{ fontSize: 10.5, color: '#8891BC', textAlign: 'right', lineHeight: 1.5 }}>
@@ -843,7 +819,3 @@ export function BoardPage() {
   )
 }
 
-const td: React.CSSProperties = { padding: '9px 12px', textAlign: 'left', fontSize: 12, borderBottom: '1px solid var(--gw-border)' }
-const btn: React.CSSProperties = { padding: '9px 16px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', display: 'inline-block' }
-const miniBtn: React.CSSProperties = { width: 22, height: 22, borderRadius: 6, border: '1px solid var(--gw-border)', background: 'white', color: 'var(--gw-sub)', fontSize: 12, lineHeight: 1, cursor: 'pointer', fontFamily: 'inherit', padding: 0 }
-const btnGhost: React.CSSProperties = { padding: '9px 16px', borderRadius: 7, background: 'none', color: 'var(--gw-sub)', fontSize: 13, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }

@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClient } from '@/lib/queryClient'
 import { Toaster } from 'sonner'
@@ -14,8 +14,13 @@ import { SetupPage } from '@/pages/setup/SetupPage'
 import { EnterPage } from '@/pages/enter/EnterPage'
 import { PinPage } from '@/pages/enter/PinPage'
 import { EntryChatPage } from '@/pages/enter/EntryChatPage'
-import { WelcomePage } from '@/pages/welcome/WelcomePage'
 import { ChatPage } from '@/pages/chat/ChatPage'
+
+/** Old address for a check-in. Keeps working, lands on the one canonical route. */
+function ChatRedirect() {
+  const { checkInId } = useParams()
+  return <Navigate to={`/checkin/${checkInId}`} replace />
+}
 import { AlignmentFeedPage } from '@/pages/feed/AlignmentFeedPage'
 import { GroundsListPage } from '@/pages/grounds/GroundsListPage'
 import { CreateGroundPage } from '@/pages/grounds/CreateGroundPage'
@@ -121,7 +126,6 @@ export default function App() {
 
             {/* Post-auth setup */}
             <Route path="/setup" element={<SetupPage />} />
-            <Route path="/welcome" element={<WelcomePage />} />
 
             {/* Main app - require auth */}
             <Route path="/grounds" element={<RequireAuth><GroundsListPage /></RequireAuth>} />
@@ -130,7 +134,15 @@ export default function App() {
             <Route path="/grounds/:id/p" element={<RequireAuth><GroundParticipantPage /></RequireAuth>} />
             <Route path="/grounds/:id/report" element={<RequireAuth><ReportPage /></RequireAuth>} />
             <Route path="/grounds/:id/board" element={<RequireAuth><BoardPage /></RequireAuth>} />
-            <Route path="/chat/:checkInId" element={<RequireAuth><ChatPage /></RequireAuth>} />
+            {/*
+              TWO ROUTES, ONE COMPONENT. /chat/:id and /checkin/:id both rendered
+              ChatPage, so the same conversation had two addresses and the product
+              linked to both. /checkin is the one the invite and join flows use and
+              the one the word "check-in" appears in everywhere else, so it is the
+              survivor; /chat redirects rather than being deleted, because links to
+              it exist in the wild and in old emails.
+            */}
+            <Route path="/chat/:checkInId" element={<ChatRedirect />} />
             <Route path="/checkin/:checkInId" element={<RequireAuth><ChatPage /></RequireAuth>} />
             <Route path="/feed" element={<RequireAuth><AlignmentFeedPage /></RequireAuth>} />
             <Route path="/billing" element={<RequireAuth><BillingPage /></RequireAuth>} />

@@ -258,7 +258,19 @@ export function BillingPage() {
                   </div>
                   {!isFree && !isSubscribed && (
                     <button
-                      onClick={() => navigate('/billing/payment', { state: { groundId: g.id, groundName: g.label } })}
+                      /**
+                       * '/billing/payment' DOES NOT EXIST. It was the only
+                       * destination in the product that 404'd, and it was the one
+                       * that takes money: PaymentPage is mounted at
+                       * '/billing/checkout'. So "Add sessions" landed a paying
+                       * customer on "There is nothing at this address", which
+                       * tells them THEY mistyped something.
+                       *
+                       * PaymentPage already reads groundId/groundName from
+                       * location.state and falls back to query params, so the
+                       * payload was always right. Only the path was wrong.
+                       */
+                      onClick={() => navigate('/billing/checkout', { state: { groundId: g.id, groundName: g.label } })}
                       style={{ flexShrink: 0, padding: '8px 14px', borderRadius: 7, background: '#0A1628', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
                     >
                       Add sessions

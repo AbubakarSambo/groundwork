@@ -45,7 +45,7 @@ function makeService(aiReply: string, personTurns: string[]) {
   const prompts: any = { getActiveContent: jest.fn(async (k: string) => (k === 'system' ? 'BASE' : Promise.reject(new Error('none')))) };
   const anthropic: any = { respond: jest.fn(async () => aiReply) };
   const context: any = { build: jest.fn(async () => ({ block: '' })) };
-  const service = new ConversationService(prisma, prompts, anthropic, context, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any);
+  const service = new ConversationService(prisma, prompts, anthropic, context, { get: () => undefined } as any, { get: () => undefined } as any, { get: () => undefined } as any, { get: () => undefined } as any, { get: () => undefined } as any, { get: () => undefined } as any);
   prisma.checkIn.findUnique = jest.fn(async () => ({
     id: 'ci1', groundId: 'g1', participantId: 'p1', sessionNumber: 1,
     status: CheckInStatus.IN_PROGRESS, isClarification: false, clarificationTarget: null,

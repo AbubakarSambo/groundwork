@@ -48,6 +48,19 @@ EMAIL = f"v.vanish+{STAMP}@example-test.invalid"
 LEGACY_EMAIL = f"v.legacy+{STAMP}@example-test.invalid"
 LOST_EMAIL = f"v.lost+{STAMP}@example-test.invalid"
 CONTRIB = f"v.contrib+{STAMP}@example-test.invalid"
+# A SECOND PERSON, LEFT UNCONFIRMED ON PURPOSE.
+#
+# Adding somebody takes two clicks: the email opens a note box, "Add person" commits
+# them. Closing the panel with that box still open used to discard them silently - no
+# invite, no warning - and the closing line went on promising the invites it WAS about
+# to send, so the omission was invisible. Somebody who typed an address and a note
+# believed they had invited that person.
+#
+# The fix makes "Done" commit a pending person. Nothing exercised it: this suite
+# presses "Add person" explicitly, so it only ever walked the confirmed path. This
+# contributor is deliberately never confirmed, and the assertions below expect BOTH -
+# "Invited (2)" and both addresses listed.
+CONTRIB_PENDING = f"v.pending+{STAMP}@example-test.invalid"
 ORG_NAME = "Vanish Proof Org"
 
 
@@ -141,6 +154,35 @@ async def main() -> int:
         rec.check("V1", queued > 0, "queued invites are visible ('Waiting to send')",
                   "the emailSent box shows no queue - the send moment is invisible again")
 
+        # ---- the SECOND person, typed in and never confirmed -----------------
+        # Types the email and a note, then closes the panel WITHOUT pressing
+        # "Add person". Before the fix this person vanished without a word.
+        await page.locator("input[placeholder*='name@company']:visible").first.fill(CONTRIB_PENDING)
+        await page.keyboard.press("Enter")
+        await page.wait_for_timeout(700)
+        box2 = page.locator("input[placeholder*='other side of this'], textarea[placeholder*='other side of this']")
+        if await box2.count():
+            await box2.first.fill("On the rollout")
+            await rec.step(page, "second person typed in, NOT confirmed", "persona A")
+            # The count must already own up to them, before the panel closes: the
+            # closing line read inviteAdded alone, so it promised 1 invite while two
+            # people had been named, and the one it omitted was the one at risk.
+            body_pre = await page.inner_text("body")
+            rec.check("V1", "2 invites" in body_pre,
+                      "the closing line counts the person still in the note box",
+                      f"it did not say '2 invites' with two people named: {body_pre[-220:]}")
+            done = page.get_by_text("Done", exact=True)
+            if await done.count():
+                await done.first.click()
+                await page.wait_for_timeout(1500)
+            else:
+                rec.check("V1", False, "a 'Done' control exists to close the save panel",
+                          "no way to dismiss the panel, so the pending-person path cannot be tested",
+                          hard=True)
+        else:
+            rec.check("V1", False, "the note box opens for a second contributor",
+                      "could not reach the pending-person state at all", hard=True)
+
         link = mail_link(EMAIL, match="verify-email")
         rec.check("V1", bool(link), "magic link email actually arrived (mailcatcher)",
                   "no verify-email link reached the inbox", hard=True)
@@ -164,10 +206,19 @@ async def main() -> int:
             await browser.close()
             return rec.finish()
 
-        invited = await page_b.get_by_text("Invited (1)").count()
-        rec.check("V2", invited > 0, "positive 'Invited (1)' confirmation shown", hard=True)
+        # TWO, not one: the confirmed contributor and the one who was only typed in.
+        # "Invited (1)" here would mean the pending person was dropped on the floor -
+        # which is exactly what happened before, and passed this check.
+        invited = await page_b.get_by_text("Invited (2)").count()
+        rec.check("V2", invited > 0, "positive 'Invited (2)' confirmation shown",
+                  "expected both the confirmed contributor and the one left in the note box",
+                  hard=True)
         contrib_shown = await page_b.get_by_text(CONTRIB).count()
         rec.check("V2", contrib_shown > 0, "the invited contributor is listed by email")
+        pending_shown = await page_b.get_by_text(CONTRIB_PENDING).count()
+        rec.check("V2", pending_shown > 0,
+                  "the person who was typed in but never confirmed is listed too",
+                  "they were discarded when the panel closed", hard=True)
         await page_b.screenshot(path=str(rec.results_dir / "vanish_pass.png"), full_page=True)
 
         token = await token_from(page_b)
