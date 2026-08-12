@@ -7,7 +7,7 @@ import { withoutWhatOnlyTheLeadSaid, whyItWasDropped } from './a-lead-note-is-no
 import { whatALeaderCanWeigh, THIS_IS_MATERIAL_NOT_A_VERDICT } from './what-a-leader-can-weigh';
 import { accountShapeFor, standardsAndWhatTouchedThem, type EntryRow } from './what-the-record-actually-holds';
 import { forbiddenNames, sanitiseGuide, PostReportGuide } from './guide-sanitiser';
-import { labelsForParties, namesVisibleTo, withNames } from './party-labels';
+import { labelsForParties, namesVisibleTo, readsWithNamesOf, withNames } from './party-labels';
 import { withoutOtherPeoplesReads } from './own-reads-only';
 import { tallyInReport } from './counts-accounts';
 import { forensicInReport, withoutDashes } from './forensic-voice';
@@ -1529,9 +1529,9 @@ Close the report by framing - neutrally, without recommending one - the choice n
     viewerIsLead: boolean,
   ): T {
     // An org admin reads with the lead's eyes; they already see the whole ground.
-    const asWhom = viewerIsLead
-      ? (parties.find((p) => p.partyType === PartyType.INITIATOR)?.id ?? viewerParticipantId)
-      : viewerParticipantId;
+    // Shared with the board, which had no version of this at all and showed a lead their
+    // own ground in placeholders as a result. W8-73.
+    const asWhom = readsWithNamesOf({ viewerIsLead, viewerParticipantId, parties });
     const visible = namesVisibleTo(asWhom, parties);
     // Deliberately NO early return when there are no names to put back. The
     // dash cleanup below runs on every report, and an invited participant who
@@ -1547,14 +1547,51 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * way - cutting "both records describe" out of a sentence changes what the
      * sentence says - so those are still detected and logged for a person.
      */
+    // Every party's label, so the bare-label tidy-up can tell "unambiguous" from "the only
+    // one I am allowed to see". W8-73.
+    const allLabels = [...labelsForParties(parties).values()];
     const t = (v: any): any =>
-      typeof v === 'string' ? withoutDashes(withNames(v, visible)) : v;
+      typeof v === 'string' ? withoutDashes(withNames(v, visible, allLabels)) : v;
     const walk = (v: any): any => {
       if (typeof v === 'string') return t(v);
       if (Array.isArray(v)) return v.map(walk);
       if (v && typeof v === 'object') {
         const out: Record<string, any> = {};
         for (const [k, val] of Object.entries(v)) out[k] = walk(val);
+        return out;
+      }
+      return v;
+    };
+
+    /**
+     * THE FIELD LIST WAS THE BUG. W8-74.
+     *
+     * This substituted six named fields and let everything else through on `...report`. Two
+     * of the things it let through carry prose:
+     *
+     *   engagement.recallNotes[].note    "the initiator was uncertain on key points"
+     *   inferences[].text                "the initiator and participant were operating from
+     *                                     different definitions of success"
+     *
+     * So the lead of a twelve-session ground read her own report with her name in one
+     * paragraph and "the initiator" in the next, and every inference - the part that says
+     * what the product CONCLUDED about people - in placeholders. Verified against the live
+     * endpoint: `withNames` works, the board now works, and this path never called it on
+     * those two fields.
+     *
+     * WHY THE LABEL FIELDS ARE LEFT ALONE, and this is the part that matters. `own-reads-only.ts`
+     * filters per-person rows by `row.label === viewerLabel`, matching on the RAW label. Put a
+     * name in `.label` and that comparison stops matching - which does not fail loudly, it
+     * silently keeps the wrong rows, and those rows are other people's quality reads. So text
+     * is named and labels stay labels, by key name, deliberately.
+     */
+    const NEVER_NAMED = new Set(['label', 'participantLabel']);
+    const walkTextOnly = (v: any): any => {
+      if (typeof v === 'string') return t(v);
+      if (Array.isArray(v)) return v.map(walkTextOnly);
+      if (v && typeof v === 'object') {
+        const out: Record<string, any> = {};
+        for (const [k, val] of Object.entries(v)) out[k] = NEVER_NAMED.has(k) ? val : walkTextOnly(val);
         return out;
       }
       return v;
@@ -1568,6 +1605,8 @@ Close the report by framing - neutrally, without recommending one - the choice n
       divergences: walk(report.divergences),
       finalSynthesis: walk(report.finalSynthesis),
       leadershipGaps: walk(report.leadershipGaps),
+      engagement: walkTextOnly(report.engagement),
+      inferences: walkTextOnly(report.inferences),
     };
   }
 

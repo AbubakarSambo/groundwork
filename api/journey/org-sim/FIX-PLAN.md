@@ -4259,3 +4259,88 @@ substitution is matching on strings the model was asked for rather than the ones
 which is a fragile seam wherever it is used - and per the structural-guardrails rule it
 should be normalised in code on the way out, not requested in the prompt. Worth doing after
 she decides the above, since the right normalisation depends on it.
+
+## W8-73/74 · The report and board were written in placeholders - **DONE, NOT MERGED**
+
+W8-72 asked her to decide whether an org admin should see the other party's name in the
+report's prose. Chasing that turned up four defects underneath it that are not policy
+questions at all - they were wrong for **the lead of the ground, reading her own report**,
+who is entitled to every name in it.
+
+Found by opening the board and the report of a real twelve-session ground as its lead. No
+test caught any of them, because every test asserted on the same label strings its own
+fixture put in.
+
+### 1. The board never substituted names at all
+
+The board reads the report's own sentences, and those sentences are written by the model in
+LABELS - it is explicitly told never to write a personal name - which `reports.service.ts`
+swaps back per reader. **The board had no version of that.** So its lead read:
+
+> "By the end of the evaluation period, the participant was successfully owning two client
+> accounts."
+> "Both parties identified the initiator's clarification in week seven..."
+
+Twelve sessions of real work, described in placeholders, to the person who ran it.
+
+Fixed with the same helpers, and the "whose eyes do I read with" resolution - which the
+report had inline and the board had not at all - is now one shared function,
+`readsWithNamesOf`.
+
+### 2. A label matched inside ordinary words
+
+`withNames` replaced labels with no word boundaries. "participant A" is the label for anyone
+with no stated role, and case-insensitively it matches the middle of "particip[ant a]nswered":
+
+| Sentence | What a reader got |
+|---|---|
+| the participant answered | the Abubakarnswered |
+| the participant agreed | the Abubakargreed |
+
+"answered", "agreed", "asked", "acknowledged" - the commonest words to follow "participant"
+in a report about what somebody said. **This has been mangling real sentences for every
+reader entitled to a name.** Found by accident: a test asserting something else came back
+with a corrupted string.
+
+### 3. The model does not use the label it was given
+
+Assigned `participant A`; wrote bare "the participant". So substitution matched the strings
+we ASKED for and not the ones we got, and half-resolved. Now collapsed in code - with the
+article, because "the Abubakar answered" is the same class of half-fix - and **only when
+unambiguous**: a two-party ground resolves, a six-participant ground leaves the bare word
+alone, because guessing which of six is worse than a placeholder.
+
+My first version of that counted uniqueness across the labels the READER may see, and the
+existing wall tests caught it in one run: reading as participant A, "participant" looked
+unambiguous and the code rewrote *"participant B said the handover was late"* into
+*"Abubakar B B said the handover was late"* - one person's statement attributed to another,
+by a tidy-up. Uniqueness in the visible map is not uniqueness in the text.
+
+### 4. `applyNames` had a field list, and two text fields were missing from it
+
+It substituted six named fields and let everything else through on `...report`. Two of the
+things it let through carry prose:
+
+- `engagement.recallNotes[].note` - "the initiator was uncertain on key points"
+- `inferences[].text` - **every inference**, which is the part that states what the product
+  CONCLUDED about people rather than what they said
+
+Verified end to end on the live endpoint: that sentence went from *"the initiator and
+participant were operating from different definitions of success"* to *"Hafsah and Abubakar
+were operating from different definitions of success"*.
+
+**And the half that is a privacy rule, not a wording one.** `own-reads-only.ts` keeps a
+person's own quality reads and drops everybody else's by matching `row.label === viewerLabel`
+on the RAW label. Putting a name into `.label` stops that comparison matching - and it does
+not fail loudly, it keeps the wrong rows, and the wrong rows are other people's reads. So
+text is named and `label` / `participantLabel` are excluded by key name, with the reason
+written next to them and a test that fails if `own-reads-only` ever stops matching that way.
+
+### What is still hers
+
+W8-72 stands: whether a **non-party** org admin sees the other party's name in the prose. All
+of the above is about a reader who was always entitled to the names.
+
+**One false alarm, recorded so it is not chased twice:** the board payload contains the
+string "undefined", which is the English word in "An undefined role is often..." - not a
+broken template.
