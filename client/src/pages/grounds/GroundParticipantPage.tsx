@@ -463,8 +463,19 @@ export function GroundParticipantPage() {
               </div>
             )}
 
-            {/* Specificity intro - shown even before first session */}
-            {specificityScores.length === 0 && (
+            {/*
+              THREE CARDS EXPLAINING ABSENCE, IN A COLUMN.
+              On a ground with one session done this page showed "No read yet",
+              "No documents uploaded yet" and this one, each a card of its own,
+              each describing something that has not happened. Three explanations
+              of nothing is worse than one, and none of them offered the action
+              that would fill them.
+
+              This one only earns its space BEFORE the first session, where it is
+              telling somebody what to expect. Once a session is done and there is
+              still no score, the silence is not worth a card.
+            */}
+            {specificityScores.length === 0 && completedCheckIns.length === 0 && (
               <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '13px 16px' }}>
                 <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: '#9B9590', marginBottom: 6 }}>Your record quality</div>
                 <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.6 }}>
