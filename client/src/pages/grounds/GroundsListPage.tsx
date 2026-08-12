@@ -30,8 +30,28 @@ function GroundCard({ g, onClick }: { g: Ground; onClick: () => void }) {
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 8 }}>
         <div>
           <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 3 }}>{g.label}</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: mc.bg, color: mc.color }}>{g.moment}</span>
+            {/*
+              A GROUND IN SOMEBODY ELSE'S ORGANISATION, SAID OUT LOUD.
+
+              `grounds.list` deliberately includes grounds in other organisations where
+              you are a participant - that is how somebody invited across a boundary
+              finds their check-in at all, and it was unambiguous when there was only
+              one organisation to be in.
+
+              With the switcher it is not. Switch to a client's organisation and your own
+              company's ground is still in the list, with nothing saying why. Seen while
+              clicking the switcher for the first time.
+            */}
+            {(g as any).otherOrgName && (
+              <span
+                title={`This ground belongs to ${(g as any).otherOrgName}. You are in it as a participant.`}
+                style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: 'var(--gw-bg)', color: 'var(--gw-sub)', border: '1px solid var(--gw-border)' }}
+              >
+                {(g as any).otherOrgName}
+              </span>
+            )}
             {g.status === 'ACTIVE' && <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--gw-green-b)', display: 'inline-block' }} />}
           </div>
         </div>

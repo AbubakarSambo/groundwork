@@ -16,7 +16,15 @@ export default defineConfig({
     host: true, // Allow access from network
     proxy: {
       '/api': {
-        target: 'http://localhost:3000',
+        /**
+         * The API this dev server talks to.
+         *
+         * Hardcoded to 3000 before, which is right almost always and impossible to
+         * work around when it is not: verifying a change against a freshly built API
+         * meant either killing the one already running on 3000 or editing this file
+         * and remembering to put it back.
+         */
+        target: process.env.VITE_PROXY_TARGET ?? 'http://localhost:3000',
         changeOrigin: true,
       },
     },

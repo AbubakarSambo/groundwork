@@ -1712,6 +1712,49 @@ Read off the code, not remembered. She is right, and the reason is structural ra
 button: **there is no sign-up flow. There is a sign-in page with a sign-up hidden inside one of its
 modes.**
 
+## W11 - clicking the two things I had only proved against the API
+
+I had shipped the organisation switcher and the context chat proved against a booted API and the
+suites, and said plainly that neither had been clicked. Clicking them found two things.
+
+## W11-1 · A ground from another organisation, with nothing saying so - **fixed**
+
+Switch to a client's organisation and your own company's ground is still in the list. That is not a
+leak and not new: `grounds.list` deliberately includes grounds in OTHER organisations where the
+caller is a participant, which is how somebody invited across a boundary finds their check-in at
+all. It was unambiguous when there was only one organisation to be in.
+
+With a switcher it is not. The list now carries `otherOrgName` for those grounds and the card names
+the organisation, with the reason on its tooltip.
+
+## W11-2 · The switcher is right, and my cleanup script was not - **worth recording**
+
+The first live load showed three organisations, the active one being **another user's workspace**.
+Not a product bug: an earlier cleanup script of mine did
+`select organization_id from organization_memberships where organization_id != '<the test org>' limit 1`
+to find "their own org" and picked an arbitrary row belonging to somebody else, then moved the test
+user into it.
+
+Two things worth keeping from that. The switcher rendered it correctly - three organisations,
+per-organisation roles, the active one marked - and **the self-heal in `myOrganizations` is what made
+the corrupted row visible at all**, which is exactly what it was written for. And a `limit 1` with no
+`user_id` in the where is the same shape of mistake as the queries this plan keeps recording: a
+filter that looks specific and is not.
+
+## W11-3 · The availability poll: counted, and the number does not mean what it looks like
+
+See W9-8. Zero polls in all 52 local databases, and **nothing anywhere creates one** - no unit test,
+no persona suite, no simulation. So the zero measures our coverage, not anybody's appetite. What it
+does establish is that the only write on the board is completely untested.
+
+## W11-4 · The dev proxy target is configurable now
+
+`vite.config.ts` hardcoded `http://localhost:3000`, which is right almost always and impossible to
+work around when it is not: verifying against a freshly built API meant killing the server already
+on 3000 or editing the file and remembering to put it back. It reads `VITE_PROXY_TARGET` with the
+same default. That is how both of the above were clicked at all - a second dev server on 5199
+against a second API on 3101, with her own pair untouched.
+
 ## W10-1 · The shape of it today
 
 `/auth` is one page with three views held in local state:
@@ -1949,8 +1992,24 @@ read - which is arguably what a board should be, and it is one fewer thing to ma
 Against removing it: the poll is the one place a team coordinates *forward* rather than reporting
 backward, and "when can we all meet" is a real question a board is a sensible place to ask.
 
-No recommendation without knowing whether anybody has used it. That is answerable: count the polls
-in production before deciding.
+**Counted, 2026-08-12: zero polls in all 52 local databases** - including the 18-ground org
+simulation and the 10-ground org18 run, both of which exercise the board.
+
+**And that number proves nothing about demand**, which is the point worth having. Nothing creates a
+poll anywhere: no unit test, no persona suite, no simulation. `upsertPoll` and `togglePoll` appear
+in `board.ts`, `BoardPage.tsx` and the merge inventory, and nowhere else. So the zero measures our
+own coverage, not anybody's appetite.
+
+What it does establish: **the only write on the board is completely untested.** That is the real
+decision, and it is a smaller one than "cut it or keep it":
+
+- If the poll stays, it needs a test. An untested write on a shared surface is the kind that breaks
+  quietly and is discovered by somebody trying to use it.
+- If it goes, the board becomes a pure read, which is defensible and one less thing to maintain.
+
+Production numbers would still settle the product question, and only Hafsah can pull those. But
+either way the current state - shipped, unexercised, unmeasured - is the one option that should not
+persist.
 
 ## A note on verifying against the local API
 
