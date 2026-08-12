@@ -2458,7 +2458,30 @@ export function EntryChatPage() {
                 </div>
               </div>
             ) : (
-              <div style={{ background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 10, padding: '14px 16px', marginBottom: 20 }}>
+              /**
+               * SCROLLED TO, BECAUSE NOBODY EVER SAW IT.
+               *
+               * This confirmation renders about 1678px down a panel whose viewport
+               * is 720px tall, and nothing moved the view. Pressing "Save my
+               * ground" left the top of the screen unchanged, so the only feedback
+               * that anything had happened was a thousand pixels below the fold.
+               *
+               * Hafsah: "When i added my email when i got to report page, i didnt
+               * know where it went, i forgot i had put my email." That is not a
+               * cosmetic miss. Forgetting you gave an address is how the ground was
+               * lost: the link went unopened, and a later sign-in request wiped the
+               * saved session (the entrySave bug, now fixed). This is the other
+               * half of that failure.
+               */
+              <div
+                ref={(el) => {
+                  // Optional-call because jsdom has no scrollIntoView: an
+                  // unguarded call throws inside the ref, React unmounts the
+                  // subtree, and four unrelated specs went red on a scroll.
+                  if (el) el.scrollIntoView?.({ behavior: 'smooth', block: 'center' })
+                }}
+                style={{ background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 10, padding: '14px 16px', marginBottom: 20 }}
+              >
                 <div style={{ fontSize: 14, fontWeight: 700, color: '#085041', marginBottom: 4 }}>Check your email</div>
                 <div style={{ fontSize: 13, color: '#085041', lineHeight: 1.6 }}>We sent a link to <strong>{email}</strong>. Click it to finish setting up and get your invite link.</div>
                 {inviteAdded.length > 0 ? (

@@ -1860,7 +1860,34 @@ The participant view's Session history lists "Session 1, Completed 11 Aug 2026" 
 "What we heard from you", which opens the summary. The transcript is not reachable from the one
 screen named after the history of the sessions.
 
-## W8-22 · A truncated assistant reply is saved to the record - **M**, and it corrects W8-18
+## W8-22 · WITHDRAWN. The record was intact; I screenshotted an animation.
+
+**This is the second time I have changed my mind about the dropped chat, and this time I checked
+the database instead of the screen.**
+
+The stored turn, read from `GET /check-ins/:id/transcript`:
+
+    lastRole: AI    length: 264
+    "...he agreement confirmed in writing. Is there anything written down that
+     captures what was agreed, even an informal message or email exchange?"
+
+Complete. The "You've nam" I reported was **ChatPage's typewriter effect mid-flight** - it
+renders `full.slice(0, i)` on a 25ms interval, so any screenshot taken while it is running shows
+a sentence cut off mid-word. The same animation exists in the entry chat.
+
+**So W8-18 stands as originally written after all**: the dropped chat is not reproduced. My
+correction of it was wrong, and the original entry was right.
+
+**The lesson, since this cost two reversals.** Both the entry chat and ChatPage animate assistant
+messages on arrival AND on load. A screenshot of either is not evidence about what is stored. For
+anything about the record, read the transcript endpoint.
+
+**One thing this does leave open, and it is a real question:** if a person ends a session while the
+typewriter is still running, they have not read the last reply. Nothing waits for the animation.
+That is worth looking at on its own terms, but it is a UX question about pacing, not a data-loss
+bug, and the record is not affected.
+
+## W8-22b · The original claim, kept for the record - **M**, superseded above
 
 **W8-18 said the dropped chat could not be reproduced and was probably a reply still streaming.
 That was wrong.** The stored transcript on the completed check-in ends with the assistant
@@ -1876,7 +1903,13 @@ to get it started again": the visible conversation genuinely stops mid-word.
 and never store a partial assistant message as a record entry. The record is the product; a
 half-written sentence in it is worse than a missing one.
 
-## W8-23 · Two tabs render as active at once - **S**
+## W8-23 · WITHDRAWN. Exactly one tab carries the active class.
+
+Measured on the live ground page after switching tabs: `.gw-tab.active` matched **one** element,
+and the CSS has no hover or focus rule that could add the underline. The second underline in my
+screenshot was a different row of the header, not a second active tab.
+
+## W8-23b · The original claim, kept for the record - **S**, superseded above
 
 On `/grounds/:id`, after switching tabs, Check-ins and Context were both underlined in the same
 screenshot. The active-tab state is not exclusive.

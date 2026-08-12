@@ -61,7 +61,7 @@ export function OrgMembersPage() {
   return (
     <div style={{ padding: '40px 32px', maxWidth: 720 }}>
       <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--gw-navy)', marginBottom: 6, letterSpacing: '-.02em' }}>
-        Team members
+        People
       </h1>
       <p style={{ fontSize: 14, color: 'var(--gw-sub)', marginBottom: 32, lineHeight: 1.6 }}>
         Everyone with a Groundwork account in your organization. Invite colleagues to give them access.
