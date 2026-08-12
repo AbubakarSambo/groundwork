@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { useQuery, useMutation } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { groundsApi } from '@/api/grounds'
 import { authApi } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
@@ -43,8 +43,23 @@ function GroundCard({ g, onClick }: { g: Ground; onClick: () => void }) {
       </div>
       {g.brief && <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5, marginBottom: 10 }}>{g.brief}</div>}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        {/*
+          WHO LEADS IT, WHICH IS WHY /org/roster EXISTED. W9-5.
+          
+          `grounds.list` already returns every ground in the organisation when the
+          caller is an admin, so "All grounds" was the same data at a second address -
+          one page with two levels of detail, not two audiences. The lead was the one
+          column it added that mattered, and it is derivable here from the participant
+          the server already sends.
+        */}
         <div style={{ fontSize: 11, color: 'var(--gw-sub)' }}>
-          {g.participants.length} participant{g.participants.length !== 1 ? 's' : ''}
+          {(() => {
+            const lead = (g.participants ?? []).find((p: any) => p.partyType === 'INITIATOR')
+            const who = lead ? (lead.email ?? '').split('@')[0] : null
+            return who
+              ? `Led by ${who} · ${g.participants.length} participant${g.participants.length !== 1 ? 's' : ''}`
+              : `${g.participants.length} participant${g.participants.length !== 1 ? 's' : ''}`
+          })()}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           {g.status === 'ACTIVE' && g.participants.length > 1 && !(g.checkIns ?? []).some(c => c.status === 'COMPLETED') && (g.overdue ?? 0) === 0 && <span style={{ fontSize: 11, fontWeight: 600, color: '#7A5200', background: '#FFF8EC', borderRadius: 20, padding: '2px 8px' }}>No check-ins yet</span>}
@@ -65,6 +80,7 @@ function GroundCard({ g, onClick }: { g: Ground; onClick: () => void }) {
 
 export function GroundsListPage() {
   const navigate = useNavigate()
+  const qc = useQueryClient()
   const [searchParams] = useSearchParams()
   const user = useAuthStore(s => s.user)
   const isAdmin = user?.role === 'ADMIN'
@@ -104,6 +120,33 @@ export function GroundsListPage() {
     return urgency(b) - urgency(a)
   })
 
+  /**
+   * WHAT IS WAITING ON AN ADMIN. W9-7.
+   *
+   * A member's ground does not start until an admin accepts it, and nobody can be
+   * invited to it in the meantime. That is only a good rule if the admin can SEE what
+   * is waiting - a pending queue nobody looks at is just a ground that never starts,
+   * and the person who set it up has no idea why.
+   */
+  const { data: awaiting = [] } = useQuery({
+    queryKey: ['awaiting-approval'],
+    queryFn: groundsApi.awaitingApproval,
+    enabled: !!user && isAdmin,
+    retry: false,
+  })
+  const approveMut = useMutation({
+    mutationFn: (groundId: string) => groundsApi.approve(groundId),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['awaiting-approval'] }); qc.invalidateQueries({ queryKey: ['grounds'] }); toast.success('Approved. The people involved can be invited now.') },
+    onError: () => toast.error('Could not approve. Try again.'),
+  })
+  const declineMut = useMutation({
+    mutationFn: ({ groundId, reason }: { groundId: string; reason: string }) => groundsApi.declineGround(groundId, reason),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['awaiting-approval'] }); toast.success('Declined. Nobody was invited.') },
+    onError: () => toast.error('Could not decline. Try again.'),
+  })
+  const [declining, setDeclining] = useState<string | null>(null)
+  const [declineReason, setDeclineReason] = useState('')
+
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
       <div className="gw-hdr">
@@ -126,6 +169,65 @@ export function GroundsListPage() {
       </div>
 
       <div className="gw-bd" style={{ paddingTop: 8, maxWidth: 600, margin: '0 auto', width: '100%' }}>
+        {isAdmin && awaiting.length > 0 && (
+          <div style={{ background: '#FDF8E3', border: '1px solid #E8D9A0', borderRadius: 12, padding: '14px 16px', marginBottom: 18 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: '#8A5C1A', marginBottom: 4 }}>
+              Waiting for you
+            </div>
+            <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 12 }}>
+              {awaiting.length === 1 ? 'Somebody has set up a ground' : `${awaiting.length} grounds have been set up`} and
+              {' '}nobody has been invited to {awaiting.length === 1 ? 'it' : 'them'} yet. Nothing goes out until you say so.
+            </div>
+            {awaiting.map(a => (
+              <div key={a.id} style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '11px 13px', marginBottom: 8 }}>
+                <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-text)' }}>{a.label}</div>
+                <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 2 }}>
+                  Set up by {a.createdBy}
+                  {a.timelineDays ? ` · ${a.timelineDays} days` : ''}
+                  {a.cadence ? ` · ${a.cadence.replace(/_/g, ' ').toLowerCase()}` : ''}
+                </div>
+                {declining === a.id ? (
+                  <div style={{ marginTop: 9 }}>
+                    <textarea
+                      value={declineReason}
+                      onChange={e => setDeclineReason(e.target.value)}
+                      placeholder="Why not? They will see this."
+                      rows={2}
+                      style={{ width: '100%', boxSizing: 'border-box', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 12.5, fontFamily: 'inherit', lineHeight: 1.5, resize: 'vertical', outline: 'none' }}
+                    />
+                    <div style={{ display: 'flex', gap: 8, marginTop: 7 }}>
+                      <button
+                        onClick={() => { declineMut.mutate({ groundId: a.id, reason: declineReason }); setDeclining(null); setDeclineReason('') }}
+                        style={{ padding: '7px 13px', borderRadius: 7, background: '#791F1F', color: 'white', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, fontFamily: 'inherit' }}
+                      >Decline it</button>
+                      <button
+                        onClick={() => { setDeclining(null); setDeclineReason('') }}
+                        style={{ padding: '7px 13px', borderRadius: 7, background: 'none', color: 'var(--gw-sub)', border: '1px solid var(--gw-border)', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit' }}
+                      >Keep it waiting</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', gap: 8, marginTop: 9, alignItems: 'center' }}>
+                    <button
+                      onClick={() => approveMut.mutate(a.id)}
+                      disabled={approveMut.isPending}
+                      style={{ padding: '7px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, fontFamily: 'inherit' }}
+                    >Approve</button>
+                    <button
+                      onClick={() => setDeclining(a.id)}
+                      style={{ padding: '7px 12px', borderRadius: 7, background: 'none', color: 'var(--gw-sub)', border: '1px solid var(--gw-border)', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit' }}
+                    >Not this one</button>
+                    <button
+                      onClick={() => navigate(`/grounds/${a.id}`)}
+                      style={{ background: 'none', border: 'none', color: 'var(--gw-navy)', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', padding: 0 }}
+                    >Look at it first →</button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
         {isAdmin ? (
           <>
             {/* Stats bar */}

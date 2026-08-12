@@ -84,6 +84,10 @@ enum GroundMoment {
 }
 
 enum GroundStatus {
+  /// A member created this and an org admin has not accepted it yet. Nothing has
+  /// been invited and no check-in can open: the approval is worthless if anybody
+  /// has already been asked to take part. Admin-created grounds skip this.
+  AWAITING_APPROVAL
   AWAITING_LEAD // admin created this for a lead; lead invited but has not confirmed yet
   OPEN // created, parties may not all be added
   AWAITING_PARTIES // waiting on check-ins
@@ -221,6 +225,7 @@ model Organization {
 
   @@map("organizations")
   styleProfiles PersonStyleProfile[]
+  memberships    OrganizationMembership[]
 }
 
 model User {
@@ -261,6 +266,7 @@ model User {
   @@index([organizationId])
   @@map("users")
   styleProfiles PersonStyleProfile[]
+  memberships     OrganizationMembership[]
 }
 
 // ---------------------------------------------------------------------------
@@ -488,6 +494,13 @@ model Ground {
   @@map("grounds")
   // Versioned targets. A goal change is a new chapter, not an overwrite.
   baselines           GroundBaseline[]
+  participantNotes ParticipantNote[]
+  /// Who accepted or declined this ground, and when. Null on a ground that never
+  /// needed accepting - an admin's own, or one created before the gate existed.
+  approvedById   String?   @map("approved_by_id")
+  approvedAt     DateTime? @map("approved_at")
+  /// Why it was declined, in the admin's words. Shown to whoever created it.
+  declineReason  String?   @map("decline_reason") @db.Text
 }
 
  // WHAT A PERSON WAS LAST ASKED TO DO, AND WHAT HAPPENED TO IT.
@@ -652,6 +665,7 @@ model GroundParticipant {
   user              User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
   checkIns          CheckIn[]
   recordEntries     RecordEntry[]
+  notes             ParticipantNote[]
   patternDetections PatternDetection[]
   outcomeFeedback   OutcomeFeedback[]
   documents         GroundDocument[]
@@ -1471,4 +1485,73 @@ model PatternConfig {
   updatedBy            String?  @map("updated_by") // userId of last editor
 
   @@map("pattern_configs")
+}
+
+/// SOMETHING YOU WROTE DOWN BETWEEN SESSIONS.
+///
+/// A ground now reads like a channel, and a channel invites you to type. But a
+/// session is a closed record, so between sessions there is nothing to add to it -
+/// and the honest answer to "can I type here" is yes, into something that is NOT
+/// your account.
+///
+/// WHY THIS IS NOT A RecordEntry, which is where it would naturally have gone.
+/// RecordEntry IS the record. `reports.service.ts` reads it to build the shared
+/// report, and `context.service.ts` reads the OTHER party's entries. So a sentence
+/// typed between sessions, unprompted and unexamined, would become part of the
+/// account that gets compared against somebody else's - which is the one thing the
+/// engine's design forbids. A note is not an account. It has never been questioned.
+///
+/// WHAT IT IS FOR. It is carried into the next session as something to ASK about.
+/// The engine sees "they noted this between sessions" and raises it; whatever they
+/// then say under questioning becomes the record, through the normal path. That
+/// makes the note useful rather than a scratchpad, and keeps the rule that the
+/// record holds what was said in a session.
+///
+/// It is private to the person, always. Never in a report, never to the lead,
+/// never to another party.
+model ParticipantNote {
+  id            String   @id @default(uuid())
+  groundId      String   @map("ground_id")
+  participantId String   @map("participant_id")
+  text          String   @db.Text
+  createdAt     DateTime @default(now()) @map("created_at")
+  /// The check-in that picked it up. Null until a session has seen it, so a note
+  /// is raised once rather than in every session from now on.
+  carriedIntoCheckInId String? @map("carried_into_check_in_id")
+
+  ground      Ground            @relation(fields: [groundId], references: [id], onDelete: Cascade)
+  participant GroundParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  @@index([participantId, carriedIntoCheckInId])
+  @@map("participant_notes")
+}
+
+/// SOMEBODY CAN BELONG TO MORE THAN ONE ORGANISATION.
+///
+/// `User.email` is globally unique, so one address is one row - which is why there
+/// was no way to be in two organisations at once. Rather than break that (and every
+/// lookup that depends on it), membership becomes its own table and
+/// `User.organizationId` becomes the ACTIVE one: the org whose data the token scopes
+/// every query to.
+///
+/// That is what makes the switch tractable. Every org-scoped query in the product
+/// already reads `organizationId` off the token, so switching means issuing a new
+/// token - not rewriting the queries.
+///
+/// The role is per membership. Somebody can administer their own company and be an
+/// ordinary member of a client's organisation, and flattening that to one role would
+/// either over-grant or under-grant in one of them.
+model OrganizationMembership {
+  id             String   @id @default(uuid())
+  userId         String   @map("user_id")
+  organizationId String   @map("organization_id")
+  role           UserRole @default(MEMBER)
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+  @@index([userId])
+  @@map("organization_memberships")
 }

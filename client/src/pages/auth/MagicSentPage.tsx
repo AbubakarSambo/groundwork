@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
 import { authApi } from '@/api/auth'
 
@@ -7,6 +7,7 @@ const MARKETING_URL = import.meta.env.VITE_MARKETING_URL ?? 'https://myground.wo
 
 export function MagicSentPage() {
   const [params] = useSearchParams()
+  const navigate = useNavigate()
   const email = params.get('email') ?? ''
   const [countdown, setCountdown] = useState(30)
   const [canResend, setCanResend] = useState(false)
@@ -72,7 +73,24 @@ export function MagicSentPage() {
           </div>
         )}
 
-        <div style={{ marginTop: 28, paddingTop: 20, borderTop: '0.5px solid var(--gw-border)' }}>
+        {/*
+          THE ADDRESS MIGHT BE WRONG, AND THERE WAS NO WAY BACK.
+          
+          Every link on this page pointed at the marketing site or resent to the SAME
+          address. Somebody who mistyped their email had one option: leave. Resending
+          to a typo forever is the failure this page makes easiest, so the way back to
+          the form is the more useful of the two exits and goes first.
+        */}
+        <div style={{ marginTop: 24, textAlign: 'center' }}>
+          <span
+            onClick={() => navigate('/auth')}
+            style={{ fontSize: 12.5, color: 'var(--gw-navy)', cursor: 'pointer', fontWeight: 600 }}
+          >
+            Wrong address? Use a different one
+          </span>
+        </div>
+
+        <div style={{ marginTop: 20, paddingTop: 18, borderTop: '0.5px solid var(--gw-border)' }}>
           <a href={MARKETING_URL} style={{ fontSize: 12, color: 'var(--gw-sub)', textDecoration: 'none' }}>Back to Groundwork</a>
         </div>
 

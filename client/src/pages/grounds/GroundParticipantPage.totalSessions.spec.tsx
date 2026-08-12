@@ -18,7 +18,15 @@ vi.mock('@/stores/auth', () => ({
   useAuthStore: (sel: any) => sel({ user: { id: 'u1', firstName: 'Jordan', lastName: 'Reyes', email: 'jordan@x.test' } }),
 }))
 vi.mock('@/api/grounds', () => ({
-  groundsApi: { get: vi.fn(), getMySpecificity: vi.fn() },
+  groundsApi: {
+    get: vi.fn(),
+    getMySpecificity: vi.fn(),
+    // The Chat view is what a ground opens to now, so these are on the page's
+    // load path. Without them the component throws and the failure reads as the
+    // session count being wrong, which is not what broke.
+    myTranscript: vi.fn(),
+    myNotes: vi.fn(),
+  },
 }))
 vi.mock('@/api/reports', () => ({ reportsApi: { get: vi.fn() } }))
 
@@ -50,6 +58,8 @@ describe('BUG8: participant view derives session total from timeline + cadence',
     vi.clearAllMocks()
     ;(reportsApi.get as any).mockResolvedValue(null)
     ;(groundsApi.getMySpecificity as any).mockResolvedValue(null)
+    ;(groundsApi.myTranscript as any).mockResolvedValue({ sessions: [] })
+    ;(groundsApi.myNotes as any).mockResolvedValue([])
   })
 
   it('a 90-day MONTHLY ground shows "of 3", not "of 6"', async () => {

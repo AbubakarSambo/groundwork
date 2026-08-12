@@ -1,9 +1,10 @@
-import { Controller, Get, Post, Patch, Body, Param } from '@nestjs/common';
-import { IsBoolean } from 'class-validator';
+import { Controller, Get, Post, Patch, Delete, Body, Param } from '@nestjs/common';
+import { IsBoolean, MinLength } from 'class-validator';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { IsOptional, IsInt, Min, IsEnum } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { GroundsService } from './grounds.service';
+import { ConversationService } from '../conversation/conversation.service';
 import { CreateGroundDto, AddParticipantDto, CreateGroundForLeadDto } from './dto';
 import { CurrentUser, CurrentUserData, Roles, Role } from '../../common';
 import { Cadence } from '@prisma/client';
@@ -64,11 +65,53 @@ class AddLeadContextDto {
   text!: string;
 }
 
+class AddNoteDto {
+  /**
+   * Capped because this is a note, not a check-in. Somebody writing three
+   * thousand words here is writing their account outside the session, which is
+   * the thing a note must not become - it has never been questioned.
+   */
+  @IsString()
+  @MinLength(1)
+  @MaxLength(2000)
+  text!: string;
+}
+
+class DeclineGroundDto {
+  /** Optional, and worth asking for: "no" with no reason is what stops people asking. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  reason?: string;
+}
+
+class ContextChatTurnDto {
+  @IsString()
+  role!: 'user' | 'assistant';
+
+  @IsString()
+  @MaxLength(4000)
+  content!: string;
+}
+
+class ContextChatDto {
+  /**
+   * Stateless, like the check-in engine's own chat: the client holds the history and
+   * sends it back. Nothing here is stored, which is the point - this conversation is
+   * about the ground's setup and is not anybody's account of anything.
+   */
+  @IsOptional()
+  history?: ContextChatTurnDto[];
+}
+
 @ApiTags('Grounds')
 @ApiBearerAuth()
 @Controller('grounds')
 export class GroundsController {
-  constructor(private readonly grounds: GroundsService) {}
+  constructor(
+    private readonly grounds: GroundsService,
+    private readonly conversation: ConversationService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'List grounds in the organization, including grounds as a participant' })
@@ -92,7 +135,8 @@ export class GroundsController {
   @Post()
   @ApiOperation({ summary: 'Open a new alignment ground' })
   async create(@CurrentUser() user: CurrentUserData, @Body() dto: CreateGroundDto) {
-    return this.grounds.create(user.organizationId, user.id, dto);
+    // The role decides whether this ground waits for an admin to accept it.
+    return this.grounds.create(user.organizationId, user.id, dto, user.role);
   }
 
   @Post('for-lead')
@@ -179,6 +223,57 @@ export class GroundsController {
   @ApiOperation({ summary: 'Return the requesting user\'s own check-in status for this ground' })
   async myCheckinStatus(@Param('id') id: string, @CurrentUser('id') userId: string) {
     return this.grounds.getMyCheckinStatus(id, userId);
+  }
+
+  @Get('awaiting-approval')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Grounds a member has set up that are waiting for an admin to accept them' })
+  async awaitingApproval(@CurrentUser('organizationId') organizationId: string) {
+    return this.grounds.listAwaitingApproval(organizationId);
+  }
+
+  @Post(':id/approve')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Accept a ground so its people can be invited' })
+  async approve(@Param('id') id: string, @CurrentUser() user: CurrentUserData) {
+    return this.grounds.approve(id, user.organizationId, user.id);
+  }
+
+  @Post(':id/decline')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Decline a ground. It closes, and nobody is ever invited to it.' })
+  async decline(@Param('id') id: string, @CurrentUser() user: CurrentUserData, @Body() dto: DeclineGroundDto) {
+    return this.grounds.declineGround(id, user.organizationId, user.id, dto.reason);
+  }
+
+  @Post(':id/context-chat')
+  @ApiOperation({ summary: "The lead's setup conversation: what context is missing, and the material that would settle it" })
+  async contextChat(@Param('id') id: string, @CurrentUser('id') userId: string, @Body() dto: ContextChatDto) {
+    return this.grounds.contextChat(id, userId, dto.history ?? []);
+  }
+
+  @Get(':id/my-notes')
+  @ApiOperation({ summary: "The requesting user's own between-session notes on this ground (private, owner only)" })
+  async myNotes(@Param('id') id: string, @CurrentUser('id') userId: string) {
+    return this.grounds.getMyNotes(id, userId);
+  }
+
+  @Post(':id/my-notes')
+  @ApiOperation({ summary: 'Write a private note between sessions. Never part of the record or any report.' })
+  async addMyNote(@Param('id') id: string, @CurrentUser('id') userId: string, @Body() dto: AddNoteDto) {
+    return this.grounds.addMyNote(id, userId, dto.text);
+  }
+
+  @Delete(':id/my-notes/:noteId')
+  @ApiOperation({ summary: 'Delete one of your own notes' })
+  async deleteMyNote(@Param('id') id: string, @Param('noteId') noteId: string, @CurrentUser('id') userId: string) {
+    return this.grounds.deleteMyNote(id, userId, noteId);
+  }
+
+  @Get(':id/my-transcript')
+  @ApiOperation({ summary: "Every turn the requesting user has said in this ground, sessions in order (owner only)" })
+  async myTranscript(@Param('id') id: string, @CurrentUser('id') userId: string) {
+    return this.conversation.getMyGroundTranscript(id, userId);
   }
 
   @Get(':id/conversation')

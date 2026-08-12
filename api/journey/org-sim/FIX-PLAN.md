@@ -1614,6 +1614,344 @@ The phrase now only counts when nothing attributes it to the speaker first. A ba
 before pushing. Nothing on this branch touched that prompt; the model simply phrased it this way
 on this run, and would have tripped the same regex on main.
 
+## W8-64 - One failure, two error surfaces - **OPEN, small**
+
+Seen while photographing the chat view against a stale local API. The transcript
+request 404s, and the person gets both:
+
+- the component's own state, which is the useful one: "Your check-ins could not be loaded. Try
+  again in a moment."
+- and the global red toast, about 400px of it, covering the right half of the page and quoting the
+  URL: "Not found - Cannot GET /api/v1/grounds/0874730e.../my-transcript".
+
+The global toast is right for a call nobody is watching. It is wrong on top of a component that
+has already said the same thing in plainer words, and quoting a path at somebody is the shape of
+an error that was written for whoever built it. `apiClient` already supports `skipForbiddenToast`
+for exactly this reason on 403; the same idea is needed for a read whose component owns its own
+failure state.
+
+Not urgent - it only shows when the API is broken - but it is two minutes and it is the difference
+between a product that says "try again" and one that shows you a stack of plumbing.
+
+## W8-65 - Who gets the admin view, and the Context page's missing half - **partly fixed**
+
+Her questions: "there's confusion between how to go to admin view and participant view and back.
+And who gets admin view, the leads or the org admin or both" and "I gave you a whole bunch of
+things to do on the context page".
+
+**Who gets the admin view: it was everyone in the organisation.** `/grounds/:id` is behind
+`RequireAuth` only and `grounds.get` resolves any ground in your org, so somebody who is not in a
+ground at all could open its setup, its participant list and its nudges - not by finding a hole,
+just by opening the URL. The controls inside were gated on `isInitiator`; the page was not.
+
+Her decision: **the lead of that ground, and org admins for any ground.** Done on the client, with
+a refusal that says who the view is for and offers the participant page to anybody who is a party
+to the ground - because the likeliest person to land there is a participant who followed a link.
+The server read stays open to org members on purpose: the participant view and the grounds list
+both need it, so the read is not the thing to close.
+
+**The Context page, against the seven steps of Wave 2 rather than against memory:**
+
+| Her step | State before today |
+|---|---|
+| Open / closed / own visibility (G24, G38) | built |
+| Documents as context, four rules | built |
+| People context - per-person worries (G39) | built, admin side |
+| **Context summary, G25** | built, **admin page only** - zero occurrences on the participant page |
+| **One page for everyone, closed part visibly absent (G26)** | **never done.** The participant Context was a different, thinner page |
+| Notes | lead only, `addLeadContext` |
+| **Context chat - targets, exploring more (G37, G23)** | **not built.** This plan already said it is "the largest single piece left in Wave 2 and the one that needs a live model in the loop" |
+
+Fixed today: the context read is a shared `ContextStrength` component on both pages, and a
+participant now sees an explicit line that the lead may hold context they cannot read - G26's
+"visibly absent" rather than silently missing. The tab is called Context on both.
+
+**Still open, and it is the piece she is actually missing: G37/G23, the context chat.** Setting
+targets, probing for what setup did not capture, recommending materials rather than waiting for
+uploads. It needs its own run.
+
+## W8-66 - The card view retired, and the payment path that nearly went with it
+
+Her call: "it seems like we have now made the 'more' obsolete which is fine", plus "the team board
+belongs to the ground" and "participants shouldn't be able to write context notes, leads can".
+
+**More is gone.** The Chat / More switch lasted one day; a switch with one side left is a control
+that teaches people to look for something that is not there. `PastSession`,
+`SessionConversation`, `SoloArtifactBlock`, `stores/view.ts` and about 220 lines of card markup
+went with it.
+
+**What nearly went with it, and this is the part worth remembering.** `probeSession` lived in the
+card view. It POSTs `:id/open` and handles a 403 by offering the free extension, the access code or
+a subscription. `ChatPage`'s own open handler shows "Could not open session" and stops. So a chat
+button that navigated straight to `/checkin/:id` would have silently deleted the paid path for
+anybody whose ground had run out of sessions - no test would have failed, because the code was
+still there, just unreachable. The composer calls back into the page instead.
+
+The per-session summary was the same shape of risk: "what we heard from you" and the correction
+that starts from it existed only on the cards, and `conversationApi.artifact` is one of the 43
+inventoried operations. It is folded into the conversation now, under the session it came from.
+**`nothing-gets-lost-in-the-merge.spec.ts` went red the moment that call left the pages it
+watches**, which is exactly what it was written for - a capability quietly moving out of view
+looks identical to one being deleted. Its file list now includes `GroundChat`.
+
+**The team board is a tab on the ground**, not a dark pill in the chrome beside the view switch.
+It was the only part of a ground reachable from the header rather than from the ground's own
+navigation, which is also how it stayed undiscovered.
+
+**Participants cannot write context notes, and that is now confirmed rather than assumed.**
+`addLeadContext` is lead-only on the server and the participant Context page offers no note box -
+only uploads, plus the line saying the lead may hold context they cannot read.
+
+# Wave 10 - sign-up and sign-in, the assessment she asked for
+
+Her words: "the sign-up flow still just says sign-in, no create an account options etc. Please do
+a thorough assessment of how people sign-in/sign-up and all the different flows and failures, ux
+challenges... We seem to be failing to get this wrong with you."
+
+Read off the code, not remembered. She is right, and the reason is structural rather than a missing
+button: **there is no sign-up flow. There is a sign-in page with a sign-up hidden inside one of its
+modes.**
+
+## W10-1 · The shape of it today
+
+`/auth` is one page with three views held in local state:
+
+| View | What it is | How you reach it |
+|---|---|---|
+| `password` | email + password sign-in | the default |
+| `link` | **this is also the sign-up** | "No password? Get a sign-in link instead" or "New here? Create an account" |
+| `reset` | forgot password | "Forgot your password?" |
+
+The heading changes with the view: "Sign in", or "Sign in or create account". There is no route, no
+page and no heading that is only about creating an account - `?mode=signup` changes the same page's
+default view and its wording, nothing more.
+
+So a first-time visitor lands on a form asking for a password they do not have, under a heading that
+says Sign in, and the way forward is the fourth line of small print.
+
+## W10-2 · The failures, worst first
+
+**1. Every failure is reported as success.** `sendLink` and `sendReset` both do
+`onError: () => setLinkSent(true)`. A network failure, a 500, a rejected address - all of them show
+"Check your email". For sign-in that is a deliberate and correct choice, because saying "no such
+account" tells a stranger which addresses are registered. **For sign-up it is a trap**: somebody
+whose account was never created is told to go and wait for an email that will never arrive, and the
+product has told them everything is fine. This is the worst thing in the flow and it is four
+characters of code.
+
+**2. Sign-up asks for nothing but an email.** No name, no organisation. `entrySave` derives the
+first name from the address (`sam.taylor@` becomes "Sam") and `verifyEmail` names the organisation
+`${firstName}'s workspace`. That is a deliberate improvement on the old behaviour, which took the
+company's name from the email domain before the address was proved (GW-001) - but the result is that
+somebody signing up to run a team lands in an organisation called "Sam's workspace" and was never
+asked. For the entry-chat path the org name is captured in conversation; for a straight sign-up
+nothing asks.
+
+**3. Two doors to the same view, worded as different things.** "No password? Get a sign-in link
+instead" and "New here? Create an account" both call `setView('link')`. One reads as a workaround
+for a forgotten password, the other as registration. They are the same form.
+
+**4. Nothing distinguishes "you have no account" from "you have no password".** A participant who
+was added to a ground has a user row and no password. `login` sees that, emails them a setup link,
+and throws "We've emailed you a link to set your password" - which is right. But the form they were
+typing into is the *password* form, so they had to guess that entering a password they never chose
+was the way to be told they do not have one.
+
+**5. The same "Sign in" button lands in two different places.** I first wrote here that nothing
+links to `?mode=member`. **That was wrong** - the marketing HOME page's Sign in uses it, and the
+Sign in on how-it-works, pricing and use-cases goes to plain `/auth`. So one label, two landing
+views, depending which page you happened to click it from. Corrected after checking every marketing
+page rather than one.
+
+**6. The verification email is the whole product.** No account exists until the link is opened, and
+`MagicSentPage` had no way back to the form until today (W9-3), so a mistyped address was a dead
+end: resend went to the same wrong address.
+
+## W10-3 · Done, 2026-08-12
+
+All five, in the order below. What each one turned out to need:
+
+1. **The four characters fixed.** A transport failure or a 500 now says "that did not send" - it
+   gives away nothing about the address, and it is the difference between a person retrying and a
+   person giving up. A 4xx about the address itself stays generic, because this form is also the
+   sign-in door. Reset stays generic on everything, deliberately: it never creates anything, so the
+   only thing an honest error could reveal is whether the address is registered.
+2. **A create view of its own**, heading "Create your account", asking for the name and the
+   organisation. Both were guessed before and not harmlessly: the name came from the address and
+   `verifyEmail` named the organisation "<name>'s workspace", so somebody signing up to run a team
+   landed in a company nobody named. The org is optional - a naming decision should not block
+   signing up - and `entrySave` takes `firstName` on the draft payload the same way it always took
+   `orgName`.
+3. **One door each.** "No password? Get a link" is a sign-in aid; "New here? Create an account" goes
+   to the create view. They used to open the same form.
+4. **"You have no password" is no longer shown as "wrong password".** The server already says it;
+   it arrived as red text under the password field, which invites another go at a password that has
+   never existed. It is a "Check your email" panel now. **Deliberately not a lookup before they
+   submit**: an endpoint answering "does this address have a password" is an account-enumeration
+   oracle, and avoiding exactly that is why the rest of this page is generic.
+5. **The marketing Sign in is consistent** - all five pages go to `/auth`.
+
+**And a thing found on the way: the labels were not attached to their inputs.** No `htmlFor`, no
+`id`, on any field on this page. Broken for a screen reader and for clicking the label, and it is
+why the first version of the test could not find them. Fixed on all five fields.
+
+## W10-3b · The original plan, for the record
+
+1. **Stop reporting failure as success, for sign-up only.** Keep the generic answer for sign-in and
+   reset. Sign-up should say "that did not send - try again" when it did not send. Smallest change,
+   largest effect.
+2. **A real create-account view**, with its own heading, that asks for **name and organisation**
+   before the link goes out. Not a route necessarily - the same page is fine - but one clear door
+   rather than two pieces of small print, and the org named by the person who owns it.
+3. **One door, not two.** "No password? Get a link" becomes a sign-in aid; "Create an account" goes
+   to the create view.
+4. **Say which situation somebody is in.** If the address has an account with no password, the
+   password form should say so rather than letting them submit and be told.
+5. **Point `mode=member` at something**, or delete it.
+
+## W10-4 · What is genuinely right, and should not be lost
+
+- Nothing is created until the address is proved (GW-001). The whole signup waits in
+  `pendingSignup`, so an unopened link leaves no trace - no organisation named after somebody's
+  company, no admin account in their name.
+- The generic answer on **sign-in** and **reset** is correct and should stay.
+- A participant with no password is auto-sent a setup link rather than being stuck.
+- The link view genuinely creates an account. The plumbing works; it is the door that is missing.
+
+# Wave 9 - the audit she asked for after the chat view landed
+
+Her list: "all the things that were there are gone e.g. session count, changing ground name if you
+are the lead etc. The navigations are all broken, i have no way to get back to anywhere from the
+board. Also we were meant to have people be able to switch orgs at the top somehow but we dont have
+it there. We have deadend pages that trap you there. We have a page with all grounds that may be
+redundant... Also org admin has to accept a create ground. Do we remove availability poling on the
+board?"
+
+Measured, not remembered. Everything below was checked against the code or the screen.
+
+## W9-1b · Two more the card view took, both found by the persona gate - **fixed**
+
+The audit in W9-1 diffed the card view against what replaced it and found four losses. It missed
+two, and both were found by the gate rather than by me:
+
+**1. Every ground from the entry chat was held pending.** My approval gate fails closed when no
+role is passed, which is right, and `entry.service` calls `grounds.create` without one - so
+`addParticipant` refused and no contributor was ever invited. The person leaving the entry chat is
+the admin of the organisation created for them seconds earlier; there is nobody else to approve it.
+The suite reported it as "expected both the confirmed contributor and the one left in the note box",
+which reads as the vanish bug and says nothing about an approval.
+
+**2. The self-correction went behind a disclosure, and changed its words.** Moving it into "what we
+heard from you" meant somebody who believed the record had them wrong had to open a summary before
+finding out they were allowed to fix it. And I had reworded it from "Something wrong here? Continue
+this session to correct it" to "This is not right - add to it" - so the check looking for the
+affordance found nothing. It is on the row now, unhidden, in the words the product has always used.
+
+**What both have in common, and it is the same lesson as `activateMutation`:** my inventory checks
+that a capability is present and now that it is invoked. It cannot check that a person can SEE it,
+or that a code path is reachable given a status. The persona suite can, and does, five minutes
+later - so each of these now also has a unit guard that says it in a second and names the right
+thing.
+
+## W9-1 · What the retired card view actually took with it - **S, and it is my regression**
+
+The card view rendered eight things. Diffed against the commit that removed it:
+
+| It held | Where it is now |
+|---|---|
+| Session open / Session complete | the composer at the bottom of the conversation |
+| Carried over | superseded - the conversation shows the actual history |
+| The report is ready + Reveal report | **safe.** There were two `activateMutation.mutate` calls; one was in the card view, one is on the Report tab and survives |
+| Your record quality | **safe.** The record tab carries specificity, confidence and patterns |
+| **Session count** | **LOST when nothing is due.** The only place a total renders now is the "Continue session 2 of 6" button, which appears only when a check-in is open. Between sessions there is nothing anywhere saying this ground has six |
+| **About this ground** | **LOST.** The label, the scenario and the admin's brief, which is what oriented somebody before their first session |
+| **Where things stand** | **LOST.** The alignment read |
+| **Alignment feed** | **LOST.** The signal events - divergence and convergence as they were detected |
+
+**And the guard I wrote for exactly this did not catch it.** `nothing-gets-lost-in-the-merge` asserts
+each of the 43 operations still appears in the watched files. `activateMutation` is *declared* in
+the page, so the spec was green - it cannot tell a declared mutation from a reachable button. It
+caught `conversationApi.artifact` only because that call *moved out of the file*. The lesson is the
+same one as `probeSession`: presence in a file is not reachability, and my inventory checks
+presence.
+
+## W9-2 · Nothing gets you back from the board - **S**
+
+`BoardPage` has "Back to grounds" and "Back to the ground" in its **error** state and its
+**no-board-here** state. The state a person actually reaches - a board that renders - has neither.
+The rail is there, so you are not trapped in the app, but there is no way back to the ground you
+came from, which is what she hit.
+
+## W9-3 · Pages with no way out of them - **S**
+
+Checked every page for any internal link, `navigate` or `<Link>`:
+
+| Page | State |
+|---|---|
+| `MagicSentPage` | **zero** internal links. "We sent you a link" and nothing else - no way back to sign-in if the address was wrong |
+| `OrgMembersPage` | **zero.** It has the rail, so not a trap, but no way to the thing you were doing |
+| `AuthPage`, `JoinPage` | no internal links **by design** - a signed-out stranger has nowhere to go yet |
+| `PaymentPage`, `ReportPage`, `DemoConversationPage` | have links; fine |
+
+## W9-4 · Switching organisation, which was always meant to be at the top - **M, and it is the one that needs a migration**
+
+`grep` for an org switcher across the shell and the auth client: **nothing**. It has never been
+built. This is the multi-org membership work already flagged three times in this plan - a person
+can belong to more than one organisation, the JWT carries a single `organizationId`, and the
+switcher she is describing needs: a membership table, an active org on the session, a chooser after
+sign-in, and the switcher in the header. It touches the token, so it wants its own branch and its
+own migration.
+
+## W9-5 · "All grounds" is redundant for the only person who can see it - **S**
+
+`grounds.list` already returns **every** ground in the organisation when the caller's role is
+ADMIN - no participant filter. `/org/roster` ("All grounds") returns the same set. The difference is
+columns: the roster adds per-ground lead, member count, roles and alignment.
+
+So there are not two audiences, there is one page with two levels of detail. Options, cheapest
+first:
+
+1. **Fold the roster's columns into `/grounds` for an admin** and delete `/org/roster`. One page,
+   more detail if you are an admin. Removes a rail item and a route.
+2. Keep both but make `/grounds` participant-scoped even for admins, so the two pages have
+   genuinely different answers ("mine" vs "the organisation's").
+3. Leave it. It is not broken, only duplicated.
+
+Recommendation: 1. It is the only option that reduces anything, and the roster's extra columns are
+the reason an admin opens a list at all.
+
+## W9-6 · Other redundancy worth naming, now the card view is gone
+
+- **`/feed`** - an org-wide activity stream. The rail now shows what needs you, and the ground shows
+  its own history. Worth asking what the feed answers that neither does.
+- **`/grounds/:id/report` and the Report tab** are the same content at two addresses (W8-49 already
+  had this).
+- **`/enter`, `/pin`, `/setup`** - the org-code model. Still orphaned, still hers to kill or revive.
+- **`/profile/:id?`** - reachable by nothing (W8-62).
+
+## W9-7 · An org admin has to accept a ground before it starts - **M, new requirement**
+
+Not built. Today `POST /grounds` creates an ACTIVE ground immediately, and the lead invite goes out
+in the same request. Her requirement puts an approval between those two: a ground is created
+PENDING, an org admin approves it, and only then does anybody get invited.
+
+What it needs: a status ahead of ACTIVE (`AWAITING_APPROVAL`), a decision endpoint gated to ADMIN,
+the invite suppressed until approval, somewhere for an admin to see what is waiting, and a state on
+the creator's own view that says what it is waiting for. The one to get right is the invite: if it
+fires before approval the approval means nothing.
+
+## W9-8 · The availability poll on the board - **her question**
+
+It is the **only** thing anybody can add to the board; everything else is generated from check-ins
+(`upsertPoll`, `togglePoll`, and the form behind them). So removing it makes the board purely a
+read - which is arguably what a board should be, and it is one fewer thing to maintain and explain.
+
+Against removing it: the poll is the one place a team coordinates *forward* rather than reporting
+backward, and "when can we all meet" is a real question a board is a sensible place to ask.
+
+No recommendation without knowing whether anybody has used it. That is answerable: count the polls
+in production before deciding.
+
 ## A note on verifying against the local API
 
 Twice now a browser check has looked like a product bug and was not. The local API process was

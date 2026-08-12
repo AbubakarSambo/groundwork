@@ -168,4 +168,78 @@ export const groundsApi = {
         skipForbiddenToast: true,
       })
       .then(r => r.data),
+
+  /**
+   * Every turn you have said in this ground, sessions oldest first.
+   *
+   * One request rather than one per check-in: this is what a ground opens to, so a
+   * twelve-session ground firing twelve requests on load is not acceptable. The
+   * server enforces that these are only ever your own turns.
+   */
+  myTranscript: (groundId: string) =>
+    apiClient
+      .get<{
+        sessions: {
+          checkInId: string
+          sessionNumber: number
+          status: string
+          /** What the divider shows: finished-on for a complete session, opened-on otherwise. */
+          date: string
+          isSelfCorrection: boolean
+          correctionOf: number | null
+          turns: { id: string; role: 'AI' | 'PERSON'; content: string }[]
+        }[]
+      }>(`/grounds/${groundId}/my-transcript`, {
+        // GroundChat renders its own "could not be loaded" line, so the global red
+        // toast quoting the URL on top of it is the same failure said twice - once
+        // in plain words and once in plumbing. W8-64.
+        skipForbiddenToast: true,
+        skipNotFoundToast: true,
+      })
+      .then(r => r.data),
+
+  /** Your own between-session notes. Private: never in a report, never to the lead. */
+  myNotes: (groundId: string) =>
+    apiClient
+      .get<{ id: string; text: string; createdAt: string; carriedIntoCheckInId: string | null }[]>(
+        `/grounds/${groundId}/my-notes`,
+        { skipForbiddenToast: true, skipNotFoundToast: true },
+      )
+      .then(r => r.data),
+
+  addMyNote: (groundId: string, text: string) =>
+    apiClient
+      .post<{ id: string; text: string; createdAt: string; carriedIntoCheckInId: string | null }>(
+        `/grounds/${groundId}/my-notes`,
+        { text },
+      )
+      .then(r => r.data),
+
+  deleteMyNote: (groundId: string, noteId: string) =>
+    apiClient.delete<{ deleted: boolean }>(`/grounds/${groundId}/my-notes/${noteId}`).then(r => r.data),
+
+  /** Grounds a member set up that an admin has not accepted yet. Admin only. */
+  awaitingApproval: () =>
+    apiClient
+      .get<{
+        id: string; label: string; scenario: string; createdAt: string
+        timelineDays: number | null; cadence: string | null; createdBy: string
+      }[]>('/grounds/awaiting-approval', { skipForbiddenToast: true })
+      .then(r => r.data),
+
+  approve: (groundId: string) =>
+    apiClient.post<{ id: string; status: string; alreadyDecided: boolean }>(`/grounds/${groundId}/approve`, {}).then(r => r.data),
+
+  declineGround: (groundId: string, reason?: string) =>
+    apiClient.post<{ id: string; status: string; alreadyDecided: boolean }>(`/grounds/${groundId}/decline`, { reason }).then(r => r.data),
+
+  /**
+   * The lead's setup conversation. Stateless: the client holds the history and sends
+   * it back, and nothing said here is stored - it is about the ground's setup, not
+   * anybody's account of anything.
+   */
+  contextChat: (groundId: string, history: { role: 'user' | 'assistant'; content: string }[]) =>
+    apiClient
+      .post<{ reply: string; gaps: string[]; done: boolean }>(`/grounds/${groundId}/context-chat`, { history })
+      .then(r => r.data),
 }

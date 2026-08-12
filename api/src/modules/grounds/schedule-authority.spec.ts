@@ -26,7 +26,10 @@ function makeService(ground: any) {
     auditLog: { create: jest.fn(async () => ({})) },
     groundContextNote: { create: jest.fn(async () => ({})) },
   };
-  return new GroundsService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any) as any;
+  return new GroundsService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any,
+      // 7th dep: the model, for the context chat (G37/G23). Unused here.
+      { respond: async () => '' } as any,
+    ) as any;
 }
 
 const GROUND = { id: 'g1', initiatorId: 'lead', mode: 'SHARED', timelineDays: 30, cadence: 'WEEKLY', status: 'OPEN' };

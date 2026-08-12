@@ -19,7 +19,10 @@ function makeService(ground: any, session1Completed: boolean) {
     groundParticipant: { findFirst: jest.fn(async () => ({ id: 'p1' })) },
     checkIn: { findFirst: jest.fn(async () => (session1Completed ? { id: 'ci1' } : null)) },
   };
-  return new GroundsService(prisma, {} as any, {} as any, { emit: () => Promise.resolve() } as any, {} as any, {} as any);
+  return new GroundsService(prisma, {} as any, {} as any, { emit: () => Promise.resolve() } as any, {} as any, {} as any,
+      // 7th dep: the model, for the context chat (G37/G23). Unused here.
+      { respond: async () => '' } as any,
+    );
 }
 
 const BASE_GROUND = { id: 'g1', initiatorId: 'admin', cadence: Cadence.FORTNIGHTLY, timelineWeeks: 12, groundAuditLog: null };

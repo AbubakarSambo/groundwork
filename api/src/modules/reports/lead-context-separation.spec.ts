@@ -39,7 +39,10 @@ describe('lead-context write separation (GroundsService.addLeadContext)', () => 
       workMention: { findMany: jest.fn(async () => []) },
       recordEntry: { create: recordEntryCreate },
     };
-    const service = new GroundsService(prisma, {} as any, {} as any, {} as any, { emit: () => Promise.resolve() } as any, {} as any);
+    const service = new GroundsService(prisma, {} as any, {} as any, {} as any, { emit: () => Promise.resolve() } as any, {} as any,
+      // 7th dep: the model, for the context chat (G37/G23). Unused here.
+      { respond: async () => '' } as any,
+    );
     return { service, recordEntryCreate, leadCreate };
   }
 
@@ -156,7 +159,10 @@ describe('lead-context read-back gate (GroundsService.get)', () => {
       organization: { findUnique: jest.fn(async () => ({ subscriptionPlan: null, subscriptionStatus: null, freeExtensionUsed: false })) },
       leadContextNote: { findMany: leadFindMany },
     };
-    const service = new GroundsService(prisma, {} as any, {} as any, {} as any, { emit: () => Promise.resolve() } as any, {} as any);
+    const service = new GroundsService(prisma, {} as any, {} as any, {} as any, { emit: () => Promise.resolve() } as any, {} as any,
+      // 7th dep: the model, for the context chat (G37/G23). Unused here.
+      { respond: async () => '' } as any,
+    );
     return { service, leadFindMany };
   }
 

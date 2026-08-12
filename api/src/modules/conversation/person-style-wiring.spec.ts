@@ -24,6 +24,9 @@ function makeService(profile: Record<string, any> | null) {
     },
     personStyleProfile: { findUnique: jest.fn(async () => profile), upsert: jest.fn(async () => ({})) },
     checkIn: { count: jest.fn(async () => 0), findMany: jest.fn(async () => []), update: jest.fn(async () => ({})) },
+    // Nobody in these specs has written a between-session note; the session build
+    // reads the table regardless, so it has to answer.
+    participantNote: { findMany: async () => [], updateMany: async () => ({ count: 0 }) },
     conversationTurn: {
       count: jest.fn(async () => 0),
       create: jest.fn(async (a: any) => ({ id: 't1', content: a.data.content })),

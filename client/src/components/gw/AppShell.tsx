@@ -1,9 +1,10 @@
 import { toast } from 'sonner'
+import { authApi } from '@/api/auth'
 import { railAttention, railRank, stillInRail } from '@/lib/rail-attention'
 import { plannedSessionsFor } from '@/lib/sessionCount'
 import { useState, useRef, useEffect } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/auth'
 import { apiClient } from '@/api/client'
 import { groundsApi } from '@/api/grounds'
@@ -52,25 +53,14 @@ const NAV_ITEMS = [
       </svg>
     ),
   },
-  {
-    /**
-     * "Roster" lists grounds, not people, which is the opposite of what the word
-     * suggests next to "People" directly above it. W8-27. Named for what it
-     * holds. It does not collide with Grounds in the rail because that one is
-     * the grounds you are in and this one is every ground in the organisation -
-     * which the subtitle on the page says.
-     */
-    label: 'All grounds',
-    to: '/org/roster',
-    adminOnly: true,
-    icon: (active: boolean) => (
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-        <rect x="2" y="3" width="16" height="4" rx="1" stroke="currentColor" strokeWidth="1.5" fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.12 : 0} />
-        <rect x="2" y="9" width="16" height="4" rx="1" stroke="currentColor" strokeWidth="1.5" fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.12 : 0} />
-        <rect x="2" y="15" width="10" height="3" rx="1" stroke="currentColor" strokeWidth="1.5" fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.12 : 0} />
-      </svg>
-    ),
-  },
+  /**
+   * "All grounds" is gone. W9-5.
+   *
+   * `grounds.list` already returns every ground in the organisation when the caller
+   * is an admin, so the roster was the same data at a second address - one page with
+   * two levels of detail, not two audiences. The one column it added that mattered,
+   * who leads each ground, is on the grounds card now.
+   */
   {
     label: 'Billing',
     to: '/billing',
@@ -384,6 +374,28 @@ export function AppSidebar() {
   const qc = useQueryClient()
   const user = useAuthStore(s => s.user)
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
+
+  /**
+   * The organisations this person belongs to. Only asked when signed in: before that
+   * it is a guaranteed 401 and a toast nobody caused.
+   */
+  const { data: myOrgs = [] } = useQuery({
+    queryKey: ['my-organizations'],
+    queryFn: authApi.myOrganizations,
+    enabled: isAuthenticated,
+    retry: false,
+  })
+  const setAuth = useAuthStore(s => s.setAuth)
+  const switchOrg = useMutation({
+    mutationFn: (organizationId: string) => authApi.switchOrganization(organizationId),
+    onSuccess: (res) => {
+      setAuth(res.user, res.accessToken)
+      // A full reload rather than invalidating queries: a half-switched app still
+      // showing the previous organisation's grounds is worse than a second of waiting.
+      window.location.assign('/grounds')
+    },
+    onError: () => toast.error('Could not switch organisation. Try again.'),
+  })
   const { data: grounds = [] } = useQuery<Ground[]>({
     queryKey: ['grounds'],
     queryFn: groundsApi.list,
@@ -445,6 +457,13 @@ export function AppSidebar() {
           </button>
         </div>
 
+        {/*
+          The Chat / More switch was here for one day. More was the card view of a
+          ground, and Hafsah retired it once the conversation carried the history:
+          "we have now made the more obsolete which is fine." A switch with one side
+          left is a control that teaches people to look for something that is not
+          there.
+        */}
         {/* New ground button */}
         <div style={{ padding: collapsed ? '0 8px 10px' : '0 10px 10px', flexShrink: 0 }}>
           <button
@@ -537,6 +556,18 @@ export function AppSidebar() {
                 <div key={g.id} style={{ marginBottom: 2, borderRadius: 8, overflow: 'hidden' }}>
                   <NavLink
                     to={`/grounds/${g.id}`}
+                    title={[
+                      g.label,
+                      `${sessions}${maxSessions ? ` of ${maxSessions}` : ''} sessions done`,
+                      alignmentShort((g as any).alignment) || null,
+                      attention.kind === 'overdue'
+                        ? `Session ${attention.sessionNumber} is ${attention.daysLate} days past its date`
+                        : attention.kind === 'yours'
+                          ? `Session ${attention.sessionNumber} is ready for you`
+                          : attention.kind === 'waiting'
+                            ? `${attention.done} of ${attention.total} have checked in`
+                            : null,
+                    ].filter(Boolean).join(' · ')}
                     style={({ isActive }) => ({
                       display: 'block', padding: renamingId === g.id ? '6px 10px 4px' : '9px 10px 6px', borderRadius: 8,
                       textDecoration: 'none',
@@ -594,23 +625,26 @@ export function AppSidebar() {
                       </div>
                     )}
 
-                    {/* What the report holds, and how far along we are.
-                        This used to read "4/5 aligned · 13/13 sessions" - and
-                        the first number was a count of completed check-ins, not
-                        a measure of agreement. When there is no read yet, the
-                        sessions stand alone rather than being padded with a
-                        score nothing supports. */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                      {(() => {
-                        const read = alignmentShort((g as any).alignment)
-                        return (
-                          <span style={{ fontSize: 11, color: `rgba(255,255,255,${read ? '.45' : '.35'})` }}>
-                            {read ? `${read} · ` : ''}{sessions}{maxSessions ? `/${maxSessions}` : ''} done
-                          </span>
-                        )
-                      })()}
-                      <GroundStatusBadge status={g.status} />
-                    </div>
+                    {/*
+                      ONE LINE PER GROUND, WHICH IS WHAT MAKES IT A CHANNEL LIST.
+
+                      This row carried a second line - "no read yet · 1/6 done" and
+                      a status pill - under every name. Three facts about a ground
+                      you are not looking at, on every row, in a rail whose job is
+                      to tell you which one needs you. A channel list is names; the
+                      state belongs on the ground, and the ground page now opens
+                      with it (sessions done, who has checked in, the report).
+
+                      NOTHING IS LOST, IT MOVED. The count and the read are on the
+                      row's tooltip for anyone who wants them without navigating,
+                      and a ground that is not ACTIVE still says so, because "this
+                      one is closed" changes whether you click at all.
+                    */}
+                    {g.status !== 'ACTIVE' && (
+                      <div style={{ marginTop: 3 }}>
+                        <GroundStatusBadge status={g.status} />
+                      </div>
+                    )}
                   </NavLink>
                 </div>
               )
@@ -665,6 +699,48 @@ export function AppSidebar() {
               )
             })}
           </nav>
+        )}
+
+        {/*
+          SWITCHING ORGANISATION, AT THE BOTTOM WITH THE PERSON. W9-4.
+
+          Her call that the bottom is fine, and it belongs next to who you are because
+          that is what it changes: not a filter on one page, but whose organisation
+          every page is about. It appears only when there is somewhere to switch TO - a
+          switcher listing one thing is a control that does nothing.
+
+          The role shown is per organisation. Somebody can run their own company and be
+          an ordinary member of a client's, and the token carries the membership's role,
+          not the person's.
+        */}
+        {isAuthenticated && !collapsed && myOrgs.length > 1 && (
+          <div style={{ padding: '10px 12px', borderTop: '1px solid rgba(255,255,255,.07)', flexShrink: 0 }}>
+            <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '.5px', color: 'rgba(255,255,255,.3)', fontWeight: 700, marginBottom: 6 }}>
+              Organisation
+            </div>
+            {myOrgs.map(o => (
+              <button
+                key={o.id}
+                onClick={() => !o.active && switchOrg.mutate(o.id)}
+                disabled={switchOrg.isPending}
+                title={o.active ? 'You are in this organisation' : `Switch to ${o.name}`}
+                style={{
+                  width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 7,
+                  padding: '6px 8px', marginBottom: 2, borderRadius: 6, border: 'none',
+                  background: o.active ? 'rgba(255,255,255,.09)' : 'transparent',
+                  color: o.active ? 'white' : 'rgba(255,255,255,.6)',
+                  cursor: o.active ? 'default' : 'pointer', fontFamily: 'inherit',
+                  fontSize: 12.5, fontWeight: o.active ? 700 : 500,
+                }}
+              >
+                <span style={{ width: 5, height: 5, borderRadius: '50%', flexShrink: 0, background: o.active ? '#34d399' : 'transparent' }} />
+                <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.name}</span>
+                <span style={{ fontSize: 10, color: 'rgba(255,255,255,.3)', textTransform: 'capitalize', flexShrink: 0 }}>
+                  {o.role.toLowerCase()}
+                </span>
+              </button>
+            ))}
+          </div>
         )}
 
         {/* User profile / sign in */}

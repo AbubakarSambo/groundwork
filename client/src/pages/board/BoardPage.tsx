@@ -136,6 +136,24 @@ export function BoardPage() {
     <div style={{ background: '#EEF0F6', minHeight: '100vh' }}>
       <div style={{ maxWidth: 1060, margin: '0 auto', padding: '20px 20px 80px' }}>
 
+        {/*
+          A WAY BACK TO THE GROUND THIS BOARD BELONGS TO.
+          
+          There were back-links in the error state and the no-board state, and none
+          on the board that actually renders - the only state anybody reaches. Her
+          words: "i have no way to get back to anywhere from the board." The rail is
+          there, so it was not a trap, but the board is a tab of a ground and there
+          was no way back to the ground.
+        */}
+        <div style={{ marginBottom: 12 }}>
+          <button
+            onClick={() => navigate(`/grounds/${id}/p`)}
+            style={{ background: 'none', border: 'none', padding: 0, fontSize: 13, color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit' }}
+          >
+            ← Back to the ground
+          </button>
+        </div>
+
         {/* header + phase spine */}
         <header style={{ background: 'var(--gw-dark)', color: 'white', borderRadius: 16, padding: '18px 22px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>

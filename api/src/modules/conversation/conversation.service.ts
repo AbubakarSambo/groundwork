@@ -23,6 +23,7 @@ import {
 } from '../coaching/one-step-at-a-time';
 import { detectFunction } from '../board/function-detection';
 import { documentWhereFor } from '../documents/who-can-see-a-document';
+import { buildNotesBlock } from './between-session-notes';
 import { closeReadiness, askedToFinish } from './close-readiness';
 import { observeStyle, mergeStyle, styleGuidance } from './person-style';
 import { readOutcome, isGenericStep } from './coaching-step';
@@ -888,7 +889,7 @@ export class ConversationService {
       returningUserContext = await this.buildReturningUserContext(checkIn.participantId, checkIn.sessionNumber);
     }
 
-    const [{ block: dynamicContext }, uploadedDocs, personTurnCount] = await Promise.all([
+    const [{ block: dynamicContext }, uploadedDocs, personTurnCount, pendingNotes] = await Promise.all([
       this.context.build({
         groundId: checkIn.groundId,
         participantId: checkIn.participantId,
@@ -922,12 +923,43 @@ export class ConversationService {
         orderBy: { createdAt: 'asc' },
       }),
       this.prisma.conversationTurn.count({ where: { checkInId: checkIn.id, role: TurnRole.PERSON } }),
+      /**
+       * THINGS THEY WROTE DOWN BETWEEN SESSIONS, NOT YET RAISED.
+       *
+       * A note is not their account - see the ParticipantNote model. It reaches
+       * the session as something to ASK about, and whatever they say under
+       * questioning becomes the record through the normal path. `carriedInto`
+       * null means no session has picked it up yet, so a note is raised once
+       * rather than in every session from now on.
+       */
+      this.prisma.participantNote.findMany({
+        where: { participantId: checkIn.participantId, carriedIntoCheckInId: null },
+        orderBy: { createdAt: 'asc' },
+        select: { id: true, text: true, createdAt: true },
+      }),
     ]);
 
     const docContext = uploadedDocs.length
       ? 'SUPPORTING DOCUMENTS (uploaded by this party before the session):\n\n' +
         uploadedDocs.map((d) => `--- ${d.fileName} ---\n${d.content}`).join('\n\n')
       : '';
+
+    // See between-session-notes.ts for why the wording is the mechanism. Kept in
+    // its own file so the assembled text can be tested as text rather than as the
+    // code that concatenates it.
+    const notesBlock = buildNotesBlock(pendingNotes);
+
+    if (pendingNotes.length) {
+      // Stamped now rather than on completion: a note that has been PUT to somebody
+      // has been raised, whether or not they finish the session. Otherwise abandoning
+      // a session would re-raise the same note next time and every time after.
+      await this.prisma.participantNote
+        .updateMany({
+          where: { id: { in: pendingNotes.map((n) => n.id) } },
+          data: { carriedIntoCheckInId: checkIn.id },
+        })
+        .catch((e) => this.logger.error(`Could not mark notes carried for check-in ${checkIn.id}: ${e?.message ?? e}`));
+    }
 
     const docPromptHint =
       personTurnCount >= 2 && uploadedDocs.length === 0
@@ -1033,7 +1065,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      */
     const coachingBlock = await this.coachingBlock(checkIn.participantId, checkIn.sessionNumber);
 
-    return [systemPrompt, intakeBlock, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, dynamicContext, docContext, docPromptHint].filter(Boolean).join('\n\n');
+    return [systemPrompt, intakeBlock, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, dynamicContext, docContext, docPromptHint, notesBlock].filter(Boolean).join('\n\n');
   }
 
   /** The flag, read where it is used and failing to OFF. Same shape as the others. */
@@ -2449,6 +2481,63 @@ The ground will close toward one of these end states: ${endStates || 'the partie
   }
 
   /** Loads a check-in only if the requesting user owns the participant side. */
+  /**
+   * EVERY TURN THIS PERSON HAS SAID IN ONE GROUND, IN ORDER.
+   *
+   * The ground opens to its own history as a conversation - sessions in sequence
+   * with dividers, the way a channel reads. Built one way it is twelve requests
+   * on load, one per check-in, because `getTranscript` is per check-in and there
+   * was nothing else. This is the first thing a person sees when they open a
+   * ground, so it is one request.
+   *
+   * OWNERSHIP IS THE WHOLE POINT AND IT IS DONE BY THE QUERY. The participant row
+   * is found from `userId`, and turns are then read by `participantId`, so there
+   * is no path through this function that returns somebody else's words - not a
+   * filter applied afterwards that a later edit could drop. A channel-shaped view
+   * is exactly where a person would expect to see other people talking, and here
+   * they never will.
+   */
+  async getMyGroundTranscript(groundId: string, requestingUserId: string) {
+    const participant = await this.prisma.groundParticipant.findFirst({
+      where: { groundId, userId: requestingUserId },
+      select: { id: true },
+    });
+    if (!participant) throw new ForbiddenException('You are not a party to this ground');
+
+    const checkIns = await this.prisma.checkIn.findMany({
+      where: { participantId: participant.id },
+      orderBy: { sessionNumber: 'asc' },
+      select: {
+        id: true,
+        sessionNumber: true,
+        status: true,
+        completedAt: true,
+        createdAt: true,
+        isSelfCorrection: true,
+        selfCorrectionTargetSession: true,
+        turns: {
+          orderBy: { createdAt: 'asc' },
+          select: { id: true, role: true, content: true, createdAt: true },
+        },
+      },
+    });
+
+    return {
+      sessions: checkIns.map((c) => ({
+        checkInId: c.id,
+        sessionNumber: c.sessionNumber,
+        status: c.status,
+        // The date the divider shows. A session spans days, so the date it was
+        // finished is the one that places it; an unfinished one is placed by when
+        // it opened, which is the only date it has.
+        date: (c.completedAt ?? c.createdAt).toISOString(),
+        isSelfCorrection: c.isSelfCorrection,
+        correctionOf: c.selfCorrectionTargetSession,
+        turns: c.turns.map((t) => ({ id: t.id, role: t.role, content: t.content })),
+      })),
+    };
+  }
+
   private async loadOwnedCheckIn(checkInId: string, requestingUserId: string) {
     const checkIn = await this.prisma.checkIn.findUnique({
       where: { id: checkInId },

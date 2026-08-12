@@ -41,7 +41,10 @@ function serviceFor(restrict: boolean) {
     organization: { findUnique: async () => ({ subscriptionPlan: 'FREE', subscriptionStatus: 'ACTIVE', freeExtensionUsed: false }) },
     leadContextNote: { findMany: async () => [] },
   };
-  return new GroundsService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any);
+  return new GroundsService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any,
+      // 7th dep: the model, for the context chat (G37/G23). Unused here.
+      { respond: async () => '' } as any,
+    );
 }
 
 const emailOf = (res: any, id: string) => res.participants.find((p: any) => p.id === id).email;
@@ -90,7 +93,10 @@ describe('GW-PRIVACY-CONTACT: setExternalVisibility is initiator-only', () => {
         update: async (a: any) => ({ id: a.where.id, restrictExternalVisibility: a.data.restrictExternalVisibility }),
       },
     };
-    return new GroundsService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any);
+    return new GroundsService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any,
+      // 7th dep: the model, for the context chat (G37/G23). Unused here.
+      { respond: async () => '' } as any,
+    );
   }
 
   it('a non-initiator cannot change the setting', async () => {

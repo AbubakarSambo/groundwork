@@ -3,6 +3,8 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
+import { contextGaps, contextChatPrompt } from './the-context-chat';
+import { AnthropicService } from '../conversation/anthropic.service';
 import { EmailService } from '../email/email.service';
 import { BillingService } from '../billing';
 import { UsageService } from '../usage/usage.service';
@@ -105,9 +107,21 @@ export class GroundsService {
     private events: EventEmitter2,
     private usage: UsageService,
     private config: ConfigService,
+    /**
+     * The context chat needs a model. Injected here rather than routed through
+     * ConversationService because that service is about check-ins - somebody's
+     * account - and this conversation is deliberately not one.
+     */
+    private anthropic: AnthropicService,
   ) {}
 
-  async create(organizationId: string, initiatorId: string, dto: CreateGroundDto) {
+  /**
+   * @param creatorRole the caller's role in the organisation. A ground created by
+   *   somebody who is not an ADMIN waits for one to accept it - her requirement, and
+   *   the reason it is a parameter rather than a lookup is that the controller already
+   *   has it on the token and a second read could disagree with the guard.
+   */
+  async create(organizationId: string, initiatorId: string, dto: CreateGroundDto, creatorRole?: string) {
     // --- Billing gate ---
     // Resolve whether this org may create a ground right now, and how.
     const canCreate = await this.billing.canCreateGround(organizationId, dto.accessCode);
@@ -135,7 +149,18 @@ export class GroundsService {
         cadenceAnchorDay: dto.cadenceAnchorDay ?? null,
         startsAt: dto.startsAt ? new Date(dto.startsAt) : null,
         endsAt: dto.endsAt ? new Date(dto.endsAt) : null,
-        status: GroundStatus.OPEN,
+        /**
+         * AN ORG ADMIN ACCEPTS A GROUND BEFORE ANYBODY IS INVITED TO IT.
+         *
+         * A member's ground waits. An admin's does not - they are the approver, and
+         * making them approve their own work is a step that teaches people to click
+         * through steps.
+         *
+         * The status is the whole gate: `addParticipant` refuses while it holds, so
+         * nobody can be invited, and an approval nobody could pre-empt is the only
+         * kind worth having.
+         */
+        status: creatorRole === 'ADMIN' ? GroundStatus.OPEN : GroundStatus.AWAITING_APPROVAL,
         resolutionState: dto.resolutionState ?? null,
         brief: dto.brief ?? null,
         joinToken: crypto.randomBytes(24).toString('hex'),
@@ -921,6 +946,72 @@ export class GroundsService {
    * It DIRECTS and WEIGHTS synthesis; it is never shown to the person it is about
    * and never becomes a stated claim in the report (see reports.service synthesis).
    */
+  /**
+   * THE CONTEXT CHAT. G37, G23 - the last of Wave 2's seven and the largest.
+   *
+   * It probes for what setup did not capture and recommends the material rather than
+   * waiting for uploads. A real run produced a ninety-day ground from one sentence,
+   * with no duration, no rhythm and no sense of who was involved; this is the thing
+   * that stops that.
+   *
+   * The lead's only, because it is about the ground rather than about anybody's
+   * account - and because the failure mode is a lead using it to say things about a
+   * person. See the-context-chat.ts for the refusals that guard against that.
+   */
+  async contextChat(
+    groundId: string,
+    requestingUserId: string,
+    history: { role: 'user' | 'assistant'; content: string }[],
+  ) {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: {
+        id: true, label: true, scenario: true, initiatorId: true, timelineDays: true,
+        cadence: true, brief: true,
+        participants: { select: { id: true, managingOnly: true } },
+        objectives: { select: { id: true } },
+      },
+    });
+    if (!ground) throw new NotFoundException('Ground not found');
+    if (ground.initiatorId !== requestingUserId) {
+      throw new ForbiddenException('Setting this ground up is the lead\'s. Your own check-ins are on your page.');
+    }
+
+    const openDocumentCount = await this.prisma.groundDocument.count({
+      where: { groundId, visibility: 'OPEN' },
+    });
+
+    const gaps = contextGaps({
+      timelineDays: ground.timelineDays,
+      cadence: ground.cadence,
+      brief: ground.brief,
+      partyCount: ground.participants.filter((p) => !p.managingOnly).length,
+      perPersonObjectiveCount: ground.objectives.length,
+      openDocumentCount,
+    });
+
+    // Nothing to ask about. Saying so and stopping is the right answer - a setup
+    // conversation that will not end teaches people to skip setup.
+    if (gaps.length === 0 && history.length === 0) {
+      return {
+        reply:
+          'This ground has what it needs: how long it runs, how often people check in, what doing well looks like, who is in it, and something in writing for everybody to work from. Nothing here needs fixing before the first session.',
+        gaps: [],
+        done: true,
+      };
+    }
+
+    const systemPrompt = contextChatPrompt(ground.label, ground.scenario, gaps);
+    const reply = await this.anthropic.respond(
+      systemPrompt,
+      history.length
+        ? history.map((h) => ({ role: h.role === 'user' ? ('user' as const) : ('assistant' as const), content: h.content }))
+        : [{ role: 'user' as const, content: 'Start.' }],
+    );
+
+    return { reply, gaps: gaps.map((g: { key: string }) => g.key), done: gaps.length === 0 };
+  }
+
   async addLeadContext(groundId: string, requestingUserId: string, dto: { participantId?: string | null; text: string }) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { initiatorId: true } });
     if (!ground) throw new NotFoundException('Ground not found');
@@ -1046,6 +1137,24 @@ export class GroundsService {
    * (magic link) and stamp notifiedAt. (OPTION FOUR RULE, Part 1.)
    */
   async addParticipant(groundId: string, organizationId: string, initiatorId: string, dto: AddParticipantDto) {
+    /**
+     * NOBODY IS INVITED TO A GROUND THAT HAS NOT BEEN ACCEPTED.
+     *
+     * This is where the approval either means something or does not. Blocking the
+     * status change alone would leave the invite path open, and an invite that has
+     * already gone out cannot be recalled by declining afterwards - the person has
+     * read it.
+     */
+    const pending = await this.prisma.ground.findFirst({
+      where: { id: groundId, organizationId, status: GroundStatus.AWAITING_APPROVAL },
+      select: { id: true },
+    });
+    if (pending) {
+      throw new BadRequestException(
+        'This ground is waiting for an admin in your organisation to accept it. Nobody can be invited until then.',
+      );
+    }
+
     const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId } });
     if (!ground) throw new NotFoundException('Ground not found');
 
@@ -1494,6 +1603,158 @@ export class GroundsService {
         groundAuditLog: auditData,
       },
     });
+  }
+
+  /**
+   * A NOTE BETWEEN SESSIONS. Private to the person, always.
+   *
+   * The ground reads like a channel now, and a channel invites you to type. Between
+   * sessions there is no check-in to type into, and the honest answer is not a dead
+   * input: it is "yes, into something that is not your account".
+   *
+   * See the ParticipantNote model for why this is not a RecordEntry. Short version:
+   * RecordEntry is the record, the shared report reads it, and the other party's
+   * context reads theirs - so an unexamined sentence would be compared against
+   * somebody else's account. This is carried into the next session as something to
+   * ASK about instead.
+   */
+  /**
+   * AN ADMIN ACCEPTS A GROUND, AND ONLY THEN CAN ANYBODY BE ASKED TO TAKE PART.
+   *
+   * Idempotent on purpose: two admins opening the same list and both clicking accept
+   * is a normal race, and the second one should not see an error for agreeing.
+   */
+  async approve(groundId: string, organizationId: string, adminUserId: string) {
+    const ground = await this.prisma.ground.findFirst({
+      where: { id: groundId, organizationId },
+      select: { id: true, status: true, label: true, initiatorId: true },
+    });
+    if (!ground) throw new NotFoundException('Ground not found');
+    if (ground.status !== GroundStatus.AWAITING_APPROVAL) {
+      // Already accepted, or never needed accepting. Either way there is nothing to do.
+      return { id: ground.id, status: ground.status, alreadyDecided: true };
+    }
+
+    const updated = await this.prisma.ground.update({
+      where: { id: groundId },
+      data: { status: GroundStatus.OPEN, approvedById: adminUserId, approvedAt: new Date() },
+      select: { id: true, status: true },
+    });
+
+    // The person who set it up is waiting on this, and nothing else would tell them.
+    const creator = await this.prisma.user.findUnique({
+      where: { id: ground.initiatorId },
+      select: { email: true, firstName: true },
+    });
+    const url = `${this.config.get<string>('resend.frontendUrl') ?? ''}/grounds/${ground.id}`;
+    if (creator?.email) {
+      await this.email
+        .sendGroundApproved(creator.email, creator.firstName ?? 'there', ground.label, url)
+        .catch((err: any) => this.logger.error(`Approval email failed for ground ${ground.id}: ${err.message}`));
+    }
+    return { ...updated, alreadyDecided: false };
+  }
+
+  /**
+   * Declined. The ground is CLOSED rather than deleted: somebody wrote it, and a row
+   * that vanishes is indistinguishable from a bug to the person who created it.
+   */
+  async declineGround(groundId: string, organizationId: string, adminUserId: string, reason?: string) {
+    const ground = await this.prisma.ground.findFirst({
+      where: { id: groundId, organizationId },
+      select: { id: true, status: true, label: true, initiatorId: true },
+    });
+    if (!ground) throw new NotFoundException('Ground not found');
+    if (ground.status !== GroundStatus.AWAITING_APPROVAL) {
+      return { id: ground.id, status: ground.status, alreadyDecided: true };
+    }
+    const updated = await this.prisma.ground.update({
+      where: { id: groundId },
+      data: {
+        status: GroundStatus.CLOSED,
+        closedAt: new Date(),
+        approvedById: adminUserId,
+        approvedAt: new Date(),
+        declineReason: reason?.trim() || null,
+      },
+      select: { id: true, status: true },
+    });
+    const creator = await this.prisma.user.findUnique({
+      where: { id: ground.initiatorId },
+      select: { email: true, firstName: true },
+    });
+    if (creator?.email) {
+      await this.email
+        .sendGroundDeclined(creator.email, creator.firstName ?? 'there', ground.label, reason?.trim() || null)
+        .catch((err: any) => this.logger.error(`Decline email failed for ground ${ground.id}: ${err.message}`));
+    }
+    return { ...updated, alreadyDecided: false };
+  }
+
+  /** What is waiting on an admin. Oldest first: the longest wait is the worst one. */
+  async listAwaitingApproval(organizationId: string) {
+    const rows = await this.prisma.ground.findMany({
+      where: { organizationId, status: GroundStatus.AWAITING_APPROVAL },
+      orderBy: { createdAt: 'asc' },
+      select: {
+        id: true, label: true, scenario: true, createdAt: true, timelineDays: true, cadence: true,
+        initiator: { select: { firstName: true, lastName: true, email: true } },
+      },
+    });
+    return rows.map((g) => ({
+      id: g.id,
+      label: g.label,
+      scenario: g.scenario,
+      createdAt: g.createdAt,
+      timelineDays: g.timelineDays,
+      cadence: g.cadence,
+      createdBy: [g.initiator.firstName, g.initiator.lastName].filter(Boolean).join(' ') || g.initiator.email,
+    }));
+  }
+
+  async addMyNote(groundId: string, userId: string, text: string) {
+    const trimmed = (text ?? '').trim();
+    if (!trimmed) throw new BadRequestException('A note needs some words in it.');
+    const participant = await this.prisma.groundParticipant.findFirst({
+      where: { groundId, userId },
+      select: { id: true },
+    });
+    if (!participant) throw new ForbiddenException('You are not a party to this ground');
+    const note = await this.prisma.participantNote.create({
+      data: { groundId, participantId: participant.id, text: trimmed },
+      select: { id: true, text: true, createdAt: true, carriedIntoCheckInId: true },
+    });
+    return note;
+  }
+
+  /** This person's own notes on this ground, oldest first. Nobody else can read them. */
+  async getMyNotes(groundId: string, userId: string) {
+    const participant = await this.prisma.groundParticipant.findFirst({
+      where: { groundId, userId },
+      select: { id: true },
+    });
+    if (!participant) throw new ForbiddenException('You are not a party to this ground');
+    return this.prisma.participantNote.findMany({
+      where: { participantId: participant.id },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true, text: true, createdAt: true, carriedIntoCheckInId: true },
+    });
+  }
+
+  /** Delete one of your own notes. A note is a scratch thought; you can take it back. */
+  async deleteMyNote(groundId: string, userId: string, noteId: string) {
+    const participant = await this.prisma.groundParticipant.findFirst({
+      where: { groundId, userId },
+      select: { id: true },
+    });
+    if (!participant) throw new ForbiddenException('You are not a party to this ground');
+    // Scoped by participantId as well as id, so one person cannot delete another's
+    // by guessing an id.
+    const { count } = await this.prisma.participantNote.deleteMany({
+      where: { id: noteId, participantId: participant.id },
+    });
+    if (count === 0) throw new NotFoundException('Note not found');
+    return { deleted: true };
   }
 
   async getMySpecificity(groundId: string, userId: string): Promise<{ scores: number[]; label: string }> {
