@@ -51,6 +51,9 @@ async function assemble(opts: AssembleOpts): Promise<{ system: string; history: 
       findMany: jest.fn(async () => prior.length ? [{ id: 'ci-prev', sessionNumber: sessionNumber - 1, specificityDimensions: null }] : []),
       update: jest.fn(async () => ({})),
     },
+    // Nobody in these specs has written a between-session note; the session build
+    // reads the table regardless, so it has to answer.
+    participantNote: { findMany: async () => [], updateMany: async () => ({ count: 0 }) },
     conversationTurn: {
       count: jest.fn(async () => history.filter(h => h.role === 'PERSON').length),
       create: jest.fn(async (args: any) => ({ id: 'tn', content: args.data.content })),

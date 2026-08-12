@@ -43,6 +43,9 @@ function makeService(opts: {
       }),
       update: jest.fn(async () => ({})),
     },
+    // Nobody in these specs has written a between-session note; the session build
+    // reads the table regardless, so it has to answer.
+    participantNote: { findMany: async () => [], updateMany: async () => ({ count: 0 }) },
     conversationTurn: {
       count: jest.fn(async () => 0),
       create: jest.fn(async (args: any) => ({ id: 'turn-1', content: args.data.content })),

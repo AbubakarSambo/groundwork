@@ -488,6 +488,7 @@ model Ground {
   @@map("grounds")
   // Versioned targets. A goal change is a new chapter, not an overwrite.
   baselines           GroundBaseline[]
+  participantNotes ParticipantNote[]
 }
 
  // WHAT A PERSON WAS LAST ASKED TO DO, AND WHAT HAPPENED TO IT.
@@ -652,6 +653,7 @@ model GroundParticipant {
   user              User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
   checkIns          CheckIn[]
   recordEntries     RecordEntry[]
+  notes             ParticipantNote[]
   patternDetections PatternDetection[]
   outcomeFeedback   OutcomeFeedback[]
   documents         GroundDocument[]
@@ -1471,4 +1473,43 @@ model PatternConfig {
   updatedBy            String?  @map("updated_by") // userId of last editor
 
   @@map("pattern_configs")
+}
+
+/// SOMETHING YOU WROTE DOWN BETWEEN SESSIONS.
+///
+/// A ground now reads like a channel, and a channel invites you to type. But a
+/// session is a closed record, so between sessions there is nothing to add to it -
+/// and the honest answer to "can I type here" is yes, into something that is NOT
+/// your account.
+///
+/// WHY THIS IS NOT A RecordEntry, which is where it would naturally have gone.
+/// RecordEntry IS the record. `reports.service.ts` reads it to build the shared
+/// report, and `context.service.ts` reads the OTHER party's entries. So a sentence
+/// typed between sessions, unprompted and unexamined, would become part of the
+/// account that gets compared against somebody else's - which is the one thing the
+/// engine's design forbids. A note is not an account. It has never been questioned.
+///
+/// WHAT IT IS FOR. It is carried into the next session as something to ASK about.
+/// The engine sees "they noted this between sessions" and raises it; whatever they
+/// then say under questioning becomes the record, through the normal path. That
+/// makes the note useful rather than a scratchpad, and keeps the rule that the
+/// record holds what was said in a session.
+///
+/// It is private to the person, always. Never in a report, never to the lead,
+/// never to another party.
+model ParticipantNote {
+  id            String   @id @default(uuid())
+  groundId      String   @map("ground_id")
+  participantId String   @map("participant_id")
+  text          String   @db.Text
+  createdAt     DateTime @default(now()) @map("created_at")
+  /// The check-in that picked it up. Null until a session has seen it, so a note
+  /// is raised once rather than in every session from now on.
+  carriedIntoCheckInId String? @map("carried_into_check_in_id")
+
+  ground      Ground            @relation(fields: [groundId], references: [id], onDelete: Cascade)
+  participant GroundParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  @@index([participantId, carriedIntoCheckInId])
+  @@map("participant_notes")
 }

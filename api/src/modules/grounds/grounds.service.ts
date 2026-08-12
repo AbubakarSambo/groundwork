@@ -1496,6 +1496,64 @@ export class GroundsService {
     });
   }
 
+  /**
+   * A NOTE BETWEEN SESSIONS. Private to the person, always.
+   *
+   * The ground reads like a channel now, and a channel invites you to type. Between
+   * sessions there is no check-in to type into, and the honest answer is not a dead
+   * input: it is "yes, into something that is not your account".
+   *
+   * See the ParticipantNote model for why this is not a RecordEntry. Short version:
+   * RecordEntry is the record, the shared report reads it, and the other party's
+   * context reads theirs - so an unexamined sentence would be compared against
+   * somebody else's account. This is carried into the next session as something to
+   * ASK about instead.
+   */
+  async addMyNote(groundId: string, userId: string, text: string) {
+    const trimmed = (text ?? '').trim();
+    if (!trimmed) throw new BadRequestException('A note needs some words in it.');
+    const participant = await this.prisma.groundParticipant.findFirst({
+      where: { groundId, userId },
+      select: { id: true },
+    });
+    if (!participant) throw new ForbiddenException('You are not a party to this ground');
+    const note = await this.prisma.participantNote.create({
+      data: { groundId, participantId: participant.id, text: trimmed },
+      select: { id: true, text: true, createdAt: true, carriedIntoCheckInId: true },
+    });
+    return note;
+  }
+
+  /** This person's own notes on this ground, oldest first. Nobody else can read them. */
+  async getMyNotes(groundId: string, userId: string) {
+    const participant = await this.prisma.groundParticipant.findFirst({
+      where: { groundId, userId },
+      select: { id: true },
+    });
+    if (!participant) throw new ForbiddenException('You are not a party to this ground');
+    return this.prisma.participantNote.findMany({
+      where: { participantId: participant.id },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true, text: true, createdAt: true, carriedIntoCheckInId: true },
+    });
+  }
+
+  /** Delete one of your own notes. A note is a scratch thought; you can take it back. */
+  async deleteMyNote(groundId: string, userId: string, noteId: string) {
+    const participant = await this.prisma.groundParticipant.findFirst({
+      where: { groundId, userId },
+      select: { id: true },
+    });
+    if (!participant) throw new ForbiddenException('You are not a party to this ground');
+    // Scoped by participantId as well as id, so one person cannot delete another's
+    // by guessing an id.
+    const { count } = await this.prisma.participantNote.deleteMany({
+      where: { id: noteId, participantId: participant.id },
+    });
+    if (count === 0) throw new NotFoundException('Note not found');
+    return { deleted: true };
+  }
+
   async getMySpecificity(groundId: string, userId: string): Promise<{ scores: number[]; label: string }> {
     const participant = await this.prisma.groundParticipant.findFirst({
       where: { groundId, userId },
