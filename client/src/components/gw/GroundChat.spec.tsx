@@ -8,6 +8,12 @@ import { groundsApi } from '@/api/grounds'
 /**
  * A GROUND READ AS A CONVERSATION.
  *
+ * This file also carries what `GroundParticipantPage.conversation.spec.tsx` used to
+ * pin, now that the card view is retired: that a person can read their past
+ * check-ins at all. That was Hafsah's "I have no way to go back and see my chats",
+ * and it is the reason the transcript is fetched here rather than being an expander
+ * on a card.
+ *
  * Driven rather than read, because the things worth pinning here are about what
  * appears on screen: the order, the dividers, whose words are shown, and whether
  * the bottom of the scroll offers the right thing.
@@ -167,5 +173,23 @@ describe('notes waiting for the next check-in', () => {
     fireEvent.change(box, { target: { value: '  the deadline moved  ' } })
     fireEvent.click(screen.getByRole('button', { name: /Note it/ }))
     await waitFor(() => expect(groundsApi.addMyNote).toHaveBeenCalledWith('g1', 'the deadline moved'))
+  })
+})
+
+describe('reading a past check-in', () => {
+  it('every completed session offers what the engine took from it', async () => {
+    // The summary is not a duplicate of the turns above it - it is what was
+    // EXTRACTED, which is the thing somebody wants to check: did it hear me right.
+    renderChat()
+    await waitFor(() => expect(screen.getAllByRole('button', { name: /What we heard from you/ }).length).toBe(2))
+  })
+
+  it('and an unfinished session does not, because nothing has been written yet', async () => {
+    ;(groundsApi.myTranscript as any).mockResolvedValue({
+      sessions: [{ ...session(1, '2026-08-10T00:00:00.000Z', [['PERSON', 'mid sentence']]), status: 'IN_PROGRESS' }],
+    })
+    renderChat()
+    await waitFor(() => expect(screen.getByText('mid sentence')).toBeTruthy())
+    expect(screen.queryByRole('button', { name: /What we heard from you/ })).toBeNull()
   })
 })

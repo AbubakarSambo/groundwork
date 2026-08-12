@@ -7,180 +7,25 @@ import { billingApi } from '@/api/billing'
 import { useAuthStore } from '@/stores/auth'
 import { reportsApi } from '@/api/reports'
 import { documentsApi } from '@/api/documents'
-import { conversationApi } from '@/api/conversation'
 import { GroundChat } from '@/components/gw/GroundChat'
-import { useViewStore } from '@/stores/view'
 import { whatThisGroundCanTellYou } from '@/lib/contextStrength'
 import { ContextStrength } from '@/components/gw/ContextStrength'
 import { apiClient } from '@/api/client'
 import { participantLabel } from '@/lib/utils'
-import { alignmentLabel } from '@/lib/alignment'
 import { toast } from 'sonner'
 import { ResolutionPanel } from '@/components/gw/ResolutionPanel'
 
 
 
-function timeAgo(date: string | Date): string {
-  const ms = Date.now() - new Date(date).getTime()
-  const mins = Math.floor(ms / 60000)
-  if (mins < 60) return `${mins} minute${mins !== 1 ? 's' : ''} ago`
-  const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs} hour${hrs !== 1 ? 's' : ''} ago`
-  const days = Math.floor(hrs / 24)
-  return `${days} day${days !== 1 ? 's' : ''} ago`
-}
 
-function specificityQualityLabel(score: number): { label: string; color: string; bg: string } {
-  if (score >= 0.65) return { label: 'Specific and evidenced', color: '#085041', bg: '#E7F6EF' }
-  if (score >= 0.35) return { label: 'Moderate detail', color: '#5A4A1A', bg: '#FDF8E3' }
-  return { label: 'Building', color: '#6B6560', bg: '#F0EEE9' }
-}
-
-type Tab = 'checkin' | 'record' | 'report' | 'docs' | 'settings'
 
 /**
- * THE CONVERSATION ITSELF, WHICH SESSION HISTORY DID NOT HOLD. W8-21, W8-57.
- *
- * "Session history" listed a session number, a date and a summary of what we
- * heard - everything except the thing that happened. Hafsah: "I have no way to
- * go back and see my chats." A ground is meant to be a place you return to, and
- * returning to a list of dates is not returning to anything.
- *
- * The transcript endpoint already existed and is owner-only on the server, so
- * this shows a person their own words and nobody else's. Loaded when opened
- * rather than with the page: on a twelve-session ground that is twelve requests
- * nobody asked for.
+ * The card view's helpers - a relative-time formatter and the specificity quality
+ * badge - went with it. The record tab carries the specificity read now, and the
+ * conversation dates its own sessions on the dividers.
  */
-function SessionConversation({ checkInId }: { checkInId: string }) {
-  const [open, setOpen] = useState(false)
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ['transcript', checkInId],
-    queryFn: () => conversationApi.transcript(checkInId),
-    enabled: open,
-  })
-  const turns = data?.turns ?? []
-  return (
-    <div style={{ marginTop: 6 }}>
-      <button
-        onClick={() => setOpen(o => !o)}
-        style={{ fontSize: 11, color: '#0C447C', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit', fontWeight: 600 }}
-      >
-        {open ? 'Hide the conversation' : 'Read the conversation'}
-      </button>
-      {open && (
-        <div style={{ marginTop: 8, background: '#F5F3EF', borderRadius: 7, padding: '10px 12px', maxHeight: 420, overflowY: 'auto' }}>
-          {isLoading && <div style={{ fontSize: 12, color: '#9B9590' }}>Loading…</div>}
-          {isError && <div style={{ fontSize: 12, color: '#9B9590' }}>That conversation could not be loaded. Try again in a moment.</div>}
-          {!isLoading && !isError && turns.length === 0 && (
-            <div style={{ fontSize: 12, color: '#9B9590' }}>Nothing was said in this session.</div>
-          )}
-          {turns.map((t: any, i: number) => (
-            <div key={t.id ?? i} style={{ marginBottom: 10 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', color: '#9B9590', marginBottom: 3 }}>
-                {t.role === 'PERSON' ? 'You' : 'Groundwork'}
-              </div>
-              <div style={{ fontSize: 12.5, color: '#3A3630', lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>{t.content}</div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
 
-/**
- * ONE PAST SESSION, AS IT APPEARS IN THE SCROLL. W8-57.
- *
- * Lifted out of the Session history tab unchanged so the Check-in tab can show
- * the same thing. Two renderings of a session would drift, and the whole point of
- * the change is that there is now one place a person reads their ground.
- */
-function PastSession({
-  ci, groundId, score,
-}: { ci: any; groundId: string; score: number | undefined }) {
-  const isComplete = ci.status === 'COMPLETED'
-  const q = score !== undefined ? specificityQualityLabel(score) : null
-  return (
-    <div style={{ background: 'white', border: '1px solid #E2E0DB', borderLeft: `3px solid ${isComplete ? '#5DCAA5' : '#E8A94A'}`, borderRadius: 10, padding: '12px 14px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
-        <div>
-          <div style={{ fontSize: 13, fontWeight: 700 }}>Session {ci.sessionNumber}</div>
-          {ci.completedAt && (
-            <div style={{ fontSize: 11, color: '#9B9590' }}>Completed {new Date(ci.completedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
-          )}
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          {q && (
-            <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: q.bg, color: q.color }}>{q.label}</span>
-          )}
-          <span style={{
-            fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, letterSpacing: '.04em', textTransform: 'uppercase',
-            background: isComplete ? '#E7F6EF' : '#FDF3E3',
-            color: isComplete ? '#085041' : '#8A5C1A',
-          }}>
-            {isComplete ? 'Complete' : 'In progress'}
-          </span>
-        </div>
-      </div>
-      {ci.nextCommitment && (
-        <div style={{ fontSize: 12, color: '#6B6560', marginTop: 4, lineHeight: 1.5 }}>
-          <span style={{ fontWeight: 600 }}>Commitment:</span> {ci.nextCommitment}
-        </div>
-      )}
-      {isComplete && <SoloArtifactBlock checkInId={ci.id} groundId={groundId} sessionNumber={ci.sessionNumber} />}
-      <SessionConversation checkInId={ci.id} />
-    </div>
-  )
-}
-
-function SoloArtifactBlock({ checkInId, groundId, sessionNumber }: { checkInId: string; groundId: string; sessionNumber: number }) {
-  const [open, setOpen] = useState(false)
-  const navigate = useNavigate()
-  const { data, isLoading } = useQuery({
-    queryKey: ['artifact', checkInId],
-    queryFn: () => conversationApi.artifact(checkInId),
-    enabled: open,
-  })
-  const correctionMutation = useMutation({
-    mutationFn: () => reportsApi.startSelfCorrection(groundId, sessionNumber),
-    onSuccess: (res) => navigate(`/checkin/${res.checkInId}`),
-    onError: () => toast.error('Could not start correction session. Try again.'),
-  })
-  return (
-    <div style={{ marginTop: 8 }}>
-      <button
-        onClick={() => setOpen(o => !o)}
-        style={{ fontSize: 11, color: '#0C447C', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit', fontWeight: 600 }}
-      >
-        {open ? 'Hide record summary' : 'What we heard from you'}
-      </button>
-      {open && (
-        <div style={{ marginTop: 8, background: '#F5F3EF', borderRadius: 7, padding: '10px 12px' }}>
-          {isLoading && <div style={{ fontSize: 12, color: '#9B9590' }}>Loading…</div>}
-          {data?.artifact ? (
-            <>
-              <div style={{ fontSize: 12, color: '#4A4540', lineHeight: 1.6, marginBottom: data.artifact.whatToCarry ? 8 : 0 }}>{data.artifact.summary}</div>
-              {data.artifact.whatToCarry && (
-                <div style={{ fontSize: 12, color: '#0C447C', fontWeight: 600, borderTop: '1px solid #E2E0DB', paddingTop: 7, marginTop: 4 }}>
-                  Carry forward: {data.artifact.whatToCarry}
-                </div>
-              )}
-            </>
-          ) : !isLoading && (
-            <div style={{ fontSize: 12, color: '#9B9590' }}>No summary yet for this session.</div>
-          )}
-          <button
-            onClick={() => correctionMutation.mutate()}
-            disabled={correctionMutation.isPending}
-            style={{ marginTop: 10, fontSize: 11, color: '#8A5C1A', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit', fontWeight: 600, textDecoration: 'underline', opacity: correctionMutation.isPending ? 0.6 : 1 }}
-          >
-            {correctionMutation.isPending ? 'Starting…' : 'Something wrong here? Continue this session to correct it'}
-          </button>
-        </div>
-      )}
-    </div>
-  )
-}
+type Tab = 'checkin' | 'record' | 'report' | 'docs' | 'board' | 'settings'
 
 export function GroundParticipantPage() {
   const { id } = useParams<{ id: string }>()
@@ -333,12 +178,6 @@ export function GroundParticipantPage() {
   })
 
   /**
-   * The app's Chat-or-More mode, set at the top of the rail. Not this page's own
-   * state: the switch changes the rail as well, so one page owning it was the bug.
-   */
-  const view = useViewStore(s => s.view)
-
-  /**
    * WHERE CONTEXT WENT: it was never on this page.
    *
    * The admin page labels its documents tab "Context" when CONTEXT_ENABLED is on,
@@ -358,7 +197,6 @@ export function GroundParticipantPage() {
   if (isLoading) return <div style={{ minHeight: '100vh', background: '#F5F3EF', padding: 24, fontSize: 13, color: '#9B9590' }}>Loading…</div>
   if (!ground) return <div style={{ minHeight: '100vh', background: '#F5F3EF', padding: 24, fontSize: 13, color: '#9B9590' }}>Ground not found.</div>
 
-  const alignRead = alignmentLabel((ground as any).alignment)
   const myParticipant = (ground.participants ?? []).find((p: any) => p.userId === user?.id)
   /** Whether this person runs the ground, and so has an admin view to switch to. */
   const isInitiator = myParticipant?.partyType === 'INITIATOR'
@@ -404,7 +242,6 @@ export function GroundParticipantPage() {
   // finished as a result.
   const totalSessions =
     plannedSessionsFor((ground as any).timelineDays, (ground as any).cadence, (ground as any).totalSessions) ?? 6
-  const lastCompleted = completedCheckIns[0]
 
   /**
    * THE SAME CONTEXT READ THE LEAD SEES. G25 on this page, G26 as the reason.
@@ -425,16 +262,12 @@ export function GroundParticipantPage() {
     plannedSessions: totalSessions ?? 1,
   }) : null
 
-  const signals: any[] = ground.signals ?? []
-  const feedEvents = signals.map((s: any) => ({
-    type: s.code?.startsWith('D') ? 'divergence' : 'convergence',
-    label: s.code?.startsWith('D') ? 'Divergence' : 'Convergence',
-    session: s.lastPeriodNumber ?? 1,
-    text: s.observationText ?? '',
-    at: s.lastSeenAt,
-  })).filter((e: any) => e.text).reverse()
-
-  const specificityScores: number[] = specificity?.scores ?? []
+  /**
+   * The signal feed, the alignment read, the last-completed shortcut and the
+   * specificity scores all belonged to the card view. They went with it - see the
+   * commit; the conversation carries the history now, and the record tab carries
+   * the numbers.
+   */
 
   const tabs: { key: Tab; label: string }[] = [
     { key: 'checkin', label: 'Check-in' },
@@ -443,6 +276,11 @@ export function GroundParticipantPage() {
     { key: 'docs', label: contextEnabled ? 'Context' : 'Documents' },
     { key: 'settings', label: 'Settings' },
   ]
+  // The server decides whether a ground has a board (`boardRenders`); the client
+  // does not keep a second copy of the routing table.
+  if ((ground as any).boardRenders) {
+    tabs.splice(tabs.length - 1, 0, { key: 'board', label: 'Team board' })
+  }
 
   return (
     <div style={{ minHeight: '100vh', background: '#F5F3EF', display: 'flex', flexDirection: 'column' }}>
@@ -474,24 +312,23 @@ export function GroundParticipantPage() {
               Admin view →
             </button>
           )}
-          {/* Delivery board: only on shared-mode grounds whose scenario family has
-              one. The server decides (boardRenders); the client does not duplicate
-              the routing table. */}
-          {(ground as any).boardRenders && (
-            <button
-              onClick={() => navigate(`/grounds/${id}/board`)}
-              style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, padding: '5px 11px', borderRadius: 20, background: '#0A1628', color: 'white', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
-            >
-              Team board →
-            </button>
-          )}
+          {/*
+            THE TEAM BOARD BELONGS TO THE GROUND, so it is in the tab row below and
+            not a dark pill floating up here beside the view switch. Hafsah's words.
+            It was the only part of a ground reachable from the chrome rather than
+            from the ground's own navigation, which is also how it stayed
+            undiscovered.
+          */}
         </div>
 
         {/* Tab bar */}
         <div style={{ display: 'flex', borderTop: '1px solid #E2E0DB', overflowX: 'auto' }}>
           {tabs.map(t => (
             <button key={t.key}
-              onClick={() => setTab(t.key)}
+              // The board is its own page with its own data and its own writes, so
+              // its tab navigates rather than switching a panel. Everything else is
+              // a panel of this page.
+              onClick={() => (t.key === 'board' ? navigate(`/grounds/${id}/board`) : setTab(t.key))}
               style={{
                 flex: '0 0 auto', padding: '10px 16px', fontSize: 12, fontWeight: tab === t.key ? 700 : 500,
                 color: tab === t.key ? '#0C447C' : '#6B6560', background: 'none', border: 'none',
@@ -515,7 +352,7 @@ export function GroundParticipantPage() {
         Only the chat. The card views keep the narrow column, because a column is
         what makes a stack of cards readable.
       */}
-      {tab === 'checkin' && view === 'chat' && (
+      {tab === 'checkin' && (
         // GroundChat owns its own reading column and scroll, the same as the
         // entry chat. Wrapping it in a second centred column fought with that.
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
@@ -525,6 +362,8 @@ export function GroundParticipantPage() {
             openSessionNumber={dueNow ? openCheckIn.sessionNumber : null}
             totalSessions={totalSessions ?? null}
             nextOpensAt={opensLater ? openAvailableFrom : null}
+            onOpenSession={() => dueNow && probeSession.mutate(openCheckIn)}
+            openPending={probeSession.isPending}
           />
         </div>
       )}
@@ -532,223 +371,6 @@ export function GroundParticipantPage() {
       <div style={{ maxWidth: 600, margin: '0 auto', width: '100%', padding: '16px 16px 48px' }}>
 
         {/* CHECK-IN TAB */}
-        {tab === 'checkin' && view === 'more' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-
-            {/* Ground context - shown before first session to orient the participant */}
-            {completedCheckIns.length === 0 && openCheckIn && (
-              <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '14px 16px' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.07em', color: '#9B9590', marginBottom: 8 }}>About this ground</div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#1A1916', marginBottom: 4 }}>{ground.label}</div>
-                {(ground as any).scenario && (
-                  <div style={{ fontSize: 12, color: '#6B6560', marginBottom: 6 }}>
-                    {(ground as any).scenario.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c: string) => c.toUpperCase())}
-                  </div>
-                )}
-                <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.55, borderTop: '1px solid #F0EEE9', paddingTop: 8, marginTop: 4 }}>
-                  Your contribution stays on your side until all parties have checked in. The report is sent to everyone at the same time so no one reads it before the other.
-                </div>
-              </div>
-            )}
-
-            {/* Where things stand.
-                This was "Ground confidence", a 5-dot meter over "{conf}/5
-                Aligned" - all of it computed from how many check-ins had
-                happened. A participant reading it had no way to know it said
-                nothing about whether anyone agreed. */}
-            <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '14px 16px' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: '#9B9590', marginBottom: 6 }}>Where things stand</div>
-              {alignRead ? (
-                <>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: '#0C447C', marginBottom: 4 }}>{alignRead}</div>
-                  <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.5 }}>
-                    From the areas the report names. An open area is something to talk about, not a mark against anyone.
-                  </div>
-                </>
-              ) : (
-                <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.5 }}>
-                  No read yet. The report has not named an area the accounts agree or differ on.
-                </div>
-              )}
-            </div>
-
-            {/* My record quality (if has check-ins) */}
-            {specificityScores.length > 0 && (() => {
-              const avg = specificityScores.reduce((a, b) => a + b, 0) / specificityScores.length
-              const q = specificityQualityLabel(avg)
-              return (
-                <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '13px 16px' }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: '#9B9590', marginBottom: 8 }}>Your record quality</div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20, background: q.bg, color: q.color }}>{q.label}</span>
-                    <span style={{ fontSize: 12, color: '#9B9590' }}>across {specificityScores.length} session{specificityScores.length !== 1 ? 's' : ''}</span>
-                  </div>
-                  <div style={{ display: 'flex', gap: 3 }}>
-                    {specificityScores.map((s, i) => {
-                      const qp = specificityQualityLabel(s)
-                      return <div key={i} title={`Session ${i + 1}: ${qp.label}`} style={{ flex: 1, height: 5, borderRadius: 2, background: s >= 0.65 ? '#5DCAA5' : s >= 0.35 ? '#E8A94A' : '#E2E0DB' }} />
-                    })}
-                  </div>
-                  <div style={{ fontSize: 11, color: '#9B9590', marginTop: 5, lineHeight: 1.5 }}>
-                    {avg >= 0.65
-                      ? 'Strong, evidenced contributions across your sessions.'
-                      : avg >= 0.35
-                      ? 'Good detail in places. Adding specific examples strengthens alignment.'
-                      : 'More specific evidence in your next session will build a stronger record.'}
-                  </div>
-                </div>
-              )
-            })()}
-
-            {/*
-              THE GROUND OPENS TO ITS OWN HISTORY, WITH THE OPEN ONE AT THE BOTTOM. W8-57.
-
-              Hafsah's model: a ground is a channel you come back to and keep
-              adding to. A channel opens to what has been said, with the place to
-              type at the bottom. This is that - session 1, what we heard from you,
-              the conversation itself if you want it, then session 2, and then
-              either the live session or the invitation to start it.
-
-              It replaces the separate Session history tab, which held exactly this
-              and put it one click away from the thing it was the history of. Newest
-              LAST here, the opposite of that tab: a scroll you read downwards ends
-              where you are now, and where you are now is the session you owe.
-            */}
-            {[...myCheckIns]
-              .filter((ci: any) => ci.id !== openCheckIn?.id)
-              .sort((a: any, b: any) => a.sessionNumber - b.sessionNumber)
-              .map((ci: any) => (
-                <PastSession key={ci.id} ci={ci} groundId={id!} score={specificityScores[ci.sessionNumber - 1]} />
-              ))}
-
-            {/* Active check-in card */}
-            {openCheckIn ? (
-              <div style={{ background: '#0A1628', borderRadius: 10, padding: '16px 18px' }}>
-                <div style={{ fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: '#5DCAA5', fontWeight: 700, marginBottom: 6 }}>Session open</div>
-                <div style={{ fontSize: 16, fontWeight: 800, color: 'white', marginBottom: 2 }}>
-                  Session {openCheckIn.sessionNumber} of {totalSessions}
-                </div>
-                <div style={{ fontSize: 13, color: 'rgba(255,255,255,.6)', marginBottom: 14 }}>{ground.label}</div>
-
-                {lastCompleted && (
-                  <div style={{ background: 'rgba(255,255,255,.06)', borderRadius: 7, padding: '9px 12px', marginBottom: 14 }}>
-                    <div style={{ fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,.4)', fontWeight: 700, marginBottom: 4 }}>Carried over</div>
-                    <div style={{ fontSize: 12, color: 'rgba(255,255,255,.8)', lineHeight: 1.5 }}>
-                      Session {lastCompleted.sessionNumber} complete.
-                      {feedEvents.length > 0 ? ` ${feedEvents[0].text}` : ' Your record is building.'}
-                    </div>
-                  </div>
-                )}
-
-                <div style={{ background: 'rgba(255,255,255,.06)', borderRadius: 7, padding: '9px 12px', marginBottom: 16 }}>
-                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,.5)', lineHeight: 1.5 }}>
-                    Your contribution is independent. The other party never sees what you write here until the report is released to everyone at once.
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => probeSession.mutate(openCheckIn)}
-                  disabled={probeSession.isPending}
-                  style={{ width: '100%', padding: '13px 16px', borderRadius: 8, background: '#5DCAA5', color: '#0A1628', fontSize: 14, fontWeight: 800, border: 'none', cursor: probeSession.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: probeSession.isPending ? 0.7 : 1 }}
-                >
-                  {probeSession.isPending ? 'Opening...' : `Start session ${openCheckIn.sessionNumber}`}
-                </button>
-              </div>
-            ) : (
-              <div style={{ background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 10, padding: '13px 16px' }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#085041', marginBottom: 4 }}>Session complete</div>
-                <div style={{ fontSize: 12, color: '#3A7A60', lineHeight: 1.6, marginBottom: 10 }}>
-                  Your account is on record. The shared report releases when all parties complete their check-in.
-                </div>
-                <button onClick={() => setTab('report')}
-                  style={{ padding: '7px 14px', borderRadius: 7, background: 'none', border: '1px solid #5DCAA5', color: '#085041', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
-                  View your private report →
-                </button>
-              </div>
-            )}
-
-            {/* Report reveal (if ready) */}
-            {report?.releasedAt && !report.activated && (
-              <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '16px 18px', textAlign: 'center' }}>
-                <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>The report is ready</div>
-                <div style={{ fontSize: 13, color: '#6B6560', lineHeight: 1.65, marginBottom: 16 }}>
-                  Both parties reveal the report at the same time. Once you confirm, the shared picture is permanent.
-                </div>
-                <button
-                  onClick={() => activateMutation.mutate()}
-                  disabled={activateMutation.isPending}
-                  style={{ padding: '11px 28px', borderRadius: 8, background: '#0C447C', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: activateMutation.isPending ? 0.6 : 1 }}
-                >
-                  {activateMutation.isPending ? 'Confirming…' : 'Reveal report'}
-                </button>
-              </div>
-            )}
-
-            {/*
-              THREE CARDS EXPLAINING ABSENCE, IN A COLUMN.
-              On a ground with one session done this page showed "No read yet",
-              "No documents uploaded yet" and this one, each a card of its own,
-              each describing something that has not happened. Three explanations
-              of nothing is worse than one, and none of them offered the action
-              that would fill them.
-
-              This one only earns its space BEFORE the first session, where it is
-              telling somebody what to expect. Once a session is done and there is
-              still no score, the silence is not worth a card.
-            */}
-            {specificityScores.length === 0 && completedCheckIns.length === 0 && (
-              <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '13px 16px' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: '#9B9590', marginBottom: 6 }}>Your record quality</div>
-                <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.6 }}>
-                  After your first session, you will see how specific and evidenced your contributions are. Specific answers with names, dates, and concrete examples make the shared picture stronger.
-                </div>
-              </div>
-            )}
-
-            {/* This was an "Alignment map": a five-bar ladder from Unresolved
-                to Aligned that filled up as check-ins accumulated, over the
-                line "Currently at Aligned after 10 sessions." Nothing in it
-                measured agreement. A ladder that fills with attendance is worse
-                than no ladder, because it reads as progress toward a verdict.
-                What replaces it says only what the report names, and says
-                nothing when the report names nothing. */}
-            {completedCheckIns.length >= 1 && alignRead && (
-              <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '14px 16px' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: '#9B9590', marginBottom: 8 }}>Where things stand</div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: '#0C447C', marginBottom: 4 }}>{alignRead}</div>
-                <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.5 }}>
-                  Counted from the areas this report names, after {completedCheckIns.length} session{completedCheckIns.length !== 1 ? 's' : ''}.
-                </div>
-              </div>
-            )}
-
-            {/* Alignment feed */}
-            {feedEvents.length > 0 && (
-              <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '14px 16px' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: '#9B9590', marginBottom: 12 }}>Alignment feed</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {feedEvents.slice(0, 6).map((ev: any, i: number) => (
-                    <div key={i} style={{ borderLeft: `3px solid ${ev.type === 'convergence' ? '#5DCAA5' : '#E8A94A'}`, paddingLeft: 12 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-                        <span style={{
-                          fontSize: 9, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase',
-                          color: ev.type === 'convergence' ? '#085041' : '#8A5C1A',
-                          background: ev.type === 'convergence' ? '#E7F6EF' : '#FDF3E3',
-                          padding: '2px 7px', borderRadius: 20,
-                        }}>{ev.label}</span>
-                        <span style={{ fontSize: 11, color: '#9B9590' }}>Session {ev.session}</span>
-                        {ev.at && <span style={{ fontSize: 11, color: '#9B9590' }}>{timeAgo(ev.at)}</span>}
-                      </div>
-                      <div style={{ fontSize: 12, color: '#4A4540', lineHeight: 1.55 }}>{ev.text}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* SESSION HISTORY TAB */}
         {/* MY RECORD TAB */}
         {tab === 'record' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

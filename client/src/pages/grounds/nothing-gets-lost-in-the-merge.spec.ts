@@ -21,11 +21,20 @@ import { describe, it, expect } from 'vitest'
  * browser. Its job is to make silent loss loud.
  */
 
+/**
+ * The ground's surfaces. `GroundChat` is here because capabilities MOVED into it
+ * when the card view was retired - the session summary and the correction that
+ * starts from it. This spec went red on `conversationApi.artifact` the moment they
+ * left `GroundParticipantPage`, which is the whole reason it exists: a capability
+ * quietly leaving the pages being watched looks exactly like a capability being
+ * deleted.
+ */
 const PAGES = [
   'GroundAdminPage.tsx',
   'GroundParticipantPage.tsx',
   '../report/ReportPage.tsx',
   '../board/BoardPage.tsx',
+  '../../components/gw/GroundChat.tsx',
 ]
 
 /** Everything the four ground surfaces can do, by the call that does it. */

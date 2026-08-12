@@ -1670,6 +1670,38 @@ participant now sees an explicit line that the lead may hold context they cannot
 targets, probing for what setup did not capture, recommending materials rather than waiting for
 uploads. It needs its own run.
 
+## W8-66 - The card view retired, and the payment path that nearly went with it
+
+Her call: "it seems like we have now made the 'more' obsolete which is fine", plus "the team board
+belongs to the ground" and "participants shouldn't be able to write context notes, leads can".
+
+**More is gone.** The Chat / More switch lasted one day; a switch with one side left is a control
+that teaches people to look for something that is not there. `PastSession`,
+`SessionConversation`, `SoloArtifactBlock`, `stores/view.ts` and about 220 lines of card markup
+went with it.
+
+**What nearly went with it, and this is the part worth remembering.** `probeSession` lived in the
+card view. It POSTs `:id/open` and handles a 403 by offering the free extension, the access code or
+a subscription. `ChatPage`'s own open handler shows "Could not open session" and stops. So a chat
+button that navigated straight to `/checkin/:id` would have silently deleted the paid path for
+anybody whose ground had run out of sessions - no test would have failed, because the code was
+still there, just unreachable. The composer calls back into the page instead.
+
+The per-session summary was the same shape of risk: "what we heard from you" and the correction
+that starts from it existed only on the cards, and `conversationApi.artifact` is one of the 43
+inventoried operations. It is folded into the conversation now, under the session it came from.
+**`nothing-gets-lost-in-the-merge.spec.ts` went red the moment that call left the pages it
+watches**, which is exactly what it was written for - a capability quietly moving out of view
+looks identical to one being deleted. Its file list now includes `GroundChat`.
+
+**The team board is a tab on the ground**, not a dark pill in the chrome beside the view switch.
+It was the only part of a ground reachable from the header rather than from the ground's own
+navigation, which is also how it stayed undiscovered.
+
+**Participants cannot write context notes, and that is now confirmed rather than assumed.**
+`addLeadContext` is lead-only on the server and the participant Context page offers no note box -
+only uploads, plus the line saying the lead may hold context they cannot read.
+
 ## A note on verifying against the local API
 
 Twice now a browser check has looked like a product bug and was not. The local API process was

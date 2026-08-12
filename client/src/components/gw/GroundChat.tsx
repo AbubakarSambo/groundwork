@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { groundsApi } from '@/api/grounds'
 import { documentsApi } from '@/api/documents'
+import { conversationApi } from '@/api/conversation'
+import { reportsApi } from '@/api/reports'
 import { toast } from 'sonner'
 
 /**
@@ -38,6 +40,69 @@ import { toast } from 'sonner'
  * report compares, and what a person is asked to do - and a session can span days.
  * The date rides along on the divider for orientation.
  */
+
+/**
+ * WHAT WE HEARD FROM YOU, under the session it came from.
+ *
+ * This lived on the card view, which Hafsah has now retired ("we have made the
+ * more obsolete which is fine"). It is not decoration and it is not a duplicate of
+ * the turns above it: it is what the engine took FROM the conversation, which is
+ * the thing a person actually wants to check - "did it hear me right" - and it is
+ * the entry point to correcting a session that got it wrong.
+ *
+ * Fetched on expand. Twelve of these on load would be twelve requests for
+ * something most people will not open.
+ */
+function SessionSummary({ checkInId, groundId, sessionNumber }: {
+  checkInId: string; groundId: string; sessionNumber: number
+}) {
+  const [open, setOpen] = useState(false)
+  const navigate = useNavigate()
+  const { data, isLoading } = useQuery({
+    queryKey: ['artifact', checkInId],
+    queryFn: () => conversationApi.artifact(checkInId),
+    enabled: open,
+  })
+  const correct = useMutation({
+    mutationFn: () => reportsApi.startSelfCorrection(groundId, sessionNumber),
+    onSuccess: (res: any) => navigate(`/checkin/${res.checkInId}`),
+    onError: () => toast.error('Could not open a correction. Try again.'),
+  })
+  return (
+    <div style={{ alignSelf: 'stretch' }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{ fontSize: 11.5, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit', fontWeight: 600 }}
+      >
+        {open ? 'Hide what we heard' : 'What we heard from you'}
+      </button>
+      {open && (
+        <div style={{ marginTop: 8, background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '10px 12px' }}>
+          {isLoading && <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>Loading…</div>}
+          {data?.artifact ? (
+            <>
+              <div style={{ fontSize: 12.5, color: 'var(--gw-text)', lineHeight: 1.6 }}>{data.artifact.summary}</div>
+              {data.artifact.whatToCarry && (
+                <div style={{ fontSize: 12.5, color: 'var(--gw-navy)', fontWeight: 600, borderTop: '1px solid var(--gw-border)', paddingTop: 8, marginTop: 8 }}>
+                  Carry forward: {data.artifact.whatToCarry}
+                </div>
+              )}
+              <button
+                onClick={() => correct.mutate()}
+                disabled={correct.isPending}
+                style={{ marginTop: 10, fontSize: 11.5, color: 'var(--gw-navy)', background: 'none', border: '1px solid var(--gw-border)', borderRadius: 6, padding: '5px 10px', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}
+              >
+                {correct.isPending ? 'Opening…' : 'This is not right - add to it'}
+              </button>
+            </>
+          ) : !isLoading && (
+            <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>No summary was written for this session.</div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
 
 function SessionDivider({ sessionNumber, date, isCorrection, correctionOf }: {
   sessionNumber: number
@@ -107,12 +172,26 @@ function Message({ role, content }: { role: 'AI' | 'PERSON'; content: string }) 
  * something to be ASKED about, never as part of the record. See
  * api/src/modules/conversation/between-session-notes.ts.
  */
-function Composer({ groundId, openCheckInId, openSessionNumber, totalSessions, nextOpensAt }: {
+function Composer({ groundId, openCheckInId, openSessionNumber, totalSessions, nextOpensAt, onOpenSession, openPending }: {
   groundId: string
   openCheckInId: string | null
   openSessionNumber: number | null
   totalSessions: number | null
   nextOpensAt: string | null
+  /**
+   * OPENING A SESSION CAN COST MONEY, so this does not navigate on its own.
+   *
+   * The page owns `probeSession`, which POSTs `:id/open`, and handles a 403 by
+   * offering the free extension, the access code or the purchase. ChatPage's own
+   * open handler does none of that - it shows "Could not open session" and stops.
+   * So a button here that went straight to /checkin/:id would have quietly removed
+   * the paid path for anybody whose ground had run out of sessions.
+   *
+   * Found by deleting the card view and reading what went with it, rather than by
+   * anything going red.
+   */
+  onOpenSession?: () => void
+  openPending?: boolean
 }) {
   const navigate = useNavigate()
   const qc = useQueryClient()
@@ -159,16 +238,19 @@ function Composer({ groundId, openCheckInId, openSessionNumber, totalSessions, n
     return (
       <div style={{ borderTop: '1px solid var(--gw-border)', paddingTop: 14, marginTop: 18 }}>
         <button
-          onClick={() => navigate(`/checkin/${openCheckInId}`)}
+          onClick={() => (onOpenSession ? onOpenSession() : navigate(`/checkin/${openCheckInId}`))}
+          disabled={openPending}
           style={{ width: '100%', padding: '13px 16px', borderRadius: 10, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
         >
           {/* The total rides along here on purpose. In the card view it lived on the
               open-session card; in a conversation there is nowhere else for "how
               many of these are there" to be, and it is the thing that tells
               somebody whether they are at the start of this or near the end. */}
-          {openSessionNumber != null
-            ? `Continue session ${openSessionNumber}${totalSessions ? ` of ${totalSessions}` : ''} →`
-            : 'Continue your check-in →'}
+          {openPending
+            ? 'Opening…'
+            : openSessionNumber != null
+              ? `Continue session ${openSessionNumber}${totalSessions ? ` of ${totalSessions}` : ''} →`
+              : 'Continue your check-in →'}
         </button>
       </div>
     )
@@ -241,12 +323,14 @@ function Composer({ groundId, openCheckInId, openSessionNumber, totalSessions, n
   )
 }
 
-export function GroundChat({ groundId, openCheckInId, openSessionNumber, totalSessions, nextOpensAt }: {
+export function GroundChat({ groundId, openCheckInId, openSessionNumber, totalSessions, nextOpensAt, onOpenSession, openPending }: {
   groundId: string
   openCheckInId: string | null
   openSessionNumber: number | null
   totalSessions: number | null
   nextOpensAt: string | null
+  onOpenSession?: () => void
+  openPending?: boolean
 }) {
   const { data, isLoading, isError } = useQuery({
     queryKey: ['my-transcript', groundId],
@@ -282,6 +366,9 @@ export function GroundChat({ groundId, openCheckInId, openSessionNumber, totalSe
               correctionOf={s.correctionOf}
             />
             {s.turns.map(t => <Message key={t.id} role={t.role} content={t.content} />)}
+            {s.status === 'COMPLETED' && (
+              <SessionSummary checkInId={s.checkInId} groundId={groundId} sessionNumber={s.sessionNumber} />
+            )}
           </div>
         ))}
       </div>
@@ -293,6 +380,8 @@ export function GroundChat({ groundId, openCheckInId, openSessionNumber, totalSe
         openSessionNumber={openSessionNumber}
         totalSessions={totalSessions}
         nextOpensAt={nextOpensAt}
+        onOpenSession={onOpenSession}
+        openPending={openPending}
       />
       </div>
     </div>

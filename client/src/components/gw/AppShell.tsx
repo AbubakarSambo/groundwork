@@ -1,6 +1,5 @@
 import { toast } from 'sonner'
 import { railAttention, railRank, stillInRail } from '@/lib/rail-attention'
-import { useViewStore } from '@/stores/view'
 import { plannedSessionsFor } from '@/lib/sessionCount'
 import { useState, useRef, useEffect } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
@@ -385,8 +384,6 @@ export function AppSidebar() {
   const qc = useQueryClient()
   const user = useAuthStore(s => s.user)
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
-  const view = useViewStore(s => s.view)
-  const setView = useViewStore(s => s.setView)
   const { data: grounds = [] } = useQuery<Ground[]>({
     queryKey: ['grounds'],
     queryFn: groundsApi.list,
@@ -449,34 +446,12 @@ export function AppSidebar() {
         </div>
 
         {/*
-          CHAT OR MORE, AT THE TOP OF THE RAIL. Her words: "at the top you can
-          switch between checkins and summaries... and everything on the left menu
-          is now chat like channels."
-
-          It is a mode the whole app is in, not a control on one panel of one page,
-          which is where I put it first and where it did nothing for the rail.
+          The Chat / More switch was here for one day. More was the card view of a
+          ground, and Hafsah retired it once the conversation carried the history:
+          "we have now made the more obsolete which is fine." A switch with one side
+          left is a control that teaches people to look for something that is not
+          there.
         */}
-        {!collapsed && isAuthenticated && (
-          <div style={{ padding: '0 12px 12px', flexShrink: 0 }}>
-            <div style={{ display: 'flex', background: 'rgba(255,255,255,.06)', borderRadius: 8, padding: 2 }}>
-              {(['chat', 'more'] as const).map(v => (
-                <button
-                  key={v}
-                  onClick={() => setView(v)}
-                  style={{
-                    flex: 1, padding: '6px 0', borderRadius: 6, border: 'none', cursor: 'pointer',
-                    fontFamily: 'inherit', fontSize: 12, fontWeight: 700,
-                    background: view === v ? 'rgba(255,255,255,.14)' : 'transparent',
-                    color: view === v ? 'white' : 'rgba(255,255,255,.5)',
-                  }}
-                >
-                  {v === 'chat' ? 'Chat' : 'More'}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* New ground button */}
         <div style={{ padding: collapsed ? '0 8px 10px' : '0 10px 10px', flexShrink: 0 }}>
           <button

@@ -3,69 +3,63 @@ import { join } from 'path'
 import { describe, it, expect } from 'vitest'
 
 /**
- * A GROUND OPENS TO ITS OWN HISTORY, WITH THE OPEN SESSION AT THE BOTTOM. W8-57.
+ * A GROUND OPENS TO ITS OWN HISTORY. W8-57.
  *
- * Hafsah's model: a ground is a channel you come back to and keep adding to. A
- * channel opens to what has been said, with the place to type at the bottom.
+ * Hafsah's model: a ground is a channel you come back to and keep adding to, and a
+ * channel opens to what has been said with the place to type at the bottom.
  *
- * What was there instead: a Check-in tab holding only the live session, and a
- * separate "Session history" tab holding the past ones - so the history of the
- * thing was one click away from the thing, and the tab itself said "your
- * in-progress session is on the Check-in tab", which is a product telling you it
- * has been split in two.
+ * THIS FILE HAS BEEN REWRITTEN ONCE, AND THE REASON MATTERS. The first version
+ * pinned the CARD scroll - past sessions as bordered boxes, oldest first, each
+ * expanding to its conversation. That was the right behaviour in the wrong shape,
+ * and Hafsah retired it: "we have now made the more obsolete which is fine." The
+ * conversation itself is the history now.
  *
- * The three properties that make it a scroll rather than a list are pinned here.
- * The visual arrangement is not something a spec can judge; the order, the absence
- * of a duplicate, and the tab being gone are.
+ * So the behaviour those tests protected did not disappear, it moved, and it is
+ * covered where it now lives - `components/gw/GroundChat.spec.tsx` drives the real
+ * component and asserts the order, the dividers, the summary and the composer. What
+ * is left here is the thing only this page can answer: that the Check-in tab
+ * renders the conversation and nothing else, and that the retired card view has not
+ * crept back alongside it.
  */
 const SRC = readFileSync(join(__dirname, 'GroundParticipantPage.tsx'), 'utf8')
 
-/** The block that renders the scroll, so the assertions cannot match elsewhere. */
-const SCROLL = SRC.slice(
-  SRC.indexOf('THE GROUND OPENS TO ITS OWN HISTORY'),
-  SRC.indexOf('{/* Active check-in card */}'),
-)
-
-describe('the check-in scroll', () => {
-  it('exists, above the active session', () => {
-    expect(SCROLL).toContain('<PastSession')
-    // Sliced from the marker to the active card, so being non-empty IS the ordering:
-    // the history renders before the live session, not after it.
-    expect(SCROLL.length).toBeGreaterThan(0)
+describe('the Check-in tab', () => {
+  it('renders the conversation', () => {
+    expect(SRC).toContain('<GroundChat')
   })
 
-  it('reads oldest first, so the bottom is where you are now', () => {
-    // b - a would put the newest at the top, which is a list of receipts. A scroll
-    // you read downwards has to end at the session you owe.
-    expect(SCROLL).toMatch(/sort\(\(a: any, b: any\) => a\.sessionNumber - b\.sessionNumber\)/)
-    expect(SCROLL).not.toMatch(/b\.sessionNumber - a\.sessionNumber/)
+  it('and renders it as the whole tab, not one panel of it', () => {
+    // `{tab === 'checkin' && (` with no second condition. A `view === '...'` gate
+    // here would mean the conversation is one of several things this tab can show,
+    // which is the arrangement that was removed.
+    expect(SRC).toMatch(/\{tab === 'checkin' && \(/)
+    expect(SRC).not.toContain("tab === 'checkin' && view ===")
   })
 
-  it('does not show the open session twice', () => {
-    // The open check-in is in myCheckIns as well, and it already has its own card
-    // at the bottom. Without this filter a person sees session 3 listed as history
-    // directly above session 3 asking them to start it.
-    expect(SCROLL).toContain("filter((ci: any) => ci.id !== openCheckIn?.id)")
+  it('opening a session goes through the page, because it can cost money', () => {
+    /**
+     * `probeSession` POSTs `:id/open` and handles a 403 by offering the free
+     * extension, the access code or a subscription. `ChatPage`'s own open handler
+     * shows "Could not open session" and stops. So the composer must call back into
+     * this page rather than navigate to /checkin/:id itself - otherwise retiring the
+     * card view silently removed the paid path.
+     */
+    expect(SRC).toContain('onOpenSession={() => dueNow && probeSession.mutate(openCheckIn)}')
   })
 })
 
-describe('the separate Session history tab', () => {
-  it('is gone, because everything it held is in the scroll', () => {
-    expect(SRC).not.toContain("{ key: 'history', label: 'Session history' }")
-    expect(SRC).not.toContain("tab === 'history'")
+describe('the retired card view', () => {
+  it('is gone, and so is the switch that used to reveal it', () => {
+    expect(SRC).not.toContain("view === 'more'")
+    expect(SRC).not.toContain('useViewStore')
   })
 
-  it('and nothing still tries to send anybody to it', () => {
-    expect(SRC).not.toContain("setTab('history')")
-  })
-
-  it('but what it rendered survives', () => {
-    // Extracted rather than rewritten: the quality badge, the commitment, the
-    // "what we heard from you" summary and the conversation all move together.
-    const card = SRC.slice(SRC.indexOf('function PastSession'), SRC.indexOf('function SoloArtifactBlock'))
-    expect(card).toContain('specificityQualityLabel')
-    expect(card).toContain('nextCommitment')
-    expect(card).toContain('<SoloArtifactBlock')
-    expect(card).toContain('<SessionConversation')
+  it('and its components are not left behind unused', () => {
+    // PastSession, SessionConversation and SoloArtifactBlock existed only to render
+    // the cards. Dead components in a 900-line page are how the next person
+    // concludes there are two ways to do this.
+    for (const gone of ['function PastSession', 'function SessionConversation', 'function SoloArtifactBlock']) {
+      expect(SRC, `${gone} should have gone with the card view`).not.toContain(gone)
+    }
   })
 })
