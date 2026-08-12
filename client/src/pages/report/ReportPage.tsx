@@ -506,7 +506,17 @@ export function ReportPage() {
   if (!report || (!(report as any).sharedPicture && !(report as any).forming)) {
     return (
       <div style={{ ...PAGE_STYLE, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
-        <div style={{ fontSize: 13, color: '#9B9590' }}>Your report will appear here once at least one person has checked in.</div>
+        {/*
+          IT SAID "once at least one person has checked in" TO SOMEBODY WHO HAD.
+          This is the SHARED report, which needs every party in before it can show
+          where accounts agree or differ - so the old sentence was measuring the
+          wrong thing, and on a ground where session 1 was complete it read as the
+          product having lost the check-in.
+        */}
+        <div style={{ fontSize: 13, color: '#9B9590', maxWidth: 380, textAlign: 'center', lineHeight: 1.6 }}>
+          The shared report appears once everybody has checked in. Your own record is on
+          your ground page in the meantime.
+        </div>
         <button onClick={() => navigate(-1)} style={{ fontSize: 12, color: '#0C447C', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>Go back</button>
       </div>
     )
