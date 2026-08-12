@@ -246,8 +246,15 @@ export function GroundsListPage() {
               <div style={{ fontSize: 16, fontWeight: 700 }}>
                 {grounds.length > 0 ? `Your grounds (${grounds.length})` : 'Your grounds'}
               </div>
+              {/*
+                A SIGNED-IN PERSON MUST NOT BE SENT TO /start.
+                /start is the anonymous entry chat: no account, transcript in
+                localStorage, and a save card at the end asking for the email of
+                somebody who is already signed in. An admin who wants a ground
+                belongs in the picker at /grounds/new.
+              */}
               <button
-                onClick={() => navigate('/start')}
+                onClick={() => navigate('/grounds/new')}
                 style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 + Open a ground
@@ -267,7 +274,7 @@ export function GroundsListPage() {
                   You will see grounds here when someone invites you, or when you open one yourself.
                 </div>
                 <button
-                  onClick={() => navigate('/start')}
+                  onClick={() => navigate('/grounds/new')}
                   style={{ padding: '12px 24px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
                 >
                   Open a ground
