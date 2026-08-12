@@ -336,6 +336,22 @@ export function GroundParticipantPage() {
    */
   const view = useViewStore(s => s.view)
 
+  /**
+   * WHERE CONTEXT WENT: it was never on this page.
+   *
+   * The admin page labels its documents tab "Context" when CONTEXT_ENABLED is on,
+   * and holds context notes there. This page called the same tab "Documents"
+   * always and never read the flag - so a participant looking for the place to
+   * put background found a file picker, and somebody moving between the two views
+   * saw two names for one thing.
+   *
+   * The label matches now. What a participant can DO there is still narrower than
+   * the lead by design: uploads are theirs, and `addLeadContext` is the lead's -
+   * that is a product decision, not an oversight, and it stays until Hafsah says
+   * otherwise.
+   */
+  const contextEnabled = (ground as any)?.contextEnabled === true
+
   if (isLoading) return <div style={{ minHeight: '100vh', background: '#F5F3EF', padding: 24, fontSize: 13, color: '#9B9590' }}>Loading…</div>
   if (!ground) return <div style={{ minHeight: '100vh', background: '#F5F3EF', padding: 24, fontSize: 13, color: '#9B9590' }}>Ground not found.</div>
 
@@ -402,7 +418,7 @@ export function GroundParticipantPage() {
     { key: 'checkin', label: 'Check-in' },
     { key: 'record', label: 'My record' },
     { key: 'report', label: 'Report' },
-    { key: 'docs', label: 'Documents' },
+    { key: 'docs', label: contextEnabled ? 'Context' : 'Documents' },
     { key: 'settings', label: 'Settings' },
   ]
 
@@ -465,23 +481,33 @@ export function GroundParticipantPage() {
         </div>
       </div>
 
+      {/*
+        THE CHAT GETS THE WHOLE SPACE, LIKE A CHAT.
+
+        Everything on this page sat in a 600px column with 48px of padding under
+        it, which is right for cards and wrong for a conversation - it made the
+        thing she asked to be an open space read as a small box in the middle of a
+        grey page. The live check-in at /checkin/:id is `flex: 1` with the messages
+        scrolling and the composer pinned; this is now the same shape.
+
+        Only the chat. The card views keep the narrow column, because a column is
+        what makes a stack of cards readable.
+      */}
+      {tab === 'checkin' && view === 'chat' && (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, maxWidth: 900, margin: '0 auto', width: '100%', padding: '0 16px 16px' }}>
+          <GroundChat
+            groundId={id!}
+            openCheckInId={dueNow ? openCheckIn.id : null}
+            openSessionNumber={dueNow ? openCheckIn.sessionNumber : null}
+            totalSessions={totalSessions ?? null}
+            nextOpensAt={opensLater ? openAvailableFrom : null}
+          />
+        </div>
+      )}
+
       <div style={{ maxWidth: 600, margin: '0 auto', width: '100%', padding: '16px 16px 48px' }}>
 
         {/* CHECK-IN TAB */}
-        {tab === 'checkin' && (
-          <div>
-            {view === 'chat' && (
-              <GroundChat
-                groundId={id!}
-                openCheckInId={dueNow ? openCheckIn.id : null}
-                openSessionNumber={dueNow ? openCheckIn.sessionNumber : null}
-                totalSessions={totalSessions ?? null}
-                nextOpensAt={opensLater ? openAvailableFrom : null}
-              />
-            )}
-          </div>
-        )}
-
         {tab === 'checkin' && view === 'more' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
 
@@ -702,8 +728,22 @@ export function GroundParticipantPage() {
         {/* MY RECORD TAB */}
         {tab === 'record' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {/* The participant gets an equal say in how the ground ends. */}
-            {id && <ResolutionPanel groundId={id} />}
+            {/*
+              THE EXIT BELONGS AT THE EXIT, ON THIS PAGE TOO. W8-5, half-fixed.
+
+              I gated this on the admin page and marked the item done. Here it
+              stayed unconditional and first, so "My record" opened with "Each
+              person picks the outcome they think the record supports. The ground
+              closes only when everyone picks the same one, and nobody closes it
+              alone" - above four buttons including one that stops the project - on
+              a ground with one session done. Hafsah found it in the same words she
+              used the first time.
+
+              Same rule as the admin page: near the end, or already started.
+            */}
+            {id && ((totalSessions != null && completedCheckIns.length >= totalSessions - 1) || (ground as any).resolutionState) && (
+              <ResolutionPanel groundId={id} />
+            )}
 
             {/* The empty state, and NO price.
                 `insightsLocked` does not mean "unpaid" - it means "no completed
@@ -1013,9 +1053,11 @@ export function GroundParticipantPage() {
         {/* DOCUMENTS TAB */}
         {tab === 'docs' && (
           <div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#1A1916', marginBottom: 4 }}>Documents</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#1A1916', marginBottom: 4 }}>{contextEnabled ? 'Context' : 'Documents'}</div>
             <div style={{ fontSize: 12, color: '#9B9590', lineHeight: 1.6, marginBottom: 14, background: 'white', borderRadius: 8, padding: '10px 12px', border: '1px solid #E2E0DB' }}>
-              Documents the admin has shared appear here. Your uploads are part of your contribution to this ground's record until the report is released.
+              {contextEnabled
+                ? "This is where the background lives. Anything the lead has opened to the ground appears here, and your check-in has read it. What you upload is yours until the report is released, and it shapes the questions you get asked."
+                : "Documents the admin has shared appear here. Your uploads are part of your contribution to this ground's record until the report is released."}
             </div>
 
             <div style={{ fontSize: 11, color: '#9B9590', marginBottom: 10, lineHeight: 1.6 }}>
