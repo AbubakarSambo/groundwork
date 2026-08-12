@@ -1740,6 +1740,15 @@ derived number as soon as the timeline and rhythm are known, and "Session N of M
 agree on what N is. Also settle whether N counts sessions completed or the session now open -
 "Session 2 of 6" after one check-in reads as though a session was skipped.
 
+**Done 2026-08-12, and the cause was two more copies of the arithmetic.** `GroundAdminPage`
+derived the count with `plannedSessionsFor` for its header and separately read
+`sessionCounts.total ?? totalSessions ?? 1` for the context panel, which is how the same page
+could say "Session 2 of 6" above a panel planning for one. It now derives once at the top and
+everything reads that. The entry chat was the fourth implementation and the only one that rounded
+to nearest, so twenty days of weekly check-ins promised three and the server then made two; it
+now calls `plannedSessionsFor` like everything else. A tripwire in `sessionCount.spec.ts` fails if
+anybody writes a days-per-cadence table by hand again.
+
 ## W8-5 · Bringing this ground to an end, offered at session 2 of 6 - **S**
 
 **Evidence.** It is the FIRST card on the Overview tab. At "Session 2 of 6", with one

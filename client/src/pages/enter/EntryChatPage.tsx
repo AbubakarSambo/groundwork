@@ -6,6 +6,7 @@ import { authApi } from '@/api/auth'
 import { useEntryStore } from '@/stores/entry'
 import { useAuthStore } from '@/stores/auth'
 import { VennIcon } from '@/components/gw/VennIcon'
+import { plannedSessionsFor } from '@/lib/sessionCount'
 import { toast } from 'sonner'
 
 const STORAGE_KEY = 'gw_entry_session'
@@ -966,11 +967,17 @@ export function EntryChatPage() {
          */
         if (res.extracted.cadence) { setCadence(res.extracted.cadence); setCadenceChosen(true) }
         if (res.extracted.timelineDays && res.extracted.timelineDays > 0) {
-          const days = res.extracted.timelineDays
-          const c = res.extracted.cadence ?? cadence
-          const perSession = c === 'DAILY' ? 1 : c === 'WEEKLY' ? 7 : c === 'FORTNIGHTLY' ? 14 : c === 'MONTHLY' ? 30 : 0
-          if (perSession > 0) setSessions(Math.max(1, Math.round(days / perSession)))
-          else if (c === 'ONE_TIME') setSessions(1)
+          /**
+           * THE SAME ARITHMETIC AS THE SERVER, NOT A FOURTH COPY OF IT. W8-4.
+           *
+           * This had its own switch and rounded to nearest, while the server and
+           * every other screen round down. Twenty days of weekly check-ins is
+           * two whole weeks with six days left over: this page promised three
+           * and the server then created two, so the first thing the ground did
+           * was contradict the number the person had just agreed to.
+           */
+          const planned = plannedSessionsFor(res.extracted.timelineDays, res.extracted.cadence ?? cadence)
+          if (planned != null) setSessions(planned)
         }
         // Background classify intent when we have initial
         if (res.extracted.initial) {

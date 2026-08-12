@@ -140,6 +140,21 @@ export function GroundAdminPage() {
   })
 
   const isInitiator = !!ground && user?.id === ground.initiatorId
+  /**
+   * ONE READING OF HOW MANY SESSIONS THIS GROUND HAS. W8-4.
+   *
+   * This page held two. The header derived it from the timeline and the rhythm
+   * with `plannedSessionsFor`, and the context strength read
+   * `sessionCounts.total ?? totalSessions ?? 1` off the payload - which is how a
+   * ground could say "Session 2 of 6" at the top while the panel below planned
+   * for one. Hafsah's call was that derived wins, so it is derived once, here,
+   * and everything on the page reads this.
+   */
+  const plannedSessions = plannedSessionsFor(
+    ground?.timelineDays,
+    (ground as any)?.cadence,
+    (ground as any)?.maxSessions ?? (ground as any)?.totalSessions,
+  )
   // Sent with the ground, because the client cannot read an environment variable
   // and a screen that guesses whether a feature is on renders half of it.
   const contextEnabled = (ground as any)?.contextEnabled === true
@@ -156,7 +171,7 @@ export function GroundAdminPage() {
     perPersonObjectiveCount: ((ground as any).objectives ?? []).length,
     openDocumentCount: docs.filter((d: any) => d.visibility === 'OPEN').length,
     peopleWorkTogether: (ground as any).peopleWorkTogether !== false,
-    plannedSessions: (ground as any).sessionCounts?.total ?? (ground as any).totalSessions ?? 1,
+    plannedSessions: plannedSessions ?? 1,
   }) : null
 
   const { data: pendingRequests = [] } = useQuery({
@@ -445,13 +460,6 @@ export function GroundAdminPage() {
   // completed check-ins and called the result "Aligned".
   const alignRead = alignmentLabel((ground as any).alignment)
 
-  // The ground payload carries no planned-session count, only the timeline and
-  // the cadence - so derive it the same way every other surface does.
-  const plannedSessions = plannedSessionsFor(
-    ground.timelineDays,
-    (ground as any).cadence,
-    (ground as any).maxSessions ?? (ground as any).totalSessions,
-  )
   // Every party, every session - not "twelve distinct numbers are complete
   // somewhere". See everySessionDone: the short version closed a ground over a
   // missing closing account.

@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest'
+import { readFileSync } from 'fs'
+import { join } from 'path'
 import { plannedSessionsFor, everySessionDone } from './sessionCount'
 
 /**
@@ -111,5 +113,30 @@ describe('a ground is done when everyone is done', () => {
   it('does not call an empty ground finished', () => {
     expect(everySessionDone([], [], 12)).toBe(false)
     expect(everySessionDone(parties, [], 12)).toBe(false)
+  })
+})
+
+/**
+ * ONE RULE, AND NOBODY KEEPING A PRIVATE COPY OF IT. W8-4.
+ *
+ * The entry chat had its own switch over cadence and rounded to nearest, so a
+ * twenty-day weekly ground was promised three check-ins and given two. It was
+ * the fourth implementation of this arithmetic; this is the tripwire against a
+ * fifth.
+ */
+describe('nothing computes the session count by hand', () => {
+  const src = readFileSync(join(__dirname, '../pages/enter/EntryChatPage.tsx'), 'utf8')
+
+  it('the entry chat uses plannedSessionsFor', () => {
+    expect(src).toContain('plannedSessionsFor(')
+  })
+
+  it('and does not keep its own days-per-cadence table', () => {
+    expect(src).not.toMatch(/'DAILY'\s*\?\s*1\s*:/)
+  })
+
+  it('rounds down, which is what the server does', () => {
+    // Twenty days of weekly check-ins is two whole weeks and six spare days.
+    expect(plannedSessionsFor(20, 'WEEKLY')).toBe(2)
   })
 })
