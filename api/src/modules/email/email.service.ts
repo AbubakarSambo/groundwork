@@ -188,6 +188,12 @@ export class EmailService {
         `<p>Hi,</p>
          <p><strong>${adminName}</strong> set up <strong>${groundLabel}</strong> on Groundwork and named you to lead it.</p>
          <p>You decide when to begin. Review the context they left, add or edit it, and confirm when you are ready. You will do your own check-in as part of this, and any people already invited will be waiting on you.</p>
+         <!--
+           W8-6. The Context tab has document upload and context notes, and
+           nothing anywhere told anybody it was there, so it went unused. One
+           sentence, in the email that gets opened before the ground does.
+         -->
+         <p>The Context tab on the ground is where background goes - notes, and documents like a plan, a brief or a spreadsheet. What you upload is yours by default; mark it open to the ground and everybody works from it, and their check-ins will have read it too.</p>
          <p><a href="${url}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Review and begin →</a></p>`,
       ),
     }, context ?? { kind: 'LEAD_INVITE' });

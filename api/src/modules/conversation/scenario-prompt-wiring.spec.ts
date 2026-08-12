@@ -94,12 +94,12 @@ function makeService(opts: {
     prompts,
     anthropic,
     context,
-    {} as any, // EventEmitter2
-    {} as any, // DocumentsService
-    {} as any, // BillingService
-    {} as any, // EmailService
-    {} as any, // UsageService
-    {} as any, // ConfigService
+    { get: () => undefined } as any, // EventEmitter2
+    { get: () => undefined } as any, // DocumentsService
+    { get: () => undefined } as any, // BillingService
+    { get: () => undefined } as any, // EmailService
+    { get: () => undefined } as any, // UsageService
+    { get: () => undefined } as any, // ConfigService
   );
 
   return { service, capturedSystemPrompts, prisma };

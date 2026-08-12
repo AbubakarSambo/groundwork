@@ -1539,8 +1539,8 @@ it is done.
 |---|---|---|---|
 | W8-4 | sessions: three places disagree (1, 6, "2 of 6") | S | DONE |
 | W8-5 | "bringing this ground to an end" offered at session 2 of 6, top of the page | S | DONE |
-| W8-6 | nothing tells you the Context tab exists | S | OPEN |
-| W8-7 | the Context tab is 1 line of what it can do against 7 of what it cannot, and contradicts itself | M | OPEN |
+| W8-6 | nothing tells you the Context tab exists | S | DONE - and an OPEN doc now reaches the session prompt |
+| W8-7 | the Context tab is 1 line of what it can do against 7 of what it cannot, and contradicts itself | M | DONE - can leads, limits fold away, contradiction fixed |
 | W8-11 | never asks who the people inside the organisations are | M | DONE - in ONBOARD_SYSTEM, proved at the prompt |
 | W8-12 | two places to add participants, 550px apart | S | DONE - one queue, both ends say so |
 | W8-16 | the 35s closing report has no honest progress | M | OPEN |
@@ -1548,7 +1548,7 @@ it is done.
 | W8-23 | two tabs render active at once | S | WITHDRAWN |
 | W8-27 | four names for two concepts | S | OPEN |
 | W8-36 | `/invite` and `/set-password` handle a missing token in opposite ways | S | DONE |
-| W8-37 | `/welcome` and `/profile` exist for one line of content | S | OPEN |
+| W8-37 | `/welcome` and `/profile` exist for one line of content | S | DONE |
 | W8-42 | controls that work but sit in the wrong place, including two sending signed-in people to `/start` | S | DONE |
 | W8-55 | a document uploaded in the entry chat is never kept as a document | M | DONE |
 
@@ -1771,6 +1771,16 @@ the Context tab has upload (PDF, DOCX, JPEG, PNG, CSV, XLSX) and context notes.
 
 **Fix.** Say so at the end of setup and in the ground-ready email. This is the cheapest item in
 the wave and it changes whether the feature is used at all.
+
+**Done 2026-08-12, and saying it out loud found a worse bug underneath.** The lead invite now
+names the Context tab and what it is for. Writing that sentence meant checking whether an
+uploaded document actually reaches anybody, and it did not: `documents.list` had been moved onto
+`documentWhereFor` so an OPEN document reaches everyone on the ground, but the query that builds
+the **session prompt** was still `participantId: <mine>`. So a participant could open the Context
+tab, read the brief the lead had shared with them, start their check-in, and be interviewed by
+something that had never seen it - the one case OPEN exists for was the one case it did not
+reach. Both now use the same function, flag and all, guarded by
+`the-session-sees-what-the-person-sees.spec.ts`.
 
 ## W8-7 · What the Context tab promises against what it does - **M**
 
@@ -2332,6 +2342,11 @@ wrong, both cost a person a click to learn nothing.
 **Fix:** fold `/welcome` into wherever it is reached from. Either build `/profile` or take it out
 of the rail until it exists - a menu item that admits it does nothing teaches people the menu is
 unreliable.
+
+**Done, checked 2026-08-12.** `/welcome` is gone - no route, no page, nothing links to it. The
+profile item is out of the rail; the route stays so a link to a person still resolves, and the
+page now says where the record actually lives rather than promising a feature that fetches
+nothing.
 
 ## W8-38 · Five chrome variants, counted - **S**, extends W8-28
 

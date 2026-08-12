@@ -120,8 +120,19 @@ export function whatThisGroundCanTellYou(input: GroundContextInputs): ContextStr
   if (input.partyCount >= 3) {
     can.push('show who is waiting on whom, and where work is landing between you');
   } else {
+    /**
+     * THE REASON HAS TO MATCH THE GROUND IT IS DESCRIBING. W8-7.
+     *
+     * This said "only the two of you are in it" for any ground under three
+     * people, including a ground with one - so the same card said "only one
+     * person is in this ground" four lines above "only the two of you are in
+     * it". Somebody reading their own ground was told two different things
+     * about how many people were in it.
+     */
     cannot.push(
-      'say whose work this depended on, because only the two of you are in it',
+      input.partyCount >= 2
+        ? 'say whose work this depended on, because only the two of you are in it'
+        : 'say whose work this depended on, because nobody else is in it yet',
     );
   }
 

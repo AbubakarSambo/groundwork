@@ -72,7 +72,7 @@ async function captureLivePrompt(patternRows: { code: string }[]): Promise<strin
   const anthropic: any = { respond: jest.fn(async (sys: string) => { captured.push(sys); return 'ok'; }) };
   const context = new ConversationContextService(prisma);
   const prompts: any = { getActiveContent: jest.fn(async (k: string) => (k === 'system' ? 'SYS' : Promise.reject())) };
-  const service = new ConversationService(prisma, prompts, anthropic, context, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any);
+  const service = new ConversationService(prisma, prompts, anthropic, context, { get: () => undefined } as any, { get: () => undefined } as any, { get: () => undefined } as any, { get: () => undefined } as any, { get: () => undefined } as any, { get: () => undefined } as any);
   await service.sendMessage('ci1', 'user-1', 'We shipped the migration.');
   return captured[0];
 }
@@ -125,7 +125,7 @@ describe('GW-PATTERN-PROBE-NOT-STATEMENT: patterns sharpen questions live, never
         return { sharedPicture: '', agreements: [], divergences: [], centralQuestion: '', concernFlags: [{ label: 'founder', observation: 'Completion was claimed without downstream confirmation.' }] };
       }),
     };
-    const reportsService = new ReportsService(reportPrisma, reportPrompts, reportAnthropic, {} as any, {} as any, {} as any, {} as any);
+    const reportsService = new ReportsService(reportPrisma, reportPrompts, reportAnthropic, { get: () => undefined } as any, { get: () => undefined } as any, { get: () => undefined } as any, { get: () => undefined } as any);
     const report = await reportsService.synthesize('g1');
 
     // eslint-disable-next-line no-console

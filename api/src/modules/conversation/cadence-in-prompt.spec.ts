@@ -43,7 +43,7 @@ function makeService(ground: Record<string, any>) {
   const context: any = { build: jest.fn(async () => ({ block: '' })) };
   const service = new ConversationService(
     prisma, prompts, anthropic, context,
-    {} as any, {} as any, {} as any, {} as any, {} as any, {} as any,
+    { get: () => undefined } as any, { get: () => undefined } as any, { get: () => undefined } as any, { get: () => undefined } as any, { get: () => undefined } as any, { get: () => undefined } as any,
   );
   const checkIn = {
     id: 'ci1', groundId: 'g1', participantId: 'p1', sessionNumber: 1,
