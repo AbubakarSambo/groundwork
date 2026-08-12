@@ -4217,7 +4217,7 @@ since the role change is the part nobody expects. Verified in a browser: the que
 "Switch to Hafsah's workspace? You will see Hafsah's workspace's grounds instead of this
 organisation's, as a member.", and declining leaves the organisation alone. Bite-checked.
 
-## W8-72 · "Hafsah and participant" - the report's own prose, **HER DECISION**
+## W8-72 · "Hafsah and participant" - **RESOLVED, and it was never open**
 
 Not fixed, because fixing it either widens who sees a name or changes the wall, and both are
 hers.
@@ -4344,3 +4344,28 @@ of the above is about a reader who was always entitled to the names.
 **One false alarm, recorded so it is not chased twice:** the board payload contains the
 string "undefined", which is the English word in "An undefined role is often..." - not a
 broken template.
+
+## W8-72, corrected · The decision was already made in the code
+
+I put this to her as a choice - names or labels for a non-party org admin - and she said do
+it. There was nothing to do: `reports.service.ts` has always passed `isInitiator ||
+isOrgAdmin` as the lead flag, and a lead reads every name. What looked like a policy gate was
+the three mechanical bugs in W8-73/74 leaving labels behind.
+
+Verified at the endpoint as an org admin who is not a party, after those fixes:
+
+> "Both records describe a 90-day period that was split into two distinct phases. For the
+> first six weeks, Hafsah and Abubakar were operating from different definitions of success."
+
+**So the correction is mine to own: I read a gate into a bug, and asked her to decide
+something the product had already decided.** The lesson is the one this plan keeps recording
+in other forms - I reasoned about behaviour from the code path instead of running it. One
+curl as the actual reader would have answered it before I wrote the question.
+
+It is now pinned in `an-org-admin-reads-with-the-lead-s-eyes.spec.ts`, with the argument
+written down: on a two-party ground the label is transparent anyway, since the party row on
+the same screen carries both names, so hiding the noun buys the appearance of a boundary and
+costs the person who has to act on the report. The real boundary is per-person quality
+material - recall notes, specificity, concerns - which `own-reads-only.ts` strips from every
+reader including the lead, and which stays stripped. Bite-checked by narrowing one call site
+to the lead alone.
