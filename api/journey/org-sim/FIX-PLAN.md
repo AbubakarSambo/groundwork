@@ -3986,3 +3986,35 @@ for the same reason as the API guard, three arms bite-checked.
 thin - three counts and a team list built from every ground's participants. My read is
 that the counts belong on the grounds list and the team list belongs to a ground, which
 would make this page removable. It is no longer urgent, because it no longer breaks.
+
+### W8-63b · Nothing in the client caught a render error - **DONE**
+
+Chasing the `/feed` crash produced the bigger finding. `ErrorBoundary`,
+`componentDidCatch` and `getDerivedStateFromError` appeared **nowhere in the client**. So
+any render error in any page took the entire app to a blank white screen - the rail, the
+ground, whatever the person had open. The feed was not a special case, it was the first
+one anybody happened to trip.
+
+A white page is worse than the dead ends in W8-62. A dead end tells you something went
+wrong. A white page tells you the product does not exist.
+
+`components/gw/PageCrash.tsx` now wraps `<Routes>`. What it says: this page could not
+load, nothing you have written is affected (the first thing anybody wonders, and it is
+true - the record is server-side), then two controls and the error text.
+
+Three decisions worth keeping:
+
+- **No "try again".** The props and state that crashed the render are still there, so
+  retrying crashes again, and a button that fails every time teaches people the product
+  lies to them. The offers are the two that work: leave, or reload from scratch.
+- **The error text is shown.** This is used at work to sort out disagreements with
+  colleagues. If it breaks, the person needs something to paste to whoever they ask for
+  help, and "an unexpected error occurred" helps nobody.
+- **Mounted, not just written.** The guard checks `<PageCrash>` actually wraps `<Routes>`
+  in App.tsx, because a component that exists in a file and wraps nothing is this repo's
+  signature bug - the dead AppShell (W8-45) and the dead FeedbackWidget were both that.
+
+Proved in a browser by throwing deliberately from `AlignmentFeedPage`: the rail stayed,
+the message appeared, the error text was readable, and the throw was then removed.
+Bite-checked both ways - unmounting it from App.tsx and disabling
+`getDerivedStateFromError`.

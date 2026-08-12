@@ -1,3 +1,4 @@
+import { PageCrash } from '@/components/gw/PageCrash'
 import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClient } from '@/lib/queryClient'
@@ -97,6 +98,8 @@ export default function App() {
           <HelpModal />
           <HelpButton />
           <AppShell>
+          {/* A render error in one page used to blank the entire app. W8-63. */}
+          <PageCrash>
           <Routes>
             {/* Public */}
             <Route path="/" element={<RootRoute />} />
@@ -155,6 +158,7 @@ export default function App() {
                 visitor on a blank tab with no way forward. */}
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
+          </PageCrash>
           </AppShell>
         </SessionGuard>
       </BrowserRouter>
