@@ -488,7 +488,15 @@ export function AppSidebar() {
             {grounds.map(g => {
               // DISTINCT session numbers, not the number of check-in rows: with 5
               // people over 13 sessions this counted 65 "sessions".
-              const sessions = new Set((g.checkIns ?? []).map((c: any) => c.sessionNumber)).size
+              //
+              // AND ONLY THE COMPLETED ONES, so this agrees with the ground page.
+              // It counted every check-in row including NOT_STARTED, so the rail
+              // said "1/6" for a ground whose header said "Session 2 of 6" - two
+              // readings of the same ground, one counting what exists and the
+              // other what is done. The label below now says which it is.
+              const sessions = new Set(
+                (g.checkIns ?? []).filter((c: any) => c.status === 'COMPLETED').map((c: any) => c.sessionNumber),
+              ).size
               // Respect the ground's real cadence. Hardcoding /14 said "7 sessions"
               // for a 90-day WEEKLY ground that actually runs ~13.
               const planned = plannedSessionsFor(g.timelineDays, (g as any).cadence, (g as any).maxSessions)
@@ -544,7 +552,7 @@ export function AppSidebar() {
                         const read = alignmentShort((g as any).alignment)
                         return (
                           <span style={{ fontSize: 11, color: `rgba(255,255,255,${read ? '.45' : '.35'})` }}>
-                            {read ? `${read} · ` : ''}{sessions}{maxSessions ? `/${maxSessions}` : ''} sessions
+                            {read ? `${read} · ` : ''}{sessions}{maxSessions ? `/${maxSessions}` : ''} done
                           </span>
                         )
                       })()}
