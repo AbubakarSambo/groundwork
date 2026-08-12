@@ -4628,30 +4628,47 @@ exactly. My first attempt read a `sessionCounts` field that does not exist on th
 silently fell back to "6 sessions"; caught by printing the payload rather than trusting the
 name.
 
-### W13-7 · The report opens with prose; the board opens with what differs - **M**
+### W13-7 · The report opens with prose; the board opens with what differs - **DONE**
 
 The board leads with **where accounts differ** and **the question this turns on**. The report
 leads with a paragraph. The board is the better-written document, and the report is the
 product.
 
-Do: lead the shared report with the same two things, then the prose. No new content - a
-reordering of what synthesis already produces.
+Reordered: **where things stand**, then **what is still open**, then **alignment reached**, then
+the full account. Nothing removed - the paragraph is the fuller read for somebody who wants it
+after the sharp part.
+
+The legend at the top of the page had to change with it. It promised "every report OPENS with
+what runs across everyone's answers", which would have quietly become false, and a legend
+describing a different page is worse than no legend. It now says the report leads with what is
+unresolved and that the full account follows.
+
+Pinned by source order in `the-sharp-part-first.spec.ts`, including the legend, and
+bite-checked by putting the prose back on top.
 
 ## Then: duplication
 
-### W13-8 · One word for one screen - **S**
+### W13-8 · One word for one screen - **DONE**
 
 The lead's first tab is **Chat**. The participant's first tab is **Check-in**. Same component,
 same content, adjacent pages. Somebody being walked through the product by their manager sees
 two words for one screen.
 
-Do: use **Check-in** in both. It is the word the rest of the product uses - the email says your
-check-in is due, the header says My check-ins, the button now says Check in.
+Both are **Check-in** now. It is the word every other surface uses - the email says your check-in
+is due, the header says My check-ins, the button says Check in. "Chat" was mine, from the wave
+that built the conversation view.
 
-### W13-9 · "Settings" means two different things - **S**
+**The card list had to be renamed too, and that was not in the plan.** Leaving it as "Check-ins"
+would have put "Check-in" and "Check-ins" side by side in one tab row, which is worse than the
+problem being fixed. It is **Sessions**, which is what it holds: one row per person per session.
+Three existing specs asserted the old labels and now carry the reason for the new ones.
 
-Ground &rarr; Settings and /settings. Rename the ground's tab to **Ground settings**. One word,
-removes a real ambiguity.
+### W13-9 · "Settings" means two different things - **DONE**
+
+Both ground views now say **Ground settings**. `/settings` is the account, and one word for both
+sent people the wrong way in both directions: somebody looking for their notification
+preferences opened a ground, and somebody looking for a ground's visibility rules left the
+ground entirely.
 
 ### W13-10 · `/pricing` exists twice, in two repositories - **M**
 

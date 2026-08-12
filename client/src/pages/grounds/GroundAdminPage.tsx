@@ -727,7 +727,22 @@ export function GroundAdminPage() {
                   With CONTEXT_ENABLED off it says Documents and behaves exactly as
                   it did, which is what makes the flag honest - off has to be the
                   old product rather than a renamed one. */}
-              {{ chat: 'Chat', overview: 'Overview', checkins: 'Check-ins', docs: contextEnabled ? 'Context' : 'Documents', report: 'Report', settings: 'Settings' }[t]}
+              {/*
+                ONE WORD FOR ONE SCREEN. W13-8.
+
+                This tab was "Chat" and the participant's identical tab was "Check-in" - one
+                component, two words, adjacent pages. Somebody being walked through the product
+                by their manager saw two names for one screen.
+
+                "Check-in" wins because it is the word everything else already uses: the email
+                says your check-in is due, the header says My check-ins, the button says Check
+                in. "Chat" was mine.
+
+                The card list becomes "Sessions", which is what it is - one row per person per
+                session - and it has to change, or the lead ends up with "Check-in" and
+                "Check-ins" side by side, which is worse than the problem being fixed.
+              */}
+              {{ chat: 'Check-in', overview: 'Overview', checkins: 'Sessions', docs: contextEnabled ? 'Context' : 'Documents', report: 'Report', settings: 'Ground settings' }[t]}
             </button>
           ))}
           {(ground as any).boardRenders && (

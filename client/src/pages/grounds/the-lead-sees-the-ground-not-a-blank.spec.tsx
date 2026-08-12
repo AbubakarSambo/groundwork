@@ -43,10 +43,16 @@ describe('the chat is here at all', () => {
     expect(CODE).toMatch(/\['chat', 'checkins'/)
   })
 
-  it('the check-in list keeps its own tab rather than being replaced', () => {
-    // A lead scanning twelve sessions for who has not checked in wants the list. That is
-    // a different question from reading what was said.
-    expect(CODE).toMatch(/checkins: 'Check-ins'/)
+  it('the session list keeps its own tab rather than being replaced', () => {
+    /**
+     * A lead scanning twelve sessions for who has not checked in wants the list. That is a
+     * different question from reading what was said.
+     *
+     * It is called "Sessions" since W13-8: the conversation tab took "Check-in", the word the
+     * emails and the buttons use, and two tabs called Check-in and Check-ins would have been
+     * worse than the two different words they replaced.
+     */
+    expect(CODE).toMatch(/checkins: 'Sessions'/)
   })
 })
 

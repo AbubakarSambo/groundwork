@@ -316,7 +316,10 @@ export function GroundParticipantPage() {
     { key: 'record', label: 'My record' },
     { key: 'report', label: 'Report' },
     { key: 'docs', label: contextEnabled ? 'Context' : 'Documents' },
-    { key: 'settings', label: 'Settings' },
+    // "Ground settings", not "Settings": /settings is the ACCOUNT, and one word for both
+    // meant a person looking for their notification preferences opened a ground and a person
+    // looking for this one left the ground entirely. W13-9.
+    { key: 'settings', label: 'Ground settings' },
   ]
   // The server decides whether a ground has a board (`boardRenders`); the client
   // does not keep a second copy of the routing table.
