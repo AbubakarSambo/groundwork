@@ -4,6 +4,8 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { whatThisGroundCanTellYou } from '@/lib/contextStrength'
 import { ContextStrength } from '@/components/gw/ContextStrength'
+import { GroundChat } from '@/components/gw/GroundChat'
+import { GroundGone } from '@/components/gw/GroundGone'
 import { ContextChat } from '@/components/gw/ContextChat'
 import { useAuthStore } from '@/stores/auth'
 import { groundsApi, type GroundCadence } from '@/api/grounds'
@@ -48,7 +50,23 @@ const MOMENT_LABELS: Record<string, string> = {
 
 
 
-type Tab = 'overview' | 'checkins' | 'docs' | 'report' | 'settings'
+/**
+ * THE CHAT WENT MISSING FROM THIS VIEW, AND I DID NOT NOTICE. W8-67.
+ *
+ * Her words: "the chat like slack disappear again, what is happening".
+ *
+ * It never disappeared from the code - it disappeared from HALF THE PRODUCT. GroundChat
+ * is mounted by `GroundParticipantPage` only. So a participant lands in the conversation
+ * and a LEAD or an ORG ADMIN, opening the same ground, gets a list of session cards and no
+ * chat anywhere. When the card view was retired (46321a0) the rail toggle and
+ * `stores/view.ts` went with it, correctly - but the retirement was done on the
+ * participant page and this one was left as it was.
+ *
+ * So 'chat' is the first tab here too, and the card list keeps its own tab rather than
+ * being deleted: a lead scanning twelve sessions for who has not checked in wants the
+ * list, and that is a genuinely different question from reading what was said.
+ */
+type Tab = 'chat' | 'overview' | 'checkins' | 'docs' | 'report' | 'settings'
 type ReportSession = 's1' | 's2' | 'closing'
 
 export function GroundAdminPage() {
@@ -66,7 +84,7 @@ export function GroundAdminPage() {
    *
    * The participant view already opens on Check-in; this makes the two agree.
    */
-  const [tab, setTab] = useState<Tab>('checkins')
+  const [tab, setTab] = useState<Tab>('chat')
   const [reportSession, setReportSession] = useState<ReportSession>('s1')
   const [ctxNote, setCtxNote] = useState('')
   const [groundLabel, setGroundLabel] = useState('')
@@ -140,6 +158,27 @@ export function GroundAdminPage() {
     mutationFn: (docId: string) => documentsApi.remove(id!, docId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['docs', id] }),
   })
+
+  /**
+   * WHO A CHECK-IN BELONGS TO.
+   *
+   * `CHECKIN_SELECT` returns `participantId` and nothing else about the person, so
+   * anything that wants a name has to join through `ground.participants`. Both places
+   * that needed one had guessed at `participantEmail` / `participantName`, fields the
+   * payload has never carried, and both failed silently: one sorted by row id, the other
+   * rendered "Nobody has checked in yet" over twelve completed sessions. W8-66.
+   *
+   * Falls back to the email's local part only when there is no linked user - which is a
+   * participant who has not accepted yet, so there genuinely is no name to use.
+   */
+  const nameOfParticipant = (participantId: string | null | undefined): string | null => {
+    if (!participantId) return null
+    const p: any = (ground?.participants ?? []).find((x: any) => x.id === participantId)
+    if (!p) return null
+    const first = (p.user?.firstName ?? '').trim()
+    if (first) return first
+    return p.email ? String(p.email).split('@')[0] : null
+  }
 
   const isInitiator = !!ground && user?.id === ground.initiatorId
 
@@ -335,7 +374,8 @@ export function GroundAdminPage() {
   }, [ground?.label, ground?.scenario])
 
   if (isLoading) return <Shell><div style={{ padding: 24, fontSize: 13, color: 'var(--gw-muted)' }}>Loading…</div></Shell>
-  if (!ground) return <Shell><div style={{ padding: 24, fontSize: 13, color: 'var(--gw-muted)' }}>Ground not found.</div></Shell>
+  // Was the bare words "Ground not found." with nothing to press. W8-65.
+  if (!ground) return <Shell><GroundGone /></Shell>
 
   /**
    * REFUSED OUT LOUD, WITH SOMEWHERE TO GO.
@@ -565,7 +605,25 @@ export function GroundAdminPage() {
             <div>
               <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.2 }}>{ground.label}</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                <span style={{ fontSize: 10, fontWeight: 600, padding: '1px 7px', borderRadius: 20, background: 'var(--gw-blue-bg)', color: 'var(--gw-navy)' }}>{MOMENT_LABELS[ground.moment] ?? ground.moment}</span>
+                {/*
+                  "STARTING", ON A GROUND WITH TWELVE OF TWELVE SESSIONS DONE. W8-66.
+
+                  This pill is the ground's MOMENT - what it was opened for - and the
+                  moment for a new hire is genuinely STARTING for the ground's whole life.
+                  But a small pill under the title, next to a green live dot, is where
+                  every product on earth puts a status, so it reads as one, and on a
+                  finished ground it reads as a lie.
+
+                  Same word, labelled, so it cannot be mistaken for the state of the
+                  ground. The state is the green dot beside it and the line under the
+                  title, which were both already right.
+                */}
+                <span
+                  title="What this ground was opened for. Not its current state."
+                  style={{ fontSize: 10, fontWeight: 600, padding: '1px 7px', borderRadius: 20, background: 'var(--gw-blue-bg)', color: 'var(--gw-navy)' }}
+                >
+                  Opened for: {MOMENT_LABELS[ground.moment] ?? ground.moment}
+                </span>
                 {ground.status === 'ACTIVE' && <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--gw-green-b)', display: 'inline-block' }} />}
               </div>
             </div>
@@ -648,13 +706,13 @@ export function GroundAdminPage() {
             the parts of a ground. It only appears when the server says this
             ground has one (boardRenders), same as before. */}
         <div style={{ display: 'flex', borderTop: '0.5px solid var(--gw-border)', overflowX: 'auto' }}>
-          {(['checkins', 'overview', 'docs', 'report', 'settings'] as Tab[]).map(t => (
+          {(['chat', 'checkins', 'overview', 'docs', 'report', 'settings'] as Tab[]).map(t => (
             <button key={t} className={`gw-tab${tab === t ? ' active' : ''}`} onClick={() => setTab(t)}>
               {/* THE TAB IS CALLED CONTEXT ONCE THERE IS CONTEXT IN IT. (G38, G26)
                   With CONTEXT_ENABLED off it says Documents and behaves exactly as
                   it did, which is what makes the flag honest - off has to be the
                   old product rather than a renamed one. */}
-              {{ overview: 'Overview', checkins: 'Check-ins', docs: contextEnabled ? 'Context' : 'Documents', report: 'Report', settings: 'Settings' }[t]}
+              {{ chat: 'Chat', overview: 'Overview', checkins: 'Check-ins', docs: contextEnabled ? 'Context' : 'Documents', report: 'Report', settings: 'Settings' }[t]}
             </button>
           ))}
           {(ground as any).boardRenders && (
@@ -709,8 +767,28 @@ export function GroundAdminPage() {
             </div>
             <div style={{ fontSize: 12.5, color: 'var(--gw-navy)', lineHeight: 1.6 }}>
               {(() => {
+                /**
+                 * IT SAID "its lead runs this ground." W8-66.
+                 *
+                 * Two bugs in one line, both visible the moment an org admin opened
+                 * somebody else's ground:
+                 *
+                 * 1. It read `lead.email`, and `grounds.service.ts:872` NULLS the email
+                 *    for a viewer who is neither the person nor the ground's lead - on
+                 *    purpose. So for the only people who ever see this banner, the field
+                 *    it depends on is always empty, and the fallback always fired.
+                 * 2. The fallback was the lowercase fragment "its lead", which starts a
+                 *    sentence, so the banner read "its lead runs this ground." - a broken
+                 *    template, on an admin's first look at a colleague's ground.
+                 *
+                 * The name is in the payload the whole time: `SAFE_PARTICIPANT_SELECT`
+                 * pulls `user.firstName` precisely so somebody can be named when their
+                 * email is hidden. Using the address to make a name was the W10-2 mistake
+                 * anyway - "hafsah@meridian.test" is not what that person is called.
+                 */
                 const lead = (ground.participants ?? []).find((p: any) => p.partyType === 'INITIATOR')
-                const who = lead?.email ? lead.email.split('@')[0] : 'its lead'
+                const first = (lead?.user?.firstName ?? '').trim()
+                const who = first || 'The lead of this ground'
                 return `${who} runs this ground. You can see everything here, which is the point of being an admin - but releasing the report and closing the ground are theirs to decide, and nothing you do here is hidden from them.`
               })()}
             </div>
@@ -1157,6 +1235,79 @@ export function GroundAdminPage() {
         )}
 
         {/* CHECK-INS */}
+        {tab === 'chat' && (
+          // The same component the participant view mounts, so there is one chat in the
+          // product rather than a lead's version of one. A lead is not checking in here -
+          // this is the ground's history, which is what they came to read.
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+            <GroundChat
+              groundId={id!}
+              openCheckInId={null}
+              openSessionNumber={null}
+              totalSessions={plannedSessions ?? null}
+              nextOpensAt={null}
+              onOpenSession={() => {}}
+              openPending={false}
+              /**
+                * HER POINT, AND IT IS THE COMMON CASE: "what if sets themselves as
+                * checkin in too, they need a chat".
+                *
+                * Step 6 of setup offers "I am a party. Let's begin." A lead who takes it
+                * is a participant with their own check-ins, and they must get the real
+                * conversation - not a read-only history of a ground they are in. So this
+                * keys on whether they are actually a party, not on whether they are the
+                * lead. Lead who is a party: the chat. Lead or org admin who is not: the
+                * ground's history, because there is no transcript of theirs to show and
+                * somebody else's is not theirs to read.
+                */
+              viewerIsParty={(ground.participants ?? []).some((p: any) => p.userId === user?.id)}
+              history={[...(ground.checkIns ?? [])]
+                .reduce((acc: any[], ci: any) => {
+                  const n = ci.sessionNumber ?? 1
+                  const row = acc.find(r => r.sessionNumber === n)
+                  const who = nameOfParticipant(ci.participantId)
+                  const done = ci.status === 'COMPLETED'
+                  if (row) {
+                    if (done && who && !row.people.includes(who)) row.people.push(who)
+                    if (ci.completedAt && ci.completedAt > row.date) row.date = ci.completedAt
+                  } else {
+                    acc.push({ sessionNumber: n, date: ci.completedAt ?? ci.createdAt ?? '', people: done && who ? [who] : [] })
+                  }
+                  return acc
+                }, [])
+                .sort((a: any, b: any) => a.sessionNumber - b.sessionNumber)}
+              label={ground.label}
+              scenario={(ground as any).scenario}
+              brief={(ground as any).brief}
+              /*
+                "24 OF 12 SESSIONS DONE". W8-66.
+
+                A check-in is per person per session, so counting completed check-ins
+                counts ROWS: two parties through twelve sessions is twenty-four of them.
+                The topic card then read "24 of 12 sessions done", which is not a number
+                anybody can act on.
+
+                A session is done when everybody's check-in for it is done, so this counts
+                DISTINCT session numbers where nothing is still open.
+              */
+              sessionsDone={(() => {
+                const all = (ground.checkIns ?? []) as any[]
+                const numbers = [...new Set(all.map(c => c.sessionNumber ?? 1))]
+                return numbers.filter(n =>
+                  all.filter(c => (c.sessionNumber ?? 1) === n).every(c => c.status === 'COMPLETED'),
+                ).length
+              })()}
+              signals={((ground as any).signals ?? [])
+                .filter((sig: any) => sig.observationText)
+                .map((sig: any) => ({
+                  label: sig.code?.startsWith('D') ? 'Divergence' : 'Convergence',
+                  text: sig.observationText,
+                  session: sig.lastPeriodNumber ?? 1,
+                }))}
+            />
+          </div>
+        )}
+
         {tab === 'checkins' && (
           <div>
             {/*
@@ -1197,7 +1348,31 @@ export function GroundAdminPage() {
               {(ground.checkIns ?? []).length === 0 && (
                 <div style={{ fontSize: 13, color: 'var(--gw-muted)', textAlign: 'center', padding: 24 }}>No check-ins yet.</div>
               )}
-              {ground.checkIns?.map((ci: any) => {
+              {/*
+                THE ROWS CAME OUT IN NO ORDER AT ALL. W8-66.
+
+                Rendered straight from the payload, so a real twelve-session ground with
+                two parties showed twenty-four cards reading "Session 4, Session 1,
+                Session 1, Session 4, ..." - which is not a record anybody can read. The
+                page never noticed because every ground anyone had looked at had one or
+                two sessions, where arbitrary order and correct order look the same.
+
+                Newest session first: the thing an admin opens this for is what just
+                happened. Within a session, ordered by who, so the two parties' rows sit
+                together and stay put between renders.
+              */}
+              {[...(ground.checkIns ?? [])]
+                .sort((a: any, b: any) =>
+                  (b.sessionNumber ?? 0) - (a.sessionNumber ?? 0) ||
+                  // A check-in carries `participantId` and nothing else about the person -
+                  // the name has to be looked up. My first version of this sorted on
+                  // `participantEmail`, a field the payload has never had, so it silently
+                  // fell through to the row id. W8-66.
+                  String(nameOfParticipant(a.participantId) ?? a.id).localeCompare(
+                    String(nameOfParticipant(b.participantId) ?? b.id),
+                  ),
+                )
+                .map((ci: any) => {
                 // Check-ins are per-participant-per-session, so a given session
                 // number legitimately appears once per party. Label each row
                 // with whose check-in it is, or two parties' session-1 rows read

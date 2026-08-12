@@ -4059,3 +4059,69 @@ assembled-prompt check is as far as I can take it locally - the actual reply can
 produced by the gate, which has them. That is a real limit on this fix and not a green
 tick: the rule is in the prompt, and whether the model follows it is what the next persona
 run says.
+
+## W8-66/67/68 · "The chat disappeared again" and "the pages look a mess" - **DONE, NOT MERGED**
+
+Her two messages, and both were right. This wave is stability, not features, and nothing
+merges until she says so.
+
+### The chat had never been on the lead's side of the ground
+
+`GroundChat` was mounted by `GroundParticipantPage` **only**. So a participant landed in
+the conversation and a lead or an org admin, opening the same ground, got session cards and
+no chat anywhere. When the card view was retired (46321a0) the rail toggle and
+`stores/view.ts` went with it, correctly - on the participant page. This one was left as it
+was, and **I reported the work as done**. That is the same failure as W8-5, where I marked a
+fix done having changed one of the two pages it lived on.
+
+Chat is now the first tab here too, and the card list keeps its own tab: a lead scanning
+twelve sessions for who has not checked in wants a list, which is a different question from
+reading what was said.
+
+**Her correction, which is the common case:** "what if sets themselves as checkin in too,
+they need a chat, they also set the context". Step 6 offers "I am a party. Let's begin." A
+lead who takes it has their own check-ins, so the flag keys on **being a party**, not on
+being the lead. Keying it on `isInitiator` would have given the most common kind of lead a
+read-only page about a ground they are in.
+
+For a lead or admin who is **not** a party, no transcript is requested at all and there is
+no composer. They get the ground's history - the sessions, when, and who has been through
+them. There is no version where they get somebody else's turns: the wall is the product.
+
+### Four things that were already there, found by mounting it
+
+| What it said | What was wrong |
+|---|---|
+| "its lead runs this ground." | Read `lead.email`, which `grounds.service.ts:872` NULLS for exactly the viewers who see this banner. The name was in the payload the whole time. Making a name from an address is the W10-2 mistake anyway. |
+| Session 4, Session 1, Session 1, Session 4 | Twenty-four cards in payload order. Invisible on every one- or two-session ground anybody had looked at. |
+| "24 of 12 sessions done" | A check-in is per person per session, so it counted rows. A session is done when everybody's is. |
+| "Starting", on a ground with every session finished | The ground's MOMENT in a status-shaped pill next to a live dot. Now "Opened for: Starting". |
+
+My first fix for two of those read `participantEmail` and `participantName` - fields the
+payload has never carried. One silently sorted by row id; the other rendered "Nobody has
+checked in yet" over twelve completed sessions. Both now join through `participantId`, and
+the bite-check caught that I had pinned only one of the two.
+
+### The mess: auth pages were being drawn inside the app
+
+`showSidebar` was `isAuthenticated` and nothing else. So a signed-in person opening any page
+somebody arrives at from OUTSIDE - `/auth`, `/auth/sent`, `/set-password`,
+`/reset-password`, `/verify-email`, `/invite`, `/join` - got the rail **and** that page's own
+full-page chrome: a second dark header under the first, its own `minHeight: 100vh` pushing
+everything down, a sign-in form beside a list of grounds. Being signed in while opening one
+is normal: a password on a second device, an invite to another ground, switching account.
+
+Matched on exact paths, and the guard asserts both directions - the standalone pages are on
+the list and `/`, `/grounds`, `/feed`, `/billing`, `/team`, `/admin` are not. A prefix match
+would eat a future `/authorised-anything`, and a page silently losing its navigation is the
+complaint this fixes.
+
+### One thing that was NOT a bug
+
+"Your check-ins could not be loaded" on a real party with twelve sessions. The local API was
+running `dist/main` **compiled the previous day**, before `/my-transcript` existed. Rebuilt
+and pointed at the right database, the endpoint returns all twelve sessions and the chat
+renders them with dividers - which also closes my own outstanding gap of never having seen
+the multi-session dividers on a real ground.
+
+Worth recording because I nearly "fixed" it.

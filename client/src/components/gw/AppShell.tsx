@@ -797,7 +797,31 @@ export function AppShell({ children }: { children: React.ReactNode }) {
    * flow they are halfway through. The entry page has its own header and step
    * tracker, so it loses nothing by dropping the app shell. GW-004.
    */
-  const showSidebar = isAuthenticated
+  /**
+   * PAGES THAT DRAW THEIR OWN WHOLE SCREEN. W8-68.
+   *
+   * Her words: "i can see the pages look a mess now, side menu has vanished etc."
+   *
+   * `showSidebar` was `isAuthenticated` and nothing else, so a signed-in person opening
+   * any of these got the app rail AND the page's own full-page chrome: its own dark
+   * Groundwork header under the rail's, its own `minHeight: 100vh` pushing everything
+   * down, a sign-in form sitting next to a list of grounds. Two products in one window.
+   *
+   * These are the pages somebody arrives at from outside - an email link, the marketing
+   * site, a password reset - and every one of them is written as a standalone screen
+   * with its own header and its own way back. Being signed in does not change what they
+   * are. It is also normal to be signed in while opening one: setting a password on a
+   * second device, following an invite to a different ground, switching account.
+   *
+   * Matched on exact paths rather than a prefix, so a future `/authorised-something`
+   * cannot silently lose the rail.
+   */
+  const CHROMELESS = [
+    '/auth', '/auth/sent', '/auth/google/callback',
+    '/set-password', '/reset-password', '/verify-email',
+    '/invite', '/join', '/login',
+  ]
+  const showSidebar = isAuthenticated && !CHROMELESS.includes(location.pathname)
 
   if (!showSidebar) return <>{children}</>
 

@@ -1,5 +1,6 @@
 import { plannedSessionsFor } from '@/lib/sessionCount'
 import { useState } from 'react'
+import { GroundGone } from '@/components/gw/GroundGone'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { groundsApi } from '@/api/grounds'
@@ -197,7 +198,9 @@ export function GroundParticipantPage() {
 
 
   if (isLoading) return <div style={{ minHeight: '100vh', background: '#F5F3EF', padding: 24, fontSize: 13, color: '#9B9590' }}>Loading…</div>
-  if (!ground) return <div style={{ minHeight: '100vh', background: '#F5F3EF', padding: 24, fontSize: 13, color: '#9B9590' }}>Ground not found.</div>
+  // Was the bare words "Ground not found." with nothing to press, in two hardcoded
+  // colours of its own. W8-65.
+  if (!ground) return <div style={{ minHeight: '100vh', background: 'var(--gw-bg)' }}><GroundGone /></div>
 
   const myParticipant = (ground.participants ?? []).find((p: any) => p.userId === user?.id)
   /** Whether this person runs the ground, and so has an admin view to switch to. */
