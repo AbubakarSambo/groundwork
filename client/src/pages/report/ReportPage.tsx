@@ -328,7 +328,7 @@ function HiddenContributorsSection({
 
   return (
     <div style={{ marginTop: 16, background: '#F4F7FC', border: '1px solid #CFE2F5', borderRadius: 8, padding: '12px 14px' }}>
-      <SecH>Possible missing contributors</SecH>
+      <SecH>People who may be missing</SecH>
       <div style={{ fontSize: 12.5, color: '#4A5568', lineHeight: 1.55, marginBottom: 10 }}>
         The record references people who are not themselves a party on this ground.
       </div>

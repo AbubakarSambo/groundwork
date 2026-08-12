@@ -574,7 +574,7 @@ export function CreateGroundPage() {
             {scenario && (
               <>
                 <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Where are you in this situation?</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 6 }}>Are you just starting, mid-way through, or wrapping up? This shapes the questions each contributor answers.</div>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 6 }}>Are you just starting, mid-way through, or wrapping up? This shapes the questions each person answers.</div>
                 <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 10 }}>Choose one that best describes your situation.</div>
                 <div role="radiogroup" aria-label="Where are you in this situation?" style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
                   {MOMENTS.map(m => (
@@ -776,7 +776,7 @@ export function CreateGroundPage() {
         {step === 4 && (
           <div>
             <div className="gw-ttl">Who is in this ground?</div>
-            <div className="gw-sub-t">Add everyone who will check in. Contributors can be from different organisations. You can add more at any time.</div>
+            <div className="gw-sub-t">Add everyone who will check in. They can be from different organisations. You can add more at any time.</div>
 
             {/* Are YOU in this, or setting it up for other people?
                 Only the guided walkthrough ever asked. Coming through this flow,
@@ -967,7 +967,7 @@ export function CreateGroundPage() {
         {step === 6 && (
           <div>
             <div className="gw-ttl">What is this ground about?</div>
-            <div className="gw-sub-t">Your version of the brief. Each contributor writes their own in their first session. The report shows where accounts agree and where they differ.</div>
+            <div className="gw-sub-t">Your version of the brief. Each person writes their own in their first session. The report shows where accounts agree and where they differ.</div>
 
             <div style={{ position: 'relative', marginBottom: 6 }}>
               <textarea
