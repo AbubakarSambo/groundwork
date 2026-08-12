@@ -469,6 +469,39 @@ export function fallbackGroundName(classifiedScenario?: string, firstDescription
   return 'Untitled ground'
 }
 
+/**
+ * What the closing report is doing, while it does it.
+ *
+ * No percentage and no estimate: the work is a model call whose length nobody can
+ * predict, and a bar that stalls at 90% is worse than a sentence that is true. The
+ * steps advance on a timer because they describe stages of one request, and the
+ * last one stays until the report arrives however long that takes.
+ */
+function ReportProgress() {
+  const STEPS = [
+    'Reading back what you said',
+    'Checking what is specific enough to stand on',
+    'Finding what is still open',
+    'Writing your private report',
+  ]
+  const [step, setStep] = useState(0)
+  useEffect(() => {
+    const t = setInterval(() => setStep(s => Math.min(s + 1, STEPS.length - 1)), 9000)
+    return () => clearInterval(t)
+  }, [])
+  return (
+    <div style={{ background: '#F5F3EF', borderRadius: 10, padding: '14px 16px', marginBottom: 18, fontSize: 13, color: '#6B6560' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span className="gw-dot" /><span className="gw-dot" /><span className="gw-dot" />
+        <span>{STEPS[step]}…</span>
+      </div>
+      <div style={{ fontSize: 11.5, color: '#9B9590', marginTop: 6, lineHeight: 1.5 }}>
+        This one takes about half a minute. It is the only slow step.
+      </div>
+    </div>
+  )
+}
+
 export function EntryChatPage() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
@@ -2090,11 +2123,23 @@ export function EntryChatPage() {
 
           <div style={{ padding: '18px 20px 28px' }}>
 
-            {/* Generating state */}
+            {/*
+              Generating state.
+
+              THIS IS THE LONGEST WAIT IN THE PRODUCT and it said one line for all
+              of it. Measured against the booted API: a setup turn is 4.4s, a
+              check-in turn 5.3 to 6.6s, and the closing report about 35s. Hafsah
+              read that as the whole product being slow ("the chat load time is too
+              long, it is taking like 20 seconds") when the conversation is not
+              where the time goes.
+
+              Thirty-five seconds of an unchanging sentence reads as a hang. So it
+              says what is actually happening, in the order it happens, and it
+              never claims to be nearly done - the steps are honest names for real
+              work, not a progress bar pretending to know.
+            */}
             {generatingReport && !sessionReport && (
-              <div style={{ background: '#F5F3EF', borderRadius: 10, padding: '14px 16px', marginBottom: 18, fontSize: 13, color: '#6B6560' }}>
-                Generating your session report…
-              </div>
+              <ReportProgress />
             )}
 
             {/* ISSUE 15: report failed - show retry option */}
