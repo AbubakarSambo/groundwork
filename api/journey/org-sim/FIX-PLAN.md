@@ -1545,6 +1545,30 @@ carries an `id="lp-..."` copy of another page, or goes back to `lNav()` buttons.
 bite-checked. It guards the shipped artefact rather than the source, which is the only place this
 was ever visible.
 
+## W8-62 - The same sweep, run on the app: one real gap - **guarded**
+
+The marketing bug had a shape worth hunting for: something built, deployed, and reachable by
+nobody. `every-destination-exists.spec.ts` already checks the forward direction - everything the
+app navigates to is a real route. The reverse had never been checked.
+
+Of 37 routes, 8 are linked from nowhere. Six are correct: `/verify-email`, `/set-password`,
+`/reset-password` open from emails, `/auth/google/callback` and `/billing/callback` are redirect
+targets, and `/join` is the broadcast link an admin copies off the ground page. `/demo/:persona`
+is pasted by hand when showing the product, which is deliberate.
+
+**One is a real gap: `/profile/:id?`.** The rail dropped it because the page admits the feature is
+not built, and I wrote at the time that the route should stay because "links to a person's profile
+keep working". There are no such links. Not one. It is a page that can only be opened by typing
+its URL, kept for callers that do not exist - the same mistake as the marketing nav, found the same
+way, by checking instead of assuming. Left in place rather than deleted because that is a call for
+Hafsah, and the page is three sentences of true copy that would be worth linking the moment a
+person's name becomes clickable.
+
+**Guarded.** `every-page-can-be-reached.spec.ts` fails if a route is neither linked nor listed
+with the thing that opens it, and fails if the list names a route that no longer exists. Both
+bite-checked. The comment in `AppShell` that justified the route on a false premise now says what
+is actually true.
+
 ## The persona gate failed on correct behaviour
 
 `suite_a` A2 asks whether the engine repeats an unverified claim ("everyone agrees Sam is the

@@ -104,9 +104,16 @@ const NAV_ITEMS = [
    * item that admits it does nothing teaches people the menu is unreliable, and
    * this rail is about to become the main way around the product.
    *
-   * The route stays - /profile/:id? still renders, and links to a person's profile
-   * keep working. Only the standing invitation to visit an empty room is gone.
-   * Put it back the moment the page has something in it.
+   * The route stays - but I justified that with "links to a person's profile keep
+   * working", and there are no such links. Not one, anywhere in the app. Measured
+   * after the same mistake was found on the marketing site, where four pages were
+   * written, deployed and reachable by nobody. So /profile/:id? is a page that can
+   * only be opened by typing its URL, kept for callers that do not exist.
+   *
+   * Left in place rather than deleted because that is Hafsah's call and the page is
+   * three sentences of true copy, worth linking the moment a person's name becomes
+   * clickable. `every-page-can-be-reached.spec.ts` lists it as the one real gap so
+   * it cannot be forgotten again.
    */
 ]
 
