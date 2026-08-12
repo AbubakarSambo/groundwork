@@ -801,7 +801,7 @@ export function GroundParticipantPage() {
                 <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.6 }}>
                   Overall quality label: <strong style={{ color: '#1A1916' }}>{specificity.label}</strong>.
                   This reflects how specific and evidenced your submissions have been across all sessions.
-                  Specific, verifiable contributions strengthen the cross-reference and make the final report more useful to both parties.
+                  Specific, verifiable contributions strengthen the cross-reference and make the final report more useful to everybody in this ground.
                 </div>
               </div>
             )}

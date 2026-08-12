@@ -1030,7 +1030,7 @@ export function ReportPage() {
         </div>
 
         <div style={{ marginTop: 40, paddingTop: 24, borderTop: '1px solid #E2E0DB', fontSize: 12, color: '#9B9590', lineHeight: 1.6 }}>
-          This report is permanent. Both parties keep it, and it is portable to each of your profiles.
+          This report is permanent. Everybody in this ground keeps their copy.
         </div>
       </div>
     </div>

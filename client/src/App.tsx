@@ -10,9 +10,6 @@ import { MagicVerifyPage } from '@/pages/auth/MagicVerifyPage'
 import { GoogleCallbackPage } from '@/pages/auth/GoogleCallbackPage'
 import { SetPasswordPage } from '@/pages/auth/SetPasswordPage'
 import { ResetPasswordPage } from '@/pages/auth/ResetPasswordPage'
-import { SetupPage } from '@/pages/setup/SetupPage'
-import { EnterPage } from '@/pages/enter/EnterPage'
-import { PinPage } from '@/pages/enter/PinPage'
 import { EntryChatPage } from '@/pages/enter/EntryChatPage'
 import { ChatPage } from '@/pages/chat/ChatPage'
 
@@ -32,7 +29,6 @@ import { BillingPage } from '@/pages/billing/BillingPage'
 import { PricingPage } from '@/pages/billing/PricingPage'
 import { PaymentPage } from '@/pages/billing/PaymentPage'
 import { BillingCallbackPage } from '@/pages/billing/BillingCallbackPage'
-import { ProfilePage } from '@/pages/profile/ProfilePage'
 import { InvitePage } from '@/pages/invite/InvitePage'
 import { JoinPage } from '@/pages/join/JoinPage'
 import { PromptVersioningPage } from '@/pages/prompts/PromptVersioningPage'
@@ -117,14 +113,11 @@ export default function App() {
             <Route path="/set-password" element={<SetPasswordPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/start" element={<EntryChatPage />} />
-            <Route path="/enter" element={<EnterPage />} />
-            <Route path="/pin" element={<PinPage />} />
             <Route path="/invite" element={<InvitePage />} />
             <Route path="/join" element={<JoinPage />} />
             <Route path="/demo/:persona" element={<DemoConversationPage />} />
 
             {/* Post-auth setup */}
-            <Route path="/setup" element={<SetupPage />} />
 
             {/* Main app - require auth */}
             <Route path="/grounds" element={<RequireAuth><GroundsListPage /></RequireAuth>} />
@@ -148,7 +141,6 @@ export default function App() {
             <Route path="/pricing" element={<PricingPage />} />
             <Route path="/billing/checkout" element={<RequireAuth><PaymentPage /></RequireAuth>} />
             <Route path="/billing/callback" element={<RequireAuth><BillingCallbackPage /></RequireAuth>} />
-            <Route path="/profile/:id?" element={<ProfilePage />} />
             <Route path="/prompts" element={<RequireAuth><PromptVersioningPage /></RequireAuth>} />
             <Route path="/prompts/test" element={<RequireAuth><PromptTestPage /></RequireAuth>} />
             <Route path="/settings" element={<RequireAuth><SettingsPage /></RequireAuth>} />

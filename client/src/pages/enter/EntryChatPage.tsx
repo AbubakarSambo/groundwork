@@ -2515,6 +2515,19 @@ export function EntryChatPage() {
                * saved session (the entrySave bug, now fixed). This is the other
                * half of that failure.
                */
+              /*
+                AND IT IS PINNED, NOT JUST SCROLLED TO. W8-3.
+                
+                Scrolling into view fixed the moment it appeared. It did not fix the
+                next moment: this panel sits about 1678px down a 720px viewport, so
+                one flick of the wheel and the only confirmation that anything
+                happened is gone again, with no way to get it back. Her report was
+                "I didn't know where it went, I forgot I had put my email" - and
+                forgetting you gave an address is how a ground was lost.
+                
+                Sticky at the top of the scrolling column, so it stays until the
+                person acts on it.
+              */
               <div
                 ref={(el) => {
                   // Optional-call because jsdom has no scrollIntoView: an
@@ -2522,7 +2535,7 @@ export function EntryChatPage() {
                   // subtree, and four unrelated specs went red on a scroll.
                   if (el) el.scrollIntoView?.({ behavior: 'smooth', block: 'center' })
                 }}
-                style={{ background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 10, padding: '14px 16px', marginBottom: 20 }}
+                style={{ position: 'sticky', top: 8, zIndex: 5, background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 10, padding: '14px 16px', marginBottom: 20, boxShadow: '0 2px 10px rgba(0,0,0,.06)' }}
               >
                 <div style={{ fontSize: 14, fontWeight: 700, color: '#085041', marginBottom: 4 }}>Check your email</div>
                 <div style={{ fontSize: 13, color: '#085041', lineHeight: 1.6 }}>We sent a link to <strong>{email}</strong>. Click it to finish setting up and get your invite link.</div>

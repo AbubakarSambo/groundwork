@@ -183,7 +183,7 @@ function DropoffsTab({ data }: { data: UsageFunnelData }) {
       <section>
         <div style={SL}>Party engagement</div>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          <Stat val={data.bothEngaged} label="Both parties engaged" />
+          <Stat val={data.bothEngaged} label="Everybody engaged" />
           <Stat val={data.oneEngaged} label="One-sided (initiator only)" />
           <Stat val={data.stalledCheckIns} label="Stalled check-ins (>7d)" accent={data.stalledCheckIns > 0} />
         </div>

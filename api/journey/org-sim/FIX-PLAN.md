@@ -1896,6 +1896,52 @@ board?"
 
 Measured, not remembered. Everything below was checked against the code or the screen.
 
+## W12 - the last of the small ones, and a live signup bug found by chasing an orphan
+
+## W12-1 · A new admin's first screen asked for a code they have never had - **fixed**
+
+Chasing `/setup` as an orphan found it was not one. `MagicVerifyPage` did
+`isNew ? '/setup' : '/grounds'`, and `/setup` is "Set up your org" - a form asking for an **Org
+code**, plus a name and an organisation name the account already holds. So the first screen a
+brand-new admin saw after verifying their email asked them for a credential that does not exist in
+this product any more.
+
+They go to `/grounds`. `verifyEmail` creates the organisation, and the create-account view now asks
+for its name (W10).
+
+## W12-2 · The org-code model is gone
+
+`/enter`, `/pin` and `/setup` deleted, with their pages. That model answered "which organisation are
+you in", and the organisation switcher answers it properly now - from membership, not from a code
+somebody has to be given.
+
+`/profile/:id?` deleted too. W8-62 exempted it as "the one real gap": a page nobody could open,
+whose own copy said the feature was not built, kept for callers that never existed. If a person's
+name becomes clickable it comes back with the link that justifies it.
+
+**Two guards went red on the deletions and both were right** - the reachability list still exempted
+`/profile`, and `every-destination-exists` proved its optional-param handling through `/profile/:id?`
+because it was the only route with a `?`. That property is asserted directly now: a property proved
+through whichever route happens to have the shape is a property that stops being proved.
+
+## W12-3 · "Both parties" was wrong, not just a second noun - **W8-47 finished**
+
+24 places said "both parties" - "Both parties will see the report", "Release report to both
+parties", "Both parties keep it forever". The product supports **any number** of participants, in as
+many words: "All scenarios support any number of participants". So on a five-person ground that copy
+is not a style choice, it is false, and it is false in the most reassuring possible direction - a
+promise about who sees the report.
+
+All 24 now say everybody, or everyone. "All parties" is left alone: it does not hardcode two, and it
+reads naturally.
+
+## W12-4 · The email confirmation is pinned, not just scrolled to - **W8-3 finished**
+
+Scrolling it into view fixed the moment it appeared and not the next one: the panel sits about
+1678px down a 720px viewport, so one flick of the wheel and the only sign anything happened is gone
+with no way back. It is sticky now. Her report was "I didn't know where it went, I forgot I had put
+my email", and forgetting you gave an address is how a ground was lost.
+
 ## W9-1b · Two more the card view took, both found by the persona gate - **fixed**
 
 The audit in W9-1 diffed the card view against what replaced it and found four losses. It missed
@@ -2062,19 +2108,19 @@ now cost two investigations, and the second one nearly went into this document a
 | W8-25 | pricing contradicts the $5-per-session rule, on two pages | S | WITHDRAWN - pricing was correct | same sitting as W8-39 and W8-40 |
 | W8-40 | `?next=` passed and never read | S | DONE | same sitting |
 | W8-41 | `hello@groundwork.so` is not our domain | S | DONE | same sitting |
-| W8-3 | the "we sent a link" confirmation is 1678px down a 720px panel | S | OPEN | causes W8-2, which was data loss |
-| W8-13 | no confirmation at all after setup | S | OPEN | with W8-3 |
+| W8-3 | the "we sent a link" confirmation is 1678px down a 720px panel | S | DONE - scrolled to AND pinned | causes W8-2, which was data loss |
+| W8-13 | no confirmation at all after setup | S | DONE - MagicVerifyPage has confirmed what was created since W8; the row was stale | with W8-3 |
 
 ## The structural pass, in dependency order
 
 | # | Item | Size | Status | Depends on |
 |---|---|---|---|---|
 | W8-44 | extract the board's nine components into `components/gw/` | M | DONE - components/gw/kit.tsx | nothing. Do it first, everything else gets cheaper |
-| W8-45 | one header, delete the dead AppShell (shell-on-stranger-pages half withdrawn) | S | OPEN | W8-44 |
+| W8-45 | one header, delete the dead AppShell (shell-on-stranger-pages half withdrawn) | S | DONE - the dead AppShell went in an earlier wave; the row was stale | W8-44 |
 | W8-57 | grounds as channels in the rail, a ground opens to its own history | M | DONE | rail + the single scroll |
 | W8-49 | the target page list, 38 routes to 14 pages | L | OPEN | W8-52 must pass first |
 | W8-52 | the ground-merge inventory, now an executable test (43 distinct ops) | M | DONE | unblocks W8-49 |
-| W8-47 | one noun per thing | S | OPEN | nothing |
+| W8-47 | one noun per thing | S | DONE - and "both parties" was wrong, not just a second noun | nothing |
 
 ## Product defects, open
 

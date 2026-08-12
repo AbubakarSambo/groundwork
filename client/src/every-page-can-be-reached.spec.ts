@@ -38,19 +38,11 @@ const REACHED_FROM_OUTSIDE_THE_APP: Record<string, string> = {
    */
   '/demo/:persona': 'pasted by hand when showing the product',
   /**
-   * HONESTLY UNREACHABLE, AND THE COMMENT ON IT WAS WRONG.
-   *
-   * `AppShell` took Profile out of the rail because the page admits the feature is
-   * not built ("A profile that gathers them in one place is not built yet"), and
-   * said the route stays so that "links to a person's profile still render". There
-   * are no such links - not one, anywhere in the app. So this is a page nobody can
-   * open, kept for callers that do not exist.
-   *
-   * Listed rather than deleted because deleting a route is Hafsah's call, and the
-   * page is three sentences of true copy that would be worth linking the moment a
-   * person's name becomes clickable. Recorded in the fix plan as a decision.
+   * `/profile/:id?` used to be exempted here, described as "the one real gap". It is
+   * deleted: a page nobody could open, whose own copy said the feature was not built,
+   * kept for callers that never existed. If a person's name becomes clickable, the page
+   * comes back with the link that justifies it.
    */
-  '/profile/:id?': 'nothing links to it - see the fix plan, this one is a real gap',
 }
 
 const SRC_DIR = __dirname

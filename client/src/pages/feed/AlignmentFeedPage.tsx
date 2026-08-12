@@ -120,7 +120,7 @@ export function AlignmentFeedPage() {
             <button className="gw-back" onClick={() => setShowTeam(false)}>Close</button>
           </div>
           <div style={{ fontSize: 12, color: 'var(--gw-blue-t)', background: 'var(--gw-blue-bg)', borderRadius: 'var(--gw-radius)', padding: '8px 10px', marginBottom: 12, lineHeight: 1.55 }}>
-            This shows session completion and timing only. Individual check-in content is private. Reports are released only when both parties activate them together.
+            This shows session completion and timing only. Individual check-in content is private. Reports are released only when everybody activates them together.
           </div>
           {people.length === 0 && (
             <div style={{ fontSize: 13, color: 'var(--gw-muted)', textAlign: 'center', padding: 24 }}>No participants yet.</div>
