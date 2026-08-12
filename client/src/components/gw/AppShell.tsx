@@ -721,7 +721,30 @@ export function AppSidebar() {
             {myOrgs.map(o => (
               <button
                 key={o.id}
-                onClick={() => !o.active && switchOrg.mutate(o.id)}
+                /**
+                 * ONE CLICK USED TO BE ENOUGH. W8-71.
+                 *
+                 * Switching organisation changes which data you can see, changes your role
+                 * (a person can administer their own company and be an ordinary member of
+                 * a client's), and reloads the whole app onto a different grounds list.
+                 * These rows sit in the rail directly above the profile block, so a
+                 * mis-aimed click did all of that silently - and then the grounds you were
+                 * looking at were gone and your role said Member, which reads exactly like
+                 * the product losing your data. That happened to me while testing, and I
+                 * could not tell afterwards whether I had clicked it or something had done
+                 * it for me.
+                 *
+                 * A native confirm rather than a designed modal: this is a rail control on
+                 * every page, the question is one line, and a modal here would be a bigger
+                 * change than the problem warrants. It names the organisation and the role
+                 * they will have in it, since the role change is the part nobody expects.
+                 */
+                onClick={() => {
+                  if (o.active || switchOrg.isPending) return
+                  const asRole = o.role.toLowerCase()
+                  if (!window.confirm(`Switch to ${o.name}? You will see ${o.name}'s grounds instead of this organisation's, as a ${asRole}.`)) return
+                  switchOrg.mutate(o.id)
+                }}
                 disabled={switchOrg.isPending}
                 title={o.active ? 'You are in this organisation' : `Switch to ${o.name}`}
                 style={{

@@ -4196,3 +4196,66 @@ org admin, looking at each one and reading its network log rather than trusting 
 Groundwork wordmark inside the shell that already has one. It is consistent everywhere and
 has been for a long time, so it is a design decision for her, not a regression to fix
 unilaterally while she is asking for stability. Recorded, not touched.
+
+## W8-71 · One click switched your organisation, silently - **DONE, NOT MERGED**
+
+The switcher rows sit in the rail directly above the profile block, and one click:
+
+- changed which organisation's data you can see
+- changed your **role**, because a person can administer their own company and be an
+  ordinary member of a client's
+- reloaded the whole app onto a different grounds list
+
+**It happened to me while testing this branch.** The result was "No grounds yet" in the rail
+and "Member" under my name - which reads exactly like the product having lost everything.
+Afterwards I could not tell whether I had mis-clicked or whether something had switched me,
+so I checked: nothing switches on load, on either page, across reloads, and the role and org
+are stable. It was a click, and it should not have been that easy.
+
+There is now a confirm that names the organisation and **the role they will have in it**,
+since the role change is the part nobody expects. Verified in a browser: the question reads
+"Switch to Hafsah's workspace? You will see Hafsah's workspace's grounds instead of this
+organisation's, as a member.", and declining leaves the organisation alone. Bite-checked.
+
+## W8-72 · "Hafsah and participant" - the report's own prose, **HER DECISION**
+
+Not fixed, because fixing it either widens who sees a name or changes the wall, and both are
+hers.
+
+Opening the shared report on a real twelve-session ground as an **org admin who is not a
+party**, the synthesis reads:
+
+> "For the first six weeks, Hafsah and participant were operating from different definitions
+> of success."
+
+That is the privacy design working, not a bug in itself. The model is told to write LABELS
+and never personal names; `namesVisibleTo` then substitutes back only the names that reader
+may see - your own, the lead's, and everyone's if you are the lead. A non-party admin gets
+the lead's name and nothing else, so one label resolved and one did not.
+
+**Two things make it read as broken anyway:**
+
+1. **The English.** "Hafsah and participant" is not a sentence anybody would write. A half
+   resolved label reads as a template failure, which is worse than a label that never
+   resolves - the file's own comment says exactly this about case sensitivity, and it applies
+   here too.
+2. **The same page shows the name it just withheld.** Directly under that paragraph the
+   party row reads "New hire · Hafsah · Abubakar". So the prose hides a name that the header
+   prints, on one screen, to one reader.
+
+So the gate is inconsistent rather than tight. Two ways out, and they are different products:
+
+| Option | What it means |
+|---|---|
+| Names in the prose for an org admin | Treat an org admin viewing their own organisation's ground as the lead for NAMES ONLY, never for content. Consistent with the ground page, which already lists participants by name. |
+| Labels everywhere for an org admin | Keep the prose as is and stop the header printing the other party's name to a non-party. Tighter, and it makes the report less useful to the person who has to act on it. |
+
+I am not choosing between those on my own: one loosens who sees a name, the other removes
+something the product shows today, and the wall is hers.
+
+**Separately and regardless of that call:** the model writes labels off-spec. The label
+generated for this person was `participant A`; the prose says bare "participant". So
+substitution is matching on strings the model was asked for rather than the ones it produced,
+which is a fragile seam wherever it is used - and per the structural-guardrails rule it
+should be normalised in code on the way out, not requested in the prompt. Worth doing after
+she decides the above, since the right normalisation depends on it.
