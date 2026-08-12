@@ -1543,7 +1543,7 @@ it is done.
 | W8-7 | the Context tab is 1 line of what it can do against 7 of what it cannot, and contradicts itself | M | DONE - can leads, limits fold away, contradiction fixed |
 | W8-11 | never asks who the people inside the organisations are | M | DONE - in ONBOARD_SYSTEM, proved at the prompt |
 | W8-12 | two places to add participants, 550px apart | S | DONE - one queue, both ends say so |
-| W8-16 | the 35s closing report has no honest progress | M | OPEN |
+| W8-16 | the 35s closing report has no honest progress | M | DONE - both paths; streaming still open |
 | W8-22 | a truncated assistant reply ("You've nam") is saved into the record | M | WITHDRAWN |
 | W8-23 | two tabs render active at once | S | WITHDRAWN |
 | W8-27 | four names for two concepts | S | DONE |
@@ -1898,6 +1898,13 @@ Not the 20 seconds felt in the setup chat. Measured against the booted API:
 One model call per turn plus a background classify, so the setup turns are 4 to 6 seconds and
 the long wait is the closing report. **Fix in two parts:** make the 35s honest with progress that
 names what is happening, and look at whether the closing synthesis can start earlier or stream.
+
+**First part done, on both paths, 2026-08-12.** The entry flow already named the steps. The
+signed-in finish - the path everybody is on from session two onwards - showed "Saving…" and then
+nothing for half a minute, which reads as a hang; `complete()` awaits two model calls before it
+answers, so the wait is real. Both now use `components/gw/SlowStep`, which never claims to be
+nearly done and sits on the last honest step rather than running off the end. The second part,
+starting or streaming the synthesis earlier, is still open.
 
 ## W8-17 · Participant check-in asked for a password - **NOT YET REPRODUCED**
 

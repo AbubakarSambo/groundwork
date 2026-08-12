@@ -5,6 +5,7 @@ import { conversationApi, streamMessage } from '@/api/conversation'
 import { documentsApi, type DocumentAssessment } from '@/api/documents'
 import { useAuthStore } from '@/stores/auth'
 import { SessionReportCard } from '@/components/gw/SessionReportCard'
+import { SlowStep, CLOSING_STEPS } from '@/components/gw/SlowStep'
 import { toast } from 'sonner'
 
 interface Msg {
@@ -722,6 +723,20 @@ export function ChatPage() {
                 <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 14 }}>
                   Take a moment to look back over what you have said. Once you finish, this session's record is locked in and cross-referenced with the others. If a timeframe matters here, make sure you have confirmed it above.
                 </div>
+                {/*
+                  HALF A MINUTE OF "SAVING…" READS AS A HANG. W8-16.
+
+                  Completing runs two model calls before it answers - scoring the
+                  account, then pulling the record entries out of it. The entry
+                  flow already said what was happening during that wait; this
+                  path, which is the one everybody is on from session two, said
+                  one word and then nothing.
+                */}
+                {complete.isPending && (
+                  <div style={{ marginBottom: 12 }}>
+                    <SlowStep steps={CLOSING_STEPS} note="This one takes about half a minute. Nothing is lost if you wait." />
+                  </div>
+                )}
                 <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
                   <button
                     onClick={() => complete.mutate()}
