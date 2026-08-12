@@ -1,5 +1,6 @@
 import { plannedSessionsFor } from '@/lib/sessionCount'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { GroundGone } from '@/components/gw/GroundGone'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { groundsApi } from '@/api/grounds'
@@ -10,6 +11,7 @@ import { documentsApi } from '@/api/documents'
 import { GroundChat } from '@/components/gw/GroundChat'
 import { whatThisGroundCanTellYou } from '@/lib/contextStrength'
 import { ContextStrength } from '@/components/gw/ContextStrength'
+import { Sec } from '@/components/gw/kit'
 import { apiClient } from '@/api/client'
 import { participantLabel } from '@/lib/utils'
 import { alignmentLabel } from '@/lib/alignment'
@@ -195,8 +197,46 @@ export function GroundParticipantPage() {
   const contextEnabled = (ground as any)?.contextEnabled === true
 
 
+  /**
+   * `?open=1`: THE HANDOFF FROM THE GROUND PAGE'S CHAT. W8-76.
+   *
+   * The lead's Chat tab shows "Check in for session N" but cannot open it there: opening goes
+   * through `probeSession`, which carries the paywall, and that lives on this page. Rather
+   * than a second copy of the payment path, that button sends them here with this flag and
+   * this fires the probe once, so it is one click for the person.
+   *
+   * ABOVE THE EARLY RETURNS, and that is not a style choice. My first version sat next to
+   * `dueNow` further down, below `if (isLoading) return` - so on the first render the hooks
+   * ran and on the second they did not, and React reported "a change in the order of Hooks"
+   * while three unrelated specs went red. That is the second time in this session; the rule
+   * is that every hook goes above every conditional return, without exception.
+   *
+   * Guarded by a ref rather than by the query key, because `probeSession` navigates on
+   * success and a re-render before the navigation lands would fire it twice - two sessions
+   * opened from one click, one of them chargeable.
+   */
+  const autoOpenFired = useRef(false)
+  const myOpenForAutoOpen = (() => {
+    const mine = (ground?.participants ?? []).find((p: any) => p.userId === user?.id)
+    const rows = ((mine as any)?.checkIns ?? []) as any[]
+    const next = rows.filter((c) => c.status !== 'COMPLETED').sort((a, b) => (a.sessionNumber ?? 0) - (b.sessionNumber ?? 0))[0]
+    if (!next) return null
+    const from = next.availableFrom ?? null
+    if (from && new Date(from).getTime() > Date.now()) return null
+    return next
+  })()
+  useEffect(() => {
+    if (autoOpenFired.current) return
+    if (new URLSearchParams(window.location.search).get('open') !== '1') return
+    if (!myOpenForAutoOpen) return
+    autoOpenFired.current = true
+    probeSession.mutate(myOpenForAutoOpen)
+  }, [myOpenForAutoOpen, probeSession])
+
   if (isLoading) return <div style={{ minHeight: '100vh', background: '#F5F3EF', padding: 24, fontSize: 13, color: '#9B9590' }}>Loading…</div>
-  if (!ground) return <div style={{ minHeight: '100vh', background: '#F5F3EF', padding: 24, fontSize: 13, color: '#9B9590' }}>Ground not found.</div>
+  // Was the bare words "Ground not found." with nothing to press, in two hardcoded
+  // colours of its own. W8-65.
+  if (!ground) return <div style={{ minHeight: '100vh', background: 'var(--gw-bg)' }}><GroundGone /></div>
 
   const myParticipant = (ground.participants ?? []).find((p: any) => p.userId === user?.id)
   /** Whether this person runs the ground, and so has an admin view to switch to. */
@@ -232,6 +272,7 @@ export function GroundParticipantPage() {
   const openAvailableFrom = (openCheckIn as any)?.availableFrom ?? null
   const opensLater = !!openAvailableFrom && new Date(openAvailableFrom).getTime() > Date.now()
   const dueNow = !!openCheckIn && !opensLater
+
 
   // Derive the session total the same way the create wizard does
   // (floor(timelineDays / cadence interval)), from the timelineDays + cadence
@@ -427,7 +468,7 @@ export function GroundParticipantPage() {
             {/* Session history summary - always visible */}
             {(myRecord?.sessions ?? []).length > 0 && (
               <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '14px 16px' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: '#9B9590', marginBottom: 10 }}>Sessions on record</div>
+                <Sec title="Sessions on record" />
                 {(myRecord?.sessions ?? []).map(s => (
                   <div key={s.sessionNumber} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderTop: '1px solid #F0EEE9' }}>
                     <div style={{ fontSize: 13, fontWeight: 600, color: '#1A1916' }}>Session {s.sessionNumber}</div>
@@ -442,7 +483,7 @@ export function GroundParticipantPage() {
             {/* Specificity trend - unlocked only */}
             {myRecord && !myRecord.insightsLocked && myRecord.specificity && (
               <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '14px 16px' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: '#9B9590', marginBottom: 8 }}>Specificity across sessions</div>
+                <Sec title="Specificity across sessions" />
                 <div style={{ display: 'flex', gap: 3, marginBottom: 8 }}>
                   {myRecord.specificity.scores.map((s, i) => (
                     <div key={i} title={`Session ${i + 1}`} style={{ flex: 1, height: 6, borderRadius: 3, background: s >= 0.65 ? '#5DCAA5' : s >= 0.35 ? '#E8A94A' : '#E2E0DB' }} />
@@ -462,7 +503,7 @@ export function GroundParticipantPage() {
             {myRecord && !myRecord.insightsLocked && myRecord.confidence && (
               <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '14px 16px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: '#9B9590' }}>Record confidence</div>
+                  <Sec title="Record confidence" />
                   <div style={{ fontSize: 16, fontWeight: 800, color: '#0C447C' }}>{myRecord.confidence.label}</div>
                 </div>
                 <div style={{ display: 'flex', gap: 3, marginBottom: 8 }}>
@@ -477,7 +518,7 @@ export function GroundParticipantPage() {
             {/* Pattern observations - unlocked, diplomatic */}
             {myRecord && !myRecord.insightsLocked && myRecord.patterns && myRecord.patterns.length > 0 && (
               <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '14px 16px' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: '#9B9590', marginBottom: 4 }}>Observations from your record</div>
+                <Sec title="Observations from your record" />
                 <div style={{ fontSize: 12, color: '#9B9590', marginBottom: 10, lineHeight: 1.5 }}>
                   These are patterns Groundwork has noticed across your check-ins. They are observations, not verdicts. Worth being aware of as your record builds.
                 </div>
@@ -801,7 +842,7 @@ export function GroundParticipantPage() {
                 <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.6 }}>
                   Overall quality label: <strong style={{ color: '#1A1916' }}>{specificity.label}</strong>.
                   This reflects how specific and evidenced your submissions have been across all sessions.
-                  Specific, verifiable contributions strengthen the cross-reference and make the final report more useful to both parties.
+                  Specific, verifiable contributions strengthen the cross-reference and make the final report more useful to everybody in this ground.
                 </div>
               </div>
             )}

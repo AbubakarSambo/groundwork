@@ -4,6 +4,7 @@ import { queryClient } from '@/lib/queryClient'
 import { authApi } from '@/api/auth'
 import { entryApi } from '@/api/entry'
 import { groundsApi } from '@/api/grounds'
+import { LinkProblem } from '@/components/gw/LinkProblem'
 import { useAuthStore } from '@/stores/auth'
 
 const COMMIT_KEY = 'gw_commit_payload'
@@ -88,7 +89,7 @@ export function MagicVerifyPage() {
 
   /** The commit half of the flow, as an outcome (never throws). Safe to re-run:
    * the server-side draft persists and commit is idempotent. */
-  async function commitFlow(payload: any, user: { jobTitle?: string | null; role?: string }, hadEntryIntent: boolean): Promise<VerifyOutcome> {
+  async function commitFlow(payload: any, hadEntryIntent: boolean): Promise<VerifyOutcome> {
     try {
       const result = await entryApi.commit(payload)
 
@@ -132,8 +133,18 @@ export function MagicVerifyPage() {
       // for anyone who was never an initiator.
       if (msg.includes('NO_ENTRY_SESSION') || msg.includes('COMMIT_IN_PROGRESS')) {
         if (hadEntryIntent) return { kind: 'noSession' }
-        const isNew = !user.jobTitle && user.role === 'ADMIN'
-        return { kind: 'redirect', to: isNew ? '/setup' : '/grounds' }
+        /**
+         * A NEW ADMIN GOES TO THEIR GROUNDS, NOT TO AN ORG CODE.
+         *
+         * This sent a brand-new admin to `/setup` - "Set up your org", asking for an
+         * **Org code** they have never had, plus a name and an organisation name their
+         * account already holds. `verifyEmail` creates the organisation, the create-account
+         * view now asks for its name, and the org-code model behind that page is gone.
+         *
+         * Found by chasing `/setup` as an orphan and discovering it was not one: it was
+         * live, and it was the first screen a new admin saw.
+         */
+        return { kind: 'redirect', to: '/grounds' }
       }
       return { kind: 'commitError' }
     }
@@ -182,7 +193,7 @@ export function MagicVerifyPage() {
         const payload = loadCommitPayload() ?? { groundLabel: '', history: [], contributors: [] }
         const hadEntryIntent = !!localStorage.getItem(COMMIT_KEY) || !!localStorage.getItem('gw_draft_token')
         lastAttempt.current = { token, payload, user: res.user }
-        return commitFlow(payload, res.user, hadEntryIntent)
+        return commitFlow(payload, hadEntryIntent)
       })()
       verifyFlows.set(token, flow)
     }
@@ -290,7 +301,7 @@ export function MagicVerifyPage() {
             {[
               { n: '1', title: 'Participants get their invite', body: 'Anyone you added will receive an email with a private link. They check in independently - they never see your account.' },
               { n: '2', title: 'Their account comes in', body: 'Once they submit, Groundwork builds a picture across accounts. Nobody reads anyone else\'s words directly. The report shows where accounts agree and where they differ.' },
-              { n: '3', title: 'You release the report', body: 'When you are ready, you release the report to both parties at the same time. Neither sees it before the other.' },
+              { n: '3', title: 'You release the report', body: 'When you are ready, you release the report to everybody at the same time. Nobody sees it before anybody else.' },
             ].map(s => (
               <div key={s.n} style={{ display: 'flex', gap: 12, marginBottom: 14 }}>
                 <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--gw-navy)', color: 'white', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>{s.n}</div>
@@ -365,7 +376,7 @@ export function MagicVerifyPage() {
               setCommitError(false)
               // Safe to retry: the draft persists server-side and commit is
               // idempotent (a replay returns the existing ground).
-              applyOutcome(await commitFlow(lastAttempt.current.payload, lastAttempt.current.user, true))
+              applyOutcome(await commitFlow(lastAttempt.current.payload, true))
               setRetrying(false)
             }}
           >
@@ -387,12 +398,10 @@ export function MagicVerifyPage() {
           <div style={{ fontSize: 14, color: 'var(--gw-sub)' }}>Setting up your ground…</div>
         </div>
       ) : (
-        <div style={{ textAlign: 'center', maxWidth: 340, padding: '0 20px' }}>
-          <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>Link invalid</div>
-          <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 20, lineHeight: 1.6 }}>{error}</div>
-          <button className="gw-btn" style={{ display: 'inline-block', width: 'auto', padding: '10px 24px' }} onClick={() => navigate('/auth')}>
-            Get a new link
-          </button>
+        <div style={{ padding: '0 20px' }}>
+          {/* This one already had a way out. It uses the shared version so all three
+              arrival routes say the same thing. W8-62. */}
+          <LinkProblem kind="sign-in" detail={error} />
         </div>
       )}
     </div>

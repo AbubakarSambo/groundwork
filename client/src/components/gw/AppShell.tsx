@@ -721,7 +721,30 @@ export function AppSidebar() {
             {myOrgs.map(o => (
               <button
                 key={o.id}
-                onClick={() => !o.active && switchOrg.mutate(o.id)}
+                /**
+                 * ONE CLICK USED TO BE ENOUGH. W8-71.
+                 *
+                 * Switching organisation changes which data you can see, changes your role
+                 * (a person can administer their own company and be an ordinary member of
+                 * a client's), and reloads the whole app onto a different grounds list.
+                 * These rows sit in the rail directly above the profile block, so a
+                 * mis-aimed click did all of that silently - and then the grounds you were
+                 * looking at were gone and your role said Member, which reads exactly like
+                 * the product losing your data. That happened to me while testing, and I
+                 * could not tell afterwards whether I had clicked it or something had done
+                 * it for me.
+                 *
+                 * A native confirm rather than a designed modal: this is a rail control on
+                 * every page, the question is one line, and a modal here would be a bigger
+                 * change than the problem warrants. It names the organisation and the role
+                 * they will have in it, since the role change is the part nobody expects.
+                 */
+                onClick={() => {
+                  if (o.active || switchOrg.isPending) return
+                  const asRole = o.role.toLowerCase()
+                  if (!window.confirm(`Switch to ${o.name}? You will see ${o.name}'s grounds instead of this organisation's, as a ${asRole}.`)) return
+                  switchOrg.mutate(o.id)
+                }}
                 disabled={switchOrg.isPending}
                 title={o.active ? 'You are in this organisation' : `Switch to ${o.name}`}
                 style={{
@@ -797,7 +820,31 @@ export function AppShell({ children }: { children: React.ReactNode }) {
    * flow they are halfway through. The entry page has its own header and step
    * tracker, so it loses nothing by dropping the app shell. GW-004.
    */
-  const showSidebar = isAuthenticated
+  /**
+   * PAGES THAT DRAW THEIR OWN WHOLE SCREEN. W8-68.
+   *
+   * Her words: "i can see the pages look a mess now, side menu has vanished etc."
+   *
+   * `showSidebar` was `isAuthenticated` and nothing else, so a signed-in person opening
+   * any of these got the app rail AND the page's own full-page chrome: its own dark
+   * Groundwork header under the rail's, its own `minHeight: 100vh` pushing everything
+   * down, a sign-in form sitting next to a list of grounds. Two products in one window.
+   *
+   * These are the pages somebody arrives at from outside - an email link, the marketing
+   * site, a password reset - and every one of them is written as a standalone screen
+   * with its own header and its own way back. Being signed in does not change what they
+   * are. It is also normal to be signed in while opening one: setting a password on a
+   * second device, following an invite to a different ground, switching account.
+   *
+   * Matched on exact paths rather than a prefix, so a future `/authorised-something`
+   * cannot silently lose the rail.
+   */
+  const CHROMELESS = [
+    '/auth', '/auth/sent', '/auth/google/callback',
+    '/set-password', '/reset-password', '/verify-email',
+    '/invite', '/join', '/login',
+  ]
+  const showSidebar = isAuthenticated && !CHROMELESS.includes(location.pathname)
 
   if (!showSidebar) return <>{children}</>
 

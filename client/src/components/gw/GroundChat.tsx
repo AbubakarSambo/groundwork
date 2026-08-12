@@ -324,11 +324,22 @@ function Composer({ groundId, openCheckInId, openSessionNumber, totalSessions, n
               open-session card; in a conversation there is nowhere else for "how
               many of these are there" to be, and it is the thing that tells
               somebody whether they are at the start of this or near the end. */}
+          {/*
+            IT NEVER SAID "CHECK IN". W8-76.
+
+            The label was "Continue session 3 of 12", and the persona gate looks for the
+            product's own word on the ground page - as it should, because that is the word
+            every other surface uses: the tab is Check-ins, the email says your check-in is
+            due, the header button says My check-ins. "Session 3" is our internal noun.
+          */}
           {openPending
             ? 'Opening…'
             : openSessionNumber != null
-              ? `Continue session ${openSessionNumber}${totalSessions ? ` of ${totalSessions}` : ''} →`
-              : 'Continue your check-in →'}
+              // "of N" is dropped once the session number passes N, because a ground CAN
+              // run past its plan - a paid extension does exactly that - and "session 13 of
+              // 12" reads as a broken counter rather than as extra work. W8-76.
+              ? `Check in for session ${openSessionNumber}${totalSessions && openSessionNumber <= totalSessions ? ` of ${totalSessions}` : ''} →`
+              : 'Check in now →'}
         </button>
       </div>
     )
@@ -404,6 +415,7 @@ function Composer({ groundId, openCheckInId, openSessionNumber, totalSessions, n
 export function GroundChat({
   groundId, openCheckInId, openSessionNumber, totalSessions, nextOpensAt, onOpenSession, openPending,
   label, scenario, brief, alignment, sessionsDone, signals,
+  viewerIsParty, history,
 }: {
   groundId: string
   openCheckInId: string | null
@@ -420,10 +432,37 @@ export function GroundChat({
   sessionsDone: number
   /** What Groundwork has noticed, in the order it noticed it. */
   signals?: { label: string; text: string; session: number }[]
+  /**
+   * IS THE PERSON READING THIS A PARTY TO THE GROUND? W8-67.
+   *
+   * This whole component is built on `myTranscript` - the reader's OWN messages - which
+   * is right for a participant and wrong twice over for a lead or an org admin who is not
+   * one:
+   *
+   *  1. They have no transcript, so the fetch fails and the chat opened on "Your
+   *     check-ins could not be loaded. Try again in a moment." An admin reading it would
+   *     reasonably file a bug about an outage.
+   *  2. There is no version of this where they get somebody else's turns instead. The
+   *     wall is the product: nobody reads anybody's raw check-in, and a lead least of
+   *     all.
+   *
+   * So when this is false, no transcript is requested, no composer is offered - they have
+   * no check-in to write in - and what they get is the ground's history: the sessions
+   * that happened, when, and who has been through them. Which is the question a lead
+   * opened the ground to answer.
+   */
+  viewerIsParty?: boolean
+  /** The ground's sessions, for the reader who is not a party. Newest last. */
+  history?: { sessionNumber: number; date: string; people: string[] }[]
 }) {
+  const isParty = viewerIsParty !== false
   const { data, isLoading, isError } = useQuery({
     queryKey: ['my-transcript', groundId],
     queryFn: () => groundsApi.myTranscript(groundId),
+    // Not "fetch and hide the error" - not asked for at all. Requesting a transcript
+    // that cannot exist and then swallowing the failure is how a real outage stops
+    // being visible.
+    enabled: isParty,
   })
 
   const sessions = (data?.sessions ?? []).filter(s => s.turns.length > 0)
@@ -432,14 +471,14 @@ export function GroundChat({
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       {/* The conversation scrolls; the composer below it does not. */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 680, width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
-        {isLoading && <div style={{ fontSize: 13, color: 'var(--gw-muted)' }}>Loading your check-ins…</div>}
-        {isError && (
+        {isParty && isLoading && <div style={{ fontSize: 13, color: 'var(--gw-muted)' }}>Loading your check-ins…</div>}
+        {isParty && isError && (
           <div style={{ fontSize: 13, color: 'var(--gw-sub)' }}>
             Your check-ins could not be loaded. Try again in a moment.
           </div>
         )}
 
-        {!isLoading && !isError && sessions.length === 0 && (
+        {isParty && !isLoading && !isError && sessions.length === 0 && (
           <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
             Nothing on record yet. Your first check-in starts the conversation, and everything
             you say in it stays here for you to come back to.
@@ -482,6 +521,31 @@ export function GroundChat({
           </details>
         )}
 
+        {/*
+          THE READER WHO IS NOT A PARTY gets the ground's history rather than anybody's
+          words. Same dividers, so the shape of the ground reads the same to everyone -
+          what is inside them is what differs, and it differs on purpose.
+        */}
+        {!isParty && (history ?? []).map(h => (
+          <div key={h.sessionNumber} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <SessionDivider sessionNumber={h.sessionNumber} date={h.date} isCorrection={false} correctionOf={null} />
+            <div style={{ alignSelf: 'center', fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', lineHeight: 1.6 }}>
+              {h.people.length === 0
+                ? 'Nobody has checked in yet.'
+                : `Checked in: ${h.people.join(', ')}.`}
+              <div style={{ color: 'var(--gw-muted)', fontSize: 11.5, marginTop: 2 }}>
+                What each person wrote stays with them. The report is where their accounts meet.
+              </div>
+            </div>
+          </div>
+        ))}
+
+        {!isParty && (history ?? []).length === 0 && (
+          <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, textAlign: 'center' }}>
+            No sessions yet. When people check in, each one appears here.
+          </div>
+        )}
+
         {sessions.map(s => (
           <div key={s.checkInId} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <SessionDivider
@@ -498,6 +562,8 @@ export function GroundChat({
         ))}
       </div>
 
+      {/* No composer for somebody with no check-in to write in. W8-67. */}
+      {isParty && (
       <div style={{ maxWidth: 680, width: '100%', margin: '0 auto', padding: '0 20px 16px', boxSizing: 'border-box', flexShrink: 0 }}>
       <Composer
         groundId={groundId}
@@ -509,6 +575,7 @@ export function GroundChat({
         openPending={openPending}
       />
       </div>
+      )}
     </div>
   )
 }

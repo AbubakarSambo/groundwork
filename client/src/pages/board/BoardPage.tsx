@@ -474,9 +474,15 @@ export function BoardPage() {
         {has('dependencies') && b.dependencies && (
           <>
             <Sec title="Waiting on" src="handoffs between people" />
+            {/*
+              Nothing to offer in the empty state, so it says where this comes from
+              instead. A handoff is extracted from what people say in their check-ins -
+              there is no button that would produce one, and an empty state implying
+              otherwise would send somebody looking for it. W8-24.
+            */}
             <Card>
               {b.dependencies.length === 0 ? (
-                <Row first><div style={{ fontSize: 12.5, color: 'var(--gw-muted)' }}>Nobody has named a handoff yet.</div></Row>
+                <Row first><div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>Nothing here yet. Handoffs appear when somebody says in a check-in that they are waiting on another person.</div></Row>
               ) : b.dependencies.map((d, i) => (
                 <Row key={d.id} first={i === 0}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 9, flexWrap: 'wrap' }}>

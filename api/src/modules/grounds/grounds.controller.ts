@@ -126,6 +126,29 @@ export class GroundsController {
     return this.grounds.getOrgRoster(organizationId);
   }
 
+  /**
+   * DECLARED BEFORE `@Get(':id')`, AND THAT IS THE WHOLE FIX. W8-69.
+   *
+   * Nest matches routes in declaration order, so with `:id` first this path was read as a
+   * ground whose id is the string "awaiting-approval", `get()` found no such ground, and
+   * the endpoint answered 404 to every caller. It has never once returned a list.
+   *
+   * What that looked like: every org admin opening the grounds page got a red "Not found -
+   * Ground not found" toast over the page, on every visit, because the rail asks for the
+   * approval queue on mount. The approval requirement she asked for could not work, and
+   * the failure looked like a bug in whatever page you happened to be on.
+   *
+   * `org-roster` above is a static path too and sits before `:id` already, which is why
+   * that one works. This one was appended near its POST siblings, where reading the file
+   * top to bottom makes it look correctly placed.
+   */
+  @Get('awaiting-approval')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Grounds a member has set up that are waiting for an admin to accept them' })
+  async awaitingApproval(@CurrentUser('organizationId') organizationId: string) {
+    return this.grounds.listAwaitingApproval(organizationId);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get a ground (status, participants, check-ins)' })
   async get(@Param('id') id: string, @CurrentUser() user: CurrentUserData) {
@@ -223,13 +246,6 @@ export class GroundsController {
   @ApiOperation({ summary: 'Return the requesting user\'s own check-in status for this ground' })
   async myCheckinStatus(@Param('id') id: string, @CurrentUser('id') userId: string) {
     return this.grounds.getMyCheckinStatus(id, userId);
-  }
-
-  @Get('awaiting-approval')
-  @Roles(Role.ADMIN)
-  @ApiOperation({ summary: 'Grounds a member has set up that are waiting for an admin to accept them' })
-  async awaitingApproval(@CurrentUser('organizationId') organizationId: string) {
-    return this.grounds.listAwaitingApproval(organizationId);
   }
 
   @Post(':id/approve')

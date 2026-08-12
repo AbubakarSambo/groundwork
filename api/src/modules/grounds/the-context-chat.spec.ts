@@ -73,9 +73,25 @@ describe('what the chat is told it must not do', () => {
      * chat interface. This product exists to be the opposite of that.
      */
     expect(prompt).toContain('This is not about a person.');
-    expect(prompt).toMatch(/anything about an individual belongs in a closed context note/);
+    // The destination is asserted in its own test below, precisely, because being
+    // vague here is what let the model relocate it to a check-in.
+    expect(prompt).toMatch(/point them at the ONE place that is for it/);
     expect(prompt).toMatch(/Do not record it here and do not draw them out on it/);
   });
+
+  it('names the ONE place it does belong, and it is not a check-in', () => {
+    /**
+     * FOUND BY RUNNING IT. The first version said "a closed context note where the
+     * product says who can read it", and the model paraphrased that into "a private
+     * note later, during a check-in" - which points a lead at the person's OWN account
+     * of their own work, the single place their manager's opinion must never go.
+     *
+     * Vague about the destination means the model picks one.
+     */
+    expect(prompt).toMatch(/private context note further down this same Context page/)
+    expect(prompt).toMatch(/Do not say it belongs in a check-in/)
+    expect(prompt).toMatch(/that person's own account of their own work/)
+  })
 
   it('and it names what that would make the product, so the instruction has a reason', () => {
     // An instruction with no reason is the one a model talks itself out of.

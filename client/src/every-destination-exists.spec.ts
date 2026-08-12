@@ -49,12 +49,20 @@ const routes = [...app.matchAll(/<Route\s+path="([^"]+)"/g)]
  * reported `/profile` as a dead destination, which it is not. A rule that cries
  * wolf gets switched off, so the optional case is handled rather than exempted.
  */
-const matchers = routes.map((r) => {
-  const pattern = r
+/**
+ * One route template as a matcher. Extracted so the optional-param behaviour can be
+ * asserted directly - it used to be checked against `/profile/:id?`, the only route in
+ * App.tsx with a `?`, which is now deleted. A property proved through whichever route
+ * happens to have the shape today is a property that stops being proved.
+ */
+function routeMatcher(template: string): RegExp {
+  const pattern = template
     .replace(/\/:[^/]+\?/g, '(?:/[^/]+)?')
     .replace(/:[^/]+/g, '[^/]+')
   return new RegExp('^' + pattern + '$')
-})
+}
+
+const matchers = routes.map(routeMatcher)
 
 /** A destination with its params and template holes removed. */
 function normalise(target: string): string {
@@ -106,7 +114,14 @@ describe('every in-app destination resolves to a route', () => {
   })
 
   it('and understands optional params, so it does not cry wolf', () => {
-    expect(matchers.some((rx) => rx.test('/profile'))).toBe(true)
-    expect(matchers.some((rx) => rx.test('/profile/somebody'))).toBe(true)
+    /**
+     * This used `/profile/:id?`, which was the only optional-param route in App.tsx and
+     * is now deleted - a page nobody could open. The property being checked is the
+     * matcher's handling of `?`, not that route, so it is checked directly rather than
+     * against whichever route happens to have one today.
+     */
+    const optional = routeMatcher('/thing/:id?')
+    expect(optional.test('/thing')).toBe(true)
+    expect(optional.test('/thing/anything')).toBe(true)
   })
 })

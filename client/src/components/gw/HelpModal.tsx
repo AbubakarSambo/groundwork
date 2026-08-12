@@ -24,11 +24,11 @@ function Tab0({ onNext }: { onNext: () => void }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <div style={{ background: '#F5F3EF', borderRadius: 8, padding: 16, borderLeft: '3px solid #0C447C' }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: '#1A1916', marginBottom: 6 }}>A shared record of contribution</div>
-          <div style={{ fontSize: 13, color: '#6B6560', lineHeight: 1.65 }}>Both parties check in independently. Neither sees what the other wrote. A report shows both versions at the same time. The gap between them is usually the conversation that needed to happen months earlier.</div>
+          <div style={{ fontSize: 13, color: '#6B6560', lineHeight: 1.65 }}>Everybody checks in independently. Nobody sees what anybody else wrote. The report shows every account at the same time. The gap between them is usually the conversation that needed to happen months earlier.</div>
         </div>
         <div style={{ background: '#F5F3EF', borderRadius: 8, padding: 16, borderLeft: '3px solid #5DCAA5' }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: '#1A1916', marginBottom: 6 }}>The record belongs to you. Permanently.</div>
-          <div style={{ fontSize: 13, color: '#6B6560', lineHeight: 1.65 }}>Not the organisation. Not the platform. The person. Your words are private until you both activate the report. Your record survives the relationship. Both parties keep it forever.</div>
+          <div style={{ fontSize: 13, color: '#6B6560', lineHeight: 1.65 }}>Not the organisation. Not the platform. The person. Your words are private until everybody activates the report. Your record survives the relationship, and you keep it.</div>
         </div>
         <div style={{ background: '#F5F3EF', borderRadius: 8, padding: 16, borderLeft: '3px solid #E8A94A' }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: '#1A1916', marginBottom: 6 }}>This tells you where things stand</div>
@@ -49,7 +49,7 @@ const HOW_TO_STEPS = [
   },
   {
     title: 'Set a resolution state before the ground starts',
-    body: 'Before the first check-in, both parties agree on what a successful outcome looks like. Alignment confirmed. Promotion recommended. Brief revised. Agreeing on the end state before you start changes the quality of every session.',
+    body: 'Before the first check-in, everybody agrees on what a successful outcome looks like. Alignment confirmed. Promotion recommended. Brief revised. Agreeing on the end state before you start changes the quality of every session.',
   },
   {
     title: 'Check in independently. Be specific.',
@@ -57,7 +57,7 @@ const HOW_TO_STEPS = [
   },
   {
     title: 'Use the report as the basis for the conversation, not the conversation itself',
-    body: 'The report shows both versions at the same time. Both parties read it together. The gap is what needs to be discussed. The product never decides. You decide with evidence.',
+    body: 'The report shows every account at the same time, and everybody reads it together. The gap is what needs to be discussed. The product never decides. You decide with evidence.',
   },
 ]
 
@@ -86,10 +86,10 @@ function Tab1({ onBack, onNext }: { onBack: () => void; onNext: () => void }) {
 const USE_CASES = [
   { accent: '#5DCAA5', accentText: '#085041', label: 'Team use',                     title: 'Get alignment across the whole team',               body: 'Open a multi-party ground before a new quarter, project launch, or team restructure. Every person submits their version of the plan independently. The alignment feed shows where all versions agree and where they diverge. Without anyone performing for the group.' },
   { accent: '#5DCAA5', accentText: '#085041', label: 'Contribution identification',   title: 'Surface invisible work before it disappears',       body: 'Open a recognition ground when you want to capture what someone is actually contributing. The record shows what was delivered, what was invisible, and what was absorbed. The conversation happens with evidence, not competing feelings.' },
-  { accent: '#0C447C', accentText: '#0C447C', label: 'Conflict recall',               title: 'Use the record when you need to recall what was agreed', body: 'When a dispute arises about what was agreed, the ground record is the reference. Both parties can return to the record at any point. The check-ins are timestamped. The pattern is documented. Nobody can rewrite history.' },
+  { accent: '#0C447C', accentText: '#0C447C', label: 'Conflict recall',               title: 'Use the record when you need to recall what was agreed', body: 'When a dispute arises about what was agreed, the ground record is the reference. Everybody can return to the record at any point. The check-ins are timestamped. The pattern is documented. Nobody can rewrite history.' },
   { accent: '#0C447C', accentText: '#0C447C', label: 'Work terms and conditions',     title: 'Set the terms of the working relationship in writing. Both sides.', body: 'Open a ground to formalise what each party expects, what they are committed to, and what success looks like. This is not an HR document. It is a living record that updates with every session. Both versions. Independently submitted.' },
-  { accent: '#E8A94A', accentText: '#8A5C1A', label: 'Project alignment',             title: 'Agree on what success looks like before the work starts', body: 'The brief you gave and the brief they heard are almost never the same. Open a ground before the project starts. Both parties describe what they are building and what done looks like. The gap appears before it becomes a dispute at month three.' },
-  { accent: '#E8A94A', accentText: '#8A5C1A', label: 'Pre-agreed resolution',         title: 'Agree on the resolution state before the ground opens', body: 'Both parties select the resolution state they are aiming for before the first session. Alignment confirmed. Promotion recommended. Brief revised. Agreeing on the destination changes the quality of the journey. The ground becomes a shared project, not a test.' },
+  { accent: '#E8A94A', accentText: '#8A5C1A', label: 'Project alignment',             title: 'Agree on what success looks like before the work starts', body: 'The brief you gave and the brief they heard are almost never the same. Open a ground before the project starts. Everybody describes what they are building and what done looks like. The gap appears before it becomes a dispute at month three.' },
+  { accent: '#E8A94A', accentText: '#8A5C1A', label: 'Pre-agreed resolution',         title: 'Agree on the resolution state before the ground opens', body: 'Everybody selects the resolution state they are aiming for before the first session. Alignment confirmed. Promotion recommended. Brief revised. Agreeing on the destination changes the quality of the journey. The ground becomes a shared project, not a test.' },
 ]
 
 function Tab2({ onBack, onNext }: { onBack: () => void; onNext: () => void }) {
@@ -116,8 +116,8 @@ const REPORT_ITEMS = [
   { title: 'Resolution summary',          body: 'One sentence. Auto-generated. The thing neither party named directly but both records implied. This is the most valuable line in the report. It is what the conversation needs to be about.' },
   { title: 'Where you agreed', body: 'What you genuinely agree on. Plain language, and you both see the same list at the same time.' },
   { title: 'Where you saw it differently', body: 'What each party said. Where the difference lies. Not which party is right. The product never decides. It describes.' },
-  { title: 'Resolution state',            body: 'The end state both parties agreed to before the ground started. The report closes with the resolution state that was agreed. Whether the ground evidence supports it.' },
-  { title: 'The credential',              body: 'A shareable verified record. End state. Alignment status. Duration. Two-party confirmed. Both parties keep it permanently. It belongs to the people who built it.' },
+  { title: 'Resolution state',            body: 'The end state everybody agreed to before the ground started. The report closes with the resolution state that was agreed. Whether the ground evidence supports it.' },
+  { title: 'The credential',              body: 'A shareable verified record. End state. Alignment status. Duration. Confirmed by everybody in it, and everybody keeps it permanently. It belongs to the people who built it.' },
 ]
 
 function Tab3({ onBack, onClose }: { onBack: () => void; onClose: () => void }) {
@@ -176,7 +176,7 @@ export function HelpModal() {
             <span style={{ fontSize: 13, fontWeight: 700, color: 'white', letterSpacing: '-.01em' }}>Groundwork</span>
           </div>
           <div style={{ fontSize: 22, fontWeight: 800, color: 'white', lineHeight: 1.2, marginBottom: 8, letterSpacing: '-.02em' }}>A shared picture, built from both sides.</div>
-          <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)', lineHeight: 1.65 }}>Both parties check in independently. The report shows where you align, where you differ, and what the gap means.</div>
+          <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)', lineHeight: 1.65 }}>Everybody checks in independently. The report shows where you align, where you differ, and what the gap means.</div>
           <button
             onClick={hide}
             style={{ position: 'absolute', top: 16, right: 16, background: 'rgba(255,255,255,.1)', border: 'none', color: 'white', width: 28, height: 28, borderRadius: '50%', cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}

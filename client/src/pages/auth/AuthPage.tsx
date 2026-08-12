@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { authApi } from '@/api/auth'
 
@@ -10,6 +10,7 @@ import { authApi } from '@/api/auth'
  */
 const API_ORIGIN = import.meta.env.VITE_API_URL ?? ''
 import { useAuthStore } from '@/stores/auth'
+import { LinkSentPanel } from './LinkSentPanel'
 
 const MARKETING_URL = import.meta.env.VITE_MARKETING_URL ?? 'https://myground.work'
 
@@ -89,7 +90,16 @@ export function AuthPage() {
    * link.
    */
   const nextPath = (() => {
-    const raw = searchParams.get('next')
+    /**
+     * `from` IS ACCEPTED TOO, so the two spellings cannot silently diverge again. W8-70.
+     *
+     * `RequireAuth` and `RequirePlatformAdmin` both sent `?from=`, which nothing here read,
+     * so a signed-out person clicking any protected link signed in and landed on the
+     * grounds list with no idea where their page went. They send `next` now; this reads
+     * both, because a redirect that loses the destination fails silently and looks like
+     * the product forgetting.
+     */
+    const raw = searchParams.get('next') ?? searchParams.get('from')
     if (!raw) return null
     if (!raw.startsWith('/') || raw.startsWith('//')) return null
     return raw
@@ -97,14 +107,20 @@ export function AuthPage() {
   const defaultView: View = isSignup ? 'create' : mode === 'member' ? 'link' : 'password'
 
   const [view, setView] = useState<View>(defaultView)
-  const [email, setEmail] = useState('')
+  /**
+   * `/auth/sent?email=...` is this page in its link-sent state, not a page of its own.
+   * `SaveCard` on the marketing home still sends people to that URL, so it keeps
+   * working - it just arrives here now. W8-49.
+   */
+  const arrivedSent = useLocation().pathname === '/auth/sent'
+  const [email, setEmail] = useState(arrivedSent ? (searchParams.get('email') ?? '') : '')
   const [password, setPassword] = useState('')
   // Asked for at last. Without them the organisation ends up called "Sam's
   // workspace", derived from the address, and nobody was ever asked. W10-2.
   const [firstName, setFirstName] = useState('')
   const [orgName, setOrgName] = useState('')
   const [error, setError] = useState('')
-  const [linkSent, setLinkSent] = useState(false)
+  const [linkSent, setLinkSent] = useState(arrivedSent)
   const [resetSent, setResetSent] = useState(false)
   /** Set when the server says this account has no password and a link is on its way. */
   const [passwordlessNotice, setPasswordlessNotice] = useState('')
@@ -280,11 +296,15 @@ export function AuthPage() {
 
       <div className="gw-bd" style={{ maxWidth: 480, margin: '0 auto', width: '100%', paddingTop: 28 }}>
 
-        <div className="gw-ttl">
-          {view === 'create' ? 'Create your account' : view === 'link' ? 'Get a sign-in link' : 'Sign in'}
-        </div>
+        {/* The link-sent panel carries its own heading, so "Sign in" above it read as
+            two screens stacked. W8-62. */}
+        {!linkSent && (
+          <div className="gw-ttl">
+            {view === 'create' ? 'Create your account' : view === 'link' ? 'Get a sign-in link' : 'Sign in'}
+          </div>
+        )}
 
-        {view === 'password' && passwordlessNotice && (
+        {view === 'password' && !linkSent && passwordlessNotice && (
           <div style={{ background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 10, padding: '13px 15px', marginBottom: 16 }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 4 }}>
               Check your email
@@ -295,7 +315,8 @@ export function AuthPage() {
           </div>
         )}
 
-        {view === 'password' && (
+        {/* `!linkSent`: on /auth/sent this whole form rendered above the panel. W8-62. */}
+        {view === 'password' && !linkSent && (
           <>
             <form onSubmit={submitPassword}>
               <div className="gw-fld">
@@ -465,7 +486,7 @@ export function AuthPage() {
           </>
         )}
 
-        {view === 'forgot' && !resetSent && (
+        {view === 'forgot' && !linkSent && !resetSent && (
           <>
             <div className="gw-sub-t" style={{ marginBottom: 20 }}>
               Enter your email and we will send you a link to reset your password.
@@ -519,22 +540,11 @@ export function AuthPage() {
           </div>
         )}
 
-        {view === 'link' && linkSent && (
-          <div style={{ textAlign: 'center', paddingTop: 12 }}>
-            <div style={{ fontSize: 22, marginBottom: 8 }}>✓</div>
-            <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 6 }}>Check your email</div>
-            <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-              A link is on its way to <strong>{email}</strong>. Check your inbox and click it to continue.
-            </div>
-            <div style={{ marginTop: 16 }}>
-              <span
-                style={{ fontSize: 13, color: 'var(--gw-navy)', textDecoration: 'underline', cursor: 'pointer' }}
-                onClick={() => { setLinkSent(false); setView('password') }}
-              >
-                Back to sign in
-              </span>
-            </div>
-          </div>
+        {linkSent && (
+          <LinkSentPanel
+            email={email}
+            onUseDifferent={() => { setLinkSent(false); setView(defaultView === 'create' ? 'create' : 'link') }}
+          />
         )}
 
         <div style={{ fontSize: 11, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 24, paddingTop: 16, borderTop: '0.5px solid var(--gw-border)', lineHeight: 1.6 }}>

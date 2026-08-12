@@ -9,6 +9,7 @@ import {
   pickBoardSafeReportFields,
   sectionsFor,
 } from './board-families';
+import { labelsForParties, namesVisibleTo, readsWithNamesOf, withNames } from '../reports/party-labels';
 import {
   CoverageKind,
   CoverageRead,
@@ -150,7 +151,45 @@ export class BoardService {
     };
 
     // GATE 2: whitelist. Only these report fields may cross to the board.
-    const reportSafe = ground.report ? pickBoardSafeReportFields(ground.report as any) : null;
+    const reportSafeRaw = ground.report ? pickBoardSafeReportFields(ground.report as any) : null;
+
+    /**
+     * GATE 3: THE NAMES. W8-73.
+     *
+     * The board reads the report's own sentences, and those sentences are written by the
+     * model in LABELS - "the initiator", "the participant", "participant A" - which
+     * `reports.service.ts` swaps for real names on the way out, per reader, according to
+     * what that reader is allowed to see.
+     *
+     * The board never did that. So a LEAD, who is entitled to every name in their own
+     * ground, read their board as "By the end of the evaluation period, the participant was
+     * successfully owning two client accounts" and "the initiator's clarification in week
+     * seven" - about themselves. Twelve sessions of work, described in placeholders.
+     *
+     * Same helpers, same rule, same reason it lives in code: this is access control, not
+     * wording. A lead reads with every name; anybody else gets their own, the lead's, and
+     * labels for the rest.
+     */
+    const visibleNames = namesVisibleTo(
+      readsWithNamesOf({
+        viewerIsLead: isInitiator || isSetupAdmin,
+        viewerParticipantId: me?.id ?? null,
+        parties: ground.participants as any[],
+      }),
+      ground.participants as any[],
+    );
+    const allLabels = [...labelsForParties(ground.participants as any[]).values()];
+    const named = (v: any): any => {
+      if (typeof v === 'string') return withNames(v, visibleNames, allLabels);
+      if (Array.isArray(v)) return v.map(named);
+      if (v && typeof v === 'object') {
+        const out: Record<string, any> = {};
+        for (const [k, val] of Object.entries(v)) out[k] = named(val);
+        return out;
+      }
+      return v;
+    };
+    const reportSafe = reportSafeRaw ? (named(reportSafeRaw) as typeof reportSafeRaw) : null;
 
     const out: Record<string, any> = {
       groundId,

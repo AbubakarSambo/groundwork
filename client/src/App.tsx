@@ -1,3 +1,4 @@
+import { PageCrash } from '@/components/gw/PageCrash'
 import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClient } from '@/lib/queryClient'
@@ -5,14 +6,9 @@ import { Toaster } from 'sonner'
 import { useAuthStore } from '@/stores/auth'
 import { useSessionTimeout } from '@/lib/useSessionTimeout'
 import { AuthPage } from '@/pages/auth/AuthPage'
-import { MagicSentPage } from '@/pages/auth/MagicSentPage'
 import { MagicVerifyPage } from '@/pages/auth/MagicVerifyPage'
 import { GoogleCallbackPage } from '@/pages/auth/GoogleCallbackPage'
-import { SetPasswordPage } from '@/pages/auth/SetPasswordPage'
-import { ResetPasswordPage } from '@/pages/auth/ResetPasswordPage'
-import { SetupPage } from '@/pages/setup/SetupPage'
-import { EnterPage } from '@/pages/enter/EnterPage'
-import { PinPage } from '@/pages/enter/PinPage'
+import { ChoosePasswordPage } from '@/pages/auth/ChoosePasswordPage'
 import { EntryChatPage } from '@/pages/enter/EntryChatPage'
 import { ChatPage } from '@/pages/chat/ChatPage'
 
@@ -32,14 +28,12 @@ import { BillingPage } from '@/pages/billing/BillingPage'
 import { PricingPage } from '@/pages/billing/PricingPage'
 import { PaymentPage } from '@/pages/billing/PaymentPage'
 import { BillingCallbackPage } from '@/pages/billing/BillingCallbackPage'
-import { ProfilePage } from '@/pages/profile/ProfilePage'
 import { InvitePage } from '@/pages/invite/InvitePage'
 import { JoinPage } from '@/pages/join/JoinPage'
 import { PromptVersioningPage } from '@/pages/prompts/PromptVersioningPage'
 import { PromptTestPage } from '@/pages/prompts/PromptTestPage'
 import { AdminPage } from '@/pages/admin/AdminPage'
 import { AdminDashboardPage } from '@/pages/admin/AdminDashboardPage'
-import { DemoConversationPage } from '@/pages/demo/DemoConversationPage'
 import { SettingsPage } from '@/pages/settings/SettingsPage'
 import { OrgMembersPage } from '@/pages/org/OrgMembersPage'
 import { NotFoundPage } from '@/pages/notfound/NotFoundPage'
@@ -54,7 +48,11 @@ function RequireAuth({ children }: { children: JSX.Element }) {
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
   if (!isAuthenticated) {
     const dest = window.location.pathname + window.location.search
-    return <Navigate to={`/auth?from=${encodeURIComponent(dest)}`} replace />
+    // `next`, NOT `from`: AuthPage has only ever read `next`, so every person who was
+    // sent here from a protected page lost their destination and landed on the grounds
+    // list. Two spellings of one idea, and the one the redirects used was the dead one.
+    // W8-70.
+    return <Navigate to={`/auth?next=${encodeURIComponent(dest)}`} replace />
   }
   return children
 }
@@ -68,7 +66,11 @@ function RequirePlatformAdmin({ children }: { children: JSX.Element }) {
   const isPlatformAdmin = useAuthStore(s => s.user?.isPlatformAdmin)
   if (!isAuthenticated) {
     const dest = window.location.pathname + window.location.search
-    return <Navigate to={`/auth?from=${encodeURIComponent(dest)}`} replace />
+    // `next`, NOT `from`: AuthPage has only ever read `next`, so every person who was
+    // sent here from a protected page lost their destination and landed on the grounds
+    // list. Two spellings of one idea, and the one the redirects used was the dead one.
+    // W8-70.
+    return <Navigate to={`/auth?next=${encodeURIComponent(dest)}`} replace />
   }
   if (!isPlatformAdmin) {
     return <Navigate to="/grounds" replace />
@@ -103,28 +105,28 @@ export default function App() {
           <HelpModal />
           <HelpButton />
           <AppShell>
+          {/* A render error in one page used to blank the entire app. W8-63. */}
+          <PageCrash>
           <Routes>
             {/* Public */}
             <Route path="/" element={<RootRoute />} />
             <Route path="/login" element={<Navigate to="/auth" replace />} />
             <Route path="/auth" element={<AuthPage />} />
-            <Route path="/auth/sent" element={<MagicSentPage />} />
+            {/* The link-sent state of /auth, not a page of its own. W8-49. */}
+            <Route path="/auth/sent" element={<AuthPage />} />
             <Route path="/verify-email" element={<MagicVerifyPage />} />
             {/* Where the server's Google OAuth redirect lands. Inert until
                 GOOGLE_CLIENT_ID/SECRET are set - the button that starts the flow
                 only renders when /auth/methods says google is available. */}
             <Route path="/auth/google/callback" element={<GoogleCallbackPage />} />
-            <Route path="/set-password" element={<SetPasswordPage />} />
-            <Route path="/reset-password" element={<ResetPasswordPage />} />
+            {/* One page, two links. Both URLs are sent in emails, so both keep resolving. W8-49. */}
+            <Route path="/set-password" element={<ChoosePasswordPage />} />
+            <Route path="/reset-password" element={<ChoosePasswordPage />} />
             <Route path="/start" element={<EntryChatPage />} />
-            <Route path="/enter" element={<EnterPage />} />
-            <Route path="/pin" element={<PinPage />} />
             <Route path="/invite" element={<InvitePage />} />
             <Route path="/join" element={<JoinPage />} />
-            <Route path="/demo/:persona" element={<DemoConversationPage />} />
 
             {/* Post-auth setup */}
-            <Route path="/setup" element={<SetupPage />} />
 
             {/* Main app - require auth */}
             <Route path="/grounds" element={<RequireAuth><GroundsListPage /></RequireAuth>} />
@@ -148,7 +150,6 @@ export default function App() {
             <Route path="/pricing" element={<PricingPage />} />
             <Route path="/billing/checkout" element={<RequireAuth><PaymentPage /></RequireAuth>} />
             <Route path="/billing/callback" element={<RequireAuth><BillingCallbackPage /></RequireAuth>} />
-            <Route path="/profile/:id?" element={<ProfilePage />} />
             <Route path="/prompts" element={<RequireAuth><PromptVersioningPage /></RequireAuth>} />
             <Route path="/prompts/test" element={<RequireAuth><PromptTestPage /></RequireAuth>} />
             <Route path="/settings" element={<RequireAuth><SettingsPage /></RequireAuth>} />
@@ -163,6 +164,7 @@ export default function App() {
                 visitor on a blank tab with no way forward. */}
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
+          </PageCrash>
           </AppShell>
         </SessionGuard>
       </BrowserRouter>

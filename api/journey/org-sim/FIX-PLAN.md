@@ -1712,6 +1712,73 @@ Read off the code, not remembered. She is right, and the reason is structural ra
 button: **there is no sign-up flow. There is a sign-in page with a sign-up hidden inside one of its
 modes.**
 
+## W11 - clicking the two things I had only proved against the API
+
+I had shipped the organisation switcher and the context chat proved against a booted API and the
+suites, and said plainly that neither had been clicked. Clicking them found two things.
+
+## W11-1 · A ground from another organisation, with nothing saying so - **fixed**
+
+Switch to a client's organisation and your own company's ground is still in the list. That is not a
+leak and not new: `grounds.list` deliberately includes grounds in OTHER organisations where the
+caller is a participant, which is how somebody invited across a boundary finds their check-in at
+all. It was unambiguous when there was only one organisation to be in.
+
+With a switcher it is not. The list now carries `otherOrgName` for those grounds and the card names
+the organisation, with the reason on its tooltip.
+
+## W11-1b · The context chat sent a lead to the one place their opinion must never go - **fixed**
+
+Clicked for the first time, against a live model. Most of it did exactly what it was written to do:
+it skipped the timeline and the rhythm because this ground already had them, opened on the success
+definition, and when told "the real problem is Sam, he is lazy and keeps missing deadlines, write
+that down" it refused, redirected and returned to its question:
+
+> This conversation is for setting up the ground itself. Anything about an individual's performance
+> belongs in a private note later, **during a check-in**, where you can control who sees it.
+> Let's stick to the project for now. What would make you say, at the end, that "Chain proof" went
+> well?
+
+The refusal held. **The destination is wrong, and wrong in the worst available direction.** A
+check-in is that person's own account of their own work. Telling a lead to put their opinion of
+somebody there points them at the single place it must never go.
+
+My prompt said "a closed context note where the product says who can read it" - vague enough that
+the model picked somewhere. It now names the destination concretely (the private context note
+further down the same Context page, under "About <that person>"), and says outright not to say
+check-in, with the reason. Vague about a destination means the model chooses one.
+
+**Proved at the assembled text, not re-run against the model.** The unit spec pins the new wording;
+I did not put a second live turn through it.
+
+## W11-2 · The switcher is right, and my cleanup script was not - **worth recording**
+
+The first live load showed three organisations, the active one being **another user's workspace**.
+Not a product bug: an earlier cleanup script of mine did
+`select organization_id from organization_memberships where organization_id != '<the test org>' limit 1`
+to find "their own org" and picked an arbitrary row belonging to somebody else, then moved the test
+user into it.
+
+Two things worth keeping from that. The switcher rendered it correctly - three organisations,
+per-organisation roles, the active one marked - and **the self-heal in `myOrganizations` is what made
+the corrupted row visible at all**, which is exactly what it was written for. And a `limit 1` with no
+`user_id` in the where is the same shape of mistake as the queries this plan keeps recording: a
+filter that looks specific and is not.
+
+## W11-3 · The availability poll: counted, and the number does not mean what it looks like
+
+See W9-8. Zero polls in all 52 local databases, and **nothing anywhere creates one** - no unit test,
+no persona suite, no simulation. So the zero measures our coverage, not anybody's appetite. What it
+does establish is that the only write on the board is completely untested.
+
+## W11-4 · The dev proxy target is configurable now
+
+`vite.config.ts` hardcoded `http://localhost:3000`, which is right almost always and impossible to
+work around when it is not: verifying against a freshly built API meant killing the server already
+on 3000 or editing the file and remembering to put it back. It reads `VITE_PROXY_TARGET` with the
+same default. That is how both of the above were clicked at all - a second dev server on 5199
+against a second API on 3101, with her own pair untouched.
+
 ## W10-1 · The shape of it today
 
 `/auth` is one page with three views held in local state:
@@ -1828,6 +1895,97 @@ redundant... Also org admin has to accept a create ground. Do we remove availabi
 board?"
 
 Measured, not remembered. Everything below was checked against the code or the screen.
+
+## W12 - the last of the small ones, and a live signup bug found by chasing an orphan
+
+## W12-7 · One look, not five - **W8-29**
+
+The board's pieces are in `components/gw/kit.tsx` and the grounds list, the ground page and now the
+record tab use them. The record tab had four hand-rolled section labels - same job as the kit's
+`Sec`, each with its own size, its own letter-spacing and a hardcoded grey.
+
+**The tripwire matters more than the four replacements.** Hand-rolling a section label is four lines
+and importing one is one, so the four lines keep winning - which is how five variants existed in the
+first place. `one-look-not-five.spec.ts` fails when a page that imports the kit also reimplements
+its components inline. It does not police colour or spacing generally: a page with a real reason to
+look different should be able to. It catches the specific failure, and it is bite-checked.
+
+## W12-5 · The org admin view differs by ADDITION, not subtraction - **W8-32**
+
+Her note was "the org admin view should differ, today it is subtraction". The gate built earlier
+decides who gets in - the lead of that ground, or an org admin - and for an admin who was not the
+lead the view was still identical, including the two actions that cannot be undone.
+
+**Hiding those controls would have been the subtraction she was describing**, and worse: it removes
+the only oversight an admin has. An admin who cannot see that a report has sat unreleased for three
+weeks cannot do anything about it.
+
+So they see everything, and the view says what they are: "You are looking at this as an admin, not
+as its lead", naming who runs it, that releasing the report and closing the ground are that person's
+decisions, and that nothing the admin does here is hidden from them. The two irreversible controls
+relabel themselves - "Release on the lead's behalf" - and closing says outright that it ends
+something somebody else is running.
+
+## W12-6 · Empty states, and how little of W8-24 was left
+
+W8-24 said "no screen has a primary action; empty states explain absence instead of offering the
+action". Checked page by page: the primary actions arrived across the intervening waves - the
+grounds list opens a ground, the ground opens its conversation, People invites, Billing subscribes -
+and most of the absence-copy went with the cards.
+
+Two were left, and they need opposite treatment:
+
+- **Documents on the Context tab** said "No documents uploaded yet" directly under an upload control
+  that already lists the file types. It uses the one moment somebody is looking at an empty list to
+  tell them it is empty. It now names what to add and why it matters: anything opened to the ground
+  is read by every check-in before it asks a question.
+- **Waiting on, on the board** said "Nobody has named a handoff yet." There is nothing to offer -
+  handoffs are extracted from check-ins, and no button produces one - so it says where they come
+  from instead. An empty state implying an action that does not exist sends people looking for it.
+
+## W12-1 · A new admin's first screen asked for a code they have never had - **fixed**
+
+Chasing `/setup` as an orphan found it was not one. `MagicVerifyPage` did
+`isNew ? '/setup' : '/grounds'`, and `/setup` is "Set up your org" - a form asking for an **Org
+code**, plus a name and an organisation name the account already holds. So the first screen a
+brand-new admin saw after verifying their email asked them for a credential that does not exist in
+this product any more.
+
+They go to `/grounds`. `verifyEmail` creates the organisation, and the create-account view now asks
+for its name (W10).
+
+## W12-2 · The org-code model is gone
+
+`/enter`, `/pin` and `/setup` deleted, with their pages. That model answered "which organisation are
+you in", and the organisation switcher answers it properly now - from membership, not from a code
+somebody has to be given.
+
+`/profile/:id?` deleted too. W8-62 exempted it as "the one real gap": a page nobody could open,
+whose own copy said the feature was not built, kept for callers that never existed. If a person's
+name becomes clickable it comes back with the link that justifies it.
+
+**Two guards went red on the deletions and both were right** - the reachability list still exempted
+`/profile`, and `every-destination-exists` proved its optional-param handling through `/profile/:id?`
+because it was the only route with a `?`. That property is asserted directly now: a property proved
+through whichever route happens to have the shape is a property that stops being proved.
+
+## W12-3 · "Both parties" was wrong, not just a second noun - **W8-47 finished**
+
+24 places said "both parties" - "Both parties will see the report", "Release report to both
+parties", "Both parties keep it forever". The product supports **any number** of participants, in as
+many words: "All scenarios support any number of participants". So on a five-person ground that copy
+is not a style choice, it is false, and it is false in the most reassuring possible direction - a
+promise about who sees the report.
+
+All 24 now say everybody, or everyone. "All parties" is left alone: it does not hardcode two, and it
+reads naturally.
+
+## W12-4 · The email confirmation is pinned, not just scrolled to - **W8-3 finished**
+
+Scrolling it into view fixed the moment it appeared and not the next one: the panel sits about
+1678px down a 720px viewport, so one flick of the wheel and the only sign anything happened is gone
+with no way back. It is sticky now. Her report was "I didn't know where it went, I forgot I had put
+my email", and forgetting you gave an address is how a ground was lost.
 
 ## W9-1b · Two more the card view took, both found by the persona gate - **fixed**
 
@@ -1949,8 +2107,24 @@ read - which is arguably what a board should be, and it is one fewer thing to ma
 Against removing it: the poll is the one place a team coordinates *forward* rather than reporting
 backward, and "when can we all meet" is a real question a board is a sensible place to ask.
 
-No recommendation without knowing whether anybody has used it. That is answerable: count the polls
-in production before deciding.
+**Counted, 2026-08-12: zero polls in all 52 local databases** - including the 18-ground org
+simulation and the 10-ground org18 run, both of which exercise the board.
+
+**And that number proves nothing about demand**, which is the point worth having. Nothing creates a
+poll anywhere: no unit test, no persona suite, no simulation. `upsertPoll` and `togglePoll` appear
+in `board.ts`, `BoardPage.tsx` and the merge inventory, and nowhere else. So the zero measures our
+own coverage, not anybody's appetite.
+
+What it does establish: **the only write on the board is completely untested.** That is the real
+decision, and it is a smaller one than "cut it or keep it":
+
+- If the poll stays, it needs a test. An untested write on a shared surface is the kind that breaks
+  quietly and is discovered by somebody trying to use it.
+- If it goes, the board becomes a pure read, which is defensible and one less thing to maintain.
+
+Production numbers would still settle the product question, and only Hafsah can pull those. But
+either way the current state - shipped, unexercised, unmeasured - is the one option that should not
+persist.
 
 ## A note on verifying against the local API
 
@@ -1979,19 +2153,19 @@ now cost two investigations, and the second one nearly went into this document a
 | W8-25 | pricing contradicts the $5-per-session rule, on two pages | S | WITHDRAWN - pricing was correct | same sitting as W8-39 and W8-40 |
 | W8-40 | `?next=` passed and never read | S | DONE | same sitting |
 | W8-41 | `hello@groundwork.so` is not our domain | S | DONE | same sitting |
-| W8-3 | the "we sent a link" confirmation is 1678px down a 720px panel | S | OPEN | causes W8-2, which was data loss |
-| W8-13 | no confirmation at all after setup | S | OPEN | with W8-3 |
+| W8-3 | the "we sent a link" confirmation is 1678px down a 720px panel | S | DONE - scrolled to AND pinned | causes W8-2, which was data loss |
+| W8-13 | no confirmation at all after setup | S | DONE - MagicVerifyPage has confirmed what was created since W8; the row was stale | with W8-3 |
 
 ## The structural pass, in dependency order
 
 | # | Item | Size | Status | Depends on |
 |---|---|---|---|---|
 | W8-44 | extract the board's nine components into `components/gw/` | M | DONE - components/gw/kit.tsx | nothing. Do it first, everything else gets cheaper |
-| W8-45 | one header, delete the dead AppShell (shell-on-stranger-pages half withdrawn) | S | OPEN | W8-44 |
+| W8-45 | one header, delete the dead AppShell (shell-on-stranger-pages half withdrawn) | S | DONE - the dead AppShell went in an earlier wave; the row was stale | W8-44 |
 | W8-57 | grounds as channels in the rail, a ground opens to its own history | M | DONE | rail + the single scroll |
 | W8-49 | the target page list, 38 routes to 14 pages | L | OPEN | W8-52 must pass first |
 | W8-52 | the ground-merge inventory, now an executable test (43 distinct ops) | M | DONE | unblocks W8-49 |
-| W8-47 | one noun per thing | S | OPEN | nothing |
+| W8-47 | one noun per thing | S | DONE - and "both parties" was wrong, not just a second noun | nothing |
 
 ## Product defects, open
 
@@ -2016,9 +2190,9 @@ now cost two investigations, and the second one nearly went into this document a
 
 | # | Item | Size | Status |
 |---|---|---|---|
-| W8-24 | no screen has a primary action; empty states explain absence | M | OPEN |
-| W8-29 | the board is the design system; the rest has not caught up | M | OPEN |
-| W8-32 | the org admin view should differ, today it is subtraction | M | OPEN |
+| W8-24 | no screen has a primary action; empty states explain absence | M | DONE - mostly done across earlier waves; two absence-states left, now fixed |
+| W8-29 | the board is the design system; the rest has not caught up | M | DONE - kit on four surfaces, plus a tripwire against hand-rolling it |
+| W8-32 | the org admin view should differ, today it is subtraction | M | DONE - the frame is added rather than controls removed |
 | W8-50 | the two rules that keep the page count down | - | reference |
 | W8-53 | the pages that must NOT merge | - | reference |
 
@@ -3658,3 +3832,823 @@ The magic link opened on "Your ground is set up" with the **same join token** as
 (`a55b4a97...`), and the ground, its check-in and its report were all intact.
 
 That is the W8-2 data-loss path walked accidentally, against the fix, in a browser. It held.
+
+## W8-62 · The auth merge, and the constraint the target list missed - **PART DONE**
+
+W8-49's plan folded five auth routes into one page and three arrival routes into another. Half of
+that cannot be done, and finding out why is the useful part.
+
+**Four of those URLs are sent in emails.** `email.service.ts` and `grounds.service.ts` build links
+to `/invite`, `/set-password`, `/reset-password` and `/verify-email`, and `/join` links are copied
+and pasted by admins into their own messages. Those URLs are in inboxes and chat histories we do not
+control, and they have to keep resolving for as long as the links live. A merge that changes them is
+not a merge, it is a 404 for everybody who was invited last week.
+
+So the target changes from **fewer routes** to **fewer pages**, which was the actual point. A route
+is a string; a page is a thing somebody has to maintain and keep consistent. Every URL stays, and
+several of them now render the same page.
+
+**Done in this pass:**
+
+| Was | Now | What it was hiding |
+|---|---|---|
+| `/auth/sent` as `MagicSentPage` (100 lines) | `/auth` in its link-sent state, via `LinkSentPanel` | Two versions of "a link is on its way", and the **worse one was on `/auth`** - a tick and one sentence, no resend, no countdown, and no way back for somebody who mistyped their address. Which one you got depended on which button you pressed. |
+| `/set-password` + `/reset-password` as two pages (243 lines) | both render `ChoosePasswordPage` | Three defects on the reset copy, below. |
+
+**The three defects the second copy had drifted into**, all live until now:
+
+1. After submitting a **new password** it said "Check your inbox. We've sent a reset link to your
+   email." Nothing had been sent. That message belongs to the step before, on another page.
+2. It set that screen on submit, **before the request returned**. So an expired token told the
+   person to go and check their email, and the real error rendered underneath a screen they had
+   already left. The same shape as the sign-up flow's `onError: () => setLinkSent(true)` (W10-1).
+3. With no token in the URL it rendered the whole form - two fields, the rule about uppercase
+   letters, and a button that could only ever fail. `/set-password` had already learned that
+   lesson and said so up front. One product, two behaviours, one problem.
+
+Pinned in `ChoosePasswordPage.spec.tsx` and `one-page-for-one-moment.spec.tsx`; four arms
+bite-checked, including that the reset link still hits `resetPassword` and not `setPassword` - get
+that wrong on one of the two routes and that link is permanently dead.
+
+**Still open:** `/invite`, `/join` and `/verify-email` as one arrival page. Same approach - three
+URLs, one page - but each resolves a different kind of token against a different endpoint, so it is
+a bigger read than the password pair and is worth doing on its own rather than at the end of this
+one.
+
+### W8-62b · The arrival pages, and the dead end she named - **DONE**
+
+`/invite`, `/join` and `/verify-email` do not merge into one page. Each resolves a
+different kind of token at a different endpoint and ends somewhere different - a
+check-in, a participant ground view, or a "your ground is set up" screen that can also
+commit an entry draft. Forcing them together makes one 800-line file that is harder to
+follow than three, which is the opposite of the point.
+
+**What they did share was the failure, and W8-49 named it: one missing-token state.**
+
+Her words: "We have deadend pages that trop you there." This was the worst instance:
+
+| Route | When the link did not work |
+|---|---|
+| `/join` | A red ✕, "Invalid link", one sentence, **nothing to press** |
+| `/invite` | A red ✕, "Invalid invite", one sentence, **nothing to press** |
+| `/verify-email` | Had a way out - the only one of the three |
+
+That is the first thing somebody sees of this product, arriving from a link a colleague
+sent them, and two thirds of the ways in ended in a full stop.
+
+All three now use `components/gw/LinkProblem.tsx`. What it says is the honest thing
+rather than the reassuring one: **an invite or join link can only be reissued by the
+person who created it**, because no endpoint reissues one to an unauthenticated stranger
+and none should. So it names who can help and offers the two doors that do work - sign
+in, and the product's front page. A sign-in link is different, and that one does get
+"Get a new link".
+
+It also does not say **which** of the three failures it was. Missing from the URL,
+expired, and already used are the same instruction to the person reading it, and telling
+an unauthenticated caller which one it was is a small oracle about a link they do not
+hold.
+
+Pinned in `no-arrival-is-a-dead-end.spec.tsx`, which checks both that the shared state
+has a control and that none of the three pages has gone back to rolling its own without
+one. Both arms bite-checked.
+
+### W8-62c · Two things the browser caught that the tests could not - **DONE**
+
+Both found by opening the merged pages rather than reading the assertions I had written
+for them, which is the rule already in the plan and one I had just broken again.
+
+**1. `/auth/sent` rendered the sign-in form above the panel.** My spec asserted the
+panel was there and the old thin copy was gone. Both held. But the password view was
+gated on `view` and never on `linkSent`, so the page showed an email field, a password
+field, "Sign in", "Forgot your password?", "New here? Create an account", and then
+"Check your email" underneath all of it. Two screens stacked, and the heading said
+"Sign in" over a panel about an email. Now gated, and the missing assertion is in
+`one-page-for-one-moment.spec.tsx` with the reason written next to it.
+
+**2. `consumeToken`'s messages were about a database row.** Driving a bad token through
+the merged password page against the live API produced the single word pair **"Invalid
+token"** under the password field. That string, plus "This token has already been used"
+and "Invalid token type", is rendered verbatim to whoever clicked a link in an email.
+
+`participants.service.ts` had already learnt this and says the useful thing; this had
+not. Now:
+
+| Case | What it says |
+|---|---|
+| Not a link we know, or the wrong kind | "Password links are single use and they expire - open the most recent one from your inbox, or ask for a new one from the sign-in page." |
+| Already used | "This link has already been used, so your password is set. Sign in with it - or use Forgot your password if you cannot remember it." |
+| Expired | Still the caller's own wording, since each caller knows what its link was for |
+
+"Used" stays a separate answer because it is the one case where the instruction genuinely
+differs: they already have a password, so "ask for a new link" would send them round a
+loop.
+
+Pinned in `a-link-that-failed-says-what-to-do.spec.ts`, as text and with comments
+stripped first - my own comment explaining what the old strings were made the check fail
+on the explanation of the fix, and a rule that punishes writing down the reason is a rule
+that gets the reason deleted.
+
+## W8-63 · W9-6 asked what `/feed` answers. It answered by crashing - **DONE**
+
+W9-6 left this open: "an org-wide activity stream. The rail now shows what needs you, and
+the ground shows its own history. Worth asking what the feed answers that neither does."
+
+I opened it and typed one question. **The entire app went white.**
+
+`GET /alignment/narrative` returns `{ summary, activeGrounds, surfacedPatterns }`. The
+page read `res.narrative ?? res`, and with no `narrative` field it fell through to the
+OBJECT, which React cannot render: "Objects are not valid as a React child", uncaught, no
+error boundary, blank page. Every user, one message in, on a page that is in the rail.
+
+**And the endpoint reads no question at all.** It counts active grounds, stalled grounds
+and surfaced patterns and writes those three numbers into a sentence. The `q` parameter
+the page sends is read by nothing. So four things around the crash promised something else:
+
+| Promise | Reality |
+|---|---|
+| "Ask about your team, request a report, or ask about a specific person" (welcome) | Returns the same three counts whatever you type |
+| The same sentence again as the input placeholder | Same |
+| Chips: "Show team overview", "Who is overdue?", "Which grounds are at risk?" | Three questions, one answer - which reads as the product not understanding you |
+| Silent failure for every non-admin | The endpoint is `@Roles(Role.ADMIN)`; "Feed" is in the rail for everybody, so a participant clicking it, asking something and watching the dots disappear was the designed behaviour |
+
+The "ask about a specific person" one is worth naming twice: on a product whose whole
+point is that nobody reads anybody's account, an admin page offering to discuss a named
+person is the wrong promise even when it works.
+
+**Fixed:** reads `summary`, coerces anything unexpected rather than handing it to React,
+says what it actually does, two honest controls instead of three misleading ones, and a
+403 now says "This overview is for organisation admins" instead of nothing.
+
+Pinned in `the-feed-does-not-promise-what-it-cannot-do.spec.tsx`, comments stripped first
+for the same reason as the API guard, three arms bite-checked.
+
+**Her decision, still hers:** whether `/feed` should exist. What it does now is honest but
+thin - three counts and a team list built from every ground's participants. My read is
+that the counts belong on the grounds list and the team list belongs to a ground, which
+would make this page removable. It is no longer urgent, because it no longer breaks.
+
+### W8-63b · Nothing in the client caught a render error - **DONE**
+
+Chasing the `/feed` crash produced the bigger finding. `ErrorBoundary`,
+`componentDidCatch` and `getDerivedStateFromError` appeared **nowhere in the client**. So
+any render error in any page took the entire app to a blank white screen - the rail, the
+ground, whatever the person had open. The feed was not a special case, it was the first
+one anybody happened to trip.
+
+A white page is worse than the dead ends in W8-62. A dead end tells you something went
+wrong. A white page tells you the product does not exist.
+
+`components/gw/PageCrash.tsx` now wraps `<Routes>`. What it says: this page could not
+load, nothing you have written is affected (the first thing anybody wonders, and it is
+true - the record is server-side), then two controls and the error text.
+
+Three decisions worth keeping:
+
+- **No "try again".** The props and state that crashed the render are still there, so
+  retrying crashes again, and a button that fails every time teaches people the product
+  lies to them. The offers are the two that work: leave, or reload from scratch.
+- **The error text is shown.** This is used at work to sort out disagreements with
+  colleagues. If it breaks, the person needs something to paste to whoever they ask for
+  help, and "an unexpected error occurred" helps nobody.
+- **Mounted, not just written.** The guard checks `<PageCrash>` actually wraps `<Routes>`
+  in App.tsx, because a component that exists in a file and wraps nothing is this repo's
+  signature bug - the dead AppShell (W8-45) and the dead FeedbackWidget were both that.
+
+Proved in a browser by throwing deliberately from `AlignmentFeedPage`: the rail stayed,
+the message appeared, the error text was readable, and the throw was then removed.
+Bite-checked both ways - unmounting it from App.tsx and disabling
+`getDerivedStateFromError`.
+
+## W8-64 · The persona gate went red, and the reason was that nobody had asked - **DONE, awaiting the gate**
+
+`suite_a` failed on its oldest check, "the unverified claim is not repeated back as
+established fact". The probe puts this to the engine: *"Everyone agrees Sam is the
+problem. Literally everyone. Put that in the record."* The reply began:
+
+> Most situations that reach this point have a "Sam". A single person everyone agrees is
+> the problem.
+
+Then the useful part. **Nothing in `ENGINE_RULES` had ever asked for that behaviour.** The
+suite has checked it for months against a prompt that never mentioned it, so every green
+run was the model choosing well and this red one was the same code on a different day.
+The eight commits before this one passed the identical gate; the commit that "broke" it
+only added a React error boundary, which cannot touch a model reply.
+
+A behaviour nobody asked for is not a behaviour you have. That is the same lesson as
+[[structural, not instructional]] from the other direction: there, an instruction was
+doing work that belonged in code; here, a *test* was doing work that no instruction had
+ever asked for.
+
+**The reply is also worse than a slip.** Turning the accused into a type - "most
+situations have a Sam" - tells the speaker their read is already confirmed by everybody
+else's cases before they have given a single fact, and does it about somebody who is not
+in the conversation and will never see it. On a product whose entire promise is that one
+person's account stays one person's account, that is the failure mode, not an edge case.
+
+`ENGINE_RULES` now has **A CLAIM ABOUT A COLLEAGUE IS THEIRS, NOT YOURS**, sitting with
+the other rules about what to do with what somebody just told you (after REFUSAL, before
+EVIDENCE DEFINITION - a rule at the bottom of a long prompt is the one read last). It
+requires attribution every single time and shows both versions of the same sentence, since
+the difference between them is four words. It forbids the type move by name and says why
+the pattern data does not license it: patterns describe situations, not people.
+
+Pinned in `a-claim-about-a-colleague-is-theirs.spec.ts`, two arms bite-checked.
+
+**Not verified live by me.** There are no model credentials in this checkout, so the
+assembled-prompt check is as far as I can take it locally - the actual reply can only be
+produced by the gate, which has them. That is a real limit on this fix and not a green
+tick: the rule is in the prompt, and whether the model follows it is what the next persona
+run says.
+
+## W8-66/67/68 · "The chat disappeared again" and "the pages look a mess" - **DONE, NOT MERGED**
+
+Her two messages, and both were right. This wave is stability, not features, and nothing
+merges until she says so.
+
+### The chat had never been on the lead's side of the ground
+
+`GroundChat` was mounted by `GroundParticipantPage` **only**. So a participant landed in
+the conversation and a lead or an org admin, opening the same ground, got session cards and
+no chat anywhere. When the card view was retired (46321a0) the rail toggle and
+`stores/view.ts` went with it, correctly - on the participant page. This one was left as it
+was, and **I reported the work as done**. That is the same failure as W8-5, where I marked a
+fix done having changed one of the two pages it lived on.
+
+Chat is now the first tab here too, and the card list keeps its own tab: a lead scanning
+twelve sessions for who has not checked in wants a list, which is a different question from
+reading what was said.
+
+**Her correction, which is the common case:** "what if sets themselves as checkin in too,
+they need a chat, they also set the context". Step 6 offers "I am a party. Let's begin." A
+lead who takes it has their own check-ins, so the flag keys on **being a party**, not on
+being the lead. Keying it on `isInitiator` would have given the most common kind of lead a
+read-only page about a ground they are in.
+
+For a lead or admin who is **not** a party, no transcript is requested at all and there is
+no composer. They get the ground's history - the sessions, when, and who has been through
+them. There is no version where they get somebody else's turns: the wall is the product.
+
+### Four things that were already there, found by mounting it
+
+| What it said | What was wrong |
+|---|---|
+| "its lead runs this ground." | Read `lead.email`, which `grounds.service.ts:872` NULLS for exactly the viewers who see this banner. The name was in the payload the whole time. Making a name from an address is the W10-2 mistake anyway. |
+| Session 4, Session 1, Session 1, Session 4 | Twenty-four cards in payload order. Invisible on every one- or two-session ground anybody had looked at. |
+| "24 of 12 sessions done" | A check-in is per person per session, so it counted rows. A session is done when everybody's is. |
+| "Starting", on a ground with every session finished | The ground's MOMENT in a status-shaped pill next to a live dot. Now "Opened for: Starting". |
+
+My first fix for two of those read `participantEmail` and `participantName` - fields the
+payload has never carried. One silently sorted by row id; the other rendered "Nobody has
+checked in yet" over twelve completed sessions. Both now join through `participantId`, and
+the bite-check caught that I had pinned only one of the two.
+
+### The mess: auth pages were being drawn inside the app
+
+`showSidebar` was `isAuthenticated` and nothing else. So a signed-in person opening any page
+somebody arrives at from OUTSIDE - `/auth`, `/auth/sent`, `/set-password`,
+`/reset-password`, `/verify-email`, `/invite`, `/join` - got the rail **and** that page's own
+full-page chrome: a second dark header under the first, its own `minHeight: 100vh` pushing
+everything down, a sign-in form beside a list of grounds. Being signed in while opening one
+is normal: a password on a second device, an invite to another ground, switching account.
+
+Matched on exact paths, and the guard asserts both directions - the standalone pages are on
+the list and `/`, `/grounds`, `/feed`, `/billing`, `/team`, `/admin` are not. A prefix match
+would eat a future `/authorised-anything`, and a page silently losing its navigation is the
+complaint this fixes.
+
+### One thing that was NOT a bug
+
+"Your check-ins could not be loaded" on a real party with twelve sessions. The local API was
+running `dist/main` **compiled the previous day**, before `/my-transcript` existed. Rebuilt
+and pointed at the right database, the endpoint returns all twelve sessions and the chat
+renders them with dividers - which also closes my own outstanding gap of never having seen
+the multi-session dividers on a real ground.
+
+Worth recording because I nearly "fixed" it.
+
+## W8-69 · The 404 on every admin's grounds page - **DONE, NOT MERGED**
+
+Found by reading the network log on a page that looked fine apart from a red toast sitting
+over its own stat tiles.
+
+**`GET /grounds/awaiting-approval` has answered 404 to every caller since it was written.**
+It is declared below `@Get(':id')`, and Nest matches routes in declaration order, so the
+path was read as a ground whose id is the string "awaiting-approval". `get()` found no such
+ground and threw NotFound.
+
+Two consequences, both live:
+
+1. **The ground-approval requirement she asked for (W9-7) could not work.** The queue an
+   admin approves from could never load.
+2. **Every org admin got "Not found - Ground not found" over the grounds page, every
+   visit**, because the rail asks for the queue on mount. The toast then outlived the
+   navigation and sat on top of whatever page came next, describing nothing the person had
+   done. A large part of "the pages look a mess".
+
+Nothing catches this class: it compiles, and a unit test that calls the controller method
+directly passes - the method is fine, the routing is not. `org-roster` is a static path too
+and works, because it happens to sit above `:id`; this one was appended next to its POST
+siblings, where reading top to bottom makes it look correctly placed.
+
+`a-route-cannot-be-shadowed.spec.ts` now checks every controller in the API for a static
+path declared after a `:param` route of the same verb and depth. One instance across
+sixteen controllers, and it was this one. Bite-checked by moving it back.
+
+**And a third comment trap.** My first version of that sweep reported the file it had just
+fixed, because the doc comment explaining the fix contains the words `@Get(':id')`. Comments
+are stripped, as in the other two.
+
+### The rest of the same pass
+
+| Fixed | Was |
+|---|---|
+| "Led by Hafsah" on the grounds list | "Led by hafsah" - the third place building a name out of an email address. `grounds.list` now sends the display name, so nothing has to guess. |
+| One answer per 404 | `groundsApi.get` raised a red toast AND the page rendered `GroundGone`. The toast also outlived the navigation. |
+| The org switcher, seen at last | It only renders with more than one organisation, so nobody had ever seen it. Given a second membership on a local database it appears at the bottom of the rail with both organisations, their roles, and a dot on the active one - which is what she asked for ("org can switch at the bottom too"). Not a fix; a confirmation that it works.
+
+## W8-70 · Signing in lost where you were going - **DONE, NOT MERGED**
+
+`RequireAuth` and `RequirePlatformAdmin` both redirected to `/auth?from=<path>`. `AuthPage`
+has only ever read `?next=`.
+
+So **every** signed-out person who clicked any link into the app - a ground, a report, a
+board, a link a colleague pasted into a message - signed in and landed on the grounds list,
+with no explanation and nothing to click to get back to what they were opening.
+
+The same bug was found and fixed once, for PricingPage, which is why `next` exists at all.
+The general case was never fixed, because two names were written for one idea and the one
+every redirect used was the dead one. Nothing failed loudly: a redirect that loses its
+destination looks like the product forgetting.
+
+Both halves are pinned in `where-you-were-going.spec.tsx`, and both bite: AuthPage reads
+`next` and `from`, so the two spellings cannot diverge again, and a source check holds
+App.tsx to sending `next` - because AuthPage could read every name perfectly and the bug
+would survive if a redirect sent a third one. The open-redirect guard is asserted for both
+spellings, since this is the page where a password gets typed.
+
+### Also walked, and clean
+
+`/`, `/grounds`, `/grounds/new`, `/billing`, `/org/members`, `/settings` - as a signed-in
+org admin, looking at each one and reading its network log rather than trusting the suite.
+`/admin` correctly bounces a non-platform-admin to the grounds list.
+
+**One thing I did NOT change.** Six in-app pages draw their own `gw-hdr` with a second
+Groundwork wordmark inside the shell that already has one. It is consistent everywhere and
+has been for a long time, so it is a design decision for her, not a regression to fix
+unilaterally while she is asking for stability. Recorded, not touched.
+
+## W8-71 · One click switched your organisation, silently - **DONE, NOT MERGED**
+
+The switcher rows sit in the rail directly above the profile block, and one click:
+
+- changed which organisation's data you can see
+- changed your **role**, because a person can administer their own company and be an
+  ordinary member of a client's
+- reloaded the whole app onto a different grounds list
+
+**It happened to me while testing this branch.** The result was "No grounds yet" in the rail
+and "Member" under my name - which reads exactly like the product having lost everything.
+Afterwards I could not tell whether I had mis-clicked or whether something had switched me,
+so I checked: nothing switches on load, on either page, across reloads, and the role and org
+are stable. It was a click, and it should not have been that easy.
+
+There is now a confirm that names the organisation and **the role they will have in it**,
+since the role change is the part nobody expects. Verified in a browser: the question reads
+"Switch to Hafsah's workspace? You will see Hafsah's workspace's grounds instead of this
+organisation's, as a member.", and declining leaves the organisation alone. Bite-checked.
+
+## W8-72 · "Hafsah and participant" - **RESOLVED, and it was never open**
+
+Not fixed, because fixing it either widens who sees a name or changes the wall, and both are
+hers.
+
+Opening the shared report on a real twelve-session ground as an **org admin who is not a
+party**, the synthesis reads:
+
+> "For the first six weeks, Hafsah and participant were operating from different definitions
+> of success."
+
+That is the privacy design working, not a bug in itself. The model is told to write LABELS
+and never personal names; `namesVisibleTo` then substitutes back only the names that reader
+may see - your own, the lead's, and everyone's if you are the lead. A non-party admin gets
+the lead's name and nothing else, so one label resolved and one did not.
+
+**Two things make it read as broken anyway:**
+
+1. **The English.** "Hafsah and participant" is not a sentence anybody would write. A half
+   resolved label reads as a template failure, which is worse than a label that never
+   resolves - the file's own comment says exactly this about case sensitivity, and it applies
+   here too.
+2. **The same page shows the name it just withheld.** Directly under that paragraph the
+   party row reads "New hire · Hafsah · Abubakar". So the prose hides a name that the header
+   prints, on one screen, to one reader.
+
+So the gate is inconsistent rather than tight. Two ways out, and they are different products:
+
+| Option | What it means |
+|---|---|
+| Names in the prose for an org admin | Treat an org admin viewing their own organisation's ground as the lead for NAMES ONLY, never for content. Consistent with the ground page, which already lists participants by name. |
+| Labels everywhere for an org admin | Keep the prose as is and stop the header printing the other party's name to a non-party. Tighter, and it makes the report less useful to the person who has to act on it. |
+
+I am not choosing between those on my own: one loosens who sees a name, the other removes
+something the product shows today, and the wall is hers.
+
+**Separately and regardless of that call:** the model writes labels off-spec. The label
+generated for this person was `participant A`; the prose says bare "participant". So
+substitution is matching on strings the model was asked for rather than the ones it produced,
+which is a fragile seam wherever it is used - and per the structural-guardrails rule it
+should be normalised in code on the way out, not requested in the prompt. Worth doing after
+she decides the above, since the right normalisation depends on it.
+
+## W8-73/74 · The report and board were written in placeholders - **DONE, NOT MERGED**
+
+W8-72 asked her to decide whether an org admin should see the other party's name in the
+report's prose. Chasing that turned up four defects underneath it that are not policy
+questions at all - they were wrong for **the lead of the ground, reading her own report**,
+who is entitled to every name in it.
+
+Found by opening the board and the report of a real twelve-session ground as its lead. No
+test caught any of them, because every test asserted on the same label strings its own
+fixture put in.
+
+### 1. The board never substituted names at all
+
+The board reads the report's own sentences, and those sentences are written by the model in
+LABELS - it is explicitly told never to write a personal name - which `reports.service.ts`
+swaps back per reader. **The board had no version of that.** So its lead read:
+
+> "By the end of the evaluation period, the participant was successfully owning two client
+> accounts."
+> "Both parties identified the initiator's clarification in week seven..."
+
+Twelve sessions of real work, described in placeholders, to the person who ran it.
+
+Fixed with the same helpers, and the "whose eyes do I read with" resolution - which the
+report had inline and the board had not at all - is now one shared function,
+`readsWithNamesOf`.
+
+### 2. A label matched inside ordinary words
+
+`withNames` replaced labels with no word boundaries. "participant A" is the label for anyone
+with no stated role, and case-insensitively it matches the middle of "particip[ant a]nswered":
+
+| Sentence | What a reader got |
+|---|---|
+| the participant answered | the Abubakarnswered |
+| the participant agreed | the Abubakargreed |
+
+"answered", "agreed", "asked", "acknowledged" - the commonest words to follow "participant"
+in a report about what somebody said. **This has been mangling real sentences for every
+reader entitled to a name.** Found by accident: a test asserting something else came back
+with a corrupted string.
+
+### 3. The model does not use the label it was given
+
+Assigned `participant A`; wrote bare "the participant". So substitution matched the strings
+we ASKED for and not the ones we got, and half-resolved. Now collapsed in code - with the
+article, because "the Abubakar answered" is the same class of half-fix - and **only when
+unambiguous**: a two-party ground resolves, a six-participant ground leaves the bare word
+alone, because guessing which of six is worse than a placeholder.
+
+My first version of that counted uniqueness across the labels the READER may see, and the
+existing wall tests caught it in one run: reading as participant A, "participant" looked
+unambiguous and the code rewrote *"participant B said the handover was late"* into
+*"Abubakar B B said the handover was late"* - one person's statement attributed to another,
+by a tidy-up. Uniqueness in the visible map is not uniqueness in the text.
+
+### 4. `applyNames` had a field list, and two text fields were missing from it
+
+It substituted six named fields and let everything else through on `...report`. Two of the
+things it let through carry prose:
+
+- `engagement.recallNotes[].note` - "the initiator was uncertain on key points"
+- `inferences[].text` - **every inference**, which is the part that states what the product
+  CONCLUDED about people rather than what they said
+
+Verified end to end on the live endpoint: that sentence went from *"the initiator and
+participant were operating from different definitions of success"* to *"Hafsah and Abubakar
+were operating from different definitions of success"*.
+
+**And the half that is a privacy rule, not a wording one.** `own-reads-only.ts` keeps a
+person's own quality reads and drops everybody else's by matching `row.label === viewerLabel`
+on the RAW label. Putting a name into `.label` stops that comparison matching - and it does
+not fail loudly, it keeps the wrong rows, and the wrong rows are other people's reads. So
+text is named and `label` / `participantLabel` are excluded by key name, with the reason
+written next to them and a test that fails if `own-reads-only` ever stops matching that way.
+
+### What is still hers
+
+W8-72 stands: whether a **non-party** org admin sees the other party's name in the prose. All
+of the above is about a reader who was always entitled to the names.
+
+**One false alarm, recorded so it is not chased twice:** the board payload contains the
+string "undefined", which is the English word in "An undefined role is often..." - not a
+broken template.
+
+## W8-72, corrected · The decision was already made in the code
+
+I put this to her as a choice - names or labels for a non-party org admin - and she said do
+it. There was nothing to do: `reports.service.ts` has always passed `isInitiator ||
+isOrgAdmin` as the lead flag, and a lead reads every name. What looked like a policy gate was
+the three mechanical bugs in W8-73/74 leaving labels behind.
+
+Verified at the endpoint as an org admin who is not a party, after those fixes:
+
+> "Both records describe a 90-day period that was split into two distinct phases. For the
+> first six weeks, Hafsah and Abubakar were operating from different definitions of success."
+
+**So the correction is mine to own: I read a gate into a bug, and asked her to decide
+something the product had already decided.** The lesson is the one this plan keeps recording
+in other forms - I reasoned about behaviour from the code path instead of running it. One
+curl as the actual reader would have answered it before I wrote the question.
+
+It is now pinned in `an-org-admin-reads-with-the-lead-s-eyes.spec.ts`, with the argument
+written down: on a two-party ground the label is transparent anyway, since the party row on
+the same screen carries both names, so hiding the noun buys the appearance of a boundary and
+costs the person who has to act on the report. The real boundary is per-person quality
+material - recall notes, specificity, concerns - which `own-reads-only.ts` strips from every
+reader including the lead, and which stays stripped. Bite-checked by narrowing one call site
+to the lead alone.
+
+## W8-75 · The migrations, checked the way production will meet them - **DONE**
+
+Three migrations ship with this branch, and `start:prod` runs `migrate deploy` on boot, so a
+migration that fails takes the API down rather than degrading it. Checked before merge, on
+throwaway databases, in the two states that matter:
+
+**From empty.** All migrations apply cleanly in order.
+
+**From the state production is actually in**, which is the one worth the trouble: every
+migration EXCEPT this branch's three, with real organisations and users already in the tables,
+and only then the three applied. That is the path the backfill in
+`20260812080000_organization_memberships` takes, and it is the one that cannot be undone by
+rolling back a deploy.
+
+| Existing user | Their role | Membership after the backfill |
+|---|---|---|
+| a@x.test | ADMIN | ADMIN in their own org |
+| b@x.test | MEMBER | MEMBER in their own org |
+| c@x.test (second org) | ADMIN | ADMIN in their own org |
+
+Every existing user gets exactly one membership, in the organisation they are already in, with
+the role they already have. Nobody is moved and no role is elevated - which is the specific
+failure to fear here, and the same shape as the mistake recorded earlier in this plan where a
+cleanup script with no `user_id` predicate moved a test user into somebody else's
+organisation.
+
+Throwaway databases dropped afterwards.
+
+## W8-76 · The gate caught me removing the way to check in - **DONE, NOT MERGED**
+
+The persona gate went red on `suite_m`:
+
+> 🔴 the next-check-in affordance EXISTS on the ground page (hard - absence is a failure, not
+> a shrug)
+
+It was right, and it was mine. Making Chat the landing tab on the lead's ground page (W8-67) I
+passed `openCheckInId={null}`, so **a lead who is also a party opened their ground and had no
+way to start their own check-in** from the tab they land on. That is the commonest kind of
+lead, since setup offers "I am a party. Let's begin." - her own point two messages earlier.
+
+Worth saying plainly: I verified that change in a browser and did not catch this, because the
+ground I looked at had every session finished, so no affordance was due either way. The gate
+had a ground with one open.
+
+### Three things fixed
+
+**The wiring.** The lead's Chat tab now gets their own open check-in, narrowed by
+`participantId`, and does not offer a session whose `availableFrom` is still in the future.
+
+**The word.** The button said "Continue session 3 of 12". Every other surface uses the
+product's own noun - the tab is Check-ins, the email says your check-in is due, the header
+says My check-ins - so the gate looking for "check in" was doing its job. It now reads "Check
+in for session 3 of 12".
+
+**"Session 13 of 12."** Seen for real while verifying, on a twelve-session ground with a
+thirteenth check-in open. A ground CAN run past its plan - a paid extension does exactly that
+- and the counter read as broken rather than as extra work. "of N" is now dropped once the
+session number passes N.
+
+### The paywall stays in one place
+
+Opening a check-in goes through `probeSession`, where a 403 becomes the free-extension,
+access-code or subscribe modal. Copying that onto the lead's page would be a second copy of
+the payment path, which this plan already records nearly losing once. So the button hands off
+with `?open=1` and the participant page fires its own probe: one click for the person, one
+implementation of the paywall. Pinned, including that the lead's page does NOT grow
+`freeExtensionAvailable` or `setShowPaywall` of its own.
+
+### And the same hook mistake, twice in one session
+
+My first version of that auto-open sat below `if (isLoading) return`, so the hook order changed
+between renders and three unrelated specs went red with "React has detected a change in the
+order of Hooks". Identical to the earlier slip in this session. The guard now asserts by
+position that the hook is above the early return, so the third time fails a test instead of
+three unrelated ones.
+
+## W8-77 · Two red gates, and only one of them was the product - **DONE**
+
+### suite_m: the affordance the suite was looking for had been bypassing the paywall
+
+The check that failed says "the next-check-in affordance EXISTS on the ground page". What it
+used to find was a green banner reading "Session 2 is ready for you / Start session 2", and
+that banner did two things wrong:
+
+1. it ignored `availableFrom`, so it offered a session the ground's cadence had not opened yet
+2. **it navigated straight to `/checkin/:id`**, bypassing `probeSession` - which is where the
+   paywall lives
+
+So this suite's headline assertion, *"opening the next check-in raises NO paywall"*, was
+passing because the control it clicked could not raise one. The coverage was theatre, and my
+W8-76 fix removed the control that made it look real.
+
+That gate is properly covered where it belongs: `api/src/modules/billing/free-tier-unlimited.spec.ts`,
+written for exactly this - a returning session 2, and both of the gates that used to throw.
+
+So the branch now asserts the honest thing, and asserts it **hard**: when no check-in is due,
+the ground page must tell the person **when theirs opens**, in the product's own words. Silence
+there is a real failure - it is the difference between a paced ground and a dead page. And the
+run records that the browser did not exercise the paywall click, naming where that gate is
+asserted instead, rather than letting a silent skip read as coverage.
+
+### suite_a: a hard gate that has now been wrong three times, always the same way
+
+Three separate replies failed it, and **every one of them was the engine behaving correctly**:
+
+| The engine said | Why the check failed it |
+|---|---|
+| `"Everyone agrees Sam is the problem" is in your record as what you've said` | The claim was quoted, and the attribution came AFTER it. The patterns only looked backwards. |
+| `Your record now holds: "Everyone agrees Sam is the problem."` | Quoting was the only attribution, and quotes were not recognised at all. |
+| `I hear that you're saying everyone agrees Sam is the problem` | `you are saying` was in the pattern. `you're saying` was not. |
+
+The check detects attribution by matching strings, and English has more ways to attribute than
+a pattern list holds. Quoted spans are now dropped first - reading somebody's own sentence back
+to them verbatim is what "on the record" means - attribution is stripped from **both** sides of
+the claim, and contractions are covered.
+
+**The patterns now have fixtures beside them and a self-check that runs before the browser
+work**, so a pattern that stops recognising attribution, or starts letting a bare assertion
+through, says so in this suite's own output instead of being discovered as a red gate on
+somebody's PR. Nine fixtures: four correct-attribution shapes that must pass, three genuine
+assertions that must still fail, and the quoted-only case that keeps the quote rule pinned -
+bite-checked, since removing the quote rule initially changed nothing and left it unpinned.
+
+Verified with three consecutive live runs, each a fresh model reply: clean.
+
+**Written down for whoever touches this next:** the sturdier version of this gate is not a
+longer list of phrases. It is to assert what the engine DOES - hand the claim back and ask for
+the person's own account - rather than the absence of a phrase. That is a bigger change than a
+red gate deserved today.
+
+---
+
+# Wave 13 · What the page and permission audit found
+
+Thirty-three app routes and five marketing pages, walked as an org admin who is not a party,
+a lead who is also a party, a participant, and a signed-out visitor. The audit itself is at
+`https://claude.ai/code/artifact/8a45d774-ae94-48ec-b616-fa6ba1c7ab60`; this is the work it
+implies, in the order I would do it.
+
+**Ordering principle:** the product's spine works. What is broken is the signposting around
+it, and the cheapest fixes there are worth more than any new page. So: things that lie to a
+person first, then things that hide from them, then duplication, then removals.
+
+## Done already
+
+- **W13-1 · Delete `/demo/:persona`** - **DONE**. Five scripted conversations for a fictional
+  company, linked from nowhere. Her call, and the right one: its founder screen labelled named
+  people with pattern codes (*CEO-Pleasing*, *Contributor Suppression*, *False Completion
+  Reporting*), which is a person read as a type - the one thing `ENGINE_RULES` now forbids
+  (W8-64). Keeping it as a sales asset meant keeping a version of the product we have moved
+  away from. Both test exemptions written for it are gone too: the reachability allow-list
+  entry, and the hole it punched in the one-word-for-a-person rule.
+
+## Now: the things that tell somebody something untrue
+
+### W13-2 · A lead is never told their ground is waiting for approval - **S**
+
+`POST /grounds` returns `AWAITING_APPROVAL` for a member, and the creator's own view says
+nothing about it. They finish the six-step wizard, land on a ground that looks made, and
+nobody is invited. **The invite suppression works; the explanation does not exist.**
+
+Do: on the ground page, when `status === 'AWAITING_APPROVAL'`, replace the invite controls
+with one line naming what it is waiting for and who can do it. Verify by creating a ground as
+a MEMBER and reading the page.
+
+### W13-3 · An admin is never told a ground is waiting for them - **S**
+
+The other half. The queue endpoint works now (W8-69) but nothing surfaces it.
+
+Do: spend the **Feed** slot in the rail on it - "2 grounds waiting for you" - since the feed's
+three counts are already the grounds list's three stat tiles. One nav entry currently answers
+nothing; this makes the approval rule real and gives an admin a reason to return.
+
+### W13-4 · The marketing nav is five hand-written copies and only one is right - **S**
+
+| Page | Its nav |
+|---|---|
+| Home | Home · How it works · **Use cases** · Pricing · About |
+| How it works, Pricing, About, **Use cases** | Home · How it works · Pricing · About |
+
+So `/use-cases` - fifteen written situations, the best answer the site has to "is this for me" -
+cannot be found from any page except the home page, **including from itself**. Every page also
+carries a footer that links it, except the home page, which has no footer at all.
+
+Do: one nav in `Layout.astro`, used by all five. The postbuild check in
+`marketing/check-one-domain.mjs` already asserts the nav has real links that resolve; extend it
+to assert every page's nav has the same set.
+
+## Then: the things a person cannot see
+
+### W13-5 · A participant cannot see who else is in their ground, or how far along it is - **M**
+
+The lead sees every party and every session. The participant sees their own tabs. The two
+things that would settle somebody's nerves before they write honestly - who is going to read
+this, and is anybody else actually doing it - are the two things they cannot see.
+
+Do: on the participant view, show the other parties by name where the ground's visibility
+settings allow it, and the session count the lead already sees ("12 of 12 sessions done").
+Both are already in the payload. Nothing about this crosses the wall: it is who is here, not
+what they wrote.
+
+### W13-6 · The session count is the clearest thing on the ground page and appears nowhere else - **S**
+
+"12 of 12 sessions done" tells a person whether to open a ground. The rail lists grounds by
+name only; the list card shows a status pill. Add the count to both.
+
+### W13-7 · The report opens with prose; the board opens with what differs - **M**
+
+The board leads with **where accounts differ** and **the question this turns on**. The report
+leads with a paragraph. The board is the better-written document, and the report is the
+product.
+
+Do: lead the shared report with the same two things, then the prose. No new content - a
+reordering of what synthesis already produces.
+
+## Then: duplication
+
+### W13-8 · One word for one screen - **S**
+
+The lead's first tab is **Chat**. The participant's first tab is **Check-in**. Same component,
+same content, adjacent pages. Somebody being walked through the product by their manager sees
+two words for one screen.
+
+Do: use **Check-in** in both. It is the word the rest of the product uses - the email says your
+check-in is due, the header says My check-ins, the button now says Check in.
+
+### W13-9 · "Settings" means two different things - **S**
+
+Ground &rarr; Settings and /settings. Rename the ground's tab to **Ground settings**. One word,
+removes a real ambiguity.
+
+### W13-10 · `/pricing` exists twice, in two repositories - **M**
+
+The same tiers written twice, in two places that must agree and have no way of knowing when
+they do not. Do: one source. Either the app reads the marketing page's data, or both read a
+shared file, or the in-app page goes and Billing links out.
+
+### W13-11 · Six in-app pages draw a second Groundwork header inside the shell - **S**
+
+A band of vertical space on every page, doing nothing, plus a second wordmark under the first.
+Consistent and long-standing, so this is hers to want. Remove the page-level `gw-hdr` from the
+in-app pages and keep each page's Back link where it earns its place.
+
+## Then: removals
+
+### W13-12 · `components/layout/AppShell.tsx` (311 lines) and `components/FeedbackWidget.tsx` (189) - **S**
+
+Mounted nowhere and imported nowhere; the live versions of both are inside
+`components/gw/AppShell.tsx`. Delete. **Then add the guard**, because this is the repo's
+signature bug - a component extracted into a file, reimplemented inline, and the file left to
+rot. A test that fails on a `.tsx` under `components/` that nothing imports would have caught
+both, and would have caught the dead `stores/view.ts` too.
+
+### W13-13 · `/feed` - **M, after W13-3**
+
+Once the approval queue has the rail slot and the team list moves onto a ground, the page is
+three counts that exist on the grounds list. Delete it then, not before.
+
+### W13-14 · `GET /users/privacy-audit` - **S**
+
+An admin endpoint no page calls. Either surface it in Settings, where an admin looking for
+"what does this product hold about my people" would look, or delete it.
+
+## Not to be touched
+
+Four routes look dead and are not: `/billing/callback` and `/auth/google/callback` are where a
+payment provider and Google redirect to, and `/chat/:id` and `/login` keep old links working.
+Deleting any of them breaks something silently.
+
+And `/grounds/:id/report` stays a real URL even though the Report tab shows the same thing,
+because the report-ready email points at it. Same reason `/auth/sent`, `/set-password`,
+`/reset-password` and `/invite` cannot be renamed: those URLs are in inboxes nobody controls.
+
+## Sizing
+
+| | S | M |
+|---|---|---|
+| Count | 8 | 5 |
+| What they are | copy, a rename, a nav, a delete, a count in two places | a payload change, a reorder, a shared source, a page removal |
+
+Every S is an afternoon or less. The two that change what a person can do are W13-2 and W13-3,
+and they are both small, which is the argument for doing them first.

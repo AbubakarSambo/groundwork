@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { joinApi } from '@/api/entry'
+import { LinkProblem } from '@/components/gw/LinkProblem'
 import { useAuthStore } from '@/stores/auth'
 import { toast } from 'sonner'
 
@@ -64,7 +65,8 @@ export function JoinPage() {
   }
 
   if (phase === 'loading') return <Shell><div style={{ textAlign: 'center', color: 'var(--gw-muted)', fontSize: 13 }}>Loading…</div></Shell>
-  if (phase === 'error' || !ground) return <Shell><div style={{ textAlign: 'center' }}><div style={{ fontSize: 28, marginBottom: 12 }}>✕</div><div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>Invalid link</div><div style={{ fontSize: 13, color: 'var(--gw-sub)' }}>This join link is invalid or has expired.</div></div></Shell>
+  // Was a red tick, one sentence and nothing to press. W8-62.
+  if (phase === 'error' || !ground) return <Shell><LinkProblem kind="join" /></Shell>
 
   return (
     <Shell>

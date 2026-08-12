@@ -4,6 +4,8 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { whatThisGroundCanTellYou } from '@/lib/contextStrength'
 import { ContextStrength } from '@/components/gw/ContextStrength'
+import { GroundChat } from '@/components/gw/GroundChat'
+import { GroundGone } from '@/components/gw/GroundGone'
 import { ContextChat } from '@/components/gw/ContextChat'
 import { useAuthStore } from '@/stores/auth'
 import { groundsApi, type GroundCadence } from '@/api/grounds'
@@ -48,7 +50,23 @@ const MOMENT_LABELS: Record<string, string> = {
 
 
 
-type Tab = 'overview' | 'checkins' | 'docs' | 'report' | 'settings'
+/**
+ * THE CHAT WENT MISSING FROM THIS VIEW, AND I DID NOT NOTICE. W8-67.
+ *
+ * Her words: "the chat like slack disappear again, what is happening".
+ *
+ * It never disappeared from the code - it disappeared from HALF THE PRODUCT. GroundChat
+ * is mounted by `GroundParticipantPage` only. So a participant lands in the conversation
+ * and a LEAD or an ORG ADMIN, opening the same ground, gets a list of session cards and no
+ * chat anywhere. When the card view was retired (46321a0) the rail toggle and
+ * `stores/view.ts` went with it, correctly - but the retirement was done on the
+ * participant page and this one was left as it was.
+ *
+ * So 'chat' is the first tab here too, and the card list keeps its own tab rather than
+ * being deleted: a lead scanning twelve sessions for who has not checked in wants the
+ * list, and that is a genuinely different question from reading what was said.
+ */
+type Tab = 'chat' | 'overview' | 'checkins' | 'docs' | 'report' | 'settings'
 type ReportSession = 's1' | 's2' | 'closing'
 
 export function GroundAdminPage() {
@@ -66,7 +84,7 @@ export function GroundAdminPage() {
    *
    * The participant view already opens on Check-in; this makes the two agree.
    */
-  const [tab, setTab] = useState<Tab>('checkins')
+  const [tab, setTab] = useState<Tab>('chat')
   const [reportSession, setReportSession] = useState<ReportSession>('s1')
   const [ctxNote, setCtxNote] = useState('')
   const [groundLabel, setGroundLabel] = useState('')
@@ -140,6 +158,42 @@ export function GroundAdminPage() {
     mutationFn: (docId: string) => documentsApi.remove(id!, docId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['docs', id] }),
   })
+
+  /**
+   * WHO A CHECK-IN BELONGS TO.
+   *
+   * `CHECKIN_SELECT` returns `participantId` and nothing else about the person, so
+   * anything that wants a name has to join through `ground.participants`. Both places
+   * that needed one had guessed at `participantEmail` / `participantName`, fields the
+   * payload has never carried, and both failed silently: one sorted by row id, the other
+   * rendered "Nobody has checked in yet" over twelve completed sessions. W8-66.
+   *
+   * Falls back to the email's local part only when there is no linked user - which is a
+   * participant who has not accepted yet, so there genuinely is no name to use.
+   */
+  /**
+   * MY OWN OPEN CHECK-IN, if I am a party to this ground. W8-76.
+   *
+   * A check-in is per participant per session, so "the open one" only means anything once
+   * it is narrowed to the person asking.
+   */
+  const myParticipantId = (ground?.participants ?? []).find((p: any) => p.userId === user?.id)?.id ?? null
+  const myOpenCheckIn = myParticipantId
+    ? ((ground?.checkIns ?? []) as any[])
+        .filter((c) => c.participantId === myParticipantId && c.status !== 'COMPLETED')
+        .sort((a, b) => (a.sessionNumber ?? 0) - (b.sessionNumber ?? 0))[0] ?? null
+    : null
+  const myOpenAvailableFrom = (myOpenCheckIn as any)?.availableFrom ?? null
+  const myOpenOpensLater = !!myOpenAvailableFrom && new Date(myOpenAvailableFrom).getTime() > Date.now()
+
+  const nameOfParticipant = (participantId: string | null | undefined): string | null => {
+    if (!participantId) return null
+    const p: any = (ground?.participants ?? []).find((x: any) => x.id === participantId)
+    if (!p) return null
+    const first = (p.user?.firstName ?? '').trim()
+    if (first) return first
+    return p.email ? String(p.email).split('@')[0] : null
+  }
 
   const isInitiator = !!ground && user?.id === ground.initiatorId
 
@@ -335,7 +389,8 @@ export function GroundAdminPage() {
   }, [ground?.label, ground?.scenario])
 
   if (isLoading) return <Shell><div style={{ padding: 24, fontSize: 13, color: 'var(--gw-muted)' }}>Loading…</div></Shell>
-  if (!ground) return <Shell><div style={{ padding: 24, fontSize: 13, color: 'var(--gw-muted)' }}>Ground not found.</div></Shell>
+  // Was the bare words "Ground not found." with nothing to press. W8-65.
+  if (!ground) return <Shell><GroundGone /></Shell>
 
   /**
    * REFUSED OUT LOUD, WITH SOMEWHERE TO GO.
@@ -565,7 +620,25 @@ export function GroundAdminPage() {
             <div>
               <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.2 }}>{ground.label}</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                <span style={{ fontSize: 10, fontWeight: 600, padding: '1px 7px', borderRadius: 20, background: 'var(--gw-blue-bg)', color: 'var(--gw-navy)' }}>{MOMENT_LABELS[ground.moment] ?? ground.moment}</span>
+                {/*
+                  "STARTING", ON A GROUND WITH TWELVE OF TWELVE SESSIONS DONE. W8-66.
+
+                  This pill is the ground's MOMENT - what it was opened for - and the
+                  moment for a new hire is genuinely STARTING for the ground's whole life.
+                  But a small pill under the title, next to a green live dot, is where
+                  every product on earth puts a status, so it reads as one, and on a
+                  finished ground it reads as a lie.
+
+                  Same word, labelled, so it cannot be mistaken for the state of the
+                  ground. The state is the green dot beside it and the line under the
+                  title, which were both already right.
+                */}
+                <span
+                  title="What this ground was opened for. Not its current state."
+                  style={{ fontSize: 10, fontWeight: 600, padding: '1px 7px', borderRadius: 20, background: 'var(--gw-blue-bg)', color: 'var(--gw-navy)' }}
+                >
+                  Opened for: {MOMENT_LABELS[ground.moment] ?? ground.moment}
+                </span>
                 {ground.status === 'ACTIVE' && <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--gw-green-b)', display: 'inline-block' }} />}
               </div>
             </div>
@@ -648,13 +721,13 @@ export function GroundAdminPage() {
             the parts of a ground. It only appears when the server says this
             ground has one (boardRenders), same as before. */}
         <div style={{ display: 'flex', borderTop: '0.5px solid var(--gw-border)', overflowX: 'auto' }}>
-          {(['checkins', 'overview', 'docs', 'report', 'settings'] as Tab[]).map(t => (
+          {(['chat', 'checkins', 'overview', 'docs', 'report', 'settings'] as Tab[]).map(t => (
             <button key={t} className={`gw-tab${tab === t ? ' active' : ''}`} onClick={() => setTab(t)}>
               {/* THE TAB IS CALLED CONTEXT ONCE THERE IS CONTEXT IN IT. (G38, G26)
                   With CONTEXT_ENABLED off it says Documents and behaves exactly as
                   it did, which is what makes the flag honest - off has to be the
                   old product rather than a renamed one. */}
-              {{ overview: 'Overview', checkins: 'Check-ins', docs: contextEnabled ? 'Context' : 'Documents', report: 'Report', settings: 'Settings' }[t]}
+              {{ chat: 'Chat', overview: 'Overview', checkins: 'Check-ins', docs: contextEnabled ? 'Context' : 'Documents', report: 'Report', settings: 'Settings' }[t]}
             </button>
           ))}
           {(ground as any).boardRenders && (
@@ -684,6 +757,55 @@ export function GroundAdminPage() {
               You can keep editing it, and nobody can be invited until it is accepted - so nobody
               has been contacted and nothing has been shared. An admin in your organisation sees it
               on their grounds page.
+            </div>
+          </div>
+        )}
+
+        {/*
+          AN ORG ADMIN LOOKING AT SOMEBODY ELSE'S GROUND. W8-32.
+          
+          Her note: "the org admin view should differ, today it is subtraction." The
+          gate now decides WHO gets in - the lead of the ground, or an org admin - and
+          for an admin who is not the lead the view was still identical to the lead's,
+          including the two actions that cannot be undone.
+          
+          This ADDS the frame rather than removing controls. Hiding them is the
+          subtraction she was describing, and it also removes the only oversight an
+          admin has: an admin who cannot see that a report is sitting unreleased for
+          three weeks cannot do anything about it. So they see everything, and they are
+          told plainly whose ground it is and which decisions belong to that person.
+        */}
+        {isOrgAdmin && !isInitiator && (
+          <div style={{ background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 10, padding: '12px 15px', marginBottom: 16 }}>
+            <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 3 }}>
+              You are looking at this as an admin, not as its lead
+            </div>
+            <div style={{ fontSize: 12.5, color: 'var(--gw-navy)', lineHeight: 1.6 }}>
+              {(() => {
+                /**
+                 * IT SAID "its lead runs this ground." W8-66.
+                 *
+                 * Two bugs in one line, both visible the moment an org admin opened
+                 * somebody else's ground:
+                 *
+                 * 1. It read `lead.email`, and `grounds.service.ts:872` NULLS the email
+                 *    for a viewer who is neither the person nor the ground's lead - on
+                 *    purpose. So for the only people who ever see this banner, the field
+                 *    it depends on is always empty, and the fallback always fired.
+                 * 2. The fallback was the lowercase fragment "its lead", which starts a
+                 *    sentence, so the banner read "its lead runs this ground." - a broken
+                 *    template, on an admin's first look at a colleague's ground.
+                 *
+                 * The name is in the payload the whole time: `SAFE_PARTICIPANT_SELECT`
+                 * pulls `user.firstName` precisely so somebody can be named when their
+                 * email is hidden. Using the address to make a name was the W10-2 mistake
+                 * anyway - "hafsah@meridian.test" is not what that person is called.
+                 */
+                const lead = (ground.participants ?? []).find((p: any) => p.partyType === 'INITIATOR')
+                const first = (lead?.user?.firstName ?? '').trim()
+                const who = first || 'The lead of this ground'
+                return `${who} runs this ground. You can see everything here, which is the point of being an admin - but releasing the report and closing the ground are theirs to decide, and nothing you do here is hidden from them.`
+              })()}
             </div>
           </div>
         )}
@@ -1128,6 +1250,96 @@ export function GroundAdminPage() {
         )}
 
         {/* CHECK-INS */}
+        {tab === 'chat' && (
+          // The same component the participant view mounts, so there is one chat in the
+          // product rather than a lead's version of one. A lead is not checking in here -
+          // this is the ground's history, which is what they came to read.
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+            <GroundChat
+              groundId={id!}
+              /**
+               * THE WAY TO CHECK IN CAME OFF THE PAGE, AND THE GATE CAUGHT IT. W8-76.
+               *
+               * I made Chat the landing tab and passed `openCheckInId={null}`, so a lead who
+               * is also a party - the commonest kind - opened their ground and had no way to
+               * start their own check-in from the tab they land on. suite_m failed on exactly
+               * that: "the next-check-in affordance EXISTS on the ground page (hard - absence
+               * is a failure, not a shrug)". It was right.
+               *
+               * WHY THE BUTTON HANDS OFF INSTEAD OF OPENING. Starting a check-in goes through
+               * `probeSession`, which carries the paywall: a 403 becomes the free-extension /
+               * access-code / subscribe modal. That lives on the participant page, and
+               * copying it here would be a second copy of the payment path - the thing this
+               * plan already records nearly losing once. So the button hands off with
+               * `?open=1` and that page fires its own probe immediately: one click, one
+               * implementation of the paywall.
+               */
+              openCheckInId={myOpenCheckIn && !myOpenOpensLater ? myOpenCheckIn.id : null}
+              openSessionNumber={myOpenCheckIn && !myOpenOpensLater ? myOpenCheckIn.sessionNumber : null}
+              totalSessions={plannedSessions ?? null}
+              nextOpensAt={myOpenOpensLater ? myOpenAvailableFrom : null}
+              onOpenSession={() => navigate(`/grounds/${id}/p?open=1`)}
+              openPending={false}
+              /**
+                * HER POINT, AND IT IS THE COMMON CASE: "what if sets themselves as
+                * checkin in too, they need a chat".
+                *
+                * Step 6 of setup offers "I am a party. Let's begin." A lead who takes it
+                * is a participant with their own check-ins, and they must get the real
+                * conversation - not a read-only history of a ground they are in. So this
+                * keys on whether they are actually a party, not on whether they are the
+                * lead. Lead who is a party: the chat. Lead or org admin who is not: the
+                * ground's history, because there is no transcript of theirs to show and
+                * somebody else's is not theirs to read.
+                */
+              viewerIsParty={(ground.participants ?? []).some((p: any) => p.userId === user?.id)}
+              history={[...(ground.checkIns ?? [])]
+                .reduce((acc: any[], ci: any) => {
+                  const n = ci.sessionNumber ?? 1
+                  const row = acc.find(r => r.sessionNumber === n)
+                  const who = nameOfParticipant(ci.participantId)
+                  const done = ci.status === 'COMPLETED'
+                  if (row) {
+                    if (done && who && !row.people.includes(who)) row.people.push(who)
+                    if (ci.completedAt && ci.completedAt > row.date) row.date = ci.completedAt
+                  } else {
+                    acc.push({ sessionNumber: n, date: ci.completedAt ?? ci.createdAt ?? '', people: done && who ? [who] : [] })
+                  }
+                  return acc
+                }, [])
+                .sort((a: any, b: any) => a.sessionNumber - b.sessionNumber)}
+              label={ground.label}
+              scenario={(ground as any).scenario}
+              brief={(ground as any).brief}
+              /*
+                "24 OF 12 SESSIONS DONE". W8-66.
+
+                A check-in is per person per session, so counting completed check-ins
+                counts ROWS: two parties through twelve sessions is twenty-four of them.
+                The topic card then read "24 of 12 sessions done", which is not a number
+                anybody can act on.
+
+                A session is done when everybody's check-in for it is done, so this counts
+                DISTINCT session numbers where nothing is still open.
+              */
+              sessionsDone={(() => {
+                const all = (ground.checkIns ?? []) as any[]
+                const numbers = [...new Set(all.map(c => c.sessionNumber ?? 1))]
+                return numbers.filter(n =>
+                  all.filter(c => (c.sessionNumber ?? 1) === n).every(c => c.status === 'COMPLETED'),
+                ).length
+              })()}
+              signals={((ground as any).signals ?? [])
+                .filter((sig: any) => sig.observationText)
+                .map((sig: any) => ({
+                  label: sig.code?.startsWith('D') ? 'Divergence' : 'Convergence',
+                  text: sig.observationText,
+                  session: sig.lastPeriodNumber ?? 1,
+                }))}
+            />
+          </div>
+        )}
+
         {tab === 'checkins' && (
           <div>
             {/*
@@ -1168,7 +1380,31 @@ export function GroundAdminPage() {
               {(ground.checkIns ?? []).length === 0 && (
                 <div style={{ fontSize: 13, color: 'var(--gw-muted)', textAlign: 'center', padding: 24 }}>No check-ins yet.</div>
               )}
-              {ground.checkIns?.map((ci: any) => {
+              {/*
+                THE ROWS CAME OUT IN NO ORDER AT ALL. W8-66.
+
+                Rendered straight from the payload, so a real twelve-session ground with
+                two parties showed twenty-four cards reading "Session 4, Session 1,
+                Session 1, Session 4, ..." - which is not a record anybody can read. The
+                page never noticed because every ground anyone had looked at had one or
+                two sessions, where arbitrary order and correct order look the same.
+
+                Newest session first: the thing an admin opens this for is what just
+                happened. Within a session, ordered by who, so the two parties' rows sit
+                together and stay put between renders.
+              */}
+              {[...(ground.checkIns ?? [])]
+                .sort((a: any, b: any) =>
+                  (b.sessionNumber ?? 0) - (a.sessionNumber ?? 0) ||
+                  // A check-in carries `participantId` and nothing else about the person -
+                  // the name has to be looked up. My first version of this sorted on
+                  // `participantEmail`, a field the payload has never had, so it silently
+                  // fell through to the row id. W8-66.
+                  String(nameOfParticipant(a.participantId) ?? a.id).localeCompare(
+                    String(nameOfParticipant(b.participantId) ?? b.id),
+                  ),
+                )
+                .map((ci: any) => {
                 // Check-ins are per-participant-per-session, so a given session
                 // number legitimately appears once per party. Label each row
                 // with whose check-in it is, or two parties' session-1 rows read
@@ -1258,7 +1494,20 @@ export function GroundAdminPage() {
                 onChange={e => { const f = e.target.files?.[0]; if (f) uploadDoc.mutate(f); e.target.value = '' }} />
             </div>
 
-            {docs.length === 0 && <div style={{ fontSize: 13, color: 'var(--gw-muted)', textAlign: 'center', padding: 16 }}>No documents uploaded yet.</div>}
+            {/*
+              AN EMPTY STATE THAT SAYS WHAT TO ADD, NOT THAT NOTHING IS THERE. W8-24.
+              
+              "No documents uploaded yet." is a sentence about absence, sitting directly
+              under an upload control that already says PDF, DOCX, JPEG. It uses the one
+              moment somebody is looking at an empty list to tell them it is empty.
+            */}
+            {docs.length === 0 && (
+              <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, padding: '14px 16px', background: 'var(--gw-bg)', borderRadius: 8, border: '1px solid var(--gw-border)' }}>
+                The brief, the plan, the scope, the grant terms, or the message that started
+                this. Anything you open to the ground is read by every check-in before it asks
+                a question, so it shapes what people are asked.
+              </div>
+            )}
 
             {/* OPEN AND CLOSED, NAMED AS SUCH. (G38)
                 Nobody puts real context into a box whose readership they are
@@ -1419,7 +1668,7 @@ export function GroundAdminPage() {
                 </div>
                 {!activationStatus.allActivated && (
                   <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55, marginBottom: 10 }}>
-                    Each party sees their own report privately until they choose to reveal it. When both parties activate, the reports become visible to each other. Each person can do this from their own ground page.
+                    Each person sees their own report privately until they choose to reveal it. When everybody activates, the reports become visible to each other. Each person can do this from their own ground page.
                   </div>
                 )}
                 <div style={{ display: 'flex', gap: 8 }}>
@@ -1577,7 +1826,7 @@ export function GroundAdminPage() {
                 <div style={{ marginTop: 16, background: 'var(--gw-bg)', border: '0.5px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px' }}>
                   <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--gw-sub)', marginBottom: 10 }}>What now?</div>
                   {[
-                    { title: 'Share the report', body: 'Both parties can now view the full report. Use the report link or a shared doc to talk through it together.' },
+                    { title: 'Share the report', body: 'Everybody can now read the full report. Use the report link or a shared doc to talk it through together.' },
                     { title: 'Act on the areas requiring alignment', body: 'Pick the highest-priority gap and set a concrete next step. Name who owns it and by when.' },
                     { title: 'Open a follow-up ground', body: 'If there is ongoing work to track, open a new ground to keep the record current as things develop.' },
                   ].map(s => (
@@ -1595,16 +1844,16 @@ export function GroundAdminPage() {
               <div>
                 <div style={{ background: 'var(--gw-bg)', border: '0.5px solid var(--gw-border)', borderRadius: 10, padding: 16, marginBottom: 14 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Report is ready</div>
-                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 14 }}>Both parties have completed their sessions. When you release the report, both parties see it simultaneously - neither reads it before the other. Billing activates on release.</div>
+                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 14 }}>Everybody has completed their sessions. When you release the report, everybody sees it at the same moment - nobody reads it before anybody else. Billing activates on release.</div>
                   {!showReleaseConfirm ? (
                     <button onClick={() => setShowReleaseConfirm(true)}
                       style={{ width: '100%', padding: 12, borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
-                      Release report to both parties
+                      {isOrgAdmin && !isInitiator ? 'Release on the lead\'s behalf' : 'Release report to everybody'}
                     </button>
                   ) : (
                     <div style={{ background: '#FDF3E3', border: '1px solid #E8A94A', borderRadius: 8, padding: '14px 16px' }}>
                       <div style={{ fontSize: 13, fontWeight: 700, color: '#8A5C1A', marginBottom: 6 }}>Release report?</div>
-                      <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.6, marginBottom: 14 }}>Both parties will see the report simultaneously. This cannot be undone. Billing activates on release.</div>
+                      <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.6, marginBottom: 14 }}>Everybody will see the report at the same moment. This cannot be undone. Billing activates on release.</div>
                       <div style={{ display: 'flex', gap: 8 }}>
                         <button onClick={() => setShowReleaseConfirm(false)}
                           style={{ flex: 1, padding: '9px 12px', borderRadius: 7, background: 'none', border: '1px solid #E2E0DB', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', color: 'var(--gw-sub)' }}>
@@ -1622,7 +1871,7 @@ export function GroundAdminPage() {
             ) : (
               <div style={{ background: 'var(--gw-bg)', border: '0.5px solid var(--gw-border)', borderRadius: 10, padding: 16, marginBottom: 14 }}>
                 <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Waiting for sessions</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 12 }}>The report generates after both parties complete their sessions.</div>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 12 }}>The report generates once everybody has completed their sessions.</div>
                 <button onClick={() => setTab('checkins')} style={{ fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit', fontWeight: 600, textDecoration: 'underline' }}>
                   View check-in progress
                 </button>
@@ -1795,7 +2044,10 @@ export function GroundAdminPage() {
             </button>
             <div style={{ padding: 14, background: 'var(--gw-red-bg)', border: '0.5px solid var(--gw-red-b)', borderRadius: 8 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-red-t)', marginBottom: 6 }}>Close ground</div>
-              <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>Closing a ground permanently archives it. All parties keep their records. This action cannot be undone.</div>
+              <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
+                Closing a ground permanently archives it. All parties keep their records. This action cannot be undone.
+                {isOrgAdmin && !isInitiator && ' You are not the lead of this ground - closing it ends something somebody else is running.'}
+              </div>
               <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 8 }}>
                 Self-serve close is coming. For now, email{' '}
                 <a href={`mailto:hello@myground.work?subject=Archive ground: ${encodeURIComponent(ground.label)}`} style={{ color: 'var(--gw-navy)', textDecoration: 'underline' }}>hello@myground.work</a>

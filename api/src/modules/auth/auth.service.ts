@@ -751,10 +751,29 @@ export class AuthService {
       where: { token },
       include: { user: { include: { organization: true } } },
     });
-    if (!tokenRecord) throw new BadRequestException('Invalid token');
-    if (tokenRecord.usedAt) throw new BadRequestException('This token has already been used');
+    /**
+     * THESE STRINGS ARE READ BY A PERSON, NOT A LOG. W8-62.
+     *
+     * They were 'Invalid token', 'This token has already been used' and 'Invalid
+     * token type', and the client renders them verbatim under a password field.
+     * Somebody who clicked a link in an email was told about the state of a database
+     * row and given nothing to do about it. `participants.service.ts` had already
+     * learnt this; this had not.
+     *
+     * "Used" stays a separate answer because it is the one case where the useful
+     * instruction is different: they already set a password, so they should sign in
+     * rather than ask for another link.
+     */
+    const NOT_A_LINK_WE_KNOW =
+      'This link did not work. Password links are single use and they expire - open the most recent one from your inbox, or ask for a new one from the sign-in page.';
+    if (!tokenRecord) throw new BadRequestException(NOT_A_LINK_WE_KNOW);
+    if (tokenRecord.usedAt) {
+      throw new BadRequestException(
+        'This link has already been used, so your password is set. Sign in with it - or use "Forgot your password?" if you cannot remember it.',
+      );
+    }
     if (tokenRecord.expiresAt < new Date()) throw new BadRequestException(opts.allowExpiredMessage);
-    if (tokenRecord.type !== expectedType) throw new BadRequestException('Invalid token type');
+    if (tokenRecord.type !== expectedType) throw new BadRequestException(NOT_A_LINK_WE_KNOW);
     return tokenRecord;
   }
 

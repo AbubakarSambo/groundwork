@@ -90,6 +90,34 @@ export function displayName(p: LabelParty): string | null {
  * Notice the shape: this decides ACCESS, not wording. It is applied in code on
  * the way out, not requested of a model on the way in.
  */
+/**
+ * WHOSE EYES A READER READS WITH. W8-73.
+ *
+ * Both the report and the board need the same answer to the same question, and both had
+ * written it out inline - the report as `asWhom`, the board not at all, which is how the
+ * board came to show a lead their own ground in placeholders.
+ *
+ * A lead of THIS ground - or the admin who set it up - reads with every name, because they
+ * already see the whole ground. Anybody else reads as themselves. `null` means a reader who
+ * is not a party at all, and `namesVisibleTo` gives them only the names that are public to
+ * the ground.
+ *
+ * One function, so the two answers cannot drift apart, and testable on its own - which is
+ * the reason it exists rather than staying two expressions. A bite-check of the board's copy
+ * found nothing, because the only tests of the rule called `namesVisibleTo` directly and
+ * never went through the resolution.
+ */
+export function readsWithNamesOf(
+  { viewerIsLead, viewerParticipantId, parties }:
+  { viewerIsLead: boolean; viewerParticipantId: string | null | undefined; parties: LabelParty[] },
+): string | null {
+  if (viewerIsLead) {
+    const lead = parties.find(p => p.partyType === PartyType.INITIATOR);
+    return lead?.id ?? viewerParticipantId ?? null;
+  }
+  return viewerParticipantId ?? null;
+}
+
 export function namesVisibleTo(
   viewerParticipantId: string | null | undefined,
   parties: LabelParty[],
@@ -122,14 +150,87 @@ export function namesVisibleTo(
  * "The initiator" at the start of a sentence and "the initiator" mid-sentence,
  * and a label that only half-resolves reads worse than one that never does.
  */
-export function withNames(text: string, visible: Map<string, string>): string {
+export function withNames(text: string, visible: Map<string, string>, allLabels?: Iterable<string>): string {
   if (!text) return text;
   let out = text;
   const labels = [...visible.keys()].sort((a, b) => b.length - a.length);
   for (const label of labels) {
     const name = visible.get(label)!;
     const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    out = out.replace(new RegExp(escaped, 'gi'), name);
+    /**
+     * WORD-BOUNDED, AND THIS WAS A LIVE DEFECT. W8-73.
+     *
+     * The replacement had no boundaries, so a label ending in a letter suffix matched inside
+     * ordinary words. "participant A" is the label for a party with no stated role, and
+     * case-insensitively it matches the middle of "particip[ant a]nswered":
+     *
+     *   "the participant answered"  ->  "the Abubakarnswered"
+     *   "the participant agreed"    ->  "the Abubakargreed"
+     *
+     * Those are the three or four commonest words to follow "participant" in a report about
+     * what somebody said, so this has been corrupting real sentences for every reader
+     * entitled to a name. Found while writing a test for something else - the assertion was
+     * about the tidy-up doing nothing, and the string came back mangled by the loop above it.
+     */
+    out = out.replace(new RegExp(`\\b${escaped}\\b`, 'gi'), name);
+  }
+
+  /**
+   * THE MODEL DOES NOT USE THE LABEL IT WAS GIVEN. W8-73.
+   *
+   * Seen on a real twelve-session ground, read by its own lead, with every name visible to
+   * her: "the initiator" resolved to her name and "the participant" stayed a placeholder.
+   * The label assigned to that person was `participant A`; the model wrote bare "the
+   * participant". Substitution matches the strings we ASKED for, not the ones we got, so it
+   * half-worked - and a half-resolved sentence reads as a broken template, which is worse
+   * than one that never resolves.
+   *
+   * Fixed here rather than by asking the prompt more firmly, per the rule that a guardrail
+   * belongs in code at the point of the read.
+   *
+   * ONLY WHEN IT IS UNAMBIGUOUS. "participant A" drops to "participant" only if no other
+   * party could also be meant by that word - so a two-party ground resolves and a ground
+   * with six participants leaves the bare word alone, because guessing which of six is a
+   * worse failure than a placeholder.
+   */
+  /**
+   * `allLabels` IS EVERY PARTY'S LABEL, NOT JUST THE VISIBLE ONES, AND THAT IS THE WHOLE
+   * CORRECTNESS OF IT.
+   *
+   * My first version counted uniqueness across the VISIBLE map, and the existing wall tests
+   * caught it in one run: reading as participant A, only "participant A" is visible, so
+   * "participant" looked unambiguous - and the substitution rewrote "participant B said the
+   * handover was late" into "Abubakar B B said the handover was late". One person's
+   * statement, attributed to another, by a tidy-up.
+   *
+   * Uniqueness in the VISIBLE map is not uniqueness in the TEXT. With no full label set
+   * this does nothing at all, which is the safe direction.
+   */
+  const known = [...(allLabels ?? [])];
+  if (known.length === 0) return out;
+
+  const bases = new Map<string, string[]>();
+  for (const label of known) {
+    const base = label.replace(/ [A-Z]$/, '').trim().toLowerCase();
+    if (base === label.trim().toLowerCase()) continue;
+    bases.set(base, [...(bases.get(base) ?? []), label]);
+  }
+  for (const [base, owners] of bases) {
+    if (owners.length !== 1) continue;
+    // And only if THIS reader may see that person's name.
+    if (!visible.has(owners[0])) continue;
+    const name = visible.get(owners[0])!;
+    const escaped = base.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    /**
+     * The article comes with it: collapsing "the participant" to "Abubakar" leaves "the
+     * Abubakar answered" otherwise, which is the same class of half-fix as the placeholder
+     * it replaced. Only "the", because that is the only article the model puts in front of
+     * these labels - "a participant" would be a different claim and is left alone.
+     *
+     * Word-bounded, so "participant" does not eat "participants" or "participation".
+     */
+        out = out.replace(new RegExp(`\\bthe ${escaped}\\b`, 'gi'), name);
+    out = out.replace(new RegExp(`\\b${escaped}\\b`, 'gi'), name);
   }
   return out;
 }

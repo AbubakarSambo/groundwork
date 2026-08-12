@@ -57,7 +57,9 @@ apiClient.interceptors.response.use(
       const url = error.config?.url || ''
       const authEndpoints = ['/auth/register-magic-link', '/auth/login', '/auth/validate-token']
       const isAuthEndpoint = authEndpoints.some(ep => url.includes(ep))
-      const onAuthPage = ['/auth', '/enter', '/pin'].some(p => window.location.pathname.startsWith(p))
+      // /enter and /pin were the org-code model's pages and are deleted - somebody
+      // belonging to more than one organisation now picks one from the rail instead.
+      const onAuthPage = ['/auth'].some(p => window.location.pathname.startsWith(p))
       if (!onAuthPage && !isAuthEndpoint) {
         useAuthStore.getState().logout()
         window.location.href = '/'

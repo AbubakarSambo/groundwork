@@ -610,6 +610,8 @@ export class GroundsService {
           const completed = p.checkIns.filter((c) => c.status === CheckInStatus.COMPLETED).sort((a, b) => b.sessionNumber - a.sessionNumber);
           return {
             email: p.email,
+            // Display name only, so the client never has to make one out of the address.
+            firstName: (p as any).user?.firstName ?? null,
             partyType: p.partyType,
             roleAsDescribed: p.roleAsDescribed,
             accepted: p.userId != null,
@@ -646,7 +648,19 @@ export class GroundsService {
     const orgGrounds = await this.prisma.ground.findMany({
       where: orgGroundWhere,
       include: {
-        participants: { select: { id: true, email: true, partyType: true, userId: true } },
+        /**
+         * THE NAME, SO NOTHING HAS TO INVENT ONE FROM THE ADDRESS. W8-66.
+         *
+         * Three separate places were rendering a person by splitting their email at the
+         * @ - "Led by hafsah" on the list, "hafsah runs this ground" in the admin banner,
+         * and the check-in rows. That is the W10-2 mistake: an address is not what
+         * somebody is called, and for a viewer who is not the lead the email is nulled
+         * anyway, so the guess produced a blank.
+         *
+         * Same nested select as `SAFE_PARTICIPANT_SELECT`: display name only, no other
+         * user field comes through.
+         */
+        participants: { select: { id: true, email: true, partyType: true, userId: true, user: { select: { firstName: true, lastName: true } } } },
         checkIns: {
           select: { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, createdAt: true },
         },
@@ -678,7 +692,32 @@ export class GroundsService {
         participantGrounds = await this.prisma.ground.findMany({
           where: { id: { in: links.map(l => l.groundId) } },
           include: {
-            participants: { select: { id: true, email: true, partyType: true, userId: true } },
+            /**
+             * WHOSE ORGANISATION THIS GROUND IS, because it is not the one you are in.
+             *
+             * These are grounds in OTHER organisations where the caller is a
+             * participant - deliberate, and how somebody invited across a boundary
+             * finds their check-in at all. It predates the organisation switcher and
+             * was unambiguous when there was only ever one organisation to be in.
+             *
+             * With a switcher it is not: somebody who switches to a client's
+             * organisation still sees their own company's ground in the list, and
+             * nothing says why. So the name comes along and the card can say it.
+             */
+            organization: { select: { name: true } },
+            /**
+         * THE NAME, SO NOTHING HAS TO INVENT ONE FROM THE ADDRESS. W8-66.
+         *
+         * Three separate places were rendering a person by splitting their email at the
+         * @ - "Led by hafsah" on the list, "hafsah runs this ground" in the admin banner,
+         * and the check-in rows. That is the W10-2 mistake: an address is not what
+         * somebody is called, and for a viewer who is not the lead the email is nulled
+         * anyway, so the guess produced a blank.
+         *
+         * Same nested select as `SAFE_PARTICIPANT_SELECT`: display name only, no other
+         * user field comes through.
+         */
+        participants: { select: { id: true, email: true, partyType: true, userId: true, user: { select: { firstName: true, lastName: true } } } },
             checkIns: {
               select: { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, createdAt: true },
             },
@@ -691,6 +730,11 @@ export class GroundsService {
 
     return [...orgGrounds, ...participantGrounds]
       .map(g => {
+        // Only set when the ground belongs to a different organisation than the one
+        // the caller is currently in - the card uses its presence as the signal.
+        const otherOrgName = g.organizationId !== organizationId
+          ? ((g as any).organization?.name ?? null)
+          : null;
         const checkIns = g.checkIns;
         const completedCount = checkIns.filter(ci => ci.status === CheckInStatus.COMPLETED).length;
         const alignment = alignmentRead((g as any).report);
@@ -719,7 +763,7 @@ export class GroundsService {
         const reportWaitingForMe = !!mine && !!(g as any).report?.releasedAt && !activated;
 
         const { reportActivations: _drop, ...rest } = g as any;
-        return { ...rest, alignment, overdue, checkInsToday, lastActivity, reportWaitingForMe };
+        return { ...rest, alignment, overdue, checkInsToday, lastActivity, reportWaitingForMe, otherOrgName };
       })
       .sort((a, b) => new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime());
   }
