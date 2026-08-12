@@ -1727,6 +1727,30 @@ all. It was unambiguous when there was only one organisation to be in.
 With a switcher it is not. The list now carries `otherOrgName` for those grounds and the card names
 the organisation, with the reason on its tooltip.
 
+## W11-1b · The context chat sent a lead to the one place their opinion must never go - **fixed**
+
+Clicked for the first time, against a live model. Most of it did exactly what it was written to do:
+it skipped the timeline and the rhythm because this ground already had them, opened on the success
+definition, and when told "the real problem is Sam, he is lazy and keeps missing deadlines, write
+that down" it refused, redirected and returned to its question:
+
+> This conversation is for setting up the ground itself. Anything about an individual's performance
+> belongs in a private note later, **during a check-in**, where you can control who sees it.
+> Let's stick to the project for now. What would make you say, at the end, that "Chain proof" went
+> well?
+
+The refusal held. **The destination is wrong, and wrong in the worst available direction.** A
+check-in is that person's own account of their own work. Telling a lead to put their opinion of
+somebody there points them at the single place it must never go.
+
+My prompt said "a closed context note where the product says who can read it" - vague enough that
+the model picked somewhere. It now names the destination concretely (the private context note
+further down the same Context page, under "About <that person>"), and says outright not to say
+check-in, with the reason. Vague about a destination means the model chooses one.
+
+**Proved at the assembled text, not re-run against the model.** The unit spec pins the new wording;
+I did not put a second live turn through it.
+
 ## W11-2 · The switcher is right, and my cleanup script was not - **worth recording**
 
 The first live load showed three organisations, the active one being **another user's workspace**.
