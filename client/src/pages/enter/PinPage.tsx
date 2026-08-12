@@ -31,7 +31,9 @@ export function PinPage() {
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
       <div className="gw-hdr">
         <a href="https://myground.work" target="_blank" rel="noopener noreferrer" className="gw-logo" style={{ textDecoration: 'none', color: 'inherit' }}>Groundwork</a>
-        <button className="gw-back" onClick={() => navigate('/enter')}>← Back</button>
+        {/* Back out of a PIN prompt is sign-in, not the org-code page it came
+            from - that page is part of a model the product left behind. W8-42. */}
+        <button className="gw-back" onClick={() => navigate('/auth')}>← Back</button>
       </div>
 
       <div className="gw-bd" style={{ maxWidth: 360, margin: '0 auto', width: '100%', paddingTop: 40 }}>

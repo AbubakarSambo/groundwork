@@ -1541,15 +1541,15 @@ it is done.
 | W8-5 | "bringing this ground to an end" offered at session 2 of 6, top of the page | S | DONE |
 | W8-6 | nothing tells you the Context tab exists | S | OPEN |
 | W8-7 | the Context tab is 1 line of what it can do against 7 of what it cannot, and contradicts itself | M | OPEN |
-| W8-11 | never asks who the people inside the organisations are | M | OPEN |
-| W8-12 | two places to add participants, 550px apart | S | OPEN |
+| W8-11 | never asks who the people inside the organisations are | M | DONE - in ONBOARD_SYSTEM, proved at the prompt |
+| W8-12 | two places to add participants, 550px apart | S | DONE - one queue, both ends say so |
 | W8-16 | the 35s closing report has no honest progress | M | OPEN |
 | W8-22 | a truncated assistant reply ("You've nam") is saved into the record | M | WITHDRAWN |
 | W8-23 | two tabs render active at once | S | WITHDRAWN |
 | W8-27 | four names for two concepts | S | OPEN |
 | W8-36 | `/invite` and `/set-password` handle a missing token in opposite ways | S | DONE |
 | W8-37 | `/welcome` and `/profile` exist for one line of content | S | OPEN |
-| W8-42 | controls that work but sit in the wrong place, including two sending signed-in people to `/start` | S | OPEN |
+| W8-42 | controls that work but sit in the wrong place, including two sending signed-in people to `/start` | S | DONE |
 | W8-55 | a document uploaded in the entry chat is never kept as a document | M | DONE |
 
 ## Design, open
@@ -1849,6 +1849,12 @@ below it, with a note claiming they share one list. Both work; both are on scree
 
 **Fix.** One list, one place to type into. If the report's suggestions stay, they add to the list
 below rather than being a second entrance.
+
+**Done, and the second half is what shipped.** `queueSuggestedContributor` writes into
+`inviteAdded`, which is the state the invite screen below renders, so the two entrances were
+already one queue - verified at the state, not the copy. Both ends now say so. The suggestions
+keep their own button on purpose: they are read in the report and asking somebody to scroll past
+them to a separate field is the friction, not the cure.
 
 ## W8-13 · No confirmation after setup - **S**
 
@@ -2421,6 +2427,12 @@ Where a control works but is in the wrong place:
 
 The last two are the same mistake and worth stating as a rule: **`/start` is for people with no
 account. A signed-in person should never be sent there.**
+
+**Done 2026-08-12.** Three of the five had already been fixed by earlier passes and the table had
+not caught up: the 404 branches on `isAuthenticated`, "Start a ground" goes to `/grounds/new`, and
+the Admin item is `platformAdminOnly` so it does not render for anyone else rather than landing
+them somewhere silently. The two that were still live are fixed: `ResetPasswordPage`'s "Back to
+sign in" said sign in and went to the org-code page, and `PinPage`'s Back did the same.
 
 ## W8-43 · Everything that is correctly wired, for the record - **no action**
 

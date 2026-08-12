@@ -90,8 +90,16 @@ export function ResetPasswordPage() {
           {save.isPending ? 'Saving…' : 'Reset password →'}
         </button>
 
+        {/*
+          THE LINK SAID "BACK TO SIGN IN" AND WENT SOMEWHERE ELSE. W8-42.
+
+          `/enter` is the org-code page, left over from an onboarding model the
+          product no longer uses. Somebody who has just reset their password and
+          wants to use it was handed a page asking for a code they do not have.
+          Sign in is `/auth`.
+        */}
         <div style={{ textAlign: 'center', marginTop: 14 }}>
-          <span onClick={() => navigate('/enter')} style={{ fontSize: 12, color: 'var(--gw-sub)', cursor: 'pointer' }}>
+          <span onClick={() => navigate('/auth')} style={{ fontSize: 12, color: 'var(--gw-sub)', cursor: 'pointer' }}>
             Back to sign in
           </span>
         </div>
