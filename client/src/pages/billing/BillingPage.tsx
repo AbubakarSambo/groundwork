@@ -124,7 +124,7 @@ export function BillingPage() {
 
         <div style={{ fontSize: 22, fontWeight: 800, color: '#0A1628', marginBottom: 4 }}>Billing</div>
         <div style={{ fontSize: 13, color: '#6B6560', marginBottom: 28, lineHeight: 1.6 }}>
-          Manage sessions for your grounds and generate contributor codes.
+          Manage sessions for your grounds and generate access codes.
         </div>
 
         {/* Current plan */}
@@ -350,8 +350,8 @@ export function BillingPage() {
           </ul>
         </div>
 
-        {/* Contributor codes */}
-        <div style={{ fontSize: 15, fontWeight: 700, color: '#0A1628', marginBottom: 12 }}>Contributor codes</div>
+        {/* Access codes */}
+        <div style={{ fontSize: 15, fontWeight: 700, color: '#0A1628', marginBottom: 12 }}>Access codes</div>
 
         {codes.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>

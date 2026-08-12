@@ -415,7 +415,7 @@ export class EmailService {
       subject: `${participantEmail} tried to check in - add a session to unblock them`,
       html: this.layout(
         `<p><strong>${participantEmail}</strong> tried to check in on <strong>${groundLabel}</strong> but there are no sessions remaining.</p>
-         <p>Resubscribe or apply a contributor code to unblock them. Their record and the report are safe in the meantime.</p>
+         <p>Resubscribe or apply an access code to unblock them. Their record and the report are safe in the meantime.</p>
          <p><a href="${groundUrl}">Go to the ground</a></p>`,
       ),
     });
@@ -625,8 +625,8 @@ export class EmailService {
   ): Promise<void> {
     const isCreateNudge = groundsCreated === 1 && daysRemaining === 14;
     const subject = isCreateNudge
-      ? `Your contributor code expires in ${daysRemaining} days - create another ground`
-      : `Your contributor code expires in ${daysRemaining} day${daysRemaining !== 1 ? 's' : ''}`;
+      ? `Your access code expires in ${daysRemaining} days - create another ground`
+      : `Your access code expires in ${daysRemaining} day${daysRemaining !== 1 ? 's' : ''}`;
 
     const urgencyNote =
       daysRemaining <= 3

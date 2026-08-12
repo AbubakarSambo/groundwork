@@ -2596,6 +2596,15 @@ and inside the account at `/billing`, so the tiers can never disagree again (W8-
 1. **One noun per thing, everywhere.** Today: People/Team members, Roster/Teams, contributors/
    participants, check-in/session. Pick one word for each and use it in the rail, the page title
    and the copy. This is the cheapest clarity in the product and it is currently costing the most.
+
+   **Three of the four are done, 2026-08-12.** People says People at both ends; Roster is now All
+   grounds at both ends (W8-27); and "contributor" is gone as a competing word for a person - the
+   report card said "Contributor report" where the tab above it says your report, and the access
+   code was called a contributor code in the product while the email that delivers it has always
+   called it "your Groundwork access code". It is an access code everywhere now, in the app and in
+   the two emails that mention it. **Check-in and session are deliberately still both here**: they
+   are not synonyms. A session is the numbered slot the ground plans; a check-in is what a person
+   does inside it. Collapsing them would lose the distinction "Session 3 of 6" depends on.
 2. **The rail holds check-ins, not grounds** (W8-31). The unit a person lives in gets the home.
 3. **Every screen answers three questions in order:** what is this, what is its state, what do I
    do next. The board does; most pages answer only the first. The stat row is the "state" answer

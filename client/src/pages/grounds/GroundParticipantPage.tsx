@@ -1137,12 +1137,12 @@ export function GroundParticipantPage() {
               </>
             )}
 
-            {/* Contributor code: an admin/lead instrument for bypassing a
+            {/* Access code: an admin/lead instrument for bypassing a
                 payment block. It used to render for everyone, sending plain
                 participants hunting for a code they were never issued. */}
             {myParticipant?.partyType === 'INITIATOR' && (
             <div style={{ borderTop: '1px solid #E2E0DB', paddingTop: 14 }}>
-              <div style={{ fontSize: 12, color: '#9B9590', marginBottom: 8 }}>Have a contributor code?</div>
+              <div style={{ fontSize: 12, color: '#9B9590', marginBottom: 8 }}>Have an access code?</div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <input
                   type="text"

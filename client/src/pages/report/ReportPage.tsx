@@ -909,7 +909,10 @@ export function ReportPage() {
           {solo && tab === 'own' && (
             <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 12, overflow: 'hidden' }}>
               <div style={{ padding: '13px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#085041', color: '#fff' }}>
-                <span style={{ fontSize: 13, fontWeight: 800 }}>Contributor report</span>
+                {/* "Contributor report" was a third word for a thing the tab
+                    above already calls your report and the rest of the product
+                    calls a participant. One noun per thing. W8-47. */}
+                <span style={{ fontSize: 13, fontWeight: 800 }}>Your report</span>
                 <span style={{ fontSize: 11, opacity: 0.82 }}>for {partHandle}</span>
               </div>
               <div style={{ padding: '16px 18px 18px' }}>

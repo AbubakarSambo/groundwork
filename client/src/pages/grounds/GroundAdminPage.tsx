@@ -1699,7 +1699,7 @@ export function GroundAdminPage() {
         >
           <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 400 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <span style={{ fontSize: 14, fontWeight: 700, color: 'white' }}>Share contributor code</span>
+              <span style={{ fontSize: 14, fontWeight: 700, color: 'white' }}>Share an access code</span>
               <button onClick={() => setShareCodeModalOpen(false)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,.6)', fontSize: 18, cursor: 'pointer', lineHeight: 1 }}>×</button>
             </div>
             {shareCardLoading && (
