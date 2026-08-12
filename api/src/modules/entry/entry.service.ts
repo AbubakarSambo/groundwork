@@ -864,6 +864,19 @@ STRICT RULES:
 
     // Broadcast grounds (no named contributors) default to a higher participant cap.
     const isBroadcast = dto.contributors.length === 0;
+    /**
+     * THE ENTRY FLOW IS ITS OWN APPROVAL. W9-7.
+     *
+     * `create` holds a ground for an admin to accept when the caller is not one, and
+     * fails closed when no role is passed - which is right, and it broke this. The
+     * person coming out of the entry chat IS the admin of the organisation that was
+     * created for them a moment ago: there is nobody else to approve it, and holding
+     * it would leave them staring at a ground that never starts.
+     *
+     * Found by the persona suite going red on "Invited (2)" - the invites were being
+     * refused by the pending gate, so both contributors were dropped. Nothing about
+     * that failure named the approval; it looked like the vanish bug.
+     */
     const ground = await this.grounds.create(organizationId, initiatorId, {
       label,
       scenario,
@@ -874,7 +887,9 @@ STRICT RULES:
       endsAt: dto.lastCheckInBy || undefined,
       brief,
       freeParticipantCap: isBroadcast ? 100 : 4,
-    });
+      // See the comment above: the entry flow's creator is the admin of the org that
+      // was just created for them, so there is nobody else to approve this.
+    }, 'ADMIN');
 
     // Find the session 1 check-in and the initiator participant just created.
     const participant = await this.prisma.groundParticipant.findFirst({

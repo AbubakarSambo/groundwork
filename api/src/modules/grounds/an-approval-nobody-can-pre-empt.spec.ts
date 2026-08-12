@@ -1,5 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { GroundStatus } from '@prisma/client';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { GroundsService } from './grounds.service';
 
 /**
@@ -120,5 +122,36 @@ describe('while a ground is waiting to be accepted', () => {
     await expect(
       service.addParticipant('g1', 'org1', 'u1', { email: 'her@x.test' } as any),
     ).rejects.toThrow(/admin in your organisation to accept it/i);
+  });
+});
+
+/**
+ * THE ENTRY FLOW MUST NOT BE HELD BY ITS OWN GATE.
+ *
+ * The approval fails closed - no role means AWAITING_APPROVAL - which is right, and it
+ * broke the entry chat: `entry.service` calls `grounds.create` and passed no role, so
+ * every ground created from the anonymous flow was held pending, `addParticipant`
+ * refused, and both contributors were dropped.
+ *
+ * The person coming out of the entry chat IS the admin of the organisation created for
+ * them moments earlier. There is nobody else to approve it, and holding it leaves them
+ * looking at a ground that never starts.
+ *
+ * WHAT THIS IS REALLY GUARDING. The persona suite did catch it - five minutes later,
+ * and it reported "expected both the confirmed contributor and the one left in the note
+ * box", which reads as the vanish bug and says nothing about an approval. This says it
+ * in one second, in the right words.
+ */
+describe('the entry flow creates a ground that is ready to run', () => {
+  const SRC = readFileSync(join(__dirname, '../entry/entry.service.ts'), 'utf8');
+
+  it('passes a role to grounds.create, so it is not held by the pending gate', () => {
+    const call = SRC.slice(SRC.indexOf('this.grounds.create(organizationId, initiatorId, {'));
+    const end = call.indexOf(');');
+    expect(call.slice(0, end)).toMatch(/\}, 'ADMIN'/);
+  });
+
+  it('and says why, because the next person will wonder', () => {
+    expect(SRC).toMatch(/nobody else to approve it/i);
   });
 });
