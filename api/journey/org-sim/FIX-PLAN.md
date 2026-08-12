@@ -2035,6 +2035,13 @@ Observed across every page captured. Not a defect list, a pattern:
 - **The copy leads with caveats.** Clearest on the Context tab: one line of what the ground can
   tell you, seven of what it cannot (W8-7).
 
+**Two of the concrete ones are done, 2026-08-12.** The roster's "0 members" on a ground that
+plainly had a lead in it: `memberCount` counted only PARTICIPANT rows while `members` maps every
+participant, so one object carried two counts of one list and they disagreed on screen. And the
+purple: the subscribe buttons were the only purple in the product, a hardcoded hex in three files
+with no token behind it, on the pages where somebody is deciding whether to trust us with money.
+They are navy like every other primary action. The hierarchy items below remain.
+
 **What is genuinely good and should not be lost in any redesign:** the writing. "Your
 contribution to this ground is yours until the report releases", the private-record framing
 throughout, and the invite email are plain, calm and trust-building. The hierarchy problem is

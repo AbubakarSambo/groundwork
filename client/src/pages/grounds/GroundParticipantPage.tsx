@@ -1109,20 +1109,20 @@ export function GroundParticipantPage() {
 
                 {/* Tier 3: Upgrade org */}
                 <div style={{ border: '1px solid #E2E0DB', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: '#6B4FA0', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 6 }}>Upgrade organization</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-navy)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 6 }}>Upgrade organization</div>
                   <div style={{ fontSize: 13, color: '#1A1916', lineHeight: 1.6, marginBottom: 12 }}>
                     Your team is getting value from Groundwork. Unlock unlimited Grounds and unlimited sessions for everyone in your organization with one simple monthly subscription.
                   </div>
                   <button
                     onClick={() => createSubscriptionMut.mutate('STARTER')}
                     disabled={createSubscriptionMut.isPending}
-                    style={{ width: '100%', padding: '10px', borderRadius: 7, background: '#6B4FA0', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: createSubscriptionMut.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: createSubscriptionMut.isPending ? 0.7 : 1, marginBottom: 8 }}
+                    style={{ width: '100%', padding: '10px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: createSubscriptionMut.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: createSubscriptionMut.isPending ? 0.7 : 1, marginBottom: 8 }}
                   >
                     {createSubscriptionMut.isPending ? 'Redirecting...' : 'Upgrade organization'}
                   </button>
                   <button
                     onClick={() => navigate('/pricing')}
-                    style={{ width: '100%', padding: '8px', borderRadius: 7, background: 'none', color: '#6B4FA0', fontSize: 12, fontWeight: 600, border: '1px solid #D4C8EC', cursor: 'pointer', fontFamily: 'inherit' }}
+                    style={{ width: '100%', padding: '8px', borderRadius: 7, background: 'none', color: 'var(--gw-navy)', fontSize: 12, fontWeight: 600, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
                   >
                     View all plans
                   </button>
