@@ -2609,6 +2609,12 @@ and inside the account at `/billing`, so the tiers can never disagree again (W8-
 3. **Every screen answers three questions in order:** what is this, what is its state, what do I
    do next. The board does; most pages answer only the first. The stat row is the "state" answer
    and it belongs on the ground page and the grounds list, not only the board.
+
+   **Done for both, 2026-08-12.** The grounds list had its own smaller stat tile and now uses the
+   kit's, so the same number does not change shape depending on which page you opened it from. The
+   ground page had no state answer at all - it named the ground and went straight to cards - and
+   now opens with sessions done, how many have checked in this round, and what the report is doing.
+   Nothing new is fetched; every number was already on screen further down.
 4. **One primary action per screen, and only one.** Most screens have none. Where there is nothing
    to do, say so in a line rather than filling the space with three cards about absence (W8-24).
 

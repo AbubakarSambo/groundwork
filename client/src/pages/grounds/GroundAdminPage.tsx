@@ -479,6 +479,26 @@ export function GroundAdminPage() {
     ).size,
   )
   const sessionsDone = perParticipantDone.length > 0 ? Math.min(...perParticipantDone) : 0
+  /**
+   * How many people have finished the round that is currently open. The round is
+   * `sessionsDone + 1` - the one the header already names - so this and the
+   * header cannot disagree about which round is being counted.
+   */
+  const openRound = sessionsDone + 1
+  const roundDone = (ground.checkIns ?? []).filter(
+    (c: any) => c.sessionNumber === openRound && c.status === 'COMPLETED',
+  ).length
+  /**
+   * The report has three states worth telling apart, and only the last is good
+   * news. "Waiting" is not a failure and does not get a warning colour - it is
+   * the normal condition of a ground that is running.
+   */
+  const reportState: { value: string; caption: string; tone?: 'good' | 'warn' | 'bad' } =
+    (ground as any).report?.releasedAt
+      ? { value: 'Released', caption: 'Everybody can read it', tone: 'good' }
+      : (ground as any).report
+        ? { value: 'Ready', caption: 'Generated, not released yet', tone: 'warn' }
+        : { value: 'Waiting', caption: 'Builds as accounts come in' }
   // contact-visibility toggle state (default: hidden). true = peers cannot see each other's email.
   const contactHidden = ground.restrictExternalVisibility !== false
 
@@ -597,6 +617,35 @@ export function GroundAdminPage() {
         {/* OVERVIEW */}
         {tab === 'overview' && (
           <div>
+            {/*
+              WHAT STATE IS THIS GROUND IN, IN ONE LOOK. W8-24, W8-47.
+
+              Every screen should answer three things in order: what is this,
+              what is its state, what do I do next. This page answered the first
+              in its header and then went straight to cards, so the state had to
+              be assembled by reading them. The board already answers it with a
+              stat row and is the best page in the product for exactly that
+              reason; this is the same row, from the same kit, on the page people
+              actually open.
+
+              Nothing new is fetched. Every number here was already on screen
+              somewhere further down.
+            */}
+            <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
+              <Stat
+                label="Sessions"
+                value={plannedSessions != null ? `${sessionsDone} of ${plannedSessions}` : String(sessionsDone)}
+                caption={allSessionsDone ? 'Every session done' : 'Counted from the person furthest behind'}
+                tone={allSessionsDone ? 'good' : undefined}
+              />
+              <Stat
+                label="This round"
+                value={`${roundDone} of ${(ground.participants ?? []).length}`}
+                caption={roundDone < (ground.participants ?? []).length ? 'Still to check in' : 'Everybody is in'}
+                tone={roundDone === (ground.participants ?? []).length && roundDone > 0 ? 'good' : undefined}
+              />
+              <Stat label="Report" value={reportState.value} caption={reportState.caption} tone={reportState.tone} />
+            </div>
             {/* How this ground ends. Renders nothing for a non-party (the API
                 403s them), so the setting-up admin sees the board and the
                 record but does not get a vote on the outcome.
