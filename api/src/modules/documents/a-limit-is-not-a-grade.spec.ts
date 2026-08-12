@@ -88,6 +88,17 @@ describe('the cases that are about the shape of the ground rather than its conte
   it('one person is a record, not a comparison', () => {
     const read = whatThisGroundCanTellYou({ ...bare, partyCount: 1 });
     expect(read.cannot.join(' ')).toMatch(/only one person is in this ground/);
+
+    /**
+     * AND IT DOES NOT ALSO SAY "the two of you" IN THE SAME BREATH.
+     *
+     * The party-count branch below treated "fewer than three" as "two", so a solo
+     * ground said "only one person is in this ground" and "only the two of you are
+     * in it" in one card. Anybody reading carefully learns the page is not reading
+     * their ground.
+     */
+    expect(read.cannot.join(' ')).not.toMatch(/the two of you/);
+    expect(read.cannot.join(' ')).toMatch(/yours is the only account here/);
   });
 
   it('two people cannot answer who this depended on', () => {

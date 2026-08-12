@@ -112,8 +112,18 @@ export function whatThisGroundCanTellYou(input: GroundContextInputs): ContextStr
   if (input.partyCount >= 3) {
     can.push('show who is waiting on whom, and where work is landing between you');
   } else {
+    /**
+     * "THE TWO OF YOU" IN A GROUND WITH ONE PERSON IN IT.
+     *
+     * This branch fires for a party count of one as well as two, so a solo ground
+     * said "only one person is in this ground" a few lines above and "only the two
+     * of you are in it" here, in the same card. Anybody reading carefully learns
+     * the page is not reading their ground.
+     */
     cannot.push(
-      'say whose work this depended on, because only the two of you are in it',
+      input.partyCount <= 1
+        ? 'say whose work this depended on, because yours is the only account here'
+        : 'say whose work this depended on, because only the two of you are in it',
     );
   }
 
