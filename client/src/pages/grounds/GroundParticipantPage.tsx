@@ -32,7 +32,7 @@ function specificityQualityLabel(score: number): { label: string; color: string;
   return { label: 'Building', color: '#6B6560', bg: '#F0EEE9' }
 }
 
-type Tab = 'checkin' | 'history' | 'record' | 'report' | 'docs' | 'settings'
+type Tab = 'checkin' | 'record' | 'report' | 'docs' | 'settings'
 
 /**
  * THE CONVERSATION ITSELF, WHICH SESSION HISTORY DID NOT HOLD. W8-21, W8-57.
@@ -80,6 +80,51 @@ function SessionConversation({ checkInId }: { checkInId: string }) {
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+/**
+ * ONE PAST SESSION, AS IT APPEARS IN THE SCROLL. W8-57.
+ *
+ * Lifted out of the Session history tab unchanged so the Check-in tab can show
+ * the same thing. Two renderings of a session would drift, and the whole point of
+ * the change is that there is now one place a person reads their ground.
+ */
+function PastSession({
+  ci, groundId, score,
+}: { ci: any; groundId: string; score: number | undefined }) {
+  const isComplete = ci.status === 'COMPLETED'
+  const q = score !== undefined ? specificityQualityLabel(score) : null
+  return (
+    <div style={{ background: 'white', border: '1px solid #E2E0DB', borderLeft: `3px solid ${isComplete ? '#5DCAA5' : '#E8A94A'}`, borderRadius: 10, padding: '12px 14px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 700 }}>Session {ci.sessionNumber}</div>
+          {ci.completedAt && (
+            <div style={{ fontSize: 11, color: '#9B9590' }}>Completed {new Date(ci.completedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
+          )}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {q && (
+            <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: q.bg, color: q.color }}>{q.label}</span>
+          )}
+          <span style={{
+            fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, letterSpacing: '.04em', textTransform: 'uppercase',
+            background: isComplete ? '#E7F6EF' : '#FDF3E3',
+            color: isComplete ? '#085041' : '#8A5C1A',
+          }}>
+            {isComplete ? 'Complete' : 'In progress'}
+          </span>
+        </div>
+      </div>
+      {ci.nextCommitment && (
+        <div style={{ fontSize: 12, color: '#6B6560', marginTop: 4, lineHeight: 1.5 }}>
+          <span style={{ fontWeight: 600 }}>Commitment:</span> {ci.nextCommitment}
+        </div>
+      )}
+      {isComplete && <SoloArtifactBlock checkInId={ci.id} groundId={groundId} sessionNumber={ci.sessionNumber} />}
+      <SessionConversation checkInId={ci.id} />
     </div>
   )
 }
@@ -334,7 +379,6 @@ export function GroundParticipantPage() {
 
   const tabs: { key: Tab; label: string }[] = [
     { key: 'checkin', label: 'Check-in' },
-    { key: 'history', label: 'Session history' },
     { key: 'record', label: 'My record' },
     { key: 'report', label: 'Report' },
     { key: 'docs', label: 'Documents' },
@@ -471,6 +515,27 @@ export function GroundParticipantPage() {
               )
             })()}
 
+            {/*
+              THE GROUND OPENS TO ITS OWN HISTORY, WITH THE OPEN ONE AT THE BOTTOM. W8-57.
+
+              Hafsah's model: a ground is a channel you come back to and keep
+              adding to. A channel opens to what has been said, with the place to
+              type at the bottom. This is that - session 1, what we heard from you,
+              the conversation itself if you want it, then session 2, and then
+              either the live session or the invitation to start it.
+
+              It replaces the separate Session history tab, which held exactly this
+              and put it one click away from the thing it was the history of. Newest
+              LAST here, the opposite of that tab: a scroll you read downwards ends
+              where you are now, and where you are now is the session you owe.
+            */}
+            {[...myCheckIns]
+              .filter((ci: any) => ci.id !== openCheckIn?.id)
+              .sort((a: any, b: any) => a.sessionNumber - b.sessionNumber)
+              .map((ci: any) => (
+                <PastSession key={ci.id} ci={ci} groundId={id!} score={specificityScores[ci.sessionNumber - 1]} />
+              ))}
+
             {/* Active check-in card */}
             {openCheckIn ? (
               <div style={{ background: '#0A1628', borderRadius: 10, padding: '16px 18px' }}>
@@ -599,71 +664,6 @@ export function GroundParticipantPage() {
         )}
 
         {/* SESSION HISTORY TAB */}
-        {tab === 'history' && (
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#1A1916', marginBottom: 4 }}>Session history</div>
-            <div style={{ fontSize: 12, color: '#9B9590', lineHeight: 1.6, marginBottom: 16 }}>Your private check-in record. Nobody else sees this view.</div>
-
-            {openCheckIn && (
-              <div style={{ background: '#FDF3E3', border: '1px solid #E8A94A', borderRadius: 10, padding: '11px 14px', marginBottom: 12 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: '#8A5C1A', marginBottom: 2 }}>Session {openCheckIn.sessionNumber} is open</div>
-                <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.5 }}>
-                  Your in-progress session is on the Check-in tab. It will appear here once complete.
-                </div>
-                <button onClick={() => setTab('checkin')} style={{ marginTop: 8, fontSize: 12, color: '#8A5C1A', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit', fontWeight: 600, textDecoration: 'underline' }}>
-                  Go to check-in
-                </button>
-              </div>
-            )}
-
-            {myCheckIns.length === 0 ? (
-              <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: 24, textAlign: 'center' }}>
-                <div style={{ fontSize: 13, color: '#9B9590' }}>No completed sessions yet.</div>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {[...myCheckIns].sort((a: any, b: any) => b.sessionNumber - a.sessionNumber).map((ci: any) => {
-                  const sessionIdx = ci.sessionNumber - 1
-                  const score: number | undefined = specificityScores[sessionIdx]
-                  const isComplete = ci.status === 'COMPLETED'
-                  const q = score !== undefined ? specificityQualityLabel(score) : null
-                  return (
-                    <div key={ci.id} style={{ background: 'white', border: '1px solid #E2E0DB', borderLeft: `3px solid ${isComplete ? '#5DCAA5' : '#E8A94A'}`, borderRadius: 10, padding: '12px 14px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
-                        <div>
-                          <div style={{ fontSize: 13, fontWeight: 700 }}>Session {ci.sessionNumber}</div>
-                          {ci.completedAt && (
-                            <div style={{ fontSize: 11, color: '#9B9590' }}>Completed {new Date(ci.completedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
-                          )}
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          {q && (
-                            <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: q.bg, color: q.color }}>{q.label}</span>
-                          )}
-                          <span style={{
-                            fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, letterSpacing: '.04em', textTransform: 'uppercase',
-                            background: isComplete ? '#E7F6EF' : '#FDF3E3',
-                            color: isComplete ? '#085041' : '#8A5C1A',
-                          }}>
-                            {isComplete ? 'Complete' : 'In progress'}
-                          </span>
-                        </div>
-                      </div>
-                      {ci.nextCommitment && (
-                        <div style={{ fontSize: 12, color: '#6B6560', marginTop: 4, lineHeight: 1.5 }}>
-                          <span style={{ fontWeight: 600 }}>Commitment:</span> {ci.nextCommitment}
-                        </div>
-                      )}
-                      {isComplete && <SoloArtifactBlock checkInId={ci.id} groundId={id!} sessionNumber={ci.sessionNumber} />}
-                      <SessionConversation checkInId={ci.id} />
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
         {/* MY RECORD TAB */}
         {tab === 'record' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
