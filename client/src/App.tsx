@@ -49,7 +49,11 @@ function RequireAuth({ children }: { children: JSX.Element }) {
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
   if (!isAuthenticated) {
     const dest = window.location.pathname + window.location.search
-    return <Navigate to={`/auth?from=${encodeURIComponent(dest)}`} replace />
+    // `next`, NOT `from`: AuthPage has only ever read `next`, so every person who was
+    // sent here from a protected page lost their destination and landed on the grounds
+    // list. Two spellings of one idea, and the one the redirects used was the dead one.
+    // W8-70.
+    return <Navigate to={`/auth?next=${encodeURIComponent(dest)}`} replace />
   }
   return children
 }
@@ -63,7 +67,11 @@ function RequirePlatformAdmin({ children }: { children: JSX.Element }) {
   const isPlatformAdmin = useAuthStore(s => s.user?.isPlatformAdmin)
   if (!isAuthenticated) {
     const dest = window.location.pathname + window.location.search
-    return <Navigate to={`/auth?from=${encodeURIComponent(dest)}`} replace />
+    // `next`, NOT `from`: AuthPage has only ever read `next`, so every person who was
+    // sent here from a protected page lost their destination and landed on the grounds
+    // list. Two spellings of one idea, and the one the redirects used was the dead one.
+    // W8-70.
+    return <Navigate to={`/auth?next=${encodeURIComponent(dest)}`} replace />
   }
   if (!isPlatformAdmin) {
     return <Navigate to="/grounds" replace />

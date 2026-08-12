@@ -90,7 +90,16 @@ export function AuthPage() {
    * link.
    */
   const nextPath = (() => {
-    const raw = searchParams.get('next')
+    /**
+     * `from` IS ACCEPTED TOO, so the two spellings cannot silently diverge again. W8-70.
+     *
+     * `RequireAuth` and `RequirePlatformAdmin` both sent `?from=`, which nothing here read,
+     * so a signed-out person clicking any protected link signed in and landed on the
+     * grounds list with no idea where their page went. They send `next` now; this reads
+     * both, because a redirect that loses the destination fails silently and looks like
+     * the product forgetting.
+     */
+    const raw = searchParams.get('next') ?? searchParams.get('from')
     if (!raw) return null
     if (!raw.startsWith('/') || raw.startsWith('//')) return null
     return raw

@@ -4165,3 +4165,34 @@ are stripped, as in the other two.
 | "Led by Hafsah" on the grounds list | "Led by hafsah" - the third place building a name out of an email address. `grounds.list` now sends the display name, so nothing has to guess. |
 | One answer per 404 | `groundsApi.get` raised a red toast AND the page rendered `GroundGone`. The toast also outlived the navigation. |
 | The org switcher, seen at last | It only renders with more than one organisation, so nobody had ever seen it. Given a second membership on a local database it appears at the bottom of the rail with both organisations, their roles, and a dot on the active one - which is what she asked for ("org can switch at the bottom too"). Not a fix; a confirmation that it works.
+
+## W8-70 · Signing in lost where you were going - **DONE, NOT MERGED**
+
+`RequireAuth` and `RequirePlatformAdmin` both redirected to `/auth?from=<path>`. `AuthPage`
+has only ever read `?next=`.
+
+So **every** signed-out person who clicked any link into the app - a ground, a report, a
+board, a link a colleague pasted into a message - signed in and landed on the grounds list,
+with no explanation and nothing to click to get back to what they were opening.
+
+The same bug was found and fixed once, for PricingPage, which is why `next` exists at all.
+The general case was never fixed, because two names were written for one idea and the one
+every redirect used was the dead one. Nothing failed loudly: a redirect that loses its
+destination looks like the product forgetting.
+
+Both halves are pinned in `where-you-were-going.spec.tsx`, and both bite: AuthPage reads
+`next` and `from`, so the two spellings cannot diverge again, and a source check holds
+App.tsx to sending `next` - because AuthPage could read every name perfectly and the bug
+would survive if a redirect sent a third one. The open-redirect guard is asserted for both
+spellings, since this is the page where a password gets typed.
+
+### Also walked, and clean
+
+`/`, `/grounds`, `/grounds/new`, `/billing`, `/org/members`, `/settings` - as a signed-in
+org admin, looking at each one and reading its network log rather than trusting the suite.
+`/admin` correctly bounces a non-platform-admin to the grounds list.
+
+**One thing I did NOT change.** Six in-app pages draw their own `gw-hdr` with a second
+Groundwork wordmark inside the shell that already has one. It is consistent everywhere and
+has been for a long time, so it is a design decision for her, not a regression to fix
+unilaterally while she is asking for stability. Recorded, not touched.
