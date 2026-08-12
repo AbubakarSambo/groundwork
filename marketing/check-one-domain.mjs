@@ -19,8 +19,8 @@
  * heavier than the thing it checks - so it is a postbuild script, which also means it
  * guards the artefact that actually ships rather than the source that produced it.
  */
-import { readFileSync, readdirSync, statSync } from 'fs';
-import { join } from 'path';
+import { readFileSync, readdirSync, statSync, existsSync } from 'fs';
+import { join, relative } from 'path';
 import { SITE } from './src/site.mjs';
 
 const DIST = 'dist';
@@ -61,4 +61,59 @@ for (const f of files.filter((f) => f.endsWith('.html') || f.endsWith('.xml'))) 
   }
 }
 
+/**
+ * 4. THE NAV GOES TO THE PAGES, NOT TO A COPY OF THEM.
+ *
+ * The home page's nav was buttons calling `lNav()`, which hid the home page and
+ * revealed a thinner inline copy of each section further down the same file. The
+ * URL stayed `myground.work`, the tab still said "Groundwork - A clear picture",
+ * and the visitor read a shorter, older version of a page that existed properly
+ * somewhere else. `/about` is 14.7KB and has the team on it; its stub was 3.4KB
+ * and had no team at all, and nothing in the nav could reach the real page.
+ *
+ * Nobody could have noticed from the source. Both versions were real HTML in one
+ * file, both looked finished, and clicking About genuinely showed you something
+ * headed About. It was found by Hafsah clicking About, reading to the bottom, and
+ * her own team not being there.
+ *
+ * So this checks the built home page: every nav destination is a real anchor to a
+ * page the build produced, and no page reveals another page by hiding itself.
+ */
+const home = join(DIST, 'index.html');
+if (existsSync(home)) {
+  const html = readFileSync(home, 'utf8');
+
+  const built = new Set(
+    files
+      .filter((f) => f.endsWith('index.html'))
+      .map((f) => '/' + relative(DIST, f).replace(/index\.html$/, '').replace(/\/$/, ''))
+      .map((p) => p === '/' || p === '' ? '/' : p),
+  );
+
+  // Astro stamps a scope attribute onto every element, so the opening tag is
+  // `<div class="l-nav-links" data-astro-cid-...>` in the artefact and
+  // `<div class="l-nav-links">` in the source. Match the class, not the tag.
+  const navBlock = html.match(/<div class="l-nav-links"[^>]*>([\s\S]*?)<\/div>/)?.[1] ?? '';
+  if (!navBlock.trim()) fail('the home page has no nav-links block - the header changed shape, so this check cannot see it.');
+
+  const anchors = [...navBlock.matchAll(/<a\b[^>]*href="([^"]+)"/g)].map((m) => m[1]);
+  if (anchors.length < 4) {
+    fail(`the home nav has only ${anchors.length} link(s). It should link to every page; buttons that swap hidden divs are how /about became unreachable.`);
+  }
+  for (const href of anchors) {
+    if (!href.startsWith('/')) continue; // external or app links are not ours to check
+    const clean = href.split(/[?#]/)[0].replace(/\/$/, '') || '/';
+    if (!built.has(clean)) fail(`the home nav links to ${href}, and the build produced no such page.`);
+  }
+
+  // The mechanism itself, in the artefact that ships.
+  if (/id="lp-(how|usecases|pricing|about)"/.test(html)) {
+    fail('the home page still carries a hidden copy of another page (id="lp-..."). One page, one implementation.');
+  }
+  if (/onclick="lNav\(/.test(html)) {
+    fail('the home page still has lNav() nav buttons. The nav must be real links, or the URL and the title lie about what you are reading.');
+  }
+}
+
 console.log(`[one-domain] sitemap, canonicals and social tags all on ${SITE}.`);
+console.log('[one-nav] the home nav links to real pages, and no page hides a copy of another.');

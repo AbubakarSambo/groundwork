@@ -1510,6 +1510,41 @@ committed a batch before running the API suite, which was red on six mocks. Both
 lesson the plan keeps recording: prove the fix on the path it was meant to repair, before saying
 it is done.
 
+## W8-61 - The marketing nav went to stubs, so /about was unreachable - **FIXED**
+
+Hafsah: "the about page doesn't have the profiles i gave you... it is not visible at all."
+
+She was right and I was wrong to answer that it was live. It is live at `/about`; she had not
+been to `/about`. The home page's nav was **buttons calling `lNav()`**, which hid the home page
+and revealed a thinner inline copy of each section further down the same file:
+
+| | The real page | The stub the nav showed |
+|---|---|---|
+| about | `about.astro`, 14.7KB, the team on it | `#lp-about`, 3.4KB, no team |
+| pricing | `pricing.astro`, 17.8KB | `#lp-pricing`, 2.6KB |
+| how it works | `how-it-works.astro`, 14.4KB | `#lp-how`, 6.2KB |
+| use cases | `use-cases.astro`, 11.8KB | `#lp-usecases`, 8.0KB |
+
+Her screenshot shows it exactly: URL `myground.work` with no path, tab title "Groundwork - A clear
+picture" (the HOME title, not "About - Groundwork"), the About nav item boxed as active, and card
+copy - "A private check-in for each person" - that appears **only** in `index.astro`. Four pages
+were written, deployed, and reachable by nobody who used the site.
+
+**Why nothing caught it.** Both versions were real HTML in one file, both looked finished, and
+clicking About genuinely showed you something headed About with the same heading word for word.
+The link-existence tripwire from July checks that hrefs resolve - these were not hrefs. My own
+check was worse than useless: I fetched `/about`, found the bios, and told her they were live,
+which was true and answered a question she had not asked.
+
+**Fixed.** The nav and footer are real links to the real pages. The four stubs and `lNav` are
+deleted - about 130 lines. The four pages already carry their own header and footer.
+
+**Guarded.** `check-one-domain.mjs` runs after every build, including the deploy, and now fails
+it if the home nav has fewer than four links, links to a page the build did not produce, still
+carries an `id="lp-..."` copy of another page, or goes back to `lNav()` buttons. All three arms
+bite-checked. It guards the shipped artefact rather than the source, which is the only place this
+was ever visible.
+
 ## The persona gate failed on correct behaviour
 
 `suite_a` A2 asks whether the engine repeats an unverified claim ("everyone agrees Sam is the
