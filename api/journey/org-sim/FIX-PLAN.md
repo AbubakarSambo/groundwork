@@ -5755,3 +5755,48 @@ between.
 which failed on every sign-up and logged it quietly: all nine callers run inside a transaction, so on
 another connection the user row does not exist yet. Nesting it into the create fixed it. Caught by
 re-running the same real sign-up and getting zero again.
+
+
+## Two things she remembered working, and she was right about both
+
+**The rail on a signed-out /start.** I had written "show it when signed in, hide it for a stranger"
+into a plan as work to do. It was already the behaviour, so I recorded that as a wrong plan item. She
+then said the rail HAD been there on a signed-out window - and that was right too, with the mechanism
+sitting in the file.
+
+`AppSidebar` carries a branch whose own comment reads "Entry ground shown when unauthenticated on
+/start". It draws the ground being built - its name, renameable, and the session count - for somebody
+with no account yet, which is the only sensible rail for a person on their first ground.
+
+It could never run. `showSidebar` required `isAuthenticated`, so the sidebar was never mounted for a
+stranger, which makes `isEntryPage = !isAuthenticated && pathname === '/start'` false whenever it is
+evaluated. An auth gate added later killed the branch without removing it.
+
+**Same bug class as G37, on the client, where my sweep had not looked.** I swept the API for checks
+against absences the schema forbids and reported "no other instance". That was true of the API and I
+did not say it was only the API.
+
+**And my own guard had pinned the bug.** `the-rail-is-where-it-belongs.spec.tsx` asserted the whole
+expression including `isAuthenticated &&`, so the correct fix failed a test I wrote during the "side
+menu has vanished" sweep. The file's real subject is the chromeless list; it asserts that now, plus
+the entry-flow exception by name.
+
+**The check-in had no way out, and the control was there all along.** `ChatPage` has always had a back
+button in its header. `AppShell` moves the feedback pill to `top: 12, right: 16` on chat pages
+specifically, and the back button sits at the right of that same header. Measured on the running page:
+
+| | x | | y |
+| --- | --- | --- | --- |
+| Back button | 1180 to 1264 | | 16 to 46 |
+| Feedback pill | 1159 to 1264 | | 12 to 46 |
+
+Every pixel of it, underneath. So "how do you get back from the check-in" had no answer, and the thing
+that was supposed to answer it had been invisible since the pill moved.
+
+The exit is on the left now, where the ground page already puts it and where nothing floats, and it
+returns to **the ground** rather than the list of every ground - leaving a session should not cost you
+your place. Measured after: no overlap, and it lands on `/grounds/:id/p`.
+
+Also found while looking: the end-session control only appears after three of your own messages, or
+once the engine decides the session is done. Before that there was no way to end and no way out. The
+exit fixes the second half; whether ending should be offered earlier is a product call, not a bug.

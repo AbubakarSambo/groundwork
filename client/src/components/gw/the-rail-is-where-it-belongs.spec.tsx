@@ -31,7 +31,24 @@ const listed = (CODE.match(/const CHROMELESS = \[([\s\S]*?)\]/)?.[1] ?? '')
 
 describe('which pages stand alone', () => {
   it('the list exists and the rail is gated on it', () => {
-    expect(CODE).toMatch(/const showSidebar = isAuthenticated && !CHROMELESS\.includes\(location\.pathname\)/)
+    /**
+     * This used to pin the whole expression, `isAuthenticated && !CHROMELESS.includes(...)`, and that
+     * was too tight. It made a correct change fail: `/start` needs the rail WITHOUT being signed in,
+     * because `AppSidebar` has a branch - commented "Entry ground shown when unauthenticated on
+     * /start" - that draws the ground somebody is building before they have an account. The auth
+     * condition made that branch unreachable, so the rail Hafsah remembered on a signed-out window
+     * was real and had quietly stopped being drawn.
+     *
+     * What this file is actually for is the chromeless list, so that is what it asserts now: the rail
+     * is gated on the list, and the list is exact.
+     */
+    expect(CODE).toMatch(/const showSidebar = .*!CHROMELESS\.includes\(location\.pathname\)/)
+  })
+
+  it('and the entry flow is the one page that gets it without an account', () => {
+    // Named, so it reads as the deliberate exception it is rather than a loosened gate.
+    expect(CODE).toMatch(/const isEntryFlow = location\.pathname === '\/start'/)
+    expect(CODE).toMatch(/\(isAuthenticated \|\| isEntryFlow\)/)
   })
 
   it('every page reached from an email or the marketing site is on it', () => {

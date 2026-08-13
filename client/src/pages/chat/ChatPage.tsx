@@ -571,14 +571,35 @@ export function ChatPage() {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
       {/* Header */}
+      {/**
+        * THE WAY OUT, MOVED TO THE LEFT, AND POINTED AT THE GROUND.
+        *
+        * There has always been a `← Grounds` button here, on the right of the header. It was
+        * invisible: the feedback pill is `position: fixed` and `AppShell` moves it to `top: 12,
+        * right: 16` on chat pages specifically, which is the same place. Measured on the running
+        * page - back button x 1180 to 1264, pill x 1159 to 1264. Every pixel of it was underneath.
+        *
+        * So the check-in had no way out at all, which is what Hafsah asked about. Two changes:
+        * the exit sits on the left, where the ground page already puts it and where nothing floats
+        * over it, and it goes back to THE GROUND rather than the list of all grounds - leaving a
+        * session should not cost you your place.
+        */}
       <div className="gw-hdr">
-        <div>
-          <div className="gw-logo">{groundLabel || user?.firstName || 'Your session'}</div>
-          <div style={{ fontSize: 11, color: isFinalSession ? 'var(--gw-amber-t)' : 'var(--gw-muted)', fontWeight: isFinalSession ? 700 : 400 }}>
-            {isFinalSession ? `Closing session ${sessionNumber} · your final account` : `Session ${sessionNumber} · Private`}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+          <button
+            className="gw-back"
+            onClick={() => navigate(groundId ? `/grounds/${groundId}${isInitiator ? '' : '/p'}` : '/grounds')}
+            title="Leave this session. Everything you have said is already saved."
+          >
+            ← Back
+          </button>
+          <div style={{ minWidth: 0 }}>
+            <div className="gw-logo" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{groundLabel || user?.firstName || 'Your session'}</div>
+            <div style={{ fontSize: 11, color: isFinalSession ? 'var(--gw-amber-t)' : 'var(--gw-muted)', fontWeight: isFinalSession ? 700 : 400 }}>
+              {isFinalSession ? `Closing session ${sessionNumber} · your final account` : `Session ${sessionNumber} · Private`}
+            </div>
           </div>
         </div>
-        <button className="gw-back" onClick={() => navigate('/grounds')}>← Grounds</button>
       </div>
 
       {/* Clarification session banner */}

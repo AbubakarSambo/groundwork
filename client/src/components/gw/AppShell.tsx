@@ -833,7 +833,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     '/set-password', '/reset-password', '/verify-email',
     '/invite', '/join', '/login',
   ]
-  const showSidebar = isAuthenticated && !CHROMELESS.includes(location.pathname)
+
+  /**
+   * THE RAIL ON /start FOR SOMEBODY WITHOUT AN ACCOUNT YET.
+   *
+   * `AppSidebar` has a branch for exactly this, and its own comment says so: "Entry ground shown when
+   * unauthenticated on /start". It draws the ground being built - its name, renameable, and how many
+   * sessions - for a person who has no grounds because they are making their first one.
+   *
+   * It could never run. `showSidebar` required `isAuthenticated`, so the sidebar was not mounted at
+   * all for a stranger, which made `isEntryPage = !isAuthenticated && pathname === '/start'` a
+   * condition that is false whenever it is evaluated. The rail Hafsah remembered on a signed-out
+   * window was real, and an auth gate added later killed it without removing the branch.
+   *
+   * Same shape as the G37 defect: a check that cannot be true, no failure, just a thing that quietly
+   * stopped happening. The API sweep for this class did not cover the client.
+   */
+  const isEntryFlow = location.pathname === '/start'
+  const showSidebar = (isAuthenticated || isEntryFlow) && !CHROMELESS.includes(location.pathname)
 
   if (!showSidebar) return <>{children}</>
 
