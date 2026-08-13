@@ -16,6 +16,7 @@ import { groundTabs } from './ground-tabs'
 import { SoloReportBody } from '@/components/gw/SoloReportBody'
 import { BaselinePanel } from '@/components/gw/BaselinePanel'
 import { GroundTabRow } from '@/components/gw/GroundTabRow'
+import { ObjectivePanel } from '@/components/gw/ObjectivePanel'
 import { apiClient } from '@/api/client'
 import { participantLabel } from '@/lib/utils'
 import { alignmentLabel } from '@/lib/alignment'
@@ -463,6 +464,20 @@ export function GroundParticipantPage() {
         {/* MY RECORD TAB */}
         {tab === 'record' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {/**
+              * WHAT I AM WORKING TOWARDS, first on my own record, because it is the thing everything
+              * else on this tab is measured against.
+              *
+              * If the lead proposed it, this is where I accept it or say it in my own words - and until
+              * one of those happens, `mayBeReadAgainst` is false and the panel says so out loud.
+              */}
+            <ObjectivePanel
+              groundId={id!}
+              objective={(ground.participants ?? []).find((p: any) => p.userId === user?.id)?.objective}
+              canPropose={false}
+              isMine
+            />
+
             {/*
               THE EXIT BELONGS AT THE EXIT, ON THIS PAGE TOO. W8-5, half-fixed.
 

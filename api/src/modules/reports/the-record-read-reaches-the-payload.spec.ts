@@ -56,6 +56,8 @@ function makeService({ closed = true }: { closed?: boolean } = {}) {
      * one of these fixtures is actually in.
      */
     groundBaseline: { findFirst: jest.fn(async () => null) },
+    /** Read by `get()` since per-person objectives were built. Empty is "nobody has stated one". */
+    personObjective: { findMany: jest.fn(async () => []) },
     ground: { findUnique: jest.fn(async () => ground) },
     user: { findUnique: jest.fn(async () => ({ role: 'MEMBER', organizationId: 'org1' })) },
     reportActivation: { findUnique: jest.fn(async () => ({ status: 'ACTIVATED' })), findMany: jest.fn(async () => []) },

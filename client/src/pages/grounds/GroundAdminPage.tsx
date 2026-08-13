@@ -27,6 +27,7 @@ import { groundTabs } from './ground-tabs'
 import { SoloReportBody } from '@/components/gw/SoloReportBody'
 import { BaselinePanel } from '@/components/gw/BaselinePanel'
 import { GroundTabRow } from '@/components/gw/GroundTabRow'
+import { ObjectivePanel } from '@/components/gw/ObjectivePanel'
 import { billingApi, PLAN_MEMBER_LIMITS, type SubscriptionPlan } from '@/api/billing'
 
 const SCENARIO_LABELS: Record<string, string> = {
@@ -1393,6 +1394,27 @@ export function GroundAdminPage() {
 
         {tab === 'checkins' && (
           <div>
+            {/**
+              * WHAT EACH PERSON IS WORKING TOWARDS, on the tab that shows how each is doing.
+              *
+              * It belongs beside the sessions rather than in settings: this is the thing every row
+              * below is measured against, and until a person has seen and accepted it, the panel says
+              * out loud that nothing is read against it. `PersonObjective` had a module enforcing that
+              * rule and no data to enforce it on.
+              */}
+            {(ground.participants ?? []).filter((p: any) => !p.managingOnly).map((p: any) => (
+              <div key={p.id} style={{ marginBottom: 14 }}>
+                <ObjectivePanel
+                  groundId={id!}
+                  participantId={p.id}
+                  objective={p.objective}
+                  canPropose={isInitiator || isOrgAdmin}
+                  isMine={p.userId === user?.id}
+                  personLabel={participantLabel(p)}
+                />
+              </div>
+            ))}
+
             {/*
               THE GLANCE ROW, from the board's own components.
               This tab is now the first thing anybody sees about a ground, and it

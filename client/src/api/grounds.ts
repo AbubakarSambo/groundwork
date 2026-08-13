@@ -297,6 +297,28 @@ export const groundsApi = {
       `/grounds/${groundId}/baseline`,
     ).then(r => r.data),
 
+  /**
+   * WHAT EACH PERSON IS WORKING TOWARDS. `PersonObjective`, which had a 169-line module and no writer.
+   *
+   * Three calls because the rule needs three states: a lead proposing, the person accepting what was
+   * proposed, and the person writing their own. `mayBeReadAgainst` refuses a proposal nobody has seen,
+   * which is why accepting is its own deliberate act.
+   */
+  proposeObjective: (groundId: string, participantId: string, text: string) =>
+    apiClient.post<{ text: string; authoredBy: string; seenBySubject: boolean }>(
+      `/grounds/${groundId}/objectives/${participantId}`, { text },
+    ).then(r => r.data),
+
+  stateMyObjective: (groundId: string, text: string) =>
+    apiClient.post<{ text: string; authoredBy: string; seenBySubject: boolean }>(
+      `/grounds/${groundId}/my-objective`, { text },
+    ).then(r => r.data),
+
+  acceptMyObjective: (groundId: string) =>
+    apiClient.post<{ text: string; authoredBy: string; seenBySubject: boolean }>(
+      `/grounds/${groundId}/my-objective/accept`,
+    ).then(r => r.data),
+
   contextChat: (groundId: string, history: { role: 'user' | 'assistant'; content: string }[]) =>
     apiClient
       .post<{

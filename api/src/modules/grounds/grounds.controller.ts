@@ -305,6 +305,36 @@ export class GroundsController {
     return this.grounds.baselineHistory(id, userId);
   }
 
+  /**
+   * WHAT EACH PERSON IS WORKING TOWARDS. Three writes, because the rule needs three states:
+   * a lead proposing, the person accepting what was proposed, and the person writing their own.
+   *
+   * `mayBeReadAgainst` refuses a proposal nobody has seen, which is the reason accepting is a separate,
+   * deliberate act rather than a side effect of the page loading.
+   */
+  @Post(':id/objectives/:participantId')
+  @ApiOperation({ summary: "Propose what somebody is working towards (the lead's)" })
+  async proposeObjective(
+    @Param('id') id: string,
+    @Param('participantId') participantId: string,
+    @CurrentUser('id') userId: string,
+    @Body() dto: { text: string },
+  ) {
+    return this.grounds.proposeObjective(id, userId, participantId, dto?.text);
+  }
+
+  @Post(':id/my-objective')
+  @ApiOperation({ summary: 'State what you are working towards, in your own words' })
+  async stateMyObjective(@Param('id') id: string, @CurrentUser('id') userId: string, @Body() dto: { text: string }) {
+    return this.grounds.stateMyObjective(id, userId, dto?.text);
+  }
+
+  @Post(':id/my-objective/accept')
+  @ApiOperation({ summary: 'Accept what was proposed for you, as it stands' })
+  async acceptMyObjective(@Param('id') id: string, @CurrentUser('id') userId: string) {
+    return this.grounds.acceptMyObjective(id, userId);
+  }
+
   @Get(':id/my-notes')
   @ApiOperation({ summary: "The requesting user's own between-session notes on this ground (private, owner only)" })
   async myNotes(@Param('id') id: string, @CurrentUser('id') userId: string) {

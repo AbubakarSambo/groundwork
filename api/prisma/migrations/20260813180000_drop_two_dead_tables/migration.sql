@@ -1,0 +1,22 @@
+-- TWO TABLES NOTHING HAS EVER READ. The third turned out to have a live writer.
+--
+-- I recommended dropping three. Checking each against the code before writing the migration changed
+-- that, which is the reason for checking:
+--
+--   disclaimer_acknowledgements   no reader, no writer, and no disclaimer flow exists in either
+--                                 codebase - nothing anywhere asks anybody to acknowledge anything.
+--                                 Dropped.
+--   pattern_benchmarks            written ONLY by the seed, read by nothing. Anonymised cross-org
+--                                 baselines that no comparison uses. Dropped, and the seed block goes
+--                                 with it - a table that exists only because the seed fills it is the
+--                                 clearest case of dead schema there is.
+--   org_intelligence              KEPT. A weekly cron writes a narrative summary into it every Monday.
+--                                 Write-only is not dead: the gap is a reader, which is a feature to
+--                                 build, not a table to drop. Dropping it would have broken a running
+--                                 cron on Monday morning.
+--
+-- Dead schema is worse than no schema, because the next person to look assumes it works and two of
+-- these have names that promise a feature. The models that were dead but WANTED were built instead:
+-- `ground_baselines` now has a writer and a reader, `person_objectives` has three writes.
+DROP TABLE IF EXISTS "disclaimer_acknowledgements";
+DROP TABLE IF EXISTS "pattern_benchmarks";

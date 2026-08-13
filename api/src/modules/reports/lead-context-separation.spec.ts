@@ -39,6 +39,8 @@ describe('lead-context write separation (GroundsService.addLeadContext)', () => 
      * one of these fixtures is actually in.
      */
     groundBaseline: { findFirst: jest.fn(async () => null) },
+    /** Read by `get()` since per-person objectives were built. Empty is "nobody has stated one". */
+    personObjective: { findMany: jest.fn(async () => []) },
       ground: { findUnique: jest.fn(async () => ({ initiatorId: 'init-1' })) },
       user: { findUnique: jest.fn(async () => ({ role: 'MEMBER', organizationId: 'org1' })) },
       groundParticipant: { findFirst: jest.fn(async () => ({ id: 'p2', groundId: 'g1' })) },
@@ -88,6 +90,8 @@ describe('lead-context corpus separation (ReportsService.synthesize)', () => {
      * one of these fixtures is actually in.
      */
     groundBaseline: { findFirst: jest.fn(async () => null) },
+    /** Read by `get()` since per-person objectives were built. Empty is "nobody has stated one". */
+    personObjective: { findMany: jest.fn(async () => []) },
       ground: {
         findUnique: jest.fn(async () => ({ id: 'g1', initiatorId: 'init-1', participants: [{ id: 'p1', partyType: 'INITIATOR', roleAsDescribed: 'founder' }] })),
         update: jest.fn(async () => ({})),
@@ -171,6 +175,8 @@ describe('lead-context read-back gate (GroundsService.get)', () => {
      * one of these fixtures is actually in.
      */
     groundBaseline: { findFirst: jest.fn(async () => null) },
+    /** Read by `get()` since per-person objectives were built. Empty is "nobody has stated one". */
+    personObjective: { findMany: jest.fn(async () => []) },
       ground: { findFirst: jest.fn(async () => groundRow), findUnique: jest.fn(async () => groundRow) },
       user: { findUnique: jest.fn(async () => ({ role: 'MEMBER', organizationId: 'org1' })) },
       groundParticipant: { findFirst: jest.fn(async () => ({ groundId: 'g1', userId: 'user-2' })), findMany: jest.fn(async () => []) },

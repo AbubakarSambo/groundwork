@@ -42,6 +42,8 @@ function serviceFor(restrict: boolean) {
      * one of these fixtures is actually in.
      */
     groundBaseline: { findFirst: jest.fn(async () => null) },
+    /** Read by `get()` since per-person objectives were built. Empty is "nobody has stated one". */
+    personObjective: { findMany: jest.fn(async () => []) },
     ground: { findFirst: async () => ground, findUnique: async () => ground },
     user: { findUnique: jest.fn(async () => ({ role: 'MEMBER', organizationId: 'org1' })) },
     groundParticipant: { findFirst: async () => null, findMany: async () => [] },
@@ -102,6 +104,8 @@ describe('GW-PRIVACY-CONTACT: setExternalVisibility is initiator-only', () => {
      * one of these fixtures is actually in.
      */
     groundBaseline: { findFirst: jest.fn(async () => null) },
+    /** Read by `get()` since per-person objectives were built. Empty is "nobody has stated one". */
+    personObjective: { findMany: jest.fn(async () => []) },
       ground: {
         findUnique: async () => ({ initiatorId: 'userInit' }),
         update: async (a: any) => ({ id: a.where.id, restrictExternalVisibility: a.data.restrictExternalVisibility }),

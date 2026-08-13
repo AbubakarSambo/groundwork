@@ -6012,3 +6012,61 @@ intention was that the invite email says "bring the handover notes", the endpoin
 a line of copy in the email as much as a control on the page. That is a product call.
 
 Suites: api 1672, client 661.
+
+
+## Per-person objectives, and two of three dead tables
+
+### `PersonObjective` - a 169-line module that enforced a rule with no data to enforce it on
+
+`an-objective-belongs-to-a-person.ts` shipped with its own spec file and nothing ever created a row.
+Its central rule:
+
+> "May this objective be used as the thing somebody is read against? Not while it is a proposal.
+> Reading a person against a target they have never seen is the definition of an unfair review, and
+> the fact that the product would be doing it silently makes it worse rather than better."
+
+A rule needs three states to be real, and therefore three writes. It had none. Meanwhile the setup chat
+asked "what is each person actually trying to achieve?" and counted `GroundObjective` - one objective
+for the whole ground, no author, no seen-state. **The wrong table answering the right question.**
+
+All five behaviours proved live, on real accounts:
+
+| | |
+| --- | --- |
+| Lead proposes | `proposed`, **not readable against** |
+| Person accepts | `accepted`, readable |
+| Lead re-proposes | **back to `proposed` and unreadable** |
+| Person writes their own | `their own`, readable, "the strongest version" |
+| A party proposing as the lead | refused |
+
+**The third row is the one that would have been a real unfairness.** If a lead rewrites the objective,
+the person has not read the new words - carrying `seenBySubject: true` forward would let a changed target
+be read against somebody who never saw the change.
+
+The state never travels apart from the text: `get()` returns `described` and `mayBeReadAgainst` from the
+module itself, and the panel says out loud "nothing is read against this until you accept it or write
+your own". The setup chat counts only what may be read against, because a proposal nobody has seen means
+somebody typed something, not that the question is answered.
+
+### Two dead tables dropped, and the third was not dead
+
+I recommended dropping three. Checking each against the code before writing the migration changed that:
+
+| | |
+| --- | --- |
+| `disclaimer_acknowledgements` | no reader, no writer, no disclaimer flow anywhere. **Dropped** |
+| `pattern_benchmarks` | written only by the seed, read by nothing. **Dropped**, seed block with it |
+| `org_intelligence` | **KEPT.** A weekly cron writes a narrative into it every Monday. Write-only is not dead - the gap is a reader. Dropping it would have broken a live cron |
+
+That is the value of checking rather than trusting my own list, again.
+
+**And a guard I wrote earlier caught its own exemption going stale.**
+`nothing-in-here-is-wired-to-nothing.spec.ts` exempted the objectives module as "awaiting the objectives
+UI" and told me to remove the exemption the moment it was wired. Exactly what it is for.
+
+Suites: api 1684, client 661.
+
+### Not done, and not rushed before a merge
+
+- `GroundBaselineEntry` - the append-only day-one observations. Separate from the baseline, still unused.
+- The kit pass on `EntryChatPage` - 358 inline styles, the first thing a new person meets.

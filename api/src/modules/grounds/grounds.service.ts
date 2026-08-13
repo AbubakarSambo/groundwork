@@ -16,6 +16,7 @@ import { canSignIn } from './can-sign-in';
 import { defaultModeFor, boardRendersFor } from '../board/board-families';
 import { BoardFamily, familyFor } from '../board/board-families';
 import { runIntake } from '../conversation/intake';
+import { objectiveState, describeObjective, mayBeReadAgainst } from './an-objective-belongs-to-a-person';
 import { proposalFrom, extractionToolFor, Heard, Proposal } from './what-the-context-chat-heard';
 
 // Default timelines per scenario (Part 2 - timeline and cadence).
@@ -958,6 +959,19 @@ export class GroundsService {
     const peersVisible = (ground as any).peersVisibleToEachOther ?? !evaluative;
     const hidePeers = !peersVisible && !viewerIsInitiator;
 
+    /**
+     * WHAT EACH PERSON IS WORKING TOWARDS, WITH ITS AUTHORSHIP ATTACHED.
+     *
+     * `describeObjective` and `mayBeReadAgainst` come from the module that had no data: the state travels
+     * with the text, always, because "your objective is X" and "your manager has suggested X and you
+     * have not replied" are different statements and the difference is the whole point.
+     */
+    const objectiveRows = await this.prisma.personObjective.findMany({
+      where: { groundId: id },
+      select: { participantId: true, text: true, authoredBy: true, seenBySubject: true, updatedAt: true },
+    });
+    const objectiveByParticipant = new Map(objectiveRows.map(o => [o.participantId, o]));
+
     const participantsWithCheckIns = (ground.participants ?? [])
       .filter((p: any) => !hidePeers || (!!requestingUserId && p.userId === requestingUserId))
       .map((p: any) => {
@@ -972,6 +986,25 @@ export class GroundsService {
           ? (() => { try { return JSON.parse(raw); } catch { return null; } })()
           : null,
         checkIns: checkInsByParticipant.get(p.id) ?? [],
+        objective: (() => {
+          const row = objectiveByParticipant.get(p.id);
+          const shaped = {
+            participantId: p.id,
+            text: row?.text ?? null,
+            authoredBy: (row?.authoredBy as 'lead' | 'self' | null) ?? null,
+            seenBySubject: row?.seenBySubject ?? false,
+          };
+          return {
+            ...shaped,
+            /** 'none' | 'proposed' | 'accepted' | 'their own'. */
+            state: objectiveState(shaped),
+            /** The one string anything showing this should print, so the caveat cannot be dropped. */
+            described: describeObjective(shaped),
+            /** False on a proposal and on an absence, and nothing downstream may read against it. */
+            mayBeReadAgainst: mayBeReadAgainst(shaped),
+            updatedAt: row?.updatedAt ?? null,
+          };
+        })(),
       };
     });
 
@@ -1110,6 +1143,12 @@ export class GroundsService {
     const openDocumentCount = await this.prisma.groundDocument.count({
       where: { groundId, visibility: 'OPEN' },
     });
+    const perPersonObjectives = (await this.prisma.personObjective.findMany({
+      where: { groundId },
+      select: { text: true, authoredBy: true, seenBySubject: true, participantId: true },
+    })).filter(o => mayBeReadAgainst({
+      participantId: o.participantId, text: o.text, authoredBy: o.authoredBy as any, seenBySubject: o.seenBySubject,
+    })).length;
 
     const gaps = contextGaps({
       /**
@@ -1121,7 +1160,16 @@ export class GroundsService {
       cadence: ground.cadenceStated ? ground.cadence : null,
       brief: ground.brief,
       partyCount: ground.participants.filter((p) => !p.managingOnly).length,
-      perPersonObjectiveCount: ground.objectives.length,
+      /**
+       * THE WRONG TABLE. `ground.objectives` is `GroundObjective` - one objective for the whole ground,
+       * with no author and no seen-state. The question this gap asks is "what is each person actually
+       * trying to achieve", which is `PersonObjective`, one row per person.
+       *
+       * Counted only where it can be READ AGAINST: a proposal the person has never seen does not answer
+       * the question, it just means somebody typed something. `mayBeReadAgainst` is the module's own
+       * test and it refuses proposals for exactly that reason.
+       */
+      perPersonObjectiveCount: perPersonObjectives,
       openDocumentCount,
     });
 
@@ -1212,6 +1260,12 @@ export class GroundsService {
     }
 
     const openDocumentCount = await this.prisma.groundDocument.count({ where: { groundId, visibility: 'OPEN' } });
+    const perPersonObjectives = (await this.prisma.personObjective.findMany({
+      where: { groundId },
+      select: { text: true, authoredBy: true, seenBySubject: true, participantId: true },
+    })).filter(o => mayBeReadAgainst({
+      participantId: o.participantId, text: o.text, authoredBy: o.authoredBy as any, seenBySubject: o.seenBySubject,
+    })).length;
     const gaps = contextGaps({
       /**
        * `null` here means "nobody chose this", not "the column is empty" - the column cannot be
@@ -1222,7 +1276,16 @@ export class GroundsService {
       cadence: ground.cadenceStated ? ground.cadence : null,
       brief: ground.brief,
       partyCount: ground.participants.filter(p => !p.managingOnly).length,
-      perPersonObjectiveCount: ground.objectives.length,
+      /**
+       * THE WRONG TABLE. `ground.objectives` is `GroundObjective` - one objective for the whole ground,
+       * with no author and no seen-state. The question this gap asks is "what is each person actually
+       * trying to achieve", which is `PersonObjective`, one row per person.
+       *
+       * Counted only where it can be READ AGAINST: a proposal the person has never seen does not answer
+       * the question, it just means somebody typed something. `mayBeReadAgainst` is the module's own
+       * test and it refuses proposals for exactly that reason.
+       */
+      perPersonObjectiveCount: perPersonObjectives,
       openDocumentCount,
     });
     const openGap = gaps[0]?.key ?? null;
@@ -2015,6 +2078,104 @@ export class GroundsService {
    *
    * `label` stays on the response: `getMyRecord` returns it too and both renders read it.
    */
+  /**
+   * WHAT EACH PERSON IS TRYING TO ACHIEVE. `PersonObjective`, which had a 169-line module and no writer.
+   *
+   * `an-objective-belongs-to-a-person.ts` was written with its own spec file and nothing ever created a
+   * row for it to read. It carries the rule the whole thing exists for:
+   *
+   *   "May this objective be used as the thing somebody is read against? Not while it is a proposal.
+   *    Reading a person against a target they have never seen is the definition of an unfair review,
+   *    and the fact that the product would be doing it silently makes it worse rather than better."
+   *
+   * That rule needs three states to be real, and therefore three writes: a lead proposing, the person
+   * accepting what was proposed, and the person writing their own. The board has been counting
+   * `GroundObjective` instead - one objective for the whole ground, no author, no seen-state - so the
+   * setup chat's "what is each person actually trying to achieve?" was answered by the wrong table.
+   *
+   * ONE ROW PER PERSON PER GROUND, and `updatedAt` rather than a version chain: unlike the baseline,
+   * this is not a record of what was believed at the start. It is the current target, and its history
+   * that matters is the AUTHORSHIP - who wrote what is there now, and whether the person it belongs to
+   * has seen it.
+   */
+  async proposeObjective(groundId: string, requestingUserId: string, participantId: string, text: string) {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { initiatorId: true, organizationId: true },
+    });
+    if (!ground) throw new NotFoundException('Ground not found');
+    const asker = await this.prisma.user.findUnique({
+      where: { id: requestingUserId },
+      select: { role: true, organizationId: true },
+    });
+    const isOrgAdmin = asker?.role === 'ADMIN' && asker.organizationId === ground.organizationId;
+    if (ground.initiatorId !== requestingUserId && !isOrgAdmin) {
+      throw new ForbiddenException('Proposing what somebody is working towards belongs to whoever runs this ground.');
+    }
+    const body = text?.trim();
+    if (!body) throw new BadRequestException('Say what they are working towards.');
+
+    const participant = await this.prisma.groundParticipant.findFirst({ where: { id: participantId, groundId } });
+    if (!participant) throw new NotFoundException('That person is not on this ground');
+
+    /**
+     * A NEW PROPOSAL IS UNSEEN AGAIN, always. If a lead rewrites the objective, the person has not read
+     * the new words, and carrying the old `seenBySubject: true` forward would let a changed target be
+     * read against somebody who never saw the change - the exact thing `mayBeReadAgainst` refuses.
+     */
+    return this.prisma.personObjective.upsert({
+      where: { groundId_participantId: { groundId, participantId } },
+      update: { text: body, authoredBy: 'lead', seenBySubject: false },
+      create: { groundId, participantId, text: body, authoredBy: 'lead', seenBySubject: false },
+      select: { text: true, authoredBy: true, seenBySubject: true, updatedAt: true },
+    });
+  }
+
+  /**
+   * The person writing their own, which the module calls "the strongest version".
+   *
+   * Seen by definition - they wrote it - so it can be read against immediately.
+   */
+  async stateMyObjective(groundId: string, requestingUserId: string, text: string) {
+    const participant = await this.prisma.groundParticipant.findFirst({
+      where: { groundId, userId: requestingUserId },
+      select: { id: true },
+    });
+    if (!participant) throw new ForbiddenException('You are not a party to this ground');
+    const body = text?.trim();
+    if (!body) throw new BadRequestException('Say what you are working towards.');
+    return this.prisma.personObjective.upsert({
+      where: { groundId_participantId: { groundId, participantId: participant.id } },
+      update: { text: body, authoredBy: 'self', seenBySubject: true },
+      create: { groundId, participantId: participant.id, text: body, authoredBy: 'self', seenBySubject: true },
+      select: { text: true, authoredBy: true, seenBySubject: true, updatedAt: true },
+    });
+  }
+
+  /**
+   * Accepting a proposal as it stands. The whole point of the seen flag: after this the objective may be
+   * read against, and before it nothing may.
+   *
+   * Deliberately not a silent side effect of opening a page. Somebody has to press it, because "they
+   * were shown it" and "they accepted it" are different claims and only one of them is fair to act on.
+   */
+  async acceptMyObjective(groundId: string, requestingUserId: string) {
+    const participant = await this.prisma.groundParticipant.findFirst({
+      where: { groundId, userId: requestingUserId },
+      select: { id: true },
+    });
+    if (!participant) throw new ForbiddenException('You are not a party to this ground');
+    const existing = await this.prisma.personObjective.findUnique({
+      where: { groundId_participantId: { groundId, participantId: participant.id } },
+    });
+    if (!existing?.text?.trim()) throw new BadRequestException('There is nothing proposed for you yet.');
+    return this.prisma.personObjective.update({
+      where: { groundId_participantId: { groundId, participantId: participant.id } },
+      data: { seenBySubject: true },
+      select: { text: true, authoredBy: true, seenBySubject: true, updatedAt: true },
+    });
+  }
+
   /**
    * WHAT DOING WELL LOOKS LIKE, AND WHAT HAS TO BE TRUE FOR IT. `GroundBaseline`, at last.
    *
