@@ -4,8 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { authApi } from '@/api/auth'
 import { entryApi } from '@/api/entry'
 
-/** The entry flow's own saved session - cleared once its ground exists. */
-const ENTRY_SESSION_KEY = 'gw_entry_session'
+import { loadEntryHandover, clearEntryHandover } from './entry-handover'
 import { useAuthStore } from '@/stores/auth'
 
 /**
@@ -79,19 +78,22 @@ export function GoogleCallbackPage() {
          * someone between "sign in" and "here is your ground" to ask a question
          * they have already been offered would be the worst moment for it.
          */
-        const pending = localStorage.getItem('gw_entry_pending_commit')
+        const pending = loadEntryHandover()
         if (pending) {
-          localStorage.removeItem('gw_entry_pending_commit')
           try {
-            const { payload, history } = JSON.parse(pending)
-            const res = await entryApi.commit({ ...payload, history })
-            localStorage.removeItem(ENTRY_SESSION_KEY)
+            const res = await entryApi.commit(pending)
+            /**
+             * Cleared HERE and nowhere earlier. This used to run before the commit, so a request
+             * that failed took the person's whole setup with it - the ground that went missing
+             * after sign-in was deleted by the code meant to be saving it. W14-11.
+             */
+            clearEntryHandover()
             navigate(`/grounds/${res.groundId}`, { replace: true })
             return
           } catch {
-            // The sign-in worked; only the ground did not. Send them to the
-            // entry flow, where their session is still in storage, rather than
-            // stranding them on a callback screen.
+            // The sign-in worked; only the ground did not. Everything is still in storage, so the
+            // entry flow can pick up exactly where it was rather than stranding them here.
+            toast.error('You are signed in, but your ground did not save. Everything you wrote is still here.')
             navigate('/start', { replace: true })
             return
           }

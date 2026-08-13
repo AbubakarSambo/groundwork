@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { participantsApi } from '@/api'
 import { useAuthStore } from '@/stores/auth'
-import { GroundworkLogo } from '@/components/gw/GroundworkLogo'
+import { Arrival } from '@/components/gw/Arrival'
 import { LinkProblem } from '@/components/gw/LinkProblem'
 import { toast } from 'sonner'
 
@@ -149,12 +149,8 @@ export function InvitePage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--gw-bg)', display: 'flex', flexDirection: 'column' }}>
-      <div className="gw-hdr">
-        <a href="https://myground.work" target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex' }}><GroundworkLogo /></a>
-      </div>
-
-      <div className="gw-bd" style={{ maxWidth: 480, margin: '0 auto', width: '100%', paddingTop: 24, paddingLeft: 16, paddingRight: 16, boxSizing: 'border-box' }}>
+    <Arrival wide>
+      <div>
         <div className="gw-ttl">{preview.initiatorName} wants to hear your version</div>
         <div className="gw-sub-t">
           A Groundwork session about: <strong>{preview.groundLabel}</strong>.
@@ -246,7 +242,7 @@ export function InvitePage() {
           By joining, you agree that your contribution record belongs to you.
         </div>
 
-        <div style={{ marginTop: 18, paddingTop: 14, borderTop: '1px solid #E2E0DB', textAlign: 'center' }}>
+        <div style={{ marginTop: 18, paddingTop: 14, borderTop: '1px solid var(--gw-border)', textAlign: 'center' }}>
           <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 8, lineHeight: 1.6 }}>
             You are never obligated to take part. If you would rather not, you can simply close this -
             nothing is shared, and declining is never shown as a negative.
@@ -260,17 +256,18 @@ export function InvitePage() {
           </button>
         </div>
       </div>
-    </div>
+    </Arrival>
   )
 }
 
+/** The loading and error states, in the same chrome as the page they are standing in for. Stage 4. */
 function InviteShell({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--gw-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-      <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 8, padding: '40px 32px', maxWidth: 400, width: '100%' }}>
+    <Arrival>
+      <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '32px 28px' }}>
         {children}
       </div>
-    </div>
+    </Arrival>
   )
 }
 

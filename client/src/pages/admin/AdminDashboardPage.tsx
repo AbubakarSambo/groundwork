@@ -12,13 +12,13 @@ const SL: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: 'var(--g
 function Stat({ val, label, accent }: { val: string | number; label: string; accent?: boolean }) {
   return (
     <div style={{ ...C, flex: 1, minWidth: 100 }}>
-      <div style={{ fontSize: 22, fontWeight: 800, color: accent ? '#0C447C' : 'var(--gw-navy)' }}>{val}</div>
+      <div style={{ fontSize: 22, fontWeight: 800, color: accent ? 'var(--gw-navy)' : 'var(--gw-navy)' }}>{val}</div>
       <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginTop: 3 }}>{label}</div>
     </div>
   )
 }
 
-function Bar({ pct, color = '#0C447C' }: { pct: number; color?: string }) {
+function Bar({ pct, color = 'var(--gw-navy)' }: { pct: number; color?: string }) {
   return (
     <div style={{ flex: 1, background: 'rgba(12,68,124,0.08)', borderRadius: 4, height: 8, overflow: 'hidden' }}>
       <div style={{ width: `${Math.min(pct, 100)}%`, height: '100%', background: color, borderRadius: 4, transition: 'width .3s' }} />
@@ -200,16 +200,16 @@ function OtpModal({ title, description, onConfirm, onClose }: OtpModalProps) {
               maxLength={6}
               autoFocus
               style={{ width: '100%', padding: '10px 12px', borderRadius: 7, border: '1px solid var(--gw-border)', fontSize: 20, letterSpacing: '.2em', fontFamily: 'monospace', textAlign: 'center', boxSizing: 'border-box', marginBottom: 14, outline: 'none' }}
-              onFocus={e => { e.target.style.borderColor = '#0C447C' }}
+              onFocus={e => { e.target.style.borderColor = 'var(--gw-navy)' }}
               onBlur={e => { e.target.style.borderColor = 'var(--gw-border)' }}
               onKeyDown={e => { if (e.key === 'Enter') handleConfirm() }}
             />
-            {error && <div style={{ fontSize: 12, color: '#c0392b', marginBottom: 10 }}>{error}</div>}
+            {error && <div style={{ fontSize: 12, color: 'var(--gw-danger)', marginBottom: 10 }}>{error}</div>}
             <div style={{ display: 'flex', gap: 8 }}>
               <button
                 onClick={handleConfirm}
                 disabled={loading || otp.length < 6}
-                style={{ flex: 1, padding: '10px 0', borderRadius: 7, background: '#c0392b', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: (loading || otp.length < 6) ? 'not-allowed' : 'pointer', opacity: (loading || otp.length < 6) ? 0.7 : 1, fontFamily: 'inherit' }}
+                style={{ flex: 1, padding: '10px 0', borderRadius: 7, background: 'var(--gw-danger)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: (loading || otp.length < 6) ? 'not-allowed' : 'pointer', opacity: (loading || otp.length < 6) ? 0.7 : 1, fontFamily: 'inherit' }}
               >
                 {loading ? 'Confirming…' : 'Confirm'}
               </button>
@@ -223,7 +223,7 @@ function OtpModal({ title, description, onConfirm, onClose }: OtpModalProps) {
           </>
         )}
 
-        {step === 'request' && error && <div style={{ fontSize: 12, color: '#c0392b', marginTop: 10 }}>{error}</div>}
+        {step === 'request' && error && <div style={{ fontSize: 12, color: 'var(--gw-danger)', marginTop: 10 }}>{error}</div>}
       </div>
     </div>
   )
@@ -294,14 +294,14 @@ function CodeManagementSection({ codes, onDisable }: { codes: AdminCode[]; onDis
                   <td style={{ padding: '8px 10px', color: 'var(--gw-text)' }}>{c.creatorEmail}</td>
                   <td style={{ padding: '8px 10px', color: 'var(--gw-sub)', whiteSpace: 'nowrap' }}>{new Date(c.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' })}</td>
                   <td style={{ padding: '8px 10px', color: 'var(--gw-sub)', whiteSpace: 'nowrap' }}>{c.expiresAt ? new Date(c.expiresAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' }) : '-'}</td>
-                  <td style={{ padding: '8px 10px', fontWeight: 600, color: expired ? '#c0392b' : dl === '∞' ? 'var(--gw-muted)' : Number(dl) <= 7 ? '#E8A94A' : 'var(--gw-text)' }}>{dl}</td>
+                  <td style={{ padding: '8px 10px', fontWeight: 600, color: expired ? 'var(--gw-danger)' : dl === '∞' ? 'var(--gw-muted)' : Number(dl) <= 7 ? 'var(--gw-amber-b)' : 'var(--gw-text)' }}>{dl}</td>
                   <td style={{ padding: '8px 10px' }}>
                     <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 20, background: c.active ? 'var(--gw-green-bg)' : 'var(--gw-bg)', color: c.active ? 'var(--gw-green-t)' : 'var(--gw-muted)', border: '0.5px solid var(--gw-border)' }}>
                       {c.active ? 'Active' : 'Disabled'}
                     </span>
                   </td>
                   <td style={{ padding: '8px 10px' }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 20, background: c.allowCodeCreation ? '#EEF3FB' : 'var(--gw-bg)', color: c.allowCodeCreation ? '#0C447C' : 'var(--gw-muted)', border: '0.5px solid var(--gw-border)' }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 20, background: c.allowCodeCreation ? '#EEF3FB' : 'var(--gw-bg)', color: c.allowCodeCreation ? 'var(--gw-navy)' : 'var(--gw-muted)', border: '0.5px solid var(--gw-border)' }}>
                       {c.allowCodeCreation ? 'Yes' : 'No'}
                     </span>
                   </td>
@@ -310,7 +310,7 @@ function CodeManagementSection({ codes, onDisable }: { codes: AdminCode[]; onDis
                     {c.active && (
                       <button
                         onClick={() => onDisable(c.id)}
-                        style={{ fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 5, background: '#fff0f0', color: '#c0392b', border: '0.5px solid #f5c6cb', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+                        style={{ fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 5, background: '#fff0f0', color: 'var(--gw-danger)', border: '0.5px solid #f5c6cb', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
                       >
                         Disable
                       </button>
@@ -335,10 +335,10 @@ function CodeManagementSection({ codes, onDisable }: { codes: AdminCode[]; onDis
 
 function UsageBreakdownSection({ breakdown }: { breakdown: FreeReasonBreakdown }) {
   const entries: { label: string; key: keyof FreeReasonBreakdown; color: string }[] = [
-    { label: 'Free tier', key: 'FREE_TIER', color: '#5DCAA5' },
+    { label: 'Free tier', key: 'FREE_TIER', color: 'var(--gw-green-b)' },
     { label: 'First ground (legacy)', key: 'FIRST_GROUND', color: '#A8DDD0' },
-    { label: 'Access code', key: 'ACCESS_CODE', color: '#0C447C' },
-    { label: 'Paid', key: 'paid', color: '#E8A94A' },
+    { label: 'Access code', key: 'ACCESS_CODE', color: 'var(--gw-navy)' },
+    { label: 'Paid', key: 'paid', color: 'var(--gw-amber-b)' },
   ]
   const total = Object.values(breakdown).reduce((a, b) => a + b, 0)
 
@@ -423,8 +423,8 @@ function DetectionAccuracySection() {
                   ) : (
                     <span style={{
                       fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 20,
-                      background: pct >= 75 ? 'var(--gw-green-bg)' : pct >= 50 ? '#FDF3E3' : '#F8ECEA',
-                      color: pct >= 75 ? 'var(--gw-green-t)' : pct >= 50 ? '#8A5C1A' : '#8B1A1A',
+                      background: pct >= 75 ? 'var(--gw-green-bg)' : pct >= 50 ? 'var(--gw-amber-bg)' : 'var(--gw-clay-bg)',
+                      color: pct >= 75 ? 'var(--gw-green-t)' : pct >= 50 ? 'var(--gw-amber-t)' : 'var(--gw-red-t)',
                     }}>
                       {pct}% accurate
                     </span>
@@ -457,14 +457,14 @@ function FeedbackSection({ feedback }: { feedback: AdminFeedback[] }) {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {feedback.map(f => (
-            <div key={f.id} style={{ ...C, borderLeft: `3px solid ${f.feltFair === true ? '#5DCAA5' : f.feltFair === false ? '#E8A94A' : 'var(--gw-border)'}` }}>
+            <div key={f.id} style={{ ...C, borderLeft: `3px solid ${f.feltFair === true ? 'var(--gw-green-b)' : f.feltFair === false ? 'var(--gw-amber-b)' : 'var(--gw-border)'}` }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: f.note ? 5 : 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   {f.feltFair != null && (
                     <span style={{
                       fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 20,
-                      background: f.feltFair ? 'var(--gw-green-bg)' : '#FDF3E3',
-                      color: f.feltFair ? 'var(--gw-green-t)' : '#8A5C1A',
+                      background: f.feltFair ? 'var(--gw-green-bg)' : 'var(--gw-amber-bg)',
+                      color: f.feltFair ? 'var(--gw-green-t)' : 'var(--gw-amber-t)',
                     }}>
                       {f.feltFair ? 'Felt fair' : 'Did not feel fair'}
                     </span>
@@ -512,7 +512,7 @@ function AdminManagementSection({ onAdd }: { onAdd: (email: string, otp: string)
             placeholder="admin@example.com"
             required
             style={{ flex: 1, padding: '9px 12px', borderRadius: 7, border: '0.5px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', background: 'white', outline: 'none' }}
-            onFocus={e => { e.target.style.borderColor = '#0C447C' }}
+            onFocus={e => { e.target.style.borderColor = 'var(--gw-navy)' }}
             onBlur={e => { e.target.style.borderColor = 'var(--gw-border)' }}
           />
           <button
@@ -660,7 +660,7 @@ export function AdminDashboardPage() {
         )}
 
         {error && (
-          <div style={{ ...C, borderLeft: '3px solid #c0392b', fontSize: 13, color: '#c0392b' }}>
+          <div style={{ ...C, borderLeft: '3px solid var(--gw-danger)', fontSize: 13, color: 'var(--gw-danger)' }}>
             {(error as Error).message ?? 'Failed to load dashboard data.'}
           </div>
         )}

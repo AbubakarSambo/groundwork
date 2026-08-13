@@ -1,6 +1,7 @@
 import { readFileSync } from 'fs'
 import { join } from 'path'
 import { describe, it, expect } from 'vitest'
+import { groundTabs } from './ground-tabs'
 
 /**
  * THE LEAD'S SIDE OF THE GROUND. W8-66, W8-67.
@@ -38,9 +39,14 @@ describe('the chat is here at all', () => {
   })
 
   it('and it is the first tab, so it is what you land on', () => {
-    // Her design: "the first thing you land on ... be the chat".
+    /**
+     * Her design: "the first thing you land on ... be the chat".
+     *
+     * The order moved to `ground-tabs.ts` when the two views were put on one list, so the position
+     * is asserted there and this checks the page still opens on it.
+     */
     expect(CODE).toMatch(/useState<Tab>\('chat'\)/)
-    expect(CODE).toMatch(/\['chat', 'checkins'/)
+    expect(groundTabs({ isLead: true, contextEnabled: true, hasBoard: false })[0].key).toBe('chat')
   })
 
   it('the session list keeps its own tab rather than being replaced', () => {
@@ -48,11 +54,12 @@ describe('the chat is here at all', () => {
      * A lead scanning twelve sessions for who has not checked in wants the list. That is a
      * different question from reading what was said.
      *
-     * It is called "Sessions" since W13-8: the conversation tab took "Check-in", the word the
-     * emails and the buttons use, and two tabs called Check-in and Check-ins would have been
-     * worse than the two different words they replaced.
+     * It was "Sessions" from W13-8 and is "Record" now: one tab shared with the party view, whose
+     * content differs by role. The point of this check is that the list KEEPS ITS OWN TAB rather
+     * than being folded into the conversation, which is still true.
      */
-    expect(CODE).toMatch(/checkins: 'Sessions'/)
+    expect(CODE).toMatch(/tab === 'checkins'/)
+    expect(groundTabs({ isLead: true, contextEnabled: true, hasBoard: false }).some(t => t.key === 'record')).toBe(true)
   })
 })
 

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { joinApi } from '@/api/entry'
+import { Arrival } from '@/components/gw/Arrival'
 import { LinkProblem } from '@/components/gw/LinkProblem'
 import { useAuthStore } from '@/stores/auth'
 import { toast } from 'sonner'
@@ -96,12 +97,10 @@ export function JoinPage() {
   )
 }
 
+/**
+ * The shared arrival chrome. This page had no header at all, so somebody joining a cohort met a
+ * column of text with nothing above it while an invited participant met a header and a logo. Stage 4.
+ */
 function Shell({ children }: { children: React.ReactNode }) {
-  return (
-    <div style={{ minHeight: '100vh', background: 'var(--gw-bg)', display: 'flex', flexDirection: 'column' }}>
-      <div className="gw-bd" style={{ maxWidth: 480, margin: '0 auto', width: '100%', paddingTop: 40, paddingLeft: 16, paddingRight: 16, boxSizing: 'border-box' }}>
-        {children}
-      </div>
-    </div>
-  )
+  return <Arrival wide>{children}</Arrival>
 }

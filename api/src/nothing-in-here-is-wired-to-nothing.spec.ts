@@ -50,7 +50,11 @@ const NOT_WIRED_ON_PURPOSE: Record<string, string> = {
   // Rule modules that exist to be READ by a person and asserted by a spec: they
   // state a boundary the product must not cross, and the enforcement is the test.
   'a-worry-steers-questions-not-findings.ts': "G39's reachability rules, enforced by its spec - the product has no branch that could import a rule saying 'never'",
-  'an-objective-belongs-to-a-person.ts': 'G13/G14 rules, awaiting the objectives UI',
+  /**
+   * Was exempt as "awaiting the objectives UI". It has one now: `PersonObjective` has three writes and
+   * the ground returns each person's objective with `described` and `mayBeReadAgainst` attached, so this
+   * guard correctly told me the exemption was stale the moment it was wired.
+   */
   'what-has-to-be-true.ts': 'G15-G19 rules, awaiting the conditions UI',
   'what-setup-never-asked-for.ts': 'G37/G23 questions, awaiting the context chat surface',
   'an-interview-not-a-longer-setup.ts': 'G21/G22, awaiting the post-setup interview surface',

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { MARKETING_URL } from '@/lib/marketing'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
 import type { EntryMode } from '@/api/entry'
@@ -247,7 +248,7 @@ export function HomePage() {
 
           <div style={{ marginTop: 12, textAlign: 'center', fontSize: 12, color: 'var(--gw-muted)' }}>
             Not sure what this is?{' '}
-            <a href="https://myground.work" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--gw-navy)', textDecoration: 'underline' }}>Learn more.</a>
+            <a href={MARKETING_URL} style={{ color: 'var(--gw-navy)', textDecoration: 'underline' }}>Learn more.</a>
           </div>
         </div>
       </div>

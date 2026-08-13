@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { MARKETING_URL } from '@/lib/marketing'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
 import { authApi } from '@/api/auth'
@@ -87,7 +88,7 @@ export function ChoosePasswordPage() {
   const shell = (children: React.ReactNode) => (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
       <div className="gw-hdr">
-        <a href="https://myground.work" target="_blank" rel="noopener noreferrer" className="gw-logo" style={{ textDecoration: 'none', color: 'inherit' }}>Groundwork</a>
+        <a href={MARKETING_URL} className="gw-logo" style={{ textDecoration: 'none', color: 'inherit' }}>Groundwork</a>
       </div>
       <div className="gw-bd" style={{ maxWidth: 420, margin: '0 auto', width: '100%', paddingTop: 32 }}>{children}</div>
     </div>

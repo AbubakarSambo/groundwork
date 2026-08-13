@@ -45,7 +45,9 @@ const canonical = `${SITE}${canonicalPath}`;
       "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
     })} />
 
-    <link rel="stylesheet" href="/src/styles/global.css" />
+    <!-- The tokens arrive with Nav.astro, which every page includes and which the home page
+         needs because it does not use this layout at all. A link tag here would also be served
+         as JavaScript by Vite in dev and apply nothing. See marketing/one-palette.mjs. -->
   </head>
   <body>
     <slot />

@@ -7,14 +7,14 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
   <style>
     *,*::before,*::after{box-sizing:border-box}
     body{margin:0;overflow-x:hidden}
-    .gw-nav-link{font-size:13px;font-weight:500;color:#6B6560;background:none;border:none;cursor:pointer;padding:6px 11px;border-radius:6px;font-family:inherit;transition:all .15s;white-space:nowrap;text-decoration:none;display:inline-block;}
-    .gw-nav-link:hover{background:#E8E6E3;color:#1A1916;}
-    .gw-btn-ghost{font-size:13px;font-weight:600;color:#0C447C;background:none;border:1px solid #B5D4F4;cursor:pointer;padding:7px 14px;border-radius:6px;font-family:inherit;white-space:nowrap;transition:background .15s;text-decoration:none;display:inline-block;}
-    .gw-btn-ghost:hover{background:#EEF4FB;}
-    .gw-btn-solid{font-size:13px;font-weight:700;color:#fff;background:#0C447C;border:none;cursor:pointer;padding:7px 14px;border-radius:6px;font-family:inherit;white-space:nowrap;transition:background .15s;text-decoration:none;display:inline-block;}
+    .gw-nav-link{font-size:13px;font-weight:500;color:var(--gw-sub);background:none;border:none;cursor:pointer;padding:6px 11px;border-radius:6px;font-family:inherit;transition:all .15s;white-space:nowrap;text-decoration:none;display:inline-block;}
+    .gw-nav-link:hover{background:var(--gw-paper-2);color:var(--gw-text);}
+    .gw-btn-ghost{font-size:13px;font-weight:600;color:var(--gw-navy);background:none;border:1px solid var(--gw-blue-b);cursor:pointer;padding:7px 14px;border-radius:6px;font-family:inherit;white-space:nowrap;transition:background .15s;text-decoration:none;display:inline-block;}
+    .gw-btn-ghost:hover{background:var(--gw-blue-bg);}
+    .gw-btn-solid{font-size:13px;font-weight:700;color:#fff;background:var(--gw-navy);border:none;cursor:pointer;padding:7px 14px;border-radius:6px;font-family:inherit;white-space:nowrap;transition:background .15s;text-decoration:none;display:inline-block;}
     .gw-btn-solid:hover{background:#1557A0;}
     .gw-about-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:36px;}
-    .gw-about-card{padding:20px;background:#F5F3EF;border-radius:8px;border:1px solid #E2E0DB;}
+    .gw-about-card{padding:20px;background:var(--gw-paper);border-radius:8px;border:1px solid var(--gw-border);}
     .gw-footer-btn{font-size:12px;color:rgba(255,255,255,.38);background:none;border:none;cursor:pointer;font-family:inherit;text-decoration:none;}
     .gw-footer-btn:hover{color:rgba(255,255,255,.65);}
     @media(max-width:620px){
@@ -23,113 +23,113 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
     }
   </style>
 
-  <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#EDECEA;min-height:100vh;color:#1A1916;">
+  <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--gw-bg);min-height:100vh;color:var(--gw-text);">
 
     <Nav current="/about" />
 
     <main style="max-width:600px;margin:0 auto;padding:56px 24px 80px;">
-      <p style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#0C447C;font-weight:700;margin-bottom:12px;">About</p>
-      <h1 style="font-size:32px;font-weight:800;color:#1A1916;line-height:1.2;margin-bottom:32px;">Built by people who kept running into the same problem.</h1>
+      <p style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--gw-navy);font-weight:700;margin-bottom:12px;">About</p>
+      <h1 style="font-size:32px;font-weight:800;color:var(--gw-text);line-height:1.2;margin-bottom:32px;">Built by people who kept running into the same problem.</h1>
 
       <div style="display:flex;flex-direction:column;gap:18px;margin-bottom:40px;">
-        <p style="font-size:15px;color:#4A5568;line-height:1.8;margin:0;">We kept discovering the same thing. Problems almost never started with bad people. They started because different people quietly believed different things, and nobody realised until it became expensive. Groundwork exists so leaders don't discover misalignment months after it starts.</p>
+        <p style="font-size:15px;color:var(--gw-sub);line-height:1.8;margin:0;">We kept discovering the same thing. Problems almost never started with bad people. They started because different people quietly believed different things, and nobody realised until it became expensive. Groundwork exists so leaders don't discover misalignment months after it starts.</p>
 
         <!-- ITEM 3: first person, specific, and deliberately not polished. The
              founder is the buyer, which is a real advantage worth stating
              plainly. No claims about funding, size or customers. -->
-        <p style="font-size:15px;color:#4A5568;line-height:1.85;margin:20px 0 0;">We built Groundwork after repeatedly discovering problems months after they started. We hired too late. We missed disagreements that had quietly grown. We watched decisions get made from incomplete pictures, not because anyone was dishonest, but because there was no safe way to compare what everyone actually believed. Groundwork is the product we wanted.</p>
-        <p style="font-size:15px;color:#4A5568;line-height:1.8;margin:0;">The problem was never the people. It was that there was no way to find out without a meeting, without confrontation, without someone having to say it to someone else's face.</p>
-        <p style="font-size:15px;color:#4A5568;line-height:1.8;margin:0;">Groundwork is that place. You say what you need done. Your team says what they understood. You see where those two things match and where they do not. No meeting required.</p>
+        <p style="font-size:15px;color:var(--gw-sub);line-height:1.85;margin:20px 0 0;">We built Groundwork after repeatedly discovering problems months after they started. We hired too late. We missed disagreements that had quietly grown. We watched decisions get made from incomplete pictures, not because anyone was dishonest, but because there was no safe way to compare what everyone actually believed. Groundwork is the product we wanted.</p>
+        <p style="font-size:15px;color:var(--gw-sub);line-height:1.8;margin:0;">The problem was never the people. It was that there was no way to find out without a meeting, without confrontation, without someone having to say it to someone else's face.</p>
+        <p style="font-size:15px;color:var(--gw-sub);line-height:1.8;margin:0;">Groundwork is that place. You say what you need done. Your team says what they understood. You see where those two things match and where they do not. No meeting required.</p>
       </div>
 
-      <div style="border-left:3px solid #0C447C;padding:20px;background:#EEF4FB;border-radius:0 8px 8px 0;margin-bottom:36px;">
-        <h3 style="font-size:15px;font-weight:700;color:#0C447C;margin-bottom:8px;">Why it works</h3>
-        <p style="font-size:14px;color:#1A1916;line-height:1.75;font-style:italic;margin:0;">People tell the truth when they know nobody else will see their answer until the report is ready. That is the whole design. Private in, honest out.</p>
-        <p style="font-size:15px;color:#4A5568;line-height:1.85;margin:14px 0 0;">Nobody is scored, ranked or watched. Groundwork never shows anyone's raw answers and never says who said what about whom.</p>
+      <div style="border-left:3px solid var(--gw-navy);padding:20px;background:var(--gw-blue-bg);border-radius:0 8px 8px 0;margin-bottom:36px;">
+        <h3 style="font-size:15px;font-weight:700;color:var(--gw-navy);margin-bottom:8px;">Why it works</h3>
+        <p style="font-size:14px;color:var(--gw-text);line-height:1.75;font-style:italic;margin:0;">People tell the truth when they know nobody else will see their answer until the report is ready. That is the whole design. Private in, honest out.</p>
+        <p style="font-size:15px;color:var(--gw-sub);line-height:1.85;margin:14px 0 0;">Nobody is scored, ranked or watched. Groundwork never shows anyone's raw answers and never says who said what about whom.</p>
       </div>
 
-      <div style="background:#F5F3EF;border-radius:10px;padding:20px 24px;border:1px solid #E2E0DB;margin-bottom:36px;">
-        <p style="font-size:14px;font-weight:700;color:#1A1916;margin-bottom:8px;">If you are a founder</p>
-        <p style="font-size:13px;color:#6B6560;line-height:1.75;margin:0;">You are usually the only person holding the full picture. You made the decisions, set the direction, and communicated what you needed. But between what you said and what your team took away, something always gets lost. The further you are from the work, the harder it is to see where. Groundwork closes that gap. Not by adding another meeting or another tool to chase updates in. By giving every person a private place to say what they actually understood, what they have done, and where they are stuck, and giving you one clear picture of where things stand against what you set.</p>
+      <div style="background:var(--gw-paper);border-radius:10px;padding:20px 24px;border:1px solid var(--gw-border);margin-bottom:36px;">
+        <p style="font-size:14px;font-weight:700;color:var(--gw-text);margin-bottom:8px;">If you are a founder</p>
+        <p style="font-size:13px;color:var(--gw-sub);line-height:1.75;margin:0;">You are usually the only person holding the full picture. You made the decisions, set the direction, and communicated what you needed. But between what you said and what your team took away, something always gets lost. The further you are from the work, the harder it is to see where. Groundwork closes that gap. Not by adding another meeting or another tool to chase updates in. By giving every person a private place to say what they actually understood, what they have done, and where they are stuck, and giving you one clear picture of where things stand against what you set.</p>
       </div>
 
       <div class="gw-about-grid">
         <div class="gw-about-card">
-          <h3 style="font-size:14px;font-weight:700;color:#1A1916;margin-bottom:6px;">The product</h3>
-          <p style="font-size:12px;color:#6B6560;line-height:1.6;margin:0;">Each person's own independent account, given privately. One clear picture for the person running it. Works for two people or twenty. Runs on a regular cadence for as long as the situation requires.</p>
+          <h3 style="font-size:14px;font-weight:700;color:var(--gw-text);margin-bottom:6px;">The product</h3>
+          <p style="font-size:12px;color:var(--gw-sub);line-height:1.6;margin:0;">Each person's own independent account, given privately. One clear picture for the person running it. Works for two people or twenty. Runs on a regular cadence for as long as the situation requires.</p>
         </div>
         <div class="gw-about-card">
-          <h3 style="font-size:14px;font-weight:700;color:#1A1916;margin-bottom:6px;">The company</h3>
-          <p style="font-size:12px;color:#6B6560;line-height:1.6;margin:0;">Groundwork is an independent product. We built it because nothing else let every person give their own honest answer without the pressure of the room.</p>
+          <h3 style="font-size:14px;font-weight:700;color:var(--gw-text);margin-bottom:6px;">The company</h3>
+          <p style="font-size:12px;color:var(--gw-sub);line-height:1.6;margin:0;">Groundwork is an independent product. We built it because nothing else let every person give their own honest answer without the pressure of the room.</p>
         </div>
       </div>
 
       <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:36px;">
-        <p style="font-size:15px;color:#4A5568;line-height:1.8;margin:0;">Built for founders, managers, team leads, programme directors, and anyone responsible for making sure a group of people are actually working toward the same thing. Built first for African leaders and the companies they run. Useful anywhere people start things together.</p>
+        <p style="font-size:15px;color:var(--gw-sub);line-height:1.8;margin:0;">Built for founders, managers, team leads, programme directors, and anyone responsible for making sure a group of people are actually working toward the same thing. Built first for African leaders and the companies they run. Useful anywhere people start things together.</p>
       </div>
 
       <!-- The team. Named people with their own pages to link to, because "built
            by people who kept running into the same problem" is a stronger claim
            when the people are on the page. Links open in a new tab and carry
            rel=noopener, since they leave for LinkedIn and one company site. -->
-      <h2 style="font-size:20px;font-weight:800;color:#1A1916;line-height:1.25;margin:0 0 12px;">The team</h2>
+      <h2 style="font-size:20px;font-weight:800;color:var(--gw-text);line-height:1.25;margin:0 0 12px;">The team</h2>
       <!-- Placed as the bridge into the team rather than inside the origin story
            above it. The sentence says "our own experience", and the next thing on
            the page is who "we" are, so it hands off directly. Put earlier it would
            repeat the paragraph that already tells the origin story; put here it
            adds what that paragraph does not - that other founders had the same
            problem, which is the evidence behind the headline. -->
-      <p style="font-size:15px;color:#4A5568;line-height:1.8;margin:0 0 22px;">Groundwork grew out of our own experience building and leading teams, and conversations with founders in the Google for Startups community facing many of the same problems.</p>
+      <p style="font-size:15px;color:var(--gw-sub);line-height:1.8;margin:0 0 22px;">Groundwork grew out of our own experience building and leading teams, and conversations with founders in the Google for Startups community facing many of the same problems.</p>
       <div style="display:flex;flex-direction:column;gap:20px;margin-bottom:36px;">
 
         <div>
-          <p style="font-size:15px;font-weight:700;color:#1A1916;margin:0 0 4px;">
-            <a href="https://www.linkedin.com/in/hafsah-jumare-04703b153/" target="_blank" rel="noopener noreferrer" style="color:#0C447C;text-decoration:none;">Hafsah Jumare</a>
-            <span style="color:#6B6560;font-weight:600;"> | Product strategy</span>
+          <p style="font-size:15px;font-weight:700;color:var(--gw-text);margin:0 0 4px;">
+            <a href="https://www.linkedin.com/in/hafsah-jumare-04703b153/" target="_blank" rel="noopener noreferrer" style="color:var(--gw-navy);text-decoration:none;">Hafsah Jumare</a>
+            <span style="color:var(--gw-sub);font-weight:600;"> | Product strategy</span>
           </p>
-          <p style="font-size:14px;color:#4A5568;line-height:1.75;margin:0;">Behavioral economist trained at the University of Cape Town who has spent the last 10 years building companies and leading teams across some of the world's toughest operating environments. A Google for Startups founder, Hafsah built Groundwork from firsthand experience of how hard it is to know what's really happening across a growing organization.</p>
+          <p style="font-size:14px;color:var(--gw-sub);line-height:1.75;margin:0;">Behavioral economist trained at the University of Cape Town who has spent the last 10 years building companies and leading teams across some of the world's toughest operating environments. A Google for Startups founder, Hafsah built Groundwork from firsthand experience of how hard it is to know what's really happening across a growing organization.</p>
         </div>
 
         <div>
-          <p style="font-size:15px;font-weight:700;color:#1A1916;margin:0 0 4px;">
-            <a href="https://www.linkedin.com/in/nathanialpeterson/" target="_blank" rel="noopener noreferrer" style="color:#0C447C;text-decoration:none;">Nathanial Peterson</a>
-            <span style="color:#6B6560;font-weight:600;"> | Behavioral Science</span>
+          <p style="font-size:15px;font-weight:700;color:var(--gw-text);margin:0 0 4px;">
+            <a href="https://www.linkedin.com/in/nathanialpeterson/" target="_blank" rel="noopener noreferrer" style="color:var(--gw-navy);text-decoration:none;">Nathanial Peterson</a>
+            <span style="color:var(--gw-sub);font-weight:600;"> | Behavioral Science</span>
           </p>
-          <p style="font-size:14px;color:#4A5568;line-height:1.75;margin:0;">Behavioral scientist, venture builder, and co-founder of <a href="https://petersonandgill.com/" target="_blank" rel="noopener noreferrer" style="color:#0C447C;">Peterson &amp; Gill</a>, a venture studio building investable companies out of complex public-sector problems. Nathanial holds a PhD in Behavioral Decision Research from Carnegie Mellon and brings deep expertise in decision-making, incentives, risk, and human behavior in complex systems.</p>
+          <p style="font-size:14px;color:var(--gw-sub);line-height:1.75;margin:0;">Behavioral scientist, venture builder, and co-founder of <a href="https://petersonandgill.com/" target="_blank" rel="noopener noreferrer" style="color:var(--gw-navy);">Peterson &amp; Gill</a>, a venture studio building investable companies out of complex public-sector problems. Nathanial holds a PhD in Behavioral Decision Research from Carnegie Mellon and brings deep expertise in decision-making, incentives, risk, and human behavior in complex systems.</p>
         </div>
 
         <div>
-          <p style="font-size:15px;font-weight:700;color:#1A1916;margin:0 0 4px;">
-            <a href="https://www.linkedin.com/in/adamgrunewald/" target="_blank" rel="noopener noreferrer" style="color:#0C447C;text-decoration:none;">Adam Grunewald</a>
-            <span style="color:#6B6560;font-weight:600;"> | Client Success Engineer</span>
+          <p style="font-size:15px;font-weight:700;color:var(--gw-text);margin:0 0 4px;">
+            <a href="https://www.linkedin.com/in/adamgrunewald/" target="_blank" rel="noopener noreferrer" style="color:var(--gw-navy);text-decoration:none;">Adam Grunewald</a>
+            <span style="color:var(--gw-sub);font-weight:600;"> | Client Success Engineer</span>
           </p>
-          <p style="font-size:14px;color:#4A5568;line-height:1.75;margin:0;">Entrepreneur and technology executive who founded and led Lynk and previously worked at Google. Adam brings firsthand experience building companies, leading teams, and navigating the operational challenges that emerge as organizations grow.</p>
+          <p style="font-size:14px;color:var(--gw-sub);line-height:1.75;margin:0;">Entrepreneur and technology executive who founded and led Lynk and previously worked at Google. Adam brings firsthand experience building companies, leading teams, and navigating the operational challenges that emerge as organizations grow.</p>
         </div>
 
         <div>
-          <p style="font-size:15px;font-weight:700;color:#1A1916;margin:0 0 4px;">
-            <a href="https://www.linkedin.com/in/abubakarsambo/" target="_blank" rel="noopener noreferrer" style="color:#0C447C;text-decoration:none;">Abubakar Sambo</a>
-            <span style="color:#6B6560;font-weight:600;"> | Engineering</span>
+          <p style="font-size:15px;font-weight:700;color:var(--gw-text);margin:0 0 4px;">
+            <a href="https://www.linkedin.com/in/abubakarsambo/" target="_blank" rel="noopener noreferrer" style="color:var(--gw-navy);text-decoration:none;">Abubakar Sambo</a>
+            <span style="color:var(--gw-sub);font-weight:600;"> | Engineering</span>
           </p>
-          <p style="font-size:14px;color:#4A5568;line-height:1.75;margin:0;">Engineer and technical lead behind Groundwork, with an engineering background from McGill University. Abubakar builds the systems that turn Groundwork's behavioral and organizational principles into a simple, secure product teams can use every day.</p>
+          <p style="font-size:14px;color:var(--gw-sub);line-height:1.75;margin:0;">Engineer and technical lead behind Groundwork, with an engineering background from McGill University. Abubakar builds the systems that turn Groundwork's behavioral and organizational principles into a simple, secure product teams can use every day.</p>
         </div>
 
       </div>
 
       <div class="gw-about-grid" style="grid-template-columns:1fr;">
         <div class="gw-about-card">
-          <h3 style="font-size:14px;font-weight:700;color:#1A1916;margin-bottom:6px;">Our headquarters</h3>
-          <p style="font-size:12px;color:#6B6560;line-height:1.6;margin:0;">Groundwork<br>9 Wendy Court, David Osieli Road<br>Westlands, Nairobi, Kenya</p>
+          <h3 style="font-size:14px;font-weight:700;color:var(--gw-text);margin-bottom:6px;">Our headquarters</h3>
+          <p style="font-size:12px;color:var(--gw-sub);line-height:1.6;margin:0;">Groundwork<br>9 Wendy Court, David Osieli Road<br>Westlands, Nairobi, Kenya</p>
         </div>
       </div>
 
       <div style="text-align:center;">
-        <p style="font-size:13px;color:#9B9590;margin-bottom:10px;">Questions or feedback</p>
-        <a href="mailto:hello@myground.work" style="font-size:15px;font-weight:700;color:#0C447C;text-decoration:none;">hello@myground.work</a>
+        <p style="font-size:13px;color:var(--gw-muted);margin-bottom:10px;">Questions or feedback</p>
+        <a href="mailto:hello@myground.work" style="font-size:15px;font-weight:700;color:var(--gw-navy);text-decoration:none;">hello@myground.work</a>
       </div>
     </main>
 
-    <footer style="background:#0A1628;padding:32px 24px;text-align:center;">
+    <footer style="background:var(--gw-dark);padding:32px 24px;text-align:center;">
       <div style="display:flex;align-items:center;justify-content:center;gap:9px;margin-bottom:16px;">
         <svg width="18" height="14" viewBox="0 0 22 17" fill="none">
           <rect x="5"  y="0"  width="12" height="3" rx="1.5" fill="white" opacity="0.45"/>

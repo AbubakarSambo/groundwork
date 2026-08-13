@@ -35,7 +35,7 @@ export function ContextStrength({ read, closedNote }: {
 
       {read.can.length > 0 && (
         <div style={{ marginBottom: read.cannot.length ? 10 : 0 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: '#085041', marginBottom: 4 }}>It will be able to</div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-green-t)', marginBottom: 4 }}>It will be able to</div>
           <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.7 }}>
             {read.can.map((line, i) => <li key={i}>{line}</li>)}
           </ul>
@@ -44,7 +44,7 @@ export function ContextStrength({ read, closedNote }: {
 
       {read.cannot.length > 0 && (
         <details>
-          <summary style={{ fontSize: 12, fontWeight: 700, color: '#8A5C1A', marginBottom: 4, cursor: 'pointer' }}>
+          <summary style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 4, cursor: 'pointer' }}>
             What would make it stronger ({read.cannot.length})
           </summary>
           <ul style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.7 }}>

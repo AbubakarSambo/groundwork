@@ -60,6 +60,22 @@ export interface GroundParticipant {
   // "my account is accurate" confirmation - the deadline for corrections, in
   // place of a timer. Null until the participant signs off.
   signedOffAt?: string | null
+  /**
+   * WHAT THIS PERSON IS WORKING TOWARDS, with its authorship attached. `PersonObjective`.
+   *
+   * `described` and `mayBeReadAgainst` come from the server so the caveat cannot be dropped in
+   * transit: "your objective is X" and "your manager has suggested X and you have not replied" are
+   * different statements, and the second must never be read against anybody.
+   */
+  objective?: {
+    text: string | null
+    authoredBy: 'lead' | 'self' | null
+    seenBySubject: boolean
+    state: 'none' | 'proposed' | 'accepted' | 'their own'
+    described: string
+    mayBeReadAgainst: boolean
+    updatedAt?: string | null
+  } | null
 }
 
 export interface CheckInSummary {

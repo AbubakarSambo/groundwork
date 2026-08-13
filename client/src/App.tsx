@@ -19,8 +19,8 @@ function ChatRedirect() {
 }
 import { GroundsListPage } from '@/pages/grounds/GroundsListPage'
 import { CreateGroundPage } from '@/pages/grounds/CreateGroundPage'
-import { GroundAdminPage } from '@/pages/grounds/GroundAdminPage'
 import { GroundParticipantPage } from '@/pages/grounds/GroundParticipantPage'
+import { GroundPage } from '@/pages/grounds/GroundPage'
 import { ReportPage } from '@/pages/report/ReportPage'
 import { BoardPage } from '@/pages/board/BoardPage'
 import { BillingPage } from '@/pages/billing/BillingPage'
@@ -130,7 +130,14 @@ export default function App() {
             {/* Main app - require auth */}
             <Route path="/grounds" element={<RequireAuth><GroundsListPage /></RequireAuth>} />
             <Route path="/grounds/new" element={<RequireAuth><CreateGroundPage /></RequireAuth>} />
-            <Route path="/grounds/:id" element={<RequireAuth><GroundAdminPage /></RequireAuth>} />
+            {/**
+              * ONE URL, AND IT LANDS YOU ON YOUR OWN VIEW.
+              *
+              * This was `GroundAdminPage` directly, and the rail links every ground here - so a
+              * participant clicking their own ground was shown "This view is for whoever runs this
+              * ground" with a button to go and find their real page. `GroundPage` decides first.
+              */}
+            <Route path="/grounds/:id" element={<RequireAuth><GroundPage /></RequireAuth>} />
             <Route path="/grounds/:id/p" element={<RequireAuth><GroundParticipantPage /></RequireAuth>} />
             <Route path="/grounds/:id/report" element={<RequireAuth><ReportPage /></RequireAuth>} />
             <Route path="/grounds/:id/board" element={<RequireAuth><BoardPage /></RequireAuth>} />

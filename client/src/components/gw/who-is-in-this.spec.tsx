@@ -86,6 +86,39 @@ describe('the roster on the ground', () => {
     expect(screen.queryByText(/Who is in this/)).toBeNull()
   })
 
+  it('says which kind of empty it is when peers are hidden', async () => {
+    /**
+     * W14-5. With peer visibility off, the service filters the other parties out of the payload,
+     * so this component gets a roster of one and used to render nothing at all. A participant
+     * could not tell whether nobody else was here yet or whether they are not allowed to know -
+     * and the second is a fact about the ground they are in, not a detail.
+     */
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter>
+          <GroundChat
+            groundId="g1" openCheckInId={null} openSessionNumber={null} totalSessions={6}
+            nextOpensAt={null} onOpenSession={() => {}} openPending={false}
+            label="New hire" sessionsDone={2}
+            parties={[{ name: 'Abubakar', done: false, isSelf: true }]}
+            peersHidden
+          />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+    expect(await screen.findByText(/check in without seeing each other/)).toBeTruthy()
+    // And it still never says what anybody wrote.
+    expect(screen.getByText(/will not see the others or what they wrote/)).toBeTruthy()
+  })
+
+  it('and a genuinely single-party ground still says nothing', async () => {
+    // The distinction the flag exists for: one party is not the same as a hidden roster.
+    renderTopic([{ name: 'Hafsah', done: true, isSelf: true }])
+    await screen.findByText('New hire')
+    expect(screen.queryByText(/Who is in this/)).toBeNull()
+  })
+
   it('and never renders anything a person wrote', async () => {
     renderTopic([
       { name: 'Hafsah', done: true, isSelf: false },
@@ -114,5 +147,17 @@ describe('the permission stays in the service', () => {
   it('and the pages build the roster from the payload rather than from a role', () => {
     const part = code('../../pages/grounds/GroundParticipantPage.tsx')
     expect(part).toMatch(/parties=\{\(ground\.participants \?\? \[\]\)/)
+  })
+
+  it('and both pages pass the ground\'s peer rule, so an empty roster can explain itself', () => {
+    /**
+     * FOUND BY BITE-CHECK. Removing this wiring from the participant page left all 550 tests
+     * green: the component's own behaviour was pinned and the fact that anything passes it was
+     * not. A prop nothing supplies is a feature nobody gets.
+     */
+    for (const f of ['../../pages/grounds/GroundParticipantPage.tsx', '../../pages/grounds/GroundAdminPage.tsx']) {
+      expect(code(f), `${f} does not tell the chat whether peers are hidden`)
+        .toMatch(/peersHidden=\{\(ground as any\)\.peersVisibleEffective === false\}/)
+    }
   })
 })

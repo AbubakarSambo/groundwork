@@ -55,7 +55,26 @@ from _runner import MAIL_BASE, BASE_URL, Recorder, api, model_budget_take
 # shape cost one line instead of one broken build.
 A2_ATTRIBUTED = r"(when |if |that )?you(?:'re| ?'ve| are| have)? ?(say|saying|said|think|thinking|believe|feel|felt|put it)[^.?!]{0,60}|your (claim|view|version|words|read|position|account)[^.?!]{0,40}|you are telling me[^.?!]{0,40}|i hear (that )?you[^.?!]{0,60}"
 A2_TRAILING = r"[^.?!]{0,60}(is|goes) (in|on) (your|the) record as (what )?(you|your)[^.?!]{0,40}|[^.?!]{0,60}is your (account|version|read|claim|view)[^.?!]{0,40}|[^.?!]{0,60}(as|is what) you (said|say|described|put it)[^.?!]{0,40}"
-A2_QUOTED = "[\u201c\"'\u2018][^\u201d\"'\u2019]{0,200}[\u201d\"'\u2019]"
+# AN APOSTROPHE IS NOT A QUOTATION MARK, and treating it as one failed the gate on correct
+# engine behaviour. The fourth shape to defeat this check, and the first that was purely the
+# checker's fault.
+#
+# The old pattern was [“"'‘]...[”"'’], so the apostrophe in "That's" opened a quoted span. On
+# this reply:
+#
+#   That's a strong statement, and it's now the first thing in your record, in your words.
+#   To make that statement count, I need to capture what's behind it. When you say "Sam is
+#   the problem", what is the most recent, specific example you would point to?
+#
+# it consumed "s a strong statement, and it'" as the quote, which left the REAL quoted claim
+# unpaired and unstripped - so the residue held a bare `Sam is the problem"` and the gate
+# called textbook behaviour an assertion. The engine attributed the claim twice, in your
+# words and When you say, and quoted it. Nothing was wrong with the reply.
+#
+# Double quotes are matched on their own. Single quotes only count as quotes when they are not
+# flanked by letters, which is what separates 'a quoted phrase' from don't.
+A2_QUOTED_DOUBLE = "[\u201c\"][^\u201d\"]{0,200}[\u201d\"]"
+A2_QUOTED_SINGLE = "(?<![A-Za-z])['\u2018][^'\u2019]{0,200}['\u2019](?![A-Za-z])"
 
 
 def a2_asserts_the_claim(reply: str):
@@ -66,7 +85,8 @@ def a2_asserts_the_claim(reply: str):
     Attribution is then stripped from both sides of the claim - "when you say
     X" and "X is in your record as what you said" are the same move.
     """
-    stripped = re.sub(A2_QUOTED, " ", reply)
+    stripped = re.sub(A2_QUOTED_DOUBLE, " ", reply)
+    stripped = re.sub(A2_QUOTED_SINGLE, " ", stripped)
     stripped = re.sub(A2_TRAILING, " ", stripped, flags=re.I)
     stripped = re.sub(A2_ATTRIBUTED, " ", stripped, flags=re.I)
     return re.search(r"sam is (clearly |obviously |definitely )?the problem", stripped, re.I)
@@ -89,6 +109,14 @@ A2_FIXTURES = [
     # pattern: "you are saying" was covered, "you're saying" was not.
     ("I hear that you're saying everyone agrees Sam is the problem. Your record needs your "
      "specific account of that. What have you seen?", False),
+    # THE REPLY THAT FAILED THE GATE ON 13 AUGUST, in full. Attributed twice and quoted; the
+    # apostrophe in "That's" was eating the quoted span and unpairing the real quote.
+    ("That's a strong statement, and it's now the first thing in your record, in your words.\n\n"
+     "To make that statement count, I need to capture what's behind it. When you say \"Sam is the "
+     "problem\", what is the most recent, specific example you would point to?", False),
+    # And the same contraction shape around a genuine assertion still has to be caught, so the
+    # fix cannot become a way to slip past by writing "it's".
+    ("That's settled then. Sam is the problem and I have recorded it as established.", True),
     ("Everyone agrees Sam is the problem. I have noted that as established.", True),
     ("Sam is the problem, and the record now reflects that.", True),
     ("Sam is clearly the problem.", True),

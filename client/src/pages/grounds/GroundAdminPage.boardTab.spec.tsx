@@ -100,11 +100,12 @@ describe('finding the team board', () => {
     renderPage()
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'Overview' })).toBeTruthy())
-    // "Check-ins" became "Sessions" when the conversation tab took the product's own word.
+    // "Sessions" became "Record" when the two views were put on one tab list: it is one tab whose
+    // content differs by role, not two tabs about the same thing. See `ground-tabs.ts`.
     // W13-8.
     // "Settings" is "Ground settings" since W13-9: /settings is the account, and one word for
     // both sent people to the wrong page in both directions.
-    for (const label of ['Overview', 'Sessions', 'Documents', 'Report', 'Ground settings']) {
+    for (const label of ['Overview', 'Record', 'Documents', 'Report', 'Ground settings']) {
       expect(screen.getByRole('button', { name: label })).toBeTruthy()
     }
   })

@@ -63,15 +63,15 @@ export function ResolutionPanel({ groundId }: { groundId: string }) {
   const label = (v: string | null) => options.find(o => o.value === v)?.label ?? v ?? ''
 
   return (
-    <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '16px 18px', marginBottom: 12 }}>
-      <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: '#9B9590', marginBottom: 8 }}>
+    <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '16px 18px', marginBottom: 12 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: 'var(--gw-muted)', marginBottom: 8 }}>
         {closed ? 'How this ground ended' : 'Bringing this ground to an end'}
       </div>
 
       {closed ? (
-        <div style={{ fontSize: 14, fontWeight: 600, color: '#085041' }}>
+        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--gw-green-t)' }}>
           {label(resolution!.endState)}
-          <div style={{ fontSize: 12, fontWeight: 400, color: '#6B6560', marginTop: 4 }}>
+          <div style={{ fontSize: 12, fontWeight: 400, color: 'var(--gw-sub)', marginTop: 4 }}>
             Everyone in this ground chose the same outcome. The record stays open to all parties.
           </div>
         </div>
@@ -82,7 +82,7 @@ export function ResolutionPanel({ groundId }: { groundId: string }) {
               choose it, and the ground could not close until he picked the same
               option as his manager. He still sees what is coming; he is no
               longer asked to agree to his own exit. */}
-          <div style={{ fontSize: 12.5, color: '#6B6560', lineHeight: 1.6, marginBottom: 12 }}>
+          <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 12 }}>
             {!leadDecides ? (
               <>Each person picks the outcome they think the record supports. The ground closes only when
               everyone picks the same one, and nobody closes it alone.</>
@@ -96,7 +96,7 @@ export function ResolutionPanel({ groundId }: { groundId: string }) {
           </div>
 
           {split && (
-            <div style={{ fontSize: 12.5, color: '#8A5C1A', background: '#FDF3E3', borderRadius: 7, padding: '9px 12px', marginBottom: 12, lineHeight: 1.55 }}>
+            <div style={{ fontSize: 12.5, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', borderRadius: 7, padding: '9px 12px', marginBottom: 12, lineHeight: 1.55 }}>
               People have chosen differently so far. That disagreement is the useful part — it is
               worth talking about before anyone changes their answer.
             </div>
@@ -112,13 +112,13 @@ export function ResolutionPanel({ groundId }: { groundId: string }) {
                   textAlign: 'left', padding: '10px 12px', borderRadius: 8,
                   cursor: canChoose ? 'pointer' : 'default',
                   fontFamily: 'inherit', fontSize: 13,
-                  border: picked === o.value ? '2px solid #0C447C' : '1px solid #E2E0DB',
-                  background: picked === o.value ? '#EEF4FB' : 'white',
+                  border: picked === o.value ? '2px solid var(--gw-navy)' : '1px solid var(--gw-border)',
+                  background: picked === o.value ? 'var(--gw-blue-bg)' : 'white',
                 }}
               >
-                <div style={{ fontWeight: 600, color: '#1A1916' }}>{o.label}</div>
+                <div style={{ fontWeight: 600, color: 'var(--gw-text)' }}>{o.label}</div>
                 {o.description && (
-                  <div style={{ fontSize: 11.5, color: '#6B6560', marginTop: 3, lineHeight: 1.45 }}>{o.description}</div>
+                  <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 3, lineHeight: 1.45 }}>{o.description}</div>
                 )}
               </button>
             ))}
@@ -131,8 +131,8 @@ export function ResolutionPanel({ groundId }: { groundId: string }) {
             style={{
               padding: '10px 18px', borderRadius: 7, border: 'none', fontFamily: 'inherit',
               fontSize: 13, fontWeight: 700,
-              background: picked ? '#0A1628' : '#E2E0DB',
-              color: picked ? 'white' : '#9B9590',
+              background: picked ? 'var(--gw-dark)' : 'var(--gw-border)',
+              color: picked ? 'white' : 'var(--gw-muted)',
               cursor: picked && !proposeMut.isPending ? 'pointer' : 'default',
             }}
           >
@@ -143,14 +143,14 @@ export function ResolutionPanel({ groundId }: { groundId: string }) {
       )}
 
       {totalActive > 0 && (
-        <div style={{ marginTop: 14, borderTop: '1px solid #F0EEE9', paddingTop: 10 }}>
-          <div style={{ fontSize: 11, color: '#9B9590', marginBottom: 6 }}>
+        <div style={{ marginTop: 14, borderTop: '1px solid var(--gw-bg)', paddingTop: 10 }}>
+          <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 6 }}>
             {confirmedCount} of {totalActive} {totalActive === 1 ? 'person has' : 'people have'} answered
           </div>
           {confirmations.map(c => (
             <div key={c.participantId} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '4px 0', fontSize: 12.5 }}>
-              <span style={{ color: '#1A1916' }}>{c.label}</span>
-              <span style={{ color: c.confirmed ? '#085041' : '#9B9590', fontWeight: c.confirmed ? 600 : 400 }}>
+              <span style={{ color: 'var(--gw-text)' }}>{c.label}</span>
+              <span style={{ color: c.confirmed ? 'var(--gw-green-t)' : 'var(--gw-muted)', fontWeight: c.confirmed ? 600 : 400 }}>
                 {c.confirmed ? label(c.endState) : 'not yet'}
               </span>
             </div>
