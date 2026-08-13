@@ -5432,7 +5432,7 @@ things on these lists turned out to be already built.
 | --- | --- | --- | --- |
 | **G37/G23** | The context chat | L | **See Stage 3 - it was built, and it could not save a word of what it heard.** |
 | **W14-8 rest** | Page layouts onto Zone/Card/Row/Stat | L | Palette and headings are shared now. This part is a redesign, not wiring, and wants one deliberate pass. |
-| **W8-49** | 38 routes collapsed onto 14 pages, and `/invite` + `/join` + `/verify-email` as one arrival page | L | The three arrival routes still exist separately. Blocked on W8-52. |
+| **W8-49** | 38 routes onto 14 pages | L | **Arrival chrome shared - see Stage 4. The route count is still 38 and that part stays blocked on W8-52.** |
 | **F1** | Ground-truth reproducibility harness | M | **See Stage 2 - `npm run gate`.** |
 | | 309 one-off hex accents in the app | S | **See Stage 1 below - I was wrong, they were not one-offs.** |
 
@@ -5532,3 +5532,29 @@ copies: one session of twelve, a check-in with no conversation, a report that ne
 report released empty, everything hitting the turn cap, a party dropping out halfway, and a finding
 recorded. G43 in this file records four separate occasions where a check here could not have failed,
 including a run that reported success having done one session of twelve. That one is now a named test.
+
+
+## Stage 4 - one arrival - DONE, and narrower than the item said
+
+Three ways in from an email, each with a different amount of the product around it:
+
+| | Had |
+| --- | --- |
+| `/invite` | a header with the logo, a title, a centred column |
+| `/join` | a title and a column, **no header at all** |
+| `/verify-email` | four bare full-height divs, one per state |
+
+So the first thing somebody saw of Groundwork depended on which email they were sent, and the one that
+looked least like a product was the magic link - the path a person takes to reach the ground they just
+built. All three now render inside `Arrival`, and I checked all three in the browser on a dead token:
+same header, same column, and the three link-dead messages that already agreed (W8-62).
+
+**What I did not do, and the reasoning, because this is where to argue with me.** W8-49 says collapse
+the three routes onto one page. The three flows are different mechanics against different endpoints -
+`/invite` accepts a token and lands in a check-in, `/join` needs a name and an email first,
+`/verify-email` verifies and then commits a ground built before the account existed - and each already
+has its own guard file. Folding them into one component puts the three paths that get anybody into the
+product at all through one set of branches, to save markup. The consistency a person actually sees is
+the chrome, and that is shared now.
+
+The other half of W8-49, 38 routes down to 14 pages, is untouched and still waiting on W8-52.
