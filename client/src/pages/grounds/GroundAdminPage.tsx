@@ -1937,6 +1937,35 @@ export function GroundAdminPage() {
         {/* SETTINGS */}
         {tab === 'settings' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {/**
+              * WHAT WAS CHANGED, AND WHEN. W14-3.
+              *
+              * The server has been keeping this log since timeline editing shipped and nothing has
+              * ever read it back out. It belongs here, next to the controls that write it: how long
+              * this runs and how often people check in can both be changed after people have already
+              * started answering, and a change nobody can see is the shape of thing this product
+              * exists to stop.
+              *
+              * Shown to every party, not only the lead. The person whose sessions moved is the one
+              * with the most reason to know.
+              */}
+            {((ground as any).settingsChanges?.length ?? 0) > 0 && (
+              <div style={{ background: 'var(--gw-card)', border: '1px solid var(--gw-line)', borderRadius: 10, padding: '13px 16px' }}>
+                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>What has been changed here</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                  {[...(ground as any).settingsChanges].reverse().map((c: any, i: number) => (
+                    <div key={i} style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>
+                      <span style={{ color: 'var(--gw-ink)' }}>
+                        {c.weeks && `How long this runs: ${c.weeks.from ?? 'not set'} to ${c.weeks.to} weeks. `}
+                        {c.cadence && `How often people check in: ${c.cadence.from ?? 'not set'} to ${c.cadence.to}. `}
+                      </span>
+                      Changed by the {c.by} on {new Date(c.changedAt).toLocaleDateString()}.
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* HOW LONG THIS RUNS, AND HOW OFTEN.
                 There was no way to change either after creation, anywhere in the
                 product. A ground created at the wrong length - which the old

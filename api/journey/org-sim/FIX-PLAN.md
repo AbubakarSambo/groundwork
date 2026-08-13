@@ -4979,7 +4979,24 @@ Small, and it is the difference between "trust us" and "look".
 
 ## Who sees what is half-wired
 
-### W14-4 · The peer-visibility toggle does not exist in the product - **DONE**
+#### W14-3 · The audit log has a reader · DONE
+
+`updateTimeline` has been appending every change to how long a ground runs and how often people check
+in, under a comment saying this makes them "traceable without a separate audit table". Traceable by
+whom was never answered. Only `contextNotes` was read back out; the timeline half went into the
+database and stopped there.
+
+Which means a lead could cut a ground from eight weeks to four after people had started answering and
+nobody could see it had happened, in the product whose claim is that the record is the record.
+
+`get()` now returns `settingsChanges` to every party, and Ground settings renders it under the
+controls that write it, newest first, with what it changed FROM as well as to.
+
+Who made the change is deliberately not resolved to a name. Peer visibility can be off on a ground,
+and a name on a settings page would walk straight around it. "The lead" or "a party" is all anybody
+needs and is true either way. Guarded and bite-checked.
+
+## W14-4 · The peer-visibility toggle does not exist in the product - **DONE**
 `PATCH /grounds/:id/peer-visibility` is live, tested, and **called by nothing**. Its default is
 computed per scenario family - hidden on evaluation and cohort grounds, shown elsewhere - so today
 the lead cannot see the rule, let alone change it. `peopleWorkTogether` and

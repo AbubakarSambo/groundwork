@@ -856,6 +856,30 @@ export class GroundsService {
     const contextNotes: string[] =
       rawLog && !Array.isArray(rawLog) && typeof rawLog === 'object' ? (rawLog as any).contextNotes ?? [] : [];
 
+    /**
+     * THE OTHER HALF OF THE AUDIT LOG, WHICH NOTHING HAS EVER READ. W14-3.
+     *
+     * `updateTimeline` has been appending every change to how long this runs and how often people
+     * check in, with a note that this makes them "traceable without a separate audit table". Only
+     * `contextNotes` was ever read back out. So a lead could shorten a ground from eight weeks to
+     * four, or switch the cadence, and no party had any way to see it happened - in the product
+     * whose whole claim is that the record is the record.
+     *
+     * WHO changed it is deliberately not resolved to a name. Peer visibility can be off on this
+     * ground, and a name here would walk straight around it. The lead or a party is the whole of
+     * what anybody needs to know, and it is true either way.
+     */
+    const rawTimeline: any[] =
+      rawLog && !Array.isArray(rawLog) && typeof rawLog === 'object' ? (rawLog as any).timeline ?? [] : Array.isArray(rawLog) ? rawLog : [];
+    const settingsChanges = rawTimeline
+      .filter(e => e && e.changedAt)
+      .map(e => ({
+        changedAt: e.changedAt,
+        by: e.changedBy === ground.initiatorId ? ('lead' as const) : ('party' as const),
+        weeks: e.changes?.timelineWeeks ?? null,
+        cadence: e.changes?.cadence ?? null,
+      }));
+
     // Nest checkIns under each participant so the client can show per-party status.
     const checkInsByParticipant = new Map<string, typeof ground.checkIns>();
     for (const ci of ground.checkIns ?? []) {
@@ -995,6 +1019,7 @@ export class GroundsService {
       brief,
       signals,
       contextNotes,
+      settingsChanges,
       leadContextNotes,
       org: org ?? null,
       sessionProgress: sessionProgress ? { ...sessionProgress, requestingUserIsMissing } : null,
