@@ -283,6 +283,28 @@ export class GroundsController {
     return this.grounds.applyContextProposal(id, userId, dto);
   }
 
+  /**
+   * WHAT DOING WELL LOOKS LIKE, AND WHAT HAS TO BE TRUE FOR IT.
+   *
+   * Stating it is the lead's; reading it is everybody's on the ground - the yardstick somebody is
+   * being read against is the last thing that should be private from them.
+   */
+  @Post(':id/baseline')
+  @ApiOperation({ summary: 'State (or restate, as a new version) what doing well looks like and what it rests on' })
+  async stateBaseline(
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string,
+    @Body() dto: { successLooksLike?: string; conditions?: string[]; changeReason?: string },
+  ) {
+    return this.grounds.stateBaseline(id, userId, dto);
+  }
+
+  @Get(':id/baseline')
+  @ApiOperation({ summary: 'Every version of this ground\'s baseline, oldest first' })
+  async baselineHistory(@Param('id') id: string, @CurrentUser('id') userId: string) {
+    return this.grounds.baselineHistory(id, userId);
+  }
+
   @Get(':id/my-notes')
   @ApiOperation({ summary: "The requesting user's own between-session notes on this ground (private, owner only)" })
   async myNotes(@Param('id') id: string, @CurrentUser('id') userId: string) {

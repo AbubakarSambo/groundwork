@@ -14,6 +14,7 @@ import { ContextStrength } from '@/components/gw/ContextStrength'
 import { Sec } from '@/components/gw/kit'
 import { groundTabs } from './ground-tabs'
 import { SoloReportBody } from '@/components/gw/SoloReportBody'
+import { BaselinePanel } from '@/components/gw/BaselinePanel'
 import { apiClient } from '@/api/client'
 import { participantLabel } from '@/lib/utils'
 import { alignmentLabel } from '@/lib/alignment'
@@ -861,6 +862,16 @@ export function GroundParticipantPage() {
         {tab === 'settings' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 4 }}>Settings</div>
+
+            {/**
+              * THE YARDSTICK, READ-ONLY. `canState` is false: stating what doing well looks like is
+              * the lead's, because a party stating it would be the person being read setting their own
+              * measure - the one thing the report exists to compare against something else.
+              *
+              * But they see it. If it changed mid-ground, they see that too, with the reason. Somebody
+              * being read against a standard they cannot see is the thing this product is against.
+              */}
+            <BaselinePanel groundId={id!} canState={false} />
 
             {/* Profile summary */}
             <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '13px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>

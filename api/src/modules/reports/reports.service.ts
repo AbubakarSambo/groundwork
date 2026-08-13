@@ -378,8 +378,36 @@ export class ReportsService {
       // G10. The closing round only, and never for a colleague.
       const isClosing = closing?.status === GroundStatus.RESOLVED || !!closing?.resolutionState;
       const { statedStandards, standardsTouched } = standardsAndWhatTouchedThem(lead.id, entries);
+
+      /**
+       * THE STATED BASELINE COMES FIRST, IF THERE IS ONE.
+       *
+       * `statedStandards` is scraped from the lead's own check-in entries - anything the engine typed
+       * as a SUCCESS_DEFINITION while they were talking. That is a good fallback and it is not the same
+       * thing as a yardstick somebody deliberately wrote down and can be held to.
+       *
+       * `GroundBaseline` is that, and until now nothing wrote it. When it exists it goes at the front,
+       * marked as session 0 because it predates every session: it is what was agreed before anybody
+       * answered anything. The scraped ones stay behind it rather than being dropped - a lead who
+       * restated a standard mid-conversation said something real, and the weigh section is supposed to
+       * show everything they said doing well means.
+       */
+      const baseline = await this.prisma.groundBaseline.findFirst({
+        where: { groundId },
+        orderBy: { version: 'desc' },
+        select: { successLooksLike: true, conditions: true },
+      });
+      const stated = baseline?.successLooksLike?.trim()
+        ? [{ text: baseline.successLooksLike.trim(), session: 0 }, ...statedStandards]
+        : statedStandards;
+      /**
+       * The conditions travel with it. They are the things that had to be true and were not in the
+       * person's hands, and a weigh section that shows an unmet standard without them invites exactly
+       * the reading this product exists to prevent.
+       */
+      const restsOn = Array.isArray(baseline?.conditions) ? (baseline!.conditions as string[]) : [];
       const section = whatALeaderCanWeigh({
-        statedStandards,
+        statedStandards: stated,
         standardsTouched,
         entries: entries.map((r) => ({ kind: r.type as any, text: r.text, session: r.sessionNumber })),
         isClosing,
@@ -387,6 +415,8 @@ export class ReportsService {
       if (section) {
         out.whatTheGroundCanTellYou = section;
         out.whatTheGroundCanTellYouNote = THIS_IS_MATERIAL_NOT_A_VERDICT;
+        /** Only when there are any: an empty list rendered as a heading says nothing twice. */
+        if (restsOn.length) out.whatItRestedOn = restsOn;
       }
 
       // G34. The lead's, and nobody else's.

@@ -280,6 +280,23 @@ export const groundsApi = {
       .post<{ changed: string; say: string }>(`/grounds/${groundId}/context-chat/confirm`, { said })
       .then(r => r.data),
 
+  /**
+   * WHAT DOING WELL LOOKS LIKE, AND WHAT IT RESTS ON. `GroundBaseline`, which had no caller at all.
+   *
+   * Stating it again is a new VERSION, never an edit - the schema's own note: "half the findings this
+   * product makes are the distance between what people believed at the start and what turned out to be
+   * true. Corrected, a baseline becomes a second description of the present and the arc disappears."
+   */
+  stateBaseline: (groundId: string, body: { successLooksLike?: string; conditions?: string[]; changeReason?: string }) =>
+    apiClient.post<{ version: number; successLooksLike: string | null; conditions: string[]; changeReason: string | null; effectiveFrom: string }>(
+      `/grounds/${groundId}/baseline`, body,
+    ).then(r => r.data),
+
+  baselineHistory: (groundId: string) =>
+    apiClient.get<{ version: number; successLooksLike: string | null; conditions: string[]; changeReason: string | null; effectiveFrom: string }[]>(
+      `/grounds/${groundId}/baseline`,
+    ).then(r => r.data),
+
   contextChat: (groundId: string, history: { role: 'user' | 'assistant'; content: string }[]) =>
     apiClient
       .post<{

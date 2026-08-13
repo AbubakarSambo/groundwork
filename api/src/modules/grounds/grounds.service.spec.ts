@@ -20,6 +20,13 @@ describe('GroundsService - participant serialization (GW-01)', () => {
   it('get() loads participants through the safe select only', async () => {
     let capturedInclude: any;
     const prisma: any = {
+    /**
+     * `GroundBaseline` is read by `get()` and by the report now - the team's starting point, which had
+     * no reader until it was built. A mock without it throws on `findFirst` of undefined, which is what
+     * these four suites did the moment the read landed. Null here means "not stated", the state every
+     * one of these fixtures is actually in.
+     */
+    groundBaseline: { findFirst: jest.fn(async () => null) },
       ground: {
         findFirst: jest.fn(async (args: any) => {
           capturedInclude = args.include;
@@ -47,6 +54,13 @@ describe('GroundsService - participant serialization (GW-01)', () => {
 
   it('get() is scoped to the requesting organization', async () => {
     const prisma: any = {
+    /**
+     * `GroundBaseline` is read by `get()` and by the report now - the team's starting point, which had
+     * no reader until it was built. A mock without it throws on `findFirst` of undefined, which is what
+     * these four suites did the moment the read landed. Null here means "not stated", the state every
+     * one of these fixtures is actually in.
+     */
+    groundBaseline: { findFirst: jest.fn(async () => null) },
       ground: { findFirst: jest.fn(async (args: any) => ({ id: 'g1', organizationId: args.where.organizationId, participants: [], checkIns: [] })) },
       organization: { findUnique: jest.fn(async () => null) },
       checkIn: { aggregate: jest.fn(async () => ({ _max: { sessionNumber: null } })) },
@@ -139,6 +153,9 @@ describe('GroundsService.get - org boundary (GW-ORG-BOUNDARY)', () => {
       },
       organization: { findUnique: jest.fn(async () => null) },
       checkIn: { aggregate: jest.fn(async () => ({ _max: { sessionNumber: null } })) },
+      /** Read by `get()` since the baseline was built. Null is "not stated", which these fixtures are. */
+      groundBaseline: { findFirst: jest.fn(async () => null) },
+      groundDocument: { count: jest.fn(async () => 0) },
     } as any;
   }
 

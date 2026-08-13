@@ -335,7 +335,7 @@ function WhatToWalkInWith({ guide }: { guide: { openingLine?: string; questionTo
   )
 }
 
-function WhatTheGroundCanTellYou({ section, note }: {
+function WhatTheGroundCanTellYou({ section, note, restedOn }: {
   section: {
     whatYouSaidGoodMeans: { text: string; session: number }[]
     whatTheRecordHolds: { kind: string; text: string; session: number }[]
@@ -354,6 +354,14 @@ function WhatTheGroundCanTellYou({ section, note }: {
     note?: string
   }
   note: string
+  /**
+   * WHAT IT RESTED ON, from the baseline the lead stated at the start.
+   *
+   * A list of standards with no sight of the conditions they depended on invites the reading this
+   * product exists to prevent: a missed outcome looks like somebody underperforming, when the thing
+   * that had to be true was never in their hands. Shown only when the lead named some.
+   */
+  restedOn?: string[]
 }) {
   const rows: { h: string; items: string[]; empty?: string }[] = [
     { h: 'What you said doing well means', items: section.whatYouSaidGoodMeans.map(s => s.text) },
@@ -396,6 +404,20 @@ function WhatTheGroundCanTellYou({ section, note }: {
           )}
         </div>
       ))}
+      {restedOn && restedOn.length > 0 && (
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 4 }}>What you said it rested on</div>
+          <ul style={{ margin: 0, paddingLeft: 17, display: 'flex', flexDirection: 'column', gap: 3 }}>
+            {restedOn.map((c, i) => (
+              <li key={i} style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6 }}>{c}</li>
+            ))}
+          </ul>
+          <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', lineHeight: 1.55, marginTop: 5 }}>
+            These were not in their hands. Read anything unmet above against them first.
+          </div>
+        </div>
+      )}
+
       {/* This ground's own reading of its gaps, then the standing caveat. Both ship with the
           section and they say different things. */}
       {section.note && (
@@ -1099,6 +1121,7 @@ export function ReportPage() {
                 <WhatTheGroundCanTellYou
                   section={(report as any).whatTheGroundCanTellYou}
                   note={(report as any).whatTheGroundCanTellYouNote}
+                  restedOn={(report as any).whatItRestedOn}
                 />
               )}
 

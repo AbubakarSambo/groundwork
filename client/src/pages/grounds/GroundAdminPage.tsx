@@ -25,6 +25,7 @@ import { ResolutionPanel } from '@/components/gw/ResolutionPanel'
 import { Sec, Stat } from '@/components/gw/kit'
 import { groundTabs } from './ground-tabs'
 import { SoloReportBody } from '@/components/gw/SoloReportBody'
+import { BaselinePanel } from '@/components/gw/BaselinePanel'
 import { billingApi, PLAN_MEMBER_LIMITS, type SubscriptionPlan } from '@/api/billing'
 
 const SCENARIO_LABELS: Record<string, string> = {
@@ -241,9 +242,18 @@ export function GroundAdminPage() {
    */
   const contextStrength = ground ? whatThisGroundCanTellYou({
     partyCount: (ground.participants ?? []).filter((p: any) => !p.managingOnly).length,
-    hasSuccessDefinition: !!(ground as any).brief?.trim(),
-    conditionCount: 0,
-    hasBaseline: false,
+    /**
+     * REAL VALUES, AT LAST. These three were `!!brief`, `0` and `false` - the last two hardcoded,
+     * because `GroundBaseline` had no writer, so two lines of the context read fired on every ground
+     * whatever the truth: a lead who HAD named conditions was still told the record would not be able
+     * to say whether they were met.
+     *
+     * `brief` is what the ground is ABOUT. `successLooksLike` is what doing well in it would look
+     * like. Only the second is a yardstick, so it is what this asks about.
+     */
+    hasSuccessDefinition: !!((ground as any).baseline?.successLooksLike?.trim() || (ground as any).brief?.trim()),
+    conditionCount: ((ground as any).baseline?.conditions ?? []).length,
+    hasBaseline: !!(ground as any).baseline,
     perPersonObjectiveCount: ((ground as any).objectives ?? []).length,
     openDocumentCount: docs.filter((d: any) => d.visibility === 'OPEN').length,
     peopleWorkTogether: (ground as any).peopleWorkTogether !== false,
@@ -1941,6 +1951,13 @@ export function GroundAdminPage() {
               * Shown to every party, not only the lead. The person whose sessions moved is the one
               * with the most reason to know.
               */}
+            {/**
+              * THE TEAM'S STARTING POINT, on the settings tab because that is where the ground's own
+              * facts live. Stating it is the lead's; reading it is everybody's, so the party view
+              * mounts the same component with `canState` false.
+              */}
+            <BaselinePanel groundId={id!} canState={isInitiator || isOrgAdmin} />
+
             {((ground as any).settingsChanges?.length ?? 0) > 0 && (
               <div style={{ background: 'var(--gw-card)', border: '1px solid var(--gw-line)', borderRadius: 10, padding: '13px 16px' }}>
                 <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>What has been changed here</div>

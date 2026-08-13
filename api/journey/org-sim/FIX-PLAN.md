@@ -5926,3 +5926,47 @@ Suites: api 1660, client 661.
 - **`GroundBaseline`** - the team's starting point, which she approved building. Not started.
 - **`POST /documents/invite-upload`** has no caller, so an invited person cannot upload before they have
   an account.
+
+
+## The team's starting point - `GroundBaseline` built
+
+Her call, and she got there before I did: "groundbaseline is good because it is the team starting point."
+
+**Why it was worth building rather than deleting.** It is the missing home for two things already in
+use. The report's weigh section asks "what did you say doing well means, and what does the record hold
+against it" and has been scraping the answer out of the lead's check-in prose. The setup chat's
+`success` gap writes to `brief`, which is what the ground is ABOUT, not what good would look like in it.
+Neither is a yardstick you can point at afterwards and say: that is what we agreed on day one.
+
+**And it was already lying to people.** `GroundAdminPage` passed `hasBaseline: false` and
+`conditionCount: 0` as literals into the context read, so two of its lines fired on every ground
+whatever the truth - a lead who HAD named conditions was still told the record would not be able to say
+whether they were met. Honest literals about a table nothing used. Real values now.
+
+**The rules, all of them proved live on a real ground:**
+
+| | |
+| --- | --- |
+| Stating it | the lead's, or an admin in the same org. A party stating it would be the person being read setting their own measure |
+| Reading it | everybody on the ground. The yardstick you are read against is the last thing that should be private from you |
+| Restating | a NEW VERSION, never an edit. The schema's own note: corrected, a baseline becomes a second description of the present and the arc disappears |
+| A restatement | must say why. Without it the record shows a yardstick that moved with no account of why, which reads worse than either version alone |
+| The first statement | needs no reason, because nothing changed |
+| Restating one half | carries the other forward rather than erasing it |
+
+Verified end to end: v1 recorded with two conditions; a restatement with no reason **refused** with "Say
+why this is changing. The first version stays on the record either way."; v2 recorded with its reason,
+v1 still readable, conditions carried.
+
+**The conditions are the fairness half.** Things that had to be true and were not in the person's hands.
+They now travel into the report's weigh section as "what you said it rested on", under the line "these
+were not in their hands. Read anything unmet above against them first." A weigh section that shows an
+unmet standard without them invites exactly the reading this product exists to prevent.
+
+**And rendering it found a bug reading it never would have.** The panel only showed `changeReason` in
+the earlier-versions list - and version 1 never has one, because nothing changed. So the reason a
+yardstick moved was stored, required, and displayed nowhere. It belongs to the version that changed
+things, which is the current one.
+
+Four mocked suites broke on the new read and needed `groundBaseline` in their fixtures. Suites: api
+1672, client 661.

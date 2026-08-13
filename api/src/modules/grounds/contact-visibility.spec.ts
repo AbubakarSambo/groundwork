@@ -35,6 +35,13 @@ function serviceFor(restrict: boolean) {
     report: { id: 'r1', releasedAt: new Date(), sharedPicture: null, createdAt: new Date() },
   };
   const prisma: any = {
+    /**
+     * `GroundBaseline` is read by `get()` and by the report now - the team's starting point, which had
+     * no reader until it was built. A mock without it throws on `findFirst` of undefined, which is what
+     * these four suites did the moment the read landed. Null here means "not stated", the state every
+     * one of these fixtures is actually in.
+     */
+    groundBaseline: { findFirst: jest.fn(async () => null) },
     ground: { findFirst: async () => ground, findUnique: async () => ground },
     user: { findUnique: jest.fn(async () => ({ role: 'MEMBER', organizationId: 'org1' })) },
     groundParticipant: { findFirst: async () => null, findMany: async () => [] },
@@ -88,6 +95,13 @@ describe('GW-PRIVACY-CONTACT: participant-to-participant email visibility on get
 describe('GW-PRIVACY-CONTACT: setExternalVisibility is initiator-only', () => {
   function svcForWrite() {
     const prisma: any = {
+    /**
+     * `GroundBaseline` is read by `get()` and by the report now - the team's starting point, which had
+     * no reader until it was built. A mock without it throws on `findFirst` of undefined, which is what
+     * these four suites did the moment the read landed. Null here means "not stated", the state every
+     * one of these fixtures is actually in.
+     */
+    groundBaseline: { findFirst: jest.fn(async () => null) },
       ground: {
         findUnique: async () => ({ initiatorId: 'userInit' }),
         update: async (a: any) => ({ id: a.where.id, restrictExternalVisibility: a.data.restrictExternalVisibility }),

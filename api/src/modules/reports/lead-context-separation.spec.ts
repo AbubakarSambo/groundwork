@@ -32,6 +32,13 @@ describe('lead-context write separation (GroundsService.addLeadContext)', () => 
     });
     const leadCreate = jest.fn(async (a: any) => ({ id: 'ln1', ...a.data }));
     const prisma: any = {
+    /**
+     * `GroundBaseline` is read by `get()` and by the report now - the team's starting point, which had
+     * no reader until it was built. A mock without it throws on `findFirst` of undefined, which is what
+     * these four suites did the moment the read landed. Null here means "not stated", the state every
+     * one of these fixtures is actually in.
+     */
+    groundBaseline: { findFirst: jest.fn(async () => null) },
       ground: { findUnique: jest.fn(async () => ({ initiatorId: 'init-1' })) },
       user: { findUnique: jest.fn(async () => ({ role: 'MEMBER', organizationId: 'org1' })) },
       groundParticipant: { findFirst: jest.fn(async () => ({ id: 'p2', groundId: 'g1' })) },
@@ -74,6 +81,13 @@ describe('lead-context corpus separation (ReportsService.synthesize)', () => {
     let capturedCorpus = '';
 
     const prisma: any = {
+    /**
+     * `GroundBaseline` is read by `get()` and by the report now - the team's starting point, which had
+     * no reader until it was built. A mock without it throws on `findFirst` of undefined, which is what
+     * these four suites did the moment the read landed. Null here means "not stated", the state every
+     * one of these fixtures is actually in.
+     */
+    groundBaseline: { findFirst: jest.fn(async () => null) },
       ground: {
         findUnique: jest.fn(async () => ({ id: 'g1', initiatorId: 'init-1', participants: [{ id: 'p1', partyType: 'INITIATOR', roleAsDescribed: 'founder' }] })),
         update: jest.fn(async () => ({})),
@@ -150,6 +164,13 @@ describe('lead-context read-back gate (GroundsService.get)', () => {
     };
     const leadFindMany = jest.fn(async () => [{ id: 'ln1', participantId: 'p2', text: 'private lead note about A', createdAt: new Date() }]);
     const prisma: any = {
+    /**
+     * `GroundBaseline` is read by `get()` and by the report now - the team's starting point, which had
+     * no reader until it was built. A mock without it throws on `findFirst` of undefined, which is what
+     * these four suites did the moment the read landed. Null here means "not stated", the state every
+     * one of these fixtures is actually in.
+     */
+    groundBaseline: { findFirst: jest.fn(async () => null) },
       ground: { findFirst: jest.fn(async () => groundRow), findUnique: jest.fn(async () => groundRow) },
       user: { findUnique: jest.fn(async () => ({ role: 'MEMBER', organizationId: 'org1' })) },
       groundParticipant: { findFirst: jest.fn(async () => ({ groundId: 'g1', userId: 'user-2' })), findMany: jest.fn(async () => []) },

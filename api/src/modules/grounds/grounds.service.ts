@@ -876,6 +876,27 @@ export class GroundsService {
      * ground, and a name here would walk straight around it. The lead or a party is the whole of
      * what anybody needs to know, and it is true either way.
      */
+    /**
+     * THE BASELINE, SO THE CONTEXT READ CAN STOP GUESSING.
+     *
+     * `GroundAdminPage` passed `hasBaseline: false` and `conditionCount: 0` as literals into
+     * `whatThisGroundCanTellYou`, which made two of its lines fire on every ground whatever the truth
+     * - "it will not be able to tell you whether the conditions you set were met, because none have
+     * been named" was shown to leads who had named some. They were literals because nothing wrote the
+     * table. Now something does.
+     */
+    const baselineRow = await this.prisma.groundBaseline.findFirst({
+      where: { groundId: id },
+      orderBy: { version: 'desc' },
+      select: { version: true, successLooksLike: true, conditions: true, changeReason: true, effectiveFrom: true },
+    });
+    const baseline = baselineRow
+      ? {
+          ...baselineRow,
+          conditions: Array.isArray(baselineRow.conditions) ? (baselineRow.conditions as string[]) : [],
+        }
+      : null;
+
     const rawTimeline: any[] =
       rawLog && !Array.isArray(rawLog) && typeof rawLog === 'object' ? (rawLog as any).timeline ?? [] : Array.isArray(rawLog) ? rawLog : [];
     const settingsChanges = rawTimeline
@@ -1027,6 +1048,7 @@ export class GroundsService {
       signals,
       contextNotes,
       settingsChanges,
+      baseline,
       leadContextNotes,
       org: org ?? null,
       sessionProgress: sessionProgress ? { ...sessionProgress, requestingUserIsMissing } : null,
@@ -1993,6 +2015,122 @@ export class GroundsService {
    *
    * `label` stays on the response: `getMyRecord` returns it too and both renders read it.
    */
+  /**
+   * WHAT DOING WELL LOOKS LIKE, AND WHAT HAS TO BE TRUE FOR IT. `GroundBaseline`, at last.
+   *
+   * The table has existed with `successLooksLike` and `conditions` and no code reading or writing
+   * either. Which is why `GroundAdminPage` passed `hasBaseline: false` and `conditionCount: 0` as
+   * literals into the context read - two hardcoded falses that were an honest report of a table
+   * nothing used, and made two of that read's lines fire on every ground regardless of truth.
+   *
+   * It is the missing home for two things already in use. The report's weigh section asks "what did
+   * you say doing well means, and what does the record hold against it" and scrapes the answer out of
+   * the lead's check-in prose. The setup chat's `success` gap writes to `brief`, which is what the
+   * ground is ABOUT rather than what good would look like in it. Neither is a yardstick you can point
+   * at afterwards and say: that is what we agreed on day one.
+   *
+   * VERSIONED, NEVER EDITED, and the schema's own note says why: "half the findings this product makes
+   * are the distance between what people believed at the start and what turned out to be true.
+   * Corrected, a baseline becomes a second description of the present and the arc disappears."
+   *
+   * So a change is a new version with its own date, and the reason if they gave one. Version 1 is what
+   * the ground started from, and nothing can overwrite it.
+   *
+   * THE CONDITIONS ARE THE FAIRNESS HALF. They are the things that have to be true and are not in the
+   * person's hands: a decision from somebody else, a tool, another team's work. Named at the start, a
+   * missed outcome can be read against them. Unnamed, it reads as somebody underperforming, which is
+   * the exact unfairness this product exists to prevent.
+   */
+  async stateBaseline(
+    groundId: string,
+    requestingUserId: string,
+    dto: { successLooksLike?: string; conditions?: string[]; changeReason?: string },
+  ) {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { id: true, initiatorId: true, organizationId: true },
+    });
+    if (!ground) throw new NotFoundException('Ground not found');
+    /**
+     * The lead's, or an admin in the same organisation. What doing well looks like is the lead's to
+     * state - a party stating it would be the person being read setting their own yardstick, which is
+     * the one thing the report exists to compare against something else.
+     */
+    const asker = await this.prisma.user.findUnique({
+      where: { id: requestingUserId },
+      select: { role: true, organizationId: true },
+    });
+    const isOrgAdmin = asker?.role === 'ADMIN' && asker.organizationId === ground.organizationId;
+    if (ground.initiatorId !== requestingUserId && !isOrgAdmin) {
+      throw new ForbiddenException('Stating what doing well looks like belongs to whoever runs this ground.');
+    }
+
+    const success = dto.successLooksLike?.trim() || null;
+    const conditions = (dto.conditions ?? []).map(c => c?.trim()).filter((c): c is string => !!c);
+    if (!success && !conditions.length) throw new BadRequestException('Nothing to record.');
+
+    const latest = await this.prisma.groundBaseline.findFirst({
+      where: { groundId },
+      orderBy: { version: 'desc' },
+    });
+
+    /**
+     * A restatement needs a reason once one exists. Not to police anybody: the reason is the thing
+     * that makes the change legible later, and without it the record shows a yardstick that moved with
+     * no account of why - which reads worse than either version does on its own.
+     */
+    if (latest && !dto.changeReason?.trim()) {
+      throw new BadRequestException('Say why this is changing. The first version stays on the record either way.');
+    }
+
+    /** Carried forward rather than dropped: restating one half must not silently erase the other. */
+    const carried = Array.isArray(latest?.conditions) ? (latest!.conditions as string[]) : [];
+
+    return this.prisma.groundBaseline.create({
+      data: {
+        groundId,
+        version: (latest?.version ?? 0) + 1,
+        successLooksLike: success ?? latest?.successLooksLike ?? null,
+        conditions: conditions.length ? conditions : carried,
+        changeReason: dto.changeReason?.trim() || null,
+      },
+      select: { id: true, version: true, successLooksLike: true, conditions: true, changeReason: true, effectiveFrom: true },
+    });
+  }
+
+  /**
+   * Every version, oldest first, so the page can show the arc rather than only the latest.
+   *
+   * Readable by anybody on the ground, not only the lead. The yardstick a person is being read against
+   * is the last thing that should be private from them - and if it changed mid-ground, the change is
+   * the part they most need to see.
+   */
+  async baselineHistory(groundId: string, requestingUserId: string) {
+    const link = await this.prisma.groundParticipant.findFirst({ where: { groundId, userId: requestingUserId } });
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { initiatorId: true, organizationId: true },
+    });
+    if (!ground) throw new NotFoundException('Ground not found');
+    const asker = await this.prisma.user.findUnique({
+      where: { id: requestingUserId },
+      select: { role: true, organizationId: true },
+    });
+    const isOrgAdmin = asker?.role === 'ADMIN' && asker.organizationId === ground.organizationId;
+    if (!link && ground.initiatorId !== requestingUserId && !isOrgAdmin) {
+      throw new ForbiddenException('You are not a party to this ground');
+    }
+    const rows = await this.prisma.groundBaseline.findMany({
+      where: { groundId },
+      orderBy: { version: 'asc' },
+      select: { version: true, successLooksLike: true, conditions: true, changeReason: true, effectiveFrom: true },
+    });
+    return rows.map(r => ({
+      ...r,
+      conditions: Array.isArray(r.conditions) ? (r.conditions as string[]) : [],
+    }));
+  }
+
   async getMySpecificity(groundId: string, userId: string): Promise<{
     scores: number[];
     label: string;
