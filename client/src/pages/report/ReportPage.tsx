@@ -46,16 +46,16 @@ function ResolutionSection({ groundId, resolutionState }: { groundId: string; re
         <div>
           <span style={{ fontSize: 9.5, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-muted)', display: 'block', marginBottom: 6 }}>Current status</span>
           {isClosed && data.resolution ? (
-            <div style={{ background: '#E7F6EF', borderRadius: 8, padding: '10px 12px' }}>
+            <div style={{ background: 'var(--gw-green-bg)', borderRadius: 8, padding: '10px 12px' }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-green-t)' }}>Closed: {data.resolution.endState}</div>
-              <div style={{ fontSize: 12, color: '#3A7A60', marginTop: 2 }}>All {data.totalActive} parties confirmed the same end state.</div>
+              <div style={{ fontSize: 12, color: 'var(--gw-green-t-soft)', marginTop: 2 }}>All {data.totalActive} parties confirmed the same end state.</div>
             </div>
           ) : (
             <div>
               <div style={{ fontSize: 13, marginBottom: 8 }}>{data.confirmedCount} of {data.totalActive} parties have confirmed an end state.</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {data.confirmations.map((c) => (
-                  <div key={c.participantId} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, padding: '6px 10px', background: '#F7F6F3', borderRadius: 6 }}>
+                  <div key={c.participantId} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, padding: '6px 10px', background: 'var(--gw-paper-2)', borderRadius: 6 }}>
                     <span>{c.label}</span>
                     <span style={{ color: c.confirmed ? 'var(--gw-green-t)' : 'var(--gw-muted)', fontWeight: 600 }}>{c.confirmed ? c.endState : 'Not yet'}</span>
                   </div>
@@ -174,7 +174,7 @@ function OutcomeFeedbackSection({ groundId, closed }: { groundId: string; closed
         <button
           disabled={submit.isPending}
           onClick={() => submit.mutate(true)}
-          style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-green-t)', background: '#E7F6EF', border: '1px solid #BFE3D3', borderRadius: 8, padding: '8px 16px', cursor: 'pointer', fontFamily: 'inherit' }}
+          style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-green-t)', background: 'var(--gw-green-bg)', border: '1px solid #BFE3D3', borderRadius: 8, padding: '8px 16px', cursor: 'pointer', fontFamily: 'inherit' }}
         >
           It felt fair
         </button>
@@ -192,7 +192,7 @@ function OutcomeFeedbackSection({ groundId, closed }: { groundId: string; closed
 
 function PatternBlock({ label, content, dark }: { label: string; content: string; dark?: boolean }) {
   return (
-    <div style={{ background: dark ? '#0E3A30' : 'var(--gw-dark)', color: '#fff', borderRadius: 11, padding: '15px 17px', marginBottom: 16 }}>
+    <div style={{ background: dark ? 'var(--gw-green-t)' : 'var(--gw-dark)', color: '#fff', borderRadius: 11, padding: '15px 17px', marginBottom: 16 }}>
       <div style={{ fontSize: 10.5, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-green-b)', fontWeight: 700, marginBottom: 8 }}>
         {label}
       </div>
@@ -394,7 +394,7 @@ function AreaBlock({ title, observation, whyItMatters, recommendedMove, reached,
         </div>
       )}
       {recommendedMove && (
-        <div style={{ background: '#E7F6EF', borderRadius: 7, padding: '8px 10px', fontSize: 13, color: 'var(--gw-green-t)', lineHeight: 1.5 }}>
+        <div style={{ background: 'var(--gw-green-bg)', borderRadius: 7, padding: '8px 10px', fontSize: 13, color: 'var(--gw-green-t)', lineHeight: 1.5 }}>
           <span style={{ fontSize: 9.5, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-green-t)', opacity: 0.75, display: 'block', marginBottom: 2 }}>What to do next</span>
           {recommendedMove}
         </div>
@@ -407,7 +407,7 @@ function HonestClose({ aligned, open, revisit, risk }: {
   aligned?: string; open?: string; revisit?: string; risk?: string
 }) {
   const cells = [
-    { label: 'Aligned', value: aligned, bg: '#E7F6EF', color: 'var(--gw-green-t)' },
+    { label: 'Aligned', value: aligned, bg: 'var(--gw-green-bg)', color: 'var(--gw-green-t)' },
     { label: 'Open',    value: open,    bg: 'var(--gw-amber-bg)', color: 'var(--gw-amber-t)' },
     { label: 'Revisit', value: revisit, bg: 'var(--gw-blue-bg)', color: 'var(--gw-navy)' },
     { label: 'Risk',    value: risk,    bg: 'var(--gw-clay-bg)', color: 'var(--gw-clay)' },
@@ -502,7 +502,7 @@ function HiddenContributorsSection({
   if (contributors.length === 0) return null
 
   return (
-    <div style={{ marginTop: 16, background: '#F4F7FC', border: '1px solid #CFE2F5', borderRadius: 8, padding: '12px 14px' }}>
+    <div style={{ marginTop: 16, background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 8, padding: '12px 14px' }}>
       <SecH>People who may be missing</SecH>
       <div style={{ fontSize: 12.5, color: '#4A5568', lineHeight: 1.55, marginBottom: 10 }}>
         The record references people who are not themselves a party on this ground.
@@ -510,7 +510,7 @@ function HiddenContributorsSection({
       {contributors.map((c, i) => {
         const key = `${i}-${c.label}`
         return (
-          <div key={key} style={{ padding: '9px 0', borderTop: i > 0 ? '0.5px solid #D8E2F0' : undefined }}>
+          <div key={key} style={{ padding: '9px 0', borderTop: i > 0 ? '0.5px solid var(--gw-blue-bg)' : undefined }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 2 }}>{c.label}</div>
             <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.45, marginBottom: 6 }}>{c.evidence}</div>
             {done.has(key) ? (
@@ -520,20 +520,20 @@ function HiddenContributorsSection({
                 <input
                   type="email" autoFocus placeholder="their@email.com"
                   value={email} onChange={e => setEmail(e.target.value)}
-                  style={{ padding: '7px 10px', borderRadius: 6, border: '1px solid #CFE2F5', fontSize: 12.5, fontFamily: 'inherit', outline: 'none' }}
+                  style={{ padding: '7px 10px', borderRadius: 6, border: '1px solid var(--gw-blue-b)', fontSize: 12.5, fontFamily: 'inherit', outline: 'none' }}
                 />
                 {!isInitiator && (
                   <input
                     type="text" placeholder="Their name (optional)"
                     value={name} onChange={e => setName(e.target.value)}
-                    style={{ padding: '7px 10px', borderRadius: 6, border: '1px solid #CFE2F5', fontSize: 12.5, fontFamily: 'inherit', outline: 'none' }}
+                    style={{ padding: '7px 10px', borderRadius: 6, border: '1px solid var(--gw-blue-b)', fontSize: 12.5, fontFamily: 'inherit', outline: 'none' }}
                   />
                 )}
                 {!isInitiator && (
                   <textarea
                     placeholder="Why should they be added?"
                     value={reason} onChange={e => setReason(e.target.value)}
-                    style={{ padding: '7px 10px', borderRadius: 6, border: '1px solid #CFE2F5', fontSize: 12.5, fontFamily: 'inherit', outline: 'none', resize: 'vertical', minHeight: 44 }}
+                    style={{ padding: '7px 10px', borderRadius: 6, border: '1px solid var(--gw-blue-b)', fontSize: 12.5, fontFamily: 'inherit', outline: 'none', resize: 'vertical', minHeight: 44 }}
                   />
                 )}
                 <div style={{ display: 'flex', gap: 6 }}>
@@ -553,7 +553,7 @@ function HiddenContributorsSection({
                   </button>
                   <button
                     onClick={() => { setOpenFor(null); setEmail(''); setName(''); setReason('') }}
-                    style={{ padding: '7px 12px', borderRadius: 6, background: 'none', border: '1px solid #CFE2F5', color: 'var(--gw-sub)', fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit' }}
+                    style={{ padding: '7px 12px', borderRadius: 6, background: 'none', border: '1px solid var(--gw-blue-b)', color: 'var(--gw-sub)', fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit' }}
                   >
                     Cancel
                   </button>
@@ -700,7 +700,7 @@ export function ReportPage() {
   const isForming = !report.releasedAt
 
   const staleBanner = reportIsStale ? (
-    <div role="status" aria-live="polite" style={{ fontSize: 12.5, color: '#5A4A1A', background: 'var(--gw-amber-bg)', border: '1px solid #F5D9A0', borderRadius: 8, padding: '9px 12px', marginBottom: 14, lineHeight: 1.5 }}>
+    <div role="status" aria-live="polite" style={{ fontSize: 12.5, color: '#5A4A1A', background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 8, padding: '9px 12px', marginBottom: 14, lineHeight: 1.5 }}>
       Someone has checked in since this was written, so it is being updated now. What you are reading is the previous version. It will refresh on its own.
     </div>
   ) : null
@@ -1072,17 +1072,17 @@ export function ReportPage() {
                   framing - the report never recommends; the resolution step is
                   where the parties choose together. */}
               {(report as any).finalSynthesis?.closingComplete && (
-                <div style={{ marginTop: 16, background: '#FFF8EC', border: '1px solid #E4C88A', borderRadius: 8, padding: '12px 14px' }}>
+                <div style={{ marginTop: 16, background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 8, padding: '12px 14px' }}>
                   <SecH>The ground is closing</SecH>
                   <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6, marginBottom: 8 }}>
                     Every account is in. The choice now in front of you, together:
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
                     {((report as any).finalSynthesis.endStates ?? []).map((es: any) => (
-                      <span key={es.value} style={{ fontSize: 12, fontWeight: 600, background: 'white', border: '1px solid #E4C88A', color: '#7A4B00', borderRadius: 20, padding: '4px 12px' }}>{es.label}</span>
+                      <span key={es.value} style={{ fontSize: 12, fontWeight: 600, background: 'white', border: '1px solid var(--gw-amber-b-soft)', color: 'var(--gw-amber-t)', borderRadius: 20, padding: '4px 12px' }}>{es.label}</span>
                     ))}
                   </div>
-                  <button onClick={() => navigate(`/grounds/${id}`)} style={{ padding: '9px 16px', borderRadius: 7, background: '#7A4B00', color: 'white', border: 'none', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  <button onClick={() => navigate(`/grounds/${id}`)} style={{ padding: '9px 16px', borderRadius: 7, background: 'var(--gw-amber-t)', color: 'white', border: 'none', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
                     Propose the end state →
                   </button>
                 </div>
@@ -1171,7 +1171,7 @@ export function ReportPage() {
                   </div>
                 </div>}
 
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', background: '#F4F1EA', border: '1px solid #E5DFD2', borderRadius: 8, padding: '10px 12px', lineHeight: 1.55 }}>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '10px 12px', lineHeight: 1.55 }}>
                   This record is yours. It is portable and permanent. You can add this ground to your Groundwork profile.
                   {/* The sentence above claims portability, so give them the file.
                       Completed sessions only - there is nothing settled to take
@@ -1206,7 +1206,7 @@ export function ReportPage() {
             <div style={{ fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 10 }}>On record</div>
             <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, overflow: 'hidden' }}>
               {eng.parties.map((p: any, i: number) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 14px', borderBottom: i < eng.parties.length - 1 ? '1px solid #EFEDE8' : 'none', background: 'white' }}>
+                <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 14px', borderBottom: i < eng.parties.length - 1 ? '1px solid var(--gw-bg)' : 'none', background: 'white' }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)' }}>{p.label}</div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
                     <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}>
@@ -1218,7 +1218,7 @@ export function ReportPage() {
                     </span>
                     {p.contributed && p.recordEntries > 0 && p.specificityLabel && (
                       <span title="How concrete they were" style={{ fontSize: 11, fontWeight: 700, borderRadius: 6, padding: '2px 8px',
-                        background: p.specificityLabel === 'high' ? '#E7F6EF' : p.specificityLabel === 'moderate' ? 'var(--gw-blue-bg)' : 'var(--gw-amber-bg)',
+                        background: p.specificityLabel === 'high' ? 'var(--gw-green-bg)' : p.specificityLabel === 'moderate' ? 'var(--gw-blue-bg)' : 'var(--gw-amber-bg)',
                         color: p.specificityLabel === 'high' ? 'var(--gw-green-t)' : p.specificityLabel === 'moderate' ? 'var(--gw-navy)' : 'var(--gw-amber-t)' }}>
                         {p.specificityLabel} specificity
                       </span>
@@ -1236,7 +1236,7 @@ export function ReportPage() {
 
         {/* Always-visible correction affordance (#21): the per-claim "Correct this"
             only appears when there are inferred claims, so make correction discoverable. */}
-        <div style={{ marginTop: 24, background: '#F7F6F3', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px' }}>
+        <div style={{ marginTop: 24, background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px' }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 4 }}>Something not right in this report?</div>
           <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: myLatestCompletedSession != null ? 12 : 0 }}>
             {report.inferences && report.inferences.length > 0

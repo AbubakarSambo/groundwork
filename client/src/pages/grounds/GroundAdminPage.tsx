@@ -521,7 +521,7 @@ export function GroundAdminPage() {
             did not. GW-018.
           */}
           {lastInvitedEmail && (
-            <div style={{ background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 8, padding: '10px 12px', marginBottom: 12 }}>
+            <div style={{ background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b-soft)', borderRadius: 8, padding: '10px 12px', marginBottom: 12 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-green-t)' }}>Invite sent to {lastInvitedEmail}</div>
               <div style={{ fontSize: 12, color: 'var(--gw-green-t)', marginTop: 2 }}>
                 They check in on their own, and nothing is shown to them until the report is ready.
@@ -706,7 +706,7 @@ export function GroundAdminPage() {
             numbers, not check-in rows. */}
         <div style={{ display: 'flex', gap: 10, padding: '0 16px 10px', fontSize: 11, color: 'var(--gw-sub)', flexWrap: 'wrap', alignItems: 'center' }}>
           {ground.scenario && (
-            <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: '#F0EEE9', color: '#4A4540' }}>
+            <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: 'var(--gw-bg)', color: 'var(--gw-sub-d)' }}>
               {SCENARIO_LABELS[ground.scenario] ?? ground.scenario.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c: string) => c.toUpperCase())}
             </span>
           )}
@@ -788,7 +788,7 @@ export function GroundAdminPage() {
           refusal with no explanation of who has to act.
         */}
         {(ground as any).status === 'AWAITING_APPROVAL' && (
-          <div style={{ background: '#FDF8E3', border: '1px solid #E8D9A0', borderRadius: 10, padding: '13px 15px', marginBottom: 16 }}>
+          <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 10, padding: '13px 15px', marginBottom: 16 }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 4 }}>
               Waiting for an admin to accept this ground
             </div>
@@ -939,7 +939,7 @@ export function GroundAdminPage() {
 
             {/* Subscribed: unlimited sessions badge */}
             {ground.org?.subscriptionPlan && ground.org?.subscriptionStatus === 'active' && (
-              <div style={{ background: '#F0FAF5', border: '1px solid #B6E8D4', borderRadius: 8, padding: '8px 14px', marginBottom: 12, fontSize: 12, color: 'var(--gw-green-t)', fontWeight: 600 }}>
+              <div style={{ background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b-soft)', borderRadius: 8, padding: '8px 14px', marginBottom: 12, fontSize: 12, color: 'var(--gw-green-t)', fontWeight: 600 }}>
                 Subscribed. Unlimited sessions active for your organization.
               </div>
             )}
@@ -963,11 +963,11 @@ export function GroundAdminPage() {
                 : null
               if (!myOpenCheckIn) return null
               return (
-                <div style={{ background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 10, padding: '13px 16px', marginBottom: 16 }}>
+                <div style={{ background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b-soft)', borderRadius: 10, padding: '13px 16px', marginBottom: 16 }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-green-t)', marginBottom: 4 }}>
                     Session {myOpenCheckIn.sessionNumber} is ready for you
                   </div>
-                  <div style={{ fontSize: 12, color: '#3A7A60', lineHeight: 1.6, marginBottom: 10 }}>
+                  <div style={{ fontSize: 12, color: 'var(--gw-green-t-soft)', lineHeight: 1.6, marginBottom: 10 }}>
                     Your check-in is open. Start when you are ready.
                   </div>
                   <button
@@ -987,7 +987,7 @@ export function GroundAdminPage() {
                 const bounced = ground.participants.filter((p: any) => p.inviteDeliveryStatus === 'BOUNCED')
                 if (bounced.length === 0) return null
                 return (
-                  <div style={{ background: '#FFF4F4', border: '1px solid #F5C6C6', borderRadius: 8, padding: '10px 14px', marginBottom: 10, fontSize: 12.5, color: '#8B1A1A', lineHeight: 1.5 }}>
+                  <div style={{ background: 'var(--gw-red-bg)', border: '1px solid var(--gw-red-b-soft)', borderRadius: 8, padding: '10px 14px', marginBottom: 10, fontSize: 12.5, color: 'var(--gw-red-t)', lineHeight: 1.5 }}>
                     <strong>{bounced.length === 1 ? '1 invite never arrived (bounced).' : `${bounced.length} invites never arrived (bounced).`}</strong> Fix the address below and resend - until then {bounced.length === 1 ? 'that person has' : 'those people have'} no way in.
                   </div>
                 )
@@ -1049,13 +1049,13 @@ export function GroundAdminPage() {
                         {!p.userId && p.inviteDeliveryStatus === 'BOUNCED' ? (
                           <button
                             onClick={() => { setFixingEmailId(p.id); setFixingEmailValue(p.email) }}
-                            style={{ fontSize: 11, fontWeight: 700, color: '#8B1A1A', background: '#FFF4F4', border: '1px solid #F5C6C6', borderRadius: 12, padding: '2px 10px', cursor: 'pointer', fontFamily: 'inherit' }}
+                            style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-red-t)', background: 'var(--gw-red-bg)', border: '1px solid var(--gw-red-b-soft)', borderRadius: 12, padding: '2px 10px', cursor: 'pointer', fontFamily: 'inherit' }}
                             title="The invite email bounced - it never reached this address"
                           >
                             Email bounced - fix &amp; resend
                           </button>
                         ) : !p.userId && p.inviteDeliveryStatus === 'COMPLAINED' ? (
-                          <span style={{ fontSize: 11, fontWeight: 600, color: '#7A5200', background: '#FFF8EC', border: '1px solid #F5DFA0', borderRadius: 12, padding: '2px 10px' }} title="They marked the invite as spam">Marked as spam</span>
+                          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 12, padding: '2px 10px' }} title="They marked the invite as spam">Marked as spam</span>
                         ) : !p.userId ? (
                           <span style={{ fontSize: 11, color: 'var(--gw-muted)' }} title={p.inviteDeliveryStatus === 'DELIVERED' ? 'Invite delivered to their inbox' : 'Invite sent'}>
                             {p.inviteDeliveryStatus === 'DELIVERED' ? 'Invite delivered' : 'Invite pending'}
@@ -1084,12 +1084,12 @@ export function GroundAdminPage() {
                             onChange={e => setFixingEmailValue(e.target.value)}
                             onKeyDown={e => { if (e.key === 'Enter' && fixingEmailValue.includes('@')) fixEmail.mutate({ participantId: p.id, email: fixingEmailValue }) }}
                             placeholder="corrected@email.com"
-                            style={{ fontSize: 12, padding: '6px 10px', borderRadius: 6, border: '1px solid #F5C6C6', outline: 'none', fontFamily: 'inherit', width: 240 }}
+                            style={{ fontSize: 12, padding: '6px 10px', borderRadius: 6, border: '1px solid var(--gw-red-b-soft)', outline: 'none', fontFamily: 'inherit', width: 240 }}
                           />
                           <button
                             disabled={fixEmail.isPending || !fixingEmailValue.includes('@')}
                             onClick={() => fixEmail.mutate({ participantId: p.id, email: fixingEmailValue })}
-                            style={{ fontSize: 12, fontWeight: 700, color: 'white', background: '#8B1A1A', border: 'none', borderRadius: 6, padding: '6px 12px', cursor: 'pointer', fontFamily: 'inherit', opacity: fixEmail.isPending ? 0.6 : 1 }}
+                            style={{ fontSize: 12, fontWeight: 700, color: 'white', background: 'var(--gw-red-t)', border: 'none', borderRadius: 6, padding: '6px 12px', cursor: 'pointer', fontFamily: 'inherit', opacity: fixEmail.isPending ? 0.6 : 1 }}
                           >
                             {fixEmail.isPending ? 'Resending...' : 'Resend invite'}
                           </button>
@@ -1179,7 +1179,7 @@ export function GroundAdminPage() {
               const divergences = sigs.filter(s => s.type === 'Divergence').length
               const trendLabel = convergences > divergences ? 'Trending toward alignment' : divergences > convergences ? 'Active divergence - needs attention' : 'Mixed signals'
               const trendColor = convergences > divergences ? 'var(--gw-green-t)' : divergences > convergences ? 'var(--gw-red-t)' : 'var(--gw-amber-t)'
-              const trendBg = convergences > divergences ? '#E7F6EF' : divergences > convergences ? 'var(--gw-red-bg)' : 'var(--gw-amber-bg)'
+              const trendBg = convergences > divergences ? 'var(--gw-green-bg)' : divergences > convergences ? 'var(--gw-red-bg)' : 'var(--gw-amber-bg)'
               return (
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 10 }}>
@@ -1204,9 +1204,9 @@ export function GroundAdminPage() {
             {/* Add contributor */}
             <div style={{ marginTop: 20 }}>
               {lastInvitedEmail ? (
-                <div style={{ background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 10, padding: '14px 16px' }}>
+                <div style={{ background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b-soft)', borderRadius: 10, padding: '14px 16px' }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-green-t)', marginBottom: 6 }}>Invite sent to {lastInvitedEmail}</div>
-                  <div style={{ fontSize: 12, color: '#3A7A60', lineHeight: 1.6, marginBottom: 10 }}>
+                  <div style={{ fontSize: 12, color: 'var(--gw-green-t-soft)', lineHeight: 1.6, marginBottom: 10 }}>
                     They will get an email and do their own private check-in - about 10 minutes. You cannot see what they write. Once everyone has checked in, the shared report releases to everyone at the same time.
                   </div>
                   <button onClick={() => { setLastInvitedEmail(null); setAddingParticipant(true) }}
@@ -1222,9 +1222,9 @@ export function GroundAdminPage() {
                     const memberCount = ground.participants?.length ?? 0
                     if (limit !== null && limit !== undefined && memberCount >= limit) {
                       return (
-                        <div style={{ background: '#FFF3E0', border: '1px solid #F5C56A', borderRadius: 8, padding: '10px 14px', marginBottom: 10, fontSize: 12, color: '#7A4B00', lineHeight: 1.55 }}>
+                        <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid #F5C56A', borderRadius: 8, padding: '10px 14px', marginBottom: 10, fontSize: 12, color: 'var(--gw-amber-t)', lineHeight: 1.55 }}>
                           Your {plan?.replace('_', ' ').toLowerCase()} plan supports up to {limit} members. You have reached the limit. Upgrade your organization to add more people.
-                          <button onClick={() => navigate('/billing')} style={{ display: 'inline', marginLeft: 8, background: 'none', border: 'none', fontSize: 12, color: '#7A4B00', textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>
+                          <button onClick={() => navigate('/billing')} style={{ display: 'inline', marginLeft: 8, background: 'none', border: 'none', fontSize: 12, color: 'var(--gw-amber-t)', textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>
                             View plans
                           </button>
                         </div>
@@ -1242,18 +1242,18 @@ export function GroundAdminPage() {
                   )}
                   {isInitiator && !['RESOLVED', 'CLOSED', 'STALLED', 'AWAITING_LEAD'].includes(ground.status) && (
                     confirmClosing ? (
-                      <div style={{ border: '1px solid #E4C88A', background: '#FFF8EC', borderRadius: 8, padding: '12px 14px', marginTop: 8 }}>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: '#7A4B00', marginBottom: 4 }}>Begin the closing round?</div>
-                        <div style={{ fontSize: 12, color: '#7A4B00', lineHeight: 1.5, marginBottom: 10 }}>
+                      <div style={{ border: '1px solid var(--gw-amber-b-soft)', background: 'var(--gw-amber-bg)', borderRadius: 8, padding: '12px 14px', marginTop: 8 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 4 }}>Begin the closing round?</div>
+                        <div style={{ fontSize: 12, color: 'var(--gw-amber-t)', lineHeight: 1.5, marginBottom: 10 }}>
                           Everyone's next check-in becomes their final account - same conversation, marked as closing. The final report reads the whole record, then you and the others agree the end state.
                         </div>
                         <div style={{ display: 'flex', gap: 8 }}>
-                          <button onClick={() => closingRound.mutate()} disabled={closingRound.isPending} style={{ padding: '8px 14px', borderRadius: 7, background: '#7A4B00', color: 'white', border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Begin closing round</button>
-                          <button onClick={() => setConfirmClosing(false)} style={{ padding: '8px 14px', borderRadius: 7, background: 'none', color: '#7A4B00', border: 'none', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
+                          <button onClick={() => closingRound.mutate()} disabled={closingRound.isPending} style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-amber-t)', color: 'white', border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Begin closing round</button>
+                          <button onClick={() => setConfirmClosing(false)} style={{ padding: '8px 14px', borderRadius: 7, background: 'none', color: 'var(--gw-amber-t)', border: 'none', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
                         </div>
                       </div>
                     ) : (
-                      <button onClick={() => setConfirmClosing(true)} style={{ width: '100%', padding: '11px 16px', borderRadius: 8, background: 'none', color: '#7A4B00', fontSize: 13, fontWeight: 600, border: '1px dashed #E4C88A', cursor: 'pointer', fontFamily: 'inherit', marginTop: 8 }}>
+                      <button onClick={() => setConfirmClosing(true)} style={{ width: '100%', padding: '11px 16px', borderRadius: 8, background: 'none', color: 'var(--gw-amber-t)', fontSize: 13, fontWeight: 600, border: '1px dashed var(--gw-amber-b-soft)', cursor: 'pointer', fontFamily: 'inherit', marginTop: 8 }}>
                         Begin the closing round →
                       </button>
                     )
@@ -2403,7 +2403,7 @@ function ShareSection({ joinToken }: { joinToken: string }) {
   return (
     <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '16px', marginTop: 14 }}>
       <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-muted)', letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 10 }}>Broadcast link</div>
-      <div style={{ fontSize: 13, color: '#4A4540', lineHeight: 1.6, marginBottom: 14 }}>
+      <div style={{ fontSize: 13, color: 'var(--gw-sub-d)', lineHeight: 1.6, marginBottom: 14 }}>
         Share this link or QR code - anyone can check in without creating an account first. They'll be asked to save their details at the end.
       </div>
       <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', flexWrap: 'wrap' }}>
@@ -2414,7 +2414,7 @@ function ShareSection({ joinToken }: { joinToken: string }) {
           <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 6, wordBreak: 'break-all', fontFamily: 'monospace' }}>{joinUrl}</div>
           <button
             onClick={copyLink}
-            style={{ padding: '8px 14px', borderRadius: 7, background: copied ? '#E7F6EF' : 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', color: copied ? 'var(--gw-green-t)' : 'var(--gw-dark)', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+            style={{ padding: '8px 14px', borderRadius: 7, background: copied ? 'var(--gw-green-bg)' : 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', color: copied ? 'var(--gw-green-t)' : 'var(--gw-dark)', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
           >
             {copied ? 'Copied!' : 'Copy link'}
           </button>

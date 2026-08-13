@@ -4,8 +4,8 @@ import { useAuthStore } from '@/stores/auth'
 const TABS = ['What it is', 'How to use it', 'Use cases', 'Reports'] as const
 
 const RES_PILLS: { label: string; bg: string; color: string }[] = [
-  { label: 'Alignment confirmed',            bg: '#E8F8F5', color: 'var(--gw-green-t)' },
-  { label: 'Continue current course',        bg: '#E8F8F5', color: 'var(--gw-green-t)' },
+  { label: 'Alignment confirmed',            bg: 'var(--gw-green-bg)', color: 'var(--gw-green-t)' },
+  { label: 'Continue current course',        bg: 'var(--gw-green-bg)', color: 'var(--gw-green-t)' },
   { label: 'Realignment needed',             bg: 'var(--gw-amber-bg)', color: 'var(--gw-amber-t)' },
   { label: 'Additional support required',    bg: 'var(--gw-amber-bg)', color: 'var(--gw-amber-t)' },
   { label: 'Promotion recommended',          bg: 'var(--gw-blue-bg)', color: 'var(--gw-navy)' },

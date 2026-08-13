@@ -49,7 +49,7 @@ export function PostSessionPanel({ groundId, freeExtensionUsed, onDismiss }: Pro
 
         {/* Free extension */}
         {!freeExtensionUsed && (
-          <div style={{ background: 'white', border: '1px solid #B6E8D4', borderRadius: 10, padding: '14px 16px' }}>
+          <div style={{ background: 'white', border: '1px solid var(--gw-green-b-soft)', borderRadius: 10, padding: '14px 16px' }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-green-t)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 5 }}>
               Add one more free session
             </div>

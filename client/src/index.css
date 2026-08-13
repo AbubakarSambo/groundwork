@@ -58,7 +58,18 @@
   --gw-sub: #6B6560;
   --gw-text: #1A1916;
   --gw-clay: #B5675A;
-  --gw-clay-bg: #F8ECEA;
+  /**
+   * WARMED, because it was four points from --gw-red-bg. W14-8 stage 1.
+   *
+   * Found by the guard in `one-vocabulary.spec.ts`, not by eye - which is the point of writing it.
+   * #F8ECEA and #FCEBEB are the same pale pink to anybody looking, and they mean opposite things:
+   * one is the Risk panel and the privacy notice, the other is an error. A product where the
+   * decorative tone and the error tone are indistinguishable has no error tone.
+   *
+   * Now a warm terracotta tint, which is what "clay" was always supposed to be and which matches
+   * the #EDD0CB border already sitting on it.
+   */
+  --gw-clay-bg: #F6E9DF;
   --gw-radius: 6px;
 
   /**
@@ -69,6 +80,38 @@
    */
   --gw-paper: #FBFAF8;
   --gw-paper-2: #F5F3EF;
+
+  /**
+   * THE FOUR THAT WERE REAL, out of what I had called one-off accents without looking.
+   *
+   * The app was carrying three pale greens, three dark ambers, two dark reds and two pale blues -
+   * each family one intent with several accidental values, because a colour typed from memory lands
+   * a few points off every time. The near-identical members were collapsed onto the token they were
+   * already approximating.
+   *
+   * These four are genuinely a different colour from anything in the set, used across several
+   * pages, so they get names rather than being flattened into something they are not.
+   */
+  /** Pale mint, for a border on a good-news card. --gw-green-b is far more saturated. */
+  --gw-green-b-soft: #B6E8D4;
+  /** Mid green, for text that reads positive without the weight of --gw-green-t. */
+  --gw-green-t-soft: #3A7A60;
+  /** The bright red of a destructive control, distinct from --gw-red-t's dark prose red. */
+  --gw-danger: #C0392B;
+  /** Between --gw-text and --gw-sub: secondary prose that still has to be read. */
+  --gw-sub-d: #4A4540;
+
+  /**
+   * THE SOFT BORDERS, which were the actual gap.
+   *
+   * `--gw-amber-b` and `--gw-red-b` are the saturated borders. Several pages wanted a paler one on
+   * a tinted card and, finding nothing, each invented its own: four values for the pale amber
+   * border, two for the pale red. Naming two tokens is what stops the fifth being invented.
+   */
+  --gw-amber-b-soft: #F5D9A0;
+  --gw-red-b-soft: #F5C6C6;
+  /** The bright green of a live positive marker, where --gw-green-b is a border weight. */
+  --gw-green-live: #34D399;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }

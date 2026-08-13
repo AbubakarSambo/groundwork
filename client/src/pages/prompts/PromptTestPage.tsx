@@ -120,7 +120,7 @@ function ConversationLane({
           <div style={{ width: 8, height: 8, borderRadius: '50%', background: ACCENT, flexShrink: 0 }} />
           <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-text)' }}>{lane.label}</span>
           {lane.docName && (
-            <span style={{ fontSize: 10, color: 'var(--gw-sub)', background: 'var(--gw-blue-bg)', borderRadius: 4, padding: '1px 6px', border: '0.5px solid #BFDBFE' }}>
+            <span style={{ fontSize: 10, color: 'var(--gw-sub)', background: 'var(--gw-blue-bg)', borderRadius: 4, padding: '1px 6px', border: '0.5px solid var(--gw-blue-b)' }}>
               {lane.docName}
             </span>
           )}
@@ -283,7 +283,7 @@ export function PromptTestPage() {
               style={{ width: '100%', boxSizing: 'border-box', fontFamily: 'monospace', fontSize: 11, lineHeight: 1.6, border: 'none', padding: '12px 14px', resize: 'vertical', minHeight: 200, color: 'var(--gw-text)', outline: 'none' }}
             />
           ) : (
-            <pre style={{ fontFamily: 'monospace', fontSize: 11, lineHeight: 1.6, padding: '12px 14px', margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: '#4A4540', maxHeight: 160, overflowY: 'auto' }}>
+            <pre style={{ fontFamily: 'monospace', fontSize: 11, lineHeight: 1.6, padding: '12px 14px', margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: 'var(--gw-sub-d)', maxHeight: 160, overflowY: 'auto' }}>
               {systemPrompt}
             </pre>
           )}

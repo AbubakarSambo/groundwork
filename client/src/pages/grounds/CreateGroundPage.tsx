@@ -30,33 +30,33 @@ interface ScenarioCard {
 // submits its untouched GroundScenario enum key; packs, classifier keys, and
 // the report schema are unchanged.
 export const SCENARIOS: ScenarioCard[] = [
-  { cardKey: 'NEW_HIRE', scenario: 'NEW_HIRE', label: 'New hire', tag: 'Starting', tagBg: '#E8F8F5', tagColor: 'var(--gw-green-t)',
+  { cardKey: 'NEW_HIRE', scenario: 'NEW_HIRE', label: 'New hire', tag: 'Starting', tagBg: 'var(--gw-green-bg)', tagColor: 'var(--gw-green-t)',
     desc: 'Get you and a new hire on the same page about the role, expectations, and what early success looks like, before anything drifts. You each answer separately; the report shows where you already match and where you do not.',
     examples: [
       'Someone starts Monday and you want to be sure you both mean the same thing by "doing well."',
       'You just hired a senior person and need what they own pinned down before day one.',
       'A new joiner and their manager each writing what success looks like in the first 90 days.',
     ] },
-  { cardKey: 'NEW_PROJECT', scenario: 'NEW_PROJECT', label: 'New project', tag: 'Starting', tagBg: '#E8F8F5', tagColor: 'var(--gw-green-t)',
+  { cardKey: 'NEW_PROJECT', scenario: 'NEW_PROJECT', label: 'New project', tag: 'Starting', tagBg: 'var(--gw-green-bg)', tagColor: 'var(--gw-green-t)',
     desc: 'Line everyone up on scope, ownership, and what "done" means before the work starts. Each person answers on their own; the report shows the gaps to close first.',
     examples: [
       'Kicking off a build and you want scope and "done" agreed before anyone writes code.',
       'A cross-team project where each team quietly assumes a different owner.',
       'Starting work with a client and you want both sides\' version of the goal on record.',
     ] },
-  { cardKey: 'NEW_ADVISOR', scenario: 'NEW_ADVISOR', label: 'New advisor or board member', tag: 'Starting', tagBg: '#E8F8F5', tagColor: 'var(--gw-green-t)',
+  { cardKey: 'NEW_ADVISOR', scenario: 'NEW_ADVISOR', label: 'New advisor or board member', tag: 'Starting', tagBg: 'var(--gw-green-bg)', tagColor: 'var(--gw-green-t)',
     desc: 'Pin down what the advisor will actually contribute, on what terms, so "available" does not quietly stand in for "contributing."',
     examples: [
       'Bringing on an advisor for equity and you want it clear what they will actually do for it.',
       'A new board member joining, each side writing what they expect from the relationship.',
     ] },
-  { cardKey: 'NEW_COFOUNDER', scenario: 'NEW_COFOUNDER', label: 'A new partner or co-founder', tag: 'Starting', tagBg: '#E8F8F5', tagColor: 'var(--gw-green-t)',
+  { cardKey: 'NEW_COFOUNDER', scenario: 'NEW_COFOUNDER', label: 'A new partner or co-founder', tag: 'Starting', tagBg: 'var(--gw-green-bg)', tagColor: 'var(--gw-green-t)',
     desc: 'Put what each of you expects to build, own, and contribute in writing, before those assumptions collide.',
     examples: [
       'You and a co-founder splitting equity and roles and want the assumptions said out loud first.',
       'A new equal partner joining the founding team.',
     ] },
-  { cardKey: 'NEW_MANAGER', scenario: 'NEW_MANAGER', label: 'A new manager taking over', tag: 'Starting', tagBg: '#E8F8F5', tagColor: 'var(--gw-green-t)',
+  { cardKey: 'NEW_MANAGER', scenario: 'NEW_MANAGER', label: 'A new manager taking over', tag: 'Starting', tagBg: 'var(--gw-green-bg)', tagColor: 'var(--gw-green-t)',
     desc: 'Get clear on scope, reporting, and success for someone stepping into an existing team or role.',
     examples: [
       'An interim leader stepping into an existing team for six months.',
@@ -92,7 +92,7 @@ export const SCENARIOS: ScenarioCard[] = [
       'Start of the quarter and you want each person\'s plan and budget to hold up against real resources.',
       'A plan that looks fine on paper but you suspect the budget behind it was assumed, not approved.',
     ] },
-  { cardKey: 'PULSE_CHECK', scenario: 'PULSE_CHECK', label: 'A regular read on live work', tag: 'Recurring', tagBg: '#E8F8F5', tagColor: 'var(--gw-green-t)',
+  { cardKey: 'PULSE_CHECK', scenario: 'PULSE_CHECK', label: 'A regular read on live work', tag: 'Recurring', tagBg: 'var(--gw-green-bg)', tagColor: 'var(--gw-green-t)',
     desc: 'A fast, repeatable read from each person: what is moving, what is stuck, what has changed. About five minutes.',
     examples: [
       'A quick read every two weeks from each person on what is moving and what is stuck.',
@@ -111,7 +111,7 @@ export const SCENARIOS: ScenarioCard[] = [
       'Before a strategy offsite, you want each leader\'s real read so quiet disagreement shows up early.',
       'The board looks aligned in the room but you suspect it is not on one big bet.',
     ] },
-  { cardKey: 'COHORT_CHECK', scenario: 'COHORT_CHECK', label: 'Many people in the same role', tag: 'Recurring', tagBg: '#E8F8F5', tagColor: 'var(--gw-green-t)',
+  { cardKey: 'COHORT_CHECK', scenario: 'COHORT_CHECK', label: 'Many people in the same role', tag: 'Recurring', tagBg: 'var(--gw-green-bg)', tagColor: 'var(--gw-green-t)',
     desc: 'An ongoing read from many people in the same role, each answering on their own. See the pattern, who is on track and who is stuck, without them swaying each other. For a group who are new, use "Onboarding a group" instead.',
     examples: [
       'Twenty field officers each answering the same question so you can see the pattern.',
@@ -129,7 +129,7 @@ export const SCENARIOS: ScenarioCard[] = [
   // situation to describe. It runs on the cohort machinery, which is the correct
   // shape - separate people, same questions, no swaying each other - and says so
   // in language the person actually has in their head.
-  { cardKey: 'COHORT_ONBOARDING', scenario: 'COHORT_CHECK', label: 'Onboarding several people at once', tag: 'Starting', tagBg: '#E8F8F5', tagColor: 'var(--gw-green-t)',
+  { cardKey: 'COHORT_ONBOARDING', scenario: 'COHORT_CHECK', label: 'Onboarding several people at once', tag: 'Starting', tagBg: 'var(--gw-green-bg)', tagColor: 'var(--gw-green-t)',
     desc: 'Several people starting the same role at once, each answering on their own. Settle them in, and see early who is finding it and who is struggling, before the end of the period decides anything.',
     examples: [
       'Four new managers on a three month onboarding that is also their probation.',
@@ -665,7 +665,7 @@ export function CreateGroundPage() {
                 {/* The warning stays, but only when they are actually near the
                     wall. Repeating the count when they have eight left is noise. */}
                 {groundsUsed != null && !appliedAccessCode && groundsUsed >= FREE_GROUND_LIMIT - 2 && (
-                  <div style={{ fontSize: 12.5, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', border: '1px solid #F5D9A0', borderRadius: 8, padding: '10px 12px', marginBottom: 16, lineHeight: 1.5 }}>
+                  <div style={{ fontSize: 12.5, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 8, padding: '10px 12px', marginBottom: 16, lineHeight: 1.5 }}>
                     Only {FREE_GROUND_LIMIT - groundsUsed} {FREE_GROUND_LIMIT - groundsUsed === 1 ? 'ground' : 'grounds'} left on the free plan. After that you will need a subscription to open another.
                   </div>
                 )}

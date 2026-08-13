@@ -501,7 +501,7 @@ export function AppSidebar() {
                 )}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
                   <span style={{ fontSize: 11, color: 'rgba(255,255,255,.4)' }}>1/{sessions} sessions</span>
-                  <span style={{ fontSize: 10, fontWeight: 600, color: '#34d399', background: 'rgba(52,211,153,.12)', borderRadius: 4, padding: '2px 6px' }}>In progress</span>
+                  <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--gw-green-live)', background: 'rgba(52,211,153,.12)', borderRadius: 4, padding: '2px 6px' }}>In progress</span>
                 </div>
               </div>
             )}
@@ -594,14 +594,14 @@ export function AppSidebar() {
                             title={attention.kind === 'overdue' ? `Session ${attention.sessionNumber} is ${attention.daysLate} days past its date` : `Session ${attention.sessionNumber} is ready for you`}
                             style={{
                               width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
-                              background: attention.kind === 'overdue' ? '#F87171' : 'var(--gw-green-b)',
+                              background: attention.kind === 'overdue' ? 'var(--gw-red-b-soft)' : 'var(--gw-green-b)',
                             }}
                           />
                         )}
                         <span style={{
                           fontSize: 13,
                           fontWeight: attention.kind === 'yours' || attention.kind === 'overdue' ? 800 : 600,
-                          color: attention.kind === 'overdue' ? '#FCA5A5' : attention.kind === 'yours' ? 'white' : 'rgba(255,255,255,.88)',
+                          color: attention.kind === 'overdue' ? 'var(--gw-red-b)' : attention.kind === 'yours' ? 'white' : 'rgba(255,255,255,.88)',
                           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1,
                         }}>
                           {g.label}
@@ -745,7 +745,7 @@ export function AppSidebar() {
                   fontSize: 12.5, fontWeight: o.active ? 700 : 500,
                 }}
               >
-                <span style={{ width: 5, height: 5, borderRadius: '50%', flexShrink: 0, background: o.active ? '#34d399' : 'transparent' }} />
+                <span style={{ width: 5, height: 5, borderRadius: '50%', flexShrink: 0, background: o.active ? 'var(--gw-green-live)' : 'transparent' }} />
                 <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.name}</span>
                 <span style={{ fontSize: 10, color: 'rgba(255,255,255,.3)', textTransform: 'capitalize', flexShrink: 0 }}>
                   {o.role.toLowerCase()}

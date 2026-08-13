@@ -66,7 +66,7 @@ export function PaymentPage() {
         {groundLoading ? (
           <div style={{ fontSize: 13, color: 'var(--gw-muted)', padding: '20px 0' }}>Loading...</div>
         ) : ground?.isFreeGround ? (
-          <div style={{ background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 10, padding: '14px 16px' }}>
+          <div style={{ background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b-soft)', borderRadius: 10, padding: '14px 16px' }}>
             <div style={{ fontSize: 13, color: 'var(--gw-green-t)', lineHeight: 1.6 }}>
               <strong>This ground has unlimited free sessions.</strong> There is nothing to purchase here - just continue from the ground page.
             </div>
@@ -78,7 +78,7 @@ export function PaymentPage() {
                 unlimited sessions, so there was never a quantity to buy. What
                 is left on this page is contributor-code redemption, which
                 grants access and costs nobody anything. */}
-            <div style={{ background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 10, padding: '12px 16px', marginBottom: 14 }}>
+            <div style={{ background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b-soft)', borderRadius: 10, padding: '12px 16px', marginBottom: 14 }}>
               <div style={{ fontSize: 13, color: 'var(--gw-green-t)', lineHeight: 1.6 }}>
                 <strong>Sessions are not charged for.</strong> Every ground on the free tier runs
                 unlimited sessions and reports; a subscription lifts the ten-ground cap.
@@ -104,10 +104,10 @@ export function PaymentPage() {
                 value={code}
                 onChange={e => { setCode(e.target.value); setCodeMsg(null) }}
                 placeholder="Enter code"
-                style={{ width: '100%', padding: '9px 11px', fontSize: 13, fontFamily: 'inherit', border: `1px solid ${codeMsg && !codeMsg.ok ? '#c0392b' : 'var(--gw-border)'}`, borderRadius: 7, background: 'var(--gw-paper-2)', color: 'var(--gw-dark)', outline: 'none', boxSizing: 'border-box', marginBottom: 8 }}
+                style={{ width: '100%', padding: '9px 11px', fontSize: 13, fontFamily: 'inherit', border: `1px solid ${codeMsg && !codeMsg.ok ? 'var(--gw-danger)' : 'var(--gw-border)'}`, borderRadius: 7, background: 'var(--gw-paper-2)', color: 'var(--gw-dark)', outline: 'none', boxSizing: 'border-box', marginBottom: 8 }}
               />
               {codeMsg && (
-                <div style={{ fontSize: 12, color: codeMsg.ok ? 'var(--gw-green-t)' : '#c0392b', marginBottom: 8 }}>{codeMsg.text}</div>
+                <div style={{ fontSize: 12, color: codeMsg.ok ? 'var(--gw-green-t)' : 'var(--gw-danger)', marginBottom: 8 }}>{codeMsg.text}</div>
               )}
               <button
                 onClick={() => redeemCode.mutate()}

@@ -66,7 +66,7 @@ export function InferenceReviewPanel({ groundId, inferences }: Props) {
                   onClick={() => setDismissed(prev => new Set([...prev, inf.id]))}
                   style={{
                     fontSize: 12, fontWeight: 600, color: 'var(--gw-green-t)',
-                    background: '#E7F6EF', border: '1px solid #BFE6D4',
+                    background: 'var(--gw-green-bg)', border: '1px solid #BFE6D4',
                     borderRadius: 7, padding: '5px 12px', cursor: 'pointer',
                   }}
                 >

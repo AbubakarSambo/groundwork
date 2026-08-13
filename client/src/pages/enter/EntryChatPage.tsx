@@ -1408,7 +1408,7 @@ export function EntryChatPage() {
           <div style={{ fontSize: 11, color: 'var(--gw-sub)', display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
             {phase === 'checkin' ? (
               <>
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#34d399', display: 'inline-block', flexShrink: 0 }} />
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--gw-green-live)', display: 'inline-block', flexShrink: 0 }} />
                 Session 1 in progress
               </>
             ) : 'Getting started · session is about 10 minutes'}
@@ -1788,7 +1788,7 @@ export function EntryChatPage() {
               <div style={{ borderTop: '1px solid var(--gw-border)', background: 'white', flexShrink: 0 }}>
                 {/* Doc-add panel: paste or upload a document + context; the AI reads it. */}
                 {showDocPanel && (
-                  <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--gw-border)', background: '#F7F6F3' }}>
+                  <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--gw-border)', background: 'var(--gw-paper-2)' }}>
                     <div style={{ maxWidth: 680, margin: '0 auto' }}>
                       <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
                         {(['paste', 'upload'] as const).map(t => (
@@ -1868,7 +1868,7 @@ export function EntryChatPage() {
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
             {/* Not-signed-up reminder: the entry user has no account until they save. */}
             {!user && (
-              <div style={{ background: 'var(--gw-amber-bg)', borderBottom: '1px solid #F5D9A0', padding: '8px 16px', flexShrink: 0 }}>
+              <div style={{ background: 'var(--gw-amber-bg)', borderBottom: '1px solid var(--gw-amber-b-soft)', padding: '8px 16px', flexShrink: 0 }}>
                 <div style={{ maxWidth: 680, margin: '0 auto', fontSize: 12.5, color: 'var(--gw-amber-t)', lineHeight: 1.5 }}>
                   You are not signed up yet. Your answers are saved to this device as you go, but save your email at the end to keep this record.
                 </div>
@@ -1952,7 +1952,7 @@ export function EntryChatPage() {
 
             {/* Natural close prompt */}
             {showEndPrompt && !closed && (
-              <div style={{ padding: '12px 20px', background: 'var(--gw-blue-bg)', borderTop: '1px solid #BFDBFE', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ padding: '12px 20px', background: 'var(--gw-blue-bg)', borderTop: '1px solid var(--gw-blue-b)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{ flex: 1, fontSize: 13, color: 'var(--gw-navy)', lineHeight: 1.5 }}>
                   This session has reached a natural close. Would you like to end and see your report?
                 </div>
@@ -2248,7 +2248,7 @@ export function EntryChatPage() {
                       const on = order.indexOf(s) <= order.indexOf(sessionReport.alignmentStatus)
                       // "Shared" (data value 'Aligned') requires a second party, so it stays locked in a one-sided report.
                       const locked = s === 'Aligned'
-                      const bg = on ? 'var(--gw-navy)' : '#EFEDE8'
+                      const bg = on ? 'var(--gw-navy)' : 'var(--gw-bg)'
                       return (
                         <div key={s} style={{ flex: 1, textAlign: 'center', fontSize: 9, letterSpacing: '.03em', textTransform: 'uppercase', padding: '5px 2px', borderRadius: 5, fontWeight: 700, background: bg, color: on ? 'white' : (locked ? '#B8B4AE' : 'var(--gw-muted)'), border: locked ? '1px dashed #CFCBC4' : 'none' }}>{locked ? `${STATUS_DISPLAY[s]} 🔒` : STATUS_DISPLAY[s]}</div>
                       )
@@ -2268,7 +2268,7 @@ export function EntryChatPage() {
                         <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 7 }}>{a.title}</div>
                         <div style={{ fontSize: 12, lineHeight: 1.5, marginBottom: 5 }}><span style={{ fontSize: 9, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-muted)', display: 'block', marginBottom: 1 }}>What we noticed</span>{a.observation}</div>
                         <div style={{ fontSize: 12, lineHeight: 1.5, marginBottom: 5 }}><span style={{ fontSize: 9, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-muted)', display: 'block', marginBottom: 1 }}>Why it matters</span>{a.whyItMatters}</div>
-                        <div style={{ background: '#E7F6EF', borderRadius: 7, padding: '7px 9px', fontSize: 12, color: 'var(--gw-green-t)', lineHeight: 1.5 }}><span style={{ fontSize: 9, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-green-t)', opacity: .75, display: 'block', marginBottom: 2 }}>What to do next</span>{a.recommendedMove}</div>
+                        <div style={{ background: 'var(--gw-green-bg)', borderRadius: 7, padding: '7px 9px', fontSize: 12, color: 'var(--gw-green-t)', lineHeight: 1.5 }}><span style={{ fontSize: 9, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-green-t)', opacity: .75, display: 'block', marginBottom: 2 }}>What to do next</span>{a.recommendedMove}</div>
                       </div>
                     ))}
                   </div>
@@ -2291,14 +2291,14 @@ export function EntryChatPage() {
                 {sessionReport.suggestedParties && sessionReport.suggestedParties.length > 0 && (
                   <div style={{ marginBottom: 16 }}>
                     <div style={{ fontSize: 10, letterSpacing: '.09em', textTransform: 'uppercase', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 8 }}>Recommended additions</div>
-                    <div style={{ border: '1px solid var(--gw-border)', borderLeft: '3px solid var(--gw-navy)', borderRadius: 10, padding: '11px 13px', background: '#F4F7FC' }}>
+                    <div style={{ border: '1px solid var(--gw-border)', borderLeft: '3px solid var(--gw-navy)', borderRadius: 10, padding: '11px 13px', background: 'var(--gw-blue-bg)' }}>
                       <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
                         Based on this check-in, these roles would strengthen the ground. Their account would change or confirm what is currently on record from one side only.
                       </div>
                       {sessionReport.suggestedParties.map((p, i) => {
                         const key = `sug-${i}-${p.role}`
                         return (
-                        <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 0', borderTop: i > 0 ? '0.5px solid #D8E2F0' : undefined }}>
+                        <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 0', borderTop: i > 0 ? '0.5px solid var(--gw-blue-bg)' : undefined }}>
                           <div style={{ flex: 1 }}>
                             <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)', marginBottom: 2 }}>{p.role}</div>
                             <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.4 }}>{p.reason}</div>
@@ -2310,7 +2310,7 @@ export function EntryChatPage() {
                                   type="email" autoFocus placeholder="their@email.com"
                                   value={addingContributorEmail} onChange={e => setAddingContributorEmail(e.target.value)}
                                   onKeyDown={e => e.key === 'Enter' && queueSuggestedContributor(key, p.reason)}
-                                  style={{ flex: 1, padding: '6px 9px', borderRadius: 6, border: '1px solid #CFE2F5', fontSize: 12, fontFamily: 'inherit', outline: 'none' }}
+                                  style={{ flex: 1, padding: '6px 9px', borderRadius: 6, border: '1px solid var(--gw-blue-b)', fontSize: 12, fontFamily: 'inherit', outline: 'none' }}
                                 />
                                 <button onClick={() => queueSuggestedContributor(key, p.reason)} style={{ padding: '6px 10px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Add</button>
                               </div>
@@ -2413,7 +2413,7 @@ export function EntryChatPage() {
                   <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 8, lineHeight: 1.5 }}>A one-glance summary of your side. "Worth revisiting" is what we will check back on with you next time, not a task list.</div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                     {[
-                      { k: 'Settled', v: sessionReport.honestClose.aligned, bg: '#E7F6EF', kc: 'var(--gw-green-t)' },
+                      { k: 'Settled', v: sessionReport.honestClose.aligned, bg: 'var(--gw-green-bg)', kc: 'var(--gw-green-t)' },
                       { k: 'Still open', v: sessionReport.honestClose.open, bg: 'var(--gw-amber-bg)', kc: 'var(--gw-amber-t)' },
                       { k: 'Worth revisiting', v: sessionReport.honestClose.revisit, bg: 'var(--gw-blue-bg)', kc: 'var(--gw-navy)' },
                       { k: 'Watch for', v: sessionReport.honestClose.risk,  bg: 'var(--gw-clay-bg)', kc: 'var(--gw-clay)' },
@@ -2457,7 +2457,7 @@ export function EntryChatPage() {
               <div style={{ marginBottom: 20 }}>
                 <input type="email" placeholder="your@email.com" value={email} onChange={e => { setEmail(e.target.value); setEmailError('') }}
                   onKeyDown={e => e.key === 'Enter' && handleSave()}
-                  style={{ width: '100%', padding: '11px 13px', borderRadius: 8, border: `1px solid ${emailError ? '#C0392B' : 'var(--gw-border)'}`, fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8, outline: 'none' }}
+                  style={{ width: '100%', padding: '11px 13px', borderRadius: 8, border: `1px solid ${emailError ? 'var(--gw-danger)' : 'var(--gw-border)'}`, fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8, outline: 'none' }}
                 />
                 {emailError && <div style={{ fontSize: 12, color: 'var(--gw-red-t)', marginBottom: 6 }}>{emailError}</div>}
                 <button onClick={handleSave} disabled={generatingReport && !sessionReport} style={{ width: '100%', padding: '12px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: generatingReport && !sessionReport ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: generatingReport && !sessionReport ? 0.5 : 1 }}>
@@ -2535,18 +2535,18 @@ export function EntryChatPage() {
                   // subtree, and four unrelated specs went red on a scroll.
                   if (el) el.scrollIntoView?.({ behavior: 'smooth', block: 'center' })
                 }}
-                style={{ position: 'sticky', top: 8, zIndex: 5, background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 10, padding: '14px 16px', marginBottom: 20, boxShadow: '0 2px 10px rgba(0,0,0,.06)' }}
+                style={{ position: 'sticky', top: 8, zIndex: 5, background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b-soft)', borderRadius: 10, padding: '14px 16px', marginBottom: 20, boxShadow: '0 2px 10px rgba(0,0,0,.06)' }}
               >
                 <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-green-t)', marginBottom: 4 }}>Check your email</div>
                 <div style={{ fontSize: 13, color: 'var(--gw-green-t)', lineHeight: 1.6 }}>We sent a link to <strong>{email}</strong>. Click it to finish setting up and get your invite link.</div>
                 {inviteAdded.length > 0 ? (
-                  <div style={{ fontSize: 12, color: 'var(--gw-green-t)', lineHeight: 1.6, marginTop: 8, paddingTop: 8, borderTop: '1px solid #B6E8D4' }}>
+                  <div style={{ fontSize: 12, color: 'var(--gw-green-t)', lineHeight: 1.6, marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--gw-green-b-soft)' }}>
                     <strong>Waiting to send ({inviteAdded.length}):</strong> {inviteAdded.map(e => e.split(' - ')[0]).join(', ')}. Invites go out when you confirm your email.
                   </div>
                 ) : (
                   /* Saying nothing here read as "you have left something
                      undone". Nobody added is a perfectly good place to stop. */
-                  <div style={{ fontSize: 12, color: 'var(--gw-green-t)', lineHeight: 1.6, marginTop: 8, paddingTop: 8, borderTop: '1px solid #B6E8D4' }}>
+                  <div style={{ fontSize: 12, color: 'var(--gw-green-t)', lineHeight: 1.6, marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--gw-green-b-soft)' }}>
                     No one added yet. You can invite people whenever you're ready.
                   </div>
                 )}
@@ -2633,7 +2633,7 @@ export function EntryChatPage() {
                   <input
                     type="date" value={checkInBy}
                     onChange={e => setCheckInBy(e.target.value)}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: `1px solid ${emailError && !checkInBy ? '#C0392B' : 'var(--gw-border)'}`, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none', color: checkInBy ? 'var(--gw-text)' : 'var(--gw-muted)' }}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: `1px solid ${emailError && !checkInBy ? 'var(--gw-danger)' : 'var(--gw-border)'}`, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none', color: checkInBy ? 'var(--gw-text)' : 'var(--gw-muted)' }}
                   />
                 </>
               ) : (
@@ -2643,7 +2643,7 @@ export function EntryChatPage() {
                     <input
                       type="date" value={checkInBy}
                       onChange={e => setCheckInBy(e.target.value)}
-                      style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: `1px solid ${emailError && !checkInBy ? '#C0392B' : 'var(--gw-border)'}`, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none', color: checkInBy ? 'var(--gw-text)' : 'var(--gw-muted)' }}
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: `1px solid ${emailError && !checkInBy ? 'var(--gw-danger)' : 'var(--gw-border)'}`, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none', color: checkInBy ? 'var(--gw-text)' : 'var(--gw-muted)' }}
                     />
                   </div>
                   <div style={{ flex: 1 }}>
@@ -2657,7 +2657,7 @@ export function EntryChatPage() {
                 </div>
               )}
               {emailError && !checkInBy && emailError.toLowerCase().includes('date') && (
-                <div style={{ fontSize: 11.5, color: '#C0392B', marginTop: 6, fontWeight: 600 }}>Pick a date above so we know when to expect the first check-in.</div>
+                <div style={{ fontSize: 11.5, color: 'var(--gw-danger)', marginTop: 6, fontWeight: 600 }}>Pick a date above so we know when to expect the first check-in.</div>
               )}
             </div>
 
@@ -2682,7 +2682,7 @@ export function EntryChatPage() {
               <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.55, marginBottom: 10 }}>
                 {inviteSubtext}
               </div>
-              <div style={{ fontSize: 12, color: 'var(--gw-navy)', background: 'var(--gw-blue-bg)', border: '1px solid #CFE2F5', borderRadius: 8, padding: '8px 11px', lineHeight: 1.5, marginBottom: 10 }}>
+              <div style={{ fontSize: 12, color: 'var(--gw-navy)', background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 8, padding: '8px 11px', lineHeight: 1.5, marginBottom: 10 }}>
                 Add them here now. Anyone you added from the report above is already on this list. Invites don't go out yet - they're sent once you save this ground and confirm your email.
               </div>
               {/* THERE IS A LATER, AND IT SHOULD SAY SO.
@@ -2706,7 +2706,7 @@ export function EntryChatPage() {
                 }
                 const notice = notices[s ?? '']
                 return notice ? (
-                  <div style={{ background: '#FFF8EC', border: '1px solid #F5DFA0', borderRadius: 8, padding: '10px 12px', marginBottom: 12, fontSize: 12, color: '#7A5200', lineHeight: 1.55 }}>
+                  <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 8, padding: '10px 12px', marginBottom: 12, fontSize: 12, color: 'var(--gw-amber-t)', lineHeight: 1.55 }}>
                     {notice}
                   </div>
                 ) : null
@@ -2715,7 +2715,7 @@ export function EntryChatPage() {
               {inviteAdded.length > 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8 }}>
                   {inviteAdded.map(e => (
-                    <div key={e} style={{ fontSize: 12, color: 'var(--gw-green-t)', background: '#E7F6EF', borderRadius: 6, padding: '5px 10px' }}>✓ {e}</div>
+                    <div key={e} style={{ fontSize: 12, color: 'var(--gw-green-t)', background: 'var(--gw-green-bg)', borderRadius: 6, padding: '5px 10px' }}>✓ {e}</div>
                   ))}
                 </div>
               )}
@@ -2794,7 +2794,7 @@ export function EntryChatPage() {
                     Paste multiple emails
                   </button>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div style={{ flex: 1, fontSize: 12, color: 'var(--gw-navy)', background: 'var(--gw-blue-bg)', border: '0.5px solid #BFDBFE', borderRadius: 7, padding: '8px 10px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <div style={{ flex: 1, fontSize: 12, color: 'var(--gw-navy)', background: 'var(--gw-blue-bg)', border: '0.5px solid var(--gw-blue-b)', borderRadius: 7, padding: '8px 10px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {window.location.origin}/invite?token={inviteToken}
                     </div>
                     <button onClick={copyInviteLink} style={{ flexShrink: 0, padding: '8px 12px', borderRadius: 7, background: 'var(--gw-paper-2)', color: 'var(--gw-text)', fontSize: 12, fontWeight: 600, border: '0.5px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}>

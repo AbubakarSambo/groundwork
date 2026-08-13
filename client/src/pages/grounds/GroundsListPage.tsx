@@ -12,7 +12,7 @@ import { toast } from 'sonner'
 
 
 const MODE_COLORS: Record<string, { bg: string; color: string }> = {
-  Starting:       { bg: '#E8F8F5', color: 'var(--gw-green-t)' },
+  Starting:       { bg: 'var(--gw-green-bg)', color: 'var(--gw-green-t)' },
   Recognition:    { bg: 'var(--gw-amber-bg)', color: 'var(--gw-amber-t)' },
   Resolution:     { bg: 'var(--gw-blue-bg)', color: 'var(--gw-navy)' },
   'Multi-party':  { bg: 'var(--gw-blue-bg)', color: 'var(--gw-navy)' },
@@ -118,12 +118,12 @@ function GroundCard({ g, onClick }: { g: Ground; onClick: () => void }) {
           })()}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          {g.status === 'ACTIVE' && g.participants.length > 1 && !(g.checkIns ?? []).some(c => c.status === 'COMPLETED') && (g.overdue ?? 0) === 0 && <span style={{ fontSize: 11, fontWeight: 600, color: '#7A5200', background: '#FFF8EC', borderRadius: 20, padding: '2px 8px' }}>No check-ins yet</span>}
+          {g.status === 'ACTIVE' && g.participants.length > 1 && !(g.checkIns ?? []).some(c => c.status === 'COMPLETED') && (g.overdue ?? 0) === 0 && <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', borderRadius: 20, padding: '2px 8px' }}>No check-ins yet</span>}
           {/* A report was released to this person and they have not opened it.
               Across ten grounds and thirty-three people, not one report was
               ever activated - the release email was the only thing that ever
               said so, and nothing in the product did. */}
-          {(g as any).reportWaitingForMe && <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-green-t)', background: '#E8F8F5', borderRadius: 20, padding: '2px 8px' }}>Your report is ready</span>}
+          {(g as any).reportWaitingForMe && <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-green-t)', background: 'var(--gw-green-bg)', borderRadius: 20, padding: '2px 8px' }}>Your report is ready</span>}
           {(g.overdue ?? 0) > 0 && <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', borderRadius: 20, padding: '2px 8px' }}>{g.overdue} overdue</span>}
           {g.status === 'REPORT_READY' && <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-green-t)', background: 'var(--gw-green-bg)', borderRadius: 20, padding: '2px 8px' }}>Report ready</span>}
           {g.status === 'AWAITING_LEAD' && <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', borderRadius: 20, padding: '2px 8px' }}>Awaiting lead</span>}
@@ -242,7 +242,7 @@ export function GroundsListPage() {
 
       <div className="gw-bd" style={{ paddingTop: 8, maxWidth: 600, margin: '0 auto', width: '100%' }}>
         {isAdmin && awaiting.length > 0 && (
-          <div style={{ background: '#FDF8E3', border: '1px solid #E8D9A0', borderRadius: 12, padding: '14px 16px', marginBottom: 18 }}>
+          <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 12, padding: '14px 16px', marginBottom: 18 }}>
             <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--gw-amber-t)', marginBottom: 4 }}>
               Waiting for you
             </div>
@@ -410,9 +410,9 @@ export function GroundsListPage() {
           <>
             {/* Welcome banner after password setup */}
             {justSetUp && (
-              <div style={{ background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
+              <div style={{ background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b-soft)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-green-t)', marginBottom: 3 }}>Your account is live.</div>
-                <div style={{ fontSize: 12, color: '#3A7A60', lineHeight: 1.5 }}>You will see your grounds and reports here. Open a ground to start contributing.</div>
+                <div style={{ fontSize: 12, color: 'var(--gw-green-t-soft)', lineHeight: 1.5 }}>You will see your grounds and reports here. Open a ground to start contributing.</div>
               </div>
             )}
 

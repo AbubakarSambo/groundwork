@@ -172,7 +172,7 @@ export function BillingPage() {
               </div>
               <span style={{
                 fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20,
-                background: isPaused ? '#FFF3E0' : '#E7F6EF',
+                background: isPaused ? 'var(--gw-amber-bg)' : 'var(--gw-green-bg)',
                 color: isPaused ? '#B25E00' : 'var(--gw-green-t)',
               }}>
                 {isPaused ? 'Paused' : 'Active'}
@@ -262,9 +262,9 @@ export function BillingPage() {
                     <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-dark)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{g.label}</div>
                     <div style={{ marginTop: 4, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                       {isFree ? (
-                        <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: '#E7F6EF', color: 'var(--gw-green-t)' }}>Free ground</span>
+                        <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: 'var(--gw-green-bg)', color: 'var(--gw-green-t)' }}>Free ground</span>
                       ) : isSubscribed ? (
-                        <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: '#E7F6EF', color: 'var(--gw-green-t)' }}>Unlimited sessions</span>
+                        <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: 'var(--gw-green-bg)', color: 'var(--gw-green-t)' }}>Unlimited sessions</span>
                       ) : balance !== undefined ? (
                         <span style={{
                           fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20,
@@ -275,7 +275,7 @@ export function BillingPage() {
                         </span>
                       ) : null}
                       {!isSubscribed && !extUsed && (
-                        <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: '#F0FAF5', color: 'var(--gw-green-t)', border: '1px solid #B6E8D4' }}>
+                        <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: 'var(--gw-green-bg)', color: 'var(--gw-green-t)', border: '1px solid var(--gw-green-b-soft)' }}>
                           Free extension available
                         </span>
                       )}
@@ -328,7 +328,7 @@ export function BillingPage() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
                 <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--gw-dark)' }}>{PLAN_PRICES[plan]}</span>
                 {isSubscribed && orgSub?.plan === plan ? (
-                  <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: '#E7F6EF', color: 'var(--gw-green-t)' }}>Current</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: 'var(--gw-green-bg)', color: 'var(--gw-green-t)' }}>Current</span>
                 ) : (
                   /* One primary colour in the product. The subscribe buttons were
                      the only purple thing in it - a hardcoded hex in three files
@@ -375,7 +375,7 @@ export function BillingPage() {
               'Choose between buying sessions or subscribing your organization.',
               'Pause your organization subscription whenever you are no longer using Groundwork.',
             ].map((line, i) => (
-              <li key={i} style={{ fontSize: 13, color: '#4A4540', lineHeight: 1.6 }}>{line}</li>
+              <li key={i} style={{ fontSize: 13, color: 'var(--gw-sub-d)', lineHeight: 1.6 }}>{line}</li>
             ))}
           </ul>
         </div>
@@ -391,7 +391,7 @@ export function BillingPage() {
                   <span style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 700, color: 'var(--gw-dark)', letterSpacing: '.05em' }}>{c.code}</span>
                   <button
                     onClick={() => copyToClipboard(c.code)}
-                    style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 6, border: '1px solid var(--gw-border)', background: copied === c.code ? '#E7F6EF' : 'white', color: copied === c.code ? 'var(--gw-green-t)' : 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}
+                    style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 6, border: '1px solid var(--gw-border)', background: copied === c.code ? 'var(--gw-green-bg)' : 'white', color: copied === c.code ? 'var(--gw-green-t)' : 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}
                   >
                     {copied === c.code ? 'Copied' : 'Copy'}
                   </button>
@@ -422,7 +422,7 @@ export function BillingPage() {
             {sendCode.isPending ? 'Sending...' : 'Send code'}
           </button>
           {sentTo && (
-            <div style={{ marginTop: 12, fontSize: 13, color: 'var(--gw-green-t)', background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 7, padding: '10px 14px' }}>
+            <div style={{ marginTop: 12, fontSize: 13, color: 'var(--gw-green-t)', background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b-soft)', borderRadius: 7, padding: '10px 14px' }}>
               Code sent to {sentTo}
             </div>
           )}
@@ -445,12 +445,12 @@ export function BillingPage() {
             {generateCode.isPending ? 'Generating...' : 'Generate'}
           </button>
           {newCode && (
-            <div style={{ marginTop: 14, background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 8, padding: '12px 14px' }}>
+            <div style={{ marginTop: 14, background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b-soft)', borderRadius: 8, padding: '12px 14px' }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-green-t)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.06em' }}>New code</div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
                 <span style={{ fontFamily: 'monospace', fontSize: 16, fontWeight: 800, color: 'var(--gw-green-t)', letterSpacing: '.08em' }}>{newCode}</span>
                 <button onClick={() => copyToClipboard(newCode)}
-                  style={{ fontSize: 11, fontWeight: 700, padding: '4px 12px', borderRadius: 6, border: '1px solid #B6E8D4', background: copied === newCode ? 'var(--gw-green-t)' : 'white', color: copied === newCode ? 'white' : 'var(--gw-green-t)', cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}>
+                  style={{ fontSize: 11, fontWeight: 700, padding: '4px 12px', borderRadius: 6, border: '1px solid var(--gw-green-b-soft)', background: copied === newCode ? 'var(--gw-green-t)' : 'white', color: copied === newCode ? 'white' : 'var(--gw-green-t)', cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}>
                   {copied === newCode ? 'Copied' : 'Copy'}
                 </button>
               </div>

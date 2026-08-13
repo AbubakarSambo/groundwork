@@ -168,7 +168,7 @@ export function SettingsPage() {
                   borderRadius: 12,
                   border: 'none',
                   cursor: 'pointer',
-                  background: emailNotif ? 'var(--gw-navy)' : '#D1CEC9',
+                  background: emailNotif ? 'var(--gw-navy)' : 'var(--gw-border)',
                   position: 'relative',
                   flexShrink: 0,
                   transition: 'background .15s',
@@ -190,7 +190,7 @@ export function SettingsPage() {
               </button>
             </div>
             {notifSaved && (
-              <div style={{ fontSize: 12, color: 'var(--gw-green-t)', padding: '8px 16px', borderTop: '0.5px solid var(--gw-border)', background: '#E8F8F5' }}>
+              <div style={{ fontSize: 12, color: 'var(--gw-green-t)', padding: '8px 16px', borderTop: '0.5px solid var(--gw-border)', background: 'var(--gw-green-bg)' }}>
                 Saved.
               </div>
             )}

@@ -95,3 +95,63 @@ describe('the heading comes from the kit', () => {
     expect(S).not.toMatch(/letterSpacing: '\.06em'/)
   })
 })
+
+
+describe('no colour is shared between pages without a name', () => {
+  /**
+   * THE TAIL I HAD DISMISSED. I called the 309 remaining literals "real one-offs, not drift" without
+   * looking at them. They were three pale greens, three dark ambers, two dark reds, two pale blues,
+   * four pale amber borders and two pale red borders - each family one intent with several
+   * accidental values, because a colour typed from memory lands a few points off every time.
+   *
+   * The rule that survives: a colour on more than one page is a decision, and a decision needs a
+   * name. A colour on one page is that page's accent and can stay a literal.
+   */
+  const rgb = (h: string) => {
+    const x = h.replace('#', '')
+    return [0, 2, 4].map(i => parseInt(x.slice(i, i + 2), 16))
+  }
+
+  it('every hex left in the pages appears in exactly one file', () => {
+    const seen = new Map<string, string[]>()
+    for (const f of files) {
+      const body = strip(readFileSync(f, 'utf8'))
+      for (const h of new Set((body.match(/#[0-9A-Fa-f]{6}/g) ?? []).map(x => x.toUpperCase()))) {
+        seen.set(h, [...(seen.get(h) ?? []), f.replace(SRC, '')])
+      }
+    }
+    const shared = [...seen.entries()].filter(([, fs]) => fs.length > 1).map(([h, fs]) => `${h} in ${fs.length}`)
+    expect(shared).toEqual([])
+  })
+
+  it('and the soft tokens exist, because inventing a fifth pale amber is what they prevent', () => {
+    const TOKENS = readFileSync(join(SRC, 'index.css'), 'utf8')
+    for (const t of ['--gw-green-b-soft', '--gw-green-t-soft', '--gw-danger', '--gw-sub-d', '--gw-amber-b-soft', '--gw-red-b-soft', '--gw-green-live']) {
+      expect(TOKENS).toContain(t)
+    }
+  })
+
+  it('and no token sits within a hair of another token of a different hue', () => {
+    /**
+     * THE MISTAKE THE FIRST PASS MADE, kept out by a test rather than by my remembering.
+     *
+     * Collapsing by RGB distance alone mapped a pale blue onto --gw-green-bg and a pale green onto
+     * --gw-blue-bg: the values are six points apart and the meanings are opposite. Hue has to be a
+     * hard constraint, so this asserts the token set itself never puts two different hues close
+     * enough for that swap to look reasonable to the next person doing it by eye.
+     */
+    const TOKENS = readFileSync(join(SRC, 'index.css'), 'utf8')
+    const defs = [...TOKENS.matchAll(/(--gw-[a-z0-9-]+):\s*(#[0-9A-Fa-f]{6})/g)].map(m => [m[1], m[2].toUpperCase()] as const)
+    const collisions: string[] = []
+    for (const [na, va] of defs) {
+      for (const [nb, vb] of defs) {
+        if (na >= nb) continue
+        const [ra, ga, ba] = rgb(va), [rb, gb, bb] = rgb(vb)
+        const close = Math.max(Math.abs(ra - rb), Math.abs(ga - gb), Math.abs(ba - bb)) <= 4
+        // Same value under two names is fine only where one is deliberately an alias.
+        if (close && va !== vb) collisions.push(`${na} ${va} vs ${nb} ${vb}`)
+      }
+    }
+    expect(collisions).toEqual([])
+  })
+})

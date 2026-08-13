@@ -143,7 +143,7 @@ export function ResolutionPanel({ groundId }: { groundId: string }) {
       )}
 
       {totalActive > 0 && (
-        <div style={{ marginTop: 14, borderTop: '1px solid #F0EEE9', paddingTop: 10 }}>
+        <div style={{ marginTop: 14, borderTop: '1px solid var(--gw-bg)', paddingTop: 10 }}>
           <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 6 }}>
             {confirmedCount} of {totalActive} {totalActive === 1 ? 'person has' : 'people have'} answered
           </div>

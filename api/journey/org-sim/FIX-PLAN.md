@@ -5434,6 +5434,40 @@ things on these lists turned out to be already built.
 | **W14-8 rest** | Page layouts onto Zone/Card/Row/Stat | L | Palette and headings are shared now. This part is a redesign, not wiring, and wants one deliberate pass. |
 | **W8-49** | 38 routes collapsed onto 14 pages, and `/invite` + `/join` + `/verify-email` as one arrival page | L | The three arrival routes still exist separately. Blocked on W8-52. |
 | **F1** | Ground-truth reproducibility harness | M | The twelve-session run passes but is not yet reproducible on demand as a gate. |
-| | 309 one-off hex accents in the app | S | Real one-offs, not drift. Worth naming only if a second page starts using one. |
+| | 309 one-off hex accents in the app | S | **See Stage 1 below - I was wrong, they were not one-offs.** |
 
 Nothing on this list is a bug. The live-bug column is empty for the first time since wave 8.
+
+
+## Stage 1 - the tail I had dismissed - DONE
+
+I called the 309 remaining hex literals "real one-offs, not drift" without looking at them. Looking:
+
+| Family | Values found | Token that existed |
+| --- | --- | --- |
+| Pale green background | #E7F6EF (28 uses), #E8F8F5 (14), #F0FAF5 | `--gw-green-bg` |
+| Dark amber text | #7A4B00, #8A6C00, #7A5200 (25 between them) | `--gw-amber-t` |
+| Pale amber border | #F5D9A0, #F5DFA0, #E4C88A, #E8D9A0 | none - that was the gap |
+| Pale red border | #F5C6C6, #F87171 | none |
+| Off-white | #EFEDE8, #F0EEE9, #F7F6F3, #F4F1EA | `--gw-bg`, `--gw-paper-2` |
+| Dark red | #8B1A1A | `--gw-red-t` |
+
+Each family is one intent with several accidental values, because a colour typed from memory lands a
+few points off every time. 1240 literals became 124, and every one of those 124 now appears on
+exactly one page - which is the rule worth keeping: **a colour on more than one page is a decision
+and needs a name; a colour on one page is that page's accent.**
+
+Seven new tokens for the ones that are genuinely a different colour rather than a bad copy:
+`--gw-green-b-soft`, `--gw-green-t-soft`, `--gw-danger`, `--gw-sub-d`, `--gw-amber-b-soft`,
+`--gw-red-b-soft`, `--gw-green-live`.
+
+**The first attempt at this was wrong and the record should say so.** Collapsing by RGB distance
+alone mapped a pale blue onto `--gw-green-bg` and a pale green onto `--gw-blue-bg` - six points
+apart, opposite meanings. Reverted, redone with hue as a hard constraint, and the constraint is now
+a test rather than something I have to remember.
+
+**And the guard immediately found something I never would have.** `--gw-clay-bg` #F8ECEA sat four
+points from `--gw-red-bg` #FCEBEB: the Risk panel, the privacy notice and an error were the same
+pale pink. A product whose decorative tone and error tone are indistinguishable has no error tone.
+Clay is now the warm terracotta tint it was always supposed to be, #F6E9DF, which also matches the
+#EDD0CB border already sitting on it.

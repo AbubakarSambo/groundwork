@@ -141,7 +141,7 @@ export function OrgMembersPage() {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
                   {!m.isEmailVerified && (
-                    <span style={{ fontSize: 11, background: 'var(--gw-amber-bg)', color: 'var(--gw-amber-t)', border: '1px solid #F5D9A0', borderRadius: 6, padding: '2px 7px', fontWeight: 600 }}>
+                    <span style={{ fontSize: 11, background: 'var(--gw-amber-bg)', color: 'var(--gw-amber-t)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 6, padding: '2px 7px', fontWeight: 600 }}>
                       Pending
                     </span>
                   )}

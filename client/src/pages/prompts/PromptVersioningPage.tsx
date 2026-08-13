@@ -205,7 +205,7 @@ function DiffView({ oldContent, newContent }: { oldContent: string; newContent: 
             color: line.type === 'added' ? '#1A7A4A' : line.type === 'removed' ? '#991B1B' : 'var(--gw-text)',
             whiteSpace: 'pre-wrap',
             wordBreak: 'break-word',
-            borderLeft: `3px solid ${line.type === 'added' ? 'var(--gw-green-b)' : line.type === 'removed' ? '#F87171' : 'transparent'}`,
+            borderLeft: `3px solid ${line.type === 'added' ? 'var(--gw-green-b)' : line.type === 'removed' ? 'var(--gw-red-b-soft)' : 'transparent'}`,
           }}
         >
           <span style={{ userSelect: 'none', opacity: 0.5, marginRight: 8 }}>
@@ -533,7 +533,7 @@ function DraftEditor({
       </div>
 
       {invariantError && (
-        <div style={{ background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: 4, padding: '10px 14px', marginTop: 12, fontSize: 12, color: '#991B1B' }}>
+        <div style={{ background: '#FEF2F2', border: '1px solid var(--gw-red-b)', borderRadius: 4, padding: '10px 14px', marginTop: 12, fontSize: 12, color: '#991B1B' }}>
           <div style={{ fontWeight: 600, marginBottom: 4 }}>These protected strings must be present:</div>
           <ul style={{ margin: 0, paddingLeft: 18 }}>
             {invariantError.map((s, i) => <li key={i}>{s}</li>)}

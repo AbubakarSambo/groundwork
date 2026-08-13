@@ -68,7 +68,7 @@ function WhatsAppToggle() {
           disabled={toggle.isPending}
           style={{
             width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer',
-            background: data.adminEnabled ? 'var(--gw-navy)' : '#D1CEC9',
+            background: data.adminEnabled ? 'var(--gw-navy)' : 'var(--gw-border)',
             position: 'relative', flexShrink: 0, marginLeft: 16,
           }}
           aria-label={data.adminEnabled ? 'Turn off WhatsApp' : 'Turn on WhatsApp'}

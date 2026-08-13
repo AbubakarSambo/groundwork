@@ -232,10 +232,10 @@ export function MagicVerifyPage() {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--gw-bg)', padding: '0 20px' }}>
         <div style={{ maxWidth: 380, width: '100%' }}>
-          <div style={{ background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 12, padding: '20px 22px', marginBottom: 20, textAlign: 'center' }}>
+          <div style={{ background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b-soft)', borderRadius: 12, padding: '20px 22px', marginBottom: 20, textAlign: 'center' }}>
             <div style={{ fontSize: 22, marginBottom: 8 }}>✓</div>
             <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--gw-green-t)', marginBottom: 4 }}>Your ground is set up.</div>
-            <div style={{ fontSize: 13, color: '#3A7A60', lineHeight: 1.6 }}>Your session is on record and your account is live.</div>
+            <div style={{ fontSize: 13, color: 'var(--gw-green-t-soft)', lineHeight: 1.6 }}>Your session is on record and your account is live.</div>
           </div>
           {joinUrl && (
             <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
@@ -250,21 +250,21 @@ export function MagicVerifyPage() {
             </div>
           )}
           {invited.length > 0 && (
-            <div style={{ background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
+            <div style={{ background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b-soft)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-green-t)', marginBottom: 6 }}>Invited ({invited.length}) ✓</div>
-              <div style={{ fontSize: 12, color: '#3A7A60', lineHeight: 1.55, marginBottom: 6 }}>Each of these people has been emailed a private link to add their own account:</div>
+              <div style={{ fontSize: 12, color: 'var(--gw-green-t-soft)', lineHeight: 1.55, marginBottom: 6 }}>Each of these people has been emailed a private link to add their own account:</div>
               {invited.map(e => (
                 <div key={e} style={{ fontSize: 12, color: 'var(--gw-green-t)', fontFamily: 'monospace' }}>{e}</div>
               ))}
-              <div style={{ fontSize: 12, color: '#3A7A60', lineHeight: 1.55, marginTop: 8, paddingTop: 8, borderTop: '1px solid #B6E8D4' }}>
+              <div style={{ fontSize: 12, color: 'var(--gw-green-t-soft)', lineHeight: 1.55, marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--gw-green-b-soft)' }}>
                 Track who has checked in on your ground page - each person shows as invited, in progress, or completed, and you can send a reminder from there.
               </div>
             </div>
           )}
           {failedInvites.length > 0 && (
-            <div style={{ background: '#FFF8EC', border: '1px solid #F5DFA0', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#7A5200', marginBottom: 6 }}>{invited.length === 0 ? 'None of your invites could be sent.' : 'Some invites did not send.'}</div>
-              <div style={{ fontSize: 12, color: '#7A5200', lineHeight: 1.55, marginBottom: 8 }}>These addresses were not reached. You can resend from your ground page:</div>
+            <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 6 }}>{invited.length === 0 ? 'None of your invites could be sent.' : 'Some invites did not send.'}</div>
+              <div style={{ fontSize: 12, color: 'var(--gw-amber-t)', lineHeight: 1.55, marginBottom: 8 }}>These addresses were not reached. You can resend from your ground page:</div>
               {failedInvites.map(e => (
                 <div key={e} style={{ fontSize: 12, color: '#5A3A00', fontFamily: 'monospace' }}>{e}</div>
               ))}
@@ -314,9 +314,9 @@ export function MagicVerifyPage() {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--gw-bg)', padding: '0 20px' }}>
         <div style={{ maxWidth: 400, width: '100%', textAlign: 'center' }}>
-          <div style={{ background: '#FFF8EC', border: '1px solid #F5DFA0', borderRadius: 12, padding: '20px 22px', marginBottom: 20, textAlign: 'left' }}>
-            <div style={{ fontSize: 16, fontWeight: 700, color: '#7A5200', marginBottom: 6 }}>We couldn't find your session on this device.</div>
-            <div style={{ fontSize: 13, color: '#7A5200', lineHeight: 1.6 }}>
+          <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 12, padding: '20px 22px', marginBottom: 20, textAlign: 'left' }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 6 }}>We couldn't find your session on this device.</div>
+            <div style={{ fontSize: 13, color: 'var(--gw-amber-t)', lineHeight: 1.6 }}>
               Your account is active, but the session you saved isn't on this device and we don't have a copy of it.
               If you finished your session in a different browser or on another device, open this link there - your session is still saved on that device.
             </div>
@@ -336,8 +336,8 @@ export function MagicVerifyPage() {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--gw-bg)', padding: '0 20px' }}>
         <div style={{ maxWidth: 380, width: '100%', textAlign: 'center' }}>
-          <div style={{ background: '#FFF4F4', border: '1px solid #F5C6C6', borderRadius: 12, padding: '20px 22px', marginBottom: 20 }}>
-            <div style={{ fontSize: 16, fontWeight: 700, color: '#8B1A1A', marginBottom: 6 }}>Your account is active, but the ground wasn't saved.</div>
+          <div style={{ background: 'var(--gw-red-bg)', border: '1px solid var(--gw-red-b-soft)', borderRadius: 12, padding: '20px 22px', marginBottom: 20 }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--gw-red-t)', marginBottom: 6 }}>Your account is active, but the ground wasn't saved.</div>
             <div style={{ fontSize: 13, color: '#7A3030', lineHeight: 1.6 }}>Something went wrong saving your session. Your account is ready - go to your grounds page and start again from there.</div>
           </div>
           <button
