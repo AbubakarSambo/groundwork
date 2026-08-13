@@ -65,8 +65,18 @@ import { toast } from 'sonner'
  * first session too - a ground runs ninety days and "what was this for again" is a
  * question people have in week eight, not just week one.
  */
-function GroundTopic({ label, scenario, brief, alignment, sessionsDone, totalSessions, parties, peersHidden }: {
+function GroundTopic({ label, scenario, brief, alignment, sessionsDone, totalSessions, parties, peersHidden, notOpenYet }: {
   label: string
+  /**
+   * NOBODY IS LATE FOR A SESSION THAT HAS NOT OPENED. W14-12.
+   *
+   * Watched at rest for the first time: a ground sitting between sessions with a date in the
+   * future, which is where a ground spends most of its life. The composer said the right thing -
+   * "your next check-in opens 18 August" - and two inches above it the roster said
+   * "You - waiting, Abubakar - waiting", which is the word for somebody who has not done a thing
+   * they could have done. Neither of them could have.
+   */
+  notOpenYet?: boolean
   scenario?: string | null
   brief?: string | null
   alignment?: string | null
@@ -158,7 +168,7 @@ function GroundTopic({ label, scenario, brief, alignment, sessionsDone, totalSes
             {(parties ?? []).map((p, i) => (
               <span
                 key={i}
-                title={p.done ? 'Has checked in for the current session' : 'Has not checked in yet'}
+                title={p.done ? 'Has checked in for the current session' : notOpenYet ? 'The next session has not opened yet' : 'Has not checked in yet'}
                 style={{
                   fontSize: 12, padding: '3px 9px', borderRadius: 20,
                   background: p.done ? 'var(--gw-green-bg, #E7F6EF)' : 'var(--gw-bg)',
@@ -167,7 +177,7 @@ function GroundTopic({ label, scenario, brief, alignment, sessionsDone, totalSes
                 }}
               >
                 {p.isSelf ? 'You' : p.name}
-                <span style={{ color: 'var(--gw-sub)' }}>{p.done ? ' · checked in' : ' · waiting'}</span>
+                <span style={{ color: 'var(--gw-sub)' }}>{p.done ? ' · checked in' : notOpenYet ? '' : ' · waiting'}</span>
               </span>
             ))}
           </div>
@@ -562,6 +572,7 @@ export function GroundChat({
           totalSessions={totalSessions}
           parties={parties}
           peersHidden={peersHidden}
+          notOpenYet={!openCheckInId && !!nextOpensAt}
         />
 
         {/*

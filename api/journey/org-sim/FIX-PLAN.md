@@ -4768,6 +4768,23 @@ And `/grounds/:id/report` stays a real URL even though the Report tab shows the 
 because the report-ready email points at it. Same reason `/auth/sent`, `/set-password`,
 `/reset-password` and `/invite` cannot be renamed: those URLs are in inboxes nobody controls.
 
+### W14-12 · Watched at rest, and it was calling people late · DONE
+
+Done by moving a real ground's last session back to NOT_STARTED with the date five days out, reading
+the page, and putting the rows back exactly as they were.
+
+Most of it holds up. The composer says the right thing - "Your next check-in opens 18 August. Notes
+are yours alone" - and offers the note instead of a dead input, which is the whole point of that
+design.
+
+Two inches above it, the roster said "You - waiting, Abubakar - waiting".
+
+Waiting is the word for somebody who has not done a thing they could have done. Neither of them
+could have; the session does not exist yet. On the product whose entire subject is who did what and
+when, a ground sitting quietly between sessions was telling a lead their team was behind. It now
+shows the names with no status until the session opens, and the two halves of that screen read the
+same state rather than deriving it twice, which is how they came to disagree.
+
 ## Sizing
 
 | | S | M |
@@ -5139,6 +5156,23 @@ Nothing is cleared until a ground exists, and a failed commit says so instead of
 Everything I verified used a ground whose sessions were all complete or all open. Nobody has
 watched a ground sit between sessions with a date in the future, which is where most grounds spend
 most of their life.
+
+### W14-12 · Watched at rest, and it was calling people late · DONE
+
+Done by moving a real ground's last session back to NOT_STARTED with the date five days out, reading
+the page, and putting the rows back exactly as they were.
+
+Most of it holds up. The composer says the right thing - "Your next check-in opens 18 August. Notes
+are yours alone" - and offers the note instead of a dead input, which is the whole point of that
+design.
+
+Two inches above it, the roster said "You - waiting, Abubakar - waiting".
+
+Waiting is the word for somebody who has not done a thing they could have done. Neither of them
+could have; the session does not exist yet. On the product whose entire subject is who did what and
+when, a ground sitting quietly between sessions was telling a lead their team was behind. It now
+shows the names with no status until the session opens, and the two halves of that screen read the
+same state rather than deriving it twice, which is how they came to disagree.
 
 ## Sizing
 
