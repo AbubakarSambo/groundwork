@@ -4785,6 +4785,38 @@ when, a ground sitting quietly between sessions was telling a lead their team wa
 shows the names with no status until the session opens, and the two halves of that screen read the
 same state rather than deriving it twice, which is how they came to disagree.
 
+### W14-8 · One design language, and it already existed · PARTLY DONE
+
+The audit said the marketing site and the product carried different design principles. Reading the
+colours says something more useful: the site was already using the product's palette - #1A1916,
+#0C447C, #6B6560, #9B9590, #E2E0DB, the same values as `client/src/index.css` - typed out by hand 538
+times with nothing naming them.
+
+So there was never a second design language. There was one language with no vocabulary, which is how
+it drifted where it drifted:
+
+| Drift | Uses | Resolved to |
+| --- | --- | --- |
+| `#4A5568`, a blue-grey from another palette, used for body text beside the product's own | 35 | `--gw-sub` |
+| Four near-identical off-whites: `#FAF9F7`, `#F5F3EF`, `#EDEBE7`, `#E8E6E3` | 60 | `--gw-paper`, `--gw-paper-2` |
+
+**Two things were broken and neither announced itself.** `global.css` was pulled in with a
+`<link rel="stylesheet" href="/src/styles/global.css">`, which Vite serves as a JavaScript module in
+dev - so the stylesheet applied nothing at all. That was invisible while the file held one Tailwind
+import and every page wrote literals; the moment tokens went in there, the whole site would have
+rendered with no palette. And the obvious place to import it, `Layout.astro`, reaches four pages out
+of five: the home page, the busiest one, does not use the layout - it is a standalone document with
+its own head. The import lives in `Nav.astro`, the one thing all five include.
+
+Both found by reading `--gw-text` off the running page and getting an empty string, twice.
+
+Checked against the pre-change render rather than by eye: low-contrast elements went from 8 to 7, so
+this did not cost anything. Guarded by `marketing/one-palette.mjs`, bite-checked on both failure
+modes.
+
+**Still open on this item:** the app's own pages remain on inline styles rather than
+`components/gw/kit.tsx`. The palette is now one palette everywhere; the component vocabulary is not.
+
 ## Sizing
 
 | | S | M |
@@ -5173,6 +5205,38 @@ could have; the session does not exist yet. On the product whose entire subject 
 when, a ground sitting quietly between sessions was telling a lead their team was behind. It now
 shows the names with no status until the session opens, and the two halves of that screen read the
 same state rather than deriving it twice, which is how they came to disagree.
+
+### W14-8 · One design language, and it already existed · PARTLY DONE
+
+The audit said the marketing site and the product carried different design principles. Reading the
+colours says something more useful: the site was already using the product's palette - #1A1916,
+#0C447C, #6B6560, #9B9590, #E2E0DB, the same values as `client/src/index.css` - typed out by hand 538
+times with nothing naming them.
+
+So there was never a second design language. There was one language with no vocabulary, which is how
+it drifted where it drifted:
+
+| Drift | Uses | Resolved to |
+| --- | --- | --- |
+| `#4A5568`, a blue-grey from another palette, used for body text beside the product's own | 35 | `--gw-sub` |
+| Four near-identical off-whites: `#FAF9F7`, `#F5F3EF`, `#EDEBE7`, `#E8E6E3` | 60 | `--gw-paper`, `--gw-paper-2` |
+
+**Two things were broken and neither announced itself.** `global.css` was pulled in with a
+`<link rel="stylesheet" href="/src/styles/global.css">`, which Vite serves as a JavaScript module in
+dev - so the stylesheet applied nothing at all. That was invisible while the file held one Tailwind
+import and every page wrote literals; the moment tokens went in there, the whole site would have
+rendered with no palette. And the obvious place to import it, `Layout.astro`, reaches four pages out
+of five: the home page, the busiest one, does not use the layout - it is a standalone document with
+its own head. The import lives in `Nav.astro`, the one thing all five include.
+
+Both found by reading `--gw-text` off the running page and getting an empty string, twice.
+
+Checked against the pre-change render rather than by eye: low-contrast elements went from 8 to 7, so
+this did not cost anything. Guarded by `marketing/one-palette.mjs`, bite-checked on both failure
+modes.
+
+**Still open on this item:** the app's own pages remain on inline styles rather than
+`components/gw/kit.tsx`. The palette is now one palette everywhere; the component vocabulary is not.
 
 ## Sizing
 
