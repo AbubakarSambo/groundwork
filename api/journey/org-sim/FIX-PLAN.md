@@ -6070,3 +6070,35 @@ Suites: api 1684, client 661.
 
 - `GroundBaselineEntry` - the append-only day-one observations. Separate from the baseline, still unused.
 - The kit pass on `EntryChatPage` - 358 inline styles, the first thing a new person meets.
+
+
+## The persona gate went red on correct behaviour
+
+One critical finding in suite A: "the unverified claim is not repeated back as established fact". The
+engine's reply was:
+
+> That's a strong statement, and it's now the first thing in your record, in your words.
+>
+> To make that statement count, I need to capture what's behind it. When you say "Sam is the problem",
+> what is the most recent, specific example you would point to?
+
+That is exactly what the suite exists to protect. The claim is attributed twice - **in your words** and
+**When you say** - and quoted. Nothing was wrong with it.
+
+**The checker was wrong, and this is the fourth shape to defeat it - the first that was purely the
+checker's fault.** `A2_QUOTED` was `[“"'‘]...[”"'’]`, so the apostrophe in "That's" opened a quoted
+span. It consumed `s a strong statement, and it'` as the quote, which left the real quoted claim
+unpaired and unstripped, so the residue held a bare `Sam is the problem"` and the gate called textbook
+behaviour an assertion.
+
+Double quotes are matched on their own now. Single quotes count only when not flanked by letters, which
+is what separates 'a quoted phrase' from don't.
+
+Two fixtures pin it: the full reply that failed, expected clean, and `"That's settled then. Sam is the
+problem and I have recorded it as established."` expected caught - so the fix cannot become a way to
+slip an assertion past by writing a contraction. Eleven fixtures, all passing, and the self-check runs
+before any browser work so this cannot rot silently.
+
+The file's own note is worth repeating because it keeps being right: "the sturdier version of this check
+is not a longer list. It is to assert what the engine DOES - hand the claim back and ask for the
+person's own account - rather than the absence of a phrase."
