@@ -4843,6 +4843,39 @@ The synthesis is specific where the record was specific - it counts the ownershi
 
 Tasks #53 and #54 are this, and they are closed.
 
+### W14-13 · The confidence read is on · DONE
+
+The open question from wave 14. Turned on, and the caveat that was blocking it is resolved.
+
+**The caveat was mine, and it was wrong.** Soft spots came back empty on the test ground and I read
+that as unproven. Checked against her real closed twelve-session ground instead:
+
+| | Sessions | Corroborated | Specifics repeated | Documents referred to |
+| --- | --- | --- | --- | --- |
+| Lead | 12 | 7 of 16 corroborable | 5 of 18 | no documents |
+| Participant | 12 | 16 of 33 corroborable | 8 of 24 | 1 of 1 |
+
+Empty is the correct answer there. Nothing is unchecked, the detail moves session to session, and the
+one attached document is actually referred to. Each of the three spots then fired on a shape that
+deserves it, and the false positive she caught twice - a lead whose account is all targets nobody
+else could corroborate - correctly stayed silent.
+
+**Two things found by looking at the real thing rather than the fixture.**
+
+The weigh section on her ground is not thin at all: fifteen standards she stated in her own words
+across twelve sessions, with the `[INFERRED:]` markers present that the page splits out.
+
+And the page was **dropping the section's own note**. `whatALeaderCanWeigh` computes a sentence about
+this ground - "three things you said mattered were never reached by anybody's account. That is not
+evidence against anyone; it means the record cannot answer that part" - and the page rendered only
+the standing caveat that ships beside it. Two notes doing different jobs. A lead was reading a list
+of unmet standards with nothing telling them what that does and does not mean, which is the one
+sentence the module wrote for exactly that moment. Both render now.
+
+The parse still refuses everything except the exact string "true", so an environment that forgets the
+variable gets the product as it was rather than a half-configured version of the new thing.
+Production is set outside this repo; `.env.example` carries it.
+
 ## Sizing
 
 | | S | M |
@@ -5289,6 +5322,39 @@ The synthesis is specific where the record was specific - it counts the ownershi
 5 to 13 across the twelve weeks, which is the kind of thing only a real run produces.
 
 Tasks #53 and #54 are this, and they are closed.
+
+### W14-13 · The confidence read is on · DONE
+
+The open question from wave 14. Turned on, and the caveat that was blocking it is resolved.
+
+**The caveat was mine, and it was wrong.** Soft spots came back empty on the test ground and I read
+that as unproven. Checked against her real closed twelve-session ground instead:
+
+| | Sessions | Corroborated | Specifics repeated | Documents referred to |
+| --- | --- | --- | --- | --- |
+| Lead | 12 | 7 of 16 corroborable | 5 of 18 | no documents |
+| Participant | 12 | 16 of 33 corroborable | 8 of 24 | 1 of 1 |
+
+Empty is the correct answer there. Nothing is unchecked, the detail moves session to session, and the
+one attached document is actually referred to. Each of the three spots then fired on a shape that
+deserves it, and the false positive she caught twice - a lead whose account is all targets nobody
+else could corroborate - correctly stayed silent.
+
+**Two things found by looking at the real thing rather than the fixture.**
+
+The weigh section on her ground is not thin at all: fifteen standards she stated in her own words
+across twelve sessions, with the `[INFERRED:]` markers present that the page splits out.
+
+And the page was **dropping the section's own note**. `whatALeaderCanWeigh` computes a sentence about
+this ground - "three things you said mattered were never reached by anybody's account. That is not
+evidence against anyone; it means the record cannot answer that part" - and the page rendered only
+the standing caveat that ships beside it. Two notes doing different jobs. A lead was reading a list
+of unmet standards with nothing telling them what that does and does not mean, which is the one
+sentence the module wrote for exactly that moment. Both render now.
+
+The parse still refuses everything except the exact string "true", so an environment that forgets the
+variable gets the product as it was rather than a half-configured version of the new thing.
+Production is set outside this repo; `.env.example` carries it.
 
 ## Sizing
 

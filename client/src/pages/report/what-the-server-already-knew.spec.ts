@@ -128,3 +128,25 @@ describe('what must not appear', () => {
     expect(CODE).not.toMatch(/whatALeaderCanWeigh\(/)
   })
 })
+
+describe('the section\'s own reading of its gaps', () => {
+  /**
+   * PROVED AT THE ASSEMBLED SECTION, on her real closed twelve-session ground, at the point of
+   * turning CONFIDENCE_ENABLED on. `whatALeaderCanWeigh` returns TWO notes-worth of writing and the
+   * page rendered one of them:
+   *
+   *   section.note   this ground: "three things you said mattered were never reached"
+   *   the caveat     any ground: this is material, not a verdict
+   *
+   * A lead was reading a list of unmet standards with nothing telling them what that does and does
+   * not mean, which is the one sentence the module wrote for exactly that moment.
+   */
+  it('renders the note the module computed for this ground', () => {
+    expect(CODE).toMatch(/section\.note &&/)
+  })
+
+  it('as well as the standing caveat, not instead of it', () => {
+    expect(CODE).toMatch(/note=\{\(report as any\)\.whatTheGroundCanTellYouNote\}/)
+    expect(CODE).toMatch(/\{note\}/)
+  })
+})

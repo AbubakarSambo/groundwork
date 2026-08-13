@@ -295,6 +295,18 @@ function WhatTheGroundCanTellYou({ section, note }: {
     whatYouSaidGoodMeans: { text: string; session: number }[]
     whatTheRecordHolds: { kind: string; text: string; session: number }[]
     whatNobodyHasEvidenceFor: string[]
+    /**
+     * THE SECTION'S OWN NOTE, which was being dropped.
+     *
+     * `whatALeaderCanWeigh` computes a note about THIS ground - "three things you said mattered
+     * were never reached by anybody's account" - and the page rendered only the standing caveat
+     * that ships beside it. Two notes doing different jobs: one says what this record cannot
+     * answer, the other says what the section is not. Losing the first left a lead reading a list
+     * of unmet standards with no sentence telling them what that does and does not mean.
+     *
+     * Found by reading the assembled section off her real closed ground rather than the fixture.
+     */
+    note?: string
   }
   note: string
 }) {
@@ -339,8 +351,14 @@ function WhatTheGroundCanTellYou({ section, note }: {
           )}
         </div>
       ))}
-      {/* The module ships this sentence with the section. It travels with it. */}
-      <div style={{ fontSize: 11.5, color: '#6B6560', lineHeight: 1.6, borderTop: '1px solid #E2E0DB', paddingTop: 9 }}>
+      {/* This ground's own reading of its gaps, then the standing caveat. Both ship with the
+          section and they say different things. */}
+      {section.note && (
+        <div style={{ fontSize: 12.5, color: '#1A1916', lineHeight: 1.6, borderTop: '1px solid #E2E0DB', paddingTop: 9 }}>
+          {section.note}
+        </div>
+      )}
+      <div style={{ fontSize: 11.5, color: '#6B6560', lineHeight: 1.6, borderTop: section.note ? 'none' : '1px solid #E2E0DB', paddingTop: section.note ? 6 : 9 }}>
         {note}
       </div>
     </div>
