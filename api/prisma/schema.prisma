@@ -408,6 +408,17 @@ model Ground {
   mode           GroundMode     @default(PRIVATE)
 
   timelineDays  Int     @map("timeline_days")
+  /// DID THE LEAD CHOOSE THIS, OR DID WE.
+  ///
+  /// `timelineDays` is not nullable and `cadence` has a default, so both are set on every ground from
+  /// the moment it exists - by the lead if they said so, and by `DEFAULT_TIMELINE_DAYS[scenario]` if
+  /// they did not. The context chat's gap reader asked about duration only when it was ABSENT, and it
+  /// is never absent, so the question G37 exists to ask has never once been asked.
+  ///
+  /// These say which it was. Found by trying to null the column to test the gap and discovering the
+  /// constraint forbids it.
+  timelineStated Boolean @default(false) @map("timeline_stated")
+  cadenceStated  Boolean @default(false) @map("cadence_stated")
   timelineWeeks Int?    @map("timeline_weeks")
   cadence       Cadence @default(FORTNIGHTLY)
   cadenceAnchorDay Int? @map("cadence_anchor_day") // weekly: 0=Sun..6=Sat ("every Monday"); monthly: 1-31 (day of month)

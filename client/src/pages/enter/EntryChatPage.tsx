@@ -9,6 +9,7 @@ import { VennIcon } from '@/components/gw/VennIcon'
 import { plannedSessionsFor } from '@/lib/sessionCount'
 import { SlowStep, CLOSING_STEPS } from '@/components/gw/SlowStep'
 import { toast } from 'sonner'
+import { Sec } from '@/components/gw/kit'
 
 const STORAGE_KEY = 'gw_entry_session'
 /** Where the API lives, for the one place we hand the browser away (Google). */
@@ -2239,7 +2240,7 @@ export function EntryChatPage() {
 
                 {/* How complete your account is (one-sided until others check in) */}
                 <div style={{ marginBottom: 16 }}>
-                  <div style={{ fontSize: 10, letterSpacing: '.09em', textTransform: 'uppercase', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 6 }}>How complete your account is</div>
+                  <Sec title="How complete your account is" />
                   <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--gw-text)' }}>{STATUS_DISPLAY[sessionReport.alignmentStatus] ?? sessionReport.alignmentStatus}</div>
                   <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 3, lineHeight: 1.5 }}>{sessionReport.alignmentBasis}</div>
                   <div style={{ display: 'flex', gap: 4, marginTop: 10 }}>
@@ -2262,7 +2263,7 @@ export function EntryChatPage() {
                 {/* What's still open */}
                 {sessionReport.areasRequiringAlignment.length > 0 && (
                   <div style={{ marginBottom: 16 }}>
-                    <div style={{ fontSize: 10, letterSpacing: '.09em', textTransform: 'uppercase', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 8 }}>What's still open</div>
+                    <Sec title={`What's still open`} />
                     {sessionReport.areasRequiringAlignment.map((a, i) => (
                       <div key={i} style={{ border: '1px solid var(--gw-border)', borderLeft: '3px solid var(--gw-amber-b)', borderRadius: 10, padding: '11px 13px', marginBottom: 8 }}>
                         <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 7 }}>{a.title}</div>
@@ -2277,7 +2278,7 @@ export function EntryChatPage() {
                 {/* Clear on your side (not mutual agreement - only one party has checked in) */}
                 {sessionReport.alignmentReached.length > 0 && (
                   <div style={{ marginBottom: 16 }}>
-                    <div style={{ fontSize: 10, letterSpacing: '.09em', textTransform: 'uppercase', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 8 }}>Clear on your side</div>
+                    <Sec title="Clear on your side" />
                     {sessionReport.alignmentReached.map((a, i) => (
                       <div key={i} style={{ border: '1px solid var(--gw-border)', borderLeft: '3px solid var(--gw-green-b)', borderRadius: 10, padding: '11px 13px', marginBottom: 8 }}>
                         <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>{a.title}</div>
@@ -2290,7 +2291,7 @@ export function EntryChatPage() {
                 {/* Suggested parties */}
                 {sessionReport.suggestedParties && sessionReport.suggestedParties.length > 0 && (
                   <div style={{ marginBottom: 16 }}>
-                    <div style={{ fontSize: 10, letterSpacing: '.09em', textTransform: 'uppercase', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 8 }}>Recommended additions</div>
+                    <Sec title="Recommended additions" />
                     <div style={{ border: '1px solid var(--gw-border)', borderLeft: '3px solid var(--gw-navy)', borderRadius: 10, padding: '11px 13px', background: 'var(--gw-blue-bg)' }}>
                       <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
                         Based on this check-in, these roles would strengthen the ground. Their account would change or confirm what is currently on record from one side only.
@@ -2333,7 +2334,7 @@ export function EntryChatPage() {
                 {/* Mentioned people */}
                 {sessionReport.mentionedPeople && sessionReport.mentionedPeople.length > 0 && (
                   <div style={{ marginBottom: 16 }}>
-                    <div style={{ fontSize: 10, letterSpacing: '.09em', textTransform: 'uppercase', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 8 }}>People mentioned</div>
+                    <Sec title="People mentioned" />
                     <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: '11px 13px', background: '#FAFAF8' }}>
                       <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
                         {/*
@@ -2390,7 +2391,7 @@ export function EntryChatPage() {
                 */}
                 {sessionReport.alsoCameUp && sessionReport.alsoCameUp.length > 0 && (
                   <div style={{ marginBottom: 16 }}>
-                    <div style={{ fontSize: 10, letterSpacing: '.09em', textTransform: 'uppercase', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 8 }}>Also came up</div>
+                    <Sec title="Also came up" />
                     <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: '11px 13px', background: '#FAFAF8' }}>
                       {sessionReport.alsoCameUpNote && (
                         <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
@@ -2409,7 +2410,7 @@ export function EntryChatPage() {
 
                 {/* Where this leaves you — the one-glance summary of the detail above */}
                 <div style={{ marginBottom: 16 }}>
-                  <div style={{ fontSize: 10, letterSpacing: '.09em', textTransform: 'uppercase', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 4 }}>Where this leaves you</div>
+                  <Sec title="Where this leaves you" />
                   <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 8, lineHeight: 1.5 }}>A one-glance summary of your side. "Worth revisiting" is what we will check back on with you next time, not a task list.</div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                     {[

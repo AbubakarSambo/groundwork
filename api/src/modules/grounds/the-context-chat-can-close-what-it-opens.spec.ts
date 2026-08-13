@@ -152,3 +152,63 @@ describe('and the panel has the yes it always promised', () => {
     expect(PANEL).toMatch(/Not that/);
   });
 });
+
+describe('the question this whole feature exists to ask', () => {
+  /**
+   * IT HAD NEVER BEEN ASKED ONCE. Found while trying to test the refusal path: I went to null a
+   * ground's `timeline_days` to open the duration gap, and the database refused - the column is
+   * NOT NULL, and `cadence` has a default of FORTNIGHTLY.
+   *
+   * So every ground has both from the moment it exists: chosen by the lead if they said, and set by
+   * `DEFAULT_TIMELINE_DAYS[scenario]` if they did not. `contextGaps` asks about duration when
+   * `timelineDays` is ABSENT. It is never absent.
+   *
+   * G37's defect, in its own words: "a real Ground 1 run produced a ninety-day ground from a single
+   * answer with no duration, no rhythm and no sense of who was involved." The duration was not
+   * missing. It was GUESSED. And the feature built to catch that was watching for a null the schema
+   * does not permit, so the two gaps the defect was actually about could never fire.
+   */
+  it('the ground records whether the lead chose the pacing or we did', () => {
+    const SCHEMA = readFileSync(join(__dirname, '../../../prisma/schema.prisma'), 'utf8');
+    expect(SCHEMA).toMatch(/timelineStated Boolean @default\(false\)/);
+    expect(SCHEMA).toMatch(/cadenceStated  Boolean @default\(false\)/);
+  });
+
+  it('and both create paths record which it was', () => {
+    // `dto.timelineDays != null` is the whole distinction: they said, or we filled it in.
+    const creates = CODE.split('timelineDays: dto.timelineDays ?? DEFAULT_TIMELINE_DAYS');
+    expect(creates.length).toBe(3); // two call sites, so two splits
+    for (const after of creates.slice(1)) {
+      expect(after.slice(0, 260)).toMatch(/timelineStated: dto\.timelineDays != null/);
+      expect(after.slice(0, 260)).toMatch(/cadenceStated: dto\.cadence != null/);
+    }
+  });
+
+  it('the gap reader is given "nobody chose this" rather than the raw value', () => {
+    /**
+     * THE FIX ITSELF. Passing `ground.timelineDays` made the question unaskable; passing null when
+     * it was never stated is what makes it askable.
+     */
+    expect(CODE).toMatch(/timelineDays: ground\.timelineStated \? ground\.timelineDays : null/);
+    expect(CODE).toMatch(/cadence: ground\.cadenceStated \? ground\.cadence : null/);
+  });
+
+  it('and stating it through updateTimeline marks it stated', () => {
+    // Otherwise the chat would keep offering to set a length the lead had just set.
+    expect(CODE).toMatch(/timelineWeeks: dto\.timelineWeeks, timelineStated: true/);
+    expect(CODE).toMatch(/cadence: dto\.cadence as Cadence, cadenceStated: true/);
+  });
+
+  it('existing grounds default to not stated, which is the honest reading', () => {
+    /**
+     * Every row written before this column was running on a default it never chose. Defaulting to
+     * false means the chat offers to fix exactly those, rather than assuming a guess was a decision.
+     */
+    const MIGRATION = readFileSync(
+      join(__dirname, '../../../prisma/migrations/20260813120000_lead_stated_the_pacing/migration.sql'),
+      'utf8',
+    );
+    expect(MIGRATION).toMatch(/"timeline_stated" BOOLEAN NOT NULL DEFAULT false/);
+    expect(MIGRATION).toMatch(/"cadence_stated" BOOLEAN NOT NULL DEFAULT false/);
+  });
+});

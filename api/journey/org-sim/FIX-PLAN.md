@@ -5591,3 +5591,61 @@ case.
 
 **Still open:** the other twenty-odd pages. `EntryChatPage` alone has 358 inline style objects, and it
 is the first thing a new person meets. That is the next deliberate pass, not this one.
+
+
+## Continuing - and the question G37 exists to ask had never once been asked
+
+Two more passes on the kit, and then a finding that matters more than either.
+
+### The kit, second pass
+
+**Nine more copies of one heading.** Five in the entry chat's report preview - the screen whose whole
+job is to promise what the real report will look like - plus two more with different margins, and two
+on the ground pages. All `Sec` now, so the preview and the report it previews share their headings.
+
+**Ten variants on the ground pages**, at 10px and 11px, .08em and .1em, in five colours - including
+`rgba(255,255,255,.45)`, `.4` and `.35` for the same label inside dark panels. Three different whites
+for one thing, because the kit had no answer for a label on a dark ground and each panel invented its
+own. `Sec` has `on="dark"` now. A component with no case for something real is how the ninth copy gets
+written, which is the same finding as `Card pad="block"`.
+
+**And one duplicate worth more than the styling.** The participant's private report is rendered in two
+places - to the person whose it is, and to the lead once they share it - and both walked the report
+object themselves, with two sets of sizes and two of those three whites. The same record read
+differently depending on who was looking at it, which is the one thing a shared record must never do.
+One `SoloReportBody` now.
+
+### The question that could not be asked
+
+Trying to test the refusal path, I went to null a ground's `timeline_days` to open the duration gap.
+The database refused: **the column is NOT NULL, and `cadence` defaults to FORTNIGHTLY.**
+
+So every ground has both from the moment it exists - chosen by the lead if they said, and set by
+`DEFAULT_TIMELINE_DAYS[scenario]` if they did not. `contextGaps` asks about duration when
+`timelineDays` is **absent**, and it is never absent.
+
+G37's defect in its own words: *"a real Ground 1 run produced a ninety-day ground from a single answer
+with no duration, no rhythm and no sense of who was involved."* The duration was not missing. **It was
+guessed.** And the feature built to catch that was watching for a null the schema does not permit, so
+the two gaps the defect was actually about could never fire. Not once, since it shipped.
+
+`timelineStated` and `cadenceStated` now record which it was, false for every existing row because a
+ground running on a default it never chose is the honest reading of all of them. The gap reader is
+given "nobody chose this" rather than the raw value.
+
+**Proved live, end to end, on a ground where nobody chose:**
+
+| | |
+| --- | --- |
+| Gaps | `timeline`, `cadence`, `parties`, `objectives`, `documents` |
+| It asked | "How long is this work expected to take?" |
+| Lead said | "About three months." |
+| Proposal | "I will set this to run for 90 days." |
+| After confirming | `timelineWeeks` 13, and `timeline` gone from the gap list |
+
+And separately, the same loop on `success`: brief null before, the lead's exact words after, gap
+closed. Previously it would have asked the same question forever.
+
+**I also walked into the stale-build trap while verifying this** - the API on 3000 was a build from
+before Stage 3, so the proposal came back empty and I nearly recorded the mechanism as not firing. It
+is the exact trap `gate.ts` runs its own build on its own port to avoid, written this morning.

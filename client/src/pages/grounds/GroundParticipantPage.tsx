@@ -12,6 +12,7 @@ import { GroundChat } from '@/components/gw/GroundChat'
 import { whatThisGroundCanTellYou } from '@/lib/contextStrength'
 import { ContextStrength } from '@/components/gw/ContextStrength'
 import { Sec } from '@/components/gw/kit'
+import { SoloReportBody } from '@/components/gw/SoloReportBody'
 import { apiClient } from '@/api/client'
 import { participantLabel } from '@/lib/utils'
 import { alignmentLabel } from '@/lib/alignment'
@@ -600,25 +601,13 @@ export function GroundParticipantPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
 
             {/* Individual report section */}
-            <div style={{ fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 2 }}>Your private report</div>
+            <Sec title="Your private report" />
             <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 4 }}>
               This is from your own check-in only. Only you can see it unless you choose to share it.
             </div>
             {mySoloReport?.report ? (
               <div style={{ background: 'var(--gw-dark)', color: 'white', borderRadius: 10, padding: '16px 18px', marginBottom: 6 }}>
-                {Object.entries(mySoloReport.report as Record<string, unknown>).map(([key, val]) => {
-                  if (!val || (Array.isArray(val) && val.length === 0)) return null
-                  const label = key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase())
-                  return (
-                    <div key={key} style={{ marginBottom: 12 }}>
-                      <div style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,.45)', fontWeight: 700, marginBottom: 4 }}>{label}</div>
-                      {Array.isArray(val)
-                        ? <ul style={{ margin: 0, paddingLeft: 16 }}>{(val as string[]).map((v, i) => <li key={i} style={{ fontSize: 13, lineHeight: 1.6, marginBottom: 3 }}>{v}</li>)}</ul>
-                        : <div style={{ fontSize: 13, lineHeight: 1.65 }}>{String(val)}</div>
-                      }
-                    </div>
-                  )
-                })}
+                <SoloReportBody report={mySoloReport.report as Record<string, unknown>} />
                 <div style={{ borderTop: '1px solid rgba(255,255,255,.1)', paddingTop: 12, marginTop: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
                   <div style={{ fontSize: 11, color: 'rgba(255,255,255,.4)' }}>
                     {mySoloReport.shared
@@ -670,7 +659,7 @@ export function GroundParticipantPage() {
 
             {/* Divider */}
             <div style={{ borderTop: '1px solid var(--gw-border)', margin: '6px 0' }} />
-            <div style={{ fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 2 }}>Shared report</div>
+            <Sec title="Shared report" />
             <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.6, marginBottom: 4 }}>
               Shows where your account and the other party's account agree or differ. It does not quote anyone.
             </div>
@@ -743,13 +732,13 @@ export function GroundParticipantPage() {
                 {/* Participant report sections */}
                 {report.pattern && (
                   <div style={{ background: 'var(--gw-dark)', color: 'white', borderRadius: 10, padding: '14px 16px' }}>
-                    <div style={{ fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,.45)', fontWeight: 700, marginBottom: 8 }}>What your record reveals</div>
+                    <Sec title="What your record reveals" on="dark" />
                     <div style={{ fontSize: 13, lineHeight: 1.65 }}>{report.pattern}</div>
                   </div>
                 )}
                 {(report.assumptions ?? []).length > 0 && (
                   <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '13px 16px' }}>
-                    <div style={{ fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 8 }}>Assumptions you are carrying</div>
+                    <Sec title="Assumptions you are carrying" />
                     <ul style={{ listStyle: 'disc', paddingLeft: 18, margin: 0 }}>
                       {(report.assumptions ?? []).map((a: string, i: number) => <li key={i} style={{ fontSize: 13, lineHeight: 1.65, marginBottom: 5 }}>{a}</li>)}
                     </ul>
@@ -757,7 +746,7 @@ export function GroundParticipantPage() {
                 )}
                 {(report.clarity ?? []).length > 0 && (
                   <div style={{ background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 10, padding: '13px 16px' }}>
-                    <div style={{ fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--gw-navy)', fontWeight: 700, marginBottom: 8 }}>Where you have clarity</div>
+                    <Sec title="Where you have clarity" />
                     <ul style={{ listStyle: 'disc', paddingLeft: 18, margin: 0 }}>
                       {(report.clarity ?? []).map((c: string, i: number) => <li key={i} style={{ fontSize: 13, lineHeight: 1.65, marginBottom: 5 }}>{c}</li>)}
                     </ul>
@@ -767,7 +756,7 @@ export function GroundParticipantPage() {
                 {/* Cross-reference section (shared picture, after activation) */}
                 {(report.alignmentReached ?? []).length > 0 && (
                   <div style={{ background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b-soft)', borderRadius: 10, padding: '13px 16px' }}>
-                    <div style={{ fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--gw-green-t)', fontWeight: 700, marginBottom: 10 }}>Shared picture: where you are aligned</div>
+                    <Sec title="Shared picture: where you are aligned" />
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       {(report.alignmentReached ?? []).map((a: any, i: number) => (
                         <div key={i} style={{ borderLeft: '3px solid var(--gw-green-b)', paddingLeft: 10 }}>
@@ -780,7 +769,7 @@ export function GroundParticipantPage() {
                 )}
                 {(report.areasRequiringAlignment ?? []).length > 0 && (
                   <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '13px 16px' }}>
-                    <div style={{ fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 10 }}>Shared picture: still to resolve</div>
+                    <Sec title="Shared picture: still to resolve" />
                     <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 10, lineHeight: 1.5 }}>These gaps appear in the cross-reference. They show where your account and the other party's account differ. Neither side's raw words are shown here.</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                       {(report.areasRequiringAlignment ?? []).map((a: any, i: number) => (

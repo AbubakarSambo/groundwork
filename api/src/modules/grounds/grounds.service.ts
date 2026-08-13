@@ -147,6 +147,9 @@ export class GroundsService {
         mode: dto.mode ?? defaultModeFor(dto.scenario),
         moment: dto.moment,
         timelineDays: dto.timelineDays ?? DEFAULT_TIMELINE_DAYS[dto.scenario],
+        /** Whether this was chosen or guessed for them, so the setup chat can offer to fix it. */
+        timelineStated: dto.timelineDays != null,
+        cadenceStated: dto.cadence != null,
         cadence: dto.cadence ?? Cadence.FORTNIGHTLY,
         cadenceAnchorDay: dto.cadenceAnchorDay ?? null,
         startsAt: dto.startsAt ? new Date(dto.startsAt) : null,
@@ -292,6 +295,9 @@ export class GroundsService {
         mode: dto.mode ?? defaultModeFor(dto.scenario),
           moment: dto.moment,
           timelineDays: dto.timelineDays ?? DEFAULT_TIMELINE_DAYS[dto.scenario],
+          /** Whether this was chosen or guessed for them, so the setup chat can offer to fix it. */
+          timelineStated: dto.timelineDays != null,
+          cadenceStated: dto.cadence != null,
           cadence: dto.cadence ?? Cadence.FORTNIGHTLY,
           cadenceAnchorDay: dto.cadenceAnchorDay ?? null,
           startsAt: dto.startsAt ? new Date(dto.startsAt) : null,
@@ -1069,7 +1075,7 @@ export class GroundsService {
       where: { id: groundId },
       select: {
         id: true, label: true, scenario: true, initiatorId: true, timelineDays: true,
-        cadence: true, brief: true,
+        cadence: true, brief: true, timelineStated: true, cadenceStated: true,
         participants: { select: { id: true, managingOnly: true } },
         objectives: { select: { id: true } },
       },
@@ -1084,8 +1090,13 @@ export class GroundsService {
     });
 
     const gaps = contextGaps({
-      timelineDays: ground.timelineDays,
-      cadence: ground.cadence,
+      /**
+       * `null` here means "nobody chose this", not "the column is empty" - the column cannot be
+       * empty. Passing the raw value made the duration question unaskable, which is the one thing
+       * this conversation was built to ask.
+       */
+      timelineDays: ground.timelineStated ? ground.timelineDays : null,
+      cadence: ground.cadenceStated ? ground.cadence : null,
       brief: ground.brief,
       partyCount: ground.participants.filter((p) => !p.managingOnly).length,
       perPersonObjectiveCount: ground.objectives.length,
@@ -1168,6 +1179,7 @@ export class GroundsService {
       where: { id: groundId },
       select: {
         id: true, initiatorId: true, timelineDays: true, cadence: true, brief: true,
+        timelineStated: true, cadenceStated: true,
         participants: { select: { id: true, managingOnly: true } },
         objectives: { select: { id: true } },
       },
@@ -1179,8 +1191,13 @@ export class GroundsService {
 
     const openDocumentCount = await this.prisma.groundDocument.count({ where: { groundId, visibility: 'OPEN' } });
     const gaps = contextGaps({
-      timelineDays: ground.timelineDays,
-      cadence: ground.cadence,
+      /**
+       * `null` here means "nobody chose this", not "the column is empty" - the column cannot be
+       * empty. Passing the raw value made the duration question unaskable, which is the one thing
+       * this conversation was built to ask.
+       */
+      timelineDays: ground.timelineStated ? ground.timelineDays : null,
+      cadence: ground.cadenceStated ? ground.cadence : null,
       brief: ground.brief,
       partyCount: ground.participants.filter(p => !p.managingOnly).length,
       perPersonObjectiveCount: ground.objectives.length,
@@ -1800,8 +1817,8 @@ export class GroundsService {
     return this.prisma.ground.update({
       where: { id: groundId },
       data: {
-        ...(dto.timelineWeeks !== undefined && { timelineWeeks: dto.timelineWeeks }),
-        ...(dto.cadence !== undefined && { cadence: dto.cadence as Cadence }),
+        ...(dto.timelineWeeks !== undefined && { timelineWeeks: dto.timelineWeeks, timelineStated: true }),
+        ...(dto.cadence !== undefined && { cadence: dto.cadence as Cadence, cadenceStated: true }),
         groundAuditLog: auditData,
       },
     });

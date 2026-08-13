@@ -22,7 +22,8 @@ import { toast } from 'sonner'
 import { CodeShareCard } from '@/components/CodeShareCard'
 import { PostSessionPanel } from '@/components/PostSessionPanel'
 import { ResolutionPanel } from '@/components/gw/ResolutionPanel'
-import { Stat } from '@/components/gw/kit'
+import { Sec, Stat } from '@/components/gw/kit'
+import { SoloReportBody } from '@/components/gw/SoloReportBody'
 import { billingApi, PLAN_MEMBER_LIMITS, type SubscriptionPlan } from '@/api/billing'
 
 const SCENARIO_LABELS: Record<string, string> = {
@@ -484,7 +485,7 @@ export function GroundAdminPage() {
     return (
       <Shell>
         <div style={{ maxWidth: 560, margin: '0 auto', padding: '48px 20px' }}>
-          <div style={{ fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-sub)', fontWeight: 700, marginBottom: 8 }}>Waiting for your lead</div>
+          <Sec title="Waiting for your lead" />
           <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--gw-navy)', margin: '0 0 6px', letterSpacing: '-.01em' }}>{ground.label}</h1>
           <p style={{ fontSize: 13.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 16 }}>
             You set this ground up and asked {lead?.email ?? "your lead"} to run it.
@@ -1098,22 +1099,10 @@ export function GroundAdminPage() {
                       )}
                       {sharedReport && (
                         <div style={{ background: 'var(--gw-dark)', color: 'white', borderRadius: 8, padding: '12px 14px', marginTop: 4, marginLeft: 40 }}>
-                          <div style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,.4)', fontWeight: 700, marginBottom: 8 }}>
-                            {participantLabel(p)}'s private report (shared by them)
-                          </div>
-                          {Object.entries(sharedReport).map(([key, val]) => {
-                            if (!val || (Array.isArray(val) && val.length === 0)) return null
-                            const label = key.replace(/([A-Z])/g, ' $1').replace(/^./, (s: string) => s.toUpperCase())
-                            return (
-                              <div key={key} style={{ marginBottom: 10 }}>
-                                <div style={{ fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,.35)', fontWeight: 700, marginBottom: 3 }}>{label}</div>
-                                {Array.isArray(val)
-                                  ? <ul style={{ margin: 0, paddingLeft: 14 }}>{(val as string[]).map((v, idx) => <li key={idx} style={{ fontSize: 12, lineHeight: 1.6, marginBottom: 2 }}>{v}</li>)}</ul>
-                                  : <div style={{ fontSize: 12, lineHeight: 1.6 }}>{String(val)}</div>
-                                }
-                              </div>
-                            )
-                          })}
+                          <Sec title={`${participantLabel(p)}'s private report (shared by them)`} on="dark" />
+                          {/* The same walk the participant's own page does. One component now, so the
+                              report cannot read differently depending on who is looking at it. */}
+                          <SoloReportBody report={sharedReport as Record<string, unknown>} dense />
                         </div>
                       )}
                     </div>
@@ -2277,7 +2266,7 @@ function LeadConfirmView({ ground, groundId, onConfirmed }: { ground: any; groun
   return (
     <Shell>
       <div style={{ maxWidth: 560, margin: '0 auto', padding: '48px 20px' }}>
-        <div style={{ fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-sub)', fontWeight: 700, marginBottom: 8 }}>You lead this ground</div>
+        <Sec title="You lead this ground" />
         <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--gw-navy)', margin: '0 0 6px', letterSpacing: '-.01em' }}>{ground.label}</h1>
         <p style={{ fontSize: 13.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 16 }}>
           An admin set this up and named you to lead it. You decide when to begin - this is not a synchronized moment with anyone else.

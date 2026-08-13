@@ -207,3 +207,65 @@ describe('the pages are built from the kit, not from inline styles', () => {
     expect(card).not.toMatch(/people\.count/)
   })
 })
+
+describe('the same solo report reads the same to everybody', () => {
+  /**
+   * STAGE 5, SECOND PASS. A participant's private report is shown in two places: to the person whose
+   * it is, and to the lead once that person shares it. Both walked the report object themselves -
+   * camelCase key to heading, array to list, string to line - written out twice, with two sets of
+   * numbers:
+   *
+   *   participant page   label .1em rgba(255,255,255,.45), body 13px, indent 16
+   *   lead page          label .08em rgba(255,255,255,.35), body 12px, indent 14
+   *
+   * The same record read differently depending on who was looking at it, which is the one thing a
+   * shared record must never do. Not a visible bug yet - the kind that becomes one the next time one
+   * copy is edited and the other is not.
+   */
+  const PARTICIPANT = strip(readFileSync(join(SRC, 'pages/grounds/GroundParticipantPage.tsx'), 'utf8'))
+  const LEAD = strip(readFileSync(join(SRC, 'pages/grounds/GroundAdminPage.tsx'), 'utf8'))
+
+  it('both pages render it through one component', () => {
+    for (const page of [PARTICIPANT, LEAD]) {
+      expect(page).toMatch(/import \{ SoloReportBody \}/)
+      expect(page).toMatch(/<SoloReportBody report=/)
+    }
+  })
+
+  it('and neither walks the report itself any more', () => {
+    // The exact line both copies shared. If it comes back, so do the two renderings.
+    for (const page of [PARTICIPANT, LEAD]) {
+      expect(page).not.toMatch(/key\.replace\(\/\(\[A-Z\]\)\/g, ' \$1'\)/)
+    }
+  })
+
+  it('the lead\'s copy is a size down, and says so rather than hard-coding it again', () => {
+    // It sits nested inside a participant row, so the size difference is real - it just belongs to
+    // the component now, as a named case.
+    expect(LEAD).toMatch(/<SoloReportBody report=\{sharedReport as Record<string, unknown>\} dense \/>/)
+  })
+})
+
+describe('one uppercase label, including on a dark ground', () => {
+  it('Sec has the dark case, because three whites existed without it', () => {
+    /**
+     * The ground pages held ten variants of this one label - 10px and 11px, .08em and .1em, and five
+     * colours, three of them near-identical whites for a label inside a dark panel. The kit had no
+     * answer for a label on a dark ground, so each panel invented its own. A component with no case
+     * for something real is how the ninth copy gets written.
+     */
+    const KIT = strip(readFileSync(join(SRC, 'components/gw/kit.tsx'), 'utf8'))
+    expect(KIT).toMatch(/on\?: 'light' \| 'dark'/)
+    expect(KIT).toMatch(/dark \? 'rgba\(255,255,255,\.45\)' : 'var\(--gw-sub\)'/)
+  })
+
+  it('and the entry chat\'s report preview shares the report\'s headings', () => {
+    /**
+     * Five more copies of the `.09em` label lived in the preview of the report - the screen whose
+     * whole job is to promise what the real report will look like. They are the same component now.
+     */
+    const ENTRY = strip(readFileSync(join(SRC, 'pages/enter/EntryChatPage.tsx'), 'utf8'))
+    expect(ENTRY).toMatch(/import \{ Sec \} from '@\/components\/gw\/kit'/)
+    expect(ENTRY).not.toMatch(/letterSpacing: '\.09em'/)
+  })
+})
