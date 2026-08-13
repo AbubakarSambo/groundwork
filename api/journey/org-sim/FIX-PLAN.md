@@ -4931,20 +4931,40 @@ Small, and it is the difference between "trust us" and "look".
 
 ## Who sees what is half-wired
 
-### W14-4 · The peer-visibility toggle does not exist in the product - **S**
+### W14-4 · The peer-visibility toggle does not exist in the product - **DONE**
 `PATCH /grounds/:id/peer-visibility` is live, tested, and **called by nothing**. Its default is
 computed per scenario family - hidden on evaluation and cohort grounds, shown elsewhere - so today
 the lead cannot see the rule, let alone change it. `peopleWorkTogether` and
 `restrictExternalVisibility` both have controls; this one, the one that decides whether people can
 see each other at all, does not.
 
-Put all three on Ground settings as one group, each with the sentence that says what it does, and
-show the current default and why it is the default.
+Done: **"Can the people here see each other?"** sits above the contact toggle on Ground settings,
+says what each state means in plain terms, and when the ground has never set it says so - "Not
+set, so this ground uses the default for its kind: shown."
 
-### W14-5 · A participant is not told the rule that governs them - **S**
-W13-5 shows "Who is in this" when the payload permits it. On a ground where peers are hidden the
-roster silently does not appear, so a participant cannot tell whether nobody else is here or
-whether they are not allowed to know. One line either way.
+**The default comes from the server now.** My first version listed the evaluative scenarios in the
+client and derived the default from them - a second copy of `familyFor()` that would drift. It was
+wrong immediately: I had NEW_HIRE down as evaluative and the server does not. `get()` now returns
+`peersVisibleEffective` (what it applied) and `peersDefaultVisible` (what it would apply), so the
+control shows the rule rather than re-deriving it.
+
+**And the contact toggle stopped lying.** Its copy said "participants can see who's here (names,
+roles, and presence)", which is untrue when this new setting is off. It now says so.
+
+Verified end to end: the lead turns it off, and the other party disappears from the participant's
+payload - the service filters them, so it is not a client decision.
+
+### W14-5 · A participant is not told the rule that governs them - **DONE**
+"Who is in this" now says which kind of empty it is: *"On this ground people check in without
+seeing each other. Your lead knows who is here; you will not see the others or what they wrote,
+and they will not see you."*
+
+Keyed on the ground's rule rather than on the roster being short, because a genuinely single-party
+ground is a different thing and still says nothing.
+
+**The bite-check found the wiring unpinned:** removing `peersHidden` from the participant page left
+all 550 tests green, because the component's behaviour was pinned and the fact that anything passes
+it was not. A prop nothing supplies is a feature nobody gets. Both pages are now asserted.
 
 ## Billing is organisation setup wearing ground clothes
 

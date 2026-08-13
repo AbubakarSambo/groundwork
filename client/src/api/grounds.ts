@@ -80,6 +80,19 @@ export const groundsApi = {
   get: (id: string) =>
     apiClient.get<Ground>(`/grounds/${id}`, { skipNotFoundToast: true } as any).then(r => r.data),
 
+  /**
+   * Whether the parties can see each other at all - who else is here, and how each is doing.
+   * Separate from hiding email addresses. W14-4.
+   *
+   * The endpoint has existed since the peer rule was written and nothing called it, so the
+   * default (hidden on evaluation and cohort grounds, shown elsewhere) was unreachable and
+   * invisible: a lead could not see the rule, let alone change it.
+   */
+  setPeerVisibility: (id: string, visible: boolean) =>
+    apiClient
+      .patch<{ id: string; peersVisibleToEachOther: boolean }>(`/grounds/${id}/peer-visibility`, { visible })
+      .then(r => r.data),
+
   // Initiator-only: whether participants can see each other's email. restrict=true hides.
   setExternalVisibility: (id: string, restrict: boolean) =>
     apiClient.patch<{ id: string; restrictExternalVisibility: boolean }>(`/grounds/${id}/external-visibility`, { restrict }).then(r => r.data),

@@ -346,6 +346,20 @@ export function GroundAdminPage() {
   })
 
   // Contact visibility toggle. restrict=true hides peers' emails from each other (default).
+  /**
+   * WHETHER THE PARTIES CAN SEE EACH OTHER AT ALL. W14-4.
+   *
+   * `PATCH /grounds/:id/peer-visibility` has been live and tested since the peer rule was
+   * written, and **nothing in the product called it**. So the rule that decides whether a
+   * participant knows who else is in their ground was set by a default nobody could see - hidden
+   * on evaluation and cohort grounds, shown elsewhere - and no lead could change it.
+   */
+  const setPeerVisibility = useMutation({
+    mutationFn: (visible: boolean) => groundsApi.setPeerVisibility(id!, visible),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['ground', id] }); toast.success('Saved.') },
+    onError: () => toast.error('Could not save that. Try again.'),
+  })
+
   const setContactVisibility = useMutation({
     mutationFn: (restrict: boolean) => groundsApi.setExternalVisibility(id!, restrict),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['ground', id] }),
@@ -608,6 +622,16 @@ export function GroundAdminPage() {
         ? { value: 'Ready', caption: 'Generated, not released yet', tone: 'warn' }
         : { value: 'Waiting', caption: 'Builds as accounts come in' }
   // contact-visibility toggle state (default: hidden). true = peers cannot see each other's email.
+  /**
+   * THE PEER RULE COMES FROM THE SERVER, NOT FROM A COPY OF IT HERE. W14-4.
+   *
+   * My first version listed the evaluative scenarios in this file and derived the default from
+   * them - a second copy of a rule that lives in `familyFor()`, which would drift the first time
+   * a scenario was added. `get()` now returns what it actually applied.
+   */
+  const peersVisible = (ground as any)?.peersVisibleEffective ?? true
+  const peersDefaultHidden = (ground as any)?.peersDefaultVisible === false
+
   const contactHidden = ground.restrictExternalVisibility !== false
 
   return (
@@ -1309,6 +1333,7 @@ export function GroundAdminPage() {
                 */
               viewerIsParty={(ground.participants ?? []).some((p: any) => p.userId === user?.id)}
               /* The same roster the participant view now shows. W13-5. */
+              peersHidden={(ground as any).peersVisibleEffective === false}
               parties={(ground.participants ?? [])
                 .filter((p: any) => !p.managingOnly)
                 .map((p: any) => {
@@ -2038,6 +2063,49 @@ export function GroundAdminPage() {
                 Save scenario
               </button>
             </div>
+            {/*
+              THE THREE RULES THAT DECIDE WHAT PEOPLE SEE, IN ONE PLACE. W14-4.
+
+              Two of them had controls and the third - the one that decides whether a participant
+              can see who else is in the ground at all - had none, though its endpoint has been
+              live and tested the whole time. So the strongest of the three was set by a default
+              nobody could read.
+
+              They are together because they are one question with three parts, and because the
+              contact toggle's own copy used to promise "participants can see who's here", which
+              is not true when this one is off.
+            */}
+            <div className="gw-fld">
+              <label className="gw-label">Can the people here see each other?</label>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '12px 14px', border: '0.5px solid var(--gw-blue-b)', borderRadius: 8 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', marginBottom: 4 }}>
+                    Show who else is on this ground
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+                    {peersVisible
+                      ? 'Each person sees the others by name and whether they have checked in. Nobody ever sees what anybody wrote. On a team delivering together, that is how people coordinate.'
+                      : 'Each person sees only themselves. On a period that decides something about a person, a roster tells everyone exactly who they are being measured against, which turns a record meant to help them into a leaderboard.'}
+                  </div>
+                  {(ground as any)?.peersVisibleToEachOther == null && (
+                    <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', marginTop: 5 }}>
+                      Not set, so this ground uses the default for its kind: {peersDefaultHidden ? 'hidden' : 'shown'}.
+                    </div>
+                  )}
+                </div>
+                <button
+                  role="switch"
+                  aria-checked={peersVisible}
+                  aria-label="Show who else is on this ground"
+                  disabled={setPeerVisibility.isPending}
+                  onClick={() => setPeerVisibility.mutate(!peersVisible)}
+                  style={{ flexShrink: 0, width: 42, height: 24, borderRadius: 999, border: 'none', cursor: setPeerVisibility.isPending ? 'wait' : 'pointer', background: peersVisible ? 'var(--gw-navy)' : '#CFD8E3', position: 'relative', transition: 'background 0.15s', opacity: setPeerVisibility.isPending ? 0.5 : 1, padding: 0 }}
+                >
+                  <span style={{ position: 'absolute', top: 2, left: peersVisible ? 20 : 2, width: 20, height: 20, borderRadius: '50%', background: 'white', transition: 'left 0.15s', boxShadow: '0 1px 2px rgba(0,0,0,0.2)' }} />
+                </button>
+              </div>
+            </div>
+
             <div className="gw-fld">
               <label className="gw-label">Participant contact details</label>
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '12px 14px', border: '0.5px solid var(--gw-blue-b)', borderRadius: 8 }}>
@@ -2045,7 +2113,9 @@ export function GroundAdminPage() {
                   <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', marginBottom: 4 }}>Hide email addresses between participants</div>
                   <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
                     {contactHidden
-                      ? "Participants can see who's here (names, roles, and presence) but can't see each other's email addresses. Good for cohorts of individuals who don't need to contact each other."
+                      ? (peersVisible
+                          ? "Participants can see who's here (names, roles, and presence) but can't see each other's email addresses. Good for cohorts of individuals who don't need to contact each other."
+                          : "Nobody sees anybody else here, so there are no addresses to hide. This matters again if you turn the setting above on.")
                       : "Participants can see each other's email addresses. Only turn this off when everyone is meant to be in contact. Turning it off lets participants collect each other's contacts."}
                   </div>
                 </div>

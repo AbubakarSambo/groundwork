@@ -975,6 +975,20 @@ export class GroundsService {
       ...rest,
       joinToken: mayShareJoinLink ? (rest as any).joinToken ?? null : null,
       participants: participantsWithCheckIns,
+      /**
+       * WHAT THE PEER RULE IS ACTUALLY DOING, not what is stored. W14-4.
+       *
+       * `peersVisibleToEachOther` is null until somebody sets it, and the effective answer comes
+       * from the scenario's family - hidden on evaluation and cohort grounds, shown elsewhere.
+       * The client needs the effective value to show the lead the rule and its default, and my
+       * first attempt at that copied the family list into the client, which is a second copy of
+       * a rule that will drift from this one.
+       *
+       * So the server says what it applied. `peersVisibleToEachOther` still travels as-is, so the
+       * control can tell "not set, using the default" from "set to this deliberately".
+       */
+      peersVisibleEffective: peersVisible,
+      peersDefaultVisible: !evaluative,
       alignment,
       daysLeft,
       brief,

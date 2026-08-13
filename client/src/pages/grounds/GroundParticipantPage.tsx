@@ -425,6 +425,7 @@ export function GroundParticipantPage() {
              * "Done" means done for the session number this person is on, so a roster on
              * session 3 answers "is anybody else doing session 3", which is the question.
              */
+            peersHidden={(ground as any).peersVisibleEffective === false}
             parties={(ground.participants ?? [])
               .filter((p: any) => !p.managingOnly)
               .map((p: any) => {

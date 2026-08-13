@@ -65,7 +65,7 @@ import { toast } from 'sonner'
  * first session too - a ground runs ninety days and "what was this for again" is a
  * question people have in week eight, not just week one.
  */
-function GroundTopic({ label, scenario, brief, alignment, sessionsDone, totalSessions, parties }: {
+function GroundTopic({ label, scenario, brief, alignment, sessionsDone, totalSessions, parties, peersHidden }: {
   label: string
   scenario?: string | null
   brief?: string | null
@@ -89,6 +89,7 @@ function GroundTopic({ label, scenario, brief, alignment, sessionsDone, totalSes
    * said.
    */
   parties?: { name: string; done: boolean; isSelf: boolean }[]
+  peersHidden?: boolean
 }) {
   const situation = scenario
     ? scenario.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c: string) => c.toUpperCase())
@@ -126,7 +127,29 @@ function GroundTopic({ label, scenario, brief, alignment, sessionsDone, totalSes
           {brief}
         </div>
       )}
-      {(parties ?? []).length > 1 && (
+      {/*
+        A ROSTER OF ONE MEANS ONE OF TWO THINGS, AND SILENCE PICKS NEITHER. W14-5.
+
+        When the lead has turned peer visibility off, the service filters the other parties out of
+        the payload - so this component receives a roster of one and, until now, rendered nothing.
+        A participant could not tell whether nobody else was here yet or whether they are not
+        allowed to know, and the second is a fact about the ground they are in.
+
+        `peersHidden` is the ground's own rule, passed down, not inferred from the roster's length
+        - a genuinely single-party ground is a different thing and says so.
+      */}
+      {peersHidden && (
+        <div style={{ borderTop: '1px solid var(--gw-border)', paddingTop: 9, marginTop: 9 }}>
+          <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 5 }}>
+            Who is in this
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+            On this ground people check in without seeing each other. Your lead knows who is here;
+            you will not see the others or what they wrote, and they will not see you.
+          </div>
+        </div>
+      )}
+      {!peersHidden && (parties ?? []).length > 1 && (
         <div style={{ borderTop: '1px solid var(--gw-border)', paddingTop: 9, marginTop: 9 }}>
           <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 5 }}>
             Who is in this
@@ -456,7 +479,7 @@ function Composer({ groundId, openCheckInId, openSessionNumber, totalSessions, n
 export function GroundChat({
   groundId, openCheckInId, openSessionNumber, totalSessions, nextOpensAt, onOpenSession, openPending,
   label, scenario, brief, alignment, sessionsDone, signals,
-  viewerIsParty, history, parties,
+  viewerIsParty, history, parties, peersHidden,
 }: {
   groundId: string
   openCheckInId: string | null
@@ -497,6 +520,8 @@ export function GroundChat({
   history?: { sessionNumber: number; date: string; people: string[] }[]
   /** Who is in the ground, and whether each has checked in for the open session. */
   parties?: { name: string; done: boolean; isSelf: boolean }[]
+  /** The ground's peer rule, so an empty roster can say which kind of empty it is. W14-5. */
+  peersHidden?: boolean
 }) {
   const isParty = viewerIsParty !== false
   const { data, isLoading, isError } = useQuery({
@@ -536,6 +561,7 @@ export function GroundChat({
           sessionsDone={sessionsDone}
           totalSessions={totalSessions}
           parties={parties}
+          peersHidden={peersHidden}
         />
 
         {/*
