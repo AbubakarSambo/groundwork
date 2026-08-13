@@ -5690,3 +5690,68 @@ sanitised - `guide-sanitiser.ts` drops any line that names a party or quotes the
 else sees it. A guide whose three lines were all stripped renders nothing rather than an empty card.
 
 The comment now describes the surface that exists. On is the right setting for the first time.
+
+
+# The waste and the mess, counted properly - 13 August 2026
+
+She asked what has been wasted and what the mess is. Measured rather than recalled, because I have
+been wrong about "unused" six times today.
+
+## What actually cost something
+
+**One thing, and it was the model.** `postReportGuide` - three lines per person before they walk into
+the conversation - was a Gemini call for every participant on every report release, on the payload,
+mentioned by no client file. `.env.example` had it ON directly beneath its own comment saying to leave
+it off until a surface existed. Fixed today: it renders as "Before you talk to them" for the person
+whose it is.
+
+Nothing else on the list costs money. That distinction matters and I want it kept: unwired is not
+wasted.
+
+## What was built and cannot be reached
+
+| | Size | State |
+| --- | --- | --- |
+| `GroundBaseline` | 9 fields | No reader, no writer. `successLooksLike` and `conditions` - what doing well means and what has to be true - which is exactly what the report's weigh section wants |
+| `GroundBaselineEntry` | 6 fields | Same. G14, "where this stood on day one" |
+| `PersonObjective` | 10 fields | No writer. And `an-objective-belongs-to-a-person.ts` is **169 lines with its own spec file** built against it: who authored an objective, whether the person it belongs to has seen it, how to phrase each case |
+| `DisclaimerAcknowledgement` | 7 fields | No reader, no writer, and no disclaimer flow anywhere in either codebase |
+| `OrgIntelligence` | 6 fields | Written twice, never read |
+| `PatternBenchmark` | 8 fields | Written once, never read |
+
+**And two objective tables.** `GroundObjective` is the one the board uses. `PersonObjective` is the
+one with authorship and seen-state, and it is the better model - it is what "nobody is read against a
+target they never saw" needs. The context chat asks "what is each person trying to achieve?" and
+counts the wrong one.
+
+## The route audit, and why the first number was wrong
+
+My first pass said 56 of 166 routes have no client caller. That was my matcher, not the product: it
+could not see template-literal paths, so it flagged endpoints I had wired myself hours earlier. Redone
+by segment, excluding webhooks and OAuth redirects which are browser-driven by design: **two**.
+`POST /admin/add-admin` is OTP-guarded ops tooling, correctly not in the app. `POST
+/documents/invite-upload` lets an invited person upload before they have an account, and nothing calls
+it - a real gap, small.
+
+I am recording the wrong number as well as the right one because "56 orphaned endpoints" is the kind
+of figure that gets repeated.
+
+## The mess that was live, and is now fixed
+
+**Multi-organisation worked only for users who predated it.** `OrganizationMembership` arrived with a
+migration that backfilled everyone who existed that day, and no code was ever written to create one.
+So `/auth/my-organizations` returned an empty list and `/auth/switch-organization` had nothing to
+find, for every user created since. Nothing failed, nothing logged, and the counts looked *right* -
+five users, five memberships - because the only users left were the backfilled ones.
+
+Found by signing a user up through the real flow and counting: zero.
+
+Fixed as one hook in `PrismaService` rather than nine edits at nine `user.create` sites, because the
+reason it broke is that a dependent row had to be remembered somewhere far from the rule, and the
+tenth caller written next month would break it again. Plus a second backfill for the people in
+between.
+
+**And the fix was wrong the first time.** I let the user be created and then wrote the membership,
+which failed on every sign-up and logged it quietly: all nine callers run inside a transaction, so on
+another connection the user row does not exist yet. Nesting it into the create fixed it. Caught by
+re-running the same real sign-up and getting zero again.
