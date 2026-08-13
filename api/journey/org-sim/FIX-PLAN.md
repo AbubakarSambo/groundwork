@@ -5433,7 +5433,7 @@ things on these lists turned out to be already built.
 | **G37/G23** | The context chat | L | **See Stage 3 - it was built, and it could not save a word of what it heard.** |
 | **W14-8 rest** | Page layouts onto Zone/Card/Row/Stat | L | Palette and headings are shared now. This part is a redesign, not wiring, and wants one deliberate pass. |
 | **W8-49** | 38 routes collapsed onto 14 pages, and `/invite` + `/join` + `/verify-email` as one arrival page | L | The three arrival routes still exist separately. Blocked on W8-52. |
-| **F1** | Ground-truth reproducibility harness | M | The twelve-session run passes but is not yet reproducible on demand as a gate. |
+| **F1** | Ground-truth reproducibility harness | M | **See Stage 2 - `npm run gate`.** |
 | | 309 one-off hex accents in the app | S | **See Stage 1 below - I was wrong, they were not one-offs.** |
 
 Nothing on this list is a bug. The live-bug column is empty for the first time since wave 8.
@@ -5505,3 +5505,30 @@ invite email, a visible objective, a file everybody can read.
 
 Guarded in `the-context-chat-can-close-what-it-opens.spec.ts`, bite-checked on the refuse-not-clamp
 rule, which is the one that would do real damage.
+
+
+## Stage 2 - the gate, reproducible on demand - DONE
+
+    npm run gate
+
+Fresh database, migrations from empty, seed, its own build on its own port, ground 1 through the real
+HTTP API against the live model, then seven assertions. Exits non-zero on any of them.
+
+The 13 August pass was a thing I did by hand: create a database, migrate, seed, run, read the log,
+count the lines. Nobody else could repeat it, and a gate nobody can repeat is an anecdote.
+
+**It reproduced the result, which is the point.** Second independent run: 12 sessions, 24 check-ins,
+23 closing naturally, 12 of 12 reports released, zero findings. The one hard stop landed on session 2
+this time rather than session 12 - which is precisely why that check is a floor of 23 and not an
+exact 24. A gate that failed because the model was a model would teach people to stop running it.
+
+**Its own build on its own port (3399).** The first draft ran against whatever was on 3000, which is
+how a run verifies a stale build and reports the old behaviour as the new one. I did that by hand
+earlier today and it cost half an hour.
+
+**The assertions are a testable module, not inline.** `gate-assertions.ts`, with
+`gate-assertions.spec.ts` running them against the real artifacts and then against seven damaged
+copies: one session of twelve, a check-in with no conversation, a report that never came back, a
+report released empty, everything hitting the turn cap, a party dropping out halfway, and a finding
+recorded. G43 in this file records four separate occasions where a check here could not have failed,
+including a run that reported success having done one session of twelve. That one is now a named test.

@@ -4,6 +4,7 @@ import { queryClient } from '@/lib/queryClient'
 import { authApi } from '@/api/auth'
 import { entryApi } from '@/api/entry'
 import { groundsApi } from '@/api/grounds'
+import { Arrival } from '@/components/gw/Arrival'
 import { LinkProblem } from '@/components/gw/LinkProblem'
 import { useAuthStore } from '@/stores/auth'
 
@@ -230,7 +231,7 @@ export function MagicVerifyPage() {
 
   if (nextGroundId) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--gw-bg)', padding: '0 20px' }}>
+      <Arrival wide>
         <div style={{ maxWidth: 380, width: '100%' }}>
           <div style={{ background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b-soft)', borderRadius: 12, padding: '20px 22px', marginBottom: 20, textAlign: 'center' }}>
             <div style={{ fontSize: 22, marginBottom: 8 }}>✓</div>
@@ -306,13 +307,13 @@ export function MagicVerifyPage() {
             Go to your ground →
           </button>
         </div>
-      </div>
+      </Arrival>
     )
   }
 
   if (noSession) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--gw-bg)', padding: '0 20px' }}>
+      <Arrival wide>
         <div style={{ maxWidth: 400, width: '100%', textAlign: 'center' }}>
           <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 12, padding: '20px 22px', marginBottom: 20, textAlign: 'left' }}>
             <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 6 }}>We couldn't find your session on this device.</div>
@@ -328,13 +329,13 @@ export function MagicVerifyPage() {
             Start a new ground
           </button>
         </div>
-      </div>
+      </Arrival>
     )
   }
 
   if (commitError) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--gw-bg)', padding: '0 20px' }}>
+      <Arrival wide>
         <div style={{ maxWidth: 380, width: '100%', textAlign: 'center' }}>
           <div style={{ background: 'var(--gw-red-bg)', border: '1px solid var(--gw-red-b-soft)', borderRadius: 12, padding: '20px 22px', marginBottom: 20 }}>
             <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--gw-red-t)', marginBottom: 6 }}>Your account is active, but the ground wasn't saved.</div>
@@ -360,12 +361,12 @@ export function MagicVerifyPage() {
             Go to grounds →
           </button>
         </div>
-      </div>
+      </Arrival>
     )
   }
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--gw-bg)' }}>
+    <Arrival>
       {!error ? (
         <div style={{ textAlign: 'center' }}>
           <div style={{ width: 40, height: 40, border: '3px solid var(--gw-navy)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 16px' }} />
@@ -378,6 +379,6 @@ export function MagicVerifyPage() {
           <LinkProblem kind="sign-in" detail={error} />
         </div>
       )}
-    </div>
+    </Arrival>
   )
 }
