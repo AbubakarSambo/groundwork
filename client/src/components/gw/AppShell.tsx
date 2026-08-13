@@ -78,6 +78,25 @@ const NAV_ITEMS = [
       </svg>
     ),
   },
+  {
+    /**
+     * SETTINGS WAS NOT IN THE RAIL AT ALL. It lived only in the user block at the bottom of the
+     * grounds list, so the org's own settings - its name, the thing every page shows the team - were
+     * reachable from one page and nowhere else.
+     *
+     * Not `adminOnly`: everybody has settings of their own here (notifications, WhatsApp number, what
+     * we hold about them). The org section of that page is already gated inside it.
+     */
+    label: 'Settings',
+    to: '/settings',
+    icon: (active: boolean) => (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <circle cx="10" cy="10" r="2.6" stroke="currentColor" strokeWidth="1.5" fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.15 : 0} />
+        <path d="M10 2.2v2.2M10 15.6v2.2M4.5 4.5l1.6 1.6M13.9 13.9l1.6 1.6M2.2 10h2.2M15.6 10h2.2M4.5 15.5l1.6-1.6M13.9 6.1l1.6-1.6"
+          stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      </svg>
+    ),
+  },
   /**
    * PROFILE IS NOT IN THE RAIL, because the page says it does not exist yet:
    * "A profile that gathers them in one place is not built yet." A permanent menu
@@ -96,6 +115,31 @@ const NAV_ITEMS = [
    * it cannot be forgotten again.
    */
 ]
+
+/**
+ * WHO SEES WHICH NAV ITEM, DECIDED ONCE.
+ *
+ * There were three renderers - the collapsed rail, the expanded rail, the mobile bar - and three
+ * different answers:
+ *
+ *   collapsed   `!item.adminOnly || user?.role === 'ADMIN'`   correct
+ *   expanded    `!item.adminOnly`                             an ADMIN saw no People and no Billing
+ *   mobile      no filter at all                              everybody saw both
+ *
+ * So an admin on a desktop had no way to reach billing from the rail, and a team member on a phone had
+ * two doors that would bounce them. Her words: "billing and settings for the org should have its own
+ * accessibility at the very top for the admin."
+ */
+export function navItemsFor(user: { role?: string; isPlatformAdmin?: boolean } | null | undefined) {
+  return NAV_ITEMS.filter(item => {
+    if ((item as any).platformAdminOnly) return !!user?.isPlatformAdmin
+    if ((item as any).adminOnly) return user?.role === 'ADMIN'
+    return true
+  })
+}
+
+/** The organisation's own pages, as opposed to the grounds inside it. */
+export const ORG_ROUTES = ['/org/members', '/billing', '/settings']
 
 type FbTab = 'reaction' | 'build' | 'wrong'
 
@@ -665,7 +709,7 @@ export function AppSidebar() {
                 NavLinks directly rather than going through NavItem, so it skipped
                 the adminOnly check entirely and showed People / Roster / Billing
                 to every member whose sidebar happened to be collapsed. */}
-            {NAV_ITEMS.filter(item => (!item.adminOnly || user?.role === 'ADMIN') && !(item as any).platformAdminOnly).map(item => {
+            {navItemsFor(user).map(item => {
               const active = window.location.pathname.startsWith(item.to)
               return (
                 <NavLink key={item.to} to={item.to} title={item.label}
@@ -681,27 +725,57 @@ export function AppSidebar() {
         {/* Nav items - always visible in expanded sidebar */}
         {!collapsed && (
           <nav style={{ padding: '6px 8px', borderTop: '1px solid rgba(255,255,255,.07)', flexShrink: 0 }}>
-            {/* Both gates, not just adminOnly: this nav is always visible, so
-                anything filtered only by the other list leaks in here. */}
-            {NAV_ITEMS.filter(item => !item.adminOnly && !(item as any).platformAdminOnly).map(item => {
+            {/**
+              * ONE GATE. This used to filter on `!item.adminOnly`, which meant an ADMIN - the only
+              * person People and Billing are for - could not see either of them in the expanded rail.
+              * They appeared in the collapsed icon strip, which used the right test.
+              */}
+            {navItemsFor(user).map((item, i, all) => {
               const active = location.pathname.startsWith(item.to)
               const canNav = isAuthenticated
+              /**
+               * THE ORGANISATION'S OWN PAGES, GROUPED AND NAMED. Her words: "billing and settings for
+               * the org should have its own accessibility at the very top for the admin or somewhere
+               * else. What if the admin is also a participant or lead."
+               *
+               * That last question is the reason this is a heading rather than a separate bar: what
+               * somebody can do for the ORGANISATION does not change with the part they hold on any
+               * ground. An admin who is also a lead and a party sees this section unchanged, and their
+               * part in a ground decides only what the ground's own tabs contain.
+               *
+               * The name is the organisation's, so it reads as a place rather than a category.
+               */
+              const isOrg = ORG_ROUTES.includes(item.to)
+              /**
+               * The heading appears only when there is a group to head. A team member sees Settings
+               * and nothing else from this list, and their settings are their own - notifications,
+               * their WhatsApp number, what we hold about them - so putting the company's name above
+               * it would be wrong about whose page it is.
+               */
+              const orgCount = all.filter(x => ORG_ROUTES.includes(x.to)).length
+              const firstOrg = isOrg && orgCount > 1 && !ORG_ROUTES.includes(all[i - 1]?.to ?? '')
               return (
-                <NavLink
-                  key={item.to}
-                  to={canNav ? item.to : '/auth'}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 10,
-                    padding: '8px 10px', borderRadius: 8, textDecoration: 'none',
-                    color: active ? '#93C5FD' : canNav ? 'rgba(255,255,255,.55)' : 'rgba(255,255,255,.25)',
-                    background: active ? 'rgba(147,197,253,.08)' : 'transparent',
-                    fontSize: 13, fontWeight: active ? 600 : 400,
-                    pointerEvents: canNav ? 'auto' : 'none',
-                  }}
-                >
-                  {item.icon(active)}
-                  <span>{item.label}</span>
-                </NavLink>
+                <div key={item.to}>
+                  {firstOrg && (
+                    <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '.5px', color: 'rgba(255,255,255,.3)', fontWeight: 700, padding: '10px 10px 4px' }}>
+                      {user?.organizationName ?? 'Your organisation'}
+                    </div>
+                  )}
+                  <NavLink
+                    to={canNav ? item.to : '/auth'}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '8px 10px', borderRadius: 8, textDecoration: 'none',
+                      color: active ? '#93C5FD' : canNav ? 'rgba(255,255,255,.55)' : 'rgba(255,255,255,.25)',
+                      background: active ? 'rgba(147,197,253,.08)' : 'transparent',
+                      fontSize: 13, fontWeight: active ? 600 : 400,
+                      pointerEvents: canNav ? 'auto' : 'none',
+                    }}
+                  >
+                    {item.icon(active)}
+                    <span>{item.label}</span>
+                  </NavLink>
+                </div>
               )
             })}
           </nav>
@@ -830,7 +904,8 @@ export function AppSidebar() {
       }}
         className="gw-sidebar-mobile"
       >
-        {NAV_ITEMS.map(item => <NavItem key={item.to} item={item} compact />)}
+        {/* Was unfiltered, so a team member on a phone saw People and Billing and got bounced. */}
+        {navItemsFor(user).map(item => <NavItem key={item.to} item={item} compact />)}
       </nav>
     </>
   )

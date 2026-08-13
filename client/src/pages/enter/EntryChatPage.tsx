@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { entryApi } from '@/api/entry'
 import { authApi } from '@/api/auth'
 import { useEntryStore } from '@/stores/entry'
@@ -10,6 +10,7 @@ import { plannedSessionsFor } from '@/lib/sessionCount'
 import { SlowStep, CLOSING_STEPS } from '@/components/gw/SlowStep'
 import { toast } from 'sonner'
 import { Sec } from '@/components/gw/kit'
+import { clearEntryHandover } from '@/pages/auth/entry-handover'
 
 const STORAGE_KEY = 'gw_entry_session'
 /** Where the API lives, for the one place we hand the browser away (Google). */
@@ -488,6 +489,7 @@ export function EntryChatPage() {
   const urlInitial = params.get('initial') ?? ''
 
   const user = useAuthStore(s => s.user)
+  const queryClient = useQueryClient()
   const { groundName, setGroundName, sessions, setSessions } = useEntryStore()
   const [renamingGround, setRenamingGround] = useState(false)
   const [renameInput, setRenameInput] = useState('')
@@ -1191,6 +1193,28 @@ export function EntryChatPage() {
       }))
     } catch { /* storage full or blocked - the sign-in still works, the ground is re-creatable */ }
     window.location.href = `${API_ORIGIN}/api/v1/auth/google`
+  }
+
+  /**
+   * SAVING WHEN THERE IS ALREADY AN ACCOUNT.
+   *
+   * `/entry/commit` has always taken the signed-in user off the token and created the ground under
+   * their organisation - it is the endpoint the magic link lands on. Nothing needed building; the page
+   * simply never asked whether it was talking to somebody who had already signed in.
+   */
+  const [savingAsUser, setSavingAsUser] = useState(false)
+  async function saveAsSignedInUser() {
+    setSavingAsUser(true)
+    try {
+      const res = await entryApi.commit({ ...buildCommitPayload(), history })
+      /** The rail caches the grounds list, so it has to be told the ground exists. GW-019. */
+      queryClient.invalidateQueries({ queryKey: ['grounds'] })
+      clearEntryHandover()
+      navigate(`/grounds/${res.groundId}`, { replace: true })
+    } catch (err: any) {
+      setSavingAsUser(false)
+      toast.error(err?.response?.data?.message ?? 'Could not save this ground. Try again.')
+    }
   }
 
   async function handleSave() {
@@ -2453,8 +2477,29 @@ export function EntryChatPage() {
               </div>
             )}
 
-            {/* Create account - right after the report, before all admin */}
-            {!emailSent ? (
+            {/**
+              * ALREADY SIGNED IN. The page read `user` from the auth store and never used it, so
+              * somebody with an account walked the whole anonymous funnel and was then asked for
+              * their email to create the account they were signed into - with their own name at the
+              * bottom of the rail two inches to the left.
+              *
+              * For them there is nothing to confirm and no email to send: the ground commits
+              * straight to their account.
+              */}
+            {user && !emailSent ? (
+              <div style={{ marginBottom: 20 }}>
+                <button
+                  onClick={saveAsSignedInUser}
+                  disabled={savingAsUser || (generatingReport && !sessionReport)}
+                  style={{ width: '100%', padding: '12px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: savingAsUser ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: savingAsUser ? 0.6 : 1 }}
+                >
+                  {savingAsUser ? 'Saving…' : 'Save this ground →'}
+                </button>
+                <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.5, textAlign: 'center', paddingTop: 8 }}>
+                  Saving to {user.email}. No confirmation needed, you are already signed in.
+                </div>
+              </div>
+            ) : !emailSent ? (
               <div style={{ marginBottom: 20 }}>
                 <input type="email" placeholder="your@email.com" value={email} onChange={e => { setEmail(e.target.value); setEmailError('') }}
                   onKeyDown={e => e.key === 'Enter' && handleSave()}

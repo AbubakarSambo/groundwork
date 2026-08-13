@@ -5870,3 +5870,59 @@ exposure matters more than the friction later, that control belongs on the serve
 plus a refresh, not as a browser timer firing while the API still trusts you.
 
 Suites: api 1660, client 644.
+
+
+## The org is not a ground, and the entry chat now knows who you are
+
+### Three renderers, three different answers about who sees the org
+
+Her ask, twice: "billing and settings for the org should have its own accessibility at the very top for
+the admin or somewhere else. What if the admin is also a participant or lead."
+
+What I found when I opened the file:
+
+| Renderer | Gate | Effect |
+| --- | --- | --- |
+| Collapsed rail | `!adminOnly \|\| role === 'ADMIN'` | right |
+| Expanded rail | `!adminOnly` | **an ADMIN saw no People and no Billing** |
+| Mobile bar | none at all | **everybody saw both**, including team members it bounces |
+
+So an admin on a desktop could not reach billing from the rail - the one person it is for - and a team
+member on a phone had two doors that would refuse them. Measured before the fix: the admin's expanded
+rail contained "Grounds" and nothing else. And **Settings was in no rail at all**, only in the user
+block on the grounds list, so the organisation's name could be changed from one page and nowhere else.
+
+One gate now, `navItemsFor`, called by all three. Settings joined the list. The organisation's pages sit
+under a heading carrying its own name.
+
+**Her question about holding two parts at once is why this is a heading and not a separate bar.** What
+somebody can do for the ORGANISATION does not change with the part they hold on a ground. An admin who
+is also a lead and a party sees this section unchanged; their part in a ground decides only what that
+ground's tabs contain.
+
+Verified rendered for both roles: admin gets `Grounds | NAVADMIN'S WORKSPACE | People | Billing |
+Settings`, a member gets `Grounds | Settings` with no heading - because a member's settings are their
+own, and the company's name above them would be wrong about whose page it is.
+
+### The entry chat did not know whether you were signed in
+
+`EntryChatPage` read `user` from the auth store and used it nowhere. So somebody with an account who
+opened `/start` walked the whole anonymous funnel and was then shown "save your email below" and "open
+the confirmation link we email you" - asked to create the account they were signed into, with their own
+name in the rail two inches to the left.
+
+Nothing needed building. `/entry/commit` has always taken the user off the token; it is the endpoint the
+magic link lands on. The page simply never asked. It now saves straight to their account, says which
+account by name, and lands on the ground.
+
+Suites: api 1660, client 661.
+
+## Still open, honestly
+
+- **The check-in only offers to end after three of your own messages**, or once the engine decides. The
+  exit is fixed; whether ending should be offered earlier is a product call.
+- **Mobile ground tabs still run off the right edge.** Seven tabs in a scrolling row at 390px, so Team
+  board and Ground settings are past the fold.
+- **`GroundBaseline`** - the team's starting point, which she approved building. Not started.
+- **`POST /documents/invite-upload`** has no caller, so an invited person cannot upload before they have
+  an account.
