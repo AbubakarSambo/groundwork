@@ -200,6 +200,153 @@ function PatternBlock({ label, content, dark }: { label: string; content: string
   )
 }
 
+/**
+ * WHAT THE GROUND CAN TELL YOU - the section the server has been building and nobody could read.
+ * W14-1.
+ *
+ * `what-a-leader-can-weigh.ts` has produced this for months: the lead's own words for what doing
+ * well means, what the record actually holds against those words, and - the part that earns the
+ * section - **the standards nothing in twelve weeks ever reached**. Absence is invisible to a
+ * person reading prose, and it is usually the thing the decision turns on.
+ *
+ * The client rendered none of it. `ConfDots` was deleted for being unimported when it was really
+ * the display half of this, which is the mistake that started this wave.
+ *
+ * THREE RULES FROM THE MODULE'S OWN DESIGN NOTES, KEPT HERE:
+ *  - it is material, not a verdict, and it carries that sentence rather than implying it
+ *  - it does not exist before the closing round, because a "what to weigh" panel visible from
+ *    week two turns every visit into an evaluation
+ *  - the specificity score is NOT in it. It measures how somebody writes, and using it as a
+ *    proxy for how they work is the quiet unfairness this product exists to prevent
+ */
+/**
+ * WHERE THE RECORD IS THIN, AND WHAT WOULD FIRM IT UP. W14-1.
+ *
+ * `harder-to-fool.ts` finds the soft spots in each account - a whole account nothing else
+ * reaches, a claim resting on one session, a standard with no document behind it - and the
+ * service guarantees that a spot never travels without `wouldRaiseIt`, the thing that would
+ * settle it. Both computed, neither shown.
+ *
+ * THIS IS ABOUT THE PICTURE, NOT THE PERSON, and the wording follows `confidence-in-the-picture`
+ * exactly: "we are not confident this part of the picture is complete" rather than "low
+ * specificity", because the same measurement attached to a human being is a verdict. A record
+ * can be thin. A person cannot be thin.
+ *
+ * Lead only: the service computes it under `if (viewerIsLead)` and returns nothing otherwise, so
+ * this cannot render for anybody else even if it were placed wrongly.
+ */
+function WhereTheRecordIsThin({ spots, nameFor }: {
+  spots: Record<string, { spot: string; line: string; wouldRaiseIt: string }[]>
+  nameFor: (participantId: string) => string
+}) {
+  const people = Object.entries(spots).filter(([, list]) => list.length)
+  if (!people.length) return null
+  return (
+    <div style={{ border: '1px solid #E2E0DB', borderRadius: 11, padding: '15px 17px', marginBottom: 16, background: '#FBFAF8' }}>
+      <div style={{ fontSize: 10.5, letterSpacing: '.1em', textTransform: 'uppercase', color: '#6B6560', fontWeight: 700, marginBottom: 4 }}>
+        Where this picture is thin
+      </div>
+      <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.6, marginBottom: 10 }}>
+        Not a mark on anybody. It is what the record cannot yet support, and what would settle it.
+      </div>
+      {people.map(([participantId, list]) => (
+        <div key={participantId} style={{ marginBottom: 10 }}>
+          <div style={{ fontSize: 12.5, fontWeight: 700, color: '#1A1916', marginBottom: 4 }}>
+            On {nameFor(participantId)}&rsquo;s account
+          </div>
+          {list.map((s, i) => (
+            <div key={i} style={{ borderLeft: '3px solid #E2E0DB', paddingLeft: 10, marginBottom: 7 }}>
+              <div style={{ fontSize: 13, color: '#1A1916', lineHeight: 1.6 }}>{s.line}</div>
+              <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.55, marginTop: 2 }}>
+                What would settle it: {s.wouldRaiseIt}
+              </div>
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/**
+ * `[INFERRED: ...]` IS MACHINERY, AND IT REACHED THE READER. W14-1.
+ *
+ * The engine marks anything it concluded rather than heard with `[INFERRED: <reason>]` - a good
+ * rule, and `board/reads.ts` and the conversation service both strip it before use. The weigh
+ * section did not, so a lead's "what you said doing well means" list contained:
+ *
+ *   "him deciding anything without checking with me first [INFERRED: Implied that success is
+ *    seeing him act with independent judgment]"
+ *
+ * Seen the moment it was rendered for the first time.
+ *
+ * NOT STRIPPED SILENTLY. Deleting the marker would present an inference as a quotation, in the
+ * one section whose whole promise is the lead's own words. It is split out and labelled, so the
+ * line reads as what it is and the reason stays available.
+ */
+function splitInference(text: string): { text: string; inferred: string | null } {
+  const m = text.match(/\s*\[INFERRED:\s*([^\]]*)\]\s*/i)
+  if (!m) return { text, inferred: null }
+  return { text: text.replace(m[0], ' ').trim(), inferred: (m[1] || '').trim() || 'inferred from what was said' }
+}
+
+function WhatTheGroundCanTellYou({ section, note }: {
+  section: {
+    whatYouSaidGoodMeans: { text: string; session: number }[]
+    whatTheRecordHolds: { kind: string; text: string; session: number }[]
+    whatNobodyHasEvidenceFor: string[]
+  }
+  note: string
+}) {
+  const rows: { h: string; items: string[]; empty?: string }[] = [
+    { h: 'What you said doing well means', items: section.whatYouSaidGoodMeans.map(s => s.text) },
+    { h: 'What the record holds on that', items: section.whatTheRecordHolds.map(e => e.text), empty: 'Nothing on the record speaks to it yet.' },
+    {
+      h: 'What nobody has evidence for',
+      items: section.whatNobodyHasEvidenceFor,
+      empty: 'Everything you named was reached by somebody\'s account.',
+    },
+  ]
+  return (
+    <div style={{ border: '1px solid #E2E0DB', borderRadius: 11, padding: '15px 17px', marginBottom: 16, background: '#FBFAF8' }}>
+      <div style={{ fontSize: 10.5, letterSpacing: '.1em', textTransform: 'uppercase', color: '#6B6560', fontWeight: 700, marginBottom: 10 }}>
+        What this ground can tell you
+      </div>
+      {rows.map((r, i) => (
+        <div key={i} style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 12.5, fontWeight: 700, color: '#1A1916', marginBottom: 4 }}>{r.h}</div>
+          {r.items.length ? (
+            <ul style={{ margin: 0, paddingLeft: 17, display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {r.items.map((t, j) => {
+                const { text, inferred } = splitInference(t)
+                return (
+                  <li key={j} style={{ fontSize: 13, color: '#1A1916', lineHeight: 1.6 }}>
+                    {text}
+                    {inferred && (
+                      <span
+                        title={inferred}
+                        style={{ marginLeft: 6, fontSize: 11, color: '#6B6560', border: '1px solid #E2E0DB', borderRadius: 4, padding: '1px 5px', whiteSpace: 'nowrap' }}
+                      >
+                        inferred
+                      </span>
+                    )}
+                  </li>
+                )
+              })}
+            </ul>
+          ) : (
+            <div style={{ fontSize: 12.5, color: '#9B9590', lineHeight: 1.6 }}>{r.empty}</div>
+          )}
+        </div>
+      ))}
+      {/* The module ships this sentence with the section. It travels with it. */}
+      <div style={{ fontSize: 11.5, color: '#6B6560', lineHeight: 1.6, borderTop: '1px solid #E2E0DB', paddingTop: 9 }}>
+        {note}
+      </div>
+    </div>
+  )
+}
+
 function AreaBlock({ title, observation, whyItMatters, recommendedMove, reached, note }: {
   title: string
   observation?: string
@@ -856,6 +1003,28 @@ export function ReportPage() {
               )}
 
               <HonestClose aligned={honestClose.aligned} open={honestClose.open} revisit={honestClose.revisit} risk={honestClose.risk} />
+
+              {/*
+                The lead's weigh section, before the full account and after the gaps. W14-1.
+                Lead only, and only once the ground is closing - the server returns nothing
+                before that, so this renders when it has something and never otherwise.
+              */}
+              {isAdmin && (report as any).softSpots && (
+                <WhereTheRecordIsThin
+                  spots={(report as any).softSpots}
+                  nameFor={(pid) => {
+                    const p: any = (ground.participants ?? []).find((x: any) => x.id === pid)
+                    return p ? participantLabel(p) : 'a participant'
+                  }}
+                />
+              )}
+
+              {isAdmin && (report as any).whatTheGroundCanTellYou && (
+                <WhatTheGroundCanTellYou
+                  section={(report as any).whatTheGroundCanTellYou}
+                  note={(report as any).whatTheGroundCanTellYouNote}
+                />
+              )}
 
               {/* The full account, after the sharp part. W13-7. */}
               <PatternBlock label="What we heard" content={report.sharedPicture} />

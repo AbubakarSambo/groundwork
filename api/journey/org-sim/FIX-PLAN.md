@@ -4913,12 +4913,38 @@ Six substantial capabilities the API computes and **no client file mentions**:
 **This is the difference between a 6 and a 9.5.** The product's promise is that it sees things a
 person cannot; a large part of that seeing currently stops at the database.
 
-### W14-1 · Wire the confidence read - **M**
-`whatTheGroundCanTellYou` says what the record can and cannot support, and `softSpots` says where
-it is thin and what would firm it up. Both are computed for the lead already. Put them on the
-report above the areas, restore a dots component for the strength read, and delete the CSS if the
-answer is that we do not want it after all. **Do not ship the label as a verdict** - the API's own
-`THIS_IS_MATERIAL_NOT_A_VERDICT` note exists for that reason and should be rendered with it.
+### W14-1 · Wire the confidence read - **DONE**
+Both are on the report now, lead only, above the full account:
+
+- **What this ground can tell you** - the lead's own words for what doing well means, what the
+  record holds against them, and **what nobody has evidence for**. It carries the module's own
+  `THIS_IS_MATERIAL_NOT_A_VERDICT` string rather than a paraphrase, because a paraphrase is where
+  the hedge gets lost.
+- **Where this picture is thin** - each soft spot with the thing that would settle it, worded
+  about the record and never about the person, exactly as `confidence-in-the-picture.ts` argues.
+
+**What it produced on a real ground, the first time anybody saw it.** Twelve sessions, and five
+standards the lead had stated that nothing in the record ever reached - including *"What I am
+watching for is whether he asks for help early or late."* That is the thing a person cannot see
+for themselves, because absence is invisible, and it has been computed and discarded on every
+ground until today.
+
+**Two things found by rendering it:**
+
+1. **`[INFERRED: ...]` reached the reader.** The engine marks what it concluded rather than heard,
+   and `board/reads.ts` and the conversation service both strip it - this section did not. So a
+   list headed "what you said doing well means" contained *"him deciding anything without checking
+   with me first [INFERRED: Implied that success is seeing him act with independent judgment]"*.
+   It is now split out and shown as a small **inferred** tag with the reason on hover: deleting it
+   would present an inference as a quotation, in the one section whose promise is quotation.
+2. **The whole feature is behind `CONFIDENCE_ENABLED`, which is not set anywhere.** That is why
+   nobody noticed the UI was missing: the payload was empty in every environment. Wiring the UI is
+   necessary and not sufficient - **somebody has to decide to turn it on**, and that is a product
+   call about whether a lead should see this, not a deployment detail.
+
+Bite-checked in four directions, including one that did not bite first time: asserting the
+inference helper EXISTS passed while the call site was replaced with a pass-through. A helper
+nothing calls is the same shape as a component nothing imports.
 
 ### W14-2 · Surface specificity where the lead acts - **M**
 The engine scores how checkable each person's answers are, per session, and keeps the history. The
