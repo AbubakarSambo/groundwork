@@ -1614,7 +1614,12 @@ The phrase now only counts when nothing attributes it to the speaker first. A ba
 before pushing. Nothing on this branch touched that prompt; the model simply phrased it this way
 on this run, and would have tripped the same regex on main.
 
-## W8-64 - One failure, two error surfaces - **OPEN, small**
+## W8-64 - One failure, two error surfaces - **ALREADY DONE, the entry was stale**
+
+Checked on 13 August while answering what is left. `grounds.ts` passes both `skipForbiddenToast` and
+`skipNotFoundToast` on the transcript read, citing this item by number. Fixed at some point and never
+marked. Fifth time in two waves that something on an open list turned out to be built - which is its
+own finding: this file is long enough that reading it is no longer a substitute for checking the code.
 
 Seen while photographing the chat view against a stale local API. The transcript
 request 404s, and the person gets both:
@@ -5416,3 +5421,19 @@ Production is set outside this repo; `.env.example` carries it.
 **To reach 9.5:** W14-10 is the gate and W14-6 is a live bug, so those first. Then the four
 capability wirings (W14-1 to W14-4), which are where the product starts doing what it says. The
 design pass is the longest and the least urgent, and it is the one that makes it feel finished.
+
+
+# What is actually left, 13 August 2026
+
+Compiled by checking each open item against the code rather than trusting the entry, because five
+things on these lists turned out to be already built.
+
+| | What | Size | Why it is still here |
+| --- | --- | --- | --- |
+| **G37/G23** | The context chat for the lead at setup: setting targets, probing for what setup did not capture, recommending materials instead of waiting for uploads | L | Genuinely not built. `context.service.ts` probes inside a check-in; this is a different conversation, with the lead, before anybody answers. Needs a live model in the loop and its own run. |
+| **W14-8 rest** | Page layouts onto Zone/Card/Row/Stat | L | Palette and headings are shared now. This part is a redesign, not wiring, and wants one deliberate pass. |
+| **W8-49** | 38 routes collapsed onto 14 pages, and `/invite` + `/join` + `/verify-email` as one arrival page | L | The three arrival routes still exist separately. Blocked on W8-52. |
+| **F1** | Ground-truth reproducibility harness | M | The twelve-session run passes but is not yet reproducible on demand as a gate. |
+| | 309 one-off hex accents in the app | S | Real one-offs, not drift. Worth naming only if a second page starts using one. |
+
+Nothing on this list is a bug. The live-bug column is empty for the first time since wave 8.
