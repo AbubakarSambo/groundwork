@@ -4,6 +4,7 @@ import { useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth'
 import { authApi } from '@/api/auth'
+import { myDataApi, type MyData } from '@/api/my-data'
 
 export function SettingsPage() {
   const navigate = useNavigate()
@@ -51,6 +52,36 @@ export function SettingsPage() {
       toast.error(err?.response?.data?.message ?? 'Could not leave the organisation. Try again.')
     },
   })
+
+  const [myData, setMyData] = useState<MyData | null>(null)
+  const [showEraseConfirm, setShowEraseConfirm] = useState(false)
+
+  const loadMyData = useMutation({
+    mutationFn: myDataApi.get,
+    onSuccess: setMyData,
+    onError: () => toast.error('Could not load your data. Try again.'),
+  })
+
+  const eraseMyData = useMutation({
+    mutationFn: myDataApi.erase,
+    onSuccess: () => { toast.success('Your data has been erased.'); logout(); navigate('/auth') },
+    onError: () => toast.error('Could not erase your data. Try again.'),
+  })
+
+  /**
+   * The download is built from what is already on screen rather than a second request, so what
+   * lands in the file is exactly what the page just said we hold. A second fetch could disagree.
+   */
+  function downloadMyData() {
+    if (!myData) return
+    const blob = new Blob([JSON.stringify(myData, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'groundwork-my-data.json'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
 
   function handleNotifToggle(val: boolean) {
     setEmailNotif(val)
@@ -197,6 +228,101 @@ export function SettingsPage() {
             </div>
             {phoneSaved && (
               <div style={{ fontSize: 12, color: '#085041', marginTop: 8 }}>Saved.</div>
+            )}
+          </div>
+        </section>
+
+        {/**
+          * WHAT WE HOLD ABOUT YOU. W14-9.
+          *
+          * The marketing site tells people their answers stay theirs. Nothing in the product ever
+          * showed them what "theirs" amounted to. The export and erase endpoints have both existed
+          * since the GDPR work and neither had a caller, so the claim was true and unevidenced.
+          *
+          * Loaded on demand rather than on page load: this is somebody's whole record, and fetching
+          * it every time anybody opens Settings is the wrong default for the one page that is meant
+          * to be careful with it.
+          */}
+        <section style={{ marginBottom: 32 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-muted)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 12 }}>
+            Your data
+          </div>
+          <div style={{ background: 'white', border: '0.5px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px' }}>
+            {!myData ? (
+              <>
+                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>What Groundwork holds about you</div>
+                <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.55, marginBottom: 12 }}>
+                  Everything you have written, which grounds it came from, and nothing anybody else wrote.
+                </div>
+                <button
+                  onClick={() => loadMyData.mutate()}
+                  disabled={loadMyData.isPending}
+                  style={{ padding: '9px 16px', borderRadius: 7, border: '0.5px solid var(--gw-border)', background: 'var(--gw-slate)', color: 'var(--gw-text)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+                >
+                  {loadMyData.isPending ? 'Loading…' : 'Show me'}
+                </button>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>What Groundwork holds about you</div>
+                <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.7, marginBottom: 12 }}>
+                  {myData.recordEntries.length} things you wrote, across {myData.checkIns.length} check-ins,
+                  on {myData.grounds.length} {myData.grounds.length === 1 ? 'ground' : 'grounds'}:
+                  <div style={{ marginTop: 6 }}>
+                    {myData.grounds.map(g => (
+                      <div key={g.id} style={{ color: 'var(--gw-text)' }}>{g.label}</div>
+                    ))}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <button
+                    onClick={downloadMyData}
+                    style={{ padding: '9px 16px', borderRadius: 7, border: '0.5px solid var(--gw-border)', background: 'var(--gw-slate)', color: 'var(--gw-text)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+                  >
+                    Download all of it
+                  </button>
+                  {!showEraseConfirm ? (
+                    <button
+                      onClick={() => setShowEraseConfirm(true)}
+                      style={{ padding: '9px 16px', borderRadius: 7, border: '0.5px solid var(--gw-border)', background: 'none', color: '#791F1F', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+                    >
+                      Erase it
+                    </button>
+                  ) : null}
+                </div>
+                {showEraseConfirm && (
+                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: '0.5px solid var(--gw-border)' }}>
+                    <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.55, marginBottom: 10 }}>
+                      {/**
+                        * What this actually does, read off `eraseAccount`, not off what erasure
+                        * usually means. It anonymises the account; what you wrote into a ground
+                        * stays, because the other people on it have their own claim on the shared
+                        * record. Saying "erases your answers" here would be a promise the server
+                        * does not keep.
+                        */}
+                      Your name and email are removed everywhere and cannot be brought back. What you wrote
+                      into these grounds stays on the record, without your name on it, because the other
+                      people on them have their own account of the same events. Download a copy first if
+                      you want one.
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button
+                        onClick={() => eraseMyData.mutate()}
+                        disabled={eraseMyData.isPending}
+                        style={{ padding: '9px 18px', borderRadius: 6, background: '#791F1F', color: 'white', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600 }}
+                      >
+                        {eraseMyData.isPending ? 'Erasing…' : 'Yes, erase it'}
+                      </button>
+                      <button
+                        onClick={() => setShowEraseConfirm(false)}
+                        style={{ padding: '9px 18px', borderRadius: 6, background: 'var(--gw-slate)', color: 'var(--gw-text)', border: '0.5px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600 }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </section>

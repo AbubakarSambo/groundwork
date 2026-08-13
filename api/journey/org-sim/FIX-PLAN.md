@@ -5083,6 +5083,26 @@ and the product claims it: the marketing site says a person's answers stay their
 properly - scoped to the caller's organisation, reachable from Settings, showing what is held,
 which grounds it came from, and the export and delete that already exist as endpoints.
 
+### W14-9 · The answer to "what do you hold about me" · DONE
+
+Rebuilt, and this time it cannot have the shape that made me delete the last one. The old privacy
+audit read across organisations, so an admin could ask whether a stranger at another company had a
+record. `GET /users/me/export` and `DELETE /users/me/data` take no id at all - the user comes off the
+token - so that shape is not available here.
+
+Both endpoints have existed since the GDPR work with no caller anywhere in the client. Settings now
+has a Your data section: what is held, which grounds it came from, download, and erase behind a
+confirm. Loaded on demand, because this is somebody's whole record and fetching it because they came
+to change a phone number is the wrong default for the one page meant to be careful with it.
+
+**The copy was wrong on the first pass and it mattered.** I wrote that erasing "removes your name and
+your answers". `eraseAccount` anonymises the account and explicitly keeps what was written into a
+ground, under the other party's claim on the shared record. A privacy panel that overstates erasure
+is worse than none, because somebody relies on it. It now says the name goes and the answers stay
+without it, which is what the server does.
+
+Proved on her live account: 33 things written, across 12 check-ins, on one ground.
+
 ### W14-10 · The engine has not been run end to end since 4 August - **L, and this is the shipping gate**
 The last full journey artifact is nine days old. Since then: the report's name substitution
 changed twice, `ENGINE_RULES` gained a rule about claims made against a colleague, the report and
