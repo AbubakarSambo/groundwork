@@ -4948,18 +4948,29 @@ whether they are not allowed to know. One line either way.
 
 ## Billing is organisation setup wearing ground clothes
 
-### W14-6 · A paying organisation with no open grounds cannot manage its subscription - **S, and it is a bug**
+### W14-6 · A paying organisation with no open grounds cannot manage its subscription - **DONE**
 `BillingPage` derives the subscription from `grounds[0].org`, because `GET /billing/status`
 returns only active grounds and a card. So an organisation that has closed its grounds sees
 **"Free · No subscription"** and loses Pause, Resume and Cancel entirely.
 
-Add the organisation's subscription to `getStatus` - plan, status, period end, people counted
-against the cap - and read it there. Then reorganise the page: the plan and the people are the
-organisation's, the session balances are per ground, and today those are mixed into one list.
+`getStatus` now returns the organisation's `subscription` (plan, status, period end, whether the
+free extension is used) and `people` (count against the plan's cap), and the page reads it there.
 
-### W14-7 · Seat counting is invisible until it bites - **S**
-Every plan is priced by people ("Up to 20 people") and nothing shows how many the organisation has.
-Put it next to the plan: 14 of 20. It is the number that decides whether they upgrade.
+Verified on the exact broken case: an organisation with a live SMALL_TEAM subscription and every
+ground closed. Before, the page said **"Free · No subscription"** with no controls. Now it reads
+"Small Team · $50/mo · Up to 20 people · 3 of 20 people · Active", with Pause and Cancel.
+
+Two arms bite-checked, including putting the page back on `grounds[0].org` - the line that caused
+it. The seat count uses the caps already on the service rather than a third copy of them.
+
+**Still to do on this item:** the page's shape. The plan and the people are the organisation's, the
+session balances are per ground, and they still share one column. That is the part her "it looks
+like ground setup" was about, and it is a layout job that belongs with W14-8.
+
+### W14-7 · Seat counting is invisible until it bites - **DONE**
+Done with W14-6: "3 of 20 people" under the plan, and it turns amber and says "over the plan" when
+the organisation is past its cap. An unlimited or absent plan shows a plain count rather than an
+invented ceiling.
 
 ## One design language
 

@@ -99,11 +99,22 @@ export function BillingPage() {
     })
   }
 
-  // Derive subscription state from the first ground's org (all grounds share the same org).
-  const firstGround: any = (grounds as any[])[0]
-  const orgSub = firstGround?.org ?? null
-  const isSubscribed = !!(orgSub?.subscriptionPlan && orgSub?.subscriptionStatus === 'active')
-  const isPaused = orgSub?.subscriptionStatus === 'paused'
+  /**
+   * THE SUBSCRIPTION COMES FROM THE ORGANISATION, NOT FROM A GROUND. W14-6.
+   *
+   * This read `grounds[0].org` - "all grounds share the same org", which is true and beside the
+   * point. An organisation that has closed its grounds has no `grounds[0]`, so `orgSub` was
+   * undefined, `isSubscribed` was false, and a **paying customer saw "Free · No subscription"
+   * with no way to pause, resume or cancel**. The one page they would go to in order to stop
+   * being charged was the page that denied they were being charged.
+   *
+   * `/billing/status` now returns it, which is where an organisation-level fact belongs.
+   */
+  const orgSub = billingStatus?.subscription ?? null
+  const isSubscribed = !!(orgSub?.plan && orgSub?.status === 'active')
+  const isPaused = orgSub?.status === 'paused'
+  const peopleOverCap =
+    billingStatus?.people?.cap != null && billingStatus.people.count > billingStatus.people.cap
   const hasBillingHistory = (billingStatus?.activeGrounds ?? []).length > 0
 
   if (groundsLoading || codesLoading) {
@@ -134,11 +145,30 @@ export function BillingPage() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
               <div>
                 <div style={{ fontSize: 14, fontWeight: 700, color: '#0A1628' }}>
-                  {PLAN_LABELS[orgSub.subscriptionPlan as SubscriptionPlan] ?? orgSub.subscriptionPlan}
+                  {PLAN_LABELS[orgSub.plan as SubscriptionPlan] ?? orgSub.plan}
                 </div>
                 <div style={{ fontSize: 12, color: '#6B6560', marginTop: 3 }}>
-                  {PLAN_PRICES[orgSub.subscriptionPlan as SubscriptionPlan]} &middot; {PLAN_MEMBER_CAPS[orgSub.subscriptionPlan as SubscriptionPlan]}
+                  {PLAN_PRICES[orgSub.plan as SubscriptionPlan]} &middot; {PLAN_MEMBER_CAPS[orgSub.plan as SubscriptionPlan]}
                 </div>
+                {/*
+                  HOW MANY PEOPLE, AGAINST THE CAP. W14-7.
+
+                  Every plan is priced by people, and the product never said how many the
+                  organisation had - so the number that decides whether somebody upgrades was the
+                  one number they could not see, and the first they heard of a cap was being
+                  stopped by it.
+
+                  `cap: null` means unlimited or no plan, and then this is a plain count rather
+                  than an invented ceiling.
+                */}
+                {billingStatus?.people && (
+                  <div style={{ fontSize: 12, color: peopleOverCap ? '#B5675A' : '#6B6560', marginTop: 3, fontWeight: peopleOverCap ? 700 : 400 }}>
+                    {billingStatus.people.cap != null
+                      ? `${billingStatus.people.count} of ${billingStatus.people.cap} people`
+                      : `${billingStatus.people.count} ${billingStatus.people.count === 1 ? 'person' : 'people'}`}
+                    {peopleOverCap && ' - over the plan'}
+                  </div>
+                )}
               </div>
               <span style={{
                 fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20,
@@ -297,7 +327,7 @@ export function BillingPage() {
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
                 <span style={{ fontSize: 14, fontWeight: 800, color: '#0A1628' }}>{PLAN_PRICES[plan]}</span>
-                {isSubscribed && orgSub?.subscriptionPlan === plan ? (
+                {isSubscribed && orgSub?.plan === plan ? (
                   <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: '#E7F6EF', color: '#085041' }}>Current</span>
                 ) : (
                   /* One primary colour in the product. The subscribe buttons were

@@ -8,6 +8,21 @@ export interface GroundBalance {
 }
 
 export interface BillingStatus {
+  /**
+   * The subscription is the ORGANISATION's, and this shape did not carry it. W14-6.
+   *
+   * `BillingPage` had nowhere to read the plan from and took it off `grounds[0].org`, so an
+   * organisation with no open grounds saw "Free · No subscription" and lost Pause, Resume and
+   * Cancel - a paying customer locked out of managing what they pay for.
+   */
+  subscription: {
+    plan: SubscriptionPlan | null
+    status: string | null
+    periodEnd: string | null
+    freeExtensionUsed: boolean
+  }
+  /** `cap: null` means unlimited or no plan - render the count without a ceiling. W14-7. */
+  people: { count: number; cap: number | null }
   activeGrounds: GroundBalance[]
   card?: { brand: string; last4: string } | null
 }
