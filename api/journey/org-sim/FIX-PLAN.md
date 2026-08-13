@@ -4817,6 +4817,32 @@ modes.
 **Still open on this item:** the app's own pages remain on inline styles rather than
 `components/gw/kit.tsx`. The palette is now one palette everywhere; the component vocabulary is not.
 
+### W14-10 · The twelve-session run, on the fixed code · PASSED
+
+The shipping gate. Last artifact before this was 4 August; this is the same engine run against
+everything in waves 13 and 14.
+
+Fresh database, migrations from empty, the org-sim harness driving the real HTTP API as the real
+users against the live model. Ground 1, the twelve-session weekly new-hire ground, two parties.
+
+| | |
+| --- | --- |
+| Sessions | 12 of 12 |
+| Check-ins | 24 |
+| Closed naturally | 23 |
+| Reports released | 12 of 12 |
+| Findings recorded by the harness | 0 |
+
+The one check-in that did not close naturally is in session 12, and the report says so itself rather
+than papering over it: it opens "one party's record contains significantly fewer exchanges and less
+specific detail than the other's" before synthesising. That is the behaviour we want from a thin
+record, not a defect.
+
+The synthesis is specific where the record was specific - it counts the ownership lines growing from
+5 to 13 across the twelve weeks, which is the kind of thing only a real run produces.
+
+Tasks #53 and #54 are this, and they are closed.
+
 ## Sizing
 
 | | S | M |
@@ -5237,6 +5263,32 @@ modes.
 
 **Still open on this item:** the app's own pages remain on inline styles rather than
 `components/gw/kit.tsx`. The palette is now one palette everywhere; the component vocabulary is not.
+
+### W14-10 · The twelve-session run, on the fixed code · PASSED
+
+The shipping gate. Last artifact before this was 4 August; this is the same engine run against
+everything in waves 13 and 14.
+
+Fresh database, migrations from empty, the org-sim harness driving the real HTTP API as the real
+users against the live model. Ground 1, the twelve-session weekly new-hire ground, two parties.
+
+| | |
+| --- | --- |
+| Sessions | 12 of 12 |
+| Check-ins | 24 |
+| Closed naturally | 23 |
+| Reports released | 12 of 12 |
+| Findings recorded by the harness | 0 |
+
+The one check-in that did not close naturally is in session 12, and the report says so itself rather
+than papering over it: it opens "one party's record contains significantly fewer exchanges and less
+specific detail than the other's" before synthesising. That is the behaviour we want from a thin
+record, not a defect.
+
+The synthesis is specific where the record was specific - it counts the ownership lines growing from
+5 to 13 across the twelve weeks, which is the kind of thing only a real run produces.
+
+Tasks #53 and #54 are this, and they are closed.
 
 ## Sizing
 
