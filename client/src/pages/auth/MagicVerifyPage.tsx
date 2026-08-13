@@ -8,7 +8,7 @@ import { LinkProblem } from '@/components/gw/LinkProblem'
 import { useAuthStore } from '@/stores/auth'
 
 const COMMIT_KEY = 'gw_commit_payload'
-const SESSION_KEY = 'gw_entry_session'
+import { loadEntryHandover, clearEntryHandover } from "./entry-handover"
 const FRONTEND_URL = window.location.origin
 
 // Verifying the token flips the auth state, which swaps the route into the
@@ -26,30 +26,6 @@ type VerifyOutcome =
 // verify+commit is still in flight, so caching only finished outcomes is not
 // enough - both mounts must await the SAME promise.
 const verifyFlows = new Map<string, Promise<VerifyOutcome>>()
-
-function loadCommitPayload(): any | null {
-  try {
-    const raw = localStorage.getItem(COMMIT_KEY)
-    if (!raw) return null
-    const payload = JSON.parse(raw)
-    // History is stored separately in gw_entry_session for security.
-    // Merge it in here at commit time.
-    if (!payload.history?.length) {
-      const sessionRaw = localStorage.getItem(SESSION_KEY)
-      if (sessionRaw) {
-        const session = JSON.parse(sessionRaw)
-        if (session?.history?.length) {
-          payload.history = session.history
-          if (!payload.scenario && session.scenario) payload.scenario = session.scenario
-        }
-      }
-    }
-    // The commit endpoint requires history as an array. The coordinator/lead
-    // path legitimately has none (no session), so default to empty.
-    if (!Array.isArray(payload.history)) payload.history = []
-    return payload
-  } catch { return null }
-}
 
 export function MagicVerifyPage() {
   const [params] = useSearchParams()
@@ -106,9 +82,7 @@ export function MagicVerifyPage() {
        */
       queryClient.invalidateQueries({ queryKey: ['grounds'] })
 
-      localStorage.removeItem(COMMIT_KEY)
-      localStorage.removeItem('gw_entry_session')
-      localStorage.removeItem('gw_draft_token')
+      clearEntryHandover()
       const invitedEmails = (result.contributors ?? []).map(c => c.email).filter(e => !result.failedInvites?.includes(e))
       return {
         kind: 'success',
@@ -190,7 +164,7 @@ export function MagicVerifyPage() {
         // different browser/device). Whether there is anything to commit is
         // the SERVER's decision now - the old client-side branch here silently
         // skipped the commit and stranded people on /setup.
-        const payload = loadCommitPayload() ?? { groundLabel: '', history: [], contributors: [] }
+        const payload = loadEntryHandover() ?? { groundLabel: '', history: [], contributors: [] }
         const hadEntryIntent = !!localStorage.getItem(COMMIT_KEY) || !!localStorage.getItem('gw_draft_token')
         lastAttempt.current = { token, payload, user: res.user }
         return commitFlow(payload, hadEntryIntent)

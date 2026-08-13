@@ -5116,6 +5116,25 @@ twelve sessions of real conversation still produce a good one is to run twelve s
 "A ground made in the entry chat goes missing after sign-in" is recorded and unfixed. That is the
 first five minutes of the product for every new person.
 
+### W14-11 · The ground that went missing after sign-in · DONE, and it was two bugs
+
+R1 on the pending list. The entry flow builds a whole ground before anybody has an account, so it
+lives in the browser until a sign-in finishes. There were two sign-ins reading two different keys,
+and the Google one had both halves of it.
+
+**It deleted its key before attempting the commit.** A failed request took the setup with it. The
+ground was never lost on the server; it was deleted in the browser by the code meant to be saving it,
+with no copy left anywhere. The catch even said "their session is still in storage" - the history
+was, the payload was not.
+
+**It read a snapshot frozen at the moment they clicked Google.** `EntryChatPage` keeps
+`gw_commit_payload` current as somebody keeps editing and never touches the Google snapshot, so
+anybody who added a person after clicking Google committed a ground without them.
+
+One loader now, `entry-handover.ts`, used by both paths, preferring the key that is kept in sync.
+Nothing is cleared until a ground exists, and a failed commit says so instead of dropping them on
+/start with no explanation. Bite-checked on the key order, which is the fix.
+
 ### W14-12 · Session pacing has never been seen at rest - **S**
 Everything I verified used a ground whose sessions were all complete or all open. Nobody has
 watched a ground sit between sessions with a date in the future, which is where most grounds spend
