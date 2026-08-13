@@ -136,7 +136,13 @@ export const groundsApi = {
     apiClient.patch<Ground>(`/grounds/${groundId}`, body).then(r => r.data),
 
   getMySpecificity: (groundId: string) =>
-    apiClient.get<{ scores: number[]; label: string }>(`/grounds/${groundId}/my-specificity`).then(r => r.data),
+    apiClient.get<{
+      scores: number[]
+      label: string
+      trend: 'rising' | 'steady' | 'falling' | 'new'
+      whatWouldHelp: string | null
+      strongest: string | null
+    }>(`/grounds/${groundId}/my-specificity`).then(r => r.data),
 
   getMyRecord: (groundId: string) =>
     apiClient.get<{

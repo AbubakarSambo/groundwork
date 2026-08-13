@@ -4951,7 +4951,29 @@ The engine scores how checkable each person's answers are, per session, and keep
 Sessions tab shows status pills. One column, and a lead can see who is giving evidence and who is
 giving adjectives - which is the thing they cannot get from a meeting.
 
-### W14-3 · The audit trail has no reader - **S**
+#### W14-2 · Specificity improved, not removed · DONE
+
+She was right to push back. My plan had this dropped from the lead's weigh section and left there, which
+is half a fix: the module's rule is that specificity belongs to the person, and the person was being
+handed the word "low" with nothing to do about it, twice on the same page.
+
+What it returns now, still owner only:
+
+| Was | Is |
+| --- | --- |
+| `label: 'low'` | the direction it is moving, and only past three sessions |
+| printed twice on the participant page | once, on the record tab |
+| a description of what specificity means | the concrete thing their own recent answers are missing |
+| nothing | their own best answer quoted back, as what checkable looked like |
+
+`whatWouldHelp` is derived by `runIntake`, the engine's own reader, so it names what the engine was
+looking for and did not find rather than scoring the prose. The page now says out loud that the lead
+never sees it, because somebody reading feedback on their own writing assumes otherwise.
+
+Guard: `api/src/modules/grounds/specificity-belongs-to-the-person.spec.ts`, bite-checked on the
+three-session floor and on the intake read.
+
+## W14-3 · The audit trail has no reader - **S**
 `groundAuditLog` records who changed what on a ground. Put it on Ground settings, newest first.
 Small, and it is the difference between "trust us" and "look".
 

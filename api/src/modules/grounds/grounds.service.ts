@@ -15,6 +15,7 @@ import { endStatesFor } from '../resolution/end-states';
 import { canSignIn } from './can-sign-in';
 import { defaultModeFor, boardRendersFor } from '../board/board-families';
 import { BoardFamily, familyFor } from '../board/board-families';
+import { runIntake } from '../conversation/intake';
 
 // Default timelines per scenario (Part 2 - timeline and cadence).
 const DEFAULT_TIMELINE_DAYS: Record<GroundScenario, number> = {
@@ -1832,17 +1833,82 @@ export class GroundsService {
     return { deleted: true };
   }
 
-  async getMySpecificity(groundId: string, userId: string): Promise<{ scores: number[]; label: string }> {
+  /**
+   * A PERSON'S OWN READ ON THEIR OWN RECORD. Private, owner only, and it stays that way:
+   * `what-a-leader-can-weigh.ts` refuses to hand specificity to a lead, because it measures how
+   * somebody WRITES and reading that as how they WORK is the quiet unfairness this product exists
+   * to prevent.
+   *
+   * It used to return one word - high, moderate, low - and the page printed it as "Overall quality
+   * label: low". That is the same verdict, just pointed at the person it belongs to, and it gave
+   * them nothing to do about it. A grade you cannot act on is a grade for somebody else's benefit.
+   *
+   * So it now returns the two things that are actually usable: which way it is going, and the one
+   * concrete thing missing from their own recent answers. `whatWouldHelp` is derived from their own
+   * entries by the same `runIntake` the engine uses, so it names what the engine itself was looking
+   * for and did not find - a date, a number, a name - rather than scoring the prose.
+   *
+   * `label` stays on the response: `getMyRecord` returns it too and both renders read it.
+   */
+  async getMySpecificity(groundId: string, userId: string): Promise<{
+    scores: number[];
+    label: string;
+    trend: 'rising' | 'steady' | 'falling' | 'new';
+    whatWouldHelp: string | null;
+    strongest: string | null;
+  }> {
     const participant = await this.prisma.groundParticipant.findFirst({
       where: { groundId, userId },
-      select: { specificityHistory: true },
+      select: { id: true, specificityHistory: true },
     });
     if (!participant) throw new ForbiddenException('You are not a party to this ground');
     const raw: number[] = (participant.specificityHistory as number[]) ?? [];
     const scores = raw.filter(n => typeof n === 'number' && isFinite(n));
     const avg = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
     const label = avg >= 0.65 ? 'high' : avg >= 0.35 ? 'moderate' : 'low';
-    return { scores, label };
+
+    /**
+     * Under three sessions there is no trend, only noise, and telling somebody their record is
+     * "falling" off two numbers is a verdict dressed as an observation.
+     */
+    let trend: 'rising' | 'steady' | 'falling' | 'new' = 'new';
+    if (scores.length >= 3) {
+      const half = Math.floor(scores.length / 2);
+      const early = scores.slice(0, half).reduce((a, b) => a + b, 0) / half;
+      const late = scores.slice(-half).reduce((a, b) => a + b, 0) / half;
+      trend = late - early > 0.08 ? 'rising' : early - late > 0.08 ? 'falling' : 'steady';
+    }
+
+    /**
+     * The teaching half. Their own last few answers, read for the things the engine could not
+     * find in them, and their own best answer quoted back as what the checkable version looked
+     * like. Showing beats grading: it is the move the engine already makes in conversation.
+     */
+    const entries = await this.prisma.recordEntry.findMany({
+      where: { participantId: participant.id },
+      orderBy: { createdAt: 'desc' },
+      take: 12,
+      select: { text: true },
+    });
+    let whatWouldHelp: string | null = null;
+    let strongest: string | null = null;
+    if (entries.length) {
+      const read = entries.map(e => ({ text: e.text, ...runIntake(e.text) }));
+      const undated = read.filter(r => !/\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|monday|tuesday|wednesday|thursday|friday|last week|this week|yesterday|\d{1,2}\/\d{1,2}|\d{4}-\d{2}-\d{2})\b/i.test(r.text)).length;
+      const unnumbered = read.filter(r => !/\d/.test(r.text)).length;
+      const vague = read.filter(r => r.vagueLanguage.length > 0).length;
+      if (unnumbered > entries.length / 2) {
+        whatWouldHelp = 'Most of your answers so far have no number in them. How many, how long, how often - one figure makes an account checkable that otherwise rests on memory.';
+      } else if (undated > entries.length / 2) {
+        whatWouldHelp = 'Most of your answers so far do not say when. A week, a date, "before the handover" - anything that places it in time lets the other accounts line up against it.';
+      } else if (vague > entries.length / 3) {
+        whatWouldHelp = `Some answers lean on words like "${read.find(r => r.vagueLanguage.length)?.vagueLanguage[0]}". Naming what actually happened instead carries further than describing it.`;
+      }
+      const best = read.filter(r => r.specificity >= 0.5).sort((a, b) => b.specificity - a.specificity)[0];
+      if (best) strongest = best.text.slice(0, 220);
+    }
+
+    return { scores, label, trend, whatWouldHelp, strongest };
   }
 
   /**

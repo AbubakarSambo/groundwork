@@ -518,11 +518,39 @@ export function GroundParticipantPage() {
                   ))}
                 </div>
                 <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.5 }}>
-                  {myRecord.specificity.label === 'high'
-                    ? 'Your record is consistently specific and evidenced. It carries strong weight.'
-                    : myRecord.specificity.label === 'moderate'
-                      ? 'Good detail in places. Adding specific examples in your next session strengthens the picture.'
-                      : 'Your record is building. Specificity grows with each check-in.'}
+                  {specificity?.trend === 'rising'
+                    ? 'Your answers are getting more specific as this goes on.'
+                    : specificity?.trend === 'falling'
+                      ? 'Your recent answers carry less detail than your earlier ones.'
+                      : specificity?.trend === 'steady'
+                        ? 'Your level of detail has held steady across these sessions.'
+                        : 'Too early to read a trend. This fills in as you check in.'}
+                </div>
+
+                {/**
+                  * The half that makes this worth showing anybody. Nobody can act on a word like
+                  * "low"; everybody can act on "none of your answers say when".
+                  */}
+                {specificity?.whatWouldHelp && (
+                  <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.55, marginTop: 10, paddingTop: 10, borderTop: '1px solid #F0EEE9' }}>
+                    <div style={{ fontWeight: 600, color: '#1A1916', marginBottom: 3 }}>What would make the next one land harder</div>
+                    {specificity.whatWouldHelp}
+                  </div>
+                )}
+
+                {/**
+                  * Their own best answer, quoted back. Showing what a checkable account looked like
+                  * in their own words teaches what no description of specificity can.
+                  */}
+                {specificity?.strongest && (
+                  <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.55, marginTop: 10 }}>
+                    <div style={{ fontWeight: 600, color: '#1A1916', marginBottom: 3 }}>This one of yours was easy to check</div>
+                    <span style={{ fontStyle: 'italic' }}>"{specificity.strongest}"</span>
+                  </div>
+                )}
+
+                <div style={{ fontSize: 11, color: '#9B9590', marginTop: 10 }}>
+                  Only you see this. It is never shown to the lead or to anybody else in this ground.
                 </div>
               </div>
             )}
@@ -864,17 +892,11 @@ export function GroundParticipantPage() {
               </div>
             </div>
 
-            {specificity && (
-              <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '13px 16px' }}>
-                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Record quality</div>
-                <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.6 }}>
-                  Overall quality label: <strong style={{ color: '#1A1916' }}>{specificity.label}</strong>.
-                  This reflects how specific and evidenced your submissions have been across all sessions.
-                  Specific, verifiable contributions strengthen the cross-reference and make the final report more useful to everybody in this ground.
-                </div>
-              </div>
-            )}
-
+            {/**
+              * The bare grade that stood here - "Overall quality label: low" - is gone. It was the
+              * same read as the one on the record tab, minus everything a person could act on, and
+              * a page that grades you twice is not twice as honest.
+              */}
             <div style={{ background: '#F8ECEA', border: '1px solid #EDD0CB', borderRadius: 10, padding: '13px 16px' }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: '#B5675A', marginBottom: 4 }}>Privacy reminder</div>
               <div style={{ fontSize: 12, color: '#7A4A44', lineHeight: 1.6 }}>
