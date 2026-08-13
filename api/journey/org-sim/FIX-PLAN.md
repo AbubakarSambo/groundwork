@@ -5649,3 +5649,44 @@ closed. Previously it would have asked the same question forever.
 **I also walked into the stale-build trap while verifying this** - the API on 3000 was a build from
 before Stage 3, so the proposal came back empty and I nearly recorded the mechanism as not firing. It
 is the exact trap `gate.ts` runs its own build on its own port to avoid, written this morning.
+
+
+## The bug class, swept - and one thing we were paying for and discarding
+
+G37's defect has a shape worth hunting: **a check for an absence the schema forbids.** It has no
+failure mode, only a silence. No test broke, nothing logged, nobody complained - the branch simply
+never ran, for as long as the feature has existed.
+
+**The sweep, on the API.** For every non-nullable, non-Boolean column, find `if (!thing.column)` in
+any file that reads that model. Four hits, all name collisions on inspection: three are request-body
+fields checked before a record exists, one is `GroundParticipant.userId`, which genuinely is nullable.
+So after the G37 fix there is no other instance. A useful negative result, and it is a guard now -
+`a-check-that-can-never-be-true.spec.ts` - bite-checked by putting the original dead check back and
+watching it go red.
+
+**The sibling sweep, across the seam.** Diff what the service returns against what the client reads,
+and look at what only one side knows about. Twenty-six fields. Twenty-five are cheap derivations - a
+count, a percentage, a list of labels - and one of those, `documentBackedPct`, turns out to be
+consumed server-side by the board's "Solid?" tile, so it is used, just not by a page.
+
+**The twenty-sixth was expensive.** `postReportGuide` is three lines written for each person before
+they walk into the conversation: a way to open, a question to carry, and one thing the other person
+said worth taking seriously. A Gemini call per participant per report release. On the report payload.
+**Mentioned by no client file at all.**
+
+And in `.env.example`, directly beneath its own comment:
+
+    # Built and proven, but not yet rendered by any UI. OFF by default so it does not
+    # spend a Gemini call per participant per release into a void. Set to "true" only
+    # once a client surface shows each participant their guide.
+    POST_REPORT_GUIDE_ENABLED=true
+
+The comment named the exact failure and the flag was set to true underneath it. Every release, every
+person, paid for and thrown away.
+
+Rendered rather than switched off, because it is already computed, already paid for, and already
+sanitised - `guide-sanitiser.ts` drops any line that names a party or quotes them. It appears as
+"Before you talk to them" on the report, only for the person whose it is, saying plainly that nobody
+else sees it. A guide whose three lines were all stripped renders nothing rather than an empty card.
+
+The comment now describes the surface that exists. On is the right setting for the first time.
