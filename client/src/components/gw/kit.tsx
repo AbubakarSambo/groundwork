@@ -46,9 +46,21 @@ export function Sec({ title, src }: { title: string; src?: string }) {
   )
 }
 
-export function Card({ children, pad = true }: { children: React.ReactNode; pad?: boolean }) {
+/**
+ * `pad` has three cases, and the third was added when Settings' panels came onto the kit. Stage 5.
+ *
+ *   true     a list of `Row`s. 6px, because each Row brings its own 11px.
+ *   false    the row list runs edge to edge - a divided list with no gutter.
+ *   'block'  ONE block of content, which has no Row to bring the vertical padding.
+ *
+ * Without the third case, a panel holding a heading and two lines sat on 6px of air and looked
+ * cramped in a way that reads as a rendering bug rather than a choice. Six of Settings' panels are
+ * that shape, and so is most of the product outside the board.
+ */
+export function Card({ children, pad = true }: { children: React.ReactNode; pad?: boolean | 'block' }) {
+  const padding = pad === 'block' ? '14px 16px' : pad ? '6px 16px' : 0
   return (
-    <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, boxShadow: '0 1px 2px rgba(20,24,40,.05)', padding: pad ? '6px 16px' : 0 }}>
+    <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, boxShadow: '0 1px 2px rgba(20,24,40,.05)', padding }}>
       {children}
     </div>
   )

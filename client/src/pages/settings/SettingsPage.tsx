@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth'
 import { authApi } from '@/api/auth'
 import { myDataApi, type MyData } from '@/api/my-data'
-import { Sec } from '@/components/gw/kit'
+import { Sec, Card } from '@/components/gw/kit'
 
 export function SettingsPage() {
   const navigate = useNavigate()
@@ -109,17 +109,17 @@ export function SettingsPage() {
 
         <section style={{ marginBottom: 32 }}>
           <Sec title="Profile" />
-          <div style={{ background: 'white', border: '0.5px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px' }}>
+          <Card pad="block">
             <div style={{ fontSize: 14, fontWeight: 600 }}>{user?.firstName} {user?.lastName}</div>
             <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 2 }}>{user?.email}</div>
             <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 1 }}>{user?.organizationName} · {user?.role === 'ADMIN' ? 'Admin' : 'Team member'}</div>
-          </div>
+          </Card>
         </section>
 
         {user?.role === 'ADMIN' && (
           <section style={{ marginBottom: 32 }}>
             <Sec title="Organization" />
-            <div style={{ background: 'white', border: '0.5px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px' }}>
+            <Card pad="block">
               <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Organization name</div>
               <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginBottom: 10, lineHeight: 1.5 }}>
                 Everyone on your team sees this. If you signed up without being asked for it, we
@@ -145,13 +145,13 @@ export function SettingsPage() {
                   {renameOrgMut.isPending ? 'Saving…' : 'Save'}
                 </button>
               </div>
-            </div>
+            </Card>
           </section>
         )}
 
         <section style={{ marginBottom: 32 }}>
           <Sec title="Email" />
-          <div style={{ background: 'white', border: '0.5px solid var(--gw-border)', borderRadius: 10, overflow: 'hidden' }}>
+          <Card pad={false}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px' }}>
               <div>
                 <div style={{ fontSize: 13, fontWeight: 600 }}>Ground invites and reminders</div>
@@ -194,12 +194,15 @@ export function SettingsPage() {
                 Saved.
               </div>
             )}
-          </div>
+          </Card>
         </section>
 
         <section style={{ marginBottom: 32 }}>
           <Sec title="WhatsApp" />
-          <div style={{ background: 'white', border: '0.5px solid var(--gw-border)', borderRadius: 10, overflow: 'hidden', padding: '14px 16px' }}>
+          {/* A single block, not a list of rows: this panel was written as a row container and
+              filled with one block, so its content sat flush against the card edge while every
+              other panel was inset. Visible the moment the panels came onto the kit. */}
+          <Card pad="block">
             <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Your WhatsApp number</div>
             <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginBottom: 10, lineHeight: 1.5 }}>
               Add your number to get check-in links and reminders on WhatsApp instead of email. We match messages to your account by this number.
@@ -222,7 +225,7 @@ export function SettingsPage() {
             {phoneSaved && (
               <div style={{ fontSize: 12, color: 'var(--gw-green-t)', marginTop: 8 }}>Saved.</div>
             )}
-          </div>
+          </Card>
         </section>
 
         {/**
@@ -238,7 +241,7 @@ export function SettingsPage() {
           */}
         <section style={{ marginBottom: 32 }}>
           <Sec title="Your data" />
-          <div style={{ background: 'white', border: '0.5px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px' }}>
+          <Card pad="block">
             {!myData ? (
               <>
                 <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>What Groundwork holds about you</div>
@@ -315,12 +318,12 @@ export function SettingsPage() {
                 )}
               </>
             )}
-          </div>
+          </Card>
         </section>
 
         <section>
           <Sec title="Membership" />
-          <div style={{ background: 'white', border: '0.5px solid var(--gw-border)', borderRadius: 10, overflow: 'hidden' }}>
+          <Card pad={false}>
             {!showLeaveConfirm ? (
               <button
                 onClick={() => setShowLeaveConfirm(true)}
@@ -354,7 +357,7 @@ export function SettingsPage() {
                 </div>
               </div>
             )}
-          </div>
+          </Card>
         </section>
       </div>
     </div>

@@ -155,3 +155,55 @@ describe('no colour is shared between pages without a name', () => {
     expect(collisions).toEqual([])
   })
 })
+
+describe('the pages are built from the kit, not from inline styles', () => {
+  /**
+   * STAGE 5. Four of twenty-eight pages imported the kit and the rest hand-rolled everything, which
+   * is why the board reads better than the product it is part of: it is the only page whose hierarchy
+   * is consistent by construction rather than by whoever was typing.
+   *
+   * This is a deliberate pass over the two pages a paying admin meets, not a sweep. Both changes were
+   * checked at the rendered page on a throwaway account signed up through the real flow.
+   */
+  it('Settings\' panels are Cards rather than six copies of one', () => {
+    const S = strip(readFileSync(join(SRC, 'pages/settings/SettingsPage.tsx'), 'utf8'))
+    expect(S).toMatch(/import \{ Sec, Card \} from '@\/components\/gw\/kit'/)
+    // The exact panel that was written out six times.
+    expect(S).not.toMatch(/background: 'white', border: '0\.5px solid var\(--gw-border\)', borderRadius: 10/)
+  })
+
+  it('and the panel holding one block says so', () => {
+    /**
+     * The WhatsApp panel was written as a row container and filled with a single block, so its
+     * content sat flush against the card edge while every other panel was inset. Pre-existing, and
+     * invisible until the panels came onto one component. Measured after: all six inset at 33px.
+     */
+    const S = strip(readFileSync(join(SRC, 'pages/settings/SettingsPage.tsx'), 'utf8'))
+    const whatsapp = S.slice(S.indexOf('<Sec title="WhatsApp" />'), S.indexOf('<Sec title="WhatsApp" />') + 200)
+    expect(whatsapp).toMatch(/<Card pad="block">/)
+  })
+
+  it('Card has the one-block case, so a panel is never padded for rows it does not have', () => {
+    const KIT = strip(readFileSync(join(SRC, 'components/gw/kit.tsx'), 'utf8'))
+    expect(KIT).toMatch(/pad\?: boolean \| 'block'/)
+    expect(KIT).toMatch(/pad === 'block' \? '14px 16px'/)
+  })
+
+  it('Billing answers "what is the state of this" with the board\'s Stat row', () => {
+    const B = strip(readFileSync(join(SRC, 'pages/billing/BillingPage.tsx'), 'utf8'))
+    expect(B).toMatch(/import \{ Stat, Pill \} from '@\/components\/gw\/kit'/)
+    for (const label of ['label="Plan"', 'label="People"']) expect(B).toContain(label)
+  })
+
+  it('and says each of those facts once', () => {
+    /**
+     * The tiles at first sat above a card repeating all three - plan, price, seat count - so a page
+     * about a decision on money stated the same facts twice within one screen. The card is the
+     * state and the two things you can do about it.
+     */
+    const B = strip(readFileSync(join(SRC, 'pages/billing/BillingPage.tsx'), 'utf8'))
+    const card = B.slice(B.indexOf('Current plan'), B.indexOf('Pause subscription'))
+    expect(card).not.toMatch(/PLAN_PRICES\[/)
+    expect(card).not.toMatch(/people\.count/)
+  })
+})

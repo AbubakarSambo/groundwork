@@ -5,6 +5,7 @@ import { billingApi, PLAN_LABELS, PLAN_PRICES, PLAN_MEMBER_CAPS, type Subscripti
 import { groundsApi } from '@/api/grounds'
 import { useAuthStore } from '@/stores/auth'
 import { toast } from 'sonner'
+import { Stat, Pill } from '@/components/gw/kit'
 
 const PLANS: SubscriptionPlan[] = ['STARTER', 'SMALL_TEAM', 'GROWTH', 'BUSINESS', 'SCALE', 'ENTERPRISE']
 
@@ -138,45 +139,68 @@ export function BillingPage() {
           Manage sessions for your grounds and generate access codes.
         </div>
 
+        {/**
+          * AT A GLANCE, IN THE BOARD'S VOCABULARY. Stage 5.
+          *
+          * The three numbers that decide whether somebody upgrades - which plan, how many people
+          * against the cap, when it renews - were prose lines stacked inside a card, in a page whose
+          * whole job is a decision about money. The board answers "what is the state of this" with a
+          * row of serif numerals under small labels, and it is the best-reading page in the product
+          * for exactly that reason.
+          *
+          * `Stat` is the board's own component, not a copy of it, so this row cannot drift from the
+          * one on the board.
+          */}
+        {(isSubscribed || isPaused) && (
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
+            <Stat
+              label="Plan"
+              value={PLAN_LABELS[orgSub!.plan as SubscriptionPlan] ?? String(orgSub!.plan)}
+              caption={PLAN_PRICES[orgSub!.plan as SubscriptionPlan]}
+              tone={isPaused ? 'warn' : undefined}
+            />
+            {billingStatus?.people && (
+              <Stat
+                label="People"
+                value={billingStatus.people.cap != null
+                  ? `${billingStatus.people.count} of ${billingStatus.people.cap}`
+                  : String(billingStatus.people.count)}
+                caption={peopleOverCap ? 'Over what this plan covers' : billingStatus.people.cap != null ? 'Everyone with an account here' : 'No cap on this plan'}
+                tone={peopleOverCap ? 'bad' : undefined}
+              />
+            )}
+            <Stat
+              label={isPaused ? 'Paused since' : 'Renews'}
+              value={orgSub?.periodEnd
+                ? new Date(orgSub.periodEnd).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+                : 'Not set'}
+              caption={isPaused ? 'Nothing is being charged' : 'On the card ending below'}
+              tone={isPaused ? 'warn' : undefined}
+            />
+          </div>
+        )}
+
         {/* Current plan */}
         <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-dark)', marginBottom: 12 }}>Current plan</div>
         {isSubscribed || isPaused ? (
           <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '16px 18px', marginBottom: 28 }}>
+            {/**
+              * SAID ONCE. Stage 5.
+              *
+              * The plan, the price and the seat count are in the tiles above now, and this card
+              * repeated all three - so a page about a decision on money stated the same three facts
+              * twice within one screen. What belongs here is the state and the two things you can do
+              * about it.
+              */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-dark)' }}>
-                  {PLAN_LABELS[orgSub.plan as SubscriptionPlan] ?? orgSub.plan}
-                </div>
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 3 }}>
-                  {PLAN_PRICES[orgSub.plan as SubscriptionPlan]} &middot; {PLAN_MEMBER_CAPS[orgSub.plan as SubscriptionPlan]}
-                </div>
-                {/*
-                  HOW MANY PEOPLE, AGAINST THE CAP. W14-7.
-
-                  Every plan is priced by people, and the product never said how many the
-                  organisation had - so the number that decides whether somebody upgrades was the
-                  one number they could not see, and the first they heard of a cap was being
-                  stopped by it.
-
-                  `cap: null` means unlimited or no plan, and then this is a plain count rather
-                  than an invented ceiling.
-                */}
-                {billingStatus?.people && (
-                  <div style={{ fontSize: 12, color: peopleOverCap ? 'var(--gw-clay)' : 'var(--gw-sub)', marginTop: 3, fontWeight: peopleOverCap ? 700 : 400 }}>
-                    {billingStatus.people.cap != null
-                      ? `${billingStatus.people.count} of ${billingStatus.people.cap} people`
-                      : `${billingStatus.people.count} ${billingStatus.people.count === 1 ? 'person' : 'people'}`}
-                    {peopleOverCap && ' - over the plan'}
-                  </div>
-                )}
+              <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+                {isPaused
+                  ? 'Paused. Nothing is being charged, and your grounds stay as they are.'
+                  : peopleOverCap
+                    ? 'More people have accounts here than this plan covers. Moving up a plan is below.'
+                    : 'Running normally.'}
               </div>
-              <span style={{
-                fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20,
-                background: isPaused ? 'var(--gw-amber-bg)' : 'var(--gw-green-bg)',
-                color: isPaused ? '#B25E00' : 'var(--gw-green-t)',
-              }}>
-                {isPaused ? 'Paused' : 'Active'}
-              </span>
+              <Pill tone={isPaused ? 'warn' : 'good'}>{isPaused ? 'Paused' : 'Active'}</Pill>
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {isPaused ? (

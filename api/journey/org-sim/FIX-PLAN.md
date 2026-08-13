@@ -5431,7 +5431,7 @@ things on these lists turned out to be already built.
 | | What | Size | Why it is still here |
 | --- | --- | --- | --- |
 | **G37/G23** | The context chat | L | **See Stage 3 - it was built, and it could not save a word of what it heard.** |
-| **W14-8 rest** | Page layouts onto Zone/Card/Row/Stat | L | Palette and headings are shared now. This part is a redesign, not wiring, and wants one deliberate pass. |
+| **W14-8 rest** | Page layouts onto Zone/Card/Row/Stat | L | **See Stage 5 - Settings and Billing done deliberately; the rest is still inline.** |
 | **W8-49** | 38 routes onto 14 pages | L | **Arrival chrome shared - see Stage 4. The route count is still 38 and that part stays blocked on W8-52.** |
 | **F1** | Ground-truth reproducibility harness | M | **See Stage 2 - `npm run gate`.** |
 | | 309 one-off hex accents in the app | S | **See Stage 1 below - I was wrong, they were not one-offs.** |
@@ -5558,3 +5558,36 @@ product at all through one set of branches, to save markup. The consistency a pe
 the chrome, and that is shared now.
 
 The other half of W8-49, 38 routes down to 14 pages, is untouched and still waiting on W8-52.
+
+
+## Stage 5 - the two pages a paying admin meets, onto the kit - DONE
+
+Four of twenty-eight pages imported the kit and the rest hand-rolled everything, which is why the
+board reads better than the product it belongs to: it is the only page whose hierarchy is consistent
+by construction rather than by whoever was typing. A deliberate pass over two pages, not a sweep.
+
+**Settings.** Six panels, each written out as the same white card with the same border and radius.
+They are `Card`. And `Card` gained the case it was missing: its padding is 6px because it expects a
+list of `Row`s to bring their own 11px, so a panel holding one block of content sat on 6px of air.
+`pad="block"` is that case, named.
+
+**Which exposed a pre-existing bug.** The WhatsApp panel was written as a row container and filled
+with a single block, so its content had always sat flush against the card edge while every other
+panel was inset. Invisible until all six went through one component. Measured after: all six inset at
+33px.
+
+**Billing.** The three facts that decide whether somebody upgrades - which plan, how many people
+against the cap, when it renews - were prose lines stacked inside a card, on the page whose whole job
+is a decision about money. They are a `Stat` row now, the board's own component so it cannot drift
+from the board's.
+
+**And then said once.** The tiles first sat above a card repeating all three, so one screen stated
+the same facts twice. The card is the state and the two things you can do about it.
+
+Verified at the rendered page, not from the code: a throwaway account signed up through the real
+magic-link flow on the dev database, made a paying org, both pages read, screenshots taken, account
+and org deleted afterwards. Guarded in `one-vocabulary.spec.ts`, bite-checked on the `pad="block"`
+case.
+
+**Still open:** the other twenty-odd pages. `EntryChatPage` alone has 358 inline style objects, and it
+is the first thing a new person meets. That is the next deliberate pass, not this one.
