@@ -268,6 +268,21 @@ export class GroundsController {
     return this.grounds.contextChat(id, userId, dto.history ?? []);
   }
 
+  /**
+   * The confirmation half. `context-chat` proposes; nothing reaches the ground until this runs, and
+   * this re-derives the change from the lead's own words rather than accepting a value from the
+   * client - otherwise it is an edit endpoint with a confirmation-shaped name.
+   */
+  @Post(':id/context-chat/confirm')
+  @ApiOperation({ summary: 'Apply what the setup conversation heard, after the lead confirms it' })
+  async confirmContextProposal(
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string,
+    @Body() dto: { said: string },
+  ) {
+    return this.grounds.applyContextProposal(id, userId, dto);
+  }
+
   @Get(':id/my-notes')
   @ApiOperation({ summary: "The requesting user's own between-session notes on this ground (private, owner only)" })
   async myNotes(@Param('id') id: string, @CurrentUser('id') userId: string) {

@@ -20,7 +20,11 @@ import { PEOPLE, person } from './people';
 import { turnsFor } from './turns';
 import * as fs from 'fs';
 
-const API = 'http://localhost:3000/api/v1';
+/**
+ * The gate runs its own build on its own port, so this cannot be hardcoded: pointing at whatever
+ * happens to be on 3000 is how a run verifies a stale build and reports the old behaviour as new.
+ */
+const API = process.env.ORG_SIM_API ?? 'http://localhost:3000/api/v1';
 const PW = 'OrgSim123!';
 const OUT = process.env.OUT ?? 'journey/org-sim/out';
 const ONLY = process.env.ONLY ? process.env.ONLY.split(',').map(Number) : null;

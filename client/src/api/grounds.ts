@@ -270,8 +270,24 @@ export const groundsApi = {
    * it back, and nothing said here is stored - it is about the ground's setup, not
    * anybody's account of anything.
    */
+  /**
+   * The confirmation. The chat proposes; this is the lead saying yes. It sends back their own words
+   * rather than a value, because the server re-derives the change from them - an endpoint that takes
+   * `timelineDays` from the client is an edit endpoint wearing a confirmation's name.
+   */
+  confirmContext: (groundId: string, said: string) =>
+    apiClient
+      .post<{ changed: string; say: string }>(`/grounds/${groundId}/context-chat/confirm`, { said })
+      .then(r => r.data),
+
   contextChat: (groundId: string, history: { role: 'user' | 'assistant'; content: string }[]) =>
     apiClient
-      .post<{ reply: string; gaps: string[]; done: boolean }>(`/grounds/${groundId}/context-chat`, { history })
+      .post<{
+        reply: string
+        gaps: string[]
+        done: boolean
+        /** Something concrete the lead can confirm. Null when there is nothing to write. */
+        proposal: { gap: string; say: string } | null
+      }>(`/grounds/${groundId}/context-chat`, { history })
       .then(r => r.data),
 }

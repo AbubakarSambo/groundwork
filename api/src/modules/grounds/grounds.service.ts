@@ -16,6 +16,7 @@ import { canSignIn } from './can-sign-in';
 import { defaultModeFor, boardRendersFor } from '../board/board-families';
 import { BoardFamily, familyFor } from '../board/board-families';
 import { runIntake } from '../conversation/intake';
+import { proposalFrom, extractionToolFor, Heard, Proposal } from './what-the-context-chat-heard';
 
 // Default timelines per scenario (Part 2 - timeline and cadence).
 const DEFAULT_TIMELINE_DAYS: Record<GroundScenario, number> = {
@@ -1110,7 +1111,107 @@ export class GroundsService {
         : [{ role: 'user' as const, content: 'Start.' }],
     );
 
-    return { reply, gaps: gaps.map((g: { key: string }) => g.key), done: gaps.length === 0 };
+    /**
+     * WHAT IT HEARD, AND WHAT IT PROPOSES DOING WITH IT. Stage 3.
+     *
+     * This conversation could not close anything it opened. It asked how long the ground should run,
+     * the lead answered, nothing was written, and because the gap was still open the next turn asked
+     * again. Its own prompt file promised "what gets saved is what the lead confirms" and there was
+     * no save path at all.
+     *
+     * A PROPOSAL, NEVER A WRITE. The reply carries `proposal.say` - "I will set this to run for
+     * twelve weeks" - and the ground is untouched until the lead confirms it through
+     * `applyContextProposal`. The failure mode of the other design is a stray sentence rewriting how
+     * long somebody's onboarding runs.
+     *
+     * Only the field the open question was about is reachable, so a model that over-reads cannot
+     * touch the cadence while answering about duration.
+     */
+    let proposal: Proposal = { kind: 'none', why: 'Nothing to record yet.' };
+    const lastFromLead = [...history].reverse().find(h => h.role === 'user')?.content?.trim();
+    const openGap = gaps[0]?.key ?? null;
+    if (lastFromLead && openGap) {
+      try {
+        const heard = await this.anthropic.extract<Heard>(
+          'Read ONLY what the person just said in answer to the question they were asked. Omit any field they did not answer. Never infer a sensible default.',
+          [{ role: 'user' as const, content: lastFromLead }],
+          extractionToolFor(openGap),
+        );
+        if (heard) proposal = proposalFrom(openGap, heard);
+      } catch {
+        /* no proposal; the conversation carries on and the lead can use the form */
+      }
+    }
+
+    return {
+      reply,
+      gaps: gaps.map((g: { key: string }) => g.key),
+      done: gaps.length === 0,
+      /** Present only when there is something concrete to confirm. */
+      proposal: proposal.kind === 'none' ? null : { gap: proposal.kind, say: proposal.say },
+    };
+  }
+
+  /**
+   * THE CONFIRMATION. Nothing the context chat heard reaches the ground until this runs.
+   *
+   * Re-derives the proposal from the same words rather than trusting a payload: an endpoint that
+   * accepts "set timelineDays to 4000" from the client is not a confirmation step, it is an edit
+   * endpoint with a confirmation-shaped name.
+   */
+  async applyContextProposal(
+    groundId: string,
+    requestingUserId: string,
+    dto: { said: string },
+  ) {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: {
+        id: true, initiatorId: true, timelineDays: true, cadence: true, brief: true,
+        participants: { select: { id: true, managingOnly: true } },
+        objectives: { select: { id: true } },
+      },
+    });
+    if (!ground) throw new NotFoundException('Ground not found');
+    if (ground.initiatorId !== requestingUserId) {
+      throw new ForbiddenException('Setting this ground up is the lead\'s.');
+    }
+
+    const openDocumentCount = await this.prisma.groundDocument.count({ where: { groundId, visibility: 'OPEN' } });
+    const gaps = contextGaps({
+      timelineDays: ground.timelineDays,
+      cadence: ground.cadence,
+      brief: ground.brief,
+      partyCount: ground.participants.filter(p => !p.managingOnly).length,
+      perPersonObjectiveCount: ground.objectives.length,
+      openDocumentCount,
+    });
+    const openGap = gaps[0]?.key ?? null;
+    if (!openGap) throw new BadRequestException('There is no open question for this to answer.');
+
+    const heard = await this.anthropic.extract<Heard>(
+      'Read ONLY what the person said in answer to the question they were asked. Omit any field they did not answer.',
+      [{ role: 'user' as const, content: dto.said }],
+      extractionToolFor(openGap),
+    );
+    const proposal = proposalFrom(openGap, heard ?? {});
+    if (proposal.kind === 'none') throw new BadRequestException(proposal.why);
+
+    /**
+     * The timeline write goes through `updateTimeline`, which already owns the rules about changing
+     * a running ground's length and already appends to the audit log every party can now read. A
+     * second path to the same column would be a second set of rules.
+     */
+    if (proposal.kind === 'timeline') {
+      await this.updateTimeline(groundId, requestingUserId, { timelineWeeks: Math.max(1, Math.round(proposal.days / 7)) });
+      return { changed: 'timeline', say: proposal.say };
+    }
+    if (proposal.kind === 'cadence') {
+      await this.updateTimeline(groundId, requestingUserId, { cadence: proposal.cadence });
+      return { changed: 'cadence', say: proposal.say };
+    }
+    await this.prisma.ground.update({ where: { id: groundId }, data: { brief: proposal.text } });
+    return { changed: 'success', say: proposal.say };
   }
 
   async addLeadContext(groundId: string, requestingUserId: string, dto: { participantId?: string | null; text: string }) {

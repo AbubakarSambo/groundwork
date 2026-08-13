@@ -5430,7 +5430,7 @@ things on these lists turned out to be already built.
 
 | | What | Size | Why it is still here |
 | --- | --- | --- | --- |
-| **G37/G23** | The context chat for the lead at setup: setting targets, probing for what setup did not capture, recommending materials instead of waiting for uploads | L | Genuinely not built. `context.service.ts` probes inside a check-in; this is a different conversation, with the lead, before anybody answers. Needs a live model in the loop and its own run. |
+| **G37/G23** | The context chat | L | **See Stage 3 - it was built, and it could not save a word of what it heard.** |
 | **W14-8 rest** | Page layouts onto Zone/Card/Row/Stat | L | Palette and headings are shared now. This part is a redesign, not wiring, and wants one deliberate pass. |
 | **W8-49** | 38 routes collapsed onto 14 pages, and `/invite` + `/join` + `/verify-email` as one arrival page | L | The three arrival routes still exist separately. Blocked on W8-52. |
 | **F1** | Ground-truth reproducibility harness | M | The twelve-session run passes but is not yet reproducible on demand as a gate. |
@@ -5471,3 +5471,37 @@ points from `--gw-red-bg` #FCEBEB: the Risk panel, the privacy notice and an err
 pale pink. A product whose decorative tone and error tone are indistinguishable has no error tone.
 Clay is now the warm terracotta tint it was always supposed to be, #F6E9DF, which also matches the
 #EDD0CB border already sitting on it.
+
+
+## Stage 3 - G37/G23 - IT WAS BUILT, AND IT COULD NOT CLOSE ANYTHING IT OPENED
+
+I listed this as "genuinely not built" because the plan says so in three places. It is built:
+`the-context-chat.ts` with the gap reader and the prompt, `contextChat` in the service, the route, the
+API client, `ContextChat.tsx`, mounted on the Context tab behind `CONTEXT_ENABLED` and gated to the
+lead. **Sixth time something on an open list turned out to exist.** I read the plan instead of the
+code, again, having written two paragraphs about not doing that.
+
+**What was actually missing is the half that makes it work.** Not one write in the whole path. It
+asked "how long should this run?", the lead answered, nothing was saved, and because the gap was
+still open the next turn asked the same question. The panel even said "nothing is saved until you say
+so" and gave nobody a way to say so, and the prompt file's own third rule was "what gets saved is
+what the lead confirms".
+
+Which is the original defect moved one screen along: the ground made from one sentence stays a ground
+made from one sentence, only now it has been asked about.
+
+| Now | |
+| --- | --- |
+| The chat proposes | "I will set this to run for 12 weeks", from what the lead actually typed |
+| Nothing is written until they press it | `Yes, set it`, or `Not that` |
+| The confirmation re-reads their words | it takes `said`, never a value - an endpoint accepting `timelineDays` from the client is an edit endpoint with a confirmation's name |
+| Only the open question's field is reachable | an answer about duration cannot change the cadence, even if they mention it |
+| An impossible length is refused, not clamped | a silent clamp is a ground running for a length nobody chose, and the chat would have said yes |
+| The timeline write goes through `updateTimeline` | so it obeys the rules about changing a running ground and lands in the audit log every party can now read (W14-3) |
+
+Three gaps are asked about and deliberately not writable from a chat: adding a person, setting
+somebody's objective, sharing a document. Each has consequences the conversation cannot own - an
+invite email, a visible objective, a file everybody can read.
+
+Guarded in `the-context-chat-can-close-what-it-opens.spec.ts`, bite-checked on the refuse-not-clamp
+rule, which is the one that would do real damage.
