@@ -12,6 +12,7 @@ import { GroundChat } from '@/components/gw/GroundChat'
 import { whatThisGroundCanTellYou } from '@/lib/contextStrength'
 import { ContextStrength } from '@/components/gw/ContextStrength'
 import { Sec } from '@/components/gw/kit'
+import { groundTabs } from './ground-tabs'
 import { SoloReportBody } from '@/components/gw/SoloReportBody'
 import { apiClient } from '@/api/client'
 import { participantLabel } from '@/lib/utils'
@@ -312,21 +313,35 @@ export function GroundParticipantPage() {
    * the numbers.
    */
 
-  const tabs: { key: Tab; label: string }[] = [
-    { key: 'checkin', label: 'Check-in' },
-    { key: 'record', label: 'My record' },
-    { key: 'report', label: 'Report' },
-    { key: 'docs', label: contextEnabled ? 'Context' : 'Documents' },
-    // "Ground settings", not "Settings": /settings is the ACCOUNT, and one word for both
-    // meant a person looking for their notification preferences opened a ground and a person
-    // looking for this one left the ground entirely. W13-9.
-    { key: 'settings', label: 'Ground settings' },
-  ]
-  // The server decides whether a ground has a board (`boardRenders`); the client
-  // does not keep a second copy of the routing table.
-  if ((ground as any).boardRenders) {
-    tabs.splice(tabs.length - 1, 0, { key: 'board', label: 'Team board' })
-  }
+  /**
+   * ONE TAB ORDER, SHARED WITH THE LEAD'S VIEW. See `ground-tabs.ts`.
+   *
+   * This list used to be defined here in its own order - Check-in, My record, Report - while the
+   * lead's page had Check-in, Sessions, Overview, Context, Report. Report third here, fifth there.
+   * Both read the same function now.
+   *
+   * "My record" became "Record", the same word the lead sees, because it is one tab whose CONTENT
+   * differs by role rather than two tabs about the same thing.
+   */
+  const tabs = groundTabs({
+    isLead: false,
+    contextEnabled,
+    hasBoard: !!(ground as any).boardRenders,
+  }).map(t => {
+    /**
+     * This page's own keys predate the shared list and are not worth churning: `checkin` for the
+     * conversation, `docs` for the material. Mapped explicitly rather than cast, because the cast is
+     * what let the first version of this ship with `chat` as a key this page never matches - the
+     * conversation tab would have highlighted nothing and shown nothing. Caught by reading it, not
+     * by the typechecker, which a cast had silenced.
+     */
+    const mine: Record<string, Tab> = {
+      chat: 'checkin', report: 'report', record: 'record',
+      context: 'docs', board: 'board', settings: 'settings',
+    }
+    return { key: mine[t.key] ?? 'checkin', label: t.label }
+  })
+
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--gw-paper-2)', display: 'flex', flexDirection: 'column' }}>

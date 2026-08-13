@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom'
+import { MARKETING_URL } from '@/lib/marketing'
 
-const MARKETING_URL = import.meta.env.VITE_MARKETING_URL ?? 'https://myground.work'
+
 
 /**
  * A LINK FROM AN EMAIL THAT DOES NOT WORK. W8-62.

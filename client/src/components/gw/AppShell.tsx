@@ -1,4 +1,5 @@
 import { toast } from 'sonner'
+import { MARKETING_URL } from '@/lib/marketing'
 import { authApi } from '@/api/auth'
 import { railAttention, railRank, stillInRail } from '@/lib/rail-attention'
 import { plannedSessionsFor } from '@/lib/sessionCount'
@@ -363,6 +364,7 @@ export function AppSidebar() {
   const qc = useQueryClient()
   const user = useAuthStore(s => s.user)
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
+  const logout = useAuthStore(s => s.logout)
 
   /**
    * The organisations this person belongs to. Only asked when signed in: before that
@@ -399,7 +401,7 @@ export function AppSidebar() {
   const [entryRenameVal, setEntryRenameVal] = useState('')
   const entryRenameRef = useRef<HTMLInputElement>(null)
 
-  const marketingUrl = import.meta.env.VITE_MARKETING_URL ?? 'https://myground.work'
+
   const initials = user ? (user.firstName?.[0] ?? user.email?.[0] ?? 'U').toUpperCase() : 'U'
 
   function startRename(g: Ground) {
@@ -432,9 +434,24 @@ export function AppSidebar() {
       >
         {/* Logo + collapse */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 14px 12px', flexShrink: 0 }}>
-          {!collapsed && (
-            <a href={marketingUrl} style={{ fontSize: 15, fontWeight: 800, color: 'rgba(255,255,255,.92)', letterSpacing: '-0.3px', textDecoration: 'none', whiteSpace: 'nowrap' }}>
+          {/**
+            * THE WAY BACK TO THE SITE, IN BOTH STATES.
+            *
+            * Expanded, the wordmark links out, as it always did. Collapsed, there was nothing at all -
+            * just the chevron - so the rail somebody works in all day had no way home. A single G,
+            * same destination.
+            */}
+          {!collapsed ? (
+            <a href={MARKETING_URL} style={{ fontSize: 15, fontWeight: 800, color: 'rgba(255,255,255,.92)', letterSpacing: '-0.3px', textDecoration: 'none', whiteSpace: 'nowrap' }}>
               Groundwork
+            </a>
+          ) : (
+            <a
+              href={MARKETING_URL}
+              title="Groundwork"
+              style={{ fontSize: 15, fontWeight: 800, color: 'rgba(255,255,255,.92)', textDecoration: 'none', lineHeight: 1 }}
+            >
+              G
             </a>
           )}
           <button
@@ -763,11 +780,32 @@ export function AppSidebar() {
                 {initials}
               </div>
               {!collapsed && (
-                <div style={{ overflow: 'hidden' }}>
+                <div style={{ overflow: 'hidden', flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,.88)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {user?.firstName ? `${user.firstName} ${user.lastName ?? ''}`.trim() : user?.email ?? ''}
                   </div>
-                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,.38)', textTransform: 'capitalize' }}>{(user?.role ?? '').toLowerCase()}</div>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                    <span style={{ fontSize: 11, color: 'rgba(255,255,255,.38)', textTransform: 'capitalize' }}>{(user?.role ?? '').toLowerCase()}</span>
+                    {/**
+                      * SIGNING OUT EXISTED ON ONE PAGE, AS A SPAN.
+                      *
+                      * It was on the grounds list and nowhere else, so from a ground, a check-in,
+                      * billing or settings there was no way to leave - you either navigated back to
+                      * the list to find it or cleared the browser.
+                      *
+                      * It belongs here because this is the block that says who you are, on every
+                      * page. The session itself lasts seven days and is persisted, which is the
+                      * other half of what she asked for: you stay signed in on the device, and
+                      * leaving is something you choose rather than something that happens to you.
+                      */}
+                    <button
+                      onClick={() => { logout(); navigate('/') }}
+                      style={{ fontSize: 11, color: 'rgba(255,255,255,.38)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+                      title="Sign out of Groundwork on this device"
+                    >
+                      Sign out
+                    </button>
+                  </div>
                 </div>
               )}
             </>

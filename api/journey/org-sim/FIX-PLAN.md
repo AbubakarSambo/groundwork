@@ -5800,3 +5800,73 @@ your place. Measured after: no overlap, and it lands on `/grounds/:id/p`.
 Also found while looking: the end-session control only appears after three of your own messages, or
 once the engine decides the session is done. Before that there was no way to end and no way out. The
 exit fixes the second half; whether ending should be offered earlier is a product call, not a bug.
+
+
+# The nav pass, and a link that had been going nowhere
+
+## The wall is gone
+
+`/grounds/:id` was `GroundAdminPage` directly, and the rail links every ground there - so a participant
+clicking their own ground was told **"This view is for whoever runs this ground"** with a button to go
+and find their real page at `/grounds/:id/p`. `GroundPage` decides first now. Nobody is sent to a
+refusal.
+
+`/grounds/:id/p` stays and is not a fallback for a mistake: a lead who is also a party needs their own
+party view, and that is where it lives.
+
+**Why a router rather than one merged page.** The two views are 519 lines between them and hold
+different write paths - releasing a report, inviting people, signing off an account. Merging them in
+the same pass as fixing the wall would put all of those behind one new set of branches. The tab order,
+which is the part she could see was wrong, is shared instead.
+
+## One tab order
+
+`ground-tabs.ts`, read by both views:
+
+**Check-in, Report, Record, Context, Team board, [Overview], Ground settings**
+
+Chat first, report second, as she remembered. "Sessions" and "My record" were the same tab named twice
+and are now "Record" - one tab whose CONTENT differs by role. What may differ by role is what a tab
+contains, never its name or its position, so nobody has to relearn the page when their part in a ground
+changes. Overview is the one lead-only tab and it goes late rather than displacing anything shared.
+
+Nine existing guards failed on this, all of them asserting the old inline label maps. One said "the tab
+label map moved - this check is asserting nothing", which is exactly what had happened. Rewritten to
+assert the shared list and, separately, that neither page keeps a private copy - the second half is the
+part that would otherwise rot.
+
+## The logo, and a link that had been going nowhere
+
+The mark is a link now, by default, in one component - so `Arrival`, which is the invite, the join and
+the sign-in link, finally has a way back to the site. The collapsed rail has a mark at all, which it
+did not.
+
+**And it was broken before I touched it.** `client/.env` carries `VITE_MARKETING_URL=` with nothing
+after it. That is the empty string, not undefined, so `?? 'https://myground.work'` never fell back:
+every logo rendered `href=""`, which links to the page you are already on. The rail's wordmark has been
+going nowhere for as long as that line has been in the env file, and it looks identical to working.
+`||` instead of `??`. Caught by reading the attribute off the running page rather than trusting the
+expression - measured `href: ""`, then `href: https://myground.work`.
+
+Six files declared that URL between them, two with production typed straight in, so a staging build
+sent half its logos to the live site. One constant now, guarded, with `App.tsx` exempt and the reason
+written down: its redirect must only fire when a URL is explicitly configured.
+
+## Signing out, and staying signed in
+
+**Signing out existed on one page**, the grounds list, as a `<span>` with a click handler. From a
+ground, a check-in, billing or settings there was no way to leave. It is in the rail now, on every
+page, as a button.
+
+**And here is why she kept having to sign in again.** `useSessionTimeout` signed people out after
+**30 minutes with no mouse or keyboard**, with a warning at 29. The token lasts seven days and the store
+persists it, so the server still trusted her - the browser was throwing her out. Step away from a
+check-in to go and find the document it just asked for, come back, sign in again.
+
+Removed, and the trade written into the file rather than assumed: an unattended session now stays open
+until the token expires or somebody signs out, which is a real exposure on a shared machine and is why
+the timer existed. What makes it reasonable is that leaving is now possible from anywhere. If the
+exposure matters more than the friction later, that control belongs on the server as a shorter token
+plus a refresh, not as a browser timer firing while the API still trusts you.
+
+Suites: api 1660, client 644.

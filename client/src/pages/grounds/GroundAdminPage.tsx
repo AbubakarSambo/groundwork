@@ -23,6 +23,7 @@ import { CodeShareCard } from '@/components/CodeShareCard'
 import { PostSessionPanel } from '@/components/PostSessionPanel'
 import { ResolutionPanel } from '@/components/gw/ResolutionPanel'
 import { Sec, Stat } from '@/components/gw/kit'
+import { groundTabs } from './ground-tabs'
 import { SoloReportBody } from '@/components/gw/SoloReportBody'
 import { billingApi, PLAN_MEMBER_LIMITS, type SubscriptionPlan } from '@/api/billing'
 
@@ -745,36 +746,38 @@ export function GroundAdminPage() {
             ground someone meant; this row is where a person already looks for
             the parts of a ground. It only appears when the server says this
             ground has one (boardRenders), same as before. */}
+        {/**
+          * ONE TAB ORDER, SHARED WITH THE PARTY VIEW. See `ground-tabs.ts`.
+          *
+          * This list used to live here, in its own order, with its own labels - and the party view
+          * kept a second one. Report was fifth here and third there; "Sessions" here was "My record"
+          * there. Both read the same function now, so a tab cannot move on one page without moving on
+          * the other.
+          *
+          * The keys this page uses internally are unchanged, so nothing about its own state machine
+          * moves: the shared list is mapped onto them.
+          */}
         <div style={{ display: 'flex', borderTop: '0.5px solid var(--gw-border)', overflowX: 'auto' }}>
-          {(['chat', 'checkins', 'overview', 'docs', 'report', 'settings'] as Tab[]).map(t => (
-            <button key={t} className={`gw-tab${tab === t ? ' active' : ''}`} onClick={() => setTab(t)}>
-              {/* THE TAB IS CALLED CONTEXT ONCE THERE IS CONTEXT IN IT. (G38, G26)
-                  With CONTEXT_ENABLED off it says Documents and behaves exactly as
-                  it did, which is what makes the flag honest - off has to be the
-                  old product rather than a renamed one. */}
-              {/*
-                ONE WORD FOR ONE SCREEN. W13-8.
-
-                This tab was "Chat" and the participant's identical tab was "Check-in" - one
-                component, two words, adjacent pages. Somebody being walked through the product
-                by their manager saw two names for one screen.
-
-                "Check-in" wins because it is the word everything else already uses: the email
-                says your check-in is due, the header says My check-ins, the button says Check
-                in. "Chat" was mine.
-
-                The card list becomes "Sessions", which is what it is - one row per person per
-                session - and it has to change, or the lead ends up with "Check-in" and
-                "Check-ins" side by side, which is worse than the problem being fixed.
-              */}
-              {{ chat: 'Check-in', overview: 'Overview', checkins: 'Sessions', docs: contextEnabled ? 'Context' : 'Documents', report: 'Report', settings: 'Ground settings' }[t]}
-            </button>
-          ))}
-          {(ground as any).boardRenders && (
-            <button className="gw-tab" onClick={() => navigate(`/grounds/${id}/board`)}>
-              Team board
-            </button>
-          )}
+          {groundTabs({ isLead: true, contextEnabled, hasBoard: !!(ground as any).boardRenders }).map(t => {
+            /** The board is its own route rather than a tab's content, and always was. */
+            if (t.key === 'board') {
+              return (
+                <button key={t.key} className="gw-tab" onClick={() => navigate(`/grounds/${id}/board`)}>
+                  {t.label}
+                </button>
+              )
+            }
+            const mine: Record<string, Tab> = {
+              chat: 'chat', report: 'report', record: 'checkins', context: 'docs',
+              overview: 'overview', settings: 'settings',
+            }
+            const key = mine[t.key]
+            return (
+              <button key={t.key} className={`gw-tab${tab === key ? ' active' : ''}`} onClick={() => setTab(key)}>
+                {t.label}
+              </button>
+            )
+          })}
         </div>
       </div>
 

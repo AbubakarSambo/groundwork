@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { MARKETING_URL } from '@/lib/marketing'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { authApi } from '@/api/auth'
@@ -12,7 +13,7 @@ const API_ORIGIN = import.meta.env.VITE_API_URL ?? ''
 import { useAuthStore } from '@/stores/auth'
 import { LinkSentPanel } from './LinkSentPanel'
 
-const MARKETING_URL = import.meta.env.VITE_MARKETING_URL ?? 'https://myground.work'
+
 
 /**
  * `create` is new, and it is the point of W10-1: there was no view that was only

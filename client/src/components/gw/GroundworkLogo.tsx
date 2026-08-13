@@ -1,9 +1,24 @@
+import { MARKETING_URL } from '@/lib/marketing'
+
 interface Props {
   height?: number
   color?: string
+  /**
+   * THE MARK IS THE WAY HOME. Her rule: "the groundwork logo and icon are meant to always take you
+   * back to the marketing page."
+   *
+   * It is on by default and wraps the mark in a link, because every place this appears is a place
+   * somebody might want to leave from - the invite, the join, the sign-in link, the entry chat. It
+   * was previously a bare `<svg>` in `Arrival`, so the one page a stranger reaches first had a logo
+   * that did nothing when clicked.
+   *
+   * Turn it off only where the mark sits INSIDE something already clickable, so as not to nest two
+   * links.
+   */
+  linkToMarketing?: boolean
 }
 
-export function GroundworkLogo({ height = 28, color = 'var(--gw-navy)' }: Props) {
+export function GroundworkLogo({ height = 28, color = 'var(--gw-navy)', linkToMarketing = true }: Props) {
   // Aspect ratio derived from the logo mark: bars + wordmark
   // Bars section: 3 bars widening downward, centered
   // Wordmark: "GROUNDWORK" wide-tracked caps below
@@ -19,7 +34,7 @@ export function GroundworkLogo({ height = 28, color = 'var(--gw-navy)' }: Props)
   // Text sits below bars
   const textY = barsH + height * 0.22
 
-  return (
+  const mark = (
     <svg
       width={w}
       height={height}
@@ -52,5 +67,11 @@ export function GroundworkLogo({ height = 28, color = 'var(--gw-navy)' }: Props)
         GROUNDWORK
       </text>
     </svg>
+  )
+  if (!linkToMarketing) return mark
+  return (
+    <a href={MARKETING_URL} style={{ display: 'inline-flex', textDecoration: 'none' }} title="Groundwork">
+      {mark}
+    </a>
   )
 }
