@@ -131,7 +131,7 @@ function AdminCrossRef({ report, closed }: { report: Report; closed: boolean }) 
     { label: 'Aligned', text: report.agreements?.slice(0, 2).join('. ') || '-', bg: 'var(--gw-green-bg)', labelColor: 'var(--gw-green-t)' },
     { label: 'Open', text: report.divergences?.map(d => d.topic).join('. ') || '-', bg: 'var(--gw-amber-bg)', labelColor: 'var(--gw-amber-t)' },
     { label: 'Revisit', text: closed ? 'Review at next raise.' : 'Review next session.', bg: 'var(--gw-blue-bg)', labelColor: 'var(--gw-navy)' },
-    { label: 'Risk', text: report.centralQuestion, bg: '#F8ECEA', labelColor: '#B5675A' },
+    { label: 'Risk', text: report.centralQuestion, bg: 'var(--gw-clay-bg)', labelColor: 'var(--gw-clay)' },
   ]
 
   return (
@@ -354,7 +354,7 @@ export function SessionReportCard({ checkInId, groundId, sessionNumber, isInitia
 
   if (state === 'loading') return null
 
-  const headerBg = isInitiator ? 'var(--gw-navy)' : '#085041'
+  const headerBg = isInitiator ? 'var(--gw-navy)' : 'var(--gw-green-t)'
   const headerLabel = isInitiator ? 'Admin report' : 'Participant report'
   const closingLabel = isInitiator ? 'Resolution record' : 'Resolution record'
 

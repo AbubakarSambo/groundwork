@@ -574,7 +574,7 @@ export function ChatPage() {
       <div className="gw-hdr">
         <div>
           <div className="gw-logo">{groundLabel || user?.firstName || 'Your session'}</div>
-          <div style={{ fontSize: 11, color: isFinalSession ? '#8A5C1A' : 'var(--gw-muted)', fontWeight: isFinalSession ? 700 : 400 }}>
+          <div style={{ fontSize: 11, color: isFinalSession ? 'var(--gw-amber-t)' : 'var(--gw-muted)', fontWeight: isFinalSession ? 700 : 400 }}>
             {isFinalSession ? `Closing session ${sessionNumber} · your final account` : `Session ${sessionNumber} · Private`}
           </div>
         </div>
@@ -583,19 +583,19 @@ export function ChatPage() {
 
       {/* Clarification session banner */}
       {isClarificationSession && (
-        <div style={{ background: '#EEF4FB', borderBottom: '1px solid #B5D4F4', padding: '10px 16px', fontSize: 12.5, color: '#0C447C', lineHeight: 1.55 }}>
+        <div style={{ background: 'var(--gw-blue-bg)', borderBottom: '1px solid var(--gw-blue-b)', padding: '10px 16px', fontSize: 12.5, color: 'var(--gw-navy)', lineHeight: 1.55 }}>
           <strong>Clarification session.</strong> Something in your report was inferred, not quoted directly. Tell us what was actually happening and we'll update the record.
         </div>
       )}
 
       {/* Session open failure - shown at top of chat area so it's always visible */}
       {openFailed && (
-        <div style={{ padding: '12px 16px', background: '#FDF3E3', borderBottom: '1px solid #E8A94A', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexShrink: 0 }}>
-          <span style={{ fontSize: 13, color: '#8A5C1A', lineHeight: 1.4 }}>Could not open your session. This is usually a temporary issue.</span>
+        <div style={{ padding: '12px 16px', background: 'var(--gw-amber-bg)', borderBottom: '1px solid var(--gw-amber-b)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexShrink: 0 }}>
+          <span style={{ fontSize: 13, color: 'var(--gw-amber-t)', lineHeight: 1.4 }}>Could not open your session. This is usually a temporary issue.</span>
           <button
             onClick={() => { setOpenFailed(false); openedRef.current = false; openSession.mutate() }}
             disabled={openSession.isPending}
-            style={{ padding: '6px 14px', borderRadius: 6, background: '#8A5C1A', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0, opacity: openSession.isPending ? 0.6 : 1 }}
+            style={{ padding: '6px 14px', borderRadius: 6, background: 'var(--gw-amber-t)', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0, opacity: openSession.isPending ? 0.6 : 1 }}
           >
             {openSession.isPending ? 'Opening…' : 'Try again'}
           </button>

@@ -60,6 +60,15 @@
   --gw-clay: #B5675A;
   --gw-clay-bg: #F8ECEA;
   --gw-radius: 6px;
+
+  /**
+   * The two off-whites the product uses above the background, named. They were
+   * #F5F3EF (45 times) and #FBFAF8, typed as literals, in the same codebase as
+   * --gw-bg. Same tokens and same names as the marketing site's, so the app and
+   * the site can finally be read against each other. W14-8.
+   */
+  --gw-paper: #FBFAF8;
+  --gw-paper-2: #F5F3EF;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }

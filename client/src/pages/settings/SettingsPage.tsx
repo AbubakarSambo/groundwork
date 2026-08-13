@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth'
 import { authApi } from '@/api/auth'
 import { myDataApi, type MyData } from '@/api/my-data'
+import { Sec } from '@/components/gw/kit'
 
 export function SettingsPage() {
   const navigate = useNavigate()
@@ -107,9 +108,7 @@ export function SettingsPage() {
         <div className="gw-ttl">Settings</div>
 
         <section style={{ marginBottom: 32 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-muted)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 12 }}>
-            Profile
-          </div>
+          <Sec title="Profile" />
           <div style={{ background: 'white', border: '0.5px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px' }}>
             <div style={{ fontSize: 14, fontWeight: 600 }}>{user?.firstName} {user?.lastName}</div>
             <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 2 }}>{user?.email}</div>
@@ -119,9 +118,7 @@ export function SettingsPage() {
 
         {user?.role === 'ADMIN' && (
           <section style={{ marginBottom: 32 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-muted)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 12 }}>
-              Organization
-            </div>
+            <Sec title="Organization" />
             <div style={{ background: 'white', border: '0.5px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px' }}>
               <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Organization name</div>
               <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginBottom: 10, lineHeight: 1.5 }}>
@@ -153,9 +150,7 @@ export function SettingsPage() {
         )}
 
         <section style={{ marginBottom: 32 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-muted)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 12 }}>
-            Email
-          </div>
+          <Sec title="Email" />
           <div style={{ background: 'white', border: '0.5px solid var(--gw-border)', borderRadius: 10, overflow: 'hidden' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px' }}>
               <div>
@@ -195,7 +190,7 @@ export function SettingsPage() {
               </button>
             </div>
             {notifSaved && (
-              <div style={{ fontSize: 12, color: '#085041', padding: '8px 16px', borderTop: '0.5px solid var(--gw-border)', background: '#E8F8F5' }}>
+              <div style={{ fontSize: 12, color: 'var(--gw-green-t)', padding: '8px 16px', borderTop: '0.5px solid var(--gw-border)', background: '#E8F8F5' }}>
                 Saved.
               </div>
             )}
@@ -203,9 +198,7 @@ export function SettingsPage() {
         </section>
 
         <section style={{ marginBottom: 32 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-muted)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 12 }}>
-            WhatsApp
-          </div>
+          <Sec title="WhatsApp" />
           <div style={{ background: 'white', border: '0.5px solid var(--gw-border)', borderRadius: 10, overflow: 'hidden', padding: '14px 16px' }}>
             <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Your WhatsApp number</div>
             <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginBottom: 10, lineHeight: 1.5 }}>
@@ -227,7 +220,7 @@ export function SettingsPage() {
               </button>
             </div>
             {phoneSaved && (
-              <div style={{ fontSize: 12, color: '#085041', marginTop: 8 }}>Saved.</div>
+              <div style={{ fontSize: 12, color: 'var(--gw-green-t)', marginTop: 8 }}>Saved.</div>
             )}
           </div>
         </section>
@@ -244,9 +237,7 @@ export function SettingsPage() {
           * to be careful with it.
           */}
         <section style={{ marginBottom: 32 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-muted)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 12 }}>
-            Your data
-          </div>
+          <Sec title="Your data" />
           <div style={{ background: 'white', border: '0.5px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px' }}>
             {!myData ? (
               <>
@@ -284,7 +275,7 @@ export function SettingsPage() {
                   {!showEraseConfirm ? (
                     <button
                       onClick={() => setShowEraseConfirm(true)}
-                      style={{ padding: '9px 16px', borderRadius: 7, border: '0.5px solid var(--gw-border)', background: 'none', color: '#791F1F', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+                      style={{ padding: '9px 16px', borderRadius: 7, border: '0.5px solid var(--gw-border)', background: 'none', color: 'var(--gw-red-t)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
                     >
                       Erase it
                     </button>
@@ -309,7 +300,7 @@ export function SettingsPage() {
                       <button
                         onClick={() => eraseMyData.mutate()}
                         disabled={eraseMyData.isPending}
-                        style={{ padding: '9px 18px', borderRadius: 6, background: '#791F1F', color: 'white', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600 }}
+                        style={{ padding: '9px 18px', borderRadius: 6, background: 'var(--gw-red-t)', color: 'white', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600 }}
                       >
                         {eraseMyData.isPending ? 'Erasing…' : 'Yes, erase it'}
                       </button>
@@ -328,16 +319,14 @@ export function SettingsPage() {
         </section>
 
         <section>
-          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-muted)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 12 }}>
-            Membership
-          </div>
+          <Sec title="Membership" />
           <div style={{ background: 'white', border: '0.5px solid var(--gw-border)', borderRadius: 10, overflow: 'hidden' }}>
             {!showLeaveConfirm ? (
               <button
                 onClick={() => setShowLeaveConfirm(true)}
                 style={{ width: '100%', textAlign: 'left', padding: '14px 16px', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
               >
-                <div style={{ fontSize: 13, fontWeight: 600, color: '#791F1F' }}>Leave {user?.organizationName}</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-red-t)' }}>Leave {user?.organizationName}</div>
                 <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 2 }}>
                   Removes your access. Your past contributions stay on record for the grounds you were part of.
                 </div>
@@ -352,7 +341,7 @@ export function SettingsPage() {
                   <button
                     onClick={() => leaveOrg.mutate()}
                     disabled={leaveOrg.isPending}
-                    style={{ padding: '9px 18px', borderRadius: 6, background: '#791F1F', color: 'white', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600 }}
+                    style={{ padding: '9px 18px', borderRadius: 6, background: 'var(--gw-red-t)', color: 'white', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600 }}
                   >
                     {leaveOrg.isPending ? 'Leaving...' : 'Yes, leave'}
                   </button>

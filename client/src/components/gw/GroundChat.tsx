@@ -171,8 +171,8 @@ function GroundTopic({ label, scenario, brief, alignment, sessionsDone, totalSes
                 title={p.done ? 'Has checked in for the current session' : notOpenYet ? 'The next session has not opened yet' : 'Has not checked in yet'}
                 style={{
                   fontSize: 12, padding: '3px 9px', borderRadius: 20,
-                  background: p.done ? 'var(--gw-green-bg, #E7F6EF)' : 'var(--gw-bg)',
-                  border: `1px solid ${p.done ? 'var(--gw-green-b, #B6E8D4)' : 'var(--gw-border)'}`,
+                  background: p.done ? 'var(--gw-green-bg)' : 'var(--gw-bg)',
+                  border: `1px solid ${p.done ? 'var(--gw-green-b)' : 'var(--gw-border)'}`,
                   color: 'var(--gw-text)',
                 }}
               >

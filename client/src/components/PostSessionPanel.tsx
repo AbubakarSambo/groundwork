@@ -37,11 +37,11 @@ export function PostSessionPanel({ groundId, freeExtensionUsed, onDismiss }: Pro
   if (dismissed) return null
 
   return (
-    <div style={{ background: '#F5F3EF', border: '1px solid #E2E0DB', borderRadius: 12, padding: '20px 20px 16px', marginBottom: 16 }}>
-      <div style={{ fontSize: 15, fontWeight: 800, color: '#0A1628', marginBottom: 4 }}>
+    <div style={{ background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '20px 20px 16px', marginBottom: 16 }}>
+      <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--gw-dark)', marginBottom: 4 }}>
         Your session is complete.
       </div>
-      <div style={{ fontSize: 13, color: '#6B6560', lineHeight: 1.65, marginBottom: 18 }}>
+      <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 18 }}>
         Did Groundwork help your team move forward? Choose what works best for you.
       </div>
 
@@ -50,16 +50,16 @@ export function PostSessionPanel({ groundId, freeExtensionUsed, onDismiss }: Pro
         {/* Free extension */}
         {!freeExtensionUsed && (
           <div style={{ background: 'white', border: '1px solid #B6E8D4', borderRadius: 10, padding: '14px 16px' }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#085041', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 5 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-green-t)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 5 }}>
               Add one more free session
             </div>
-            <div style={{ fontSize: 13, color: '#1A1916', lineHeight: 1.6, marginBottom: 12 }}>
+            <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6, marginBottom: 12 }}>
               Not ready to pay yet? Keep using Groundwork until you are confident it is delivering value. Add another free session and continue your Ground.
             </div>
             <button
               onClick={() => claimFreeExtensionMut.mutate()}
               disabled={claimFreeExtensionMut.isPending}
-              style={{ padding: '9px 18px', borderRadius: 7, background: '#085041', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: claimFreeExtensionMut.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: claimFreeExtensionMut.isPending ? 0.7 : 1 }}
+              style={{ padding: '9px 18px', borderRadius: 7, background: 'var(--gw-green-t)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: claimFreeExtensionMut.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: claimFreeExtensionMut.isPending ? 0.7 : 1 }}
             >
               {claimFreeExtensionMut.isPending ? 'Adding...' : 'Continue for free'}
             </button>
@@ -75,7 +75,7 @@ export function PostSessionPanel({ groundId, freeExtensionUsed, onDismiss }: Pro
           <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-navy)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 5 }}>
             Upgrade organization
           </div>
-          <div style={{ fontSize: 13, color: '#1A1916', lineHeight: 1.6, marginBottom: 12 }}>
+          <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6, marginBottom: 12 }}>
             Your team is getting value from Groundwork. Unlock unlimited Grounds and unlimited sessions for everyone in your organization with one simple monthly subscription.
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -99,7 +99,7 @@ export function PostSessionPanel({ groundId, freeExtensionUsed, onDismiss }: Pro
 
       <button
         onClick={() => { setDismissed(true); onDismiss() }}
-        style={{ marginTop: 14, background: 'none', border: 'none', fontSize: 12, color: '#9B9590', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}
+        style={{ marginTop: 14, background: 'none', border: 'none', fontSize: 12, color: 'var(--gw-muted)', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}
       >
         Not now
       </button>

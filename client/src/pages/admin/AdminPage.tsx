@@ -28,13 +28,13 @@ const SL: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: 'var(--g
 function Stat({ val, label, accent }: { val: string | number; label: string; accent?: boolean }) {
   return (
     <div style={{ ...C, flex: 1, minWidth: 100 }}>
-      <div style={{ fontSize: 22, fontWeight: 800, color: accent ? '#0C447C' : 'var(--gw-navy)' }}>{val}</div>
+      <div style={{ fontSize: 22, fontWeight: 800, color: accent ? 'var(--gw-navy)' : 'var(--gw-navy)' }}>{val}</div>
       <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginTop: 3 }}>{label}</div>
     </div>
   )
 }
 
-function Bar({ pct, color = '#0C447C' }: { pct: number; color?: string }) {
+function Bar({ pct, color = 'var(--gw-navy)' }: { pct: number; color?: string }) {
   return (
     <div style={{ flex: 1, background: 'rgba(12,68,124,0.08)', borderRadius: 4, height: 8, overflow: 'hidden' }}>
       <div style={{ width: `${Math.min(pct, 100)}%`, height: '100%', background: color, borderRadius: 4, transition: 'width .3s' }} />
@@ -76,7 +76,7 @@ function WhatsAppToggle() {
           <span style={{ position: 'absolute', top: 3, left: data.adminEnabled ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,.2)' }} />
         </button>
       </div>
-      <div style={{ fontSize: 11, marginTop: 8, fontWeight: 700, color: data.live ? '#085041' : 'var(--gw-muted)' }}>
+      <div style={{ fontSize: 11, marginTop: 8, fontWeight: 700, color: data.live ? 'var(--gw-green-t)' : 'var(--gw-muted)' }}>
         {data.live ? 'Live' : data.adminEnabled ? 'On, but not live (credentials missing)' : 'Off'}
       </div>
     </div>
@@ -169,7 +169,7 @@ function DropoffsTab({ data }: { data: UsageFunnelData }) {
         <div style={{ ...C, display: 'flex', flexDirection: 'column', gap: 10 }}>
           {visible.map(row => (
             <div key={row.session} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: 'white', background: '#0C447C', borderRadius: 4, padding: '2px 6px', minWidth: 26, textAlign: 'center', flexShrink: 0 }}>S{row.session}</div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: 'white', background: 'var(--gw-navy)', borderRadius: 4, padding: '2px 6px', minWidth: 26, textAlign: 'center', flexShrink: 0 }}>S{row.session}</div>
               <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', minWidth: 32, textAlign: 'right', flexShrink: 0 }}>{row.completed}</div>
               <Bar pct={s1 > 0 ? (row.completed / s1) * 100 : 0} />
               <div style={{ fontSize: 11, color: 'var(--gw-muted)', minWidth: 60, textAlign: 'right', flexShrink: 0 }}>
@@ -332,7 +332,7 @@ function UsageTab({ data }: { data: UsageStatsData }) {
                   style={{
                     width: '100%', borderRadius: '3px 3px 0 0',
                     height: `${Math.max((count / maxCount) * 60, count > 0 ? 4 : 2)}px`,
-                    background: count > 0 ? '#0C447C' : 'var(--gw-border)',
+                    background: count > 0 ? 'var(--gw-navy)' : 'var(--gw-border)',
                     transition: 'height .3s',
                   }}
                 />
@@ -380,13 +380,13 @@ function FeedbackTab({ data }: { data: FeedbackSummaryData }) {
           <div style={SL}>Recent responses</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {data.recent.map(f => (
-              <div key={f.id} style={{ ...C, borderLeft: `3px solid ${f.feltFair ? '#5DCAA5' : '#E8A94A'}` }}>
+              <div key={f.id} style={{ ...C, borderLeft: `3px solid ${f.feltFair ? 'var(--gw-green-b)' : 'var(--gw-amber-b)'}` }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: f.note ? 5 : 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{
                       fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 20,
-                      background: f.feltFair ? 'var(--gw-green-bg)' : '#FDF3E3',
-                      color: f.feltFair ? 'var(--gw-green-t)' : '#8A5C1A',
+                      background: f.feltFair ? 'var(--gw-green-bg)' : 'var(--gw-amber-bg)',
+                      color: f.feltFair ? 'var(--gw-green-t)' : 'var(--gw-amber-t)',
                     }}>
                       {f.feltFair ? 'Felt fair' : 'Didn\'t feel fair'}
                     </span>
@@ -412,7 +412,7 @@ function FeedbackTab({ data }: { data: FeedbackSummaryData }) {
 function ErrorsTab() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div style={{ ...C, borderLeft: '3px solid #E8A94A' }}>
+      <div style={{ ...C, borderLeft: '3px solid var(--gw-amber-b)' }}>
         <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 4 }}>No error sink connected</div>
         <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
           Connect Sentry or add a <code style={{ fontSize: 11, background: 'var(--gw-bg)', padding: '1px 5px', borderRadius: 3 }}>POST /ops/errors</code> endpoint to surface recent exceptions here.
@@ -545,9 +545,9 @@ export function AdminPage() {
               style={{
                 flex: '0 0 auto', padding: '9px 16px', fontSize: 12,
                 fontWeight: tab === id ? 700 : 500,
-                color: tab === id ? '#0C447C' : 'var(--gw-muted)',
+                color: tab === id ? 'var(--gw-navy)' : 'var(--gw-muted)',
                 background: 'none', border: 'none',
-                borderBottom: tab === id ? '2px solid #0C447C' : '2px solid transparent',
+                borderBottom: tab === id ? '2px solid var(--gw-navy)' : '2px solid transparent',
                 cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
               }}
             >

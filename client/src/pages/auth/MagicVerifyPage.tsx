@@ -234,16 +234,16 @@ export function MagicVerifyPage() {
         <div style={{ maxWidth: 380, width: '100%' }}>
           <div style={{ background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 12, padding: '20px 22px', marginBottom: 20, textAlign: 'center' }}>
             <div style={{ fontSize: 22, marginBottom: 8 }}>✓</div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: '#085041', marginBottom: 4 }}>Your ground is set up.</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--gw-green-t)', marginBottom: 4 }}>Your ground is set up.</div>
             <div style={{ fontSize: 13, color: '#3A7A60', lineHeight: 1.6 }}>Your session is on record and your account is live.</div>
           </div>
           {joinUrl && (
-            <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#6B6560', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>Share this link to invite participants</div>
-              <div style={{ fontSize: 12, fontFamily: 'monospace', color: '#0A1628', background: '#F5F3EF', borderRadius: 6, padding: '8px 10px', wordBreak: 'break-all', marginBottom: 8 }}>{joinUrl}</div>
+            <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-sub)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>Share this link to invite participants</div>
+              <div style={{ fontSize: 12, fontFamily: 'monospace', color: 'var(--gw-dark)', background: 'var(--gw-paper-2)', borderRadius: 6, padding: '8px 10px', wordBreak: 'break-all', marginBottom: 8 }}>{joinUrl}</div>
               <button
                 onClick={() => { navigator.clipboard.writeText(joinUrl).catch(() => {}) }}
-                style={{ fontSize: 11, fontWeight: 700, color: '#0A1628', background: 'none', border: '1px solid #C8C5C0', borderRadius: 5, padding: '5px 12px', cursor: 'pointer', fontFamily: 'inherit' }}
+                style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-dark)', background: 'none', border: '1px solid #C8C5C0', borderRadius: 5, padding: '5px 12px', cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 Copy link
               </button>
@@ -251,10 +251,10 @@ export function MagicVerifyPage() {
           )}
           {invited.length > 0 && (
             <div style={{ background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#085041', marginBottom: 6 }}>Invited ({invited.length}) ✓</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-green-t)', marginBottom: 6 }}>Invited ({invited.length}) ✓</div>
               <div style={{ fontSize: 12, color: '#3A7A60', lineHeight: 1.55, marginBottom: 6 }}>Each of these people has been emailed a private link to add their own account:</div>
               {invited.map(e => (
-                <div key={e} style={{ fontSize: 12, color: '#085041', fontFamily: 'monospace' }}>{e}</div>
+                <div key={e} style={{ fontSize: 12, color: 'var(--gw-green-t)', fontFamily: 'monospace' }}>{e}</div>
               ))}
               <div style={{ fontSize: 12, color: '#3A7A60', lineHeight: 1.55, marginTop: 8, paddingTop: 8, borderTop: '1px solid #B6E8D4' }}>
                 Track who has checked in on your ground page - each person shows as invited, in progress, or completed, and you can send a reminder from there.

@@ -40,7 +40,7 @@ export function CodeShareCard({ code, expiresAt, daysRemaining, note, allowCodeC
 
   return (
     <div style={{
-      background: '#1A1916',
+      background: 'var(--gw-text)',
       borderRadius: 14,
       padding: '24px 20px',
       display: 'flex',
@@ -62,7 +62,7 @@ export function CodeShareCard({ code, expiresAt, daysRemaining, note, allowCodeC
             padding: '3px 8px',
             borderRadius: 20,
             background: 'rgba(93,202,165,.15)',
-            color: '#5DCAA5',
+            color: 'var(--gw-green-b)',
             letterSpacing: '.03em',
           }}>
             Can generate codes
@@ -119,7 +119,7 @@ export function CodeShareCard({ code, expiresAt, daysRemaining, note, allowCodeC
             padding: '10px 0',
             borderRadius: 8,
             background: codeCopied ? 'rgba(93,202,165,.2)' : 'rgba(255,255,255,.1)',
-            color: codeCopied ? '#5DCAA5' : 'white',
+            color: codeCopied ? 'var(--gw-green-b)' : 'white',
             border: 'none',
             fontSize: 13,
             fontWeight: 700,
@@ -137,7 +137,7 @@ export function CodeShareCard({ code, expiresAt, daysRemaining, note, allowCodeC
             padding: '10px 0',
             borderRadius: 8,
             background: shareCopied ? 'rgba(93,202,165,.2)' : 'rgba(255,255,255,.06)',
-            color: shareCopied ? '#5DCAA5' : 'rgba(255,255,255,.8)',
+            color: shareCopied ? 'var(--gw-green-b)' : 'rgba(255,255,255,.8)',
             border: '0.5px solid rgba(255,255,255,.15)',
             fontSize: 13,
             fontWeight: 700,

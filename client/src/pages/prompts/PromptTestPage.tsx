@@ -37,10 +37,10 @@ function ChatBubble({ turn }: { turn: Turn }) {
     <div style={{ display: 'flex', justifyContent: isUser ? 'flex-end' : 'flex-start', marginBottom: 8 }}>
       <div style={{
         maxWidth: '85%', padding: '8px 11px', borderRadius: isUser ? '10px 10px 3px 10px' : '10px 10px 10px 3px',
-        background: isUser ? '#0C447C' : 'white',
-        color: isUser ? 'white' : '#1A1916',
+        background: isUser ? 'var(--gw-navy)' : 'white',
+        color: isUser ? 'white' : 'var(--gw-text)',
         fontSize: 12, lineHeight: 1.55,
-        border: isUser ? 'none' : '0.5px solid #E2E0DB',
+        border: isUser ? 'none' : '0.5px solid var(--gw-border)',
         whiteSpace: 'pre-wrap',
       }}>
         {turn.content}
@@ -109,18 +109,18 @@ function ConversationLane({
     e.target.value = ''
   }
 
-  const ACCENT = laneKey === 'admin' ? '#0C447C' : laneKey === 'p1' ? '#5DCAA5' : '#E8A94A'
+  const ACCENT = laneKey === 'admin' ? 'var(--gw-navy)' : laneKey === 'p1' ? 'var(--gw-green-b)' : 'var(--gw-amber-b)'
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, background: '#F5F3EF', borderRadius: 10, overflow: 'hidden', border: '1px solid #E2E0DB' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, background: 'var(--gw-paper-2)', borderRadius: 10, overflow: 'hidden', border: '1px solid var(--gw-border)' }}>
 
       {/* Lane header */}
-      <div style={{ background: 'white', borderBottom: '1px solid #E2E0DB', padding: '9px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ background: 'white', borderBottom: '1px solid var(--gw-border)', padding: '9px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div style={{ width: 8, height: 8, borderRadius: '50%', background: ACCENT, flexShrink: 0 }} />
-          <span style={{ fontSize: 12, fontWeight: 700, color: '#1A1916' }}>{lane.label}</span>
+          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-text)' }}>{lane.label}</span>
           {lane.docName && (
-            <span style={{ fontSize: 10, color: '#6B6560', background: '#EEF4FB', borderRadius: 4, padding: '1px 6px', border: '0.5px solid #BFDBFE' }}>
+            <span style={{ fontSize: 10, color: 'var(--gw-sub)', background: 'var(--gw-blue-bg)', borderRadius: 4, padding: '1px 6px', border: '0.5px solid #BFDBFE' }}>
               {lane.docName}
             </span>
           )}
@@ -129,13 +129,13 @@ function ConversationLane({
           <button
             onClick={() => fileRef.current?.click()}
             title="Attach a text document to this lane"
-            style={{ fontSize: 11, color: '#6B6560', background: 'none', border: '0.5px solid #E2E0DB', borderRadius: 4, padding: '3px 8px', cursor: 'pointer', fontFamily: 'inherit' }}
+            style={{ fontSize: 11, color: 'var(--gw-sub)', background: 'none', border: '0.5px solid var(--gw-border)', borderRadius: 4, padding: '3px 8px', cursor: 'pointer', fontFamily: 'inherit' }}
           >
             Doc
           </button>
           <button
             onClick={() => onClear(laneKey)}
-            style={{ fontSize: 11, color: '#9B9590', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: '3px 6px' }}
+            style={{ fontSize: 11, color: 'var(--gw-muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: '3px 6px' }}
           >
             Clear
           </button>
@@ -146,27 +146,27 @@ function ConversationLane({
       {/* Messages */}
       <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '12px 12px 8px', minHeight: 260, maxHeight: 380 }}>
         {lane.messages.length === 0 && !sendMutation.isPending && (
-          <div style={{ fontSize: 12, color: '#9B9590', textAlign: 'center', paddingTop: 40 }}>
+          <div style={{ fontSize: 12, color: 'var(--gw-muted)', textAlign: 'center', paddingTop: 40 }}>
             Type as the {lane.label.toLowerCase()}
           </div>
         )}
         {lane.messages.map((m, i) => <ChatBubble key={i} turn={m} />)}
         {sendMutation.isPending && (
           <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: 8 }}>
-            <div style={{ fontSize: 12, color: '#9B9590', background: 'white', border: '0.5px solid #E2E0DB', borderRadius: '10px 10px 10px 3px', padding: '8px 11px' }}>…</div>
+            <div style={{ fontSize: 12, color: 'var(--gw-muted)', background: 'white', border: '0.5px solid var(--gw-border)', borderRadius: '10px 10px 10px 3px', padding: '8px 11px' }}>…</div>
           </div>
         )}
       </div>
 
       {/* Input */}
-      <div style={{ borderTop: '1px solid #E2E0DB', background: 'white', padding: '8px 10px', display: 'flex', gap: 7, alignItems: 'flex-end' }}>
+      <div style={{ borderTop: '1px solid var(--gw-border)', background: 'white', padding: '8px 10px', display: 'flex', gap: 7, alignItems: 'flex-end' }}>
         <textarea
           value={lane.input}
           onChange={e => onInputChange(laneKey, e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
           placeholder={`Type as the ${lane.label.toLowerCase()}…`}
           rows={2}
-          style={{ flex: 1, resize: 'none', fontSize: 12, fontFamily: 'inherit', border: '0.5px solid #E2E0DB', borderRadius: 6, padding: '7px 9px', lineHeight: 1.5, color: '#1A1916' }}
+          style={{ flex: 1, resize: 'none', fontSize: 12, fontFamily: 'inherit', border: '0.5px solid var(--gw-border)', borderRadius: 6, padding: '7px 9px', lineHeight: 1.5, color: 'var(--gw-text)' }}
         />
         <button
           onClick={send}
@@ -230,47 +230,47 @@ export function PromptTestPage() {
 
   if (!user?.isPlatformAdmin) {
     return (
-      <div style={{ minHeight: '100vh', background: '#F5F3EF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ fontSize: 13, color: '#9B9590' }}>Platform admin access required.</div>
+      <div style={{ minHeight: '100vh', background: 'var(--gw-paper-2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ fontSize: 13, color: 'var(--gw-muted)' }}>Platform admin access required.</div>
       </div>
     )
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F5F3EF', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--gw-paper-2)', display: 'flex', flexDirection: 'column' }}>
 
       {/* Header */}
-      <div style={{ position: 'sticky', top: 0, zIndex: 50, background: '#F5F3EF', borderBottom: '1px solid #E2E0DB' }}>
+      <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'var(--gw-paper-2)', borderBottom: '1px solid var(--gw-border)' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <button onClick={() => navigate('/prompts')} style={{ fontSize: 12, color: '#9B9590', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>← Back</button>
-            <span style={{ fontSize: 14, fontWeight: 800, color: '#0A1628' }}>Prompt test panel</span>
+            <button onClick={() => navigate('/prompts')} style={{ fontSize: 12, color: 'var(--gw-muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>← Back</button>
+            <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--gw-dark)' }}>Prompt test panel</span>
           </div>
-          <button onClick={() => navigate('/admin')} style={{ fontSize: 12, color: '#9B9590', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Ops dashboard</button>
+          <button onClick={() => navigate('/admin')} style={{ fontSize: 12, color: 'var(--gw-muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Ops dashboard</button>
         </div>
       </div>
 
       <div style={{ maxWidth: 1200, margin: '0 auto', width: '100%', padding: '16px 16px 64px', display: 'flex', flexDirection: 'column', gap: 16 }}>
 
         {/* Description */}
-        <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.65 }}>
+        <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.65 }}>
           Edit the check-in prompt below, then run it across an admin and two participants. Each lane keeps its own conversation and uses the prompt exactly as edited here, so you can change the engine and see the effect on all three roles at once. Attach a document to any lane, and generate the reports from the conversations below.
         </div>
 
         {/* Prompt engine */}
-        <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, overflow: 'hidden' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: editingPrompt ? '1px solid #E2E0DB' : 'none' }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: '#1A1916' }}>Prompt engine</span>
+        <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, overflow: 'hidden' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: editingPrompt ? '1px solid var(--gw-border)' : 'none' }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-text)' }}>Prompt engine</span>
             <div style={{ display: 'flex', gap: 8 }}>
               <button
                 onClick={() => { setSystemPrompt(DEFAULT_PROMPT); setEditingPrompt(false) }}
-                style={{ fontSize: 11, color: '#9B9590', background: 'none', border: '0.5px solid #E2E0DB', borderRadius: 4, padding: '3px 8px', cursor: 'pointer', fontFamily: 'inherit' }}
+                style={{ fontSize: 11, color: 'var(--gw-muted)', background: 'none', border: '0.5px solid var(--gw-border)', borderRadius: 4, padding: '3px 8px', cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 Reset to default
               </button>
               <button
                 onClick={() => setEditingPrompt(e => !e)}
-                style={{ fontSize: 11, color: '#0C447C', background: 'none', border: '0.5px solid #0C447C', borderRadius: 4, padding: '3px 8px', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}
+                style={{ fontSize: 11, color: 'var(--gw-navy)', background: 'none', border: '0.5px solid var(--gw-navy)', borderRadius: 4, padding: '3px 8px', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}
               >
                 {editingPrompt ? 'Done' : 'Edit'}
               </button>
@@ -280,7 +280,7 @@ export function PromptTestPage() {
             <textarea
               value={systemPrompt}
               onChange={e => setSystemPrompt(e.target.value)}
-              style={{ width: '100%', boxSizing: 'border-box', fontFamily: 'monospace', fontSize: 11, lineHeight: 1.6, border: 'none', padding: '12px 14px', resize: 'vertical', minHeight: 200, color: '#1A1916', outline: 'none' }}
+              style={{ width: '100%', boxSizing: 'border-box', fontFamily: 'monospace', fontSize: 11, lineHeight: 1.6, border: 'none', padding: '12px 14px', resize: 'vertical', minHeight: 200, color: 'var(--gw-text)', outline: 'none' }}
             />
           ) : (
             <pre style={{ fontFamily: 'monospace', fontSize: 11, lineHeight: 1.6, padding: '12px 14px', margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: '#4A4540', maxHeight: 160, overflowY: 'auto' }}>
@@ -306,16 +306,16 @@ export function PromptTestPage() {
         </div>
 
         {/* Report generation */}
-        <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '14px 16px' }}>
+        <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
             <div>
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#1A1916', marginBottom: 4 }}>Report generation</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 4 }}>Report generation</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 11, color: '#6B6560' }}>Session</span>
+                <span style={{ fontSize: 11, color: 'var(--gw-sub)' }}>Session</span>
                 <select
                   value={session}
                   onChange={e => setSession(e.target.value as '1')}
-                  style={{ fontSize: 11, border: '0.5px solid #E2E0DB', borderRadius: 4, padding: '2px 6px', fontFamily: 'inherit', background: 'white', color: '#1A1916' }}
+                  style={{ fontSize: 11, border: '0.5px solid var(--gw-border)', borderRadius: 4, padding: '2px 6px', fontFamily: 'inherit', background: 'white', color: 'var(--gw-text)' }}
                 >
                   <option value="1">1 (cross reference)</option>
                 </select>
@@ -325,7 +325,7 @@ export function PromptTestPage() {
               onClick={() => generateReport.mutate()}
               disabled={generateReport.isPending || !hasEnoughData}
               style={{
-                padding: '10px 18px', borderRadius: 7, background: '#0A1628', color: 'white',
+                padding: '10px 18px', borderRadius: 7, background: 'var(--gw-dark)', color: 'white',
                 fontSize: 13, fontWeight: 700, border: 'none', cursor: generateReport.isPending || !hasEnoughData ? 'not-allowed' : 'pointer',
                 fontFamily: 'inherit', opacity: generateReport.isPending || !hasEnoughData ? 0.5 : 1,
               }}
@@ -333,16 +333,16 @@ export function PromptTestPage() {
               {generateReport.isPending ? 'Generating…' : 'Generate reports'}
             </button>
           </div>
-          <div style={{ fontSize: 11, color: '#9B9590', lineHeight: 1.6 }}>
+          <div style={{ fontSize: 11, color: 'var(--gw-muted)', lineHeight: 1.6 }}>
             Builds the advice-led reports from the conversations above: the admin cross reference across all lanes, and each participant's own insight. Needs a connected model - the demo responder does not return report JSON.
           </div>
         </div>
 
         {/* Report output */}
         {report && (
-          <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, overflow: 'hidden' }}>
+          <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, overflow: 'hidden' }}>
             {/* Tab bar */}
-            <div style={{ display: 'flex', borderBottom: '1px solid #E2E0DB' }}>
+            <div style={{ display: 'flex', borderBottom: '1px solid var(--gw-border)' }}>
               {([
                 { id: 'cross', label: 'Cross reference (admin)' },
                 { id: 'p1',    label: 'Participant 1' },
@@ -354,9 +354,9 @@ export function PromptTestPage() {
                   style={{
                     flex: '0 0 auto', padding: '9px 16px', fontSize: 12,
                     fontWeight: reportTab === id ? 700 : 500,
-                    color: reportTab === id ? '#0C447C' : '#6B6560',
+                    color: reportTab === id ? 'var(--gw-navy)' : 'var(--gw-sub)',
                     background: 'none', border: 'none',
-                    borderBottom: reportTab === id ? '2px solid #0C447C' : '2px solid transparent',
+                    borderBottom: reportTab === id ? '2px solid var(--gw-navy)' : '2px solid transparent',
                     cursor: 'pointer', fontFamily: 'inherit',
                   }}
                 >
@@ -367,17 +367,17 @@ export function PromptTestPage() {
 
             <div style={{ padding: '16px 18px' }}>
               {reportTab === 'cross' && (
-                <pre style={{ fontFamily: 'inherit', fontSize: 13, lineHeight: 1.65, whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0, color: '#1A1916' }}>
+                <pre style={{ fontFamily: 'inherit', fontSize: 13, lineHeight: 1.65, whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0, color: 'var(--gw-text)' }}>
                   {report.crossReference || 'No cross reference generated.'}
                 </pre>
               )}
               {reportTab === 'p1' && (
-                <pre style={{ fontFamily: 'inherit', fontSize: 13, lineHeight: 1.65, whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0, color: '#1A1916' }}>
+                <pre style={{ fontFamily: 'inherit', fontSize: 13, lineHeight: 1.65, whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0, color: 'var(--gw-text)' }}>
                   {report.p1Report || 'No participant 1 report generated.'}
                 </pre>
               )}
               {reportTab === 'p2' && (
-                <pre style={{ fontFamily: 'inherit', fontSize: 13, lineHeight: 1.65, whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0, color: '#1A1916' }}>
+                <pre style={{ fontFamily: 'inherit', fontSize: 13, lineHeight: 1.65, whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0, color: 'var(--gw-text)' }}>
                   {report.p2Report || 'No participant 2 report generated.'}
                 </pre>
               )}

@@ -173,11 +173,11 @@ function ParsedContentView({ content, promptKey }: { content: string; promptKey:
         ) : (
           <div key={i} style={{ marginBottom: 6 }}>
             {block.header && (
-              <pre style={{ fontFamily: 'monospace', fontSize: 11, whiteSpace: 'pre-wrap', wordBreak: 'break-word', background: '#F5F3EF', borderRadius: 4, padding: '4px 10px', margin: '0 0 2px 0' }}>
+              <pre style={{ fontFamily: 'monospace', fontSize: 11, whiteSpace: 'pre-wrap', wordBreak: 'break-word', background: 'var(--gw-paper-2)', borderRadius: 4, padding: '4px 10px', margin: '0 0 2px 0' }}>
                 {block.header}
               </pre>
             )}
-            <pre style={{ fontFamily: 'monospace', fontSize: 11, whiteSpace: 'pre-wrap', wordBreak: 'break-word', background: '#F5F3EF', borderRadius: 4, padding: '8px 10px', margin: 0 }}>
+            <pre style={{ fontFamily: 'monospace', fontSize: 11, whiteSpace: 'pre-wrap', wordBreak: 'break-word', background: 'var(--gw-paper-2)', borderRadius: 4, padding: '8px 10px', margin: 0 }}>
               {block.body}
             </pre>
           </div>
@@ -195,17 +195,17 @@ function DiffView({ oldContent, newContent }: { oldContent: string; newContent: 
   if (!hasChanges) return <div style={{ fontSize: 12, color: 'var(--gw-muted)', padding: '8px 0' }}>No changes from active version.</div>
 
   return (
-    <div style={{ fontFamily: 'monospace', fontSize: 11, lineHeight: 1.5, borderRadius: 4, overflow: 'hidden', border: '1px solid #E2E0DB' }}>
+    <div style={{ fontFamily: 'monospace', fontSize: 11, lineHeight: 1.5, borderRadius: 4, overflow: 'hidden', border: '1px solid var(--gw-border)' }}>
       {lines.map((line, i) => (
         <div
           key={i}
           style={{
             padding: '1px 10px',
             background: line.type === 'added' ? '#E8F7EF' : line.type === 'removed' ? '#FEECEC' : 'white',
-            color: line.type === 'added' ? '#1A7A4A' : line.type === 'removed' ? '#991B1B' : '#1A1916',
+            color: line.type === 'added' ? '#1A7A4A' : line.type === 'removed' ? '#991B1B' : 'var(--gw-text)',
             whiteSpace: 'pre-wrap',
             wordBreak: 'break-word',
-            borderLeft: `3px solid ${line.type === 'added' ? '#5DCAA5' : line.type === 'removed' ? '#F87171' : 'transparent'}`,
+            borderLeft: `3px solid ${line.type === 'added' ? 'var(--gw-green-b)' : line.type === 'removed' ? '#F87171' : 'transparent'}`,
           }}
         >
           <span style={{ userSelect: 'none', opacity: 0.5, marginRight: 8 }}>
@@ -244,18 +244,18 @@ function VersionRow({
   const [showDiff, setShowDiff] = useState(false)
 
   return (
-    <div style={{ border: '1px solid #E2E0DB', borderRadius: 6, marginBottom: 6, overflow: 'hidden', background: 'white' }}>
+    <div style={{ border: '1px solid var(--gw-border)', borderRadius: 6, marginBottom: 6, overflow: 'hidden', background: 'white' }}>
       <div
         style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', cursor: 'pointer' }}
         onClick={onToggle}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-          <span style={{ fontSize: 13, fontWeight: 600, color: '#1A1916', flexShrink: 0 }}>v{v.version}</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)', flexShrink: 0 }}>v{v.version}</span>
           {v.isActive && (
             <span style={{ fontSize: 11, fontWeight: 600, color: '#1A7A4A', background: '#E8F7EF', borderRadius: 10, padding: '2px 8px', flexShrink: 0 }}>Active</span>
           )}
           {v.isDraft && (
-            <span style={{ fontSize: 11, fontWeight: 600, color: '#8A5C1A', background: '#FDF3E3', borderRadius: 10, padding: '2px 8px', flexShrink: 0 }}>Draft</span>
+            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', borderRadius: 10, padding: '2px 8px', flexShrink: 0 }}>Draft</span>
           )}
           <span style={{ fontSize: 11, color: 'var(--gw-muted)', flexShrink: 0 }}>{fmtDate(v.activatedAt ?? v.createdAt)}</span>
           {v.activatedBy && (
@@ -270,7 +270,7 @@ function VersionRow({
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
           {!v.isActive && confirmActivateId !== v.id && (
             <button
-              style={{ fontSize: 11, padding: '4px 10px', borderRadius: 4, border: '1px solid #0C447C', background: 'white', color: '#0C447C', cursor: 'pointer', fontWeight: 500 }}
+              style={{ fontSize: 11, padding: '4px 10px', borderRadius: 4, border: '1px solid var(--gw-navy)', background: 'white', color: 'var(--gw-navy)', cursor: 'pointer', fontWeight: 500 }}
               onClick={() => onActivateClick(v.id)}
               disabled={activating}
             >
@@ -279,18 +279,18 @@ function VersionRow({
           )}
           {confirmActivateId === v.id && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ fontSize: 11, color: '#1A1916' }}>
+              <span style={{ fontSize: 11, color: 'var(--gw-text)' }}>
                 Activate v{v.version}? In-progress grounds keep their version.
               </span>
               <button
-                style={{ fontSize: 11, padding: '4px 10px', borderRadius: 4, border: 'none', background: '#0C447C', color: 'white', cursor: 'pointer', fontWeight: 600 }}
+                style={{ fontSize: 11, padding: '4px 10px', borderRadius: 4, border: 'none', background: 'var(--gw-navy)', color: 'white', cursor: 'pointer', fontWeight: 600 }}
                 onClick={() => onConfirm(v.id)}
                 disabled={activating}
               >
                 Confirm
               </button>
               <button
-                style={{ fontSize: 11, padding: '4px 10px', borderRadius: 4, border: '1px solid #E2E0DB', background: 'white', color: '#666', cursor: 'pointer' }}
+                style={{ fontSize: 11, padding: '4px 10px', borderRadius: 4, border: '1px solid var(--gw-border)', background: 'white', color: '#666', cursor: 'pointer' }}
                 onClick={onCancel}
               >
                 Cancel
@@ -307,13 +307,13 @@ function VersionRow({
           {!v.isActive && activeContent && (
             <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
               <button
-                style={{ fontSize: 11, padding: '3px 10px', borderRadius: 4, border: '1px solid #E2E0DB', background: showDiff ? '#0C447C' : 'white', color: showDiff ? 'white' : '#666', cursor: 'pointer' }}
+                style={{ fontSize: 11, padding: '3px 10px', borderRadius: 4, border: '1px solid var(--gw-border)', background: showDiff ? 'var(--gw-navy)' : 'white', color: showDiff ? 'white' : '#666', cursor: 'pointer' }}
                 onClick={() => setShowDiff(false)}
               >
                 Content
               </button>
               <button
-                style={{ fontSize: 11, padding: '3px 10px', borderRadius: 4, border: '1px solid #E2E0DB', background: showDiff ? 'white' : 'white', color: !showDiff ? '#666' : '#0C447C', cursor: 'pointer', borderColor: showDiff ? '#0C447C' : '#E2E0DB' }}
+                style={{ fontSize: 11, padding: '3px 10px', borderRadius: 4, border: '1px solid var(--gw-border)', background: showDiff ? 'white' : 'white', color: !showDiff ? '#666' : 'var(--gw-navy)', cursor: 'pointer', borderColor: showDiff ? 'var(--gw-navy)' : 'var(--gw-border)' }}
                 onClick={() => setShowDiff(true)}
               >
                 Diff vs active
@@ -323,7 +323,7 @@ function VersionRow({
           {showDiff && activeContent ? (
             <DiffView oldContent={activeContent} newContent={v.content} />
           ) : (
-            <pre style={{ fontFamily: 'monospace', fontSize: 11, whiteSpace: 'pre-wrap', wordBreak: 'break-word', background: '#F5F3EF', borderRadius: 4, padding: '10px 12px', margin: 0, maxHeight: 400, overflowY: 'auto' }}>
+            <pre style={{ fontFamily: 'monospace', fontSize: 11, whiteSpace: 'pre-wrap', wordBreak: 'break-word', background: 'var(--gw-paper-2)', borderRadius: 4, padding: '10px 12px', margin: 0, maxHeight: 400, overflowY: 'auto' }}>
               {v.content}
             </pre>
           )}
@@ -423,10 +423,10 @@ function DraftEditor({
   let editIdx = 0
 
   return (
-    <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 6, padding: '18px 20px', marginBottom: 16 }}>
+    <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 6, padding: '18px 20px', marginBottom: 16 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: 14, fontWeight: 700, color: '#1A1916' }}>Draft - v{draft.version}</span>
+          <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)' }}>Draft - v{draft.version}</span>
           <span style={{ fontSize: 11, color: saveStatus === 'saved' ? '#1A7A4A' : saveStatus === 'saving' ? '#8A6C00' : '#991B1B' }}>
             {saveStatus === 'saved' ? '● Saved' : saveStatus === 'saving' ? '○ Saving…' : '○ Unsaved'}
           </span>
@@ -435,14 +435,14 @@ function DraftEditor({
           {!confirmPublish ? (
             <>
               <button
-                style={{ fontSize: 12, padding: '5px 12px', borderRadius: 4, border: '1px solid #E2E0DB', background: 'white', color: '#991B1B', cursor: 'pointer' }}
+                style={{ fontSize: 12, padding: '5px 12px', borderRadius: 4, border: '1px solid var(--gw-border)', background: 'white', color: '#991B1B', cursor: 'pointer' }}
                 onClick={() => discard.mutate()}
                 disabled={discard.isPending}
               >
                 {discard.isPending ? 'Discarding…' : 'Discard draft'}
               </button>
               <button
-                style={{ fontSize: 12, fontWeight: 600, padding: '5px 14px', borderRadius: 4, border: 'none', background: '#0C447C', color: 'white', cursor: 'pointer', opacity: saveStatus === 'unsaved' ? 0.6 : 1 }}
+                style={{ fontSize: 12, fontWeight: 600, padding: '5px 14px', borderRadius: 4, border: 'none', background: 'var(--gw-navy)', color: 'white', cursor: 'pointer', opacity: saveStatus === 'unsaved' ? 0.6 : 1 }}
                 onClick={() => setConfirmPublish(true)}
                 disabled={saveStatus === 'unsaved' || save.isPending}
                 title={saveStatus === 'unsaved' ? 'Save changes before publishing' : ''}
@@ -454,14 +454,14 @@ function DraftEditor({
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#FEF9EC', border: '1px solid #F0C040', borderRadius: 4, padding: '6px 12px' }}>
               <span style={{ fontSize: 12, color: '#8A6C00' }}>Publish v{draft.version} live for new conversations?</span>
               <button
-                style={{ fontSize: 12, fontWeight: 600, padding: '4px 12px', borderRadius: 4, border: 'none', background: '#0C447C', color: 'white', cursor: 'pointer' }}
+                style={{ fontSize: 12, fontWeight: 600, padding: '4px 12px', borderRadius: 4, border: 'none', background: 'var(--gw-navy)', color: 'white', cursor: 'pointer' }}
                 onClick={() => activate.mutate()}
                 disabled={activate.isPending}
               >
                 {activate.isPending ? 'Publishing…' : 'Confirm'}
               </button>
               <button
-                style={{ fontSize: 12, padding: '4px 10px', borderRadius: 4, border: '1px solid #E2E0DB', background: 'white', color: '#666', cursor: 'pointer' }}
+                style={{ fontSize: 12, padding: '4px 10px', borderRadius: 4, border: '1px solid var(--gw-border)', background: 'white', color: '#666', cursor: 'pointer' }}
                 onClick={() => setConfirmPublish(false)}
               >
                 Cancel
@@ -473,7 +473,7 @@ function DraftEditor({
 
       {/* Change summary */}
       <div style={{ marginBottom: 14 }}>
-        <label style={{ fontSize: 12, fontWeight: 600, color: '#1A1916', display: 'block', marginBottom: 4 }}>
+        <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--gw-text)', display: 'block', marginBottom: 4 }}>
           Change summary
         </label>
         <input
@@ -509,7 +509,7 @@ function DraftEditor({
             return (
               <div key={i} style={{ marginBottom: 6 }}>
                 {block.header && (
-                  <pre style={{ fontFamily: 'monospace', fontSize: 11, whiteSpace: 'pre-wrap', wordBreak: 'break-word', background: '#F5F3EF', borderRadius: 4, padding: '4px 10px', margin: '0 0 2px 0' }}>
+                  <pre style={{ fontFamily: 'monospace', fontSize: 11, whiteSpace: 'pre-wrap', wordBreak: 'break-word', background: 'var(--gw-paper-2)', borderRadius: 4, padding: '4px 10px', margin: '0 0 2px 0' }}>
                     {block.header}
                   </pre>
                 )}
@@ -574,9 +574,9 @@ function TestRunner({ version, promptKey }: { version: PromptVersion; promptKey:
   }
 
   return (
-    <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 6, overflow: 'hidden', display: 'flex', flexDirection: 'column', height: 500 }}>
+    <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 6, overflow: 'hidden', display: 'flex', flexDirection: 'column', height: 500 }}>
       {/* Banner */}
-      <div style={{ background: '#FDF3E3', borderBottom: '1px solid #F0C040', padding: '8px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ background: 'var(--gw-amber-bg)', borderBottom: '1px solid #F0C040', padding: '8px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <span style={{ fontSize: 12, fontWeight: 600, color: '#8A6C00' }}>
           TEST MODE - {version.isDraft ? `Draft v${version.version}` : `v${version.version} (active)`} · {promptKey}
         </span>
@@ -596,7 +596,7 @@ function TestRunner({ version, promptKey }: { version: PromptVersion; promptKey:
             style={{
               maxWidth: '80%',
               alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start',
-              background: m.role === 'user' ? 'var(--gw-navy)' : '#F5F3EF',
+              background: m.role === 'user' ? 'var(--gw-navy)' : 'var(--gw-paper-2)',
               color: m.role === 'user' ? 'white' : 'var(--gw-text)',
               borderRadius: m.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
               padding: '8px 12px',
@@ -609,7 +609,7 @@ function TestRunner({ version, promptKey }: { version: PromptVersion; promptKey:
           </div>
         ))}
         {loading && (
-          <div style={{ alignSelf: 'flex-start', background: '#F5F3EF', borderRadius: '16px 16px 16px 4px', padding: '8px 12px', fontSize: 13, color: 'var(--gw-muted)' }}>…</div>
+          <div style={{ alignSelf: 'flex-start', background: 'var(--gw-paper-2)', borderRadius: '16px 16px 16px 4px', padding: '8px 12px', fontSize: 13, color: 'var(--gw-muted)' }}>…</div>
         )}
       </div>
 
@@ -755,7 +755,7 @@ export function PromptVersioningPage() {
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
         {/* Sidebar */}
-        <div style={{ width: 220, flexShrink: 0, borderRight: '1px solid #E2E0DB', background: 'var(--gw-bg)', overflowY: 'auto', paddingTop: 12 }}>
+        <div style={{ width: 220, flexShrink: 0, borderRight: '1px solid var(--gw-border)', background: 'var(--gw-bg)', overflowY: 'auto', paddingTop: 12 }}>
           {allLoading && <div style={{ fontSize: 12, color: 'var(--gw-muted)', padding: '10px 16px' }}>Loading…</div>}
           {uniqueKeys.map((k) => {
             const isSelected = k === selectedKey
@@ -768,17 +768,17 @@ export function PromptVersioningPage() {
                 style={{
                   padding: '9px 14px', cursor: 'pointer',
                   background: isSelected ? 'white' : 'transparent',
-                  borderLeft: isSelected ? '2px solid #0C447C' : '2px solid transparent',
+                  borderLeft: isSelected ? '2px solid var(--gw-navy)' : '2px solid transparent',
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6,
                 }}
               >
-                <span style={{ fontSize: 12, fontWeight: isSelected ? 600 : 400, color: isSelected ? '#0C447C' : '#1A1916', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                <span style={{ fontSize: 12, fontWeight: isSelected ? 600 : 400, color: isSelected ? 'var(--gw-navy)' : 'var(--gw-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
                   {k}
                 </span>
                 <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-                  {hasDraft && <span style={{ fontSize: 9, fontWeight: 700, color: '#8A6C00', background: '#FDF3E3', borderRadius: 6, padding: '1px 5px' }}>draft</span>}
+                  {hasDraft && <span style={{ fontSize: 9, fontWeight: 700, color: '#8A6C00', background: 'var(--gw-amber-bg)', borderRadius: 6, padding: '1px 5px' }}>draft</span>}
                   {activeVer !== null && (
-                    <span style={{ fontSize: 10, color: 'var(--gw-muted)', background: '#EDECEA', borderRadius: 8, padding: '1px 6px', fontWeight: 500 }}>v{activeVer}</span>
+                    <span style={{ fontSize: 10, color: 'var(--gw-muted)', background: 'var(--gw-bg)', borderRadius: 8, padding: '1px 6px', fontWeight: 500 }}>v{activeVer}</span>
                   )}
                 </div>
               </div>
@@ -795,14 +795,14 @@ export function PromptVersioningPage() {
               {/* Panel header */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18, flexWrap: 'wrap', gap: 8 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <span style={{ fontSize: 18, fontWeight: 700, color: '#1A1916' }}>{selectedKey}</span>
+                  <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--gw-text)' }}>{selectedKey}</span>
                   {activeVersion && (
                     <span style={{ fontSize: 12, fontWeight: 600, color: '#1A7A4A', background: '#E8F7EF', borderRadius: 10, padding: '3px 10px' }}>
                       v{activeVersion.version} active
                     </span>
                   )}
                   {draft && (
-                    <span style={{ fontSize: 12, fontWeight: 600, color: '#8A5C1A', background: '#FDF3E3', borderRadius: 10, padding: '3px 10px' }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', borderRadius: 10, padding: '3px 10px' }}>
                       draft v{draft.version}
                     </span>
                   )}
@@ -819,8 +819,8 @@ export function PromptVersioningPage() {
                         key={tab}
                         onClick={() => setActivePanel(tab)}
                         style={{
-                          fontSize: 12, fontWeight: 500, padding: '6px 14px', borderRadius: 4, border: '1px solid #E2E0DB', cursor: 'pointer',
-                          background: activePanel === tab ? '#0C447C' : 'white',
+                          fontSize: 12, fontWeight: 500, padding: '6px 14px', borderRadius: 4, border: '1px solid var(--gw-border)', cursor: 'pointer',
+                          background: activePanel === tab ? 'var(--gw-navy)' : 'white',
                           color: activePanel === tab ? 'white' : '#666',
                         }}
                       >
@@ -832,7 +832,7 @@ export function PromptVersioningPage() {
                     <button
                       onClick={() => startDraft.mutate()}
                       disabled={startDraft.isPending}
-                      style={{ fontSize: 12, fontWeight: 600, padding: '6px 14px', borderRadius: 4, border: 'none', background: '#0C447C', color: 'white', cursor: 'pointer' }}
+                      style={{ fontSize: 12, fontWeight: 600, padding: '6px 14px', borderRadius: 4, border: 'none', background: 'var(--gw-navy)', color: 'white', cursor: 'pointer' }}
                     >
                       {startDraft.isPending ? 'Starting…' : 'Start draft'}
                     </button>
@@ -842,8 +842,8 @@ export function PromptVersioningPage() {
 
               {/* Active version view */}
               {activePanel === 'view' && activeVersion && (
-                <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 6, padding: '16px 18px', marginBottom: 20 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: '#1A1916', marginBottom: 10 }}>Active version content</div>
+                <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 6, padding: '16px 18px', marginBottom: 20 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 10 }}>Active version content</div>
                   <ParsedContentView content={activeVersion.content} promptKey={selectedKey} />
                 </div>
               )}
@@ -866,7 +866,7 @@ export function PromptVersioningPage() {
 
               {/* Version history - always shown below the active panel */}
               <div style={{ marginTop: activePanel === 'view' ? 0 : 20 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: '#1A1916', marginBottom: 10 }}>Version history</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 10 }}>Version history</div>
                 {historyVersions.length === 0 && (
                   <div style={{ fontSize: 13, color: 'var(--gw-muted)' }}>No versions found.</div>
                 )}

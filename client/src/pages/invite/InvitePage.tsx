@@ -246,7 +246,7 @@ export function InvitePage() {
           By joining, you agree that your contribution record belongs to you.
         </div>
 
-        <div style={{ marginTop: 18, paddingTop: 14, borderTop: '1px solid #E2E0DB', textAlign: 'center' }}>
+        <div style={{ marginTop: 18, paddingTop: 14, borderTop: '1px solid var(--gw-border)', textAlign: 'center' }}>
           <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 8, lineHeight: 1.6 }}>
             You are never obligated to take part. If you would rather not, you can simply close this -
             nothing is shared, and declining is never shown as a negative.
@@ -267,7 +267,7 @@ export function InvitePage() {
 function InviteShell({ children }: { children: React.ReactNode }) {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--gw-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-      <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 8, padding: '40px 32px', maxWidth: 400, width: '100%' }}>
+      <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '40px 32px', maxWidth: 400, width: '100%' }}>
         {children}
       </div>
     </div>

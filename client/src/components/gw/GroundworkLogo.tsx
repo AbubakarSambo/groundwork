@@ -3,7 +3,7 @@ interface Props {
   color?: string
 }
 
-export function GroundworkLogo({ height = 28, color = '#0C447C' }: Props) {
+export function GroundworkLogo({ height = 28, color = 'var(--gw-navy)' }: Props) {
   // Aspect ratio derived from the logo mark: bars + wordmark
   // Bars section: 3 bars widening downward, centered
   // Wordmark: "GROUNDWORK" wide-tracked caps below

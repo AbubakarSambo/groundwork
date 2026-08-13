@@ -522,8 +522,8 @@ export function GroundAdminPage() {
           */}
           {lastInvitedEmail && (
             <div style={{ background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 8, padding: '10px 12px', marginBottom: 12 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#085041' }}>Invite sent to {lastInvitedEmail}</div>
-              <div style={{ fontSize: 12, color: '#085041', marginTop: 2 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-green-t)' }}>Invite sent to {lastInvitedEmail}</div>
+              <div style={{ fontSize: 12, color: 'var(--gw-green-t)', marginTop: 2 }}>
                 They check in on their own, and nothing is shown to them until the report is ready.
               </div>
             </div>
@@ -727,7 +727,7 @@ export function GroundAdminPage() {
                 <span style={{ fontWeight: 700 }}>Session {Math.min(sessionsDone + 1, plannedSessions)} of {plannedSessions}</span>
               )}
               {ground.daysLeft != null && ground.daysLeft <= 3 ? (
-                <span style={{ fontWeight: 700, color: '#791F1F' }}>{ground.daysLeft === 0 ? 'Due today' : `${ground.daysLeft} day${ground.daysLeft === 1 ? '' : 's'} remaining`}</span>
+                <span style={{ fontWeight: 700, color: 'var(--gw-red-t)' }}>{ground.daysLeft === 0 ? 'Due today' : `${ground.daysLeft} day${ground.daysLeft === 1 ? '' : 's'} remaining`}</span>
               ) : ground.daysLeft != null ? (
                 <span style={{ color: 'var(--gw-sub)' }}>{ground.daysLeft} days remaining</span>
               ) : null}
@@ -789,7 +789,7 @@ export function GroundAdminPage() {
         */}
         {(ground as any).status === 'AWAITING_APPROVAL' && (
           <div style={{ background: '#FDF8E3', border: '1px solid #E8D9A0', borderRadius: 10, padding: '13px 15px', marginBottom: 16 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#8A5C1A', marginBottom: 4 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 4 }}>
               Waiting for an admin to accept this ground
             </div>
             <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
@@ -939,14 +939,14 @@ export function GroundAdminPage() {
 
             {/* Subscribed: unlimited sessions badge */}
             {ground.org?.subscriptionPlan && ground.org?.subscriptionStatus === 'active' && (
-              <div style={{ background: '#F0FAF5', border: '1px solid #B6E8D4', borderRadius: 8, padding: '8px 14px', marginBottom: 12, fontSize: 12, color: '#085041', fontWeight: 600 }}>
+              <div style={{ background: '#F0FAF5', border: '1px solid #B6E8D4', borderRadius: 8, padding: '8px 14px', marginBottom: 12, fontSize: 12, color: 'var(--gw-green-t)', fontWeight: 600 }}>
                 Subscribed. Unlimited sessions active for your organization.
               </div>
             )}
 
             {/* Fix 8: Cadence miss recovery */}
             {(ground.overdue ?? 0) > 0 && (
-              <div style={{ fontSize: 12, color: '#0C447C', background: '#EEF4FB', border: '1px solid #C5D9EF', borderRadius: 8, padding: '10px 12px', marginBottom: 14, lineHeight: 1.5 }}>
+              <div style={{ fontSize: 12, color: 'var(--gw-navy)', background: 'var(--gw-blue-bg)', border: '1px solid #C5D9EF', borderRadius: 8, padding: '10px 12px', marginBottom: 14, lineHeight: 1.5 }}>
                 <strong>{ground.overdue} {ground.overdue === 1 ? 'participant is' : 'participants are'} overdue.</strong> A missed session is not a lost session. Use Remind - the most common reason is the email went to spam. Their next check-in picks up where they left off.
               </div>
             )}
@@ -964,7 +964,7 @@ export function GroundAdminPage() {
               if (!myOpenCheckIn) return null
               return (
                 <div style={{ background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 10, padding: '13px 16px', marginBottom: 16 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: '#085041', marginBottom: 4 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-green-t)', marginBottom: 4 }}>
                     Session {myOpenCheckIn.sessionNumber} is ready for you
                   </div>
                   <div style={{ fontSize: 12, color: '#3A7A60', lineHeight: 1.6, marginBottom: 10 }}>
@@ -974,7 +974,7 @@ export function GroundAdminPage() {
                     onClick={() => navigate(`/checkin/${myOpenCheckIn.id}`, {
                       state: { sessionNumber: myOpenCheckIn.sessionNumber, isFinal: (myOpenCheckIn as any).isFinal ?? false, groundLabel: ground.label, groundId: id, isInitiator: true }
                     })}
-                    style={{ width: '100%', padding: '11px 16px', borderRadius: 8, background: '#5DCAA5', color: '#0A1628', fontSize: 14, fontWeight: 800, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                    style={{ width: '100%', padding: '11px 16px', borderRadius: 8, background: 'var(--gw-green-b)', color: 'var(--gw-dark)', fontSize: 14, fontWeight: 800, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
                   >
                     Start session {myOpenCheckIn.sessionNumber}
                   </button>
@@ -1097,7 +1097,7 @@ export function GroundAdminPage() {
                         </div>
                       )}
                       {sharedReport && (
-                        <div style={{ background: '#0A1628', color: 'white', borderRadius: 8, padding: '12px 14px', marginTop: 4, marginLeft: 40 }}>
+                        <div style={{ background: 'var(--gw-dark)', color: 'white', borderRadius: 8, padding: '12px 14px', marginTop: 4, marginLeft: 40 }}>
                           <div style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,.4)', fontWeight: 700, marginBottom: 8 }}>
                             {participantLabel(p)}'s private report (shared by them)
                           </div>
@@ -1128,7 +1128,7 @@ export function GroundAdminPage() {
                 return !ci || ci.status !== 'COMPLETED'
               })
               return pending.length > 0 ? (
-                <div style={{ fontSize: 12, color: '#8A5C1A', background: '#FDF3E3', border: '1px solid #E8A94A', borderRadius: 8, padding: '8px 12px', marginBottom: 16, lineHeight: 1.5 }}>
+                <div style={{ fontSize: 12, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 8, padding: '8px 12px', marginBottom: 16, lineHeight: 1.5 }}>
                   {pending.length === 1
                     ? `1 participant has not yet checked in. The shared report generates once all accounts are in.`
                     : `${pending.length} participants have not yet checked in. The shared report generates once all accounts are in.`}
@@ -1139,30 +1139,30 @@ export function GroundAdminPage() {
 
             {pendingRequests.length > 0 && (
               <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: '#8A5C1A', background: '#FDF3E3', border: '1px solid #E8A94A', borderRadius: 8, padding: '8px 12px', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#E8A94A', flexShrink: 0, display: 'inline-block' }} />
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 8, padding: '8px 12px', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--gw-amber-b)', flexShrink: 0, display: 'inline-block' }} />
                   Pending participant requests ({pendingRequests.length})
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {pendingRequests.map(req => (
-                    <div key={req.id} style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '13px 14px' }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: '#1A1916', marginBottom: 2 }}>
+                    <div key={req.id} style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '13px 14px' }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 2 }}>
                         {req.requestedName ? `${req.requestedName} (${req.requestedEmail})` : req.requestedEmail}
                       </div>
-                      <div style={{ fontSize: 11, color: '#6B6560', marginBottom: 8 }}>Requested by {req.requestedByEmail}</div>
-                      <div style={{ fontSize: 13, color: '#1A1916', lineHeight: 1.55, marginBottom: 12 }}>{req.reason}</div>
+                      <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginBottom: 8 }}>Requested by {req.requestedByEmail}</div>
+                      <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.55, marginBottom: 12 }}>{req.reason}</div>
                       <div style={{ display: 'flex', gap: 8 }}>
                         <button
                           onClick={() => approveRequest.mutate(req)}
                           disabled={approveRequest.isPending}
-                          style={{ flex: 1, padding: '8px 12px', borderRadius: 7, background: '#0A1628', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: approveRequest.isPending ? 0.6 : 1 }}
+                          style={{ flex: 1, padding: '8px 12px', borderRadius: 7, background: 'var(--gw-dark)', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: approveRequest.isPending ? 0.6 : 1 }}
                         >
                           Add participant
                         </button>
                         <button
                           onClick={() => dismissRequest.mutate(req.id)}
                           disabled={dismissRequest.isPending}
-                          style={{ padding: '8px 14px', borderRadius: 7, background: 'none', color: '#6B6560', fontSize: 12, fontWeight: 600, border: '1px solid #E2E0DB', cursor: 'pointer', fontFamily: 'inherit', opacity: dismissRequest.isPending ? 0.6 : 1 }}
+                          style={{ padding: '8px 14px', borderRadius: 7, background: 'none', color: 'var(--gw-sub)', fontSize: 12, fontWeight: 600, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit', opacity: dismissRequest.isPending ? 0.6 : 1 }}
                         >
                           Dismiss
                         </button>
@@ -1178,8 +1178,8 @@ export function GroundAdminPage() {
               const convergences = sigs.filter(s => s.type === 'Convergence').length
               const divergences = sigs.filter(s => s.type === 'Divergence').length
               const trendLabel = convergences > divergences ? 'Trending toward alignment' : divergences > convergences ? 'Active divergence - needs attention' : 'Mixed signals'
-              const trendColor = convergences > divergences ? '#085041' : divergences > convergences ? '#791F1F' : '#8A5C1A'
-              const trendBg = convergences > divergences ? '#E7F6EF' : divergences > convergences ? '#FCEBEB' : '#FDF3E3'
+              const trendColor = convergences > divergences ? 'var(--gw-green-t)' : divergences > convergences ? 'var(--gw-red-t)' : 'var(--gw-amber-t)'
+              const trendBg = convergences > divergences ? '#E7F6EF' : divergences > convergences ? 'var(--gw-red-bg)' : 'var(--gw-amber-bg)'
               return (
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 10 }}>
@@ -1205,12 +1205,12 @@ export function GroundAdminPage() {
             <div style={{ marginTop: 20 }}>
               {lastInvitedEmail ? (
                 <div style={{ background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 10, padding: '14px 16px' }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: '#085041', marginBottom: 6 }}>Invite sent to {lastInvitedEmail}</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-green-t)', marginBottom: 6 }}>Invite sent to {lastInvitedEmail}</div>
                   <div style={{ fontSize: 12, color: '#3A7A60', lineHeight: 1.6, marginBottom: 10 }}>
                     They will get an email and do their own private check-in - about 10 minutes. You cannot see what they write. Once everyone has checked in, the shared report releases to everyone at the same time.
                   </div>
                   <button onClick={() => { setLastInvitedEmail(null); setAddingParticipant(true) }}
-                    style={{ padding: '7px 14px', borderRadius: 7, background: 'none', border: '1px solid #5DCAA5', color: '#085041', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                    style={{ padding: '7px 14px', borderRadius: 7, background: 'none', border: '1px solid var(--gw-green-b)', color: 'var(--gw-green-t)', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
                     Invite another
                   </button>
                 </div>
@@ -1607,7 +1607,7 @@ export function GroundAdminPage() {
                         padding: '3px 9px', borderRadius: 20,
                         border: `1px solid ${(doc as any).visibility === 'OPEN' ? '#A7D9CC' : 'var(--gw-border)'}`,
                         background: (doc as any).visibility === 'OPEN' ? '#DFF1EA' : 'var(--gw-bg)',
-                        color: (doc as any).visibility === 'OPEN' ? '#085041' : 'var(--gw-sub)',
+                        color: (doc as any).visibility === 'OPEN' ? 'var(--gw-green-t)' : 'var(--gw-sub)',
                       }}
                     >
                       {(doc as any).visibility === 'OPEN' ? 'Everyone' : (doc as any).visibility === 'CLOSED' ? 'Only me' : 'Only me'}
@@ -1727,8 +1727,8 @@ export function GroundAdminPage() {
                 )}
                 <div style={{ display: 'flex', gap: 8 }}>
                   {activationStatus.parties.map((p, i) => (
-                    <div key={p.participantId} style={{ flex: 1, padding: '8px 10px', borderRadius: 7, background: p.activated ? 'rgba(8,80,65,0.07)' : 'white', border: `1px solid ${p.activated ? '#085041' : 'var(--gw-border)'}`, textAlign: 'center' }}>
-                      <div style={{ fontSize: 11, fontWeight: 600, color: p.activated ? '#085041' : 'var(--gw-sub)' }}>
+                    <div key={p.participantId} style={{ flex: 1, padding: '8px 10px', borderRadius: 7, background: p.activated ? 'rgba(8,80,65,0.07)' : 'white', border: `1px solid ${p.activated ? 'var(--gw-green-t)' : 'var(--gw-border)'}`, textAlign: 'center' }}>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: p.activated ? 'var(--gw-green-t)' : 'var(--gw-sub)' }}>
                         {p.activated ? 'Revealed' : 'Not yet'}
                       </div>
                       <div style={{ fontSize: 10, color: 'var(--gw-sub)', marginTop: 2 }}>Party {i + 1}</div>
@@ -1867,7 +1867,7 @@ export function GroundAdminPage() {
                           {u.completedAt ? ` on ${new Date(u.completedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}` : ''}
                         </div>
                         {u.isPostSignOff && (
-                          <span style={{ fontSize: 10.5, fontWeight: 700, color: '#8A5C1A', background: '#FDF3E3', borderRadius: 6, padding: '2px 8px', flexShrink: 0 }}>
+                          <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', borderRadius: 6, padding: '2px 8px', flexShrink: 0 }}>
                             Updated after sign-off
                           </span>
                         )}
@@ -1905,12 +1905,12 @@ export function GroundAdminPage() {
                       {isOrgAdmin && !isInitiator ? 'Release on the lead\'s behalf' : 'Release report to everybody'}
                     </button>
                   ) : (
-                    <div style={{ background: '#FDF3E3', border: '1px solid #E8A94A', borderRadius: 8, padding: '14px 16px' }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: '#8A5C1A', marginBottom: 6 }}>Release report?</div>
-                      <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.6, marginBottom: 14 }}>Everybody will see the report at the same moment. This cannot be undone. Billing activates on release.</div>
+                    <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 8, padding: '14px 16px' }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 6 }}>Release report?</div>
+                      <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 14 }}>Everybody will see the report at the same moment. This cannot be undone. Billing activates on release.</div>
                       <div style={{ display: 'flex', gap: 8 }}>
                         <button onClick={() => setShowReleaseConfirm(false)}
-                          style={{ flex: 1, padding: '9px 12px', borderRadius: 7, background: 'none', border: '1px solid #E2E0DB', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', color: 'var(--gw-sub)' }}>
+                          style={{ flex: 1, padding: '9px 12px', borderRadius: 7, background: 'none', border: '1px solid var(--gw-border)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', color: 'var(--gw-sub)' }}>
                           Cancel
                         </button>
                         <button onClick={() => { releaseReport.mutate(); setShowReleaseConfirm(false) }} disabled={releaseReport.isPending}
@@ -2401,20 +2401,20 @@ function ShareSection({ joinToken }: { joinToken: string }) {
   }
 
   return (
-    <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '16px', marginTop: 14 }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: '#9B9590', letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 10 }}>Broadcast link</div>
+    <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '16px', marginTop: 14 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-muted)', letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 10 }}>Broadcast link</div>
       <div style={{ fontSize: 13, color: '#4A4540', lineHeight: 1.6, marginBottom: 14 }}>
         Share this link or QR code - anyone can check in without creating an account first. They'll be asked to save their details at the end.
       </div>
       <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', flexWrap: 'wrap' }}>
         {qrDataUrl && (
-          <img src={qrDataUrl} alt="QR code" style={{ width: 100, height: 100, borderRadius: 6, border: '1px solid #E2E0DB', flexShrink: 0 }} />
+          <img src={qrDataUrl} alt="QR code" style={{ width: 100, height: 100, borderRadius: 6, border: '1px solid var(--gw-border)', flexShrink: 0 }} />
         )}
         <div style={{ flex: 1, minWidth: 200 }}>
-          <div style={{ fontSize: 11, color: '#9B9590', marginBottom: 6, wordBreak: 'break-all', fontFamily: 'monospace' }}>{joinUrl}</div>
+          <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 6, wordBreak: 'break-all', fontFamily: 'monospace' }}>{joinUrl}</div>
           <button
             onClick={copyLink}
-            style={{ padding: '8px 14px', borderRadius: 7, background: copied ? '#E7F6EF' : '#F5F3EF', border: '1px solid #E2E0DB', color: copied ? '#085041' : '#0A1628', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+            style={{ padding: '8px 14px', borderRadius: 7, background: copied ? '#E7F6EF' : 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', color: copied ? 'var(--gw-green-t)' : 'var(--gw-dark)', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
           >
             {copied ? 'Copied!' : 'Copy link'}
           </button>

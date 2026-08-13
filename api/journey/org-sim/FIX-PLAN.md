@@ -4814,8 +4814,33 @@ Checked against the pre-change render rather than by eye: low-contrast elements 
 this did not cost anything. Guarded by `marketing/one-palette.mjs`, bite-checked on both failure
 modes.
 
-**Still open on this item:** the app's own pages remain on inline styles rather than
-`components/gw/kit.tsx`. The palette is now one palette everywhere; the component vocabulary is not.
+**The app had the same problem, to itself.** 1240 hex literals across its own pages, and the
+commonest were exactly the tokens sitting in `index.css` a few files away: #E2E0DB 138 times,
+#0C447C 118, #9B9590 107. Down to 309 one-off accents. `--gw-paper` and `--gw-paper-2` now exist in
+both `index.css` and the site's `global.css`, same names and same values, so the product and its
+landing page can be read against each other.
+
+Also gone: six `var(--gw-green-bg, #E8F8F5)`-style fallbacks. A fallback is a second opinion about a
+colour that already has one, and it is what you get on the day somebody renames the token.
+
+**The component half, where it mattered most.** The report - the document this whole system exists to
+produce - hand-rolled its own uppercase section heading: 10.5px, muted, a plain div with no heading
+semantics, used thirteen times, plus an eighth copy written inline. The kit's `Sec`, lifted out of
+BoardPage because the board is the best-written page in the product, is 12.5px, sub, and a real
+`<h2>`. Two components for one job and the worse one on the report. It delegates now, and Settings'
+six copies of the same label do too.
+
+Guarded by `client/src/components/gw/one-vocabulary.spec.ts`, bite-checked.
+
+**What is genuinely still open:** the bulk of the pages are still built from inline styles rather
+than Zone/Card/Row/Stat. Every mapping in this pass was value-preserving, so nothing moved visually,
+and the palette and the heading are now shared. Rebuilding page layouts on the kit's structure is a
+redesign rather than a wiring job, and it should be one deliberate pass rather than a sweep.
+
+**How far this was proved:** the palette at rendered output on the marketing home page and the app's
+pricing and auth pages, zero low-contrast elements, against a pre-change baseline of eight. The
+heading swap by typecheck and the suites only: those pages are behind sign-in and this dev database's
+seeded accounts are not mine to reset for a screenshot.
 
 ### W14-10 · The twelve-session run, on the fixed code · PASSED
 
@@ -5294,8 +5319,33 @@ Checked against the pre-change render rather than by eye: low-contrast elements 
 this did not cost anything. Guarded by `marketing/one-palette.mjs`, bite-checked on both failure
 modes.
 
-**Still open on this item:** the app's own pages remain on inline styles rather than
-`components/gw/kit.tsx`. The palette is now one palette everywhere; the component vocabulary is not.
+**The app had the same problem, to itself.** 1240 hex literals across its own pages, and the
+commonest were exactly the tokens sitting in `index.css` a few files away: #E2E0DB 138 times,
+#0C447C 118, #9B9590 107. Down to 309 one-off accents. `--gw-paper` and `--gw-paper-2` now exist in
+both `index.css` and the site's `global.css`, same names and same values, so the product and its
+landing page can be read against each other.
+
+Also gone: six `var(--gw-green-bg, #E8F8F5)`-style fallbacks. A fallback is a second opinion about a
+colour that already has one, and it is what you get on the day somebody renames the token.
+
+**The component half, where it mattered most.** The report - the document this whole system exists to
+produce - hand-rolled its own uppercase section heading: 10.5px, muted, a plain div with no heading
+semantics, used thirteen times, plus an eighth copy written inline. The kit's `Sec`, lifted out of
+BoardPage because the board is the best-written page in the product, is 12.5px, sub, and a real
+`<h2>`. Two components for one job and the worse one on the report. It delegates now, and Settings'
+six copies of the same label do too.
+
+Guarded by `client/src/components/gw/one-vocabulary.spec.ts`, bite-checked.
+
+**What is genuinely still open:** the bulk of the pages are still built from inline styles rather
+than Zone/Card/Row/Stat. Every mapping in this pass was value-preserving, so nothing moved visually,
+and the palette and the heading are now shared. Rebuilding page layouts on the kit's structure is a
+redesign rather than a wiring job, and it should be one deliberate pass rather than a sweep.
+
+**How far this was proved:** the palette at rendered output on the marketing home page and the app's
+pricing and auth pages, zero low-contrast elements, against a pre-change baseline of eight. The
+heading swap by typecheck and the suites only: those pages are behind sign-in and this dev database's
+seeded accounts are not mine to reset for a screenshot.
 
 ### W14-10 · The twelve-session run, on the fixed code · PASSED
 

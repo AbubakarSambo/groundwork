@@ -320,7 +320,7 @@ function NavItem({ item, compact }: { item: typeof NAV_ITEMS[0]; compact?: boole
       to={item.to}
       style={{
         display: 'flex', alignItems: 'center', gap: 10,
-        padding: '9px 14px', borderRadius: 10, color: active ? '#085041' : '#374151',
+        padding: '9px 14px', borderRadius: 10, color: active ? 'var(--gw-green-t)' : '#374151',
         textDecoration: 'none', fontSize: 14, fontWeight: active ? 700 : 500,
         background: active ? 'rgba(8,80,65,0.09)' : 'transparent', transition: 'background 0.15s, color 0.15s',
       }}
@@ -336,7 +336,7 @@ function NavItem({ item, compact }: { item: typeof NAV_ITEMS[0]; compact?: boole
 function GroundStatusBadge({ status }: { status: string }) {
   const isReady = status === 'REPORT_READY'
   const isActive = status === 'ACTIVE'
-  const color = isReady ? '#065f46' : isActive ? '#085041' : '#6B7280'
+  const color = isReady ? '#065f46' : isActive ? 'var(--gw-green-t)' : '#6B7280'
   const bg = isReady ? 'rgba(6,95,70,.1)' : isActive ? 'rgba(8,80,65,.08)' : 'rgba(107,114,128,.08)'
   const label = isReady ? 'Report ready' : isActive ? 'Active' : status.charAt(0) + status.slice(1).toLowerCase().replace(/_/g, ' ')
   return (
@@ -594,7 +594,7 @@ export function AppSidebar() {
                             title={attention.kind === 'overdue' ? `Session ${attention.sessionNumber} is ${attention.daysLate} days past its date` : `Session ${attention.sessionNumber} is ready for you`}
                             style={{
                               width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
-                              background: attention.kind === 'overdue' ? '#F87171' : '#5DCAA5',
+                              background: attention.kind === 'overdue' ? '#F87171' : 'var(--gw-green-b)',
                             }}
                           />
                         )}

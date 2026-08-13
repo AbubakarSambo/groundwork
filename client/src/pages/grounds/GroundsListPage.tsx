@@ -12,13 +12,13 @@ import { toast } from 'sonner'
 
 
 const MODE_COLORS: Record<string, { bg: string; color: string }> = {
-  Starting:       { bg: '#E8F8F5', color: '#085041' },
-  Recognition:    { bg: '#FDF3E3', color: '#8A5C1A' },
-  Resolution:     { bg: '#EEF4FB', color: '#0C447C' },
-  'Multi-party':  { bg: '#EEF4FB', color: '#0C447C' },
-  Accountability: { bg: '#FCEBEB', color: '#791F1F' },
+  Starting:       { bg: '#E8F8F5', color: 'var(--gw-green-t)' },
+  Recognition:    { bg: 'var(--gw-amber-bg)', color: 'var(--gw-amber-t)' },
+  Resolution:     { bg: 'var(--gw-blue-bg)', color: 'var(--gw-navy)' },
+  'Multi-party':  { bg: 'var(--gw-blue-bg)', color: 'var(--gw-navy)' },
+  Accountability: { bg: 'var(--gw-red-bg)', color: 'var(--gw-red-t)' },
   Contract:       { bg: '#F0EAF8', color: '#5B2EA6' },
-  Urgent:         { bg: '#FCEBEB', color: '#791F1F' },
+  Urgent:         { bg: 'var(--gw-red-bg)', color: 'var(--gw-red-t)' },
 }
 
 function GroundCard({ g, onClick }: { g: Ground; onClick: () => void }) {
@@ -123,7 +123,7 @@ function GroundCard({ g, onClick }: { g: Ground; onClick: () => void }) {
               Across ten grounds and thirty-three people, not one report was
               ever activated - the release email was the only thing that ever
               said so, and nothing in the product did. */}
-          {(g as any).reportWaitingForMe && <span style={{ fontSize: 11, fontWeight: 700, color: '#085041', background: '#E8F8F5', borderRadius: 20, padding: '2px 8px' }}>Your report is ready</span>}
+          {(g as any).reportWaitingForMe && <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-green-t)', background: '#E8F8F5', borderRadius: 20, padding: '2px 8px' }}>Your report is ready</span>}
           {(g.overdue ?? 0) > 0 && <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', borderRadius: 20, padding: '2px 8px' }}>{g.overdue} overdue</span>}
           {g.status === 'REPORT_READY' && <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-green-t)', background: 'var(--gw-green-bg)', borderRadius: 20, padding: '2px 8px' }}>Report ready</span>}
           {g.status === 'AWAITING_LEAD' && <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', borderRadius: 20, padding: '2px 8px' }}>Awaiting lead</span>}
@@ -221,9 +221,9 @@ export function GroundsListPage() {
       <div className="gw-hdr">
         <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
           <svg width="18" height="14" viewBox="0 0 22 17" fill="none">
-            <rect x="5" y="0" width="12" height="3" rx="1.5" fill="#0C447C" opacity="0.45" />
-            <rect x="2" y="6" width="18" height="3" rx="1.5" fill="#0C447C" opacity="0.72" />
-            <rect x="0" y="12" width="22" height="3" rx="1.5" fill="#0C447C" />
+            <rect x="5" y="0" width="12" height="3" rx="1.5" fill="var(--gw-navy)" opacity="0.45" />
+            <rect x="2" y="6" width="18" height="3" rx="1.5" fill="var(--gw-navy)" opacity="0.72" />
+            <rect x="0" y="12" width="22" height="3" rx="1.5" fill="var(--gw-navy)" />
           </svg>
           {/* The rail already says Groundwork two inches to the left. This said it again, so
               the page's own name is here instead - which is the thing a second line of
@@ -243,7 +243,7 @@ export function GroundsListPage() {
       <div className="gw-bd" style={{ paddingTop: 8, maxWidth: 600, margin: '0 auto', width: '100%' }}>
         {isAdmin && awaiting.length > 0 && (
           <div style={{ background: '#FDF8E3', border: '1px solid #E8D9A0', borderRadius: 12, padding: '14px 16px', marginBottom: 18 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: '#8A5C1A', marginBottom: 4 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--gw-amber-t)', marginBottom: 4 }}>
               Waiting for you
             </div>
             <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 12 }}>
@@ -270,7 +270,7 @@ export function GroundsListPage() {
                     <div style={{ display: 'flex', gap: 8, marginTop: 7 }}>
                       <button
                         onClick={() => { declineMut.mutate({ groundId: a.id, reason: declineReason }); setDeclining(null); setDeclineReason('') }}
-                        style={{ padding: '7px 13px', borderRadius: 7, background: '#791F1F', color: 'white', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, fontFamily: 'inherit' }}
+                        style={{ padding: '7px 13px', borderRadius: 7, background: 'var(--gw-red-t)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, fontFamily: 'inherit' }}
                       >Decline it</button>
                       <button
                         onClick={() => { setDeclining(null); setDeclineReason('') }}
@@ -372,12 +372,12 @@ export function GroundsListPage() {
 
             {/* Needs attention banner */}
             {!isLoading && needsAttention.length > 0 && (
-              <div style={{ background: '#FDF3E3', border: '1px solid #E8A94A', borderRadius: 10, padding: '12px 14px', marginBottom: 16 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: '#8A5C1A', marginBottom: 6 }}>Needs your attention</div>
+              <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 10, padding: '12px 14px', marginBottom: 16 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 6 }}>Needs your attention</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   {needsAttention.map(g => (
                     <div key={g.id} onClick={() => navigate(`/grounds/${g.id}`)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', padding: '4px 0' }}>
-                      <span style={{ fontSize: 13, color: '#1A1916', fontWeight: 600 }}>{g.label}</span>
+                      <span style={{ fontSize: 13, color: 'var(--gw-text)', fontWeight: 600 }}>{g.label}</span>
                       <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: g.status === 'REPORT_READY' ? 'var(--gw-green-bg)' : 'var(--gw-amber-bg)', color: g.status === 'REPORT_READY' ? 'var(--gw-green-t)' : 'var(--gw-amber-t)' }}>
                         {g.status === 'REPORT_READY' ? 'Report ready' : `${g.overdue} overdue`}
                       </span>
@@ -411,7 +411,7 @@ export function GroundsListPage() {
             {/* Welcome banner after password setup */}
             {justSetUp && (
               <div style={{ background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#085041', marginBottom: 3 }}>Your account is live.</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-green-t)', marginBottom: 3 }}>Your account is live.</div>
                 <div style={{ fontSize: 12, color: '#3A7A60', lineHeight: 1.5 }}>You will see your grounds and reports here. Open a ground to start contributing.</div>
               </div>
             )}

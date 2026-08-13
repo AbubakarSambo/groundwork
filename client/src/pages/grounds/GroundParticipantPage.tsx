@@ -233,7 +233,7 @@ export function GroundParticipantPage() {
     probeSession.mutate(myOpenForAutoOpen)
   }, [myOpenForAutoOpen, probeSession])
 
-  if (isLoading) return <div style={{ minHeight: '100vh', background: '#F5F3EF', padding: 24, fontSize: 13, color: '#9B9590' }}>Loading…</div>
+  if (isLoading) return <div style={{ minHeight: '100vh', background: 'var(--gw-paper-2)', padding: 24, fontSize: 13, color: 'var(--gw-muted)' }}>Loading…</div>
   // Was the bare words "Ground not found." with nothing to press, in two hardcoded
   // colours of its own. W8-65.
   if (!ground) return <div style={{ minHeight: '100vh', background: 'var(--gw-bg)' }}><GroundGone /></div>
@@ -244,13 +244,13 @@ export function GroundParticipantPage() {
 
   if (!myParticipant) {
     return (
-      <div style={{ minHeight: '100vh', background: '#F5F3EF', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <div style={{ minHeight: '100vh', background: 'var(--gw-paper-2)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
         <div style={{ maxWidth: 400, textAlign: 'center' }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: '#1A1916', marginBottom: 8 }}>Account not linked</div>
-          <div style={{ fontSize: 13, color: '#6B6560', lineHeight: 1.65, marginBottom: 20 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 8 }}>Account not linked</div>
+          <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 20 }}>
             Your account is not linked to this ground. Please contact the ground admin.
           </div>
-          <button onClick={() => navigate('/grounds')} style={{ fontSize: 13, color: '#0C447C', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit' }}>
+          <button onClick={() => navigate('/grounds')} style={{ fontSize: 13, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit' }}>
             Back to grounds
           </button>
         </div>
@@ -328,15 +328,15 @@ export function GroundParticipantPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F5F3EF', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--gw-paper-2)', display: 'flex', flexDirection: 'column' }}>
 
       {/* Header */}
-      <div style={{ position: 'sticky', top: 0, zIndex: 50, background: '#F5F3EF', borderBottom: '1px solid #E2E0DB' }}>
+      <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'var(--gw-paper-2)', borderBottom: '1px solid var(--gw-border)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px' }}>
-          <span onClick={() => navigate('/grounds')} style={{ fontSize: 13, color: '#9B9590', cursor: 'pointer', flexShrink: 0 }}>← Grounds</span>
+          <span onClick={() => navigate('/grounds')} style={{ fontSize: 13, color: 'var(--gw-muted)', cursor: 'pointer', flexShrink: 0 }}>← Grounds</span>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: '#1A1916', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ground.label}</div>
-            <div style={{ fontSize: 11, color: '#9B9590' }}>Your contribution to this ground is yours until the report releases.</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ground.label}</div>
+            <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>Your contribution to this ground is yours until the report releases.</div>
           </div>
           {/*
             THE OTHER HALF OF THE SWITCH.
@@ -352,7 +352,7 @@ export function GroundParticipantPage() {
           {isInitiator && (
             <button
               onClick={() => navigate(`/grounds/${id}`)}
-              style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, padding: '5px 11px', borderRadius: 20, background: 'white', color: '#0C447C', border: '1px solid #0C447C', cursor: 'pointer', fontFamily: 'inherit' }}
+              style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, padding: '5px 11px', borderRadius: 20, background: 'white', color: 'var(--gw-navy)', border: '1px solid var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit' }}
             >
               Admin view →
             </button>
@@ -367,7 +367,7 @@ export function GroundParticipantPage() {
         </div>
 
         {/* Tab bar */}
-        <div style={{ display: 'flex', borderTop: '1px solid #E2E0DB', overflowX: 'auto' }}>
+        <div style={{ display: 'flex', borderTop: '1px solid var(--gw-border)', overflowX: 'auto' }}>
           {tabs.map(t => (
             <button key={t.key}
               // The board is its own page with its own data and its own writes, so
@@ -376,8 +376,8 @@ export function GroundParticipantPage() {
               onClick={() => (t.key === 'board' ? navigate(`/grounds/${id}/board`) : setTab(t.key))}
               style={{
                 flex: '0 0 auto', padding: '10px 16px', fontSize: 12, fontWeight: tab === t.key ? 700 : 500,
-                color: tab === t.key ? '#0C447C' : '#6B6560', background: 'none', border: 'none',
-                borderBottom: tab === t.key ? '2px solid #0C447C' : '2px solid transparent',
+                color: tab === t.key ? 'var(--gw-navy)' : 'var(--gw-sub)', background: 'none', border: 'none',
+                borderBottom: tab === t.key ? '2px solid var(--gw-navy)' : '2px solid transparent',
                 cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
               }}
             >{t.label}</button>
@@ -484,7 +484,7 @@ export function GroundParticipantPage() {
                 Participants are never charged. The state is real; the price
                 was scaffolding. */}
             {myRecord?.insightsLocked !== false && (
-              <div style={{ background: '#0C447C', borderRadius: 10, padding: '18px 20px' }}>
+              <div style={{ background: 'var(--gw-navy)', borderRadius: 10, padding: '18px 20px' }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: 'white', marginBottom: 6 }}>Your record insights</div>
                 <div style={{ fontSize: 12, color: 'rgba(255,255,255,.75)', lineHeight: 1.6 }}>
                   Complete your first check-in to start building your record. Your specificity trend,
@@ -495,12 +495,12 @@ export function GroundParticipantPage() {
 
             {/* Session history summary - always visible */}
             {(myRecord?.sessions ?? []).length > 0 && (
-              <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '14px 16px' }}>
+              <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px' }}>
                 <Sec title="Sessions on record" />
                 {(myRecord?.sessions ?? []).map(s => (
                   <div key={s.sessionNumber} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderTop: '1px solid #F0EEE9' }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: '#1A1916' }}>Session {s.sessionNumber}</div>
-                    <div style={{ fontSize: 11, color: s.status === 'COMPLETED' ? '#085041' : '#9B9590', fontWeight: s.status === 'COMPLETED' ? 700 : 500 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)' }}>Session {s.sessionNumber}</div>
+                    <div style={{ fontSize: 11, color: s.status === 'COMPLETED' ? 'var(--gw-green-t)' : 'var(--gw-muted)', fontWeight: s.status === 'COMPLETED' ? 700 : 500 }}>
                       {s.status === 'COMPLETED' ? (s.completedAt ? new Date(s.completedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Complete') : 'In progress'}
                     </div>
                   </div>
@@ -510,14 +510,14 @@ export function GroundParticipantPage() {
 
             {/* Specificity trend - unlocked only */}
             {myRecord && !myRecord.insightsLocked && myRecord.specificity && (
-              <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '14px 16px' }}>
+              <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px' }}>
                 <Sec title="Specificity across sessions" />
                 <div style={{ display: 'flex', gap: 3, marginBottom: 8 }}>
                   {myRecord.specificity.scores.map((s, i) => (
-                    <div key={i} title={`Session ${i + 1}`} style={{ flex: 1, height: 6, borderRadius: 3, background: s >= 0.65 ? '#5DCAA5' : s >= 0.35 ? '#E8A94A' : '#E2E0DB' }} />
+                    <div key={i} title={`Session ${i + 1}`} style={{ flex: 1, height: 6, borderRadius: 3, background: s >= 0.65 ? 'var(--gw-green-b)' : s >= 0.35 ? 'var(--gw-amber-b)' : 'var(--gw-border)' }} />
                   ))}
                 </div>
-                <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.5 }}>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>
                   {specificity?.trend === 'rising'
                     ? 'Your answers are getting more specific as this goes on.'
                     : specificity?.trend === 'falling'
@@ -532,8 +532,8 @@ export function GroundParticipantPage() {
                   * "low"; everybody can act on "none of your answers say when".
                   */}
                 {specificity?.whatWouldHelp && (
-                  <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.55, marginTop: 10, paddingTop: 10, borderTop: '1px solid #F0EEE9' }}>
-                    <div style={{ fontWeight: 600, color: '#1A1916', marginBottom: 3 }}>What would make the next one land harder</div>
+                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55, marginTop: 10, paddingTop: 10, borderTop: '1px solid #F0EEE9' }}>
+                    <div style={{ fontWeight: 600, color: 'var(--gw-text)', marginBottom: 3 }}>What would make the next one land harder</div>
                     {specificity.whatWouldHelp}
                   </div>
                 )}
@@ -543,13 +543,13 @@ export function GroundParticipantPage() {
                   * in their own words teaches what no description of specificity can.
                   */}
                 {specificity?.strongest && (
-                  <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.55, marginTop: 10 }}>
-                    <div style={{ fontWeight: 600, color: '#1A1916', marginBottom: 3 }}>This one of yours was easy to check</div>
+                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55, marginTop: 10 }}>
+                    <div style={{ fontWeight: 600, color: 'var(--gw-text)', marginBottom: 3 }}>This one of yours was easy to check</div>
                     <span style={{ fontStyle: 'italic' }}>"{specificity.strongest}"</span>
                   </div>
                 )}
 
-                <div style={{ fontSize: 11, color: '#9B9590', marginTop: 10 }}>
+                <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 10 }}>
                   Only you see this. It is never shown to the lead or to anybody else in this ground.
                 </div>
               </div>
@@ -557,38 +557,38 @@ export function GroundParticipantPage() {
 
             {/* Confidence score - unlocked only */}
             {myRecord && !myRecord.insightsLocked && myRecord.confidence && (
-              <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '14px 16px' }}>
+              <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                   <Sec title="Record confidence" />
-                  <div style={{ fontSize: 16, fontWeight: 800, color: '#0C447C' }}>{myRecord.confidence.label}</div>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gw-navy)' }}>{myRecord.confidence.label}</div>
                 </div>
                 <div style={{ display: 'flex', gap: 3, marginBottom: 8 }}>
                   {[1,2,3,4,5].map(i => (
-                    <div key={i} style={{ flex: 1, height: 4, borderRadius: 2, background: i <= myRecord.confidence!.score ? '#0C447C' : '#E2E0DB' }} />
+                    <div key={i} style={{ flex: 1, height: 4, borderRadius: 2, background: i <= myRecord.confidence!.score ? 'var(--gw-navy)' : 'var(--gw-border)' }} />
                   ))}
                 </div>
-                <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.5 }}>{myRecord.confidence.description}</div>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>{myRecord.confidence.description}</div>
               </div>
             )}
 
             {/* Pattern observations - unlocked, diplomatic */}
             {myRecord && !myRecord.insightsLocked && myRecord.patterns && myRecord.patterns.length > 0 && (
-              <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '14px 16px' }}>
+              <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px' }}>
                 <Sec title="Observations from your record" />
-                <div style={{ fontSize: 12, color: '#9B9590', marginBottom: 10, lineHeight: 1.5 }}>
+                <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginBottom: 10, lineHeight: 1.5 }}>
                   These are patterns Groundwork has noticed across your check-ins. They are observations, not verdicts. Worth being aware of as your record builds.
                 </div>
                 {myRecord.patterns.map((p, i) => (
                   <div key={i} style={{ padding: '10px 0', borderTop: i === 0 ? '1px solid #F0EEE9' : '1px solid #F0EEE9', fontSize: 13, color: '#3A3630', lineHeight: 1.6 }}>
                     {p.observation}
-                    {p.sessionNumber && <span style={{ display: 'block', fontSize: 11, color: '#9B9590', marginTop: 3 }}>First noticed in Session {p.sessionNumber}</span>}
+                    {p.sessionNumber && <span style={{ display: 'block', fontSize: 11, color: 'var(--gw-muted)', marginTop: 3 }}>First noticed in Session {p.sessionNumber}</span>}
                   </div>
                 ))}
               </div>
             )}
 
             {myRecord && !myRecord.insightsLocked && (!myRecord.patterns || myRecord.patterns.length === 0) && (
-              <div style={{ background: '#F5F3EF', border: '1px solid #E2E0DB', borderRadius: 10, padding: '14px 16px', fontSize: 12, color: '#9B9590', lineHeight: 1.6 }}>
+              <div style={{ background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px', fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.6 }}>
                 No patterns have surfaced yet. Patterns appear after they have been observed across multiple sessions. This is intentional.
               </div>
             )}
@@ -600,12 +600,12 @@ export function GroundParticipantPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
 
             {/* Individual report section */}
-            <div style={{ fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: '#9B9590', fontWeight: 700, marginBottom: 2 }}>Your private report</div>
-            <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.6, marginBottom: 4 }}>
+            <div style={{ fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 2 }}>Your private report</div>
+            <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 4 }}>
               This is from your own check-in only. Only you can see it unless you choose to share it.
             </div>
             {mySoloReport?.report ? (
-              <div style={{ background: '#0A1628', color: 'white', borderRadius: 10, padding: '16px 18px', marginBottom: 6 }}>
+              <div style={{ background: 'var(--gw-dark)', color: 'white', borderRadius: 10, padding: '16px 18px', marginBottom: 6 }}>
                 {Object.entries(mySoloReport.report as Record<string, unknown>).map(([key, val]) => {
                   if (!val || (Array.isArray(val) && val.length === 0)) return null
                   const label = key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase())
@@ -635,9 +635,9 @@ export function GroundParticipantPage() {
                 </div>
               </div>
             ) : (
-              <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: 20, textAlign: 'center', marginBottom: 6 }}>
-                <div style={{ fontSize: 13, color: '#9B9590' }}>Your private report is not ready yet.</div>
-                <div style={{ fontSize: 12, color: '#9B9590', marginTop: 4 }}>It generates once you complete your check-in.</div>
+              <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: 20, textAlign: 'center', marginBottom: 6 }}>
+                <div style={{ fontSize: 13, color: 'var(--gw-muted)' }}>Your private report is not ready yet.</div>
+                <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 4 }}>It generates once you complete your check-in.</div>
               </div>
             )}
 
@@ -645,7 +645,7 @@ export function GroundParticipantPage() {
                 Does not block later corrections - it just flags any that come
                 after as "updated after sign-off" on the shared report. */}
             {mySoloReport?.report && (
-              <div style={{ background: '#F5F3EF', border: '1px solid #E2E0DB', borderRadius: 10, padding: '14px 16px', marginBottom: 6 }}>
+              <div style={{ background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px', marginBottom: 6 }}>
                 {myParticipant?.signedOffAt ? (
                   <div style={{ fontSize: 12, color: '#3A7A60', fontWeight: 600 }}>
                     You signed off on {new Date(myParticipant.signedOffAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}.
@@ -653,13 +653,13 @@ export function GroundParticipantPage() {
                   </div>
                 ) : (
                   <>
-                    <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.55, marginBottom: 8 }}>
+                    <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55, marginBottom: 8 }}>
                       Confirm your account is accurate. This isn't a lock - you can still correct it later - but any correction after sign-off is flagged on the shared report.
                     </div>
                     <button
                       onClick={() => signOffMut.mutate()}
                       disabled={signOffMut.isPending}
-                      style={{ padding: '8px 14px', borderRadius: 7, background: '#0C447C', color: 'white', fontSize: 12.5, fontWeight: 700, border: 'none', cursor: signOffMut.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: signOffMut.isPending ? 0.6 : 1 }}
+                      style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 12.5, fontWeight: 700, border: 'none', cursor: signOffMut.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: signOffMut.isPending ? 0.6 : 1 }}
                     >
                       {signOffMut.isPending ? 'Signing off…' : "Sign off - this is accurate"}
                     </button>
@@ -669,28 +669,28 @@ export function GroundParticipantPage() {
             )}
 
             {/* Divider */}
-            <div style={{ borderTop: '1px solid #E2E0DB', margin: '6px 0' }} />
-            <div style={{ fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: '#9B9590', fontWeight: 700, marginBottom: 2 }}>Shared report</div>
-            <div style={{ fontSize: 12, color: '#9B9590', lineHeight: 1.6, marginBottom: 4 }}>
+            <div style={{ borderTop: '1px solid var(--gw-border)', margin: '6px 0' }} />
+            <div style={{ fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 2 }}>Shared report</div>
+            <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.6, marginBottom: 4 }}>
               Shows where your account and the other party's account agree or differ. It does not quote anyone.
             </div>
 
             {!report ? (
-              <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: 24, textAlign: 'center' }}>
-                <div style={{ fontSize: 13, color: '#9B9590', marginBottom: 4 }}>
+              <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: 24, textAlign: 'center' }}>
+                <div style={{ fontSize: 13, color: 'var(--gw-muted)', marginBottom: 4 }}>
                   {ground?.sessionProgress
                     ? `Report pending - ${ground.sessionProgress.completed} of ${ground.sessionProgress.total} checked in`
                     : 'No report yet.'}
                 </div>
-                <div style={{ fontSize: 12, color: '#9B9590' }}>
+                <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>
                   {ground?.sessionProgress?.requestingUserIsMissing
                     ? "You haven't completed this round yet - that's part of what's holding the report."
                     : 'The report generates once all parties have checked in.'}
                 </div>
               </div>
             ) : !report.releasedAt ? (
-              <div style={{ background: '#EEF4FB', border: '1px solid #BFDBFE', borderRadius: 10, padding: '14px 16px' }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#0C447C', marginBottom: 4 }}>
+              <div style={{ background: 'var(--gw-blue-bg)', border: '1px solid #BFDBFE', borderRadius: 10, padding: '14px 16px' }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 4 }}>
                   {(report as any)?.forming ? 'A picture is forming' : 'Report is being prepared'}
                 </div>
                 <div style={{ fontSize: 12, color: '#4A6A9A', lineHeight: 1.6, marginBottom: (report as any)?.forming ? 10 : 0 }}>
@@ -701,25 +701,25 @@ export function GroundParticipantPage() {
                 {(report as any)?.forming && (
                   <button
                     onClick={() => navigate(`/grounds/${id}/report`)}
-                    style={{ fontSize: 12, fontWeight: 700, color: '#0C447C', background: 'white', border: '1px solid #BFDBFE', borderRadius: 8, padding: '8px 14px', cursor: 'pointer', fontFamily: 'inherit' }}
+                    style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-navy)', background: 'white', border: '1px solid #BFDBFE', borderRadius: 8, padding: '8px 14px', cursor: 'pointer', fontFamily: 'inherit' }}
                   >
                     View the forming picture →
                   </button>
                 )}
               </div>
             ) : !report.activated ? (
-              <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '16px 18px', textAlign: 'center' }}>
+              <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '16px 18px', textAlign: 'center' }}>
                 <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>The shared report is ready</div>
-                <div style={{ fontSize: 13, color: '#6B6560', lineHeight: 1.65, marginBottom: 8 }}>
+                <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 8 }}>
                   All parties reveal it at the same time. Once unlocked, everyone can read it - this cannot be undone.
                 </div>
-                <div style={{ fontSize: 12, color: '#9B9590', lineHeight: 1.55, marginBottom: 16, background: '#F5F3EF', borderRadius: 8, padding: '8px 12px' }}>
+                <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.55, marginBottom: 16, background: 'var(--gw-paper-2)', borderRadius: 8, padding: '8px 12px' }}>
                   The report shows where accounts agree and where they differ. It does not quote anyone.
                 </div>
                 <button
                   onClick={() => activateMutation.mutate()}
                   disabled={activateMutation.isPending}
-                  style={{ padding: '11px 28px', borderRadius: 8, background: '#0C447C', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: activateMutation.isPending ? 0.6 : 1 }}
+                  style={{ padding: '11px 28px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: activateMutation.isPending ? 0.6 : 1 }}
                 >
                   {activateMutation.isPending ? 'Confirming…' : 'Reveal report'}
                 </button>
@@ -730,7 +730,7 @@ export function GroundParticipantPage() {
                   onClick={() => navigate(`/grounds/${id}/report`)}
                   style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
-                    background: '#0A1628', color: 'white', border: 'none', borderRadius: 10,
+                    background: 'var(--gw-dark)', color: 'white', border: 'none', borderRadius: 10,
                     padding: '12px 16px', cursor: 'pointer', fontFamily: 'inherit',
                   }}
                 >
@@ -742,22 +742,22 @@ export function GroundParticipantPage() {
 
                 {/* Participant report sections */}
                 {report.pattern && (
-                  <div style={{ background: '#0A1628', color: 'white', borderRadius: 10, padding: '14px 16px' }}>
+                  <div style={{ background: 'var(--gw-dark)', color: 'white', borderRadius: 10, padding: '14px 16px' }}>
                     <div style={{ fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,.45)', fontWeight: 700, marginBottom: 8 }}>What your record reveals</div>
                     <div style={{ fontSize: 13, lineHeight: 1.65 }}>{report.pattern}</div>
                   </div>
                 )}
                 {(report.assumptions ?? []).length > 0 && (
-                  <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '13px 16px' }}>
-                    <div style={{ fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', color: '#9B9590', fontWeight: 700, marginBottom: 8 }}>Assumptions you are carrying</div>
+                  <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '13px 16px' }}>
+                    <div style={{ fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 8 }}>Assumptions you are carrying</div>
                     <ul style={{ listStyle: 'disc', paddingLeft: 18, margin: 0 }}>
                       {(report.assumptions ?? []).map((a: string, i: number) => <li key={i} style={{ fontSize: 13, lineHeight: 1.65, marginBottom: 5 }}>{a}</li>)}
                     </ul>
                   </div>
                 )}
                 {(report.clarity ?? []).length > 0 && (
-                  <div style={{ background: '#EEF4FB', border: '1px solid #BFDBFE', borderRadius: 10, padding: '13px 16px' }}>
-                    <div style={{ fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', color: '#0C447C', fontWeight: 700, marginBottom: 8 }}>Where you have clarity</div>
+                  <div style={{ background: 'var(--gw-blue-bg)', border: '1px solid #BFDBFE', borderRadius: 10, padding: '13px 16px' }}>
+                    <div style={{ fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--gw-navy)', fontWeight: 700, marginBottom: 8 }}>Where you have clarity</div>
                     <ul style={{ listStyle: 'disc', paddingLeft: 18, margin: 0 }}>
                       {(report.clarity ?? []).map((c: string, i: number) => <li key={i} style={{ fontSize: 13, lineHeight: 1.65, marginBottom: 5 }}>{c}</li>)}
                     </ul>
@@ -767,11 +767,11 @@ export function GroundParticipantPage() {
                 {/* Cross-reference section (shared picture, after activation) */}
                 {(report.alignmentReached ?? []).length > 0 && (
                   <div style={{ background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 10, padding: '13px 16px' }}>
-                    <div style={{ fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', color: '#085041', fontWeight: 700, marginBottom: 10 }}>Shared picture: where you are aligned</div>
+                    <div style={{ fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--gw-green-t)', fontWeight: 700, marginBottom: 10 }}>Shared picture: where you are aligned</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       {(report.alignmentReached ?? []).map((a: any, i: number) => (
-                        <div key={i} style={{ borderLeft: '3px solid #5DCAA5', paddingLeft: 10 }}>
-                          <div style={{ fontSize: 13, fontWeight: 700, color: '#085041' }}>{a.title ?? a}</div>
+                        <div key={i} style={{ borderLeft: '3px solid var(--gw-green-b)', paddingLeft: 10 }}>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-green-t)' }}>{a.title ?? a}</div>
                           {a.note && <div style={{ fontSize: 12, color: '#3A7A60', lineHeight: 1.5, marginTop: 2 }}>{a.note}</div>}
                         </div>
                       ))}
@@ -779,16 +779,16 @@ export function GroundParticipantPage() {
                   </div>
                 )}
                 {(report.areasRequiringAlignment ?? []).length > 0 && (
-                  <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '13px 16px' }}>
-                    <div style={{ fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', color: '#9B9590', fontWeight: 700, marginBottom: 10 }}>Shared picture: still to resolve</div>
-                    <div style={{ fontSize: 11, color: '#9B9590', marginBottom: 10, lineHeight: 1.5 }}>These gaps appear in the cross-reference. They show where your account and the other party's account differ. Neither side's raw words are shown here.</div>
+                  <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '13px 16px' }}>
+                    <div style={{ fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 10 }}>Shared picture: still to resolve</div>
+                    <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 10, lineHeight: 1.5 }}>These gaps appear in the cross-reference. They show where your account and the other party's account differ. Neither side's raw words are shown here.</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                       {(report.areasRequiringAlignment ?? []).map((a: any, i: number) => (
-                        <div key={i} style={{ borderLeft: '3px solid #E8A94A', paddingLeft: 10 }}>
+                        <div key={i} style={{ borderLeft: '3px solid var(--gw-amber-b)', paddingLeft: 10 }}>
                           <div style={{ fontSize: 13, fontWeight: 700 }}>{a.title ?? a}</div>
-                          {a.observation && <div style={{ fontSize: 12, color: '#6B6560', lineHeight: 1.5, marginTop: 2 }}>{a.observation}</div>}
+                          {a.observation && <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5, marginTop: 2 }}>{a.observation}</div>}
                           {a.recommendedMove && (
-                            <div style={{ fontSize: 12, color: '#0C447C', fontWeight: 600, marginTop: 4 }}>Next: {a.recommendedMove}</div>
+                            <div style={{ fontSize: 12, color: 'var(--gw-navy)', fontWeight: 600, marginTop: 4 }}>Next: {a.recommendedMove}</div>
                           )}
                         </div>
                       ))}
@@ -796,8 +796,8 @@ export function GroundParticipantPage() {
                   </div>
                 )}
 
-                <div style={{ background: '#F5F3EF', border: '1px solid #E2E0DB', borderRadius: 8, padding: '10px 13px' }}>
-                  <div style={{ fontSize: 11, color: '#9B9590', lineHeight: 1.6 }}>
+                <div style={{ background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '10px 13px' }}>
+                  <div style={{ fontSize: 11, color: 'var(--gw-muted)', lineHeight: 1.6 }}>
                     This report shows where both accounts agree and where they differ. The other party's exact words are never visible to you, and yours are never visible to them.
                   </div>
                 </div>
@@ -809,43 +809,43 @@ export function GroundParticipantPage() {
         {/* DOCUMENTS TAB */}
         {tab === 'docs' && (
           <div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#1A1916', marginBottom: 10 }}>{contextEnabled ? 'Context' : 'Documents'}</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 10 }}>{contextEnabled ? 'Context' : 'Documents'}</div>
 
             {/* G25 + G26: what the ground can tell you, and an honest line about the
                 part of context that is the lead's. */}
             {contextEnabled && contextStrength && (
               <ContextStrength read={contextStrength} closedNote={!isInitiator} />
             )}
-            <div style={{ fontSize: 12, color: '#9B9590', lineHeight: 1.6, marginBottom: 14, background: 'white', borderRadius: 8, padding: '10px 12px', border: '1px solid #E2E0DB' }}>
+            <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.6, marginBottom: 14, background: 'white', borderRadius: 8, padding: '10px 12px', border: '1px solid var(--gw-border)' }}>
               {contextEnabled
                 ? "This is where the background lives. Anything the lead has opened to the ground appears here, and your check-in has read it. What you upload is yours until the report is released, and it shapes the questions you get asked."
                 : "Documents the admin has shared appear here. Your uploads are part of your contribution to this ground's record until the report is released."}
             </div>
 
-            <div style={{ fontSize: 11, color: '#9B9590', marginBottom: 10, lineHeight: 1.6 }}>
+            <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 10, lineHeight: 1.6 }}>
               Your uploads are private. Everyone's documents are cross-referenced when the report is released.
             </div>
 
             <div
-              style={{ border: '1.5px dashed #E2E0DB', borderRadius: 8, padding: 16, textAlign: 'center', cursor: 'pointer', marginBottom: 12, background: 'white' }}
+              style={{ border: '1.5px dashed var(--gw-border)', borderRadius: 8, padding: 16, textAlign: 'center', cursor: 'pointer', marginBottom: 12, background: 'white' }}
               onClick={() => document.getElementById('gp-doc-upload')?.click()}
             >
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#0C447C' }}>Upload a supporting document</div>
-              <div style={{ fontSize: 12, color: '#9B9590', marginTop: 3 }}>PDF, DOCX, JPEG, PNG</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)' }}>Upload a supporting document</div>
+              <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 3 }}>PDF, DOCX, JPEG, PNG</div>
               <input type="file" id="gp-doc-upload" style={{ display: 'none' }} accept=".pdf,.docx,.jpeg,.jpg,.png"
                 onChange={e => { const f = e.target.files?.[0]; if (f) uploadDoc.mutate(f); e.target.value = '' }} />
             </div>
 
             {docs.length === 0 ? (
-              <div style={{ fontSize: 13, color: '#9B9590', textAlign: 'center', padding: 20, background: 'white', borderRadius: 8, border: '1px solid #E2E0DB' }}>
+              <div style={{ fontSize: 13, color: 'var(--gw-muted)', textAlign: 'center', padding: 20, background: 'white', borderRadius: 8, border: '1px solid var(--gw-border)' }}>
                 No documents yet.
               </div>
             ) : (
               docs.map((doc: any) => (
-                <div key={doc.id} style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 8, padding: '11px 14px', marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div key={doc.id} style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '11px 14px', marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
                     <div style={{ fontSize: 13, fontWeight: 600 }}>{doc.name}</div>
-                    <div style={{ fontSize: 11, color: '#9B9590', marginTop: 2 }}>{new Date(doc.uploadedAt).toLocaleDateString()}</div>
+                    <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 2 }}>{new Date(doc.uploadedAt).toLocaleDateString()}</div>
                   </div>
                 </div>
               ))
@@ -856,39 +856,39 @@ export function GroundParticipantPage() {
         {/* SETTINGS TAB */}
         {tab === 'settings' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#1A1916', marginBottom: 4 }}>Settings</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 4 }}>Settings</div>
 
             {/* Profile summary */}
-            <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '13px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#0C447C', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 16, fontWeight: 800, flexShrink: 0 }}>
+            <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '13px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--gw-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 16, fontWeight: 800, flexShrink: 0 }}>
                 {(user?.firstName?.[0] ?? '?').toUpperCase()}
               </div>
               <div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: '#1A1916' }}>{user?.firstName} {user?.lastName}</div>
-                <div style={{ fontSize: 12, color: '#9B9590' }}>{user?.email}</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)' }}>{user?.firstName} {user?.lastName}</div>
+                <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{user?.email}</div>
               </div>
             </div>
 
-            <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, overflow: 'hidden' }}>
+            <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, overflow: 'hidden' }}>
               <div style={{ padding: '13px 16px', borderBottom: '1px solid #F0EEE9' }}>
                 <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Ground</div>
-                <div style={{ fontSize: 12, color: '#9B9590' }}>{ground.label}</div>
+                <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{ground.label}</div>
               </div>
               <div style={{ padding: '13px 16px', borderBottom: '1px solid #F0EEE9' }}>
                 <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Scenario</div>
-                <div style={{ fontSize: 12, color: '#9B9590' }}>{ground.scenario?.replace(/_/g, ' ').toLowerCase().replace(/^\w/, (c: string) => c.toUpperCase())}</div>
+                <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{ground.scenario?.replace(/_/g, ' ').toLowerCase().replace(/^\w/, (c: string) => c.toUpperCase())}</div>
               </div>
               <div style={{ padding: '13px 16px', borderBottom: '1px solid #F0EEE9' }}>
                 <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Your role</div>
-                <div style={{ fontSize: 12, color: '#9B9590' }}>{myParticipant?.roleAsDescribed ?? 'In this ground'}</div>
+                <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{myParticipant?.roleAsDescribed ?? 'In this ground'}</div>
               </div>
               <div style={{ padding: '13px 16px', borderBottom: '1px solid #F0EEE9' }}>
                 <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Status</div>
-                <div style={{ fontSize: 12, color: '#9B9590' }}>{ground.status}</div>
+                <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{ground.status}</div>
               </div>
               <div style={{ padding: '13px 16px' }}>
                 <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Sessions completed</div>
-                <div style={{ fontSize: 12, color: '#9B9590' }}>{completedCheckIns.length} of {totalSessions}</div>
+                <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{completedCheckIns.length} of {totalSessions}</div>
               </div>
             </div>
 
@@ -897,8 +897,8 @@ export function GroundParticipantPage() {
               * same read as the one on the record tab, minus everything a person could act on, and
               * a page that grades you twice is not twice as honest.
               */}
-            <div style={{ background: '#F8ECEA', border: '1px solid #EDD0CB', borderRadius: 10, padding: '13px 16px' }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#B5675A', marginBottom: 4 }}>Privacy reminder</div>
+            <div style={{ background: 'var(--gw-clay-bg)', border: '1px solid #EDD0CB', borderRadius: 10, padding: '13px 16px' }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-clay)', marginBottom: 4 }}>Privacy reminder</div>
               <div style={{ fontSize: 12, color: '#7A4A44', lineHeight: 1.6 }}>
                 Your check-in answers are never visible to the other party. They are stored privately and only cross-referenced at the point of report generation. Neither party can read the other's raw account at any time.
               </div>
@@ -914,22 +914,22 @@ export function GroundParticipantPage() {
 
             {myParticipant?.partyType === 'INITIATOR' ? (
               <>
-                <div style={{ fontSize: 16, fontWeight: 800, color: '#0A1628', marginBottom: 4 }}>Your session is complete.</div>
-                <div style={{ fontSize: 13, color: '#6B6560', marginBottom: 20, lineHeight: 1.6 }}>
+                <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gw-dark)', marginBottom: 4 }}>Your session is complete.</div>
+                <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 20, lineHeight: 1.6 }}>
                   Did Groundwork help your team move forward? Choose what works best for you.
                 </div>
 
                 {/* Tier 1: Free extension */}
                 {paywallFreeExtensionAvailable && (
                   <div style={{ border: '1px solid #B6E8D4', borderRadius: 10, padding: '14px 16px', marginBottom: 12, background: '#F0FAF5' }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: '#085041', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 6 }}>Add one more free session</div>
-                    <div style={{ fontSize: 13, color: '#1A1916', lineHeight: 1.6, marginBottom: 12 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-green-t)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 6 }}>Add one more free session</div>
+                    <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6, marginBottom: 12 }}>
                       Not ready to pay yet? Keep using Groundwork until you are confident it is delivering value. Add another free session and continue your Ground.
                     </div>
                     <button
                       onClick={() => claimFreeExtensionMut.mutate()}
                       disabled={claimFreeExtensionMut.isPending}
-                      style={{ width: '100%', padding: '10px', borderRadius: 7, background: '#085041', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: claimFreeExtensionMut.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: claimFreeExtensionMut.isPending ? 0.7 : 1 }}
+                      style={{ width: '100%', padding: '10px', borderRadius: 7, background: 'var(--gw-green-t)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: claimFreeExtensionMut.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: claimFreeExtensionMut.isPending ? 0.7 : 1 }}
                     >
                       {claimFreeExtensionMut.isPending ? 'Adding...' : 'Continue for free'}
                     </button>
@@ -941,9 +941,9 @@ export function GroundParticipantPage() {
                     above and the org subscription below. */}
 
                 {/* Tier 3: Upgrade org */}
-                <div style={{ border: '1px solid #E2E0DB', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
+                <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
                   <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-navy)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 6 }}>Upgrade organization</div>
-                  <div style={{ fontSize: 13, color: '#1A1916', lineHeight: 1.6, marginBottom: 12 }}>
+                  <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6, marginBottom: 12 }}>
                     Your team is getting value from Groundwork. Unlock unlimited Grounds and unlimited sessions for everyone in your organization with one simple monthly subscription.
                   </div>
                   <button
@@ -963,8 +963,8 @@ export function GroundParticipantPage() {
               </>
             ) : (
               <>
-                <div style={{ fontSize: 16, fontWeight: 800, color: '#0A1628', marginBottom: 8 }}>Session needed to continue</div>
-                <div style={{ background: '#F5F3EF', borderRadius: 8, padding: '12px 14px', marginBottom: 14, fontSize: 13, color: '#4A4540', lineHeight: 1.6 }}>
+                <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gw-dark)', marginBottom: 8 }}>Session needed to continue</div>
+                <div style={{ background: 'var(--gw-paper-2)', borderRadius: 8, padding: '12px 14px', marginBottom: 14, fontSize: 13, color: '#4A4540', lineHeight: 1.6 }}>
                   Your initiator has been notified. Once they add a session, you will be able to check in.
                 </div>
               </>
@@ -974,33 +974,33 @@ export function GroundParticipantPage() {
                 payment block. It used to render for everyone, sending plain
                 participants hunting for a code they were never issued. */}
             {myParticipant?.partyType === 'INITIATOR' && (
-            <div style={{ borderTop: '1px solid #E2E0DB', paddingTop: 14 }}>
-              <div style={{ fontSize: 12, color: '#9B9590', marginBottom: 8 }}>Have an access code?</div>
+            <div style={{ borderTop: '1px solid var(--gw-border)', paddingTop: 14 }}>
+              <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginBottom: 8 }}>Have an access code?</div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <input
                   type="text"
                   value={paywallCode}
                   onChange={e => { setPaywallCode(e.target.value); setPaywallCodeMsg(null) }}
                   placeholder="Enter code"
-                  style={{ flex: 1, padding: '9px 11px', fontSize: 13, fontFamily: 'inherit', border: `1px solid ${paywallCodeMsg && !paywallCodeMsg.ok ? '#c0392b' : '#E2E0DB'}`, borderRadius: 7, background: '#F5F3EF', color: '#0A1628', outline: 'none' }}
+                  style={{ flex: 1, padding: '9px 11px', fontSize: 13, fontFamily: 'inherit', border: `1px solid ${paywallCodeMsg && !paywallCodeMsg.ok ? '#c0392b' : 'var(--gw-border)'}`, borderRadius: 7, background: 'var(--gw-paper-2)', color: 'var(--gw-dark)', outline: 'none' }}
                 />
                 <button
                   onClick={() => redeemPaywallCode.mutate()}
                   disabled={!paywallCode.trim() || redeemPaywallCode.isPending}
-                  style={{ padding: '9px 14px', borderRadius: 7, background: '#0C447C', color: 'white', fontSize: 13, fontWeight: 600, border: 'none', cursor: !paywallCode.trim() ? 'not-allowed' : 'pointer', opacity: !paywallCode.trim() ? 0.45 : 1, fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+                  style={{ padding: '9px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 600, border: 'none', cursor: !paywallCode.trim() ? 'not-allowed' : 'pointer', opacity: !paywallCode.trim() ? 0.45 : 1, fontFamily: 'inherit', whiteSpace: 'nowrap' }}
                 >
                   {redeemPaywallCode.isPending ? 'Checking...' : 'Apply'}
                 </button>
               </div>
               {paywallCodeMsg && (
-                <div style={{ fontSize: 12, color: paywallCodeMsg.ok ? '#085041' : '#c0392b', marginTop: 6 }}>{paywallCodeMsg.text}</div>
+                <div style={{ fontSize: 12, color: paywallCodeMsg.ok ? 'var(--gw-green-t)' : '#c0392b', marginTop: 6 }}>{paywallCodeMsg.text}</div>
               )}
             </div>
             )}
 
             <button
               onClick={() => setShowPaywall(false)}
-              style={{ marginTop: 14, background: 'none', border: 'none', fontSize: 12, color: '#9B9590', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}
+              style={{ marginTop: 14, background: 'none', border: 'none', fontSize: 12, color: 'var(--gw-muted)', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}
             >
               Not now
             </button>
@@ -1012,32 +1012,32 @@ export function GroundParticipantPage() {
       {showShareConfirm && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.55)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px' }}>
           <div style={{ background: 'white', borderRadius: 12, padding: 24, maxWidth: 380, width: '100%' }}>
-            <div style={{ fontSize: 16, fontWeight: 800, color: '#0A1628', marginBottom: 8 }}>Share your private report?</div>
-            <div style={{ fontSize: 13, color: '#6B6560', lineHeight: 1.65, marginBottom: 6 }}>
+            <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gw-dark)', marginBottom: 8 }}>Share your private report?</div>
+            <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 6 }}>
               Your private report will become visible to all other parties on this ground:
             </div>
             <ul style={{ margin: '0 0 14px', paddingLeft: 18 }}>
               {(ground?.participants ?? []).filter((p: any) => p.userId !== user?.id).map((p: any) => (
-                <li key={p.id} style={{ fontSize: 13, color: '#1A1916', marginBottom: 2 }}>
+                <li key={p.id} style={{ fontSize: 13, color: 'var(--gw-text)', marginBottom: 2 }}>
                   {participantLabel(p)}
-                  {p.email ? <span style={{ color: '#9B9590' }}> · {p.email}</span> : null}
+                  {p.email ? <span style={{ color: 'var(--gw-muted)' }}> · {p.email}</span> : null}
                 </li>
               ))}
             </ul>
-            <div style={{ fontSize: 12, color: '#9B9590', lineHeight: 1.55, marginBottom: 18, background: '#F5F3EF', borderRadius: 8, padding: '10px 12px' }}>
+            <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.55, marginBottom: 18, background: 'var(--gw-paper-2)', borderRadius: 8, padding: '10px 12px' }}>
               This is all or nothing. All sections of your private report become visible at once. You can stop sharing at any time.
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button
                 onClick={() => setShowShareConfirm(false)}
-                style={{ flex: 1, padding: '10px', borderRadius: 8, background: '#F5F3EF', color: '#6B6560', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                style={{ flex: 1, padding: '10px', borderRadius: 8, background: 'var(--gw-paper-2)', color: 'var(--gw-sub)', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 Cancel
               </button>
               <button
                 onClick={() => setSoloSharedMut.mutate(true)}
                 disabled={setSoloSharedMut.isPending}
-                style={{ flex: 1, padding: '10px', borderRadius: 8, background: '#0C447C', color: 'white', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: setSoloSharedMut.isPending ? 0.6 : 1 }}
+                style={{ flex: 1, padding: '10px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: setSoloSharedMut.isPending ? 0.6 : 1 }}
               >
                 {setSoloSharedMut.isPending ? 'Sharing…' : 'Yes, share it'}
               </button>
