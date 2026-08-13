@@ -742,11 +742,19 @@ body.gw-sb-collapsed .gw-sb-reopen { opacity: 1; pointer-events: auto; }
   .gw-panel-hide { display: flex !important; }
 }
 
-/* ── PARTICIPANT TAB ROW SCROLL (mobile) ─────────────────── */
+/* ── THE GROUND'S TAB ROW ─────────────────────────────────────
+   Seven tabs in a 390px row. It always scrolled; nothing said so, and the active tab could be
+   off-screen on load - so on a phone Team board and Ground settings were simply not there.
+
+   The fade is the only thing that says "there is more to the right", so it exists only where there
+   is: on a wide screen the row fits and a permanent gradient over the last tab would be decoration
+   that hides a destination. */
+.gw-tabs-fade { display: none; }
 @media (max-width: 640px) {
   .gw-tabs-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
   .gw-tabs-scroll::-webkit-scrollbar { display: none; }
   .gw-tabs-scroll .gw-tab { flex: 0 0 auto; }
+  .gw-tabs-fade { display: block; }
 }
 
 /* ── HELP BUTTON MOBILE OFFSET ───────────────────────────── */

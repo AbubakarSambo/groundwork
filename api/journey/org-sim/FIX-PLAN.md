@@ -5970,3 +5970,45 @@ things, which is the current one.
 
 Four mocked suites broke on the new read and needed `groundBaseline` in their fixtures. Suites: api
 1672, client 661.
+
+
+## The tab row on a phone, and one thing I am not building
+
+### Seven tabs in a 390px window
+
+Measured: the row is **618px of tabs in a 390px viewport**. It always scrolled, and nothing said so -
+no fade, no indicator, and the active tab could be off screen on load. So on a phone "Team board" and
+"Ground settings" were not findable, which is what she meant about the tabs looking wrong.
+
+`GroundTabRow` now owns the row for both views, which also removes the second copy of the markup - the
+two pages shared the tab LIST after the last pass but still each drew their own row, with their own
+paddings. The active tab scrolls into view when it changes, and a fade appears on the right only where
+the row can actually scroll: on desktop it fits, and a permanent gradient over the last tab would be
+decoration hiding a destination.
+
+Nothing is hidden behind a "More" menu. Seven destinations that each mean something are a row you
+scroll, not an overflow problem, and putting half of them behind a chevron is how a tab stops being
+found at all.
+
+Verified at both widths: fade `block` at 390px and `none` at 1280px, and picking the last tab moves
+`scrollLeft` to 230.
+
+**`scrollIntoView` took the whole row down in tests** - jsdom does not have it, and an unguarded call
+meant every tab disappeared rather than one tab not scrolling. Guarded.
+
+### `POST /documents/invite-upload` - built, and I do not think it should be wired
+
+It has a complete service behind it: token to participant, content extraction, assessment, the lot. No
+caller. I listed it as "a real gap, small". Having looked at where it would go, I think that was wrong,
+and the honest thing is to say so rather than build UI to close a gap on a list.
+
+The only moment it serves is **before** somebody accepts an invite. That is the moment the invite page
+exists to move them through, and the same upload works two clicks later - signed in, inside the
+check-in, where the engine actively asks for the document and can use it in the next question. Adding a
+file picker before "Add my version" puts a chore in front of the one action that page wants.
+
+So: left uncalled, deliberately, with the reasoning here rather than as a silent omission. If the
+intention was that the invite email says "bring the handover notes", the endpoint is ready and it wants
+a line of copy in the email as much as a control on the page. That is a product call.
+
+Suites: api 1672, client 661.

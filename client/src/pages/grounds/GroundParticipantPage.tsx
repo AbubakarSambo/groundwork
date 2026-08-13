@@ -15,6 +15,7 @@ import { Sec } from '@/components/gw/kit'
 import { groundTabs } from './ground-tabs'
 import { SoloReportBody } from '@/components/gw/SoloReportBody'
 import { BaselinePanel } from '@/components/gw/BaselinePanel'
+import { GroundTabRow } from '@/components/gw/GroundTabRow'
 import { apiClient } from '@/api/client'
 import { participantLabel } from '@/lib/utils'
 import { alignmentLabel } from '@/lib/alignment'
@@ -384,22 +385,11 @@ export function GroundParticipantPage() {
         </div>
 
         {/* Tab bar */}
-        <div style={{ display: 'flex', borderTop: '1px solid var(--gw-border)', overflowX: 'auto' }}>
-          {tabs.map(t => (
-            <button key={t.key}
-              // The board is its own page with its own data and its own writes, so
-              // its tab navigates rather than switching a panel. Everything else is
-              // a panel of this page.
-              onClick={() => (t.key === 'board' ? navigate(`/grounds/${id}/board`) : setTab(t.key))}
-              style={{
-                flex: '0 0 auto', padding: '10px 16px', fontSize: 12, fontWeight: tab === t.key ? 700 : 500,
-                color: tab === t.key ? 'var(--gw-navy)' : 'var(--gw-sub)', background: 'none', border: 'none',
-                borderBottom: tab === t.key ? '2px solid var(--gw-navy)' : '2px solid transparent',
-                cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
-              }}
-            >{t.label}</button>
-          ))}
-        </div>
+          <GroundTabRow
+            tabs={tabs.map(t => ({ key: t.key as any, label: t.label }))}
+            active={tab}
+            onPick={k => (k === 'board' ? navigate(`/grounds/${id}/board`) : setTab(k as Tab))}
+          />
       </div>
 
       {/*

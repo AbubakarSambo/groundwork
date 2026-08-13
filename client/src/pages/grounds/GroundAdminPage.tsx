@@ -26,6 +26,7 @@ import { Sec, Stat } from '@/components/gw/kit'
 import { groundTabs } from './ground-tabs'
 import { SoloReportBody } from '@/components/gw/SoloReportBody'
 import { BaselinePanel } from '@/components/gw/BaselinePanel'
+import { GroundTabRow } from '@/components/gw/GroundTabRow'
 import { billingApi, PLAN_MEMBER_LIMITS, type SubscriptionPlan } from '@/api/billing'
 
 const SCENARIO_LABELS: Record<string, string> = {
@@ -767,28 +768,22 @@ export function GroundAdminPage() {
           * The keys this page uses internally are unchanged, so nothing about its own state machine
           * moves: the shared list is mapped onto them.
           */}
-        <div style={{ display: 'flex', borderTop: '0.5px solid var(--gw-border)', overflowX: 'auto' }}>
-          {groundTabs({ isLead: true, contextEnabled, hasBoard: !!(ground as any).boardRenders }).map(t => {
-            /** The board is its own route rather than a tab's content, and always was. */
-            if (t.key === 'board') {
-              return (
-                <button key={t.key} className="gw-tab" onClick={() => navigate(`/grounds/${id}/board`)}>
-                  {t.label}
-                </button>
-              )
-            }
+        {/**
+          * THE SAME ROW THE PARTY VIEW DRAWS. `GroundTabRow` owns the scroll behaviour, so the fix for
+          * seven tabs in a 390px row lands on both views at once rather than being written twice.
+          */}
+        <GroundTabRow
+          tabs={groundTabs({ isLead: true, contextEnabled, hasBoard: !!(ground as any).boardRenders })}
+          active={({ chat: 'chat', report: 'report', checkins: 'record', docs: 'context', overview: 'overview', settings: 'settings' } as Record<string, string>)[tab] ?? 'chat'}
+          onPick={k => {
+            if (k === 'board') { navigate(`/grounds/${id}/board`); return }
             const mine: Record<string, Tab> = {
               chat: 'chat', report: 'report', record: 'checkins', context: 'docs',
               overview: 'overview', settings: 'settings',
             }
-            const key = mine[t.key]
-            return (
-              <button key={t.key} className={`gw-tab${tab === key ? ' active' : ''}`} onClick={() => setTab(key)}>
-                {t.label}
-              </button>
-            )
-          })}
-        </div>
+            setTab(mine[k] ?? 'chat')
+          }}
+        />
       </div>
 
       <div className="gw-bd" style={{ paddingTop: 12, maxWidth: 600, margin: '0 auto', width: '100%' }}>
