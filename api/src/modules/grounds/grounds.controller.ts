@@ -335,6 +335,28 @@ export class GroundsController {
     return this.grounds.acceptMyObjective(id, userId);
   }
 
+  /**
+   * WHERE THIS STOOD ON DAY ONE. Append-only: there is no update and no delete, because a corrected
+   * baseline stops being a record of what people believed at the start.
+   */
+  @Get(':id/baseline-entries/candidates')
+  @ApiOperation({ summary: "The lead's own session-one entries, to choose from" })
+  async baselineEntryCandidates(@Param('id') id: string, @CurrentUser('id') userId: string) {
+    return this.grounds.baselineEntryCandidates(id, userId);
+  }
+
+  @Post(':id/baseline-entries')
+  @ApiOperation({ summary: 'Record what the lead confirmed was true at the start' })
+  async recordBaselineEntries(@Param('id') id: string, @CurrentUser('id') userId: string, @Body() dto: { texts: string[] }) {
+    return this.grounds.recordBaselineEntries(id, userId, dto?.texts ?? []);
+  }
+
+  @Get(':id/baseline-entries')
+  @ApiOperation({ summary: 'What the record says was true at the start, for anybody on the ground' })
+  async baselineEntries(@Param('id') id: string, @CurrentUser('id') userId: string) {
+    return this.grounds.baselineEntries(id, userId);
+  }
+
   @Get(':id/my-notes')
   @ApiOperation({ summary: "The requesting user's own between-session notes on this ground (private, owner only)" })
   async myNotes(@Param('id') id: string, @CurrentUser('id') userId: string) {

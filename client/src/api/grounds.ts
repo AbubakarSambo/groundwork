@@ -319,6 +319,32 @@ export const groundsApi = {
       `/grounds/${groundId}/my-objective/accept`,
     ).then(r => r.data),
 
+  /**
+   * WHERE THIS STOOD ON DAY ONE. `GroundBaselineEntry`, append-only.
+   *
+   * The candidates are the lead's own session-one entries: they choose which of the things they
+   * already said describe the starting point. There is no update and no delete, because a corrected
+   * baseline stops being a record of what people believed at the start.
+   */
+  baselineEntryCandidates: (groundId: string) =>
+    apiClient.get<{
+      candidates: { text: string; type: string }[]
+      alreadyRecorded: { text: string; capturedAtSession: number; createdAt: string }[]
+    }>(`/grounds/${groundId}/baseline-entries/candidates`).then(r => r.data),
+
+  recordBaselineEntries: (groundId: string, texts: string[]) =>
+    apiClient.post<{ text: string; capturedAtSession: number; createdAt: string }[]>(
+      `/grounds/${groundId}/baseline-entries`, { texts },
+    ).then(r => r.data),
+
+  baselineEntries: (groundId: string) =>
+    apiClient.get<{
+      entries: { text: string; capturedAtSession: number; createdAt: string }[]
+      completedSessions: number
+      canShowMovement: boolean
+      frozenReason: string
+    }>(`/grounds/${groundId}/baseline-entries`).then(r => r.data),
+
   contextChat: (groundId: string, history: { role: 'user' | 'assistant'; content: string }[]) =>
     apiClient
       .post<{

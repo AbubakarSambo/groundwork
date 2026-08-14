@@ -16,7 +16,8 @@ import { canSignIn } from './can-sign-in';
 import { defaultModeFor, boardRendersFor } from '../board/board-families';
 import { BoardFamily, familyFor } from '../board/board-families';
 import { runIntake } from '../conversation/intake';
-import { objectiveState, describeObjective, mayBeReadAgainst } from './an-objective-belongs-to-a-person';
+import { objectiveState, describeObjective, mayBeReadAgainst, canShowMovement, BASELINE_IS_FROZEN } from './an-objective-belongs-to-a-person';
+import { cleanText } from '../reports/what-the-record-actually-holds';
 import { proposalFrom, extractionToolFor, Heard, Proposal } from './what-the-context-chat-heard';
 
 // Default timelines per scenario (Part 2 - timeline and cadence).
@@ -2175,6 +2176,158 @@ export class GroundsService {
       select: { text: true, authoredBy: true, seenBySubject: true, updatedAt: true },
     });
   }
+
+  /**
+   * WHERE THIS STOOD ON DAY ONE. `GroundBaselineEntry`, which had no reader and no writer.
+   *
+   * Not the same thing as `GroundBaseline`. That one is the YARDSTICK - what doing well would look
+   * like. This is what was actually TRUE at the start, and the pair of them is what lets a report say
+   * something has MOVED rather than only where it is now.
+   *
+   * `an-objective-belongs-to-a-person.ts` has carried the read for this with nothing to read:
+   * `canShowMovement(baseline, completedSessions)` - "can this ground show movement rather than only
+   * position?" - and `BASELINE_IS_FROZEN`, the sentence explaining why it cannot be corrected. Both
+   * unused, because no row ever existed.
+   *
+   * FROZEN, and the schema says why: "half the findings this product makes are the distance between
+   * what people believed at the start and what turned out to be true. Corrected, a baseline becomes a
+   * second description of the present and the arc disappears." No update, no delete. A correction is a
+   * new row with its own session number and both stay readable.
+   *
+   * NOTHING IS CAPTURED SILENTLY. The candidates are the lead's OWN entries from session one - what
+   * they already said, typed by the engine as it heard them - and the lead picks which of those
+   * describe where things stood. No second extraction and no model call, so nothing can invent a
+   * starting point nobody stated. Confirmed rather than adopted, the same rule the setup chat and the
+   * objectives follow.
+   */
+  async baselineEntryCandidates(groundId: string, requestingUserId: string) {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { initiatorId: true, organizationId: true },
+    });
+    if (!ground) throw new NotFoundException('Ground not found');
+    const asker = await this.prisma.user.findUnique({
+      where: { id: requestingUserId },
+      select: { role: true, organizationId: true },
+    });
+    const isOrgAdmin = asker?.role === 'ADMIN' && asker.organizationId === ground.organizationId;
+    if (ground.initiatorId !== requestingUserId && !isOrgAdmin) {
+      throw new ForbiddenException('Recording where this stood at the start belongs to whoever runs this ground.');
+    }
+
+    const lead = await this.prisma.groundParticipant.findFirst({
+      where: { groundId, userId: ground.initiatorId },
+      select: { id: true },
+    });
+    const recorded = await this.prisma.groundBaselineEntry.findMany({
+      where: { groundId },
+      select: { text: true, capturedAtSession: true, createdAt: true },
+      orderBy: { createdAt: 'asc' },
+    });
+    if (!lead) return { candidates: [], alreadyRecorded: recorded };
+
+    const rows = await this.prisma.recordEntry.findMany({
+      where: { participantId: lead.id, checkIn: { sessionNumber: 1 } },
+      select: { text: true, type: true },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    /**
+     * `cleanText` strips the engine's own markers - `[INFERRED: ...]`, `[VERIFIABILITY: ...]` - which
+     * are how it annotates its own reading rather than part of what the person said. Handing a lead a
+     * candidate with a machine tag in it invites them to record the tag.
+     */
+    const already = new Set(recorded.map(r => r.text));
+    const candidates = rows
+      .map(r => ({ text: cleanText(r.text), type: String(r.type) }))
+      .filter(r => r.text.trim().length > 20 && !already.has(r.text));
+
+    return { candidates, alreadyRecorded: recorded };
+  }
+
+  /**
+   * Write what the lead confirmed. Append only: no id to update, no delete.
+   *
+   * `capturedAtSession` is the session the ground has actually reached, not always 1 - a correction
+   * recorded in session four is a fact about session four, and the distance between the two rows is
+   * the finding.
+   */
+  async recordBaselineEntries(groundId: string, requestingUserId: string, texts: string[]) {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { initiatorId: true, organizationId: true },
+    });
+    if (!ground) throw new NotFoundException('Ground not found');
+    const asker = await this.prisma.user.findUnique({
+      where: { id: requestingUserId },
+      select: { role: true, organizationId: true },
+    });
+    const isOrgAdmin = asker?.role === 'ADMIN' && asker.organizationId === ground.organizationId;
+    if (ground.initiatorId !== requestingUserId && !isOrgAdmin) {
+      throw new ForbiddenException('Recording where this stood at the start belongs to whoever runs this ground.');
+    }
+    const clean = (texts ?? []).map(t => t?.trim()).filter((t): t is string => !!t && t.length > 3);
+    if (!clean.length) throw new BadRequestException('Nothing to record.');
+
+    const latest = await this.prisma.checkIn.aggregate({
+      where: { groundId, status: 'COMPLETED' },
+      _max: { sessionNumber: true },
+    });
+    const capturedAtSession = Math.max(1, latest._max.sessionNumber ?? 1);
+
+    await this.prisma.groundBaselineEntry.createMany({
+      data: clean.map(text => ({ groundId, text, capturedAtSession })),
+    });
+    return this.prisma.groundBaselineEntry.findMany({
+      where: { groundId },
+      select: { text: true, capturedAtSession: true, createdAt: true },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
+  /**
+   * Readable by everybody on the ground. What the record says was true at the start is not a private
+   * note about anybody - it is the thing every later session is measured against.
+   */
+  async baselineEntries(groundId: string, requestingUserId: string) {
+    const link = await this.prisma.groundParticipant.findFirst({ where: { groundId, userId: requestingUserId } });
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { initiatorId: true, organizationId: true },
+    });
+    if (!ground) throw new NotFoundException('Ground not found');
+    const asker = await this.prisma.user.findUnique({
+      where: { id: requestingUserId },
+      select: { role: true, organizationId: true },
+    });
+    const isOrgAdmin = asker?.role === 'ADMIN' && asker.organizationId === ground.organizationId;
+    if (!link && ground.initiatorId !== requestingUserId && !isOrgAdmin) {
+      throw new ForbiddenException('You are not a party to this ground');
+    }
+    const [entries, done] = await Promise.all([
+      this.prisma.groundBaselineEntry.findMany({
+        where: { groundId },
+        select: { text: true, capturedAtSession: true, createdAt: true },
+        orderBy: { createdAt: 'asc' },
+      }),
+      this.prisma.checkIn.aggregate({ where: { groundId, status: 'COMPLETED' }, _max: { sessionNumber: true } }),
+    ]);
+    const completedSessions = done._max.sessionNumber ?? 0;
+    return {
+      entries,
+      completedSessions,
+      /**
+       * The module's own gate, finally called. A ground with one session has a POSITION, not a
+       * movement, and showing "what has changed" off a single session would be inventing an arc.
+       */
+      canShowMovement: canShowMovement(
+        entries[0] ? { text: entries[0].text, capturedAtSession: entries[0].capturedAtSession } : null,
+        completedSessions,
+      ),
+      frozenReason: BASELINE_IS_FROZEN,
+    };
+  }
+
 
   /**
    * WHAT DOING WELL LOOKS LIKE, AND WHAT HAS TO BE TRUE FOR IT. `GroundBaseline`, at last.

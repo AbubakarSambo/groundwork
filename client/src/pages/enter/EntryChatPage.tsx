@@ -40,6 +40,30 @@ interface OnboardingSelections {
   classifiedScenario?: string
 }
 
+/**
+ * THE THREE SHAPES THIS PAGE REPEATED, NAMED ONCE.
+ *
+ * Not a styling exercise. The field label appeared seven times and the card title six, and the six
+ * had drifted into two weights for the same job - 700 on the what-to-expect cards, 600 on the
+ * person cards - which is the kind of difference nobody decides and everybody sees. Naming the
+ * shape is what stops the next copy from drifting again.
+ *
+ * `weight` stays a prop rather than being flattened to one value: whichever way that drift is
+ * settled is a design call, and silently picking one here would be making it by accident.
+ */
+function FieldLabel({ children }: { children: React.ReactNode }) {
+  return <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-sub)', marginBottom: 4 }}>{children}</div>
+}
+
+function CardTitle({ children, weight = 600 }: { children: React.ReactNode; weight?: 600 | 700 }) {
+  return <div style={{ fontSize: 13, fontWeight: weight, color: 'var(--gw-text)', marginBottom: 2 }}>{children}</div>
+}
+
+/** The hairline either side of an "or" divider. */
+function Rule() {
+  return <div style={{ flex: 1, height: 1, background: 'var(--gw-border)' }} />
+}
+
 function saveSession(s: EntrySession) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)) } catch { /* */ }
 }
@@ -1363,21 +1387,21 @@ export function EntryChatPage() {
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '13px 16px', background: 'white', borderRadius: 10, border: '1px solid var(--gw-border)' }}>
               <span style={{ fontSize: 16, flexShrink: 0 }}>⏱</span>
               <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 2 }}>About 10 minutes</div>
+                <CardTitle weight={700}>About 10 minutes</CardTitle>
                 <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55 }}>Answer in your own words. The questions are based on what you just described. There are no right answers.</div>
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '13px 16px', background: 'white', borderRadius: 10, border: '1px solid var(--gw-border)' }}>
               <span style={{ fontSize: 16, flexShrink: 0 }}>📨</span>
               <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 2 }}>Invite links come after</div>
+                <CardTitle weight={700}>Invite links come after</CardTitle>
                 <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55 }}>Once you finish, you will get invite links to send to the other people involved. They check in independently.</div>
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '13px 16px', background: 'white', borderRadius: 10, border: '1px solid var(--gw-border)' }}>
               <span style={{ fontSize: 16, flexShrink: 0 }}>📄</span>
               <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 2 }}>The shared report - not your words</div>
+                <CardTitle weight={700}>The shared report - not your words</CardTitle>
                 <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55 }}>Nobody reads what you write. When everyone is in, the report shows where all accounts agree or differ. It does not quote anyone.</div>
               </div>
             </div>
@@ -1918,11 +1942,11 @@ export function EntryChatPage() {
               */}
               {!startCheckin.isPending && displayedHistory.length <= 2 && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '2px 12px 10px' }}>
-                  <div style={{ flex: 1, height: 1, background: 'var(--gw-border)' }} />
+                  <Rule />
                   <span style={{ fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--gw-sub)', fontWeight: 700, whiteSpace: 'nowrap' }}>
                     Setup done · your check-in starts here
                   </span>
-                  <div style={{ flex: 1, height: 1, background: 'var(--gw-border)' }} />
+                  <Rule />
                 </div>
               )}
               {!startCheckin.isPending && displayedHistory.length <= 2 && (
@@ -2325,7 +2349,7 @@ export function EntryChatPage() {
                         return (
                         <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 0', borderTop: i > 0 ? '0.5px solid var(--gw-blue-bg)' : undefined }}>
                           <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)', marginBottom: 2 }}>{p.role}</div>
+                            <CardTitle>{p.role}</CardTitle>
                             <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.4 }}>{p.reason}</div>
                             {queuedFromSuggestion.has(key) ? (
                               <div style={{ fontSize: 11.5, color: 'var(--gw-green-t)', fontWeight: 600, marginTop: 6 }}>✓ Added to invite list</div>
@@ -2374,7 +2398,7 @@ export function EntryChatPage() {
                         return (
                         <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 0', borderTop: i > 0 ? '0.5px solid var(--gw-border)' : undefined }}>
                           <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)', marginBottom: 2 }}>{p.name}</div>
+                            <CardTitle>{p.name}</CardTitle>
                             <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.4 }}>{p.context}</div>
                             {queuedFromSuggestion.has(key) ? (
                               <div style={{ fontSize: 11.5, color: 'var(--gw-green-t)', fontWeight: 600, marginTop: 6 }}>✓ Added to invite list</div>
@@ -2424,7 +2448,7 @@ export function EntryChatPage() {
                       )}
                       {sessionReport.alsoCameUp.map((p, i) => (
                         <div key={i} style={{ padding: '8px 0', borderTop: i > 0 ? '0.5px solid var(--gw-border)' : undefined }}>
-                          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)', marginBottom: 2 }}>{p.name}</div>
+                          <CardTitle>{p.name}</CardTitle>
                           <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.4 }}>{p.context}</div>
                         </div>
                       ))}
@@ -2526,9 +2550,9 @@ export function EntryChatPage() {
                 {authMethods?.google && (
                   <>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 0 8px' }}>
-                      <div style={{ flex: 1, height: 1, background: 'var(--gw-border)' }} />
+                      <Rule />
                       <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}>or</span>
-                      <div style={{ flex: 1, height: 1, background: 'var(--gw-border)' }} />
+                      <Rule />
                     </div>
                     <button
                       onClick={continueWithGoogle}
@@ -2617,12 +2641,12 @@ export function EntryChatPage() {
                 onChange={e => setOrgName(e.target.value)}
                 style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none', marginBottom: 8 }}
               />
-              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-sub)', marginBottom: 4 }}>
+              <FieldLabel>
                 How often does everyone check in?
                 {!cadenceChosen && (
                   <span style={{ fontWeight: 500, color: '#8A7B66' }}> Not set yet - this ground will run every 2 weeks unless you pick.</span>
                 )}
-              </div>
+              </FieldLabel>
               <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
                 {(['ONE_TIME', 'DAILY', 'WEEKLY', 'FORTNIGHTLY', 'MONTHLY', 'SEQUENTIAL'] as const).map(c => {
                   const labels: Record<string, string> = { ONE_TIME: 'One time', DAILY: 'Daily', WEEKLY: 'Weekly', FORTNIGHTLY: 'Every 2 weeks', MONTHLY: 'Monthly', SEQUENTIAL: 'When I check in' }
@@ -2640,7 +2664,7 @@ export function EntryChatPage() {
               {/* Weekday anchor for weekly-style cadences ("every Monday") */}
               {(cadence === 'WEEKLY' || cadence === 'FORTNIGHTLY') && (
                 <div style={{ marginBottom: 8 }}>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-sub)', marginBottom: 4 }}>On which day? (optional)</div>
+                  <FieldLabel>On which day? (optional)</FieldLabel>
                   <div style={{ display: 'flex', gap: 4 }}>
                     {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((d, i) => (
                       <button key={d} onClick={() => setCadenceAnchorDay(cadenceAnchorDay === i ? null : i)} style={{
@@ -2655,7 +2679,7 @@ export function EntryChatPage() {
               {/* Day-of-month anchor for monthly ("on the 1st") */}
               {cadence === 'MONTHLY' && (
                 <div style={{ marginBottom: 8 }}>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-sub)', marginBottom: 4 }}>On which day of the month? (optional)</div>
+                  <FieldLabel>On which day of the month? (optional)</FieldLabel>
                   <select value={cadenceAnchorDay ?? ''} onChange={e => setCadenceAnchorDay(e.target.value ? Number(e.target.value) : null)}
                     style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', background: 'white', color: cadenceAnchorDay != null ? 'var(--gw-text)' : 'var(--gw-muted)' }}>
                     <option value="">No fixed day (every ~30 days)</option>
@@ -2675,7 +2699,7 @@ export function EntryChatPage() {
               </div>
               {cadence === 'ONE_TIME' ? (
                 <>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-sub)', marginBottom: 4 }}>Complete by</div>
+                  <FieldLabel>Complete by</FieldLabel>
                   <input
                     type="date" value={checkInBy}
                     onChange={e => setCheckInBy(e.target.value)}
@@ -2685,7 +2709,7 @@ export function EntryChatPage() {
               ) : (
                 <div style={{ display: 'flex', gap: 8 }}>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-sub)', marginBottom: 4 }}>Start date <span style={{ fontWeight: 400 }}>(first check-in)</span></div>
+                    <FieldLabel>Start date <span style={{ fontWeight: 400 }}>(first check-in)</span></FieldLabel>
                     <input
                       type="date" value={checkInBy}
                       onChange={e => setCheckInBy(e.target.value)}
@@ -2693,7 +2717,7 @@ export function EntryChatPage() {
                     />
                   </div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-sub)', marginBottom: 4 }}>End date <span style={{ fontWeight: 400 }}>(last check-in, optional)</span></div>
+                    <FieldLabel>End date <span style={{ fontWeight: 400 }}>(last check-in, optional)</span></FieldLabel>
                     <input
                       type="date" value={lastCheckInBy}
                       onChange={e => setLastCheckInBy(e.target.value)}
@@ -2724,7 +2748,7 @@ export function EntryChatPage() {
                 : 'Each person gives their own account of the shared work, including their own part in it. Nobody reads anyone else\'s words directly. When all the accounts are in, the report shows where people agree, where they differ, and what the gap means for the work.'
               return (
             <div style={{ borderBottom: '1px solid var(--gw-border)', marginBottom: 16, paddingBottom: 16 }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-sub)', marginBottom: 4 }}>{inviteHeading}</div>
+              <FieldLabel>{inviteHeading}</FieldLabel>
               <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.55, marginBottom: 10 }}>
                 {inviteSubtext}
               </div>

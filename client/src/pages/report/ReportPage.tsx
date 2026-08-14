@@ -335,7 +335,7 @@ function WhatToWalkInWith({ guide }: { guide: { openingLine?: string; questionTo
   )
 }
 
-function WhatTheGroundCanTellYou({ section, note, restedOn }: {
+function WhatTheGroundCanTellYou({ section, note, restedOn, startedAt }: {
   section: {
     whatYouSaidGoodMeans: { text: string; session: number }[]
     whatTheRecordHolds: { kind: string; text: string; session: number }[]
@@ -362,6 +362,7 @@ function WhatTheGroundCanTellYou({ section, note, restedOn }: {
    * that had to be true was never in their hands. Shown only when the lead named some.
    */
   restedOn?: string[]
+  startedAt?: { text: string; session: number }[]
 }) {
   const rows: { h: string; items: string[]; empty?: string }[] = [
     { h: 'What you said doing well means', items: section.whatYouSaidGoodMeans.map(s => s.text) },
@@ -404,6 +405,31 @@ function WhatTheGroundCanTellYou({ section, note, restedOn }: {
           )}
         </div>
       ))}
+      {/**
+        * WHERE THIS STOOD AT THE START, and it is only ever sent once there is a later session to
+        * hold it against. The server decides that, not this component: `canShowMovement` refuses to
+        * call one session a movement, so an early report simply has no `whereThisStarted` to render
+        * and this block does not appear. Nothing here re-derives that rule or works around it.
+        */}
+      {startedAt && startedAt.length > 0 && (
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 4 }}>Where this stood at the start</div>
+          <ul style={{ margin: 0, paddingLeft: 17, display: 'flex', flexDirection: 'column', gap: 3 }}>
+            {startedAt.map((s, i) => (
+              <li key={i} style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6 }}>
+                {s.text}
+                {/* A line added later is a fact about later, and the distance is the finding. */}
+                {s.session > 1 && (
+                  <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}> · added at session {s.session}</span>
+                )}
+              </li>
+            ))}
+          </ul>
+          <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', lineHeight: 1.55, marginTop: 5 }}>
+            Recorded at the beginning and left as written. Read what the record holds above against it.
+          </div>
+        </div>
+      )}
       {restedOn && restedOn.length > 0 && (
         <div style={{ marginBottom: 12 }}>
           <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 4 }}>What you said it rested on</div>
@@ -1122,6 +1148,7 @@ export function ReportPage() {
                   section={(report as any).whatTheGroundCanTellYou}
                   note={(report as any).whatTheGroundCanTellYouNote}
                   restedOn={(report as any).whatItRestedOn}
+                  startedAt={(report as any).whereThisStarted}
                 />
               )}
 

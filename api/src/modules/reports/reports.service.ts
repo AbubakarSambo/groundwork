@@ -19,6 +19,7 @@ import { AnthropicService } from '../conversation';
 import { EmailService } from '../email/email.service';
 import { UsageService } from '../usage/usage.service';
 import { GroundsService } from '../grounds';
+import { canShowMovement } from '../grounds/an-objective-belongs-to-a-person';
 import { LEADERSHIP_PATTERNS, buildLeadershipPatternBlock } from '../board/coverage';
 import { findDeferrals, findWaitingBehind, buildDeferralNotice } from './deferrals';
 import { GroundStatus, PartyType, CheckInStatus, GroundScenario, UsageEventType, ReportActivationStatus, PatternStatus } from '@prisma/client';
@@ -417,6 +418,36 @@ export class ReportsService {
         out.whatTheGroundCanTellYouNote = THIS_IS_MATERIAL_NOT_A_VERDICT;
         /** Only when there are any: an empty list rendered as a heading says nothing twice. */
         if (restsOn.length) out.whatItRestedOn = restsOn;
+      }
+
+      /**
+       * WHERE THIS STOOD AT THE START, and the one thing the report has never been able to say.
+       *
+       * A different thing from the baseline above it. That one is the yardstick - what doing well
+       * would look like. This is what was actually TRUE on day one, in the lead's own words, recorded
+       * from their first session and frozen.
+       *
+       * GATED ON `canShowMovement`, which is the module's own rule and the reason this is not simply
+       * printed whenever it exists: one completed session is a POSITION, not a movement. Showing
+       * "where this started" beside a record that has only ever been described once invites the
+       * reader to see an arc that nothing in the record supports. So the report stays silent about
+       * the beginning until there is a later session to hold it against.
+       */
+      const [startedRows, sessionsDone] = await Promise.all([
+        this.prisma.groundBaselineEntry.findMany({
+          where: { groundId },
+          select: { text: true, capturedAtSession: true },
+          orderBy: { createdAt: 'asc' },
+        }),
+        this.prisma.checkIn.aggregate({ where: { groundId, status: 'COMPLETED' }, _max: { sessionNumber: true } }),
+      ]);
+      if (
+        canShowMovement(
+          startedRows[0] ? { text: startedRows[0].text, capturedAtSession: startedRows[0].capturedAtSession } : null,
+          sessionsDone._max.sessionNumber ?? 0,
+        )
+      ) {
+        out.whereThisStarted = startedRows.map((r) => ({ text: r.text, session: r.capturedAtSession }));
       }
 
       // G34. The lead's, and nobody else's.

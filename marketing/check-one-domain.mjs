@@ -159,5 +159,53 @@ if (existsSync(home)) {
   }
 }
 
+/**
+ * EVERY PAGE MUST ACTUALLY CARRY THE STYLESHEET. W15-1.
+ *
+ * The tokens were referenced for months as `<link rel="stylesheet" href="/src/styles/global.css">`,
+ * which Vite serves as JavaScript. The browser asked for CSS, got a script, applied nothing, and no
+ * page looked broken enough for anyone to check - the pages had their own inline styles and the
+ * tokens were only the fallback layer. So the reference was dead and the site looked fine, which is
+ * the worst combination available and the same shape as the sitemap bug above.
+ *
+ * Fixing it to a real import is what broke the deploy, because a stylesheet that is genuinely
+ * compiled goes through the CSS pipeline and the Tailwind plugin in that pipeline was incompatible
+ * with the installed Vite. Tailwind is gone now: not one utility class exists on this site.
+ *
+ * Checked in the built artefact rather than the source, because the failure mode was precisely a
+ * source reference that looked right and shipped nothing.
+ *
+ * THE CLAIM IS "THE TOKENS ARE DEFINED", NOT "A STYLESHEET IS LINKED". My first version asserted the
+ * link tag and failed on four of five pages against a correct build: Astro inlines small CSS into a
+ * `<style>` block and only emits a separate file when it is worth a request. Asserting the delivery
+ * mechanism instead of the outcome would have made this check a nuisance that the next person turns
+ * off. Either delivery is fine; arriving is what matters.
+ */
+{
+  let styledPages = 0;
+  for (const f of files.filter((x) => x.endsWith('index.html'))) {
+    const page = '/' + relative(DIST, f).replace(/index\.html$/, '').replace(/\/$/, '');
+    const pageHtml = readFileSync(f, 'utf8');
+    const hrefs = [...pageHtml.matchAll(/<link\b[^>]*rel="stylesheet"[^>]*href="([^"]+)"/g)].map((m) => m[1]);
+
+    /** A source path in a built page means the reference was never compiled - the original bug. */
+    const raw = hrefs.find((h) => h.includes('/src/'));
+    if (raw) {
+      fail(`${page || '/'} links ${raw}, which is a source path in a built page. Vite serves that as JavaScript and it applies nothing. Import the stylesheet from a component instead.`);
+    }
+
+    const linked = hrefs
+      .filter((h) => h.startsWith('/'))
+      .map((h) => join(DIST, h.replace(/^\//, '')))
+      .some((p) => existsSync(p) && readFileSync(p, 'utf8').includes('--gw-text:'));
+    const inlined = /--gw-text\s*:/.test(pageHtml);
+    if (!linked && !inlined) {
+      fail(`${page || '/'} ships without the design tokens - neither inlined nor in any stylesheet it links. Every colour on it is a fallback.`);
+    }
+    styledPages++;
+  }
+  console.log(`[one-palette] all ${styledPages} pages ship the design tokens, inlined or linked.`);
+}
+
 console.log(`[one-domain] sitemap, canonicals and social tags all on ${SITE}.`);
 console.log(`[one-nav] all ${navsByPageCount} pages share one nav of ${navLinkCount} real links, and no page hides a copy of another.`);
