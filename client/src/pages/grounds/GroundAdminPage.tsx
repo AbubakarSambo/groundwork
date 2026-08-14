@@ -26,6 +26,7 @@ import { Sec, Stat } from '@/components/gw/kit'
 import { groundTabs } from './ground-tabs'
 import { SoloReportBody } from '@/components/gw/SoloReportBody'
 import { BaselinePanel } from '@/components/gw/BaselinePanel'
+import { StartingPointPanel } from '@/components/gw/StartingPointPanel'
 import { GroundTabRow } from '@/components/gw/GroundTabRow'
 import { ObjectivePanel } from '@/components/gw/ObjectivePanel'
 import { billingApi, PLAN_MEMBER_LIMITS, type SubscriptionPlan } from '@/api/billing'
@@ -1974,6 +1975,11 @@ export function GroundAdminPage() {
               * mounts the same component with `canState` false.
               */}
             <BaselinePanel groundId={id!} canState={isInitiator || isOrgAdmin} />
+            {/**
+              * WHERE THIS STOOD, under what doing well looks like, because the pair is the point: the
+              * yardstick and the starting point together are what let a report say something moved.
+              */}
+            <StartingPointPanel groundId={id!} canRecord={isInitiator || isOrgAdmin} />
 
             {((ground as any).settingsChanges?.length ?? 0) > 0 && (
               <div style={{ background: 'var(--gw-card)', border: '1px solid var(--gw-line)', borderRadius: 10, padding: '13px 16px' }}>

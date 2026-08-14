@@ -6102,3 +6102,59 @@ before any browser work so this cannot rot silently.
 The file's own note is worth repeating because it keeps being right: "the sturdier version of this check
 is not a longer list. It is to assert what the engine DOES - hand the claim back and ask for the
 person's own account - rather than the absence of a phrase."
+
+---
+
+## The starting point reaches the report
+
+`GroundBaselineEntry` had no reader and no writer. It now has both, and the last step was the one
+where getting it wrong does real damage.
+
+**What was built.** The lead is offered their own sentences from session one, already typed by the
+engine as it heard them, and ticks which of those describe where things stood. Nothing is rewritten
+and no second model call runs, so the product cannot invent a starting point nobody stated. Recorded,
+it is frozen: a correction is a new line with its own session number, and both stay readable.
+
+**The gate is the point.** `canShowMovement` has existed in
+`an-objective-belongs-to-a-person.ts` with nothing calling it. It refuses to call one session a
+movement, and "here is where this started, here is where it is now" is the most persuasive sentence a
+report can make - off a single session it is not true. So the report reads the starting point through
+the gate rather than printing it whenever it exists, and the render has no rule of its own: an early
+report simply has no field to draw.
+
+`one-session-is-not-a-movement.spec.ts` pins all three halves - the rule, the server asking before it
+answers, and the page deciding nothing. The last is asserted as an absence as well as a presence
+(`expect(PAGE).not.toMatch(/canShowMovement/)`), because a render that grew its own condition could
+work around the server's refusal. Bite-checked: `true || canShowMovement(...)` turns it red, restoring
+turns it green.
+
+**Fed the right number.** The gate takes COMPLETED sessions, not rows. An abandoned second check-in is
+not a second description of anything, and counting it would let a half-finished session unlock the arc.
+
+**The mocked-prisma break, again.** `the-record-read-reaches-the-payload.spec.ts` went red on the new
+`groundBaselineEntry.findMany` and `checkIn.aggregate` - the same class of break as the last two reads.
+Worth noting that the read is wrapped in a try/catch that logs and returns `{}`, so in production this
+would have been a silent loss of the whole record section rather than an error. The suite caught it;
+the catch would have hidden it.
+
+**And a self-inflicted one worth recording.** A bite-check restored from `/tmp/rs.bak`, which was a
+stale copy of the same file from two days earlier. It silently reverted the edit AND 31 lines of
+committed work. `git checkout` put it right, but the lesson is the one this session keeps relearning:
+scratch files go in the session scratchpad, never a shared `/tmp` name that a past session may own.
+
+## The entry chat cleanup
+
+Measured rather than guessed. `EntryChatPage.tsx` is 2999 lines with 349 inline style objects, and the
+question was whether that is a mess. Mostly it is not - they are nearly all one-offs, which is what a
+long bespoke funnel looks like. Three shapes repeated enough to name:
+
+| Shape | Copies | Note |
+| --- | --- | --- |
+| Field label | 7 | identical everywhere |
+| Card title | 6 | **drifted into two weights**, 700 and 600, for the same job |
+| Divider hairline | 4 | identical |
+
+The drift is the actual finding. Nobody decided that the what-to-expect cards should be bolder than
+the person cards; it happened by copying. `CardTitle` keeps `weight` as a prop rather than flattening
+to one value, because settling it is a design call and picking one silently would be making that call
+by accident.

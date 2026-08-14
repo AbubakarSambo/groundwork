@@ -15,6 +15,7 @@ import { Sec } from '@/components/gw/kit'
 import { groundTabs } from './ground-tabs'
 import { SoloReportBody } from '@/components/gw/SoloReportBody'
 import { BaselinePanel } from '@/components/gw/BaselinePanel'
+import { StartingPointPanel } from '@/components/gw/StartingPointPanel'
 import { GroundTabRow } from '@/components/gw/GroundTabRow'
 import { ObjectivePanel } from '@/components/gw/ObjectivePanel'
 import { apiClient } from '@/api/client'
@@ -877,6 +878,11 @@ export function GroundParticipantPage() {
               * being read against a standard they cannot see is the thing this product is against.
               */}
             <BaselinePanel groundId={id!} canState={false} />
+            {/**
+              * WHERE THIS STOOD, under what doing well looks like, because the pair is the point: the
+              * yardstick and the starting point together are what let a report say something moved.
+              */}
+            <StartingPointPanel groundId={id!} canRecord={false} />
 
             {/* Profile summary */}
             <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '13px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
