@@ -4,8 +4,10 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClient } from '@/lib/queryClient'
 import { Toaster } from 'sonner'
 import { useAuthStore } from '@/stores/auth'
+import { MARKETING_URL } from '@/lib/marketing'
 import { useSessionTimeout } from '@/lib/useSessionTimeout'
 import { AuthPage } from '@/pages/auth/AuthPage'
+import { SignOutPage } from '@/pages/auth/SignOutPage'
 import { MagicVerifyPage } from '@/pages/auth/MagicVerifyPage'
 import { GoogleCallbackPage } from '@/pages/auth/GoogleCallbackPage'
 import { ChoosePasswordPage } from '@/pages/auth/ChoosePasswordPage'
@@ -19,8 +21,8 @@ function ChatRedirect() {
 }
 import { GroundsListPage } from '@/pages/grounds/GroundsListPage'
 import { CreateGroundPage } from '@/pages/grounds/CreateGroundPage'
-import { GroundAdminPage } from '@/pages/grounds/GroundAdminPage'
 import { GroundParticipantPage } from '@/pages/grounds/GroundParticipantPage'
+import { GroundPage } from '@/pages/grounds/GroundPage'
 import { ReportPage } from '@/pages/report/ReportPage'
 import { BoardPage } from '@/pages/board/BoardPage'
 import { BillingPage } from '@/pages/billing/BillingPage'
@@ -80,13 +82,27 @@ function RequirePlatformAdmin({ children }: { children: JSX.Element }) {
 function RootRoute() {
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
   if (!isAuthenticated) {
-    // A logged-out visitor who lands on the app root (e.g. someone handed a raw
-    // app link) should reach onboarding, not silently bounce to marketing.
-    // Only redirect to marketing when one is explicitly configured.
-    const marketing = import.meta.env.VITE_MARKETING_URL
-    if (marketing) { window.location.replace(marketing); return null }
-    return <Navigate to="/start" replace />
+    /**
+     * ONE ANSWER TO "WHERE IS HOME", SHARED WITH THE LOGO. W15-4.
+     *
+     * This read `import.meta.env.VITE_MARKETING_URL` directly and fell through to `/start` whenever
+     * it was unset or empty - so a stranger handed a bare app link landed in the entry chat, while
+     * the logo in the corner of that same chat went to the marketing site. Two components disagreeing
+     * about where home is, for the same person, on the same screen.
+     *
+     * `MARKETING_URL` is that decision in one place, with the real domain as its default rather than
+     * nothing. Same module the logo uses, so they cannot drift apart again. Its `||` (not `??`) is
+     * deliberate and load-bearing: an env var set to an empty string is the case that produced a
+     * `href=""` logo, which looked like a working link and reloaded the page.
+     */
+    window.location.replace(MARKETING_URL)
+    return null
   }
+  /**
+   * Signed in, the root IS your grounds - her ask, and it was already true. Worth stating rather
+   * than leaving as an unlabelled fall-through, because the signed-out branch above returns early
+   * and it is easy to read this as unreachable.
+   */
   return <GroundsListPage />
 }
 
@@ -113,6 +129,8 @@ export default function App() {
             <Route path="/auth" element={<AuthPage />} />
             {/* The link-sent state of /auth, not a page of its own. W8-49. */}
             <Route path="/auth/sent" element={<AuthPage />} />
+            {/* An address that means "end my session", so a plain link can offer it. W15-2. */}
+            <Route path="/signout" element={<SignOutPage />} />
             <Route path="/verify-email" element={<MagicVerifyPage />} />
             {/* Where the server's Google OAuth redirect lands. Inert until
                 GOOGLE_CLIENT_ID/SECRET are set - the button that starts the flow
@@ -130,7 +148,14 @@ export default function App() {
             {/* Main app - require auth */}
             <Route path="/grounds" element={<RequireAuth><GroundsListPage /></RequireAuth>} />
             <Route path="/grounds/new" element={<RequireAuth><CreateGroundPage /></RequireAuth>} />
-            <Route path="/grounds/:id" element={<RequireAuth><GroundAdminPage /></RequireAuth>} />
+            {/**
+              * ONE URL, AND IT LANDS YOU ON YOUR OWN VIEW.
+              *
+              * This was `GroundAdminPage` directly, and the rail links every ground here - so a
+              * participant clicking their own ground was shown "This view is for whoever runs this
+              * ground" with a button to go and find their real page. `GroundPage` decides first.
+              */}
+            <Route path="/grounds/:id" element={<RequireAuth><GroundPage /></RequireAuth>} />
             <Route path="/grounds/:id/p" element={<RequireAuth><GroundParticipantPage /></RequireAuth>} />
             <Route path="/grounds/:id/report" element={<RequireAuth><ReportPage /></RequireAuth>} />
             <Route path="/grounds/:id/board" element={<RequireAuth><BoardPage /></RequireAuth>} />

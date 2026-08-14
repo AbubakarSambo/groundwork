@@ -15,6 +15,10 @@ import { endStatesFor } from '../resolution/end-states';
 import { canSignIn } from './can-sign-in';
 import { defaultModeFor, boardRendersFor } from '../board/board-families';
 import { BoardFamily, familyFor } from '../board/board-families';
+import { runIntake } from '../conversation/intake';
+import { objectiveState, describeObjective, mayBeReadAgainst, canShowMovement, BASELINE_IS_FROZEN } from './an-objective-belongs-to-a-person';
+import { cleanText } from '../reports/what-the-record-actually-holds';
+import { proposalFrom, extractionToolFor, Heard, Proposal } from './what-the-context-chat-heard';
 
 // Default timelines per scenario (Part 2 - timeline and cadence).
 const DEFAULT_TIMELINE_DAYS: Record<GroundScenario, number> = {
@@ -145,6 +149,9 @@ export class GroundsService {
         mode: dto.mode ?? defaultModeFor(dto.scenario),
         moment: dto.moment,
         timelineDays: dto.timelineDays ?? DEFAULT_TIMELINE_DAYS[dto.scenario],
+        /** Whether this was chosen or guessed for them, so the setup chat can offer to fix it. */
+        timelineStated: dto.timelineDays != null,
+        cadenceStated: dto.cadence != null,
         cadence: dto.cadence ?? Cadence.FORTNIGHTLY,
         cadenceAnchorDay: dto.cadenceAnchorDay ?? null,
         startsAt: dto.startsAt ? new Date(dto.startsAt) : null,
@@ -290,6 +297,9 @@ export class GroundsService {
         mode: dto.mode ?? defaultModeFor(dto.scenario),
           moment: dto.moment,
           timelineDays: dto.timelineDays ?? DEFAULT_TIMELINE_DAYS[dto.scenario],
+          /** Whether this was chosen or guessed for them, so the setup chat can offer to fix it. */
+          timelineStated: dto.timelineDays != null,
+          cadenceStated: dto.cadence != null,
           cadence: dto.cadence ?? Cadence.FORTNIGHTLY,
           cadenceAnchorDay: dto.cadenceAnchorDay ?? null,
           startsAt: dto.startsAt ? new Date(dto.startsAt) : null,
@@ -855,6 +865,51 @@ export class GroundsService {
     const contextNotes: string[] =
       rawLog && !Array.isArray(rawLog) && typeof rawLog === 'object' ? (rawLog as any).contextNotes ?? [] : [];
 
+    /**
+     * THE OTHER HALF OF THE AUDIT LOG, WHICH NOTHING HAS EVER READ. W14-3.
+     *
+     * `updateTimeline` has been appending every change to how long this runs and how often people
+     * check in, with a note that this makes them "traceable without a separate audit table". Only
+     * `contextNotes` was ever read back out. So a lead could shorten a ground from eight weeks to
+     * four, or switch the cadence, and no party had any way to see it happened - in the product
+     * whose whole claim is that the record is the record.
+     *
+     * WHO changed it is deliberately not resolved to a name. Peer visibility can be off on this
+     * ground, and a name here would walk straight around it. The lead or a party is the whole of
+     * what anybody needs to know, and it is true either way.
+     */
+    /**
+     * THE BASELINE, SO THE CONTEXT READ CAN STOP GUESSING.
+     *
+     * `GroundAdminPage` passed `hasBaseline: false` and `conditionCount: 0` as literals into
+     * `whatThisGroundCanTellYou`, which made two of its lines fire on every ground whatever the truth
+     * - "it will not be able to tell you whether the conditions you set were met, because none have
+     * been named" was shown to leads who had named some. They were literals because nothing wrote the
+     * table. Now something does.
+     */
+    const baselineRow = await this.prisma.groundBaseline.findFirst({
+      where: { groundId: id },
+      orderBy: { version: 'desc' },
+      select: { version: true, successLooksLike: true, conditions: true, changeReason: true, effectiveFrom: true },
+    });
+    const baseline = baselineRow
+      ? {
+          ...baselineRow,
+          conditions: Array.isArray(baselineRow.conditions) ? (baselineRow.conditions as string[]) : [],
+        }
+      : null;
+
+    const rawTimeline: any[] =
+      rawLog && !Array.isArray(rawLog) && typeof rawLog === 'object' ? (rawLog as any).timeline ?? [] : Array.isArray(rawLog) ? rawLog : [];
+    const settingsChanges = rawTimeline
+      .filter(e => e && e.changedAt)
+      .map(e => ({
+        changedAt: e.changedAt,
+        by: e.changedBy === ground.initiatorId ? ('lead' as const) : ('party' as const),
+        weeks: e.changes?.timelineWeeks ?? null,
+        cadence: e.changes?.cadence ?? null,
+      }));
+
     // Nest checkIns under each participant so the client can show per-party status.
     const checkInsByParticipant = new Map<string, typeof ground.checkIns>();
     for (const ci of ground.checkIns ?? []) {
@@ -905,6 +960,19 @@ export class GroundsService {
     const peersVisible = (ground as any).peersVisibleToEachOther ?? !evaluative;
     const hidePeers = !peersVisible && !viewerIsInitiator;
 
+    /**
+     * WHAT EACH PERSON IS WORKING TOWARDS, WITH ITS AUTHORSHIP ATTACHED.
+     *
+     * `describeObjective` and `mayBeReadAgainst` come from the module that had no data: the state travels
+     * with the text, always, because "your objective is X" and "your manager has suggested X and you
+     * have not replied" are different statements and the difference is the whole point.
+     */
+    const objectiveRows = await this.prisma.personObjective.findMany({
+      where: { groundId: id },
+      select: { participantId: true, text: true, authoredBy: true, seenBySubject: true, updatedAt: true },
+    });
+    const objectiveByParticipant = new Map(objectiveRows.map(o => [o.participantId, o]));
+
     const participantsWithCheckIns = (ground.participants ?? [])
       .filter((p: any) => !hidePeers || (!!requestingUserId && p.userId === requestingUserId))
       .map((p: any) => {
@@ -919,6 +987,25 @@ export class GroundsService {
           ? (() => { try { return JSON.parse(raw); } catch { return null; } })()
           : null,
         checkIns: checkInsByParticipant.get(p.id) ?? [],
+        objective: (() => {
+          const row = objectiveByParticipant.get(p.id);
+          const shaped = {
+            participantId: p.id,
+            text: row?.text ?? null,
+            authoredBy: (row?.authoredBy as 'lead' | 'self' | null) ?? null,
+            seenBySubject: row?.seenBySubject ?? false,
+          };
+          return {
+            ...shaped,
+            /** 'none' | 'proposed' | 'accepted' | 'their own'. */
+            state: objectiveState(shaped),
+            /** The one string anything showing this should print, so the caveat cannot be dropped. */
+            described: describeObjective(shaped),
+            /** False on a proposal and on an absence, and nothing downstream may read against it. */
+            mayBeReadAgainst: mayBeReadAgainst(shaped),
+            updatedAt: row?.updatedAt ?? null,
+          };
+        })(),
       };
     });
 
@@ -975,11 +1062,27 @@ export class GroundsService {
       ...rest,
       joinToken: mayShareJoinLink ? (rest as any).joinToken ?? null : null,
       participants: participantsWithCheckIns,
+      /**
+       * WHAT THE PEER RULE IS ACTUALLY DOING, not what is stored. W14-4.
+       *
+       * `peersVisibleToEachOther` is null until somebody sets it, and the effective answer comes
+       * from the scenario's family - hidden on evaluation and cohort grounds, shown elsewhere.
+       * The client needs the effective value to show the lead the rule and its default, and my
+       * first attempt at that copied the family list into the client, which is a second copy of
+       * a rule that will drift from this one.
+       *
+       * So the server says what it applied. `peersVisibleToEachOther` still travels as-is, so the
+       * control can tell "not set, using the default" from "set to this deliberately".
+       */
+      peersVisibleEffective: peersVisible,
+      peersDefaultVisible: !evaluative,
       alignment,
       daysLeft,
       brief,
       signals,
       contextNotes,
+      settingsChanges,
+      baseline,
       leadContextNotes,
       org: org ?? null,
       sessionProgress: sessionProgress ? { ...sessionProgress, requestingUserIsMissing } : null,
@@ -1028,7 +1131,7 @@ export class GroundsService {
       where: { id: groundId },
       select: {
         id: true, label: true, scenario: true, initiatorId: true, timelineDays: true,
-        cadence: true, brief: true,
+        cadence: true, brief: true, timelineStated: true, cadenceStated: true,
         participants: { select: { id: true, managingOnly: true } },
         objectives: { select: { id: true } },
       },
@@ -1041,13 +1144,33 @@ export class GroundsService {
     const openDocumentCount = await this.prisma.groundDocument.count({
       where: { groundId, visibility: 'OPEN' },
     });
+    const perPersonObjectives = (await this.prisma.personObjective.findMany({
+      where: { groundId },
+      select: { text: true, authoredBy: true, seenBySubject: true, participantId: true },
+    })).filter(o => mayBeReadAgainst({
+      participantId: o.participantId, text: o.text, authoredBy: o.authoredBy as any, seenBySubject: o.seenBySubject,
+    })).length;
 
     const gaps = contextGaps({
-      timelineDays: ground.timelineDays,
-      cadence: ground.cadence,
+      /**
+       * `null` here means "nobody chose this", not "the column is empty" - the column cannot be
+       * empty. Passing the raw value made the duration question unaskable, which is the one thing
+       * this conversation was built to ask.
+       */
+      timelineDays: ground.timelineStated ? ground.timelineDays : null,
+      cadence: ground.cadenceStated ? ground.cadence : null,
       brief: ground.brief,
       partyCount: ground.participants.filter((p) => !p.managingOnly).length,
-      perPersonObjectiveCount: ground.objectives.length,
+      /**
+       * THE WRONG TABLE. `ground.objectives` is `GroundObjective` - one objective for the whole ground,
+       * with no author and no seen-state. The question this gap asks is "what is each person actually
+       * trying to achieve", which is `PersonObjective`, one row per person.
+       *
+       * Counted only where it can be READ AGAINST: a proposal the person has never seen does not answer
+       * the question, it just means somebody typed something. `mayBeReadAgainst` is the module's own
+       * test and it refuses proposals for exactly that reason.
+       */
+      perPersonObjectiveCount: perPersonObjectives,
       openDocumentCount,
     });
 
@@ -1070,7 +1193,128 @@ export class GroundsService {
         : [{ role: 'user' as const, content: 'Start.' }],
     );
 
-    return { reply, gaps: gaps.map((g: { key: string }) => g.key), done: gaps.length === 0 };
+    /**
+     * WHAT IT HEARD, AND WHAT IT PROPOSES DOING WITH IT. Stage 3.
+     *
+     * This conversation could not close anything it opened. It asked how long the ground should run,
+     * the lead answered, nothing was written, and because the gap was still open the next turn asked
+     * again. Its own prompt file promised "what gets saved is what the lead confirms" and there was
+     * no save path at all.
+     *
+     * A PROPOSAL, NEVER A WRITE. The reply carries `proposal.say` - "I will set this to run for
+     * twelve weeks" - and the ground is untouched until the lead confirms it through
+     * `applyContextProposal`. The failure mode of the other design is a stray sentence rewriting how
+     * long somebody's onboarding runs.
+     *
+     * Only the field the open question was about is reachable, so a model that over-reads cannot
+     * touch the cadence while answering about duration.
+     */
+    let proposal: Proposal = { kind: 'none', why: 'Nothing to record yet.' };
+    const lastFromLead = [...history].reverse().find(h => h.role === 'user')?.content?.trim();
+    const openGap = gaps[0]?.key ?? null;
+    if (lastFromLead && openGap) {
+      try {
+        const heard = await this.anthropic.extract<Heard>(
+          'Read ONLY what the person just said in answer to the question they were asked. Omit any field they did not answer. Never infer a sensible default.',
+          [{ role: 'user' as const, content: lastFromLead }],
+          extractionToolFor(openGap),
+        );
+        if (heard) proposal = proposalFrom(openGap, heard);
+      } catch {
+        /* no proposal; the conversation carries on and the lead can use the form */
+      }
+    }
+
+    return {
+      reply,
+      gaps: gaps.map((g: { key: string }) => g.key),
+      done: gaps.length === 0,
+      /** Present only when there is something concrete to confirm. */
+      proposal: proposal.kind === 'none' ? null : { gap: proposal.kind, say: proposal.say },
+    };
+  }
+
+  /**
+   * THE CONFIRMATION. Nothing the context chat heard reaches the ground until this runs.
+   *
+   * Re-derives the proposal from the same words rather than trusting a payload: an endpoint that
+   * accepts "set timelineDays to 4000" from the client is not a confirmation step, it is an edit
+   * endpoint with a confirmation-shaped name.
+   */
+  async applyContextProposal(
+    groundId: string,
+    requestingUserId: string,
+    dto: { said: string },
+  ) {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: {
+        id: true, initiatorId: true, timelineDays: true, cadence: true, brief: true,
+        timelineStated: true, cadenceStated: true,
+        participants: { select: { id: true, managingOnly: true } },
+        objectives: { select: { id: true } },
+      },
+    });
+    if (!ground) throw new NotFoundException('Ground not found');
+    if (ground.initiatorId !== requestingUserId) {
+      throw new ForbiddenException('Setting this ground up is the lead\'s.');
+    }
+
+    const openDocumentCount = await this.prisma.groundDocument.count({ where: { groundId, visibility: 'OPEN' } });
+    const perPersonObjectives = (await this.prisma.personObjective.findMany({
+      where: { groundId },
+      select: { text: true, authoredBy: true, seenBySubject: true, participantId: true },
+    })).filter(o => mayBeReadAgainst({
+      participantId: o.participantId, text: o.text, authoredBy: o.authoredBy as any, seenBySubject: o.seenBySubject,
+    })).length;
+    const gaps = contextGaps({
+      /**
+       * `null` here means "nobody chose this", not "the column is empty" - the column cannot be
+       * empty. Passing the raw value made the duration question unaskable, which is the one thing
+       * this conversation was built to ask.
+       */
+      timelineDays: ground.timelineStated ? ground.timelineDays : null,
+      cadence: ground.cadenceStated ? ground.cadence : null,
+      brief: ground.brief,
+      partyCount: ground.participants.filter(p => !p.managingOnly).length,
+      /**
+       * THE WRONG TABLE. `ground.objectives` is `GroundObjective` - one objective for the whole ground,
+       * with no author and no seen-state. The question this gap asks is "what is each person actually
+       * trying to achieve", which is `PersonObjective`, one row per person.
+       *
+       * Counted only where it can be READ AGAINST: a proposal the person has never seen does not answer
+       * the question, it just means somebody typed something. `mayBeReadAgainst` is the module's own
+       * test and it refuses proposals for exactly that reason.
+       */
+      perPersonObjectiveCount: perPersonObjectives,
+      openDocumentCount,
+    });
+    const openGap = gaps[0]?.key ?? null;
+    if (!openGap) throw new BadRequestException('There is no open question for this to answer.');
+
+    const heard = await this.anthropic.extract<Heard>(
+      'Read ONLY what the person said in answer to the question they were asked. Omit any field they did not answer.',
+      [{ role: 'user' as const, content: dto.said }],
+      extractionToolFor(openGap),
+    );
+    const proposal = proposalFrom(openGap, heard ?? {});
+    if (proposal.kind === 'none') throw new BadRequestException(proposal.why);
+
+    /**
+     * The timeline write goes through `updateTimeline`, which already owns the rules about changing
+     * a running ground's length and already appends to the audit log every party can now read. A
+     * second path to the same column would be a second set of rules.
+     */
+    if (proposal.kind === 'timeline') {
+      await this.updateTimeline(groundId, requestingUserId, { timelineWeeks: Math.max(1, Math.round(proposal.days / 7)) });
+      return { changed: 'timeline', say: proposal.say };
+    }
+    if (proposal.kind === 'cadence') {
+      await this.updateTimeline(groundId, requestingUserId, { cadence: proposal.cadence });
+      return { changed: 'cadence', say: proposal.say };
+    }
+    await this.prisma.ground.update({ where: { id: groundId }, data: { brief: proposal.text } });
+    return { changed: 'success', say: proposal.say };
   }
 
   async addLeadContext(groundId: string, requestingUserId: string, dto: { participantId?: string | null; text: string }) {
@@ -1659,8 +1903,8 @@ export class GroundsService {
     return this.prisma.ground.update({
       where: { id: groundId },
       data: {
-        ...(dto.timelineWeeks !== undefined && { timelineWeeks: dto.timelineWeeks }),
-        ...(dto.cadence !== undefined && { cadence: dto.cadence as Cadence }),
+        ...(dto.timelineWeeks !== undefined && { timelineWeeks: dto.timelineWeeks, timelineStated: true }),
+        ...(dto.cadence !== undefined && { cadence: dto.cadence as Cadence, cadenceStated: true }),
         groundAuditLog: auditData,
       },
     });
@@ -1818,17 +2062,448 @@ export class GroundsService {
     return { deleted: true };
   }
 
-  async getMySpecificity(groundId: string, userId: string): Promise<{ scores: number[]; label: string }> {
+  /**
+   * A PERSON'S OWN READ ON THEIR OWN RECORD. Private, owner only, and it stays that way:
+   * `what-a-leader-can-weigh.ts` refuses to hand specificity to a lead, because it measures how
+   * somebody WRITES and reading that as how they WORK is the quiet unfairness this product exists
+   * to prevent.
+   *
+   * It used to return one word - high, moderate, low - and the page printed it as "Overall quality
+   * label: low". That is the same verdict, just pointed at the person it belongs to, and it gave
+   * them nothing to do about it. A grade you cannot act on is a grade for somebody else's benefit.
+   *
+   * So it now returns the two things that are actually usable: which way it is going, and the one
+   * concrete thing missing from their own recent answers. `whatWouldHelp` is derived from their own
+   * entries by the same `runIntake` the engine uses, so it names what the engine itself was looking
+   * for and did not find - a date, a number, a name - rather than scoring the prose.
+   *
+   * `label` stays on the response: `getMyRecord` returns it too and both renders read it.
+   */
+  /**
+   * WHAT EACH PERSON IS TRYING TO ACHIEVE. `PersonObjective`, which had a 169-line module and no writer.
+   *
+   * `an-objective-belongs-to-a-person.ts` was written with its own spec file and nothing ever created a
+   * row for it to read. It carries the rule the whole thing exists for:
+   *
+   *   "May this objective be used as the thing somebody is read against? Not while it is a proposal.
+   *    Reading a person against a target they have never seen is the definition of an unfair review,
+   *    and the fact that the product would be doing it silently makes it worse rather than better."
+   *
+   * That rule needs three states to be real, and therefore three writes: a lead proposing, the person
+   * accepting what was proposed, and the person writing their own. The board has been counting
+   * `GroundObjective` instead - one objective for the whole ground, no author, no seen-state - so the
+   * setup chat's "what is each person actually trying to achieve?" was answered by the wrong table.
+   *
+   * ONE ROW PER PERSON PER GROUND, and `updatedAt` rather than a version chain: unlike the baseline,
+   * this is not a record of what was believed at the start. It is the current target, and its history
+   * that matters is the AUTHORSHIP - who wrote what is there now, and whether the person it belongs to
+   * has seen it.
+   */
+  async proposeObjective(groundId: string, requestingUserId: string, participantId: string, text: string) {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { initiatorId: true, organizationId: true },
+    });
+    if (!ground) throw new NotFoundException('Ground not found');
+    const asker = await this.prisma.user.findUnique({
+      where: { id: requestingUserId },
+      select: { role: true, organizationId: true },
+    });
+    const isOrgAdmin = asker?.role === 'ADMIN' && asker.organizationId === ground.organizationId;
+    if (ground.initiatorId !== requestingUserId && !isOrgAdmin) {
+      throw new ForbiddenException('Proposing what somebody is working towards belongs to whoever runs this ground.');
+    }
+    const body = text?.trim();
+    if (!body) throw new BadRequestException('Say what they are working towards.');
+
+    const participant = await this.prisma.groundParticipant.findFirst({ where: { id: participantId, groundId } });
+    if (!participant) throw new NotFoundException('That person is not on this ground');
+
+    /**
+     * A NEW PROPOSAL IS UNSEEN AGAIN, always. If a lead rewrites the objective, the person has not read
+     * the new words, and carrying the old `seenBySubject: true` forward would let a changed target be
+     * read against somebody who never saw the change - the exact thing `mayBeReadAgainst` refuses.
+     */
+    return this.prisma.personObjective.upsert({
+      where: { groundId_participantId: { groundId, participantId } },
+      update: { text: body, authoredBy: 'lead', seenBySubject: false },
+      create: { groundId, participantId, text: body, authoredBy: 'lead', seenBySubject: false },
+      select: { text: true, authoredBy: true, seenBySubject: true, updatedAt: true },
+    });
+  }
+
+  /**
+   * The person writing their own, which the module calls "the strongest version".
+   *
+   * Seen by definition - they wrote it - so it can be read against immediately.
+   */
+  async stateMyObjective(groundId: string, requestingUserId: string, text: string) {
+    const participant = await this.prisma.groundParticipant.findFirst({
+      where: { groundId, userId: requestingUserId },
+      select: { id: true },
+    });
+    if (!participant) throw new ForbiddenException('You are not a party to this ground');
+    const body = text?.trim();
+    if (!body) throw new BadRequestException('Say what you are working towards.');
+    return this.prisma.personObjective.upsert({
+      where: { groundId_participantId: { groundId, participantId: participant.id } },
+      update: { text: body, authoredBy: 'self', seenBySubject: true },
+      create: { groundId, participantId: participant.id, text: body, authoredBy: 'self', seenBySubject: true },
+      select: { text: true, authoredBy: true, seenBySubject: true, updatedAt: true },
+    });
+  }
+
+  /**
+   * Accepting a proposal as it stands. The whole point of the seen flag: after this the objective may be
+   * read against, and before it nothing may.
+   *
+   * Deliberately not a silent side effect of opening a page. Somebody has to press it, because "they
+   * were shown it" and "they accepted it" are different claims and only one of them is fair to act on.
+   */
+  async acceptMyObjective(groundId: string, requestingUserId: string) {
+    const participant = await this.prisma.groundParticipant.findFirst({
+      where: { groundId, userId: requestingUserId },
+      select: { id: true },
+    });
+    if (!participant) throw new ForbiddenException('You are not a party to this ground');
+    const existing = await this.prisma.personObjective.findUnique({
+      where: { groundId_participantId: { groundId, participantId: participant.id } },
+    });
+    if (!existing?.text?.trim()) throw new BadRequestException('There is nothing proposed for you yet.');
+    return this.prisma.personObjective.update({
+      where: { groundId_participantId: { groundId, participantId: participant.id } },
+      data: { seenBySubject: true },
+      select: { text: true, authoredBy: true, seenBySubject: true, updatedAt: true },
+    });
+  }
+
+  /**
+   * WHERE THIS STOOD ON DAY ONE. `GroundBaselineEntry`, which had no reader and no writer.
+   *
+   * Not the same thing as `GroundBaseline`. That one is the YARDSTICK - what doing well would look
+   * like. This is what was actually TRUE at the start, and the pair of them is what lets a report say
+   * something has MOVED rather than only where it is now.
+   *
+   * `an-objective-belongs-to-a-person.ts` has carried the read for this with nothing to read:
+   * `canShowMovement(baseline, completedSessions)` - "can this ground show movement rather than only
+   * position?" - and `BASELINE_IS_FROZEN`, the sentence explaining why it cannot be corrected. Both
+   * unused, because no row ever existed.
+   *
+   * FROZEN, and the schema says why: "half the findings this product makes are the distance between
+   * what people believed at the start and what turned out to be true. Corrected, a baseline becomes a
+   * second description of the present and the arc disappears." No update, no delete. A correction is a
+   * new row with its own session number and both stay readable.
+   *
+   * NOTHING IS CAPTURED SILENTLY. The candidates are the lead's OWN entries from session one - what
+   * they already said, typed by the engine as it heard them - and the lead picks which of those
+   * describe where things stood. No second extraction and no model call, so nothing can invent a
+   * starting point nobody stated. Confirmed rather than adopted, the same rule the setup chat and the
+   * objectives follow.
+   */
+  async baselineEntryCandidates(groundId: string, requestingUserId: string) {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { initiatorId: true, organizationId: true },
+    });
+    if (!ground) throw new NotFoundException('Ground not found');
+    const asker = await this.prisma.user.findUnique({
+      where: { id: requestingUserId },
+      select: { role: true, organizationId: true },
+    });
+    const isOrgAdmin = asker?.role === 'ADMIN' && asker.organizationId === ground.organizationId;
+    if (ground.initiatorId !== requestingUserId && !isOrgAdmin) {
+      throw new ForbiddenException('Recording where this stood at the start belongs to whoever runs this ground.');
+    }
+
+    const lead = await this.prisma.groundParticipant.findFirst({
+      where: { groundId, userId: ground.initiatorId },
+      select: { id: true },
+    });
+    const recorded = await this.prisma.groundBaselineEntry.findMany({
+      where: { groundId },
+      select: { text: true, capturedAtSession: true, createdAt: true },
+      orderBy: { createdAt: 'asc' },
+    });
+    if (!lead) return { candidates: [], alreadyRecorded: recorded };
+
+    const rows = await this.prisma.recordEntry.findMany({
+      where: { participantId: lead.id, checkIn: { sessionNumber: 1 } },
+      select: { text: true, type: true },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    /**
+     * `cleanText` strips the engine's own markers - `[INFERRED: ...]`, `[VERIFIABILITY: ...]` - which
+     * are how it annotates its own reading rather than part of what the person said. Handing a lead a
+     * candidate with a machine tag in it invites them to record the tag.
+     */
+    const already = new Set(recorded.map(r => r.text));
+    const candidates = rows
+      .map(r => ({ text: cleanText(r.text), type: String(r.type) }))
+      .filter(r => r.text.trim().length > 20 && !already.has(r.text));
+
+    return { candidates, alreadyRecorded: recorded };
+  }
+
+  /**
+   * Write what the lead confirmed. Append only: no id to update, no delete.
+   *
+   * `capturedAtSession` is the session the ground has actually reached, not always 1 - a correction
+   * recorded in session four is a fact about session four, and the distance between the two rows is
+   * the finding.
+   */
+  async recordBaselineEntries(groundId: string, requestingUserId: string, texts: string[]) {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { initiatorId: true, organizationId: true },
+    });
+    if (!ground) throw new NotFoundException('Ground not found');
+    const asker = await this.prisma.user.findUnique({
+      where: { id: requestingUserId },
+      select: { role: true, organizationId: true },
+    });
+    const isOrgAdmin = asker?.role === 'ADMIN' && asker.organizationId === ground.organizationId;
+    if (ground.initiatorId !== requestingUserId && !isOrgAdmin) {
+      throw new ForbiddenException('Recording where this stood at the start belongs to whoever runs this ground.');
+    }
+    const clean = (texts ?? []).map(t => t?.trim()).filter((t): t is string => !!t && t.length > 3);
+    if (!clean.length) throw new BadRequestException('Nothing to record.');
+
+    const latest = await this.prisma.checkIn.aggregate({
+      where: { groundId, status: 'COMPLETED' },
+      _max: { sessionNumber: true },
+    });
+    const capturedAtSession = Math.max(1, latest._max.sessionNumber ?? 1);
+
+    await this.prisma.groundBaselineEntry.createMany({
+      data: clean.map(text => ({ groundId, text, capturedAtSession })),
+    });
+    return this.prisma.groundBaselineEntry.findMany({
+      where: { groundId },
+      select: { text: true, capturedAtSession: true, createdAt: true },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
+  /**
+   * Readable by everybody on the ground. What the record says was true at the start is not a private
+   * note about anybody - it is the thing every later session is measured against.
+   */
+  async baselineEntries(groundId: string, requestingUserId: string) {
+    const link = await this.prisma.groundParticipant.findFirst({ where: { groundId, userId: requestingUserId } });
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { initiatorId: true, organizationId: true },
+    });
+    if (!ground) throw new NotFoundException('Ground not found');
+    const asker = await this.prisma.user.findUnique({
+      where: { id: requestingUserId },
+      select: { role: true, organizationId: true },
+    });
+    const isOrgAdmin = asker?.role === 'ADMIN' && asker.organizationId === ground.organizationId;
+    if (!link && ground.initiatorId !== requestingUserId && !isOrgAdmin) {
+      throw new ForbiddenException('You are not a party to this ground');
+    }
+    const [entries, done] = await Promise.all([
+      this.prisma.groundBaselineEntry.findMany({
+        where: { groundId },
+        select: { text: true, capturedAtSession: true, createdAt: true },
+        orderBy: { createdAt: 'asc' },
+      }),
+      this.prisma.checkIn.aggregate({ where: { groundId, status: 'COMPLETED' }, _max: { sessionNumber: true } }),
+    ]);
+    const completedSessions = done._max.sessionNumber ?? 0;
+    return {
+      entries,
+      completedSessions,
+      /**
+       * The module's own gate, finally called. A ground with one session has a POSITION, not a
+       * movement, and showing "what has changed" off a single session would be inventing an arc.
+       */
+      canShowMovement: canShowMovement(
+        entries[0] ? { text: entries[0].text, capturedAtSession: entries[0].capturedAtSession } : null,
+        completedSessions,
+      ),
+      frozenReason: BASELINE_IS_FROZEN,
+    };
+  }
+
+
+  /**
+   * WHAT DOING WELL LOOKS LIKE, AND WHAT HAS TO BE TRUE FOR IT. `GroundBaseline`, at last.
+   *
+   * The table has existed with `successLooksLike` and `conditions` and no code reading or writing
+   * either. Which is why `GroundAdminPage` passed `hasBaseline: false` and `conditionCount: 0` as
+   * literals into the context read - two hardcoded falses that were an honest report of a table
+   * nothing used, and made two of that read's lines fire on every ground regardless of truth.
+   *
+   * It is the missing home for two things already in use. The report's weigh section asks "what did
+   * you say doing well means, and what does the record hold against it" and scrapes the answer out of
+   * the lead's check-in prose. The setup chat's `success` gap writes to `brief`, which is what the
+   * ground is ABOUT rather than what good would look like in it. Neither is a yardstick you can point
+   * at afterwards and say: that is what we agreed on day one.
+   *
+   * VERSIONED, NEVER EDITED, and the schema's own note says why: "half the findings this product makes
+   * are the distance between what people believed at the start and what turned out to be true.
+   * Corrected, a baseline becomes a second description of the present and the arc disappears."
+   *
+   * So a change is a new version with its own date, and the reason if they gave one. Version 1 is what
+   * the ground started from, and nothing can overwrite it.
+   *
+   * THE CONDITIONS ARE THE FAIRNESS HALF. They are the things that have to be true and are not in the
+   * person's hands: a decision from somebody else, a tool, another team's work. Named at the start, a
+   * missed outcome can be read against them. Unnamed, it reads as somebody underperforming, which is
+   * the exact unfairness this product exists to prevent.
+   */
+  async stateBaseline(
+    groundId: string,
+    requestingUserId: string,
+    dto: { successLooksLike?: string; conditions?: string[]; changeReason?: string },
+  ) {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { id: true, initiatorId: true, organizationId: true },
+    });
+    if (!ground) throw new NotFoundException('Ground not found');
+    /**
+     * The lead's, or an admin in the same organisation. What doing well looks like is the lead's to
+     * state - a party stating it would be the person being read setting their own yardstick, which is
+     * the one thing the report exists to compare against something else.
+     */
+    const asker = await this.prisma.user.findUnique({
+      where: { id: requestingUserId },
+      select: { role: true, organizationId: true },
+    });
+    const isOrgAdmin = asker?.role === 'ADMIN' && asker.organizationId === ground.organizationId;
+    if (ground.initiatorId !== requestingUserId && !isOrgAdmin) {
+      throw new ForbiddenException('Stating what doing well looks like belongs to whoever runs this ground.');
+    }
+
+    const success = dto.successLooksLike?.trim() || null;
+    const conditions = (dto.conditions ?? []).map(c => c?.trim()).filter((c): c is string => !!c);
+    if (!success && !conditions.length) throw new BadRequestException('Nothing to record.');
+
+    const latest = await this.prisma.groundBaseline.findFirst({
+      where: { groundId },
+      orderBy: { version: 'desc' },
+    });
+
+    /**
+     * A restatement needs a reason once one exists. Not to police anybody: the reason is the thing
+     * that makes the change legible later, and without it the record shows a yardstick that moved with
+     * no account of why - which reads worse than either version does on its own.
+     */
+    if (latest && !dto.changeReason?.trim()) {
+      throw new BadRequestException('Say why this is changing. The first version stays on the record either way.');
+    }
+
+    /** Carried forward rather than dropped: restating one half must not silently erase the other. */
+    const carried = Array.isArray(latest?.conditions) ? (latest!.conditions as string[]) : [];
+
+    return this.prisma.groundBaseline.create({
+      data: {
+        groundId,
+        version: (latest?.version ?? 0) + 1,
+        successLooksLike: success ?? latest?.successLooksLike ?? null,
+        conditions: conditions.length ? conditions : carried,
+        changeReason: dto.changeReason?.trim() || null,
+      },
+      select: { id: true, version: true, successLooksLike: true, conditions: true, changeReason: true, effectiveFrom: true },
+    });
+  }
+
+  /**
+   * Every version, oldest first, so the page can show the arc rather than only the latest.
+   *
+   * Readable by anybody on the ground, not only the lead. The yardstick a person is being read against
+   * is the last thing that should be private from them - and if it changed mid-ground, the change is
+   * the part they most need to see.
+   */
+  async baselineHistory(groundId: string, requestingUserId: string) {
+    const link = await this.prisma.groundParticipant.findFirst({ where: { groundId, userId: requestingUserId } });
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { initiatorId: true, organizationId: true },
+    });
+    if (!ground) throw new NotFoundException('Ground not found');
+    const asker = await this.prisma.user.findUnique({
+      where: { id: requestingUserId },
+      select: { role: true, organizationId: true },
+    });
+    const isOrgAdmin = asker?.role === 'ADMIN' && asker.organizationId === ground.organizationId;
+    if (!link && ground.initiatorId !== requestingUserId && !isOrgAdmin) {
+      throw new ForbiddenException('You are not a party to this ground');
+    }
+    const rows = await this.prisma.groundBaseline.findMany({
+      where: { groundId },
+      orderBy: { version: 'asc' },
+      select: { version: true, successLooksLike: true, conditions: true, changeReason: true, effectiveFrom: true },
+    });
+    return rows.map(r => ({
+      ...r,
+      conditions: Array.isArray(r.conditions) ? (r.conditions as string[]) : [],
+    }));
+  }
+
+  async getMySpecificity(groundId: string, userId: string): Promise<{
+    scores: number[];
+    label: string;
+    trend: 'rising' | 'steady' | 'falling' | 'new';
+    whatWouldHelp: string | null;
+    strongest: string | null;
+  }> {
     const participant = await this.prisma.groundParticipant.findFirst({
       where: { groundId, userId },
-      select: { specificityHistory: true },
+      select: { id: true, specificityHistory: true },
     });
     if (!participant) throw new ForbiddenException('You are not a party to this ground');
     const raw: number[] = (participant.specificityHistory as number[]) ?? [];
     const scores = raw.filter(n => typeof n === 'number' && isFinite(n));
     const avg = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
     const label = avg >= 0.65 ? 'high' : avg >= 0.35 ? 'moderate' : 'low';
-    return { scores, label };
+
+    /**
+     * Under three sessions there is no trend, only noise, and telling somebody their record is
+     * "falling" off two numbers is a verdict dressed as an observation.
+     */
+    let trend: 'rising' | 'steady' | 'falling' | 'new' = 'new';
+    if (scores.length >= 3) {
+      const half = Math.floor(scores.length / 2);
+      const early = scores.slice(0, half).reduce((a, b) => a + b, 0) / half;
+      const late = scores.slice(-half).reduce((a, b) => a + b, 0) / half;
+      trend = late - early > 0.08 ? 'rising' : early - late > 0.08 ? 'falling' : 'steady';
+    }
+
+    /**
+     * The teaching half. Their own last few answers, read for the things the engine could not
+     * find in them, and their own best answer quoted back as what the checkable version looked
+     * like. Showing beats grading: it is the move the engine already makes in conversation.
+     */
+    const entries = await this.prisma.recordEntry.findMany({
+      where: { participantId: participant.id },
+      orderBy: { createdAt: 'desc' },
+      take: 12,
+      select: { text: true },
+    });
+    let whatWouldHelp: string | null = null;
+    let strongest: string | null = null;
+    if (entries.length) {
+      const read = entries.map(e => ({ text: e.text, ...runIntake(e.text) }));
+      const undated = read.filter(r => !/\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|monday|tuesday|wednesday|thursday|friday|last week|this week|yesterday|\d{1,2}\/\d{1,2}|\d{4}-\d{2}-\d{2})\b/i.test(r.text)).length;
+      const unnumbered = read.filter(r => !/\d/.test(r.text)).length;
+      const vague = read.filter(r => r.vagueLanguage.length > 0).length;
+      if (unnumbered > entries.length / 2) {
+        whatWouldHelp = 'Most of your answers so far have no number in them. How many, how long, how often - one figure makes an account checkable that otherwise rests on memory.';
+      } else if (undated > entries.length / 2) {
+        whatWouldHelp = 'Most of your answers so far do not say when. A week, a date, "before the handover" - anything that places it in time lets the other accounts line up against it.';
+      } else if (vague > entries.length / 3) {
+        whatWouldHelp = `Some answers lean on words like "${read.find(r => r.vagueLanguage.length)?.vagueLanguage[0]}". Naming what actually happened instead carries further than describing it.`;
+      }
+      const best = read.filter(r => r.specificity >= 0.5).sort((a, b) => b.specificity - a.specificity)[0];
+      if (best) strongest = best.text.slice(0, 220);
+    }
+
+    return { scores, label, trend, whatWouldHelp, strongest };
   }
 
   /**

@@ -4,11 +4,12 @@ import { queryClient } from '@/lib/queryClient'
 import { authApi } from '@/api/auth'
 import { entryApi } from '@/api/entry'
 import { groundsApi } from '@/api/grounds'
+import { Arrival } from '@/components/gw/Arrival'
 import { LinkProblem } from '@/components/gw/LinkProblem'
 import { useAuthStore } from '@/stores/auth'
 
 const COMMIT_KEY = 'gw_commit_payload'
-const SESSION_KEY = 'gw_entry_session'
+import { loadEntryHandover, clearEntryHandover } from "./entry-handover"
 const FRONTEND_URL = window.location.origin
 
 // Verifying the token flips the auth state, which swaps the route into the
@@ -26,30 +27,6 @@ type VerifyOutcome =
 // verify+commit is still in flight, so caching only finished outcomes is not
 // enough - both mounts must await the SAME promise.
 const verifyFlows = new Map<string, Promise<VerifyOutcome>>()
-
-function loadCommitPayload(): any | null {
-  try {
-    const raw = localStorage.getItem(COMMIT_KEY)
-    if (!raw) return null
-    const payload = JSON.parse(raw)
-    // History is stored separately in gw_entry_session for security.
-    // Merge it in here at commit time.
-    if (!payload.history?.length) {
-      const sessionRaw = localStorage.getItem(SESSION_KEY)
-      if (sessionRaw) {
-        const session = JSON.parse(sessionRaw)
-        if (session?.history?.length) {
-          payload.history = session.history
-          if (!payload.scenario && session.scenario) payload.scenario = session.scenario
-        }
-      }
-    }
-    // The commit endpoint requires history as an array. The coordinator/lead
-    // path legitimately has none (no session), so default to empty.
-    if (!Array.isArray(payload.history)) payload.history = []
-    return payload
-  } catch { return null }
-}
 
 export function MagicVerifyPage() {
   const [params] = useSearchParams()
@@ -106,9 +83,7 @@ export function MagicVerifyPage() {
        */
       queryClient.invalidateQueries({ queryKey: ['grounds'] })
 
-      localStorage.removeItem(COMMIT_KEY)
-      localStorage.removeItem('gw_entry_session')
-      localStorage.removeItem('gw_draft_token')
+      clearEntryHandover()
       const invitedEmails = (result.contributors ?? []).map(c => c.email).filter(e => !result.failedInvites?.includes(e))
       return {
         kind: 'success',
@@ -190,7 +165,7 @@ export function MagicVerifyPage() {
         // different browser/device). Whether there is anything to commit is
         // the SERVER's decision now - the old client-side branch here silently
         // skipped the commit and stranded people on /setup.
-        const payload = loadCommitPayload() ?? { groundLabel: '', history: [], contributors: [] }
+        const payload = loadEntryHandover() ?? { groundLabel: '', history: [], contributors: [] }
         const hadEntryIntent = !!localStorage.getItem(COMMIT_KEY) || !!localStorage.getItem('gw_draft_token')
         lastAttempt.current = { token, payload, user: res.user }
         return commitFlow(payload, hadEntryIntent)
@@ -256,41 +231,41 @@ export function MagicVerifyPage() {
 
   if (nextGroundId) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--gw-bg)', padding: '0 20px' }}>
+      <Arrival wide>
         <div style={{ maxWidth: 380, width: '100%' }}>
-          <div style={{ background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 12, padding: '20px 22px', marginBottom: 20, textAlign: 'center' }}>
+          <div style={{ background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b-soft)', borderRadius: 12, padding: '20px 22px', marginBottom: 20, textAlign: 'center' }}>
             <div style={{ fontSize: 22, marginBottom: 8 }}>✓</div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: '#085041', marginBottom: 4 }}>Your ground is set up.</div>
-            <div style={{ fontSize: 13, color: '#3A7A60', lineHeight: 1.6 }}>Your session is on record and your account is live.</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--gw-green-t)', marginBottom: 4 }}>Your ground is set up.</div>
+            <div style={{ fontSize: 13, color: 'var(--gw-green-t-soft)', lineHeight: 1.6 }}>Your session is on record and your account is live.</div>
           </div>
           {joinUrl && (
-            <div style={{ background: 'white', border: '1px solid #E2E0DB', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#6B6560', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>Share this link to invite participants</div>
-              <div style={{ fontSize: 12, fontFamily: 'monospace', color: '#0A1628', background: '#F5F3EF', borderRadius: 6, padding: '8px 10px', wordBreak: 'break-all', marginBottom: 8 }}>{joinUrl}</div>
+            <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-sub)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>Share this link to invite participants</div>
+              <div style={{ fontSize: 12, fontFamily: 'monospace', color: 'var(--gw-dark)', background: 'var(--gw-paper-2)', borderRadius: 6, padding: '8px 10px', wordBreak: 'break-all', marginBottom: 8 }}>{joinUrl}</div>
               <button
                 onClick={() => { navigator.clipboard.writeText(joinUrl).catch(() => {}) }}
-                style={{ fontSize: 11, fontWeight: 700, color: '#0A1628', background: 'none', border: '1px solid #C8C5C0', borderRadius: 5, padding: '5px 12px', cursor: 'pointer', fontFamily: 'inherit' }}
+                style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-dark)', background: 'none', border: '1px solid #C8C5C0', borderRadius: 5, padding: '5px 12px', cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 Copy link
               </button>
             </div>
           )}
           {invited.length > 0 && (
-            <div style={{ background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#085041', marginBottom: 6 }}>Invited ({invited.length}) ✓</div>
-              <div style={{ fontSize: 12, color: '#3A7A60', lineHeight: 1.55, marginBottom: 6 }}>Each of these people has been emailed a private link to add their own account:</div>
+            <div style={{ background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b-soft)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-green-t)', marginBottom: 6 }}>Invited ({invited.length}) ✓</div>
+              <div style={{ fontSize: 12, color: 'var(--gw-green-t-soft)', lineHeight: 1.55, marginBottom: 6 }}>Each of these people has been emailed a private link to add their own account:</div>
               {invited.map(e => (
-                <div key={e} style={{ fontSize: 12, color: '#085041', fontFamily: 'monospace' }}>{e}</div>
+                <div key={e} style={{ fontSize: 12, color: 'var(--gw-green-t)', fontFamily: 'monospace' }}>{e}</div>
               ))}
-              <div style={{ fontSize: 12, color: '#3A7A60', lineHeight: 1.55, marginTop: 8, paddingTop: 8, borderTop: '1px solid #B6E8D4' }}>
+              <div style={{ fontSize: 12, color: 'var(--gw-green-t-soft)', lineHeight: 1.55, marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--gw-green-b-soft)' }}>
                 Track who has checked in on your ground page - each person shows as invited, in progress, or completed, and you can send a reminder from there.
               </div>
             </div>
           )}
           {failedInvites.length > 0 && (
-            <div style={{ background: '#FFF8EC', border: '1px solid #F5DFA0', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#7A5200', marginBottom: 6 }}>{invited.length === 0 ? 'None of your invites could be sent.' : 'Some invites did not send.'}</div>
-              <div style={{ fontSize: 12, color: '#7A5200', lineHeight: 1.55, marginBottom: 8 }}>These addresses were not reached. You can resend from your ground page:</div>
+            <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 6 }}>{invited.length === 0 ? 'None of your invites could be sent.' : 'Some invites did not send.'}</div>
+              <div style={{ fontSize: 12, color: 'var(--gw-amber-t)', lineHeight: 1.55, marginBottom: 8 }}>These addresses were not reached. You can resend from your ground page:</div>
               {failedInvites.map(e => (
                 <div key={e} style={{ fontSize: 12, color: '#5A3A00', fontFamily: 'monospace' }}>{e}</div>
               ))}
@@ -332,17 +307,17 @@ export function MagicVerifyPage() {
             Go to your ground →
           </button>
         </div>
-      </div>
+      </Arrival>
     )
   }
 
   if (noSession) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--gw-bg)', padding: '0 20px' }}>
+      <Arrival wide>
         <div style={{ maxWidth: 400, width: '100%', textAlign: 'center' }}>
-          <div style={{ background: '#FFF8EC', border: '1px solid #F5DFA0', borderRadius: 12, padding: '20px 22px', marginBottom: 20, textAlign: 'left' }}>
-            <div style={{ fontSize: 16, fontWeight: 700, color: '#7A5200', marginBottom: 6 }}>We couldn't find your session on this device.</div>
-            <div style={{ fontSize: 13, color: '#7A5200', lineHeight: 1.6 }}>
+          <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 12, padding: '20px 22px', marginBottom: 20, textAlign: 'left' }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 6 }}>We couldn't find your session on this device.</div>
+            <div style={{ fontSize: 13, color: 'var(--gw-amber-t)', lineHeight: 1.6 }}>
               Your account is active, but the session you saved isn't on this device and we don't have a copy of it.
               If you finished your session in a different browser or on another device, open this link there - your session is still saved on that device.
             </div>
@@ -354,16 +329,16 @@ export function MagicVerifyPage() {
             Start a new ground
           </button>
         </div>
-      </div>
+      </Arrival>
     )
   }
 
   if (commitError) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--gw-bg)', padding: '0 20px' }}>
+      <Arrival wide>
         <div style={{ maxWidth: 380, width: '100%', textAlign: 'center' }}>
-          <div style={{ background: '#FFF4F4', border: '1px solid #F5C6C6', borderRadius: 12, padding: '20px 22px', marginBottom: 20 }}>
-            <div style={{ fontSize: 16, fontWeight: 700, color: '#8B1A1A', marginBottom: 6 }}>Your account is active, but the ground wasn't saved.</div>
+          <div style={{ background: 'var(--gw-red-bg)', border: '1px solid var(--gw-red-b-soft)', borderRadius: 12, padding: '20px 22px', marginBottom: 20 }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--gw-red-t)', marginBottom: 6 }}>Your account is active, but the ground wasn't saved.</div>
             <div style={{ fontSize: 13, color: '#7A3030', lineHeight: 1.6 }}>Something went wrong saving your session. Your account is ready - go to your grounds page and start again from there.</div>
           </div>
           <button
@@ -386,12 +361,12 @@ export function MagicVerifyPage() {
             Go to grounds →
           </button>
         </div>
-      </div>
+      </Arrival>
     )
   }
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--gw-bg)' }}>
+    <Arrival>
       {!error ? (
         <div style={{ textAlign: 'center' }}>
           <div style={{ width: 40, height: 40, border: '3px solid var(--gw-navy)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 16px' }} />
@@ -404,6 +379,6 @@ export function MagicVerifyPage() {
           <LinkProblem kind="sign-in" detail={error} />
         </div>
       )}
-    </div>
+    </Arrival>
   )
 }

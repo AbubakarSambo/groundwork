@@ -80,6 +80,19 @@ export const groundsApi = {
   get: (id: string) =>
     apiClient.get<Ground>(`/grounds/${id}`, { skipNotFoundToast: true } as any).then(r => r.data),
 
+  /**
+   * Whether the parties can see each other at all - who else is here, and how each is doing.
+   * Separate from hiding email addresses. W14-4.
+   *
+   * The endpoint has existed since the peer rule was written and nothing called it, so the
+   * default (hidden on evaluation and cohort grounds, shown elsewhere) was unreachable and
+   * invisible: a lead could not see the rule, let alone change it.
+   */
+  setPeerVisibility: (id: string, visible: boolean) =>
+    apiClient
+      .patch<{ id: string; peersVisibleToEachOther: boolean }>(`/grounds/${id}/peer-visibility`, { visible })
+      .then(r => r.data),
+
   // Initiator-only: whether participants can see each other's email. restrict=true hides.
   setExternalVisibility: (id: string, restrict: boolean) =>
     apiClient.patch<{ id: string; restrictExternalVisibility: boolean }>(`/grounds/${id}/external-visibility`, { restrict }).then(r => r.data),
@@ -123,7 +136,13 @@ export const groundsApi = {
     apiClient.patch<Ground>(`/grounds/${groundId}`, body).then(r => r.data),
 
   getMySpecificity: (groundId: string) =>
-    apiClient.get<{ scores: number[]; label: string }>(`/grounds/${groundId}/my-specificity`).then(r => r.data),
+    apiClient.get<{
+      scores: number[]
+      label: string
+      trend: 'rising' | 'steady' | 'falling' | 'new'
+      whatWouldHelp: string | null
+      strongest: string | null
+    }>(`/grounds/${groundId}/my-specificity`).then(r => r.data),
 
   getMyRecord: (groundId: string) =>
     apiClient.get<{
@@ -251,8 +270,89 @@ export const groundsApi = {
    * it back, and nothing said here is stored - it is about the ground's setup, not
    * anybody's account of anything.
    */
+  /**
+   * The confirmation. The chat proposes; this is the lead saying yes. It sends back their own words
+   * rather than a value, because the server re-derives the change from them - an endpoint that takes
+   * `timelineDays` from the client is an edit endpoint wearing a confirmation's name.
+   */
+  confirmContext: (groundId: string, said: string) =>
+    apiClient
+      .post<{ changed: string; say: string }>(`/grounds/${groundId}/context-chat/confirm`, { said })
+      .then(r => r.data),
+
+  /**
+   * WHAT DOING WELL LOOKS LIKE, AND WHAT IT RESTS ON. `GroundBaseline`, which had no caller at all.
+   *
+   * Stating it again is a new VERSION, never an edit - the schema's own note: "half the findings this
+   * product makes are the distance between what people believed at the start and what turned out to be
+   * true. Corrected, a baseline becomes a second description of the present and the arc disappears."
+   */
+  stateBaseline: (groundId: string, body: { successLooksLike?: string; conditions?: string[]; changeReason?: string }) =>
+    apiClient.post<{ version: number; successLooksLike: string | null; conditions: string[]; changeReason: string | null; effectiveFrom: string }>(
+      `/grounds/${groundId}/baseline`, body,
+    ).then(r => r.data),
+
+  baselineHistory: (groundId: string) =>
+    apiClient.get<{ version: number; successLooksLike: string | null; conditions: string[]; changeReason: string | null; effectiveFrom: string }[]>(
+      `/grounds/${groundId}/baseline`,
+    ).then(r => r.data),
+
+  /**
+   * WHAT EACH PERSON IS WORKING TOWARDS. `PersonObjective`, which had a 169-line module and no writer.
+   *
+   * Three calls because the rule needs three states: a lead proposing, the person accepting what was
+   * proposed, and the person writing their own. `mayBeReadAgainst` refuses a proposal nobody has seen,
+   * which is why accepting is its own deliberate act.
+   */
+  proposeObjective: (groundId: string, participantId: string, text: string) =>
+    apiClient.post<{ text: string; authoredBy: string; seenBySubject: boolean }>(
+      `/grounds/${groundId}/objectives/${participantId}`, { text },
+    ).then(r => r.data),
+
+  stateMyObjective: (groundId: string, text: string) =>
+    apiClient.post<{ text: string; authoredBy: string; seenBySubject: boolean }>(
+      `/grounds/${groundId}/my-objective`, { text },
+    ).then(r => r.data),
+
+  acceptMyObjective: (groundId: string) =>
+    apiClient.post<{ text: string; authoredBy: string; seenBySubject: boolean }>(
+      `/grounds/${groundId}/my-objective/accept`,
+    ).then(r => r.data),
+
+  /**
+   * WHERE THIS STOOD ON DAY ONE. `GroundBaselineEntry`, append-only.
+   *
+   * The candidates are the lead's own session-one entries: they choose which of the things they
+   * already said describe the starting point. There is no update and no delete, because a corrected
+   * baseline stops being a record of what people believed at the start.
+   */
+  baselineEntryCandidates: (groundId: string) =>
+    apiClient.get<{
+      candidates: { text: string; type: string }[]
+      alreadyRecorded: { text: string; capturedAtSession: number; createdAt: string }[]
+    }>(`/grounds/${groundId}/baseline-entries/candidates`).then(r => r.data),
+
+  recordBaselineEntries: (groundId: string, texts: string[]) =>
+    apiClient.post<{ text: string; capturedAtSession: number; createdAt: string }[]>(
+      `/grounds/${groundId}/baseline-entries`, { texts },
+    ).then(r => r.data),
+
+  baselineEntries: (groundId: string) =>
+    apiClient.get<{
+      entries: { text: string; capturedAtSession: number; createdAt: string }[]
+      completedSessions: number
+      canShowMovement: boolean
+      frozenReason: string
+    }>(`/grounds/${groundId}/baseline-entries`).then(r => r.data),
+
   contextChat: (groundId: string, history: { role: 'user' | 'assistant'; content: string }[]) =>
     apiClient
-      .post<{ reply: string; gaps: string[]; done: boolean }>(`/grounds/${groundId}/context-chat`, { history })
+      .post<{
+        reply: string
+        gaps: string[]
+        done: boolean
+        /** Something concrete the lead can confirm. Null when there is nothing to write. */
+        proposal: { gap: string; say: string } | null
+      }>(`/grounds/${groundId}/context-chat`, { history })
       .then(r => r.data),
 }

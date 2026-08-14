@@ -596,14 +596,43 @@ export class BillingService {
    * Billing status: active grounds with session balances and saved card details.
    */
   async getStatus(organizationId: string): Promise<{
+    /**
+     * THE SUBSCRIPTION BELONGS TO THE ORGANISATION, AND THIS ENDPOINT DID NOT SAY SO. W14-6.
+     *
+     * It returned active grounds and a card, so `BillingPage` had nowhere to read the plan from
+     * and took it off `grounds[0].org` - the first ground in the list. An organisation that has
+     * closed its grounds therefore had NO first ground, so a paying customer saw "Free · No
+     * subscription" and lost Pause, Resume and Cancel entirely. They could not manage the thing
+     * they were being charged for.
+     *
+     * The seat count is here for the same reason: every plan is priced by people ("Up to 20
+     * people") and nothing in the product said how many the organisation had, so the number that
+     * decides an upgrade was the one number nobody could see. W14-7.
+     */
+    subscription: {
+      plan: SubscriptionPlan | null;
+      status: string | null;
+      periodEnd: Date | null;
+      freeExtensionUsed: boolean;
+    };
+    people: { count: number; cap: number | null };
     activeGrounds: Array<{ groundId: string; label: string; startedAt: Date | null; sessionsBalance: number }>;
     card?: { brand: string; last4: string } | null;
   }> {
     const org = await this.prisma.organization.findUnique({
       where: { id: organizationId },
-      select: { stripeCustomerId: true, defaultPaymentMethodId: true },
+      select: {
+        stripeCustomerId: true,
+        defaultPaymentMethodId: true,
+        subscriptionPlan: true,
+        subscriptionStatus: true,
+        subscriptionPeriodEnd: true,
+        freeExtensionUsed: true,
+      },
     });
     if (!org) throw new NotFoundException('Organization not found');
+
+    const peopleCount = await this.prisma.user.count({ where: { organizationId, isActive: true } });
 
     const activeGrounds = await this.prisma.ground.findMany({
       where: { organizationId, status: GroundStatus.ACTIVE },
@@ -621,6 +650,15 @@ export class BillingService {
     }
 
     return {
+      subscription: {
+        plan: org.subscriptionPlan ?? null,
+        status: org.subscriptionStatus ?? null,
+        periodEnd: org.subscriptionPeriodEnd ?? null,
+        freeExtensionUsed: org.freeExtensionUsed,
+      },
+      // `null` cap means unlimited (Enterprise) or no plan at all - the client renders the
+      // count without a ceiling rather than inventing one.
+      people: { count: peopleCount, cap: org.subscriptionPlan ? this.PLAN_MEMBER_CAPS[org.subscriptionPlan] : null },
       activeGrounds: activeGrounds.map((g) => ({
         groundId: g.id,
         label: g.label,

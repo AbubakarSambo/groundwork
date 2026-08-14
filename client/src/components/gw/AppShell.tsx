@@ -1,4 +1,5 @@
 import { toast } from 'sonner'
+import { MARKETING_URL } from '@/lib/marketing'
 import { authApi } from '@/api/auth'
 import { railAttention, railRank, stillInRail } from '@/lib/rail-attention'
 import { plannedSessionsFor } from '@/lib/sessionCount'
@@ -77,6 +78,25 @@ const NAV_ITEMS = [
       </svg>
     ),
   },
+  {
+    /**
+     * SETTINGS WAS NOT IN THE RAIL AT ALL. It lived only in the user block at the bottom of the
+     * grounds list, so the org's own settings - its name, the thing every page shows the team - were
+     * reachable from one page and nowhere else.
+     *
+     * Not `adminOnly`: everybody has settings of their own here (notifications, WhatsApp number, what
+     * we hold about them). The org section of that page is already gated inside it.
+     */
+    label: 'Settings',
+    to: '/settings',
+    icon: (active: boolean) => (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <circle cx="10" cy="10" r="2.6" stroke="currentColor" strokeWidth="1.5" fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.15 : 0} />
+        <path d="M10 2.2v2.2M10 15.6v2.2M4.5 4.5l1.6 1.6M13.9 13.9l1.6 1.6M2.2 10h2.2M15.6 10h2.2M4.5 15.5l1.6-1.6M13.9 6.1l1.6-1.6"
+          stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      </svg>
+    ),
+  },
   /**
    * PROFILE IS NOT IN THE RAIL, because the page says it does not exist yet:
    * "A profile that gathers them in one place is not built yet." A permanent menu
@@ -95,6 +115,31 @@ const NAV_ITEMS = [
    * it cannot be forgotten again.
    */
 ]
+
+/**
+ * WHO SEES WHICH NAV ITEM, DECIDED ONCE.
+ *
+ * There were three renderers - the collapsed rail, the expanded rail, the mobile bar - and three
+ * different answers:
+ *
+ *   collapsed   `!item.adminOnly || user?.role === 'ADMIN'`   correct
+ *   expanded    `!item.adminOnly`                             an ADMIN saw no People and no Billing
+ *   mobile      no filter at all                              everybody saw both
+ *
+ * So an admin on a desktop had no way to reach billing from the rail, and a team member on a phone had
+ * two doors that would bounce them. Her words: "billing and settings for the org should have its own
+ * accessibility at the very top for the admin."
+ */
+export function navItemsFor(user: { role?: string; isPlatformAdmin?: boolean } | null | undefined) {
+  return NAV_ITEMS.filter(item => {
+    if ((item as any).platformAdminOnly) return !!user?.isPlatformAdmin
+    if ((item as any).adminOnly) return user?.role === 'ADMIN'
+    return true
+  })
+}
+
+/** The organisation's own pages, as opposed to the grounds inside it. */
+export const ORG_ROUTES = ['/org/members', '/billing', '/settings']
 
 type FbTab = 'reaction' | 'build' | 'wrong'
 
@@ -320,7 +365,7 @@ function NavItem({ item, compact }: { item: typeof NAV_ITEMS[0]; compact?: boole
       to={item.to}
       style={{
         display: 'flex', alignItems: 'center', gap: 10,
-        padding: '9px 14px', borderRadius: 10, color: active ? '#085041' : '#374151',
+        padding: '9px 14px', borderRadius: 10, color: active ? 'var(--gw-green-t)' : '#374151',
         textDecoration: 'none', fontSize: 14, fontWeight: active ? 700 : 500,
         background: active ? 'rgba(8,80,65,0.09)' : 'transparent', transition: 'background 0.15s, color 0.15s',
       }}
@@ -336,7 +381,7 @@ function NavItem({ item, compact }: { item: typeof NAV_ITEMS[0]; compact?: boole
 function GroundStatusBadge({ status }: { status: string }) {
   const isReady = status === 'REPORT_READY'
   const isActive = status === 'ACTIVE'
-  const color = isReady ? '#065f46' : isActive ? '#085041' : '#6B7280'
+  const color = isReady ? '#065f46' : isActive ? 'var(--gw-green-t)' : '#6B7280'
   const bg = isReady ? 'rgba(6,95,70,.1)' : isActive ? 'rgba(8,80,65,.08)' : 'rgba(107,114,128,.08)'
   const label = isReady ? 'Report ready' : isActive ? 'Active' : status.charAt(0) + status.slice(1).toLowerCase().replace(/_/g, ' ')
   return (
@@ -363,6 +408,7 @@ export function AppSidebar() {
   const qc = useQueryClient()
   const user = useAuthStore(s => s.user)
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
+  const logout = useAuthStore(s => s.logout)
 
   /**
    * The organisations this person belongs to. Only asked when signed in: before that
@@ -399,7 +445,7 @@ export function AppSidebar() {
   const [entryRenameVal, setEntryRenameVal] = useState('')
   const entryRenameRef = useRef<HTMLInputElement>(null)
 
-  const marketingUrl = import.meta.env.VITE_MARKETING_URL ?? 'https://myground.work'
+
   const initials = user ? (user.firstName?.[0] ?? user.email?.[0] ?? 'U').toUpperCase() : 'U'
 
   function startRename(g: Ground) {
@@ -432,9 +478,24 @@ export function AppSidebar() {
       >
         {/* Logo + collapse */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 14px 12px', flexShrink: 0 }}>
-          {!collapsed && (
-            <a href={marketingUrl} style={{ fontSize: 15, fontWeight: 800, color: 'rgba(255,255,255,.92)', letterSpacing: '-0.3px', textDecoration: 'none', whiteSpace: 'nowrap' }}>
+          {/**
+            * THE WAY BACK TO THE SITE, IN BOTH STATES.
+            *
+            * Expanded, the wordmark links out, as it always did. Collapsed, there was nothing at all -
+            * just the chevron - so the rail somebody works in all day had no way home. A single G,
+            * same destination.
+            */}
+          {!collapsed ? (
+            <a href={MARKETING_URL} style={{ fontSize: 15, fontWeight: 800, color: 'rgba(255,255,255,.92)', letterSpacing: '-0.3px', textDecoration: 'none', whiteSpace: 'nowrap' }}>
               Groundwork
+            </a>
+          ) : (
+            <a
+              href={MARKETING_URL}
+              title="Groundwork"
+              style={{ fontSize: 15, fontWeight: 800, color: 'rgba(255,255,255,.92)', textDecoration: 'none', lineHeight: 1 }}
+            >
+              G
             </a>
           )}
           <button
@@ -501,7 +562,7 @@ export function AppSidebar() {
                 )}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
                   <span style={{ fontSize: 11, color: 'rgba(255,255,255,.4)' }}>1/{sessions} sessions</span>
-                  <span style={{ fontSize: 10, fontWeight: 600, color: '#34d399', background: 'rgba(52,211,153,.12)', borderRadius: 4, padding: '2px 6px' }}>In progress</span>
+                  <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--gw-green-live)', background: 'rgba(52,211,153,.12)', borderRadius: 4, padding: '2px 6px' }}>In progress</span>
                 </div>
               </div>
             )}
@@ -594,14 +655,14 @@ export function AppSidebar() {
                             title={attention.kind === 'overdue' ? `Session ${attention.sessionNumber} is ${attention.daysLate} days past its date` : `Session ${attention.sessionNumber} is ready for you`}
                             style={{
                               width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
-                              background: attention.kind === 'overdue' ? '#F87171' : '#5DCAA5',
+                              background: attention.kind === 'overdue' ? 'var(--gw-red-b-soft)' : 'var(--gw-green-b)',
                             }}
                           />
                         )}
                         <span style={{
                           fontSize: 13,
                           fontWeight: attention.kind === 'yours' || attention.kind === 'overdue' ? 800 : 600,
-                          color: attention.kind === 'overdue' ? '#FCA5A5' : attention.kind === 'yours' ? 'white' : 'rgba(255,255,255,.88)',
+                          color: attention.kind === 'overdue' ? 'var(--gw-red-b)' : attention.kind === 'yours' ? 'white' : 'rgba(255,255,255,.88)',
                           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1,
                         }}>
                           {g.label}
@@ -648,7 +709,7 @@ export function AppSidebar() {
                 NavLinks directly rather than going through NavItem, so it skipped
                 the adminOnly check entirely and showed People / Roster / Billing
                 to every member whose sidebar happened to be collapsed. */}
-            {NAV_ITEMS.filter(item => (!item.adminOnly || user?.role === 'ADMIN') && !(item as any).platformAdminOnly).map(item => {
+            {navItemsFor(user).map(item => {
               const active = window.location.pathname.startsWith(item.to)
               return (
                 <NavLink key={item.to} to={item.to} title={item.label}
@@ -664,27 +725,73 @@ export function AppSidebar() {
         {/* Nav items - always visible in expanded sidebar */}
         {!collapsed && (
           <nav style={{ padding: '6px 8px', borderTop: '1px solid rgba(255,255,255,.07)', flexShrink: 0 }}>
-            {/* Both gates, not just adminOnly: this nav is always visible, so
-                anything filtered only by the other list leaks in here. */}
-            {NAV_ITEMS.filter(item => !item.adminOnly && !(item as any).platformAdminOnly).map(item => {
+            {/**
+              * ONE GATE. This used to filter on `!item.adminOnly`, which meant an ADMIN - the only
+              * person People and Billing are for - could not see either of them in the expanded rail.
+              * They appeared in the collapsed icon strip, which used the right test.
+              */}
+            {navItemsFor(user).map((item, i, all) => {
               const active = location.pathname.startsWith(item.to)
               const canNav = isAuthenticated
+              /**
+               * THE ORGANISATION'S OWN PAGES, GROUPED AND NAMED. Her words: "billing and settings for
+               * the org should have its own accessibility at the very top for the admin or somewhere
+               * else. What if the admin is also a participant or lead."
+               *
+               * That last question is the reason this is a heading rather than a separate bar: what
+               * somebody can do for the ORGANISATION does not change with the part they hold on any
+               * ground. An admin who is also a lead and a party sees this section unchanged, and their
+               * part in a ground decides only what the ground's own tabs contain.
+               *
+               * The name is the organisation's, so it reads as a place rather than a category.
+               */
+              const isOrg = ORG_ROUTES.includes(item.to)
+              /**
+               * The heading appears only when there is a group to head. A team member sees Settings
+               * and nothing else from this list, and their settings are their own - notifications,
+               * their WhatsApp number, what we hold about them - so putting the company's name above
+               * it would be wrong about whose page it is.
+               */
+              const orgCount = all.filter(x => ORG_ROUTES.includes(x.to)).length
+              /**
+               * THE ORG NAME WAS PRINTED TWICE. W15-4.
+               *
+               * "Is the item before me an org route?" is not the same question as "am I the first
+               * org route?", and the difference is `/admin`, which sits between `/billing` and
+               * `/settings` and is not an org route. So `/settings` looked like the start of a
+               * second org group and printed the heading again: People, Billing, ADMIN, then the
+               * company name a second time above Settings.
+               *
+               * Only ever visible to a platform admin, because they are the only ones with
+               * `/admin` in the middle of the group - which is why it survived. Found by looking
+               * at a screenshot of the sidebar.
+               *
+               * Asked properly now: am I the first org route in the list.
+               */
+              const firstOrg = isOrg && orgCount > 1
+                && all.findIndex(x => ORG_ROUTES.includes(x.to)) === i
               return (
-                <NavLink
-                  key={item.to}
-                  to={canNav ? item.to : '/auth'}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 10,
-                    padding: '8px 10px', borderRadius: 8, textDecoration: 'none',
-                    color: active ? '#93C5FD' : canNav ? 'rgba(255,255,255,.55)' : 'rgba(255,255,255,.25)',
-                    background: active ? 'rgba(147,197,253,.08)' : 'transparent',
-                    fontSize: 13, fontWeight: active ? 600 : 400,
-                    pointerEvents: canNav ? 'auto' : 'none',
-                  }}
-                >
-                  {item.icon(active)}
-                  <span>{item.label}</span>
-                </NavLink>
+                <div key={item.to}>
+                  {firstOrg && (
+                    <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '.5px', color: 'rgba(255,255,255,.3)', fontWeight: 700, padding: '10px 10px 4px' }}>
+                      {user?.organizationName ?? 'Your organisation'}
+                    </div>
+                  )}
+                  <NavLink
+                    to={canNav ? item.to : '/auth'}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '8px 10px', borderRadius: 8, textDecoration: 'none',
+                      color: active ? '#93C5FD' : canNav ? 'rgba(255,255,255,.55)' : 'rgba(255,255,255,.25)',
+                      background: active ? 'rgba(147,197,253,.08)' : 'transparent',
+                      fontSize: 13, fontWeight: active ? 600 : 400,
+                      pointerEvents: canNav ? 'auto' : 'none',
+                    }}
+                  >
+                    {item.icon(active)}
+                    <span>{item.label}</span>
+                  </NavLink>
+                </div>
               )
             })}
           </nav>
@@ -745,7 +852,7 @@ export function AppSidebar() {
                   fontSize: 12.5, fontWeight: o.active ? 700 : 500,
                 }}
               >
-                <span style={{ width: 5, height: 5, borderRadius: '50%', flexShrink: 0, background: o.active ? '#34d399' : 'transparent' }} />
+                <span style={{ width: 5, height: 5, borderRadius: '50%', flexShrink: 0, background: o.active ? 'var(--gw-green-live)' : 'transparent' }} />
                 <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.name}</span>
                 <span style={{ fontSize: 10, color: 'rgba(255,255,255,.3)', textTransform: 'capitalize', flexShrink: 0 }}>
                   {o.role.toLowerCase()}
@@ -763,11 +870,32 @@ export function AppSidebar() {
                 {initials}
               </div>
               {!collapsed && (
-                <div style={{ overflow: 'hidden' }}>
+                <div style={{ overflow: 'hidden', flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,.88)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {user?.firstName ? `${user.firstName} ${user.lastName ?? ''}`.trim() : user?.email ?? ''}
                   </div>
-                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,.38)', textTransform: 'capitalize' }}>{(user?.role ?? '').toLowerCase()}</div>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                    <span style={{ fontSize: 11, color: 'rgba(255,255,255,.38)', textTransform: 'capitalize' }}>{(user?.role ?? '').toLowerCase()}</span>
+                    {/**
+                      * SIGNING OUT EXISTED ON ONE PAGE, AS A SPAN.
+                      *
+                      * It was on the grounds list and nowhere else, so from a ground, a check-in,
+                      * billing or settings there was no way to leave - you either navigated back to
+                      * the list to find it or cleared the browser.
+                      *
+                      * It belongs here because this is the block that says who you are, on every
+                      * page. The session itself lasts seven days and is persisted, which is the
+                      * other half of what she asked for: you stay signed in on the device, and
+                      * leaving is something you choose rather than something that happens to you.
+                      */}
+                    <button
+                      onClick={() => { logout(); navigate('/') }}
+                      style={{ fontSize: 11, color: 'rgba(255,255,255,.38)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+                      title="Sign out of Groundwork on this device"
+                    >
+                      Sign out
+                    </button>
+                  </div>
                 </div>
               )}
             </>
@@ -792,7 +920,8 @@ export function AppSidebar() {
       }}
         className="gw-sidebar-mobile"
       >
-        {NAV_ITEMS.map(item => <NavItem key={item.to} item={item} compact />)}
+        {/* Was unfiltered, so a team member on a phone saw People and Billing and got bounced. */}
+        {navItemsFor(user).map(item => <NavItem key={item.to} item={item} compact />)}
       </nav>
     </>
   )
@@ -833,7 +962,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     '/set-password', '/reset-password', '/verify-email',
     '/invite', '/join', '/login',
   ]
-  const showSidebar = isAuthenticated && !CHROMELESS.includes(location.pathname)
+
+  /**
+   * THE RAIL ON /start FOR SOMEBODY WITHOUT AN ACCOUNT YET.
+   *
+   * `AppSidebar` has a branch for exactly this, and its own comment says so: "Entry ground shown when
+   * unauthenticated on /start". It draws the ground being built - its name, renameable, and how many
+   * sessions - for a person who has no grounds because they are making their first one.
+   *
+   * It could never run. `showSidebar` required `isAuthenticated`, so the sidebar was not mounted at
+   * all for a stranger, which made `isEntryPage = !isAuthenticated && pathname === '/start'` a
+   * condition that is false whenever it is evaluated. The rail Hafsah remembered on a signed-out
+   * window was real, and an auth gate added later killed it without removing the branch.
+   *
+   * Same shape as the G37 defect: a check that cannot be true, no failure, just a thing that quietly
+   * stopped happening. The API sweep for this class did not cover the client.
+   */
+  const isEntryFlow = location.pathname === '/start'
+  const showSidebar = (isAuthenticated || isEntryFlow) && !CHROMELESS.includes(location.pathname)
 
   if (!showSidebar) return <>{children}</>
 

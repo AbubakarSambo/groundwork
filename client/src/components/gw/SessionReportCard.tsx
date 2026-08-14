@@ -18,7 +18,7 @@ function AlignmentLadder({ status, closed }: { status: string; closed?: boolean 
     <div style={{ display: 'flex', gap: 3, marginTop: 8 }}>
       {LADDER.map((l, i) => {
         const on = i <= idx
-        const bg = on ? (closed ? 'var(--gw-green-b)' : 'var(--gw-navy)') : '#EFEDE8'
+        const bg = on ? (closed ? 'var(--gw-green-b)' : 'var(--gw-navy)') : 'var(--gw-bg)'
         const color = on ? '#fff' : 'var(--gw-muted)'
         return (
           <div key={l} style={{ flex: 1, textAlign: 'center', fontSize: 9, fontWeight: 700, letterSpacing: '.03em', textTransform: 'uppercase', padding: '4px 2px', borderRadius: 4, background: bg, color }}>
@@ -131,7 +131,7 @@ function AdminCrossRef({ report, closed }: { report: Report; closed: boolean }) 
     { label: 'Aligned', text: report.agreements?.slice(0, 2).join('. ') || '-', bg: 'var(--gw-green-bg)', labelColor: 'var(--gw-green-t)' },
     { label: 'Open', text: report.divergences?.map(d => d.topic).join('. ') || '-', bg: 'var(--gw-amber-bg)', labelColor: 'var(--gw-amber-t)' },
     { label: 'Revisit', text: closed ? 'Review at next raise.' : 'Review next session.', bg: 'var(--gw-blue-bg)', labelColor: 'var(--gw-navy)' },
-    { label: 'Risk', text: report.centralQuestion, bg: '#F8ECEA', labelColor: '#B5675A' },
+    { label: 'Risk', text: report.centralQuestion, bg: 'var(--gw-clay-bg)', labelColor: 'var(--gw-clay)' },
   ]
 
   return (
@@ -186,7 +186,7 @@ function AdminCrossRef({ report, closed }: { report: Report; closed: boolean }) 
       )}
 
       {closed && (
-        <div style={{ fontSize: 12, color: 'var(--gw-sub)', background: '#F4F1EA', border: '1px solid #E5DFD2', borderRadius: 8, padding: '10px 12px', lineHeight: 1.55, marginTop: 8 }}>
+        <div style={{ fontSize: 12, color: 'var(--gw-sub)', background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '10px 12px', lineHeight: 1.55, marginTop: 8 }}>
           This record is permanent. It is yours and is portable to your profile.
         </div>
       )}
@@ -216,7 +216,7 @@ function ParticipantCrossRef({ report, closed }: { report: Report; closed: boole
   return (
     <div>
       {/* What contribution reveals */}
-      <div style={{ background: '#0E3A30', color: '#fff', borderRadius: 10, padding: '14px 16px', marginBottom: 14 }}>
+      <div style={{ background: 'var(--gw-green-t)', color: '#fff', borderRadius: 10, padding: '14px 16px', marginBottom: 14 }}>
         <div style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-green-b)', fontWeight: 700, marginBottom: 7 }}>
           {closed ? 'What your contribution secured' : 'What your contribution reveals'}
         </div>
@@ -277,7 +277,7 @@ function ParticipantCrossRef({ report, closed }: { report: Report; closed: boole
             </div>
             <AlignmentLadder status={status} />
           </div>
-          <div style={{ fontSize: 12, color: 'var(--gw-sub)', background: '#F4F1EA', border: '1px solid #E5DFD2', borderRadius: 8, padding: '10px 12px', lineHeight: 1.55 }}>
+          <div style={{ fontSize: 12, color: 'var(--gw-sub)', background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '10px 12px', lineHeight: 1.55 }}>
             {report.releasedAt
               ? 'The full comparison is now open, and you both read the same report at the same moment.'
               : 'You can still only see your own. The full comparison opens once you have both opened the report.'}
@@ -354,7 +354,7 @@ export function SessionReportCard({ checkInId, groundId, sessionNumber, isInitia
 
   if (state === 'loading') return null
 
-  const headerBg = isInitiator ? 'var(--gw-navy)' : '#085041'
+  const headerBg = isInitiator ? 'var(--gw-navy)' : 'var(--gw-green-t)'
   const headerLabel = isInitiator ? 'Admin report' : 'Participant report'
   const closingLabel = isInitiator ? 'Resolution record' : 'Resolution record'
 

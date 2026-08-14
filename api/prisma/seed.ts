@@ -35,28 +35,10 @@ async function main() {
     console.log(`seeded prompt "${key}" v${created.version} (active, ${content.length} chars)`);
   }
 
-  // Sample pattern benchmarks — anonymised cross-org baselines.
-  await prisma.patternBenchmark.createMany({
-    data: [
-      {
-        code: 'D1',
-        orgStage: 'EARLY_REVENUE',
-        teamSizeRange: '2-10',
-        outcomeType: 'RESOLVED',
-        periodsToOutcome: 3,
-        moment: 'STARTING',
-      },
-      {
-        code: 'B4',
-        orgStage: 'SCALING',
-        teamSizeRange: '11-50',
-        outcomeType: 'STALLED',
-        periodsToOutcome: 6,
-        moment: 'RESOLUTION',
-      },
-    ],
-    skipDuplicates: true,
-  });
+  /**
+   * The pattern-benchmark seed is gone with its table. It filled `pattern_benchmarks` with anonymised
+   * cross-org baselines that no comparison ever read - a table that existed because the seed filled it.
+   */
   console.log('seeded 2 sample pattern benchmarks');
 }
 

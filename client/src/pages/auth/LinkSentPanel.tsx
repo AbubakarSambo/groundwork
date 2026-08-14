@@ -35,8 +35,8 @@ export function LinkSentPanel({ email, onUseDifferent }: { email: string; onUseD
 
       <div style={{ width: 52, height: 52, background: 'var(--gw-blue-bg)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
         <svg width="22" height="18" viewBox="0 0 22 18" fill="none">
-          <rect x="1" y="1" width="20" height="16" rx="2" stroke="#0C447C" strokeWidth="1.5" />
-          <path d="M1 4l10 7 10-7" stroke="#0C447C" strokeWidth="1.5" strokeLinecap="round" />
+          <rect x="1" y="1" width="20" height="16" rx="2" stroke="var(--gw-navy)" strokeWidth="1.5" />
+          <path d="M1 4l10 7 10-7" stroke="var(--gw-navy)" strokeWidth="1.5" strokeLinecap="round" />
         </svg>
       </div>
 

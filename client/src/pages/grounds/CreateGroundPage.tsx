@@ -30,88 +30,88 @@ interface ScenarioCard {
 // submits its untouched GroundScenario enum key; packs, classifier keys, and
 // the report schema are unchanged.
 export const SCENARIOS: ScenarioCard[] = [
-  { cardKey: 'NEW_HIRE', scenario: 'NEW_HIRE', label: 'New hire', tag: 'Starting', tagBg: '#E8F8F5', tagColor: '#085041',
+  { cardKey: 'NEW_HIRE', scenario: 'NEW_HIRE', label: 'New hire', tag: 'Starting', tagBg: 'var(--gw-green-bg)', tagColor: 'var(--gw-green-t)',
     desc: 'Get you and a new hire on the same page about the role, expectations, and what early success looks like, before anything drifts. You each answer separately; the report shows where you already match and where you do not.',
     examples: [
       'Someone starts Monday and you want to be sure you both mean the same thing by "doing well."',
       'You just hired a senior person and need what they own pinned down before day one.',
       'A new joiner and their manager each writing what success looks like in the first 90 days.',
     ] },
-  { cardKey: 'NEW_PROJECT', scenario: 'NEW_PROJECT', label: 'New project', tag: 'Starting', tagBg: '#E8F8F5', tagColor: '#085041',
+  { cardKey: 'NEW_PROJECT', scenario: 'NEW_PROJECT', label: 'New project', tag: 'Starting', tagBg: 'var(--gw-green-bg)', tagColor: 'var(--gw-green-t)',
     desc: 'Line everyone up on scope, ownership, and what "done" means before the work starts. Each person answers on their own; the report shows the gaps to close first.',
     examples: [
       'Kicking off a build and you want scope and "done" agreed before anyone writes code.',
       'A cross-team project where each team quietly assumes a different owner.',
       'Starting work with a client and you want both sides\' version of the goal on record.',
     ] },
-  { cardKey: 'NEW_ADVISOR', scenario: 'NEW_ADVISOR', label: 'New advisor or board member', tag: 'Starting', tagBg: '#E8F8F5', tagColor: '#085041',
+  { cardKey: 'NEW_ADVISOR', scenario: 'NEW_ADVISOR', label: 'New advisor or board member', tag: 'Starting', tagBg: 'var(--gw-green-bg)', tagColor: 'var(--gw-green-t)',
     desc: 'Pin down what the advisor will actually contribute, on what terms, so "available" does not quietly stand in for "contributing."',
     examples: [
       'Bringing on an advisor for equity and you want it clear what they will actually do for it.',
       'A new board member joining, each side writing what they expect from the relationship.',
     ] },
-  { cardKey: 'NEW_COFOUNDER', scenario: 'NEW_COFOUNDER', label: 'A new partner or co-founder', tag: 'Starting', tagBg: '#E8F8F5', tagColor: '#085041',
+  { cardKey: 'NEW_COFOUNDER', scenario: 'NEW_COFOUNDER', label: 'A new partner or co-founder', tag: 'Starting', tagBg: 'var(--gw-green-bg)', tagColor: 'var(--gw-green-t)',
     desc: 'Put what each of you expects to build, own, and contribute in writing, before those assumptions collide.',
     examples: [
       'You and a co-founder splitting equity and roles and want the assumptions said out loud first.',
       'A new equal partner joining the founding team.',
     ] },
-  { cardKey: 'NEW_MANAGER', scenario: 'NEW_MANAGER', label: 'A new manager taking over', tag: 'Starting', tagBg: '#E8F8F5', tagColor: '#085041',
+  { cardKey: 'NEW_MANAGER', scenario: 'NEW_MANAGER', label: 'A new manager taking over', tag: 'Starting', tagBg: 'var(--gw-green-bg)', tagColor: 'var(--gw-green-t)',
     desc: 'Get clear on scope, reporting, and success for someone stepping into an existing team or role.',
     examples: [
       'An interim leader stepping into an existing team for six months.',
       'A new manager taking over mid-project and you want scope and authority clear.',
     ] },
-  { cardKey: 'CONTRACT_RENEWAL', scenario: 'CONTRACT_RENEWAL', label: 'Contract or renewal', tag: 'Renewal', tagBg: '#EEF4FB', tagColor: '#0C447C',
+  { cardKey: 'CONTRACT_RENEWAL', scenario: 'CONTRACT_RENEWAL', label: 'Contract or renewal', tag: 'Renewal', tagBg: 'var(--gw-blue-bg)', tagColor: 'var(--gw-navy)',
     desc: 'Both sides give an honest account of how the term actually went, and what a fair next one looks like.',
     examples: [
       'A contractor\'s term is ending and you are deciding whether to renew.',
       'An agency engagement up for renewal and you want an honest account of what got delivered.',
     ] },
-  { cardKey: 'RECOGNITION', scenario: 'RECOGNITION', label: 'Raise, promotion, or recognition', tag: 'Recognition', tagBg: '#FDF3E3', tagColor: '#8A5C1A',
+  { cardKey: 'RECOGNITION', scenario: 'RECOGNITION', label: 'Raise, promotion, or recognition', tag: 'Recognition', tagBg: 'var(--gw-amber-bg)', tagColor: 'var(--gw-amber-t)',
     desc: 'Build the evidence behind the ask before the conversation, and see how the decision-maker reads the same record, so you both start from the same picture.',
     examples: [
       'You are going to ask for a raise and want the evidence lined up first.',
       'Someone is up for promotion and you want their record and your read to match before the talk.',
     ] },
-  { cardKey: 'PIP', scenario: 'PIP', label: 'Performance improvement plan', tag: 'Accountability', tagBg: '#FCEBEB', tagColor: '#791F1F',
+  { cardKey: 'PIP', scenario: 'PIP', label: 'Performance improvement plan', tag: 'Accountability', tagBg: 'var(--gw-red-bg)', tagColor: 'var(--gw-red-t)',
     desc: 'Run a fair plan with both sides on the same page: the concern, the support available, and what success looks like at the end.',
     examples: [
       'You are putting someone on a formal plan and want both sides on the concern and what success looks like.',
       'A capability concern where you want a fair record, not a he-said-she-said.',
     ] },
-  { cardKey: 'OKR_ALIGNMENT', scenario: 'OKR_ALIGNMENT', label: 'Goals & planning', tag: 'Planning', tagBg: '#EEF4FB', tagColor: '#0C447C',
+  { cardKey: 'OKR_ALIGNMENT', scenario: 'OKR_ALIGNMENT', label: 'Goals & planning', tag: 'Planning', tagBg: 'var(--gw-blue-bg)', tagColor: 'var(--gw-navy)',
     desc: 'Check everyone is genuinely on the same goals and plan, and catch the gaps and overlaps before the cycle locks in.',
     examples: [
       'Planning season and you want to check everyone\'s goals actually connect before they lock.',
       'Two teams whose objectives depend on each other and you are not sure the handoff is agreed.',
     ] },
-  { cardKey: 'WORKPLAN_BUDGET', scenario: 'WORKPLAN_BUDGET', label: 'Workplan & budget', tag: 'Planning', tagBg: '#EEF4FB', tagColor: '#0C447C',
+  { cardKey: 'WORKPLAN_BUDGET', scenario: 'WORKPLAN_BUDGET', label: 'Workplan & budget', tag: 'Planning', tagBg: 'var(--gw-blue-bg)', tagColor: 'var(--gw-navy)',
     desc: 'Check each person has actually built their plan and budget, and that it holds up against the resources available.',
     examples: [
       'Start of the quarter and you want each person\'s plan and budget to hold up against real resources.',
       'A plan that looks fine on paper but you suspect the budget behind it was assumed, not approved.',
     ] },
-  { cardKey: 'PULSE_CHECK', scenario: 'PULSE_CHECK', label: 'A regular read on live work', tag: 'Recurring', tagBg: '#E8F8F5', tagColor: '#085041',
+  { cardKey: 'PULSE_CHECK', scenario: 'PULSE_CHECK', label: 'A regular read on live work', tag: 'Recurring', tagBg: 'var(--gw-green-bg)', tagColor: 'var(--gw-green-t)',
     desc: 'A fast, repeatable read from each person: what is moving, what is stuck, what has changed. About five minutes.',
     examples: [
       'A quick read every two weeks from each person on what is moving and what is stuck.',
       'You want a lightweight recurring signal without calling a meeting.',
     ] },
-  { cardKey: 'DRIFT', scenario: 'DRIFT', label: 'Something\'s off track', tag: 'Off track', tagBg: '#FDF3E3', tagColor: '#8A5C1A',
+  { cardKey: 'DRIFT', scenario: 'DRIFT', label: 'Something\'s off track', tag: 'Off track', tagBg: 'var(--gw-amber-bg)', tagColor: 'var(--gw-amber-t)',
     desc: 'Name what was agreed, what actually happened, and the exact gap, so a vague worry becomes something you can act on. Fits a person not delivering, a project that has slipped, or a partnership under strain.',
     examples: [
       'A project blew up or is badly behind and everyone has a different story about why.',
       'A senior hire is not delivering what they were brought in to do.',
       'Cash is tight and you need everyone seeing the same runway and what has to change.',
     ] },
-  { cardKey: 'BOARD_STRATEGY', scenario: 'BOARD_STRATEGY', label: 'Board & leadership strategy', tag: 'Leadership', tagBg: '#EEF4FB', tagColor: '#0C447C',
+  { cardKey: 'BOARD_STRATEGY', scenario: 'BOARD_STRATEGY', label: 'Board & leadership strategy', tag: 'Leadership', tagBg: 'var(--gw-blue-bg)', tagColor: 'var(--gw-navy)',
     desc: 'Each leader gives their own read on strategy before the room debates it, so quiet disagreement shows up now, not after the decision.',
     examples: [
       'Before a strategy offsite, you want each leader\'s real read so quiet disagreement shows up early.',
       'The board looks aligned in the room but you suspect it is not on one big bet.',
     ] },
-  { cardKey: 'COHORT_CHECK', scenario: 'COHORT_CHECK', label: 'Many people in the same role', tag: 'Recurring', tagBg: '#E8F8F5', tagColor: '#085041',
+  { cardKey: 'COHORT_CHECK', scenario: 'COHORT_CHECK', label: 'Many people in the same role', tag: 'Recurring', tagBg: 'var(--gw-green-bg)', tagColor: 'var(--gw-green-t)',
     desc: 'An ongoing read from many people in the same role, each answering on their own. See the pattern, who is on track and who is stuck, without them swaying each other. For a group who are new, use "Onboarding a group" instead.',
     examples: [
       'Twenty field officers each answering the same question so you can see the pattern.',
@@ -129,21 +129,21 @@ export const SCENARIOS: ScenarioCard[] = [
   // situation to describe. It runs on the cohort machinery, which is the correct
   // shape - separate people, same questions, no swaying each other - and says so
   // in language the person actually has in their head.
-  { cardKey: 'COHORT_ONBOARDING', scenario: 'COHORT_CHECK', label: 'Onboarding several people at once', tag: 'Starting', tagBg: '#E8F8F5', tagColor: '#085041',
+  { cardKey: 'COHORT_ONBOARDING', scenario: 'COHORT_CHECK', label: 'Onboarding several people at once', tag: 'Starting', tagBg: 'var(--gw-green-bg)', tagColor: 'var(--gw-green-t)',
     desc: 'Several people starting the same role at once, each answering on their own. Settle them in, and see early who is finding it and who is struggling, before the end of the period decides anything.',
     examples: [
       'Four new managers on a three month onboarding that is also their probation.',
       'A cohort of new starters where you need to know by month two, not month three, who needs help.',
       'Trainees in different locations who never work together but are all learning the same job.',
     ] },
-  { cardKey: 'ACUTE_SHOCK', scenario: 'ACUTE_SHOCK', label: 'A shock just hit', tag: 'Urgent', tagBg: '#FCEBEB', tagColor: '#791F1F',
+  { cardKey: 'ACUTE_SHOCK', scenario: 'ACUTE_SHOCK', label: 'A shock just hit', tag: 'Urgent', tagBg: 'var(--gw-red-bg)', tagColor: 'var(--gw-red-t)',
     desc: 'A jarring event just happened. Get everyone\'s honest read of what actually happened and where things really stand, before anyone decides anything.',
     examples: [
       'A major client pulled out overnight and everyone has a different version of why.',
       'An incident just took things down and people are scrambling to understand what happened.',
       'Sudden bad news hit the team and you want honest reads before any decisions get made.',
     ] },
-  { cardKey: 'REALIGN_TEAM', scenario: 'REALIGN_TEAM', label: 'Get a team back on the same page', tag: 'Team', tagBg: '#FDF3E3', tagColor: '#8A5C1A',
+  { cardKey: 'REALIGN_TEAM', scenario: 'REALIGN_TEAM', label: 'Get a team back on the same page', tag: 'Team', tagBg: 'var(--gw-amber-bg)', tagColor: 'var(--gw-amber-t)',
     desc: 'You and your team see the situation differently. Each person gives their honest read before the group talks, so the conversation starts from a shared picture.',
     examples: [
       'The team is pulling two ways on a decision and you want each person\'s honest read before the meeting.',
@@ -158,7 +158,7 @@ export const SCENARIOS: ScenarioCard[] = [
   // kickoff, a renewal, a cohort - they got a shape chosen for them and never
   // saw a board. It says what it will do now, and the copy no longer promises
   // that we will work out the right ground, because nothing does that.
-  { cardKey: 'DESCRIBE_OWN', scenario: 'REALIGN_TEAM', label: 'Describe your own situation', tag: 'Anything else', tagBg: '#F5F3EF', tagColor: '#6B6560',
+  { cardKey: 'DESCRIBE_OWN', scenario: 'REALIGN_TEAM', label: 'Describe your own situation', tag: 'Anything else', tagBg: 'var(--gw-paper-2)', tagColor: 'var(--gw-sub)',
     desc: 'None of these quite fit? Describe it in your own words and we will open a ground where each person gives their own read first, privately, before anyone talks. If it turns out to be one of the situations above, pick that instead - it shapes the questions people are asked.' },
 ]
 
@@ -475,17 +475,17 @@ export function CreateGroundPage() {
                 the timeline and the people, and only then was told she could
                 not. The block was right; the timing made it feel like a trick. */}
             {canCreate.data && !canCreate.data.allowed && (
-              <div style={{ background: '#FDF3E3', border: '1px solid #F0DFC0', borderRadius: 8, padding: '12px 14px', marginBottom: 14 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#8A5C1A', marginBottom: 4 }}>
+              <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid #F0DFC0', borderRadius: 8, padding: '12px 14px', marginBottom: 14 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 4 }}>
                   You have used all {FREE_GROUND_LIMIT} of your free grounds
                 </div>
-                <div style={{ fontSize: 12.5, color: '#6B6560', lineHeight: 1.6, marginBottom: 10 }}>
+                <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
                   {canCreate.data.reason ?? 'Subscribe to open more grounds.'} You can still look
                   around here, but this one cannot be created until then.
                 </div>
                 <button
                   onClick={() => navigate('/billing')}
-                  style={{ padding: '8px 16px', borderRadius: 7, background: '#0A1628', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                  style={{ padding: '8px 16px', borderRadius: 7, background: 'var(--gw-dark)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
                 >
                   See plans
                 </button>
@@ -649,8 +649,8 @@ export function CreateGroundPage() {
 
             {!billingLoading && billingChecked && billingFree && (
               <div>
-                <div style={{ background: 'var(--gw-green-bg, #E8F8F5)', border: '1px solid var(--gw-green-b, #A7D9CC)', borderRadius: 10, padding: '20px 18px', marginBottom: 20 }}>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: '#085041', marginBottom: 6 }}>No payment needed</div>
+                <div style={{ background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b)', borderRadius: 10, padding: '20px 18px', marginBottom: 20 }}>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-green-t)', marginBottom: 6 }}>No payment needed</div>
                   {/* One statement about what they have, not two that disagree.
                       This said "unlimited Grounds" directly above "0 of 10
                       Grounds used" - the first thing a new admin reads about
@@ -665,7 +665,7 @@ export function CreateGroundPage() {
                 {/* The warning stays, but only when they are actually near the
                     wall. Repeating the count when they have eight left is noise. */}
                 {groundsUsed != null && !appliedAccessCode && groundsUsed >= FREE_GROUND_LIMIT - 2 && (
-                  <div style={{ fontSize: 12.5, color: '#8A5C1A', background: '#FDF3E3', border: '1px solid #F5D9A0', borderRadius: 8, padding: '10px 12px', marginBottom: 16, lineHeight: 1.5 }}>
+                  <div style={{ fontSize: 12.5, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 8, padding: '10px 12px', marginBottom: 16, lineHeight: 1.5 }}>
                     Only {FREE_GROUND_LIMIT - groundsUsed} {FREE_GROUND_LIMIT - groundsUsed === 1 ? 'ground' : 'grounds'} left on the free plan. After that you will need a subscription to open another.
                   </div>
                 )}
@@ -720,15 +720,15 @@ export function CreateGroundPage() {
                       </button>
                     </div>
                     {codeError && (
-                      <div style={{ fontSize: 12, color: '#791F1F', marginTop: 8 }}>{codeError}</div>
+                      <div style={{ fontSize: 12, color: 'var(--gw-red-t)', marginTop: 8 }}>{codeError}</div>
                     )}
                   </div>
                 )}
 
                 {codeApplied && (
                   <div style={{ marginTop: 16 }}>
-                    <div style={{ background: 'var(--gw-green-bg, #E8F8F5)', border: '1px solid var(--gw-green-b, #A7D9CC)', borderRadius: 10, padding: '16px 18px', marginBottom: 12 }}>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: '#085041', marginBottom: 4 }}>Code applied</div>
+                    <div style={{ background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b)', borderRadius: 10, padding: '16px 18px', marginBottom: 12 }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-green-t)', marginBottom: 4 }}>Code applied</div>
                       <div style={{ fontSize: 12, color: 'var(--gw-sub)' }}>Your access code has been validated and will be used when the Ground is created.</div>
                     </div>
                     <button className="gw-btn" onClick={() => setStep(3)}>Continue →</button>
@@ -1007,7 +1007,7 @@ export function CreateGroundPage() {
                 <div>{sessionTotal} sessions · {cadence.toLowerCase()}</div>
                 {resolutionState && <div>Resolution: {resolutionState}</div>}
                 {participants.length > 0 && <div>{participants.length} participant{participants.length !== 1 ? 's' : ''} invited</div>}
-                {appliedAccessCode && <div style={{ color: '#085041', fontWeight: 600 }}>Access code applied</div>}
+                {appliedAccessCode && <div style={{ color: 'var(--gw-green-t)', fontWeight: 600 }}>Access code applied</div>}
               </div>
             </div>
 

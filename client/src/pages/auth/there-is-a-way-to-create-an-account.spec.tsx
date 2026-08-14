@@ -56,6 +56,14 @@ beforeEach(() => {
   ;(authApi.entrySave as any).mockResolvedValue({ message: 'ok', email: 'her@x.test' })
 })
 
+/**
+ * THE LABEL IS "EMAIL", NOT "WORK EMAIL", AND THAT IS THE POINT. W15-1.
+ *
+ * Nothing in the code has ever required a company domain. The label was the only thing implying
+ * one, and it was enough to turn away somebody running a real business off a Gmail address - the
+ * exact small team this is for. Anchored as /^Email$/ so a future "Work email" fails here rather
+ * than quietly passing a loose match.
+ */
 describe('the create-account door', () => {
   it('is on the sign-in page, and says what it is', async () => {
     renderAuth()
@@ -91,7 +99,7 @@ describe('the create-account door', () => {
     renderAuth('?mode=signup')
     await waitFor(() => screen.getByLabelText(/Your name/i))
     fireEvent.change(screen.getByLabelText(/Your name/i), { target: { value: 'Sam Taylor' } })
-    fireEvent.change(screen.getByLabelText(/Work email/i), { target: { value: 'sam@acme.test' } })
+    fireEvent.change(screen.getByLabelText(/^Email$/i), { target: { value: 'sam@acme.test' } })
     fireEvent.change(screen.getByLabelText(/Your organisation/i), { target: { value: 'Acme Ltd' } })
     fireEvent.click(screen.getByRole('button', { name: /Create my account/ }))
     await waitFor(() => expect(authApi.entrySave).toHaveBeenCalledWith(
@@ -104,7 +112,7 @@ describe('the create-account door', () => {
     renderAuth('?mode=signup')
     await waitFor(() => screen.getByLabelText(/Your name/i))
     fireEvent.change(screen.getByLabelText(/Your name/i), { target: { value: 'Sam' } })
-    fireEvent.change(screen.getByLabelText(/Work email/i), { target: { value: 'sam@acme.test' } })
+    fireEvent.change(screen.getByLabelText(/^Email$/i), { target: { value: 'sam@acme.test' } })
     fireEvent.click(screen.getByRole('button', { name: /Create my account/ }))
     await waitFor(() => expect(authApi.entrySave).toHaveBeenCalledWith('sam@acme.test', { payload: { firstName: 'Sam' } }))
   })
@@ -119,8 +127,8 @@ describe('a failure is not a success', () => {
      */
     ;(authApi.entrySave as any).mockRejectedValue({ response: { status: 500 } })
     renderAuth('?mode=signup')
-    await waitFor(() => screen.getByLabelText(/Work email/i))
-    fireEvent.change(screen.getByLabelText(/Work email/i), { target: { value: 'sam@acme.test' } })
+    await waitFor(() => screen.getByLabelText(/^Email$/i))
+    fireEvent.change(screen.getByLabelText(/^Email$/i), { target: { value: 'sam@acme.test' } })
     fireEvent.click(screen.getByRole('button', { name: /Create my account/ }))
     await waitFor(() => expect(screen.getByText(/did not send/i)).toBeTruthy())
     expect(screen.queryByText(/Check your email/)).toBeNull()
@@ -130,8 +138,8 @@ describe('a failure is not a success', () => {
     // No response at all. Nothing about this reveals whether the address is registered.
     ;(authApi.entrySave as any).mockRejectedValue({})
     renderAuth('?mode=signup')
-    await waitFor(() => screen.getByLabelText(/Work email/i))
-    fireEvent.change(screen.getByLabelText(/Work email/i), { target: { value: 'sam@acme.test' } })
+    await waitFor(() => screen.getByLabelText(/^Email$/i))
+    fireEvent.change(screen.getByLabelText(/^Email$/i), { target: { value: 'sam@acme.test' } })
     fireEvent.click(screen.getByRole('button', { name: /Create my account/ }))
     await waitFor(() => expect(screen.getByText(/did not send/i)).toBeTruthy())
   })
@@ -141,8 +149,8 @@ describe('a failure is not a success', () => {
     // rather than an enumeration oracle.
     ;(authApi.entrySave as any).mockRejectedValue({ response: { status: 409 } })
     renderAuth('?mode=signup')
-    await waitFor(() => screen.getByLabelText(/Work email/i))
-    fireEvent.change(screen.getByLabelText(/Work email/i), { target: { value: 'sam@acme.test' } })
+    await waitFor(() => screen.getByLabelText(/^Email$/i))
+    fireEvent.change(screen.getByLabelText(/^Email$/i), { target: { value: 'sam@acme.test' } })
     fireEvent.click(screen.getByRole('button', { name: /Create my account/ }))
     await waitFor(() => expect(screen.getByText(/already has an account/i)).toBeTruthy())
   })

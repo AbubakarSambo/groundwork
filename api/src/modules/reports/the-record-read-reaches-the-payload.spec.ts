@@ -49,12 +49,30 @@ function makeService({ closed = true }: { closed?: boolean } = {}) {
     report: RELEASED,
   };
   const prisma: any = {
+    /**
+     * `GroundBaseline` is read by `get()` and by the report now - the team's starting point, which had
+     * no reader until it was built. A mock without it throws on `findFirst` of undefined, which is what
+     * these four suites did the moment the read landed. Null here means "not stated", the state every
+     * one of these fixtures is actually in.
+     */
+    groundBaseline: { findFirst: jest.fn(async () => null) },
+    /**
+     * Nothing recorded as a starting point on this fixture, which is the ordinary case and keeps the
+     * movement gate out of what this suite is actually about. The gate itself is pinned in
+     * `one-session-is-not-a-movement.spec.ts`.
+     */
+    groundBaselineEntry: { findMany: jest.fn(async () => []) },
+    /** Read by `get()` since per-person objectives were built. Empty is "nobody has stated one". */
+    personObjective: { findMany: jest.fn(async () => []) },
     ground: { findUnique: jest.fn(async () => ground) },
     user: { findUnique: jest.fn(async () => ({ role: 'MEMBER', organizationId: 'org1' })) },
     reportActivation: { findUnique: jest.fn(async () => ({ status: 'ACTIVATED' })), findMany: jest.fn(async () => []) },
     recordEntry: { findMany: jest.fn(async () => ENTRIES) },
     groundDocument: { findMany: jest.fn(async () => [{ participantId: 'p-part', name: 'handover-plan.pdf', fileName: 'handover-plan.pdf' }]) },
-    checkIn: { findMany: jest.fn(async () => []) },
+    checkIn: {
+      findMany: jest.fn(async () => []),
+      aggregate: jest.fn(async () => ({ _max: { sessionNumber: 4 } })),
+    },
     deferral: { findMany: jest.fn(async () => []) },
   };
   const config: any = { get: jest.fn(() => true) };

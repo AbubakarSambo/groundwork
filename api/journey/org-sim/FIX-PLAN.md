@@ -1614,7 +1614,12 @@ The phrase now only counts when nothing attributes it to the speaker first. A ba
 before pushing. Nothing on this branch touched that prompt; the model simply phrased it this way
 on this run, and would have tripped the same regex on main.
 
-## W8-64 - One failure, two error surfaces - **OPEN, small**
+## W8-64 - One failure, two error surfaces - **ALREADY DONE, the entry was stale**
+
+Checked on 13 August while answering what is left. `grounds.ts` passes both `skipForbiddenToast` and
+`skipNotFoundToast` on the transcript read, citing this item by number. Fixed at some point and never
+marked. Fifth time in two waves that something on an open list turned out to be built - which is its
+own finding: this file is long enough that reading it is no longer a substitute for checking the code.
 
 Seen while photographing the chat view against a stale local API. The transcript
 request 404s, and the person gets both:
@@ -4768,6 +4773,139 @@ And `/grounds/:id/report` stays a real URL even though the Report tab shows the 
 because the report-ready email points at it. Same reason `/auth/sent`, `/set-password`,
 `/reset-password` and `/invite` cannot be renamed: those URLs are in inboxes nobody controls.
 
+### W14-12 · Watched at rest, and it was calling people late · DONE
+
+Done by moving a real ground's last session back to NOT_STARTED with the date five days out, reading
+the page, and putting the rows back exactly as they were.
+
+Most of it holds up. The composer says the right thing - "Your next check-in opens 18 August. Notes
+are yours alone" - and offers the note instead of a dead input, which is the whole point of that
+design.
+
+Two inches above it, the roster said "You - waiting, Abubakar - waiting".
+
+Waiting is the word for somebody who has not done a thing they could have done. Neither of them
+could have; the session does not exist yet. On the product whose entire subject is who did what and
+when, a ground sitting quietly between sessions was telling a lead their team was behind. It now
+shows the names with no status until the session opens, and the two halves of that screen read the
+same state rather than deriving it twice, which is how they came to disagree.
+
+### W14-8 · One design language, and it already existed · PARTLY DONE
+
+The audit said the marketing site and the product carried different design principles. Reading the
+colours says something more useful: the site was already using the product's palette - #1A1916,
+#0C447C, #6B6560, #9B9590, #E2E0DB, the same values as `client/src/index.css` - typed out by hand 538
+times with nothing naming them.
+
+So there was never a second design language. There was one language with no vocabulary, which is how
+it drifted where it drifted:
+
+| Drift | Uses | Resolved to |
+| --- | --- | --- |
+| `#4A5568`, a blue-grey from another palette, used for body text beside the product's own | 35 | `--gw-sub` |
+| Four near-identical off-whites: `#FAF9F7`, `#F5F3EF`, `#EDEBE7`, `#E8E6E3` | 60 | `--gw-paper`, `--gw-paper-2` |
+
+**Two things were broken and neither announced itself.** `global.css` was pulled in with a
+`<link rel="stylesheet" href="/src/styles/global.css">`, which Vite serves as a JavaScript module in
+dev - so the stylesheet applied nothing at all. That was invisible while the file held one Tailwind
+import and every page wrote literals; the moment tokens went in there, the whole site would have
+rendered with no palette. And the obvious place to import it, `Layout.astro`, reaches four pages out
+of five: the home page, the busiest one, does not use the layout - it is a standalone document with
+its own head. The import lives in `Nav.astro`, the one thing all five include.
+
+Both found by reading `--gw-text` off the running page and getting an empty string, twice.
+
+Checked against the pre-change render rather than by eye: low-contrast elements went from 8 to 7, so
+this did not cost anything. Guarded by `marketing/one-palette.mjs`, bite-checked on both failure
+modes.
+
+**The app had the same problem, to itself.** 1240 hex literals across its own pages, and the
+commonest were exactly the tokens sitting in `index.css` a few files away: #E2E0DB 138 times,
+#0C447C 118, #9B9590 107. Down to 309 one-off accents. `--gw-paper` and `--gw-paper-2` now exist in
+both `index.css` and the site's `global.css`, same names and same values, so the product and its
+landing page can be read against each other.
+
+Also gone: six `var(--gw-green-bg, #E8F8F5)`-style fallbacks. A fallback is a second opinion about a
+colour that already has one, and it is what you get on the day somebody renames the token.
+
+**The component half, where it mattered most.** The report - the document this whole system exists to
+produce - hand-rolled its own uppercase section heading: 10.5px, muted, a plain div with no heading
+semantics, used thirteen times, plus an eighth copy written inline. The kit's `Sec`, lifted out of
+BoardPage because the board is the best-written page in the product, is 12.5px, sub, and a real
+`<h2>`. Two components for one job and the worse one on the report. It delegates now, and Settings'
+six copies of the same label do too.
+
+Guarded by `client/src/components/gw/one-vocabulary.spec.ts`, bite-checked.
+
+**What is genuinely still open:** the bulk of the pages are still built from inline styles rather
+than Zone/Card/Row/Stat. Every mapping in this pass was value-preserving, so nothing moved visually,
+and the palette and the heading are now shared. Rebuilding page layouts on the kit's structure is a
+redesign rather than a wiring job, and it should be one deliberate pass rather than a sweep.
+
+**How far this was proved:** the palette at rendered output on the marketing home page and the app's
+pricing and auth pages, zero low-contrast elements, against a pre-change baseline of eight. The
+heading swap by typecheck and the suites only: those pages are behind sign-in and this dev database's
+seeded accounts are not mine to reset for a screenshot.
+
+### W14-10 · The twelve-session run, on the fixed code · PASSED
+
+The shipping gate. Last artifact before this was 4 August; this is the same engine run against
+everything in waves 13 and 14.
+
+Fresh database, migrations from empty, the org-sim harness driving the real HTTP API as the real
+users against the live model. Ground 1, the twelve-session weekly new-hire ground, two parties.
+
+| | |
+| --- | --- |
+| Sessions | 12 of 12 |
+| Check-ins | 24 |
+| Closed naturally | 23 |
+| Reports released | 12 of 12 |
+| Findings recorded by the harness | 0 |
+
+The one check-in that did not close naturally is in session 12, and the report says so itself rather
+than papering over it: it opens "one party's record contains significantly fewer exchanges and less
+specific detail than the other's" before synthesising. That is the behaviour we want from a thin
+record, not a defect.
+
+The synthesis is specific where the record was specific - it counts the ownership lines growing from
+5 to 13 across the twelve weeks, which is the kind of thing only a real run produces.
+
+Tasks #53 and #54 are this, and they are closed.
+
+### W14-13 · The confidence read is on · DONE
+
+The open question from wave 14. Turned on, and the caveat that was blocking it is resolved.
+
+**The caveat was mine, and it was wrong.** Soft spots came back empty on the test ground and I read
+that as unproven. Checked against her real closed twelve-session ground instead:
+
+| | Sessions | Corroborated | Specifics repeated | Documents referred to |
+| --- | --- | --- | --- | --- |
+| Lead | 12 | 7 of 16 corroborable | 5 of 18 | no documents |
+| Participant | 12 | 16 of 33 corroborable | 8 of 24 | 1 of 1 |
+
+Empty is the correct answer there. Nothing is unchecked, the detail moves session to session, and the
+one attached document is actually referred to. Each of the three spots then fired on a shape that
+deserves it, and the false positive she caught twice - a lead whose account is all targets nobody
+else could corroborate - correctly stayed silent.
+
+**Two things found by looking at the real thing rather than the fixture.**
+
+The weigh section on her ground is not thin at all: fifteen standards she stated in her own words
+across twelve sessions, with the `[INFERRED:]` markers present that the page splits out.
+
+And the page was **dropping the section's own note**. `whatALeaderCanWeigh` computes a sentence about
+this ground - "three things you said mattered were never reached by anybody's account. That is not
+evidence against anyone; it means the record cannot answer that part" - and the page rendered only
+the standing caveat that ships beside it. Two notes doing different jobs. A lead was reading a list
+of unmet standards with nothing telling them what that does and does not mean, which is the one
+sentence the module wrote for exactly that moment. Both render now.
+
+The parse still refuses everything except the exact string "true", so an environment that forgets the
+variable gets the product as it was rather than a half-configured version of the new thing.
+Production is set outside this repo; `.env.example` carries it.
+
 ## Sizing
 
 | | S | M |
@@ -4858,3 +4996,1360 @@ two pages disagree gets the whole benefit and none of the coupling.
 
 api 1590 tests / 167 suites, client 546 / 88 files, marketing builds with both postbuild checks
 green. Every guard bite-checked in both directions. Twelve new or rewritten guards across the wave.
+
+---
+
+# Wave 14 · From a 6 to a 9.5
+
+Her brief: the peer-visibility toggle, billing that reads as ground setup when it is
+organisation setup, one design language everywhere including the marketing site, links and APIs
+that go nowhere, the conversation engine against today's changes, and a check on whether the
+things I called orphans were things we actually want.
+
+**The honest headline.** Wave 13 fixed what a person trips over. What is left is a different
+class: **the server computes materially more than the product shows**, and the parts that decide
+who sees what are half-wired. That is what keeps this at a 6. None of it is exotic; most of it
+is connecting things that already exist.
+
+## First: she was right about the orphans
+
+I deleted components because nothing imported them. That test was too weak, and here is the
+proof.
+
+**`ConfDots` was not dead weight.** The API has a live confidence feature - `CONFIDENCE_ENABLED`,
+`what-a-leader-can-weigh.ts`, and `whatTheRecordHolds()` returning `whatTheGroundCanTellYou` and
+`softSpots` - and **the client renders none of it**. `ConfDots` was the display half of a feature
+that exists on the server and was never wired up. Deleting it removed the last trace of unfinished
+work rather than dead weight, and the CSS for it is still sitting in `index.css`.
+
+**The rule I should have used:** unimported is not unwanted. Before deleting a component, ask
+whether the server still computes the thing it displays. If it does, the component is a to-do
+with a filename.
+
+| What I deleted | Verdict now |
+|---|---|
+| `ConfDots` | **Wrong call.** Restore when W14-1 wires the confidence read. It is eleven lines; the loss is the signal, not the code |
+| `GwBrand` | Fine. W13-11 replaced in-app wordmarks with page names, so nothing wants it |
+| `/demo/:persona` | Her call, and its founder screen labelled named people with pattern codes |
+| `/feed` + `AlignmentService` | Defensible - three counts the grounds list already shows - but it was the only org-level view in the product. If the answer to "how is my organisation doing" should exist, it comes back as something better, not as that page |
+| `GET /users/privacy-audit` | Right to delete: it read across organisations. **But the capability is worth having** - see W14-9 |
+| `surfacedForGround` | Fine, the ground page reads the same detections |
+
+## The theme: built on the server, invisible in the product
+
+Six substantial capabilities the API computes and **no client file mentions**:
+
+| What the server produces | Where it should surface |
+|---|---|
+| `whatTheGroundCanTellYou` + `softSpots` (confidence) | The report, and the lead's view before a decision |
+| `specificityLevel`, `specificityHistory`, `specificitySignal` | The lead's Sessions tab: who is giving checkable answers |
+| `detectedFunction` + `detectedFunctionConfidence` | The contribution read - what this person's role actually looks like |
+| `patternDetections`, `periodsObserved`, `consecutivePeriods` | Already partly on the board; nothing on the ground page |
+| `groundAuditLog` | Nowhere. An audit trail nobody can read is not an audit trail |
+| `toAcknowledge`, `resolvable`, `resolvedState` | The resolution step |
+
+**This is the difference between a 6 and a 9.5.** The product's promise is that it sees things a
+person cannot; a large part of that seeing currently stops at the database.
+
+### W14-1 · Wire the confidence read - **DONE**
+Both are on the report now, lead only, above the full account:
+
+- **What this ground can tell you** - the lead's own words for what doing well means, what the
+  record holds against them, and **what nobody has evidence for**. It carries the module's own
+  `THIS_IS_MATERIAL_NOT_A_VERDICT` string rather than a paraphrase, because a paraphrase is where
+  the hedge gets lost.
+- **Where this picture is thin** - each soft spot with the thing that would settle it, worded
+  about the record and never about the person, exactly as `confidence-in-the-picture.ts` argues.
+
+**What it produced on a real ground, the first time anybody saw it.** Twelve sessions, and five
+standards the lead had stated that nothing in the record ever reached - including *"What I am
+watching for is whether he asks for help early or late."* That is the thing a person cannot see
+for themselves, because absence is invisible, and it has been computed and discarded on every
+ground until today.
+
+**Two things found by rendering it:**
+
+1. **`[INFERRED: ...]` reached the reader.** The engine marks what it concluded rather than heard,
+   and `board/reads.ts` and the conversation service both strip it - this section did not. So a
+   list headed "what you said doing well means" contained *"him deciding anything without checking
+   with me first [INFERRED: Implied that success is seeing him act with independent judgment]"*.
+   It is now split out and shown as a small **inferred** tag with the reason on hover: deleting it
+   would present an inference as a quotation, in the one section whose promise is quotation.
+2. **The whole feature is behind `CONFIDENCE_ENABLED`, which is not set anywhere.** That is why
+   nobody noticed the UI was missing: the payload was empty in every environment. Wiring the UI is
+   necessary and not sufficient - **somebody has to decide to turn it on**, and that is a product
+   call about whether a lead should see this, not a deployment detail.
+
+Bite-checked in four directions, including one that did not bite first time: asserting the
+inference helper EXISTS passed while the call site was replaced with a pass-through. A helper
+nothing calls is the same shape as a component nothing imports.
+
+### W14-2 · Surface specificity where the lead acts - **M**
+The engine scores how checkable each person's answers are, per session, and keeps the history. The
+Sessions tab shows status pills. One column, and a lead can see who is giving evidence and who is
+giving adjectives - which is the thing they cannot get from a meeting.
+
+#### W14-2 · Specificity improved, not removed · DONE
+
+She was right to push back. My plan had this dropped from the lead's weigh section and left there, which
+is half a fix: the module's rule is that specificity belongs to the person, and the person was being
+handed the word "low" with nothing to do about it, twice on the same page.
+
+What it returns now, still owner only:
+
+| Was | Is |
+| --- | --- |
+| `label: 'low'` | the direction it is moving, and only past three sessions |
+| printed twice on the participant page | once, on the record tab |
+| a description of what specificity means | the concrete thing their own recent answers are missing |
+| nothing | their own best answer quoted back, as what checkable looked like |
+
+`whatWouldHelp` is derived by `runIntake`, the engine's own reader, so it names what the engine was
+looking for and did not find rather than scoring the prose. The page now says out loud that the lead
+never sees it, because somebody reading feedback on their own writing assumes otherwise.
+
+Guard: `api/src/modules/grounds/specificity-belongs-to-the-person.spec.ts`, bite-checked on the
+three-session floor and on the intake read.
+
+## W14-3 · The audit trail has no reader - **S**
+`groundAuditLog` records who changed what on a ground. Put it on Ground settings, newest first.
+Small, and it is the difference between "trust us" and "look".
+
+## Who sees what is half-wired
+
+#### W14-3 · The audit log has a reader · DONE
+
+`updateTimeline` has been appending every change to how long a ground runs and how often people check
+in, under a comment saying this makes them "traceable without a separate audit table". Traceable by
+whom was never answered. Only `contextNotes` was read back out; the timeline half went into the
+database and stopped there.
+
+Which means a lead could cut a ground from eight weeks to four after people had started answering and
+nobody could see it had happened, in the product whose claim is that the record is the record.
+
+`get()` now returns `settingsChanges` to every party, and Ground settings renders it under the
+controls that write it, newest first, with what it changed FROM as well as to.
+
+Who made the change is deliberately not resolved to a name. Peer visibility can be off on a ground,
+and a name on a settings page would walk straight around it. "The lead" or "a party" is all anybody
+needs and is true either way. Guarded and bite-checked.
+
+## W14-4 · The peer-visibility toggle does not exist in the product - **DONE**
+`PATCH /grounds/:id/peer-visibility` is live, tested, and **called by nothing**. Its default is
+computed per scenario family - hidden on evaluation and cohort grounds, shown elsewhere - so today
+the lead cannot see the rule, let alone change it. `peopleWorkTogether` and
+`restrictExternalVisibility` both have controls; this one, the one that decides whether people can
+see each other at all, does not.
+
+Done: **"Can the people here see each other?"** sits above the contact toggle on Ground settings,
+says what each state means in plain terms, and when the ground has never set it says so - "Not
+set, so this ground uses the default for its kind: shown."
+
+**The default comes from the server now.** My first version listed the evaluative scenarios in the
+client and derived the default from them - a second copy of `familyFor()` that would drift. It was
+wrong immediately: I had NEW_HIRE down as evaluative and the server does not. `get()` now returns
+`peersVisibleEffective` (what it applied) and `peersDefaultVisible` (what it would apply), so the
+control shows the rule rather than re-deriving it.
+
+**And the contact toggle stopped lying.** Its copy said "participants can see who's here (names,
+roles, and presence)", which is untrue when this new setting is off. It now says so.
+
+Verified end to end: the lead turns it off, and the other party disappears from the participant's
+payload - the service filters them, so it is not a client decision.
+
+### W14-5 · A participant is not told the rule that governs them - **DONE**
+"Who is in this" now says which kind of empty it is: *"On this ground people check in without
+seeing each other. Your lead knows who is here; you will not see the others or what they wrote,
+and they will not see you."*
+
+Keyed on the ground's rule rather than on the roster being short, because a genuinely single-party
+ground is a different thing and still says nothing.
+
+**The bite-check found the wiring unpinned:** removing `peersHidden` from the participant page left
+all 550 tests green, because the component's behaviour was pinned and the fact that anything passes
+it was not. A prop nothing supplies is a feature nobody gets. Both pages are now asserted.
+
+## Billing is organisation setup wearing ground clothes
+
+### W14-6 · A paying organisation with no open grounds cannot manage its subscription - **DONE**
+`BillingPage` derives the subscription from `grounds[0].org`, because `GET /billing/status`
+returns only active grounds and a card. So an organisation that has closed its grounds sees
+**"Free · No subscription"** and loses Pause, Resume and Cancel entirely.
+
+`getStatus` now returns the organisation's `subscription` (plan, status, period end, whether the
+free extension is used) and `people` (count against the plan's cap), and the page reads it there.
+
+Verified on the exact broken case: an organisation with a live SMALL_TEAM subscription and every
+ground closed. Before, the page said **"Free · No subscription"** with no controls. Now it reads
+"Small Team · $50/mo · Up to 20 people · 3 of 20 people · Active", with Pause and Cancel.
+
+Two arms bite-checked, including putting the page back on `grounds[0].org` - the line that caused
+it. The seat count uses the caps already on the service rather than a third copy of them.
+
+**Still to do on this item:** the page's shape. The plan and the people are the organisation's, the
+session balances are per ground, and they still share one column. That is the part her "it looks
+like ground setup" was about, and it is a layout job that belongs with W14-8.
+
+### W14-7 · Seat counting is invisible until it bites - **DONE**
+Done with W14-6: "3 of 20 people" under the plan, and it turns amber and says "over the plan" when
+the organisation is past its cap. An unlimited or absent plan shows a plain count rather than an
+invented ceiling.
+
+## One design language
+
+### W14-8 · Four pages of twenty-eight use the board's kit - **L, but splittable**
+`components/gw/kit.tsx` - Zone, Sec, Card, Row, Pill, Stat - is the board's vocabulary and reads
+better than everything else. It is used by the board, the two ground pages and the grounds list.
+Everything else hand-rolls, and the marketing site shares nothing at all: every page inlines its
+own hex values, and the nav I extracted yesterday is the first shared component it has ever had.
+
+Do it in three passes, not one:
+1. **Tokens first.** One palette and type scale as CSS variables, imported by both the app and the
+   marketing site. Today the same navy is written as `#0C447C` in about forty places across two
+   repositories.
+2. **The app's remaining pages onto the kit** - settings, billing, people, prompts, not-found,
+   auth. `one-look-not-five.spec.ts` already fails a page that imports the kit and hand-rolls it;
+   extend it to fail a page that hand-rolls a section label at all.
+3. **The marketing site onto the same tokens**, keeping its own layout. It is a different job -
+   selling, not operating - and it should look like the same company, not like the same screen.
+
+## Ready to ship, or not
+
+### W14-9 · There is no answer to "what do you hold about me" - **M**
+I deleted the privacy audit because it read across organisations. The capability is worth having
+and the product claims it: the marketing site says a person's answers stay theirs. Build it
+properly - scoped to the caller's organisation, reachable from Settings, showing what is held,
+which grounds it came from, and the export and delete that already exist as endpoints.
+
+### W14-9 · The answer to "what do you hold about me" · DONE
+
+Rebuilt, and this time it cannot have the shape that made me delete the last one. The old privacy
+audit read across organisations, so an admin could ask whether a stranger at another company had a
+record. `GET /users/me/export` and `DELETE /users/me/data` take no id at all - the user comes off the
+token - so that shape is not available here.
+
+Both endpoints have existed since the GDPR work with no caller anywhere in the client. Settings now
+has a Your data section: what is held, which grounds it came from, download, and erase behind a
+confirm. Loaded on demand, because this is somebody's whole record and fetching it because they came
+to change a phone number is the wrong default for the one page meant to be careful with it.
+
+**The copy was wrong on the first pass and it mattered.** I wrote that erasing "removes your name and
+your answers". `eraseAccount` anonymises the account and explicitly keeps what was written into a
+ground, under the other party's claim on the shared record. A privacy panel that overstates erasure
+is worse than none, because somebody relies on it. It now says the name goes and the answers stay
+without it, which is what the server does.
+
+Proved on her live account: 33 things written, across 12 check-ins, on one ground.
+
+### W14-10 · The engine has not been run end to end since 4 August - **L, and this is the shipping gate**
+The last full journey artifact is nine days old. Since then: the report's name substitution
+changed twice, `ENGINE_RULES` gained a rule about claims made against a colleague, the report and
+board were reordered, and a dozen pages moved. The persona suites cover single turns and one
+returning path; **nothing has walked twelve sessions on the current code.**
+
+Her own pending task says this. It is the gate: a report is the product, and the only proof that
+twelve sessions of real conversation still produce a good one is to run twelve sessions.
+
+### W14-11 · The known entry-flow bug is still open - **M**
+"A ground made in the entry chat goes missing after sign-in" is recorded and unfixed. That is the
+first five minutes of the product for every new person.
+
+### W14-11 · The ground that went missing after sign-in · DONE, and it was two bugs
+
+R1 on the pending list. The entry flow builds a whole ground before anybody has an account, so it
+lives in the browser until a sign-in finishes. There were two sign-ins reading two different keys,
+and the Google one had both halves of it.
+
+**It deleted its key before attempting the commit.** A failed request took the setup with it. The
+ground was never lost on the server; it was deleted in the browser by the code meant to be saving it,
+with no copy left anywhere. The catch even said "their session is still in storage" - the history
+was, the payload was not.
+
+**It read a snapshot frozen at the moment they clicked Google.** `EntryChatPage` keeps
+`gw_commit_payload` current as somebody keeps editing and never touches the Google snapshot, so
+anybody who added a person after clicking Google committed a ground without them.
+
+One loader now, `entry-handover.ts`, used by both paths, preferring the key that is kept in sync.
+Nothing is cleared until a ground exists, and a failed commit says so instead of dropping them on
+/start with no explanation. Bite-checked on the key order, which is the fix.
+
+### W14-12 · Session pacing has never been seen at rest - **S**
+Everything I verified used a ground whose sessions were all complete or all open. Nobody has
+watched a ground sit between sessions with a date in the future, which is where most grounds spend
+most of their life.
+
+### W14-12 · Watched at rest, and it was calling people late · DONE
+
+Done by moving a real ground's last session back to NOT_STARTED with the date five days out, reading
+the page, and putting the rows back exactly as they were.
+
+Most of it holds up. The composer says the right thing - "Your next check-in opens 18 August. Notes
+are yours alone" - and offers the note instead of a dead input, which is the whole point of that
+design.
+
+Two inches above it, the roster said "You - waiting, Abubakar - waiting".
+
+Waiting is the word for somebody who has not done a thing they could have done. Neither of them
+could have; the session does not exist yet. On the product whose entire subject is who did what and
+when, a ground sitting quietly between sessions was telling a lead their team was behind. It now
+shows the names with no status until the session opens, and the two halves of that screen read the
+same state rather than deriving it twice, which is how they came to disagree.
+
+### W14-8 · One design language, and it already existed · PARTLY DONE
+
+The audit said the marketing site and the product carried different design principles. Reading the
+colours says something more useful: the site was already using the product's palette - #1A1916,
+#0C447C, #6B6560, #9B9590, #E2E0DB, the same values as `client/src/index.css` - typed out by hand 538
+times with nothing naming them.
+
+So there was never a second design language. There was one language with no vocabulary, which is how
+it drifted where it drifted:
+
+| Drift | Uses | Resolved to |
+| --- | --- | --- |
+| `#4A5568`, a blue-grey from another palette, used for body text beside the product's own | 35 | `--gw-sub` |
+| Four near-identical off-whites: `#FAF9F7`, `#F5F3EF`, `#EDEBE7`, `#E8E6E3` | 60 | `--gw-paper`, `--gw-paper-2` |
+
+**Two things were broken and neither announced itself.** `global.css` was pulled in with a
+`<link rel="stylesheet" href="/src/styles/global.css">`, which Vite serves as a JavaScript module in
+dev - so the stylesheet applied nothing at all. That was invisible while the file held one Tailwind
+import and every page wrote literals; the moment tokens went in there, the whole site would have
+rendered with no palette. And the obvious place to import it, `Layout.astro`, reaches four pages out
+of five: the home page, the busiest one, does not use the layout - it is a standalone document with
+its own head. The import lives in `Nav.astro`, the one thing all five include.
+
+Both found by reading `--gw-text` off the running page and getting an empty string, twice.
+
+Checked against the pre-change render rather than by eye: low-contrast elements went from 8 to 7, so
+this did not cost anything. Guarded by `marketing/one-palette.mjs`, bite-checked on both failure
+modes.
+
+**The app had the same problem, to itself.** 1240 hex literals across its own pages, and the
+commonest were exactly the tokens sitting in `index.css` a few files away: #E2E0DB 138 times,
+#0C447C 118, #9B9590 107. Down to 309 one-off accents. `--gw-paper` and `--gw-paper-2` now exist in
+both `index.css` and the site's `global.css`, same names and same values, so the product and its
+landing page can be read against each other.
+
+Also gone: six `var(--gw-green-bg, #E8F8F5)`-style fallbacks. A fallback is a second opinion about a
+colour that already has one, and it is what you get on the day somebody renames the token.
+
+**The component half, where it mattered most.** The report - the document this whole system exists to
+produce - hand-rolled its own uppercase section heading: 10.5px, muted, a plain div with no heading
+semantics, used thirteen times, plus an eighth copy written inline. The kit's `Sec`, lifted out of
+BoardPage because the board is the best-written page in the product, is 12.5px, sub, and a real
+`<h2>`. Two components for one job and the worse one on the report. It delegates now, and Settings'
+six copies of the same label do too.
+
+Guarded by `client/src/components/gw/one-vocabulary.spec.ts`, bite-checked.
+
+**What is genuinely still open:** the bulk of the pages are still built from inline styles rather
+than Zone/Card/Row/Stat. Every mapping in this pass was value-preserving, so nothing moved visually,
+and the palette and the heading are now shared. Rebuilding page layouts on the kit's structure is a
+redesign rather than a wiring job, and it should be one deliberate pass rather than a sweep.
+
+**How far this was proved:** the palette at rendered output on the marketing home page and the app's
+pricing and auth pages, zero low-contrast elements, against a pre-change baseline of eight. The
+heading swap by typecheck and the suites only: those pages are behind sign-in and this dev database's
+seeded accounts are not mine to reset for a screenshot.
+
+### W14-10 · The twelve-session run, on the fixed code · PASSED
+
+The shipping gate. Last artifact before this was 4 August; this is the same engine run against
+everything in waves 13 and 14.
+
+Fresh database, migrations from empty, the org-sim harness driving the real HTTP API as the real
+users against the live model. Ground 1, the twelve-session weekly new-hire ground, two parties.
+
+| | |
+| --- | --- |
+| Sessions | 12 of 12 |
+| Check-ins | 24 |
+| Closed naturally | 23 |
+| Reports released | 12 of 12 |
+| Findings recorded by the harness | 0 |
+
+The one check-in that did not close naturally is in session 12, and the report says so itself rather
+than papering over it: it opens "one party's record contains significantly fewer exchanges and less
+specific detail than the other's" before synthesising. That is the behaviour we want from a thin
+record, not a defect.
+
+The synthesis is specific where the record was specific - it counts the ownership lines growing from
+5 to 13 across the twelve weeks, which is the kind of thing only a real run produces.
+
+Tasks #53 and #54 are this, and they are closed.
+
+### W14-13 · The confidence read is on · DONE
+
+The open question from wave 14. Turned on, and the caveat that was blocking it is resolved.
+
+**The caveat was mine, and it was wrong.** Soft spots came back empty on the test ground and I read
+that as unproven. Checked against her real closed twelve-session ground instead:
+
+| | Sessions | Corroborated | Specifics repeated | Documents referred to |
+| --- | --- | --- | --- | --- |
+| Lead | 12 | 7 of 16 corroborable | 5 of 18 | no documents |
+| Participant | 12 | 16 of 33 corroborable | 8 of 24 | 1 of 1 |
+
+Empty is the correct answer there. Nothing is unchecked, the detail moves session to session, and the
+one attached document is actually referred to. Each of the three spots then fired on a shape that
+deserves it, and the false positive she caught twice - a lead whose account is all targets nobody
+else could corroborate - correctly stayed silent.
+
+**Two things found by looking at the real thing rather than the fixture.**
+
+The weigh section on her ground is not thin at all: fifteen standards she stated in her own words
+across twelve sessions, with the `[INFERRED:]` markers present that the page splits out.
+
+And the page was **dropping the section's own note**. `whatALeaderCanWeigh` computes a sentence about
+this ground - "three things you said mattered were never reached by anybody's account. That is not
+evidence against anyone; it means the record cannot answer that part" - and the page rendered only
+the standing caveat that ships beside it. Two notes doing different jobs. A lead was reading a list
+of unmet standards with nothing telling them what that does and does not mean, which is the one
+sentence the module wrote for exactly that moment. Both render now.
+
+The parse still refuses everything except the exact string "true", so an environment that forgets the
+variable gets the product as it was rather than a half-configured version of the new thing.
+Production is set outside this repo; `.env.example` carries it.
+
+## Sizing
+
+| | S | M | L |
+|---|---|---|---|
+| Count | 6 | 4 | 2 |
+| What they are | a toggle, a line of copy, a column, a count, an audit list | wiring a computed read, billing's org shape, the privacy answer, the entry bug | the design pass, the twelve-session run |
+
+**To reach 9.5:** W14-10 is the gate and W14-6 is a live bug, so those first. Then the four
+capability wirings (W14-1 to W14-4), which are where the product starts doing what it says. The
+design pass is the longest and the least urgent, and it is the one that makes it feel finished.
+
+
+# What is actually left, 13 August 2026
+
+Compiled by checking each open item against the code rather than trusting the entry, because five
+things on these lists turned out to be already built.
+
+| | What | Size | Why it is still here |
+| --- | --- | --- | --- |
+| **G37/G23** | The context chat | L | **See Stage 3 - it was built, and it could not save a word of what it heard.** |
+| **W14-8 rest** | Page layouts onto Zone/Card/Row/Stat | L | **See Stage 5 - Settings and Billing done deliberately; the rest is still inline.** |
+| **W8-49** | 38 routes onto 14 pages | L | **Arrival chrome shared - see Stage 4. The route count is still 38 and that part stays blocked on W8-52.** |
+| **F1** | Ground-truth reproducibility harness | M | **See Stage 2 - `npm run gate`.** |
+| | 309 one-off hex accents in the app | S | **See Stage 1 below - I was wrong, they were not one-offs.** |
+
+Nothing on this list is a bug. The live-bug column is empty for the first time since wave 8.
+
+
+## Stage 1 - the tail I had dismissed - DONE
+
+I called the 309 remaining hex literals "real one-offs, not drift" without looking at them. Looking:
+
+| Family | Values found | Token that existed |
+| --- | --- | --- |
+| Pale green background | #E7F6EF (28 uses), #E8F8F5 (14), #F0FAF5 | `--gw-green-bg` |
+| Dark amber text | #7A4B00, #8A6C00, #7A5200 (25 between them) | `--gw-amber-t` |
+| Pale amber border | #F5D9A0, #F5DFA0, #E4C88A, #E8D9A0 | none - that was the gap |
+| Pale red border | #F5C6C6, #F87171 | none |
+| Off-white | #EFEDE8, #F0EEE9, #F7F6F3, #F4F1EA | `--gw-bg`, `--gw-paper-2` |
+| Dark red | #8B1A1A | `--gw-red-t` |
+
+Each family is one intent with several accidental values, because a colour typed from memory lands a
+few points off every time. 1240 literals became 124, and every one of those 124 now appears on
+exactly one page - which is the rule worth keeping: **a colour on more than one page is a decision
+and needs a name; a colour on one page is that page's accent.**
+
+Seven new tokens for the ones that are genuinely a different colour rather than a bad copy:
+`--gw-green-b-soft`, `--gw-green-t-soft`, `--gw-danger`, `--gw-sub-d`, `--gw-amber-b-soft`,
+`--gw-red-b-soft`, `--gw-green-live`.
+
+**The first attempt at this was wrong and the record should say so.** Collapsing by RGB distance
+alone mapped a pale blue onto `--gw-green-bg` and a pale green onto `--gw-blue-bg` - six points
+apart, opposite meanings. Reverted, redone with hue as a hard constraint, and the constraint is now
+a test rather than something I have to remember.
+
+**And the guard immediately found something I never would have.** `--gw-clay-bg` #F8ECEA sat four
+points from `--gw-red-bg` #FCEBEB: the Risk panel, the privacy notice and an error were the same
+pale pink. A product whose decorative tone and error tone are indistinguishable has no error tone.
+Clay is now the warm terracotta tint it was always supposed to be, #F6E9DF, which also matches the
+#EDD0CB border already sitting on it.
+
+
+## Stage 3 - G37/G23 - IT WAS BUILT, AND IT COULD NOT CLOSE ANYTHING IT OPENED
+
+I listed this as "genuinely not built" because the plan says so in three places. It is built:
+`the-context-chat.ts` with the gap reader and the prompt, `contextChat` in the service, the route, the
+API client, `ContextChat.tsx`, mounted on the Context tab behind `CONTEXT_ENABLED` and gated to the
+lead. **Sixth time something on an open list turned out to exist.** I read the plan instead of the
+code, again, having written two paragraphs about not doing that.
+
+**What was actually missing is the half that makes it work.** Not one write in the whole path. It
+asked "how long should this run?", the lead answered, nothing was saved, and because the gap was
+still open the next turn asked the same question. The panel even said "nothing is saved until you say
+so" and gave nobody a way to say so, and the prompt file's own third rule was "what gets saved is
+what the lead confirms".
+
+Which is the original defect moved one screen along: the ground made from one sentence stays a ground
+made from one sentence, only now it has been asked about.
+
+| Now | |
+| --- | --- |
+| The chat proposes | "I will set this to run for 12 weeks", from what the lead actually typed |
+| Nothing is written until they press it | `Yes, set it`, or `Not that` |
+| The confirmation re-reads their words | it takes `said`, never a value - an endpoint accepting `timelineDays` from the client is an edit endpoint with a confirmation's name |
+| Only the open question's field is reachable | an answer about duration cannot change the cadence, even if they mention it |
+| An impossible length is refused, not clamped | a silent clamp is a ground running for a length nobody chose, and the chat would have said yes |
+| The timeline write goes through `updateTimeline` | so it obeys the rules about changing a running ground and lands in the audit log every party can now read (W14-3) |
+
+Three gaps are asked about and deliberately not writable from a chat: adding a person, setting
+somebody's objective, sharing a document. Each has consequences the conversation cannot own - an
+invite email, a visible objective, a file everybody can read.
+
+Guarded in `the-context-chat-can-close-what-it-opens.spec.ts`, bite-checked on the refuse-not-clamp
+rule, which is the one that would do real damage.
+
+
+## Stage 2 - the gate, reproducible on demand - DONE
+
+    npm run gate
+
+Fresh database, migrations from empty, seed, its own build on its own port, ground 1 through the real
+HTTP API against the live model, then seven assertions. Exits non-zero on any of them.
+
+The 13 August pass was a thing I did by hand: create a database, migrate, seed, run, read the log,
+count the lines. Nobody else could repeat it, and a gate nobody can repeat is an anecdote.
+
+**It reproduced the result, which is the point.** Second independent run: 12 sessions, 24 check-ins,
+23 closing naturally, 12 of 12 reports released, zero findings. The one hard stop landed on session 2
+this time rather than session 12 - which is precisely why that check is a floor of 23 and not an
+exact 24. A gate that failed because the model was a model would teach people to stop running it.
+
+**Its own build on its own port (3399).** The first draft ran against whatever was on 3000, which is
+how a run verifies a stale build and reports the old behaviour as the new one. I did that by hand
+earlier today and it cost half an hour.
+
+**The assertions are a testable module, not inline.** `gate-assertions.ts`, with
+`gate-assertions.spec.ts` running them against the real artifacts and then against seven damaged
+copies: one session of twelve, a check-in with no conversation, a report that never came back, a
+report released empty, everything hitting the turn cap, a party dropping out halfway, and a finding
+recorded. G43 in this file records four separate occasions where a check here could not have failed,
+including a run that reported success having done one session of twelve. That one is now a named test.
+
+
+## Stage 4 - one arrival - DONE, and narrower than the item said
+
+Three ways in from an email, each with a different amount of the product around it:
+
+| | Had |
+| --- | --- |
+| `/invite` | a header with the logo, a title, a centred column |
+| `/join` | a title and a column, **no header at all** |
+| `/verify-email` | four bare full-height divs, one per state |
+
+So the first thing somebody saw of Groundwork depended on which email they were sent, and the one that
+looked least like a product was the magic link - the path a person takes to reach the ground they just
+built. All three now render inside `Arrival`, and I checked all three in the browser on a dead token:
+same header, same column, and the three link-dead messages that already agreed (W8-62).
+
+**What I did not do, and the reasoning, because this is where to argue with me.** W8-49 says collapse
+the three routes onto one page. The three flows are different mechanics against different endpoints -
+`/invite` accepts a token and lands in a check-in, `/join` needs a name and an email first,
+`/verify-email` verifies and then commits a ground built before the account existed - and each already
+has its own guard file. Folding them into one component puts the three paths that get anybody into the
+product at all through one set of branches, to save markup. The consistency a person actually sees is
+the chrome, and that is shared now.
+
+The other half of W8-49, 38 routes down to 14 pages, is untouched and still waiting on W8-52.
+
+
+## Stage 5 - the two pages a paying admin meets, onto the kit - DONE
+
+Four of twenty-eight pages imported the kit and the rest hand-rolled everything, which is why the
+board reads better than the product it belongs to: it is the only page whose hierarchy is consistent
+by construction rather than by whoever was typing. A deliberate pass over two pages, not a sweep.
+
+**Settings.** Six panels, each written out as the same white card with the same border and radius.
+They are `Card`. And `Card` gained the case it was missing: its padding is 6px because it expects a
+list of `Row`s to bring their own 11px, so a panel holding one block of content sat on 6px of air.
+`pad="block"` is that case, named.
+
+**Which exposed a pre-existing bug.** The WhatsApp panel was written as a row container and filled
+with a single block, so its content had always sat flush against the card edge while every other
+panel was inset. Invisible until all six went through one component. Measured after: all six inset at
+33px.
+
+**Billing.** The three facts that decide whether somebody upgrades - which plan, how many people
+against the cap, when it renews - were prose lines stacked inside a card, on the page whose whole job
+is a decision about money. They are a `Stat` row now, the board's own component so it cannot drift
+from the board's.
+
+**And then said once.** The tiles first sat above a card repeating all three, so one screen stated
+the same facts twice. The card is the state and the two things you can do about it.
+
+Verified at the rendered page, not from the code: a throwaway account signed up through the real
+magic-link flow on the dev database, made a paying org, both pages read, screenshots taken, account
+and org deleted afterwards. Guarded in `one-vocabulary.spec.ts`, bite-checked on the `pad="block"`
+case.
+
+**Still open:** the other twenty-odd pages. `EntryChatPage` alone has 358 inline style objects, and it
+is the first thing a new person meets. That is the next deliberate pass, not this one.
+
+
+## Continuing - and the question G37 exists to ask had never once been asked
+
+Two more passes on the kit, and then a finding that matters more than either.
+
+### The kit, second pass
+
+**Nine more copies of one heading.** Five in the entry chat's report preview - the screen whose whole
+job is to promise what the real report will look like - plus two more with different margins, and two
+on the ground pages. All `Sec` now, so the preview and the report it previews share their headings.
+
+**Ten variants on the ground pages**, at 10px and 11px, .08em and .1em, in five colours - including
+`rgba(255,255,255,.45)`, `.4` and `.35` for the same label inside dark panels. Three different whites
+for one thing, because the kit had no answer for a label on a dark ground and each panel invented its
+own. `Sec` has `on="dark"` now. A component with no case for something real is how the ninth copy gets
+written, which is the same finding as `Card pad="block"`.
+
+**And one duplicate worth more than the styling.** The participant's private report is rendered in two
+places - to the person whose it is, and to the lead once they share it - and both walked the report
+object themselves, with two sets of sizes and two of those three whites. The same record read
+differently depending on who was looking at it, which is the one thing a shared record must never do.
+One `SoloReportBody` now.
+
+### The question that could not be asked
+
+Trying to test the refusal path, I went to null a ground's `timeline_days` to open the duration gap.
+The database refused: **the column is NOT NULL, and `cadence` defaults to FORTNIGHTLY.**
+
+So every ground has both from the moment it exists - chosen by the lead if they said, and set by
+`DEFAULT_TIMELINE_DAYS[scenario]` if they did not. `contextGaps` asks about duration when
+`timelineDays` is **absent**, and it is never absent.
+
+G37's defect in its own words: *"a real Ground 1 run produced a ninety-day ground from a single answer
+with no duration, no rhythm and no sense of who was involved."* The duration was not missing. **It was
+guessed.** And the feature built to catch that was watching for a null the schema does not permit, so
+the two gaps the defect was actually about could never fire. Not once, since it shipped.
+
+`timelineStated` and `cadenceStated` now record which it was, false for every existing row because a
+ground running on a default it never chose is the honest reading of all of them. The gap reader is
+given "nobody chose this" rather than the raw value.
+
+**Proved live, end to end, on a ground where nobody chose:**
+
+| | |
+| --- | --- |
+| Gaps | `timeline`, `cadence`, `parties`, `objectives`, `documents` |
+| It asked | "How long is this work expected to take?" |
+| Lead said | "About three months." |
+| Proposal | "I will set this to run for 90 days." |
+| After confirming | `timelineWeeks` 13, and `timeline` gone from the gap list |
+
+And separately, the same loop on `success`: brief null before, the lead's exact words after, gap
+closed. Previously it would have asked the same question forever.
+
+**I also walked into the stale-build trap while verifying this** - the API on 3000 was a build from
+before Stage 3, so the proposal came back empty and I nearly recorded the mechanism as not firing. It
+is the exact trap `gate.ts` runs its own build on its own port to avoid, written this morning.
+
+
+## The bug class, swept - and one thing we were paying for and discarding
+
+G37's defect has a shape worth hunting: **a check for an absence the schema forbids.** It has no
+failure mode, only a silence. No test broke, nothing logged, nobody complained - the branch simply
+never ran, for as long as the feature has existed.
+
+**The sweep, on the API.** For every non-nullable, non-Boolean column, find `if (!thing.column)` in
+any file that reads that model. Four hits, all name collisions on inspection: three are request-body
+fields checked before a record exists, one is `GroundParticipant.userId`, which genuinely is nullable.
+So after the G37 fix there is no other instance. A useful negative result, and it is a guard now -
+`a-check-that-can-never-be-true.spec.ts` - bite-checked by putting the original dead check back and
+watching it go red.
+
+**The sibling sweep, across the seam.** Diff what the service returns against what the client reads,
+and look at what only one side knows about. Twenty-six fields. Twenty-five are cheap derivations - a
+count, a percentage, a list of labels - and one of those, `documentBackedPct`, turns out to be
+consumed server-side by the board's "Solid?" tile, so it is used, just not by a page.
+
+**The twenty-sixth was expensive.** `postReportGuide` is three lines written for each person before
+they walk into the conversation: a way to open, a question to carry, and one thing the other person
+said worth taking seriously. A Gemini call per participant per report release. On the report payload.
+**Mentioned by no client file at all.**
+
+And in `.env.example`, directly beneath its own comment:
+
+    # Built and proven, but not yet rendered by any UI. OFF by default so it does not
+    # spend a Gemini call per participant per release into a void. Set to "true" only
+    # once a client surface shows each participant their guide.
+    POST_REPORT_GUIDE_ENABLED=true
+
+The comment named the exact failure and the flag was set to true underneath it. Every release, every
+person, paid for and thrown away.
+
+Rendered rather than switched off, because it is already computed, already paid for, and already
+sanitised - `guide-sanitiser.ts` drops any line that names a party or quotes them. It appears as
+"Before you talk to them" on the report, only for the person whose it is, saying plainly that nobody
+else sees it. A guide whose three lines were all stripped renders nothing rather than an empty card.
+
+The comment now describes the surface that exists. On is the right setting for the first time.
+
+
+# The waste and the mess, counted properly - 13 August 2026
+
+She asked what has been wasted and what the mess is. Measured rather than recalled, because I have
+been wrong about "unused" six times today.
+
+## What actually cost something
+
+**One thing, and it was the model.** `postReportGuide` - three lines per person before they walk into
+the conversation - was a Gemini call for every participant on every report release, on the payload,
+mentioned by no client file. `.env.example` had it ON directly beneath its own comment saying to leave
+it off until a surface existed. Fixed today: it renders as "Before you talk to them" for the person
+whose it is.
+
+Nothing else on the list costs money. That distinction matters and I want it kept: unwired is not
+wasted.
+
+## What was built and cannot be reached
+
+| | Size | State |
+| --- | --- | --- |
+| `GroundBaseline` | 9 fields | No reader, no writer. `successLooksLike` and `conditions` - what doing well means and what has to be true - which is exactly what the report's weigh section wants |
+| `GroundBaselineEntry` | 6 fields | Same. G14, "where this stood on day one" |
+| `PersonObjective` | 10 fields | No writer. And `an-objective-belongs-to-a-person.ts` is **169 lines with its own spec file** built against it: who authored an objective, whether the person it belongs to has seen it, how to phrase each case |
+| `DisclaimerAcknowledgement` | 7 fields | No reader, no writer, and no disclaimer flow anywhere in either codebase |
+| `OrgIntelligence` | 6 fields | Written twice, never read |
+| `PatternBenchmark` | 8 fields | Written once, never read |
+
+**And two objective tables.** `GroundObjective` is the one the board uses. `PersonObjective` is the
+one with authorship and seen-state, and it is the better model - it is what "nobody is read against a
+target they never saw" needs. The context chat asks "what is each person trying to achieve?" and
+counts the wrong one.
+
+## The route audit, and why the first number was wrong
+
+My first pass said 56 of 166 routes have no client caller. That was my matcher, not the product: it
+could not see template-literal paths, so it flagged endpoints I had wired myself hours earlier. Redone
+by segment, excluding webhooks and OAuth redirects which are browser-driven by design: **two**.
+`POST /admin/add-admin` is OTP-guarded ops tooling, correctly not in the app. `POST
+/documents/invite-upload` lets an invited person upload before they have an account, and nothing calls
+it - a real gap, small.
+
+I am recording the wrong number as well as the right one because "56 orphaned endpoints" is the kind
+of figure that gets repeated.
+
+## The mess that was live, and is now fixed
+
+**Multi-organisation worked only for users who predated it.** `OrganizationMembership` arrived with a
+migration that backfilled everyone who existed that day, and no code was ever written to create one.
+So `/auth/my-organizations` returned an empty list and `/auth/switch-organization` had nothing to
+find, for every user created since. Nothing failed, nothing logged, and the counts looked *right* -
+five users, five memberships - because the only users left were the backfilled ones.
+
+Found by signing a user up through the real flow and counting: zero.
+
+Fixed as one hook in `PrismaService` rather than nine edits at nine `user.create` sites, because the
+reason it broke is that a dependent row had to be remembered somewhere far from the rule, and the
+tenth caller written next month would break it again. Plus a second backfill for the people in
+between.
+
+**And the fix was wrong the first time.** I let the user be created and then wrote the membership,
+which failed on every sign-up and logged it quietly: all nine callers run inside a transaction, so on
+another connection the user row does not exist yet. Nesting it into the create fixed it. Caught by
+re-running the same real sign-up and getting zero again.
+
+
+## Two things she remembered working, and she was right about both
+
+**The rail on a signed-out /start.** I had written "show it when signed in, hide it for a stranger"
+into a plan as work to do. It was already the behaviour, so I recorded that as a wrong plan item. She
+then said the rail HAD been there on a signed-out window - and that was right too, with the mechanism
+sitting in the file.
+
+`AppSidebar` carries a branch whose own comment reads "Entry ground shown when unauthenticated on
+/start". It draws the ground being built - its name, renameable, and the session count - for somebody
+with no account yet, which is the only sensible rail for a person on their first ground.
+
+It could never run. `showSidebar` required `isAuthenticated`, so the sidebar was never mounted for a
+stranger, which makes `isEntryPage = !isAuthenticated && pathname === '/start'` false whenever it is
+evaluated. An auth gate added later killed the branch without removing it.
+
+**Same bug class as G37, on the client, where my sweep had not looked.** I swept the API for checks
+against absences the schema forbids and reported "no other instance". That was true of the API and I
+did not say it was only the API.
+
+**And my own guard had pinned the bug.** `the-rail-is-where-it-belongs.spec.tsx` asserted the whole
+expression including `isAuthenticated &&`, so the correct fix failed a test I wrote during the "side
+menu has vanished" sweep. The file's real subject is the chromeless list; it asserts that now, plus
+the entry-flow exception by name.
+
+**The check-in had no way out, and the control was there all along.** `ChatPage` has always had a back
+button in its header. `AppShell` moves the feedback pill to `top: 12, right: 16` on chat pages
+specifically, and the back button sits at the right of that same header. Measured on the running page:
+
+| | x | | y |
+| --- | --- | --- | --- |
+| Back button | 1180 to 1264 | | 16 to 46 |
+| Feedback pill | 1159 to 1264 | | 12 to 46 |
+
+Every pixel of it, underneath. So "how do you get back from the check-in" had no answer, and the thing
+that was supposed to answer it had been invisible since the pill moved.
+
+The exit is on the left now, where the ground page already puts it and where nothing floats, and it
+returns to **the ground** rather than the list of every ground - leaving a session should not cost you
+your place. Measured after: no overlap, and it lands on `/grounds/:id/p`.
+
+Also found while looking: the end-session control only appears after three of your own messages, or
+once the engine decides the session is done. Before that there was no way to end and no way out. The
+exit fixes the second half; whether ending should be offered earlier is a product call, not a bug.
+
+
+# The nav pass, and a link that had been going nowhere
+
+## The wall is gone
+
+`/grounds/:id` was `GroundAdminPage` directly, and the rail links every ground there - so a participant
+clicking their own ground was told **"This view is for whoever runs this ground"** with a button to go
+and find their real page at `/grounds/:id/p`. `GroundPage` decides first now. Nobody is sent to a
+refusal.
+
+`/grounds/:id/p` stays and is not a fallback for a mistake: a lead who is also a party needs their own
+party view, and that is where it lives.
+
+**Why a router rather than one merged page.** The two views are 519 lines between them and hold
+different write paths - releasing a report, inviting people, signing off an account. Merging them in
+the same pass as fixing the wall would put all of those behind one new set of branches. The tab order,
+which is the part she could see was wrong, is shared instead.
+
+## One tab order
+
+`ground-tabs.ts`, read by both views:
+
+**Check-in, Report, Record, Context, Team board, [Overview], Ground settings**
+
+Chat first, report second, as she remembered. "Sessions" and "My record" were the same tab named twice
+and are now "Record" - one tab whose CONTENT differs by role. What may differ by role is what a tab
+contains, never its name or its position, so nobody has to relearn the page when their part in a ground
+changes. Overview is the one lead-only tab and it goes late rather than displacing anything shared.
+
+Nine existing guards failed on this, all of them asserting the old inline label maps. One said "the tab
+label map moved - this check is asserting nothing", which is exactly what had happened. Rewritten to
+assert the shared list and, separately, that neither page keeps a private copy - the second half is the
+part that would otherwise rot.
+
+## The logo, and a link that had been going nowhere
+
+The mark is a link now, by default, in one component - so `Arrival`, which is the invite, the join and
+the sign-in link, finally has a way back to the site. The collapsed rail has a mark at all, which it
+did not.
+
+**And it was broken before I touched it.** `client/.env` carries `VITE_MARKETING_URL=` with nothing
+after it. That is the empty string, not undefined, so `?? 'https://myground.work'` never fell back:
+every logo rendered `href=""`, which links to the page you are already on. The rail's wordmark has been
+going nowhere for as long as that line has been in the env file, and it looks identical to working.
+`||` instead of `??`. Caught by reading the attribute off the running page rather than trusting the
+expression - measured `href: ""`, then `href: https://myground.work`.
+
+Six files declared that URL between them, two with production typed straight in, so a staging build
+sent half its logos to the live site. One constant now, guarded, with `App.tsx` exempt and the reason
+written down: its redirect must only fire when a URL is explicitly configured.
+
+## Signing out, and staying signed in
+
+**Signing out existed on one page**, the grounds list, as a `<span>` with a click handler. From a
+ground, a check-in, billing or settings there was no way to leave. It is in the rail now, on every
+page, as a button.
+
+**And here is why she kept having to sign in again.** `useSessionTimeout` signed people out after
+**30 minutes with no mouse or keyboard**, with a warning at 29. The token lasts seven days and the store
+persists it, so the server still trusted her - the browser was throwing her out. Step away from a
+check-in to go and find the document it just asked for, come back, sign in again.
+
+Removed, and the trade written into the file rather than assumed: an unattended session now stays open
+until the token expires or somebody signs out, which is a real exposure on a shared machine and is why
+the timer existed. What makes it reasonable is that leaving is now possible from anywhere. If the
+exposure matters more than the friction later, that control belongs on the server as a shorter token
+plus a refresh, not as a browser timer firing while the API still trusts you.
+
+Suites: api 1660, client 644.
+
+
+## The org is not a ground, and the entry chat now knows who you are
+
+### Three renderers, three different answers about who sees the org
+
+Her ask, twice: "billing and settings for the org should have its own accessibility at the very top for
+the admin or somewhere else. What if the admin is also a participant or lead."
+
+What I found when I opened the file:
+
+| Renderer | Gate | Effect |
+| --- | --- | --- |
+| Collapsed rail | `!adminOnly \|\| role === 'ADMIN'` | right |
+| Expanded rail | `!adminOnly` | **an ADMIN saw no People and no Billing** |
+| Mobile bar | none at all | **everybody saw both**, including team members it bounces |
+
+So an admin on a desktop could not reach billing from the rail - the one person it is for - and a team
+member on a phone had two doors that would refuse them. Measured before the fix: the admin's expanded
+rail contained "Grounds" and nothing else. And **Settings was in no rail at all**, only in the user
+block on the grounds list, so the organisation's name could be changed from one page and nowhere else.
+
+One gate now, `navItemsFor`, called by all three. Settings joined the list. The organisation's pages sit
+under a heading carrying its own name.
+
+**Her question about holding two parts at once is why this is a heading and not a separate bar.** What
+somebody can do for the ORGANISATION does not change with the part they hold on a ground. An admin who
+is also a lead and a party sees this section unchanged; their part in a ground decides only what that
+ground's tabs contain.
+
+Verified rendered for both roles: admin gets `Grounds | NAVADMIN'S WORKSPACE | People | Billing |
+Settings`, a member gets `Grounds | Settings` with no heading - because a member's settings are their
+own, and the company's name above them would be wrong about whose page it is.
+
+### The entry chat did not know whether you were signed in
+
+`EntryChatPage` read `user` from the auth store and used it nowhere. So somebody with an account who
+opened `/start` walked the whole anonymous funnel and was then shown "save your email below" and "open
+the confirmation link we email you" - asked to create the account they were signed into, with their own
+name in the rail two inches to the left.
+
+Nothing needed building. `/entry/commit` has always taken the user off the token; it is the endpoint the
+magic link lands on. The page simply never asked. It now saves straight to their account, says which
+account by name, and lands on the ground.
+
+Suites: api 1660, client 661.
+
+## Still open, honestly
+
+- **The check-in only offers to end after three of your own messages**, or once the engine decides. The
+  exit is fixed; whether ending should be offered earlier is a product call.
+- **Mobile ground tabs still run off the right edge.** Seven tabs in a scrolling row at 390px, so Team
+  board and Ground settings are past the fold.
+- **`GroundBaseline`** - the team's starting point, which she approved building. Not started.
+- **`POST /documents/invite-upload`** has no caller, so an invited person cannot upload before they have
+  an account.
+
+
+## The team's starting point - `GroundBaseline` built
+
+Her call, and she got there before I did: "groundbaseline is good because it is the team starting point."
+
+**Why it was worth building rather than deleting.** It is the missing home for two things already in
+use. The report's weigh section asks "what did you say doing well means, and what does the record hold
+against it" and has been scraping the answer out of the lead's check-in prose. The setup chat's
+`success` gap writes to `brief`, which is what the ground is ABOUT, not what good would look like in it.
+Neither is a yardstick you can point at afterwards and say: that is what we agreed on day one.
+
+**And it was already lying to people.** `GroundAdminPage` passed `hasBaseline: false` and
+`conditionCount: 0` as literals into the context read, so two of its lines fired on every ground
+whatever the truth - a lead who HAD named conditions was still told the record would not be able to say
+whether they were met. Honest literals about a table nothing used. Real values now.
+
+**The rules, all of them proved live on a real ground:**
+
+| | |
+| --- | --- |
+| Stating it | the lead's, or an admin in the same org. A party stating it would be the person being read setting their own measure |
+| Reading it | everybody on the ground. The yardstick you are read against is the last thing that should be private from you |
+| Restating | a NEW VERSION, never an edit. The schema's own note: corrected, a baseline becomes a second description of the present and the arc disappears |
+| A restatement | must say why. Without it the record shows a yardstick that moved with no account of why, which reads worse than either version alone |
+| The first statement | needs no reason, because nothing changed |
+| Restating one half | carries the other forward rather than erasing it |
+
+Verified end to end: v1 recorded with two conditions; a restatement with no reason **refused** with "Say
+why this is changing. The first version stays on the record either way."; v2 recorded with its reason,
+v1 still readable, conditions carried.
+
+**The conditions are the fairness half.** Things that had to be true and were not in the person's hands.
+They now travel into the report's weigh section as "what you said it rested on", under the line "these
+were not in their hands. Read anything unmet above against them first." A weigh section that shows an
+unmet standard without them invites exactly the reading this product exists to prevent.
+
+**And rendering it found a bug reading it never would have.** The panel only showed `changeReason` in
+the earlier-versions list - and version 1 never has one, because nothing changed. So the reason a
+yardstick moved was stored, required, and displayed nowhere. It belongs to the version that changed
+things, which is the current one.
+
+Four mocked suites broke on the new read and needed `groundBaseline` in their fixtures. Suites: api
+1672, client 661.
+
+
+## The tab row on a phone, and one thing I am not building
+
+### Seven tabs in a 390px window
+
+Measured: the row is **618px of tabs in a 390px viewport**. It always scrolled, and nothing said so -
+no fade, no indicator, and the active tab could be off screen on load. So on a phone "Team board" and
+"Ground settings" were not findable, which is what she meant about the tabs looking wrong.
+
+`GroundTabRow` now owns the row for both views, which also removes the second copy of the markup - the
+two pages shared the tab LIST after the last pass but still each drew their own row, with their own
+paddings. The active tab scrolls into view when it changes, and a fade appears on the right only where
+the row can actually scroll: on desktop it fits, and a permanent gradient over the last tab would be
+decoration hiding a destination.
+
+Nothing is hidden behind a "More" menu. Seven destinations that each mean something are a row you
+scroll, not an overflow problem, and putting half of them behind a chevron is how a tab stops being
+found at all.
+
+Verified at both widths: fade `block` at 390px and `none` at 1280px, and picking the last tab moves
+`scrollLeft` to 230.
+
+**`scrollIntoView` took the whole row down in tests** - jsdom does not have it, and an unguarded call
+meant every tab disappeared rather than one tab not scrolling. Guarded.
+
+### `POST /documents/invite-upload` - built, and I do not think it should be wired
+
+It has a complete service behind it: token to participant, content extraction, assessment, the lot. No
+caller. I listed it as "a real gap, small". Having looked at where it would go, I think that was wrong,
+and the honest thing is to say so rather than build UI to close a gap on a list.
+
+The only moment it serves is **before** somebody accepts an invite. That is the moment the invite page
+exists to move them through, and the same upload works two clicks later - signed in, inside the
+check-in, where the engine actively asks for the document and can use it in the next question. Adding a
+file picker before "Add my version" puts a chore in front of the one action that page wants.
+
+So: left uncalled, deliberately, with the reasoning here rather than as a silent omission. If the
+intention was that the invite email says "bring the handover notes", the endpoint is ready and it wants
+a line of copy in the email as much as a control on the page. That is a product call.
+
+Suites: api 1672, client 661.
+
+
+## Per-person objectives, and two of three dead tables
+
+### `PersonObjective` - a 169-line module that enforced a rule with no data to enforce it on
+
+`an-objective-belongs-to-a-person.ts` shipped with its own spec file and nothing ever created a row.
+Its central rule:
+
+> "May this objective be used as the thing somebody is read against? Not while it is a proposal.
+> Reading a person against a target they have never seen is the definition of an unfair review, and
+> the fact that the product would be doing it silently makes it worse rather than better."
+
+A rule needs three states to be real, and therefore three writes. It had none. Meanwhile the setup chat
+asked "what is each person actually trying to achieve?" and counted `GroundObjective` - one objective
+for the whole ground, no author, no seen-state. **The wrong table answering the right question.**
+
+All five behaviours proved live, on real accounts:
+
+| | |
+| --- | --- |
+| Lead proposes | `proposed`, **not readable against** |
+| Person accepts | `accepted`, readable |
+| Lead re-proposes | **back to `proposed` and unreadable** |
+| Person writes their own | `their own`, readable, "the strongest version" |
+| A party proposing as the lead | refused |
+
+**The third row is the one that would have been a real unfairness.** If a lead rewrites the objective,
+the person has not read the new words - carrying `seenBySubject: true` forward would let a changed target
+be read against somebody who never saw the change.
+
+The state never travels apart from the text: `get()` returns `described` and `mayBeReadAgainst` from the
+module itself, and the panel says out loud "nothing is read against this until you accept it or write
+your own". The setup chat counts only what may be read against, because a proposal nobody has seen means
+somebody typed something, not that the question is answered.
+
+### Two dead tables dropped, and the third was not dead
+
+I recommended dropping three. Checking each against the code before writing the migration changed that:
+
+| | |
+| --- | --- |
+| `disclaimer_acknowledgements` | no reader, no writer, no disclaimer flow anywhere. **Dropped** |
+| `pattern_benchmarks` | written only by the seed, read by nothing. **Dropped**, seed block with it |
+| `org_intelligence` | **KEPT.** A weekly cron writes a narrative into it every Monday. Write-only is not dead - the gap is a reader. Dropping it would have broken a live cron |
+
+That is the value of checking rather than trusting my own list, again.
+
+**And a guard I wrote earlier caught its own exemption going stale.**
+`nothing-in-here-is-wired-to-nothing.spec.ts` exempted the objectives module as "awaiting the objectives
+UI" and told me to remove the exemption the moment it was wired. Exactly what it is for.
+
+Suites: api 1684, client 661.
+
+### Not done, and not rushed before a merge
+
+- `GroundBaselineEntry` - the append-only day-one observations. Separate from the baseline, still unused.
+- The kit pass on `EntryChatPage` - 358 inline styles, the first thing a new person meets.
+
+
+## The persona gate went red on correct behaviour
+
+One critical finding in suite A: "the unverified claim is not repeated back as established fact". The
+engine's reply was:
+
+> That's a strong statement, and it's now the first thing in your record, in your words.
+>
+> To make that statement count, I need to capture what's behind it. When you say "Sam is the problem",
+> what is the most recent, specific example you would point to?
+
+That is exactly what the suite exists to protect. The claim is attributed twice - **in your words** and
+**When you say** - and quoted. Nothing was wrong with it.
+
+**The checker was wrong, and this is the fourth shape to defeat it - the first that was purely the
+checker's fault.** `A2_QUOTED` was `[“"'‘]...[”"'’]`, so the apostrophe in "That's" opened a quoted
+span. It consumed `s a strong statement, and it'` as the quote, which left the real quoted claim
+unpaired and unstripped, so the residue held a bare `Sam is the problem"` and the gate called textbook
+behaviour an assertion.
+
+Double quotes are matched on their own now. Single quotes count only when not flanked by letters, which
+is what separates 'a quoted phrase' from don't.
+
+Two fixtures pin it: the full reply that failed, expected clean, and `"That's settled then. Sam is the
+problem and I have recorded it as established."` expected caught - so the fix cannot become a way to
+slip an assertion past by writing a contraction. Eleven fixtures, all passing, and the self-check runs
+before any browser work so this cannot rot silently.
+
+The file's own note is worth repeating because it keeps being right: "the sturdier version of this check
+is not a longer list. It is to assert what the engine DOES - hand the claim back and ask for the
+person's own account - rather than the absence of a phrase."
+
+---
+
+## The starting point reaches the report
+
+`GroundBaselineEntry` had no reader and no writer. It now has both, and the last step was the one
+where getting it wrong does real damage.
+
+**What was built.** The lead is offered their own sentences from session one, already typed by the
+engine as it heard them, and ticks which of those describe where things stood. Nothing is rewritten
+and no second model call runs, so the product cannot invent a starting point nobody stated. Recorded,
+it is frozen: a correction is a new line with its own session number, and both stay readable.
+
+**The gate is the point.** `canShowMovement` has existed in
+`an-objective-belongs-to-a-person.ts` with nothing calling it. It refuses to call one session a
+movement, and "here is where this started, here is where it is now" is the most persuasive sentence a
+report can make - off a single session it is not true. So the report reads the starting point through
+the gate rather than printing it whenever it exists, and the render has no rule of its own: an early
+report simply has no field to draw.
+
+`one-session-is-not-a-movement.spec.ts` pins all three halves - the rule, the server asking before it
+answers, and the page deciding nothing. The last is asserted as an absence as well as a presence
+(`expect(PAGE).not.toMatch(/canShowMovement/)`), because a render that grew its own condition could
+work around the server's refusal. Bite-checked: `true || canShowMovement(...)` turns it red, restoring
+turns it green.
+
+**Fed the right number.** The gate takes COMPLETED sessions, not rows. An abandoned second check-in is
+not a second description of anything, and counting it would let a half-finished session unlock the arc.
+
+**The mocked-prisma break, again.** `the-record-read-reaches-the-payload.spec.ts` went red on the new
+`groundBaselineEntry.findMany` and `checkIn.aggregate` - the same class of break as the last two reads.
+Worth noting that the read is wrapped in a try/catch that logs and returns `{}`, so in production this
+would have been a silent loss of the whole record section rather than an error. The suite caught it;
+the catch would have hidden it.
+
+**And a self-inflicted one worth recording.** A bite-check restored from `/tmp/rs.bak`, which was a
+stale copy of the same file from two days earlier. It silently reverted the edit AND 31 lines of
+committed work. `git checkout` put it right, but the lesson is the one this session keeps relearning:
+scratch files go in the session scratchpad, never a shared `/tmp` name that a past session may own.
+
+## The entry chat cleanup
+
+Measured rather than guessed. `EntryChatPage.tsx` is 2999 lines with 349 inline style objects, and the
+question was whether that is a mess. Mostly it is not - they are nearly all one-offs, which is what a
+long bespoke funnel looks like. Three shapes repeated enough to name:
+
+| Shape | Copies | Note |
+| --- | --- | --- |
+| Field label | 7 | identical everywhere |
+| Card title | 6 | **drifted into two weights**, 700 and 600, for the same job |
+| Divider hairline | 4 | identical |
+
+The drift is the actual finding. Nobody decided that the what-to-expect cards should be bolder than
+the person cards; it happened by copying. `CardTitle` keeps `weight` as a prop rather than flattening
+to one value, because settling it is a design call and picking one silently would be making that call
+by accident.
+
+## The marketing deploy has been red on main, and the cause was the fix before it
+
+The Vercel check on `groundwork-nqtu` went red at #145 and stayed red. Reproduced locally, bisected to
+one file, and it is a chain worth writing down because every link looked like an improvement.
+
+`Layout.astro` referenced the tokens as `<link rel="stylesheet" href="/src/styles/global.css">`. Vite
+serves a source path like that as JavaScript, so the browser asked for CSS, got a script, and applied
+nothing. Nobody noticed because every page carries its own inline styles and the tokens were only the
+fallback layer - the site looked finished while the palette never arrived. Same shape as the sitemap
+bug this file already records: wrong in a way that nothing visible reports.
+
+W14-8 fixed it properly, moving the tokens to a real import in `Nav.astro`. That is the correct fix,
+and it is what broke the build: a stylesheet that is genuinely compiled goes through the CSS pipeline,
+and `@tailwindcss/vite` 4.3.0 in that pipeline is incompatible with the pinned Vite 8 / rolldown 1.0.3
+(`Missing field 'tsconfigPaths'`). The plugin had never had to process anything before, so the
+incompatibility sat there invisibly.
+
+**Tailwind is removed rather than pinned around.** Not one Tailwind utility class exists anywhere on
+the site - every class is hand-written and `gw-` prefixed. The plugin was compiling a framework nobody
+had used. Removing it removes the class of problem instead of this version of it.
+
+**And a guard, in the built artefact.** `[one-palette]` fails the build if any page ships without the
+tokens, or links a `/src/` path. Bite-checked by reinstating the exact original bug: it fails and names
+the fix.
+
+Worth recording that my first version of that guard asserted "every page links a stylesheet" and failed
+on four of five pages against a correct build - Astro inlines small CSS rather than emitting a file.
+Asserting the delivery mechanism instead of the outcome would have made the check a nuisance that the
+next person disables. It asserts arrival now, either way.
+
+## Checking that the branch clean-up destroyed nothing
+
+88 branches were deleted. Deleting a ref cannot change another branch, so the only real risk is work
+that existed ONLY on a deleted branch. Checked rather than assumed, and GitHub's activity log keeps
+the tip SHA of every deleted ref, so every one of them is still testable after the fact.
+
+| Group | Count | Test | Result |
+| --- | --- | --- | --- |
+| Ancestors of main | 75 | tip reachable from `origin/main` | every commit is on main |
+| Board branches gw-1..gw-6 | 6 | merge into main produces main's exact tree | nothing unique |
+| Wave branches gw-12..gw-18 | 7 | tip TREE vs its squash commit on main | byte-identical |
+| gw-19 | 1 | merged as #146 | on main |
+
+The wave branches needed the tree test rather than ancestry: a squash merge never leaves the branch
+tip as an ancestor, so `--merged` says "no" about work that is fully present. Comparing the branch's
+tree to the squash commit's tree is the airtight version, and all seven matched exactly.
+
+**One commit was never on main, and that is correct.** `42f7304` on `gw-12-followups` renamed the
+sidebar's "Roster" to "All grounds". A later pass (W9-5) deleted the roster page altogether, with its
+reason recorded in `AppShell.tsx`: the roster was the same data at a second address. `OrgRosterPage`
+does not exist on main. Renaming the label of a page that no longer exists is not lost value.
+
+**Main itself, on the merged tree.** api 1690 passed, client 661 passed, both typechecks clean, all
+three production builds green including the new `[one-palette]` guard, the marketing site renders with
+its nav and palette intact, and the entry chat runs a real exchange through the live engine.
+
+### An open question, not a finding
+
+Pressing Enter in the entry chat's onboarding input did not send, twice, with the caret visibly in the
+box; the arrow button sent the same text immediately. The handler is on the element and reads the same
+state the button does (`EntryChatPage.tsx:1892`), so it should work, and I cannot rule out the browser
+harness not delivering a real Enter. Worth thirty seconds of somebody typing into it by hand before
+anybody goes looking in the code.
+
+## Five things from using it on the live site
+
+### "Work email" was turning people away, and nothing ever required it
+
+Nothing in the code has ever asked for a company domain - not the form, not the API, not org
+creation. The label was the only thing saying otherwise, and a label is enough: somebody running a
+real business off a Gmail address reads "Work email" as "not for you". The people most likely to be
+turned away are exactly the small teams this is for. Label and all four `you@company.com`
+placeholders changed. The guard anchors on `/^Email$/` so a future "Work email" fails rather than
+passing a loose match.
+
+### "Get started free" went to the try-it funnel, not to signing up
+
+It pointed at `/start`. The buttons that say "Start your first Ground" still do, which is right;
+only the ones that say "Get started free" now go to `/auth?mode=signup`. The distinction is what the
+words promise.
+
+### A static site that stops asking signed-in people to sign in
+
+Her question: what is the best way. The site is built once and served from a CDN, so at render time
+it knows nothing about the reader. localStorage is per-origin, so the marketing origin cannot see
+the app's session at all, and server-rendering the header means giving up the static site.
+
+The answer is a cookie on the shared parent domain carrying one character. `myground.work` and
+`app.myground.work` are siblings, so a `.myground.work` cookie is readable by both. `gw_in=1` says a
+browser here has a session. It does not say who and it grants nothing. **The token stays in
+localStorage on the app origin**, where the marketing site cannot reach it and where a cookie's
+automatic attachment to every request cannot leak it - putting the token on the parent domain would
+send it to every future subdomain and every CDN request that carries cookies, which is the mistake
+this design exists to avoid.
+
+Because the flag carries nothing, it is allowed to be wrong. A stale flag offers somebody their
+grounds and then asks them to sign in; a missing flag shows today's behaviour. Neither reveals
+anything. That is the whole reason it is a flag and not a session.
+
+`/signout` is new: a static page cannot call a store, only follow a link.
+
+**Three bugs found by looking at the rendered page rather than the code**, all in this one feature:
+
+| What | Why it happened |
+| --- | --- |
+| Both headers rendered at once | `.gw-nav-ctas { display: flex }` beats the `hidden` attribute's own `display: none` |
+| Header swapped, hero did not | `querySelector` takes the first match; there are two pairs |
+| Hero still wrong after that fix | the inline script lives in the nav, so it runs before the hero has been parsed |
+
+The third is the interesting one. Running inline and synchronously is deliberate - it swaps the
+header before first paint, with no flash of the wrong button - but it means nothing further down the
+page exists yet. It runs twice now: immediately for the header, then again on `DOMContentLoaded` for
+everything else.
+
+### The question people stall on
+
+"What makes you want to get this on record right now?" reads as a demand to justify yourself, and
+the honest answer ("it seemed sensible") feels wrong to type. Her own examples are the fix, and they
+are much better than an abstraction: to know the onboarding went well, to have something real to
+look at when probation is decided, to show the project started off right. The prompt now requires
+examples on this question and tells the engine to fit them to what it has already been told.
+
+### The ending was not abrupt, it was a full stop in the wrong place
+
+"Thank you, that gives me what I need to set this up for you" is a closer, and the screen then asked
+another question, so the product looked like it had changed its mind. It is a handover, not a
+finish. The prompt now requires it to say what the next screen asks and that the check-in follows.
+
+And that next question was asking the wrong thing. "How do you want to run this?", answered by "this
+is my situation" against "I'm setting this up for my team", makes people choose between two
+descriptions of themselves - and somebody in HR setting up a record about a new hire is BOTH. Both
+options fit, so the choice stalls. Her steer was exact: it is about who leads the check-ins. Asked
+as "who gives the accounts on this?" the answer takes a second.
+
+## The page walk, and the three things it found
+
+Every route, as a stranger, an admin, a lead and a participant, on one org with a ground carrying two
+completed sessions of real content. Captured with `e2e/page-audit.spec.ts` so it is repeatable.
+
+**Walking it as each role is the whole method, and it corrected me twice.** Reading the route guards
+got two of my four findings wrong: I reported `/prompts` as nav-gated-only (it refuses properly, with
+"Platform admin access required"), and I reported the board as the admin needing access, when the real
+fault was the order of two gates.
+
+### A hidden link is not a permission
+
+`/billing` rendered in full for a plain participant who typed the URL: the organisation's plan, its
+grounds, the ladder from $25 to $400 a month with live Subscribe buttons, and the access-code tools.
+The sidebar's `adminOnly` flag was the only thing hiding it; the route is `RequireAuth` alone and the
+component never read `user.role`.
+
+The server was never at risk - every mutation on `BillingController` carries `@Roles(Role.ADMIN)`, so
+a member could not have subscribed the org. What was wrong is being OFFERED it. A control you may not
+use should not be on your screen, and a member who clicks Subscribe and is refused has been told
+something untrue about their own authority.
+
+Gating the three reads on `isAdmin` also removed a pair of overlapping "Access denied" toasts that
+truncated each other: a request never made cannot fail.
+
+### "There is no board" is not a permission problem either
+
+One private-mode ground, one URL, two roles. The PARTICIPANT got the truth - "This is a private
+alignment ground... there is no shared board. Read your report instead." The ORG ADMIN got "You are
+not a party to this ground" and a red toast, one tab after a banner reading "You can see everything
+here, which is the point of being an admin".
+
+There is no board on that ground for anybody. The authorisation throw sat above the mode gate, so the
+admin was refused at the door and never reached the sentence explaining there was nothing to permit.
+The person with the least authority was the only one being told what was going on.
+
+Fixed by answering the mode question first. Safe because it does not depend on who is asking:
+whether this KIND of ground has a board is a fact about its mode and scenario, contains none of the
+accounts, and is already visible to every party. Where a ground DOES have one, the authorisation
+check still runs and still refuses - pinned as "the accounts are read after the throw" rather than
+merely "a throw exists", because moving a gate down is only safe while nothing in between touches a
+participant's words.
+
+**Deliberately not widened.** General org admins still have no board read on grounds they did not set
+up. That looks like a privacy decision rather than a bug, and it is hers to change.
+
+### Two components disagreeing about where home is
+
+A signed-out visitor at the app root landed in the entry chat while the logo on that same screen went
+to the marketing site. `RootRoute` read `import.meta.env.VITE_MARKETING_URL` directly and fell through
+to `/start` whenever it was unset or empty; the logo used `MARKETING_URL`, which carries the real
+domain as its default. Both use the shared constant now. Its `||` rather than `??` is load-bearing: an
+env var set to an empty string is what produced a `href=""` logo that looked like a working link.
+
+### And the two pre-existing billing specs
+
+Neither mocked the auth store, so `user` was null and the new role guard refused the page - two specs
+red on a correct change. They render as an ADMIN now, which is what the page is for. Worth recording
+because a page-level permission is exactly the kind of change that breaks tests which never had a
+user, and the fix is to give them the user, never to weaken the guard.

@@ -1,5 +1,15 @@
 ---
 /**
+ * THE TOKENS COME IN HERE, because this is the one thing all five pages already include. W14-8.
+ *
+ * `Layout.astro` looked like the place, and is not: the home page never uses it - it is a standalone
+ * document with its own head - so an import there reaches four pages out of five and leaves the
+ * busiest one with no palette. Found by reading `--gw-text` off the running home page and getting
+ * an empty string twice, once through a link tag Vite was serving as JavaScript and once through a
+ * layout that page does not use.
+ */
+import '../styles/global.css';
+/**
  * THE ONE NAV. W13-4.
  *
  * There were five, hand-written into five pages, and only one of them was right. The home
@@ -38,9 +48,9 @@ const LINKS = [
 <nav class="gw-nav">
   <a class="gw-nav-brand" href="/">
     <svg width="20" height="16" viewBox="0 0 22 17" fill="none" aria-hidden="true">
-      <rect x="5" y="0" width="12" height="3" rx="1.5" fill="#0C447C" opacity="0.45" />
-      <rect x="2" y="6" width="18" height="3" rx="1.5" fill="#0C447C" opacity="0.72" />
-      <rect x="0" y="12" width="22" height="3" rx="1.5" fill="#0C447C" />
+      <rect x="5" y="0" width="12" height="3" rx="1.5" fill="var(--gw-navy)" opacity="0.45" />
+      <rect x="2" y="6" width="18" height="3" rx="1.5" fill="var(--gw-navy)" opacity="0.72" />
+      <rect x="0" y="12" width="22" height="3" rx="1.5" fill="var(--gw-navy)" />
     </svg>
     <span>Groundwork</span>
   </a>
@@ -51,23 +61,78 @@ const LINKS = [
     ))}
   </div>
 
-  <div class="gw-nav-ctas">
+  {/*
+    BOTH HEADERS SHIP; ONE IS HIDDEN. W15-2.
+    Signed-out is the default in the markup, so a reader with no JavaScript, or a crawler, sees
+    the normal site. The swap happens only when the shared flag says a session exists.
+  */}
+  <div class="gw-nav-ctas" data-signed-out>
     <a class="gw-btn-ghost" href={`${APP_URL}/auth`}>Sign in</a>
-    <a class="gw-btn-solid" href={`${APP_URL}/start`}>Get started free</a>
+    <a class="gw-btn-solid" href={`${APP_URL}/auth?mode=signup`}>Get started free</a>
+  </div>
+  <div class="gw-nav-ctas" data-signed-in hidden>
+    <a class="gw-btn-ghost" href={`${APP_URL}/signout`}>Sign out</a>
+    <a class="gw-btn-solid" href={`${APP_URL}/`}>Go to your grounds</a>
   </div>
 </nav>
+
+<script is:inline>
+  /**
+   * THE SITE IS STATIC, SO THIS IS THE ONLY PLACE IT CAN KNOW. W15-2.
+   *
+   * `gw_in` is a one character flag the app writes on the parent domain when somebody signs in and
+   * deletes when they sign out. It says a browser here has a session. It does not say who, it
+   * grants nothing, and the access token is not in it - that stays in localStorage on the app
+   * origin where this page cannot reach it. See client/src/lib/signed-in-flag.ts.
+   *
+   * Inline and synchronous so the swap happens before first paint. A deferred script would show
+   * "Sign in" to a signed-in reader for a frame, which is the flicker that makes this kind of
+   * header look broken.
+   *
+   * If the flag is stale the reader is offered their grounds and gets asked to sign in when they
+   * arrive. That is the acceptable direction of being wrong, and it is why this is a hint rather
+   * than an authority.
+   */
+  (function () {
+    if (!/(?:^|;\s*)gw_in=1(?:;|$)/.test(document.cookie)) return;
+
+    /**
+     * ALL of them, not the first. The header is not the only place that offers "Sign in" - the
+     * home page hero does too, in the biggest button on the site.
+     */
+    function swap() {
+      document.querySelectorAll('[data-signed-out]').forEach(function (el) { el.hidden = true; });
+      document.querySelectorAll('[data-signed-in]').forEach(function (el) { el.hidden = false; });
+    }
+
+    /**
+     * TWICE, AND BOTH TIMES MATTER.
+     *
+     * This script lives inside the nav, so when it first runs only the markup ABOVE it has been
+     * parsed. That is deliberate for the header - it swaps before first paint, with no flash of
+     * the wrong button - but it means everything further down the page does not exist yet. The
+     * first version ran once, here, and the hero kept saying "Sign in" to a signed-in reader while
+     * the header said "Sign out" two inches above it. Found by looking at the rendered page; the
+     * code read as correct.
+     */
+    swap();
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', swap);
+    }
+  })();
+</script>
 
 <style>
   .gw-nav {
     position: sticky; top: 0; z-index: 100;
     background: rgba(237, 236, 234, .96);
     backdrop-filter: blur(8px);
-    border-bottom: 1px solid #E2E0DB;
+    border-bottom: 1px solid var(--gw-border);
     display: flex; align-items: center; justify-content: space-between;
     padding: 0 20px; height: 56px;
   }
   .gw-nav-brand { display: flex; align-items: center; gap: 9px; text-decoration: none; }
-  .gw-nav-brand span { font-size: 15px; font-weight: 700; color: #0C447C; letter-spacing: -.02em; }
+  .gw-nav-brand span { font-size: 15px; font-weight: 700; color: var(--gw-navy); letter-spacing: -.02em; }
 
   .gw-nav-links { display: flex; align-items: center; gap: 2px; }
   .gw-nav-link {
@@ -78,21 +143,27 @@ const LINKS = [
        five, which pushed "Get started free" off the edge. W13-4. */
     white-space: nowrap;
   }
-  .gw-nav-link:hover { background: #E8E6E3; color: #1A1916; }
-  .gw-nav-link.active { background: #E8E6E3; color: #1A1916; font-weight: 600; }
-  .gw-nav-link:focus-visible { outline: 2px solid #0C447C; outline-offset: 2px; }
+  .gw-nav-link:hover { background: var(--gw-paper-2); color: var(--gw-text); }
+  .gw-nav-link.active { background: var(--gw-paper-2); color: var(--gw-text); font-weight: 600; }
+  .gw-nav-link:focus-visible { outline: 2px solid var(--gw-navy); outline-offset: 2px; }
 
   .gw-nav-ctas { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  /**
+   * `display: flex` beats the `hidden` attribute's own `display: none`, so without this BOTH
+   * headers render side by side and the page offers "Sign in" and "Sign out" at once. Caught by
+   * looking at the rendered page, which is the only place it is visible.
+   */
+  .gw-nav-ctas[hidden] { display: none; }
   .gw-btn-ghost, .gw-btn-solid {
     font-size: 13px; padding: 7px 14px; border-radius: 6px;
     text-decoration: none; display: inline-block; white-space: nowrap;
     font-family: inherit; transition: background .15s;
   }
-  .gw-btn-ghost { font-weight: 600; color: #0C447C; background: none; border: 1px solid #B5D4F4; }
-  .gw-btn-ghost:hover { background: #EEF4FB; }
-  .gw-btn-solid { font-weight: 700; color: #fff; background: #0C447C; border: none; }
+  .gw-btn-ghost { font-weight: 600; color: var(--gw-navy); background: none; border: 1px solid var(--gw-blue-b); }
+  .gw-btn-ghost:hover { background: var(--gw-blue-bg); }
+  .gw-btn-solid { font-weight: 700; color: #fff; background: var(--gw-navy); border: none; }
   .gw-btn-solid:hover { background: #1557A0; }
-  .gw-btn-ghost:focus-visible, .gw-btn-solid:focus-visible { outline: 2px solid #0C447C; outline-offset: 2px; }
+  .gw-btn-ghost:focus-visible, .gw-btn-solid:focus-visible { outline: 2px solid var(--gw-navy); outline-offset: 2px; }
 
   /* The links collapse before the buttons do: on a narrow screen the two things worth
      keeping are the wordmark and the way in. */

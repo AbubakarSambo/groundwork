@@ -77,11 +77,11 @@ export function OrgMembersPage() {
         People
       </h1>
       <p style={{ fontSize: 14, color: 'var(--gw-sub)', marginBottom: 32, lineHeight: 1.6 }}>
-        Everyone with a Groundwork account in your organization. Invite colleagues to give them access.
+        Everyone with a Groundwork account in your organisation. Invite colleagues to give them access.
       </p>
 
       {/* Invite form */}
-      <div style={{ background: 'var(--gw-blue-bg, #EEF4FB)', border: '1px solid var(--gw-blue-b, #B5D4F4)', borderRadius: 12, padding: '20px 22px', marginBottom: 32 }}>
+      <div style={{ background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 12, padding: '20px 22px', marginBottom: 32 }}>
         <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 4 }}>Invite a team member</div>
         <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 14, lineHeight: 1.5 }}>
           They will receive an email with a link to set up their Groundwork account.
@@ -89,12 +89,12 @@ export function OrgMembersPage() {
         <div style={{ display: 'flex', gap: 10 }}>
           <input
             type="email"
-            placeholder="colleague@company.com"
+            placeholder="colleague@example.com"
             value={inviteEmail}
             onChange={e => setInviteEmail(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleInvite()}
             style={{
-              flex: 1, padding: '10px 13px', fontSize: 14, border: '1px solid var(--gw-blue-b, #B5D4F4)',
+              flex: 1, padding: '10px 13px', fontSize: 14, border: '1px solid var(--gw-blue-b)',
               borderRadius: 8, fontFamily: 'inherit', outline: 'none', background: 'white',
             }}
           />
@@ -141,15 +141,15 @@ export function OrgMembersPage() {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
                   {!m.isEmailVerified && (
-                    <span style={{ fontSize: 11, background: '#FDF3E3', color: '#8A5C1A', border: '1px solid #F5D9A0', borderRadius: 6, padding: '2px 7px', fontWeight: 600 }}>
+                    <span style={{ fontSize: 11, background: 'var(--gw-amber-bg)', color: 'var(--gw-amber-t)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 6, padding: '2px 7px', fontWeight: 600 }}>
                       Pending
                     </span>
                   )}
                   <span style={{
                     fontSize: 11, borderRadius: 6, padding: '2px 7px', fontWeight: 600,
-                    background: m.role === 'ADMIN' ? 'var(--gw-blue-bg, #EEF4FB)' : 'var(--gw-bg)',
+                    background: m.role === 'ADMIN' ? 'var(--gw-blue-bg)' : 'var(--gw-bg)',
                     color: m.role === 'ADMIN' ? 'var(--gw-navy)' : 'var(--gw-sub)',
-                    border: `1px solid ${m.role === 'ADMIN' ? 'var(--gw-blue-b, #B5D4F4)' : 'var(--gw-border)'}`,
+                    border: `1px solid ${m.role === 'ADMIN' ? 'var(--gw-blue-b)' : 'var(--gw-border)'}`,
                   }}>
                     {m.role === 'ADMIN' ? 'Admin' : 'Member'}
                   </span>

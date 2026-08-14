@@ -1,49 +1,24 @@
-import { useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { toast } from 'sonner'
-import { useAuthStore } from '@/stores/auth'
-
-const WARN_MS   = 29 * 60 * 1000
-const LOGOUT_MS = 30 * 60 * 1000
-
+/**
+ * THE REASON YOU KEPT HAVING TO SIGN IN AGAIN.
+ *
+ * This signed people out after **30 minutes of no mouse or keyboard**, with a warning at 29. The token
+ * itself lasts seven days and the store persists it, so the server was perfectly happy - it was the
+ * client throwing people out. Step away from a check-in to go and find the document it just asked you
+ * for, come back, sign in again.
+ *
+ * Her instruction: "you can stay signed-in on the same device for a while without having to sign-in
+ * again."
+ *
+ * WHAT THIS TRADES, SAID PLAINLY. An unattended session now stays open until the token expires or the
+ * person signs out. On a shared machine that is a real exposure, and it is why the timer existed. Two
+ * things make it a reasonable call rather than a careless one: signing out is now available from the
+ * rail on every page rather than only the grounds list, and the seven-day token remains the outer
+ * bound. If the exposure matters more than the friction later, the timer belongs on the server as a
+ * shorter token plus a refresh, not as a browser timer that fires while the API still trusts you.
+ *
+ * The hook is kept as a no-op rather than deleted so `SessionGuard` stays the one place session
+ * behaviour is decided, and so this note sits where the next person will look for it.
+ */
 export function useSessionTimeout() {
-  const isAuthenticated = useAuthStore(s => s.isAuthenticated)
-  const logout = useAuthStore(s => s.logout)
-  const navigate = useNavigate()
-  const warnTimer   = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const logoutTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const warnToastId = useRef<string | number | null>(null)
-
-  useEffect(() => {
-    if (!isAuthenticated) return
-
-    function reset() {
-      if (warnTimer.current)   clearTimeout(warnTimer.current)
-      if (logoutTimer.current) clearTimeout(logoutTimer.current)
-      if (warnToastId.current) toast.dismiss(warnToastId.current)
-
-      warnTimer.current = setTimeout(() => {
-        warnToastId.current = toast.warning(
-          'You will be signed out in 1 minute due to inactivity.',
-          { duration: 60_000 },
-        )
-      }, WARN_MS)
-
-      logoutTimer.current = setTimeout(() => {
-        logout()
-        navigate('/login')
-        toast.info('Signed out due to inactivity.')
-      }, LOGOUT_MS)
-    }
-
-    const events = ['mousemove', 'keydown', 'touchstart', 'scroll', 'click'] as const
-    events.forEach(e => window.addEventListener(e, reset, { passive: true }))
-    reset()
-
-    return () => {
-      events.forEach(e => window.removeEventListener(e, reset))
-      if (warnTimer.current)   clearTimeout(warnTimer.current)
-      if (logoutTimer.current) clearTimeout(logoutTimer.current)
-    }
-  }, [isAuthenticated, logout, navigate])
+  /* Nothing. See above: idle sign-out was removed deliberately, not lost. */
 }

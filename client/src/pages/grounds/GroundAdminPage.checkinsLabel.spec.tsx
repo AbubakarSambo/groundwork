@@ -59,9 +59,11 @@ describe('BUG7: admin check-ins list labels each row by participant', () => {
   it('shows each participant against their session-1 check-in', async () => {
     renderPage()
     await waitFor(() => expect(screen.getAllByText(/Jordan - Probation/i).length).toBeGreaterThan(0))
-    // The card list is "Sessions" now: the conversation tab is the one called Check-in,
+    // The card list is "Record" now: one tab shared with the party view, whose content differs by
+    // role. It was "Sessions" here and "My record" there, which is the same tab named twice.
+    // Originally: the conversation tab is the one called Check-in,
     // because that is the word the emails and buttons use. W13-8.
-    fireEvent.click(screen.getByRole('button', { name: 'Sessions' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Record' }))
     await waitFor(() => {
       expect(screen.getByText('admin@example-test.invalid')).toBeTruthy()
       expect(screen.getByText('jordan@example-test.invalid')).toBeTruthy()

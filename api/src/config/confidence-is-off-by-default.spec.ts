@@ -36,7 +36,13 @@ const withEnv = (value: string | undefined) => {
 };
 
 describe('the confidence flag', () => {
-  it('is off when nothing is set, which is every environment today', () => {
+  it('is off when nothing is set', () => {
+    /**
+     * It is set now - `.env.example` carries CONFIDENCE_ENABLED=true as of wave 14, after the
+     * arithmetic was checked against a real closed twelve-session ground rather than a fixture.
+     * What this asserts is the PARSE default, which stays off: an environment that forgets the
+     * variable gets the product as it was, not a half-configured version of the new thing.
+     */
     expect(withEnv(undefined)).toBe(false);
   });
 

@@ -48,26 +48,26 @@ export function PaymentPage() {
   })
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F5F3EF', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '0 20px' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--gw-paper-2)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '0 20px' }}>
       <div style={{ width: '100%', maxWidth: 400 }}>
 
-        <div style={{ fontSize: 11, color: '#9B9590', marginBottom: 20, cursor: 'pointer' }} onClick={() => navigate(-1)}>
+        <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 20, cursor: 'pointer' }} onClick={() => navigate(-1)}>
           Back
         </div>
 
-        <div style={{ fontSize: 22, fontWeight: 800, color: '#0A1628', marginBottom: 4 }}>
+        <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-dark)', marginBottom: 4 }}>
           {ground?.isFreeGround ? 'This ground' : 'Add sessions to this ground'}
         </div>
         {groundName && (
-          <div style={{ fontSize: 13, color: '#6B6560', marginBottom: 20 }}>{groundName}</div>
+          <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 20 }}>{groundName}</div>
         )}
         {!groundName && <div style={{ marginBottom: 20 }} />}
 
         {groundLoading ? (
-          <div style={{ fontSize: 13, color: '#9B9590', padding: '20px 0' }}>Loading...</div>
+          <div style={{ fontSize: 13, color: 'var(--gw-muted)', padding: '20px 0' }}>Loading...</div>
         ) : ground?.isFreeGround ? (
-          <div style={{ background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 10, padding: '14px 16px' }}>
-            <div style={{ fontSize: 13, color: '#085041', lineHeight: 1.6 }}>
+          <div style={{ background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b-soft)', borderRadius: 10, padding: '14px 16px' }}>
+            <div style={{ fontSize: 13, color: 'var(--gw-green-t)', lineHeight: 1.6 }}>
               <strong>This ground has unlimited free sessions.</strong> There is nothing to purchase here - just continue from the ground page.
             </div>
           </div>
@@ -78,8 +78,8 @@ export function PaymentPage() {
                 unlimited sessions, so there was never a quantity to buy. What
                 is left on this page is contributor-code redemption, which
                 grants access and costs nobody anything. */}
-            <div style={{ background: '#E7F6EF', border: '1px solid #B6E8D4', borderRadius: 10, padding: '12px 16px', marginBottom: 14 }}>
-              <div style={{ fontSize: 13, color: '#085041', lineHeight: 1.6 }}>
+            <div style={{ background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b-soft)', borderRadius: 10, padding: '12px 16px', marginBottom: 14 }}>
+              <div style={{ fontSize: 13, color: 'var(--gw-green-t)', lineHeight: 1.6 }}>
                 <strong>Sessions are not charged for.</strong> Every ground on the free tier runs
                 unlimited sessions and reports; a subscription lifts the ten-ground cap.
               </div>
@@ -88,31 +88,31 @@ export function PaymentPage() {
         )}
 
         {/* Access code */}
-        <div style={{ background: 'white', border: '0.5px solid #E2E0DB', borderRadius: 10, padding: 18, marginBottom: 16 }}>
+        <div style={{ background: 'white', border: '0.5px solid var(--gw-border)', borderRadius: 10, padding: 18, marginBottom: 16 }}>
           {!showCode ? (
             <button
               onClick={() => setShowCode(true)}
-              style={{ background: 'none', border: 'none', fontSize: 12, color: '#9B9590', cursor: 'pointer', fontFamily: 'inherit', padding: 0, textDecoration: 'underline' }}
+              style={{ background: 'none', border: 'none', fontSize: 12, color: 'var(--gw-muted)', cursor: 'pointer', fontFamily: 'inherit', padding: 0, textDecoration: 'underline' }}
             >
               Have an access code?
             </button>
           ) : (
             <div>
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#1A1916', marginBottom: 10 }}>Access code</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 10 }}>Access code</div>
               <input
                 type="text"
                 value={code}
                 onChange={e => { setCode(e.target.value); setCodeMsg(null) }}
                 placeholder="Enter code"
-                style={{ width: '100%', padding: '9px 11px', fontSize: 13, fontFamily: 'inherit', border: `1px solid ${codeMsg && !codeMsg.ok ? '#c0392b' : '#E2E0DB'}`, borderRadius: 7, background: '#F5F3EF', color: '#0A1628', outline: 'none', boxSizing: 'border-box', marginBottom: 8 }}
+                style={{ width: '100%', padding: '9px 11px', fontSize: 13, fontFamily: 'inherit', border: `1px solid ${codeMsg && !codeMsg.ok ? 'var(--gw-danger)' : 'var(--gw-border)'}`, borderRadius: 7, background: 'var(--gw-paper-2)', color: 'var(--gw-dark)', outline: 'none', boxSizing: 'border-box', marginBottom: 8 }}
               />
               {codeMsg && (
-                <div style={{ fontSize: 12, color: codeMsg.ok ? '#085041' : '#c0392b', marginBottom: 8 }}>{codeMsg.text}</div>
+                <div style={{ fontSize: 12, color: codeMsg.ok ? 'var(--gw-green-t)' : 'var(--gw-danger)', marginBottom: 8 }}>{codeMsg.text}</div>
               )}
               <button
                 onClick={() => redeemCode.mutate()}
                 disabled={!code.trim() || redeemCode.isPending}
-                style={{ width: '100%', padding: '9px', borderRadius: 7, background: '#0C447C', color: 'white', fontSize: 13, fontWeight: 600, border: 'none', cursor: !code.trim() ? 'not-allowed' : 'pointer', opacity: !code.trim() ? 0.45 : 1, fontFamily: 'inherit' }}
+                style={{ width: '100%', padding: '9px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 600, border: 'none', cursor: !code.trim() ? 'not-allowed' : 'pointer', opacity: !code.trim() ? 0.45 : 1, fontFamily: 'inherit' }}
               >
                 {redeemCode.isPending ? 'Checking...' : 'Apply'}
               </button>

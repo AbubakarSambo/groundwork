@@ -37,18 +37,41 @@ export function Zone({ label }: { label: string }) {
 }
 
 /** A section heading, with an optional note about where its content came from. */
-export function Sec({ title, src }: { title: string; src?: string }) {
+/**
+ * `on` was added when the ground pages came onto the kit. Stage 5, second pass.
+ *
+ * Those two pages held TEN variants of this one label: 10px and 11px, .08em and .1em, and five
+ * colours - including `rgba(255,255,255,.45)`, `.4` and `.35` for the same label inside dark panels.
+ * Three different whites for one thing, because the kit had no answer for a label on a dark ground
+ * and each panel invented its own.
+ *
+ * A component with no case for something real is how the ninth copy gets written.
+ */
+export function Sec({ title, src, on = 'light' }: { title: string; src?: string; on?: 'light' | 'dark' }) {
+  const dark = on === 'dark'
   return (
     <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, margin: '16px 2px 8px' }}>
-      <h2 style={{ fontSize: 12.5, letterSpacing: '.4px', textTransform: 'uppercase', color: 'var(--gw-sub)', fontWeight: 700 }}>{title}</h2>
-      {src && <span style={{ fontSize: 10.5, color: 'var(--gw-muted)', marginLeft: 'auto', whiteSpace: 'nowrap' }}>{src}</span>}
+      <h2 style={{ fontSize: 12.5, letterSpacing: '.4px', textTransform: 'uppercase', color: dark ? 'rgba(255,255,255,.45)' : 'var(--gw-sub)', fontWeight: 700 }}>{title}</h2>
+      {src && <span style={{ fontSize: 10.5, color: dark ? 'rgba(255,255,255,.35)' : 'var(--gw-muted)', marginLeft: 'auto', whiteSpace: 'nowrap' }}>{src}</span>}
     </div>
   )
 }
 
-export function Card({ children, pad = true }: { children: React.ReactNode; pad?: boolean }) {
+/**
+ * `pad` has three cases, and the third was added when Settings' panels came onto the kit. Stage 5.
+ *
+ *   true     a list of `Row`s. 6px, because each Row brings its own 11px.
+ *   false    the row list runs edge to edge - a divided list with no gutter.
+ *   'block'  ONE block of content, which has no Row to bring the vertical padding.
+ *
+ * Without the third case, a panel holding a heading and two lines sat on 6px of air and looked
+ * cramped in a way that reads as a rendering bug rather than a choice. Six of Settings' panels are
+ * that shape, and so is most of the product outside the board.
+ */
+export function Card({ children, pad = true }: { children: React.ReactNode; pad?: boolean | 'block' }) {
+  const padding = pad === 'block' ? '14px 16px' : pad ? '6px 16px' : 0
   return (
-    <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, boxShadow: '0 1px 2px rgba(20,24,40,.05)', padding: pad ? '6px 16px' : 0 }}>
+    <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, boxShadow: '0 1px 2px rgba(20,24,40,.05)', padding }}>
       {children}
     </div>
   )

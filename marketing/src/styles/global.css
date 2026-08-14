@@ -1,1 +1,84 @@
-@import "tailwindcss";
+/**
+ * TAILWIND IS GONE, AND IT WAS NEVER USED. W15-1.
+ *
+ * The site broke its own deploy the moment W14-8 made this file a real import. Until then
+ * `Layout.astro` referenced it with a `<link rel="stylesheet" href="/src/styles/global.css">`, which
+ * Vite serves as JavaScript and which therefore applied nothing - so `@tailwindcss/vite` never
+ * actually had to process anything, and a version incompatibility with rolldown sat there unnoticed.
+ * Importing the file properly is what surfaced it: every build since has failed with
+ * "Missing field `tsconfigPaths`", and the marketing deploy has been red on main.
+ *
+ * The fix is not to pin around the incompatibility. Every class on this site is hand-written and
+ * prefixed `gw-`; there is not one Tailwind utility in any page, layout or component. So the plugin
+ * was compiling a framework nobody had used, and removing it removes the whole class of problem
+ * rather than the current version of it.
+ */
+
+/**
+ * ONE DESIGN LANGUAGE, AND IT ALREADY EXISTED. W14-8.
+ *
+ * The audit said the marketing site and the product carried different design principles. Reading the
+ * colours says something more precise: the site was already using the product's palette - #1A1916,
+ * #0C447C, #6B6560, #9B9590, #E2E0DB, the same values as `client/src/index.css` - typed out by hand,
+ * 538 times, with nothing naming them.
+ *
+ * So there was no second design language. There was one language with no vocabulary, which is how it
+ * drifted where it drifted:
+ *
+ *   - FOUR near-identical off-whites (#FAF9F7, #F5F3EF, #EDEBE7, #E8E6E3) where the product has one
+ *     background. Nobody chooses four whites two shades apart on purpose; you get them by picking a
+ *     light grey on four different afternoons.
+ *   - #4A5568, thirty-five times, for body text. It is a blue-grey from a different palette
+ *     altogether and it sits next to #6B6560, the product's own, on the same pages.
+ *
+ * These are the product's tokens, same values, same names, so the two sides of the site can be read
+ * against each other. The drift colours resolve onto the nearest real token rather than being
+ * preserved as tokens of their own, which would only make the drift official.
+ */
+:root {
+  --gw-navy: #0C447C;
+  --gw-navy-d: #042C53;
+  --gw-bg: #EDECEA;
+  --gw-dark: #0A1628;
+  --gw-green-bg: #E1F5EE;
+  --gw-green-t: #085041;
+  --gw-green-b: #5DCAA5;
+  --gw-amber-bg: #FDF3E3;
+  --gw-amber-t: #8A5C1A;
+  --gw-amber-b: #E8A94A;
+  --gw-red-bg: #FCEBEB;
+  --gw-red-t: #791F1F;
+  --gw-red-b: #F09595;
+  --gw-blue-bg: #EEF4FB;
+  --gw-blue-t: #0C447C;
+  --gw-blue-b: #B5D4F4;
+  --gw-border: #E2E0DB;
+  --gw-muted: #9B9590;
+  --gw-sub: #6B6560;
+  --gw-text: #1A1916;
+  --gw-clay: #B5675A;
+  --gw-clay-bg: #F8ECEA;
+  --gw-radius: 6px;
+
+  /**
+   * The two the marketing site genuinely needs and the product does not: a page white above the
+   * app's background, and one step down from it for banded sections. Four became two, which is the
+   * number the layering actually uses.
+   */
+  --gw-paper: #FAF9F7;
+  --gw-paper-2: #F1EFEB;
+}
+
+/**
+ * `hidden` HAS TO ACTUALLY HIDE. W15-2.
+ *
+ * The attribute's own rule is `display: none`, which is the weakest possible selector - any class
+ * that sets `display` beats it. The signed-in and signed-out headers are `display: flex` and the
+ * hero buttons are `inline-block`, so both would have rendered together: a page offering "Sign in"
+ * and "Sign out" at the same time.
+ *
+ * Scoped to the two attributes that need it rather than a blanket `[hidden]` rule, so this cannot
+ * quietly change how anything else on the site behaves.
+ */
+[data-signed-in][hidden],
+[data-signed-out][hidden] { display: none !important; }

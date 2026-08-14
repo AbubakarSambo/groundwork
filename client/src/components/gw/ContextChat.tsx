@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { groundsApi } from '@/api/grounds'
 import { toast } from 'sonner'
 
@@ -21,10 +21,20 @@ import { toast } from 'sonner'
  * stops trusting that they are in the same place.
  */
 export function ContextChat({ groundId }: { groundId: string }) {
+  const qc = useQueryClient()
   const [open, setOpen] = useState(false)
   const [history, setHistory] = useState<{ role: 'user' | 'assistant'; content: string }[]>([])
   const [text, setText] = useState('')
   const [done, setDone] = useState(false)
+  /**
+   * WHAT IT HEARD, WAITING ON A YES. This panel has always said "nothing is saved until you say
+   * so", and until now there was no way to say so: the conversation asked how long the ground
+   * should run, the lead answered, nothing was written, and the next turn asked again.
+   *
+   * `said` is kept beside the proposal because the server re-derives the change from the lead's own
+   * words. Sending a value instead would make this a button that edits the ground.
+   */
+  const [proposal, setProposal] = useState<{ gap: string; say: string; said: string } | null>(null)
 
   const send = useMutation({
     mutationFn: (next: { role: 'user' | 'assistant'; content: string }[]) =>
@@ -32,6 +42,8 @@ export function ContextChat({ groundId }: { groundId: string }) {
     onSuccess: (res, next) => {
       setHistory([...next, { role: 'assistant', content: res.reply }])
       setDone(res.done)
+      const said = [...next].reverse().find(m => m.role === 'user')?.content ?? ''
+      setProposal(res.proposal && said ? { ...res.proposal, said } : null)
     },
     onError: () => toast.error('That did not go through. Try again.'),
   })
@@ -47,8 +59,21 @@ export function ContextChat({ groundId }: { groundId: string }) {
     const next = [...history, { role: 'user' as const, content: t }]
     setHistory(next)
     setText('')
+    setProposal(null)
     send.mutate(next)
   }
+
+  const confirm = useMutation({
+    mutationFn: () => groundsApi.confirmContext(groundId, proposal!.said),
+    onSuccess: res => {
+      toast.success(res.say.replace(/^I will /, 'Done. ').replace(/\.$/, '.'))
+      setProposal(null)
+      qc.invalidateQueries({ queryKey: ['ground', groundId] })
+      /** Ask again with the gap now closed, so the next question is the next real one. */
+      send.mutate(history)
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That could not be saved. Try again.'),
+  })
 
   if (!open) {
     return (
@@ -109,6 +134,32 @@ export function ContextChat({ groundId }: { groundId: string }) {
           <div style={{ fontSize: 12.5, color: 'var(--gw-muted)', alignSelf: 'flex-start' }}>Thinking…</div>
         )}
       </div>
+
+      {/**
+        * THE YES. Shown only when there is something concrete, and it says exactly what will change
+        * before it changes - "I will set this to run for twelve weeks" - because a confirm button
+        * whose effect you have to guess is not a confirmation.
+        */}
+      {proposal && (
+        <div style={{ background: 'white', border: '1px solid var(--gw-blue-b)', borderRadius: 10, padding: '11px 13px', marginBottom: 12 }}>
+          <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.55, marginBottom: 9 }}>{proposal.say}</div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              onClick={() => confirm.mutate()}
+              disabled={confirm.isPending}
+              style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 700, fontFamily: 'inherit' }}
+            >
+              {confirm.isPending ? 'Saving…' : 'Yes, set it'}
+            </button>
+            <button
+              onClick={() => setProposal(null)}
+              style={{ padding: '8px 14px', borderRadius: 7, background: 'none', color: 'var(--gw-sub)', border: '1px solid var(--gw-border)', cursor: 'pointer', fontSize: 12.5, fontWeight: 600, fontFamily: 'inherit' }}
+            >
+              Not that
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* It is allowed to end. A setup conversation that will not stop teaches people
           to skip setup. */}
