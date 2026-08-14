@@ -15,6 +15,24 @@ export function BillingPage() {
   const qc = useQueryClient()
   const user = useAuthStore(s => s.user)
 
+  /**
+   * THE SIDEBAR WAS THE ONLY THING HIDING THIS PAGE.
+   *
+   * `AppShell` marks the Billing item `adminOnly`, and that was the whole of it: the route is
+   * `RequireAuth` only and this component read `user` without ever looking at `user.role`. Signed in
+   * as a plain participant on a ground, typing the URL rendered the organisation's plan, its
+   * grounds, the full price ladder from $25 to $400 a month with live Subscribe buttons, and the
+   * access-code tools.
+   *
+   * The server was holding the line - the admin-only reads came back refused - so nothing sensitive
+   * was disclosed. What was wrong is that a member was being OFFERED controls over the
+   * organisation's money that they have no authority to use. A hidden link is not a permission.
+   *
+   * Found by signing in as a participant and typing the address, which is exactly what somebody
+   * being reviewed has a motive to do.
+   */
+  const isAdmin = user?.role === 'ADMIN'
+
   const groundId = params.get('groundId') ?? undefined
 
   const [genSessions, setGenSessions] = useState(1)
@@ -28,16 +46,24 @@ export function BillingPage() {
   const { data: grounds = [], isLoading: groundsLoading } = useQuery({
     queryKey: ['grounds'],
     queryFn: groundsApi.list,
+    enabled: isAdmin,
   })
 
   const { data: codes = [], isLoading: codesLoading } = useQuery({
     queryKey: ['contributor-codes'],
     queryFn: billingApi.getContributorCodes,
+    enabled: isAdmin,
   })
 
   const { data: billingStatus } = useQuery({
     queryKey: ['billing-status'],
     queryFn: billingApi.status,
+    /**
+     * Gated too, and this is what also removes the pair of overlapping "Access denied" toasts: a
+     * request that is never made cannot fail. Two identical failures rendered as two stacked toasts
+     * that truncated each other, which is its own small mess.
+     */
+    enabled: isAdmin,
   })
 
   const generateCode = useMutation({
@@ -117,6 +143,16 @@ export function BillingPage() {
   const peopleOverCap =
     billingStatus?.people?.cap != null && billingStatus.people.count > billingStatus.people.cap
   const hasBillingHistory = (billingStatus?.activeGrounds ?? []).length > 0
+
+  if (!isAdmin) {
+    return (
+      <div style={{ padding: '48px 32px', maxWidth: 560 }}>
+        <div style={{ fontSize: 15, color: 'var(--gw-sub)' }}>
+          You need admin access to manage billing for your organisation.
+        </div>
+      </div>
+    )
+  }
 
   if (groundsLoading || codesLoading) {
     return (
@@ -336,10 +372,10 @@ export function BillingPage() {
           </div>
         )}
 
-        {/* Upgrade organization */}
-        <div id="upgrade-section" style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-dark)', marginBottom: 4 }}>Upgrade your organization</div>
+        {/* Upgrade organisation */}
+        <div id="upgrade-section" style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-dark)', marginBottom: 4 }}>Upgrade your organisation</div>
         <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 14, lineHeight: 1.6 }}>
-          Your team is getting value from Groundwork. Unlock unlimited Grounds and unlimited sessions for everyone in your organization with one simple monthly subscription.
+          Your team is getting value from Groundwork. Unlock unlimited Grounds and unlimited sessions for everyone in your organisation with one simple monthly subscription.
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 28 }}>
@@ -396,8 +432,8 @@ export function BillingPage() {
               'No upfront payment.',
               'No credit card required to get started.',
               'Pay when Groundwork is creating value for your team.',
-              'Choose between buying sessions or subscribing your organization.',
-              'Pause your organization subscription whenever you are no longer using Groundwork.',
+              'Choose between buying sessions or subscribing your organisation.',
+              'Pause your organisation subscription whenever you are no longer using Groundwork.',
             ].map((line, i) => (
               <li key={i} style={{ fontSize: 13, color: 'var(--gw-sub-d)', lineHeight: 1.6 }}>{line}</li>
             ))}

@@ -82,21 +82,26 @@ export class BoardService {
     });
     if (!ground) throw new NotFoundException('Ground not found');
 
-    // Authorisation: parties to this ground, its initiator, or the admin who
-    // set it up.
-    //
-    // The setting-up admin is often neither lead nor participant - she creates
-    // the ground and hands it to a lead. An eighteen-ground run found her
-    // locked out of every board she had created, from a "Team board" link her
-    // own admin page renders. READ only: createdByUserId does not confer the
-    // initiator's write powers (objectives, poll), which stay gated below.
-    const isInitiator = ground.initiatorId === requestingUserId;
-    const isSetupAdmin = !!ground.createdByUserId && ground.createdByUserId === requestingUserId;
-    const me = ground.participants.find((p) => p.userId === requestingUserId);
-    if (!me && !isInitiator && !isSetupAdmin) {
-      throw new ForbiddenException('You are not a party to this ground');
-    }
-
+    /**
+     * "THERE IS NO BOARD" IS ANSWERED BEFORE "WHO ARE YOU", AND THAT ORDER IS THE FIX.
+     *
+     * The authorisation throw used to sit here, above the mode gate. On a private ground - which has
+     * no board at all, by design - an org admin who was not a party got "You are not a party to this
+     * ground" and a red Access denied toast, while a PARTICIPANT on the same URL got the truth:
+     * "This is a private alignment ground... there is no shared board. Read your report instead."
+     *
+     * So the person with the least authority was the one being told what was going on, and the
+     * admin was shown a permission problem that did not exist - one tab after a banner reading "You
+     * can see everything here, which is the point of being an admin". The two screens read as the
+     * product not knowing its own rules.
+     *
+     * Safe to answer first because the mode gate does not depend on identity: whether this KIND of
+     * ground has a board is a fact about the ground, discloses nothing about the accounts on it, and
+     * is already visible to every party. Where a ground DOES have a board, the authorisation check
+     * below still runs and still refuses.
+     *
+     * Found by walking the same URL as three different roles, not by reading the code.
+     */
     // GATE 1: mode + family. A private ground, or a sensing-family scenario,
     // has no board at all - and says so, rather than returning an empty shell
     // that reads like a broken page.
@@ -111,6 +116,22 @@ export class BoardService {
             ? 'This is a private alignment ground. Accounts are never shown to other parties, so there is no shared board. Read your report instead.'
             : 'This kind of ground does not use a shared board. Laying these accounts out for everyone to read would undo the candour that makes them worth having. Read the report instead.',
       };
+    }
+
+    /**
+     * NOW who is asking, because from here on the answer contains the accounts.
+     *
+     * Parties to this ground, its initiator, or the admin who set it up. The setting-up admin is
+     * often neither lead nor participant - she creates the ground and hands it to a lead. An
+     * eighteen-ground run found her locked out of every board she had created, from a "Team board"
+     * link her own admin page renders. READ only: createdByUserId does not confer the initiator's
+     * write powers (objectives, poll), which stay gated below.
+     */
+    const isInitiator = ground.initiatorId === requestingUserId;
+    const isSetupAdmin = !!ground.createdByUserId && ground.createdByUserId === requestingUserId;
+    const me = ground.participants.find((p) => p.userId === requestingUserId);
+    if (!me && !isInitiator && !isSetupAdmin) {
+      throw new ForbiddenException('You are not a party to this ground');
     }
 
     // Collapse duplicate handoffs before anything reads them, so existing

@@ -1,4 +1,5 @@
 import { plannedSessionsFor, everySessionDone } from '@/lib/sessionCount'
+import { whichSessionAreWeOn, hasDoneThisSession } from '@/lib/which-session-are-we-on'
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -951,7 +952,7 @@ export function GroundAdminPage() {
             {/* Subscribed: unlimited sessions badge */}
             {ground.org?.subscriptionPlan && ground.org?.subscriptionStatus === 'active' && (
               <div style={{ background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b-soft)', borderRadius: 8, padding: '8px 14px', marginBottom: 12, fontSize: 12, color: 'var(--gw-green-t)', fontWeight: 600 }}>
-                Subscribed. Unlimited sessions active for your organization.
+                Subscribed. Unlimited sessions active for your organisation.
               </div>
             )}
 
@@ -1222,7 +1223,7 @@ export function GroundAdminPage() {
                     if (limit !== null && limit !== undefined && memberCount >= limit) {
                       return (
                         <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid #F5C56A', borderRadius: 8, padding: '10px 14px', marginBottom: 10, fontSize: 12, color: 'var(--gw-amber-t)', lineHeight: 1.55 }}>
-                          Your {plan?.replace('_', ' ').toLowerCase()} plan supports up to {limit} members. You have reached the limit. Upgrade your organization to add more people.
+                          Your {plan?.replace('_', ' ').toLowerCase()} plan supports up to {limit} members. You have reached the limit. Upgrade your organisation to add more people.
                           <button onClick={() => navigate('/billing')} style={{ display: 'inline', marginLeft: 8, background: 'none', border: 'none', fontSize: 12, color: 'var(--gw-amber-t)', textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>
                             View plans
                           </button>
@@ -1336,13 +1337,21 @@ export function GroundAdminPage() {
               parties={(ground.participants ?? [])
                 .filter((p: any) => !p.managingOnly)
                 .map((p: any) => {
-                  const current = myOpenCheckIn?.sessionNumber ?? plannedSessions ?? 1
-                  const theirs = ((ground.checkIns ?? []) as any[]).filter(
-                    (c) => c.participantId === p.id && (c.sessionNumber ?? 0) >= current && c.status === 'COMPLETED',
+                  /**
+                   * `plannedSessions` used to be the fallback here, which is the total rather than
+                   * the position - on a six-session ground that made every roster read "waiting"
+                   * forever. One answer for both pages now.
+                   */
+                  const current = whichSessionAreWeOn(
+                    myOpenCheckIn?.sessionNumber ?? null,
+                    ((ground.checkIns ?? []) as any[])
+                      .filter((c) => c.status === 'COMPLETED')
+                      .map((c) => c.sessionNumber ?? 0),
                   )
+                  const theirs = ((ground.checkIns ?? []) as any[]).filter((c) => c.participantId === p.id)
                   return {
                     name: nameOfParticipant(p.id) ?? 'A participant',
-                    done: theirs.length > 0,
+                    done: hasDoneThisSession(theirs, current),
                     isSelf: p.userId === user?.id,
                   }
                 })}

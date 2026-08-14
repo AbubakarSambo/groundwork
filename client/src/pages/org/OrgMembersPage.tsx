@@ -77,7 +77,7 @@ export function OrgMembersPage() {
         People
       </h1>
       <p style={{ fontSize: 14, color: 'var(--gw-sub)', marginBottom: 32, lineHeight: 1.6 }}>
-        Everyone with a Groundwork account in your organization. Invite colleagues to give them access.
+        Everyone with a Groundwork account in your organisation. Invite colleagues to give them access.
       </p>
 
       {/* Invite form */}
@@ -89,7 +89,7 @@ export function OrgMembersPage() {
         <div style={{ display: 'flex', gap: 10 }}>
           <input
             type="email"
-            placeholder="colleague@company.com"
+            placeholder="colleague@example.com"
             value={inviteEmail}
             onChange={e => setInviteEmail(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleInvite()}

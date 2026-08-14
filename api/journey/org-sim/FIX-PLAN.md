@@ -6292,3 +6292,64 @@ is my situation" against "I'm setting this up for my team", makes people choose 
 descriptions of themselves - and somebody in HR setting up a record about a new hire is BOTH. Both
 options fit, so the choice stalls. Her steer was exact: it is about who leads the check-ins. Asked
 as "who gives the accounts on this?" the answer takes a second.
+
+## The page walk, and the three things it found
+
+Every route, as a stranger, an admin, a lead and a participant, on one org with a ground carrying two
+completed sessions of real content. Captured with `e2e/page-audit.spec.ts` so it is repeatable.
+
+**Walking it as each role is the whole method, and it corrected me twice.** Reading the route guards
+got two of my four findings wrong: I reported `/prompts` as nav-gated-only (it refuses properly, with
+"Platform admin access required"), and I reported the board as the admin needing access, when the real
+fault was the order of two gates.
+
+### A hidden link is not a permission
+
+`/billing` rendered in full for a plain participant who typed the URL: the organisation's plan, its
+grounds, the ladder from $25 to $400 a month with live Subscribe buttons, and the access-code tools.
+The sidebar's `adminOnly` flag was the only thing hiding it; the route is `RequireAuth` alone and the
+component never read `user.role`.
+
+The server was never at risk - every mutation on `BillingController` carries `@Roles(Role.ADMIN)`, so
+a member could not have subscribed the org. What was wrong is being OFFERED it. A control you may not
+use should not be on your screen, and a member who clicks Subscribe and is refused has been told
+something untrue about their own authority.
+
+Gating the three reads on `isAdmin` also removed a pair of overlapping "Access denied" toasts that
+truncated each other: a request never made cannot fail.
+
+### "There is no board" is not a permission problem either
+
+One private-mode ground, one URL, two roles. The PARTICIPANT got the truth - "This is a private
+alignment ground... there is no shared board. Read your report instead." The ORG ADMIN got "You are
+not a party to this ground" and a red toast, one tab after a banner reading "You can see everything
+here, which is the point of being an admin".
+
+There is no board on that ground for anybody. The authorisation throw sat above the mode gate, so the
+admin was refused at the door and never reached the sentence explaining there was nothing to permit.
+The person with the least authority was the only one being told what was going on.
+
+Fixed by answering the mode question first. Safe because it does not depend on who is asking:
+whether this KIND of ground has a board is a fact about its mode and scenario, contains none of the
+accounts, and is already visible to every party. Where a ground DOES have one, the authorisation
+check still runs and still refuses - pinned as "the accounts are read after the throw" rather than
+merely "a throw exists", because moving a gate down is only safe while nothing in between touches a
+participant's words.
+
+**Deliberately not widened.** General org admins still have no board read on grounds they did not set
+up. That looks like a privacy decision rather than a bug, and it is hers to change.
+
+### Two components disagreeing about where home is
+
+A signed-out visitor at the app root landed in the entry chat while the logo on that same screen went
+to the marketing site. `RootRoute` read `import.meta.env.VITE_MARKETING_URL` directly and fell through
+to `/start` whenever it was unset or empty; the logo used `MARKETING_URL`, which carries the real
+domain as its default. Both use the shared constant now. Its `||` rather than `??` is load-bearing: an
+env var set to an empty string is what produced a `href=""` logo that looked like a working link.
+
+### And the two pre-existing billing specs
+
+Neither mocked the auth store, so `user` was null and the new role guard refused the page - two specs
+red on a correct change. They render as an ADMIN now, which is what the page is for. Worth recording
+because a page-level permission is exactly the kind of change that breaks tests which never had a
+user, and the fix is to give them the user, never to weaken the guard.

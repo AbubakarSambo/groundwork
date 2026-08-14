@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { GroundGone } from '@/components/gw/GroundGone'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { whichSessionAreWeOn, hasDoneThisSession } from '@/lib/which-session-are-we-on'
 import { groundsApi } from '@/api/grounds'
 import { billingApi } from '@/api/billing'
 import { useAuthStore } from '@/stores/auth'
@@ -438,13 +439,14 @@ export function GroundParticipantPage() {
             parties={(ground.participants ?? [])
               .filter((p: any) => !p.managingOnly)
               .map((p: any) => {
-                const currentSession = openCheckIn?.sessionNumber ?? completedCheckIns.length
-                const theirs = ((p.checkIns ?? []) as any[]).filter(
-                  (c) => (c.sessionNumber ?? 0) >= currentSession && c.status === 'COMPLETED',
+                /** One answer for both pages. See lib/which-session-are-we-on.ts. */
+                const currentSession = whichSessionAreWeOn(
+                  openCheckIn?.sessionNumber ?? null,
+                  completedCheckIns.map((c: any) => c.sessionNumber ?? 0),
                 )
                 return {
                   name: participantLabel(p),
-                  done: theirs.length > 0,
+                  done: hasDoneThisSession((p.checkIns ?? []) as any[], currentSession),
                   isSelf: p.userId === user?.id,
                 }
               })}
@@ -968,16 +970,16 @@ export function GroundParticipantPage() {
 
                 {/* Tier 3: Upgrade org */}
                 <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-navy)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 6 }}>Upgrade organization</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-navy)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 6 }}>Upgrade organisation</div>
                   <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6, marginBottom: 12 }}>
-                    Your team is getting value from Groundwork. Unlock unlimited Grounds and unlimited sessions for everyone in your organization with one simple monthly subscription.
+                    Your team is getting value from Groundwork. Unlock unlimited Grounds and unlimited sessions for everyone in your organisation with one simple monthly subscription.
                   </div>
                   <button
                     onClick={() => createSubscriptionMut.mutate('STARTER')}
                     disabled={createSubscriptionMut.isPending}
                     style={{ width: '100%', padding: '10px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: createSubscriptionMut.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: createSubscriptionMut.isPending ? 0.7 : 1, marginBottom: 8 }}
                   >
-                    {createSubscriptionMut.isPending ? 'Redirecting...' : 'Upgrade organization'}
+                    {createSubscriptionMut.isPending ? 'Redirecting...' : 'Upgrade organisation'}
                   </button>
                   <button
                     onClick={() => navigate('/pricing')}

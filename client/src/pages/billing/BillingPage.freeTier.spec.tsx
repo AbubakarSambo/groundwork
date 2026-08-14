@@ -16,6 +16,17 @@ import { BillingPage } from './BillingPage'
  * reappear -> this bites.
  */
 
+/**
+ * ADMIN, because this page is now admin-only and these specs are about what an admin sees.
+ *
+ * Neither spec mocked the auth store, so `user` was null and the new role guard refused the page -
+ * both went red on a correct change. Worth stating rather than silently patching: a page-level
+ * permission is exactly the kind of thing that breaks tests which never had a user, and the fix is
+ * to give them the user the page is for, not to weaken the guard.
+ */
+vi.mock('@/stores/auth', () => ({
+  useAuthStore: (sel: any) => sel({ user: { id: 'u1', role: 'ADMIN', organizationId: 'o1' } }),
+}))
 vi.mock('@/api/grounds', () => ({ groundsApi: { list: vi.fn().mockResolvedValue([]) } }))
 vi.mock('@/api/billing', async () => {
   const actual = await vi.importActual<typeof import('@/api/billing')>('@/api/billing')
