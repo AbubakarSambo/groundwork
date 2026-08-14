@@ -450,6 +450,9 @@ export function CreateGroundPage() {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
+      <div style={{ background: '#ff0000', color: '#fff', textAlign: 'center', padding: '16px', fontSize: 24, fontWeight: 800, letterSpacing: 1 }}>
+        🚨 STAGING DEPLOY TEST — REMOVE ME 🚨
+      </div>
       <div className="gw-hdr">
         {/* The rail already says Groundwork two inches to the left. This said it again, so
               the page's own name is here instead - which is the thing a second line of
