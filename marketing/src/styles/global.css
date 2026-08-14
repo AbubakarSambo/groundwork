@@ -68,3 +68,17 @@
   --gw-paper: #FAF9F7;
   --gw-paper-2: #F1EFEB;
 }
+
+/**
+ * `hidden` HAS TO ACTUALLY HIDE. W15-2.
+ *
+ * The attribute's own rule is `display: none`, which is the weakest possible selector - any class
+ * that sets `display` beats it. The signed-in and signed-out headers are `display: flex` and the
+ * hero buttons are `inline-block`, so both would have rendered together: a page offering "Sign in"
+ * and "Sign out" at the same time.
+ *
+ * Scoped to the two attributes that need it rather than a blanket `[hidden]` rule, so this cannot
+ * quietly change how anything else on the site behaves.
+ */
+[data-signed-in][hidden],
+[data-signed-out][hidden] { display: none !important; }

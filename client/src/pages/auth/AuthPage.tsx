@@ -326,7 +326,7 @@ export function AuthPage() {
                   id="signin-email"
                   className="gw-input"
                   type="email"
-                  placeholder="you@company.com"
+                  placeholder="you@example.com"
                   value={email}
                   onChange={e => { setEmail(e.target.value); setError('') }}
                   autoFocus
@@ -411,12 +411,23 @@ export function AuthPage() {
                 />
               </div>
               <div className="gw-fld">
-                <label className="gw-label" htmlFor="signup-email">Work email</label>
+                {/*
+                  * "WORK EMAIL" WAS TURNING PEOPLE AWAY FOR NOTHING.
+                  *
+                  * Nothing in the code has ever required a company domain - not this form, not the
+                  * API, not the org creation. The label was the only thing saying otherwise, and a
+                  * label is enough: somebody who runs a real company off a Gmail address reads
+                  * "Work email" as "not for you" and closes the tab. The people most likely to be
+                  * turned away are exactly the small teams this is for.
+                  *
+                  * The placeholder said the same thing a second time, so it changes too.
+                */}
+                <label className="gw-label" htmlFor="signup-email">Email</label>
                 <input
                   id="signup-email"
                   className="gw-input"
                   type="email"
-                  placeholder="you@company.com"
+                  placeholder="you@example.com"
                   value={email}
                   onChange={e => { setEmail(e.target.value); setError('') }}
                 />
@@ -468,7 +479,7 @@ export function AuthPage() {
                 <input
                   className="gw-input"
                   type="email"
-                  placeholder="you@company.com"
+                  placeholder="you@example.com"
                   value={email}
                   onChange={e => { setEmail(e.target.value); setError('') }}
                   autoFocus
@@ -499,7 +510,7 @@ export function AuthPage() {
                 <input
                   className="gw-input"
                   type="email"
-                  placeholder="you@company.com"
+                  placeholder="you@example.com"
                   value={email}
                   onChange={e => { setEmail(e.target.value); setError('') }}
                   autoFocus

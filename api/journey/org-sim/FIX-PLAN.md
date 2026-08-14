@@ -6222,3 +6222,73 @@ box; the arrow button sent the same text immediately. The handler is on the elem
 state the button does (`EntryChatPage.tsx:1892`), so it should work, and I cannot rule out the browser
 harness not delivering a real Enter. Worth thirty seconds of somebody typing into it by hand before
 anybody goes looking in the code.
+
+## Five things from using it on the live site
+
+### "Work email" was turning people away, and nothing ever required it
+
+Nothing in the code has ever asked for a company domain - not the form, not the API, not org
+creation. The label was the only thing saying otherwise, and a label is enough: somebody running a
+real business off a Gmail address reads "Work email" as "not for you". The people most likely to be
+turned away are exactly the small teams this is for. Label and all four `you@company.com`
+placeholders changed. The guard anchors on `/^Email$/` so a future "Work email" fails rather than
+passing a loose match.
+
+### "Get started free" went to the try-it funnel, not to signing up
+
+It pointed at `/start`. The buttons that say "Start your first Ground" still do, which is right;
+only the ones that say "Get started free" now go to `/auth?mode=signup`. The distinction is what the
+words promise.
+
+### A static site that stops asking signed-in people to sign in
+
+Her question: what is the best way. The site is built once and served from a CDN, so at render time
+it knows nothing about the reader. localStorage is per-origin, so the marketing origin cannot see
+the app's session at all, and server-rendering the header means giving up the static site.
+
+The answer is a cookie on the shared parent domain carrying one character. `myground.work` and
+`app.myground.work` are siblings, so a `.myground.work` cookie is readable by both. `gw_in=1` says a
+browser here has a session. It does not say who and it grants nothing. **The token stays in
+localStorage on the app origin**, where the marketing site cannot reach it and where a cookie's
+automatic attachment to every request cannot leak it - putting the token on the parent domain would
+send it to every future subdomain and every CDN request that carries cookies, which is the mistake
+this design exists to avoid.
+
+Because the flag carries nothing, it is allowed to be wrong. A stale flag offers somebody their
+grounds and then asks them to sign in; a missing flag shows today's behaviour. Neither reveals
+anything. That is the whole reason it is a flag and not a session.
+
+`/signout` is new: a static page cannot call a store, only follow a link.
+
+**Three bugs found by looking at the rendered page rather than the code**, all in this one feature:
+
+| What | Why it happened |
+| --- | --- |
+| Both headers rendered at once | `.gw-nav-ctas { display: flex }` beats the `hidden` attribute's own `display: none` |
+| Header swapped, hero did not | `querySelector` takes the first match; there are two pairs |
+| Hero still wrong after that fix | the inline script lives in the nav, so it runs before the hero has been parsed |
+
+The third is the interesting one. Running inline and synchronously is deliberate - it swaps the
+header before first paint, with no flash of the wrong button - but it means nothing further down the
+page exists yet. It runs twice now: immediately for the header, then again on `DOMContentLoaded` for
+everything else.
+
+### The question people stall on
+
+"What makes you want to get this on record right now?" reads as a demand to justify yourself, and
+the honest answer ("it seemed sensible") feels wrong to type. Her own examples are the fix, and they
+are much better than an abstraction: to know the onboarding went well, to have something real to
+look at when probation is decided, to show the project started off right. The prompt now requires
+examples on this question and tells the engine to fit them to what it has already been told.
+
+### The ending was not abrupt, it was a full stop in the wrong place
+
+"Thank you, that gives me what I need to set this up for you" is a closer, and the screen then asked
+another question, so the product looked like it had changed its mind. It is a handover, not a
+finish. The prompt now requires it to say what the next screen asks and that the check-in follows.
+
+And that next question was asking the wrong thing. "How do you want to run this?", answered by "this
+is my situation" against "I'm setting this up for my team", makes people choose between two
+descriptions of themselves - and somebody in HR setting up a record about a new hire is BOTH. Both
+options fit, so the choice stalls. Her steer was exact: it is about who leads the check-ins. Asked
+as "who gives the accounts on this?" the answer takes a second.

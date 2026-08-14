@@ -6,6 +6,7 @@ import { Toaster } from 'sonner'
 import { useAuthStore } from '@/stores/auth'
 import { useSessionTimeout } from '@/lib/useSessionTimeout'
 import { AuthPage } from '@/pages/auth/AuthPage'
+import { SignOutPage } from '@/pages/auth/SignOutPage'
 import { MagicVerifyPage } from '@/pages/auth/MagicVerifyPage'
 import { GoogleCallbackPage } from '@/pages/auth/GoogleCallbackPage'
 import { ChoosePasswordPage } from '@/pages/auth/ChoosePasswordPage'
@@ -113,6 +114,8 @@ export default function App() {
             <Route path="/auth" element={<AuthPage />} />
             {/* The link-sent state of /auth, not a page of its own. W8-49. */}
             <Route path="/auth/sent" element={<AuthPage />} />
+            {/* An address that means "end my session", so a plain link can offer it. W15-2. */}
+            <Route path="/signout" element={<SignOutPage />} />
             <Route path="/verify-email" element={<MagicVerifyPage />} />
             {/* Where the server's Google OAuth redirect lands. Inert until
                 GOOGLE_CLIENT_ID/SECRET are set - the button that starts the flow

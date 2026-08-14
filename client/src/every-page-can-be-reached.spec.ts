@@ -32,6 +32,13 @@ const REACHED_FROM_OUTSIDE_THE_APP: Record<string, string> = {
   '/billing/callback': 'the payment provider redirects here',
   '/join': 'the broadcast link an admin copies off the ground page and sends',
   /**
+   * The marketing site's header links here when its shared signed-in flag is set. Nothing inside
+   * the app links to it and nothing should: in here, signing out is a button in the shell that
+   * calls the store directly. This address exists because a static page cannot call a store, only
+   * follow a link. See client/src/lib/signed-in-flag.ts.
+   */
+  '/signout': 'the Sign out link in the marketing site header, when it sees the signed-in flag',
+  /**
    * `/demo/:persona` used to be exempted here as "pasted by hand when showing the
    * product". It is deleted, and so is the exemption. Five scripted conversations for a
    * fictional company, unlinked from anywhere, whose founder screen labelled named people
