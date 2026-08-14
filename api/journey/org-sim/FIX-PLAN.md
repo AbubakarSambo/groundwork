@@ -6158,3 +6158,33 @@ The drift is the actual finding. Nobody decided that the what-to-expect cards sh
 the person cards; it happened by copying. `CardTitle` keeps `weight` as a prop rather than flattening
 to one value, because settling it is a design call and picking one silently would be making that call
 by accident.
+
+## The marketing deploy has been red on main, and the cause was the fix before it
+
+The Vercel check on `groundwork-nqtu` went red at #145 and stayed red. Reproduced locally, bisected to
+one file, and it is a chain worth writing down because every link looked like an improvement.
+
+`Layout.astro` referenced the tokens as `<link rel="stylesheet" href="/src/styles/global.css">`. Vite
+serves a source path like that as JavaScript, so the browser asked for CSS, got a script, and applied
+nothing. Nobody noticed because every page carries its own inline styles and the tokens were only the
+fallback layer - the site looked finished while the palette never arrived. Same shape as the sitemap
+bug this file already records: wrong in a way that nothing visible reports.
+
+W14-8 fixed it properly, moving the tokens to a real import in `Nav.astro`. That is the correct fix,
+and it is what broke the build: a stylesheet that is genuinely compiled goes through the CSS pipeline,
+and `@tailwindcss/vite` 4.3.0 in that pipeline is incompatible with the pinned Vite 8 / rolldown 1.0.3
+(`Missing field 'tsconfigPaths'`). The plugin had never had to process anything before, so the
+incompatibility sat there invisibly.
+
+**Tailwind is removed rather than pinned around.** Not one Tailwind utility class exists anywhere on
+the site - every class is hand-written and `gw-` prefixed. The plugin was compiling a framework nobody
+had used. Removing it removes the class of problem instead of this version of it.
+
+**And a guard, in the built artefact.** `[one-palette]` fails the build if any page ships without the
+tokens, or links a `/src/` path. Bite-checked by reinstating the exact original bug: it fails and names
+the fix.
+
+Worth recording that my first version of that guard asserted "every page links a stylesheet" and failed
+on four of five pages against a correct build - Astro inlines small CSS rather than emitting a file.
+Asserting the delivery mechanism instead of the outcome would have made the check a nuisance that the
+next person disables. It asserts arrival now, either way.

@@ -1,4 +1,18 @@
-@import "tailwindcss";
+/**
+ * TAILWIND IS GONE, AND IT WAS NEVER USED. W15-1.
+ *
+ * The site broke its own deploy the moment W14-8 made this file a real import. Until then
+ * `Layout.astro` referenced it with a `<link rel="stylesheet" href="/src/styles/global.css">`, which
+ * Vite serves as JavaScript and which therefore applied nothing - so `@tailwindcss/vite` never
+ * actually had to process anything, and a version incompatibility with rolldown sat there unnoticed.
+ * Importing the file properly is what surfaced it: every build since has failed with
+ * "Missing field `tsconfigPaths`", and the marketing deploy has been red on main.
+ *
+ * The fix is not to pin around the incompatibility. Every class on this site is hand-written and
+ * prefixed `gw-`; there is not one Tailwind utility in any page, layout or component. So the plugin
+ * was compiling a framework nobody had used, and removing it removes the whole class of problem
+ * rather than the current version of it.
+ */
 
 /**
  * ONE DESIGN LANGUAGE, AND IT ALREADY EXISTED. W14-8.
