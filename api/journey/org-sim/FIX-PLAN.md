@@ -6188,3 +6188,37 @@ Worth recording that my first version of that guard asserted "every page links a
 on four of five pages against a correct build - Astro inlines small CSS rather than emitting a file.
 Asserting the delivery mechanism instead of the outcome would have made the check a nuisance that the
 next person disables. It asserts arrival now, either way.
+
+## Checking that the branch clean-up destroyed nothing
+
+88 branches were deleted. Deleting a ref cannot change another branch, so the only real risk is work
+that existed ONLY on a deleted branch. Checked rather than assumed, and GitHub's activity log keeps
+the tip SHA of every deleted ref, so every one of them is still testable after the fact.
+
+| Group | Count | Test | Result |
+| --- | --- | --- | --- |
+| Ancestors of main | 75 | tip reachable from `origin/main` | every commit is on main |
+| Board branches gw-1..gw-6 | 6 | merge into main produces main's exact tree | nothing unique |
+| Wave branches gw-12..gw-18 | 7 | tip TREE vs its squash commit on main | byte-identical |
+| gw-19 | 1 | merged as #146 | on main |
+
+The wave branches needed the tree test rather than ancestry: a squash merge never leaves the branch
+tip as an ancestor, so `--merged` says "no" about work that is fully present. Comparing the branch's
+tree to the squash commit's tree is the airtight version, and all seven matched exactly.
+
+**One commit was never on main, and that is correct.** `42f7304` on `gw-12-followups` renamed the
+sidebar's "Roster" to "All grounds". A later pass (W9-5) deleted the roster page altogether, with its
+reason recorded in `AppShell.tsx`: the roster was the same data at a second address. `OrgRosterPage`
+does not exist on main. Renaming the label of a page that no longer exists is not lost value.
+
+**Main itself, on the merged tree.** api 1690 passed, client 661 passed, both typechecks clean, all
+three production builds green including the new `[one-palette]` guard, the marketing site renders with
+its nav and palette intact, and the entry chat runs a real exchange through the live engine.
+
+### An open question, not a finding
+
+Pressing Enter in the entry chat's onboarding input did not send, twice, with the caret visibly in the
+box; the arrow button sent the same text immediately. The handler is on the element and reads the same
+state the button does (`EntryChatPage.tsx:1892`), so it should work, and I cannot rule out the browser
+harness not delivering a real Enter. Worth thirty seconds of somebody typing into it by hand before
+anybody goes looking in the code.
