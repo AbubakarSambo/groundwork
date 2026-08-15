@@ -301,3 +301,94 @@ a performance improvement plan.
 ### G7-05  GOOD: the free-tier counter tracked all ten correctly
 `groundsUsed` went 5, 6, 7, 8, 9 across this batch and `allowed` stayed true with
 `freeReason: FREE_TIER` throughout. Ten grounds now exist. Ground 11 is the real test of the gate.
+
+---
+# Ground 11: the paywall
+
+### G11-01  GOOD, AND THE BEST-BEHAVED SCREEN IN THE RUN: the gate fires exactly at ground 11
+`can-create-ground` returned `{allowed:false, groundsUsed:10, reason:"Your free plan includes 10
+Grounds. Subscribe to create unlimited Grounds."}` - correct to the ground.
+
+The screen is genuinely well made. An amber banner above the picker:
+
+> **You have used all 10 of your free grounds**
+> Your free plan includes 10 Grounds. Subscribe to create unlimited Grounds. You can still look
+> around here, but this one cannot be created until then.  [See plans]
+
+Three things it gets right: it states the number rather than being vague, it does not hide the
+product behind the wall ("you can still look around here"), and the cards below stay fully browsable.
+Nothing is nagging or pressuring. Judged against a cautious reader, this is the screen I would hold
+the rest of the flow to.
+
+### G11-02  BLOCKER: paying is impossible, and the error is a bare "Server error"
+"See plans" goes to `/billing`, which lists the tiers correctly. Clicking Subscribe:
+
+- `POST /api/v1/billing/subscription` -> **HTTP 500**
+- the page shows: **"Could not start checkout. Try again."** and **"Server error. Something went
+  wrong. Please try again later."**
+
+Cause is known and environmental: `STRIPE_SECRET_KEY=sk_test_...` is a literal placeholder. But the
+customer-facing behaviour is the finding. A paying customer who has just been told to subscribe is
+sent to a dead end with a generic 500 and an instruction to try again, which will never work. Nothing
+says the problem is on our side, nothing offers a way to reach anybody, and "Try again" invites them
+to repeat a failing action.
+
+Even once Stripe is real, a payment provider outage produces exactly this screen. It needs an honest
+failure state: say it is our end, do not tell them to retry, give them a contact.
+
+### G11-03  Grounds 12, 13 and 14 could not be created either
+All are past the free tier, so the same gate blocks them. Not a separate bug - the same one, and
+correct behaviour. They were run on the workaround org instead (below).
+
+### G11-04  The duration picker cannot express the periods the brief asks for
+Options are 7 / 14 / 30 / 60 / 90 / 180 / 365 days only. Ground 11 wants sixteen weekly check-ins
+(112 days) and ground 14 wants ten (70 days). Neither is expressible; the nearest choices give 26 and
+12 sessions. An admin who wants "sixteen weeks" has to pick 180 days and accept 26 sessions, or 90 and
+accept 12. There is no free-text duration and no session-count input.
+
+## The workaround org
+
+Per the brief: a NEW admin with a NEW org, so grounds 11 to 14's scenarios still get tested as that
+org's first (free) grounds.
+
+- **Dara Adeyemi**, `dara@northfield.test` / `SimPass123!`, org **Northfield Clinics**
+- Signed up, activated and password-set entirely through the UI - and note the password had to be set
+  via the reset flow again, because signup still sets none (G1-01 reproduced on a second account).
+
+**Everything from here labelled ORG 2 is on Northfield Clinics, not Meridian Health.** The scenario
+logic is genuinely tested; the free/paid gate is not, because these are ground 1 to 4 for that org.
+
+# Grounds 11 to 14, ORG 2 (Northfield Clinics)
+
+All four created. Scenarios genuinely exercised; the free/paid gate is NOT tested here, because for
+this org these are grounds 1 to 4.
+
+| Ground | Card | Pacing | Ground id |
+| --- | --- | --- | --- |
+| 11 | A regular read on live work | 180d weekly, 5 parties | `f73c2618` |
+| 12 | Something's off track | 7d weekly, 2 parties | `129fd92c` |
+| 13 | Board & leadership strategy | 14d weekly, 3 parties | `594d5170` |
+| 14 | Many people in the same role | 90d weekly, 8 parties | `f664ae13` |
+
+### G11-05  end_state EMPTY on all four, and on a second organisation
+Fourteen grounds now, across TWO orgs, and not one has stored an end state - including "On track",
+"Restructure", "Strategy aligned" and "Cohort on track", each selected explicitly and each echoed back
+in the summary. This is not org-specific or scenario-specific. The end-state step writes nothing, ever.
+
+### G11-06  "I am setting it up for others" ignored on a second organisation too
+Chosen on all four. Dara is `INITIATOR` with `managing_only = false` on every one of her grounds,
+exactly as Sahar is on hers. Fourteen for fourteen. The control has no effect anywhere.
+
+### G11-07  The false-positive in my own paywall check, worth recording
+My detector reported "paywall visible: YES" on all four ORG 2 grounds, with EMPTY copy. It was matching
+the word "Billing" in the sidebar navigation, not a wall. The gate was correctly `allowed: true,
+groundsUsed: 0..3` throughout and all four created.
+
+Recording it because it is the same class of mistake as the ground 5 misdiagnosis: a keyword match on
+page text is not evidence of a state. The real evidence was the API response and the created grounds.
+
+### G11-08  DRIFT carries the same "Continue" collision as NEW_PROJECT
+`DRIFT` end states are "Continue / Restructure / Descope / Separate / Exit / Stop / Not yet". So the
+option-named-Continue-beside-a-button-named-Continue hazard exists on at least two scenarios, and
+DRIFT's list is also the longest and bluntest in the product: "Separate", "Exit", "Stop" presented
+flat, with no ordering or explanation, to somebody opening a ground because something feels off.
