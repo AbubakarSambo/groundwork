@@ -592,3 +592,46 @@ in the product is meaningless.
 > the previous version. It will refresh on its own."
 
 Exactly right, and rare.
+
+---
+# Grounds 15 to 18 (ORG 2, Northfield Clinics)
+
+| Ground | Card | Created | Check-ins | Report |
+| --- | --- | --- | --- | --- |
+| 15 | Onboarding several people at once | YES `c1be3cdb` | 5 started, 2 completed | no |
+| 16 | A shock just hit | YES `8ecd67f0` | 4 started, 3 completed | no |
+| 17 | Get a team back on the same page | YES `1be9c377` | 4 started, 3 completed | no |
+| 18 | Describe your own situation | **NO** | - | - |
+
+### G15-01  BLOCKER: an invited participant can never sign in again
+Every person who joined through an invite has `password_hash = NULL`. Only Dara, who went through the
+reset flow, has one. So an invited participant has exactly one way back in: request a fresh emailed
+link, every single time, forever.
+
+This is G1-01 at the other end of the product. It stopped this run cold: Dara completed her session on
+all three grounds, and **every invited participant failed to resume**, because there is no password to
+sign in with. On a weekly ground that is a link request every week for twelve weeks.
+
+### G15-02  BLOCKER: "Describe your own situation" cannot create a ground
+Ground 18's whole point. The card is selectable and typing the situation into its free-text box works,
+but the wizard never reaches creation - seven attempts, always back at `/grounds/new`. Every other card
+in the product creates a ground from the same driver. The one path for somebody whose situation is not
+on a card is the one path that does not work.
+
+### G15-03  Three grounds have live conversations and no report, because one person is missing
+15, 16 and 17 all sit at "The shared report appears once everybody has checked in." Sessions are
+genuinely IN_PROGRESS, not abandoned: the record has their words. The report is gated on the LAST
+person, and the last person is the one who cannot get back in (G15-01).
+
+This is the compounding shape of the run: the admin is made a party she did not ask to be
+(G7-02), she is never emailed (CI-09), participants cannot sign back in (G15-01), and the report waits
+on all of them. Four separate faults, one dead end.
+
+### G15-04  "Complete session" only exists after the engine offers a wrap-up
+A short, honest conversation can end with no way to close it. The control appears as "Not seeing a
+wrap-up? Complete session" only once the engine has decided it is near done. A participant who has said
+everything they have to say in three sentences is stuck in a session they cannot finish.
+
+### G15-05  The ground label is still machine-generated, and now collides
+Two different grounds are both called `COHORT CHECK ground` (15 and 14). The sidebar shows the same
+name twice with no way to tell them apart. Eighteen for eighteen on machine labels.
