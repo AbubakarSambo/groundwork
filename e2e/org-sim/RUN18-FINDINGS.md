@@ -242,3 +242,62 @@ address, same person, no duplicate accounts. But each invite is a separate "you 
 email with no sense that this is the third ground the same person has been added to, and no recap.
 Worth watching when the sessions run: does the product recognise him as returning, or is each ground
 a fresh set of link-recipients with no memory.
+
+---
+# Ground 5 retry, and grounds 7 to 10
+
+All five created. Ten grounds now exist, so the paywall has its proper chance to fire at ground 11.
+
+| Ground | Card | Pacing | Ground id |
+| --- | --- | --- | --- |
+| 5 (retry) | A new manager taking over | 90d weekly, 3 parties | `82a658dc` |
+| 7 | Raise, promotion, or recognition | 7d weekly, 1 party | `63eb3a5e` |
+| 8 | Performance improvement plan | 60d weekly, 1 party | `56df89fb` |
+| 9 | Goals & planning | 90d weekly, 6 parties | `7ea6734a` |
+| 10 | Workplan & budget | 90d fortnightly, 3 parties | `c5dcc4a0` |
+
+### CORRECTION to G2-01: Ground 5 was blocked by MY error, not the product
+I reported that a "Continue" end-state option blocked Ground 5. That was wrong and I withdraw the
+causal claim. `NEW_MANAGER`'s options are "Extend the engagement / Restructure the scope or terms /
+End the engagement / Not yet". There is no "Continue" among them. I had guessed that label, and my
+text match then hit the wizard's Continue BUTTON, so the flow never advanced. Retried with the real
+label, the ground was created first time.
+
+**What survives, and is still real:** `NEW_PROJECT` genuinely does have an end-state option labelled
+"Continue" ("Mark complete / Continue / Descope / Stop the project") on the same screen as a
+"Continue" navigation button. That collision is a live mis-click hazard for a user, who sees one word
+meaning two things. It just is not what stopped Ground 5.
+
+### G7-01  CONFIRMED ACROSS TEN GROUNDS: end_state is never persisted
+Ten for ten, `end_state` is EMPTY - including the five where I explicitly selected a scenario-correct
+option and the wizard's summary echoed it back ("Grant the ask", "Performance concern resolved",
+"OKRs aligned to company direction", "Workplan and budget approved"). The end-state step collects an
+answer, confirms it on screen, and writes nothing. This is now the single most reproducible bug in
+the run.
+
+### G7-02  BLOCKER: "I am setting it up for others" does not keep the admin out
+On grounds 5, 7, 8, 9 and 10 I explicitly chose **"I am setting it up for others"** on the people
+step. Sahar is still `INITIATOR` with `managing_only = false` on all ten grounds, exactly as on the
+five where I never touched the control.
+
+So the option that exists precisely to say "this is not my ground, I am setting it up for a lead"
+has no effect on the record. The admin is made a full party either way, which on ground 9 means she
+now owes twelve weekly check-ins on a planning cycle she was only administering. `managing_only` is
+the field designed to carry this and nothing sets it.
+
+This is G1-20 escalated: it is not that the product lacks the concept, it is that the control is
+there, the user can choose it, and it is ignored.
+
+### G7-03  Contractor language on an internal manager transition
+`NEW_MANAGER` end states read "Extend the engagement / Restructure the scope or terms / End the
+engagement". For a manager stepping into an existing team - an internal move - the vocabulary is a
+contractor's. A team reading "End the engagement" about their new manager will not read it as neutral.
+
+### G7-04  Every ground label is still machine-generated
+`RECOGNITION ground`, `PIP ground`, `OKR ALIGNMENT ground`, `WORKPLAN BUDGET ground`. Ten for ten.
+"PIP ground" is the one to look at hardest: that is the subject line landing in Hafeezah's inbox for
+a performance improvement plan.
+
+### G7-05  GOOD: the free-tier counter tracked all ten correctly
+`groundsUsed` went 5, 6, 7, 8, 9 across this batch and `allowed` stayed true with
+`freeReason: FREE_TIER` throughout. Ten grounds now exist. Ground 11 is the real test of the gate.
