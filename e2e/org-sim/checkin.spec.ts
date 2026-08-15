@@ -30,6 +30,8 @@ const PEOPLE: { email: string; name: string; level: string; needsAuth: boolean; 
       'The one that never shipped was the reporting module. He says he was waiting on our data team.',
       'A fair next term is shorter and narrower. Three months, reporting only, with a named owner on our side.',
       'Honestly the numbers are strong and we are ready, everyone is happy with it.',
+      'Fair. The reporting module did not ship, and I do not yet know whose delay it was.',
+      'That is everything from me.',
     ],
   },
   {
@@ -39,6 +41,8 @@ const PEOPLE: { email: string; name: string; level: string; needsAuth: boolean; 
       'sorry what does ground mean',
       'the reporting thing wasnt my fault, i asked for the data thing loads of times',
       'i want to keep working with them but same money',
+      'i can send the emails where i asked for the data if that helps',
+      'thats everything i think',
     ],
   },
   {
@@ -89,9 +93,15 @@ async function newestLink(to: string) {
 }
 
 /** Type a line, send it, wait for the engine to answer, and return what it said. */
-async function say(page: Page, text: string): Promise<string> {
+async function say(page: Page, text: string): Promise<string | null> {
   const box = page.locator('input[type="text"]:visible, textarea:visible').last();
-  await box.fill(text);
+  /**
+   * The composer disappears once the engine decides the session is done, so "cannot type" is usually
+   * the engine closing rather than a fault. Returning null lets the caller move to completion instead
+   * of throwing away the whole account.
+   */
+  if (!(await box.count()) || !(await box.isEditable().catch(() => false))) return null;
+  await box.fill(text).catch(() => {});
   const send = page.getByRole('button', { name: /^(↑|Send)$/ }).last();
   if (await send.count()) await send.click().catch(() => {});
   else await box.press('Enter').catch(() => {});
@@ -106,7 +116,12 @@ async function say(page: Page, text: string): Promise<string> {
   return (await page.textContent('body')) ?? '';
 }
 
-test.describe.configure({ mode: 'serial' });
+/**
+ * Sessions WITHIN a ground may run concurrently - that is the one concurrency her brief allows, and it
+ * is also what stops a single stuck conversation costing the run the other accounts. Serial mode did
+ * exactly that twice: "2 did not run".
+ */
+test.describe.configure({ mode: 'default' });
 
 for (const p of PEOPLE) {
   test(`check-in: ${p.name} (${p.level})`, async ({ browser }) => {
@@ -126,10 +141,35 @@ for (const p of PEOPLE) {
       log(`${p.name} signed in first`);
     }
 
-    const link = await mailLinkForGround(p.email, GROUND_LABEL);
-    if (!link) { log(`${p.name} BLOCKED: no invite email`); await c.close(); return; }
-    log(`${p.name} invite link: ${link.replace(APP, '')}`);
-    await page.goto(link);
+    /**
+     * CI-09 in practice. Sahar is the INITIATOR, so no check-in invite was ever emailed to her - yet
+     * she is a required party and the ground cannot complete without her. The only way in is through
+     * the app, which is exactly the gap: nothing would have told her to come.
+     */
+    let link: string | null = null;
+    if (p.needsAuth) {
+      await page.goto(`${APP}/grounds`);
+      await page.waitForTimeout(2000);
+      const card = page.getByText(GROUND_LABEL, { exact: false }).first();
+      if (await card.count()) { await card.click().catch(() => {}); await page.waitForTimeout(2500); }
+      log(`${p.name} reached her ground through the app, with no email to prompt her`);
+      /**
+       * The admin ground view has no composer - it is the lead's read of the ground. Her own check-in
+       * lives on the participant view, which nothing links to from here. Another face of G7-02: she is
+       * a required party with no route signposted to her own session.
+       */
+      const gid = page.url().match(/\/grounds\/([0-9a-f-]{36})/)?.[1];
+      if (gid) {
+        await page.goto(`${APP}/grounds/${gid}/p`);
+        await page.waitForTimeout(2500);
+        log(`${p.name} FINDING: had to be sent to /grounds/:id/p by hand to find her own check-in`);
+      }
+    } else {
+      link = await mailLinkForGround(p.email, GROUND_LABEL);
+      if (!link) { log(`${p.name} BLOCKED: no invite email`); await c.close(); return; }
+      log(`${p.name} invite link: ${link.replace(APP, '')}`);
+      await page.goto(link);
+    }
     await page.waitForTimeout(3000);
     await page.screenshot({ path: path.join(OUT, `${p.name}-01-arrival.png`), fullPage: true });
     log(`${p.name} landed on ${page.url().replace(APP, '')}`);
@@ -204,6 +244,7 @@ for (const p of PEOPLE) {
     for (const [i, line] of p.lines.entries()) {
       log(`${p.name} says: ${line.slice(0, 70)}`);
       const after = await say(page, line);
+      if (after === null) { log(`${p.name} composer closed at turn ${i + 1}: the engine had finished`); break; }
       const tail = after.replace(/\s+/g, ' ').slice(-420);
       log(`${p.name} engine: ...${tail}`);
       await page.screenshot({ path: path.join(OUT, `${p.name}-03-turn-${i + 1}.png`), fullPage: true });
@@ -214,12 +255,12 @@ for (const p of PEOPLE) {
     }
 
     /** End the session, which is what makes the account count toward the report. */
-    for (const re of [/End (the )?session/i, /Finish/i, /Done/i, /Get my report/i]) {
+    for (const re of [/Complete session/i, /End (the )?session/i, /Finish/i, /Get my report/i]) {
       const b = page.getByRole('button', { name: re }).first();
       if (await b.count()) {
         await b.click().catch(() => {});
         await page.waitForTimeout(2500);
-        const confirm = page.getByRole('button', { name: /Yes|Confirm|End it|End session/i }).first();
+        const confirm = page.getByRole('button', { name: /Finish check-?in|Yes|Confirm|End it/i }).first();
         if (await confirm.count()) { await confirm.click().catch(() => {}); await page.waitForTimeout(3000); }
         log(`${p.name} ended the session via "${re}"`);
         break;

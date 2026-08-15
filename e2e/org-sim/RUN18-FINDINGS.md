@@ -457,3 +457,70 @@ we are asking you to trust." That is a rare thing to put in front of a user and 
 She is INITIATOR, so no check-in invite was sent to her - her link is an in-app `/checkin/:id`. But she
 IS a required party (G7-02), so **the ground cannot complete until she checks in**, and nothing emailed
 her to say so. The admin who only meant to set it up is now the silent blocker on her own ground.
+
+## Sessions completed, and a report exists
+
+Eric and Nate both reached COMPLETED. Six record entries extracted, and a report generated.
+
+### CI-10  GOOD: the record extraction is typed, quoted and graded for verifiability
+What the engine pulled out of two ordinary conversations:
+
+| Who | Type | Text | Verifiability |
+| --- | --- | --- | --- |
+| Eric | TIMEFRAME | "The term ran eleven months." | **HIGH** |
+| Eric | TENSION | "The one that never shipped was the reporting module. He says he was waiting on our data team." | LOW |
+| Eric | SUCCESS_DEFINITION | "A fair next term is shorter and narrower." | LOW |
+| Eric | ASK | "Three months, reporting only, with a named owner on our side." | LOW |
+| Nate | TENSION | "the reporting thing wasnt my fault, i asked for the data thing loads of times" | MEDIUM |
+| Nate | ASK | "i want to keep working with them but same money" | LOW |
+
+Their own words, kept verbatim including Nate's spelling, typed correctly, and each carrying a
+verifiability grade. "The term ran eleven months" is HIGH because it is checkable; the proposals are
+LOW because they are opinions. That grading is the thing that stops a confident sentence being read as
+a fact, and it is working.
+
+### CI-11  GOOD: the partial report is honest about being partial, and it catches up
+The report generated 11 seconds after Eric finished and BEFORE Nate did, so at that moment it showed
+two parties as not contributed. Its own note said so plainly:
+
+> "2 invited parties have not yet contributed a record - the picture below reflects only the accounts
+> that are present. Do not read any shared positions or agreements as bilateral until all parties have
+> checked in."
+
+I nearly filed this as a bug - "Nate completed and the report says he did not". Re-read after his
+session landed and it had updated: Nate now shows `contributed=true, entries=2`. So the report is
+progressive and self-correcting, and it warns the reader not to over-read a partial picture. Both
+right. Worth recording that I checked before reporting, because the first read looked like a
+serious defect.
+
+### CI-12  GOOD: per-party confidence is stated in plain language, not a score
+> "Part of this picture rests on things that could be checked and part does not. Read the specifics,
+> not the summary."
+
+and for a party with nothing yet:
+
+> "Nothing has been scored here yet, so this part of the picture has not been built rather than being
+> empty."
+
+That second line is the difference between "no data" and "we have not looked", and the product says it.
+
+### CI-13  Sahar still cannot reach her own check-in
+Signed in as admin, her ground page has no composer - that view is the lead's read. Her session lives
+on `/grounds/:id/p`, which nothing on the admin view links to. I had to navigate there by hand and even
+then the run did not reach her composer. So the required party who was never emailed also has no
+signposted route. The ground sits at 2 of 3.
+
+### CI-14  The engine handles a stonewaller with real judgement
+Eric's script looped when pressed. Unprompted, the engine said:
+
+> "We've gone in a circle a few times, and that's a signal in itself... This isn't an interrogation,
+> and I'm not here to force an answer you're not ready to give. But a record that just repeats the
+> same points isn't going to help you get clarity."
+
+and then, after a third identical reply:
+
+> "I'm going to stop you there. You've sent that exact message three times now. That's not an answer,
+> and it tells me you're not actually engaging with the conversation."
+
+It named the pattern without accusing him of anything, offered a way out, and finally stopped. That is
+the hardest thing in this product to get right and it is right.
