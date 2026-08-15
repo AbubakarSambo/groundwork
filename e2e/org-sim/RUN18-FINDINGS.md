@@ -524,3 +524,71 @@ and then, after a third identical reply:
 
 It named the pattern without accusing him of anything, offered a way out, and finally stopped. That is
 the hardest thing in this product to get right and it is right.
+
+---
+# THE REPORT, READ AS SAHAR (ground 6, contract renewal, 3 of 3 checked in)
+
+The whole run was scaffolding for this. Judged against the value questions, not whether it rendered.
+
+### RPT-01  Does it tell the reader what matters most? YES
+It leads with what is unresolved, ranked, and says so explicitly: *"Where you see it differently is
+below, most important first."* Headline: **"3 agreed, 2 still open."** Not a flat list of differences.
+
+### RPT-02  Does it say what is at stake? YES, on every gap
+> **The terms for the next contract** - *Why it matters:* "If this is not resolved, a new contract
+> cannot be agreed upon and the work will not continue."
+
+> **The cause of the past deliverable failure** - *Why it matters:* "If the cause of the dependency
+> issue is not addressed, a new contract focused on the same work is at risk of the same failure."
+
+That second one is the real prize. Neither Eric nor Nate said "we might repeat this failure". The
+report inferred the forward risk from two accounts that disagreed about blame, and named it without
+blaming anybody.
+
+### RPT-03  Does it recommend a conversation and name who is in the room? YES
+> **What comes next.** "For the new three-month contract focused on the reporting module, what is the
+> specific commitment required from the data team, and who owns securing that commitment before work
+> begins?"
+
+A specific question, a named party (the data team), and an ownership question. Not "here is a
+difference, good luck".
+
+### RPT-04  Could a busy leader act on it in two minutes? YES
+"3 agreed, 2 still open" at the top, two gaps each with a position and a stake, an "Honest close"
+splitting Aligned / Open / Revisit, and one next question. Sahar could walk into the renewal call off
+this alone.
+
+### RPT-05  Does the headline match the findings? YES
+"Still forming - not yet released" while sessions are outstanding, and "2 things are still open"
+against exactly two open gaps. It does not claim settled.
+
+### RPT-06  GUARDRAIL HELD: it ranks topics, never people
+No verdict on Nate, no ranking of contributors, no culprit. The disputed blame is written as *"Noted
+the contractor's position that they were waiting on the internal data team"* - a position attributed
+to a role, not a judgement. The one thing that would have made this a failure did not happen.
+
+### RPT-07  GOOD: it spots people who are missing from the record
+> **People who may be missing.** "Managing the contract referenced an internal 'data team' as a
+> dependency." + an **Add them** button.
+
+Both accounts leaned on a data team nobody has heard from, and the report noticed and offered to
+invite them. That is the product finding its own blind spot.
+
+### RPT-08  BLOCKER: the header says 0 of 3 checked in while the body is built from all three
+Top of the page: **"Picture forming - 0 of 3 checked in. You haven't checked in yet for this round"**
+and **"0 of 3 parties have confirmed an end state."** Sahar HAS checked in - she completed session 1
+minutes earlier, and the body below is built from all three accounts.
+
+This is the numbers-do-not-reconcile failure, on the most important page in the product. A leader
+reading "0 of 3 checked in" above a full report cannot tell which half to trust.
+
+### RPT-09  Every ground still reads "Awaiting parties" in the sidebar
+All three parties completed session 1 and `grounds.status` is still `AWAITING_PARTIES`. The rail shows
+"Awaiting parties" against all ten Meridian grounds regardless of state, so the one glanceable status
+in the product is meaningless.
+
+### RPT-10  GOOD: honest staleness banner
+> "Someone has checked in since this was written, so it is being updated now. What you are reading is
+> the previous version. It will refresh on its own."
+
+Exactly right, and rare.

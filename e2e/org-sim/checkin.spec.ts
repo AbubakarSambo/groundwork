@@ -163,6 +163,15 @@ for (const p of PEOPLE) {
         await page.goto(`${APP}/grounds/${gid}/p`);
         await page.waitForTimeout(2500);
         log(`${p.name} FINDING: had to be sent to /grounds/:id/p by hand to find her own check-in`);
+        for (const re of [/Check in for session/i, /Start (my )?check-?in/i]) {
+          const b = page.getByRole('button', { name: re }).first();
+          if (await b.count()) {
+            await b.click().catch(() => {});
+            await page.waitForTimeout(3000);
+            log(`${p.name} entered her check-in via "${re}"`);
+            break;
+          }
+        }
       }
     } else {
       link = await mailLinkForGround(p.email, GROUND_LABEL);
