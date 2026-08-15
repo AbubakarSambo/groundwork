@@ -392,3 +392,68 @@ page text is not evidence of a state. The real evidence was the API response and
 option-named-Continue-beside-a-button-named-Continue hazard exists on at least two scenarios, and
 DRIFT's list is also the longest and bluntest in the product: "Separate", "Exit", "Stop" presented
 flat, with no ordering or explanation, to somebody opening a ground because something feels off.
+
+---
+# THE CHECK-IN ITSELF (ground 6, contract renewal)
+
+Two real conversations with the live engine, Eric (high, terse) and Nate (basic, distracted). Both
+reached `IN_PROGRESS`. This is the first time in the run the actual product has been exercised.
+
+### CI-01  GOOD, AND THE BEST THING IN THE RUN: the engine catches a contradiction and names it
+Eric's fourth line was the deliberate evidence bait: *"Honestly the numbers are strong and we are
+ready, everyone is happy with it."* The engine answered:
+
+> "That's a direct contradiction to what you said earlier about the reporting module never shipping.
+> A moment ago, the..."
+
+It held two turns of his own account in mind and refused the varnish. That is the product working
+exactly as promised - pushing past a vague good-news update - and it did it unprompted.
+
+### CI-02  GOOD: it asks a basic user for evidence without bullying them
+Nate typed *"the reporting thing wasnt my fault, i asked for the data thing loads of times"*. The
+engine named it as a blocker in his own words, then asked:
+
+> "...shows you asked for it? An email, a Slack message, anything you can point to?"
+
+That is the evidence request the brief wanted me to hunt for, triggered naturally by a defensive
+claim, and phrased gently enough for a basic reader. The in-chat upload is right there too:
+**"Upload doc"** and **"Paste text"** buttons sit under the composer on every turn.
+
+### CI-03  GOOD: it handles a jargon question instead of ignoring it
+Nate asked *"sorry what does ground mean"* mid-conversation. The engine replied *"That's a fair
+qu..."* and carried on with the substance rather than stalling. A basic user asking what the
+product's own noun means did not derail the session.
+
+### CI-04  GOOD: it refuses vagueness from a basic user, kindly
+To *"yeah it went ok i think"* it came back with a plain-language push: *"...so your record is clear.
+A vague record doesn't help anyone see what you actually delivered. Let's start with the original
+arrangement. What did you understand you were expected to deliver..."* No jargon, no scolding.
+
+### CI-05  Nothing is written to the record until the session is completed
+`record_entries` is still 0 rows with both check-ins `IN_PROGRESS`. The typed answers live in the
+conversation, and the structured record is only extracted at completion. Not a bug, but it means an
+abandoned session leaves nothing at all behind, and it is why the report cannot exist yet.
+
+### CI-06  BLOCKER: "Pick up where I left off" does not pick up where you left off
+A returning participant on a new browser is emailed a fresh sign-in link (correct - the invite URL
+alone must not resume somebody else's session). Following it signs them in and drops them on the
+**grounds list**, not on the check-in they were promised. On Eric's account that is a list of four
+grounds to hunt through. The button names a destination the link does not go to.
+
+### CI-07  Four gates between an invite email and the first answer
+invite link -> "Add my version" -> privacy briefing -> "Start my check-in" -> ground page ->
+"Check in for session 1 of 2". Each screen is individually good, but a distracted contractor is six
+clicks and two pages of reading from typing his first sentence.
+
+### CI-08  GOOD: the privacy briefing is the most honest screen in the product
+> "**And the part we are not going to dress up.** Your answers are stored on our servers, and they are
+> processed by Google's models to build the record. We are not going to tell you they are unreadable
+> to any human being anywhere, because that would not be true yet."
+
+Also "We cannot show it to ourselves either ... That is enforced in the code and tested, not a policy
+we are asking you to trust." That is a rare thing to put in front of a user and it is the right call.
+
+### CI-09  Sahar cannot be reached the same way, because she has no invite email
+She is INITIATOR, so no check-in invite was sent to her - her link is an in-app `/checkin/:id`. But she
+IS a required party (G7-02), so **the ground cannot complete until she checks in**, and nothing emailed
+her to say so. The admin who only meant to set it up is now the silent blocker on her own ground.
