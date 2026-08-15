@@ -200,6 +200,26 @@ export class GroundsService {
         });
       }
 
+      /**
+       * "I AM SETTING IT UP FOR OTHERS" IS HONOURED HERE, WHICH IS THE ONLY PLACE IT CAN BE.
+       *
+       * The creation wizard has always offered this choice and the client has always sent it, as
+       * `confirmLead({ managingOnly })` right after create. But `confirmLead` refuses unless the
+       * ground is `AWAITING_LEAD`, and an ADMIN creating their own ground leaves it `OPEN` - so the
+       * call threw "This ground has already been confirmed" every time, into a silent catch on the
+       * client. In an 18-ground run the setting was ignored fourteen times out of fourteen.
+       *
+       * The cost was not cosmetic. An admin who said "this is not my ground" was made a full party
+       * with her own check-in every session, and because `isSessionReadyForReport` waits on every
+       * non-managingOnly party, the ground could then never produce a report until she personally
+       * checked in - on a ground she was only administering, with no email ever sent to tell her.
+       *
+       * So the flag is applied at creation, and the initiator's session-1 check-in is simply not
+       * created when it is set. `confirmLead` keeps its own path for the admin-sets-up-for-a-lead
+       * flow, where AWAITING_LEAD genuinely applies.
+       */
+      const managingOnly = dto.managingOnly === true;
+
       // The initiator is the first party.
       const participant = await tx.groundParticipant.create({
         data: {
@@ -207,14 +227,21 @@ export class GroundsService {
           userId: initiatorId,
           email: initiator.email,
           partyType: PartyType.INITIATOR,
+          managingOnly,
         },
       });
 
       // Session 1 is created up front and is free. If a start date is set, the
       // first check-in opens then (availableFrom); otherwise immediately.
-      await tx.checkIn.create({
-        data: { groundId: ground.id, participantId: participant.id, sessionNumber: 1, status: CheckInStatus.NOT_STARTED, availableFrom: dto.startsAt ? new Date(dto.startsAt) : null },
-      });
+      //
+      // Not created at all for a managing-only lead: they give no account, so a check-in of theirs
+      // would sit NOT_STARTED forever and hold the report open behind a person who was never
+      // supposed to answer.
+      if (!managingOnly) {
+        await tx.checkIn.create({
+          data: { groundId: ground.id, participantId: participant.id, sessionNumber: 1, status: CheckInStatus.NOT_STARTED, availableFrom: dto.startsAt ? new Date(dto.startsAt) : null },
+        });
+      }
 
       return ground;
     });

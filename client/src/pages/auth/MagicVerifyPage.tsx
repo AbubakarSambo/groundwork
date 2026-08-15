@@ -156,6 +156,29 @@ export function MagicVerifyPage() {
           return { kind: 'verifyError', message: verifyErrorMessage(err) }
         }
         setAuth(res.user, res.accessToken)
+
+        /**
+         * THE PASSWORD STEP THE COPY PROMISES, FINALLY HAPPENING.
+         *
+         * Signup says it twice - on the wait page as step 2 of 3, and in the activation email - and
+         * until now it never happened: this landed people straight in the app with no password. It
+         * looks harmless on day one and is severe later, because a passwordless account can ONLY be
+         * re-entered by requesting a fresh emailed link, every single time. In an 18-ground run that
+         * was the fault that stopped grounds ever reaching a report: the last person to check in
+         * could not sign back in to finish.
+         *
+         * Carried through `next` so the destination they were heading for survives the detour, and
+         * placed before the entry-commit branch so it applies to every arrival, not just the plain
+         * ones.
+         */
+        if (res.needsPassword && res.passwordSetupToken) {
+          const onward = fromParam && fromParam.startsWith('/') ? fromParam : '/grounds'
+          return {
+            kind: 'redirect',
+            to: `/set-password?token=${encodeURIComponent(res.passwordSetupToken)}&next=${encodeURIComponent(onward)}`,
+          }
+        }
+
         if (fromParam && fromParam.startsWith('/')) {
           return { kind: 'redirect', to: fromParam }
         }

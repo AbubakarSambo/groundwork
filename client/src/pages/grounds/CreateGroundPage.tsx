@@ -379,6 +379,13 @@ export function CreateGroundPage() {
           timelineDays,
           cadence,
           brief: (brief.trim() || ownDescription.trim()) || undefined,
+        /**
+         * Sent at CREATE now, not only afterwards. The follow-up confirmLead call below still runs
+         * for the flows where it applies, but it throws "already been confirmed" on a ground an
+         * admin created for themselves - into a silent catch - so this choice was being dropped
+         * every time. The server applies it at creation and skips the creator's own check-in.
+         */
+        ...(alsoAParty !== null ? { managingOnly: !alsoAParty } : {}),
           participants: participants.length
             ? participants.map((p) => ({ email: p.email, roleAsDescribed: p.role || undefined }))
             : undefined,
