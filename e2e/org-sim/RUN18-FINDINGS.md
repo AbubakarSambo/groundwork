@@ -635,3 +635,45 @@ everything they have to say in three sentences is stuck in a session they cannot
 ### G15-05  The ground label is still machine-generated, and now collides
 Two different grounds are both called `COHORT CHECK ground` (15 and 14). The sidebar shows the same
 name twice with no way to tell them apart. Eighteen for eighteen on machine labels.
+
+---
+# FIXES
+
+## FIX-01  The password step now happens  [VERIFIED END TO END]
+`buildAuthResponse` returns `needsPassword`, computed in one place so all five doors agree, and
+`verifyEmail` issues a short-lived PASSWORD_SETUP token so the screen it routes to can submit.
+`setPassword` and its route already existed - only the signal was missing.
+
+Proved as a person on a fresh account: sign up -> open the emailed link -> land on
+`/set-password?token=...&next=/grounds` -> choose a password -> sign out -> **sign in with it**.
+`password_hash` is set. A second fresh account confirmed `needsPassword: true` with a setup token
+present on the API response.
+
+## FIX-02  "I am setting it up for others" now reaches the record  [VERIFIED, BOTH DIRECTIONS]
+Cause: the client sent it as `confirmLead` immediately after create, and `confirmLead` refuses unless
+the ground is `AWAITING_LEAD`. An admin creating their own ground leaves it `OPEN`, so it threw
+"This ground has already been confirmed" into a silent catch. Fourteen out of fourteen, invisibly.
+
+`create` now accepts `managingOnly`, writes it to the initiator row, and does not create their
+session-1 check-in at all. Confirmed on a fresh org, both directions:
+
+| Ground | managingOnly sent | `managing_only` | initiator check-ins |
+| --- | --- | --- | --- |
+| managingOnly proof | true | **t** | **0** |
+| managingOnly control | omitted | f | 1 |
+
+Zero check-ins is the half that matters: `isSessionReadyForReport` waits on every non-managingOnly
+party, so an admin who says the ground is not hers no longer holds the report open forever.
+
+Guarded by `a-lead-who-is-not-a-party.spec.ts`, bite-checked (forcing the flag to false turns it red).
+api 1700 green.
+
+**Together these two close the chain that stopped this simulation producing reports:** a passwordless
+participant could never return to finish, and an admin who never wanted a check-in was the party the
+report waited on.
+
+## STILL OPEN, in the agreed order
+1. End state: move to closing only, manager-only visibility (her decision, taken)
+2. "Describe your own situation" cannot create a ground
+3. Counters and status: "0 of 3 checked in" over a full report, "Awaiting parties" on every ground,
+   machine-generated labels
