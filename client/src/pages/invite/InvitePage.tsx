@@ -91,6 +91,11 @@ export function InvitePage() {
           replace: true,
         })
       } else {
+        /**
+         * Only reachable now for somebody whose sessions are all finished - accept() mints a
+         * session 1 for anyone who has none and has never completed one, so a first-time joiner
+         * cannot land here. The ground page is the right destination for a person who is done.
+         */
         navigate(`/grounds/${groundId}/p`, { replace: true })
       }
     },

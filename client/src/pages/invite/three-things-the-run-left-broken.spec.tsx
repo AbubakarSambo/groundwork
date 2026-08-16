@@ -89,3 +89,32 @@ describe('an invited person reads the disclosure before they commit, once', () =
     expect(CHAT).toMatch(/showPrivacyFirst/)
   })
 })
+
+describe('accepting an invitation never ends at another button', () => {
+  const ACCEPT = readFileSync(
+    join(__dirname, '../../../../api/src/modules/participants/participants.service.ts'), 'utf8',
+  )
+
+  it('mints a session 1 when the invited person has none', () => {
+    /**
+     * `checkInId: null` sent them to the ground page, where accepting an invitation ended at a
+     * third click - "Check in for session 1 of 2" - after the email link and "Add my version".
+     */
+    expect(ACCEPT).toMatch(/if \(!checkIn\) \{/)
+    expect(ACCEPT).toMatch(/sessionNumber: 1, status: CheckInStatus\.NOT_STARTED/)
+  })
+
+  it('but never for somebody who has already completed one', () => {
+    /**
+     * The control, and the one that matters most: minting a fresh session 1 for a person at the
+     * end of a finished ground would reopen a closed account.
+     */
+    expect(ACCEPT).toMatch(/const everCompleted = await this\.prisma\.checkIn\.findFirst/)
+    expect(ACCEPT).toMatch(/if \(!everCompleted\) \{/)
+  })
+
+  it('and looks for an existing open session before creating anything', () => {
+    const body = ACCEPT.slice(ACCEPT.indexOf('let checkIn = await'))
+    expect(body.indexOf('findFirst')).toBeLessThan(body.indexOf('checkIn.create'))
+  })
+})
