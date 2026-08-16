@@ -677,3 +677,41 @@ report waited on.
 2. "Describe your own situation" cannot create a ground
 3. Counters and status: "0 of 3 checked in" over a full report, "Awaiting parties" on every ground,
    machine-generated labels
+
+## FIX-03  "Describe your own situation" - assessment and all four items  [DONE]
+
+**First, a correction: it was never broken.** My harness typed the description and never clicked
+"Find the closest situation", and the flow deliberately blocks Continue until routing has run. That
+gate is correct and its own comment explains why. G15-02 is withdrawn.
+
+The real weakness was underneath: the fallback.
+
+**Item 4 - a real general scenario.** `OPEN_READ` now exists in its own right: Prisma enum +
+migration, board family (SENSING), end states, a prompt pack, and a default timeline of 30 days
+(short on purpose - nobody has named the situation, so committing months to it is a guess). Its
+prompt pack is the only one that tells the engine what NOT to assume: no project, no plan, no
+probation, no renewal, and no importing vocabulary the person has not used.
+
+**Item 2 - separating card from scenario.** The DESCRIBE_OWN card carried `scenario: 'REALIGN_TEAM'`.
+So a routing failure silently produced a "get a team back on the same page" ground - that board, those
+questions, those end states - for, say, four clinic managers who never work together. It carries
+`OPEN_READ` now.
+
+**Item 1 - an honest fallback.** The old copy promised "a general ground where each person gives their
+own read privately" while handing over a REALIGN_TEAM one. That sentence is now true, and it names the
+trade rather than glossing it: "a named situation asks sharper questions than this one can."
+
+**Item 3 - the decision shown in the summary.** The last screen before creating now says either
+"Read from your description as X. Go back if that is not it." or "Opening as an open read, because
+your description did not match a named situation." The shape decides the board, the questions and the
+endings; this is the cheapest moment to catch a wrong guess.
+
+**Two existing guards had encoded the old design and had to be updated rather than satisfied:**
+- `every-situation-has-a-route.spec.ts` requires every scenario be reachable from the home list.
+  OPEN_READ deliberately is not - you cannot pick "none of these fit" from a list of things that fit.
+  Named as an explicit exemption so any OTHER unreachable scenario still fails.
+- `scenario-reframe.spec.ts` asserted REALIGN_TEAM had TWO cards including describe-your-own. That
+  assertion WAS the bug, written down. It now pins the separation instead, and bite-checks: putting
+  REALIGN_TEAM back on the card turns it red.
+
+api 1709, client 682.

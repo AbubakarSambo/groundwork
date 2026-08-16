@@ -1792,6 +1792,25 @@ CHANGE QUESTION: Ask what has changed since the last check-in that the other par
 
 RECORD: The record should show: one thing going well with evidence, one obstacle with specifics, and any notable change since the last session. This is a signal, not a deep account. It should take no more than five minutes.`;
 
+const OPEN_READ_PACK = `MOMENT: The situation has not been named yet.
+
+PURPOSE: Somebody described this in their own words and it did not match any of the named situations. So the shape is genuinely unknown, and the job is to find out what is actually going on from each person separately - not to assume a shape and ask questions that fit it.
+
+OPENING: Ask the person to describe, in their own words, what this is about from where they sit. Not what they were told it is about - what they would say it is if somebody asked them over coffee.
+
+WHAT TO PRESS ON:
+- What specifically is happening, with an example rather than a category.
+- What they think the point of this is. Different answers here are the most useful thing this ground can surface.
+- What they are responsible for in it, and what they are not.
+- What would have to be true for this to go well, in their terms.
+
+WHAT NOT TO DO:
+- Do not assume there is a project, a plan, a performance concern, a contract or a hire. Any of those may be true and none is given.
+- Do not push toward a decision. Nobody has said a decision is due.
+- Do not import vocabulary from other situations - no "deliverables", no "probation", no "renewal" - unless the person uses it first.
+
+CLOSING: The record from this ground is a set of independent accounts of a situation nobody had a name for. If the accounts turn out to describe something specific, say so plainly in the report so the reader can open the right kind of ground next time.`;
+
 const REALIGN_TEAM_PACK = `MOMENT: Team realignment.
 
 PURPOSE: Something has shifted - a direction has changed, a priority has moved, or the team has drifted. Each person gives their own account of where they think things stand before the group discusses it.
@@ -1970,6 +1989,7 @@ export const SCENARIO_PACKS: Record<GroundScenario, string> = {
   WORKPLAN_BUDGET: WORKPLAN_BUDGET_PACK,
   PULSE_CHECK: PULSE_CHECK_PACK,
   REALIGN_TEAM: REALIGN_TEAM_PACK,
+  OPEN_READ: OPEN_READ_PACK,
   PIP: PIP_PACK,
   BOARD_STRATEGY: BOARD_STRATEGY_PACK,
   COHORT_CHECK: COHORT_CHECK_PACK,
@@ -2084,6 +2104,9 @@ export function buildScenarioPackForParty(
 
     case GroundScenario.REALIGN_TEAM:
       return REALIGN_TEAM_PACK;
+
+    case GroundScenario.OPEN_READ:
+      return OPEN_READ_PACK;
 
     case GroundScenario.PIP:
       return PIP_PACK;

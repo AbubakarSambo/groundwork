@@ -22,6 +22,8 @@ import { proposalFrom, extractionToolFor, Heard, Proposal } from './what-the-con
 
 // Default timelines per scenario (Part 2 - timeline and cadence).
 const DEFAULT_TIMELINE_DAYS: Record<GroundScenario, number> = {
+  /** Short on purpose: nobody has named the situation yet, so committing months to it is a guess. */
+  OPEN_READ: 30,
   NEW_HIRE: 90,
   NEW_COFOUNDER: 90,
   NEW_ADVISOR: 365,

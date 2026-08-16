@@ -72,9 +72,25 @@ describe('the home page situation list', () => {
     }).toMatchObject({ dead: [] })
   })
 
+  /**
+   * ONE SCENARIO IS DELIBERATELY NOT ON THE LIST, AND THAT IS THE POINT OF IT.
+   *
+   * OPEN_READ is what a situation becomes when the person describes it in their own words and it
+   * matches none of the named cards. Offering it AS a card would be incoherent: you cannot pick "none
+   * of these fit" from a list of things that fit. It is reached only through "Describe your own
+   * situation", which is the entrance this guard's own warning is about - reachable from one
+   * entrance and not the other is exactly right here, rather than a gap.
+   *
+   * Named explicitly rather than loosening the assertion, so any OTHER unreachable scenario still
+   * fails this test.
+   */
+  const REACHED_ONLY_BY_DESCRIBING_IT = ['OPEN_READ'];
+
   it('and can reach every scenario the product has', () => {
     const reachable = new Set(params.map((p) => routes.get(p)))
-    const unreachable = scenarios.filter((s) => !reachable.has(s))
+    const unreachable = scenarios
+      .filter((s) => !reachable.has(s))
+      .filter((s) => !REACHED_ONLY_BY_DESCRIBING_IT.includes(s))
     expect({
       unreachable,
       whatToDo:

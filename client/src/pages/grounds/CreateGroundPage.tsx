@@ -157,7 +157,16 @@ export const SCENARIOS: ScenarioCard[] = [
   // kickoff, a renewal, a cohort - they got a shape chosen for them and never
   // saw a board. It says what it will do now, and the copy no longer promises
   // that we will work out the right ground, because nothing does that.
-  { cardKey: 'DESCRIBE_OWN', scenario: 'REALIGN_TEAM', label: 'Describe your own situation', tag: 'Anything else', tagBg: 'var(--gw-paper-2)', tagColor: 'var(--gw-sub)',
+  /**
+   * ITEM 2: THE CARD NO LONGER CARRIES SOMEBODY ELSE'S SCENARIO.
+   *
+   * This used to say `scenario: 'REALIGN_TEAM'`, which conflated two different things - the card the
+   * person clicked, and the scenario being created. If routing failed, the ground silently inherited
+   * REALIGN_TEAM: its board, its questions, its end states. A cohort of clinic managers who never
+   * work together would have got a "get a team back on the same page" ground, and nothing would have
+   * said so. It carries OPEN_READ now, which exists precisely for "we do not know yet".
+   */
+  { cardKey: 'DESCRIBE_OWN', scenario: 'OPEN_READ', label: 'Describe your own situation', tag: 'Anything else', tagBg: 'var(--gw-paper-2)', tagColor: 'var(--gw-sub)',
     desc: 'None of these quite fit? Describe it in your own words and we will open a ground where each person gives their own read first, privately, before anyone talks. If it turns out to be one of the situations above, pick that instead - it shapes the questions people are asked.' },
 ]
 
@@ -571,8 +580,17 @@ export function CreateGroundPage() {
                   <div style={{ marginTop: 10, fontSize: 12.5, lineHeight: 1.55, background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 8, padding: '10px 12px' }}>
                     {/* Saying so beats picking one quietly. The shape decides the
                         board, the mode and the questions - too much to guess at. */}
-                    We could not tell which situation this is closest to. We will open a general ground where each
-                    person gives their own read privately, which works for most things - or pick a card above if one fits.
+                    {/*
+                      * ITEM 1: SAY WHAT THEY ARE ACTUALLY GETTING.
+                      *
+                      * This used to promise "a general ground" while handing over a REALIGN_TEAM one.
+                      * Now the general ground genuinely exists, so the sentence is true - and it names
+                      * the trade rather than glossing it.
+                    */}
+                    We could not tell which of the situations above this is closest to, so we will open an
+                    <b> open read</b>: each person gives their own account privately and the report shows where
+                    they differ. That works when the shape is genuinely unclear. If one of the cards above does
+                    fit, pick it instead - a named situation asks sharper questions than this one can.
                   </div>
                 )}
               </div>
@@ -1000,6 +1018,27 @@ export function CreateGroundPage() {
               <div style={{ fontSize: 12, lineHeight: 1.7 }}>
                 <div>{SCENARIOS.find(s => s.cardKey === selectedCard)?.label ?? (scenario ?? '').replace(/_/g, ' ')} · {MOMENTS.find(m => m.moment === moment)?.label ?? moment}</div>
                 <div>{sessionTotal} sessions · {cadence.toLowerCase()}</div>
+                {/*
+                  * ITEM 3: THE ROUTING DECISION, SHOWN WHERE IT IS CHEAPEST TO CATCH.
+                  *
+                  * On the free-text path a model picked the shape, and the shape decides the board,
+                  * the questions and the endings. Until now that choice was made two steps earlier and
+                  * never repeated, so the last screen before creating showed no sign that anything had
+                  * been guessed. If the guess is wrong this is the moment to notice - after this, the
+                  * questions people get asked are already decided.
+                */}
+                {selectedCard === 'DESCRIBE_OWN' && (
+                  routedTo ? (
+                    <div style={{ color: 'var(--gw-sub)' }}>
+                      Read from your description as <b>{SCENARIOS.find(c => c.scenario === routedTo)?.label}</b>.
+                      Go back if that is not it.
+                    </div>
+                  ) : (
+                    <div style={{ color: 'var(--gw-sub)' }}>
+                      Opening as an <b>open read</b>, because your description did not match a named situation.
+                    </div>
+                  )
+                )}
                 {participants.length > 0 && <div>{participants.length} participant{participants.length !== 1 ? 's' : ''} invited</div>}
                 {appliedAccessCode && <div style={{ color: 'var(--gw-green-t)', fontWeight: 600 }}>Access code applied</div>}
               </div>

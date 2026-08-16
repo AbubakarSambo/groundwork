@@ -53,6 +53,16 @@ enum GroundScenario {
   BOARD_STRATEGY
   COHORT_CHECK
   ACUTE_SHOCK // a jarring event just happened; build the shared picture before any decision
+  /// The honest default when a described situation matches no card.
+  ///
+  /// Before this, "Describe your own situation" carried REALIGN_TEAM in its card config, so a routing
+  /// failure silently produced a "get a team back on the same page" ground - with that scenario's
+  /// board, questions and end states - while telling the person they were getting "a general ground
+  /// where each person gives their own read privately". For a cohort of managers who never work
+  /// together that is the wrong shape entirely, and nothing said so.
+  ///
+  /// This is that general ground, existing in its own right rather than borrowed.
+  OPEN_READ
 }
 
 //

@@ -7,6 +7,8 @@ export type GroundScenario =
   | 'RECOGNITION' | 'DRIFT' | 'CRISIS_ALIGNMENT'
   | 'OKR_ALIGNMENT' | 'WORKPLAN_BUDGET' | 'PULSE_CHECK'
   | 'REALIGN_TEAM' | 'PIP' | 'BOARD_STRATEGY' | 'COHORT_CHECK' | 'ACUTE_SHOCK'
+  /** The honest default when a described situation matches no card. Mirrors the server enum. */
+  | 'OPEN_READ'
 
 export type GroundMoment = 'STARTING' | 'RECOGNITION' | 'RESOLUTION'
 export type GroundCadence = 'DAILY' | 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'SEQUENTIAL'

@@ -87,6 +87,12 @@ export const END_STATES: Record<string, EndStateOption[]> = {
     { value: 'ATTENTION_NEEDED', label: 'Attention needed on named items' },
     { value: 'NOT_YET', label: 'Not yet - check again next session' },
   ],
+  /** Mirror of the server's OPEN_READ set. Plainest in the product, because the shape was unknown. */
+  OPEN_READ: [
+    { value: 'shared_picture', label: 'Shared picture established', description: 'Everyone has given their account and the differences are named.' },
+    { value: 'needs_specific_ground', label: 'Now clear enough to name the situation', description: 'The accounts show what this actually is, and it deserves its own ground.' },
+    { value: 'not_yet', label: 'Not yet - more accounts needed', description: 'Too few people have checked in to read anything from it.' },
+  ],
   REALIGN_TEAM: [
     { value: 'REALIGNED', label: 'Team realigned on shared direction' },
     { value: 'GAPS_REMAIN', label: 'Gaps remain - further conversation needed' },

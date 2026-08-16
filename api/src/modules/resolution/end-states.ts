@@ -80,6 +80,15 @@ export const END_STATES: Record<GroundScenario, { value: string; label: string; 
     { value: 'ATTENTION_NEEDED', label: 'Attention needed on named items' },
     { value: 'NOT_YET', label: 'Not yet - check again next session' },
   ],
+  /**
+   * Deliberately the plainest set in the product. OPEN_READ is used when the shape was not known at
+   * the start, so its endings cannot presume one - no renew, no separate, no keep or let go.
+   */
+  OPEN_READ: [
+    { value: 'shared_picture', label: 'Shared picture established', description: 'Everyone has given their account and the differences are named.' },
+    { value: 'needs_specific_ground', label: 'Now clear enough to name the situation', description: 'The accounts show what this actually is, and it deserves its own ground.' },
+    { value: 'not_yet', label: 'Not yet - more accounts needed', description: 'Too few people have checked in to read anything from it.' },
+  ],
   REALIGN_TEAM: [
     { value: 'REALIGNED', label: 'Team realigned on shared direction' },
     { value: 'GAPS_REMAIN', label: 'Gaps remain - further conversation needed' },
