@@ -998,7 +998,21 @@ export function ReportPage() {
           <div style={{ fontSize: 13, color: 'var(--gw-sub)' }}>{releasedDate ? `Released ${releasedDate}` : 'Still forming - not yet released'}</div>
         </div>
 
-        <ResolutionSection groundId={id!} resolutionState={(ground as any).resolutionState} />
+        {/*
+          * THE END STATE IS FOR THE PEOPLE WHO DECIDE IT, AND NOBODY ELSE. Her call.
+          *
+          * How a ground ends - keep, restructure, let go, renew, separate - is a management decision.
+          * Showing it on the shared report meant the person it is ABOUT read the menu their own
+          * outcome was being chosen from, which is the same harm as asking for it at creation, just
+          * later. On a new hire ground that menu included "Let them go".
+          *
+          * `isAdmin` here means the ground's INITIATOR (the lead). `user.role === 'ADMIN'` is the org
+          * admin. Everybody else sees the report without it - they still get the full shared picture,
+          * the gaps, and what is at stake, which is what the report is actually for.
+        */}
+        {(isAdmin || user?.role === 'ADMIN') && (
+          <ResolutionSection groundId={id!} resolutionState={(ground as any).resolutionState} />
+        )}
 
         <OutcomeFeedbackSection
           groundId={id!}

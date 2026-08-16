@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { endStatesFor } from '@/lib/end-states'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { groundsApi, type GroundScenario, type GroundMoment, type GroundCadence } from '@/api/grounds'
 import { TIMED_CADENCES, sessionsFor } from '@/lib/cadence'
@@ -262,7 +261,6 @@ export function CreateGroundPage() {
   const [pNote, setPNote] = useState('')
   const [bulkMode, setBulkMode] = useState(false)
   const [bulkText, setBulkText] = useState('')
-  const [resolutionState, setResolutionState] = useState<string | null>(null)
   const [brief, setBrief] = useState('')
   /**
    * Is the person setting this up part of it themselves?
@@ -398,7 +396,6 @@ export function CreateGroundPage() {
         moment: moment!,
         timelineDays,
         cadence,
-        resolutionState: resolutionState ?? undefined,
         brief: (brief.trim() || ownDescription.trim()) || undefined,
         ...(appliedAccessCode ? { accessCode: appliedAccessCode } : {}),
       } as Parameters<typeof groundsApi.create>[0] & { accessCode?: string })
@@ -926,14 +923,14 @@ export function CreateGroundPage() {
 
             {/* Handing the ground over needs an address to hand it to. Better to
                 stop here than to create a ground nobody is leading. */}
-            <button className="gw-btn" disabled={participants.length === 0 || (runByOther && !leadEmail.includes('@'))} onClick={() => setStep(5)} style={{ margin: 0 }}>Continue</button>
+            <button className="gw-btn" disabled={participants.length === 0 || (runByOther && !leadEmail.includes('@'))} onClick={() => setStep(6)} style={{ margin: 0 }}>Continue</button>
             {runByOther && !leadEmail.includes('@') && (
               <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 5 }}>
                 Add the email address of the person who will lead this ground.
               </div>
             )}
             <div style={{ fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 10, cursor: (runByOther && !leadEmail.includes('@')) ? 'not-allowed' : 'pointer', opacity: (runByOther && !leadEmail.includes('@')) ? 0.45 : 1 }}
-              onClick={() => { if (!(runByOther && !leadEmail.includes('@'))) setStep(5) }}>
+              onClick={() => { if (!(runByOther && !leadEmail.includes('@'))) setStep(6) }}>
               Skip - add participants after
             </div>
             <div style={{ fontSize: 11, color: 'var(--gw-muted)', textAlign: 'center', marginTop: 4, lineHeight: 1.5 }}>
@@ -942,36 +939,27 @@ export function CreateGroundPage() {
           </div>
         )}
 
-        {/* Step 5 (was 4): Resolution state */}
-        {step === 5 && (
-          <div>
-            <div className="gw-ttl">What does a successful outcome look like?</div>
-            <div className="gw-sub-t">The end state this ground builds toward, in this situation's own terms. Everyone sees it before the first session; the ground closes only when all parties confirm the same end state - and you are not locked in if the record reveals something different.</div>
-
-            {/* The scenario's OWN end states (mirror of the server's
-                resolution vocabulary) - the start target and the closing
-                outcome now speak the same language. Existing grounds keep
-                their old generic strings untouched. */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-sub)', textTransform: 'uppercase', letterSpacing: '.06em', margin: '12px 0 6px' }}>Where this ground can land</div>
-              {endStatesFor(scenario).map(r => (
-                <div
-                  key={r.value}
-                  style={{ display: 'flex', alignItems: 'flex-start', gap: 12, background: 'white', border: `1.5px solid ${resolutionState === r.label ? 'var(--gw-navy)' : 'var(--gw-border)'}`, borderRadius: 8, padding: '12px 14px', cursor: 'pointer', marginBottom: 6, transition: 'border-color .15s' }}
-                  onClick={() => setResolutionState(r.label)}
-                >
-                  <div style={{ width: 16, height: 16, borderRadius: '50%', border: `1.5px solid ${resolutionState === r.label ? 'var(--gw-navy)' : 'var(--gw-border)'}`, background: resolutionState === r.label ? 'var(--gw-navy)' : 'transparent', flexShrink: 0, marginTop: 1, transition: 'all .15s' }} />
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 2 }}>{r.label}</div>
-                    {r.description && <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>{r.description}</div>}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <button className="gw-btn" disabled={!resolutionState} onClick={() => setStep(6)} style={{ margin: 0 }}>Continue</button>
-          </div>
-        )}
+        {/*
+          * STEP 5, THE END STATE, IS GONE FROM CREATION. Her call, and the right one.
+          *
+          * It asked, before a single session had happened, "What does a successful outcome look
+          * like?" - and on a NEW HIRE ground the options were Keep the hire / Restructure the role /
+          * Let them go / Extend evaluation period. Its own copy said "Everyone sees it before the
+          * first session", so a person starting on Monday could see that their manager had already
+          * picked from a menu that included letting them go. That turns a welcome into a file.
+          *
+          * Three further reasons it should never have been here:
+          *  - it was collected, echoed back in the summary as "Resolution: X", and then never stored.
+          *    Fourteen grounds, `end_state` empty on every one.
+          *  - the NEW_PROJECT and DRIFT lists contain an option literally called "Continue", beside a
+          *    Continue button, so one word meant two things on one screen.
+          *  - a decision about how something ends is not knowable at the moment it begins. Asking for
+          *    it up front invites a guess and then dignifies the guess as an agreement.
+          *
+          * The end state now belongs to CLOSING a ground, where the record can actually inform it,
+          * and is visible only to the lead and org admins. Step numbering is unchanged so the rest of
+          * the wizard keeps working; this step simply no longer renders.
+        */}
 
         {/* Step 6 (was 5): Opening brief + ground name */}
         {step === 6 && (
@@ -1012,7 +1000,6 @@ export function CreateGroundPage() {
               <div style={{ fontSize: 12, lineHeight: 1.7 }}>
                 <div>{SCENARIOS.find(s => s.cardKey === selectedCard)?.label ?? (scenario ?? '').replace(/_/g, ' ')} · {MOMENTS.find(m => m.moment === moment)?.label ?? moment}</div>
                 <div>{sessionTotal} sessions · {cadence.toLowerCase()}</div>
-                {resolutionState && <div>Resolution: {resolutionState}</div>}
                 {participants.length > 0 && <div>{participants.length} participant{participants.length !== 1 ? 's' : ''} invited</div>}
                 {appliedAccessCode && <div style={{ color: 'var(--gw-green-t)', fontWeight: 600 }}>Access code applied</div>}
               </div>

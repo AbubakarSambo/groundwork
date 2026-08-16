@@ -2727,16 +2727,38 @@ export class GroundsService {
     completed: number;
     missingParticipantIds: string[];
   } | null> {
-    // Current round = the highest sessionNumber any check-in row exists for.
-    const maxSession = await this.prisma.checkIn.aggregate({
+    /**
+     * THE ROUND THIS IS ABOUT IS THE ONE PEOPLE HAVE ANSWERED, NOT THE NEWEST ONE OPENED.
+     *
+     * This used to take the highest sessionNumber any check-in ROW existed for. The moment session 1
+     * completes, session 2 rows are created NOT_STARTED - so the count immediately jumped to session 2
+     * and reported "0 of 3 checked in" while the report on the same screen was built from three
+     * finished session-1 accounts. A leader reading a full report under "0 of 3 checked in" cannot
+     * tell which half to believe, and it is the most important page in the product.
+     *
+     * So: the current round is the highest session that anybody has actually COMPLETED. Only when
+     * nothing is complete anywhere does it fall back to the newest open round, which is correct for a
+     * ground that has genuinely just started.
+     */
+    const lastAnswered = await this.prisma.checkIn.aggregate({
+      where: { participant: { groundId }, status: CheckInStatus.COMPLETED },
+      _max: { sessionNumber: true },
+    });
+    const newestOpen = await this.prisma.checkIn.aggregate({
       where: { participant: { groundId } },
       _max: { sessionNumber: true },
     });
-    const sessionNumber = maxSession._max.sessionNumber ?? 1;
+    const sessionNumber = lastAnswered._max.sessionNumber ?? newestOpen._max.sessionNumber ?? 1;
 
     const active = await this.prisma.groundParticipant.findMany({
       where: {
         groundId,
+        /**
+         * A managing-only lead is not counted. They give no account by design, so including them made
+         * the denominator a number that could never be reached - "2 of 3" forever on a ground where
+         * everybody who was ever going to answer already had.
+         */
+        managingOnly: false,
         OR: [
           { userId: { not: null } },
           { checkIns: { some: { sessionNumber, status: CheckInStatus.COMPLETED } } },
