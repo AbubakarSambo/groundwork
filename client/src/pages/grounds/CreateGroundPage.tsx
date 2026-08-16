@@ -170,6 +170,28 @@ export const SCENARIOS: ScenarioCard[] = [
     desc: 'None of these quite fit? Describe it in your own words and we will open a ground where each person gives their own read first, privately, before anyone talks. If it turns out to be one of the situations above, pick that instead - it shapes the questions people are asked.' },
 ]
 
+/**
+ * THE NAME PEOPLE ACTUALLY READ, WHICH IS USUALLY IN AN EMAIL SUBJECT.
+ *
+ * The fallback used to be `${scenario} ground` - the raw enum with its underscores swapped for
+ * spaces. Across an eighteen-ground run that produced NEW HIRE ground, PIP ground, OKR ALIGNMENT
+ * ground, and every one of them travelled into an invite subject: "Sahar Okonkwo invited you to
+ * check in on: PIP ground". That is the first thing somebody on a performance plan reads about
+ * themselves, in shouting caps, named after a database value.
+ *
+ * So the fallback is now the card's own human label - the same words the person just clicked - and
+ * where a participant has been named, theirs. "Abubakar, new hire" beats "NEW HIRE ground" in an
+ * inbox, and it is also the only version that stays distinguishable when somebody has three.
+ */
+function groundNameFallback(cardLabel: string | undefined, scenario: string | null, firstParticipant?: string): string {
+  const base = cardLabel?.trim() || (scenario ?? 'Ground').replace(/_/g, ' ').toLowerCase();
+  const who = firstParticipant?.split('@')[0]?.trim();
+  if (!who) return base;
+  /** Capitalised because it is a person's name at the front of a sentence, not a slug. */
+  const name = who.charAt(0).toUpperCase() + who.slice(1);
+  return `${name}, ${base.charAt(0).toLowerCase()}${base.slice(1)}`;
+}
+
 interface MomentOption { moment: GroundMoment; label: string; sub: string }
 const MOMENTS: MomentOption[] = [
   { moment: 'STARTING',    label: 'At the start',    sub: 'Set expectations before the work begins.' },
@@ -380,7 +402,9 @@ export function CreateGroundPage() {
           leadEmail: leadEmail.trim(),
           leadName: leadName.trim() || undefined,
           leadRemit: leadRemit.trim() || undefined,
-          label: groundName.trim() || `${scenario?.replace(/_/g, ' ')} ground`,
+          label: groundName.trim() || groundNameFallback(
+            SCENARIOS.find(c => c.cardKey === selectedCard)?.label, scenario, participants[0]?.email,
+          ),
           scenario: scenario!,
           moment: moment!,
           timelineDays,
@@ -400,7 +424,9 @@ export function CreateGroundPage() {
         return { ground, failedInvites: 0 }
       }
       const ground = await groundsApi.create({
-        label: groundName.trim() || `${scenario?.replace(/_/g, ' ')} ground`,
+        label: groundName.trim() || groundNameFallback(
+            SCENARIOS.find(c => c.cardKey === selectedCard)?.label, scenario, participants[0]?.email,
+          ),
         scenario: scenario!,
         moment: moment!,
         timelineDays,
