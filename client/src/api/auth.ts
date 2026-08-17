@@ -2,7 +2,12 @@ import { apiClient } from './client'
 import type { User } from '@/types'
 
 export interface MagicLinkResponse { message: string; email: string }
-export interface VerifyEmailResponse { accessToken: string; user: User }
+/**
+ * `needsPassword` is optional on the type because older responses will not carry it, and a missing
+ * flag must read as "no password step needed" rather than sending everybody to set one. The server
+ * computes it in `buildAuthResponse`, so every door returns it.
+ */
+export interface VerifyEmailResponse { accessToken: string; user: User; needsPassword?: boolean; passwordSetupToken?: string }
 export interface ValidateTokenResponse { valid: boolean; email?: string; firstName?: string }
 
 export interface MagicLinkBody {

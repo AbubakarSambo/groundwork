@@ -213,7 +213,7 @@ export class AuthService {
       const already = await this.prisma.user.findUnique({ where: { email: pending.email }, include: { organization: true } });
       if (already) {
         await this.prisma.pendingSignup.delete({ where: { id: pending.id } }).catch(() => undefined);
-        return this.buildAuthResponse(already as unknown as UserWithOrg);
+        return this.withPasswordSetup(this.buildAuthResponse(already as unknown as UserWithOrg), already.id);
       }
 
       // The slug comes from the organisation NAME, never the email domain, so a
@@ -254,7 +254,7 @@ export class AuthService {
         return u;
       });
 
-      return this.buildAuthResponse(created as unknown as UserWithOrg);
+      return this.withPasswordSetup(this.buildAuthResponse(created as unknown as UserWithOrg), created.id);
     }
 
     const tokenRecord = await this.consumeToken(dto.token, TokenType.EMAIL_VERIFICATION, { allowExpiredMessage: 'This verification link has expired. Please request a new one.' });
@@ -271,7 +271,7 @@ export class AuthService {
       return { user: tokenRecord.user };
     });
 
-    return this.buildAuthResponse(user as unknown as UserWithOrg);
+    return this.withPasswordSetup(this.buildAuthResponse(user as unknown as UserWithOrg), user.id);
   }
 
   async setPassword(dto: SetPasswordDto): Promise<AuthResponseDto> {
@@ -730,8 +730,36 @@ export class AuthService {
 
   // --- helpers ---
 
+  /**
+   * Attach a PASSWORD_SETUP token when, and only when, the account has no password.
+   *
+   * Kept separate from `buildAuthResponse` so that helper stays synchronous for its six call sites.
+   * Only the verification path needs it: that is where the promise "you will be asked to set a
+   * password" is made, and where it was being broken.
+   */
+  private async withPasswordSetup(res: AuthResponseDto, userId: string): Promise<AuthResponseDto> {
+    if (!res.needsPassword) return res;
+    const token = crypto.randomBytes(32).toString('hex');
+    await this.prisma.emailVerificationToken.create({
+      data: {
+        userId,
+        token,
+        type: TokenType.PASSWORD_SETUP,
+        /** Short: this is handed straight to the screen in front of them, not emailed. */
+        expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+      },
+    });
+    return { ...res, passwordSetupToken: token };
+  }
+
   private buildAuthResponse(user: UserWithOrg): AuthResponseDto {
     return {
+      /**
+       * Computed here rather than at each call site, because there are five doors into the app
+       * (password, magic link, verify-email, Google, entry handover) and a signal only some of them
+       * set is worse than no signal at all.
+       */
+      needsPassword: !(user as unknown as { passwordHash?: string | null }).passwordHash,
       accessToken: this.generateToken(user),
       user: {
         id: user.id,

@@ -17,6 +17,12 @@ import { PlatformAdminGuard } from '../../common/guards/platform-admin.guard';
 import { CurrentUser } from '../../common';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { PricingService } from '../billing/pricing.service';
+/**
+ * Stripe's own USD floor is 50 cents; the ceiling is a typo guard rather than a policy, set well
+ * above any plan we would plausibly sell.
+ */
+const MIN_PLAN_AMOUNT_CENTS = 50;
+const MAX_PLAN_AMOUNT_CENTS = 500000;
 import { SubscriptionPlan } from '@prisma/client';
 
 // ---------------------------------------------------------------------------
@@ -80,6 +86,18 @@ export class AdminController {
     return this.pricing.listPlans();
   }
 
+  @Get('pricing/free-ground-limit')
+  @ApiOperation({ summary: 'How many grounds an organisation gets before it needs a subscription' })
+  async getFreeGroundLimit() {
+    return { freeGroundLimit: await this.pricing.getFreeGroundLimit() };
+  }
+
+  @Patch('pricing/free-ground-limit')
+  @ApiOperation({ summary: 'Change the free ground limit' })
+  async setFreeGroundLimit(@CurrentUser('id') userId: string, @Body() body: { freeGroundLimit: number }) {
+    return { freeGroundLimit: await this.pricing.setFreeGroundLimit(body?.freeGroundLimit, userId) };
+  }
+
   @Patch('pricing/:plan')
   @ApiOperation({ summary: 'Update the monthly price (in cents) for a subscription plan' })
   async setPricing(@Param('plan') plan: string, @Body() body: { amountCents: number }) {
@@ -91,6 +109,20 @@ export class AdminController {
     }
     if (!Number.isInteger(body?.amountCents) || body.amountCents <= 0) {
       throw new BadRequestException('amountCents must be a positive integer');
+    }
+    /**
+     * AND BOUNDED, BECAUSE THIS FIELD BILLS REAL CARDS.
+     *
+     * "Positive integer" lets through both ends of the range that actually hurt. Stripe refuses a
+     * USD charge under 50 cents, so an admin who sets 25 has not made a cheap plan - they have
+     * made a checkout that dies inside Stripe rather than failing here with a sentence. And at the
+     * other end, a fat-fingered extra zero turns a $40 plan into a $400 one that somebody's card
+     * actually pays. Neither is something a price field should permit.
+     */
+    if (body.amountCents < MIN_PLAN_AMOUNT_CENTS || body.amountCents > MAX_PLAN_AMOUNT_CENTS) {
+      throw new BadRequestException(
+        `amountCents must be between ${MIN_PLAN_AMOUNT_CENTS} and ${MAX_PLAN_AMOUNT_CENTS} - Stripe refuses anything smaller, and anything larger is almost certainly a typo.`,
+      );
     }
     await this.pricing.setAmountCents(plan as SubscriptionPlan, body.amountCents);
     return this.pricing.listPlans();

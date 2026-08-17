@@ -63,6 +63,12 @@ export const SCENARIO_FAMILY: Record<GroundScenario, BoardFamily> = {
   // Sensing the mood: transparency would poison these.
   PULSE_CHECK: BoardFamily.SENSING,
   REALIGN_TEAM: BoardFamily.SENSING,
+  /**
+   * SENSING, deliberately. OPEN_READ exists because nobody could say what the situation is, so the
+   * one honest thing to do is gather each account privately and compare. That is exactly what the
+   * sensing family does; a delivery-shaped board would invent structure nobody described.
+   */
+  OPEN_READ: BoardFamily.SENSING,
   CRISIS_ALIGNMENT: BoardFamily.SENSING,
   DRIFT: BoardFamily.SENSING,
   ACUTE_SHOCK: BoardFamily.SENSING,

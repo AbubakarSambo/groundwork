@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { StripeService } from './stripe.service';
 import { SubscriptionPlan } from '@prisma/client';
@@ -19,6 +19,16 @@ export const PLAN_LABELS: Record<SubscriptionPlan, string> = {
  * (admin.service clears stripePriceId whenever amountCents changes) - it never
  * edits one in place. The Stripe Product is created once per plan and reused.
  */
+/**
+ * The free-ground limit does not belong in `pricing_plans` - that table is keyed by plan and this
+ * is one number for the whole platform - so it sits in `platform_settings`, beside the WhatsApp
+ * toggle. It was a hardcoded 10 in the API and another hardcoded 10 in the client, plus the words
+ * "10 Grounds" written out across three builds.
+ */
+export const FREE_GROUND_LIMIT_KEY = 'pricing.freeGroundLimit';
+export const DEFAULT_FREE_GROUND_LIMIT = 10;
+export const MAX_FREE_GROUND_LIMIT = 1000;
+
 @Injectable()
 export class PricingService {
   private readonly logger = new Logger(PricingService.name);
@@ -77,5 +87,36 @@ export class PricingService {
     });
     this.logger.log(`Created Stripe price ${price.id} for plan ${plan} (${row.amountCents} cents)`);
     return price.id;
+  }
+
+  /**
+   * The live free-ground limit, or the shipped default.
+   *
+   * Never throws. A missing or nonsense row must mean "the limit we shipped with", not zero - zero
+   * would silently paywall every organisation on the platform, which is the most damaging possible
+   * reading of a bad row.
+   */
+  async getFreeGroundLimit(): Promise<number> {
+    try {
+      const row = await this.prisma.platformSetting.findUnique({ where: { key: FREE_GROUND_LIMIT_KEY } });
+      const v = row?.value;
+      if (typeof v === 'number' && Number.isInteger(v) && v >= 0 && v <= MAX_FREE_GROUND_LIMIT) return v;
+    } catch (err) {
+      this.logger.warn(`Could not read the free ground limit, using the default: ${(err as Error)?.message}`);
+    }
+    return DEFAULT_FREE_GROUND_LIMIT;
+  }
+
+  async setFreeGroundLimit(limit: number, adminUserId: string): Promise<number> {
+    if (!Number.isInteger(limit) || limit < 0 || limit > MAX_FREE_GROUND_LIMIT) {
+      throw new BadRequestException(`The free ground limit must be a whole number between 0 and ${MAX_FREE_GROUND_LIMIT}.`);
+    }
+    await this.prisma.platformSetting.upsert({
+      where: { key: FREE_GROUND_LIMIT_KEY },
+      create: { key: FREE_GROUND_LIMIT_KEY, value: limit, updatedBy: adminUserId },
+      update: { value: limit, updatedBy: adminUserId },
+    });
+    this.logger.log(`Free ground limit set to ${limit} by ${adminUserId}`);
+    return limit;
   }
 }

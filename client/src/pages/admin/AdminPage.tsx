@@ -160,12 +160,90 @@ function PricingRow({ row }: { row: PricingPlanRow }) {
   )
 }
 
+/**
+ * HOW MANY GROUNDS BEFORE SOMEBODY HAS TO PAY.
+ *
+ * The other half of pricing, and it was the harder one to change: a hardcoded 10 in the API, a
+ * second hardcoded 10 in the client, and the words "10 Grounds" written out across three builds.
+ * It sits with the plan prices because it is the same decision - what the free tier is worth.
+ */
+function FreeGroundLimitRow() {
+  const qc = useQueryClient()
+  const { data } = useQuery({ queryKey: ['admin-free-ground-limit'], queryFn: adminApi.getFreeGroundLimit })
+  const [editing, setEditing] = useState(false)
+  const [value, setValue] = useState('')
+  const [err, setErr] = useState<string | null>(null)
+
+  const save = useMutation({
+    mutationFn: () => {
+      const n = Number(value)
+      if (!value.trim() || !Number.isInteger(n)) throw new Error('That needs to be a whole number of grounds.')
+      return adminApi.setFreeGroundLimit(n)
+    },
+    onSuccess: (res) => {
+      qc.setQueryData(['admin-free-ground-limit'], res)
+      /** The pricing page reads this too, so it must not keep showing the old number. */
+      qc.invalidateQueries({ queryKey: ['public-pricing'] })
+      setEditing(false); setErr(null)
+    },
+    onError: (e: any) => setErr(e?.response?.data?.message ?? e?.message ?? 'Could not save.'),
+  })
+
+  if (!data) return null
+  return (
+    <div style={{ ...C, padding: '11px 14px', display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontSize: 13, fontWeight: 700 }}>Free grounds</div>
+        <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', marginTop: 1 }}>
+          Before an organisation needs a subscription. Zero means no free tier.
+        </div>
+        {err && <div style={{ fontSize: 11.5, color: 'var(--gw-red-b)', marginTop: 4 }}>{err}</div>}
+      </div>
+      {editing ? (
+        <>
+          <input
+            aria-label="Free ground limit"
+            value={value}
+            inputMode="numeric"
+            onChange={e => setValue(e.target.value)}
+            style={{ width: 62, padding: '5px 8px', fontSize: 13, borderRadius: 6, border: '1px solid var(--gw-border)', fontFamily: 'inherit' }}
+          />
+          <button
+            onClick={() => save.mutate()}
+            disabled={save.isPending}
+            style={{ padding: '5px 11px', fontSize: 12, fontWeight: 700, borderRadius: 6, border: 'none', background: 'var(--gw-navy)', color: 'white', cursor: 'pointer', fontFamily: 'inherit' }}
+          >
+            {save.isPending ? 'Saving...' : 'Save'}
+          </button>
+          <button
+            onClick={() => { setEditing(false); setErr(null) }}
+            style={{ padding: '5px 9px', fontSize: 12, borderRadius: 6, border: '1px solid var(--gw-border)', background: 'transparent', color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit' }}
+          >
+            Cancel
+          </button>
+        </>
+      ) : (
+        <>
+          <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--gw-navy)' }}>{data.freeGroundLimit}</span>
+          <button
+            onClick={() => { setValue(String(data.freeGroundLimit)); setEditing(true) }}
+            style={{ padding: '5px 9px', fontSize: 12, borderRadius: 6, border: '1px solid var(--gw-border)', background: 'transparent', color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit' }}
+          >
+            Change
+          </button>
+        </>
+      )}
+    </div>
+  )
+}
+
 function PricingPanel() {
   const { data, isLoading } = useQuery({ queryKey: ['admin-pricing'], queryFn: adminApi.getPricing })
   if (isLoading || !data) return null
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       {data.map(row => <PricingRow key={row.plan} row={row} />)}
+      <FreeGroundLimitRow />
     </div>
   )
 }

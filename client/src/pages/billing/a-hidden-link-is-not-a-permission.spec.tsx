@@ -28,8 +28,10 @@ vi.mock('@/api/billing', () => ({
     status: vi.fn(), getContributorCodes: vi.fn(), generateContributorCode: vi.fn(),
     sendContributorCodeToEmail: vi.fn(), createSubscription: vi.fn(),
     cancelSubscription: vi.fn(), pauseSubscription: vi.fn(), resumeSubscription: vi.fn(),
+    getPricing: vi.fn(),
   },
   PLAN_LABELS: {}, PLAN_PRICES: {}, PLAN_MEMBER_CAPS: {},
+  formatMonthlyPrice: (c: number) => `$${c / 100}/mo`, FREE_GROUND_LIMIT: 10,
 }))
 vi.mock('@/api/grounds', () => ({ groundsApi: { list: vi.fn() } }))
 
@@ -81,6 +83,8 @@ describe('a member who types the URL', () => {
     expect(billingApi.status).not.toHaveBeenCalled()
     expect(billingApi.getContributorCodes).not.toHaveBeenCalled()
     expect(groundsApi.list).not.toHaveBeenCalled()
+    /** Added when prices became a live read: a new fetch on this page must be gated like the rest. */
+    expect(billingApi.getPricing).not.toHaveBeenCalled()
   })
 })
 

@@ -156,8 +156,40 @@ export function MagicVerifyPage() {
           return { kind: 'verifyError', message: verifyErrorMessage(err) }
         }
         setAuth(res.user, res.accessToken)
+
+        /**
+         * THE PASSWORD STEP THE COPY PROMISES - AND WHY IT MUST NOT COME FIRST.
+         *
+         * Signup says it twice, on the wait page as step 2 of 3 and in the activation email, and
+         * until now it never happened: this landed people straight in the app with no password. That
+         * looks harmless on day one and is severe later, because a passwordless account can ONLY be
+         * re-entered by requesting a fresh emailed link, every single time. In an eighteen-ground run
+         * that was the fault that stopped grounds ever reaching a report - the last person to check
+         * in could not sign back in to finish.
+         *
+         * THE FIRST VERSION OF THIS FIX PUT THE REDIRECT HERE, ABOVE THE COMMIT, and reasoned that
+         * as a virtue: "so it applies to every arrival". It applied to every arrival by RETURNING
+         * before the commit ever ran - so somebody arriving from the anonymous entry chat set a
+         * password, landed on an empty grounds list, and the ground they had just described was
+         * never created. That is the vanishing-ground bug this product already fixed once (R1), put
+         * back by a change that had nothing to do with grounds.
+         *
+         * Caught by the persona suite, whose suite_v exists for precisely this and is named after
+         * it. Nothing in the unit tests or the typecheck had an opinion.
+         *
+         * So the order is now: commit first, THEN the password. `passwordStep` below wraps whatever
+         * destination the arrival was heading for, so the detour cannot swallow it again.
+         */
+        const passwordStep = (destination: string): VerifyOutcome | null =>
+          res.needsPassword && res.passwordSetupToken
+            ? {
+                kind: 'redirect',
+                to: `/set-password?token=${encodeURIComponent(res.passwordSetupToken)}&next=${encodeURIComponent(destination)}`,
+              }
+            : null
+
         if (fromParam && fromParam.startsWith('/')) {
-          return { kind: 'redirect', to: fromParam }
+          return passwordStep(fromParam) ?? { kind: 'redirect', to: fromParam }
         }
         // ALWAYS attempt the commit. The server merges whatever this browser
         // has over the server-side draft written at entry-save, so the commit
@@ -168,7 +200,21 @@ export function MagicVerifyPage() {
         const payload = loadEntryHandover() ?? { groundLabel: '', history: [], contributors: [] }
         const hadEntryIntent = !!localStorage.getItem(COMMIT_KEY) || !!localStorage.getItem('gw_draft_token')
         lastAttempt.current = { token, payload, user: res.user }
-        return commitFlow(payload, hadEntryIntent)
+        const outcome = await commitFlow(payload, hadEntryIntent)
+
+        /**
+         * Only a SUCCESSFUL commit hands over to the password step, and it hands over pointing at
+         * the ground that now exists - so the reassurance the interstitial used to give ("your
+         * ground is set up") is given by the ground itself.
+         *
+         * A commit ERROR must stay on this screen. It has a "Try again" that re-attempts, and
+         * sending somebody to set a password mid-failure loses the retry and the explanation both.
+         * They will still be asked for a password the next time they arrive.
+         */
+        if (outcome.kind === 'success') {
+          return passwordStep(`/grounds/${outcome.groundId}`) ?? outcome
+        }
+        return outcome
       })()
       verifyFlows.set(token, flow)
     }

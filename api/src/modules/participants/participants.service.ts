@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
@@ -13,6 +13,8 @@ import { CheckInStatus, TokenType, Cadence, PartyType } from '@prisma/client';
  */
 @Injectable()
 export class ParticipantsService {
+  private readonly logger = new Logger(ParticipantsService.name);
+
   constructor(
     private prisma: PrismaService,
     private jwt: JwtService,
@@ -193,11 +195,45 @@ export class ParticipantsService {
       }
     }
 
-    // The participant's first session to enter.
-    const checkIn = await this.prisma.checkIn.findFirst({
+    /**
+     * THE PARTICIPANT'S FIRST SESSION TO ENTER, AND THERE IS ALWAYS ONE.
+     *
+     * Every path that adds a participant creates their session-1 row alongside them, so this
+     * lookup normally finds it. But `checkInId: null` was allowed to fall through, and the
+     * client's only answer to null is to drop them on the ground page - where accepting an
+     * invitation ends at ANOTHER button, "Check in for session 1 of 2". Someone who has just
+     * clicked a link in their email, read the briefing, and pressed "Add my version" is then
+     * asked to press a third thing to start the one task they came for.
+     *
+     * Rather than teach the client to handle a hole, close the hole. If a person has accepted
+     * an invitation and has no open session, that state is not a decision anybody made - it is
+     * a row that failed to get written, and the honest repair is to write it. This is the same
+     * rule the entry-flow join already applies (entry.service join-accept), so the two ways in
+     * now behave identically instead of one of them quietly being worse.
+     *
+     * The lookup stays first, so a person who already has a session NEVER gets a second one.
+     */
+    let checkIn = await this.prisma.checkIn.findFirst({
       where: { participantId: participant.id, status: { in: [CheckInStatus.NOT_STARTED, CheckInStatus.IN_PROGRESS] } },
       orderBy: { sessionNumber: 'asc' },
     });
+    if (!checkIn) {
+      /**
+       * Only when they have never completed one either. Somebody at the end of a finished
+       * ground has no open session BECAUSE they are done, and minting them a fresh session 1
+       * would reopen a closed account and corrupt the record.
+       */
+      const everCompleted = await this.prisma.checkIn.findFirst({
+        where: { participantId: participant.id, status: CheckInStatus.COMPLETED },
+        select: { id: true },
+      });
+      if (!everCompleted) {
+        this.logger.warn(`accept: participant ${participant.id} had no session-1 check-in on ground ${ground.id}; creating one`);
+        checkIn = await this.prisma.checkIn.create({
+          data: { groundId: ground.id, participantId: participant.id, sessionNumber: 1, status: CheckInStatus.NOT_STARTED },
+        });
+      }
+    }
 
     const accessToken = this.jwt.sign({ sub: user.id, email: user.email, organizationId: user.organizationId, role: user.role });
 

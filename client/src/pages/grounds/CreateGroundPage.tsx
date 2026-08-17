@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { endStatesFor } from '@/lib/end-states'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { groundsApi, type GroundScenario, type GroundMoment, type GroundCadence } from '@/api/grounds'
 import { TIMED_CADENCES, sessionsFor } from '@/lib/cadence'
@@ -158,9 +157,40 @@ export const SCENARIOS: ScenarioCard[] = [
   // kickoff, a renewal, a cohort - they got a shape chosen for them and never
   // saw a board. It says what it will do now, and the copy no longer promises
   // that we will work out the right ground, because nothing does that.
-  { cardKey: 'DESCRIBE_OWN', scenario: 'REALIGN_TEAM', label: 'Describe your own situation', tag: 'Anything else', tagBg: 'var(--gw-paper-2)', tagColor: 'var(--gw-sub)',
+  /**
+   * ITEM 2: THE CARD NO LONGER CARRIES SOMEBODY ELSE'S SCENARIO.
+   *
+   * This used to say `scenario: 'REALIGN_TEAM'`, which conflated two different things - the card the
+   * person clicked, and the scenario being created. If routing failed, the ground silently inherited
+   * REALIGN_TEAM: its board, its questions, its end states. A cohort of clinic managers who never
+   * work together would have got a "get a team back on the same page" ground, and nothing would have
+   * said so. It carries OPEN_READ now, which exists precisely for "we do not know yet".
+   */
+  { cardKey: 'DESCRIBE_OWN', scenario: 'OPEN_READ', label: 'Describe your own situation', tag: 'Anything else', tagBg: 'var(--gw-paper-2)', tagColor: 'var(--gw-sub)',
     desc: 'None of these quite fit? Describe it in your own words and we will open a ground where each person gives their own read first, privately, before anyone talks. If it turns out to be one of the situations above, pick that instead - it shapes the questions people are asked.' },
 ]
+
+/**
+ * THE NAME PEOPLE ACTUALLY READ, WHICH IS USUALLY IN AN EMAIL SUBJECT.
+ *
+ * The fallback used to be `${scenario} ground` - the raw enum with its underscores swapped for
+ * spaces. Across an eighteen-ground run that produced NEW HIRE ground, PIP ground, OKR ALIGNMENT
+ * ground, and every one of them travelled into an invite subject: "Sahar Okonkwo invited you to
+ * check in on: PIP ground". That is the first thing somebody on a performance plan reads about
+ * themselves, in shouting caps, named after a database value.
+ *
+ * So the fallback is now the card's own human label - the same words the person just clicked - and
+ * where a participant has been named, theirs. "Abubakar, new hire" beats "NEW HIRE ground" in an
+ * inbox, and it is also the only version that stays distinguishable when somebody has three.
+ */
+function groundNameFallback(cardLabel: string | undefined, scenario: string | null, firstParticipant?: string): string {
+  const base = cardLabel?.trim() || (scenario ?? 'Ground').replace(/_/g, ' ').toLowerCase();
+  const who = firstParticipant?.split('@')[0]?.trim();
+  if (!who) return base;
+  /** Capitalised because it is a person's name at the front of a sentence, not a slug. */
+  const name = who.charAt(0).toUpperCase() + who.slice(1);
+  return `${name}, ${base.charAt(0).toLowerCase()}${base.slice(1)}`;
+}
 
 interface MomentOption { moment: GroundMoment; label: string; sub: string }
 const MOMENTS: MomentOption[] = [
@@ -262,7 +292,6 @@ export function CreateGroundPage() {
   const [pNote, setPNote] = useState('')
   const [bulkMode, setBulkMode] = useState(false)
   const [bulkText, setBulkText] = useState('')
-  const [resolutionState, setResolutionState] = useState<string | null>(null)
   const [brief, setBrief] = useState('')
   /**
    * Is the person setting this up part of it themselves?
@@ -373,12 +402,21 @@ export function CreateGroundPage() {
           leadEmail: leadEmail.trim(),
           leadName: leadName.trim() || undefined,
           leadRemit: leadRemit.trim() || undefined,
-          label: groundName.trim() || `${scenario?.replace(/_/g, ' ')} ground`,
+          label: groundName.trim() || groundNameFallback(
+            SCENARIOS.find(c => c.cardKey === selectedCard)?.label, scenario, participants[0]?.email,
+          ),
           scenario: scenario!,
           moment: moment!,
           timelineDays,
           cadence,
           brief: (brief.trim() || ownDescription.trim()) || undefined,
+        /**
+         * Sent at CREATE now, not only afterwards. The follow-up confirmLead call below still runs
+         * for the flows where it applies, but it throws "already been confirmed" on a ground an
+         * admin created for themselves - into a silent catch - so this choice was being dropped
+         * every time. The server applies it at creation and skips the creator's own check-in.
+         */
+        ...(alsoAParty !== null ? { managingOnly: !alsoAParty } : {}),
           participants: participants.length
             ? participants.map((p) => ({ email: p.email, roleAsDescribed: p.role || undefined }))
             : undefined,
@@ -386,12 +424,13 @@ export function CreateGroundPage() {
         return { ground, failedInvites: 0 }
       }
       const ground = await groundsApi.create({
-        label: groundName.trim() || `${scenario?.replace(/_/g, ' ')} ground`,
+        label: groundName.trim() || groundNameFallback(
+            SCENARIOS.find(c => c.cardKey === selectedCard)?.label, scenario, participants[0]?.email,
+          ),
         scenario: scenario!,
         moment: moment!,
         timelineDays,
         cadence,
-        resolutionState: resolutionState ?? undefined,
         brief: (brief.trim() || ownDescription.trim()) || undefined,
         ...(appliedAccessCode ? { accessCode: appliedAccessCode } : {}),
       } as Parameters<typeof groundsApi.create>[0] & { accessCode?: string })
@@ -567,8 +606,17 @@ export function CreateGroundPage() {
                   <div style={{ marginTop: 10, fontSize: 12.5, lineHeight: 1.55, background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 8, padding: '10px 12px' }}>
                     {/* Saying so beats picking one quietly. The shape decides the
                         board, the mode and the questions - too much to guess at. */}
-                    We could not tell which situation this is closest to. We will open a general ground where each
-                    person gives their own read privately, which works for most things - or pick a card above if one fits.
+                    {/*
+                      * ITEM 1: SAY WHAT THEY ARE ACTUALLY GETTING.
+                      *
+                      * This used to promise "a general ground" while handing over a REALIGN_TEAM one.
+                      * Now the general ground genuinely exists, so the sentence is true - and it names
+                      * the trade rather than glossing it.
+                    */}
+                    We could not tell which of the situations above this is closest to, so we will open an
+                    <b> open read</b>: each person gives their own account privately and the report shows where
+                    they differ. That works when the shape is genuinely unclear. If one of the cards above does
+                    fit, pick it instead - a named situation asks sharper questions than this one can.
                   </div>
                 )}
               </div>
@@ -678,7 +726,7 @@ export function CreateGroundPage() {
                 <div style={{ background: 'var(--gw-card)', border: '1.5px solid var(--gw-border)', borderRadius: 10, padding: '20px 18px', marginBottom: 20 }}>
                   <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 6 }}>Subscribe to create more Grounds</div>
                   <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 16 }}>
-                    Your free plan includes 10 Grounds. Subscribe for unlimited Grounds, sessions, and reports.
+                    Your free plan includes {FREE_GROUND_LIMIT} Grounds. Subscribe for unlimited Grounds, sessions, and reports.
                   </div>
                   <a
                     href="/pricing"
@@ -919,14 +967,14 @@ export function CreateGroundPage() {
 
             {/* Handing the ground over needs an address to hand it to. Better to
                 stop here than to create a ground nobody is leading. */}
-            <button className="gw-btn" disabled={participants.length === 0 || (runByOther && !leadEmail.includes('@'))} onClick={() => setStep(5)} style={{ margin: 0 }}>Continue</button>
+            <button className="gw-btn" disabled={participants.length === 0 || (runByOther && !leadEmail.includes('@'))} onClick={() => setStep(6)} style={{ margin: 0 }}>Continue</button>
             {runByOther && !leadEmail.includes('@') && (
               <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 5 }}>
                 Add the email address of the person who will lead this ground.
               </div>
             )}
             <div style={{ fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 10, cursor: (runByOther && !leadEmail.includes('@')) ? 'not-allowed' : 'pointer', opacity: (runByOther && !leadEmail.includes('@')) ? 0.45 : 1 }}
-              onClick={() => { if (!(runByOther && !leadEmail.includes('@'))) setStep(5) }}>
+              onClick={() => { if (!(runByOther && !leadEmail.includes('@'))) setStep(6) }}>
               Skip - add participants after
             </div>
             <div style={{ fontSize: 11, color: 'var(--gw-muted)', textAlign: 'center', marginTop: 4, lineHeight: 1.5 }}>
@@ -935,36 +983,27 @@ export function CreateGroundPage() {
           </div>
         )}
 
-        {/* Step 5 (was 4): Resolution state */}
-        {step === 5 && (
-          <div>
-            <div className="gw-ttl">What does a successful outcome look like?</div>
-            <div className="gw-sub-t">The end state this ground builds toward, in this situation's own terms. Everyone sees it before the first session; the ground closes only when all parties confirm the same end state - and you are not locked in if the record reveals something different.</div>
-
-            {/* The scenario's OWN end states (mirror of the server's
-                resolution vocabulary) - the start target and the closing
-                outcome now speak the same language. Existing grounds keep
-                their old generic strings untouched. */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-sub)', textTransform: 'uppercase', letterSpacing: '.06em', margin: '12px 0 6px' }}>Where this ground can land</div>
-              {endStatesFor(scenario).map(r => (
-                <div
-                  key={r.value}
-                  style={{ display: 'flex', alignItems: 'flex-start', gap: 12, background: 'white', border: `1.5px solid ${resolutionState === r.label ? 'var(--gw-navy)' : 'var(--gw-border)'}`, borderRadius: 8, padding: '12px 14px', cursor: 'pointer', marginBottom: 6, transition: 'border-color .15s' }}
-                  onClick={() => setResolutionState(r.label)}
-                >
-                  <div style={{ width: 16, height: 16, borderRadius: '50%', border: `1.5px solid ${resolutionState === r.label ? 'var(--gw-navy)' : 'var(--gw-border)'}`, background: resolutionState === r.label ? 'var(--gw-navy)' : 'transparent', flexShrink: 0, marginTop: 1, transition: 'all .15s' }} />
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 2 }}>{r.label}</div>
-                    {r.description && <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>{r.description}</div>}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <button className="gw-btn" disabled={!resolutionState} onClick={() => setStep(6)} style={{ margin: 0 }}>Continue</button>
-          </div>
-        )}
+        {/*
+          * STEP 5, THE END STATE, IS GONE FROM CREATION. Her call, and the right one.
+          *
+          * It asked, before a single session had happened, "What does a successful outcome look
+          * like?" - and on a NEW HIRE ground the options were Keep the hire / Restructure the role /
+          * Let them go / Extend evaluation period. Its own copy said "Everyone sees it before the
+          * first session", so a person starting on Monday could see that their manager had already
+          * picked from a menu that included letting them go. That turns a welcome into a file.
+          *
+          * Three further reasons it should never have been here:
+          *  - it was collected, echoed back in the summary as "Resolution: X", and then never stored.
+          *    Fourteen grounds, `end_state` empty on every one.
+          *  - the NEW_PROJECT and DRIFT lists contain an option literally called "Continue", beside a
+          *    Continue button, so one word meant two things on one screen.
+          *  - a decision about how something ends is not knowable at the moment it begins. Asking for
+          *    it up front invites a guess and then dignifies the guess as an agreement.
+          *
+          * The end state now belongs to CLOSING a ground, where the record can actually inform it,
+          * and is visible only to the lead and org admins. Step numbering is unchanged so the rest of
+          * the wizard keeps working; this step simply no longer renders.
+        */}
 
         {/* Step 6 (was 5): Opening brief + ground name */}
         {step === 6 && (
@@ -1005,7 +1044,27 @@ export function CreateGroundPage() {
               <div style={{ fontSize: 12, lineHeight: 1.7 }}>
                 <div>{SCENARIOS.find(s => s.cardKey === selectedCard)?.label ?? (scenario ?? '').replace(/_/g, ' ')} · {MOMENTS.find(m => m.moment === moment)?.label ?? moment}</div>
                 <div>{sessionTotal} sessions · {cadence.toLowerCase()}</div>
-                {resolutionState && <div>Resolution: {resolutionState}</div>}
+                {/*
+                  * ITEM 3: THE ROUTING DECISION, SHOWN WHERE IT IS CHEAPEST TO CATCH.
+                  *
+                  * On the free-text path a model picked the shape, and the shape decides the board,
+                  * the questions and the endings. Until now that choice was made two steps earlier and
+                  * never repeated, so the last screen before creating showed no sign that anything had
+                  * been guessed. If the guess is wrong this is the moment to notice - after this, the
+                  * questions people get asked are already decided.
+                */}
+                {selectedCard === 'DESCRIBE_OWN' && (
+                  routedTo ? (
+                    <div style={{ color: 'var(--gw-sub)' }}>
+                      Read from your description as <b>{SCENARIOS.find(c => c.scenario === routedTo)?.label}</b>.
+                      Go back if that is not it.
+                    </div>
+                  ) : (
+                    <div style={{ color: 'var(--gw-sub)' }}>
+                      Opening as an <b>open read</b>, because your description did not match a named situation.
+                    </div>
+                  )
+                )}
                 {participants.length > 0 && <div>{participants.length} participant{participants.length !== 1 ? 's' : ''} invited</div>}
                 {appliedAccessCode && <div style={{ color: 'var(--gw-green-t)', fontWeight: 600 }}>Access code applied</div>}
               </div>

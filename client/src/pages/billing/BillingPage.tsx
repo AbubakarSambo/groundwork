@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { billingApi, PLAN_LABELS, PLAN_PRICES, PLAN_MEMBER_CAPS, formatMonthlyPrice, type SubscriptionPlan } from '@/api/billing'
+import { billingApi, PLAN_LABELS, PLAN_PRICES, PLAN_MEMBER_CAPS, formatMonthlyPrice, type SubscriptionPlan, FREE_GROUND_LIMIT } from '@/api/billing'
 import { groundsApi } from '@/api/grounds'
 import { useAuthStore } from '@/stores/auth'
 import { toast } from 'sonner'
@@ -300,7 +300,7 @@ export function BillingPage() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
               <div>
                 <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-dark)' }}>Free</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 3 }}>Up to 10 Grounds, with unlimited sessions and reports.</div>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 3 }}>Up to {FREE_GROUND_LIMIT} Grounds, with unlimited sessions and reports.</div>
               </div>
               <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: 'var(--gw-paper-2)', color: 'var(--gw-muted)' }}>
                 No subscription
@@ -313,10 +313,10 @@ export function BillingPage() {
         {!hasBillingHistory && !isSubscribed && !isPaused && (
           <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '20px 18px', marginBottom: 28, textAlign: 'center' }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-dark)', marginBottom: 6 }}>
-              Your first 10 Grounds are free.
+              Your first {FREE_GROUND_LIMIT} Grounds are free.
             </div>
             <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 14 }}>
-              Create up to 10 Grounds with unlimited sessions and reports, no card required. Subscribe when your team outgrows the free tier.
+              Create up to {FREE_GROUND_LIMIT} Grounds with unlimited sessions and reports, no card required. Subscribe when your team outgrows the free tier.
             </div>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
               <button

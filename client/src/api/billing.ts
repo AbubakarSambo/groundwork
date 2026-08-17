@@ -56,14 +56,38 @@ export const PLAN_LABELS: Record<SubscriptionPlan, string> = {
   ENTERPRISE: 'Enterprise',
 }
 
-export const PLAN_PRICES: Record<SubscriptionPlan, string> = {
-  STARTER: '$25/mo',
-  SMALL_TEAM: '$50/mo',
-  GROWTH: '$100/mo',
-  BUSINESS: '$200/mo',
-  SCALE: '$400/mo',
-  ENTERPRISE: 'Contact us',
+/**
+ * WHAT WE CHARGE, IN CENTS, AS THE API REPORTS IT.
+ *
+ * These are the FALLBACKS. The live figures come from `GET /billing/pricing`, which reads the
+ * amounts a platform admin has set, so a price change reaches the app without a rebuild.
+ *
+ * The fallbacks exist because a pricing page must never render blank or say $0 - if the request
+ * has not landed yet, or fails, the last-shipped price is a far better answer than nothing. They
+ * are cents rather than pre-formatted dollars for one reason: a guard test can compare cents to
+ * the cents the API actually charges. It could not compare '$25/mo' to 2500, which is how the
+ * charged amount and the advertised amount were free to disagree.
+ */
+export const FALLBACK_PLAN_PRICES_CENTS: Record<SubscriptionPlan, number | null> = {
+  STARTER: 2500,
+  SMALL_TEAM: 5000,
+  GROWTH: 10000,
+  BUSINESS: 20000,
+  SCALE: 40000,
+  ENTERPRISE: null,
 }
+
+/**
+ * The pre-load fallback strings, DERIVED from the cents above rather than typed out again.
+ *
+ * Written by hand they were a fourth copy of the price. Derived, they cannot disagree with the
+ * cents the guard pins to the API - and ENTERPRISE has no amount, so it says what it means.
+ */
+export const PLAN_PRICES: Record<SubscriptionPlan, string> = Object.fromEntries(
+  (Object.entries(FALLBACK_PLAN_PRICES_CENTS) as [SubscriptionPlan, number | null][]).map(
+    ([plan, cents]) => [plan, cents === null ? 'Contact us' : formatMonthlyPrice(cents)],
+  ),
+) as Record<SubscriptionPlan, string>
 
 /**
  * WHAT EACH PLAN INCLUDES, IN ONE PLACE.
@@ -117,7 +141,7 @@ export interface LivePricingRow {
   updatedAt: string
 }
 
-/** "$25/mo" from cents - matches the static PLAN_PRICES string format, for live data. */
+/** "$25/mo" from cents. The one formatter: PLAN_PRICES below is built from it too. */
 export function formatMonthlyPrice(cents: number): string {
   const dollars = cents / 100
   return `$${Number.isInteger(dollars) ? dollars : dollars.toFixed(2)}/mo`

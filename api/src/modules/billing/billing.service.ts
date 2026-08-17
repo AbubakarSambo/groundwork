@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import type Stripe from 'stripe';
 import { PrismaService, CronLock } from '../prisma/prisma.service';
 import { StripeService } from './stripe.service';
-import { PricingService, PLAN_LABELS } from './pricing.service';
+import { PricingService, PLAN_LABELS, DEFAULT_FREE_GROUND_LIMIT } from './pricing.service';
 import { EmailService } from '../email/email.service';
 import { CareFeeStatus, GroundStatus, BillingEventType, BillingEventStatus, UserRole, UsageEventType, SubscriptionPlan } from '@prisma/client';
 import { UsageService } from '../usage/usage.service';
@@ -93,7 +93,7 @@ export class BillingService {
   }
 
   /** Free ground limit for organizations without a subscription. */
-  static readonly FREE_GROUND_LIMIT = 10;
+  static readonly FREE_GROUND_LIMIT = DEFAULT_FREE_GROUND_LIMIT;
 
   /**
    * Ground creation gate.
@@ -150,9 +150,10 @@ export class BillingService {
       return { allowed: true, freeReason: 'ACCESS_CODE', codeId: code.id };
     }
 
-    // 3. Free tier: up to FREE_GROUND_LIMIT grounds per org.
+    // 3. Free tier: up to the limit a platform admin has set, defaulting to what we shipped.
+    const freeGroundLimit = await this.pricing.getFreeGroundLimit();
     const groundCount = await this.prisma.ground.count({ where: { organizationId } });
-    if (groundCount < BillingService.FREE_GROUND_LIMIT) {
+    if (groundCount < freeGroundLimit) {
       return { allowed: true, freeReason: 'FREE_TIER', groundsUsed: groundCount };
     }
 
@@ -162,7 +163,7 @@ export class BillingService {
     // 5. Free limit reached, no active subscription and no care fee.
     return {
       allowed: false,
-      reason: `Your free plan includes ${BillingService.FREE_GROUND_LIMIT} Grounds. Subscribe to create unlimited Grounds.`,
+      reason: `Your free plan includes ${freeGroundLimit} Grounds. Subscribe to create unlimited Grounds.`,
       groundsUsed: groundCount,
     };
   }
