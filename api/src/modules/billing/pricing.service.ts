@@ -28,12 +28,6 @@ export class PricingService {
     private stripe: StripeService,
   ) {}
 
-  async getAmountCents(plan: SubscriptionPlan): Promise<number> {
-    const row = await this.prisma.pricingPlan.findUnique({ where: { plan } });
-    if (!row) throw new NotFoundException(`No price configured for plan ${plan}`);
-    return row.amountCents;
-  }
-
   async listPlans() {
     const rows = await this.prisma.pricingPlan.findMany({ orderBy: { plan: 'asc' } });
     return rows.map((r) => ({
