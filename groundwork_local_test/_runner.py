@@ -272,6 +272,38 @@ async def complete_password_step(page, password: str = "PersonaPass123!") -> boo
     return True
 
 
+
+async def ground_reached(page, timeout_ms: int = 25000) -> bool:
+    """Did the magic link end with this person looking at a real ground?
+
+    There are two honest endings now, and the suites must accept both:
+
+      * the interstitial - "Your ground is set up" with a "Go to your ground" button. This is what
+        somebody who ALREADY has a password sees.
+      * the ground page itself - a brand-new account is sent through the password step after the
+        commit, and lands on `/grounds/<id>`, so the confirmation screen is skipped.
+
+    The second ending is stronger evidence than the first, not weaker: being on the ground's own
+    page, under its own name, is the ground existing. The interstitial only ever claimed it did.
+
+    What this must NOT do is pass on a bare timeout or on any authenticated page - the failure it
+    guards against is the ground silently never being created, and /grounds with an empty list is
+    exactly what that looks like. So a grounds LIST does not count; only a specific ground.
+    """
+    try:
+        await page.wait_for_function(
+            """() => {
+                 const t = document.body ? document.body.innerText : '';
+                 if (/Your ground is set up|Go to your ground/i.test(t)) return true;
+                 return /^\\/grounds\\/[^/]+/.test(location.pathname) && /My check-ins|Opened for/i.test(t);
+               }""",
+            timeout=timeout_ms,
+        )
+        return True
+    except Exception:
+        return False
+
+
 async def provision_admin(browser, email: str, viewport=None) -> tuple[object, str, str]:
     """Create an authed admin the way a real person becomes one: entry-save
     with the email, read the magic link from the mailcatcher, open it in a

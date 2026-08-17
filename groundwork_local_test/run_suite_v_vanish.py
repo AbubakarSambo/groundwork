@@ -42,6 +42,7 @@ from _runner import (
     mail_link,
     seed_closed_entry_session,
     complete_password_step,
+    ground_reached,
 )
 
 rec = Recorder("suite_v")
@@ -200,14 +201,14 @@ async def main() -> int:
         # step (it must be - putting the step first is what made this suite fail), so this is a
         # detour on the way to the same place, not a change to what V2 is checking.
         await complete_password_step(page_b)
-        try:
-            await page_b.get_by_text(re.compile("Your ground is set up|Go to your ground", re.I)).wait_for(timeout=25000)
-            rec.record("V2", "OK", "fresh context: 'Your ground is set up' after the magic link")
+        if await ground_reached(page_b):
+            rec.record("V2", "OK", "fresh context: the ground is there after the magic link")
             await rec.step(page_b, "FRESH CONTEXT: ground survived the magic link", "persona A (new browser)")
-        except Exception:
+        else:
             body = (await page_b.inner_text("body"))[:300].replace("\n", " | ")
             rec.check("V2", False, "VANISH: ground survives a fresh browser context",
-                      f"success screen never appeared. Page said: {body}", hard=True, url=link)
+                      f"neither the confirmation nor the ground itself appeared. Page said: {body}",
+                      hard=True, url=link)
             await page_b.screenshot(path=str(rec.results_dir / "vanish_fail.png"), full_page=True)
             await browser.close()
             return rec.finish()
