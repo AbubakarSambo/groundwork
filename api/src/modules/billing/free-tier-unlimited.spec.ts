@@ -18,7 +18,7 @@ function makeService(ground: any) {
     ground: { findUnique: jest.fn(async () => ground) },
     organization: { findUnique: jest.fn(async () => ({ subscriptionPlan: null, subscriptionStatus: null, freeSessionsUsed: 0, freeExtensionUsed: false })) },
   };
-  return new BillingService(prisma, {} as any, {} as any, {} as any, {} as any);
+  return new BillingService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any);
 }
 
 describe('GW-FREE-TIER-UNLIMITED: free-tier grounds are never session-paywalled', () => {
@@ -56,7 +56,7 @@ describe('GW-FREE-TIER-UNLIMITED: free-tier grounds are never session-paywalled'
       ground: { findUnique: jest.fn(async () => ({ isFreeGround: false, sessionsBalance: 0, organizationId: 'org1' })) },
       organization: { findUnique: jest.fn(async () => ({ subscriptionPlan: 'STARTER', subscriptionStatus: 'active', freeSessionsUsed: 0, freeExtensionUsed: false })) },
     };
-    const svc = new BillingService(prisma, {} as any, {} as any, {} as any, {} as any);
+    const svc = new BillingService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any);
     const res = await svc.canStartSession('g1');
     expect(res).toMatchObject({ allowed: true, sessionsBalance: -1 });
   });

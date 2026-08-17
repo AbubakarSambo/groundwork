@@ -60,6 +60,17 @@ export class BillingController {
     return this.billing.cancelSubscription(organizationId);
   }
 
+  @Patch('subscription/plan')
+  @ApiBearerAuth()
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Change the org subscription to a different plan, prorating the difference' })
+  async changeSubscriptionPlan(
+    @CurrentUser('organizationId') organizationId: string,
+    @Body() body: { plan: string },
+  ) {
+    return this.billing.changeSubscriptionPlan(organizationId, body.plan as any);
+  }
+
   @Patch('subscription/pause')
   @ApiBearerAuth()
   @Roles(Role.ADMIN)

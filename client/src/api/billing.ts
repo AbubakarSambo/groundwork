@@ -130,6 +130,9 @@ export const billingApi = {
   createSubscription: (plan: SubscriptionPlan) =>
     apiClient.post<{ checkoutUrl: string }>('/billing/subscription', { plan }).then(r => r.data),
 
+  changeSubscriptionPlan: (plan: SubscriptionPlan) =>
+    apiClient.patch<{ plan: SubscriptionPlan; periodEnd: string | null }>('/billing/subscription/plan', { plan }).then(r => r.data),
+
   cancelSubscription: () =>
     apiClient.delete('/billing/subscription').then(r => r.data),
 
