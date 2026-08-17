@@ -3,7 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BillingPage } from './BillingPage'
-import { billingApi, fetchPricing } from '@/api/billing'
+import { billingApi } from '@/api/billing'
 import { groundsApi } from '@/api/grounds'
 
 /**
@@ -28,10 +28,10 @@ vi.mock('@/api/billing', () => ({
     status: vi.fn(), getContributorCodes: vi.fn(), generateContributorCode: vi.fn(),
     sendContributorCodeToEmail: vi.fn(), createSubscription: vi.fn(),
     cancelSubscription: vi.fn(), pauseSubscription: vi.fn(), resumeSubscription: vi.fn(),
+    getPricing: vi.fn(),
   },
   PLAN_LABELS: {}, PLAN_PRICES: {}, PLAN_MEMBER_CAPS: {},
-  /** Live pricing: gated on isAdmin like the rest, so a member must not trigger it either. */
-  fetchPricing: vi.fn(), formatPlanPrice: (c: number) => `$${c / 100}/mo`, FREE_GROUND_LIMIT: 10,
+  formatMonthlyPrice: (c: number) => `$${c / 100}/mo`, FREE_GROUND_LIMIT: 10,
 }))
 vi.mock('@/api/grounds', () => ({ groundsApi: { list: vi.fn() } }))
 
@@ -84,7 +84,7 @@ describe('a member who types the URL', () => {
     expect(billingApi.getContributorCodes).not.toHaveBeenCalled()
     expect(groundsApi.list).not.toHaveBeenCalled()
     /** Added when prices became a live read: a new fetch on this page must be gated like the rest. */
-    expect(fetchPricing).not.toHaveBeenCalled()
+    expect(billingApi.getPricing).not.toHaveBeenCalled()
   })
 })
 

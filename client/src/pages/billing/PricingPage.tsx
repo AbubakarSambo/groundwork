@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { billingApi, PLAN_LABELS, PLAN_PRICES, PLAN_MEMBER_CAPS, type SubscriptionPlan, PLAN_FEATURES, fetchPricing, formatPlanPrice, FREE_GROUND_LIMIT } from '@/api/billing'
+import { billingApi, PLAN_LABELS, PLAN_PRICES, PLAN_MEMBER_CAPS, formatMonthlyPrice, type SubscriptionPlan, PLAN_FEATURES, FREE_GROUND_LIMIT } from '@/api/billing'
 import { useAuthStore } from '@/stores/auth'
 
 const PLANS: SubscriptionPlan[] = ['STARTER', 'SMALL_TEAM', 'GROWTH', 'BUSINESS', 'SCALE']
@@ -18,17 +18,21 @@ const PLAN_DESCRIPTIONS: Record<SubscriptionPlan, string> = {
 
 export function PricingPage() {
   const navigate = useNavigate()
-  /**
-   * The prices a platform admin has actually set. `PLAN_PRICES` is the shipped fallback and
-   * renders instantly, so this page never shows a spinner or a blank where a price goes - the
-   * live figures replace them when they land, which on a normal connection is immediately.
-   */
-  const { data: live } = useQuery({ queryKey: ['pricing'], queryFn: fetchPricing, staleTime: 60_000 })
-  const priceOf = (plan: SubscriptionPlan) =>
-    live?.planPricesCents?.[plan] !== undefined ? formatPlanPrice(live.planPricesCents[plan]) : PLAN_PRICES[plan]
-  const freeGrounds = live?.freeGroundLimit ?? FREE_GROUND_LIMIT
+  /** One name for the free-tier number, which used to be the literal 10 in nine places. */
+  const freeGrounds = FREE_GROUND_LIMIT
   const { user } = useAuthStore()
   const [subscribingPlan, setSubscribingPlan] = useState<SubscriptionPlan | null>(null)
+
+  /** Live prices (Admin -> System -> Pricing) - PLAN_PRICES is only the pre-load fallback. */
+  const { data: livePricing } = useQuery({
+    queryKey: ['public-pricing'],
+    queryFn: billingApi.getPricing,
+    staleTime: 60 * 1000,
+  })
+  function priceLabel(plan: SubscriptionPlan): string {
+    const live = livePricing?.find(p => p.plan === plan)
+    return live ? formatMonthlyPrice(live.amountCents) : PLAN_PRICES[plan]
+  }
 
   const subscribeMut = useMutation({
     mutationFn: (plan: SubscriptionPlan) => billingApi.createSubscription(plan),
@@ -104,7 +108,7 @@ export function PricingPage() {
           {PLANS.map((plan) => (
             <div key={plan} style={{ background: 'var(--gw-card)', border: '1.5px solid var(--gw-border)', borderRadius: 14, padding: '24px 20px', display: 'flex', flexDirection: 'column' }}>
               <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 4 }}>{PLAN_LABELS[plan]}</div>
-              <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-navy)', marginBottom: 4 }}>{priceOf(plan)}</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-navy)', marginBottom: 4 }}>{priceLabel(plan)}</div>
               <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginBottom: 12 }}>{PLAN_MEMBER_CAPS[plan]}</div>
               <p style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 16, flexGrow: 1 }}>
                 {PLAN_DESCRIPTIONS[plan]}

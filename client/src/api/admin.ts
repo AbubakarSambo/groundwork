@@ -1,9 +1,18 @@
 import { apiClient } from './client'
+import type { SubscriptionPlan } from './billing'
 
 export interface WhatsAppToggleState {
   credentialsConfigured: boolean
   adminEnabled: boolean
   live: boolean
+}
+
+export interface PricingPlanRow {
+  plan: SubscriptionPlan
+  label: string
+  amountCents: number
+  hasStripePrice: boolean
+  updatedAt: string
 }
 
 export const adminApi = {
@@ -12,6 +21,18 @@ export const adminApi = {
 
   setWhatsAppEnabled: (enabled: boolean) =>
     apiClient.patch<WhatsAppToggleState>('/admin/whatsapp', { enabled }).then(r => r.data),
+
+  getPricing: () =>
+    apiClient.get<PricingPlanRow[]>('/admin/pricing').then(r => r.data),
+
+  getFreeGroundLimit: () =>
+    apiClient.get<{ freeGroundLimit: number }>('/admin/pricing/free-ground-limit').then(r => r.data),
+
+  setFreeGroundLimit: (freeGroundLimit: number) =>
+    apiClient.patch<{ freeGroundLimit: number }>('/admin/pricing/free-ground-limit', { freeGroundLimit }).then(r => r.data),
+
+  setPricing: (plan: SubscriptionPlan, amountCents: number) =>
+    apiClient.patch<PricingPlanRow[]>(`/admin/pricing/${plan}`, { amountCents }).then(r => r.data),
 }
 
 export interface PricingSnapshot {

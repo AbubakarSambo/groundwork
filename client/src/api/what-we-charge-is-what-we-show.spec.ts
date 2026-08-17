@@ -5,137 +5,172 @@ import {
   FALLBACK_PLAN_PRICES_CENTS,
   FREE_GROUND_LIMIT,
   PLAN_PRICES,
-  formatPlanPrice,
+  formatMonthlyPrice,
   type SubscriptionPlan,
 } from './billing'
 
 /**
  * THE GAP BETWEEN WHAT WE CHARGE AND WHAT WE SAY WE CHARGE.
  *
- * Two guards already compared pricing copy across the app and the marketing site. Both compared
- * DISPLAY to DISPLAY. Nothing compared either of them to the cents the API actually hands Stripe -
- * so `PLAN_PRICES_CENTS` could be changed to 3500 and every pricing test in the repo would still
- * pass while all three surfaces advertised $25. Charging somebody a price you never showed them is
- * the worst failure available in this part of the product, and it was one careless edit away.
+ * Two guards already compared pricing copy across the app and the marketing site, and both
+ * compared DISPLAY to DISPLAY. Nothing compared either of them to the amount the API hands
+ * Stripe - so the charged figure could move and every pricing test in the repo would still pass
+ * while all three surfaces advertised the old price. Charging somebody a price you never showed
+ * them is the worst failure available here, and it was one careless edit away.
  *
- * This is the guard that was missing. It reads the API's own defaults as text - not as an import,
- * because the client does not build against the API - and pins them to the client's fallbacks.
- *
- * WHY DEFAULTS AND NOT LIVE VALUES. Prices are now editable by a platform admin, so the live figure
- * is a database row and no test can pin it. What a test CAN pin is that the two codebases agree on
- * where they start from, which is the only place a silent divergence could be committed. A price
- * changed deliberately in the admin panel reaches both sides through the same endpoint, so it
- * cannot diverge at all.
+ * Prices now live in the `pricing_plans` table and a platform admin edits them, so no test can
+ * pin the LIVE figure - that is a database row, and it reaching both sides through one endpoint
+ * is the whole point of the design. What a test can pin is the pair of hardcoded starting points
+ * that remain: the seed in the migration, and the client's pre-load fallback. Those are the only
+ * two places a divergence can still be committed, and they are what this holds together.
  */
-const API_PRICING = readFileSync(
+const MIGRATION = readFileSync(
+  join(__dirname, '../../../api/prisma/migrations/20260817120000_pricing_plans/migration.sql'),
+  'utf8',
+)
+const ADMIN_CONTROLLER = readFileSync(
+  join(__dirname, '../../../api/src/modules/admin/admin.controller.ts'),
+  'utf8',
+)
+const PRICING_SERVICE = readFileSync(
   join(__dirname, '../../../api/src/modules/billing/pricing.service.ts'),
   'utf8',
 )
 
-/** Parses `[SubscriptionPlan.STARTER]: 2500,` out of a named record in the API source. */
-function apiRecord(name: string): Record<string, number> {
-  const start = API_PRICING.indexOf(`${name}:`)
-  expect(start, `${name} should exist in the API's pricing service`).toBeGreaterThan(-1)
-  const block = API_PRICING.slice(start, API_PRICING.indexOf('};', start))
+/** Parses `('STARTER', 2500, CURRENT_TIMESTAMP)` out of the seed INSERT. */
+function seededCents(): Record<string, number> {
   const out: Record<string, number> = {}
-  for (const m of block.matchAll(/\[SubscriptionPlan\.(\w+)\]:\s*(\d+)/g)) out[m[1]] = Number(m[2])
+  for (const m of MIGRATION.matchAll(/\('([A-Z_]+)',\s*(\d+),/g)) out[m[1]] = Number(m[2])
   return out
 }
 
-describe('the cents the API charges are the cents the client shows', () => {
-  const apiCents = apiRecord('DEFAULT_PLAN_PRICES_CENTS')
+describe('the cents the API seeds are the cents the client falls back to', () => {
+  const seeded = seededCents()
 
-  it('the API defines a default price for every plan the client prices', () => {
+  it('the migration seeds a price for every plan the client can price', () => {
     const clientPriced = Object.entries(FALLBACK_PLAN_PRICES_CENTS)
       .filter(([, v]) => v !== null)
       .map(([k]) => k)
       .sort()
-    expect(Object.keys(apiCents).sort()).toEqual(clientPriced)
+    expect(Object.keys(seeded).sort()).toEqual(clientPriced)
   })
 
-  it.each(Object.keys(apiCents))('%s costs the same on both sides', (plan) => {
-    expect(FALLBACK_PLAN_PRICES_CENTS[plan as SubscriptionPlan]).toBe(apiCents[plan])
+  it.each(Object.keys(seededCents()))('%s starts at the same amount on both sides', (plan) => {
+    expect(FALLBACK_PLAN_PRICES_CENTS[plan as SubscriptionPlan]).toBe(seeded[plan])
   })
 
-  it('and the client prices no plan the API refuses to charge for', () => {
+  it('and the client prices no plan the API refuses to sell', () => {
     /**
-     * ENTERPRISE is the case this protects: it must stay null on the client, because the API throws
-     * on any attempt to check out with it. A number here would render a Subscribe button that
-     * cannot work.
+     * ENTERPRISE is what this protects. It must stay null on the client, because the API refuses
+     * it outright - a number here would render a Subscribe button that cannot work.
      */
     expect(FALLBACK_PLAN_PRICES_CENTS.ENTERPRISE).toBeNull()
-    expect(API_PRICING).toMatch(/PURCHASABLE_PLANS/)
-    expect(API_PRICING.slice(API_PRICING.indexOf('PURCHASABLE_PLANS'), API_PRICING.indexOf('DEFAULT_PLAN_PRICES_CENTS')))
-      .not.toMatch(/ENTERPRISE/)
+    expect(seeded.ENTERPRISE).toBeUndefined()
+    expect(ADMIN_CONTROLLER).toMatch(/Enterprise is contact-sales only/)
   })
 })
 
-describe('the free ground limit is one number, not two', () => {
-  it('the API default and the client fallback match', () => {
-    const m = API_PRICING.match(/DEFAULT_FREE_GROUND_LIMIT = (\d+)/)
-    expect(m, 'the API should export a default free ground limit').toBeTruthy()
+describe('the free ground limit is one number, not nine', () => {
+  it('the API default and the client fallback are the same number', () => {
+    /**
+     * Read from the pricing service, which is where the default now lives - billing.service.ts
+     * imports it rather than restating it, so there is no digit there to match against.
+     */
+    const m = PRICING_SERVICE.match(/DEFAULT_FREE_GROUND_LIMIT = (\d+)/)
+    expect(m, 'the pricing service should define a default free ground limit').toBeTruthy()
     expect(FREE_GROUND_LIMIT).toBe(Number(m![1]))
   })
 
-  it('and the enforcing service reads it rather than holding its own copy', () => {
+  it('and billing enforces the live limit rather than the constant', () => {
     /**
-     * `BillingService.FREE_GROUND_LIMIT` used to be a literal 10 sitting beside the client's
-     * literal 10. It is now the imported default, and the enforced value is a live read.
+     * The constant is only the fallback. If the gate reads it directly, editing the limit in the
+     * admin panel changes the number on every screen and paywalls nobody differently.
      */
     const billing = readFileSync(
       join(__dirname, '../../../api/src/modules/billing/billing.service.ts'),
       'utf8',
     )
-    expect(billing).toMatch(/static readonly FREE_GROUND_LIMIT = DEFAULT_FREE_GROUND_LIMIT;/)
     expect(billing).toMatch(/await this\.pricing\.getFreeGroundLimit\(\)/)
+    expect(billing).toMatch(/groundCount < freeGroundLimit/)
+  })
+
+  it('and no page writes the number out by hand', () => {
+    /**
+     * It was the literal "10" in nine places across three builds, and one of them had already
+     * drifted off the constant while the rest of its own page interpolated it.
+     */
+    for (const page of ['../pages/billing/PricingPage.tsx', '../pages/billing/BillingPage.tsx', '../pages/grounds/CreateGroundPage.tsx']) {
+      const src = readFileSync(join(__dirname, page), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+      expect(src, `${page} still hardcodes the free ground count`).not.toMatch(/\b10 [Gg]rounds\b/)
+    }
   })
 })
 
-describe('a price is charged from the same read the admin panel writes', () => {
-  const billing = readFileSync(
-    join(__dirname, '../../../api/src/modules/billing/billing.service.ts'),
-    'utf8',
-  )
-
-  it('checkout reads the live price instead of a compiled-in map', () => {
-    expect(billing).toMatch(/const amountCents = await this\.pricing\.getPlanPriceCents\(plan\)/)
+describe('an amount cannot be edited into something Stripe will refuse', () => {
+  it('the admin write rejects a non-integer or non-positive amount', () => {
+    expect(ADMIN_CONTROLLER).toMatch(/Number\.isInteger\(body\?\.amountCents\)/)
   })
 
-  it('and the old hardcoded map is gone, not merely unused', () => {
-    /** Leaving it in place is how a future edit lands on the dead copy and changes nothing. */
-    expect(billing).not.toMatch(/PLAN_PRICES_CENTS: Partial<Record<SubscriptionPlan, number>>/)
-  })
-
-  it('a missing price refuses the checkout rather than charging zero', () => {
+  it('and rejects anything under Stripe\'s 50 cent floor', () => {
     /**
-     * The important failure mode. `unit_amount: undefined` or 0 would create a real Stripe
-     * subscription for nothing at all.
+     * The reason this is not just "positive". Stripe refuses a USD charge under 50 cents, so an
+     * admin who types 0.25 has not made a cheap plan - they have made a checkout that fails at
+     * Stripe with a stack trace instead of failing here with a sentence.
      */
-    const fn = billing.slice(billing.indexOf('async createSubscription('))
-    expect(fn.slice(0, fn.indexOf('checkout.sessions.create'))).toMatch(/if \(!amountCents\)[\s\S]*?throw new ForbiddenException/)
+    expect(ADMIN_CONTROLLER).toMatch(/const MIN_PLAN_AMOUNT_CENTS = 50;/)
+    /** The comparison, not merely the name - a disabled check still mentions its own constants. */
+    expect(ADMIN_CONTROLLER).toMatch(
+      /if \(body\.amountCents < MIN_PLAN_AMOUNT_CENTS \|\| body\.amountCents > MAX_PLAN_AMOUNT_CENTS\)/,
+    )
+  })
+
+  it('an unknown plan name is refused rather than silently ignored', () => {
+    expect(ADMIN_CONTROLLER).toMatch(/Unknown plan/)
+  })
+})
+
+describe('a price change reaches Stripe rather than only the database', () => {
+  it('changing the amount clears the cached Stripe price id', () => {
+    /**
+     * The single most important line in the pricing service. A Stripe Price is immutable, so a new
+     * amount with a stale cached id would charge the OLD price forever while the admin screen and
+     * the pricing page both showed the new one.
+     */
+    expect(PRICING_SERVICE).toMatch(/data: \{ amountCents, stripePriceId: null \}/)
+  })
+
+  it('and a missing cached id creates a new Price rather than reusing one', () => {
+    expect(PRICING_SERVICE).toMatch(/if \(row\.stripePriceId\) return row\.stripePriceId/)
+    expect(PRICING_SERVICE).toMatch(/prices\.create\(/)
+  })
+
+  it('the Stripe Product is reused, not recreated per price', () => {
+    /** Recreating it per change litters the Stripe dashboard with duplicate products. */
+    expect(PRICING_SERVICE).toMatch(/let productId = row\.stripeProductId/)
   })
 })
 
 describe('formatting cents never invents a price', () => {
   it('renders whole dollars without cents', () => {
-    expect(formatPlanPrice(2500)).toBe('$25/mo')
-    expect(formatPlanPrice(40000)).toBe('$400/mo')
+    expect(formatMonthlyPrice(2500)).toBe('$25/mo')
+    expect(formatMonthlyPrice(40000)).toBe('$400/mo')
   })
 
   it('keeps the cents when there are any', () => {
-    expect(formatPlanPrice(2550)).toBe('$25.50/mo')
+    expect(formatMonthlyPrice(2550)).toBe('$25.50/mo')
   })
 
-  it('says "Contact us" rather than $0 when there is no price', () => {
-    /** $0/mo on the Enterprise card would read as a free unlimited plan. */
-    expect(formatPlanPrice(null)).toBe('Contact us')
-    expect(formatPlanPrice(undefined)).toBe('Contact us')
-    expect(PLAN_PRICES.ENTERPRISE).toBe('Contact us')
-  })
-
-  it('and the shipped display strings still agree with the shipped cents', () => {
+  it('and the fallback strings are derived from the fallback cents, not typed again', () => {
+    /** Typed by hand they were a fourth copy of every price. */
     for (const [plan, cents] of Object.entries(FALLBACK_PLAN_PRICES_CENTS)) {
-      expect(PLAN_PRICES[plan as SubscriptionPlan]).toBe(formatPlanPrice(cents))
+      expect(PLAN_PRICES[plan as SubscriptionPlan]).toBe(
+        cents === null ? 'Contact us' : formatMonthlyPrice(cents),
+      )
     }
+  })
+
+  it('says "Contact us" rather than $0 where there is no price', () => {
+    /** $0/mo on the Enterprise card reads as a free unlimited plan. */
+    expect(PLAN_PRICES.ENTERPRISE).toBe('Contact us')
   })
 })

@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import type Stripe from 'stripe';
 import { PrismaService, CronLock } from '../prisma/prisma.service';
 import { StripeService } from './stripe.service';
-import { PricingService, DEFAULT_FREE_GROUND_LIMIT } from './pricing.service';
+import { PricingService, PLAN_LABELS, DEFAULT_FREE_GROUND_LIMIT } from './pricing.service';
 import { EmailService } from '../email/email.service';
 import { CareFeeStatus, GroundStatus, BillingEventType, BillingEventStatus, UserRole, UsageEventType, SubscriptionPlan } from '@prisma/client';
 import { UsageService } from '../usage/usage.service';
@@ -36,10 +36,10 @@ export class BillingService {
   constructor(
     private prisma: PrismaService,
     private stripe: StripeService,
+    private pricing: PricingService,
     private config: ConfigService,
     private email: EmailService,
     private usage: UsageService,
-    private pricing: PricingService,
   ) {}
 
   /**
@@ -92,14 +92,7 @@ export class BillingService {
     return { allowed: false, reason: 'This ground is beyond your ten free grounds. Resubscribe to continue checking in - the report and board stay available either way.', sessionsBalance: 0 };
   }
 
-  /**
-   * Free ground limit for organizations without a subscription.
-   *
-   * Kept as the DEFAULT and re-exported from one place, so the number is not written twice. The
-   * value actually enforced is read per call from PricingService, because a platform admin can
-   * change it without a deploy. Anything reading this constant is reading the fallback, not the
-   * live figure - use `pricing.getFreeGroundLimit()` for that.
-   */
+  /** Free ground limit for organizations without a subscription. */
   static readonly FREE_GROUND_LIMIT = DEFAULT_FREE_GROUND_LIMIT;
 
   /**
@@ -157,7 +150,7 @@ export class BillingService {
       return { allowed: true, freeReason: 'ACCESS_CODE', codeId: code.id };
     }
 
-    // 3. Free tier: up to the free ground limit per org, as currently set by a platform admin.
+    // 3. Free tier: up to the limit a platform admin has set, defaulting to what we shipped.
     const freeGroundLimit = await this.pricing.getFreeGroundLimit();
     const groundCount = await this.prisma.ground.count({ where: { organizationId } });
     if (groundCount < freeGroundLimit) {
@@ -368,15 +361,6 @@ export class BillingService {
     }
   }
 
-  private readonly PLAN_LABELS: Record<SubscriptionPlan, string> = {
-    [SubscriptionPlan.STARTER]: 'Starter (up to 5 people)',
-    [SubscriptionPlan.SMALL_TEAM]: 'Small Team (up to 20 people)',
-    [SubscriptionPlan.GROWTH]: 'Growth (up to 100 people)',
-    [SubscriptionPlan.BUSINESS]: 'Business (up to 250 people)',
-    [SubscriptionPlan.SCALE]: 'Scale (up to 1,000 people)',
-    [SubscriptionPlan.ENTERPRISE]: 'Enterprise',
-  };
-
   /** Create a Stripe recurring checkout session for an org subscription plan. */
   async createSubscription(organizationId: string, plan: SubscriptionPlan): Promise<{ checkoutUrl: string }> {
     if (plan === SubscriptionPlan.ENTERPRISE) {
@@ -385,40 +369,76 @@ export class BillingService {
     const org = await this.prisma.organization.findUnique({ where: { id: organizationId } });
     if (!org) throw new NotFoundException('Organization not found');
 
+    if (org.subscriptionPlan && org.subscriptionStatus === 'active') {
+      throw new ForbiddenException('Organization already has an active subscription - use the plan-change endpoint to switch plans.');
+    }
+
     const customerId = await this.stripe.ensureCustomer(org.id, org.email ?? undefined, org.stripeCustomerId);
     if (customerId !== org.stripeCustomerId) {
       await this.prisma.organization.update({ where: { id: org.id }, data: { stripeCustomerId: customerId } });
     }
 
-    /**
-     * READ AT CHARGE TIME, NOT AT BOOT. A price changed in the admin panel must apply to the very
-     * next checkout, so this is a live read rather than a cached map.
-     */
-    const amountCents = await this.pricing.getPlanPriceCents(plan);
-    if (!amountCents) {
-      throw new ForbiddenException('That plan is not available to buy right now.');
-    }
+    // Price lives in the pricing_plans table (Admin -> System -> Pricing), not
+    // in code: this looks up (or lazily creates) the matching Stripe Price
+    // rather than building one ad hoc on every checkout.
+    const priceId = await this.pricing.getOrCreateStripePrice(plan);
     const base = this.config.get<string>('stripe.callbackUrl') || 'http://localhost:5173/billing/callback';
     const session = await this.stripe.stripe.checkout.sessions.create({
       customer: customerId,
       mode: 'subscription',
-      line_items: [
-        {
-          price_data: {
-            currency: 'usd',
-            unit_amount: amountCents,
-            recurring: { interval: 'month' },
-            product_data: { name: `Groundwork ${this.PLAN_LABELS[plan]}` },
-          },
-          quantity: 1,
-        },
-      ],
+      line_items: [{ price: priceId, quantity: 1 }],
+      // subscription_data.metadata (not just the session-level metadata below)
+      // so the resulting Subscription object itself carries organizationId/plan -
+      // customer.subscription.updated/deleted webhooks fire on the subscription,
+      // not the checkout session, and read metadata off sub, not session.
+      subscription_data: { metadata: { organizationId, plan } },
       metadata: { organizationId, plan, type: 'subscription' },
       success_url: `${base}?status=success&type=subscription&plan=${plan}`,
       cancel_url: `${base}?status=cancelled`,
     });
 
     return { checkoutUrl: session.url! };
+  }
+
+  /**
+   * Change an already-subscribed org to a different plan. Stripe prorates the
+   * difference automatically (create_prorations) - the customer is charged or
+   * credited for the remainder of the current period rather than paying twice
+   * or waiting for the next cycle to see the new plan.
+   */
+  async changeSubscriptionPlan(organizationId: string, newPlan: SubscriptionPlan): Promise<{ plan: SubscriptionPlan; periodEnd: Date | null }> {
+    if (newPlan === SubscriptionPlan.ENTERPRISE) {
+      throw new ForbiddenException('Enterprise plans require contacting the support team.');
+    }
+    const org = await this.prisma.organization.findUnique({ where: { id: organizationId } });
+    if (!org) throw new NotFoundException('Organization not found');
+    if (!org.subscriptionStripeId || org.subscriptionStatus !== 'active') {
+      throw new ForbiddenException('No active subscription to change - subscribe first.');
+    }
+    if (org.subscriptionPlan === newPlan) {
+      throw new ForbiddenException(`Already on the ${newPlan} plan.`);
+    }
+
+    const newPriceId = await this.pricing.getOrCreateStripePrice(newPlan);
+    const sub = await this.stripe.stripe.subscriptions.retrieve(org.subscriptionStripeId);
+    const itemId = sub.items.data[0]?.id;
+    if (!itemId) throw new NotFoundException('Subscription has no billable item.');
+
+    const updated = await this.stripe.stripe.subscriptions.update(org.subscriptionStripeId, {
+      items: [{ id: itemId, price: newPriceId }],
+      proration_behavior: 'create_prorations',
+      metadata: { organizationId, plan: newPlan },
+    });
+
+    const periodEnd = updated.current_period_end ? new Date(updated.current_period_end * 1000) : null;
+    await this.prisma.organization.update({
+      where: { id: organizationId },
+      data: { subscriptionPlan: newPlan, subscriptionPeriodEnd: periodEnd },
+    });
+
+    await this.tellThemBillingChanged(organizationId, `Your plan changed to ${PLAN_LABELS[newPlan]}.`).catch(() => undefined);
+    this.logger.log(`Org ${organizationId} subscription changed to plan ${newPlan}`);
+    return { plan: newPlan, periodEnd };
   }
 
   /** Cancel the org's active subscription immediately. */

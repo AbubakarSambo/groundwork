@@ -65,7 +65,7 @@ const NAV_ITEMS = [
   },
   {
     label: 'Admin',
-    to: '/admin/dashboard',
+    to: '/admin',
     // Groundwork's own back-office, NOT the org admin's area. The route is
     // wrapped in RequirePlatformAdmin, so gating this on `adminOnly` showed
     // every org admin a door that bounced her straight back to /grounds.

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { billingApi, PLAN_LABELS, PLAN_PRICES, PLAN_MEMBER_CAPS, type SubscriptionPlan, fetchPricing, formatPlanPrice, FREE_GROUND_LIMIT } from '@/api/billing'
+import { billingApi, PLAN_LABELS, PLAN_PRICES, PLAN_MEMBER_CAPS, formatMonthlyPrice, type SubscriptionPlan, FREE_GROUND_LIMIT } from '@/api/billing'
 import { groundsApi } from '@/api/grounds'
 import { useAuthStore } from '@/stores/auth'
 import { toast } from 'sonner'
@@ -32,22 +32,6 @@ export function BillingPage() {
    * being reviewed has a motive to do.
    */
   const isAdmin = user?.role === 'ADMIN'
-
-  /**
-   * The live prices, so the ladder on this page and the amount Stripe will actually charge are
-   * the same number. `PLAN_PRICES` remains the fallback and renders immediately.
-   */
-  const { data: livePricing } = useQuery({
-    queryKey: ['pricing'],
-    queryFn: fetchPricing,
-    staleTime: 60_000,
-    /** Gated like every other read here. A member who cannot see the ladder need not fetch it. */
-    enabled: isAdmin,
-  })
-  const priceOf = (plan: SubscriptionPlan) =>
-    livePricing?.planPricesCents?.[plan] !== undefined
-      ? formatPlanPrice(livePricing.planPricesCents[plan])
-      : PLAN_PRICES[plan]
 
   const groundId = params.get('groundId') ?? undefined
 
@@ -82,6 +66,22 @@ export function BillingPage() {
     enabled: isAdmin,
   })
 
+  /**
+   * Prices are admin-editable (Admin -> System -> Pricing), not fixed at build time - the
+   * static PLAN_PRICES strings below are only the pre-load fallback. Without this, this page
+   * could show "$25/mo" while checkout actually charges whatever's in the pricing_plans table.
+   */
+  const { data: livePricing } = useQuery({
+    queryKey: ['public-pricing'],
+    queryFn: billingApi.getPricing,
+    enabled: isAdmin,
+    staleTime: 60 * 1000,
+  })
+  function priceLabel(plan: SubscriptionPlan): string {
+    const live = livePricing?.find(p => p.plan === plan)
+    return live ? formatMonthlyPrice(live.amountCents) : PLAN_PRICES[plan]
+  }
+
   const generateCode = useMutation({
     mutationFn: () => billingApi.generateContributorCode(genSessions, genNote.trim() || undefined),
     onSuccess: r => {
@@ -106,6 +106,16 @@ export function BillingPage() {
     mutationFn: (plan: SubscriptionPlan) => billingApi.createSubscription(plan),
     onSuccess: r => { if (r.checkoutUrl) window.location.href = r.checkoutUrl },
     onError: () => toast.error('Could not start checkout. Try again.'),
+  })
+
+  const changePlanMut = useMutation({
+    mutationFn: (plan: SubscriptionPlan) => billingApi.changeSubscriptionPlan(plan),
+    onSuccess: (_r, plan) => {
+      qc.invalidateQueries({ queryKey: ['grounds'] })
+      qc.invalidateQueries({ queryKey: ['billing-status'] })
+      toast.success(`Switched to ${PLAN_LABELS[plan]}. The difference is prorated on your next invoice.`)
+    },
+    onError: () => toast.error('Could not change plan. Try again.'),
   })
 
   const cancelSubscriptionMut = useMutation({
@@ -208,7 +218,7 @@ export function BillingPage() {
             <Stat
               label="Plan"
               value={PLAN_LABELS[orgSub!.plan as SubscriptionPlan] ?? String(orgSub!.plan)}
-              caption={priceOf(orgSub!.plan as SubscriptionPlan)}
+              caption={priceLabel(orgSub!.plan as SubscriptionPlan)}
               tone={isPaused ? 'warn' : undefined}
             />
             {billingStatus?.people && (
@@ -402,7 +412,7 @@ export function BillingPage() {
                 <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 2 }}>{PLAN_MEMBER_CAPS[plan]}</div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-                <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--gw-dark)' }}>{priceOf(plan)}</span>
+                <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--gw-dark)' }}>{priceLabel(plan)}</span>
                 {isSubscribed && orgSub?.plan === plan ? (
                   <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: 'var(--gw-green-bg)', color: 'var(--gw-green-t)' }}>Current</span>
                 ) : (
@@ -411,11 +421,11 @@ export function BillingPage() {
                      with no token behind it, on the pages where somebody is
                      deciding whether to trust us with money. W8-24. */
                   <button
-                    onClick={() => createSubscriptionMut.mutate(plan)}
-                    disabled={createSubscriptionMut.isPending}
-                    style={{ padding: '7px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: createSubscriptionMut.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: createSubscriptionMut.isPending ? 0.7 : 1 }}
+                    onClick={() => isSubscribed ? changePlanMut.mutate(plan) : createSubscriptionMut.mutate(plan)}
+                    disabled={createSubscriptionMut.isPending || changePlanMut.isPending}
+                    style={{ padding: '7px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: (createSubscriptionMut.isPending || changePlanMut.isPending) ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: (createSubscriptionMut.isPending || changePlanMut.isPending) ? 0.7 : 1 }}
                   >
-                    {createSubscriptionMut.isPending ? '...' : 'Subscribe'}
+                    {createSubscriptionMut.isPending || changePlanMut.isPending ? '...' : isSubscribed ? 'Switch' : 'Subscribe'}
                   </button>
                 )}
               </div>

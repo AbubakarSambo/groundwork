@@ -77,48 +77,17 @@ export const FALLBACK_PLAN_PRICES_CENTS: Record<SubscriptionPlan, number | null>
   ENTERPRISE: null,
 }
 
-/** Cents to the string on a card. Whole dollars stay whole - nobody advertises $25.00/mo. */
-export function formatPlanPrice(cents: number | null | undefined): string {
-  if (cents === null || cents === undefined) return 'Contact us'
-  const dollars = cents / 100
-  const shown = Number.isInteger(dollars) ? String(dollars) : dollars.toFixed(2)
-  return `$${shown}/mo`
-}
-
-export interface LivePricing {
-  planPricesCents: Record<string, number>
-  freeGroundLimit: number
-}
-
 /**
- * Public - no bearer token - because the pricing page has to be readable before anybody has an
- * account. Falls back to the shipped values rather than surfacing an error, since a visitor
- * reading last week's price is a much smaller failure than a visitor reading no price.
+ * The pre-load fallback strings, DERIVED from the cents above rather than typed out again.
+ *
+ * Written by hand they were a fourth copy of the price. Derived, they cannot disagree with the
+ * cents the guard pins to the API - and ENTERPRISE has no amount, so it says what it means.
  */
-export async function fetchPricing(): Promise<LivePricing> {
-  try {
-    const { data } = await apiClient.get<LivePricing>('/billing/pricing')
-    if (!data?.planPricesCents) throw new Error('malformed')
-    return data
-  } catch {
-    return {
-      planPricesCents: Object.fromEntries(
-        Object.entries(FALLBACK_PLAN_PRICES_CENTS).filter(([, v]) => v !== null) as [string, number][],
-      ),
-      freeGroundLimit: FREE_GROUND_LIMIT,
-    }
-  }
-}
-
-/** Display strings built from the shipped fallbacks, for anything not yet reading live pricing. */
-export const PLAN_PRICES: Record<SubscriptionPlan, string> = {
-  STARTER: formatPlanPrice(FALLBACK_PLAN_PRICES_CENTS.STARTER),
-  SMALL_TEAM: formatPlanPrice(FALLBACK_PLAN_PRICES_CENTS.SMALL_TEAM),
-  GROWTH: formatPlanPrice(FALLBACK_PLAN_PRICES_CENTS.GROWTH),
-  BUSINESS: formatPlanPrice(FALLBACK_PLAN_PRICES_CENTS.BUSINESS),
-  SCALE: formatPlanPrice(FALLBACK_PLAN_PRICES_CENTS.SCALE),
-  ENTERPRISE: formatPlanPrice(FALLBACK_PLAN_PRICES_CENTS.ENTERPRISE),
-}
+export const PLAN_PRICES: Record<SubscriptionPlan, string> = Object.fromEntries(
+  (Object.entries(FALLBACK_PLAN_PRICES_CENTS) as [SubscriptionPlan, number | null][]).map(
+    ([plan, cents]) => [plan, cents === null ? 'Contact us' : formatMonthlyPrice(cents)],
+  ),
+) as Record<SubscriptionPlan, string>
 
 /**
  * WHAT EACH PLAN INCLUDES, IN ONE PLACE.
@@ -164,6 +133,20 @@ export const PLAN_MEMBER_LIMITS: Record<SubscriptionPlan, number | null> = {
   ENTERPRISE: null,
 }
 
+export interface LivePricingRow {
+  plan: SubscriptionPlan
+  label: string
+  amountCents: number
+  hasStripePrice: boolean
+  updatedAt: string
+}
+
+/** "$25/mo" from cents. The one formatter: PLAN_PRICES below is built from it too. */
+export function formatMonthlyPrice(cents: number): string {
+  const dollars = cents / 100
+  return `$${Number.isInteger(dollars) ? dollars : dollars.toFixed(2)}/mo`
+}
+
 export interface CodeShareCard {
   code: string
   expiresAt: string
@@ -173,6 +156,14 @@ export interface CodeShareCard {
 }
 
 export const billingApi = {
+  /**
+   * Live prices - what a checkout actually charges (Admin -> System -> Pricing).
+   * PLAN_PRICES above is a static fallback for while this is loading/unreachable,
+   * not a second source of truth: prefer this everywhere a real price is shown.
+   */
+  getPricing: () =>
+    apiClient.get<LivePricingRow[]>('/billing/pricing').then(r => r.data),
+
   status: () =>
     apiClient.get<BillingStatus>('/billing/status').then(r => r.data),
 
@@ -184,6 +175,9 @@ export const billingApi = {
 
   createSubscription: (plan: SubscriptionPlan) =>
     apiClient.post<{ checkoutUrl: string }>('/billing/subscription', { plan }).then(r => r.data),
+
+  changeSubscriptionPlan: (plan: SubscriptionPlan) =>
+    apiClient.patch<{ plan: SubscriptionPlan; periodEnd: string | null }>('/billing/subscription/plan', { plan }).then(r => r.data),
 
   cancelSubscription: () =>
     apiClient.delete('/billing/subscription').then(r => r.data),

@@ -17,47 +17,11 @@ export class BillingController {
     private readonly pricing: PricingService,
   ) {}
 
-  /**
-   * WHAT WE CHARGE, READ BY THE APP RATHER THAN COMPILED INTO IT.
-   *
-   * Public on purpose: the pricing page has to be readable before anybody has an account, and
-   * these are the numbers we advertise - there is nothing here that is not already on the public
-   * site. It returns cents, and the client formats them, so the charged amount and the displayed
-   * amount cannot drift apart the way they could when each side held its own copy.
-   */
   @Public()
   @Get('pricing')
-  @ApiOperation({ summary: 'Live plan prices in cents and the current free ground limit' })
-  async publicPricing() {
-    const { planPricesCents, freeGroundLimit } = await this.pricing.getSnapshot();
-    return { planPricesCents, freeGroundLimit };
-  }
-
-  @Get('admin/pricing')
-  @ApiBearerAuth()
-  @UseGuards(PlatformAdminGuard)
-  @ApiOperation({ summary: 'Platform admin: current prices, with who last changed them and when' })
-  async adminGetPricing() {
-    return this.pricing.getSnapshot();
-  }
-
-  @Patch('admin/pricing')
-  @ApiBearerAuth()
-  @UseGuards(PlatformAdminGuard)
-  @ApiOperation({ summary: 'Platform admin: change plan prices or the free ground limit' })
-  async adminSetPricing(
-    @CurrentUser('id') userId: string,
-    @Body() body: { planPricesCents?: Record<string, number>; freeGroundLimit?: number },
-  ) {
-    return this.pricing.update(body, userId);
-  }
-
-  @Post('admin/pricing/reset')
-  @ApiBearerAuth()
-  @UseGuards(PlatformAdminGuard)
-  @ApiOperation({ summary: 'Platform admin: restore the prices shipped in the code' })
-  async adminResetPricing(@CurrentUser('id') userId: string) {
-    return this.pricing.resetToDefaults(userId);
+  @ApiOperation({ summary: 'Current subscription pricing per plan - what /pricing and /billing actually charge' })
+  async getPricing() {
+    return this.pricing.listPlans();
   }
 
   @Get('status')
@@ -103,6 +67,17 @@ export class BillingController {
   @ApiOperation({ summary: 'Cancel the org subscription immediately' })
   async cancelSubscription(@CurrentUser('organizationId') organizationId: string) {
     return this.billing.cancelSubscription(organizationId);
+  }
+
+  @Patch('subscription/plan')
+  @ApiBearerAuth()
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Change the org subscription to a different plan, prorating the difference' })
+  async changeSubscriptionPlan(
+    @CurrentUser('organizationId') organizationId: string,
+    @Body() body: { plan: string },
+  ) {
+    return this.billing.changeSubscriptionPlan(organizationId, body.plan as any);
   }
 
   @Patch('subscription/pause')
