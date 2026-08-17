@@ -1747,7 +1747,12 @@ export function GroundAdminPage() {
             {report?.releasedAt && activationStatus && (
               <div style={{ background: 'var(--gw-bg)', border: '0.5px solid var(--gw-border)', borderRadius: 9, padding: '12px 14px', marginBottom: 14 }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-sub)', textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 8 }}>
-                  Report reveal status {activationStatus.allActivated ? '· Both activated' : '· Waiting'}
+                  {/*
+                      "BOTH" ON A GROUND WITH THREE PEOPLE IN IT.
+                      Hardcoded from when a ground was always two parties. This block sits directly
+                      above a row of THREE cards on a three-party ground, counting them itself.
+                  */}
+                  Report reveal status {activationStatus.allActivated ? '· Everyone has revealed' : '· Waiting'}
                 </div>
                 {!activationStatus.allActivated && (
                   <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55, marginBottom: 10 }}>
@@ -1760,7 +1765,20 @@ export function GroundAdminPage() {
                       <div style={{ fontSize: 11, fontWeight: 600, color: p.activated ? 'var(--gw-green-t)' : 'var(--gw-sub)' }}>
                         {p.activated ? 'Revealed' : 'Not yet'}
                       </div>
-                      <div style={{ fontSize: 10, color: 'var(--gw-sub)', marginTop: 2 }}>Party {i + 1}</div>
+                      {/*
+                          THE ONE THING THE LEAD NEEDS HERE IS WHO SHE IS WAITING ON.
+                          This said "Party 1 / Party 2 / Party 3" - a positional index - on the
+                          lead's own report tab, so "Not yet" named nobody and she could not chase
+                          anyone. `participantLabel` is already used five times on this same page for
+                          exactly this, and the roster is already loaded, so no new request is needed.
+                          The index remains the fallback for a party with no name recorded yet.
+                      */}
+                      <div style={{ fontSize: 10, color: 'var(--gw-sub)', marginTop: 2 }}>
+                        {(() => {
+                          const person = (ground?.participants ?? []).find((x: any) => x.id === p.participantId)
+                          return person ? participantLabel(person) : `Party ${i + 1}`
+                        })()}
+                      </div>
                     </div>
                   ))}
                 </div>
