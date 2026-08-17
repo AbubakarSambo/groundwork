@@ -32,9 +32,9 @@ describe('the commit runs before the password redirect', () => {
     expect(CODE).toMatch(/const outcome = await commitFlow\(payload, hadEntryIntent\)/)
   })
 
-  it('and the password redirect appears AFTER the commit in the flow', () => {
+  it('and the password handover happens AFTER the commit in the flow', () => {
     const commitAt = CODE.indexOf('await commitFlow(')
-    const handoverAt = CODE.indexOf('passwordStep(`/grounds/')
+    const handoverAt = CODE.indexOf('passwordSetupToken: res.passwordSetupToken')
     expect(commitAt).toBeGreaterThan(-1)
     expect(handoverAt).toBeGreaterThan(-1)
     expect(handoverAt).toBeGreaterThan(commitAt)
@@ -62,9 +62,29 @@ describe('the commit runs before the password redirect', () => {
 })
 
 describe('the password step keeps hold of where the person was going', () => {
-  it('a successful commit sends them on to the ground that was just created', () => {
-    /** Not /grounds. The ground itself is what tells them nothing was lost. */
-    expect(CODE).toMatch(/passwordStep\(`\/grounds\/\$\{outcome\.groundId\}`\)/)
+  it('a successful commit still SHOWS the confirmation rather than redirecting past it', () => {
+    /**
+     * The second wrong version, and the subtler one. Sending a successful commit straight to
+     * /set-password ran the commit correctly and then skipped the only screen that says WHO WAS
+     * INVITED and hands over the join link. Every first-time user lost both, silently. The persona
+     * suite caught this one too, on the very next check after the one that caught the first.
+     *
+     * So a success carries the token INSTEAD of redirecting, and the button out of the screen
+     * spends it.
+     */
+    expect(CODE).toMatch(/return \{ \.\.\.outcome, passwordSetupToken: res\.passwordSetupToken \}/)
+    expect(CODE).not.toMatch(/return passwordStep\(`\/grounds\/\$\{outcome\.groundId\}`\)/)
+  })
+
+  it('and the way out of that screen spends the token, landing on the ground', () => {
+    expect(CODE).toMatch(/passwordSetupToken\s*\n?\s*\?\s*`\/set-password\?token=/)
+    expect(CODE).toMatch(/next=\$\{encodeURIComponent\(`\/grounds\/\$\{nextGroundId\}`\)\}/)
+  })
+
+  it('a returning person skips the welcome but not the password', () => {
+    /** An account on its second ground with no password is the exact account this step is for. */
+    const effect = CODE.slice(CODE.indexOf('if (!first)'))
+    expect(effect.slice(0, 400)).toMatch(/passwordSetupToken/)
   })
 
   it('an explicit destination is preserved through the detour', () => {

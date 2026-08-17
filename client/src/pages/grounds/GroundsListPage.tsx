@@ -183,9 +183,26 @@ export function GroundsListPage() {
   // REPORT_READY status, which is a different thing and sat permanently at
   // zero while every ground stayed ACTIVE.
   const reportsReady = grounds.filter(g => (g as any).reportWaitingForMe).length
-  const needsAttention = grounds.filter(g => g.status === 'REPORT_READY' || (g.overdue ?? 0) > 0)
+
+  /**
+   * AND THE OTHER HALF OF THE SAME LEGACY, WHICH THE LABEL FIX EXPOSED.
+   *
+   * These two lines still test `status === 'REPORT_READY'`, and nothing has written that status
+   * since report release started auto-activating straight to ACTIVE - the schema says so in its own
+   * comment. So the "Needs your attention" banner could only ever fire on an overdue check-in, and
+   * the urgency sort's REPORT_READY weight was unreachable. A released report nobody had opened -
+   * the single most actionable thing on this page - was the one thing that could not raise its hand.
+   *
+   * `reportWaitingForMe` is the live signal for the same idea, so both now read it. The dead status
+   * is kept in the test rather than removed, because legacy rows written before that change still
+   * carry it and they should still surface.
+   */
+  const attentionWorthy = (g: typeof grounds[number]) =>
+    (g as any).reportWaitingForMe || g.status === 'REPORT_READY' || (g.overdue ?? 0) > 0
+  const needsAttention = grounds.filter(attentionWorthy)
   const sortedGrounds = [...grounds].sort((a, b) => {
-    const urgency = (g: typeof a) => (g.status === 'REPORT_READY' ? 10 : (g.overdue ?? 0) > 0 ? 5 : 0)
+    const urgency = (g: typeof a) =>
+      ((g as any).reportWaitingForMe || g.status === 'REPORT_READY') ? 10 : (g.overdue ?? 0) > 0 ? 5 : 0
     return urgency(b) - urgency(a)
   })
 
@@ -307,7 +324,17 @@ export function GroundsListPage() {
               {[
                 { val: active.length,    label: 'Active grounds' },
                 { val: checkInsToday,    label: 'Participant sessions today' },
-                { val: reportsReady,     label: 'Reports ready' },
+                /**
+                 * THE LABEL SAYS WHAT THE NUMBER COUNTS.
+                 *
+                 * It read "Reports ready" while counting reports waiting for THIS person to open -
+                 * and the initiator is exempt by design, because they released it and can always
+                 * read it. So a lead looking at a ground whose own summary line said "4 agreed, 2
+                 * still open" was told "Reports ready 0", on the same screen. The value was right
+                 * and had been fixed once already; the label was left behind pointing at the old
+                 * meaning.
+                 */
+                { val: reportsReady,     label: 'Waiting for you to read' },
               ].map(s => (
                 // The board's own stat tile, so the same number does not have two
                 // different looks depending on which page you opened it from.

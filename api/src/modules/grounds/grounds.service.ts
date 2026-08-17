@@ -833,7 +833,17 @@ export class GroundsService {
       include: {
         participants: { select: SAFE_PARTICIPANT_SELECT },
         checkIns: { select: CHECKIN_SELECT },
-        report: { select: { id: true, releasedAt: true, sharedPicture: true, createdAt: true } },
+        /**
+         * `agreements` and `divergences` are selected because `alignmentRead` COUNTS them. Without
+         * them this endpoint could only ever report null, so the ground page said "No read yet"
+         * about a released report while the grounds list - whose query does fetch them - printed
+         * "4 agreed, 2 still open" for that same ground on the screen before it.
+         *
+         * Found by reading BOTH payloads for one ground rather than trusting either page, and the
+         * first attempt at the fix went into the fallback lookup below instead of this one: the
+         * endpoint kept returning null, which is the only reason the mistake surfaced.
+         */
+        report: { select: { id: true, releasedAt: true, sharedPicture: true, createdAt: true, agreements: true, divergences: true } },
         resolution: true,
         patternDetections: {
           select: { id: true, code: true, periodsObserved: true, status: true, observationText: true, createdAt: true },
@@ -852,7 +862,15 @@ export class GroundsService {
           include: {
             participants: { select: SAFE_PARTICIPANT_SELECT },
             checkIns: { select: CHECKIN_SELECT },
-            report: { select: { id: true, releasedAt: true, sharedPicture: true, createdAt: true } },
+            /**
+             * `agreements` and `divergences` are here because `alignmentRead` COUNTS them, and
+             * without them in the select it could only ever return null - so the ground page said
+             * "No read yet" about a released report while the grounds list, whose query does fetch
+             * them, printed "4 agreed, 2 still open" for the same ground on the previous screen.
+             *
+             * Found by reading both payloads for one ground rather than either page on its own.
+             */
+            report: { select: { id: true, releasedAt: true, sharedPicture: true, createdAt: true, agreements: true, divergences: true } },
             resolution: true,
             patternDetections: {
               select: { id: true, code: true, periodsObserved: true, status: true, observationText: true, createdAt: true },
