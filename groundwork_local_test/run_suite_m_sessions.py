@@ -101,6 +101,19 @@ async def provision_ground(browser):
     go = page.get_by_text("Go to your ground")
     await go.first.click()
     await page.wait_for_timeout(3000)
+    # The password step sits on the way OUT of the confirmation, not before it - deliberately, so
+    # nobody loses the invited list and the join link on the way past. So the click above can land
+    # here rather than on the ground, and this suite derives later URLs from wherever it is standing:
+    # it built `/set-password/p` and then reported the participant page as missing its controls.
+    if await complete_password_step(page):
+        await page.wait_for_timeout(2000)
+    # And only now is a ground page a fair expectation - specifically a ground, not the tolerant
+    # either-ending check used earlier. We have already clicked THROUGH the confirmation, so still
+    # being on it would be a failure, and accepting it here would hide exactly that.
+    try:
+        await page.wait_for_url(re.compile(r"/grounds/[^/]+$"), timeout=15000)
+    except Exception:
+        raise RuntimeError(f"after the confirmation and the password step, this is not a ground: {page.url}")
     await rec.step(page, "initiator on their ground page", "persona M")
     return ctx, page
 
