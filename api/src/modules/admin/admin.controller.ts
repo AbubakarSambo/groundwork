@@ -16,6 +16,8 @@ import { AdminService } from './admin.service';
 import { PlatformAdminGuard } from '../../common/guards/platform-admin.guard';
 import { CurrentUser } from '../../common';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
+import { PricingService } from '../billing/pricing.service';
+import { SubscriptionPlan } from '@prisma/client';
 
 // ---------------------------------------------------------------------------
 // OTP guard - reads X-Admin-OTP header and verifies it against the requesting
@@ -64,7 +66,35 @@ export class AdminController {
   constructor(
     private readonly adminService: AdminService,
     private readonly whatsapp: WhatsAppService,
+    private readonly pricing: PricingService,
   ) {}
+
+  // ── Pricing (System -> Pricing) ──────────────────────────────────────────
+  // Subscription prices for checkout AND for plan changes come from here, not
+  // from code or env vars - see PricingService for how a DB amount becomes a
+  // real Stripe Price.
+
+  @Get('pricing')
+  @ApiOperation({ summary: 'Current subscription pricing per plan' })
+  getPricing() {
+    return this.pricing.listPlans();
+  }
+
+  @Patch('pricing/:plan')
+  @ApiOperation({ summary: 'Update the monthly price (in cents) for a subscription plan' })
+  async setPricing(@Param('plan') plan: string, @Body() body: { amountCents: number }) {
+    if (plan === SubscriptionPlan.ENTERPRISE) {
+      throw new BadRequestException('Enterprise is contact-sales only and has no self-serve price.');
+    }
+    if (!Object.values(SubscriptionPlan).includes(plan as SubscriptionPlan)) {
+      throw new BadRequestException(`Unknown plan: ${plan}`);
+    }
+    if (!Number.isInteger(body?.amountCents) || body.amountCents <= 0) {
+      throw new BadRequestException('amountCents must be a positive integer');
+    }
+    await this.pricing.setAmountCents(plan as SubscriptionPlan, body.amountCents);
+    return this.pricing.listPlans();
+  }
 
   // ── WhatsApp toggle ───────────────────────────────────────────────────────
   // Single Groundwork-owned number, no per-org setting - this is the one

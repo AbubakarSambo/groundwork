@@ -92,6 +92,16 @@ export function BillingPage() {
     onError: () => toast.error('Could not start checkout. Try again.'),
   })
 
+  const changePlanMut = useMutation({
+    mutationFn: (plan: SubscriptionPlan) => billingApi.changeSubscriptionPlan(plan),
+    onSuccess: (_r, plan) => {
+      qc.invalidateQueries({ queryKey: ['grounds'] })
+      qc.invalidateQueries({ queryKey: ['billing-status'] })
+      toast.success(`Switched to ${PLAN_LABELS[plan]}. The difference is prorated on your next invoice.`)
+    },
+    onError: () => toast.error('Could not change plan. Try again.'),
+  })
+
   const cancelSubscriptionMut = useMutation({
     mutationFn: () => billingApi.cancelSubscription(),
     onSuccess: () => {
@@ -395,11 +405,11 @@ export function BillingPage() {
                      with no token behind it, on the pages where somebody is
                      deciding whether to trust us with money. W8-24. */
                   <button
-                    onClick={() => createSubscriptionMut.mutate(plan)}
-                    disabled={createSubscriptionMut.isPending}
-                    style={{ padding: '7px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: createSubscriptionMut.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: createSubscriptionMut.isPending ? 0.7 : 1 }}
+                    onClick={() => isSubscribed ? changePlanMut.mutate(plan) : createSubscriptionMut.mutate(plan)}
+                    disabled={createSubscriptionMut.isPending || changePlanMut.isPending}
+                    style={{ padding: '7px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: (createSubscriptionMut.isPending || changePlanMut.isPending) ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: (createSubscriptionMut.isPending || changePlanMut.isPending) ? 0.7 : 1 }}
                   >
-                    {createSubscriptionMut.isPending ? '...' : 'Subscribe'}
+                    {createSubscriptionMut.isPending || changePlanMut.isPending ? '...' : isSubscribed ? 'Switch' : 'Subscribe'}
                   </button>
                 )}
               </div>

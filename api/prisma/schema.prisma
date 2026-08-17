@@ -181,6 +181,22 @@ enum CompanyStage {
   SCALING
 }
 
+// Admin-editable subscription pricing (Admin -> System -> Pricing). amountCents
+// is the source of truth for what a plan costs; stripePriceId/stripeProductId
+// are lazily created and cached the first time a checkout or plan change needs
+// a real Stripe Price object, and are cleared whenever amountCents changes
+// (Stripe Prices are immutable, so a price change means creating a new one, not
+// editing the old one). No row for ENTERPRISE - that plan is contact-sales only.
+model PricingPlan {
+  plan            SubscriptionPlan @id
+  amountCents     Int              @map("amount_cents")
+  stripeProductId String?          @map("stripe_product_id")
+  stripePriceId   String?          @map("stripe_price_id")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+
+  @@map("pricing_plans")
+}
+
 // ---------------------------------------------------------------------------
 // Identity & tenancy
 // ---------------------------------------------------------------------------

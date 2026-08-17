@@ -2,8 +2,9 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { promptsApi, UsageFunnelData, PlatformDashboardData, OrgListItem, UsageStatsData, FeedbackSummaryData } from '@/api/prompts'
-import { adminApi } from '@/api/admin'
+import { adminApi, type PricingPlanRow } from '@/api/admin'
 import { useAuthStore } from '@/stores/auth'
+import { toast } from 'sonner'
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -83,6 +84,92 @@ function WhatsAppToggle() {
   )
 }
 
+function centsToDollarsStr(cents: number): string {
+  return (cents / 100).toFixed(2).replace(/\.00$/, '')
+}
+
+function PricingRow({ row }: { row: PricingPlanRow }) {
+  const qc = useQueryClient()
+  const [editing, setEditing] = useState(false)
+  const [value, setValue] = useState(centsToDollarsStr(row.amountCents))
+
+  const save = useMutation({
+    mutationFn: (amountCents: number) => adminApi.setPricing(row.plan, amountCents),
+    onSuccess: rows => {
+      qc.setQueryData(['admin-pricing'], rows)
+      setEditing(false)
+      toast.success(`${row.label} updated. Existing subscribers keep their current price until they change plans.`)
+    },
+    onError: () => toast.error('Could not update price. Try again.'),
+  })
+
+  function submit() {
+    const dollars = parseFloat(value)
+    if (!Number.isFinite(dollars) || dollars <= 0) {
+      toast.error('Enter a valid amount greater than 0.')
+      return
+    }
+    save.mutate(Math.round(dollars * 100))
+  }
+
+  return (
+    <div style={{ ...C, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+      <div>
+        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)' }}>{row.label}</div>
+        <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 2 }}>
+          {row.hasStripePrice ? 'Live Stripe price cached' : 'Will create a Stripe price on next checkout'}
+        </div>
+      </div>
+      {editing ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+          <span style={{ fontSize: 13, color: 'var(--gw-muted)' }}>$</span>
+          <input
+            autoFocus
+            value={value}
+            onChange={e => setValue(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') setEditing(false) }}
+            style={{ width: 70, padding: '5px 7px', borderRadius: 6, border: '0.5px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit' }}
+          />
+          <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}>/mo</span>
+          <button
+            onClick={submit}
+            disabled={save.isPending}
+            style={{ padding: '5px 10px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: save.isPending ? 'wait' : 'pointer', fontFamily: 'inherit' }}
+          >
+            Save
+          </button>
+          <button
+            onClick={() => setEditing(false)}
+            style={{ padding: '5px 10px', borderRadius: 6, background: 'none', color: 'var(--gw-muted)', fontSize: 12, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+          >
+            Cancel
+          </button>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+          <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--gw-navy)' }}>${centsToDollarsStr(row.amountCents)}/mo</span>
+          <button
+            onClick={() => { setValue(centsToDollarsStr(row.amountCents)); setEditing(true) }}
+            style={{ padding: '5px 10px', borderRadius: 6, background: 'var(--gw-bg)', color: 'var(--gw-navy)', fontSize: 12, fontWeight: 700, border: '0.5px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
+          >
+            Edit
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function PricingPanel() {
+  const { data, isLoading } = useQuery({ queryKey: ['admin-pricing'], queryFn: adminApi.getPricing })
+  if (isLoading || !data) return null
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      {data.map(row => <PricingRow key={row.plan} row={row} />)}
+    </div>
+  )
+}
+
 function SystemTab({ dash }: { dash: PlatformDashboardData }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
@@ -90,6 +177,11 @@ function SystemTab({ dash }: { dash: PlatformDashboardData }) {
       <section>
         <div style={SL}>Integrations</div>
         <WhatsAppToggle />
+      </section>
+
+      <section>
+        <div style={SL}>Pricing</div>
+        <PricingPanel />
       </section>
 
       <section>
