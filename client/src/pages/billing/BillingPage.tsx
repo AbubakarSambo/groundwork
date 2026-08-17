@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { billingApi, PLAN_LABELS, PLAN_PRICES, PLAN_MEMBER_CAPS, type SubscriptionPlan } from '@/api/billing'
+import { billingApi, PLAN_LABELS, PLAN_PRICES, PLAN_MEMBER_CAPS, formatMonthlyPrice, type SubscriptionPlan } from '@/api/billing'
 import { groundsApi } from '@/api/grounds'
 import { useAuthStore } from '@/stores/auth'
 import { toast } from 'sonner'
@@ -65,6 +65,22 @@ export function BillingPage() {
      */
     enabled: isAdmin,
   })
+
+  /**
+   * Prices are admin-editable (Admin -> System -> Pricing), not fixed at build time - the
+   * static PLAN_PRICES strings below are only the pre-load fallback. Without this, this page
+   * could show "$25/mo" while checkout actually charges whatever's in the pricing_plans table.
+   */
+  const { data: livePricing } = useQuery({
+    queryKey: ['public-pricing'],
+    queryFn: billingApi.getPricing,
+    enabled: isAdmin,
+    staleTime: 60 * 1000,
+  })
+  function priceLabel(plan: SubscriptionPlan): string {
+    const live = livePricing?.find(p => p.plan === plan)
+    return live ? formatMonthlyPrice(live.amountCents) : PLAN_PRICES[plan]
+  }
 
   const generateCode = useMutation({
     mutationFn: () => billingApi.generateContributorCode(genSessions, genNote.trim() || undefined),
@@ -202,7 +218,7 @@ export function BillingPage() {
             <Stat
               label="Plan"
               value={PLAN_LABELS[orgSub!.plan as SubscriptionPlan] ?? String(orgSub!.plan)}
-              caption={PLAN_PRICES[orgSub!.plan as SubscriptionPlan]}
+              caption={priceLabel(orgSub!.plan as SubscriptionPlan)}
               tone={isPaused ? 'warn' : undefined}
             />
             {billingStatus?.people && (
@@ -396,7 +412,7 @@ export function BillingPage() {
                 <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 2 }}>{PLAN_MEMBER_CAPS[plan]}</div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-                <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--gw-dark)' }}>{PLAN_PRICES[plan]}</span>
+                <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--gw-dark)' }}>{priceLabel(plan)}</span>
                 {isSubscribed && orgSub?.plan === plan ? (
                   <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: 'var(--gw-green-bg)', color: 'var(--gw-green-t)' }}>Current</span>
                 ) : (
