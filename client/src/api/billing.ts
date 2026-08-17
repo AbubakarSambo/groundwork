@@ -56,13 +56,68 @@ export const PLAN_LABELS: Record<SubscriptionPlan, string> = {
   ENTERPRISE: 'Enterprise',
 }
 
+/**
+ * WHAT WE CHARGE, IN CENTS, AS THE API REPORTS IT.
+ *
+ * These are the FALLBACKS. The live figures come from `GET /billing/pricing`, which reads the
+ * amounts a platform admin has set, so a price change reaches the app without a rebuild.
+ *
+ * The fallbacks exist because a pricing page must never render blank or say $0 - if the request
+ * has not landed yet, or fails, the last-shipped price is a far better answer than nothing. They
+ * are cents rather than pre-formatted dollars for one reason: a guard test can compare cents to
+ * the cents the API actually charges. It could not compare '$25/mo' to 2500, which is how the
+ * charged amount and the advertised amount were free to disagree.
+ */
+export const FALLBACK_PLAN_PRICES_CENTS: Record<SubscriptionPlan, number | null> = {
+  STARTER: 2500,
+  SMALL_TEAM: 5000,
+  GROWTH: 10000,
+  BUSINESS: 20000,
+  SCALE: 40000,
+  ENTERPRISE: null,
+}
+
+/** Cents to the string on a card. Whole dollars stay whole - nobody advertises $25.00/mo. */
+export function formatPlanPrice(cents: number | null | undefined): string {
+  if (cents === null || cents === undefined) return 'Contact us'
+  const dollars = cents / 100
+  const shown = Number.isInteger(dollars) ? String(dollars) : dollars.toFixed(2)
+  return `$${shown}/mo`
+}
+
+export interface LivePricing {
+  planPricesCents: Record<string, number>
+  freeGroundLimit: number
+}
+
+/**
+ * Public - no bearer token - because the pricing page has to be readable before anybody has an
+ * account. Falls back to the shipped values rather than surfacing an error, since a visitor
+ * reading last week's price is a much smaller failure than a visitor reading no price.
+ */
+export async function fetchPricing(): Promise<LivePricing> {
+  try {
+    const { data } = await apiClient.get<LivePricing>('/billing/pricing')
+    if (!data?.planPricesCents) throw new Error('malformed')
+    return data
+  } catch {
+    return {
+      planPricesCents: Object.fromEntries(
+        Object.entries(FALLBACK_PLAN_PRICES_CENTS).filter(([, v]) => v !== null) as [string, number][],
+      ),
+      freeGroundLimit: FREE_GROUND_LIMIT,
+    }
+  }
+}
+
+/** Display strings built from the shipped fallbacks, for anything not yet reading live pricing. */
 export const PLAN_PRICES: Record<SubscriptionPlan, string> = {
-  STARTER: '$25/mo',
-  SMALL_TEAM: '$50/mo',
-  GROWTH: '$100/mo',
-  BUSINESS: '$200/mo',
-  SCALE: '$400/mo',
-  ENTERPRISE: 'Contact us',
+  STARTER: formatPlanPrice(FALLBACK_PLAN_PRICES_CENTS.STARTER),
+  SMALL_TEAM: formatPlanPrice(FALLBACK_PLAN_PRICES_CENTS.SMALL_TEAM),
+  GROWTH: formatPlanPrice(FALLBACK_PLAN_PRICES_CENTS.GROWTH),
+  BUSINESS: formatPlanPrice(FALLBACK_PLAN_PRICES_CENTS.BUSINESS),
+  SCALE: formatPlanPrice(FALLBACK_PLAN_PRICES_CENTS.SCALE),
+  ENTERPRISE: formatPlanPrice(FALLBACK_PLAN_PRICES_CENTS.ENTERPRISE),
 }
 
 /**

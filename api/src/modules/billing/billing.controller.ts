@@ -2,6 +2,7 @@ import { Controller, Delete, Get, Patch, Post, Req, Param, Headers, HttpCode, Ht
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { BillingService } from './billing.service';
 import { StripeService } from './stripe.service';
+import { PricingService } from './pricing.service';
 import { CurrentUser, Roles, Role, Public } from '../../common';
 import { PlatformAdminGuard } from '../../common/guards/platform-admin.guard';
 
@@ -13,7 +14,51 @@ export class BillingController {
   constructor(
     private readonly billing: BillingService,
     private readonly stripe: StripeService,
+    private readonly pricing: PricingService,
   ) {}
+
+  /**
+   * WHAT WE CHARGE, READ BY THE APP RATHER THAN COMPILED INTO IT.
+   *
+   * Public on purpose: the pricing page has to be readable before anybody has an account, and
+   * these are the numbers we advertise - there is nothing here that is not already on the public
+   * site. It returns cents, and the client formats them, so the charged amount and the displayed
+   * amount cannot drift apart the way they could when each side held its own copy.
+   */
+  @Public()
+  @Get('pricing')
+  @ApiOperation({ summary: 'Live plan prices in cents and the current free ground limit' })
+  async publicPricing() {
+    const { planPricesCents, freeGroundLimit } = await this.pricing.getSnapshot();
+    return { planPricesCents, freeGroundLimit };
+  }
+
+  @Get('admin/pricing')
+  @ApiBearerAuth()
+  @UseGuards(PlatformAdminGuard)
+  @ApiOperation({ summary: 'Platform admin: current prices, with who last changed them and when' })
+  async adminGetPricing() {
+    return this.pricing.getSnapshot();
+  }
+
+  @Patch('admin/pricing')
+  @ApiBearerAuth()
+  @UseGuards(PlatformAdminGuard)
+  @ApiOperation({ summary: 'Platform admin: change plan prices or the free ground limit' })
+  async adminSetPricing(
+    @CurrentUser('id') userId: string,
+    @Body() body: { planPricesCents?: Record<string, number>; freeGroundLimit?: number },
+  ) {
+    return this.pricing.update(body, userId);
+  }
+
+  @Post('admin/pricing/reset')
+  @ApiBearerAuth()
+  @UseGuards(PlatformAdminGuard)
+  @ApiOperation({ summary: 'Platform admin: restore the prices shipped in the code' })
+  async adminResetPricing(@CurrentUser('id') userId: string) {
+    return this.pricing.resetToDefaults(userId);
+  }
 
   @Get('status')
   @ApiBearerAuth()

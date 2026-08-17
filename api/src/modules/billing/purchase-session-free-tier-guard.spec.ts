@@ -1,4 +1,6 @@
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
+/** The real service: with no platform_settings row it falls back to the code defaults, which is the state this test assumes. */
+import { PricingService } from './pricing.service';
 import { BillingService } from './billing.service';
 
 /**
@@ -25,7 +27,7 @@ function makeService(ground: any, stripeCreate: jest.Mock = jest.fn()) {
     stripe: { checkout: { sessions: { create: stripeCreate } } },
   };
   const config: any = { get: jest.fn(() => 'http://localhost:5173/billing/callback') };
-  return { svc: new BillingService(prisma, stripe, config, {} as any, {} as any), prisma, stripeCreate };
+  return { svc: new BillingService(prisma, stripe, config, {} as any, {} as any, new PricingService(prisma as any)), prisma, stripeCreate };
 }
 
 describe('GW-PURCHASE-SESSION-FREE-TIER-GUARD: the charge mechanism itself refuses free-tier grounds', () => {

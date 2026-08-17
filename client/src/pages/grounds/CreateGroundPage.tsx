@@ -726,7 +726,7 @@ export function CreateGroundPage() {
                 <div style={{ background: 'var(--gw-card)', border: '1.5px solid var(--gw-border)', borderRadius: 10, padding: '20px 18px', marginBottom: 20 }}>
                   <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 6 }}>Subscribe to create more Grounds</div>
                   <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 16 }}>
-                    Your free plan includes 10 Grounds. Subscribe for unlimited Grounds, sessions, and reports.
+                    Your free plan includes {FREE_GROUND_LIMIT} Grounds. Subscribe for unlimited Grounds, sessions, and reports.
                   </div>
                   <a
                     href="/pricing"

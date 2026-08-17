@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { promptsApi, UsageFunnelData, PlatformDashboardData, OrgListItem, UsageStatsData, FeedbackSummaryData } from '@/api/prompts'
-import { adminApi } from '@/api/admin'
+import { adminApi, pricingAdminApi } from '@/api/admin'
+import { PLAN_LABELS, formatPlanPrice, type SubscriptionPlan } from '@/api/billing'
 import { useAuthStore } from '@/stores/auth'
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -83,6 +84,166 @@ function WhatsAppToggle() {
   )
 }
 
+/** The plans a customer can buy. Enterprise is priced in conversation, so it is not editable here. */
+const PRICEABLE_PLANS: SubscriptionPlan[] = ['STARTER', 'SMALL_TEAM', 'GROWTH', 'BUSINESS', 'SCALE']
+
+/**
+ * CHANGING WHAT WE CHARGE, WITHOUT A DEPLOY.
+ *
+ * Prices used to be constants in three separately-built codebases - the cents the API charged, the
+ * dollars the app displayed, the dollars the marketing site advertised - so a change meant three
+ * edits and three deploys, and nothing tied the charged amount to the advertised one.
+ *
+ * Two things this screen is careful about, because it bills real cards:
+ *
+ * DOLLARS IN, CENTS STORED. An admin types 25, not 2500. Typing cents into a field labelled with a
+ * dollar sign is how somebody charges a hundred times too much, and the API bounds the value as
+ * well - this field is not the only thing standing between a typo and a charge.
+ *
+ * IT SAYS WHO IT DOES NOT AFFECT. A new price applies to NEW subscribers only. Existing customers
+ * keep the amount baked into the Stripe subscription that was created for them, and nothing in the
+ * product migrates them. Somebody about to raise prices needs to know that before they click, not
+ * after a customer asks why their invoice did not change.
+ */
+function PricingEditor() {
+  const qc = useQueryClient()
+  const { data, isLoading } = useQuery({ queryKey: ['admin-pricing'], queryFn: pricingAdminApi.get })
+  /** Keyed drafts, so an admin can edit several fields and save once. */
+  const [draft, setDraft] = useState<Record<string, string>>({})
+  const [limitDraft, setLimitDraft] = useState<string | null>(null)
+  const [err, setErr] = useState<string | null>(null)
+  const [saved, setSaved] = useState(false)
+
+  const save = useMutation({
+    mutationFn: () => {
+      const planPricesCents: Record<string, number> = {}
+      for (const [plan, raw] of Object.entries(draft)) {
+        const dollars = Number(raw)
+        if (!raw.trim() || !Number.isFinite(dollars)) throw new Error(`${PLAN_LABELS[plan as SubscriptionPlan]} needs a number of dollars.`)
+        planPricesCents[plan] = Math.round(dollars * 100)
+      }
+      const patch: { planPricesCents?: Record<string, number>; freeGroundLimit?: number } = {}
+      if (Object.keys(planPricesCents).length) patch.planPricesCents = planPricesCents
+      if (limitDraft !== null) {
+        const n = Number(limitDraft)
+        if (!limitDraft.trim() || !Number.isInteger(n)) throw new Error('The free ground limit must be a whole number.')
+        patch.freeGroundLimit = n
+      }
+      if (!patch.planPricesCents && patch.freeGroundLimit === undefined) throw new Error('Nothing changed.')
+      return pricingAdminApi.update(patch)
+    },
+    onSuccess: (updated) => {
+      qc.setQueryData(['admin-pricing'], updated)
+      /** The public read too, so /pricing and /billing show the new number without a reload. */
+      qc.invalidateQueries({ queryKey: ['pricing'] })
+      setDraft({}); setLimitDraft(null); setErr(null); setSaved(true)
+      setTimeout(() => setSaved(false), 4000)
+    },
+    onError: (e: any) => setErr(e?.response?.data?.message ?? e?.message ?? 'Could not save.'),
+  })
+
+  const reset = useMutation({
+    mutationFn: pricingAdminApi.reset,
+    onSuccess: (updated) => {
+      qc.setQueryData(['admin-pricing'], updated)
+      qc.invalidateQueries({ queryKey: ['pricing'] })
+      setDraft({}); setLimitDraft(null); setErr(null)
+    },
+  })
+
+  if (isLoading || !data) return null
+  const dirty = Object.keys(draft).length > 0 || limitDraft !== null
+
+  return (
+    <div style={{ ...C, padding: '14px 16px' }}>
+      <div style={{ fontSize: 13, fontWeight: 700 }}>Plan prices</div>
+      <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 2, lineHeight: 1.5 }}>
+        These are the amounts Stripe charges and the amounts the app shows, from the same place.
+        {data.updatedAt
+          ? ` Last changed ${timeAgo(data.updatedAt)}.`
+          : ' Never changed - these are the values the code ships with.'}
+      </div>
+
+      {/* The limit, said plainly, because it is the reason to be careful rather than a footnote. */}
+      <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 10, lineHeight: 1.5, padding: '9px 11px', background: 'var(--gw-amber-bg)', borderRadius: 8 }}>
+        A new price applies to <b>new subscribers only</b>. Anyone already subscribed keeps the
+        amount their subscription was created with, and nothing here changes it - that needs a
+        change on their Stripe subscription.
+      </div>
+
+      <div style={{ display: 'grid', gap: 8, marginTop: 14 }}>
+        {PRICEABLE_PLANS.map(plan => {
+          const liveCents = data.planPricesCents[plan]
+          const value = draft[plan] ?? String((liveCents ?? 0) / 100)
+          return (
+            <div key={plan} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ fontSize: 12.5, width: 110, flexShrink: 0 }}>{PLAN_LABELS[plan]}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ fontSize: 13, color: 'var(--gw-muted)' }}>$</span>
+                <input
+                  aria-label={`${PLAN_LABELS[plan]} price in dollars per month`}
+                  value={value}
+                  inputMode="decimal"
+                  onChange={e => setDraft(d => ({ ...d, [plan]: e.target.value }))}
+                  style={{ width: 78, padding: '5px 8px', fontSize: 13, borderRadius: 6, border: '1px solid var(--gw-border)', fontFamily: 'inherit' }}
+                />
+                <span style={{ fontSize: 12, color: 'var(--gw-muted)' }}>/mo</span>
+              </div>
+              {draft[plan] !== undefined && (
+                <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}>was {formatPlanPrice(liveCents)}</span>
+              )}
+            </div>
+          )
+        })}
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4, paddingTop: 10, borderTop: '1px solid var(--gw-border)' }}>
+          <div style={{ fontSize: 12.5, width: 110, flexShrink: 0 }}>Free grounds</div>
+          <input
+            aria-label="Free ground limit"
+            value={limitDraft ?? String(data.freeGroundLimit)}
+            inputMode="numeric"
+            onChange={e => setLimitDraft(e.target.value)}
+            style={{ width: 78, padding: '5px 8px', fontSize: 13, borderRadius: 6, border: '1px solid var(--gw-border)', fontFamily: 'inherit' }}
+          />
+          <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}>before a subscription is needed</span>
+        </div>
+      </div>
+
+      {err && <div style={{ fontSize: 12, color: 'var(--gw-red-b)', marginTop: 10, lineHeight: 1.5 }}>{err}</div>}
+      {saved && <div style={{ fontSize: 12, color: 'var(--gw-green-t)', marginTop: 10, fontWeight: 700 }}>Saved. New checkouts use these prices.</div>}
+
+      <div style={{ display: 'flex', gap: 8, marginTop: 14, alignItems: 'center' }}>
+        <button
+          onClick={() => save.mutate()}
+          disabled={!dirty || save.isPending}
+          style={{
+            padding: '7px 14px', fontSize: 12.5, fontWeight: 700, borderRadius: 7, border: 'none',
+            background: dirty ? 'var(--gw-navy)' : 'var(--gw-border)', color: dirty ? 'white' : 'var(--gw-muted)',
+            cursor: dirty ? 'pointer' : 'default', fontFamily: 'inherit',
+          }}
+        >
+          {save.isPending ? 'Saving...' : 'Save prices'}
+        </button>
+        {dirty && (
+          <button
+            onClick={() => { setDraft({}); setLimitDraft(null); setErr(null) }}
+            style={{ padding: '7px 12px', fontSize: 12.5, borderRadius: 7, border: '1px solid var(--gw-border)', background: 'transparent', color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit' }}
+          >
+            Discard
+          </button>
+        )}
+        <button
+          onClick={() => reset.mutate()}
+          disabled={reset.isPending}
+          style={{ marginLeft: 'auto', padding: '7px 12px', fontSize: 12, borderRadius: 7, border: '1px solid var(--gw-border)', background: 'transparent', color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit' }}
+        >
+          {reset.isPending ? 'Restoring...' : 'Restore shipped prices'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function SystemTab({ dash }: { dash: PlatformDashboardData }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
@@ -90,6 +251,11 @@ function SystemTab({ dash }: { dash: PlatformDashboardData }) {
       <section>
         <div style={SL}>Integrations</div>
         <WhatsAppToggle />
+      </section>
+
+      <section>
+        <div style={SL}>Pricing</div>
+        <PricingEditor />
       </section>
 
       <section>

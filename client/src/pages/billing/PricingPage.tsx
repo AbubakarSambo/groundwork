@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useMutation } from '@tanstack/react-query'
-import { billingApi, PLAN_LABELS, PLAN_PRICES, PLAN_MEMBER_CAPS, type SubscriptionPlan, PLAN_FEATURES } from '@/api/billing'
+import { useMutation, useQuery } from '@tanstack/react-query'
+import { billingApi, PLAN_LABELS, PLAN_PRICES, PLAN_MEMBER_CAPS, type SubscriptionPlan, PLAN_FEATURES, fetchPricing, formatPlanPrice, FREE_GROUND_LIMIT } from '@/api/billing'
 import { useAuthStore } from '@/stores/auth'
 
 const PLANS: SubscriptionPlan[] = ['STARTER', 'SMALL_TEAM', 'GROWTH', 'BUSINESS', 'SCALE']
@@ -18,6 +18,15 @@ const PLAN_DESCRIPTIONS: Record<SubscriptionPlan, string> = {
 
 export function PricingPage() {
   const navigate = useNavigate()
+  /**
+   * The prices a platform admin has actually set. `PLAN_PRICES` is the shipped fallback and
+   * renders instantly, so this page never shows a spinner or a blank where a price goes - the
+   * live figures replace them when they land, which on a normal connection is immediately.
+   */
+  const { data: live } = useQuery({ queryKey: ['pricing'], queryFn: fetchPricing, staleTime: 60_000 })
+  const priceOf = (plan: SubscriptionPlan) =>
+    live?.planPricesCents?.[plan] !== undefined ? formatPlanPrice(live.planPricesCents[plan]) : PLAN_PRICES[plan]
+  const freeGrounds = live?.freeGroundLimit ?? FREE_GROUND_LIMIT
   const { user } = useAuthStore()
   const [subscribingPlan, setSubscribingPlan] = useState<SubscriptionPlan | null>(null)
 
@@ -50,7 +59,7 @@ export function PricingPage() {
             Simple, honest pricing.
           </h1>
           <p style={{ fontSize: 15, color: 'var(--gw-sub)', maxWidth: 520, margin: '0 auto', lineHeight: 1.65 }}>
-            Start free with 10 Grounds. Subscribe when your team grows. Every plan includes unlimited Grounds, sessions, and reports.
+            Start free with {freeGrounds} Grounds. Subscribe when your team grows. Every plan includes unlimited Grounds, sessions, and reports.
           </p>
         </div>
 
@@ -63,7 +72,7 @@ export function PricingPage() {
                 <span style={{ fontSize: 11, background: 'var(--gw-green-bg)', color: 'var(--gw-green)', border: '1px solid var(--gw-green-b)', borderRadius: 6, padding: '2px 8px', fontWeight: 600 }}>Always</span>
               </div>
               <p style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 12 }}>
-                Create up to 10 Grounds for free. No card required. Unlimited sessions and reports on every Ground.
+                Create up to {freeGrounds} Grounds for free. No card required. Unlimited sessions and reports on every Ground.
               </p>
               <ul style={{ fontSize: 12, color: 'var(--gw-sub)', paddingLeft: 16, margin: 0, lineHeight: 1.8 }}>
                 {/* "Templates" was listed here and on the marketing pricing page. There
@@ -71,7 +80,7 @@ export function PricingPage() {
                     match in the codebase is "More templates" in a feature-REQUEST
                     list. A free-tier bullet nobody can find erodes trust in the
                     rest of the list. */}
-                {['10 Grounds', 'Unlimited sessions', 'Unlimited reports', 'Admin dashboard'].map((f) => (
+                {[`${freeGrounds} Grounds`, 'Unlimited sessions', 'Unlimited reports', 'Admin dashboard'].map((f) => (
                   <li key={f}>{f}</li>
                 ))}
               </ul>
@@ -95,7 +104,7 @@ export function PricingPage() {
           {PLANS.map((plan) => (
             <div key={plan} style={{ background: 'var(--gw-card)', border: '1.5px solid var(--gw-border)', borderRadius: 14, padding: '24px 20px', display: 'flex', flexDirection: 'column' }}>
               <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 4 }}>{PLAN_LABELS[plan]}</div>
-              <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-navy)', marginBottom: 4 }}>{PLAN_PRICES[plan]}</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-navy)', marginBottom: 4 }}>{priceOf(plan)}</div>
               <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginBottom: 12 }}>{PLAN_MEMBER_CAPS[plan]}</div>
               <p style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 16, flexGrow: 1 }}>
                 {PLAN_DESCRIPTIONS[plan]}
@@ -134,7 +143,7 @@ export function PricingPage() {
           <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 20 }}>Why we price this way</h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 20 }}>
             {[
-              { title: 'Start free, no card required.', body: '10 Grounds is enough to know whether Groundwork works for your team. No credit card, no trial that expires, no pressure to upgrade before you have seen the value.' },
+              { title: 'Start free, no card required.', body: `${freeGrounds} Grounds is enough to know whether Groundwork works for your team. No credit card, no trial that expires, no pressure to upgrade before you have seen the value.` },
               { title: 'Pay for your team size, not your usage.', body: 'Every person with a Groundwork account in your organisation counts toward your plan. Unlimited Grounds, sessions, and reports at every tier.' },
               { title: 'One price, no tiers per feature.', body: 'Every plan gives you the same thing: full AI-facilitated check-ins, structured reports, and a permanent record. No features locked behind higher tiers.' },
               { title: 'Transparent and consistent.', body: 'The price you see is the price you pay. No proration surprises, no hidden add-ons, no sudden price changes without notice.' },

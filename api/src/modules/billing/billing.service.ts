@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import type Stripe from 'stripe';
 import { PrismaService, CronLock } from '../prisma/prisma.service';
 import { StripeService } from './stripe.service';
+import { PricingService, DEFAULT_FREE_GROUND_LIMIT } from './pricing.service';
 import { EmailService } from '../email/email.service';
 import { CareFeeStatus, GroundStatus, BillingEventType, BillingEventStatus, UserRole, UsageEventType, SubscriptionPlan } from '@prisma/client';
 import { UsageService } from '../usage/usage.service';
@@ -38,6 +39,7 @@ export class BillingService {
     private config: ConfigService,
     private email: EmailService,
     private usage: UsageService,
+    private pricing: PricingService,
   ) {}
 
   /**
@@ -90,8 +92,15 @@ export class BillingService {
     return { allowed: false, reason: 'This ground is beyond your ten free grounds. Resubscribe to continue checking in - the report and board stay available either way.', sessionsBalance: 0 };
   }
 
-  /** Free ground limit for organizations without a subscription. */
-  static readonly FREE_GROUND_LIMIT = 10;
+  /**
+   * Free ground limit for organizations without a subscription.
+   *
+   * Kept as the DEFAULT and re-exported from one place, so the number is not written twice. The
+   * value actually enforced is read per call from PricingService, because a platform admin can
+   * change it without a deploy. Anything reading this constant is reading the fallback, not the
+   * live figure - use `pricing.getFreeGroundLimit()` for that.
+   */
+  static readonly FREE_GROUND_LIMIT = DEFAULT_FREE_GROUND_LIMIT;
 
   /**
    * Ground creation gate.
@@ -148,9 +157,10 @@ export class BillingService {
       return { allowed: true, freeReason: 'ACCESS_CODE', codeId: code.id };
     }
 
-    // 3. Free tier: up to FREE_GROUND_LIMIT grounds per org.
+    // 3. Free tier: up to the free ground limit per org, as currently set by a platform admin.
+    const freeGroundLimit = await this.pricing.getFreeGroundLimit();
     const groundCount = await this.prisma.ground.count({ where: { organizationId } });
-    if (groundCount < BillingService.FREE_GROUND_LIMIT) {
+    if (groundCount < freeGroundLimit) {
       return { allowed: true, freeReason: 'FREE_TIER', groundsUsed: groundCount };
     }
 
@@ -160,7 +170,7 @@ export class BillingService {
     // 5. Free limit reached, no active subscription and no care fee.
     return {
       allowed: false,
-      reason: `Your free plan includes ${BillingService.FREE_GROUND_LIMIT} Grounds. Subscribe to create unlimited Grounds.`,
+      reason: `Your free plan includes ${freeGroundLimit} Grounds. Subscribe to create unlimited Grounds.`,
       groundsUsed: groundCount,
     };
   }
@@ -358,15 +368,6 @@ export class BillingService {
     }
   }
 
-  /** Monthly prices in cents per subscription plan. */
-  private readonly PLAN_PRICES_CENTS: Partial<Record<SubscriptionPlan, number>> = {
-    [SubscriptionPlan.STARTER]: 2500,
-    [SubscriptionPlan.SMALL_TEAM]: 5000,
-    [SubscriptionPlan.GROWTH]: 10000,
-    [SubscriptionPlan.BUSINESS]: 20000,
-    [SubscriptionPlan.SCALE]: 40000,
-  };
-
   private readonly PLAN_LABELS: Record<SubscriptionPlan, string> = {
     [SubscriptionPlan.STARTER]: 'Starter (up to 5 people)',
     [SubscriptionPlan.SMALL_TEAM]: 'Small Team (up to 20 people)',
@@ -389,7 +390,14 @@ export class BillingService {
       await this.prisma.organization.update({ where: { id: org.id }, data: { stripeCustomerId: customerId } });
     }
 
-    const amountCents = this.PLAN_PRICES_CENTS[plan]!;
+    /**
+     * READ AT CHARGE TIME, NOT AT BOOT. A price changed in the admin panel must apply to the very
+     * next checkout, so this is a live read rather than a cached map.
+     */
+    const amountCents = await this.pricing.getPlanPriceCents(plan);
+    if (!amountCents) {
+      throw new ForbiddenException('That plan is not available to buy right now.');
+    }
     const base = this.config.get<string>('stripe.callbackUrl') || 'http://localhost:5173/billing/callback';
     const session = await this.stripe.stripe.checkout.sessions.create({
       customer: customerId,
