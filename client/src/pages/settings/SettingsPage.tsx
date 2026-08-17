@@ -15,7 +15,7 @@ export function SettingsPage() {
   const renameOrgMut = useMutation({
     mutationFn: (name: string) => authApi.renameOrganization(name),
     onSuccess: org => { updateUser({ organizationName: org.name } as any); toast.success('Organization name updated') },
-    onError: () => toast.error('Could not rename the organization. Try again.'),
+    onError: () => toast.error('Could not rename the organisation. Try again.'),
   })
   const logout = useAuthStore(s => s.logout)
 

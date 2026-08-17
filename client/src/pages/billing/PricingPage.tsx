@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useMutation } from '@tanstack/react-query'
-import { billingApi, PLAN_LABELS, PLAN_PRICES, PLAN_MEMBER_CAPS, type SubscriptionPlan, PLAN_FEATURES } from '@/api/billing'
+import { useMutation, useQuery } from '@tanstack/react-query'
+import { billingApi, PLAN_LABELS, PLAN_PRICES, PLAN_MEMBER_CAPS, formatMonthlyPrice, type SubscriptionPlan, PLAN_FEATURES } from '@/api/billing'
 import { useAuthStore } from '@/stores/auth'
 
 const PLANS: SubscriptionPlan[] = ['STARTER', 'SMALL_TEAM', 'GROWTH', 'BUSINESS', 'SCALE']
@@ -9,7 +9,7 @@ const PLANS: SubscriptionPlan[] = ['STARTER', 'SMALL_TEAM', 'GROWTH', 'BUSINESS'
 const PLAN_DESCRIPTIONS: Record<SubscriptionPlan, string> = {
   STARTER: 'For small teams getting started with structured check-ins.',
   SMALL_TEAM: 'For growing teams running multiple Grounds at once.',
-  GROWTH: 'For organizations running Groundwork across departments or client groups.',
+  GROWTH: 'For organisations running Groundwork across departments or client groups.',
   BUSINESS: 'For larger organizations with multiple teams and Grounds in flight.',
   SCALE: 'For organizations scaling Groundwork across a large workforce.',
   ENTERPRISE: 'For organizations with custom needs, volume pricing, or dedicated support.',
@@ -20,6 +20,17 @@ export function PricingPage() {
   const navigate = useNavigate()
   const { user } = useAuthStore()
   const [subscribingPlan, setSubscribingPlan] = useState<SubscriptionPlan | null>(null)
+
+  /** Live prices (Admin -> System -> Pricing) - PLAN_PRICES is only the pre-load fallback. */
+  const { data: livePricing } = useQuery({
+    queryKey: ['public-pricing'],
+    queryFn: billingApi.getPricing,
+    staleTime: 60 * 1000,
+  })
+  function priceLabel(plan: SubscriptionPlan): string {
+    const live = livePricing?.find(p => p.plan === plan)
+    return live ? formatMonthlyPrice(live.amountCents) : PLAN_PRICES[plan]
+  }
 
   const subscribeMut = useMutation({
     mutationFn: (plan: SubscriptionPlan) => billingApi.createSubscription(plan),
@@ -88,14 +99,14 @@ export function PricingPage() {
           Subscribe as your team grows
         </h2>
         <p style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 28, lineHeight: 1.6 }}>
-          Every person with a Groundwork account in your organization counts toward your plan. One flat monthly rate, unlimited everything.
+          Every person with a Groundwork account in your organisation counts toward your plan. One flat monthly rate, unlimited everything.
         </p>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 48 }}>
           {PLANS.map((plan) => (
             <div key={plan} style={{ background: 'var(--gw-card)', border: '1.5px solid var(--gw-border)', borderRadius: 14, padding: '24px 20px', display: 'flex', flexDirection: 'column' }}>
               <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 4 }}>{PLAN_LABELS[plan]}</div>
-              <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-navy)', marginBottom: 4 }}>{PLAN_PRICES[plan]}</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-navy)', marginBottom: 4 }}>{priceLabel(plan)}</div>
               <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginBottom: 12 }}>{PLAN_MEMBER_CAPS[plan]}</div>
               <p style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 16, flexGrow: 1 }}>
                 {PLAN_DESCRIPTIONS[plan]}
@@ -135,7 +146,7 @@ export function PricingPage() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 20 }}>
             {[
               { title: 'Start free, no card required.', body: '10 Grounds is enough to know whether Groundwork works for your team. No credit card, no trial that expires, no pressure to upgrade before you have seen the value.' },
-              { title: 'Pay for your team size, not your usage.', body: 'Every person with a Groundwork account in your organization counts toward your plan. Unlimited Grounds, sessions, and reports at every tier.' },
+              { title: 'Pay for your team size, not your usage.', body: 'Every person with a Groundwork account in your organisation counts toward your plan. Unlimited Grounds, sessions, and reports at every tier.' },
               { title: 'One price, no tiers per feature.', body: 'Every plan gives you the same thing: full AI-facilitated check-ins, structured reports, and a permanent record. No features locked behind higher tiers.' },
               { title: 'Transparent and consistent.', body: 'The price you see is the price you pay. No proration surprises, no hidden add-ons, no sudden price changes without notice.' },
             ].map((item) => (

@@ -73,10 +73,10 @@ export function PostSessionPanel({ groundId, freeExtensionUsed, onDismiss }: Pro
         {/* Upgrade org */}
         <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px' }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-navy)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 5 }}>
-            Upgrade organization
+            Upgrade organisation
           </div>
           <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6, marginBottom: 12 }}>
-            Your team is getting value from Groundwork. Unlock unlimited Grounds and unlimited sessions for everyone in your organization with one simple monthly subscription.
+            Your team is getting value from Groundwork. Unlock unlimited Grounds and unlimited sessions for everyone in your organisation with one simple monthly subscription.
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button
@@ -84,7 +84,7 @@ export function PostSessionPanel({ groundId, freeExtensionUsed, onDismiss }: Pro
               disabled={createSubscriptionMut.isPending}
               style={{ padding: '9px 18px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: createSubscriptionMut.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: createSubscriptionMut.isPending ? 0.7 : 1 }}
             >
-              {createSubscriptionMut.isPending ? 'Redirecting...' : 'Upgrade organization'}
+              {createSubscriptionMut.isPending ? 'Redirecting...' : 'Upgrade organisation'}
             </button>
             <button
               onClick={() => navigate('/pricing')}

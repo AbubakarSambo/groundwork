@@ -25,7 +25,7 @@ function makeService(ground: any, stripeCreate: jest.Mock = jest.fn()) {
     stripe: { checkout: { sessions: { create: stripeCreate } } },
   };
   const config: any = { get: jest.fn(() => 'http://localhost:5173/billing/callback') };
-  return { svc: new BillingService(prisma, stripe, config, {} as any, {} as any), prisma, stripeCreate };
+  return { svc: new BillingService(prisma, stripe, {} as any, config, {} as any, {} as any), prisma, stripeCreate };
 }
 
 describe('GW-PURCHASE-SESSION-FREE-TIER-GUARD: the charge mechanism itself refuses free-tier grounds', () => {

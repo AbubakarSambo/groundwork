@@ -109,6 +109,20 @@ export const PLAN_MEMBER_LIMITS: Record<SubscriptionPlan, number | null> = {
   ENTERPRISE: null,
 }
 
+export interface LivePricingRow {
+  plan: SubscriptionPlan
+  label: string
+  amountCents: number
+  hasStripePrice: boolean
+  updatedAt: string
+}
+
+/** "$25/mo" from cents - matches the static PLAN_PRICES string format, for live data. */
+export function formatMonthlyPrice(cents: number): string {
+  const dollars = cents / 100
+  return `$${Number.isInteger(dollars) ? dollars : dollars.toFixed(2)}/mo`
+}
+
 export interface CodeShareCard {
   code: string
   expiresAt: string
@@ -118,6 +132,14 @@ export interface CodeShareCard {
 }
 
 export const billingApi = {
+  /**
+   * Live prices - what a checkout actually charges (Admin -> System -> Pricing).
+   * PLAN_PRICES above is a static fallback for while this is loading/unreachable,
+   * not a second source of truth: prefer this everywhere a real price is shown.
+   */
+  getPricing: () =>
+    apiClient.get<LivePricingRow[]>('/billing/pricing').then(r => r.data),
+
   status: () =>
     apiClient.get<BillingStatus>('/billing/status').then(r => r.data),
 
@@ -129,6 +151,9 @@ export const billingApi = {
 
   createSubscription: (plan: SubscriptionPlan) =>
     apiClient.post<{ checkoutUrl: string }>('/billing/subscription', { plan }).then(r => r.data),
+
+  changeSubscriptionPlan: (plan: SubscriptionPlan) =>
+    apiClient.patch<{ plan: SubscriptionPlan; periodEnd: string | null }>('/billing/subscription/plan', { plan }).then(r => r.data),
 
   cancelSubscription: () =>
     apiClient.delete('/billing/subscription').then(r => r.data),

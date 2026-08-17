@@ -2,6 +2,7 @@ import { Controller, Delete, Get, Patch, Post, Req, Param, Headers, HttpCode, Ht
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { BillingService } from './billing.service';
 import { StripeService } from './stripe.service';
+import { PricingService } from './pricing.service';
 import { CurrentUser, Roles, Role, Public } from '../../common';
 import { PlatformAdminGuard } from '../../common/guards/platform-admin.guard';
 
@@ -13,7 +14,15 @@ export class BillingController {
   constructor(
     private readonly billing: BillingService,
     private readonly stripe: StripeService,
+    private readonly pricing: PricingService,
   ) {}
+
+  @Public()
+  @Get('pricing')
+  @ApiOperation({ summary: 'Current subscription pricing per plan - what /pricing and /billing actually charge' })
+  async getPricing() {
+    return this.pricing.listPlans();
+  }
 
   @Get('status')
   @ApiBearerAuth()
@@ -58,6 +67,17 @@ export class BillingController {
   @ApiOperation({ summary: 'Cancel the org subscription immediately' })
   async cancelSubscription(@CurrentUser('organizationId') organizationId: string) {
     return this.billing.cancelSubscription(organizationId);
+  }
+
+  @Patch('subscription/plan')
+  @ApiBearerAuth()
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Change the org subscription to a different plan, prorating the difference' })
+  async changeSubscriptionPlan(
+    @CurrentUser('organizationId') organizationId: string,
+    @Body() body: { plan: string },
+  ) {
+    return this.billing.changeSubscriptionPlan(organizationId, body.plan as any);
   }
 
   @Patch('subscription/pause')

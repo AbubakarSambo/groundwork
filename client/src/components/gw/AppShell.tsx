@@ -65,7 +65,7 @@ const NAV_ITEMS = [
   },
   {
     label: 'Admin',
-    to: '/admin/dashboard',
+    to: '/admin',
     // Groundwork's own back-office, NOT the org admin's area. The route is
     // wrapped in RequirePlatformAdmin, so gating this on `adminOnly` showed
     // every org admin a door that bounced her straight back to /grounds.
@@ -753,7 +753,23 @@ export function AppSidebar() {
                * it would be wrong about whose page it is.
                */
               const orgCount = all.filter(x => ORG_ROUTES.includes(x.to)).length
-              const firstOrg = isOrg && orgCount > 1 && !ORG_ROUTES.includes(all[i - 1]?.to ?? '')
+              /**
+               * THE ORG NAME WAS PRINTED TWICE. W15-4.
+               *
+               * "Is the item before me an org route?" is not the same question as "am I the first
+               * org route?", and the difference is `/admin`, which sits between `/billing` and
+               * `/settings` and is not an org route. So `/settings` looked like the start of a
+               * second org group and printed the heading again: People, Billing, ADMIN, then the
+               * company name a second time above Settings.
+               *
+               * Only ever visible to a platform admin, because they are the only ones with
+               * `/admin` in the middle of the group - which is why it survived. Found by looking
+               * at a screenshot of the sidebar.
+               *
+               * Asked properly now: am I the first org route in the list.
+               */
+              const firstOrg = isOrg && orgCount > 1
+                && all.findIndex(x => ORG_ROUTES.includes(x.to)) === i
               return (
                 <div key={item.to}>
                   {firstOrg && (

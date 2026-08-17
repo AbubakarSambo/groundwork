@@ -39,7 +39,7 @@ export function BillingCallbackPage() {
                 Thank you for supporting Groundwork. Your payment helps us continue building a product that helps teams align, make better decisions, and solve problems together.
               </div>
               <div style={{ fontSize: 12, color: 'var(--gw-sub)', opacity: 0.7 }}>
-                Unlimited Grounds and unlimited sessions are now active for your organization. Redirecting you to billing...
+                Unlimited Grounds and unlimited sessions are now active for your organisation. Redirecting you to billing...
               </div>
             </>
           ) : (

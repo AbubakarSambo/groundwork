@@ -1754,7 +1754,26 @@ export function EntryChatPage() {
                     borderRadius: '4px 16px 16px 16px', padding: '10px 14px', fontSize: 14, lineHeight: 1.65,
                     boxShadow: '0 1px 3px rgba(0,0,0,.06)', marginBottom: 4,
                   }}>
-                    That is the setup done. One more thing before the check-in starts: how do you want to run this?
+                    {/*
+                      * IT IS ONE QUESTION, AND IT IS ABOUT WHO ANSWERS THE QUESTIONS. W15-3.
+                      *
+                      * "How do you want to run this?" with "This is my situation" against "I'm
+                      * setting this up for my team" made people choose between two descriptions of
+                      * themselves, when the only thing that actually differs is who sits down and
+                      * gives the first account. Somebody in HR setting up a record about a new hire
+                      * is BOTH: it is their situation and their team. Both options fit, so the
+                      * choice stalls.
+                      *
+                      * Asked as who does the check-ins, the answer is obvious to everybody in about
+                      * a second, and it is the thing the product actually branches on.
+                      *
+                      * "One more thing" is gone too. It followed a closer that had just said the
+                      * setup was finished, so it read as the product changing its mind - which is
+                      * the abruptness, not the question itself.
+                    */}
+                    <div style={{ fontWeight: 700, marginBottom: 2 }}>Who gives the accounts on this?</div>
+                    Everyone involved answers the questions in their own words. That is what the
+                    record is made of, so it matters who is doing it.
                   </div>
                   <button
                     onClick={startSelfPath}
@@ -1764,7 +1783,7 @@ export function EntryChatPage() {
                       color: 'var(--gw-text)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
                     }}
                   >
-                    This is my situation - I'll give my account now
+                    I am one of the people involved. Start my check-in now.
                   </button>
                   <button
                     onClick={() => setFlowPath('lead')}
@@ -1774,7 +1793,7 @@ export function EntryChatPage() {
                       color: 'var(--gw-text)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
                     }}
                   >
-                    I'm setting this up for my team - someone else will run it
+                    Someone else is. I am setting this up for them.
                   </button>
                 </div>
               )}
