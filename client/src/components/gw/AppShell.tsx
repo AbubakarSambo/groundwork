@@ -378,12 +378,32 @@ function NavItem({ item, compact }: { item: typeof NAV_ITEMS[0]; compact?: boole
   )
 }
 
+/**
+ * A BADGE ONLY EARNS ITS ROW IF IT CHANGES WHETHER YOU CLICK.
+ *
+ * The rule above says a ground that is not ACTIVE says so. In practice almost nothing IS
+ * ACTIVE while work is happening: a ground sits in AWAITING_PARTIES from its first invite
+ * until the last person finishes a round, which is its entire working life. Across a
+ * ten-ground org every single row wore "Awaiting parties", including rows where all three
+ * parties had already checked in. The one glanceable status was a constant, and a constant
+ * carries no information - it just made every ground look like it was stuck.
+ *
+ * So the badge is now reserved for states that genuinely change the decision: this ground is
+ * paused, closed, resolved, stalled, or waiting on somebody to accept before anything can
+ * start at all. The ordinary in-progress states stay silent, because "people are checking in"
+ * is what a ground on this list is normally doing - and the attention markers beside the name
+ * already say the part that is actually yours.
+ */
+const SILENT_STATUSES = ['ACTIVE', 'AWAITING_PARTIES', 'OPEN']
+
 function GroundStatusBadge({ status }: { status: string }) {
+  if (SILENT_STATUSES.includes(status)) return null
   const isReady = status === 'REPORT_READY'
-  const isActive = status === 'ACTIVE'
-  const color = isReady ? '#065f46' : isActive ? 'var(--gw-green-t)' : '#6B7280'
-  const bg = isReady ? 'rgba(6,95,70,.1)' : isActive ? 'rgba(8,80,65,.08)' : 'rgba(107,114,128,.08)'
-  const label = isReady ? 'Report ready' : isActive ? 'Active' : status.charAt(0) + status.slice(1).toLowerCase().replace(/_/g, ' ')
+  /** Amber for "somebody has to act before this can move", grey for a finished record. */
+  const isWaiting = status === 'AWAITING_LEAD' || status === 'AWAITING_APPROVAL' || status === 'PAUSED'
+  const color = isReady ? '#065f46' : isWaiting ? 'var(--gw-amber-t)' : '#6B7280'
+  const bg = isReady ? 'rgba(6,95,70,.1)' : isWaiting ? 'var(--gw-amber-bg)' : 'rgba(107,114,128,.08)'
+  const label = isReady ? 'Report ready' : status.charAt(0) + status.slice(1).toLowerCase().replace(/_/g, ' ')
   return (
     <span style={{ fontSize: 10, fontWeight: 600, color, background: bg, borderRadius: 4, padding: '2px 6px' }}>
       {label}
@@ -690,7 +710,7 @@ export function AppSidebar() {
                       and a ground that is not ACTIVE still says so, because "this
                       one is closed" changes whether you click at all.
                     */}
-                    {g.status !== 'ACTIVE' && (
+                    {!SILENT_STATUSES.includes(g.status) && (
                       <div style={{ marginTop: 3 }}>
                         <GroundStatusBadge status={g.status} />
                       </div>

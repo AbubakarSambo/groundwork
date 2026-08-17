@@ -18,7 +18,7 @@ const FRONTEND_URL = window.location.origin
 // the success screen. Cache each token's outcome at module scope so remounts
 // replay the outcome instead of re-verifying.
 type VerifyOutcome =
-  | { kind: 'success'; groundId: string; joinUrl: string | null; invited: string[]; failedInvites: string[] }
+  | { kind: 'success'; groundId: string; joinUrl: string | null; invited: string[]; failedInvites: string[]; passwordSetupToken?: string }
   | { kind: 'noSession' }
   | { kind: 'commitError' }
   | { kind: 'redirect'; to: string }
@@ -44,11 +44,26 @@ export function MagicVerifyPage() {
   // null while we do not know yet; the welcome panel waits rather than flashing.
   const [isFirstGround, setIsFirstGround] = useState<boolean | null>(null)
   const [joinUrl, setJoinUrl] = useState<string | null>(null)
+  /**
+   * THE PASSWORD STEP, HELD UNTIL AFTER THE CONFIRMATION.
+   *
+   * Two earlier attempts at this were both wrong in the same way - they treated the password as
+   * something to do INSTEAD of a screen rather than after it. First it pre-empted the commit, and
+   * the ground was never created. Then it ran after the commit but redirected straight to the
+   * ground, which skipped this confirmation - and this confirmation is the only place the person is
+   * told WHO WAS INVITED and given the join link to pass on. Silently dropping that for every
+   * first-time user is a worse bug than the one being fixed, and the persona suite caught it too.
+   *
+   * So the token is held here, and the onward button carries it. Everybody sees the confirmation;
+   * everybody without a password sets one on the way out of it.
+   */
+  const [passwordSetupToken, setPasswordSetupToken] = useState<string | null>(null)
 
   const lastAttempt = useRef<{ token: string; payload: any; user: { jobTitle?: string | null; role?: string } } | null>(null)
 
   function applyOutcome(outcome: VerifyOutcome) {
     if (outcome.kind === 'success') {
+      setPasswordSetupToken(outcome.passwordSetupToken ?? null)
       setFailedInvites(outcome.failedInvites)
       setInvited(outcome.invited)
       setJoinUrl(outcome.joinUrl)
@@ -156,8 +171,40 @@ export function MagicVerifyPage() {
           return { kind: 'verifyError', message: verifyErrorMessage(err) }
         }
         setAuth(res.user, res.accessToken)
+
+        /**
+         * THE PASSWORD STEP THE COPY PROMISES - AND WHY IT MUST NOT COME FIRST.
+         *
+         * Signup says it twice, on the wait page as step 2 of 3 and in the activation email, and
+         * until now it never happened: this landed people straight in the app with no password. That
+         * looks harmless on day one and is severe later, because a passwordless account can ONLY be
+         * re-entered by requesting a fresh emailed link, every single time. In an eighteen-ground run
+         * that was the fault that stopped grounds ever reaching a report - the last person to check
+         * in could not sign back in to finish.
+         *
+         * THE FIRST VERSION OF THIS FIX PUT THE REDIRECT HERE, ABOVE THE COMMIT, and reasoned that
+         * as a virtue: "so it applies to every arrival". It applied to every arrival by RETURNING
+         * before the commit ever ran - so somebody arriving from the anonymous entry chat set a
+         * password, landed on an empty grounds list, and the ground they had just described was
+         * never created. That is the vanishing-ground bug this product already fixed once (R1), put
+         * back by a change that had nothing to do with grounds.
+         *
+         * Caught by the persona suite, whose suite_v exists for precisely this and is named after
+         * it. Nothing in the unit tests or the typecheck had an opinion.
+         *
+         * So the order is now: commit first, THEN the password. `passwordStep` below wraps whatever
+         * destination the arrival was heading for, so the detour cannot swallow it again.
+         */
+        const passwordStep = (destination: string): VerifyOutcome | null =>
+          res.needsPassword && res.passwordSetupToken
+            ? {
+                kind: 'redirect',
+                to: `/set-password?token=${encodeURIComponent(res.passwordSetupToken)}&next=${encodeURIComponent(destination)}`,
+              }
+            : null
+
         if (fromParam && fromParam.startsWith('/')) {
-          return { kind: 'redirect', to: fromParam }
+          return passwordStep(fromParam) ?? { kind: 'redirect', to: fromParam }
         }
         // ALWAYS attempt the commit. The server merges whatever this browser
         // has over the server-side draft written at entry-save, so the commit
@@ -168,7 +215,22 @@ export function MagicVerifyPage() {
         const payload = loadEntryHandover() ?? { groundLabel: '', history: [], contributors: [] }
         const hadEntryIntent = !!localStorage.getItem(COMMIT_KEY) || !!localStorage.getItem('gw_draft_token')
         lastAttempt.current = { token, payload, user: res.user }
-        return commitFlow(payload, hadEntryIntent)
+        const outcome = await commitFlow(payload, hadEntryIntent)
+
+        /**
+         * Only a SUCCESSFUL commit hands over to the password step, and it hands over pointing at
+         * the ground that now exists - so the reassurance the interstitial used to give ("your
+         * ground is set up") is given by the ground itself.
+         *
+         * A commit ERROR must stay on this screen. It has a "Try again" that re-attempts, and
+         * sending somebody to set a password mid-failure loses the retry and the explanation both.
+         * They will still be asked for a password the next time they arrive.
+         */
+        if (outcome.kind === 'success' && res.needsPassword && res.passwordSetupToken) {
+          /** Shown, not skipped. The button out of the confirmation goes via the password step. */
+          return { ...outcome, passwordSetupToken: res.passwordSetupToken }
+        }
+        return outcome
       })()
       verifyFlows.set(token, flow)
     }
@@ -198,13 +260,25 @@ export function MagicVerifyPage() {
         if (!mounted) return
         const first = (grounds?.length ?? 0) <= 1
         setIsFirstGround(first)
-        if (!first) navigate('/grounds', { replace: true })
+        /**
+         * A returning person skips the welcome, but must not skip the password. Somebody with a
+         * second ground and still no password is exactly the account that can only ever be
+         * re-entered by emailing themselves a fresh link - the whole reason this step exists.
+         */
+        if (!first) {
+          navigate(
+            passwordSetupToken
+              ? `/set-password?token=${encodeURIComponent(passwordSetupToken)}&next=${encodeURIComponent('/grounds')}`
+              : '/grounds',
+            { replace: true },
+          )
+        }
       })
       // If the count cannot be fetched, show the welcome rather than a blank
       // screen: being over-welcomed is a smaller failure than being stranded.
       .catch(() => { if (mounted) setIsFirstGround(true) })
     return () => { mounted = false }
-  }, [nextGroundId])
+  }, [nextGroundId, passwordSetupToken])
 
   /**
    * THE FIRST-RUN WELCOME IS FOR A FIRST GROUND.
@@ -301,7 +375,12 @@ export function MagicVerifyPage() {
             for everyone to work from under <strong>Context</strong>.
           </div>
           <button
-            onClick={() => navigate(`/grounds/${nextGroundId}`, { replace: true })}
+            onClick={() => navigate(
+              passwordSetupToken
+                ? `/set-password?token=${encodeURIComponent(passwordSetupToken)}&next=${encodeURIComponent(`/grounds/${nextGroundId}`)}`
+                : `/grounds/${nextGroundId}`,
+              { replace: true },
+            )}
             style={{ width: '100%', padding: '13px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
           >
             Go to your ground →

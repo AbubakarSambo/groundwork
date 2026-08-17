@@ -102,4 +102,14 @@ export class CreateGroundDto {
   @IsString()
   @MaxLength(100)
   accessCode?: string;
+
+  /**
+   * "I am setting it up for others": the creator organises and reads the results, and is never asked
+   * to check in. Sent by the wizard since it was built, but until now only `confirmLead` could apply
+   * it, and `confirmLead` rejects a ground an admin created themselves - so it was silently lost.
+   */
+  @ApiPropertyOptional({ description: 'The creator administers this ground and gives no account of their own.' })
+  @IsOptional()
+  @IsBoolean()
+  managingOnly?: boolean;
 }

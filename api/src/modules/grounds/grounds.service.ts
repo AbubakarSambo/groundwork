@@ -22,6 +22,8 @@ import { proposalFrom, extractionToolFor, Heard, Proposal } from './what-the-con
 
 // Default timelines per scenario (Part 2 - timeline and cadence).
 const DEFAULT_TIMELINE_DAYS: Record<GroundScenario, number> = {
+  /** Short on purpose: nobody has named the situation yet, so committing months to it is a guess. */
+  OPEN_READ: 30,
   NEW_HIRE: 90,
   NEW_COFOUNDER: 90,
   NEW_ADVISOR: 365,
@@ -200,6 +202,26 @@ export class GroundsService {
         });
       }
 
+      /**
+       * "I AM SETTING IT UP FOR OTHERS" IS HONOURED HERE, WHICH IS THE ONLY PLACE IT CAN BE.
+       *
+       * The creation wizard has always offered this choice and the client has always sent it, as
+       * `confirmLead({ managingOnly })` right after create. But `confirmLead` refuses unless the
+       * ground is `AWAITING_LEAD`, and an ADMIN creating their own ground leaves it `OPEN` - so the
+       * call threw "This ground has already been confirmed" every time, into a silent catch on the
+       * client. In an 18-ground run the setting was ignored fourteen times out of fourteen.
+       *
+       * The cost was not cosmetic. An admin who said "this is not my ground" was made a full party
+       * with her own check-in every session, and because `isSessionReadyForReport` waits on every
+       * non-managingOnly party, the ground could then never produce a report until she personally
+       * checked in - on a ground she was only administering, with no email ever sent to tell her.
+       *
+       * So the flag is applied at creation, and the initiator's session-1 check-in is simply not
+       * created when it is set. `confirmLead` keeps its own path for the admin-sets-up-for-a-lead
+       * flow, where AWAITING_LEAD genuinely applies.
+       */
+      const managingOnly = dto.managingOnly === true;
+
       // The initiator is the first party.
       const participant = await tx.groundParticipant.create({
         data: {
@@ -207,14 +229,21 @@ export class GroundsService {
           userId: initiatorId,
           email: initiator.email,
           partyType: PartyType.INITIATOR,
+          managingOnly,
         },
       });
 
       // Session 1 is created up front and is free. If a start date is set, the
       // first check-in opens then (availableFrom); otherwise immediately.
-      await tx.checkIn.create({
-        data: { groundId: ground.id, participantId: participant.id, sessionNumber: 1, status: CheckInStatus.NOT_STARTED, availableFrom: dto.startsAt ? new Date(dto.startsAt) : null },
-      });
+      //
+      // Not created at all for a managing-only lead: they give no account, so a check-in of theirs
+      // would sit NOT_STARTED forever and hold the report open behind a person who was never
+      // supposed to answer.
+      if (!managingOnly) {
+        await tx.checkIn.create({
+          data: { groundId: ground.id, participantId: participant.id, sessionNumber: 1, status: CheckInStatus.NOT_STARTED, availableFrom: dto.startsAt ? new Date(dto.startsAt) : null },
+        });
+      }
 
       return ground;
     });
@@ -804,7 +833,17 @@ export class GroundsService {
       include: {
         participants: { select: SAFE_PARTICIPANT_SELECT },
         checkIns: { select: CHECKIN_SELECT },
-        report: { select: { id: true, releasedAt: true, sharedPicture: true, createdAt: true } },
+        /**
+         * `agreements` and `divergences` are selected because `alignmentRead` COUNTS them. Without
+         * them this endpoint could only ever report null, so the ground page said "No read yet"
+         * about a released report while the grounds list - whose query does fetch them - printed
+         * "4 agreed, 2 still open" for that same ground on the screen before it.
+         *
+         * Found by reading BOTH payloads for one ground rather than trusting either page, and the
+         * first attempt at the fix went into the fallback lookup below instead of this one: the
+         * endpoint kept returning null, which is the only reason the mistake surfaced.
+         */
+        report: { select: { id: true, releasedAt: true, sharedPicture: true, createdAt: true, agreements: true, divergences: true } },
         resolution: true,
         patternDetections: {
           select: { id: true, code: true, periodsObserved: true, status: true, observationText: true, createdAt: true },
@@ -823,7 +862,15 @@ export class GroundsService {
           include: {
             participants: { select: SAFE_PARTICIPANT_SELECT },
             checkIns: { select: CHECKIN_SELECT },
-            report: { select: { id: true, releasedAt: true, sharedPicture: true, createdAt: true } },
+            /**
+             * `agreements` and `divergences` are here because `alignmentRead` COUNTS them, and
+             * without them in the select it could only ever return null - so the ground page said
+             * "No read yet" about a released report while the grounds list, whose query does fetch
+             * them, printed "4 agreed, 2 still open" for the same ground on the previous screen.
+             *
+             * Found by reading both payloads for one ground rather than either page on its own.
+             */
+            report: { select: { id: true, releasedAt: true, sharedPicture: true, createdAt: true, agreements: true, divergences: true } },
             resolution: true,
             patternDetections: {
               select: { id: true, code: true, periodsObserved: true, status: true, observationText: true, createdAt: true },
@@ -2700,16 +2747,38 @@ export class GroundsService {
     completed: number;
     missingParticipantIds: string[];
   } | null> {
-    // Current round = the highest sessionNumber any check-in row exists for.
-    const maxSession = await this.prisma.checkIn.aggregate({
+    /**
+     * THE ROUND THIS IS ABOUT IS THE ONE PEOPLE HAVE ANSWERED, NOT THE NEWEST ONE OPENED.
+     *
+     * This used to take the highest sessionNumber any check-in ROW existed for. The moment session 1
+     * completes, session 2 rows are created NOT_STARTED - so the count immediately jumped to session 2
+     * and reported "0 of 3 checked in" while the report on the same screen was built from three
+     * finished session-1 accounts. A leader reading a full report under "0 of 3 checked in" cannot
+     * tell which half to believe, and it is the most important page in the product.
+     *
+     * So: the current round is the highest session that anybody has actually COMPLETED. Only when
+     * nothing is complete anywhere does it fall back to the newest open round, which is correct for a
+     * ground that has genuinely just started.
+     */
+    const lastAnswered = await this.prisma.checkIn.aggregate({
+      where: { participant: { groundId }, status: CheckInStatus.COMPLETED },
+      _max: { sessionNumber: true },
+    });
+    const newestOpen = await this.prisma.checkIn.aggregate({
       where: { participant: { groundId } },
       _max: { sessionNumber: true },
     });
-    const sessionNumber = maxSession._max.sessionNumber ?? 1;
+    const sessionNumber = lastAnswered._max.sessionNumber ?? newestOpen._max.sessionNumber ?? 1;
 
     const active = await this.prisma.groundParticipant.findMany({
       where: {
         groundId,
+        /**
+         * A managing-only lead is not counted. They give no account by design, so including them made
+         * the denominator a number that could never be reached - "2 of 3" forever on a ground where
+         * everybody who was ever going to answer already had.
+         */
+        managingOnly: false,
         OR: [
           { userId: { not: null } },
           { checkIns: { some: { sessionNumber, status: CheckInStatus.COMPLETED } } },

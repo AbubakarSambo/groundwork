@@ -37,6 +37,8 @@ from _runner import (
     mail_clear,
     mail_link,
     seed_closed_entry_session,
+    complete_password_step,
+    ground_reached,
 )
 
 rec = Recorder("suite_m")
@@ -71,6 +73,10 @@ async def provision_ground(browser):
     if not link:
         raise RuntimeError("no magic link for suite M initiator")
     await page.goto(link)
+    # A brand-new account is asked to set a password before it reaches the app. The commit runs
+    # first, so the tripwire below still sees the real success-or-failure screen for this arrival -
+    # but the harness has to get past the step the way a person does.
+    await complete_password_step(page)
     # GW-REPORTSUMMARY-DTO-DRIFT tripwire: this initiator's session was closed
     # with a real generated report before saving, so /entry/commit carries a
     # reportSummary payload - the exact shape that 400'd with "property
@@ -79,11 +85,9 @@ async def provision_ground(browser):
     # If that contract regresses, this magic link renders the failure screen
     # instead of the success screen - assert the success screen explicitly,
     # by name, rather than trusting a bare wait_for timeout to surface it.
-    try:
-        await page.get_by_text("Your ground is set up").wait_for(timeout=25000)
-        landed = True
-    except Exception:
-        landed = False
+    # Either ending counts - see ground_reached(). A new account skips the confirmation screen
+    # because the password step comes after the commit and lands them on the ground itself.
+    landed = await ground_reached(page)
     body = await page.inner_text("body")
     rec.check(
         "M1",
@@ -93,10 +97,23 @@ async def provision_ground(browser):
         hard=True,
     )
     if not landed:
-        raise RuntimeError("magic link did not render the success screen - reportSummary commit likely 400'd")
+        raise RuntimeError("magic link reached neither the confirmation nor a ground - reportSummary commit likely 400'd")
     go = page.get_by_text("Go to your ground")
     await go.first.click()
     await page.wait_for_timeout(3000)
+    # The password step sits on the way OUT of the confirmation, not before it - deliberately, so
+    # nobody loses the invited list and the join link on the way past. So the click above can land
+    # here rather than on the ground, and this suite derives later URLs from wherever it is standing:
+    # it built `/set-password/p` and then reported the participant page as missing its controls.
+    if await complete_password_step(page):
+        await page.wait_for_timeout(2000)
+    # And only now is a ground page a fair expectation - specifically a ground, not the tolerant
+    # either-ending check used earlier. We have already clicked THROUGH the confirmation, so still
+    # being on it would be a failure, and accepting it here would hide exactly that.
+    try:
+        await page.wait_for_url(re.compile(r"/grounds/[^/]+$"), timeout=15000)
+    except Exception:
+        raise RuntimeError(f"after the confirmation and the password step, this is not a ground: {page.url}")
     await rec.step(page, "initiator on their ground page", "persona M")
     return ctx, page
 

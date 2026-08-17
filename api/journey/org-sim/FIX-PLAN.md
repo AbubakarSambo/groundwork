@@ -6353,3 +6353,78 @@ Neither mocked the auth store, so `user` was null and the new role guard refused
 red on a correct change. They render as an ADMIN now, which is what the page is for. Worth recording
 because a page-level permission is exactly the kind of change that breaks tests which never had a
 user, and the fix is to give them the user, never to weaken the guard.
+
+## The 18-ground org simulation: grounds 1 to 6, and three bugs that stop the product working
+
+Full findings in `e2e/org-sim/RUN18-FINDINGS.md`, continuation state in `RUN18-STATE.md`, screenshots
+in `e2e/shots/org-sim/`. Everything driven through the real screens; the DB was reset first because
+prior-run data made the free/paid gate meaningless.
+
+**Six grounds attempted, five created, one blocked.** Ground 5 could not be created at all.
+
+### 1. An end-state option is called "Continue", and so is the button next to it
+
+`end-states.ts` gives NEW_PROJECT "Mark complete / Continue / Descope / Stop the project" and
+NEW_MANAGER "Continue / Restructure / ...". The wizard's navigation button on that same screen is also
+"Continue". The word appears twice meaning two different things: choose an outcome, and go to the next
+step. Somebody who means "the project continues" and clicks the button has skipped the question;
+somebody who means "next" and clicks the option has set an outcome they did not intend.
+
+It is not theoretical. **Ground 5 does not exist because of it** - every attempt selected the option
+and never advanced.
+
+### 2. The end state is collected, shown back, and never saved
+
+All five created grounds have `end_state` EMPTY, including ones whose summary panel read
+"Resolution: Keep the hire" and "Renew on current terms". The wizard asks the question, echoes the
+answer in its confirmation, and drops it.
+
+That also leaves the step's own copy describing a mechanism with nothing behind it: "the ground closes
+only when all parties confirm the same end state."
+
+And on a NEW HIRE ground the question it asks is "Keep the hire / Restructure the role / **Let them
+go** / Extend evaluation period", on a card that promises to help a manager and a new starter agree
+what early success looks like, with copy saying "Everyone sees it before the first session". A person
+starting Monday could see that his manager picked from that menu. The list is right for a PIP or a
+renewal. It should not be the same list for a new starter.
+
+### 3. Signup never sets the password it promises, twice over
+
+The activation email and the wait page both say "You will be asked to set a password to secure your
+account". The link signs you straight in and `password_hash` stays NULL. Every later sign-in then
+needs a fresh emailed link. I had to drive the forgot-password flow by hand before a returning admin
+could sign in at all, which is the workaround a real customer would be forced into.
+
+### Smaller, and worth having
+
+- Ground labels are machine-generated and shouty (`NEW COFOUNDER ground`), and that string is the
+  email subject a participant reads: "Sahar Okonkwo invited you to check in on: NEW COFOUNDER ground".
+  The "Ground name (optional)" field did not take on any of five attempts.
+- "Invite a team member" invites a colleague who manages **their own** grounds. There is no add-a-lead
+  screen; leads are added inside ground creation. The admin's model and the product's do not match.
+- The colleague invite email is byte-identical to a self-signup email: "You or someone on your team
+  just signed up", naming neither the inviter nor the org, ending "if you did not request this, you
+  can ignore this email". The check-in invite, by contrast, is well made.
+- Sahar became a full party with her own weekly check-in on a ground she meant to hand to a lead.
+- The second required choice on the picker sits below eighteen cards; the button's own microcopy says
+  "(below the cards)".
+- "Open the ground" is silently gated on a non-empty brief.
+- Wizard steps have no headings in the accessibility tree.
+
+### What is GOOD and should not be lost
+
+- **Nothing is provisioned before email verification.** No user row exists until the link is clicked,
+  and the org takes the name the admin typed rather than the email domain. This reverses the old
+  GW-001 finding; do not carry that one forward.
+- **The free-tier counter is correct**, incrementing 1,2,3,4 and correctly not counting the ground that
+  failed to create. The ground-11 paywall has a sound basis, if Stripe is ever wired.
+- **Returning-admin sign-in is clean** - five sign-ins, no re-onboarding.
+- **The in-app scenario cards are the best copy in the product.** Families plus two or three concrete
+  examples each. The marketing page, which never defines the word "Ground" while putting it in the
+  primary button, should borrow from them.
+
+### Still not tested
+
+Grounds 7 to 18. No check-in sessions have been run on any ground, so there is no report or board
+judged for value yet. Stripe is a placeholder (`sk_test_...`) so the paywall cannot complete a payment;
+`BILLING_ENABLED` was `false` and is now `true` so the gate can at least fire.

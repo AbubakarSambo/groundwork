@@ -44,6 +44,12 @@ export function InvitePage() {
     mutationFn: () => participantsApi.accept(token, { firstName: firstName || undefined, lastName: lastName || undefined }),
     onSuccess: (res) => {
       /**
+       * They have just read it on this page, so the chat must not open with it again.
+       * Same key ChatPage reads; private mode simply shows the explainer once more, which
+       * is the safe direction to fail in.
+       */
+      try { localStorage.setItem('gw_privacy_seen', '1') } catch { /* private mode */ }
+      /**
        * THREE OUTCOMES, NOT ONE.
        *
        * The link used to be destroyed on first use, so this only ever had to
@@ -85,6 +91,11 @@ export function InvitePage() {
           replace: true,
         })
       } else {
+        /**
+         * Only reachable now for somebody whose sessions are all finished - accept() mints a
+         * session 1 for anyone who has none and has never completed one, so a first-time joiner
+         * cannot land here. The ground page is the right destination for a person who is done.
+         */
         navigate(`/grounds/${groundId}/p`, { replace: true })
       }
     },
@@ -212,6 +223,45 @@ export function InvitePage() {
             </div>
           </div>
         </div>
+
+        {/*
+            THE PRIVACY BRIEFING, MOVED HERE RATHER THAN SHOWN AFTER.
+
+            An invited person used to meet FOUR screens between the email and their first
+            answer: this page, then a full-page privacy explainer, then a "Start my check-in"
+            button, then in some cases the ground page and a "Check in for session 1 of 2".
+            Two consecutive full-page explainers, the second one arriving AFTER they had
+            already committed by clicking "Add my version" - which is the wrong order for a
+            disclosure, because the decision it informs has been made by then.
+
+            So the disclosure sits with the decision. It is the same four claims, in the same
+            words, including the one we do not dress up. Accepting from this page now stamps
+            the acknowledgement (see accept.onSuccess), so the chat opens straight onto the
+            first question instead of repeating this back at them.
+        */}
+        <details style={{ marginBottom: 16, border: '1px solid var(--gw-border)', borderRadius: 10, background: 'white', padding: '12px 16px' }}>
+          <summary style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', cursor: 'pointer' }}>
+            What happens to what you write
+          </summary>
+          <div style={{ marginTop: 10, display: 'grid', gap: 10 }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 3 }}>Nobody you work with reads it</div>
+              <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.65, margin: 0 }}>Not your manager, not whoever set this up, not an admin. What they see is the shared report, which is built by comparing everyone's accounts. Your own words about your own work can appear in it. Anything you say about somebody else never does, and it never says who said what about whom.</p>
+            </div>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 3 }}>We cannot show it to ourselves either</div>
+              <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.65, margin: 0 }}>When we look at a ground to help with something, we can see whether people checked in and never what they said. That is enforced in the code and tested, not a policy we are asking you to trust.</p>
+            </div>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 3 }}>Nothing here trains a model</div>
+              <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.65, margin: 0 }}>Your answers are used to build your ground's record and nothing else.</p>
+            </div>
+            <div>
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-sub)', marginBottom: 3 }}>And the part we are not going to dress up</div>
+              <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.65, margin: 0 }}>Your answers are stored on our servers, and they are processed by Google's models to build the record. We are not going to tell you they are unreadable to any human being anywhere, because that would not be true yet.</p>
+            </div>
+          </div>
+        </details>
 
         <form onSubmit={(e) => { e.preventDefault(); if (!accept.isPending) accept.mutate() }}>
           <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginBottom: 8, lineHeight: 1.5 }}>
