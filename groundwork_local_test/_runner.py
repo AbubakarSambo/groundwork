@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 import os
 import time
 import urllib.error
@@ -244,6 +245,33 @@ async def new_page(rec: "Recorder", ctx, persona: str = ""):
 
 # ---- persona provisioning (the real auth path, no DB access) ----------------
 
+
+async def complete_password_step(page, password: str = "PersonaPass123!") -> bool:
+    """Set a password if the app is asking for one, and report whether it did.
+
+    Verification now lands on "One last step" for a brand-new account, because signup promises a
+    password and until recently never asked for one. Every persona journey that arrives by magic
+    link therefore meets this screen, and a harness that does not fill it in is not testing the
+    product a person uses - it stalls on step two of three.
+
+    Deliberately tolerant: returns False when the screen is absent rather than raising, so the same
+    call is safe on paths where the account already has a password (a returning person, or a second
+    magic link for the same account).
+    """
+    try:
+        await page.get_by_text("One last step").wait_for(timeout=6000)
+    except Exception:
+        return False
+    boxes = page.locator('input[type="password"]:visible')
+    n = await boxes.count()
+    for i in range(n):
+        await boxes.nth(i).fill(password)
+    await page.get_by_role("button", name=re.compile("Set password", re.I)).first.click()
+    # The redirect that follows is a real navigation; give it room on a cold dev server.
+    await page.wait_for_timeout(3500)
+    return True
+
+
 async def provision_admin(browser, email: str, viewport=None) -> tuple[object, str, str]:
     """Create an authed admin the way a real person becomes one: entry-save
     with the email, read the magic link from the mailcatcher, open it in a
@@ -263,6 +291,7 @@ async def provision_admin(browser, email: str, viewport=None) -> tuple[object, s
     ctx = await browser.new_context(viewport=viewport or {"width": 1366, "height": 768})
     page = await ctx.new_page()
     await page.goto(link)
+    await complete_password_step(page)
     token = None
     for _ in range(30):
         token = await page.evaluate("() => localStorage.getItem('token')")

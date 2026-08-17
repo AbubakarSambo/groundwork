@@ -37,6 +37,7 @@ from _runner import (
     mail_clear,
     mail_link,
     seed_closed_entry_session,
+    complete_password_step,
 )
 
 rec = Recorder("suite_m")
@@ -71,6 +72,10 @@ async def provision_ground(browser):
     if not link:
         raise RuntimeError("no magic link for suite M initiator")
     await page.goto(link)
+    # A brand-new account is asked to set a password before it reaches the app. The commit runs
+    # first, so the tripwire below still sees the real success-or-failure screen for this arrival -
+    # but the harness has to get past the step the way a person does.
+    await complete_password_step(page)
     # GW-REPORTSUMMARY-DTO-DRIFT tripwire: this initiator's session was closed
     # with a real generated report before saving, so /entry/commit carries a
     # reportSummary payload - the exact shape that 400'd with "property
