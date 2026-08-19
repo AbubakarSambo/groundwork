@@ -1382,3 +1382,77 @@ harnesses' overlap.
 examined with rigour. The single most important thing left undone is tracing the check-in
 conversation end to end, because it is where the product's value and its privacy promise both live.
 
+---
+
+# CORE SYSTEM AUDIT
+
+*A second audit, commissioned because Run 10's completion statement identified the check-in
+conversation engine as the product's core and the least examined area. The ten-run audit above is
+authoritative history and is not modified. Evidence standard for this audit is stricter: a search hit
+is not evidence, and nothing is Confirmed without an execution-path trace read from source.*
+
+**Classification used:** `search hit` · `plausible concern` · `highly likely` · **`CONFIRMED
+execution-path defect`**.
+
+---
+
+## CORE RUN 1 — Check-in conversation engine
+
+### Entry points, enumerated from source
+
+Six public methods on `ConversationService`: `open` (368), `sendMessage` (539), `complete` (1551),
+`decline` (2343), `startClarificationSession` (2383), `startSelfCorrectionSession` (2426). Reached
+from three surfaces: the authenticated SPA via `check-ins` and `grounds` controllers, and the
+WhatsApp inbound webhook.
+
+### Identity resolution — TRACED, and it is sound
+
+Two shapes, both correct:
+
+**checkInId-based** (`open`, `sendMessage`, `complete`, `decline`, and five internal helpers — nine
+call sites) all funnel through `loadOwnedCheckIn` at line 2541. Read in full: it loads the check-in
+with its participant and throws `ForbiddenException` unless
+`checkIn.participant.userId === requestingUserId`. There is no branch, no flag, and no admin bypass
+in that method. **The engine cannot be made to read or write another party's conversation through a
+checkInId.**
+
+**groundId-based** (`startSelfCorrectionSession`, traced in full at 2426; `startClarificationSession`
+same shape) resolves the actor with
+`groundParticipant.findFirst({ where: { groundId, userId: requestingUserId } })` and throws Forbidden
+if absent. **It derives the participant from the authenticated user and never accepts a
+caller-supplied participantId.** Every subsequent query is scoped to that derived `participant.id`.
+
+**Finding: none. The engine's authorization spine is correct, and this is a deliberate negative
+result.** Run 10 listed this area as uncertain; it is now traced. What *would* have been a defect —
+an entry point trusting a participant id from the request — does not exist.
+
+### Conversation isolation and historical context — TRACED
+
+Prior-session context is retrieved with
+`where: { participantId: checkIn.participantId, sessionNumber: { lt: checkIn.sessionNumber }, status: COMPLETED }`
+(conversation.service.ts ~766). Scoped to **the same participant only**, not the ground. A party's
+own earlier sessions are the only history that reaches their prompt. This is the single most
+privacy-critical query in the product and it is correctly scoped.
+
+### CONFIRMED · This audit changes how C-8 should be understood
+
+C-8 is not a flaw in the engine. The engine's gate is sound; **C-8 defeats it by supplying a
+legitimate `requestingUserId`.** `whatsapp.controller.ts` derives `user` from an unverified,
+caller-supplied phone number and then calls `conversation.open(openCheckIn.id, user.id)` /
+`sendMessage(..., user.id, text)`. `loadOwnedCheckIn` then correctly confirms that this check-in
+belongs to that user — and it does. The authorization check passes because the *identity handed to it
+is already forged*.
+
+**This is an execution-path confirmation of the Run 9 blast-radius claim, which was previously
+inference.** It also sharpens the remedy: the fix belongs entirely at the webhook boundary. No change
+to the engine is required or would help, and hardening `loadOwnedCheckIn` would be wasted work.
+
+### Not traced in Core Run 1 — stated so this run is not read as complete
+
+Prompt/instruction construction contents and exactly what text is transmitted to Gemini; tool/function
+execution if any; the extraction step that turns turns into `RecordEntry`; duplicate and replayed
+message handling on `sendMessage`; what happens when context retrieval fails mid-conversation;
+whether conversation state can attach to the wrong ground. **The privacy question "what is sent to
+the external model provider" is therefore still open** and is the most important item remaining in
+this audit.
+
