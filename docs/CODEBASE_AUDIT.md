@@ -804,6 +804,88 @@ Use:
 
 ---
 
+# RUN 9 — CROSS-SYSTEM FINDINGS
+
+*Run 9 adds little new scanning by design. Its value is in what only appears when the runs are read
+together.*
+
+## Resolved: the background processes are real
+
+`ScheduleModule.forRoot()` is registered at `app.module.ts:43` and all five cron-carrying classes
+are provided in their own modules. Run 1's open question — "are the 7 cron carriers actually firing"
+— resolves **positively**. **Consequence: C-7 is confirmed LIVE rather than latent.** The unverified
+sweep runs daily, so the only hard-delete path in the codebase is genuinely executing, and its
+failure to check for billing data is a present risk rather than a theoretical one. This is the one
+place where a cross-system check *raised* confidence in a finding rather than lowering it.
+
+## Failure chain 1 · `BillingEvent` is treated as bookkeeping, not as a record of account
+
+Three findings, arrived at independently in Runs 3, 4 and 6, all land on one table:
+
+| | |
+|---|---|
+| **C-4** | It never records `SUBSCRIPTION_FEE` — the actual revenue model |
+| **C-9** | It can double-count, because `stripeInvoiceId` has no unique constraint |
+| **C-7** | It is cascade-deleted with its organisation by a live daily cron |
+
+Together: **the in-product financial record is incomplete, can be wrong, and can vanish.** No single
+fix addresses that, and fixing any one in isolation produces a table that is still untrustworthy.
+The root cause is not three bugs — it is that this table was built as incidental logging and is now
+being asked to serve as the record you would reconcile against Stripe or show a disputing customer.
+**Sequence these three as one piece of work, not three tickets.**
+
+## Failure chain 2 · C-10 decides whether anything else stays fixed
+
+67 source-assertion guards can be satisfied by a comment. Those guards are the mechanism this
+repository uses to stop known defects returning — including the five fixed earlier today and several
+pinned by this very audit. **So C-10 is not a test-quality item; it is the durability of every other
+remediation in this ledger.** A functional fix protected by a guard that a comment can satisfy is a
+fix with a decay date. In Run 10's ordering, comment-stripping the 67 belongs **above** most
+functional work, despite being the least interesting task in the list.
+
+## Failure chain 3 · C-8's blast radius crosses four modules, not one
+
+The unsigned WhatsApp webhook is not an endpoint problem. Injected text enters
+`conversation.sendMessage` **as the impersonated user**, is persisted as their `RecordEntry`, is fed
+to synthesis, and surfaces in the shared report their manager reads as that person's own account.
+`whatsapp -> conversation -> RecordEntry -> reports`. Any assessment of this that stops at "an
+unauthenticated endpoint" understates it: the product's central privacy promise is broken at the far
+end of the chain, where nobody would think to look.
+
+## The root cause under almost every confirmed finding
+
+**Every confirmed finding in this audit, and every one of the five UI defects fixed earlier the same
+day, is two things that should agree and do not.**
+
+- A label and the value beside it ("Reports ready 0" above a ready report; "Party 2"; "Both" above three cards)
+- A list payload and a detail payload ("No read yet" against "4 agreed, 2 still open")
+- An enum and what is ever emitted (C-4, C-5)
+- A client and the routes that exist (C-1, and my own dead pricing client)
+- A flag and its readers (C-2)
+- A guard's text and the code it claims to pin (C-10)
+- A check and the constraint that should back it (C-9)
+- A deletion predicate and the data it should consider (C-7)
+
+Not one confirmed finding was a broken request, a crash, or a wrong algorithm. **The defect class in
+this codebase is disagreement between two places that each look correct alone.** That has a direct
+implication for remediation: the highest-yield work is *reconciliation checks* — mechanical
+comparisons between two sources that must match, of the kind the pricing cents-to-dollars guard now
+performs — rather than more feature-level testing. Three such checks would have caught six of the
+nine confirmed findings.
+
+## Where earlier runs were wrong
+
+Seven findings were withdrawn, **all of them my own error, none because the code changed.** Four
+came from grep matching a comment; one from scanning enum values for an enum populated by validated
+user input; one from querying the wrong config key shape and reading zero as absence; one from
+grepping `.create` and missing `upsert`. **The methodology, not the codebase, produced most of this
+audit's noise.** Any future run here should strip comments first, check both the
+value-name and the field-name form of an enum, and confirm a negative result with a second query
+shape before recording it.
+
+
+---
+
 # RUN 1 — ARCHITECTURE RECONNAISSANCE
 
 Map the system before judging it.
