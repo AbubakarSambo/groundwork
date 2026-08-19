@@ -1784,3 +1784,49 @@ DST-agnostic and was **not** treated as suspect — but I did not verify every d
 users, reminder scheduling relative to `availableFrom`, billing period boundaries, or the sweep's
 `cutoff` computation. No delayed-job or clock-skew scenario was tested.
 
+---
+
+## CORE RUN 7 — Data integrity and migration drift
+
+### Migration state — asked the database, not the schema
+
+`npx prisma migrate status` against the live dev database: **69 migrations found, "Database schema is
+up to date"** — no drift, no failed or pending migration. **Bounded honestly: that is ONE database, a
+recently-migrated development one.** It is evidence about this machine and says nothing about staging
+or production, which is where drift actually accumulates and which I cannot reach from here. The
+outstanding `pricing_plans` deploy step recorded earlier is precisely such a case: the code and the
+schema agree, and a *deployed* database that has not run `migrate deploy` disagrees with both.
+
+### HIGHLY LIKELY (not Confirmed) · Soft deletion is live, and most reads do not filter it
+
+**Deliberately not promoted.** The evidence standard for this audit requires an execution-path
+demonstration, and I do not have one.
+
+**What is established.** `deletedAt` exists on exactly one model — `User` (`schema.prisma:279`). Soft
+deletion **is live**: `users.service.ts:164` and `:257` both write `deletedAt: new Date()`. Of **60**
+`prisma.user.find*` call sites, only **11** mention `deletedAt` within three lines.
+
+**What is already protected, verified by reading:** authentication checks it in three places
+(`auth.service.ts:160`, `:524`, `jwt.strategy.ts:33`), so a soft-deleted user cannot sign in; and
+`users.service.ts` filters `deletedAt: null` on the org roster, the member count, per-user lookups and
+the last-admin guard.
+
+**What is not established.** I have not traced a specific user-visible surface that displays a
+soft-deleted person. The ~49 unfiltered reads may all be lookups where deletion is irrelevant (sending
+mail to a known id, counting for billing) or may include a participant roster. **Classification:
+`highly likely issue`.** Promoting it on the 60-vs-11 ratio alone would repeat exactly the mistake
+that produced eight withdrawals in the earlier audit.
+
+**To confirm or dismiss:** enumerate the reads that feed a rendered list of people — ground
+participants, board contributors, report parties — and check each. That is a bounded piece of work and
+it is the correct next step, not a guess.
+
+### Observations
+
+`deletedAt` on a single model means **soft deletion is not a platform pattern but a User-only
+feature.** Grounds, participants and reports have no soft-delete column, so "archived" does not exist
+for them — consistent with the finding that only one hard-delete path exists at all (C-7). Nullable
+assumptions, historical records created under earlier schemas, orphan-record counts and derived-state
+staleness were **not** examined; the 69 migrations were not read individually, so a destructive or
+data-losing migration in that history would not have been seen by this run.
+
