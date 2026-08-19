@@ -1578,3 +1578,61 @@ were mapped only where earlier runs had already touched them. Stuck-state analys
 `AWAITING_LEAD` in particular is a plausible stuck state if a lead never confirms, and nothing in this
 run checked whether anything rescues it. `plausible concern`, not promoted.
 
+---
+
+## CORE RUN 4 — Permissions matrix
+
+### Enforcement across all 179 routes
+
+| Enforcement | Routes | Notes |
+|---|---|---|
+| `jwt-only` (authenticated, no role check) | **122** | ownership enforced *inside* the service, not by decorator |
+| `PUBLIC` | **29 (a floor — see limitation)** | |
+| `platform-admin` | **28** | class-level on `admin`/`prompts`, per-method on `feedback` |
+
+### Same resource, different enforcement — ONE candidate, and it is correct
+
+`/feedback`: `POST` is `PUBLIC`, `GET` is `platform-admin`. Anyone may submit feedback; only a
+platform admin may read it. **Correct by design, not a finding.** No other path in 179 routes carries
+inconsistent enforcement between its verbs.
+
+### The 29 public routes, categorised
+
+- **13 `/auth/*`** — login, register, verify-email, forgot/reset/set-password, the Google flow,
+  `methods`, `validate-token`, `entry-save`. All pre-authentication by necessity.
+- **10 `/entry/*`** — the anonymous pre-account chat: `chat`, `opener`, `faq`, `classify-intent`,
+  `report`, `onboard`, `draft`, `join-preview`, `join-accept`, `join-commit`.
+- **2 `/participants/*`** — `invite` and `accept`, both token-bearing invite links.
+- **2 webhooks** — `/billing/webhook` and `/webhooks/resend`, both signature-verified.
+- **`/billing/pricing`** — deliberately public so the pricing page renders pre-account.
+- **`POST /feedback`**.
+
+Nothing in that list is public that should not be. **The absence of a finding here is the result.**
+
+### LIMITATION IN MY OWN SCAN — stated because it changes the number
+
+**The 29 is a floor, not a total.** My scan detected `@Public()` only in a method's decorator block.
+`WhatsAppController` carries `@Public()` at **class level** (`whatsapp.controller.ts:16`, immediately
+above `@Controller('webhooks/whatsapp')`), so **its two routes were not counted.** True public count
+is at least 31. Any future permissions sweep here must check class-level decorators for `Public` as
+well as for guards — my script checked class level for `PlatformAdminGuard` and `@Roles` but not for
+`@Public`, which is precisely the asymmetry that hides an exposed route.
+
+### C-8, reinforced by its own source comment
+
+The comment directly above that class-level `@Public()` reads: *"Signature-256 verification before
+going live with real traffic."* **The missing verification is a known, recorded pre-launch task, not
+an oversight.** That raises rather than lowers confidence in C-8 — someone identified it — and it means
+the remediation has a documented author-intent to point at.
+
+### Not done in Core Run 4 — the deeper half
+
+122 routes are `jwt-only`, meaning **ownership is enforced inside the service rather than by any
+decorator.** This run verified that id-taking handlers *pass* an ownership key (Run 5 of the original
+audit) and that the engine's own gate is sound (Core Run 1). It did **not** verify, for those 122,
+that each service *uses* the key in its query. That is the single largest unverified surface in either
+audit: `plausible concern` across 122 routes, with two Confirmed precedents for the gap being real
+(C-7, where a predicate ignores data it holds; and C-8, where a correct gate is defeated by a forged
+input). Also not done: whether `@Roles` is *needed* on any of the 122 (a member reaching an
+admin-only action), and mutation-vs-read asymmetry within a single service.
+
