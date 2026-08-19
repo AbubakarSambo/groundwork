@@ -287,6 +287,12 @@ investigated past the point of mapping it — per the protocol's "do not fix dur
 
 ## Areas audited
 
+**Run 3 (logical consistency):** every value of all 24 enums scanned for write sites across both
+codebases; billing-event and usage-event emission traced to source lines; the admin funnel's data
+source verified rather than assumed. **Not** covered this run: date/timezone handling, permission
+consistency, and the ground state machine's allowed transitions — all deferred, and they are the
+parts of Run 3 most likely to hold something.
+
 **Run 2 (feature wiring):** mechanical reconciliation of all 139 client API calls against all 179
 declared API routes; resolution of Run 1's four suspects; controller-class and route-collision
 check; feature-flag read-site tracing. **Not** traced this run: the check-in conversation engine
@@ -398,6 +404,38 @@ pricing implementation was taken wholesale during the merge of 2026-08-17. **No 
 `pricingAdminApi`** — the admin screen uses his `adminApi.getPricing`. So it is dead rather than
 broken, but it is a loaded trap: wiring any UI to it yields 404s on a money surface.
 **Recommended action:** delete `pricingAdminApi` and its `PricingSnapshot` type.
+
+**Run 3 · C-4 · The billing ledger records the product that was withdrawn and not the one being sold.**
+*Severity Medium (financial records). Confidence Confirmed.*
+`BillingEventType` declares CARE_FEE, PARTICIPANT_FEE, SUBSCRIPTION_FEE, FREE_EXTENSION,
+SESSION_FEE. Only two are ever written: `FREE_EXTENSION` (`billing.service.ts:327`) and
+`SESSION_FEE` (`:782`). **SUBSCRIPTION_FEE is never written**, and per-session selling was
+deliberately removed from every UI surface earlier today — so the `BillingEvent` ledger writes a
+row type for a product no longer sold and no row at all for subscriptions, which is the entire
+revenue model. **Why it matters:** `BillingEvent` is the in-product record of what an organisation
+was charged. Reconciling revenue against Stripe from this table is not possible.
+**Failure scenario:** an org disputes a charge; the ledger has no row for their subscription.
+**Recommended action:** write SUBSCRIPTION_FEE on subscription invoice events in the Stripe webhook
+handler; decide whether SESSION_FEE and the two never-written fee types should be removed.
+**Affected areas:** Stripe webhook, `/billing/admin/stats`, any future revenue reporting.
+
+**Run 3 · C-5 · Six of eleven usage event types are declared and never emitted.**
+*Severity Medium. Confidence Confirmed.*
+Emitted: GROUND_CREATED, PARTICIPANT_INVITED, BILLING_ACTIVATED, REPORT_RELEASED,
+CHECK_IN_COMPLETED. **Never emitted:** CHECK_IN_STARTED, REPORT_REQUESTED, PARTICIPANT_ACCEPTED,
+ORG_CREATED, SUBSCRIPTION_STARTED, SUBSCRIPTION_CANCELLED. Note especially that
+`CHECK_IN_COMPLETED` is emitted while `CHECK_IN_STARTED` is not, so `usage_events` can never
+express a start-to-completion rate. **Corrected mid-run:** I expected the admin Drop-offs tab to
+divide by the missing event and it does not — `prompts.service.ts:101-212` computes the funnel from
+CheckIn ROWS, not usage events. So this is an incomplete telemetry record rather than a broken
+screen, and is Medium not High. **Recommended action:** emit the six, or delete them from the enum;
+an enum value that cannot occur is a false promise to whoever writes the next query.
+
+**Run 3 · C-6 · An entire enum, `CompanyStage`, is unreferenced in all non-spec source.**
+*Severity Low. Confidence Confirmed.* IDEA, PRE_REVENUE, EARLY_REVENUE, SCALING — none appears
+anywhere outside the schema. Also unreferenced: `EvidenceType.UNANCHORED_RECALL`, while
+`ANCHORED_RECALL` and `CHECK_IN` are each written exactly once. **Recommended action:** Run 4 owns
+whether the backing columns are read; do not delete before that.
 
 Five further confirmed defects predate this document and were fixed on 2026-08-17.
 
