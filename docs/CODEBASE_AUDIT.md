@@ -1236,3 +1236,149 @@ The purpose of this process is not to produce a reassuring report.
 The purpose is to establish as accurately as possible:
 
 **what actually works, what only appears to work, what is disconnected, what is dangerous, and what will eventually break.**
+
+---
+
+# RUN 10 — FINAL SYNTHESIS & REPAIR PLAN
+
+*No code was modified in any of the ten runs. Nine confirmed findings, seven withdrawn (all
+methodology errors of mine, none because the code changed).*
+
+## Critical failures
+
+**C-8 · The WhatsApp webhook accepts unsigned requests and treats a caller-supplied phone number as
+proof of identity, then writes into that person's private check-in as them.** Live in every
+deployment; the admin toggle does not gate it; no `X-Hub-Signature-256` check exists anywhere in the
+repo. Blast radius reaches the manager's report.
+
+## High-risk bugs
+
+**C-9 · Stripe credit path is a check-then-act race with no unique constraint behind it.** Double
+credit and duplicate ledger rows on concurrent redelivery. Fails in both directions — gives sessions
+away and misreports revenue.
+
+**C-10 · 67 source-assertion guards can be satisfied by a comment.** Determines whether every other
+fix in this ledger survives.
+
+**C-1 · Prompt drafts: a live admin screen calls three routes that do not exist.** Silent 404,
+`retry: false`, always-empty draft. The screen that changes the conversation engine's behaviour
+cannot save a draft.
+
+## Broken / unwired functionality
+
+- **C-1** (above) — the only 👻 in the matrix.
+- **C-3** — `pricingAdminApi`, a dead client of mine calling routes deleted in today's merge. 🗑
+
+## Security findings
+
+- **C-8** (Critical, above).
+- **No IDOR found** in the handler-scoping scan; six unscoped handlers all correctly platform-admin
+  guarded, verified individually. **This does not establish that services honour the ownership key
+  they receive** — and C-7 is precedent for that exact gap.
+- Resend webhook verifies and fails closed. Stripe's is annotated as verified, **not independently
+  re-verified.**
+
+## Data integrity findings
+
+- **C-7 · The one hard-delete path in the codebase never looks at money.** Confirmed live in Run 9.
+- Schema posture is destructive by default: 40 cascades to 10 non-cascade rules.
+- Constraint counts look healthy (32/11/34) but **not one was traced against a dependent query.**
+
+## Reliability / concurrency findings
+
+- **C-9** (above). Telemetry failures silent by design at six `.catch(() => undefined)` sites.
+- **Unassessed:** simultaneous check-in completion (which drives report release), cron overlap,
+  Gemini timeouts, retry limits, dead-letter handling, restart mid-synthesis, reconciliation.
+
+## Architectural problems
+
+- **`BillingEvent` is built as logging and used as a record of account** — the root cause beneath
+  C-4, C-7 and C-9.
+- **`grounds.service.ts` exceeds 2200 lines** — god-module risk, unexamined.
+- No competing implementations found. Both suspected ones dissolved on inspection.
+
+## Dead / duplicate systems
+
+- **C-2** · `objectivesEnabled`, the only one of five flags not following the codebase's own
+  convention. **C-3** · the dead pricing client. **C-5** · six never-emitted usage events — *evidence
+  requires re-checking per Run 7's blind spot before action.* Nothing else should be deleted on this
+  audit's word: the `CompanyStage` "dead enum" was withdrawn precisely because deletion looked safe
+  and was not.
+
+## Test gaps
+
+- **C-10** (above). No authorization or tenant-isolation test was looked for. The persona harness
+  caught two regressions tonight that all 2,473 unit assertions missed.
+
+## Simplification opportunities
+
+Deliberately none proposed. Every simplification candidate this audit surfaced turned out to be live
+on inspection, and the protocol's rule about not deleting before tracing earned its place four times.
+
+---
+
+## Dependency & Failure Map
+
+| Component | Depends on | Failure effect | Recovery | Blast radius |
+|---|---|---|---|---|
+| Check-in conversation | Gemini/Vertex | Core product stops | none automatic | every active ground |
+| **All authentication** | Resend | **Nobody can sign in or be invited** | none — magic links *are* the auth | whole platform |
+| Checkout + pricing | Stripe + `pricing_plans` row | 500 on `/billing/pricing`; cannot price a plan | migration | all new revenue |
+| Report release | `CHECK_IN_COMPLETED` event → `reports.listener` | reports never release | none | affected grounds |
+| Daily sweep | `ScheduleModule` (confirmed registered) | orgs hard-deleted without billing check | **irreversible** | one org per occurrence |
+| Everything | PostgreSQL | total | — | total |
+
+## Root Cause Map
+
+**One cause underlies nine of nine confirmed findings:** two places that must agree, each correct
+alone, with nothing reconciling them. Label vs value; list payload vs detail payload; enum vs
+emission; client vs route; flag vs reader; guard text vs guarded code; check vs constraint; delete
+predicate vs data.
+
+**Therefore the highest-yield remedy is not feature testing — it is reconciliation checks.** Three
+would have caught six of the nine: (a) client API calls vs declared routes, (b) enum values vs
+emission sites, (c) source-assertion guards vs comment-stripped source.
+
+## Ordered remediation plan
+
+| # | Work | Why here | Retest |
+|---|---|---|---|
+| 1 | **C-8** verify `X-Hub-Signature-256` over the raw body, fail closed; gate `receive()` on `isEnabled` | Security, live, privacy promise | persona suite; forge a POST and confirm rejection |
+| 2 | **C-7** add `billingEvents`/`stripeCustomerId`/`subscriptionStatus` to the sweep predicate | Irreversible data loss, live daily | sweep spec + a seeded org with billing |
+| 3 | **C-10** comment-strip the 67 guards, copying the 43 correct ones | Nothing below stays fixed without it | bite-check each: break, confirm red |
+| 4 | **C-9** `@unique` on `stripeInvoiceId` + treat violation as idempotency signal | Money correctness; needs migration | concurrent duplicate-delivery test |
+| 5 | **C-1** implement the three draft routes or remove the affordance | Broken core admin function | drive the prompts screen |
+| 6 | **C-4** write `SUBSCRIPTION_FEE`; decide on the two never-written fee types | Financial record — do with #2 and #4 as one `BillingEvent` piece | webhook + ledger read |
+| 7 | **C-2** consult `objectivesEnabled` or delete it; **C-3** delete the dead client | Cheap, removes traps | typecheck + suite |
+| 8 | **C-5** re-check per Run 7's blind spot, then emit or delete | Evidence not yet sound enough to act | — |
+| 9 | Reconciliation checks (a), (b), (c) from the root-cause map | Prevents the whole defect class | bite-check each |
+| 10 | Unaudited areas below, before any further feature work | | |
+
+---
+
+# COMPLETION STATEMENT
+
+**Thoroughly audited:** repository architecture; client↔API wiring (mechanical, 179 routes vs 139
+calls); enum declaration-vs-use across all 24 enums *(with the Run 7 blind spot noted)*; cascade
+topology and every hard-delete call site; the unverified sweep line by line; external entry points;
+handler-level ownership scoping; scheduler registration; test-suite composition.
+
+**Partially audited:** security — entry points and handler scoping done, query-level enforcement and
+`@Roles` consistency not; reliability — the money path only; data integrity — constraints counted,
+never traced.
+
+**Could not be verified without runtime or production access:** whether Stripe's signature check
+holds in production; real concurrency behaviour; whether crons overlap under load; Gemini timeout
+handling.
+
+**Remains uncertain:** the check-in conversation engine internals — **the product's core and the
+least examined thing in this ledger**; the board; `/grounds/:id/p`; `/org/members`; `/settings`;
+dates and timezones; permission consistency across 179 routes; the ground state machine's allowed
+transitions; orphan records; migration-vs-application drift; the
+`RecordEntry`/`ConversationTurn` lifecycle; god-module risk in `grounds.service.ts`; the two test
+harnesses' overlap.
+
+**This codebase has NOT been fully audited.** Ten runs were attempted; roughly half the system was
+examined with rigour. The single most important thing left undone is tracing the check-in
+conversation end to end, because it is where the product's value and its privacy promise both live.
+
