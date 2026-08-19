@@ -1,0 +1,788 @@
+# CODEBASE FORENSIC AUDIT
+
+## Purpose
+
+This document is the persistent reference and working ledger for a forensic audit of this codebase.
+
+The goal is to determine:
+
+- what actually works
+- what only appears to work
+- what is partially wired
+- what is completely disconnected
+- what is duplicated or obsolete
+- what contains logical inconsistencies
+- what creates security risk
+- what can corrupt or lose data
+- what will fail under real-world conditions
+- what is unnecessarily difficult to understand or maintain
+- what represents a single point of failure
+- what should be fixed, consolidated, connected, or removed
+
+This is not a normal code review.
+
+Assume this application has been built incrementally and may contain old and new implementations, incomplete integrations, duplicated logic, abandoned architecture and functionality that looks complete from one layer but is not connected end-to-end.
+
+---
+
+# GLOBAL AUDIT RULES
+
+## 1. Trace, do not assume
+
+Do not assume functionality works because the relevant files exist.
+
+For important features trace the actual path:
+
+**UI → handler/state → API → route/controller → service/business logic → database → events/jobs/webhooks/integrations → response → resulting state/UI**
+
+Verify connections through actual imports, calls, routes, queries, registrations, listeners and execution paths.
+
+---
+
+## 2. Look across the repository
+
+Do not review important files in isolation.
+
+For important:
+
+- functions
+- classes
+- routes
+- services
+- database tables
+- models
+- events
+- jobs
+- workers
+- webhooks
+- integrations
+- state
+- permissions
+
+Search for:
+
+- definition
+- callers
+- consumers
+- alternate implementations
+- old implementations
+- tests
+- schema references
+- frontend references
+- backend references
+
+---
+
+## 3. Do not fix during discovery
+
+Unless specifically instructed, audit first.
+
+Do not:
+
+- rewrite large modules
+- remove apparently unused code before tracing it
+- choose between duplicate implementations without establishing which is authoritative
+- weaken tests to make them pass
+- hide errors with broad try/catch or fallback values
+- introduce unnecessary abstractions
+- perform a major rewrite simply because the code is messy
+
+---
+
+# WHAT TO LOOK FOR
+
+Throughout every run, actively look for:
+
+### Wiring failures
+
+- UI with no backend
+- backend with no reachable UI/API
+- wrong endpoint
+- wrong handler
+- incorrect response shape
+- events emitted with no listener
+- listeners waiting for events never emitted
+- jobs queued but never consumed
+- workers that exist but are not registered
+- cron jobs that do not actually run
+- webhook handlers disconnected from downstream logic
+- integrations configured but unused
+- redirects/callbacks pointing at obsolete routes
+- partially implemented feature flags
+
+### Logical inconsistencies
+
+- different definitions of the same concept
+- conflicting status enums
+- impossible state transitions
+- inconsistent calculations
+- inconsistent permissions
+- inconsistent date/timezone handling
+- inconsistent money handling
+- duplicate sources of truth
+- fields written differently from how they are read
+- assumptions not enforced by the database
+- stale data treated as authoritative
+
+### Architecture
+
+- duplicate systems
+- abandoned implementations
+- circular dependencies
+- god modules/services
+- hidden dependencies
+- excessive global state
+- business logic in UI
+- business logic duplicated across controllers/services
+- direct DB access scattered throughout the application
+- unnecessary abstraction
+- excessive indirection
+- critical external synchronous dependencies
+- single points of failure
+
+### Security
+
+- authentication weaknesses
+- authorization gaps
+- frontend-only permissions
+- IDOR
+- cross-user data access
+- cross-tenant/org access
+- privilege escalation
+- insecure defaults
+- token/session leakage
+- insecure account recovery
+- unsafe OAuth flows
+- SQL/NoSQL injection
+- XSS
+- CSRF
+- SSRF
+- unsafe redirects
+- path traversal
+- unsafe uploads
+- insecure deserialization
+- command injection
+- mass assignment
+- unvalidated webhooks
+- missing webhook signatures
+- secrets exposed to frontend
+- credentials committed to repository
+- sensitive data in logs
+- PII exposed through APIs or analytics
+
+### Reliability
+
+Test important architecture mentally against:
+
+- duplicate requests
+- double-clicks
+- concurrent writes
+- webhook redelivery
+- out-of-order webhooks
+- job running twice
+- job crashing halfway
+- service restarting halfway
+- API timeout
+- database timeout
+- integration failure
+- queue redelivery
+- stale state
+- missing configuration
+- malformed data
+- partial success
+- network disconnect after server commit
+
+Look for missing:
+
+- transactions
+- idempotency
+- retries
+- retry limits
+- reconciliation
+- rollback
+- locking
+- uniqueness constraints
+- dead-letter handling
+- observability
+- meaningful error handling
+
+### Data integrity
+
+Look for:
+
+- unused fields
+- fields written but never read
+- fields read but never reliably written
+- duplicated data representations
+- missing indexes
+- missing foreign keys
+- missing uniqueness constraints
+- dangerous cascading deletes
+- orphan records
+- inconsistent soft deletion
+- migration/application disagreement
+- enum drift
+- dangerous defaults
+- derived data stored inconsistently
+
+### Ghost functionality
+
+Look for:
+
+- incomplete navigation items
+- forms that do not persist
+- placeholder data presented as real
+- mocks accidentally used in production
+- TODO APIs
+- abandoned database tables
+- unused integration code
+- dead feature flags
+- obsolete pages still reachable
+- duplicate services
+- temporary code that became permanent
+
+---
+
+# FINDING FORMAT
+
+Every substantive finding must contain:
+
+### Finding
+Exactly what is wrong.
+
+### Evidence
+Files, functions, routes, components, tables or execution paths demonstrating the issue.
+
+### Why it matters
+User, security, operational, financial, data or maintenance impact.
+
+### Failure scenario
+A concrete example of how it can fail.
+
+### Severity
+- Critical
+- High
+- Medium
+- Low
+
+### Confidence
+- Confirmed
+- Highly likely
+- Suspected
+
+### Recommended action
+Specific remediation.
+
+### Affected areas
+Other components that need checking when this is changed.
+
+---
+
+# PERSISTENT AUDIT LEDGER
+
+Claude must update this section after every run.
+
+**Run 1 completed 2026-08-17.** Recon only. Nothing below was fixed, and nothing was
+investigated past the point of mapping it — per the protocol's "do not fix during discovery".
+
+## Areas audited
+
+**Run 1 (recon, breadth not depth):** repository layout, applications, Prisma schema surface,
+API module list, controller mounts, guards, event bus, scheduled jobs, external integration
+config, feature-flag declarations.
+
+Also carried in from a page-by-page UI audit run immediately before this document existed, and
+worth treating as prior evidence rather than repeating: the client route graph (31 routes,
+30 reachable from inside the app), and five fixed defects on `/grounds`, `/grounds/:id` and the
+report tab. Every one was a label or counter disagreeing with the thing beside it; none was a
+broken request. That is a signal about the class of defect this codebase produces.
+
+## Areas not yet audited
+
+- Every Run 2-10 concern (wiring traces, logic, data integrity, security, reliability, drift,
+  tests, cross-system).
+- `/checkin/:id` — the check-in conversation, the product's core. Least examined surface.
+- The board, `/grounds/:id/p`, `/org/members`, `/settings`, `/prompts`.
+- `groundwork_local_test` (461 files) and `e2e` as systems in their own right.
+- The marketing Astro build.
+
+## Architecture discovered
+
+| Application | Shape | Source files |
+|---|---|---|
+| `api` | NestJS, 23 modules, 19 controllers | 748 |
+| `client` | React + Vite SPA, 31 routes | 204 |
+| `marketing` | Astro static site, separate build | 10 |
+| `groundwork_local_test` | Python persona/agent harness, drives the real app via Playwright | 461 |
+| `e2e` | Playwright specs | 22 |
+
+**Database:** PostgreSQL via Prisma. **44 models, 24 enums, 69 migrations**, latest
+`20260817120000_pricing_plans`.
+
+**API modules:** admin, auth, billing, board, coaching, conversation, documents, email, entry,
+feedback, grounds, intelligence, participants, patterns, prisma, prompts, reports, resolution,
+usage, users, whatsapp.
+
+**Auth:** JWT (`jwt-auth.guard`), plus magic-link email tokens, plus Google OAuth. Authorization
+via `roles.guard` and `platform-admin.guard`. Org/tenant scoping appears to be carried as
+`organizationId` on the JWT and applied per query — **unverified, Run 5 owns this.**
+
+**Event bus:** exactly two events, `CHECK_IN_COMPLETED` and `GROUND_ACTIVATED`. Both have
+listeners (`reports.listener`, `patterns.listener`). No orphan events and no listener waiting on
+an unemitted event, at this level of inspection.
+
+**Scheduled work:** 7 non-spec files carry `@Cron` — grounds.cron, patterns.cron, entry.cron,
+code-expiry.scheduler, and cron methods living inside intelligence.service, reports.service and
+remind.service. **Whether the scheduler module is registered and these actually fire is not
+verified.** Run 2/6.
+
+**Webhooks:** Stripe (`billing.controller`, signature-verified per its own annotation), Resend
+delivery events (`email/resend-webhook.controller`), WhatsApp (`webhooks/whatsapp`).
+
+**Integrations declared in config:** database, jwt, resend, google, gemini, whatsapp, stripe.
+
+## Major product flows
+
+1. **Anonymous entry → account → ground.** `/start` chat → `entry-save` → emailed magic link →
+   `/verify-email` → commit creates the ground → password step → ground page.
+2. **Invite → participant check-in.** Invite email → `/invite` → accept → `/checkin/:id`.
+3. **Check-in conversation → record → report.** Engine turns → `RecordEntry` → synthesis →
+   release → per-party activation/reveal.
+4. **Resolution / closing.** End states, confirmations.
+5. **Billing.** Free-ground limit → subscription checkout → Stripe Price objects → webhook.
+6. **Platform admin.** Prompts, pricing, WhatsApp toggle, usage, feedback.
+
+## Critical dependencies
+
+| Component | Depends on | If it fails |
+|---|---|---|
+| Check-in conversation | Gemini/Vertex | The core product cannot run |
+| All email (invites, magic links) | Resend | Nobody can sign in or be invited — magic links ARE the auth |
+| Checkout + pricing | Stripe | Cannot take money; `/billing/pricing` depends on a DB table |
+| Everything | PostgreSQL | Total |
+
+## Confirmed findings
+
+None from Run 1 — recon does not confirm. Five confirmed and fixed defects predate this document
+and are recorded in the commits of 2026-08-17.
+
+## Suspected findings requiring further tracing
+
+1. **`OBJECTIVES_ENABLED` is declared and read nowhere.** It appears in
+   `api/src/config/configuration.ts` and in **no other non-spec file**; `objectives.enabled` is
+   read 0 times. Either objectives are permanently on, permanently off, or gated by a flag nobody
+   consults. There are `GroundObjective` and `PersonObjective` tables, so something exists to
+   gate. **Severity unknown until Run 2 traces it. Suspected.**
+2. **Three of five feature flags are declared but their config key is never read.**
+   `coaching.enabled`, `confidence.enabled`, `context.enabled` all resolve to 0 read sites, while
+   the raw env names appear in service files. Suggests two flag-reading conventions coexisting.
+   **Suspected — Run 2.**
+3. **Two controllers mount on `'grounds'`** — `grounds.controller.ts` and
+   `conversation.controller.ts`. The repo already contains `a-route-cannot-be-shadowed.spec.ts`
+   and `a-check-that-can-never-be-true.spec.ts` at module root, which says route shadowing has
+   bitten here before. **Suspected — Run 2/7.**
+4. **`intelligence.controller.ts` uses a pathless `@Controller()`**, mounting at the API root
+   rather than under a namespace. **Suspected — Run 2.**
+
+## Unresolved questions
+
+- Are the 7 cron carriers actually registered and firing?
+- Is org scoping enforced in queries, or only in the guard? (Run 5.)
+- Do the 44 models all have live readers and writers? The count is high relative to 23 modules.
+- Which of `groundwork_local_test` and `e2e` is the authoritative harness?
+
+## Duplicate/competing implementations discovered
+
+- Two controllers on the `'grounds'` mount (above).
+- Two flag-reading conventions (above).
+- Historically: two pricing services built the same day, resolved on 2026-08-17 by keeping the
+  Stripe-Price-object implementation and deleting the other. Recorded because it demonstrates the
+  drift Run 7 is looking for is real and recent.
+
+## Security concerns
+
+Nothing assessed. Run 5 owns this. Recon notes only: 3 guards exist; `PLATFORM_ADMIN_BOOTSTRAP_EMAIL`
+grants platform admin from an env var; three webhook entry points exist and only Stripe's is
+annotated as signature-verified — **the Resend and WhatsApp handlers' verification is unchecked.**
+
+## Data integrity concerns
+
+Nothing assessed. Run 4 owns this. Recon note: 44 models / 69 migrations is a large surface for a
+product with one primary flow, which is where abandoned tables tend to hide.
+
+## Reliability concerns
+
+Nothing assessed. Run 6 owns this. Recon note: magic-link email is a single point of failure for
+authentication itself — there is no password-only path for an account that never set one, which
+is the fault that a previous simulation showed stops grounds reaching a report.
+
+---
+
+# FEATURE WIRING MATRIX
+
+Maintain this throughout the audit.
+
+| Feature | UI | API | Logic | DB | Async/Integration | Auth | Tests | Overall |
+|---|---|---|---|---|---|---|---|---|
+
+Use:
+
+- ✅ Connected
+- ⚠️ Partial
+- ❌ Broken
+- 👻 Appears implemented but unreachable
+- 🗑 Obsolete/duplicate
+- ❓ Requires further tracing
+
+---
+
+# RUN 1 — ARCHITECTURE RECONNAISSANCE
+
+Map the system before judging it.
+
+Identify:
+
+- applications
+- services
+- frontend(s)
+- backend(s)
+- databases
+- schemas/models
+- major modules
+- authentication
+- authorization
+- users
+- organisations/tenants
+- APIs
+- integrations
+- queues
+- workers
+- cron/scheduled jobs
+- webhooks
+- notifications
+- caches
+- file storage
+- payment systems
+- analytics
+- feature flags
+- environment/configuration
+- deployment assumptions
+
+Identify the major product flows the code appears intended to support.
+
+Flag confusing or apparently competing architecture, but do not deeply investigate it yet.
+
+Update the Audit Ledger.
+
+STOP.
+
+---
+
+# RUN 2 — FEATURE WIRING
+
+Use Run 1's architecture map.
+
+Trace every major product feature end-to-end.
+
+Verify:
+
+**UI → state → API → backend → business logic → DB → async/integrations → response**
+
+Do not infer connections.
+
+Find functionality that is:
+
+- fully wired
+- partially wired
+- broken
+- unreachable
+- UI-only
+- backend-only
+- duplicated
+- obsolete
+
+Update the Feature Wiring Matrix and Audit Ledger.
+
+STOP.
+
+---
+
+# RUN 3 — LOGICAL CONSISTENCY
+
+Using the flows already discovered, investigate:
+
+- business rules
+- status definitions
+- state transitions
+- calculations
+- permissions
+- dates/timezones
+- money
+- ownership
+- sources of truth
+- frontend/backend assumptions
+
+For stateful workflows map:
+
+**states → allowed transitions → triggers → persistence → side effects → recovery**
+
+Find contradictions and impossible states.
+
+Update the Audit Ledger.
+
+STOP.
+
+---
+
+# RUN 4 — DATA INTEGRITY
+
+Audit schemas, migrations, models and actual usage together.
+
+Trace critical entities:
+
+**create → read → update → transitions → archive/delete → side effects**
+
+Find:
+
+- schema drift
+- orphan data
+- missing constraints
+- conflicting fields
+- unreliable fields
+- duplicate representations
+- dangerous deletes
+- migration incompatibilities
+- incorrect defaults
+
+Update the Audit Ledger.
+
+STOP.
+
+---
+
+# RUN 5 — SECURITY
+
+Now perform the security audit with knowledge of the real architecture.
+
+For every sensitive action answer:
+
+**Who can perform this?**
+
+**Where is permission enforced?**
+
+**Can that enforcement be bypassed?**
+
+Explicitly trace tenant/org ownership:
+
+**request → auth → authorization → query → mutation → response**
+
+Audit external entry points including:
+
+- APIs
+- webhooks
+- uploads
+- integrations
+- callbacks
+- authentication flows
+
+Update the Audit Ledger.
+
+STOP.
+
+---
+
+# RUN 6 — RELIABILITY & FAILURE MODES
+
+Take important flows and simulate:
+
+- duplicates
+- retries
+- concurrency
+- partial failures
+- timeouts
+- integration failures
+- DB failures
+- service restart
+- worker crash
+- queue redelivery
+- webhook redelivery
+- stale state
+
+Identify:
+
+- race conditions
+- missing idempotency
+- incorrect transactions
+- silent failures
+- missing reconciliation
+- dangerous retry behaviour
+- single points of failure
+
+For critical dependencies record:
+
+**Component → dependency → failure effect → recovery → blast radius**
+
+Update the Audit Ledger.
+
+STOP.
+
+---
+
+# RUN 7 — ARCHITECTURAL DRIFT & DEAD SYSTEMS
+
+Now specifically investigate whether incremental development created:
+
+- old/new implementations
+- competing services
+- duplicate business logic
+- dead code
+- dead routes
+- abandoned database structures
+- unused integrations
+- unnecessary abstractions
+- god modules
+- hidden dependencies
+- circular dependencies
+- inconsistent architecture patterns
+
+Do not recommend deleting something until its references and possible runtime registration have been checked.
+
+Determine which implementations are authoritative.
+
+Update the Audit Ledger.
+
+STOP.
+
+---
+
+# RUN 8 — TEST REALITY CHECK
+
+Audit whether tests actually prove the system works.
+
+Look for:
+
+- major flows without tests
+- tests of obsolete implementations
+- excessive mocking
+- missing integration tests
+- missing authorization tests
+- missing tenant isolation tests
+- missing failure-mode tests
+- missing retry/idempotency tests
+- unit tests passing around disconnected architecture
+
+Identify where tests create false confidence.
+
+Update the Audit Ledger.
+
+STOP.
+
+---
+
+# RUN 9 — FINAL CROSS-SYSTEM AUDIT
+
+Revisit the entire system using everything discovered so far.
+
+Specifically search for inconsistencies that were difficult to see when individual areas were examined separately.
+
+Ask:
+
+- Does every major feature actually work end-to-end?
+- Are there competing sources of truth?
+- Are old systems still affecting new systems?
+- Are permissions consistently enforced?
+- Are background processes actually registered and running?
+- Are all events consumed?
+- Are integrations truly connected?
+- Are database assumptions consistent?
+- Are there failure chains crossing multiple systems?
+- Are there issues that earlier runs incorrectly classified?
+
+Update findings where new evidence changes the conclusion.
+
+STOP.
+
+---
+
+# RUN 10 — FINAL SYNTHESIS & REPAIR PLAN
+
+Do not modify code yet.
+
+Consolidate the audit.
+
+Remove duplicate findings.
+
+Separate:
+
+- confirmed problems
+- highly likely problems
+- unresolved suspicions
+
+Produce:
+
+## Critical failures
+
+## High-risk bugs
+
+## Broken/unwired functionality
+
+## Security findings
+
+## Data integrity findings
+
+## Reliability/concurrency findings
+
+## Architectural problems
+
+## Dead/duplicate systems
+
+## Test gaps
+
+## Simplification opportunities
+
+Then produce the final:
+
+### Feature Wiring Matrix
+
+### Dependency & Failure Map
+
+### Root Cause Map
+
+Identify where multiple symptoms come from the same underlying architectural problem.
+
+Finally produce an ordered remediation plan:
+
+1. security/data exposure
+2. data corruption/integrity
+3. broken core functionality
+4. unwired functionality
+5. concurrency/idempotency
+6. reliability
+7. architectural consolidation
+8. dead-code removal
+9. test improvements
+10. cleanup/refactoring
+
+For every repair identify dependencies and what should be retested.
+
+Do not start implementation until explicitly instructed.
+
+---
+
+# COMPLETION RULE
+
+Never claim the codebase has been fully audited merely because all runs have been attempted.
+
+At the end explicitly state:
+
+- what was thoroughly audited
+- what was partially audited
+- what could not be verified
+- what remains uncertain
+- what would require runtime/production/infrastructure access to confirm
+
+The purpose of this process is not to produce a reassuring report.
+
+The purpose is to establish as accurately as possible:
+
+**what actually works, what only appears to work, what is disconnected, what is dangerous, and what will eventually break.**
