@@ -28,20 +28,48 @@ export function labelsForParties(parties: LabelParty[]): Map<string, string> {
   const labelById = new Map<string, string>();
   let participantIdx = 0;
 
-  // Count how many non-initiators share each role, so we can disambiguate
-  // same-role people (e.g. six "Field officer"s become "Field officer A/B/...").
+  /**
+   * Count how many parties share each role, so same-role people can be told apart
+   * (e.g. six "Field officer"s become "Field officer A/B/...").
+   *
+   * THE INITIATOR IS COUNTED HERE TOO, AND THAT IS THE FIX.
+   *
+   * This used to count non-initiators only, while the initiator's label was taken
+   * raw from their own role a few lines below with no disambiguation at all. So an
+   * initiator whose remit matched a participant's role - "Managing the contract" on
+   * both, entirely ordinary - produced the SAME label for two different people.
+   *
+   * That is not cosmetic. `own-reads-only.ts` keeps per-person rows by
+   * `row.label === viewerLabel`, so two parties sharing a label means the filter
+   * hands one of them the other's private quality read: the exact disclosure that
+   * file exists to prevent, arriving through the labelling rule rather than through
+   * the filter.
+   *
+   * Note the asymmetry that made it invisible: a label that DRIFTS fails safe,
+   * because an allow-list filter simply stops matching and the viewer loses their
+   * own row. A label that COLLIDES fails open. Only the second is a leak, which is
+   * why the invariant at the end of this function checks uniqueness rather than
+   * checking for names.
+   */
   const roleCounts = new Map<string, number>();
   for (const p of parties) {
-    if (p.partyType !== PartyType.INITIATOR) {
-      const role = p.roleAsDescribed?.trim();
-      if (role) roleCounts.set(role.toLowerCase(), (roleCounts.get(role.toLowerCase()) ?? 0) + 1);
-    }
+    const role = p.roleAsDescribed?.trim();
+    if (role) roleCounts.set(role.toLowerCase(), (roleCounts.get(role.toLowerCase()) ?? 0) + 1);
   }
 
   const roleSeen = new Map<string, number>();
   for (const p of parties) {
     if (p.partyType === PartyType.INITIATOR) {
-      labelById.set(p.id, p.roleAsDescribed?.trim() || 'the initiator');
+      const role = p.roleAsDescribed?.trim();
+      if (role && (roleCounts.get(role.toLowerCase()) ?? 0) > 1) {
+        /** Shared with somebody else, so it has to be distinguished like any other. */
+        const n = roleSeen.get(role.toLowerCase()) ?? 0;
+        roleSeen.set(role.toLowerCase(), n + 1);
+        labelById.set(p.id, `${role} ${String.fromCharCode(65 + n)}`);
+      } else {
+        /** Unshared roles keep their exact former label, so stored reports do not drift. */
+        labelById.set(p.id, role || 'the initiator');
+      }
     } else {
       const role = p.roleAsDescribed?.trim();
       if (role) {
@@ -57,6 +85,29 @@ export function labelsForParties(parties: LabelParty[]): Map<string, string> {
         labelById.set(p.id, `participant ${letter}`);
       }
     }
+  }
+
+  /**
+   * FAIL CLOSED ON A COLLISION RATHER THAN RETURNING ONE.
+   *
+   * Everything above is designed to make labels unique, and this asserts that it
+   * actually did. If two parties ever share a label again - a new party type, a new
+   * naming branch, a role containing the disambiguating suffix already - the read
+   * path must not silently serve one person another's rows. Throwing loses the
+   * report for that ground until it is fixed, which is the cheaper failure.
+   */
+  const seen = new Map<string, string>();
+  for (const [id, label] of labelById) {
+    const key = label.toLowerCase();
+    const prior = seen.get(key);
+    if (prior) {
+      throw new Error(
+        `Party label collision on this ground: "${label}" resolves to both ${prior} and ${id}. ` +
+          'Per-person report rows are filtered by label, so a shared label would disclose one ' +
+          "party's private read to another.",
+      );
+    }
+    seen.set(key, id);
   }
 
   return labelById;

@@ -2096,3 +2096,41 @@ report whose prose contains a roster name — is cheap, deterministic, and conve
 model *happens* to follow into a guarantee. Given the product prints that promise to every participant
 before they type, the asymmetry favours the check even though this sample passed.
 
+---
+
+## C-12 REVISED IN IMPLEMENTATION — the recommended fix was wrong, the defect was worse
+
+**Implementing C-12 disproved its own remedy and found a sharper defect.** Recorded here because the
+ledger must not keep a recommendation that would have failed.
+
+**What C-12 recommended:** assert that no `label`/`participantLabel` contains a roster name.
+
+**Why that was wrong, on two counts.**
+1. Labels are derived from `roleAsDescribed` — **user-written text**. A lead may legitimately record a
+   role as "Nate's manager". A name-based check would reject valid data and be trivially bypassed.
+2. It defends the wrong failure. `own-reads-only.ts` keeps rows with
+   `rows.filter(r => r.label === viewerLabel)` — an **allow-list**. A label that *drifts* simply stops
+   matching, so the viewer loses **their own** row. **Drift fails safe.** The audit's premise, taken
+   from a source comment, that drift "silently keeps the wrong rows", is not what that filter does.
+
+**The real defect · CONFIRMED · High.** A label that **collides** fails open. And one could:
+`labelsForParties` built its `roleCounts` from **non-initiators only**, while the initiator's label was
+taken raw from their own remit with no disambiguation. So an initiator whose remit matched a
+participant's role — both "Managing the contract", entirely ordinary — produced **one label for two
+people**, and the allow-list filter then handed the initiator that participant's private per-person
+quality read. That is exactly the disclosure `own-reads-only.ts` exists to prevent, arriving through
+the labelling rule rather than through the filter.
+
+**Fixed:** initiators are counted in `roleCounts` and disambiguated like anyone else; unshared roles
+keep their exact former label so stored reports do not drift; and `labelsForParties` now **throws** on
+any duplicate label rather than returning one. Losing a ground's report until it is fixed is the
+cheaper failure.
+
+**Guarded** by `two-parties-cannot-share-a-label.spec.ts`, 8 tests, both halves bite-checked. The
+control that matters most is that an unshared initiator remit still returns its exact previous label —
+without it, the fix would silently break every stored report's row resolution.
+
+**Method note.** This is the second time in this session that implementing a finding corrected it
+(C-8's remedy moved entirely to the webhook boundary; C-12's changed target). An audit finding is a
+hypothesis about a fix; the fix is where it gets tested.
+
