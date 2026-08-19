@@ -1636,3 +1636,35 @@ audit: `plausible concern` across 122 routes, with two Confirmed precedents for 
 input). Also not done: whether `@Roles` is *needed* on any of the 122 (a member reaching an
 admin-only action), and mutation-vs-read asymmetry within a single service.
 
+---
+
+## CORE RUN 4b — Query-scoping verification (the surface Core Run 4 flagged as largest)
+
+**Result: 35 service methods take an `organizationId` parameter and query Prisma. All 35 use it
+correctly.** 33 place it inside a `where` clause; 2 place it in a `create`'s `data`, which is how a
+write scopes itself. Both of those — `usage.service.emit` and
+`intelligence.service.rollupAnonymised` — were flagged by my pattern only because it searched for
+`where:`, and both were **read individually and confirmed correct**. Comments were stripped before
+matching, per the ledger's standing rule.
+
+**Classification: CONFIRMED (as sound).** The `plausible concern` raised across 122 `jwt-only` routes
+in Core Run 4 is **substantially reduced**. Combined with Core Run 1 (the engine derives identity from
+the authenticated user and never trusts a caller-supplied participant id) and the original Run 5
+handler scan (every org-scoped id-taking handler passes an ownership key), org isolation now has
+evidence at three layers: the handler passes the key, the service places it in the query, and the
+engine resolves identity independently.
+
+### The residual gap, stated precisely
+
+This scan can only see methods that **receive** an ownership key. **A method that should take one and
+does not cannot be caught by it** — it has nothing to look for. That is the honest remainder, and it
+is the same blind spot that made C-7 invisible: the sweep's predicate does not fail to *use* data it
+receives, it fails to *ask* for data it should. Closing this properly requires enumerating, per
+sensitive table, which reads must be org-scoped and checking each — which this audit has not done.
+
+**Downgrade recorded:** Core Run 4's "largest unverified surface in either audit" is no longer
+accurate as written. The largest remaining unverified surface is now **synthesis** — the one path that
+by design combines every party's content, and which carries the explicit promise to participants that
+statements about other people never appear and never say who said what. Core Run 2 verified the
+prompt path and explicitly did not verify this.
+
