@@ -25,7 +25,18 @@ const EMPTY = {
   styleProfiles: 0,
 };
 
-function makePrisma(users: any[], opts: { siblings?: number; orgGrounds?: number } = {}) {
+function makePrisma(users: any[], opts: {
+    siblings?: number;
+    orgGrounds?: number;
+    /** Added when the sweep learned to ask whether the org was ever charged. */
+    billingEvents?: number;
+    orgBilling?: {
+      stripeCustomerId: string | null;
+      subscriptionStatus: string | null;
+      subscriptionStripeId: string | null;
+      careFeeSubscriptionId: string | null;
+    } | null;
+  } = {}) {
   const deletedUsers: string[] = [];
   const deletedOrgs: string[] = [];
   const prisma: any = {
@@ -35,7 +46,19 @@ function makePrisma(users: any[], opts: { siblings?: number; orgGrounds?: number
       delete: jest.fn(async ({ where }: any) => { deletedUsers.push(where.id); return {}; }),
     },
     ground: { count: jest.fn(async () => opts.orgGrounds ?? 0) },
+    /**
+     * The sweep now asks whether the organisation was ever charged before deleting it, so its double
+     * has to model billing. Defaults are "no money trace", which is the state these existing cases
+     * were always implicitly assuming; `billingEvents` and `orgBilling` opt a case into the opposite.
+     */
+    billingEvent: { count: jest.fn(async () => opts.billingEvents ?? 0) },
     organization: {
+      findUnique: jest.fn(async () => opts.orgBilling ?? {
+        stripeCustomerId: null,
+        subscriptionStatus: null,
+        subscriptionStripeId: null,
+        careFeeSubscriptionId: null,
+      }),
       delete: jest.fn(async ({ where }: any) => { deletedOrgs.push(where.id); return {}; }),
     },
   };
@@ -134,5 +157,61 @@ describe('what it does sweep', () => {
     const r = await sweepUnverifiedAccounts(prisma, NOW);
     expect(r).toEqual({ usersDeleted: 0, orgsDeleted: 0, skippedNotEmpty: 0 });
     expect(prisma.organization.delete).not.toHaveBeenCalled();
+  });
+});
+
+describe('and it will not delete an organisation that has money attached to it', () => {
+  /**
+   * C-7. The predicate checked six traces of a person and the ground count, and consulted nothing
+   * financial. `BillingEvent.organization` is `onDelete: Cascade`, so deleting the org took its whole
+   * charge ledger with it and orphaned any Stripe customer id. This is the only path in the codebase
+   * that destroys data irreversibly, and the class of data it ignored is the one that cannot be
+   * rebuilt. The old safety argument - "a subscriber would have to be verified" - is an assumption the
+   * code does not enforce, since signup provisions an ADMIN before email verification.
+   *
+   * Every case here leaves the USER deletion alone. Only the organisation is spared.
+   */
+  const EMPTY_USER = [{ id: 'u1', organizationId: 'o1', _count: { ...EMPTY } }];
+
+  it('a single billing event is enough to spare the org', async () => {
+    const { prisma, deletedUsers, deletedOrgs } = makePrisma(EMPTY_USER, { billingEvents: 1 });
+    const r = await sweepUnverifiedAccounts(prisma, NOW);
+    expect(deletedUsers).toEqual(['u1']);
+    expect(deletedOrgs).toEqual([]);
+    expect(r.orgsDeleted).toBe(0);
+  });
+
+  it.each([
+    ['a Stripe customer id', { stripeCustomerId: 'cus_1', subscriptionStatus: null, subscriptionStripeId: null, careFeeSubscriptionId: null }],
+    ['an active subscription', { stripeCustomerId: null, subscriptionStatus: 'active', subscriptionStripeId: null, careFeeSubscriptionId: null }],
+    ['a CANCELLED subscription', { stripeCustomerId: null, subscriptionStatus: 'cancelled', subscriptionStripeId: null, careFeeSubscriptionId: null }],
+    ['a legacy care-fee subscription', { stripeCustomerId: null, subscriptionStatus: null, subscriptionStripeId: null, careFeeSubscriptionId: 'sub_legacy' }],
+  ])('%s spares the org', async (_label, orgBilling) => {
+    /**
+     * A cancelled subscription counts deliberately: the record of what somebody was once charged is
+     * exactly what you need when they query a charge months later.
+     */
+    const { prisma, deletedOrgs } = makePrisma(EMPTY_USER, { orgBilling: orgBilling as any });
+    await sweepUnverifiedAccounts(prisma, NOW);
+    expect(deletedOrgs).toEqual([]);
+  });
+
+  it('and a genuinely empty org with no money attached is still deleted', async () => {
+    /** The control. Without it the fix could be "never delete anything" and still look correct. */
+    const { prisma, deletedUsers, deletedOrgs } = makePrisma(EMPTY_USER, {});
+    await sweepUnverifiedAccounts(prisma, NOW);
+    expect(deletedUsers).toEqual(['u1']);
+    expect(deletedOrgs).toEqual(['o1']);
+  });
+
+  it('a failed billing read spares the org rather than proceeding on partial data', async () => {
+    /**
+     * The only irreversible path in the codebase must not delete because a query timed out. The
+     * initialised counters are non-zero and `orgChecksSucceeded` stays false, so nothing is removed.
+     */
+    const { prisma, deletedOrgs } = makePrisma(EMPTY_USER, {});
+    prisma.billingEvent.count = jest.fn(async () => { throw new Error('connection reset'); });
+    await sweepUnverifiedAccounts(prisma, NOW);
+    expect(deletedOrgs).toEqual([]);
   });
 });
