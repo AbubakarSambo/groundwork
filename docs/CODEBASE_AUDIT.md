@@ -521,6 +521,20 @@ guarantee made about check-in authorship.
 the signature over the raw body and its own comment says FAIL CLOSED. It is the model the WhatsApp
 handler should copy.
 
+**Run 5 (continued) · IDOR / ownership scan — NO finding, and the negative result is the point.**
+*Confidence Confirmed for what was scanned.*
+Every controller handler taking a URL parameter was checked for whether it passes an ownership key
+(`organizationId`, `userId`, or the user object) to its service. **6 of them pass none** — and all
+six are correct: `admin.controller.ts` (3), `prompts.controller.ts` (2) and
+`feedback.controller.ts` (1) operate on platform-wide resources, not org-scoped ones. Guards
+verified individually rather than assumed: `admin` and `prompts` carry class-level
+`@UseGuards(PlatformAdminGuard)` at lines 67 and 30; `feedback` has **no class-level guard**, but
+its two admin routes each carry their own at lines 60 and 66, and its only `@Public()` route is the
+`@Post()` that submits feedback, which is correct. Every org-scoped id-taking handler passes an
+ownership key. **No IDOR was found in this scan.** What the scan does NOT establish: that each
+service then *uses* the key it was given in its query. That is the remaining half, and C-7 is
+precedent for the gap between receiving a key and honouring it.
+
 Five further confirmed defects predate this document and were fixed on 2026-08-17.
 
 ## Suspected findings requiring further tracing
@@ -589,9 +603,12 @@ identity and writes to a private check-in as that person. Resend's webhook is co
 fails closed. Stripe's is annotated as signature-verified — **not independently re-verified this
 run.**
 
-**NOT audited, and these are the ones that matter most after C-8:** org/tenant isolation traced
-request -> auth -> authorization -> query -> mutation for even one endpoint; IDOR on
-`/grounds/:id` and the report and board routes; whether `@Roles` is applied consistently across all
+**Partially closed since:** the IDOR/ownership scan above covers whether every id-taking handler
+passes an ownership key, and whether the six that do not are guarded. It does not cover whether
+services honour the key they receive.
+
+**NOT audited, and these are the ones that matter most after C-8:** whether each service uses the
+ownership key in its query; whether `@Roles` is applied consistently across all
 179 routes; the magic-link token's entropy, expiry and single-use behaviour; the Google OAuth
 callback; upload handling in `documents`. This run examined the external entry points and stopped.
 
