@@ -2055,3 +2055,44 @@ engine was traced end to end, and its most important guarantee holds structurall
 remaining unknown is **synthesis prose validation**, because that is where a promise made in writing to
 participants could fail without any query being wrong.
 
+---
+
+## CORE RUN 10b — Synthesis prose validation, settled empirically
+
+Core Run 10 named this the largest remaining unknown and said it needed **generated output, not
+source**. A released report exists in the local database, so it was checked directly.
+
+**Method.** Extracted the stored prose fields for the ground with a released report —
+`sharedPicture`, `centralQuestion`, `agreements`, `divergences`, `finalSynthesis`, 2,560 bytes — and
+searched them for every roster identifier: both name parts, each email local-part, and the org domain.
+
+**Result.** **Every identifier absent.** `Sahar`, `Okonkwo`, `sahar`, `Eric`, `eric`, `Nate`, `nate`,
+`meridianhealth` — zero occurrences in the generated prose. On this sample the model complied with the
+instruction at `reports.service.ts:89` and named nobody.
+
+### The sample is weaker than it looks, and this is the honest part
+
+Two of the three parties **have no name recorded at all** — `eric@` and `nate@` show blank first and
+last names in the roster, carrying only a `roleAsDescribed`. **A model cannot leak a name it was never
+given.** So the test genuinely demonstrates only one thing: the initiator's real name, *Sahar Okonkwo*,
+which the system does hold, does not appear. That is meaningful — she is the lead and the one identity
+actually available to leak — but it is one identity in one report.
+
+### Classification
+
+**`plausible concern` retained, likelihood lowered.** What is now established: on real generated output,
+the prose contained no roster identifier, including the one that was available. What is **not**
+established: that this holds for a ground where every party has a recorded name, across scenarios, or
+under adversarial input where a participant writes a colleague's name into their own answer — in which
+case the name enters the model's context from the transcript rather than the roster, and the instruction
+at `:89` is the only thing standing between it and the shared report.
+
+**That last case is the one worth testing next**, and it is testable: seed a ground where a participant
+names a colleague explicitly, run synthesis, and check the prose. It needs a live model call, which is
+why no run has done it.
+
+**Recommendation unchanged in shape, sharpened in cost.** A post-generation check — reject or scrub any
+report whose prose contains a roster name — is cheap, deterministic, and converts an instruction the
+model *happens* to follow into a guarantee. Given the product prints that promise to every participant
+before they type, the asymmetry favours the check even though this sample passed.
+
