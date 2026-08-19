@@ -287,6 +287,11 @@ investigated past the point of mapping it — per the protocol's "do not fix dur
 
 ## Areas audited
 
+**Run 2 (feature wiring):** mechanical reconciliation of all 139 client API calls against all 179
+declared API routes; resolution of Run 1's four suspects; controller-class and route-collision
+check; feature-flag read-site tracing. **Not** traced this run: the check-in conversation engine
+internals, the board, documents, WhatsApp downstream logic, and whether cron jobs are registered.
+
 **Run 1 (recon, breadth not depth):** repository layout, applications, Prisma schema surface,
 API module list, controller mounts, guards, event bus, scheduled jobs, external integration
 config, feature-flag declarations.
@@ -363,12 +368,68 @@ delivery events (`email/resend-webhook.controller`), WhatsApp (`webhooks/whatsap
 
 ## Confirmed findings
 
-None from Run 1 — recon does not confirm. Five confirmed and fixed defects predate this document
-and are recorded in the commits of 2026-08-17.
+**Run 2 · C-1 · Prompt drafts: a live admin screen calls three routes that do not exist.**
+*Severity High. Confidence Confirmed.*
+`client/src/api/prompts.ts:121,124,127` call `POST /prompts/draft`, `DELETE /prompts/draft/:key`
+and `GET /prompts/draft/:key`. `api/src/modules/prompts/prompts.controller.ts` declares eleven
+routes and **none of them is `draft`**. `PromptVersioningPage.tsx:672` calls `getDraft` in a live
+`useQuery` with `retry: false`, so a platform admin editing a prompt gets a silent 404 and an
+always-empty draft. Drafting a prompt cannot persist; nothing tells them. **Why it matters:** the
+prompts screen is how the conversation engine's behaviour is changed, and its save-a-draft
+affordance does not save. **Failure scenario:** an admin writes a long prompt revision, relies on
+the draft, navigates away, and it is gone with no error. **Recommended action:** decide whether
+drafts are a feature — if yes implement the three routes, if no remove the client methods and the
+UI that offers them. **Affected areas:** `PromptVersioningPage`, prompt activation flow, and any
+test that mocks `promptsApi`.
+
+**Run 2 · C-2 · `objectivesEnabled` is declared and read nowhere; objectives are permanently on.**
+*Severity Low. Confidence Confirmed.*
+`api/src/config/configuration.ts:84` sets `objectivesEnabled` from `OBJECTIVES_ENABLED`. Grep
+across all non-spec API source finds **no other reference** to either name, and `objectives.enabled`
+is read zero times. **Why it matters:** an operator who sets `OBJECTIVES_ENABLED=false` to disable
+the feature will see no change, and believe they have turned something off. **Recommended action:**
+either consult the flag where objectives are created and read, or delete it and the env var.
+
+**Run 2 · C-3 · A dead client for pricing-admin routes that were deleted in the merge — mine.**
+*Severity Low. Confidence Confirmed.*
+`client/src/api/admin.ts` exports `pricingAdminApi` calling `GET/PATCH /billing/admin/pricing` and
+`POST /billing/admin/pricing/reset`. Those endpoints were mine and were removed when Abubakar's
+pricing implementation was taken wholesale during the merge of 2026-08-17. **No component imports
+`pricingAdminApi`** — the admin screen uses his `adminApi.getPricing`. So it is dead rather than
+broken, but it is a loaded trap: wiring any UI to it yields 404s on a money surface.
+**Recommended action:** delete `pricingAdminApi` and its `PricingSnapshot` type.
+
+Five further confirmed defects predate this document and were fixed on 2026-08-17.
 
 ## Suspected findings requiring further tracing
 
-1. **`OBJECTIVES_ENABLED` is declared and read nowhere.** It appears in
+**Run 2 resolved three of Run 1's four suspects. Two were my own errors and are withdrawn:**
+
+- ~~Two controllers mount on `'grounds'`~~ — **withdrawn.** `conversation.controller.ts` contains
+  TWO controller classes, `@Controller('check-ins')` at line 21 and `@Controller('grounds')` at
+  line 110. Their method+path pairs were compared against `grounds.controller.ts` and **none
+  collides.** Two files sharing the namespace is a Run 7 tidiness question, not a wiring fault.
+- ~~`personObjective` is read but never written~~ — **withdrawn.** It is written by `upsert` at
+  `grounds.service.ts:2174` and `:2195` and by `update` at `:2220`. My original check grepped only
+  for `.create` and missed both. Recorded because the same mistake would have deleted a live table.
+- ~~A duplicate `@Get(':id')` in grounds.controller~~ — **withdrawn.** The second match was a
+  COMMENT at line 130 quoting the decorator while explaining an old routing-order bug. Only one
+  real decorator exists, at line 152. This is the third time in one session that a grep matched a
+  comment rather than code; any future source-level assertion in this repo should strip comments
+  first.
+
+**Still suspected:**
+
+1. **Two flag-reading conventions coexist.** `COACHING_ENABLED`, `CONFIDENCE_ENABLED` and
+   `CONTEXT_ENABLED` are read by raw `process.env` name inside service files while their
+   `config` keys (`coaching.enabled` etc.) are read zero times. Works, but means a flag can be
+   consulted two ways and disabled in only one of them. **Run 7.**
+2. **`intelligence.controller.ts` uses a pathless `@Controller()`**, mounting at the API root.
+   Not yet traced. **Run 2 follow-up.**
+3. ~~**`OBJECTIVES_ENABLED`**~~ — promoted to Confirmed (C-2).
+4. **Original item 1 text retained below for history.**
+
+   **`OBJECTIVES_ENABLED` is declared and read nowhere.** It appears in
    `api/src/config/configuration.ts` and in **no other non-spec file**; `objectives.enabled` is
    read 0 times. Either objectives are permanently on, permanently off, or gated by a flag nobody
    consults. There are `GroundObjective` and `PersonObjective` tables, so something exists to
@@ -422,8 +483,29 @@ is the fault that a previous simulation showed stops grounds reaching a report.
 
 Maintain this throughout the audit.
 
+**Run 2, 2026-08-17.** Built by reconciling every `apiClient.*` call in the client against every
+route declared by a `@Controller` + method decorator in the API: **179 routes declared, 139
+distinct client calls, 6 calls with no matching route.** Mechanical, not inferred. What it does
+NOT prove is that a matched route does the right thing — Run 3 owns that.
+
 | Feature | UI | API | Logic | DB | Async/Integration | Auth | Tests | Overall |
 |---|---|---|---|---|---|---|---|---|
+| Anonymous entry → ground | ✅ | ✅ | ✅ | ✅ | ✅ magic-link email | ✅ | ✅ persona suite_v | ✅ |
+| Invite → participant check-in | ✅ | ✅ | ✅ | ✅ | ✅ invite email | ✅ | ✅ | ✅ |
+| Check-in conversation | ✅ | ✅ | ✅ | ✅ | ✅ Gemini | ✅ | ⚠️ | ❓ not traced this run |
+| Report synthesis + release | ✅ | ✅ | ✅ | ✅ | ✅ event-driven | ✅ | ✅ | ✅ |
+| Report reveal / activation | ✅ | ✅ | ✅ | ✅ | — | ✅ | ⚠️ | ✅ |
+| Resolution / closing | ✅ | ✅ | ✅ | ✅ | — | ✅ | ⚠️ | ❓ |
+| Billing: free-tier gate | ✅ | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ |
+| Billing: subscribe | ✅ | ✅ | ✅ | ✅ | ⚠️ Stripe unwired in env | ✅ | ⚠️ | ⚠️ |
+| Pricing admin (Abubakar's) | ✅ | ✅ | ✅ | ✅ | ⚠️ needs migrate deploy | ✅ | ⚠️ | ⚠️ |
+| **Pricing admin (mine)** | — | ❌ | — | — | — | — | — | **🗑 dead client, routes deleted** |
+| **Prompt DRAFTS** | ✅ | ❌ | ❌ | ❓ | — | ✅ | ❌ | **👻 UI calls 3 routes that do not exist** |
+| Prompt versions + activate | ✅ | ✅ | ✅ | ✅ | — | ✅ | ⚠️ | ✅ |
+| Board | ✅ | ✅ | ✅ | ✅ | — | ✅ | ⚠️ | ❓ not traced this run |
+| Documents | ✅ | ✅ | ✅ | ✅ | — | ✅ | ⚠️ | ❓ |
+| WhatsApp check-ins | ✅ toggle | ✅ | ❓ | ❓ | ⚠️ key-gated, off | ✅ | ⚠️ | ⚠️ |
+| Objectives | ✅ | ✅ | ✅ | ✅ | — | ✅ | ⚠️ | ⚠️ **flag dead, permanently on** |
 
 Use:
 
