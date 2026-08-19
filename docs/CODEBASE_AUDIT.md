@@ -1941,3 +1941,117 @@ representations of belonging, and I did not verify that they cannot disagree. `p
 cross-org participant fallback in `grounds.get()` suggests the case is at least anticipated.
 `stored state ↔ derived state` beyond what Core Run 5 covered was also not examined.
 
+---
+
+# CORE RUN 10 — FINAL SYNTHESIS (both audits merged)
+
+**No application code was modified in any of the twenty runs.**
+
+## C-8 · FINAL TARGETED VERIFICATION
+
+Complete live execution path, every step read from source across Core Runs 1 and 4 and the original
+Run 5:
+
+| Step | Evidence |
+|---|---|
+| **external request** | `POST /webhooks/whatsapp`. Body is attacker-authored JSON shaped like Meta's payload. |
+| **route reachability** | `@Public()` at **class level**, `whatsapp.controller.ts:16`, immediately above `@Controller('webhooks/whatsapp')`. `WhatsAppModule` registered `app.module.ts:53`. **Live in every deployment.** |
+| **verification** | **None.** `grep -rin "hub-signature"` across `api/src` returns nothing. `receive()` contains **zero** references to `isEnabled` — the admin toggle and credential gate govern *sending*. The GET handler's `verifyToken` is Meta's subscribe handshake and constrains no later POST. |
+| **`receive()`** | Reads `body.entry[0].changes[0].value.messages[0]`; takes `message.from` — **a phone number supplied by the caller** — and calls `findUserByPhoneNumber(fromNumber)`. |
+| **context accessed** | `checkIn.findFirst({ participant: { userId: user.id }, status: { in: [NOT_STARTED, IN_PROGRESS] } })` — that person's own open check-in, across any ground. |
+| **side effects** | `conversation.open(openCheckIn.id, user.id)` or `sendMessage(openCheckIn.id, user.id, text)`. `loadOwnedCheckIn` then **passes**, because the identity handed to it is forged rather than bypassed (Core Run 1). Text persists as a `ConversationTurn`, is extracted to `RecordEntry`, and reaches synthesis and the shared report. Finally `whatsapp.sendMessage(fromNumber, result.reply)` returns the engine's reply **to the caller**. |
+
+**What an unverified caller can cause the system to do**, knowing only one linked phone number:
+
+1. **Write arbitrary text into a named person's private check-in, attributed to them as their own account** — which then flows into the report their manager reads.
+2. **Read back the engine's next question**, composed from that person's check-in context.
+3. **Advance their session state** — open a `NOT_STARTED` check-in, and consume turns against the limit.
+4. **Cause outbound WhatsApp messages** to that number from Groundwork.
+
+There is no authentication to defeat and no signature to forge. The code's own comment above the
+decorator reads *"Signature-256 verification before going live with real traffic"* — a recorded,
+known pre-launch task.
+
+### **C-8: READY FOR IMMEDIATE REMEDIATION.** Confirmed, Critical. No code changed pending instruction.
+
+Remedy is contained and the correct pattern already exists in this repository, done properly, in
+`email/resend-webhook.controller.ts`: verify over the **raw** body, fail closed on missing secret,
+missing header or mismatch. Add `X-Hub-Signature-256` verification against `WHATSAPP_APP_SECRET`, and
+make `receive()` return early unless `whatsapp.isEnabled()`. **No engine change is required** — Core
+Run 1 established the gate is sound.
+
+## Merged finding register
+
+**Newly confirmed by the Core audit (5):**
+`C-11` `RESOLVED` unreachable, with a dead clause propped up by a `||` fallback ·
+`C-12` report row-visibility rests on a string comparison whose failure mode is silent disclosure ·
+`C-13` the visible "today" boundary uses server-local time while all 17 crons pin UTC ·
+`C-14` **`sendMessage` never checks ground status, so the legal-hold state does not stop writing** ·
+plus the C-8 execution-path confirmation above.
+
+**Originally confirmed, unchanged (9):** C-1, C-2, C-3, C-4, C-5, C-7, C-9, C-10, and C-8 (now
+sharpened).
+
+**Withdrawn across both audits (8):** all methodology errors of mine, none because code changed —
+four grep-matched-comments, one enum-values-vs-field-name, one wrong config key shape read as absence,
+one `.create` missing `upsert`, one "two flag conventions".
+
+**Severity changed:** C-7 **raised** to live (Core Run 9 of the first audit confirmed crons fire).
+C-5 **qualified** — its evidence needs re-checking under Run 7's blind spot before action.
+
+**Fix changed:** C-8's remedy is now known to belong **entirely at the webhook boundary**; hardening
+the engine would be wasted work. C-12's remedy is an **invariant, not a redesign** — the label
+architecture is sound.
+
+**Unresolved / highly likely, not promoted:** soft-delete filtering on ~49 user reads (Core Run 7) ·
+`participant ↔ membership` consistency · post-generation validation of report prose against the roster ·
+whether logs carry participant text · other `getFullYear/getMonth/getDate` day boundaries.
+
+## Re-evaluated remediation sequence
+
+The previous order is **not** preserved. Two items move because the Core audit changed what is known.
+
+| # | Work | Moved? | Why |
+|---|---|---|---|
+| 1 | **C-8** webhook signature + `isEnabled` gate | — | Critical, live, forged identity defeats a sound gate |
+| 2 | **C-14** shared ground-status guard on `sendMessage`/`complete` | **NEW, in at 2** | The legal-hold state does not hold. Privacy/compliance, and a two-line extract |
+| 3 | **C-7** sweep predicate must consider billing | ↓ from 2 | Irreversible, live daily — but no evidence of a live subscriber to lose yet |
+| 4 | **C-12** invariant: labels must never contain a roster name | **NEW, in at 4** | Silent-disclosure failure mode on the report's per-person rows |
+| 5 | **C-10** comment-strip the 67 source-assertion guards | ↓ from 3 | Still decides whether everything below stays fixed |
+| 6 | **C-9 + C-4** the `BillingEvent` pair, as one piece | — | Unique constraint, and record `SUBSCRIPTION_FEE` |
+| 7 | **C-1** prompt drafts: implement or remove | — | Broken core admin function |
+| 8 | **C-13** decide the day boundary and pin it | **NEW** | User-visible wrong count in the product's own target timezones |
+| 9 | **C-11** decide `RESOLVED`: write it or delete it and its dead clause | **NEW** | Do not delete the `\|\|` fallback alone |
+| 10 | **C-2**, **C-3**, then **C-5** after re-checking | — | Cheap; removes traps |
+| 11 | Reconciliation checks (client↔routes, enum↔emission, guard↔stripped source) | — | Would have caught six of nine original findings |
+| 12 | Resolve the unpromoted items above before further feature work | — | |
+
+## Root cause, restated with the core included
+
+**Fifteen of fifteen confirmed findings are two places that must agree, each defensible alone, with
+nothing reconciling them.** The Core audit added four more instances in the product's most important
+code: `open()` vs `sendMessage()`; `row.label` vs `viewerLabel`; the crons' UTC vs the counter's local
+midnight; the `RESOLVED` enum vs what resolution writes. **Not one confirmed finding in either audit is
+a crash, a broken request, or a wrong algorithm.**
+
+## Completion statement (superseding the ten-run one)
+
+**Thoroughly audited:** the check-in engine's authorization spine and identity resolution; what reaches
+the external model provider; report row-visibility architecture; the ground state machine's write sites;
+permissions across all 179 routes plus org-scoping in all 35 org-taking service methods; cron timezone
+discipline; `grounds.service.ts` against the god-module harms; migration state on one database.
+
+**Partially audited:** synthesis (prompt path verified; **prose validation not**); data integrity
+(migration state asked, individual migrations unread); reliability (money path only).
+
+**Not audited:** the extraction step writing `RecordEntry`; duplicate/replayed `sendMessage`; the board's
+own provenance; notification bodies; logs; `/grounds/:id/p`, `/org/members`, `/settings`; orphan records.
+
+**Requires runtime/production access:** whether staging or production has migration drift; Stripe
+signature behaviour in production; real concurrency; whether crons overlap under load.
+
+**This codebase is still not fully audited** — but the gap Run 10 named as material is now closed: the
+engine was traced end to end, and its most important guarantee holds structurally. The largest
+remaining unknown is **synthesis prose validation**, because that is where a promise made in writing to
+participants could fail without any query being wrong.
+
