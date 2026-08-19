@@ -1731,3 +1731,56 @@ The board's own value provenance, persisted-vs-calculated, staleness, and delete
 whether two UI surfaces compute the same concept differently (the original audit found exactly that
 twice — the counter and the read). Those remain open.
 
+---
+
+## CORE RUN 6 — Dates, schedules and timezones
+
+### Scheduling is sound — all 17 crons pin UTC
+
+Every `@Cron` in the codebase passes `{ timeZone: 'UTC' }` — 9 in `grounds.cron`, 2 in `entry.cron`,
+and one each in `patterns.cron`, `intelligence.service`, `code-expiry.scheduler`, `remind.service`
+and two in `reports.service`. **No cron depends on the server's timezone, and none is exposed to DST
+ambiguity in its firing time.** The repo's two existing specs (`cron-timezone.spec.ts`,
+`all-crons-timezone.spec.ts`) exist because this was already found and fixed once, and they are
+holding. **Negative result, recorded as one.**
+
+### CONFIRMED · C-13 · The visible "today" boundary is the server's timezone, while every cron is UTC
+
+*Severity Medium. Confidence **Confirmed execution-path defect**.*
+
+**Evidence.** `grounds.service.ts:672`:
+`const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())`. Those are **local**
+getters, so this is midnight in **the server process's** timezone — not UTC, and not the viewer's. It
+feeds `checkInsToday` at `:781` (`completedAt >= todayStart`), which is rendered as **"Participant
+sessions today"** on the grounds list.
+
+**Why it matters — three ways.**
+1. **It disagrees with the rest of the system.** Seventeen crons declare UTC explicitly; this one
+   user-visible boundary silently uses server-local. Two places that must agree about when a day
+   starts, with nothing reconciling them — this audit's root-cause pattern, again.
+2. **It is deploy-dependent.** The same code returns different counts depending on the container's
+   `TZ`. Nothing tests it, and the two timezone specs cover crons, not this.
+3. **It is wrong for this product's stated market.** The marketing copy says *"Built first for African
+   leaders"*; Lagos is UTC+1 and Nairobi UTC+3. On a UTC server, a check-in completed at 02:00 in
+   Nairobi falls on the previous UTC day, so the counter reads **0 sessions today** to somebody who
+   has just finished one.
+
+**Failure scenario.** A Nairobi lead runs their check-in before the working day, opens the grounds
+list, and is told no sessions happened today. That is the same defect class as the "0 of 3 checked in"
+counter fixed earlier the same day: a value that contradicts what the user just did.
+
+**Recommended action.** Decide the boundary explicitly and once. Either compute `todayStart` in UTC
+to match the crons, or carry the viewer's timezone and compute per request — the latter is more
+correct and more work. **Do not leave it implicit**, and add a test that pins whichever is chosen,
+since neither existing timezone spec covers this path.
+
+**Affected areas.** `checkInsToday` and the grounds-list stat tile; any other `getFullYear/getMonth/getDate`
+day-boundary arithmetic (**not enumerated this run** — a `plausible concern` that others exist).
+
+### Not done in Core Run 6
+
+Timeline/`daysLeft` arithmetic uses millisecond maths (`+ timelineDays * 86_400_000`), which is
+DST-agnostic and was **not** treated as suspect — but I did not verify every date field rendered to
+users, reminder scheduling relative to `availableFrom`, billing period boundaries, or the sweep's
+`cutoff` computation. No delayed-job or clock-skew scenario was tested.
+
