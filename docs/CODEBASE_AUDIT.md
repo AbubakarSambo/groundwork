@@ -287,6 +287,12 @@ investigated past the point of mapping it — per the protocol's "do not fix dur
 
 ## Areas audited
 
+**Run 4 (data integrity):** cascade-delete topology across all 44 models; every hard-delete call
+site in the API; the unverified-account sweep's emptiness predicate read line by line; constraint
+counts. **Not** done: per-constraint tracing against dependent queries, orphan-record analysis,
+migration-vs-application drift, the C-6 dead-column follow-up, and `RecordEntry`/`ConversationTurn`
+lifecycle — the entities that hold what people actually wrote.
+
 **Run 3 (logical consistency):** every value of all 24 enums scanned for write sites across both
 codebases; billing-event and usage-event emission traced to source lines; the admin funnel's data
 source verified rather than assumed. **Not** covered this run: date/timezone handling, permission
@@ -436,6 +442,38 @@ an enum value that cannot occur is a false promise to whoever writes the next qu
 anywhere outside the schema. Also unreferenced: `EvidenceType.UNANCHORED_RECALL`, while
 `ANCHORED_RECALL` and `CHECK_IN` are each written exactly once. **Recommended action:** Run 4 owns
 whether the backing columns are read; do not delete before that.
+
+**Run 4 · C-7 · The account sweep can hard-delete an organisation without ever looking at its money.**
+*Severity Medium. Confidence Highly likely (reachable), Confirmed (the omission).*
+`api/src/modules/entry/unverified-sweep.ts` runs daily and is the **only hard-delete path in the
+codebase** — everything else soft-deletes via `deletedAt`. It deletes a `User` at line 76 and then
+their `Organization` at line 80. Its emptiness predicate checks six person-traces
+(`groundsInitiated`, `participantLinks`, `contributorCodes`, `redeemedCodes`, `codeRedemptions`,
+`styleProfiles`) and, for the org, sibling users and ground count. **It consults nothing financial:
+not `BillingEvent`, not `stripeCustomerId`, not `subscriptionStatus`, not `subscriptionStripeId`.**
+`BillingEvent.organization` is `onDelete: Cascade`, so the charge ledger for that org is destroyed
+with it, and any Stripe customer id held locally is orphaned rather than cancelled.
+**Why it matters:** this is the one place in the product that destroys data irreversibly, and the
+one class of data it does not check for is the class you cannot reconstruct.
+**Failure scenario:** any path that attaches a Stripe customer or a BillingEvent to an org whose
+sole user is still unverified — and signup provisions an ADMIN **before** email verification, which
+is recorded separately as GW-001 — leaves that org eligible for deletion once it ages past the
+cutoff with no grounds. The Stripe side survives; the local record does not.
+**Recommended action:** add `billingEvents`, `stripeCustomerId` and `subscriptionStatus` to the
+predicate, refusing deletion if any is present. Cheap, and it replaces an assumption
+("a subscriber must be verified") that the code does not enforce.
+**Affected areas:** `entry.cron`, the sweep's own spec, Stripe reconciliation.
+**Note:** this sweep is my own earlier work, which is why the assumption was invisible to me
+when I wrote it.
+
+**Run 4 · Observations, not yet findings.** 40 relationships are `onDelete: Cascade` against only
+10 non-cascade rules, so the schema's default posture is destructive; that is fine while there is
+exactly one hard-delete path, and becomes dangerous the moment a second is added. Constraint
+coverage looks healthy on its face — 32 `@unique`, 11 `@@unique`, 34 `@@index` — but **no
+constraint was traced against the queries that depend on it, so this run cannot claim uniqueness is
+enforced where the code assumes it.** The C-6 dead-column follow-up promised by Run 3 was **not
+done** — `CompanyStage`'s backing columns remain unverified and nothing should be deleted on the
+strength of Run 3 alone.
 
 Five further confirmed defects predate this document and were fixed on 2026-08-17.
 
