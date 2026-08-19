@@ -475,6 +475,52 @@ enforced where the code assumes it.** The C-6 dead-column follow-up promised by 
 done** — `CompanyStage`'s backing columns remain unverified and nothing should be deleted on the
 strength of Run 3 alone.
 
+**Run 5 · C-8 · CRITICAL · The WhatsApp webhook accepts unsigned requests and treats a phone number
+in the body as proof of identity, then writes into that person's private check-in as them.**
+*Severity **Critical**. Confidence **Confirmed** on the code path.*
+
+**Evidence.** `api/src/modules/whatsapp/whatsapp.controller.ts`:
+- The controller is `@Public()` (line 16) and `WhatsAppModule` is registered in `app.module.ts:53`,
+  so `POST /webhooks/whatsapp` is live in every deployment.
+- `receive()` (line 41) reads `body.entry[0].changes[0].value.messages[0]`, takes `message.from` —
+  **a phone number supplied by the caller** — and calls `findUserByPhoneNumber(fromNumber)`.
+- It then calls `this.conversation.open(openCheckIn.id, user.id)` or
+  `this.conversation.sendMessage(openCheckIn.id, user.id, text)`. The identity handed to the
+  conversation engine is **the matched user's**, derived entirely from unverified request data.
+- It replies to that number with `result.reply`.
+- **No signature is verified.** Meta signs webhooks with `X-Hub-Signature-256`; `grep -rin
+  "hub-signature"` across `api/src` returns **nothing**.
+- **The admin toggle does not protect this.** `receive()` contains zero references to `isEnabled`
+  (verified by count). The WhatsApp toggle and the credential gate govern **sending**, not receiving.
+- The GET handler does check `whatsapp.verifyToken`, but that is Meta's subscribe handshake and
+  says nothing about the authenticity of any subsequent POST.
+
+**Why it matters.** This product's central promise, printed on the privacy screen every participant
+reads, is that their own account of a workplace situation is private and attributable only to them.
+This endpoint lets an unauthenticated caller write into a named person's private check-in **as that
+person**, and read the engine's reply, which is composed from their check-in context.
+
+**Failure scenario.** An attacker who knows one linked phone number POSTs a hand-written Meta-shaped
+JSON body to `/webhooks/whatsapp`. Groundwork accepts it, appends the attacker's text to that
+person's live check-in as their own words, and returns the engine's next question in the HTTP
+response. Those words then flow into the synthesised report their manager reads. There is no
+authentication to defeat and no signature to forge.
+
+**Recommended action, in order.** (1) Verify `X-Hub-Signature-256` against
+`WHATSAPP_APP_SECRET` over the **raw** body, failing closed on a missing secret, missing header or
+mismatch — the pattern `email/resend-webhook.controller.ts` already uses correctly in this same
+codebase. (2) Make `receive()` return early unless `whatsapp.isEnabled()`, so an unconfigured
+deployment has no live inbound path at all. (3) Treat the phone number as a lookup key only after
+the signature proves the request came from Meta.
+
+**Affected areas.** `conversation.open` / `sendMessage` (they trust their `userId` argument, which is
+correct — the caller is what is wrong), `RecordEntry` provenance, report synthesis, and any
+guarantee made about check-in authorship.
+
+**Withdrawn from Run 1.** The Resend webhook concern. `email/resend-webhook.controller.ts` verifies
+the signature over the raw body and its own comment says FAIL CLOSED. It is the model the WhatsApp
+handler should copy.
+
 Five further confirmed defects predate this document and were fixed on 2026-08-17.
 
 ## Suspected findings requiring further tracing
@@ -538,7 +584,18 @@ Five further confirmed defects predate this document and were fixed on 2026-08-1
 
 ## Security concerns
 
-Nothing assessed. Run 5 owns this. Recon notes only: 3 guards exist; `PLATFORM_ADMIN_BOOTSTRAP_EMAIL`
+**Run 5, partial.** One Critical: C-8, the unsigned WhatsApp webhook that accepts a phone number as
+identity and writes to a private check-in as that person. Resend's webhook is correctly verified and
+fails closed. Stripe's is annotated as signature-verified — **not independently re-verified this
+run.**
+
+**NOT audited, and these are the ones that matter most after C-8:** org/tenant isolation traced
+request -> auth -> authorization -> query -> mutation for even one endpoint; IDOR on
+`/grounds/:id` and the report and board routes; whether `@Roles` is applied consistently across all
+179 routes; the magic-link token's entropy, expiry and single-use behaviour; the Google OAuth
+callback; upload handling in `documents`. This run examined the external entry points and stopped.
+
+Original Run 1 recon note follows. Recon notes only: 3 guards exist; `PLATFORM_ADMIN_BOOTSTRAP_EMAIL`
 grants platform admin from an env var; three webhook entry points exist and only Stripe's is
 annotated as signature-verified — **the Resend and WhatsApp handlers' verification is unchecked.**
 
