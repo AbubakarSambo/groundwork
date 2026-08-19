@@ -2134,3 +2134,32 @@ without it, the fix would silently break every stored report's row resolution.
 (C-8's remedy moved entirely to the webhook boundary; C-12's changed target). An audit finding is a
 hypothesis about a fix; the fix is where it gets tested.
 
+---
+
+## C-1 REVISED BEFORE IMPLEMENTATION — "remove the affordance" was the wrong call
+
+**Not actioned. The recommendation was based on an incomplete reading and is withdrawn pending a
+decision.**
+
+**What I recommended:** remove the client methods and the UI, on the grounds that three routes plus
+persistence for a feature nobody could use was speculative product work.
+
+**What is actually there.** Not a stray button — a complete `DraftEditor` in
+`PromptVersioningPage.tsx`: block-aware editing of prompt content (`parseContentBlocks`), a summary
+field, save (`upsertDraft`), publish (`activate(draft.id)`), discard (`discardDraft`), and `isDraft`
+badges in the version list. **And `PromptVersion.isDraft` exists in the schema** (`schema.prisma:1136`,
+with a default).
+
+So the shape of this is: **the data model was designed for drafts, the entire front end was built, and
+the service and controller halves were never written.** `prompts.service.ts` contains no draft logic at
+all. It is a half-built feature, not a vestige.
+
+**Why that reverses the recommendation.** Removing the affordance would delete the block-aware prompt
+editor — the good editing surface for the prompts that drive the conversation engine — to tidy away a
+missing controller. Implementing the three routes is a small addition against a schema that already
+supports it, and `activate` already works on any version id including a draft.
+
+**Why it is not simply done anyway.** Implementing is building a feature, which is a larger scope than
+"apply the fixes", and removing is destructive to working front-end work. Those are materially
+different pieces of work and the choice is not mine to make quietly. **Recorded and paused.**
+
