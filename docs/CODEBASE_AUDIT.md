@@ -1830,3 +1830,53 @@ assumptions, historical records created under earlier schemas, orphan-record cou
 staleness were **not** examined; the 69 migrations were not read individually, so a destructive or
 data-losing migration in that history would not have been seen by this run.
 
+---
+
+## CORE RUN 8 — `grounds.service.ts`
+
+### Verdict: LARGE BUT COHERENT. **No architectural change recommended.**
+
+The run's instruction was not to recommend splitting merely because a file is big. Tested against the
+specific harms, it does not exhibit them.
+
+**Size, measured rather than eyeballed.** 2,942 total lines — but **41% is comments and blanks**, so
+the executable content is **1,761 lines across 46 methods, about 38 lines per method.** My own earlier
+note in the ten-run audit said "2200+ lines" and used that as a god-module flag; **that figure was
+wrong and the inference from it was lazy.** The file reads as enormous because this codebase
+deliberately keeps long explanatory comments recording why each decision was made — which Run 8 of the
+first audit identified as a scanning hazard and which is, for a human maintainer, the opposite of a
+problem.
+
+**Authorization consistency — the harm that would have mattered most.** Every method that needs an
+ownership key takes one. My scan reported 7 without; **all 7 were verified individually and none is a
+gap:**
+
+| Method | Why it is fine |
+|---|---|
+| `constructor` | n/a |
+| `getJoinPreview` | serves the deliberately PUBLIC `/entry/join-preview`, keyed on a token |
+| `isSessionReadyForReport`, `isReportReady`, `getSessionProgress` | internal computations keyed on groundId, called by listeners; return readiness, not another org's data |
+| `getParticipantInviteUrl` | **takes `initiatorId`** and its first query is `findFirst({ where: { id: groundId, initiatorId } })`, throwing Forbidden — only the initiator can obtain an invite URL |
+| `pauseGround` | **takes `adminUserId`**; an internal system action with no public controller route |
+
+**Method-note, third occurrence:** my pattern searched for `organizationId`/`userId`/`requestingUser`
+and missed `initiatorId` and `adminUserId` — **ownership keys under other names.** That is the third
+time in this Core audit that a scan under-matched on naming (after ternary state assignments and
+class-level `@Public`). Recorded because it means **any count I produce is a floor, and a "missing"
+result here must always be read individually before it is believed.**
+
+**Other harms tested.**
+- *Conflicting responsibilities:* one coherent cluster — the Ground aggregate with its participants,
+  check-in scaffolding, baseline, notes and lifecycle. No unrelated domain lives here.
+- *Multiple sources of truth:* none found within the file. The two source-of-truth problems this audit
+  did find (`BillingEvent`, the `RESOLVED` state) are elsewhere.
+- *Transaction boundaries:* 5 `$transaction` blocks against 141 Prisma call sites. **Low in
+  proportion**, but the writes that actually need atomicity — ground creation with its participant and
+  first check-in, `addParticipant` — do have them. Recorded as an observation, not a finding: I did not
+  enumerate every multi-write path in the file.
+- *Authorization bypass:* none found. See table above.
+
+**Recommendation: leave it alone.** Splitting it would move 46 coherent methods across new seams for
+no demonstrated defect, and this audit has already shown that changes made to satisfy an abstract
+concern here — rather than a traced one — are where the regressions come from.
+
