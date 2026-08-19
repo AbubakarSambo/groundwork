@@ -1880,3 +1880,64 @@ result here must always be read individually before it is believed.**
 no demonstrated defect, and this audit has already shown that changes made to satisfy an abstract
 concern here — rather than a traced one — are where the regressions come from.
 
+---
+
+## CORE RUN 9 — Cross-system reconciliation
+
+Tested the root-cause pattern — *A and B must agree, nothing verifies A == B* — against the pairs
+named for this run. One is a Confirmed defect. The others were checked and are recorded as sound.
+
+### CONFIRMED · C-14 · `conversation state ↔ ground state`: `open()` enforces the ground's status and `sendMessage()` does not
+
+*Severity **High**. Confidence **Confirmed execution-path defect**.*
+
+**Evidence, both sides read in full.**
+`conversation.service.ts:374-378` — `open()` loads the ground, defines
+`OPEN_STATUSES = [OPEN, AWAITING_PARTIES, ACTIVE, REPORT_READY]` and throws
+`'This ground is no longer accepting check-ins'` for anything else.
+`sendMessage()` — the **entire 86-line body** contains **zero** references to `OPEN_STATUSES`,
+`ground.status`, `GroundStatus`, `PAUSED`, `CLOSED` or `STALLED`. It guards ownership
+(`loadOwnedCheckIn`), check-in completion, and the turn limit. **It never asks whether the ground still
+accepts input.**
+
+**Why it matters, and why High.** `PAUSED` is not a cosmetic state. The schema documents its purpose:
+`PAUSED // temporarily paused (e.g. active legal proceedings detected)`. So the product has a legal-hold
+state, and **the hold does not stop writing.** A participant already inside an `IN_PROGRESS` check-in
+when a ground is paused, closed by an admin, or stalled by cron can keep sending messages; each is
+persisted as a `ConversationTurn`, extracted into `RecordEntry`, and reaches synthesis and the shared
+report. Only *starting* is blocked. Continuing is not.
+
+**Failure scenario.** Legal proceedings begin. An admin pauses the ground — the one control the product
+offers for exactly this. A participant with a session open keeps answering for another twenty minutes.
+Those answers enter the permanent record and the report, after the hold was applied, with nothing
+anywhere recording that they arrived post-pause.
+
+**Recommended action.** Extract the `OPEN_STATUSES` check from `open()` into a shared private guard and
+call it from `sendMessage`, `complete`, and the two session-starting methods. **Then decide the harder
+question deliberately:** whether a paused ground should reject a mid-session message outright, or accept
+it and mark it as arriving during the hold. Rejecting is safer; accepting-and-marking loses less of
+somebody's work. Silence is the only wrong answer.
+
+**Affected areas.** `sendMessage`, `complete`, `startClarificationSession`,
+`startSelfCorrectionSession`, `RecordEntry` provenance, synthesis, and the meaning of `pausedAt`.
+
+### Pairs checked and found sound
+
+- **`report ↔ underlying responses`** — synthesis reads `RecordEntry` scoped per participant and
+  persists labels, not names; row visibility is enforced by identifier comparison (Core Run 5). Sound,
+  with C-12 as its missing *detector* rather than a missing control.
+- **`schedule ↔ execution`** — `ScheduleModule.forRoot()` registered, all five cron classes provided,
+  all 17 crons pin UTC (Core Runs 3 and 6). Sound.
+- **`database ↔ external provider`** — the Stripe pairing is C-9 (dedupe with no unique constraint),
+  already recorded; not re-litigated here.
+- **`billing ↔ usage`** — two independent ledgers with no reconciliation between them, but **neither is
+  authoritative for the other and nothing claims they agree**, so this is not the pattern. It is
+  instead C-4 (billing incomplete) and C-5 (usage incomplete) separately.
+
+### Not checked
+
+`participant ↔ membership` — `GroundParticipant.userId` versus `OrganizationMembership` are two
+representations of belonging, and I did not verify that they cannot disagree. `plausible concern`; the
+cross-org participant fallback in `grounds.get()` suggests the case is at least anticipated.
+`stored state ↔ derived state` beyond what Core Run 5 covered was also not examined.
+
