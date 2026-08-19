@@ -578,6 +578,44 @@ it means C-5's missing events would never announce themselves. No `$transaction`
 services scanned other than the billing path above, but **that scan was a grep, not a review of
 every multi-write operation**, and must not be read as "the rest need none".
 
+**Run 7 · C-2 STRENGTHENED, and two of my own suspicions withdrawn.**
+
+**C-2 now has much better evidence than "read nowhere".** The codebase has **one** working
+flag convention — `this.config.get<boolean>('app.<camelCase>')`, wrapped in a small private
+predicate on the owning service:
+`grounds.service.ts:529 contextEnabled()`, `conversation.service.ts:1072 coachingEnabled()`,
+`reports.service.ts:495 confidenceEnabled()`, and `reports.service.ts:1939` for
+`postReportGuideEnabled`. Four of the five flags follow it. **`objectivesEnabled` has exactly one
+reference in the entire non-spec codebase: its own declaration at `configuration.ts:84`.** It is not
+that the flag is unusual — it is that four siblings demonstrate the pattern it alone does not
+implement. *Severity Low, Confidence Confirmed.* Fix: add an `objectivesEnabled()` predicate on
+whichever service owns objectives and consult it, or delete flag and env var together.
+
+**Withdrawn · "Two flag-reading conventions coexist" (Run 1 item 1, carried through Run 2).**
+There is one convention. My evidence for a second was six grep hits on `COACHING_ENABLED` /
+`CONFIDENCE_ENABLED` / `CONTEXT_ENABLED` inside service files — **all six are comments**, and my
+follow-up query used the wrong key shape (`coaching.enabled` rather than `app.coachingEnabled`), so
+it returned zero and I read that as absence. Two compounding errors producing a finding that was
+never there.
+
+**Withdrawn · C-6, the "dead" `CompanyStage` enum.** The column IS written:
+`auth.service.ts:826` sets `orgUpdate.companyStage` from `update-profile.dto.ts:11`, which validates
+it with `@IsEnum(CompanyStage)`, and `client/src/api/auth.ts:41` carries it in the payload. My Run 3
+method scanned for enum **value** names (IDEA, PRE_REVENUE...) and those never appear in code
+*because the values arrive as validated strings from the client*. **That is a systematic blind spot
+in the Run 3 enum scan**, and it applies equally to any other enum populated from user input — so
+`EvidenceType.UNANCHORED_RECALL` and the never-emitted `UsageEventType` values in C-5 should be
+re-checked the same way before anyone acts on them. What remains true and smaller: **no UI field
+sets `companyStage`**, so it is write-capable and never written in practice. Downgraded from "dead
+enum" to "an unused profile field with a live write path".
+
+**Run 7 · Methodological finding, recorded because it affected four separate conclusions.**
+Grep matched a COMMENT rather than code four times in this audit: the duplicate `@Get(':id')`, the
+controller-collision suspicion, the flag conventions above, and once while writing a guard test
+earlier the same day. This codebase carries unusually long explanatory comments that quote code
+verbatim — which is a virtue for a reader and a trap for a scanner. **Any source-level assertion or
+scan against this repository must strip comments first.** The ledger's own guards now do.
+
 Five further confirmed defects predate this document and were fixed on 2026-08-17.
 
 ## Suspected findings requiring further tracing
@@ -632,6 +670,13 @@ Five further confirmed defects predate this document and were fixed on 2026-08-1
 - Which of `groundwork_local_test` and `e2e` is the authoritative harness?
 
 ## Duplicate/competing implementations discovered
+
+**Run 7:** no competing implementation found in the areas examined. The two suspected ones both
+dissolved on inspection — one convention for flags, not two; two controller classes sharing the
+`grounds` mount with no colliding path. The one real duplicate this session, two pricing services
+built the same day, was resolved by deletion before this audit began. **Not examined:** the
+`groundwork_local_test` vs `e2e` harness overlap, god-module risk in `grounds.service.ts` (2200+
+lines) and `conversation.service.ts`, circular dependencies, and dead routes among the 179.
 
 - Two controllers on the `'grounds'` mount (above).
 - Two flag-reading conventions (above).
