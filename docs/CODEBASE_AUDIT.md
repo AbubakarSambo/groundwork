@@ -1668,3 +1668,66 @@ by design combines every party's content, and which carries the explicit promise
 statements about other people never appear and never say who said what. Core Run 2 verified the
 prompt path and explicitly did not verify this.
 
+---
+
+## CORE RUN 5 — Derived views, taking the report first
+
+### My hypothesis was wrong, and the correction is the finding
+
+**I expected:** synthesis receives every party's entries plus per-party labels, and the guarantee
+"it never says who said what" is enforced only by the prompt instruction at `reports.service.ts:89`
+("NEVER NAME ANYONE AND NEVER QUOTE ANYONE"). Under the standing rule that anything derived from a
+private account must be stripped **at the read in code, never by prompt instruction alone**, that
+would have been a High finding.
+
+**What is actually there is a two-part structural design**, traced at `reports.service.ts:1640-1672`:
+
+1. **Synthesis persists LABELS, not names.** The stored report body is label-based. Names are not in
+   the persisted artefact.
+2. **Names are substituted at read time, per viewer**, by a `t()` translation walked over the report's
+   text fields — while `NEVER_NAMED = new Set(['label', 'participantLabel'])` deliberately leaves the
+   label *keys* raw.
+
+The reason the label keys must stay raw is the important part, and the source states it: `own-reads-only.ts`
+filters per-person rows by `row.label === viewerLabel`, **matching on the raw label**. So *which rows a
+viewer sees* is enforced structurally, by identifier comparison — not by instruction.
+
+**Classification: the row-visibility control is CONFIRMED structural.** My hypothesis is withdrawn.
+
+### CONFIRMED · C-12 · A documented silent-failure mode guards the report's per-person rows
+
+*Severity Medium. Confidence **Confirmed** (the fragility; the source documents the mechanism).*
+
+The same comment records what happens if the two parts are ever mixed: put a name into `.label` and
+`row.label === viewerLabel` **stops matching — and it does not fail loudly. It silently keeps the wrong
+rows, and those rows are other people's quality reads.**
+
+So the privacy of per-person report rows rests on a **string comparison whose failure mode is silent
+disclosure of other participants' content.** There is no assertion, no invariant check, and no test
+named in this path that would catch a label becoming a name. The protection is real and correctly
+designed; what is missing is anything that *notices* when it stops working. This is the audit's
+root-cause pattern in its most consequential location: two things that must agree — `row.label` and
+`viewerLabel` — with nothing verifying they still do.
+
+**Recommended action.** Add an invariant at the read boundary: assert that every `label`/`participantLabel`
+value matches the label format and contains no name from the ground's roster, and fail closed. Cheap,
+and it converts a silent leak into a caught error. **Do not** restructure the label design — it is sound.
+
+**Affected areas.** `own-reads-only.ts`, the `t()` translation path, the board (same label vocabulary),
+and `engagement` / `inferences`, which are walked by `walkTextOnly`.
+
+### Still instructional, and worth stating separately
+
+The prohibition on the report **body** naming or quoting anyone (`reports.service.ts:89`, plus rules 6,
+13 and 14) remains **prompt instruction**. Labels being structural protects *row visibility*; it does
+not stop a model writing a name it inferred into prose. **No post-generation validation of the body
+against the roster was found.** `plausible concern`, not promoted — the model is given labels rather
+than names, so it has less to leak, and confirming a defect would need generated output rather than
+source.
+
+### Not done in Core Run 5
+
+The board's own value provenance, persisted-vs-calculated, staleness, and deleted-entity behaviour;
+whether two UI surfaces compute the same concept differently (the original audit found exactly that
+twice — the counter and the read). Those remain open.
+
