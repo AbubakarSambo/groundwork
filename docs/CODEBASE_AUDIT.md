@@ -1515,3 +1515,66 @@ guarantee lives in synthesis, which this run did not examine.**
 `plausible concern` (not promoted): logging. `logger.error`/`warn` calls exist throughout the
 conversation path and no run has checked whether any interpolates participant content.
 
+---
+
+## CORE RUN 3 — Ground state machine
+
+### The real lifecycle, from write sites
+
+| State | Written at | Trigger | Reachable? |
+|---|---|---|---|
+| `AWAITING_APPROVAL` | `grounds.service.ts:172` (ternary) | non-ADMIN creates a ground | ✅ |
+| `AWAITING_LEAD` | `:336` | admin creates a ground *for* a lead | ✅ |
+| `OPEN` | `:172` (ternary, ADMIN creator), `:1992` (admin approves) | creation or approval | ✅ |
+| `AWAITING_PARTIES` | `:486` (ternary), `:1640` (`addParticipant`) | a participant exists | ✅ |
+| `ACTIVE` | `:1809` (`activate`), `reports.listener.ts` on all-parties-through | billing activation or report release | ✅ |
+| `PAUSED` | `:2648` | pause action | ✅ |
+| `STALLED` | `grounds.cron.ts:61` | full period elapsed, unresolved | ✅ scheduled |
+| `CLOSED` | `:2026`, `grounds.cron.ts:553`, `resolution.service.ts:216` | decline, cron, **and resolution** | ✅ |
+| `REPORT_READY` | **nowhere** | — | ❌ unreachable *(known; schema documents it)* |
+| `RESOLVED` | **nowhere** | — | ❌ **unreachable — newly found** |
+
+### CONFIRMED · C-11 · `RESOLVED` is declared, read in four places, and never written
+
+*Severity Medium. Confidence **Confirmed execution-path defect**.*
+
+**Evidence.** `GroundStatus.RESOLVED` appears only in read or comparison positions:
+`grounds.cron.ts:17` (a `TERMINAL` list), `resolution.service.ts:48` and `:162` (guards), and
+`reports.service.ts:380`. **No assignment exists anywhere in non-spec source.** The resolution flow
+that should produce it instead writes `CLOSED`: `resolution.service.ts:216` sets
+`{ status: GroundStatus.CLOSED, resolvedAt: now }`.
+
+**Method note, because this run nearly produced a false finding.** My first scan reported
+`AWAITING_PARTIES`, `AWAITING_APPROVAL` and `RESOLVED` as unwritten. Two of those were wrong — both
+are written by **ternary** assignments (`:172`, `:486`) that my pattern could not see. I re-ran with
+a looser pattern before recording anything. Only `RESOLVED` and `REPORT_READY` survive as genuinely
+unwritten. This is the fifth time in the combined audit that a first-pass scan produced a false
+positive, and the second time re-checking prevented one from being recorded.
+
+**Why it matters.** Two things that must agree, with nothing reconciling them — the audit's root-cause
+pattern, in the state machine:
+1. `reports.service.ts:380` computes `const isClosing = closing?.status === GroundStatus.RESOLVED || !!closing?.resolutionState`.
+   **The first clause can never be true.** It works only because of the `||` fallback, which is
+   exactly why nobody noticed. Anyone deleting the fallback as redundant would silently break the
+   closing-round report.
+2. A resolved ground is **status-indistinguishable** from one closed by admin decline or by the
+   stalled-ground cron. The only discriminator is the `resolvedAt` timestamp, which no status query
+   consults. Any future "how many grounds reached resolution" answer read from `status` returns zero.
+
+**Recommended action.** Either write `RESOLVED` at `resolution.service.ts:216` (and let `CLOSED` mean
+closed-without-resolution), or delete `RESOLVED` from the enum and remove the dead clause at
+`reports.service.ts:380`. **Do not simply delete the `||` fallback.** Decide which of the two the
+product means; both are defensible, silence is not.
+
+**Affected areas.** `resolution.service`, the closing-round report path, `grounds.cron`'s TERMINAL
+list, and any future reporting on resolution rates.
+
+### Not examined in Core Run 3
+
+Transition *legality* — nothing here verifies that only lawful transitions occur, e.g. whether a
+`CLOSED` ground can be re-opened, whether `PAUSED` can be reached from a terminal state, or whether
+two concurrent writers can move a ground twice. Side effects per transition (notifications, billing)
+were mapped only where earlier runs had already touched them. Stuck-state analysis was **not** done:
+`AWAITING_LEAD` in particular is a plausible stuck state if a lead never confirms, and nothing in this
+run checked whether anything rescues it. `plausible concern`, not promoted.
+
