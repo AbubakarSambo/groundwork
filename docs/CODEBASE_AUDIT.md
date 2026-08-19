@@ -535,6 +535,49 @@ ownership key. **No IDOR was found in this scan.** What the scan does NOT establ
 service then *uses* the key it was given in its query. That is the remaining half, and C-7 is
 precedent for the gap between receiving a key and honouring it.
 
+**Run 6 · C-9 · The Stripe webhook's idempotency is a check-then-act race, and the database does not
+back it up.** *Severity High. Confidence Confirmed (the missing constraint); the race requires
+concurrent delivery.*
+
+**Evidence.** `billing.service.ts`, `case 'checkout.session.completed'`:
+- Line ~767: `const existing = await this.prisma.billingEvent.findFirst({ where: { stripeInvoiceId } })`
+  and it skips with a "Duplicate webhook" warning if found. So idempotency was intended and is
+  **half** present.
+- The two writes that follow — `ground.update({ sessionsBalance: { increment: qty } })` and
+  `billingEvent.create({ stripeInvoiceId, ... })` — are correctly wrapped in
+  `this.prisma.$transaction([...])`, so they are atomic **with each other**.
+- But `schema.prisma:1204` declares `stripeInvoiceId String? @map("stripe_invoice_id")` with **no
+  `@unique`**, and `BillingEvent` carries only `@@index([organizationId])`. Nothing in the database
+  prevents two rows with the same invoice id.
+
+**Why it matters.** The read and the write are not atomic with respect to each other, and the column
+that would make the race harmless is not constrained. Stripe retries webhooks by design and can
+deliver the same event more than once, concurrently; any deployment running more than one instance
+widens the window further.
+
+**Failure scenario.** Two deliveries of one `checkout.session.completed` arrive together. Both run
+`findFirst`, both see nothing, both enter their transaction. The customer's `sessionsBalance` is
+incremented **twice** for one payment, and the ledger gains two rows for one invoice — so the
+product both gives away sessions and reports a charge that did not happen twice. It fails in both
+directions at once, which is why this is High rather than Medium.
+
+**Recommended action.** Put `@unique` on `BillingEvent.stripeInvoiceId` (nullable-unique is fine in
+Postgres — multiple NULLs are permitted, and the non-Stripe event types leave it null), then treat
+the unique-violation on insert as the idempotency signal rather than relying on the prior read. That
+converts an unguarded race into a caught error and keeps the existing `findFirst` as a cheap fast
+path. Requires a migration.
+
+**Affected areas.** All five webhook cases in that switch, `sessionsBalance` arithmetic, the
+`BillingEvent` ledger and any future reconciliation against Stripe. Note this compounds with **C-4**
+(the ledger never records SUBSCRIPTION_FEE) and **C-7** (the ledger is cascade-deleted with its org):
+three findings on one table, none of them the same bug.
+
+**Run 6 · Observations.** `usage.emit(...)` is called with `.catch(() => undefined)` at six sites,
+so telemetry failures are swallowed silently by design — defensible for analytics, and worth knowing
+it means C-5's missing events would never announce themselves. No `$transaction` was found in the
+services scanned other than the billing path above, but **that scan was a grep, not a review of
+every multi-write operation**, and must not be read as "the rest need none".
+
 Five further confirmed defects predate this document and were fixed on 2026-08-17.
 
 ## Suspected findings requiring further tracing
@@ -623,7 +666,13 @@ product with one primary flow, which is where abandoned tables tend to hide.
 
 ## Reliability concerns
 
-Nothing assessed. Run 6 owns this. Recon note: magic-link email is a single point of failure for
+**Run 6, partial.** One High: C-9, the check-then-act race on the Stripe credit path with no unique
+constraint behind it. Telemetry failures are swallowed by design at six sites.
+
+**NOT assessed:** concurrency on check-in completion (two parties finishing simultaneously, which
+drives report release), the seven cron carriers' actual registration and overlap behaviour, Gemini
+timeout and partial-response handling, retry limits anywhere, dead-letter handling, service restart
+mid-synthesis, and reconciliation of any kind. Recorded original recon note below. Recon note: magic-link email is a single point of failure for
 authentication itself — there is no password-only path for an account that never set one, which
 is the fault that a previous simulation showed stops grounds reaching a report.
 
