@@ -21,7 +21,7 @@ import { describe, it, expect } from 'vitest'
  * renders the conversation and nothing else, and that the retired card view has not
  * crept back alongside it.
  */
-const SRC = readFileSync(join(__dirname, 'GroundParticipantPage.tsx'), 'utf8')
+const SRC = readFileSync(join(__dirname, 'GroundParticipantPage.tsx'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
 describe('the Check-in tab', () => {
   it('renders the conversation', () => {

@@ -49,7 +49,7 @@ const ENTRY_COVERS: Record<string, string[]> = {
 
 /** The admin picker's cardKeys, read from source so it cannot go stale. */
 const adminCardKeys = (() => {
-  const src = readFileSync(join(__dirname, '../grounds/CreateGroundPage.tsx'), 'utf8')
+  const src = readFileSync(join(__dirname, '../grounds/CreateGroundPage.tsx'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
   return [...src.matchAll(/cardKey:\s*'([A-Z_]+)'/g)].map(m => m[1])
 })()
 

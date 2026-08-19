@@ -22,7 +22,7 @@ import { join } from 'path';
  * right thing, not that a particular sentence comes back.
  */
 
-const SRC = readFileSync(join(__dirname, 'entry.service.ts'), 'utf8');
+const SRC = readFileSync(join(__dirname, 'entry.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
 /** The onboarding system prompt, which is where setup decides what to ask. */
 const PROMPT = (() => {

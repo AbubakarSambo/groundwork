@@ -38,7 +38,7 @@ const HAND_ROLLED_SECTION_LABEL = /fontSize: 1[01](\.\d)?, fontWeight: 700, text
 
 describe('a page that imports the kit does not also hand-roll it', () => {
   for (const f of files(PAGES)) {
-    const src = readFileSync(f, 'utf8')
+    const src = readFileSync(f, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
     if (!src.includes("components/gw/kit")) continue
     it(`${f.split('/').pop()} uses Sec rather than rebuilding it`, () => {
       const matches = src.match(new RegExp(HAND_ROLLED_SECTION_LABEL, 'g')) ?? []
@@ -55,7 +55,7 @@ describe('a page that imports the kit does not also hand-roll it', () => {
 describe('the kit is the only place its tokens are defined', () => {
   it('and it still defines them', () => {
     // A tripwire pointed at an empty kit asserts nothing.
-    const kit = readFileSync(join(__dirname, 'kit.tsx'), 'utf8')
+    const kit = readFileSync(join(__dirname, 'kit.tsx'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
     for (const piece of ['export function Zone', 'export function Sec', 'export function Card', 'export function Stat']) {
       expect(kit).toContain(piece)
     }

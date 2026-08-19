@@ -20,9 +20,9 @@ import { buildNotesBlock } from './between-session-notes';
  * rather than by remembering. The note gets its own table, and it reaches a
  * session as a QUESTION TO ASK rather than a fact to accept.
  */
-const SERVICE = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8');
-const GROUNDS = readFileSync(join(__dirname, '../grounds/grounds.service.ts'), 'utf8');
-const SCHEMA = readFileSync(join(__dirname, '../../../prisma/schema.prisma'), 'utf8');
+const SERVICE = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+const GROUNDS = readFileSync(join(__dirname, '../grounds/grounds.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+const SCHEMA = readFileSync(join(__dirname, '../../../prisma/schema.prisma'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
 describe('where a between-session note is stored', () => {
   it('has a table of its own', () => {

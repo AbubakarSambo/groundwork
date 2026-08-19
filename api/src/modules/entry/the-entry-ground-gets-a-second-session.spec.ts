@@ -111,7 +111,7 @@ describe('the wiring itself', () => {
   });
 
   it('and the entry commit actually calls it', () => {
-    const src = require('fs').readFileSync(require('path').join(__dirname, 'entry.service.ts'), 'utf8');
+    const src = require('fs').readFileSync(require('path').join(__dirname, 'entry.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     expect(src).toMatch(/this\.conversation[\s\S]{0,40}\.ensureNextSession\(/);
   });
 
@@ -130,7 +130,7 @@ describe('the wiring itself', () => {
      * So the call has to be inside commitInner, checked by slicing that method
      * out of the file rather than by trusting the whole-file match above.
      */
-    const src: string = require('fs').readFileSync(require('path').join(__dirname, 'entry.service.ts'), 'utf8');
+    const src: string = require('fs').readFileSync(require('path').join(__dirname, 'entry.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     const start = src.indexOf('private async commitInner(');
     expect(start).toBeGreaterThan(-1);
     // The next method declaration at class-member indent ends this one.

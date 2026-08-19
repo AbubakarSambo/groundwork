@@ -75,7 +75,7 @@ const OPERATIONS: Record<string, string[]> = {
   board: ['boardApi.get(', 'createObjective(', 'updateObjective(', 'deleteObjective(', 'upsertPoll(', 'togglePoll('],
 }
 
-const SRC = PAGES.map(p => readFileSync(join(__dirname, p), 'utf8')).join('\n')
+const SRC = PAGES.map(p => readFileSync(join(__dirname, p), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')).join('\n')
 
 describe('nothing the ground pages can do gets lost in a merge', () => {
   for (const [group, calls] of Object.entries(OPERATIONS)) {
@@ -117,7 +117,7 @@ describe('nothing the ground pages can do gets lost in a merge', () => {
  */
 describe('no mutation is left with no way to call it', () => {
   for (const page of PAGES) {
-    const src = readFileSync(join(__dirname, page), 'utf8')
+    const src = readFileSync(join(__dirname, page), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
     const declared = [...src.matchAll(/const (\w+) = useMutation\(/g)].map(m => m[1])
     for (const name of declared) {
       it(`${page.split('/').pop()}: ${name} is invoked`, () => {

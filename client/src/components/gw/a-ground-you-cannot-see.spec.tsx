@@ -51,7 +51,7 @@ describe('the ground-not-open state', () => {
 describe('both ground pages use it', () => {
   for (const rel of ['pages/grounds/GroundAdminPage.tsx', 'pages/grounds/GroundParticipantPage.tsx']) {
     it(`${rel.split('/').pop()}`, () => {
-      const src = readFileSync(join(__dirname, '../..', rel), 'utf8')
+      const src = readFileSync(join(__dirname, '../..', rel), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
       expect(src).toContain('<GroundGone />')
       // And the old bare version is gone rather than sitting next to it - the
       // participant page had its own two hardcoded colours for it.

@@ -245,7 +245,7 @@ describe('what survives', () => {
 });
 
 describe('the service applies it, and the flag stays off', () => {
-  const SERVICE = readFileSync(join(__dirname, 'reports.service.ts'), 'utf8');
+  const SERVICE = readFileSync(join(__dirname, 'reports.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
   it('sanitises before storing', () => {
     /**
@@ -284,7 +284,7 @@ describe('the service applies it, and the flag stays off', () => {
 });
 
 describe('the prompt no longer contradicts the report or invent a meeting', () => {
-  const SERVICE = readFileSync(join(__dirname, 'reports.service.ts'), 'utf8');
+  const SERVICE = readFileSync(join(__dirname, 'reports.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
   const PROMPT = (() => {
     const i = SERVICE.indexOf('const POST_REPORT_GUIDE_PROMPT');
     return SERVICE.slice(i, SERVICE.indexOf("].join('\\n')", i)).replace(/\s+/g, ' ');

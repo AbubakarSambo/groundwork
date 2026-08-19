@@ -23,7 +23,7 @@ import { join } from 'path'
  * not silently revert is that something calls each of these.
  */
 
-const read = (p: string) => readFileSync(join(__dirname, '..', p), 'utf8')
+const read = (p: string) => readFileSync(join(__dirname, '..', p), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
 const GROUNDS_API = read('api/grounds.ts')
 const CONVERSATION_API = read('api/conversation.ts')

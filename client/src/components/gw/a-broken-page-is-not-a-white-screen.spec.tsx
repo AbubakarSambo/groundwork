@@ -70,7 +70,7 @@ describe('and it is actually mounted', () => {
   it('around the routes, so it covers every page rather than one', () => {
     // A boundary that exists in a file and wraps nothing is the shape of bug this
     // repo keeps producing: the dead AppShell, the dead FeedbackWidget.
-    const app = readFileSync(join(__dirname, '../../App.tsx'), 'utf8')
+    const app = readFileSync(join(__dirname, '../../App.tsx'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
     expect(app).toMatch(/<PageCrash>[\s\S]*<Routes>/)
     expect(app).toMatch(/<\/Routes>[\s\S]*<\/PageCrash>/)
   })

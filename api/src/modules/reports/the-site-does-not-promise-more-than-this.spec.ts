@@ -27,7 +27,7 @@ import { PartyType } from '@prisma/client';
  */
 
 const HOME = path.join(__dirname, '../../../../marketing/src/pages/index.astro');
-const copy = () => fs.readFileSync(HOME, 'utf8');
+const copy = () => fs.readFileSync(HOME, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
 /** Prose only. A promise inside a source comment is a note, not a claim. */
 function visibleCopy(): string {

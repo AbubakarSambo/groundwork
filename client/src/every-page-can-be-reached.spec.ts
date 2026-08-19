@@ -66,9 +66,9 @@ function sourceFiles(dir: string, out: string[] = []): string[] {
   return out
 }
 
-const APP = readFileSync(join(SRC_DIR, 'App.tsx'), 'utf8')
+const APP = readFileSync(join(SRC_DIR, 'App.tsx'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 const ROUTES = [...APP.matchAll(/<Route\s+path="([^"]+)"/g)].map(m => m[1])
-const BLOB = sourceFiles(SRC_DIR).map(f => readFileSync(f, 'utf8')).join('\n')
+const BLOB = sourceFiles(SRC_DIR).map(f => readFileSync(f, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')).join('\n')
 
 /** Does anything in the app name this destination - navigate, Link, href? */
 function isLinked(route: string): boolean {

@@ -34,7 +34,7 @@ describe('the public pricing page and the in-app one', () => {
     expect(existsSync(MARKETING), `${MARKETING} is not there any more - move this check with it`).toBe(true)
   })
 
-  const html = existsSync(MARKETING) ? readFileSync(MARKETING, 'utf8') : ''
+  const html = existsSync(MARKETING) ? readFileSync(MARKETING, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '') : ''
 
   for (const plan of PAID) {
     it(`${PLAN_LABELS[plan]} costs the same on both`, () => {

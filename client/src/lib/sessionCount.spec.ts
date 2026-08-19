@@ -125,7 +125,7 @@ describe('a ground is done when everyone is done', () => {
  * fifth.
  */
 describe('nothing computes the session count by hand', () => {
-  const src = readFileSync(join(__dirname, '../pages/enter/EntryChatPage.tsx'), 'utf8')
+  const src = readFileSync(join(__dirname, '../pages/enter/EntryChatPage.tsx'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
   it('the entry chat uses plannedSessionsFor', () => {
     expect(src).toContain('plannedSessionsFor(')

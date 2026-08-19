@@ -66,7 +66,7 @@ describe('every component is used by something', () => {
       const name = basename(comp).replace(/\.tsx$/, '')
       const used = importers.some(f => {
         if (f === comp) return false
-        return importsOf(readFileSync(f, 'utf8')).some(spec => {
+        return importsOf(readFileSync(f, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')).some(spec => {
           // `@/components/gw/kit`, `./kit`, `../../components/gw/kit` all end in the name.
           const tail = spec.split('/').pop() ?? ''
           return tail === name
@@ -94,7 +94,7 @@ describe('every component is used by something', () => {
     for (const dead of pretendComponents) {
       const name = basename(dead).replace(/\.tsx$/, '')
       const used = importers.some(f =>
-        importsOf(readFileSync(f, 'utf8')).some(spec => (spec.split('/').pop() ?? '') === name && !f.includes('gw/')),
+        importsOf(readFileSync(f, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')).some(spec => (spec.split('/').pop() ?? '') === name && !f.includes('gw/')),
       )
       // `AppShell` IS imported today - by App.tsx, from components/gw. The point of this case
       // is the path: a file at components/layout/AppShell.tsx would satisfy nothing, because

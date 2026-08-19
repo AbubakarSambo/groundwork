@@ -26,7 +26,7 @@ import { describe, it, expect } from 'vitest'
  * would need a full ground payload to say something a one-line condition already says.
  */
 
-const SRC = readFileSync(join(__dirname, 'GroundAdminPage.tsx'), 'utf8')
+const SRC = readFileSync(join(__dirname, 'GroundAdminPage.tsx'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
 /** The overview tab's resolution panel, with the condition in front of it. */
 const BLOCK = (() => {

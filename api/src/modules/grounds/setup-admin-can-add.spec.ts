@@ -27,7 +27,7 @@ import { join } from 'path';
  * organisation's ground however the caller is related to it.
  */
 
-const SRC = readFileSync(join(__dirname, 'grounds.service.ts'), 'utf8');
+const SRC = readFileSync(join(__dirname, 'grounds.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
 /** The addParticipant guard, so assertions cannot drift to another method. */
 const GUARD = (() => {

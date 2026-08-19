@@ -31,7 +31,7 @@ import { join } from 'path';
  * than failing loudly.
  */
 
-const SRC = readFileSync(join(__dirname, 'grounds.service.ts'), 'utf8');
+const SRC = readFileSync(join(__dirname, 'grounds.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
 /** The transaction inside addParticipant that creates and advances state. */
 const ADD_TX = (() => {

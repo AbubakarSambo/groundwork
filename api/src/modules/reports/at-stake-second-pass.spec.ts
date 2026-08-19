@@ -26,7 +26,7 @@ import { ReportsService } from './reports.service';
  * structural and goes back to being a request.
  */
 
-const SRC = readFileSync(join(__dirname, 'reports.service.ts'), 'utf8');
+const SRC = readFileSync(join(__dirname, 'reports.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
 /** Drive the private pass directly - it is where the guarantee lives. */
 function makeService(extract: jest.Mock): ReportsService {

@@ -32,7 +32,7 @@ import { join } from 'path'
  * listed, so it must be impossible to miss - full width, its own accent, and
  * reachable from the top of the list as well as the bottom.
  */
-const SRC = readFileSync(join(__dirname, 'EntryChatPage.tsx'), 'utf8')
+const SRC = readFileSync(join(__dirname, 'EntryChatPage.tsx'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
 /**
  * The describe-your-own CARD, from its opening tag to its closing one.

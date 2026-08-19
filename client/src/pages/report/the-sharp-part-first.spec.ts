@@ -16,7 +16,7 @@ import { describe, it, expect } from 'vitest'
  * Checked as source order rather than by rendering, because what is pinned IS the order, and a
  * render test would need a whole report fixture to assert one thing about sequence.
  */
-const SRC = readFileSync(join(__dirname, 'ReportPage.tsx'), 'utf8')
+const SRC = readFileSync(join(__dirname, 'ReportPage.tsx'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
 /** Position of a section heading inside the shared-report card. */
 const at = (needle: string) => {
