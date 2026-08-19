@@ -616,6 +616,48 @@ earlier the same day. This codebase carries unusually long explanatory comments 
 verbatim — which is a virtue for a reader and a trap for a scanner. **Any source-level assertion or
 scan against this repository must strip comments first.** The ledger's own guards now do.
 
+**Run 8 · C-10 · 37% of the test suite proves the shape of the code, not its behaviour — and 67 of
+those tests can be satisfied by a comment.** *Severity High (as false confidence). Confidence
+Confirmed.*
+
+**Evidence.** 291 spec files. **110 of them call `readFileSync` on a source file and regex its
+text**; 181 execute code or render a component. Of the 110, only **43 strip comments before
+matching** — so **67 specs can pass because a sentence in a comment matched, with the code they
+claim to pin absent or reversed.** That is not hypothetical: Run 7 recorded four separate occasions
+in this one audit where a grep matched a comment quoting code verbatim, and one of them occurred
+inside a guard test being written that day, which reported green for the wrong reason until it was
+redone.
+
+**Why it matters.** These are not incidental tests. They are the repository's *chosen* mechanism for
+pinning hard-won behavioural lessons — the file names say so plainly
+(`a-hidden-link-is-not-a-permission`, `the-count-matches-the-report`,
+`the-password-step-must-not-swallow-the-ground`). Each was written after a real defect, precisely so
+it could not return. A source-assertion spec that a comment can satisfy **does not prevent the
+regression it was written for**, and its name and prose make it look like the strongest guard in the
+suite. This is the single largest source of false confidence in this codebase.
+
+**Failure scenario.** Someone refactors a guarded behaviour out of existence but leaves the long
+explanatory comment above it — which is exactly what a careful engineer in this codebase would do,
+because the comments are treated as documentation. The spec still matches text inside that comment
+and stays green. The defect the spec exists to prevent ships, with a passing test named after it.
+
+**Recommended action.** (1) Add comment-stripping to all 67 — mechanical, and the 43 already-correct
+specs supply the idiom to copy. (2) Where the behaviour is reachable at runtime, replace the source
+assertion with a behavioural one; source assertions are legitimate only when the fault was *where
+code lived* rather than what it did, which is true of a minority of them. (3) Treat a passing
+source-assertion spec as weaker evidence than a passing behavioural one when deciding whether
+something is safe to change.
+
+**Affected areas.** Every finding in this ledger that was "bite-checked" against a source-assertion
+guard, including ones I wrote today. The bite-check itself remains the mitigation that works: break
+the code, confirm red. A guard that cannot be made to fail is not a guard.
+
+**Run 8 · Observations.** The suite's behavioural half is substantial (181 files, 1734 API + 739
+client assertions) and the persona harness drives the real product end to end, which is why tonight
+it caught two regressions that every unit test missed. **Not assessed this run:** whether any
+authorization or tenant-isolation test exists at all, mocking depth, tests of obsolete
+implementations, and coverage of the failure modes named in Run 6 — none of which this run examined.
+
 Five further confirmed defects predate this document and were fixed on 2026-08-17.
 
 ## Suspected findings requiring further tracing
