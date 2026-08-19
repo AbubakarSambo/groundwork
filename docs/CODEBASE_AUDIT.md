@@ -1456,3 +1456,62 @@ whether conversation state can attach to the wrong ground. **The privacy questio
 the external model provider" is therefore still open** and is the most important item remaining in
 this audit.
 
+---
+
+## CORE RUN 2 — Privacy information-flow audit
+
+### What is actually sent to Gemini — TRACED, and it is participant-scoped
+
+Core Run 1 left this as the most important open question. The assembled prompt is built at
+`conversation.service.ts:1068` from thirteen components. Each was traced to its query:
+
+| Prompt component | Source query | Scope |
+|---|---|---|
+| conversation history | `conversationTurn.findMany({ where: { checkInId } })` (~702) | **this check-in only** |
+| `PRIOR_SESSION` in intake | `checkIn.findMany({ participantId, sessionNumber: { lt }, status: COMPLETED })` (~766) | **this participant's own earlier sessions** |
+| `dynamicContext` | built with `{ groundId, participantId: checkIn.participantId }` | participant-scoped |
+| `notesBlock` | `participantNote.findMany({ where: { participantId: checkIn.participantId, carriedIntoCheckInId: null } })` | **notes addressed to this person** |
+| `personTurnCount` | `conversationTurn.count({ where: { checkInId } })` | own check-in |
+| `docContext` | `groundDocument.findMany({ where: documentWhereFor(groundId, { participantId, isLead }) })` | **explicit visibility function** |
+| systemPrompt / styleBlock / roleProbe / coaching / correction contexts | prompt library + own state | no other party's content |
+
+**Finding: no cross-participant leakage in the prompt-assembly path.** Not one component reaches
+another participant's answers, turns, or derived content.
+
+The single place ground-level data legitimately enters is `documentWhereFor`, and it is a deliberate,
+reviewed decision rather than an oversight — the code carries a comment recording that it previously
+asked only for the reader's own `participantId` and was **widened on purpose** so an OPEN document,
+the lead's brief or a grant could be seen. That is a visibility gate with a rationale attached, which
+is the correct shape for this. It is also the function gated by `contextEnabled()`, one of the four
+flags Run 7 confirmed live.
+
+**Classification: CONFIRMED (as sound). This is the strongest negative result in either audit** — the
+product's central privacy promise holds on the path that matters most, and it holds structurally,
+through query scoping, not through instructions to the model.
+
+### Information-flow map
+
+| Category | Source | Storage | Processing | Allowed recipients | External | Notes |
+|---|---|---|---|---|---|---|
+| Raw check-in answers | participant turns | `ConversationTurn` (unencrypted) | extraction → `RecordEntry` | the author; synthesis | **Gemini** | privacy screen states this plainly |
+| Own prior sessions | `CheckIn`/`RecordEntry` | as above | prompt context | the author only | **Gemini** | verified participant-scoped |
+| Notes | `ParticipantNote` | own row | prompt context | addressee only | **Gemini** | verified |
+| Documents | upload | `GroundDocument` | prompt context | per `documentWhereFor` | **Gemini** | gated + flagged |
+| Derived record | extraction | `RecordEntry` | synthesis | author; shared report | **Gemini** | own words may appear; statements about others must not name attribution |
+| Reports | synthesis | `Report` | reveal/activation | parties per activation; lead; org admin | **Gemini** | |
+| Analytics | `usage.emit` | `UsageEvent` | admin screens | platform admin | no | **6 of 11 types never emitted (C-5)** |
+| Logging | `logger` | stdout | — | operators | no | **not audited for PII content** |
+
+### Indirect-leakage question — PARTIALLY ANSWERED
+
+The prompt path is clean. **What this run did NOT trace, and where indirect leakage would now most
+plausibly live:** the extraction step that writes `RecordEntry` (does it ever record a statement
+*about* another participant in a form that later names them?); the synthesis prompt, which by design
+sees every party and is the one place cross-party content is *meant* to combine; notification email
+bodies; and whether any log line carries answer text. **The privacy promise printed for participants
+is specifically that statements about other people never appear and never say who said what — that
+guarantee lives in synthesis, which this run did not examine.**
+
+`plausible concern` (not promoted): logging. `logger.error`/`warn` calls exist throughout the
+conversation path and no run has checked whether any interpolates participant content.
+
