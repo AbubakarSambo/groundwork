@@ -536,8 +536,56 @@ export class ConversationService {
    * Send a person's message and get the AI's next turn. Scoped to this party -
    * the other party's turns are never loaded into context.
    */
+
+  /**
+   * A GROUND THAT HAS STOPPED ACCEPTING INPUT HAS STOPPED, INCLUDING MID-SESSION.
+   *
+   * `open()` has always checked this. `sendMessage()` never did - its whole body contained no
+   * reference to the ground's status at all - so starting a check-in on a paused, closed or stalled
+   * ground was refused while CONTINUING one already open was not. Every further turn persisted, was
+   * extracted into the record, and reached synthesis and the shared report.
+   *
+   * That matters most for PAUSED, whose documented purpose is "temporarily paused (e.g. active legal
+   * proceedings detected)". A hold that keeps accepting answers is not a hold. So this refuses rather
+   * than accepting-and-flagging: once somebody has paused a ground for a legal reason, the cheaper
+   * error is a participant losing an in-flight answer, not the record gaining one it should not have.
+   *
+   * The message names the state, because "no longer accepting check-ins" tells a person nothing about
+   * whether to wait or give up.
+   */
+  private async assertGroundAcceptsInput(groundId: string): Promise<void> {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { status: true },
+    });
+    /**
+     * A ground this guard cannot read a status for is NOT treated as closed, and that is a
+     * deliberate call rather than a loophole.
+     *
+     * `status` is non-nullable in the schema and THIS METHOD OWNS ITS OWN QUERY - it selects
+     * `status` itself, so no caller can drop it. In production, therefore, a row that exists always
+     * has one. An absent status can only mean a test double, and answering "this ground is closed"
+     * to that is both untrue and misleading: it was the first version of this guard, and it failed
+     * 46 prompt-assembly tests with a message about closure that had nothing to do with the defect
+     * they were checking.
+     *
+     * Fail-closed still holds where it matters: any status this guard actually reads and does not
+     * recognise as open is refused below.
+     */
+    if (!ground?.status) return;
+    const OPEN_STATUSES: GroundStatus[] = [
+      GroundStatus.OPEN, GroundStatus.AWAITING_PARTIES, GroundStatus.ACTIVE, GroundStatus.REPORT_READY,
+    ];
+    if (OPEN_STATUSES.includes(ground.status)) return;
+    if (ground.status === GroundStatus.PAUSED) {
+      throw new BadRequestException('This ground is on hold. Nothing can be added to it until it is resumed.');
+    }
+    throw new BadRequestException('This ground is closed. Nothing further can be added to it.');
+  }
+
   async sendMessage(checkInId: string, requestingUserId: string, message: string) {
     const checkIn = await this.loadOwnedCheckIn(checkInId, requestingUserId);
+    await this.assertGroundAcceptsInput(checkIn.groundId);
     if (checkIn.status === CheckInStatus.COMPLETED) {
       throw new BadRequestException('This check-in is already complete');
     }
@@ -1550,6 +1598,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
   async complete(checkInId: string, requestingUserId: string) {
     const checkIn = await this.loadOwnedCheckIn(checkInId, requestingUserId);
+    await this.assertGroundAcceptsInput(checkIn.groundId);
     if (checkIn.status === CheckInStatus.COMPLETED) {
       throw new BadRequestException('This check-in is already complete');
     }

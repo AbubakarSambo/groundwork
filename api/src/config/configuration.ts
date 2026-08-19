@@ -125,6 +125,12 @@ export const whatsappConfig = registerAs("whatsapp", () => ({
   accessToken: process.env.WHATSAPP_ACCESS_TOKEN,
   phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID,
   verifyToken: process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN,
+  /**
+   * The app secret Meta signs inbound webhooks with. Separate from verifyToken, which only
+   * answers Meta's one-time subscribe handshake and says nothing about any later POST - a
+   * distinction that let unsigned traffic reach the inbound handler.
+   */
+  appSecret: process.env.WHATSAPP_APP_SECRET,
   enabled: !!process.env.WHATSAPP_ACCESS_TOKEN && !!process.env.WHATSAPP_PHONE_NUMBER_ID,
 }));
 
