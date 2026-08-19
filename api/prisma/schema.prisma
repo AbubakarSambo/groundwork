@@ -1201,7 +1201,13 @@ model BillingEvent {
   currency       String             @default("USD")
   periodStart    DateTime           @map("period_start")
   periodEnd      DateTime           @map("period_end")
-  stripeInvoiceId String?           @map("stripe_invoice_id")
+  /// UNIQUE, because the webhook's idempotency check was leaning on nothing.
+  /// `checkout.session.completed` looked the id up and skipped if found, but the read and the write
+  /// were not atomic with respect to each other and no constraint stood behind them - so two
+  /// concurrent deliveries of one Stripe event could both pass the check, credit the balance twice
+  /// and log the charge twice. Nullable-unique is fine in Postgres: the event types that have no
+  /// invoice leave it null, and multiple nulls are permitted.
+  stripeInvoiceId String?           @unique @map("stripe_invoice_id")
   status         BillingEventStatus @default(PENDING)
   createdAt      DateTime           @default(now()) @map("created_at")
 

@@ -361,6 +361,41 @@ export class BillingService {
     }
   }
 
+  /**
+   * WRITE A CHARGE ONCE, AND LET THE DATABASE DECIDE THAT.
+   *
+   * Stripe retries webhooks by design and can deliver one event more than once, concurrently. The old
+   * dedupe read `billingEvent.findFirst({ stripeInvoiceId })` and skipped if found - a check-then-act
+   * race - and nothing stood behind it, because the column had no unique constraint. So the loser of
+   * that race was not rejected, it was recorded: the balance credited twice and the charge logged
+   * twice for one payment.
+   *
+   * `stripe_invoice_id` is now uniquely indexed, so the SECOND insert fails and that failure IS the
+   * idempotency signal. P2002 is Prisma's unique-violation code. Anything else is rethrown rather
+   * than swallowed, because a silently dropped charge record is the fault this change exists to fix.
+   */
+  private async recordInvoiceOnce(data: {
+    organizationId: string;
+    type: BillingEventType;
+    amountCents: number;
+    currency: string;
+    stripeInvoiceId: string | null;
+    periodStart: Date;
+    periodEnd: Date;
+    groundId?: string | null;
+  }): Promise<'written' | 'duplicate'> {
+    try {
+      await this.prisma.billingEvent.create({ data: { ...data, status: BillingEventStatus.PAID } });
+      return 'written';
+    } catch (err: any) {
+      if (err?.code === 'P2002') {
+        this.logger.log(`Duplicate delivery for invoice ${data.stripeInvoiceId} - already recorded, nothing written`);
+        return 'duplicate';
+      }
+      throw err;
+    }
+  }
+
   /** Create a Stripe recurring checkout session for an org subscription plan. */
   async createSubscription(organizationId: string, plan: SubscriptionPlan): Promise<{ checkoutUrl: string }> {
     if (plan === SubscriptionPlan.ENTERPRISE) {
@@ -896,6 +931,30 @@ export class BillingService {
         if (paidOrg?.email && paidOrg.subscriptionPlan) {
           const amountCents = invoice.amount_paid ?? 0;
           await this.email.sendSubscriptionRenewal(paidOrg.email, paidOrg.subscriptionPlan, amountCents, paidOrg.subscriptionPeriodEnd).catch(() => undefined);
+        }
+
+        /**
+         * AND WRITE IT DOWN, WHICH NOTHING DID.
+         *
+         * `BillingEventType` declares SUBSCRIPTION_FEE and nothing ever wrote it. Only FREE_EXTENSION
+         * and SESSION_FEE were recorded - and per-session selling was withdrawn from every screen - so
+         * the ledger held a row type for a product no longer sold and no row at all for subscriptions,
+         * which is the entire revenue model. An organisation querying a charge could not be shown
+         * their own history.
+         *
+         * Deliberately OUTSIDE the email branch: the record must not depend on the org having an
+         * email address or a readable plan.
+         */
+        if (paidOrg && (invoice.amount_paid ?? 0) > 0) {
+          await this.recordInvoiceOnce({
+            organizationId: paidOrg.id,
+            type: BillingEventType.SUBSCRIPTION_FEE,
+            amountCents: invoice.amount_paid ?? 0,
+            currency: (invoice.currency ?? 'usd').toUpperCase(),
+            stripeInvoiceId: invoice.id ?? null,
+            periodStart: invoice.period_start ? new Date(invoice.period_start * 1000) : new Date(),
+            periodEnd: invoice.period_end ? new Date(invoice.period_end * 1000) : new Date(),
+          });
         }
         break;
       }
