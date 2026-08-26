@@ -149,7 +149,9 @@ function AdminCrossRef({ report, closed }: { report: Report; closed: boolean }) 
         <SecH>Alignment status</SecH>
         <div style={{ fontSize: 17, fontWeight: 800 }}>{status}</div>
         <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginTop: 2, lineHeight: 1.5 }}>
-          {report.agreements?.length ?? 0} area{report.agreements?.length !== 1 ? 's' : ''} aligned
+          {/* Same undefined noun as the header used to carry - "area" is not a heading anywhere
+              in this card. See client/src/lib/alignment.ts. */}
+          {report.agreements?.length ?? 0} agreed
           {report.divergences?.length ? `, ${report.divergences.length} still open` : ''}.
         </div>
         <AlignmentLadder status={status} closed={closed} />

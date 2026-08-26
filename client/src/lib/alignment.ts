@@ -25,6 +25,17 @@ export interface AlignmentRead {
 }
 
 /**
+ * "AREA" WAS A NOUN THE REPORT NEVER DEFINES.
+ *
+ * The header said "All 2 areas still open" and a lead could not tell what an area was - the report
+ * it summarises has no such heading anywhere. Its own words are "What was agreed" and "What's still
+ * open", and "area" appeared only in sentences that counted things, never in one that said what the
+ * things were. So the summary was introducing vocabulary its own source never uses.
+ *
+ * These phrases now borrow the report's headings and count nothing that is not named there, which
+ * also makes all three cases one shape - agreed on the left, still open on the right - instead of
+ * three differently worded sentences for what is one reading.
+ *
  * A short phrase for a ground's alignment, or null when there is no read yet.
  * Null means "the record does not support a statement", and the caller must
  * render nothing at all rather than a placeholder score.
@@ -33,8 +44,8 @@ export function alignmentLabel(a: AlignmentRead | null | undefined): string | nu
   if (!a) return null
   const { agreed, open } = a
   if (agreed + open === 0) return null
-  if (open === 0) return `Agreed on ${agreed === 1 ? 'the 1 area' : `all ${agreed} areas`}`
-  if (agreed === 0) return `${open === 1 ? '1 area' : `All ${open} areas`} still open`
+  if (open === 0) return `${agreed} agreed, nothing still open`
+  if (agreed === 0) return `Nothing agreed yet, ${open} still open`
   return `${agreed} agreed, ${open} still open`
 }
 
