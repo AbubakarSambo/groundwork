@@ -100,13 +100,24 @@ const CLAIMS_TOOL = {
   },
 };
 
-function toDocShape(doc: { id: string; fileName: string; mimeType: string; createdAt: Date; assessment?: any; visibility?: any }) {
+function toDocShape(
+  doc: { id: string; fileName: string; mimeType: string; createdAt: Date; assessment?: any; visibility?: any; participantId?: string | null },
+  viewerParticipantId?: string,
+) {
   return {
     id: doc.id,
     name: doc.fileName,
     mimeType: doc.mimeType,
     uploadedAt: doc.createdAt,
     assessment: doc.assessment ?? null,
+    /*
+     * WHOSE IT IS, because only the uploader may move it and the screen had no way to know.
+     * A reader's list holds their own files AND everything OPEN, so a lead looking at a party's
+     * shared brief was shown an enabled control that answered "Document not found" - the message
+     * for a document that does not exist, said about one they were looking at.
+     * Same rule as `visibility`: omitted rather than guessed when the column was not selected.
+     */
+    ...(doc.participantId !== undefined ? { mine: doc.participantId === viewerParticipantId } : {}),
     // Who can read it. Omitted rather than defaulted when the column was not
     // selected, so a screen cannot mistake "not asked" for "private".
     ...(doc.visibility !== undefined ? { visibility: doc.visibility } : {}),
@@ -314,10 +325,10 @@ export class DocumentsService {
         { participantId: participant.id, isLead: ground?.initiatorId === userId },
         this.config.get<boolean>('app.contextEnabled') === true,
       ) as any,
-      select: { id: true, fileName: true, mimeType: true, createdAt: true, visibility: true },
+      select: { id: true, fileName: true, mimeType: true, createdAt: true, visibility: true, participantId: true },
       orderBy: { createdAt: 'asc' },
     });
-    return docs.map(toDocShape);
+    return docs.map((d) => toDocShape(d, participant.id));
   }
 
   /** Upload a document from a pre-auth participant identified by invite token. */
@@ -364,21 +375,53 @@ export class DocumentsService {
    * single worst thing this feature could do. Nobody would attach anything
    * afterwards.
    *
-   * CLOSED is not settable here on purpose. It means "the lead's own material",
-   * which is a fact about who uploaded it rather than a state to switch into: a
-   * participant moving their document to CLOSED would be handing it to the lead
-   * while believing they had made it more private.
+   * CLOSED IS THE LEAD'S ONLY, AND THAT IS THE WHOLE OF THE RULE.
+   *
+   * It used to be unsettable by anyone, for a good reason that turned out to be a
+   * reason about participants rather than about CLOSED: a participant moving their
+   * own document to CLOSED would be handing it to the lead while believing they
+   * had made it MORE private. That trap is real and the guard against it stays.
+   *
+   * It does not apply to the lead. "The lead's own material" read as a fact about
+   * who uploaded a file, but OWN already covers that - a lead's upload is private
+   * to them today. What CLOSED actually adds is the one case OWN cannot express:
+   * material the lead keeps that a co-lead or org admin reading with the lead's
+   * eyes may also read. So it is a state to switch into after all, for exactly one
+   * person, and the check is on who is asking rather than on the value asked for.
    */
   async setVisibility(
     groundId: string,
     docId: string,
     userId: string,
-    visibility: 'OPEN' | 'OWN',
+    visibility: 'OPEN' | 'OWN' | 'CLOSED',
   ) {
     if (this.config.get<boolean>('app.contextEnabled') !== true) {
       throw new ForbiddenException('Context is not enabled on this deployment');
     }
+    /*
+     * The body is a plain type, not a validated DTO, so the string arrives unchecked. That was
+     * harmless while both values were harmless; now that one of them decides who else can read a
+     * file, an unrecognised value is refused here rather than handed to Prisma to reject.
+     */
+    if (visibility !== 'OPEN' && visibility !== 'OWN' && visibility !== 'CLOSED') {
+      throw new BadRequestException('Unknown visibility');
+    }
     const participant = await this.assertParticipant(groundId, userId);
+
+    /*
+     * Checked before the document is looked up, so a participant who guesses the value gets the
+     * same refusal whether or not the id they sent is real.
+     */
+    if (visibility === 'CLOSED') {
+      const ground = await this.prisma.ground.findUnique({
+        where: { id: groundId },
+        select: { initiatorId: true },
+      });
+      if (ground?.initiatorId !== userId) {
+        throw new ForbiddenException('Only the person running this check-in can keep a document to themselves');
+      }
+    }
+
     const doc = await this.prisma.groundDocument.findFirst({
       where: { id: docId, groundId, participantId: participant.id },
     });

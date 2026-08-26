@@ -71,7 +71,7 @@ export function ContextPage({
   })
 
   const setDocVisibility = useMutation({
-    mutationFn: ({ docId, visibility }: { docId: string; visibility: 'OPEN' | 'OWN' }) =>
+    mutationFn: ({ docId, visibility }: { docId: string; visibility: 'OPEN' | 'OWN' | 'CLOSED' }) =>
       documentsApi.setVisibility(id, docId, visibility),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['docs', id] }),
     onError: () => toast.error('Could not change who can see that.'),
@@ -347,7 +347,14 @@ export function ContextPage({
                 the others have already read it. */}
             {contextEnabled && docs.length > 0 && (
               <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, background: 'var(--gw-bg)', borderRadius: 8, padding: '10px 12px', marginBottom: 10 }}>
-                Everything you add starts private to you. <b>Open</b> means everyone in this check-in can read it, which is what the brief and the plan are for. <b>Only me</b> keeps it yours.
+                {/*
+                  THE WORDS HERE ARE THE WORDS ON THE CONTROL, which they were not: this sentence
+                  explained "Open" and the button has always said "Everyone", so the one term the
+                  reader was taught did not appear anywhere they could click. And the lead now has a
+                  third answer, which a sentence naming two would quietly contradict.
+                */}
+                Everything you add starts private to you. <b>Everyone</b> means everyone in this check-in can read it, which is what the brief and the plan are for. <b>Only me</b> keeps it yours.
+                {isLead && <> <b>Whoever runs this check-in</b> keeps it to that person, so it stays readable if somebody takes the check-in over from you.</>}
               </div>
             )}
             {docs.map(doc => (
@@ -365,18 +372,64 @@ export function ContextPage({
                       Only shown with the flag on: with it off there is one
                       answer for every document and a control offering a choice
                       that does not exist would be a lie about the product. */}
-                  {contextEnabled && (
+                  {/*
+                      ONLY THE UPLOADER MAY MOVE A DOCUMENT, so only the uploader is shown the
+                      control. Everyone's list holds their own files and everything OPEN, so this
+                      row is often somebody else's - and the control was drawn on it anyway,
+                      enabled, answering "Document not found" about a document plainly on screen.
+                      `mine` is omitted by older payloads, so an absent value means yes and the
+                      screen behaves as it did before rather than hiding every control. */}
+                  {contextEnabled && (doc as any).mine !== false && (isLead ? (
+                    /*
+                      THE LEAD GETS THE THIRD ANSWER, AND ONLY THE LEAD.
+
+                      A party choosing between two states is choosing about their own file, so a
+                      pill that flips between them is honest. CLOSED is not a third degree of
+                      privacy - it hands the document to whoever is running the check-in - so
+                      putting it at the end of a cycle that reads "Everyone, Only me, ..." would
+                      invite a party to click once more and give their file away believing they had
+                      locked it down harder. The server refuses them; this makes sure they are
+                      never asked. A list rather than a cycle because three states on one button
+                      means a mistake is two more clicks to undo.
+                    */
+                    <select
+                      value={(doc as any).visibility ?? 'OWN'}
+                      disabled={setDocVisibility.isPending}
+                      onChange={e => setDocVisibility.mutate({
+                        docId: doc.id,
+                        visibility: e.target.value as 'OPEN' | 'OWN' | 'CLOSED',
+                      })}
+                      aria-label={`Who can read ${doc.name}`}
+                      style={{
+                        fontSize: 11, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer',
+                        padding: '3px 6px', borderRadius: 20,
+                        border: `1px solid ${(doc as any).visibility === 'OPEN' ? '#A7D9CC' : 'var(--gw-border)'}`,
+                        background: (doc as any).visibility === 'OPEN' ? '#DFF1EA' : 'var(--gw-bg)',
+                        color: (doc as any).visibility === 'OPEN' ? 'var(--gw-green-t)' : 'var(--gw-sub)',
+                      }}
+                    >
+                      <option value="OPEN">Everyone</option>
+                      <option value="OWN">Only me</option>
+                      {/* Named by who reads it, not by how private it feels, because "the person
+                          running this check-in" is a chair rather than a person: it stays readable
+                          if the lead changes or an org admin steps in. That is the whole of the
+                          difference from "Only me" and the only thing worth saying on the row. */}
+                      <option value="CLOSED">Whoever runs this check-in</option>
+                    </select>
+                  ) : (
                     <button
                       onClick={() => setDocVisibility.mutate({
                         docId: doc.id,
                         visibility: (doc as any).visibility === 'OPEN' ? 'OWN' : 'OPEN',
                       })}
-                      disabled={setDocVisibility.isPending || (doc as any).visibility === 'CLOSED'}
-                      title={(doc as any).visibility === 'CLOSED'
-                        ? 'This is your own context and stays with you'
-                        : (doc as any).visibility === 'OPEN'
-                          ? 'Everyone in this check-in can read this. Click to make it yours only.'
-                          : 'Only you can read this. Click to share it with everyone in this check-in.'}
+                      disabled={setDocVisibility.isPending}
+                      /* The CLOSED case that used to be handled here was unreachable: a party's
+                         document list is their own files plus what is OPEN, so a CLOSED row never
+                         arrives. It read "This is your own context and stays with you", which was
+                         also the wrong sentence for what CLOSED means. */
+                      title={(doc as any).visibility === 'OPEN'
+                        ? 'Everyone in this check-in can read this. Click to make it yours only.'
+                        : 'Only you can read this. Click to share it with everyone in this check-in.'}
                       style={{
                         fontSize: 11, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer',
                         padding: '3px 9px', borderRadius: 20,
@@ -391,8 +444,13 @@ export function ContextPage({
                           undone. CLOSED is the lead's own material and is not settable here. */}
                       {(doc as any).visibility === 'OPEN' ? 'Everyone' : 'Only me'}
                     </button>
+                  ))}
+                  {/* Same rule as the visibility control above it, and the same defect until now:
+                      Delete was drawn on everybody's OPEN files and answered "Document not found".
+                      Only the uploader may delete, so only the uploader is offered it. */}
+                  {(doc as any).mine !== false && (
+                    <button onClick={() => deleteDoc.mutate(doc.id)} style={{ fontSize: 12, color: 'var(--gw-red-t)', background: 'none', border: 'none', cursor: 'pointer' }}>Delete</button>
                   )}
-                  <button onClick={() => deleteDoc.mutate(doc.id)} style={{ fontSize: 12, color: 'var(--gw-red-t)', background: 'none', border: 'none', cursor: 'pointer' }}>Delete</button>
                 </div>
               </div>
             ))}

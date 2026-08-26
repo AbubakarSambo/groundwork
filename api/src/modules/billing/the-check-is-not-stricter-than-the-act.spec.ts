@@ -18,8 +18,16 @@ import { join } from 'path';
  *
  * Found by opening the page as an ordinary member and reading the network log, not by any test.
  */
-const BILLING = readFileSync(join(__dirname, 'billing.controller.ts'), 'utf8');
-const GROUNDS = readFileSync(join(__dirname, '../grounds/grounds.controller.ts'), 'utf8');
+/**
+ * COMMENTS OFF FIRST, because this spec looks for decorators by reading the lines above a route -
+ * and a `@Roles(Role.ADMIN)` sitting inside an explanatory comment reads exactly like one that is
+ * attached. This file quotes decorators in its own prose, which is the trap. See
+ * a-guard-that-a-comment-satisfies-is-not-a-guard.spec.ts.
+ */
+const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+
+const BILLING = strip(readFileSync(join(__dirname, 'billing.controller.ts'), 'utf8'));
+const GROUNDS = strip(readFileSync(join(__dirname, '../grounds/grounds.controller.ts'), 'utf8'));
 
 /** The decorators attached to a route, from the line above it back to the previous route. */
 function decoratorsFor(source: string, route: string): string {
