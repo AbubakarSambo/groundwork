@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { scrollTo } from '@/lib/scroll-to'
 import type { GroundTab } from '@/pages/grounds/ground-tabs'
 
 /**
@@ -43,7 +44,7 @@ export function GroundTabRow<K extends string>({ tabs, active, onPick }: {
      */
     const el = activeEl.current
     if (el && typeof el.scrollIntoView === 'function') {
-      el.scrollIntoView({ inline: 'nearest', block: 'nearest', behavior: 'smooth' })
+      scrollTo(el, { block: 'nearest', inline: 'nearest' })
     }
   }, [active])
 

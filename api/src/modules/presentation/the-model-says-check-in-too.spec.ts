@@ -62,6 +62,7 @@ describe('the model says check-in too', () => {
    */
   it('leaves the everyday sense alone even where it reads like ours', () => {
     for (const phrase of [
+      'a piece of ground',
       'we covered a lot of ground',
       'they gained ground on the backlog',
       'the ground rules were clear',
@@ -71,6 +72,16 @@ describe('the model says check-in too', () => {
     ]) {
       expect(oneWordForTheThing(phrase)).toBe(phrase);
     }
+  });
+
+  /**
+   * A NAME SITS BETWEEN THE DETERMINER AND THE NOUN MORE OFTEN THAN NOT. Watched live, the setup
+   * chat opened with `the "New hire" ground` - quotation marks and all - and the first version of
+   * this rule required the two words to be adjacent, so it sailed through.
+   */
+  it('catches a name sitting between the determiner and the word', () => {
+    expect(oneWordForTheThing('set up the "New hire" ground')).toBe('set up the "New hire" check-in')
+    expect(oneWordForTheThing('the contract renewal ground')).toBe('the contract renewal check-in')
   });
 
   /** It runs on the real boundary, not only when called directly. */

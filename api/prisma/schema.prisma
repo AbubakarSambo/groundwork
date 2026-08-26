@@ -565,6 +565,7 @@ model Ground {
   approvedAt                 DateTime?                   @map("approved_at")
   /// Why it was declined, in the admin's words. Shown to whoever created it.
   declineReason              String?                     @map("decline_reason") @db.Text
+  deliveries                 Delivery[]
 
   @@index([organizationId])
   @@index([status])
@@ -758,6 +759,7 @@ model GroundParticipant {
   dependenciesOn          GroundDependency[]       @relation("DependencyOn")
   mentionsMade            WorkMention[]            @relation("MentionSource")
   mentionsAbout           WorkMention[]            @relation("MentionAbout")
+  deliveries              Delivery[]
 
   @@unique([groundId, email])
   @@index([groundId])
@@ -769,10 +771,10 @@ model GroundParticipant {
 // ---------------------------------------------------------------------------
 
 model CheckIn {
-  id                          String        @id @default(uuid())
-  groundId                    String        @map("ground_id")
-  participantId               String        @map("participant_id")
-  sessionNumber               Int           @map("session_number") // 1, 2, ...
+  id            String @id @default(uuid())
+  groundId      String @map("ground_id")
+  participantId String @map("participant_id")
+  sessionNumber Int    @map("session_number") // 1, 2, ...
 
   /// GW-EXP-6. A SETUP CONVERSATION, NOT A SESSION.
   ///
@@ -1340,15 +1342,94 @@ enum DocumentVisibility {
 /// authoredBy and seenBySubject are not metadata. A proposal nobody has seen is
 /// never read against, and the two columns are what makes that arithmetic rather
 /// than an instruction. See an-objective-belongs-to-a-person.ts.
+/// WHAT KIND OF THING SOMEBODY IS BEING HELD TO.
+///
+/// Teams track different shapes - to-dos, commitments, OKRs, targets, tickets, a definition of
+/// success, a standing role expectation - and holding them all as one untyped sentence is why a
+/// session cannot press on any of them properly. "Clear the queue to under twenty" and "be someone
+/// the team can rely on" are both real, and they are checked in completely different ways.
+///
+/// A kind is NOT a separate feature. It is a familiar name for a common pairing of `check` and
+/// `dueKind` below. An OKR is deliberately absent: it is a GOAL with several TARGETs hanging under
+/// it, which is a parent and children, not a ninth kind - building it as its own object would give
+/// a target a second place to live.
+enum ObjectiveKind {
+  TODO /// done or not, by a date
+  COMMITMENT /// a to-do somebody else is waiting on. `owedToParticipantId` is the point of it
+  TARGET /// a number crosses a line
+  GOAL /// a judgement, over a cycle
+  SUCCESS_DEFINITION /// a judgement, for the whole check-in
+  ROLE_EXPECTATION /// a judgement, standing, no end
+  REFERENCE /// a ticket or issue settled somewhere else. We hold a pointer, never a copy
+}
+
+/// HOW WE WOULD KNOW IT HAPPENED. The axis this redesign adds.
+///
+/// NOT_CHECKABLE is a real answer and the most useful one: it is what turns the interview's next
+/// question into "how would we know?", and it stops an unmeasurable sentence sitting on somebody's
+/// record looking like a target they failed.
+enum ObjectiveCheck {
+  DONE_OR_NOT
+  A_NUMBER
+  A_JUDGEMENT
+  NOT_CHECKABLE
+}
+
+/// BY WHEN. A date, a cycle, or standing with no end - which is what a role expectation is.
+enum ObjectiveDue {
+  A_DATE
+  A_CYCLE
+  STANDING
+  NOT_SAID
+}
+
+/// WHOSE IT IS. The third value came from checking the design against "many people in the same
+/// role": a cohort of twenty branch managers who never meet. Writing one role expectation onto
+/// twenty rows is twenty things that can drift, so it is written once and shown on every row.
+enum ObjectiveScope {
+  ONE_PERSON
+  EVERYONE_IN_ROLE
+  WHOLE_CHECK_IN
+}
+
 model PersonObjective {
   id            String @id @default(uuid())
   groundId      String @map("ground_id")
   participantId String @map("participant_id")
 
-  text          String  @db.Text
+  text String @db.Text
+
+  /// THE PRIMITIVE. See ObjectiveKind. Every one of these is nullable and defaulted, because every
+  /// row that already exists was written before any of it and none of them are wrong - they are
+  /// simply untyped, and the interview fills them in when it next asks.
+  kind                ObjectiveKind?  @map("kind")
+  check               ObjectiveCheck? @map("check")
+  dueKind             ObjectiveDue?   @map("due_kind")
+  /// The words they used for the deadline - "Thursday", "end of the quarter". Never parsed into a
+  /// date: a record of what was said, not a guess at what was meant.
+  dueSaid             String?         @map("due_said")
+  scope               ObjectiveScope  @default(ONE_PERSON) @map("scope")
+  /// COMMITMENT only: who is waiting on it. The whole difference between a to-do and a commitment.
+  owedToParticipantId String?         @map("owed_to_participant_id")
   /// 'lead' or 'self'. Who wrote the CURRENT text.
-  authoredBy    String  @map("authored_by")
+  authoredBy          String          @map("authored_by")
   /// Whether the person it belongs to has seen the current text.
+  /// WHERE THIS IS SETTLED, WHEN THE KIND IS REFERENCE.
+  ///
+  /// A ticket's truth is in Jira, Linear or Asana. Copying its state onto this row would create the
+  /// exact failure the product exists to end - two places that must agree, each defensible alone,
+  /// nothing reconciling them. So this holds the address, the words somebody used for the state, and
+  /// WHEN THEY LAST LOOKED. Stale is then shown as stale rather than presented as now.
+  ///
+  /// It sits on the expectation rather than in a table of its own because a ticket IS an expectation
+  /// whose truth is settled elsewhere. A parallel table made a second, unconnected representation of
+  /// the same work - which is the same failure, arriving as a feature.
+  ///
+  /// Never polled and never synced. A sync would make it a copy again.
+  trackedUrl          String?         @map("tracked_url")
+  lastSeenState       String?         @map("last_seen_state")
+  lastSeenAt          DateTime?       @map("last_seen_at")
+
   seenBySubject Boolean @default(false) @map("seen_by_subject")
 
   /// GW-EXP-1b. Whether the lead has told this person the expectation, on the lead's own account:
@@ -1369,9 +1450,9 @@ model PersonObjective {
   /// connection from word overlap, and it is right to: a read that guesses will manufacture agreement
   /// that is not there, or conflict that is not there, and both are worse than silence. "Cannot tell"
   /// is a prompt for a human conversation, which is the honest answer much of the time.
-  alignment       String? @map("alignment")
+  alignment     String? @map("alignment")
   /// One sentence on what connects them or does not. Never a verdict on the person.
-  alignmentNote   String? @map("alignment_note") @db.Text
+  alignmentNote String? @map("alignment_note") @db.Text
 
   /// GW-EXP-7. The person's own words objecting to this expectation, said in their own check-in.
   ///
@@ -1383,16 +1464,28 @@ model PersonObjective {
   /// This is NOT the alignment read. "They described doing well differently" is a difference of view;
   /// this is "I think this expectation is wrong", which is a different claim and deserves saying so.
   /// It never changes the expectation - one person still owns that - it makes the objection visible.
-  objection       String?   @map("objection") @db.Text
-  objectionAt     DateTime? @map("objection_at")
+  objection   String?   @map("objection") @db.Text
+  objectionAt DateTime? @map("objection_at")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   ground      Ground            @relation(fields: [groundId], references: [id], onDelete: Cascade)
   participant GroundParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  deliveries  Delivery[]
 
-  @@unique([groundId, participantId])
+  // ONE ROW PER PERSON PER KIND, not one row per person.
+  //
+  // This was @@unique([groundId, participantId]) - a single expectation each, forever. Invisible
+  // while an expectation was one untyped sentence, and plainly wrong the moment they were typed: a
+  // lead saying "Abubakar owes Hafsah the plan by Friday, and he owns escalations from now on" is
+  // stating a COMMITMENT and a ROLE EXPECTATION, and the second silently overwrote the first.
+  //
+  // Restating the same kind for the same person is a REVISION and updates in place, which is what
+  // keeps seenBySubject honest when the words change. A different kind is a different thing and
+  // gets its own row.
+  @@unique([groundId, participantId, kind])
+  @@index([groundId, participantId])
   @@map("person_objectives")
 }
 
@@ -1467,12 +1560,48 @@ enum ContextNoteAudience {
   EVERYONE
 }
 
-model LeadContextNote {
+/// WHAT SOMEBODY SAYS THEY DELIVERED, against what was expected of them.
+///
+/// The counterpart nobody had built. A participant could read what was expected of them and had
+/// nowhere to put what they actually did, so the report only ever heard it if they happened to say it
+/// in a session. This gives the report a THIRD thing to compare: what was expected, what they say they
+/// did, and what everybody else's accounts corroborate.
+///
+/// IT IS NOT THEIR ACCOUNT, and that distinction is load-bearing. Like a between-session note, it
+/// reaches their next session as something to ASK ABOUT - what they say under questioning is what
+/// becomes the record.
+model Delivery {
   id            String  @id @default(uuid())
   groundId      String  @map("ground_id")
-  participantId String? @map("participant_id") // null = about the ground; set = about that person
-  authorUserId  String  @map("author_user_id") // the initiator who wrote it
-  text          String  @db.Text
+  participantId String  @map("participant_id")
+  /// The expectation this is offered against. Null where they delivered something nobody asked for -
+  /// which is worth recording, and is exactly the contribution a report otherwise misses.
+  objectiveId   String? @map("objective_id")
+
+  text     String  @db.Text
+  /// Where the evidence is, in their words. A link, a document name, a date.
+  evidence String? @db.Text
+
+  /// Set once a session has picked it up, so it is raised ONCE rather than in every session after.
+  carriedIntoCheckInId String? @map("carried_into_check_in_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  ground      Ground            @relation(fields: [groundId], references: [id], onDelete: Cascade)
+  participant GroundParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  /// SetNull, not Cascade: if the expectation is replaced, what they did still happened.
+  objective   PersonObjective?  @relation(fields: [objectiveId], references: [id], onDelete: SetNull)
+
+  @@index([groundId, participantId])
+  @@map("deliveries")
+}
+
+model LeadContextNote {
+  id            String              @id @default(uuid())
+  groundId      String              @map("ground_id")
+  participantId String?             @map("participant_id") // null = about the ground; set = about that person
+  authorUserId  String              @map("author_user_id") // the initiator who wrote it
+  text          String              @db.Text
   /// See ContextNoteAudience. EVERYONE is always about the whole check-in - a shared note about one
   /// named person would be a public judgement of them, which is the one thing this product refuses.
   audience      ContextNoteAudience @default(LEAD_ONLY)

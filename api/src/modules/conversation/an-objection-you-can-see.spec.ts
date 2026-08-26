@@ -21,8 +21,13 @@ function makeService(over: { expectation?: string | null; objected?: boolean; wo
   const update = jest.fn(async (a: any) => a);
   const prisma: any = {
     personObjective: {
-      findUnique: jest.fn(async () =>
-        over.expectation === null ? null : { text: over.expectation ?? 'Own the weekly delivery call by week four' },
+      /**
+       * `findFirst` as well as `findUnique`: a person can now be held to several things, so the
+       * service reads the most recently changed row and writes the objection or the alignment read
+       * BACK TO THAT ROW - which is why the fixture carries an id.
+       */
+      findFirst: jest.fn(async () =>
+        over.expectation === null ? null : { id: 'obj-1', text: over.expectation ?? 'Own the weekly delivery call by week four' },
       ),
       update,
     },

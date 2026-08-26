@@ -38,7 +38,20 @@ function makeService(over: {
      * `findUnique` reads the PRIOR text, so a changed expectation can reset `seenBySubject`. Returning
      * `over.prior ?? null` lets a test say "there was already something there" and check the reset.
      */
-    personObjective: { upsert, findUnique: jest.fn(async () => over.prior ?? null) },
+    /**
+     * THE WRITE IS NO LONGER AN UPSERT ON ONE ROW PER PERSON.
+     *
+     * `person_objectives` was unique per person, so a lead stating a commitment AND a standing role
+     * expectation about the same person stored one and silently dropped the other. The service now
+     * looks for a row with the SAME PERSON AND SAME KIND - a revision - and creates a new row for a
+     * different kind, so both `create` and `update` are mocked here.
+     */
+    personObjective: {
+      findFirst: jest.fn(async () => over.prior ?? null),
+      create: upsert,
+      update: upsert,
+      findUnique: jest.fn(async () => over.prior ?? null),
+    },
     groundObjective: { count: jest.fn(async () => 0), createMany },
   };
   const anthropic: any = {
@@ -71,23 +84,24 @@ describe('GW-EXP-1b: what gets written', () => {
     await svc.extractExpectations('c1', 'lead', 'g1');
     expect(upsert).toHaveBeenCalledTimes(1);
     const arg = upsert.mock.calls[0][0] as any;
-    expect(arg.where.groundId_participantId.participantId).toBe('abu');
-    expect(arg.create.text).toBe('Own the weekly delivery call by week four');
-    expect(arg.create.authoredBy).toBe('lead');
+    /** A create now carries the ids in `data`; there is no where/create pair any more. */
+    expect(arg.data.participantId).toBe('abu');
+    expect(arg.data.text).toBe('Own the weekly delivery call by week four');
+    expect(arg.data.authoredBy).toBe('lead');
   });
 
   it('awareness is stored, which is the point of the whole thing', async () => {
     const { svc, upsert } = makeService();
     await svc.extractExpectations('c1', 'lead', 'g1');
     const arg = upsert.mock.calls[0][0] as any;
-    expect(arg.create.awareness).toBe('NOT_TOLD');
-    expect(arg.create.awarenessDetail).toBe('I assumed Hafsah covered it');
+    expect(arg.data.awareness).toBe('NOT_TOLD');
+    expect(arg.data.awarenessDetail).toBe('I assumed Hafsah covered it');
   });
 
   it('and the person has not seen it, so nothing may be read against it yet', async () => {
     const { svc, upsert } = makeService();
     await svc.extractExpectations('c1', 'lead', 'g1');
-    expect((upsert.mock.calls[0][0] as any).create.seenBySubject).toBe(false);
+    expect((upsert.mock.calls[0][0] as any).data.seenBySubject).toBe(false);
   });
 
   it('a junk awareness value falls back to NOT_ASKED rather than being stored raw', async () => {
@@ -95,7 +109,7 @@ describe('GW-EXP-1b: what gets written', () => {
       extraction: { groundAims: [], expectations: [{ personName: 'Abubakar', expectation: 'x', awareness: 'PROBABLY' }] },
     });
     await svc.extractExpectations('c1', 'lead', 'g1');
-    expect((upsert.mock.calls[0][0] as any).create.awareness).toBe('NOT_ASKED');
+    expect((upsert.mock.calls[0][0] as any).data.awareness).toBe('NOT_ASKED');
   });
 
   it('the check-in’s own aims fill the other empty table', async () => {
@@ -157,7 +171,7 @@ describe('GW-EXP-4: changed words are unseen words', () => {
   it('a different expectation resets seenBySubject', async () => {
     const { svc, upsert } = makeService({ prior: { text: 'Something else entirely' } });
     await svc.extractExpectations('c1', 'lead', 'g1');
-    expect((upsert.mock.calls[0][0] as any).update.seenBySubject).toBe(false);
+    expect((upsert.mock.calls[0][0] as any).data.seenBySubject).toBe(false);
   });
 
   it('but repeating the same expectation does not', async () => {
@@ -168,12 +182,12 @@ describe('GW-EXP-4: changed words are unseen words', () => {
      */
     const { svc, upsert } = makeService({ prior: { text: 'Own the weekly delivery call by week four' } });
     await svc.extractExpectations('c1', 'lead', 'g1');
-    expect((upsert.mock.calls[0][0] as any).update.seenBySubject).toBeUndefined();
+    expect((upsert.mock.calls[0][0] as any).data.seenBySubject).toBeUndefined();
   });
 
   it('and a brand new expectation starts unseen anyway', async () => {
     const { svc, upsert } = makeService({ prior: null });
     await svc.extractExpectations('c1', 'lead', 'g1');
-    expect((upsert.mock.calls[0][0] as any).create.seenBySubject).toBe(false);
+    expect((upsert.mock.calls[0][0] as any).data.seenBySubject).toBe(false);
   });
 });

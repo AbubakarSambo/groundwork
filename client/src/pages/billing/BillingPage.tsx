@@ -5,6 +5,7 @@ import { billingApi, PLAN_LABELS, PLAN_PRICES, formatMemberCap, formatMonthlyPri
 import { groundsApi } from '@/api/grounds'
 import { useAuthStore } from '@/stores/auth'
 import { toast } from 'sonner'
+import { scrollToId } from '@/lib/scroll-to'
 import { Stat, Pill } from '@/components/gw/kit'
 
 const PLANS: SubscriptionPlan[] = ['STARTER', 'SMALL_TEAM', 'GROWTH', 'BUSINESS', 'SCALE', 'ENTERPRISE']
@@ -346,7 +347,7 @@ export function BillingPage() {
             </div>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
               <button
-                onClick={() => document.getElementById('upgrade-section')?.scrollIntoView({ behavior: 'smooth' })}
+                onClick={() => scrollToId('upgrade-section', 'start')}
                 style={{ padding: '9px 18px', borderRadius: 7, background: 'var(--gw-dark)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 View org plans

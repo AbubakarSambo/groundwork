@@ -36,6 +36,9 @@ const PROMISED: { label: string; mime: string }[] = [
   { label: 'HEIC', mime: 'image/heic' },
 ]
 
+/** Every screen with an upload control on it. One answer, or a person meets a third one. */
+const UPLOAD_SURFACES = ['../components/gw/ContextPage.tsx']
+
 describe('what you can upload', () => {
   it('every format the screens name is one the API accepts', () => {
     const refused = PROMISED.filter(f => !API_DOCS.includes(`'${f.mime}'`)).map(f => f.label)
@@ -72,8 +75,12 @@ describe('what you can upload', () => {
     expect(missing).toEqual([])
   })
 
-  it('and both pages use it instead of their own', () => {
-    for (const page of ['../pages/grounds/GroundAdminPage.tsx', '../pages/grounds/GroundParticipantPage.tsx']) {
+  /**
+   * The two Context tabs became one, so "both pages" is now the one page plus the check-in composer.
+   * Reading the two page files still would assert nothing at all, which is worse than failing.
+   */
+  it('and every upload control uses it instead of its own', () => {
+    for (const page of UPLOAD_SURFACES) {
       const src = readFileSync(path.join(__dirname, page), 'utf8')
       expect(src).toContain('accept={UPLOAD_ACCEPT_ATTR}')
       expect(src).not.toMatch(/accept="\.[a-z,.]+"/)
@@ -87,8 +94,8 @@ describe('what you can upload', () => {
    * the name - and a mutation putting the old hardcoded list back on the page left it green, because
    * the now-unused import still carried the word.
    */
-  it('is rendered by both pages, not merely imported', () => {
-    for (const page of ['../pages/grounds/GroundAdminPage.tsx', '../pages/grounds/GroundParticipantPage.tsx']) {
+  it('is rendered by every upload surface, not merely imported', () => {
+    for (const page of UPLOAD_SURFACES) {
       const src = readFileSync(path.join(__dirname, page), 'utf8')
       expect(src).toContain('{WHAT_YOU_CAN_UPLOAD}')
     }

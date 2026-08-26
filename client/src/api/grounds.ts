@@ -1,6 +1,17 @@
 import { apiClient } from './client'
 import type { Ground } from '@/types'
 
+export interface Delivery {
+  id: string
+  text: string
+  evidence: string | null
+  objectiveId: string | null
+  createdAt: string
+  /** Set once a session has raised it. Until then it is still waiting to be asked about. */
+  carriedIntoCheckInId: string | null
+}
+
+
 export type GroundScenario =
   | 'NEW_HIRE' | 'NEW_COFOUNDER' | 'NEW_ADVISOR'
   | 'NEW_PROJECT' | 'NEW_MANAGER' | 'CONTRACT_RENEWAL'
@@ -304,6 +315,33 @@ export const groundsApi = {
 
   deleteMyNote: (groundId: string, noteId: string) =>
     apiClient.delete<{ deleted: boolean }>(`/grounds/${groundId}/my-notes/${noteId}`).then(r => r.data),
+
+  /**
+   * Somebody looked at the ticket behind a REFERENCE expectation. The one write that keeps a
+   * pointer honest: what it says and when that was true, together, stamped by the server.
+   */
+  markExpectationLookedAt: (groundId: string, objectiveId: string, lastSeenState: string) =>
+    apiClient
+      .patch<{ ok: true }>(`/grounds/${groundId}/expectations/${objectiveId}/looked`, { lastSeenState })
+      .then(r => r.data),
+
+  myDeliveries: (groundId: string) =>
+    apiClient
+      .get<Delivery[]>(`/grounds/${groundId}/my-deliveries`, {
+        skipForbiddenToast: true,
+        skipNotFoundToast: true,
+      })
+      .then(r => r.data),
+
+  /**
+   * What you say you delivered. It reaches your next session as something to be ASKED about -
+   * `carriedIntoCheckInId` is how the page can say so honestly once that has happened.
+   */
+  addDelivery: (groundId: string, body: { text: string; evidence?: string; objectiveId?: string }) =>
+    apiClient.post<Delivery>(`/grounds/${groundId}/my-deliveries`, body).then(r => r.data),
+
+  deleteMyDelivery: (groundId: string, deliveryId: string) =>
+    apiClient.delete<{ deleted: boolean }>(`/grounds/${groundId}/my-deliveries/${deliveryId}`).then(r => r.data),
 
   /** Grounds a member set up that an admin has not accepted yet. Admin only. */
   awaitingApproval: () =>

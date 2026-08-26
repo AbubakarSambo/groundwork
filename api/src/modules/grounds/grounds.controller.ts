@@ -96,6 +96,42 @@ class AddLeadContextDto {
   audience?: 'LEAD_ONLY' | 'EVERYONE';
 }
 
+/**
+ * SOMEBODY LOOKED AT THE TICKET, and this is the whole of what they can say: what it says NOW.
+ *
+ * Short on purpose. A long one would be somebody re-typing the ticket body here, and then the page
+ * and the tracker are two things that have to agree - the failure a reference exists to avoid.
+ */
+class LookedAtDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(300)
+  lastSeenState!: string;
+}
+
+/**
+ * WHAT THEY SAY THEY DELIVERED. Capped for the same reason a note is: this is a claim that reaches
+ * the next session as a question, and somebody writing an essay here is writing their account
+ * outside the session, where nothing tests it.
+ */
+class AddDeliveryDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(2000)
+  text!: string;
+
+  @ApiPropertyOptional({ description: 'Where the evidence is, in your words. A link, a document, a date.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  evidence?: string;
+
+  @ApiPropertyOptional({ description: 'Which of your own expectations this is offered against. Leave it out for work nobody asked for.' })
+  @IsOptional()
+  @IsString()
+  objectiveId?: string;
+}
+
 class AddNoteDto {
   /**
    * Capped because this is a note, not a check-in. Somebody writing three
@@ -399,6 +435,35 @@ export class GroundsController {
   @ApiOperation({ summary: 'Delete one of your own notes' })
   async deleteMyNote(@Param('id') id: string, @Param('noteId') noteId: string, @CurrentUser('id') userId: string) {
     return this.grounds.deleteMyNote(id, userId, noteId);
+  }
+
+  @Patch(':id/expectations/:objectiveId/looked')
+  @ApiOperation({ summary: 'Say what the ticket behind this expectation says now. Re-stamps when anybody last looked.' })
+  async markExpectationLookedAt(
+    @Param('id') id: string,
+    @Param('objectiveId') objectiveId: string,
+    @CurrentUser('id') userId: string,
+    @Body() dto: LookedAtDto,
+  ) {
+    return this.grounds.markExpectationLookedAt(id, userId, objectiveId, dto.lastSeenState);
+  }
+
+  @Get(':id/my-deliveries')
+  @ApiOperation({ summary: 'What you have said you delivered on this check-in' })
+  async myDeliveries(@Param('id') id: string, @CurrentUser('id') userId: string) {
+    return this.grounds.getMyDeliveries(id, userId);
+  }
+
+  @Post(':id/my-deliveries')
+  @ApiOperation({ summary: 'Say what you delivered. It reaches your next session as something to be asked about, not as the record.' })
+  async addDelivery(@Param('id') id: string, @CurrentUser('id') userId: string, @Body() dto: AddDeliveryDto) {
+    return this.grounds.addDelivery(id, userId, dto);
+  }
+
+  @Delete(':id/my-deliveries/:deliveryId')
+  @ApiOperation({ summary: 'Take one back, while no session has raised it yet' })
+  async deleteMyDelivery(@Param('id') id: string, @Param('deliveryId') deliveryId: string, @CurrentUser('id') userId: string) {
+    return this.grounds.deleteMyDelivery(id, userId, deliveryId);
   }
 
   @Get(':id/my-transcript')

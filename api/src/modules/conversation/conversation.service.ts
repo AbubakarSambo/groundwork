@@ -25,6 +25,7 @@ import {
 import { detectFunction } from '../board/function-detection';
 import { documentWhereFor } from '../documents/who-can-see-a-document';
 import { displayName } from '../reports/party-labels';
+import { buildDeliveriesBlock } from './what-they-say-they-delivered';
 import { buildNotesBlock } from './between-session-notes';
 import { closeReadiness, askedToFinish } from './close-readiness';
 import { observeStyle, mergeStyle, styleGuidance } from './person-style';
@@ -996,9 +997,19 @@ export class ConversationService {
         : [];
     const expectationByParticipant = new Map(expectationRows.map((r) => [r.participantId, r]));
 
-    const personObjective = await (this.prisma.personObjective?.findUnique({
-      where: { groundId_participantId: { groundId: ground.id, participantId: checkIn.participantId } },
-    }) ?? Promise.resolve(null)).catch(() => null);
+    /**
+     * ALL OF THEIRS, not one. A person can be held to a commitment and a standing role expectation at
+     * the same time, and the session has to know about both - reading only the first row found is how
+     * somebody gets pressed on one thing while another goes unmentioned for a whole check-in.
+     *
+     * The first is still what the single-expectation prompt fields use, so nothing downstream had to
+     * change on the day this landed; `personObjectives` is what the rest of it reads.
+     */
+    const personObjectives = await (this.prisma.personObjective?.findMany({
+      where: { groundId: ground.id, participantId: checkIn.participantId },
+      orderBy: { createdAt: 'asc' },
+    }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]);
+    const personObjective = personObjectives[0] ?? null;
 
     const packKeyBase = `scenario.${ground.scenario.toLowerCase()}`;
     const packParty = checkIn.participant.partyType.toLowerCase();
@@ -1128,7 +1139,7 @@ export class ConversationService {
       returningUserContext = await this.buildReturningUserContext(checkIn.participantId, checkIn.sessionNumber);
     }
 
-    const [{ block: dynamicContext }, uploadedDocs, personTurnCount, pendingNotes] = await Promise.all([
+    const [{ block: dynamicContext }, uploadedDocs, personTurnCount, pendingNotes, pendingDeliveries] = await Promise.all([
       this.context.build({
         groundId: checkIn.groundId,
         participantId: checkIn.participantId,
@@ -1176,6 +1187,19 @@ export class ConversationService {
         orderBy: { createdAt: 'asc' },
         select: { id: true, text: true, createdAt: true },
       }),
+      /**
+       * WHAT THEY SAY THEY DELIVERED, NOT YET PUT BACK TO THEM.
+       *
+       * Same shape as a note and for the same reason - see
+       * what-they-say-they-delivered.ts. A self-report is a claim to test, so it
+       * reaches the session as something to ASK about and is stamped carried the
+       * moment it is raised, once rather than every session after.
+       */
+      this.prisma.delivery.findMany({
+        where: { participantId: checkIn.participantId, carriedIntoCheckInId: null },
+        orderBy: { createdAt: 'asc' },
+        select: { id: true, text: true, evidence: true, objective: { select: { text: true } } },
+      }),
     ]);
 
     const docContext = uploadedDocs.length
@@ -1187,6 +1211,22 @@ export class ConversationService {
     // its own file so the assembled text can be tested as text rather than as the
     // code that concatenates it.
     const notesBlock = buildNotesBlock(pendingNotes);
+
+    // Same treatment, different claim: a note is a thought, a delivery is an assertion about work
+    // done. Both reach the engine as questions to ask. See what-they-say-they-delivered.ts.
+    const deliveriesBlock = buildDeliveriesBlock(
+      pendingDeliveries.map((d) => ({ text: d.text, evidence: d.evidence, against: d.objective?.text ?? null })),
+    );
+    if (pendingDeliveries.length) {
+      // Stamped on being PUT to them, exactly as a note is, so abandoning a session does not
+      // re-raise the same claim every time after.
+      await this.prisma.delivery
+        .updateMany({
+          where: { id: { in: pendingDeliveries.map((d) => d.id) } },
+          data: { carriedIntoCheckInId: checkIn.id },
+        })
+        .catch((e) => this.logger.error(`Could not mark deliveries carried for check-in ${checkIn.id}: ${e?.message ?? e}`));
+    }
 
     if (pendingNotes.length) {
       // Stamped now rather than on completion: a note that has been PUT to somebody
@@ -1304,7 +1344,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      */
     const coachingBlock = await this.coachingBlock(checkIn.participantId, checkIn.sessionNumber);
 
-    return [systemPrompt, VOCABULARY_RULE, intakeBlock, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, dynamicContext, docContext, docPromptHint, notesBlock].filter(Boolean).join('\n\n');
+    return [systemPrompt, VOCABULARY_RULE, intakeBlock, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock].filter(Boolean).join('\n\n');
   }
 
   /** The flag, read where it is used and failing to OFF. Same shape as the others. */
@@ -2395,7 +2435,20 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
     const result = await this.anthropic.extract<{
       groundAims: string[];
-      expectations: { personName: string; expectation: string; awareness: string; awarenessDetail?: string }[];
+      expectations: {
+        personName: string;
+        expectation: string;
+        awareness: string;
+        awarenessDetail?: string;
+        /** The primitive. Validated against the enums below, never trusted as returned. */
+        kind?: string;
+        check?: string;
+        dueKind?: string;
+        dueSaid?: string;
+        owedTo?: string;
+        /** REFERENCE only: where the work is tracked. Never its state. */
+        trackedUrl?: string;
+      }[];
     }>(EXPECTATION_PROMPT, [{ role: 'user', content: transcript }], EXPECTATION_SCHEMA as any);
     if (!result) return;
 
@@ -2415,11 +2468,42 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     };
 
     const AWARENESS = ['TOLD', 'NOT_TOLD', 'UNSURE', 'NOT_ASKED'];
+    /**
+     * THE PRIMITIVE, VALIDATED AGAINST THE ENUM RATHER THAN TRUSTED.
+     *
+     * A model returning a value outside the set has to fall to something honest, and the honest
+     * fallback is the one that ADMITS IGNORANCE: an unknown kind is not a to-do, and an unknown
+     * check is NOT_CHECKABLE. Defaulting the other way would let a junk value become a target
+     * somebody is then read against.
+     */
+    const KINDS = ['TODO', 'COMMITMENT', 'TARGET', 'GOAL', 'SUCCESS_DEFINITION', 'ROLE_EXPECTATION', 'REFERENCE'];
+    const CHECKS = ['DONE_OR_NOT', 'A_NUMBER', 'A_JUDGEMENT', 'NOT_CHECKABLE'];
+    const DUES = ['A_DATE', 'A_CYCLE', 'STANDING', 'NOT_SAID'];
 
     for (const e of result.expectations ?? []) {
       const target = resolve(e.personName);
       if (!target) continue;
       const text = (e.expectation ?? '').trim();
+
+      const kind = KINDS.includes(e.kind ?? '') ? (e.kind as any) : null;
+      const check = CHECKS.includes(e.check ?? '') ? (e.check as any) : 'NOT_CHECKABLE';
+      const dueKind = DUES.includes(e.dueKind ?? '') ? (e.dueKind as any) : 'NOT_SAID';
+      const dueSaid = (e.dueSaid ?? '').trim() || null;
+      /**
+       * WHO IS WAITING ON IT, resolved against this check-in's roster like any other name - and
+       * DROPPED if it does not resolve, never guessed. A commitment pointing at somebody who is not
+       * here would put a handoff on a page belonging to nobody.
+       */
+      const owedTo = kind === 'COMMITMENT' && e.owedTo ? resolve(e.owedTo) : null;
+      /**
+       * WHERE IT IS TRACKED. REFERENCE only, so a ticket number cannot creep onto a target.
+       *
+       * The state is deliberately NOT taken from the conversation. The lead saying "OPS-418 is in
+       * review" is a claim about a moment already past by the time it is written down, and storing
+       * it as the ticket's state would make this page a stale copy of the tracker. Somebody has to
+       * say they looked, and that write stamps the time itself.
+       */
+      const trackedUrl = kind === 'REFERENCE' ? (e.trackedUrl ?? '').trim() || null : null;
       if (!text) continue;
       const awareness = AWARENESS.includes(e.awareness) ? e.awareness : 'NOT_ASKED';
 
@@ -2438,37 +2522,78 @@ The ground will close toward one of these end states: ${endStates || 'the partie
        * Only a CHANGE resets it. A lead repeating the same expectation is not new words, and resetting
        * on every session would make an unchanged expectation permanently unseen.
        */
-      const prior = await this.prisma.personObjective.findUnique({
-        where: { groundId_participantId: { groundId, participantId: target } },
-        select: { text: true },
+      /**
+       * MATCHED ON PERSON AND KIND, so a lead can hold somebody to more than one thing.
+       *
+       * The row used to be unique per person, so "Abubakar owes Hafsah the plan by Friday, and he
+       * owns escalations from now on" stored one of the two and silently dropped the other.
+       *
+       * `findFirst` rather than a composite `upsert` because `kind` is nullable: Prisma cannot look a
+       * row up by a unique key containing a null, and rows written before the primitive have one.
+       * Same rule either way - same person, same kind is a revision; a different kind is a different
+       * thing and gets its own row.
+       */
+      const prior = await this.prisma.personObjective.findFirst({
+        where: { groundId, participantId: target, kind },
+        select: { id: true, text: true, trackedUrl: true },
       });
       const textChanged = !!prior && prior.text.trim() !== text;
 
-      await this.prisma.personObjective.upsert({
-        where: { groundId_participantId: { groundId, participantId: target } },
-        create: {
-          groundId,
-          participantId: target,
-          text,
-          authoredBy: 'lead',
-          /**
-           * False on creation and it must stay false: the person has not seen this yet. `seenBySubject`
-           * is what stops anybody being read against an expectation they have never laid eyes on, and
-           * publishing it to Context is what will flip it.
-           */
-          seenBySubject: false,
-          awareness,
-          awarenessDetail: (e.awarenessDetail ?? '').trim() || null,
-        },
-        update: {
-          text,
-          authoredBy: 'lead',
-          awareness,
-          awarenessDetail: (e.awarenessDetail ?? '').trim() || null,
-          /** New words, so they have not seen them. Unchanged words keep whatever was already true. */
-          ...(textChanged ? { seenBySubject: false } : {}),
-        },
-      });
+      const shared = {
+        text,
+        authoredBy: 'lead',
+        awareness,
+        awarenessDetail: (e.awarenessDetail ?? '').trim() || null,
+        kind,
+        check,
+        dueKind,
+        dueSaid,
+        owedToParticipantId: owedTo,
+        trackedUrl,
+      };
+
+      if (prior) {
+        /**
+         * A RE-STATED EXPECTATION MUST NOT DESTROY THE POINTER OR ITS HISTORY.
+         *
+         * `shared` carries trackedUrl, so writing it wholesale set the url to whatever this
+         * extraction happened to produce - which is null every time the lead restates the
+         * expectation without repeating the ticket number. The link went, and `lastSeenState` and
+         * `lastSeenAt` were left behind describing a ticket the row no longer names: everybody's
+         * record of having looked, orphaned, still rendering as current.
+         *
+         * So: a url is only written when this extraction actually found one. And a DIFFERENT url is
+         * a different ticket, which means the remembered state is about something else and has to
+         * go with it - keeping it would be the copy-of-a-tracker failure with somebody else's
+         * ticket's words in it.
+         */
+        const keepsPointer = !trackedUrl || trackedUrl === prior.trackedUrl;
+        await this.prisma.personObjective.update({
+          where: { id: prior.id },
+          data: {
+            ...shared,
+            ...(keepsPointer
+              ? { trackedUrl: prior.trackedUrl }
+              : { trackedUrl, lastSeenState: null, lastSeenAt: null }),
+            /** New words, so they have not seen them. Unchanged words keep whatever was already true. */
+            ...(textChanged ? { seenBySubject: false } : {}),
+          },
+        });
+      } else {
+        await this.prisma.personObjective.create({
+          data: {
+            ...shared,
+            groundId,
+            participantId: target,
+            /**
+             * False on creation and it must stay false: the person has not seen this yet.
+             * `seenBySubject` is what stops anybody being read against an expectation they have never
+             * laid eyes on, and publishing it to Context is what will flip it.
+             */
+            seenBySubject: false,
+          },
+        });
+      }
     }
 
     /**
@@ -2522,9 +2647,15 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    * view, inferred from two statements. This is "I think this is wrong", said on purpose.
    */
   async extractObjection(checkInId: string, participantId: string, groundId: string) {
-    const expectation = await (this.prisma.personObjective?.findUnique({
-      where: { groundId_participantId: { groundId, participantId } },
-      select: { text: true },
+    /**
+     * The most recently changed one. A person may be held to several things now, and an objection is
+     * almost always about whichever was last put to them - and where it is not, the words they used
+     * are recorded verbatim anyway, so the objection still says what they meant.
+     */
+    const expectation = await (this.prisma.personObjective?.findFirst({
+      where: { groundId, participantId },
+      orderBy: { updatedAt: 'desc' },
+      select: { id: true, text: true },
     }) ?? Promise.resolve(null)).catch(() => null);
     /** Nothing recorded of them, so there is nothing to object TO. */
     if (!expectation?.text?.trim()) return;
@@ -2553,16 +2684,19 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const words = (result.words ?? '').trim();
     if (!words) return;
 
+    /** Written to the row the objection was read against, not to "the person's objective". */
     await this.prisma.personObjective.update({
-      where: { groundId_participantId: { groundId, participantId } },
+      where: { id: expectation.id },
       data: { objection: words, objectionAt: new Date() },
     }).catch(() => undefined);
   }
 
   async extractAlignment(checkInId: string, participantId: string, groundId: string) {
-    const expectation = await (this.prisma.personObjective?.findUnique({
-      where: { groundId_participantId: { groundId, participantId } },
-      select: { text: true },
+    /** The most recently changed one, and the alignment read is written back to that same row. */
+    const expectation = await (this.prisma.personObjective?.findFirst({
+      where: { groundId, participantId },
+      orderBy: { updatedAt: 'desc' },
+      select: { id: true, text: true },
     }) ?? Promise.resolve(null)).catch(() => null);
     if (!expectation?.text?.trim()) return;
 
@@ -2596,7 +2730,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const verdict = VERDICTS.includes(result.verdict) ? result.verdict : 'CANNOT_TELL';
 
     await this.prisma.personObjective.update({
-      where: { groundId_participantId: { groundId, participantId } },
+      where: { id: expectation.id },
       data: { alignment: verdict, alignmentNote: (result.note ?? '').trim() || null },
     }).catch(() => undefined);
   }

@@ -10,6 +10,7 @@ import { plannedSessionsFor } from '@/lib/sessionCount'
 import { SlowStep, CLOSING_STEPS } from '@/components/gw/SlowStep'
 import { toast } from 'sonner'
 import { Sec } from '@/components/gw/kit'
+import { scrollTo } from '@/lib/scroll-to'
 import { clearEntryHandover } from '@/pages/auth/entry-handover'
 
 const STORAGE_KEY = 'gw_entry_session'
@@ -2977,7 +2978,7 @@ export function EntryChatPage() {
                   // Optional-call because jsdom has no scrollIntoView: an
                   // unguarded call throws inside the ref, React unmounts the
                   // subtree, and four unrelated specs went red on a scroll.
-                  if (el) el.scrollIntoView?.({ behavior: 'smooth', block: 'center' })
+                  if (el) scrollTo(el)
                 }}
                 style={{ position: 'sticky', top: 8, zIndex: 5, background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b-soft)', borderRadius: 10, padding: '14px 16px', marginBottom: 20, boxShadow: '0 2px 10px rgba(0,0,0,.06)' }}
               >

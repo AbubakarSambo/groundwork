@@ -8,23 +8,18 @@ import { groundsApi } from '@/api/grounds'
 import { billingApi } from '@/api/billing'
 import { useAuthStore } from '@/stores/auth'
 import { reportsApi } from '@/api/reports'
-import { documentsApi } from '@/api/documents'
 import { GroundChat } from '@/components/gw/GroundChat'
-import { whatThisGroundCanTellYou } from '@/lib/contextStrength'
-import { ContextStrength, LEAD_HOLDS_MORE } from '@/components/gw/ContextStrength'
 import { Sec } from '@/components/gw/kit'
 import { groundTabs } from './ground-tabs'
 import { SoloReportBody } from '@/components/gw/SoloReportBody'
 import { BaselinePanel } from '@/components/gw/BaselinePanel'
 import { StartingPointPanel } from '@/components/gw/StartingPointPanel'
 import { GroundTabRow } from '@/components/gw/GroundTabRow'
-import { ExpectationsPanel } from '@/components/gw/ExpectationsPanel'
-import { WHAT_YOU_CAN_UPLOAD, UPLOAD_ACCEPT_ATTR } from '@/lib/what-you-can-upload'
-import { SharedNote } from '@/components/gw/SharedNote'
 import { apiClient } from '@/api/client'
 import { participantLabel } from '@/lib/utils'
 import { toast } from 'sonner'
 import { ResolutionPanel } from '@/components/gw/ResolutionPanel'
+import { ContextPage } from '@/components/gw/ContextPage'
 
 
 
@@ -36,7 +31,7 @@ import { ResolutionPanel } from '@/components/gw/ResolutionPanel'
  * conversation dates its own sessions on the dividers.
  */
 
-type Tab = 'checkin' | 'record' | 'report' | 'docs' | 'board' | 'settings'
+type Tab = 'checkin' | 'record' | 'report' | 'docs' | 'settings'
 
 export function GroundParticipantPage() {
   const { id } = useParams<{ id: string }>()
@@ -176,17 +171,7 @@ export function GroundParticipantPage() {
     onError: () => toast.error('Could not activate. Try again.'),
   })
 
-  const { data: docs = [] } = useQuery({
-    queryKey: ['docs', id],
-    queryFn: () => documentsApi.list(id!),
-    enabled: !!id && tab === 'docs',
-  })
 
-  const uploadDoc = useMutation({
-    mutationFn: (file: File) => documentsApi.upload(id!, file),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['docs', id] }),
-    onError: () => toast.error('Upload failed.'),
-  })
 
   /**
    * WHERE CONTEXT WENT: it was never on this page.
@@ -293,24 +278,6 @@ export function GroundParticipantPage() {
   const totalSessions =
     plannedSessionsFor((ground as any).timelineDays, (ground as any).cadence, (ground as any).totalSessions) ?? 6
 
-  /**
-   * THE SAME CONTEXT READ THE LEAD SEES. G25 on this page, G26 as the reason.
-   *
-   * "One context page per ground, the same page for everyone, with the closed part
-   * visibly absent rather than silently missing." It was on the admin page only, so
-   * a participant opening Context got a file picker and no idea what the ground
-   * could do with what they gave it. Same function, same inputs, same component.
-   */
-  const contextStrength = ground ? whatThisGroundCanTellYou({
-    partyCount: (ground.participants ?? []).filter((p: any) => !p.managingOnly).length,
-    hasSuccessDefinition: !!(ground as any).brief?.trim(),
-    conditionCount: 0,
-    hasBaseline: false,
-    perPersonObjectiveCount: ((ground as any).objectives ?? []).length,
-    openDocumentCount: (docs ?? []).filter((d: any) => d.visibility === 'OPEN').length,
-    peopleWorkTogether: (ground as any).peopleWorkTogether !== false,
-    plannedSessions: totalSessions ?? 1,
-  }) : null
 
   /**
    * The signal feed, the alignment read, the last-completed shortcut and the
@@ -341,7 +308,7 @@ export function GroundParticipantPage() {
      */
     const mine: Record<string, Tab> = {
       chat: 'checkin', report: 'report', record: 'record',
-      context: 'docs', board: 'board', settings: 'settings',
+      context: 'docs', settings: 'settings',
     }
     return { key: mine[t.key] ?? 'checkin', label: t.label }
   })
@@ -414,7 +381,13 @@ export function GroundParticipantPage() {
           <GroundTabRow
             tabs={tabs.map(t => ({ key: t.key as any, label: t.label }))}
             active={tab}
-            onPick={k => (k === 'board' ? navigate(`/grounds/${id}/board`) : setTab(k as Tab))}
+            /*
+              The `k === 'board'` branch that used to sit here was dead: `groundTabs()` stopped
+              returning a board key when the board left the tab row, so nothing could ever take it.
+              Dead, and worse than dead - it was the only navigate() to the board left in the app, so
+              it kept a "does anything link here?" check green while the board was unreachable.
+            */
+            onPick={k => setTab(k as Tab)}
           />
       </div>
 
@@ -807,6 +780,39 @@ export function GroundParticipantPage() {
                   <span style={{ fontSize: 13 }}>→</span>
                 </button>
 
+                {/*
+                  THE WAY INTO THE TEAM BOARD, WHICH A PARTICIPANT DID NOT HAVE.
+
+                  The board stopped being a tab for a good reason - it leaves the page rather than
+                  changing what is under the tab row - and the lead got a replacement door at the
+                  foot of their report. A participant got nothing. The route stayed live, the board
+                  still rendered, and for everybody who is not the lead it simply ceased to exist.
+
+                  Hafsah found it the only way it could be found: "the team board no longer exists."
+
+                  Same gate as the lead's, because a board with nothing to draw is a worse door than
+                  no door, and same place - the board is the shared picture you talk over once you
+                  have read what the accounts said.
+                */}
+                {!!(ground as any).boardRenders && (
+                  <button
+                    onClick={() => navigate(`/grounds/${id}/board`)}
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
+                      background: 'white', color: 'var(--gw-navy)', border: '1px solid var(--gw-border)',
+                      borderRadius: 10, padding: '12px 16px', cursor: 'pointer', fontFamily: 'inherit',
+                    }}
+                  >
+                    <span style={{ textAlign: 'left' }}>
+                      <span style={{ display: 'block', fontSize: 13, fontWeight: 700 }}>Team board</span>
+                      <span style={{ display: 'block', fontSize: 12, color: 'var(--gw-sub)', marginTop: 2 }}>
+                        The same check-in side by side, so you can see where the accounts meet. Opens full screen.
+                      </span>
+                    </span>
+                    <span style={{ fontSize: 13 }}>&rarr;</span>
+                  </button>
+                )}
+
                 {/* Participant report sections */}
                 {report.pattern && (
                   <div style={{ background: 'var(--gw-dark)', color: 'white', borderRadius: 10, padding: '14px 16px' }}>
@@ -873,83 +879,13 @@ export function GroundParticipantPage() {
           </div>
         )}
 
-        {/* DOCUMENTS TAB */}
+        {/*
+          THE SAME CONTEXT PAGE THE LEAD SEES. This was assembled separately here, in a different
+          order, with a stray heading and buttons pointing at a chat this page does not have. One
+          file now owns the bands and their order - see ContextPage.
+        */}
         {tab === 'docs' && (
-          <div>
-            {/*
-              EXPECTATIONS, IN PLAIN VIEW. GW-EXP-2.
-              
-              First on the tab, above the uploads and the notes, because it is the thing this check-in
-              is actually measured against - and because publishing it is what makes people aware of it
-              rather than a display of something they were told elsewhere.
-            */}
-{/*
-              THE FRAMING SITS ABOVE THE EXPECTATIONS, because it answers the earlier question. What
-              this is about comes before what is expected of each person - a reader who does not know
-              the first cannot judge the second.
-            */}
-            <SharedNote text={(ground.leadContextNotes ?? []).find((n: any) => n.audience === 'EVERYONE' && !n.participantId)?.text} leadName={participantLabel(ground.participants?.find((p: any) => p.partyType === 'INITIATOR'))} />
-                        <ExpectationsPanel
-              groundId={id!}
-              parties={(ground.participants ?? []) as any[]}
-              viewerUserId={user?.id}
-            />
-
-            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 10 }}>{contextEnabled ? 'Context' : 'Documents'}</div>
-
-            {/* G25 + G26: what the ground can tell you, and an honest line about the
-                part of context that is the lead's. */}
-            {contextEnabled && contextStrength && (
-              <ContextStrength read={contextStrength} closedNote={!isInitiator} />
-            )}
-            {/*
-              THE HONESTY LINE SURVIVES THE FLAG BEING OFF, because that is when it matters most.
-              
-              It lived inside ContextStrength, which is gated on CONTEXT_ENABLED - so it disappeared in
-              exactly the state where a participant sees least: with the flag off every document is
-              private to its uploader whatever its column says. The lead genuinely holds more, and
-              nothing on screen said so.
-            */}
-            {!contextEnabled && !isInitiator && (
-              <div style={{ background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '12px 14px', marginBottom: 16, fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-                {LEAD_HOLDS_MORE}
-              </div>
-            )}
-            <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.6, marginBottom: 14, background: 'white', borderRadius: 8, padding: '10px 12px', border: '1px solid var(--gw-border)' }}>
-              {contextEnabled
-                ? "This is where the background lives. Anything the lead has opened to the check-in appears here, and your check-in has read it. What you upload is yours until the report is released, and it shapes the questions you get asked."
-                : "Documents the admin has shared appear here. Your uploads are part of your contribution to this record until the report is released."}
-            </div>
-
-            <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 10, lineHeight: 1.6 }}>
-              Your uploads are private. Everyone's documents are cross-referenced when the report is released.
-            </div>
-
-            <div
-              style={{ border: '1.5px dashed var(--gw-border)', borderRadius: 8, padding: 16, textAlign: 'center', cursor: 'pointer', marginBottom: 12, background: 'white' }}
-              onClick={() => document.getElementById('gp-doc-upload')?.click()}
-            >
-              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)' }}>Upload a supporting document</div>
-              <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 3 }}>{WHAT_YOU_CAN_UPLOAD}</div>
-              <input type="file" id="gp-doc-upload" style={{ display: 'none' }} accept={UPLOAD_ACCEPT_ATTR}
-                onChange={e => { const f = e.target.files?.[0]; if (f) uploadDoc.mutate(f); e.target.value = '' }} />
-            </div>
-
-            {docs.length === 0 ? (
-              <div style={{ fontSize: 13, color: 'var(--gw-muted)', textAlign: 'center', padding: 20, background: 'white', borderRadius: 8, border: '1px solid var(--gw-border)' }}>
-                No documents yet.
-              </div>
-            ) : (
-              docs.map((doc: any) => (
-                <div key={doc.id} style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '11px 14px', marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 600 }}>{doc.name}</div>
-                    <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 2 }}>{new Date(doc.uploadedAt).toLocaleDateString()}</div>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
+          <ContextPage ground={ground} role={isInitiator ? 'lead' : 'party'} viewerUserId={user?.id} />
         )}
 
         {/* SETTINGS TAB */}

@@ -3,18 +3,15 @@ import { whichSessionAreWeOn, hasDoneThisSession } from '@/lib/which-session-are
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { whatThisGroundCanTellYou } from '@/lib/contextStrength'
-import { ContextStrength } from '@/components/gw/ContextStrength'
+import { ContextPage } from '@/components/gw/ContextPage'
 import { GroundChat } from '@/components/gw/GroundChat'
 import { GroundGone } from '@/components/gw/GroundGone'
-import { ContextChat } from '@/components/gw/ContextChat'
 import { useAuthStore } from '@/stores/auth'
 import { groundsApi, type GroundCadence } from '@/api/grounds'
 import { SELECTABLE_CADENCES, sessionsFor } from '@/lib/cadence'
 import { personLabel, participantLabel } from '@/lib/utils'
 import { alignmentLabel } from '@/lib/alignment'
 import { reportsApi } from '@/api/reports'
-import { documentsApi } from '@/api/documents'
 import { conversationApi } from '@/api/conversation'
 import { participantRequestsApi } from '@/api/participantRequests'
 import { participantsApi } from '@/api/participants'
@@ -29,10 +26,7 @@ import { SoloReportBody } from '@/components/gw/SoloReportBody'
 import { BaselinePanel } from '@/components/gw/BaselinePanel'
 import { StartingPointPanel } from '@/components/gw/StartingPointPanel'
 import { GroundTabRow } from '@/components/gw/GroundTabRow'
-import { ExpectationsPanel } from '@/components/gw/ExpectationsPanel'
 import { ReportBody } from '@/pages/report/ReportPage'
-import { WHAT_YOU_CAN_UPLOAD, UPLOAD_ACCEPT_ATTR } from '@/lib/what-you-can-upload'
-import { SharedNote } from '@/components/gw/SharedNote'
 import { billingApi } from '@/api/billing'
 import { scenarioLabel } from '@/lib/scenario-catalog'
 
@@ -107,7 +101,6 @@ export function GroundAdminPage() {
     return (known as string[]).includes(asked ?? '') ? (asked as Tab) : 'chat'
   })
   const [reportSession, setReportSession] = useState<ReportSession>('s1')
-  const [ctxNote, setCtxNote] = useState('')
   const [groundLabel, setGroundLabel] = useState('')
   const [timelineDaysDraft, setTimelineDaysDraft] = useState(90)
   const [cadenceDraft, setCadenceDraft] = useState<GroundCadence>('WEEKLY')
@@ -122,10 +115,6 @@ export function GroundAdminPage() {
   // Fix-and-resend for bounced invites (participant must not have accepted)
   const [fixingEmailId, setFixingEmailId] = useState<string | null>(null)
   const [fixingEmailValue, setFixingEmailValue] = useState('')
-  const [noteSaved, setNoteSaved] = useState(false)
-  const [leadCtxText, setLeadCtxText] = useState('')
-  const [leadCtxTarget, setLeadCtxTarget] = useState('') // '' = about the ground; else participantId
-  const [leadCtxSaved, setLeadCtxSaved] = useState(false)
   const [postSessionDismissed, setPostSessionDismissed] = useState(false)
   const [editingRoleId, setEditingRoleId] = useState<string | null>(null)
   const [editingRoleValue, setEditingRoleValue] = useState('')
@@ -150,11 +139,6 @@ export function GroundAdminPage() {
     retry: false,
   })
 
-  const { data: docs = [] } = useQuery({
-    queryKey: ['docs', id],
-    queryFn: () => documentsApi.list(id!),
-    enabled: !!id && tab === 'docs',
-  })
 
   const releaseReport = useMutation({
     mutationFn: () => reportsApi.release(id!),
@@ -162,23 +146,8 @@ export function GroundAdminPage() {
     onError: () => toast.error('Could not release report.'),
   })
 
-  const uploadDoc = useMutation({
-    mutationFn: (file: File) => documentsApi.upload(id!, file),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['docs', id] }),
-    onError: () => toast.error('Upload failed.'),
-  })
 
-  const setDocVisibility = useMutation({
-    mutationFn: ({ docId, visibility }: { docId: string; visibility: 'OPEN' | 'OWN' }) =>
-      documentsApi.setVisibility(id!, docId, visibility),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['docs', id] }),
-    onError: () => toast.error('Could not change who can see that.'),
-  })
 
-  const deleteDoc = useMutation({
-    mutationFn: (docId: string) => documentsApi.remove(id!, docId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['docs', id] }),
-  })
 
   /**
    * WHO A CHECK-IN BELONGS TO.
@@ -263,30 +232,6 @@ export function GroundAdminPage() {
   // Sent with the ground, because the client cannot read an environment variable
   // and a screen that guesses whether a feature is on renders half of it.
   const contextEnabled = (ground as any)?.contextEnabled === true
-  /**
-   * Computed on the client from what the ground already carries, rather than
-   * added as another endpoint. Every input is a count or a presence - nothing
-   * here inspects a person, and no branch depends on who anybody is.
-   */
-  const contextStrength = ground ? whatThisGroundCanTellYou({
-    partyCount: (ground.participants ?? []).filter((p: any) => !p.managingOnly).length,
-    /**
-     * REAL VALUES, AT LAST. These three were `!!brief`, `0` and `false` - the last two hardcoded,
-     * because `GroundBaseline` had no writer, so two lines of the context read fired on every ground
-     * whatever the truth: a lead who HAD named conditions was still told the record would not be able
-     * to say whether they were met.
-     *
-     * `brief` is what the ground is ABOUT. `successLooksLike` is what doing well in it would look
-     * like. Only the second is a yardstick, so it is what this asks about.
-     */
-    hasSuccessDefinition: !!((ground as any).baseline?.successLooksLike?.trim() || (ground as any).brief?.trim()),
-    conditionCount: ((ground as any).baseline?.conditions ?? []).length,
-    hasBaseline: !!(ground as any).baseline,
-    perPersonObjectiveCount: ((ground as any).objectives ?? []).length,
-    openDocumentCount: docs.filter((d: any) => d.visibility === 'OPEN').length,
-    peopleWorkTogether: (ground as any).peopleWorkTogether !== false,
-    plannedSessions: plannedSessions ?? 1,
-  }) : null
 
   /**
    * THE SEAT COUNT COMES FROM THE SERVER, NOT FROM THIS PAGE'S OWN ARITHMETIC.
@@ -440,33 +385,13 @@ export function GroundAdminPage() {
     onError: () => toast.error('Could not update this setting.'),
   })
 
-  const addNote = useMutation({
-    mutationFn: (note: string) => groundsApi.update(id!, { contextNote: note }),
-    onSuccess: () => { setCtxNote(''); qc.invalidateQueries({ queryKey: ['ground', id] }) },
-    onError: () => toast.error('Could not save note.'),
-  })
 
   /**
    * THE SHARED NOTE. Separate mutation from the private one on purpose: they differ in the single
    * most consequential way a piece of context can differ - who reads it - and a shared control with a
    * checkbox is how somebody publishes a private note by mistake. Different box, different button.
    */
-  const [sharedNoteText, setSharedNoteText] = useState('')
-  const [sharedNoteSaved, setSharedNoteSaved] = useState(false)
-  const addSharedNoteMut = useMutation({
-    mutationFn: () => groundsApi.addLeadContext(id!, { text: sharedNoteText.trim(), audience: 'EVERYONE' }),
-    onSuccess: () => { setSharedNoteText(''); setSharedNoteSaved(true); qc.invalidateQueries({ queryKey: ['ground', id] }) },
-    onError: () => toast.error('Could not save that note.'),
-  })
 
-  const addLeadContextMut = useMutation({
-    mutationFn: () => groundsApi.addLeadContext(id!, {
-      participantId: leadCtxTarget || undefined,
-      text: leadCtxText.trim(),
-    }),
-    onSuccess: () => { setLeadCtxText(''); setLeadCtxSaved(true); qc.invalidateQueries({ queryKey: ['ground', id] }) },
-    onError: () => toast.error('Could not save context.'),
-  })
 
   const addParticipantMut = useMutation({
     mutationFn: () => groundsApi.addParticipant(id!, { email: newParticipantEmail.trim(), note: newParticipantNote.trim() || undefined }),
@@ -1570,266 +1495,15 @@ export function GroundAdminPage() {
         )}
 
         {/* DOCUMENTS */}
+        {/*
+          ONE CONTEXT PAGE, RENDERED BY BOTH VIEWS. This tab used to be assembled inline here for the
+          lead, and separately inline in GroundParticipantPage for everybody else - two places that
+          had to agree, each fine on its own, nothing reconciling them. They drifted into different
+          band orders for the same tab, a stray heading in one of them, and a button pointing at a
+          chat the other page does not have. See ContextPage for the order and why it is that order.
+        */}
         {tab === 'docs' && (
-          <div>
-            {/*
-              EXPECTATIONS, IN PLAIN VIEW. GW-EXP-2.
-              
-              First on the tab, above the uploads and the notes, because it is the thing this check-in
-              is actually measured against - and because publishing it is what makes people aware of it
-              rather than a display of something they were told elsewhere.
-            */}
-{/*
-              THE FRAMING SITS ABOVE THE EXPECTATIONS, because it answers the earlier question. What
-              this is about comes before what is expected of each person - a reader who does not know
-              the first cannot judge the second.
-            */}
-            <SharedNote text={(ground.leadContextNotes ?? []).find((n: any) => n.audience === 'EVERYONE' && !n.participantId)?.text} leadName={personLabel(ground.participants?.find((p: any) => p.partyType === 'INITIATOR'))} />
-                        <ExpectationsPanel
-              groundId={id!}
-              parties={(ground.participants ?? []) as any[]}
-              viewerUserId={user?.id}
-            />
-
-            {/* WHAT THIS GROUND WILL AND WILL NOT BE ABLE TO TELL YOU. (G25)
-                Above the upload, because it is the reason to bother with any of
-                it. Not a score and not a completeness bar: a statement about the
-                REPORT'S limits, given what the ground holds.
-
-                "Your context is 40% complete" makes somebody feel marked at the
-                exact moment they are deciding whether this product is on their
-                side, and tells them nothing about what the effort buys. "It will
-                not be able to tell you whether the conditions were met, because
-                none have been named" carries the same information, names the
-                missing thing, and is a fact about a tool rather than a judgement
-                on a reader.
-
-                Never mandatory and never graded. A ground with thin context is
-                still a real ground; this exists so nobody is surprised in month
-                three by a question the record was never able to answer. */}
-            {contextEnabled && contextStrength && <ContextStrength read={contextStrength} />}
-
-            {/* G37/G23, and the lead's only - it is about setting the ground up. */}
-            {/*
-              `canRunThisGround`, NOT `isInitiator`. An org admin could release the report and close
-              the check-in and could not steer it, so covering for an absent lead meant being able to
-              end the thing without being able to set it up. The server now allows both; this was the
-              client's half of the same gate.
-            */}
-            {contextEnabled && canRunThisGround && <ContextChat groundId={id!} />}
-
-            <div
-              style={{ border: '1.5px dashed var(--gw-border)', borderRadius: 8, padding: 20, textAlign: 'center', cursor: 'pointer', marginBottom: 16, background: 'var(--gw-bg)' }}
-              onClick={() => document.getElementById('ga-doc-upload')?.click()}
-            >
-              {/*
-                LABELLED BY WHO READS IT, like the two note boxes below. The page had three inputs
-                named by what they were - documents, notes, private context - when the only difference
-                that matters to somebody deciding where to put something is who ends up reading it.
-              */}
-              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', marginBottom: 4 }}>
-                {/*
-                  THE HEADING FOLLOWS THE FLAG, LIKE THE SENTENCE UNDER IT.
-                  
-                  My first version read "private to you until you open it" in both states - and with
-                  CONTEXT_ENABLED off there is no opening it, so it promised an action that does not
-                  exist, directly above a sentence correctly saying the file reaches nobody. The same
-                  contradiction this box was just fixed for, reintroduced one line higher.
-                */}
-                {contextEnabled ? 'A file, private to you until you open it' : 'A file, private to you'}
-              </div>
-              <div style={{ fontSize: 12, color: 'var(--gw-sub)' }}>{WHAT_YOU_CAN_UPLOAD}</div>
-              <input type="file" id="ga-doc-upload" style={{ display: 'none' }} accept={UPLOAD_ACCEPT_ATTR}
-                onChange={e => { const f = e.target.files?.[0]; if (f) uploadDoc.mutate(f); e.target.value = '' }} />
-            </div>
-
-            {/*
-              AN EMPTY STATE THAT SAYS WHAT TO ADD, NOT THAT NOTHING IS THERE. W8-24.
-              
-              "No documents uploaded yet." is a sentence about absence, sitting directly
-              under an upload control that already says PDF, DOCX, JPEG. It uses the one
-              moment somebody is looking at an empty list to tell them it is empty.
-            */}
-            {docs.length === 0 && (
-              /**
-                THE ONE SENTENCE SOMEBODY READS BEFORE THEY UPLOAD, AND IT WAS THE FALSE ONE.
-                
-                It promised "anything you upload here is read by every check-in". Nothing uploaded
-                here is read by every check-in: a document lands OWN and reaches its uploader only
-                until they open it, and with CONTEXT_ENABLED off it can never be opened at all.
-                
-                THE TRUE SENTENCE WAS ALREADY ON THE PAGE, six lines below - "everything you add
-                starts private to you" - and shown only once `docs.length > 0`. So the product told
-                you the truth AFTER you had uploaded on the strength of the lie. Two copies of one
-                fact, contradicting each other, and the reader met the wrong one first.
-                
-                NOT FIXED BY DEFAULTING A LEAD'S UPLOAD TO OPEN, which was the other option on the
-                table. G24 rule 3 refuses that on purpose and says why: a performance plan or a note
-                about somebody's health dropped into shared context in a hurried first week cannot
-                be undone, because the others have already read it. Asking is cheap; that failure is
-                not recoverable. So the copy moves to meet the behaviour, not the reverse.
-              */
-              <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, padding: '14px 16px', background: 'var(--gw-bg)', borderRadius: 8, border: '1px solid var(--gw-border)' }}>
-                The brief, the plan, the scope, the grant terms, or the message that started
-                this.{' '}
-                {contextEnabled
-                  ? 'What you add starts private to you. Open it and everyone\u2019s check-in reads it before asking a question, so it shapes what they are asked.'
-                  : 'What you add stays yours. It shapes the questions in your own check-in, and reaches nobody else.'}
-              </div>
-            )}
-
-            {/* OPEN AND CLOSED, NAMED AS SUCH. (G38)
-                Nobody puts real context into a box whose readership they are
-                guessing at, so the destinations are labelled rather than implied.
-                Everything defaults to private (G24 rule 3) and moving something
-                to open is a deliberate act: a performance plan dropped into
-                shared context in a hurried first week cannot be undone, because
-                the others have already read it. */}
-            {contextEnabled && docs.length > 0 && (
-              <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, background: 'var(--gw-bg)', borderRadius: 8, padding: '10px 12px', marginBottom: 10 }}>
-                Everything you add starts private to you. <b>Open</b> means everyone in this check-in can read it, which is what the brief and the plan are for. <b>Only me</b> keeps it yours.
-              </div>
-            )}
-            {docs.map(doc => (
-              <div key={doc.id} style={{ background: 'white', border: '0.5px solid var(--gw-border)', borderRadius: 8, padding: '11px 14px', marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 600 }}>{doc.name}</div>
-                  <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>{new Date(doc.uploadedAt).toLocaleDateString()}</div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  {/* WHO CAN READ THIS, stated on the row rather than in a
-                      settings screen. Somebody deciding whether to attach a
-                      handover note needs the answer where they are, not two
-                      clicks away.
-
-                      Only shown with the flag on: with it off there is one
-                      answer for every document and a control offering a choice
-                      that does not exist would be a lie about the product. */}
-                  {contextEnabled && (
-                    <button
-                      onClick={() => setDocVisibility.mutate({
-                        docId: doc.id,
-                        visibility: (doc as any).visibility === 'OPEN' ? 'OWN' : 'OPEN',
-                      })}
-                      disabled={setDocVisibility.isPending || (doc as any).visibility === 'CLOSED'}
-                      title={(doc as any).visibility === 'CLOSED'
-                        ? 'This is your own context and stays with you'
-                        : (doc as any).visibility === 'OPEN'
-                          ? 'Everyone in this check-in can read this. Click to make it yours only.'
-                          : 'Only you can read this. Click to share it with everyone in this check-in.'}
-                      style={{
-                        fontSize: 11, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer',
-                        padding: '3px 9px', borderRadius: 20,
-                        border: `1px solid ${(doc as any).visibility === 'OPEN' ? '#A7D9CC' : 'var(--gw-border)'}`,
-                        background: (doc as any).visibility === 'OPEN' ? '#DFF1EA' : 'var(--gw-bg)',
-                        color: (doc as any).visibility === 'OPEN' ? 'var(--gw-green-t)' : 'var(--gw-sub)',
-                      }}
-                    >
-                      {(doc as any).visibility === 'OPEN' ? 'Everyone' : (doc as any).visibility === 'CLOSED' ? 'Only me' : 'Only me'}
-                    </button>
-                  )}
-                  <button onClick={() => deleteDoc.mutate(doc.id)} style={{ fontSize: 12, color: 'var(--gw-red-t)', background: 'none', border: 'none', cursor: 'pointer' }}>Delete</button>
-                </div>
-              </div>
-            ))}
-
-            <div style={{ marginTop: 16 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>Context notes</div>
-              <div className="gw-fld">
-                <textarea className="gw-ta" rows={3} value={ctxNote} onChange={e => { setCtxNote(e.target.value.slice(0, 500)); setNoteSaved(false) }} placeholder="Add a context note: changed scope, revised goal, new constraint…" maxLength={500} />
-                <div style={{ fontSize: 11, color: 'var(--gw-muted)', textAlign: 'right', marginTop: 2 }}>{ctxNote.length}/500</div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-                {/*
-                  A DEAD BUTTON SAYS WHY IT IS DEAD.
-                  
-                  All three of these grey out on an empty box and gave no reason - so somebody who had
-                  clicked into the wrong field, or typed only spaces, met a control that refused and
-                  said nothing. The hover says what to do, and each says what happens after, because
-                  the three differ in the one way that matters: who ends up reading it.
-                */}
-                <button onClick={() => { if (ctxNote.trim()) addNote.mutate(ctxNote.trim(), { onSuccess: () => setNoteSaved(true) }) }}
-                  disabled={addNote.isPending || !ctxNote.trim()}
-                  title={!ctxNote.trim() ? 'Write something first, then this adds it.' : undefined}
-                  style={{ padding: '8px 16px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 600, border: 'none', cursor: ctxNote.trim() ? 'pointer' : 'not-allowed', fontFamily: 'inherit', opacity: ctxNote.trim() ? 1 : 0.5 }}>
-                  {addNote.isPending ? 'Saving…' : 'Add note'}
-                </button>
-                {noteSaved && <span style={{ fontSize: 12, color: 'var(--gw-green-t)' }}>Saved</span>}
-              </div>
-              {(ground.contextNotes ?? []).map((n, i) => (
-                <div key={i} style={{ background: 'white', border: '0.5px solid var(--gw-border)', borderRadius: 8, padding: '10px 12px', fontSize: 13, color: 'var(--gw-sub)', marginBottom: 8, lineHeight: 1.6 }}>{n}</div>
-              ))}
-            </div>
-
-            {/*
-              LABELLED BY WHO READS IT, WHICH IS THE ONLY DIFFERENCE THAT MATTERS.
-              
-              The page had two near-identical textareas whose only real difference was the audience,
-              and that difference lived in the small print above each rather than in the heading. So
-              this one leads with the readership and the private one below leads with its promise.
-            */}
-            {canRunThisGround && (
-              <div style={{ marginTop: 20 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>A note everyone here reads</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginBottom: 10, lineHeight: 1.5 }}>
-                  Say what this is about, in your own words, so nobody starts their check-in guessing.
-                  Everyone sees it with your name on it. It shapes what people are asked and is never
-                  quoted as a finding about anybody. About the whole check-in, not about one person.
-                </div>
-                <div className="gw-fld">
-                  <textarea className="gw-ta" rows={3} value={sharedNoteText}
-                    onChange={e => { setSharedNoteText(e.target.value.slice(0, 4000)); setSharedNoteSaved(false) }}
-                    placeholder="e.g. We are deciding whether to renew. Both accounts go to all three of us at the same time."
-                    maxLength={4000} />
-                  <div style={{ fontSize: 11, color: 'var(--gw-muted)', textAlign: 'right', marginTop: 2 }}>{sharedNoteText.length}/4000</div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-                  <button onClick={() => { if (sharedNoteText.trim()) addSharedNoteMut.mutate() }}
-                    disabled={addSharedNoteMut.isPending || !sharedNoteText.trim()}
-                    title={!sharedNoteText.trim() ? 'Write something first, then everyone here can read it.' : undefined}
-                    style={{ padding: '8px 16px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 600, border: 'none', cursor: sharedNoteText.trim() ? 'pointer' : 'not-allowed', fontFamily: 'inherit', opacity: sharedNoteText.trim() ? 1 : 0.5 }}>
-                    {addSharedNoteMut.isPending ? 'Saving…' : 'Share this with everyone'}
-                  </button>
-                  {sharedNoteSaved && <span style={{ fontSize: 12, color: 'var(--gw-green-t)' }}>Everyone here can read this now</span>}
-                </div>
-
-                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>A private steer, never quoted</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginBottom: 10, lineHeight: 1.5 }}>
-                  Only you ever read this. Never shown to the person it is about, and never quoted as a
-                  claim in the report - it decides what gets looked at first, and is never the reason.
-                </div>
-                <div className="gw-fld">
-                  <select className="gw-input" value={leadCtxTarget} onChange={e => { setLeadCtxTarget(e.target.value); setLeadCtxSaved(false) }} style={{ marginBottom: 8 }}>
-                    <option value="">About the whole check-in</option>
-                    {ground.participants.map((p: any) => (
-                      <option key={p.id} value={p.id}>About {personLabel(p)}</option>
-                    ))}
-                  </select>
-                  <textarea className="gw-ta" rows={3} value={leadCtxText} onChange={e => { setLeadCtxText(e.target.value.slice(0, 4000)); setLeadCtxSaved(false) }} placeholder="e.g. Ben has been carrying the on-call rotation solo since March." maxLength={4000} />
-                  <div style={{ fontSize: 11, color: 'var(--gw-muted)', textAlign: 'right', marginTop: 2 }}>{leadCtxText.length}/4000</div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-                  <button onClick={() => { if (leadCtxText.trim()) addLeadContextMut.mutate() }}
-                    disabled={addLeadContextMut.isPending || !leadCtxText.trim()}
-                    title={!leadCtxText.trim() ? 'Write something first, then only you will see it.' : undefined}
-                    style={{ padding: '8px 16px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 600, border: 'none', cursor: leadCtxText.trim() ? 'pointer' : 'not-allowed', fontFamily: 'inherit', opacity: leadCtxText.trim() ? 1 : 0.5 }}>
-                    {addLeadContextMut.isPending ? 'Saving…' : 'Add context'}
-                  </button>
-                  {leadCtxSaved && <span style={{ fontSize: 12, color: 'var(--gw-green-t)' }}>Saved</span>}
-                </div>
-                {(ground.leadContextNotes ?? []).map(n => {
-                  const p = n.participantId ? ground.participants.find((x: any) => x.id === n.participantId) : null
-                  const about = n.participantId ? personLabel(p) : 'the check-in'
-                  return (
-                    <div key={n.id} style={{ background: 'white', border: '0.5px solid var(--gw-border)', borderRadius: 8, padding: '10px 12px', marginBottom: 8 }}>
-                      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-muted)', marginBottom: 2 }}>About {about}</div>
-                      <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>{n.text}</div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
+          <ContextPage ground={ground} role={canRunThisGround ? 'lead' : 'party'} viewerUserId={user?.id} />
         )}
 
         {/* REPORT */}

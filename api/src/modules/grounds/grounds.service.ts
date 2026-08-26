@@ -11,7 +11,7 @@ import { BillingService } from '../billing';
 import { UsageService } from '../usage/usage.service';
 import { CreateGroundDto, AddParticipantDto, CreateGroundForLeadDto } from './dto';
 import { GroundworkEvents, GroundActivatedEvent } from '../../common';
-import { GroundScenario, GroundStatus, PartyType, CheckInStatus, Cadence, UsageEventType, TokenType, Prisma, GroundMoment, ContextNoteAudience } from '@prisma/client';
+import { GroundScenario, GroundStatus, PartyType, CheckInStatus, Cadence, UsageEventType, TokenType, Prisma, GroundMoment, ContextNoteAudience, DocumentVisibility } from '@prisma/client';
 import { endStatesFor } from '../resolution/end-states';
 import { canSignIn } from './can-sign-in';
 import { defaultModeFor, boardRendersFor } from '../board/board-families';
@@ -1004,6 +1004,12 @@ export class GroundsService {
         participants: { select: SAFE_PARTICIPANT_SELECT },
         checkIns: { select: CHECKIN_SELECT },
         /**
+         * WHAT THE WHOLE CHECK-IN IS AIMING AT. Written by the lead's own check-in alongside the
+         * per-person expectations, and never read back until now - so the Context page had a band
+         * for "what this check-in is for" and nothing to put in it.
+         */
+        objectives: { select: { id: true, name: true, target: true }, orderBy: { sortOrder: 'asc' } },
+        /**
          * `agreements` and `divergences` are selected because `alignmentRead` COUNTS them. Without
          * them this endpoint could only ever report null, so the ground page said "No read yet"
          * about a released report while the grounds list - whose query does fetch them - printed
@@ -1032,6 +1038,14 @@ export class GroundsService {
           include: {
             participants: { select: SAFE_PARTICIPANT_SELECT },
             checkIns: { select: CHECKIN_SELECT },
+            /**
+             * THE SAME LIST AS THE PRIMARY READ ABOVE, and it has to stay that way: this is the
+             * cross-org participant's path, and anything missing here is a field that exists for
+             * everybody except the person who joined from another organisation. TypeScript catches a
+             * mismatch because both assign to one variable - which is the only reason this second
+             * copy is survivable.
+             */
+            objectives: { select: { id: true, name: true, target: true }, orderBy: { sortOrder: 'asc' } },
             /**
              * `agreements` and `divergences` are here because `alignmentRead` COUNTS them, and
              * without them in the select it could only ever return null - so the ground page said
@@ -1187,16 +1201,38 @@ export class GroundsService {
     const objectiveRows = await this.prisma.personObjective.findMany({
       where: { groundId: id },
       select: {
-        participantId: true, text: true, authoredBy: true, seenBySubject: true, updatedAt: true,
+        id: true, participantId: true, text: true, authoredBy: true, seenBySubject: true, updatedAt: true,
+        /** Where a REFERENCE expectation is settled, and when anybody last looked at it. */
+        trackedUrl: true, lastSeenState: true, lastSeenAt: true,
         /** GW-EXP-2. Whether the lead has told them, on the lead's own account. */
         awareness: true, awarenessDetail: true,
         /** GW-EXP-7: the objection travels with the expectation it is about. */
         objection: true, objectionAt: true,
         /** GW-EXP-3. Whether this and their own idea of doing well connect. */
         alignment: true, alignmentNote: true,
+        /**
+         * THE PRIMITIVE. What kind of thing this is, how anybody would know it happened, and by when.
+         * The page renders by kind, and `check: NOT_CHECKABLE` is what it shows plainly rather than
+         * dressing an unmeasurable sentence up as a target.
+         */
+        kind: true, check: true, dueKind: true, dueSaid: true, owedToParticipantId: true,
       },
     });
-    const objectiveByParticipant = new Map(objectiveRows.map(o => [o.participantId, o]));
+    /**
+     * ALL OF THEM, PER PERSON. A person can be held to a commitment and a standing role expectation
+     * at once, and the map used to keep whichever row happened to come back last - so the page showed
+     * one thing and the rest were invisible even though they were stored.
+     */
+    const objectivesByParticipant = new Map<string, typeof objectiveRows>();
+    for (const o of objectiveRows) {
+      const list = objectivesByParticipant.get(o.participantId) ?? [];
+      list.push(o);
+      objectivesByParticipant.set(o.participantId, list);
+    }
+    /** The first is what the single-objective shape below still reads, so nothing downstream broke. */
+    const objectiveByParticipant = new Map(
+      [...objectivesByParticipant].map(([pid, list]) => [pid, list[0]]),
+    );
 
     const participantsWithCheckIns = (ground.participants ?? [])
       .filter((p: any) => !hidePeers || (!!requestingUserId && p.userId === requestingUserId))
@@ -1243,6 +1279,47 @@ export class GroundsService {
              */
             alignment: (row as any)?.alignment ?? null,
             alignmentNote: (row as any)?.alignmentNote ?? null,
+            /**
+             * THE PRIMITIVE, PASSED THROUGH. Selected from the row is not the same as reaching the
+             * page: this payload names every field explicitly, so a new column is invisible until it
+             * is listed here too. Added to the select and forgotten here, the page rendered the text
+             * and none of its shape.
+             *
+             * `check: NOT_CHECKABLE` is the one that must travel. It is what the page says out loud
+             * so an unmeasurable sentence is not mistaken for a target.
+             */
+            /**
+             * EVERY EXPECTATION THIS PERSON IS HELD TO, in the order they were stated. `objective`
+             * above stays as it was so nothing that reads it had to change on the day this landed;
+             * the page reads this.
+             */
+            all: (objectivesByParticipant.get(p.id) ?? []).map(o => ({
+              // The id is what lets somebody file what they delivered AGAINST a specific
+              // expectation rather than into a general box. Nothing else needs it.
+              id: o.id,
+              text: o.text,
+              kind: (o as any).kind ?? null,
+              // The state is never sent without the time it was true. Splitting them is how a
+              // nine-day-old status gets rendered as current.
+              trackedUrl: (o as any).trackedUrl ?? null,
+              lastSeenState: (o as any).lastSeenState ?? null,
+              lastSeenAt: (o as any).lastSeenAt ?? null,
+              check: (o as any).check ?? null,
+              dueKind: (o as any).dueKind ?? null,
+              dueSaid: (o as any).dueSaid ?? null,
+              owedToParticipantId: (o as any).owedToParticipantId ?? null,
+              awareness: (o as any).awareness ?? null,
+              awarenessDetail: (o as any).awarenessDetail ?? null,
+              alignment: (o as any).alignment ?? null,
+              alignmentNote: (o as any).alignmentNote ?? null,
+              objection: (o as any).objection ?? null,
+              seenBySubject: o.seenBySubject,
+            })),
+            kind: (row as any)?.kind ?? null,
+            check: (row as any)?.check ?? null,
+            dueKind: (row as any)?.dueKind ?? null,
+            dueSaid: (row as any)?.dueSaid ?? null,
+            owedToParticipantId: (row as any)?.owedToParticipantId ?? null,
             /**
              * GW-EXP-7. Shown to everyone who can see the expectation, which is the whole point: an
              * objection only its author can see is the state this was built to end.
@@ -2604,6 +2681,130 @@ export class GroundsService {
       data: { seenBySubject: true },
     });
     return { ok: true as const };
+  }
+
+  /**
+   * SOMEBODY LOOKED AT THE TICKET. The one write that keeps a pointer honest.
+   *
+   * A REFERENCE expectation holds the address of the thing and the words somebody used for its
+   * state. Without a way to say "I just looked", that state decays into the copy it was built not to
+   * be: captured once and shown as current forever. So this re-stamps both together - what it says
+   * and when that was true - and never one without the other.
+   *
+   * ANYONE WHO CAN SEE IT MAY DO IT, which is not how the rest of this page works and is right here.
+   * Looking at a ticket is not ownership: the lead states the expectation, and whoever actually
+   * opened Jira this morning is the person who knows what it says. Restricting it to the subject
+   * would mean the page goes stale whenever they are the one not looking.
+   *
+   * The time comes from the server. The one trustworthy field in the row must not be the one
+   * anybody can set.
+   */
+  async markExpectationLookedAt(
+    groundId: string,
+    requestingUserId: string,
+    objectiveId: string,
+    lastSeenState: string,
+  ) {
+    const state = (lastSeenState ?? '').trim();
+    if (!state) throw new BadRequestException('Say what it says now.');
+
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { initiatorId: true },
+    });
+    if (!ground) throw new NotFoundException('Check-in not found');
+    const me = await this.prisma.groundParticipant.findFirst({
+      where: { groundId, userId: requestingUserId },
+      select: { id: true },
+    });
+    if (!me && ground.initiatorId !== requestingUserId) {
+      throw new ForbiddenException('You are not a party to this check-in');
+    }
+
+    const { count } = await this.prisma.personObjective.updateMany({
+      where: { id: objectiveId, groundId },
+      data: { lastSeenState: state, lastSeenAt: new Date() },
+    });
+    if (count === 0) throw new NotFoundException('Expectation not found');
+    return { ok: true as const };
+  }
+
+  /**
+   * WHAT YOU SAY YOU DELIVERED. The half of the record that did not exist.
+   *
+   * Everything on Context until now ran one way: the lead states what is expected, the person reads
+   * it. A person could see the words they would be measured against and had nowhere at all to put
+   * what they actually did, so their side of it only ever reached the record if they happened to say
+   * it in a session - which favours whoever is quickest to speak, the exact bias this product was
+   * built against.
+   *
+   * IT IS NOT THEIR ACCOUNT, and that is deliberate. It carries `carriedIntoCheckInId` for the same
+   * reason a between-session note does: it reaches their next session as something to ASK ABOUT, and
+   * what they say under questioning is what becomes the record. Letting a form become the record
+   * would replace the interview with a box that rewards careful writing, which is a different and
+   * much worse product.
+   *
+   * `objectiveId` is optional on purpose. Work nobody asked for is worth having on the page - it is
+   * precisely the contribution a report built only from stated expectations cannot see.
+   */
+  async addDelivery(
+    groundId: string,
+    userId: string,
+    dto: { text: string; evidence?: string | null; objectiveId?: string | null },
+  ) {
+    const text = (dto.text ?? '').trim();
+    if (!text) throw new BadRequestException('Say what you did.');
+    const me = await this.prisma.groundParticipant.findFirst({
+      where: { groundId, userId },
+      select: { id: true },
+    });
+    if (!me) throw new ForbiddenException('You are not a party to this check-in');
+
+    // An expectation id is only accepted where it is one of THIS person's own on THIS check-in.
+    // Otherwise a delivery could be filed against somebody else's target.
+    let objectiveId: string | null = null;
+    if (dto.objectiveId) {
+      const own = await this.prisma.personObjective.findFirst({
+        where: { id: dto.objectiveId, groundId, participantId: me.id },
+        select: { id: true },
+      });
+      if (!own) throw new BadRequestException('That is not one of your expectations on this check-in.');
+      objectiveId = own.id;
+    }
+
+    return this.prisma.delivery.create({
+      data: { groundId, participantId: me.id, objectiveId, text, evidence: (dto.evidence ?? '').trim() || null },
+      select: { id: true, text: true, evidence: true, objectiveId: true, createdAt: true, carriedIntoCheckInId: true },
+    });
+  }
+
+  /** This person's own deliveries on this check-in, newest first. */
+  async getMyDeliveries(groundId: string, userId: string) {
+    const me = await this.prisma.groundParticipant.findFirst({
+      where: { groundId, userId },
+      select: { id: true },
+    });
+    if (!me) throw new ForbiddenException('You are not a party to this check-in');
+    return this.prisma.delivery.findMany({
+      where: { groundId, participantId: me.id },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true, text: true, evidence: true, objectiveId: true, createdAt: true, carriedIntoCheckInId: true },
+    });
+  }
+
+  async deleteMyDelivery(groundId: string, userId: string, deliveryId: string) {
+    const me = await this.prisma.groundParticipant.findFirst({
+      where: { groundId, userId },
+      select: { id: true },
+    });
+    if (!me) throw new ForbiddenException('You are not a party to this check-in');
+    const { count } = await this.prisma.delivery.deleteMany({
+      where: { id: deliveryId, participantId: me.id, carriedIntoCheckInId: null },
+    });
+    // Once a session has picked it up it is part of what was asked about, and taking it back
+    // afterwards would edit the run-up to a conversation that already happened.
+    if (count === 0) throw new NotFoundException('Not found, or it has already been raised in a session.');
+    return { deleted: true };
   }
 
   async baselineEntryCandidates(groundId: string, requestingUserId: string) {

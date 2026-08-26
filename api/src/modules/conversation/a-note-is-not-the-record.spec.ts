@@ -90,7 +90,10 @@ describe('the block reaches the assembled prompt', () => {
   it('is concatenated, not just built', () => {
     // The lesson from the ensureNextSession fix: a block that is built and never
     // concatenated is a comment with extra steps.
-    expect(SERVICE).toMatch(/docPromptHint, notesBlock\]\.filter\(Boolean\)\.join/);
+    // Anchored on notesBlock being INSIDE the joined array rather than last in it: pinning the
+    // tail made this fail the day a second block was appended after it, which is a change to a
+    // different rule entirely.
+    expect(SERVICE).toMatch(/notesBlock[^\]]*\]\.filter\(Boolean\)\.join/);
   });
 
   it('reads only notes no session has picked up', () => {

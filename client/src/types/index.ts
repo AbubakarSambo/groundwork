@@ -76,6 +76,21 @@ export interface GroundParticipant {
     described: string
     mayBeReadAgainst: boolean
     updatedAt?: string | null
+    /**
+     * THE PRIMITIVE. What SHAPE of thing this is, how anybody would know it happened, and by when.
+     *
+     * An expectation used to be one untyped sentence, so a session could not press on a to-do
+     * differently from a standing role expectation. `check` is the axis that matters most:
+     * NOT_CHECKABLE is a real value, and the page says so plainly rather than letting an
+     * unmeasurable sentence sit there looking like a target somebody failed.
+     */
+    kind?: 'TODO' | 'COMMITMENT' | 'TARGET' | 'GOAL' | 'SUCCESS_DEFINITION' | 'ROLE_EXPECTATION' | 'REFERENCE' | null
+    check?: 'DONE_OR_NOT' | 'A_NUMBER' | 'A_JUDGEMENT' | 'NOT_CHECKABLE' | null
+    dueKind?: 'A_DATE' | 'A_CYCLE' | 'STANDING' | 'NOT_SAID' | null
+    /** Their own words for the deadline. Never a parsed date. */
+    dueSaid?: string | null
+    /** COMMITMENT only: who is waiting on it. */
+    owedToParticipantId?: string | null
   } | null
 }
 

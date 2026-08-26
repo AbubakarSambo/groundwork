@@ -17,7 +17,11 @@ import { LEAD_HOLDS_MORE } from './ContextStrength'
  * on screen admitted it.
  */
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const PARTY = readFileSync(path.join(__dirname, '../../pages/grounds/GroundParticipantPage.tsx'), 'utf8')
+/**
+ * It used to live in GroundParticipantPage, which had its own copy of the Context tab. There is one
+ * Context page now and the difference is a role flag on it, so this reads that file.
+ */
+const PARTY = readFileSync(path.join(__dirname, 'ContextPage.tsx'), 'utf8')
   .replace(/\/\*[\s\S]*?\*\//g, '')
   .replace(/^\s*\/\/.*$/gm, '')
 
@@ -29,7 +33,7 @@ describe('the lead holds more, and it says so', () => {
   })
 
   it('and it reaches a participant with the flag off', () => {
-    expect(PARTY).toMatch(/\{!contextEnabled && !isInitiator && \(/)
+    expect(PARTY).toMatch(/\{!contextEnabled && !isLead && \(/)
     expect(PARTY).toContain('{LEAD_HOLDS_MORE}')
   })
 
@@ -40,6 +44,6 @@ describe('the lead holds more, and it says so', () => {
 
   /** A lead is not told they cannot see their own context. */
   it('and is not shown to the lead', () => {
-    expect(PARTY).toMatch(/!isInitiator/)
+    expect(PARTY).toMatch(/!isLead/)
   })
 })

@@ -22,7 +22,8 @@ import path from 'path'
  * into shared context in a hurried first week cannot be recalled, because the others have read it.
  */
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const PAGE = readFileSync(path.join(__dirname, 'GroundAdminPage.tsx'), 'utf8')
+/** The upload box moved out of the page and into the one Context page. */
+const PAGE = readFileSync(path.join(__dirname, '../../components/gw/ContextPage.tsx'), 'utf8')
   .replace(/\/\*[\s\S]*?\*\//g, '')
   .replace(/^\s*\/\/.*$/gm, '')
 

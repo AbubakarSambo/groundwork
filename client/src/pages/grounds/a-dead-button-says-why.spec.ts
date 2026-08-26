@@ -17,7 +17,8 @@ import path from 'path'
  * do next is the failure, not the fix.
  */
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const CODE = readFileSync(path.join(__dirname, 'GroundAdminPage.tsx'), 'utf8')
+/** The write boxes moved out of the page and into the one Context page. */
+const CODE = readFileSync(path.join(__dirname, '../../components/gw/ContextPage.tsx'), 'utf8')
   .replace(/\/\*[\s\S]*?\*\//g, '')
   .replace(/^\s*\/\/.*$/gm, '')
 

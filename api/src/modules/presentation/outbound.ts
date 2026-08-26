@@ -113,7 +113,15 @@ export function oneWordForTheThing(text: string): string {
    * narrow on purpose: "the renewal ground" converts, "gained ground" does not, and the cost of the
    * narrowness is that a bare "Ground closed." is left as it is.
    */
-  const DETERMINER = /\b(the|this|that|these|those|a|an|your|their|our|my|its|each|every|no|any|some|another|both|all)\s+(\w+\s+)?(ground)(s?)\b(\s+\w+)?/gi;
+  /**
+   * UP TO THREE WORDS BETWEEN THE DETERMINER AND THE NOUN, and quotes count as part of a word.
+   *
+   * The first version allowed one plain word, so it caught "the renewal ground" and missed
+   * `the "New hire" ground` - which is exactly what the setup chat said the first time it was
+   * watched, quotation marks and all. A name sitting between the two is the commonest way this
+   * phrase actually occurs.
+   */
+  const DETERMINER = /\b(the|this|that|these|those|a|an|your|their|our|my|its|each|every|no|any|some|another|both|all)\s+((?:[\w'"\u2018\u2019\u201c\u201d-]+\s+){0,3})(ground)(s?)\b(\s+\w+)?/gi;
 
   out = out.replace(DETERMINER, (match, det: string, adj: string | undefined, word: string, plural: string, after: string | undefined) => {
     const next = (after ?? '').trim().toLowerCase();
@@ -121,6 +129,14 @@ export function oneWordForTheThing(text: string): string {
     if (['floor', 'level', 'rules', 'rule', 'truth', 'zero', 'water', 'cover', 'staff', 'for'].includes(next)) {
       return match;
     }
+    /**
+     * "OF GROUND" IS ALWAYS THE EVERYDAY SENSE, whatever determiner started the phrase.
+     *
+     * Widening the gap to three words to catch `the "New hire" ground` also swept up "a lot of
+     * ground" - "a" is a determiner and "lot of" fits the gap - which turned somebody's own words
+     * into "a lot of check-in". This text quotes people, so that is not a cosmetic error.
+     */
+    if (/\bof\s*$/i.test(adj ?? '')) return match;
     const replacement = plural ? 'check-ins' : 'check-in';
     const cased = /^[A-Z]/.test(word) ? replacement.charAt(0).toUpperCase() + replacement.slice(1) : replacement;
     return `${det} ${adj ?? ''}${cased}${after ?? ''}`;

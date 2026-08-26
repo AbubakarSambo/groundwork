@@ -46,6 +46,9 @@ const PAGES = [
   '../report/ReportPage.tsx',
   '../board/BoardPage.tsx',
   '../../components/gw/GroundChat.tsx',
+  // The Context tab, which used to be assembled inline in the two pages above. When it moved, this
+  // guard fired for every document and lead-context call - which is exactly what it is for.
+  '../../components/gw/ContextPage.tsx',
 ]
 
 /** Everything the four ground surfaces can do, by the call that does it. */

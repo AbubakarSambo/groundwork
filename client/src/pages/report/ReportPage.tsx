@@ -695,6 +695,7 @@ function HiddenContributorsSection({
  * say which check-in you were looking at and offer a way back. Inside the tab, the page around it
  * already says both.
  */
+
 export function ReportBody({ groundId, embedded = false }: { groundId?: string; embedded?: boolean }) {
   /** Embedded, the id comes from the page around it; standalone, from the route. */
   const params = useParams<{ id: string }>()

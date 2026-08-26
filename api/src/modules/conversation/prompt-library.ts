@@ -1622,18 +1622,50 @@ export const EXPECTATION_PROMPT = `From the transcript of the person RUNNING thi
 
 2. expectations: for each OTHER person they named, what they said they expect of that person.
    - personName: the other person's name exactly as the speaker said it.
-   - expectation: the speaker's own words for what they expect of that person. Concrete where they were concrete. Never your paraphrase into something sharper than they said.
+   - expectation: what they expect of that person, as a STANDALONE STATEMENT OF THE WORK. Keep their
+     wording - concrete where they were concrete, and never paraphrased into something sharper than
+     they said - but state the thing itself rather than the clause it sat in. "What I expect from Tom
+     is that he ships the onboarding rewrite" gives "Ship the onboarding rewrite", not "he ships the
+     onboarding rewrite". No he, she or they, and do not name the person: this text is published to
+     the person it is about and is read on their own page, under a heading that says "You".
    - awareness: whether that person has been told, on the speaker's own account.
        TOLD - the speaker says they have told them, and can say roughly when or how.
        NOT_TOLD - the speaker says they have not, or that somebody else may have, or that they assumed it was covered.
        UNSURE - the speaker does not know whether it has been said.
        NOT_ASKED - the question never came up in this transcript.
    - awarenessDetail: the speaker's own words about the telling, if they said anything. Empty string otherwise.
+   - kind: what SHAPE of thing this is. Read it from how they said it, never from what would be tidiest.
+       TODO - a discrete piece of work, done or not, with a date.
+       COMMITMENT - a to-do that a NAMED OTHER PERSON is waiting on. Set owedTo to that person's name.
+       TARGET - a number has to cross a line. "Under twenty open tickets", "margin above 40%".
+       GOAL - a direction judged rather than counted, over a period.
+       SUCCESS_DEFINITION - a judgement about the WHOLE check-in rather than one person's work.
+       ROLE_EXPECTATION - standing, no end date. "You own escalations." True until somebody changes it.
+       REFERENCE - a ticket or issue tracked somewhere else, named by its id. Whenever they say
+       where the work is tracked - "it is in OPS-902", "the Linear ticket", a Jira link - use this
+       kind and put the id or link in trackedUrl. Do not put its status in: what a ticket says is
+       only recorded by somebody who has just looked at it.
+   - check: how anybody would know it had happened.
+       DONE_OR_NOT - it either happened or it did not.
+       A_NUMBER - a number crosses a line.
+       A_JUDGEMENT - a person would have to weigh it up. This is a real answer, not a failure.
+       NOT_CHECKABLE - nothing in what they said could be checked, by you or by the person it is about.
+   - dueKind: A_DATE if they named a day or deadline, A_CYCLE for a quarter or sprint, STANDING if it
+     has no end, NOT_SAID if they did not say.
+   - dueSaid: their own words for the deadline - "Thursday", "end of the quarter". Empty otherwise.
+   - owedTo: for COMMITMENT only, the name of the person waiting on it. Empty otherwise.
 
 RULES.
 Only a real named person who is another party here. Never the speaker themselves, never a team, an organisation or a customer.
 An expectation must be something the speaker said they want FROM that person. A description of what somebody currently does is not an expectation.
 Never sharpen a vague expectation into a measurable one. If they said "be more proactive", that is what it says.
+NOT_CHECKABLE IS NOT A FAILURE AND MUST NOT BE AVOIDED. If nothing in what they said can be checked, say so. It is
+what makes the interview ask how anybody would know, and it is what stops an unmeasurable sentence sitting on
+somebody's record looking like a target they failed. Choosing A_JUDGEMENT to seem helpful is the one thing that
+breaks this.
+A DEADLINE MEANS IT IS NOT A GOAL. Something with a date is a piece of work, whatever verb they used.
+TWO PEOPLE AND A DATE IS A COMMITMENT, and whoever the work is owed TO goes in owedTo - that is the whole
+difference between a to-do and a commitment.
 Do not infer awareness. If they were not asked and did not volunteer it, that is NOT_ASKED.
 Be conservative. Empty lists are correct answers.`;
 
@@ -1650,11 +1682,73 @@ export const EXPECTATION_SCHEMA = {
           type: 'object',
           properties: {
             personName: { type: 'string' },
-            expectation: { type: 'string' },
+            expectation: {
+              type: 'string',
+              /**
+               * A STANDALONE STATEMENT, NOT THE LEAD'S CLAUSE.
+               *
+               * This had no description at all, so the extraction stored whatever fragment the
+               * sentence happened to be: "he ships the onboarding rewrite". That text is published
+               * to the Context page, where it renders on the page of the person it is about, under a
+               * heading reading "You". They read a record of their own work that calls them "he".
+               *
+               * Not a rendering fix - the words are wrong in the database, and every surface that
+               * quotes them inherits it.
+               */
+              description:
+                'What is expected, as a standalone statement of the work itself - "Ship the onboarding rewrite", "Keep churn under 4 percent". Never a clause from the lead\'s sentence and never in the third person: this is published to the person it is about and is read on their own page, so "he ships the rewrite" is wrong where "Ship the rewrite" is right. Do not name the person in it; personName already says who it is for.',
+            },
             awareness: { type: 'string', enum: ['TOLD', 'NOT_TOLD', 'UNSURE', 'NOT_ASKED'] },
             awarenessDetail: { type: 'string' },
+            /**
+             * THE PRIMITIVE. What kind of thing this is, how anybody would know it happened, and by
+             * when. Typed FIELDS rather than an instruction, because the same reasoning that put
+             * `mode` in the setup schema applies: a field is a thing the engine either has or does
+             * not, and an instruction is a request.
+             *
+             * NOT_CHECKABLE IS THE IMPORTANT VALUE and must never be avoided out of helpfulness. It
+             * is what tells the interview to ask "how would we know?", and what stops an
+             * unmeasurable sentence sitting on somebody's record looking like a target they failed.
+             */
+            kind: {
+              type: 'string',
+              enum: ['TODO', 'COMMITMENT', 'TARGET', 'GOAL', 'SUCCESS_DEFINITION', 'ROLE_EXPECTATION', 'REFERENCE'],
+            },
+            check: { type: 'string', enum: ['DONE_OR_NOT', 'A_NUMBER', 'A_JUDGEMENT', 'NOT_CHECKABLE'] },
+            dueKind: { type: 'string', enum: ['A_DATE', 'A_CYCLE', 'STANDING', 'NOT_SAID'] },
+            /** Their own words for the deadline - "Thursday", "end of the quarter". Never a parsed date. */
+            dueSaid: { type: 'string' },
+            /** COMMITMENT only: the name of the person waiting on it, if they named one. */
+            owedTo: { type: 'string' },
+            /**
+             * REFERENCE only: where it is tracked, if they named it - "OPS-418", a Jira link.
+             *
+             * This is what makes REFERENCE reachable at all. Without it the kind existed in the enum
+             * and nothing could ever produce one, so "the work is in ticket OPS-418" had nowhere to
+             * land except as a to-do with a ticket number in its text.
+             *
+             * NEVER the ticket's state. What it says is only ever recorded by somebody who looked,
+             * with the time they looked - see PersonObjective.lastSeenAt.
+             */
+            trackedUrl: {
+              type: 'string',
+              /**
+               * A DESCRIPTION, NOT A TYPESCRIPT COMMENT.
+               *
+               * This property carried a long `/** *\/` comment explaining exactly when to use it -
+               * and none of that reaches the model, because only the JSON schema is sent. So the
+               * field existed, the enum had REFERENCE in it, the lead said "tracked in ticket
+               * OPS-902 in Jira", and the extraction returned REFERENCE with no url at all.
+               *
+               * Green in a source-reading spec, empty in the database. The rule I keep writing down
+               * and keep re-learning: prove it at the assembled prompt, not at the code that builds
+               * the prompt.
+               */
+              description:
+                'REFERENCE only. The ticket or issue id, or its link, exactly as they said it - "OPS-902", "JIRA-14", "https://linear.app/...". Fill this in whenever they name where the work is tracked. Never put what the ticket SAYS in here: its state is only ever recorded by somebody who has just looked at it.',
+            },
           },
-          required: ['personName', 'expectation', 'awareness'],
+          required: ['personName', 'expectation', 'awareness', 'kind', 'check', 'dueKind'],
         },
       },
     },

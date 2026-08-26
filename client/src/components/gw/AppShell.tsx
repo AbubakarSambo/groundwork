@@ -961,7 +961,27 @@ export function AppSidebar() {
                     {user?.firstName ? `${user.firstName} ${user.lastName ?? ''}`.trim() : user?.email ?? ''}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                    <span style={{ fontSize: 11, color: 'rgba(255,255,255,.38)', textTransform: 'capitalize' }}>{(user?.role ?? '').toLowerCase()}</span>
+                    {/**
+                      * WHICH ORGANISATION YOU ARE IN, BESIDE WHAT YOU ARE IN IT.
+                      *
+                      * An ordinary member could not see the company's name anywhere in the chrome.
+                      * People and Billing are admin-only, so the org heading above them - which is
+                      * the only place the name appeared - never rendered for them. They knew they
+                      * were a "Member" of something unnamed.
+                      *
+                      * NOT FIXED BY PUTTING THE NAME ABOVE SETTINGS, which was the obvious move and
+                      * is wrong: a member's Settings is their OWN - notifications, their number,
+                      * what we hold about them - and the company's name over it mislabels whose page
+                      * it is. `the-org-is-not-a-ground` guards that, correctly.
+                      *
+                      * It belongs here because this block is about the person's MEMBERSHIP, which is
+                      * exactly the thing in question, and because switching organisation happens two
+                      * lines above. Role and org are one fact: you are a member OF something.
+                      */}
+                    <span style={{ fontSize: 11, color: 'rgba(255,255,255,.38)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <span style={{ textTransform: 'capitalize' }}>{(user?.role ?? '').toLowerCase()}</span>
+                      {user?.organizationName ? ` at ${user.organizationName}` : ''}
+                    </span>
                     {/**
                       * SIGNING OUT EXISTED ON ONE PAGE, AS A SPAN.
                       *

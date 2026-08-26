@@ -65,12 +65,22 @@ describe('the rule the module was written for', () => {
  * below asserting nothing writes one.
  */
 describe('the rules the three writes used to carry', () => {
-  const EXTRACT = readFileSync(
-    join(__dirname, '../conversation/conversation.service.ts'),
-    'utf8',
-  ).slice(
-    readFileSync(join(__dirname, '../conversation/conversation.service.ts'), 'utf8').indexOf('async extractExpectations('),
-  ).slice(0, 6000);
+  /**
+   * SLICED TO THE END OF THE FUNCTION, not to a fixed number of characters.
+   *
+   * This took the first 6,000 characters after the signature, and adding the objective primitive to
+   * the same function pushed `textChanged` past that window - so a guard protecting a real fairness
+   * rule failed because of a magic number, on code that was correct. An anchor that moves with the
+   * file cannot do that.
+   */
+  const EXTRACT = (() => {
+    const all = readFileSync(join(__dirname, '../conversation/conversation.service.ts'), 'utf8');
+    const from = all.indexOf('async extractExpectations(');
+    expect(from).toBeGreaterThan(-1);
+    const to = all.indexOf('\n  async ', from + 10);
+    expect(to).toBeGreaterThan(from);
+    return all.slice(from, to);
+  })();
 
   it('a lead states one, and it starts unseen', () => {
     expect(EXTRACT).toMatch(/authoredBy: 'lead'/);
