@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { SCENARIO_LABELS, SCENARIO_GROUPS } from '@/lib/scenario-catalog'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { entryApi } from '@/api/entry'
@@ -367,8 +368,9 @@ export const STATUS_DISPLAY: Record<'Unresolved' | 'Mixed' | 'Emerging' | 'Clear
 // Pinned verbatim by entry-cards-routing.spec.ts.
 export const SITUATION_CARDS = [
   {
-    group: 'positive',
-    label: 'New hire starting',
+    group: 'starting',
+    scenario: 'NEW_HIRE',
+    label: SCENARIO_LABELS.NEW_HIRE,
     detail: 'Get you and a new hire meaning the same thing by "doing well", before anything drifts.',
     message: 'I have a new hire starting and want to make sure we set clear expectations from the beginning.',
     timelineHint: 'typically 90 days',
@@ -378,8 +380,9 @@ export const SITUATION_CARDS = [
     ],
   },
   {
-    group: 'positive',
-    label: 'New project',
+    group: 'starting',
+    scenario: 'NEW_PROJECT',
+    label: SCENARIO_LABELS.NEW_PROJECT,
     detail: 'Line everyone up on goals, roles, and what "done" means before the work starts.',
     message: 'We are starting a new project and I want to get the team aligned on goals and roles from the beginning.',
     timelineHint: 'typically 90 days',
@@ -388,20 +391,38 @@ export const SITUATION_CARDS = [
       'A cross-team project where each team quietly assumes a different owner.',
     ],
   },
+  /**
+   * TWO CARDS, BECAUSE THEY ARE TWO SCENARIOS.
+   *
+   * This was one card reading "A new partner, cofounder, or manager", covering NEW_COFOUNDER and
+   * NEW_MANAGER at once - and the catalog, the public use-cases page and the situation configs all
+   * treat them separately, with different cadences and different questions. Somebody arriving from
+   * the site having read "A new manager taking over" found no such card here.
+   */
   {
-    group: 'positive',
-    label: 'A new partner, cofounder, or manager',
-    detail: 'Someone new is sharing the work or taking it over. Each of you says what you expect before those assumptions harden.',
+    group: 'starting',
+    scenario: 'NEW_COFOUNDER',
+    label: SCENARIO_LABELS.NEW_COFOUNDER,
+    detail: 'Someone new is sharing the work as an equal. Each of you says what you expect before those assumptions harden.',
+    /*
+      THE ORIGINAL ROUTING SENTENCE, KEPT WORD FOR WORD.
+
+      `entry-cards-routing` pins every pre-reframe message byte-for-byte, because `message` is what
+      the entry chat routes on and the label is only display. Splitting this into two cards is a
+      display change; giving the surviving half a new sentence would have been a routing change in a
+      display change's clothes, and the guard caught exactly that.
+    */
     message: 'We have a new working arrangement starting and want to make sure we are set up well.',
     timelineHint: 'typically 90 days',
     examples: [
       'A new equal partner joining and you want the assumptions said out loud first.',
-      'An interim leader stepping into an existing team and scope needs pinning down.',
+      'Two founders dividing scope, each writing what they think the other owns.',
     ],
   },
   {
     group: 'planning',
-    label: 'Setting shared goals',
+    scenario: 'OKR_ALIGNMENT',
+    label: SCENARIO_LABELS.OKR_ALIGNMENT,
     detail: "A team agreeing on what matters most this period, each person's own view, not just the room's consensus, so effort doesn't spread in different directions.",
     message: 'We are setting shared goals for this period and I want everyone aligned on what matters most.',
     timelineHint: 'typically 90 days',
@@ -412,7 +433,8 @@ export const SITUATION_CARDS = [
   },
   {
     group: 'planning',
-    label: 'A big decision',
+    scenario: 'CRISIS_ALIGNMENT',
+    label: SCENARIO_LABELS.CRISIS_ALIGNMENT,
     detail: "A group making a real choice, each person's honest read before you commit.",
     message: 'We are making a big decision and I want each person\'s honest read before we commit.',
     timelineHint: 'typically one check-in',
@@ -422,8 +444,9 @@ export const SITUATION_CARDS = [
     ],
   },
   {
-    group: 'negative',
-    label: "Someone's work is off track",
+    group: 'off',
+    scenario: 'PIP',
+    label: SCENARIO_LABELS.PIP,
     detail: "Deadlines or expectations are slipping. Both of you give your honest account of what's happening, so the conversation starts from the same facts, not one side's version.",
     message: 'A team member is not delivering and I need to address it. I want to make sure I have the full picture before we talk.',
     timelineHint: 'typically 90 days',
@@ -433,9 +456,21 @@ export const SITUATION_CARDS = [
       'You are putting someone on a formal improvement plan and want both sides on the concern and what good looks like.',
     ],
   },
+  /**
+   * THE ONE THE PICKER NEVER OFFERED.
+   *
+   * PIP is in the enum, in the catalog as "Someone's work is off track", on the public use-cases
+   * page, and has its own cadence and ninety-day shape. It was not among the seventeen cards here,
+   * so the single situation somebody is most likely to arrive having read about was the one they
+   * could not choose.
+   *
+   * Participant-facing copy does not carry "performance" - the card list's own wording, and the
+   * reason the label reads this way rather than "performance improvement plan".
+   */
   {
-    group: 'negative',
-    label: 'A project is off track',
+    group: 'off',
+    scenario: 'DRIFT',
+    label: SCENARIO_LABELS.DRIFT,
     detail: "What was agreed and what exists no longer match. Get each person's honest read before the group talks.",
     message: 'A project of mine has drifted from what we originally agreed and I want to realign the team on where things actually stand.',
     timelineHint: 'typically 90 days',
@@ -445,14 +480,27 @@ export const SITUATION_CARDS = [
     ],
   },
   {
-    group: 'negative',
-    label: 'You and someone see it differently',
+    group: 'off',
+    scenario: 'REALIGN_TEAM',
+    label: SCENARIO_LABELS.REALIGN_TEAM,
     detail: 'From working off different priorities to a real rift between partners. Each of you gives your honest read first, so you start from the same picture instead of resentment, and close the gap before it grows.',
     message: 'I need to realign with a team member. I think we see the current situation differently and want to get both our accounts on record.',
     timelineHint: 'typically 60 days',
     examples: [
       'Priorities shifted and you two are working off different ideas of what matters now.',
       "You and your cofounder are quietly at odds over who's carrying more, and neither of you has said it.",
+    ],
+  },
+  {
+    group: 'starting',
+    scenario: 'NEW_MANAGER',
+    label: SCENARIO_LABELS.NEW_MANAGER,
+    detail: 'Somebody is taking over a team or a piece of work. What they think they are inheriting and what the team thinks they are handing over rarely match.',
+    message: 'A new manager is taking over and I want to make sure the handover is clear.',
+    timelineHint: 'typically 90 days',
+    examples: [
+      'An interim leader stepping into an existing team and scope needs pinning down.',
+      'A handover where the outgoing and incoming manager each describe what is being passed on.',
     ],
   },
 
@@ -471,8 +519,9 @@ export const SITUATION_CARDS = [
   // pass.
   // ------------------------------------------------------------------
   {
-    group: 'positive',
-    label: 'New advisor or board member',
+    group: 'starting',
+    scenario: 'NEW_ADVISOR',
+    label: SCENARIO_LABELS.NEW_ADVISOR,
     detail: 'Pin down what they will actually contribute, and on what terms, so "available" does not stand in for contributing.',
     message: 'We are bringing on a new advisor or board member and I want to pin down what they will actually contribute and on what terms.',
     timelineHint: 'typically 90 days',
@@ -482,7 +531,8 @@ export const SITUATION_CARDS = [
     ],
   },
   {
-    group: 'positive',
+    group: 'starting',
+    scenario: 'COHORT_ONBOARDING',
     label: 'Onboarding several people at once',
     detail: 'Several people starting the same role at once. Each answers on their own, so you see who is on track and who is stuck.',
     message: 'We are onboarding a group of people into the same role at the same time and I want to see how each of them is doing without them swaying each other.',
@@ -497,7 +547,8 @@ export const SITUATION_CARDS = [
   },
   {
     group: 'planning',
-    label: 'Workplan and budget',
+    scenario: 'WORKPLAN_BUDGET',
+    label: SCENARIO_LABELS.WORKPLAN_BUDGET,
     detail: 'Each person builds their own plan and budget, and you see whether it holds up against what is actually available.',
     message: 'We are setting a workplan and budget and I want each person to build their own and check it holds up against the resources we have.',
     timelineHint: 'typically 90 days',
@@ -508,7 +559,8 @@ export const SITUATION_CARDS = [
   },
   {
     group: 'planning',
-    label: 'Board and leadership strategy',
+    scenario: 'BOARD_STRATEGY',
+    label: SCENARIO_LABELS.BOARD_STRATEGY,
     detail: 'Each leader gives their own read before the room debates it, so quiet disagreement shows up now and not after the decision.',
     message: 'Our leadership team needs to align on strategy and I want each person to give their own read before the room debates it.',
     timelineHint: 'typically two check-ins',
@@ -518,8 +570,9 @@ export const SITUATION_CARDS = [
     ],
   },
   {
-    group: 'recurring',
-    label: 'A regular read on live work',
+    group: 'reading',
+    scenario: 'PULSE_CHECK',
+    label: SCENARIO_LABELS.PULSE_CHECK,
     detail: 'A short, repeatable read from each person on what is moving, what is stuck, and what has changed since last time.',
     message: 'I want a quick recurring check-in with my team on what is moving, what is stuck and what has changed.',
     timelineHint: 'typically ongoing',
@@ -529,8 +582,9 @@ export const SITUATION_CARDS = [
     ],
   },
   {
-    group: 'recurring',
-    label: 'A pulse check',
+    group: 'reading',
+    scenario: 'SNAPSHOT',
+    label: SCENARIO_LABELS.SNAPSHOT,
     detail: 'One honest read from everyone, once. No setup, no target, and no follow-up: five minutes each on what is going well, what is stuck and what has changed.',
     message: 'I want one honest read from everyone on my team this week about what is going well and what is stuck. Just once, not on a schedule.',
     timelineHint: 'one check-in, no follow-up',
@@ -540,8 +594,9 @@ export const SITUATION_CARDS = [
     ],
   },
   {
-    group: 'recurring',
-    label: 'Many people in the same role',
+    group: 'reading',
+    scenario: 'COHORT_CHECK',
+    label: SCENARIO_LABELS.COHORT_CHECK,
     detail: 'Field officers, branch managers, franchisees. Each answers on their own, so you see the pattern rather than the loudest voice.',
     message: 'I have a group of people in the same role and I want an ongoing read from each of them separately so I can see the pattern of who is on track and who is stuck.',
     timelineHint: 'typically ongoing',
@@ -552,7 +607,8 @@ export const SITUATION_CARDS = [
   },
   {
     group: 'person',
-    label: 'Raise, promotion, or recognition',
+    scenario: 'RECOGNITION',
+    label: SCENARIO_LABELS.RECOGNITION,
     detail: 'The person builds the evidence behind the ask and the decision maker reads the same record, so both start from the same picture.',
     message: 'Someone is asking for a raise or promotion and I want us both working from the same evidence before the conversation.',
     timelineHint: 'typically one check-in',
@@ -563,7 +619,8 @@ export const SITUATION_CARDS = [
   },
   {
     group: 'person',
-    label: 'Contract or renewal',
+    scenario: 'CONTRACT_RENEWAL',
+    label: SCENARIO_LABELS.CONTRACT_RENEWAL,
     detail: 'Both sides give an honest account of how the term actually went and what a fair next one looks like.',
     message: 'A contract is coming up for renewal and I want both sides to give an honest account of how the term went before we agree the next one.',
     timelineHint: 'typically two weeks',
@@ -573,8 +630,9 @@ export const SITUATION_CARDS = [
     ],
   },
   {
-    group: 'negative',
-    label: 'A shock just hit',
+    group: 'off',
+    scenario: 'ACUTE_SHOCK',
+    label: SCENARIO_LABELS.ACUTE_SHOCK,
     detail: "Something jarring just happened. Get everyone's honest read of where things stand before anyone decides anything.",
     message: 'Something has just happened that we did not expect and I want everyone\'s honest read of where things actually stand before we decide anything.',
     timelineHint: 'typically daily for two weeks',
@@ -586,13 +644,20 @@ export const SITUATION_CARDS = [
 ]
 
 /** The picker's groups, in display order. */
-export const SITUATION_GROUPS: { key: string; heading: string }[] = [
-  { key: 'positive',  heading: 'Starting something' },
-  { key: 'planning',  heading: 'Goals, plans and decisions' },
-  { key: 'recurring', heading: 'Keeping a regular read' },
-  { key: 'person',    heading: 'A decision about someone' },
-  { key: 'negative',  heading: 'When something needs addressing' },
-]
+/**
+ * THE CATALOG'S GROUPS, NOT A SECOND SET.
+ *
+ * This page kept its own five - "Goals, plans and decisions", "Keeping a regular read",
+ * "When something needs addressing" - while /grounds/new used the catalog's "Setting the target",
+ * "A read on live work", "Something is off". Same five ideas, five different headings, and a person
+ * who saw one surface then the other had to work out they were the same list.
+ *
+ * The labels above are now `SCENARIO_LABELS[key]` for the same reason: this page hardcoded its own
+ * and was the only surface that still carried the retired names months after the rename.
+ */
+export const SITUATION_GROUPS: { key: string; heading: string }[] = SCENARIO_GROUPS.map(
+  (g) => ({ key: g.key, heading: g.heading }),
+)
 
 // Quick actions shown after the check-in starts
 const QUICK_ACTIONS = [

@@ -121,7 +121,21 @@ export class BillingController {
 
   @Get('can-create-ground')
   @ApiBearerAuth()
-  @Roles(Role.ADMIN)
+  /**
+   * NOT ADMIN-ONLY, BECAUSE CREATING A CHECK-IN IS NOT ADMIN-ONLY.
+   *
+   * `POST /grounds` carries no role guard: any member of an organisation can open a check-in, and
+   * `canRunThisGround` on the client is `isInitiator || isOrgAdmin` precisely so that they can. This
+   * endpoint only ASKS whether the org is allowed to open another one, and it was the stricter of
+   * the two - so a member could create a check-in but not find out whether they were permitted to.
+   *
+   * What they got instead was "Access denied - you do not have permission to perform this action"
+   * on opening /grounds/new, over a page that then rendered and worked. The toast was true about the
+   * request and false about the person.
+   *
+   * It returns the organisation's own allowance - whether another is permitted, why, and how many
+   * have been used. Nothing in it belongs to another person or another org.
+   */
   @ApiOperation({ summary: 'Check if the org can create a new ground (free first ground or valid access code)' })
   async canCreateGround(
     @CurrentUser('organizationId') organizationId: string,

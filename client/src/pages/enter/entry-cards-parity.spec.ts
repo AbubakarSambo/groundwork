@@ -27,10 +27,18 @@ import { SITUATION_CARDS, SITUATION_GROUPS } from './EntryChatPage'
  * deliberately cover more than one - a first-time visitor should not have to
  * know whether their situation is filed as NEW_COFOUNDER or NEW_MANAGER.
  */
+/*
+ * KEYED BY THE CATALOG'S NAMES. These were the picker's old labels, which had drifted from the
+ * catalog while the public page kept up - so this map documented a set of cards that no longer
+ * existed under those names, and the comment above about NEW_COFOUNDER and NEW_MANAGER not needing
+ * to be distinguished is no longer true: they are two cards now, because they are two scenarios
+ * with different cadences and different questions.
+ */
 const ENTRY_COVERS: Record<string, string[]> = {
-  'New hire starting': ['NEW_HIRE'],
-  'New project': ['NEW_PROJECT'],
-  'A new partner, cofounder, or manager': ['NEW_COFOUNDER', 'NEW_MANAGER'],
+  'A new hire starting': ['NEW_HIRE'],
+  'A new project starting': ['NEW_PROJECT'],
+  'A new co-founder or partner': ['NEW_COFOUNDER'],
+  'A new manager taking over': ['NEW_MANAGER'],
   'Setting shared goals': ['OKR_ALIGNMENT'],
   /**
    * WAS 'BOARD_STRATEGY', WHICH IS THE CARD BELOW THIS ONE.
@@ -44,11 +52,11 @@ const ENTRY_COVERS: Record<string, string[]> = {
   'A big decision': ['CRISIS_ALIGNMENT'],
   "Someone's work is off track": ['PIP'],
   'A project is off track': ['DRIFT'],
-  'You and someone see it differently': ['REALIGN_TEAM'],
-  'New advisor or board member': ['NEW_ADVISOR'],
+  'People see it differently': ['REALIGN_TEAM'],
+  'A new advisor or board member': ['NEW_ADVISOR'],
   'Onboarding several people at once': ['COHORT_ONBOARDING'],
-  'Workplan and budget': ['WORKPLAN_BUDGET'],
-  'Board and leadership strategy': ['BOARD_STRATEGY'],
+  'A workplan and budget': ['WORKPLAN_BUDGET'],
+  'Board or leadership strategy': ['BOARD_STRATEGY'],
   'A regular read on live work': ['PULSE_CHECK'],
   /**
    * The one-off read. It had no card on either surface, because until now it had no scenario: the
@@ -56,10 +64,10 @@ const ENTRY_COVERS: Record<string, string[]> = {
    * single temperature read opened that and abandoned it after one session.
    */
   'A pulse check': ['SNAPSHOT'],
-  'Many people in the same role': ['COHORT_CHECK'],
-  'Raise, promotion, or recognition': ['RECOGNITION'],
-  'Contract or renewal': ['CONTRACT_RENEWAL'],
-  'A shock just hit': ['ACUTE_SHOCK'],
+  'Several people in the same role': ['COHORT_CHECK'],
+  'A raise, promotion, or recognition': ['RECOGNITION'],
+  'A contract or renewal': ['CONTRACT_RENEWAL'],
+  'Something serious just happened': ['ACUTE_SHOCK'],
 }
 
 /** The admin picker's cardKeys, read from source so it cannot go stale. */
@@ -96,7 +104,7 @@ describe('what a signed-out visitor is offered', () => {
 
   it('reaches the cohort situations, which used to need an account', () => {
     const labels = SITUATION_CARDS.map(c => c.label)
-    expect(labels).toContain('Many people in the same role')
+    expect(labels).toContain('Several people in the same role')
     expect(labels).toContain('Onboarding several people at once')
   })
 })

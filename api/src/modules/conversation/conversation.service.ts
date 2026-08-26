@@ -1066,6 +1066,24 @@ export class ConversationService {
         : null,
       partyType: checkIn.participant.partyType,
       sessionNumber: checkIn.sessionNumber,
+      /**
+       * HOW LONG THIS RUN IS, WHICH THE PROMPT WAS GUESSING AT.
+       *
+       * `buildIntakeBlock` falls back to `?? 4`, and nothing ever passed this - so every session of
+       * every check-in was told "SESSION: n of 4", whatever the ground actually held. On the run
+       * that found it, the header beside the conversation said "Session 1 of 8" while the assistant
+       * said "the first of four check-ins", in the same viewport.
+       *
+       * Not cosmetic. `whereInTheRun` reads the total to decide whether this is an early, a middle
+       * or a CLOSING session, and calibrates how hard to press on that. On an eight-session ground
+       * it treated session four as the last one, so the interview changed shape halfway through and
+       * told people a deadline that did not exist.
+       *
+       * `totalSessionsFor` was imported into this file and never called: somebody wired it meaning
+       * to pass it and stopped. Derived here from the same timeline and cadence the header uses, so
+       * the two cannot say different numbers.
+       */
+      totalSessions: totalSessionsFor(ground.timelineDays, ground.cadence) ?? undefined,
       roleAsDescribed: checkIn.participant.roleAsDescribed,
       otherPartyCheckedIn,
       groundLabel: ground.label,
