@@ -32,7 +32,7 @@ function makeService({
 }: any = {}) {
   const upserts: any[] = [];
   const prisma: any = {
-    groundParticipant: { findUnique: jest.fn(async () => ({ detectedFunction: fn, detectedFunctionConfidence: confidence, joinedAt, leftAt, leavePeriods })) },
+    groundParticipant: { findMany: jest.fn(async () => [{ id: 'p1' }]), findUnique: jest.fn(async () => ({ detectedFunction: fn, detectedFunctionConfidence: confidence, joinedAt, leftAt, leavePeriods })) },
     conversationTurn: {
       findMany: jest.fn(async () => [
         { role: 'AI', content: 'What did you spend the week on?' },
@@ -221,7 +221,11 @@ describe('and complete() calls it, which is the part that was missing', () => {
       participant: { userId: 'user1', email: 'p@example.test' },
     };
     const prisma: any = {
+      /* The round-closing call runs inside these flows now; see grounds/round-completion.ts. */
+      roundCompletion: { create: jest.fn(async (a: any) => a.data) },
+      groundParticipant: { findMany: jest.fn(async () => [{ id: 'p1' }]) },
       checkIn: {
+        count: jest.fn(async () => 1),
         findUnique: jest.fn(async () => checkIn),
         update: jest.fn(async () => ({ status: 'COMPLETED', groundId: 'g1' })),
       },

@@ -48,8 +48,10 @@ function makeService(opts: { draft?: any; failAllInvites?: boolean; pendingSignu
       upsert: jest.fn(async () => ({})),
     },
     organization: { update: jest.fn(async () => ({})) },
-    groundParticipant: { findFirst: jest.fn(async () => ({ id: 'p1' })), update: jest.fn(async () => ({})) },
-    checkIn: { findFirst: jest.fn(async () => ({ id: 'ci1' })), update: jest.fn(async () => ({})) },
+    groundParticipant: { findMany: jest.fn(async () => [{ id: 'p1' }]), findFirst: jest.fn(async () => ({ id: 'p1' })), update: jest.fn(async () => ({})) },
+    /* The round-closing call runs inside these flows now; see grounds/round-completion.ts. */
+    roundCompletion: { create: jest.fn(async (a: any) => a.data) },
+    checkIn: { count: jest.fn(async () => 1), findFirst: jest.fn(async () => ({ id: 'ci1' })), update: jest.fn(async () => ({})) },
     conversationTurn: { createMany: jest.fn(async () => ({ count: 2 })) },
     ground: {
       // `participants` is part of the real shape: the idempotent path selects the

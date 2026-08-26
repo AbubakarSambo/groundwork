@@ -1020,6 +1020,15 @@ export class GroundsService {
          * endpoint kept returning null, which is the only reason the mistake surfaced.
          */
         report: { select: { id: true, releasedAt: true, sharedPicture: true, createdAt: true, agreements: true, divergences: true } },
+        /*
+         * WHICH ROUNDS HAVE CLOSED, as recorded, so the page stops working it out.
+         *
+         * GroundAdminPage counted the non-managing participants and the COMPLETED check-ins at the
+         * open session number and compared them, on every render. That is the round-closing rule,
+         * living on a screen - which meant the server did not know a round had closed, and any
+         * second screen wanting the same answer would have had to implement it again.
+         */
+        roundCompletions: { select: { roundNumber: true, completedAt: true }, orderBy: { roundNumber: 'asc' } },
         resolution: true,
         patternDetections: {
           select: { id: true, code: true, periodsObserved: true, status: true, observationText: true, createdAt: true },
@@ -1055,6 +1064,9 @@ export class GroundsService {
              * Found by reading both payloads for one ground rather than either page on its own.
              */
             report: { select: { id: true, releasedAt: true, sharedPicture: true, createdAt: true, agreements: true, divergences: true } },
+            /* Same include as the primary query above. TypeScript refused the two shapes when this
+               was added to only one of them, which is the check the comment above wishes it had. */
+            roundCompletions: { select: { roundNumber: true, completedAt: true }, orderBy: { roundNumber: 'asc' } },
             resolution: true,
             patternDetections: {
               select: { id: true, code: true, periodsObserved: true, status: true, observationText: true, createdAt: true },

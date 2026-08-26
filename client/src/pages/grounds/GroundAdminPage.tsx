@@ -675,9 +675,17 @@ export function GroundAdminPage() {
    * long before the round is. This strip therefore read "report ready, not released" beside its own
    * "1 of 4 checked in", two facts in one line contradicting each other.
    *
-   * Derived from `roundDone` - the same count the strip already prints - so the two cannot disagree.
+   * NOW READ, NOT WORKED OUT. This counted the non-managing participants and compared them to the
+   * COMPLETED check-ins at the open session number - which is the round-closing rule, implemented
+   * on a screen. It gave the right answer and was still wrong to be here: the server did not know a
+   * round had closed, so nothing server-side could act on it, and any second surface wanting the
+   * same answer would have had to write the rule again and drift from this copy.
+   *
+   * The server records a round closing as a row and emits `round.completed`. This asks whether the
+   * open round is among them. `roundDone` stays, because "1 of 4 checked in" is a count worth
+   * printing and is not the same claim as "the round has closed".
    */
-  const everyoneIn = roundDone >= (ground.participants ?? []).filter((p: any) => !p.managingOnly).length
+  const everyoneIn = ((ground as any).roundCompletions ?? []).some((r: any) => r.roundNumber === openRound)
   const reportState: string =
     (ground as any).report?.releasedAt
       ? 'report released'

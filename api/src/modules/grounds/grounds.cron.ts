@@ -8,6 +8,7 @@ import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { GroundworkEvents, CheckInCompletedEvent } from '../../common';
 import { GroundStatus, CheckInStatus, TurnRole, PartyType, ReportActivationStatus } from '@prisma/client';
 import { PatternsService } from '../patterns/patterns.service';
+import { recordRoundCompletion } from './round-completion';
 
 const INACTIVITY_AUTO_CLOSE_MS = 12 * 60 * 60 * 1000;     // 12 hours
 const MAX_SESSION_AGE_MS = 48 * 60 * 60 * 1000;            // 48 hours
@@ -287,6 +288,12 @@ export class GroundsCron {
           sessionNumber: checkIn.sessionNumber,
           source: 'auto-close',
         } as CheckInCompletedEvent & { source: string });
+
+        /*
+         * An auto-closed session still closes a round, and this is the path most likely to be the
+         * last one in: the person who never came back is exactly who a round ends up waiting on.
+         */
+        await recordRoundCompletion(this.prisma, this.events, checkIn.groundId, checkIn.sessionNumber);
 
         this.logger.warn(`Auto-closed check-in ${checkIn.id} (session ${checkIn.sessionNumber}): ${reason}`);
         closed++;

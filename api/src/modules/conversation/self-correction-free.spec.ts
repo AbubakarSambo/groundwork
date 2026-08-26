@@ -35,7 +35,11 @@ function baseCheckIn(overrides: any = {}) {
 
 function makeService(checkIn: any, canStartSession: jest.Mock) {
   const prisma: any = {
+    /* The round-closing call runs inside these flows now; see grounds/round-completion.ts. */
+    roundCompletion: { create: jest.fn(async (a: any) => a.data) },
+    groundParticipant: { findMany: jest.fn(async () => [{ id: 'p1' }]) },
     checkIn: {
+      count: jest.fn(async () => 1),
       findUnique: jest.fn(async () => checkIn),
       update: jest.fn(async () => ({ status: 'COMPLETED', groundId: 'g1' })),
     },

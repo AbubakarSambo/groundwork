@@ -550,6 +550,7 @@ model Ground {
   baselineEntries            GroundBaselineEntry[]
   leadContextNotes           LeadContextNote[]
   reportActivations          ReportActivation[]
+  roundCompletions           RoundCompletion[]
   objectives                 GroundObjective[]
   dependencies               GroundDependency[]
   workMentions               WorkMention[]
@@ -1236,6 +1237,33 @@ model OutcomeFeedback {
   @@unique([groundId, participantId])
   @@index([groundId])
   @@map("outcome_feedback")
+}
+
+/// WHEN A ROUND CLOSED, AS A FACT RATHER THAN A CALCULATION.
+///
+/// A round is complete when every participant who is not managing-only has a COMPLETED check-in at
+/// that session number. That rule already existed - on the CLIENT, in GroundAdminPage, derived from
+/// the check-in list on every render. Nothing on the server knew a round had closed, so nothing
+/// could act on it: the delivery discipline of holding a report until everyone is in had no event
+/// to hang on, and two screens computing the same rule separately is how they come to disagree.
+///
+/// The row IS the idempotency guard. `@@unique([groundId, roundNumber])` means the event fires
+/// exactly once per round however many times a check-in is written to COMPLETED - which happens
+/// from four places, including a cron that auto-closes stale sessions.
+model RoundCompletion {
+  id               String   @id @default(uuid())
+  groundId         String   @map("ground_id")
+  roundNumber      Int      @map("round_number")
+  /// How many people the round was waiting on when it closed. Kept because the participant list
+  /// changes: somebody added later must not make a closed round look as though it reopened.
+  participantCount Int      @map("participant_count")
+  completedAt      DateTime @default(now()) @map("completed_at")
+
+  ground Ground @relation(fields: [groundId], references: [id], onDelete: Cascade)
+
+  @@unique([groundId, roundNumber])
+  @@index([groundId])
+  @@map("round_completions")
 }
 
 model OrgIntelligence {

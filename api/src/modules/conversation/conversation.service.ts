@@ -10,6 +10,7 @@ import { AnthropicService, ChatTurn, houseStyle } from './anthropic.service';
 import { ConversationContextService } from './context.service';
 import { VOCABULARY_RULE, COACHING_OBSERVATION_PROMPT, COACHING_OBSERVATION_SCHEMA, SESSION_CLOSE_MARKER, stripCloseMarker, buildIntakeBlock, RECORD_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_SCHEMA, WORK_MENTION_PROMPT, WORK_MENTION_SCHEMA, EXPECTATION_PROMPT, EXPECTATION_SCHEMA, ALIGNMENT_PROMPT, ALIGNMENT_SCHEMA, OBJECTION_PROMPT, OBJECTION_SCHEMA } from './prompt-library';
 import { GroundworkEvents, CheckInCompletedEvent } from '../../common';
+import { recordRoundCompletion } from '../grounds/round-completion';
 import { DocumentsService } from '../documents/documents.service';
 import { BillingService } from '../billing/billing.service';
 import { EmailService } from '../email/email.service';
@@ -2025,6 +2026,14 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       participantId: checkIn.participantId,
       sessionNumber: checkIn.sessionNumber,
     } satisfies CheckInCompletedEvent);
+
+    /*
+     * And whether that was the last one the round was waiting on. Awaited rather than
+     * fire-and-forget like the others above: this one writes a row the delivery rule reads, so a
+     * session reporting itself complete before the round row exists would let a reader see a round
+     * as open that has in fact closed. Two queries and an insert that usually does nothing.
+     */
+    await recordRoundCompletion(this.prisma, this.events, checkIn.groundId, checkIn.sessionNumber);
 
     return { status: 'completed', groundId: checkIn.groundId };
   }

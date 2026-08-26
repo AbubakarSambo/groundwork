@@ -22,6 +22,7 @@ import {
 import { VOCABULARY_RULE } from '../conversation/prompt-library';
 import { forHumans, hadCloseMarker } from '../presentation/outbound';
 import { DEFAULT_FREE_MEMBER_LIMIT } from '../billing/pricing.service';
+import { recordRoundCompletion } from '../grounds/round-completion';
 
 const SCENARIO_MAP: Record<string, GroundScenario> = {
   // Human-readable labels from legacy UI
@@ -1169,6 +1170,15 @@ STRICT RULES:
       },
     });
 
+    /*
+     * A ground made through the entry chat can be a round of one - the person who created it is
+     * often the only party at this point - and a round of one closes the moment they finish. This
+     * path writes COMPLETED directly rather than going through the conversation's completion, so
+     * without this call the very first round of the flow most people meet would never be recorded
+     * as closed.
+     */
+    await recordRoundCompletion(this.prisma, this.events, checkIn.groundId, checkIn.sessionNumber);
+
     /**
      * KEEP THE DOCUMENTS THE PERSON ATTACHED.
      *
@@ -1406,6 +1416,10 @@ STRICT RULES:
         completedAt: new Date(),
       },
     });
+
+    /* Same reason as the other entry path: written straight to COMPLETED, so the round is closed
+       here or nowhere. */
+    await recordRoundCompletion(this.prisma, this.events, ground.id, 1);
 
     /**
      * AND SCHEDULE SESSION 2, WHICH NOTHING DID.
