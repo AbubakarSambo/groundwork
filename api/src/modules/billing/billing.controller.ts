@@ -21,7 +21,11 @@ export class BillingController {
   @Get('pricing')
   @ApiOperation({ summary: 'Current subscription pricing per plan - what /pricing and /billing actually charge' })
   async getPricing() {
-    return this.pricing.listPlans();
+    /**
+     * Plans AND the free limits, in one response. The client used to get the plans here and hold
+     * its own copy of the free limit, because there was nowhere to read it from.
+     */
+    return this.pricing.publicPricing();
   }
 
   @Get('status')

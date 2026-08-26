@@ -32,7 +32,16 @@ const ENTRY_COVERS: Record<string, string[]> = {
   'New project': ['NEW_PROJECT'],
   'A new partner, cofounder, or manager': ['NEW_COFOUNDER', 'NEW_MANAGER'],
   'Setting shared goals': ['OKR_ALIGNMENT'],
-  'A big decision': ['BOARD_STRATEGY'],
+  /**
+   * WAS 'BOARD_STRATEGY', WHICH IS THE CARD BELOW THIS ONE.
+   *
+   * Two entry cards were documented as standing in for the same admin card, which is how
+   * CRISIS_ALIGNMENT read as covered while having no card on either surface. The card's own copy
+   * says what it is - "a group making a real choice, each person's honest read before you commit" -
+   * and that is CRISIS_ALIGNMENT. BOARD_STRATEGY is the standing read on direction, and it is
+   * covered by 'Board and leadership strategy'.
+   */
+  'A big decision': ['CRISIS_ALIGNMENT'],
   "Someone's work is off track": ['PIP'],
   'A project is off track': ['DRIFT'],
   'You and someone see it differently': ['REALIGN_TEAM'],
@@ -41,6 +50,12 @@ const ENTRY_COVERS: Record<string, string[]> = {
   'Workplan and budget': ['WORKPLAN_BUDGET'],
   'Board and leadership strategy': ['BOARD_STRATEGY'],
   'A regular read on live work': ['PULSE_CHECK'],
+  /**
+   * The one-off read. It had no card on either surface, because until now it had no scenario: the
+   * recurring card carried the label and the recurring interview behind it, so somebody wanting a
+   * single temperature read opened that and abandoned it after one session.
+   */
+  'A pulse check': ['SNAPSHOT'],
   'Many people in the same role': ['COHORT_CHECK'],
   'Raise, promotion, or recognition': ['RECOGNITION'],
   'Contract or renewal': ['CONTRACT_RENEWAL'],

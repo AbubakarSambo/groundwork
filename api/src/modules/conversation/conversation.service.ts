@@ -2,18 +2,19 @@ import { Injectable, Logger, ForbiddenException, NotFoundException, BadRequestEx
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
+import { forHumans, hadCloseMarker as textHadCloseMarker } from '../presentation/outbound';
 import { endStatesFor } from '../resolution/end-states';
 import { totalSessionsFor } from '../grounds/session-count';
 import { PromptsService } from '../prompts';
 import { AnthropicService, ChatTurn, houseStyle } from './anthropic.service';
 import { ConversationContextService } from './context.service';
-import { COACHING_OBSERVATION_PROMPT, COACHING_OBSERVATION_SCHEMA, SESSION_CLOSE_MARKER, stripCloseMarker, buildIntakeBlock, RECORD_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_SCHEMA, WORK_MENTION_PROMPT, WORK_MENTION_SCHEMA } from './prompt-library';
+import { VOCABULARY_RULE, COACHING_OBSERVATION_PROMPT, COACHING_OBSERVATION_SCHEMA, SESSION_CLOSE_MARKER, stripCloseMarker, buildIntakeBlock, RECORD_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_SCHEMA, WORK_MENTION_PROMPT, WORK_MENTION_SCHEMA, EXPECTATION_PROMPT, EXPECTATION_SCHEMA, ALIGNMENT_PROMPT, ALIGNMENT_SCHEMA, OBJECTION_PROMPT, OBJECTION_SCHEMA } from './prompt-library';
 import { GroundworkEvents, CheckInCompletedEvent } from '../../common';
 import { DocumentsService } from '../documents/documents.service';
 import { BillingService } from '../billing/billing.service';
 import { EmailService } from '../email/email.service';
 import { UsageService } from '../usage/usage.service';
-import { CheckInStatus, TurnRole, RecordEntryType, Cadence, GroundStatus, UsageEventType, PartyType, GroundMode, DependencyStatus, WorkMentionKind } from '@prisma/client';
+import { CheckInStatus, TurnRole, RecordEntryType, Cadence, GroundStatus, UsageEventType, PartyType, GroundMode, DependencyStatus, WorkMentionKind , ContextNoteAudience } from '@prisma/client';
 import { runIntake } from './intake';
 import { boardRendersFor } from '../board/board-families';
 import { buildRoleProbeBlock, roleMapFor, signalRead, MIN_COACHING_CONFIDENCE } from '../board/role-maps';
@@ -23,6 +24,7 @@ import {
 } from '../coaching/one-step-at-a-time';
 import { detectFunction } from '../board/function-detection';
 import { documentWhereFor } from '../documents/who-can-see-a-document';
+import { displayName } from '../reports/party-labels';
 import { buildNotesBlock } from './between-session-notes';
 import { closeReadiness, askedToFinish } from './close-readiness';
 import { observeStyle, mergeStyle, styleGuidance } from './person-style';
@@ -163,7 +165,17 @@ const SOLO_ARTIFACT_SCHEMA = {
   },
 };
 
-const SOLO_ARTIFACT_PROMPT = `You are Groundwork. You are given ONE person's own record entries (their words). Produce a short artifact for them alone - they have not heard from anyone else and may never. Do not infer the other side. Do not produce a verdict or analysis of any person. Open with the exact phrase "Your private record shows:" then summarise what they put on the record in their own framing. Name one specific thing to carry forward. Warm, specific, brief - under 200 words total.`;
+const SOLO_ARTIFACT_PROMPT = `You are Groundwork. You are given ONE person's own record entries (their words) and NOTHING ELSE. Produce a short artifact for them alone - they have not heard from anyone else and may never.
+
+WHAT YOU DO NOT KNOW, AND MUST THEREFORE NEVER STATE. You have not been told how many people are on this check-in, who they are, what they are called, or whether any of them has contributed anything. That information is not in your input. So:
+- Never state or imply a number of parties. Not "two of the three", not "the other party", not "both of you".
+- Never refer to another person by name, role or position. Never invent one such as "the 2nd lead".
+- Never say whether anybody has or has not checked in, contributed, or recorded anything.
+- Never say whose account this picture is drawn from. It is drawn from theirs; that is the only account you have.
+
+A live report opened with "Two of the three parties on this ground, Hafsah Jumare and the 2nd lead, have not yet contributed a record. The picture below is therefore drawn from Hafsah Jumare's account alone." Every fact in that sentence was invented - the count, the second name, and the claim about who had contributed - because none of it was in the input. It also contradicted itself, naming the same person as both absent and the sole source.
+
+Write only about what this person put on the record. Address them directly as "you" and "your", never by name. Do not infer the other side. Do not produce a verdict or analysis of any person. Open with the exact phrase "Your private record shows:" then summarise what they put on the record in their own framing. Name one specific thing to carry forward. Warm, specific, brief - under 200 words total.`;
 
 /**
  * The conversation engine. Drives a single party's check-in.
@@ -365,16 +377,50 @@ export class ConversationService {
    * grounds never pause at that gate - the report is still the conversion
    * moment, not the session.)
    */
+  /**
+   * What a participant is told they are checking in on, before they are asked anything.
+   *
+   * Deliberately only the SHARED facts: the subject and the stated objectives. Nothing another
+   * party wrote about them, nothing from anybody else's account. A brief that leaked one
+   * participant's words to another would break the promise that makes the answers worth having.
+   */
+  private briefFor(
+    ground: { label: string | null; objectives: { name: string; target: number | null }[] } | null,
+  ): { subject: string | null; objectives: { name: string; target: number | null }[] } | null {
+    if (!ground) return null;
+    return { subject: ground.label ?? null, objectives: ground.objectives ?? [] };
+  }
+
   async open(checkInId: string, requestingUserId: string) {
-    const checkIn = await this.loadOwnedCheckIn(checkInId, requestingUserId);
+    const checkIn = await this.loadOwnedOpenCheckIn(checkInId, requestingUserId);
     if (checkIn.status === CheckInStatus.COMPLETED) {
       throw new BadRequestException('This check-in is already complete');
     }
 
-    const ground = await this.prisma.ground.findUnique({ where: { id: checkIn.groundId }, select: { status: true, organizationId: true } });
+    /**
+     * THE BRIEF, FETCHED HERE BECAUSE THIS QUERY WAS ALREADY RUNNING.
+     *
+     * A participant arrives by invite link and is asked to be honest and specific about work,
+     * having been shown nothing: not what the check-in is about, not what they are being read
+     * against. Then the report is built on that answer. `an-objective-nobody-has-seen.spec.ts`
+     * already names the problem - "reading a person against a target they have never seen is the
+     * definition of an unfair review, and the fact that the product would be doing it silently
+     * makes it worse rather than better" - and the rule has a `seenBySubject` state precisely so
+     * that showing it is what makes reading against it fair. Nothing was showing it.
+     */
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: checkIn.groundId },
+      select: {
+        status: true,
+        organizationId: true,
+        label: true,
+        scenario: true,
+        objectives: { select: { name: true, target: true }, orderBy: { sortOrder: 'asc' } },
+      },
+    });
     const OPEN_STATUSES: GroundStatus[] = [GroundStatus.OPEN, GroundStatus.AWAITING_PARTIES, GroundStatus.ACTIVE, GroundStatus.REPORT_READY];
     if (ground && !OPEN_STATUSES.includes(ground.status)) {
-      throw new BadRequestException('This ground is no longer accepting check-ins');
+      throw new BadRequestException('This check-in is closed and nothing further can be added');
     }
 
     // ISSUE 7: use a single findFirst on the AI turn as the idempotency guard.
@@ -386,7 +432,7 @@ export class ConversationService {
       orderBy: { createdAt: 'asc' },
     });
     if (existingAiTurn) {
-      return { reply: existingAiTurn.content, groundId: checkIn.groundId };
+      return { reply: existingAiTurn.content, groundId: checkIn.groundId, brief: this.briefFor(ground) };
     }
 
     // Session balance gate: consume one session from the ground's balance once
@@ -471,7 +517,7 @@ export class ConversationService {
             data: { sessionsBalance: { decrement: 1 } },
           });
           if (decremented.count === 0) {
-            throw new ForbiddenException('This ground is beyond your ten free grounds. Resubscribe to continue checking in - the report and board stay available either way.');
+            throw new ForbiddenException('This check-in is beyond your ten free check-ins. Resubscribe to continue checking in - the report and board stay available either way.');
           }
           /**
            * "YOU ARE ON YOUR LAST SESSION" - AT THE MOMENT IT BECOMES TRUE.
@@ -526,10 +572,10 @@ export class ConversationService {
     // An opener never closes a session, but strip defensively so the marker can
     // never reach a person even if the model emits it in the wrong place.
     const aiTurn = await this.prisma.conversationTurn.create({
-      data: { checkInId: checkIn.id, role: TurnRole.AI, content: stripCloseMarker(reply).text },
+      data: { checkInId: checkIn.id, role: TurnRole.AI, content: forHumans(reply) },
     });
     await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { status: CheckInStatus.IN_PROGRESS, startedAt: new Date() } });
-    return { reply: aiTurn.content, groundId: checkIn.groundId };
+    return { reply: aiTurn.content, groundId: checkIn.groundId, brief: this.briefFor(ground) };
   }
 
   /**
@@ -578,13 +624,13 @@ export class ConversationService {
     ];
     if (OPEN_STATUSES.includes(ground.status)) return;
     if (ground.status === GroundStatus.PAUSED) {
-      throw new BadRequestException('This ground is on hold. Nothing can be added to it until it is resumed.');
+      throw new BadRequestException('This check-in is on hold. Nothing can be added to it until it is resumed.');
     }
-    throw new BadRequestException('This ground is closed. Nothing further can be added to it.');
+    throw new BadRequestException('This check-in is closed. Nothing further can be added to it.');
   }
 
   async sendMessage(checkInId: string, requestingUserId: string, message: string) {
-    const checkIn = await this.loadOwnedCheckIn(checkInId, requestingUserId);
+    const checkIn = await this.loadOwnedOpenCheckIn(checkInId, requestingUserId);
     await this.assertGroundAcceptsInput(checkIn.groundId);
     if (checkIn.status === CheckInStatus.COMPLETED) {
       throw new BadRequestException('This check-in is already complete');
@@ -614,7 +660,13 @@ export class ConversationService {
       const history: ChatTurn[] = turns.map((t) => ({ role: t.role === TurnRole.AI ? 'assistant' : 'user', content: t.content }));
       const rawReply = await this.anthropic.respond(fullSystem, history);
       // Strip the close marker before it is stored or shown - it is machinery.
-      const stripped = stripCloseMarker(rawReply);
+      /**
+       * Through the shared boundary now, not just the marker strip. This path removed the close
+       * marker and left markdown and curly punctuation alone, so `**Outreach:**` reached the
+       * authenticated check-in exactly as it reached the entry chat - it simply was not the screen
+       * that got photographed. `hadMarker` is still needed, so it is read separately.
+       */
+      const stripped = { text: forHumans(rawReply), hadMarker: textHadCloseMarker(rawReply) };
       /**
        * W2. THE NAME GOES BACK BEFORE THE SENTENCE IS STORED OR SHOWN.
        *
@@ -761,8 +813,9 @@ export class ConversationService {
           if (chunk) yield { type: 'delta', text: chunk };
         }
       }
-      const strippedStream = stripCloseMarker(raw);
-      const reply = houseStyle(strippedStream.text.trim());
+      const strippedStream = { text: forHumans(raw), hadMarker: textHadCloseMarker(raw) };
+      /** houseStyle is inside forHumans now, so applying it again here would be a second pass. */
+      const reply = strippedStream.text;
       if (!reply) throw new Error('AI returned an empty response');
       // Flush whatever is left after the held-back tail is cleaned.
       const tail = reply.slice(Math.min(emitted, reply.length));
@@ -799,8 +852,51 @@ export class ConversationService {
     },
     latestMessage?: string,
   ): Promise<string> {
-    const ground = await this.prisma.ground.findUnique({ where: { id: checkIn.groundId } });
-    if (!ground) throw new NotFoundException('Ground not found');
+    /**
+     * Objectives included, because the engine was reading people against a target it had not been
+     * given. This fetched every scalar on the ground and no relations, so `GroundObjective` - the
+     * thing the check-in is FOR - never reached the prompt. The screen now shows it to the person;
+     * this is the other half, so the interviewer can press on the actual target instead of a
+     * generic one it inferred from the scenario.
+     */
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: checkIn.groundId },
+      include: {
+        objectives: { select: { name: true, target: true }, orderBy: { sortOrder: 'asc' } },
+        /**
+         * THE ROSTER, SO THE INTERVIEW CAN USE PEOPLE'S NAMES. GW-EXP-1.
+         *
+         * Nothing in the prompt has ever known who else is in a check-in. That is why no question has
+         * ever asked a lead what they expect of a NAMED person - it could not say the name - and why
+         * `personObjective` holds zero rows for the product's whole life. A missing question, not a
+         * missing field.
+         */
+        participants: {
+          select: {
+            id: true,
+            partyType: true,
+            managingOnly: true,
+            roleAsDescribed: true,
+            user: { select: { firstName: true, lastName: true } },
+          },
+        },
+        /**
+         * THE LEAD'S FRAMING, AND ONLY THE FRAMING.
+         *
+         * Filtered to EVERYONE in the query, so a private note about somebody cannot reach a session
+         * prompt by way of a later mistake. The private notes have their own path into the coach with
+         * their own wrapper; they must never arrive through this one, where the text would sit in the
+         * general context every question is built from.
+         */
+        leadContextNotes: {
+          where: { audience: ContextNoteAudience.EVERYONE, participantId: null },
+          select: { text: true, audience: true, participantId: true },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+        },
+      },
+    });
+    if (!ground) throw new NotFoundException('Check-in not found');
 
     const systemPrompt = await this.prompts.getActiveContent('system');
 
@@ -871,6 +967,39 @@ export class ConversationService {
     // pulse, and the change looked correct in every test that called the pack
     // builder directly. So the moment-qualified key is tried first, and the
     // generic key remains the fallback so nothing else changes behaviour.
+    /**
+     * Loaded here rather than on the ground include, because it is per-PARTICIPANT: the objective this
+     * person is working to, not the ground's.
+     *
+     * TOLERANT IN TWO DIFFERENT WAYS, FOR TWO DIFFERENT REASONS. A query failure is caught, because a
+     * missing objective must never stop somebody checking in - it reads as "none set", which is itself
+     * a finding the pack acts on. And the DELEGATE ITSELF is optional, because forty-six existing tests
+     * mock this service's prisma and none of them knew about a table that did not exist when they were
+     * written. Requiring the stub would mean editing all of them to assert nothing, which is churn that
+     * teaches nobody anything - and the behaviour without it is exactly the correct one.
+     */
+    /**
+     * Every expectation on this check-in, for the revision comparison above. One query rather than one
+     * per participant, and empty for anybody who is not the lead.
+     */
+    const expectationRows =
+      checkIn.participant.partyType === PartyType.INITIATOR
+        ? await (this.prisma.personObjective?.findMany({
+            where: { groundId: checkIn.groundId },
+            select: { participantId: true, text: true },
+            /**
+             * Optional-chained like the `findUnique` directly below, and for the same reason: a steer
+             * on the QUESTION must never be why a session fails to open. Without a comparison the
+             * interview simply cannot spot a revision, which is a smaller loss than a dead session.
+             */
+          }) ?? Promise.resolve([] as { participantId: string; text: string }[])).catch(() => [] as { participantId: string; text: string }[])
+        : [];
+    const expectationByParticipant = new Map(expectationRows.map((r) => [r.participantId, r]));
+
+    const personObjective = await (this.prisma.personObjective?.findUnique({
+      where: { groundId_participantId: { groundId: ground.id, participantId: checkIn.participantId } },
+    }) ?? Promise.resolve(null)).catch(() => null);
+
     const packKeyBase = `scenario.${ground.scenario.toLowerCase()}`;
     const packParty = checkIn.participant.partyType.toLowerCase();
     const scenarioPackOverride =
@@ -909,11 +1038,72 @@ export class ConversationService {
       // something about each person; the same scenario later is a repeatable
       // pulse. Without this the onboarding cohort got the pulse conversation.
       moment: ground.moment,
+      // So the engine can tell a fortnight from a year. See where-in-the-run.ts.
+      timelineDays: ground.timelineDays,
+      /**
+       * This person's own objective, with who set it and whether they have seen it. Both columns
+       * existed on PersonObjective and neither reached the engine, so the interview could press
+       * somebody on a standard they were reading for the first time.
+       */
+      personObjective: personObjective
+        ? {
+            text: personObjective.text,
+            authoredBy: personObjective.authoredBy,
+            seenBySubject: personObjective.seenBySubject,
+            authoredByThem: personObjective.authoredBy === checkIn.participantId,
+          }
+        : null,
       partyType: checkIn.participant.partyType,
       sessionNumber: checkIn.sessionNumber,
       roleAsDescribed: checkIn.participant.roleAsDescribed,
       otherPartyCheckedIn,
       groundLabel: ground.label,
+      /**
+       * Everyone except the person answering, and except a managing-only lead who gives no account.
+       * `participantLabel` so nobody is ever named by an email address, and a person with no account
+       * yet shows as the role they were described as.
+       */
+      otherParties: (ground.participants ?? [])
+        .filter((p) => p.id !== checkIn.participantId && !p.managingOnly)
+        .map((p) => ({
+          label:
+            displayName(p as any) ??
+            p.roleAsDescribed?.trim() ??
+            'a teammate',
+        })),
+      /**
+       * THE LEAD'S FRAMING OF THE SITUATION, READ BY EVERY SESSION.
+       *
+       * A note the lead addressed to the whole check-in. It reaches the questions so a session opens
+       * knowing what this is about rather than cold - which is the entire purpose of the Context page.
+       *
+       * IT IS NEVER EVIDENCE, and the audience has nothing to do with that. Visibility is a choice;
+       * quotability is fixed by the kind of thing this is, and a note is somebody's words about a
+       * situation. So it steers what gets asked and can never be quoted, attributed, or stated as
+       * fact - the same rule the private note follows, with a different readership.
+       */
+      sharedNote:
+        (ground as any).leadContextNotes
+          ?.find((n: any) => n.audience === 'EVERYONE' && !n.participantId)
+          ?.text?.trim() || undefined,
+      /**
+       * GW-EXP-4. So the interview can tell a revision from a restatement, and ask what changed. Only
+       * for the lead's own conversation: a party has no expectations of anybody to revise.
+       */
+      existingExpectations:
+        checkIn.participant.partyType === PartyType.INITIATOR
+          ? (ground.participants ?? [])
+              .filter((p) => p.id !== checkIn.participantId && !p.managingOnly)
+              .map((p) => {
+                const row = expectationByParticipant.get(p.id);
+                if (!row?.text?.trim()) return null;
+                return {
+                  label: displayName(p as any) ?? p.roleAsDescribed?.trim() ?? 'a teammate',
+                  text: row.text.trim(),
+                };
+              })
+              .filter(Boolean) as { label: string; text: string }[]
+          : [],
       // Pre-existing gap, found while proving this fix: resolutionState was
       // never wired into the intake context at all, so RESOLUTION_STATE in
       // the prompt was always "not yet defined" regardless of what the
@@ -922,6 +1112,7 @@ export class ConversationService {
       // Never reached the model before - see the comment on PromptContext.cadence.
       cadence: (ground as any).cadence ?? null,
       adminBrief: (ground as any).brief ?? null,
+      objectives: (ground as any).objectives ?? [],
       priorContext: checkIn.participant.roleAsDescribed ?? null,
       priorSession,
       lowSpecificityMultiDim,
@@ -1113,7 +1304,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      */
     const coachingBlock = await this.coachingBlock(checkIn.participantId, checkIn.sessionNumber);
 
-    return [systemPrompt, intakeBlock, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, dynamicContext, docContext, docPromptHint, notesBlock].filter(Boolean).join('\n\n');
+    return [systemPrompt, VOCABULARY_RULE, intakeBlock, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, dynamicContext, docContext, docPromptHint, notesBlock].filter(Boolean).join('\n\n');
   }
 
   /** The flag, read where it is used and failing to OFF. Same shape as the others. */
@@ -1597,7 +1788,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
   }
 
   async complete(checkInId: string, requestingUserId: string) {
-    const checkIn = await this.loadOwnedCheckIn(checkInId, requestingUserId);
+    const checkIn = await this.loadOwnedOpenCheckIn(checkInId, requestingUserId);
     await this.assertGroundAcceptsInput(checkIn.groundId);
     if (checkIn.status === CheckInStatus.COMPLETED) {
       throw new BadRequestException('This check-in is already complete');
@@ -1696,6 +1887,32 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     // every session because detection is continuous, not a tag set once.
     this.extractWorkMentions(checkIn.id, checkIn.participantId, checkIn.groundId, checkIn.sessionNumber).catch((err) =>
       this.logger.warn(`Work-mention extraction failed for check-in ${checkIn.id}: ${err.message}`),
+    );
+
+    /**
+     * GW-EXP-1b. Fire-and-forget beside the other extractors, and for the same reason: a failure here
+     * must never be why a person's completed session does not complete. It is initiator-only and
+     * returns immediately for everybody else.
+     */
+    this.extractExpectations(checkIn.id, checkIn.participantId, checkIn.groundId).catch((err) =>
+      this.logger.warn(`Expectation extraction failed for check-in ${checkIn.id}: ${err.message}`),
+    );
+
+    /**
+     * GW-EXP-3. Runs on every completion and returns immediately unless this person both has an
+     * expectation and has said what doing well looks like. Re-read each session on purpose: their own
+     * view develops, and a stale alignment is worse than none.
+     */
+    this.extractAlignment(checkIn.id, checkIn.participantId, checkIn.groundId).catch((err) =>
+      this.logger.warn(`Alignment read failed for check-in ${checkIn.id}: ${err.message}`),
+    );
+
+    /**
+     * GW-EXP-7. Fire-and-forget beside the others: an objection somebody raised must never be the
+     * reason their session fails to complete. Returns immediately when nothing is expected of them.
+     */
+    this.extractObjection(checkIn.id, checkIn.participantId, checkIn.groundId).catch((err) =>
+      this.logger.warn(`Objection read failed for check-in ${checkIn.id}: ${err.message}`),
     );
 
     this.reviseDetectedFunction(checkIn.participantId).catch((err) =>
@@ -2126,6 +2343,264 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    * does not resolve to a participant, is dropped. A wrong attribution on a read
    * about a person is worse than a missing one.
    */
+  /**
+   * WHAT THE LEAD SAID THEY EXPECT, WRITTEN DOWN. GW-EXP-1b.
+   *
+   * Slice 1a gave the lead's session the per-person questions and proved live that it asks them, and
+   * asks whether the person knows. This is the half that keeps the answers: without it the interview
+   * produces a good conversation and `personObjective` stays at the zero rows it has held for the
+   * product's whole life.
+   *
+   * INITIATOR ONLY. Expectations have one author, and that is the whole point of the design - a
+   * participant's session is where they say what success looks like to THEM, which is a different
+   * field and gets compared against this rather than merged into it.
+   *
+   * NAMES ARE RESOLVED, NEVER GUESSED. Lifted from `extractWorkMentions`, including its rule: a name
+   * that does not match somebody on the roster is dropped. An expectation attached to the wrong person
+   * is worse than a missing one, because it becomes a thing somebody is measured against that was
+   * never about them.
+   *
+   * UPSERT, NOT CREATE. A later session where the lead restates an expectation replaces it, because
+   * the current expectation is the one that counts. The transcript keeps the history.
+   */
+  async extractExpectations(checkInId: string, participantId: string, groundId: string) {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: {
+        participants: {
+          select: {
+            id: true,
+            partyType: true,
+            managingOnly: true,
+            email: true,
+            roleAsDescribed: true,
+            user: { select: { firstName: true, lastName: true } },
+          },
+        },
+      },
+    });
+    if (!ground) return;
+
+    const me = ground.participants.find((p) => p.id === participantId);
+    if (me?.partyType !== PartyType.INITIATOR) return;
+
+    const turns = await this.prisma.conversationTurn.findMany({
+      where: { checkInId },
+      orderBy: { createdAt: 'asc' },
+    });
+    if (turns.length === 0) return;
+    const transcript = turns
+      .map((t) => `${t.role === TurnRole.AI ? 'GROUNDWORK' : 'PERSON'}: ${t.content}`)
+      .join('\n');
+
+    const result = await this.anthropic.extract<{
+      groundAims: string[];
+      expectations: { personName: string; expectation: string; awareness: string; awarenessDetail?: string }[];
+    }>(EXPECTATION_PROMPT, [{ role: 'user', content: transcript }], EXPECTATION_SCHEMA as any);
+    if (!result) return;
+
+    /** The same resolver as work mentions: a name that matches nobody is dropped, never guessed. */
+    const others = ground.participants.filter((p) => p.id !== participantId && !p.managingOnly);
+    const resolve = (name: string): string | null => {
+      const n = (name ?? '').trim().toLowerCase();
+      if (!n) return null;
+      const hit = others.find((p) => {
+        const first = (p.user?.firstName ?? '').toLowerCase();
+        const full = [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').toLowerCase();
+        const emailLocal = (p.email ?? '').split('@')[0].toLowerCase();
+        const role = (p.roleAsDescribed ?? '').toLowerCase();
+        return (!!full && full === n) || (!!first && first === n) || (!!emailLocal && emailLocal === n) || (!!role && role === n);
+      });
+      return hit?.id ?? null;
+    };
+
+    const AWARENESS = ['TOLD', 'NOT_TOLD', 'UNSURE', 'NOT_ASKED'];
+
+    for (const e of result.expectations ?? []) {
+      const target = resolve(e.personName);
+      if (!target) continue;
+      const text = (e.expectation ?? '').trim();
+      if (!text) continue;
+      const awareness = AWARENESS.includes(e.awareness) ? e.awareness : 'NOT_ASKED';
+
+      /**
+       * CHANGED WORDS ARE UNSEEN WORDS. GW-EXP-4, fixing a defect I introduced in the extraction.
+       *
+       * `proposeObjective` has always reset `seenBySubject` when a lead rewrites an expectation, with
+       * the reasoning on it: "carrying the old seenBySubject: true forward would let a changed target
+       * be read against somebody who never saw the change." My upsert carried it forward.
+       *
+       * The consequence was live and quiet: a lead restating an expectation differently in session 3
+       * would leave the person marked as having seen words they never saw, and the gap probe would
+       * then press them on it in their very next session. The one protection this whole design keeps
+       * from the old model, defeated by an update clause.
+       *
+       * Only a CHANGE resets it. A lead repeating the same expectation is not new words, and resetting
+       * on every session would make an unchanged expectation permanently unseen.
+       */
+      const prior = await this.prisma.personObjective.findUnique({
+        where: { groundId_participantId: { groundId, participantId: target } },
+        select: { text: true },
+      });
+      const textChanged = !!prior && prior.text.trim() !== text;
+
+      await this.prisma.personObjective.upsert({
+        where: { groundId_participantId: { groundId, participantId: target } },
+        create: {
+          groundId,
+          participantId: target,
+          text,
+          authoredBy: 'lead',
+          /**
+           * False on creation and it must stay false: the person has not seen this yet. `seenBySubject`
+           * is what stops anybody being read against an expectation they have never laid eyes on, and
+           * publishing it to Context is what will flip it.
+           */
+          seenBySubject: false,
+          awareness,
+          awarenessDetail: (e.awarenessDetail ?? '').trim() || null,
+        },
+        update: {
+          text,
+          authoredBy: 'lead',
+          awareness,
+          awarenessDetail: (e.awarenessDetail ?? '').trim() || null,
+          /** New words, so they have not seen them. Unchanged words keep whatever was already true. */
+          ...(textChanged ? { seenBySubject: false } : {}),
+        },
+      });
+    }
+
+    /**
+     * The check-in's own aims, which have also always been empty. Only written when there are none
+     * yet: a lead restating the aim in session 4 should not silently duplicate the list, and merging
+     * by text is the kind of guess this file avoids elsewhere.
+     */
+    const aims = (result.groundAims ?? []).map((a) => a.trim()).filter(Boolean);
+    if (aims.length) {
+      const existing = await this.prisma.groundObjective.count({ where: { groundId } });
+      if (existing === 0) {
+        await this.prisma.groundObjective.createMany({
+          data: aims.map((name, i) => ({ groundId, name, target: null, sortOrder: i })),
+        });
+      }
+    }
+  }
+
+  /**
+   * DO THE TWO VIEWS OF THIS PERSON'S JOB CONNECT? GW-EXP-3.
+   *
+   * The last piece, and the one the product exists for. The lead has said what they expect; this
+   * person has said, in their own session and their own words, what doing well looks like. Comparing
+   * them is the finding:
+   *
+   *     "I was measured on a queue and judged on judgement, and only one of those was said."
+   *
+   * PARTICIPANT SIDE, because it runs on THEIR words. It compares against the expectation held for
+   * them, whether or not they have seen it - and the unseen case is the most valuable one there is,
+   * since it is exactly the story above: two people working to different definitions, neither aware.
+   *
+   * NOTHING IS INVENTED WHERE THEY HAVE NOT SPOKEN. No success definition means the alignment stays
+   * null, and the surface says "not yet said" rather than implying agreement. An absent view is not a
+   * matching one.
+   */
+  /**
+   * AN OBJECTION THAT SOMEBODY CAN SEE. GW-EXP-7.
+   *
+   * Her decision: "They should object in a way that you can see."
+   *
+   * The lead revises an expectation and the new words appear on the card with a reason. The person it
+   * is about could only disagree into a transcript, so the visible lever belonged entirely to the side
+   * that already had the power. This is the other half of that.
+   *
+   * IT DOES NOT CHANGE THE EXPECTATION. One person still owns it - that was the whole point of the
+   * design, and an objection that silently rewrote the target would be the chaos the decision avoided.
+   * What it does is make the disagreement as visible as the revision, so the lead answers it in their
+   * own check-in rather than never hearing it.
+   *
+   * NOT THE SAME AS THE ALIGNMENT READ. "They described doing well differently" is a difference of
+   * view, inferred from two statements. This is "I think this is wrong", said on purpose.
+   */
+  async extractObjection(checkInId: string, participantId: string, groundId: string) {
+    const expectation = await (this.prisma.personObjective?.findUnique({
+      where: { groundId_participantId: { groundId, participantId } },
+      select: { text: true },
+    }) ?? Promise.resolve(null)).catch(() => null);
+    /** Nothing recorded of them, so there is nothing to object TO. */
+    if (!expectation?.text?.trim()) return;
+
+    const turns = await this.prisma.conversationTurn.findMany({
+      where: { checkInId },
+      orderBy: { createdAt: 'asc' },
+      select: { role: true, content: true },
+    });
+    if (turns.length === 0) return;
+    const transcript = turns
+      .map((t) => `${t.role === TurnRole.AI ? 'GROUNDWORK' : 'PERSON'}: ${t.content}`)
+      .join('\n');
+
+    const result = await this.anthropic.extract<{ objected: boolean; words?: string }>(
+      OBJECTION_PROMPT,
+      [{ role: 'user', content: `EXPECTATION RECORDED OF THEM: ${expectation.text}\n\nTRANSCRIPT:\n${transcript}` }],
+      OBJECTION_SCHEMA as any,
+    );
+    if (!result?.objected) return;
+
+    /**
+     * Their own words or nothing. An objection recorded as "they objected", with no sentence anybody
+     * can read, is an accusation the person cannot answer and the lead cannot act on.
+     */
+    const words = (result.words ?? '').trim();
+    if (!words) return;
+
+    await this.prisma.personObjective.update({
+      where: { groundId_participantId: { groundId, participantId } },
+      data: { objection: words, objectionAt: new Date() },
+    }).catch(() => undefined);
+  }
+
+  async extractAlignment(checkInId: string, participantId: string, groundId: string) {
+    const expectation = await (this.prisma.personObjective?.findUnique({
+      where: { groundId_participantId: { groundId, participantId } },
+      select: { text: true },
+    }) ?? Promise.resolve(null)).catch(() => null);
+    if (!expectation?.text?.trim()) return;
+
+    /**
+     * Their own words, newest first. SUCCESS_DEFINITION is the record-entry type the session already
+     * produces when it asks what doing well looks like - the field has existed and been populated all
+     * along; nothing had ever compared it to anything.
+     */
+    const own = await this.prisma.recordEntry.findMany({
+      where: { participantId, type: 'SUCCESS_DEFINITION' as any },
+      orderBy: { createdAt: 'desc' },
+      take: 3,
+      select: { text: true },
+    });
+    const ownView = own.map((o) => o.text.trim()).filter(Boolean).join(' ');
+    if (!ownView) return;
+
+    const result = await this.anthropic.extract<{ verdict: string; note: string }>(
+      ALIGNMENT_PROMPT,
+      [{ role: 'user', content: `EXPECTATION: ${expectation.text.trim()}\n\nTHEIR OWN VIEW: ${ownView}` }],
+      ALIGNMENT_SCHEMA as any,
+    );
+    if (!result) return;
+
+    /**
+     * An unrecognised verdict becomes CANNOT_TELL rather than being stored raw or dropped. Dropping it
+     * would leave the last good read standing over words that have since changed; storing junk would
+     * put a state on screen that nothing knows how to render.
+     */
+    const VERDICTS = ['ALIGNS', 'DIFFERS', 'CANNOT_TELL'];
+    const verdict = VERDICTS.includes(result.verdict) ? result.verdict : 'CANNOT_TELL';
+
+    await this.prisma.personObjective.update({
+      where: { groundId_participantId: { groundId, participantId } },
+      data: { alignment: verdict, alignmentNote: (result.note ?? '').trim() || null },
+    }).catch(() => undefined);
+  }
+
   async extractWorkMentions(checkInId: string, participantId: string, groundId: string, sessionNumber: number) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
@@ -2134,7 +2609,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         participants: { select: { id: true, email: true, user: { select: { firstName: true, lastName: true } } } },
       },
     });
-    if (!ground || !boardRendersFor(ground.scenario, ground.mode)) return;
+    if (!ground || !boardRendersFor(ground.scenario)) return;
 
     const turns = await this.prisma.conversationTurn.findMany({ where: { checkInId }, orderBy: { createdAt: 'asc' } });
     if (turns.length === 0) return;
@@ -2196,8 +2671,13 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       where: { id: groundId },
       select: { mode: true, scenario: true, participants: { select: { id: true, email: true, user: { select: { firstName: true, lastName: true } } } } },
     });
-    if (!ground || ground.mode !== GroundMode.SHARED) return;
-    if (!boardRendersFor(ground.scenario, ground.mode)) return;
+    if (!ground) return;
+    /**
+     * THE MODE CHECK IS GONE, NOT MOVED. It skipped extraction on any non-shared check-in, so a private
+     * one silently collected no waiting-on-somebody at all - and now that every check-in has a board,
+     * that would mean a board with a dependencies section and nothing ever put in it.
+     */
+    if (!boardRendersFor(ground.scenario)) return;
 
     const turns = await this.prisma.conversationTurn.findMany({ where: { checkInId }, orderBy: { createdAt: 'asc' } });
     if (turns.length === 0) return;
@@ -2361,7 +2841,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    * it confirms. Owner-scoped: reads only this participant's documents.
    */
   async documentReceived(checkInId: string, requestingUserId: string) {
-    const checkIn = await this.loadOwnedCheckIn(checkInId, requestingUserId);
+    const checkIn = await this.loadOwnedOpenCheckIn(checkInId, requestingUserId);
 
     const doc = await this.prisma.groundDocument.findFirst({
       where: { groundId: checkIn.groundId, participantId: checkIn.participantId },
@@ -2390,10 +2870,8 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    * this is shown to the admin as a neutral status, never a negative signal.
    */
   async decline(checkInId: string, requestingUserId: string) {
-    const checkIn = await this.loadOwnedCheckIn(checkInId, requestingUserId);
-    if (checkIn.status === CheckInStatus.COMPLETED) {
-      throw new BadRequestException('This check-in is already complete');
-    }
+    /** The already-complete and already-declined refusals both live in the loader now. */
+    const checkIn = await this.loadOwnedOpenCheckIn(checkInId, requestingUserId);
     await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { status: CheckInStatus.DECLINED } });
     return { status: 'declined' };
   }
@@ -2432,7 +2910,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
   async startClarificationSession(requestingUserId: string, groundId: string, inferenceId: string): Promise<{ checkInId: string }> {
     // Verify the inference exists on this ground's report
     const report = await this.prisma.report.findUnique({ where: { groundId }, select: { inferences: true } });
-    if (!report) throw new NotFoundException('Report not found for this ground');
+    if (!report) throw new NotFoundException('Report not found for this check-in');
     const inferenceList = (report.inferences ?? []) as Array<{ id: string; text: string; participantLabel: string; reason: string }>;
     const inference = inferenceList.find(i => i.id === inferenceId);
     if (!inference) throw new NotFoundException('Inference not found');
@@ -2441,7 +2919,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const participant = await this.prisma.groundParticipant.findFirst({
       where: { groundId, userId: requestingUserId },
     });
-    if (!participant) throw new ForbiddenException('You are not a participant on this ground');
+    if (!participant) throw new ForbiddenException('You are not a participant on this check-in');
 
     // Find the next available session number for this participant
     const lastCheckIn = await this.prisma.checkIn.findFirst({
@@ -2476,13 +2954,13 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const participant = await this.prisma.groundParticipant.findFirst({
       where: { groundId, userId: requestingUserId },
     });
-    if (!participant) throw new ForbiddenException('You are not a participant on this ground');
+    if (!participant) throw new ForbiddenException('You are not a participant on this check-in');
 
     const targetCheckIn = await this.prisma.checkIn.findUnique({
       where: { participantId_sessionNumber: { participantId: participant.id, sessionNumber: targetSessionNumber } },
     });
     if (!targetCheckIn || targetCheckIn.status !== CheckInStatus.COMPLETED) {
-      throw new NotFoundException('That session is not a completed check-in on this ground');
+      throw new NotFoundException('That session is not a completed check-in on this check-in');
     }
 
     // LOCKING: a session can be corrected only until the next one opens. If any
@@ -2551,7 +3029,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       where: { groundId, userId: requestingUserId },
       select: { id: true },
     });
-    if (!participant) throw new ForbiddenException('You are not a party to this ground');
+    if (!participant) throw new ForbiddenException('You are not a party to this check-in');
 
     const checkIns = await this.prisma.checkIn.findMany({
       where: { participantId: participant.id },
@@ -2585,6 +3063,30 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         turns: c.turns.map((t) => ({ id: t.id, role: t.role, content: t.content })),
       })),
     };
+  }
+
+  /**
+   * A SESSION THE PERSON HAS ALREADY ANSWERED IS CLOSED TO FURTHER WRITING.
+   *
+   * Her decision on declining: "No, it is final for that session." That has to be enforced at the
+   * write paths, not just in the button, or a declined session could be reopened and typed into -
+   * and the round it belongs to has already been allowed to complete on the strength of the decline.
+   *
+   * WHY A SECOND LOADER RATHER THAN A CHECK IN NINE PLACES. `loadOwnedCheckIn` has nine callers and
+   * three of them are READS - transcript, download and the person's own solo artifact. Somebody must
+   * still be able to read their own record of a session they declined; refusing that would be a new
+   * wall in the name of a rule about writing. So the loader's NAME carries the distinction, and a
+   * future write path gets the rule by picking the right one rather than by remembering it.
+   */
+  private async loadOwnedOpenCheckIn(checkInId: string, requestingUserId: string) {
+    const checkIn = await this.loadOwnedCheckIn(checkInId, requestingUserId);
+    if (checkIn.status === CheckInStatus.COMPLETED) {
+      throw new BadRequestException('This check-in is already complete');
+    }
+    if (checkIn.status === CheckInStatus.DECLINED) {
+      throw new BadRequestException('You declined this session, and that is recorded. The next one is yours to take part in.');
+    }
+    return checkIn;
   }
 
   private async loadOwnedCheckIn(checkInId: string, requestingUserId: string) {

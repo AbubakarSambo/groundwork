@@ -35,19 +35,29 @@ describe('the create path honours managingOnly', () => {
     expect(create).toMatch(/partyType: PartyType\.INITIATOR,\s*\n\s*managingOnly,/);
   });
 
-  it('and does NOT create a session-1 check-in for a managing-only lead', () => {
+  it('creates a SETUP conversation for a managing-only lead, not a session', () => {
     /**
-     * The assertion that actually unblocks reports. A check-in for somebody who will never answer sits
-     * NOT_STARTED forever and holds the whole ground open behind them.
+     * REVERSED DELIBERATELY, AND THE DISTINCTION IS THE WHOLE POINT. GW-EXP-6.
+     *
+     * This asserted that no check-in was created at all, which was right while a check-in could only
+     * mean "give your account". It became the reason every expectation feature was dead on exactly
+     * the grounds most likely to need one: nothing ever asked a lead who runs a check-in without
+     * taking part what they expect of anybody.
+     *
+     * Setting up is not testifying. So the row exists and carries `isSetup`, and is excluded from
+     * every session count - the test below proves the report still releases, which is the rule this
+     * file was really protecting.
      */
-    const guarded = create.slice(create.indexOf('if (!managingOnly)'));
-    expect(create).toMatch(/if \(!managingOnly\) \{/);
-    expect(guarded).toMatch(/tx\.checkIn\.create/);
+    const create = CODE.slice(CODE.indexOf('async create('), CODE.indexOf('async createForLead('));
+    expect(create).toMatch(/isSetup: managingOnly/);
+    expect(create).toMatch(/tx\.checkIn\.create/);
+    expect(create).not.toMatch(/if \(!managingOnly\) \{/);
   });
 
   it('a lead who IS a party still gets their check-in', () => {
     /** The control. The default must stay exactly as it was for everybody who did not opt out. */
-    expect(create).toMatch(/sessionNumber: 1, status: CheckInStatus\.NOT_STARTED/);
+    /** Reformatted across lines when `isSetup` joined the create. The claim is the same. */
+    expect(create).toMatch(/sessionNumber: 1,[\s\S]{0,60}?status: CheckInStatus\.NOT_STARTED/);
   });
 });
 

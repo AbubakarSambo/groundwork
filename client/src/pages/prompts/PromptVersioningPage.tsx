@@ -280,7 +280,7 @@ function VersionRow({
           {confirmActivateId === v.id && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={{ fontSize: 11, color: 'var(--gw-text)' }}>
-                Activate v{v.version}? In-progress grounds keep their version.
+                Activate v{v.version}? In-progress check-ins keep their version.
               </span>
               <button
                 style={{ fontSize: 11, padding: '4px 10px', borderRadius: 4, border: 'none', background: 'var(--gw-navy)', color: 'white', cursor: 'pointer', fontWeight: 600 }}
@@ -748,7 +748,7 @@ export function PromptVersioningPage() {
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="gw-back" onClick={() => navigate('/prompts/test')}>Test panel →</button>
           <button className="gw-back" onClick={() => navigate('/admin')}>Usage dashboard</button>
-          <button className="gw-back" onClick={() => navigate('/')}>← Grounds</button>
+          <button className="gw-back" onClick={() => navigate('/')}>← Check-ins</button>
         </div>
       </div>
 

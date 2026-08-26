@@ -12,22 +12,22 @@ import { plannedSessionsFor, everySessionDone } from './sessionCount'
  * sidebar rounded UP; the server and the participant page round DOWN.
  *
  * On a ninety-day weekly ground the server plans and creates twelve; the admin
- * page expected thirteen. So a ground that had finished every session it would
+ * page expected thirteen. So a check-in that had finished every session it would
  * ever have kept showing "90 days remaining" instead of "every session done",
  * waiting on a thirteenth check-in that nothing would ever create.
  *
  * Found by a journey that ran all twelve sessions and then could not get the
- * page to agree the ground was over - and only findable that way, because both
+ * page to agree the check-in was over - and only findable that way, because both
  * numbers look perfectly reasonable in isolation.
  */
 
 describe('planned sessions, counted the way the server counts them', () => {
   it('rounds down, so a ninety-day weekly ground holds twelve and not thirteen', () => {
-    // THE REGRESSION: ceil(90/7) = 13, and the ground could never finish.
+    // THE REGRESSION: ceil(90/7) = 13, and the check-in could never finish.
     expect(plannedSessionsFor(90, 'WEEKLY')).toBe(12)
   })
 
-  it('agrees with the server across the cadences a ground can be set up with', () => {
+  it('agrees with the server across the cadences a check-in can be set up with', () => {
     // These are the server's own numbers, from api/src/modules/grounds/session-count.ts.
     expect(plannedSessionsFor(90, 'FORTNIGHTLY')).toBe(6)
     expect(plannedSessionsFor(90, 'MONTHLY')).toBe(3)
@@ -35,7 +35,7 @@ describe('planned sessions, counted the way the server counts them', () => {
     expect(plannedSessionsFor(90, 'ONE_TIME')).toBe(1)
   })
 
-  it('never returns zero for a ground shorter than one interval', () => {
+  it('never returns zero for a check-in shorter than one interval', () => {
     // A fortnight on a monthly cadence still holds a check-in. Telling someone
     // their ground has zero sessions would read as broken.
     expect(plannedSessionsFor(14, 'MONTHLY')).toBe(1)
@@ -43,7 +43,7 @@ describe('planned sessions, counted the way the server counts them', () => {
 
   it('says "unknown" rather than zero when there is no plan to compute', () => {
     // SEQUENTIAL has no clock - the next round fires when the lead checks in.
-    // Unknown must not collapse to zero, or a ground reads as finished before it
+    // Unknown must not collapse to zero, or a check-in reads as finished before it
     // has begun.
     expect(plannedSessionsFor(90, 'SEQUENTIAL')).toBeNull()
     expect(plannedSessionsFor(null, 'WEEKLY')).toBeNull()
@@ -51,7 +51,7 @@ describe('planned sessions, counted the way the server counts them', () => {
     expect(plannedSessionsFor(90, null)).toBeNull()
   })
 
-  it('lets an explicit count set on the ground win', () => {
+  it('lets an explicit count set on the check-in win', () => {
     expect(plannedSessionsFor(90, 'WEEKLY', 4)).toBe(4)
     // ...including on a cadence that otherwise has no computable plan.
     expect(plannedSessionsFor(90, 'SEQUENTIAL', 3)).toBe(3)
@@ -64,11 +64,11 @@ describe('planned sessions, counted the way the server counts them', () => {
  *
  * The old rule counted distinct session NUMBERS marked complete, which is right
  * for one person and wrong for two. The lead finishing session 12 made twelve
- * distinct numbers complete, so the ground announced "every session done" while
+ * distinct numbers complete, so the check-in announced "every session done" while
  * the participant had never started theirs.
  *
  * The account it closed over is the participant's closing word, on the session
- * the whole record builds toward - the one most likely to change how the ground
+ * the whole record builds toward - the one most likely to change how the check-in
  * ends, and the one nobody would notice was missing, because the page said
  * everything was done.
  *
@@ -80,7 +80,7 @@ const done = (participantId: string, sessionNumber: number) =>
 const open_ = (participantId: string, sessionNumber: number) =>
   ({ participantId, sessionNumber, status: 'NOT_STARTED' })
 
-describe('a ground is done when everyone is done', () => {
+describe('a check-in is done when everyone is done', () => {
   const parties = [{ id: 'lead' }, { id: 'part' }]
   const bothThrough = (upTo: number) =>
     [...Array(upTo)].flatMap((_, i) => [done('lead', i + 1), done('part', i + 1)])
@@ -104,7 +104,7 @@ describe('a ground is done when everyone is done', () => {
     expect(everySessionDone(parties, checkIns, 12)).toBe(false)
   })
 
-  it('does not call a ground with no plan finished', () => {
+  it('does not call a check-in with no plan finished', () => {
     // SEQUENTIAL and timeline-less grounds have no planned count. Unknown must
     // not read as complete.
     expect(everySessionDone(parties, bothThrough(12), null)).toBe(false)

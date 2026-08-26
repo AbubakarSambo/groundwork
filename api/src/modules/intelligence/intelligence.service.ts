@@ -44,9 +44,9 @@ export class IntelligenceService {
    */
   async submitFeedback(groundId: string, userId: string, feltFair: boolean, note?: string) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId } });
-    if (!ground) throw new NotFoundException('Ground not found');
+    if (!ground) throw new NotFoundException('Check-in not found');
     const participant = await this.prisma.groundParticipant.findFirst({ where: { groundId, userId } });
-    if (!participant) throw new ForbiddenException('You are not a party to this ground');
+    if (!participant) throw new ForbiddenException('You are not a party to this check-in');
 
     return this.prisma.outcomeFeedback.upsert({
       where: { groundId_participantId: { groundId, participantId: participant.id } },
@@ -72,16 +72,16 @@ export class IntelligenceService {
     dto: { rating: number; feltFair: boolean; whatWorked?: string; whatDidnt?: string; wouldUseAgain: boolean },
   ) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId } });
-    if (!ground) throw new NotFoundException('Ground not found');
+    if (!ground) throw new NotFoundException('Check-in not found');
 
     const participant = await this.prisma.groundParticipant.findFirst({ where: { groundId, userId } });
-    if (!participant) throw new ForbiddenException('You are not a party to this ground');
+    if (!participant) throw new ForbiddenException('You are not a party to this check-in');
 
     // Enforce one-submission-per-ground guard (in addition to the DB unique constraint).
     const existing = await this.prisma.outcomeFeedback.findUnique({
       where: { groundId_participantId: { groundId, participantId: participant.id } },
     });
-    if (existing) throw new ForbiddenException('You have already submitted feedback for this ground');
+    if (existing) throw new ForbiddenException('You have already submitted feedback for this check-in');
 
     // wouldUseAgain lives in the note with the rest of the survey. It used to be
     // written into the feltFair COLUMN, which is the column every fairness

@@ -159,7 +159,7 @@ describe('a failure is not a success', () => {
 describe('an account with no password', () => {
   it('is told that, not that the password was wrong', async () => {
     /**
-     * A participant added to a ground has an account and no password. The server spots
+     * A participant added to a check-in has an account and no password. The server spots
      * it, emails a setup link and says so - but it arrived as red text under the
      * password field, which reads as "you typed it wrong" and invites another go at a
      * password that has never existed.

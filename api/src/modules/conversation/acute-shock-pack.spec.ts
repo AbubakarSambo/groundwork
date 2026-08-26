@@ -33,10 +33,27 @@ describe('GW-ACUTE-SHOCK: shared-reality pack, not a decision session', () => {
     expect(initiator).toContain('Whose read are you least sure of');
   });
 
-  it('explicitly refuses to become a decision session (the CRISIS inverse)', () => {
-    expect(initiator).toContain('This is NOT a decision session');
-    expect(initiator).toContain('DECISION DEFLECTION');
-    expect(initiator).toContain('Never develop the option, never weigh options, never ask what they would decide');
+  it('refuses to become a decision session IN THE FIRST ROUND, then sets an objective', () => {
+    /**
+     * NARROWED FROM "NEVER" TO "NOT YET", and the reason is what the ground is for.
+     *
+     * The pack used to ban planning outright: "This is NOT a decision session", "no decisions and no
+     * plans", "never ask what they would decide". Every end state closed on the picture. So a
+     * fortnight of daily check-ins opened because a client had just left could only ever finish by
+     * saying everyone agreed on what had happened - whether the client came back was not something
+     * the ground could record, and the other thirteen days had nothing to do.
+     *
+     * The half worth keeping is the sequencing. A recovery built on rumour is worse than no
+     * recovery, and an account of a shock is half observation and half repetition - so the
+     * known-versus-assumed split has to land before anybody commits to anything. That is now what
+     * the deflection protects: the FIRST session, not the whole ground.
+     */
+    expect(initiator).toContain('FIRST SESSION - THE PICTURE ONLY');
+    expect(initiator).toContain('DECISION DEFLECTION, IN THE FIRST SESSION ONLY');
+    expect(initiator).toContain('Do not develop the option or weigh options yet');
+    // And then it must actually ask for the objective, or the fortnight has nothing to test against.
+    expect(initiator).toContain('what are we trying to achieve now');
+    expect(initiator).toContain('EVERY LATER SESSION - THE DAILY READ');
   });
 
   it('includes the human texture CRISIS excludes', () => {

@@ -7,13 +7,14 @@ import { withoutWhatOnlyTheLeadSaid, whyItWasDropped } from './a-lead-note-is-no
 import { whatALeaderCanWeigh, THIS_IS_MATERIAL_NOT_A_VERDICT } from './what-a-leader-can-weigh';
 import { accountShapeFor, standardsAndWhatTouchedThem, type EntryRow } from './what-the-record-actually-holds';
 import { forbiddenNames, sanitiseGuide, PostReportGuide } from './guide-sanitiser';
-import { labelsForParties, namesVisibleTo, readsWithNamesOf, withNames } from './party-labels';
+import { labelsForParties, namesVisibleTo, readsWithNamesOf, withNames, viewerLabelOf } from './party-labels';
 import { withoutOtherPeoplesReads } from './own-reads-only';
 import { tallyInReport } from './counts-accounts';
 import { forensicInReport, withoutDashes } from './forensic-voice';
 import { PrismaService } from '../prisma/prisma.service';
 import { computeArcSignals, tierCopy, ArcSignals } from './arc-features';
 import { endStatesFor } from '../resolution/end-states';
+import { isBaselineRound, withoutWhatOneRoundCannotShow } from './a-read-needs-a-run';
 import { PromptsService } from '../prompts';
 import { AnthropicService } from '../conversation';
 import { EmailService } from '../email/email.service';
@@ -33,30 +34,15 @@ const PATTERN_CODE_NAME = new Map<string, string>([
   ...POSITIVE_CODES.map((c) => [c.code, c.name] as const),
 ]);
 
-// Solo artifact - single-party "Your private record shows:" summary (#91).
-const SOLO_ARTIFACT_SCHEMA = {
-  name: 'emit_solo_artifact',
-  description: "Emit a short single-party summary of this person's own record.",
-  input_schema: {
-    type: 'object',
-    properties: {
-      summary: {
-        type: 'string',
-        description:
-          "Plain-language summary starting with 'Your private record shows:'. Summarise what this person put on the record in their own framing. No verdict, no inference about anyone else.",
-      },
-      whatToCarry: {
-        type: 'string',
-        description: 'One specific, forward-looking thing for them to carry into the conversation or watch for next. Not a judgement.',
-      },
-    },
-    required: ['summary'],
-  },
-};
-
-const SOLO_ARTIFACT_PROMPT =
-  "You are Groundwork. You are given ONE person's own record entries (their words). Produce a short artifact for them alone - they have not heard from anyone else and may never. Do not infer the other side. Do not produce a verdict or analysis of any person. Open with the exact phrase \"Your private record shows:\" then summarise what they put on the record in their own framing. Name one specific thing to carry forward. Warm, specific, brief - under 150 words total.";
-
+/**
+ * SOLO_ARTIFACT_SCHEMA and SOLO_ARTIFACT_PROMPT were defined here and used nowhere.
+ *
+ * The live pair lives in `conversation.service.ts`, which is what `buildSoloArtifact` calls. Two
+ * definitions of one prompt is how the two came to differ - this copy still said "under 150 words"
+ * while the one that runs said 200, and neither carried the rules about not inventing parties. A
+ * dead copy of a prompt is worse than none: the next person to harden it has even odds of editing
+ * the one that never executes.
+ */
 // Post-report conversation guide schema (#99).
 const POST_REPORT_GUIDE_SCHEMA = {
   name: 'emit_post_report_guide',
@@ -244,6 +230,15 @@ export const REPORT_SCHEMA = {
             gap: { type: 'string', description: 'The difference, stated as a gap in the work. Never quote either side and never name who said what.' },
             note: { type: 'string', description: 'One sentence on why this is worth a conversation rather than a correction.' },
             periods: { type: 'integer', description: 'How many distinct sessions/periods the pattern is visible across. One period is NOT a pattern - if you only see it once, do not report it.' },
+            /**
+             * WHAT THREE PERIODS ACTUALLY MEANT, IN TIME.
+             *
+             * A period is a check-in, not a month - so "visible across three periods" is three days on
+             * a daily recovery ground and six weeks on a fortnightly one. The same sentence reads as
+             * "this has been going on for a while" in both cases, and in one of them it has been going
+             * on since Tuesday. The reader is often about to make a decision from it.
+             */
+            span: { type: 'string', description: 'How much real time those periods covered, in plain words, from the cadence: for example "three days" on a daily ground or "six weeks" on a fortnightly one. Never imply more elapsed time than the cadence allows.' },
           },
           required: ['pattern', 'gap', 'note', 'periods'],
         },
@@ -300,7 +295,7 @@ Do not say "party" or "parties" in anything the reader sees. Say the person's la
 10. FLAG CONCERN PATTERNS FACTUALLY, NEVER AS ACCUSATION. If the record shows one party's follow-through, commitments, or contribution is notably thinner than other parties' on the same ground, note it in concernFlags as a plain factual observation about the record - not a judgement of the person. Do not speculate about motive.
 11. NAME THE CAUSE OF LOW OR HIGH SPECIFICITY WHEN INFERABLE. If a party's specificity is notably low or high, use specificityCauses to say why if the record supports an inference: a behavioral pattern, a misunderstanding, an adversarial stance, "declined_by_choice" if the record shows an explicit, stated decline to answer (a refusal is a choice, never file it as adversarial or unclear), or "unclear" if the record does not support a specific cause.
 12. NEVER INVENT PARTY COUNTS OR ROLES. The PARTY ROSTER at the top of this corpus is the exhaustive, exact list of who is on this ground - use its exact count and exact labels only. Never state a number of parties, an "other parties" count, or a role/title/affiliation (e.g. "founder", "funders", "the board") that does not appear verbatim in the roster. If you are unsure how many parties are missing or who they are, use the roster's own wording rather than describing them yourself.
-14. SURFACE LEADERSHIP GAPS AS NAMED PATTERNS, ACROSS PERIODS, NEVER AS QUOTES. Where one party leads another, look for the named leadership patterns listed below. Use ONLY those pattern names. A pattern is real only when its stated signature is met AND it is visible across MORE THAN ONE period - one session showing something is not a pattern, and you must report the number of periods you saw it across. Each pattern belongs to one of two opposite poles: CONTROL (holding on to work and decisions, so nobody else can own) or ABDICATION (not holding anyone, so things slip and hard conversations never happen). These need opposite responses, so never blur them together. State the gap as a difference between two accounts ("one account describes ownership being set clearly; another describes still being unsure what they own"). NEVER quote either side, NEVER name who said what, and NEVER say which is right - something can be set clearly and still not land, and both people can be describing their own experience honestly. If no pattern's signature is met across periods, return an empty array.
+14. SURFACE LEADERSHIP GAPS AS NAMED PATTERNS, ACROSS PERIODS, NEVER AS QUOTES. State the SPAN alongside the count: a period is a check-in, so three periods on a daily ground is three days and on a fortnightly one is six weeks, and a reader deciding something from it must not be left to assume the longer one. Where one party leads another, look for the named leadership patterns listed below. Use ONLY those pattern names. A pattern is real only when its stated signature is met AND it is visible across MORE THAN ONE period - one session showing something is not a pattern, and you must report the number of periods you saw it across. Each pattern belongs to one of two opposite poles: CONTROL (holding on to work and decisions, so nobody else can own) or ABDICATION (not holding anyone, so things slip and hard conversations never happen). These need opposite responses, so never blur them together. State the gap as a difference between two accounts ("one account describes ownership being set clearly; another describes still being unsure what they own"). NEVER quote either side, NEVER name who said what, and NEVER say which is right - something can be set clearly and still not land, and both people can be describing their own experience honestly. If no pattern's signature is met across periods, return an empty array.
 
 14a. ROUTING - THIS IS WHERE LEADERSHIP FINDINGS GO. If something you found matches one of the leadership patterns, it belongs in leadershipGaps and NOT in divergences. Do not put it in both. A leadership pattern is about how one party is LEADING and how that lands for the people they lead - a deferred conversation, a commitment nobody was held to, work not handed over, a contribution not seen. That is different from a divergence, which is two parties describing the same FACT differently. If you find yourself writing a divergence whose topic is really about how someone is managing, being held accountable, or being credited, move it to leadershipGaps with the matching pattern name. This routing is required: leadership findings placed in divergences are lost, because the two are read on different surfaces for different purposes.
 
@@ -585,7 +580,7 @@ export class ReportsService {
 
   async synthesize(groundId: string) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, include: { participants: true } });
-    if (!ground) throw new NotFoundException('Ground not found');
+    if (!ground) throw new NotFoundException('Check-in not found');
 
     // Build context preamble from the ground's pre-agreed resolution state,
     // initiator brief, and the initiator's persistent profile signals (if any).
@@ -1309,7 +1304,28 @@ Close the report by framing - neutrally, without recommending one - the choice n
       ...openQuestions,
     ].slice(0, 5);
 
-    const enrichedEngagement = {
+    /**
+     * THE FIRST ROUND OF A GROUND THAT OPENED AT THE START HAS NO RUN IN IT.
+     *
+     * See a-read-needs-a-run.ts. Concern flags and hidden contributors both read a run; on a session
+     * whose entire purpose is agreeing what success would look like, there is nothing for them to read
+     * and what they produce is a judgement formed from a designed absence.
+     *
+     * DERIVED FROM WHAT WAS ALREADY LOADED, NOT FROM A NEW QUERY. The first version of this ran a
+     * `checkIn.aggregate` here, and six existing tests broke - not because the logic was wrong but
+     * because every mock of this method suddenly lacked a stub. That is a fair signal: `sessions` on
+     * each engagement party is already a count of COMPLETED check-ins for that person, which is
+     * exactly the question being asked. Completed matters: a check-in row exists from the moment a
+     * session opens, so counting rows would let an opened-but-unanswered second session unlock a read
+     * of a run that has not happened.
+     */
+    const highestCompletedSession = engagementParties.reduce(
+      (max, party) => Math.max(max, (party as { sessions?: number }).sessions ?? 0),
+      0,
+    );
+    const baselineRound = isBaselineRound({ moment: ground.moment, highestCompletedSession });
+
+    const enrichedEngagementRaw = {
       ...engagement,
       specificityNotes,
       recallNotes,
@@ -1319,6 +1335,20 @@ Close the report by framing - neutrally, without recommending one - the choice n
       concernFlags: result.concernFlags ?? [],
       specificityCauses: result.specificityCauses ?? [],
     };
+
+    /**
+     * Structural, not instructional. The synthesis prompt could be asked to skip these on a first
+     * session; a prompt rule is a request. This is a decision about what may reach a reader.
+     */
+    const gated = baselineRound
+      ? withoutWhatOneRoundCannotShow(enrichedEngagementRaw)
+      : { engagement: enrichedEngagementRaw, removed: [] as string[] };
+    if (gated.removed.length) {
+      this.logger.log(
+        `Ground ${groundId}: withheld ${gated.removed.join(', ')} from the first round of a ground opened at the start - there is no run to read yet.`,
+      );
+    }
+    const enrichedEngagement = gated.engagement;
 
     const inferences = ((result as any).inferences ?? []) as Array<{ id: string; text: string; participantLabel: string; reason: string }>;
 
@@ -1487,7 +1517,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
    */
   async generateForAdmin(groundId: string, organizationId: string) {
     const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId } });
-    if (!ground) throw new NotFoundException('Ground not found');
+    if (!ground) throw new NotFoundException('Check-in not found');
 
     const completedCount = await this.prisma.checkIn.count({ where: { groundId, status: 'COMPLETED' } });
     if (completedCount === 0) {
@@ -1503,7 +1533,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
       where: { id: groundId, organizationId },
       include: { participants: true, report: true },
     });
-    if (!ground) throw new NotFoundException('Ground not found');
+    if (!ground) throw new NotFoundException('Check-in not found');
     if (!ground.report) throw new NotFoundException('Report not generated yet');
     if (ground.report.releasedAt) return ground.report; // already released
 
@@ -1611,8 +1641,15 @@ Close the report by framing - neutrally, without recommending one - the choice n
     // Every party's label, so the bare-label tidy-up can tell "unambiguous" from "the only
     // one I am allowed to see". W8-73.
     const allLabels = [...labelsForParties(parties).values()];
+    /**
+     * The reader's own label, so the report addresses them rather than describing them. A person
+     * opened their private report and read "Hafsah Jumare described their role" about themselves.
+     */
+    const readerLabel = viewerLabelOf(viewerParticipantId, parties);
     const t = (v: any): any =>
-      typeof v === 'string' ? withoutDashes(withNames(v, visible, allLabels)) : v;
+      typeof v === 'string'
+        ? withoutDashes(withNames(v, visible, allLabels, { viewerLabel: readerLabel }))
+        : v;
     const walk = (v: any): any => {
       if (typeof v === 'string') return t(v);
       if (Array.isArray(v)) return v.map(walk);
@@ -1671,6 +1708,30 @@ Close the report by framing - neutrally, without recommending one - the choice n
     };
   }
 
+  /**
+   * WHO DECLINED THIS ROUND, NAMED THE SAME WAY THE REPORT NAMES EVERYBODY ELSE.
+   *
+   * Her decision: "Round completes, report names the decline", and the report must say so plainly
+   * rather than presenting three accounts as though only three people were ever asked.
+   *
+   * NAMED THROUGH `labelsForParties`, NOT FROM THE USER ROW. That map is what the whole report is
+   * written in, and it handles the cases a second implementation would get wrong: same-role parties
+   * disambiguated, and a viewer who is not entitled to a real name getting the role instead. A
+   * decline is a fact about a person, so it is the last place to invent a second naming rule.
+   */
+  private async declinedThisRound(
+    groundId: string,
+    parties: any[],
+  ): Promise<{ participantId: string; label: string }[]> {
+    const progress = await this.grounds.getSessionProgress(groundId);
+    if (!progress?.declinedParticipantIds.length) return [];
+    const labels = labelsForParties(parties as any);
+    return progress.declinedParticipantIds.map((participantId) => ({
+      participantId,
+      label: labels.get(participantId) ?? 'A party',
+    }));
+  }
+
   async get(groundId: string, requestingUserId: string, requestingUserOrgId?: string) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
@@ -1687,7 +1748,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
     const participant = ground.participants.find((p) => p.userId === requestingUserId);
     // Org admins can read reports for grounds in their own org (read-only, same view as initiator).
     const isOrgAdmin = !isInitiator && !participant && !!requestingUserOrgId && ground.organizationId === requestingUserOrgId;
-    if (!participant && !isInitiator && !isOrgAdmin) throw new ForbiddenException('You are not a party to this ground');
+    if (!participant && !isInitiator && !isOrgAdmin) throw new ForbiddenException('You are not a party to this check-in');
 
     if (!ground.report.releasedAt) {
       // Before everyone has checked in, the report is a forming picture, not
@@ -1718,6 +1779,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
         nextStep: isInitiator ? 'release' : isOrgAdmin ? 'wait' : undefined,
         soloArtifact,
         sessionProgress: sessionProgress ? { ...sessionProgress, requestingUserIsMissing } : null,
+        declined: await this.declinedThisRound(groundId, ground.participants as any),
       };
     }
 
@@ -1774,6 +1836,13 @@ Close the report by framing - neutrally, without recommending one - the choice n
       activated: true,
       postReportGuide,
       soloArtifact,
+      /**
+       * A RELEASED report is exactly where this matters most, and it was the branch that could not
+       * say it: `sessionProgress` is attached only to the forming response, so once a round with a
+       * decline in it completed - which it now can - the report went out naming three accounts and
+       * nothing about the fourth person having refused.
+       */
+      declined: await this.declinedThisRound(groundId, ground.participants as any),
       ...(this.confidenceEnabled()
         ? await this.whatTheRecordHolds(groundId, ground.participants as any, isInitiator || isOrgAdmin)
         : {}),
@@ -1830,7 +1899,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
     if (!ground?.report?.releasedAt) throw new ForbiddenException('Report has not been released yet');
 
     const participant = ground.participants.find((p) => p.userId === requestingUserId);
-    if (!participant) throw new ForbiddenException('You are not a participant on this ground');
+    if (!participant) throw new ForbiddenException('You are not a participant on this check-in');
 
     await this.prisma.reportActivation.upsert({
       where: { groundId_participantId: { groundId, participantId: participant.id } },
@@ -1855,7 +1924,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
       where: { id: groundId },
       include: { participants: true },
     });
-    if (!ground) throw new NotFoundException('Ground not found');
+    if (!ground) throw new NotFoundException('Check-in not found');
     const isParty = ground.initiatorId === requestingUserId ||
       ground.participants.some((p) => p.userId === requestingUserId);
     // Non-parties (org admins, platform admins) can still see aggregate status.

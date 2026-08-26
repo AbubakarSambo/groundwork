@@ -214,7 +214,7 @@ export function HomePage() {
                 { param: 'cohort check-in',        label: 'Many people in the same role', desc: 'Many people in the same role check in against a shared question, on a recurring cadence.' },
                 { param: 'a shock just hit',       label: 'A shock just hit',         desc: 'A jarring event just happened. Get everyone\'s honest read before anyone decides anything.' },
                 { param: 'get a team back on the same page', label: 'Get a team back on the same page', desc: 'Each person gives their honest read before the group talks, so the conversation starts from a shared picture.' },
-                { param: 'describe your own situation', label: 'Describe your own situation', desc: 'Not sure which fits? Describe it in your own words and we will set up the right ground for you.' },
+                { param: 'describe your own situation', label: 'Describe your own situation', desc: 'Not sure which fits? Describe it in your own words and we will set up the right check-in for you.' },
               ].map(c => (
                 <div
                   key={c.param}

@@ -40,6 +40,32 @@ export function getInitials(firstName: string, lastName: string): string {
  * (contact-visibility toggle), and even when visible we identify people by name here,
  * not by a raw address. Null-safe: email may be null, user may be a pending invite.
  */
+/**
+ * THE LEAD'S OWN VIEW, WHERE AN ADDRESS IS A LEGITIMATE LAST RESORT. W-UX-4.
+ *
+ * `participantLabel` must never reach for the email, because a party's address can be hidden from
+ * the other parties and we identify people by name to each other regardless. But the LEAD invited
+ * these people by typing their addresses, so on the lead's pages the address is not a leak - and
+ * before this, half a dozen places put it in the NAME position instead of as a last resort. The
+ * audit's line: "Some people show as email addresses, others as names, in the same column."
+ *
+ * The order is what a person would say out loud: their name, else what they do here, else the
+ * address we have for them.
+ */
+export function personLabel(p: {
+  user?: { firstName?: string | null; lastName?: string | null } | null
+  roleAsDescribed?: string | null
+  email?: string | null
+} | null | undefined): string {
+  const name = [p?.user?.firstName, p?.user?.lastName].filter(Boolean).join(' ').trim()
+  if (name) return name
+  const role = p?.roleAsDescribed?.trim()
+  if (role) return role
+  const email = p?.email?.trim()
+  if (email) return email
+  return 'a teammate'
+}
+
 export function participantLabel(p: {
   user?: { firstName?: string | null; lastName?: string | null } | null
   roleAsDescribed?: string | null

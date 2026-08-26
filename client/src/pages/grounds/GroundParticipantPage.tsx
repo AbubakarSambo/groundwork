@@ -11,17 +11,18 @@ import { reportsApi } from '@/api/reports'
 import { documentsApi } from '@/api/documents'
 import { GroundChat } from '@/components/gw/GroundChat'
 import { whatThisGroundCanTellYou } from '@/lib/contextStrength'
-import { ContextStrength } from '@/components/gw/ContextStrength'
+import { ContextStrength, LEAD_HOLDS_MORE } from '@/components/gw/ContextStrength'
 import { Sec } from '@/components/gw/kit'
 import { groundTabs } from './ground-tabs'
 import { SoloReportBody } from '@/components/gw/SoloReportBody'
 import { BaselinePanel } from '@/components/gw/BaselinePanel'
 import { StartingPointPanel } from '@/components/gw/StartingPointPanel'
 import { GroundTabRow } from '@/components/gw/GroundTabRow'
-import { ObjectivePanel } from '@/components/gw/ObjectivePanel'
+import { ExpectationsPanel } from '@/components/gw/ExpectationsPanel'
+import { WHAT_YOU_CAN_UPLOAD, UPLOAD_ACCEPT_ATTR } from '@/lib/what-you-can-upload'
+import { SharedNote } from '@/components/gw/SharedNote'
 import { apiClient } from '@/api/client'
 import { participantLabel } from '@/lib/utils'
-import { alignmentLabel } from '@/lib/alignment'
 import { toast } from 'sonner'
 import { ResolutionPanel } from '@/components/gw/ResolutionPanel'
 
@@ -255,10 +256,10 @@ export function GroundParticipantPage() {
         <div style={{ maxWidth: 400, textAlign: 'center' }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 8 }}>Account not linked</div>
           <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 20 }}>
-            Your account is not linked to this ground. Please contact the ground admin.
+            Your account is not linked to this check-in. Please contact the check-in admin.
           </div>
           <button onClick={() => navigate('/grounds')} style={{ fontSize: 13, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit' }}>
-            Back to grounds
+            Back to check-ins
           </button>
         </div>
       </div>
@@ -329,9 +330,7 @@ export function GroundParticipantPage() {
    * differs by role rather than two tabs about the same thing.
    */
   const tabs = groundTabs({
-    isLead: false,
     contextEnabled,
-    hasBoard: !!(ground as any).boardRenders,
   }).map(t => {
     /**
      * This page's own keys predate the shared list and are not worth churning: `checkin` for the
@@ -354,10 +353,34 @@ export function GroundParticipantPage() {
       {/* Header */}
       <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'var(--gw-paper-2)', borderBottom: '1px solid var(--gw-border)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px' }}>
-          <span onClick={() => navigate('/grounds')} style={{ fontSize: 13, color: 'var(--gw-muted)', cursor: 'pointer', flexShrink: 0 }}>← Grounds</span>
+          <span onClick={() => navigate('/grounds')} style={{ fontSize: 13, color: 'var(--gw-muted)', cursor: 'pointer', flexShrink: 0 }}>← Check-ins</span>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ground.label}</div>
-            <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>Your contribution to this ground is yours until the report releases.</div>
+            {/*
+              WHICH OF THE TWO VIEWS YOU ARE ON, PERMANENTLY.
+              
+              The same check-in has two pages - the one that runs it and this one, your own account -
+              and a person can move between them from a small button. Neither page said which it was,
+              so somebody who had crossed over could not tell why what they were seeing had changed.
+              The sentence stays on screen rather than announcing itself once and vanishing.
+            */}
+            {/*
+              THE STATE LIVES IN THE HEADER ON THIS PAGE TOO.
+              
+              It was on the lead's page only, so the card below had to carry a session count for a
+              participant - and then the same count sat on the lead's page twice, once in each place.
+              The card is meant to hold two things: the brief, and who is in this. Everything about
+              where the check-in has got to belongs up here, on both pages, once.
+            */}
+            <div style={{ fontSize: 11, color: 'var(--gw-muted)', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <span>Your own account. Yours until the report releases.</span>
+              {totalSessions != null && (
+                <span>· Session {Math.min(completedCheckIns.length + 1, totalSessions)} of {totalSessions}</span>
+              )}
+              {(ground as any).daysLeft != null && (
+                <span>· {(ground as any).daysLeft} day{(ground as any).daysLeft === 1 ? '' : 's'} remaining</span>
+              )}
+            </div>
           </div>
           {/*
             THE OTHER HALF OF THE SWITCH.
@@ -419,11 +442,7 @@ export function GroundParticipantPage() {
             nextOpensAt={opensLater ? openAvailableFrom : null}
             onOpenSession={() => dueNow && probeSession.mutate(openCheckIn)}
             openPending={probeSession.isPending}
-            label={ground.label}
-            scenario={(ground as any).scenario}
             brief={(ground as any).brief}
-            alignment={alignmentLabel((ground as any).alignment)}
-            sessionsDone={completedCheckIns.length}
             /**
              * WHO IS IN THIS, for the person who could not see it. W13-5.
              *
@@ -467,19 +486,21 @@ export function GroundParticipantPage() {
         {/* MY RECORD TAB */}
         {tab === 'record' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {/**
-              * WHAT I AM WORKING TOWARDS, first on my own record, because it is the thing everything
-              * else on this tab is measured against.
-              *
-              * If the lead proposed it, this is where I accept it or say it in my own words - and until
-              * one of those happens, `mayBeReadAgainst` is false and the panel says so out loud.
-              */}
-            <ObjectivePanel
-              groundId={id!}
-              objective={(ground.participants ?? []).find((p: any) => p.userId === user?.id)?.objective}
-              canPropose={false}
-              isMine
-            />
+            {/*
+              WHAT IS EXPECTED OF ME IS ON CONTEXT, IN PLAIN VIEW, WITH EVERYBODY ELSE'S.
+              
+              An ObjectivePanel stood here with an Accept button and the line "Nothing is read against
+              this until you accept it or write your own". That is the old propose-and-accept model,
+              and it contradicted the one the product now runs on:
+              
+                "Participants should not be able to rewrite their targets or accept it. One person is
+                 doing this, we dont want chaos. But they can see it."
+              
+              Both models were live at once, on the same PersonObjective rows - a lead stated an
+              expectation, it published to Context as designed, and this page offered a button to
+              accept it. Seeing it is right; agreeing to it by form is not the mechanism. If they think
+              it is wrong they say so in their check-in, where it is probed and recorded.
+            */}
 
             {/*
               THE EXIT BELONGS AT THE EXIT, ON THIS PAGE TOO. W8-5, half-fixed.
@@ -517,6 +538,39 @@ export function GroundParticipantPage() {
                 </div>
               </div>
             )}
+
+              {/*
+                WHAT IS EXPECTED OF YOU, AS A STATE, BESIDE YOUR OWN SESSIONS.
+                
+                Who Sees What: a participant's Sessions tab is "their own sessions only, and their own
+                target". The sessions were already theirs alone; the target used to be an editing
+                panel with an Accept button, which is the model this product no longer runs on.
+                
+                So it is the same one line the lead's rows carry - set, seen, or nothing yet - and it
+                opens Context, where the words are published for everyone including them. The state
+                belongs next to the sessions it is read against; the words belong where everybody
+                reads the same copy.
+              */}
+              {(() => {
+                const mine = (ground.participants ?? []).find((p: any) => p.userId === user?.id)
+                const o = mine?.objective
+                return (
+                  <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '13px 16px' }}>
+                    <Sec title="What is expected of you" />
+                    <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6 }}>
+                      {!o?.text?.trim()
+                        ? 'Nothing yet. This comes out of the lead\u2019s own check-in, where they are asked what they expect of each person.'
+                        : o.text}
+                    </div>
+                    <button
+                      onClick={() => setTab('docs')}
+                      style={{ marginTop: 8, fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600, textDecoration: 'underline' }}
+                    >
+                      {o?.text?.trim() ? 'See it in context, with everyone else\u2019s' : 'Open Context'}
+                    </button>
+                  </div>
+                )
+              })()}
 
             {/* Session history summary - always visible */}
             {(myRecord?.sessions ?? []).length > 0 && (
@@ -575,7 +629,7 @@ export function GroundParticipantPage() {
                 )}
 
                 <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 10 }}>
-                  Only you see this. It is never shown to the lead or to anybody else in this ground.
+                  Only you see this. It is never shown to the lead or to anybody else in this check-in.
                 </div>
               </div>
             )}
@@ -635,7 +689,7 @@ export function GroundParticipantPage() {
                 <div style={{ borderTop: '1px solid rgba(255,255,255,.1)', paddingTop: 12, marginTop: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
                   <div style={{ fontSize: 11, color: 'rgba(255,255,255,.4)' }}>
                     {mySoloReport.shared
-                      ? 'Shared with all parties on this ground'
+                      ? 'Shared with all parties in this check-in'
                       : 'Private - only you can see this'}
                   </div>
                   <button
@@ -822,6 +876,25 @@ export function GroundParticipantPage() {
         {/* DOCUMENTS TAB */}
         {tab === 'docs' && (
           <div>
+            {/*
+              EXPECTATIONS, IN PLAIN VIEW. GW-EXP-2.
+              
+              First on the tab, above the uploads and the notes, because it is the thing this check-in
+              is actually measured against - and because publishing it is what makes people aware of it
+              rather than a display of something they were told elsewhere.
+            */}
+{/*
+              THE FRAMING SITS ABOVE THE EXPECTATIONS, because it answers the earlier question. What
+              this is about comes before what is expected of each person - a reader who does not know
+              the first cannot judge the second.
+            */}
+            <SharedNote text={(ground.leadContextNotes ?? []).find((n: any) => n.audience === 'EVERYONE' && !n.participantId)?.text} leadName={participantLabel(ground.participants?.find((p: any) => p.partyType === 'INITIATOR'))} />
+                        <ExpectationsPanel
+              groundId={id!}
+              parties={(ground.participants ?? []) as any[]}
+              viewerUserId={user?.id}
+            />
+
             <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 10 }}>{contextEnabled ? 'Context' : 'Documents'}</div>
 
             {/* G25 + G26: what the ground can tell you, and an honest line about the
@@ -829,10 +902,23 @@ export function GroundParticipantPage() {
             {contextEnabled && contextStrength && (
               <ContextStrength read={contextStrength} closedNote={!isInitiator} />
             )}
+            {/*
+              THE HONESTY LINE SURVIVES THE FLAG BEING OFF, because that is when it matters most.
+              
+              It lived inside ContextStrength, which is gated on CONTEXT_ENABLED - so it disappeared in
+              exactly the state where a participant sees least: with the flag off every document is
+              private to its uploader whatever its column says. The lead genuinely holds more, and
+              nothing on screen said so.
+            */}
+            {!contextEnabled && !isInitiator && (
+              <div style={{ background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '12px 14px', marginBottom: 16, fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+                {LEAD_HOLDS_MORE}
+              </div>
+            )}
             <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.6, marginBottom: 14, background: 'white', borderRadius: 8, padding: '10px 12px', border: '1px solid var(--gw-border)' }}>
               {contextEnabled
-                ? "This is where the background lives. Anything the lead has opened to the ground appears here, and your check-in has read it. What you upload is yours until the report is released, and it shapes the questions you get asked."
-                : "Documents the admin has shared appear here. Your uploads are part of your contribution to this ground's record until the report is released."}
+                ? "This is where the background lives. Anything the lead has opened to the check-in appears here, and your check-in has read it. What you upload is yours until the report is released, and it shapes the questions you get asked."
+                : "Documents the admin has shared appear here. Your uploads are part of your contribution to this record until the report is released."}
             </div>
 
             <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 10, lineHeight: 1.6 }}>
@@ -844,8 +930,8 @@ export function GroundParticipantPage() {
               onClick={() => document.getElementById('gp-doc-upload')?.click()}
             >
               <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)' }}>Upload a supporting document</div>
-              <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 3 }}>PDF, DOCX, JPEG, PNG</div>
-              <input type="file" id="gp-doc-upload" style={{ display: 'none' }} accept=".pdf,.docx,.jpeg,.jpg,.png"
+              <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 3 }}>{WHAT_YOU_CAN_UPLOAD}</div>
+              <input type="file" id="gp-doc-upload" style={{ display: 'none' }} accept={UPLOAD_ACCEPT_ATTR}
                 onChange={e => { const f = e.target.files?.[0]; if (f) uploadDoc.mutate(f); e.target.value = '' }} />
             </div>
 
@@ -870,6 +956,25 @@ export function GroundParticipantPage() {
         {tab === 'settings' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 4 }}>Settings</div>
+            {/*
+              SAID OUTRIGHT, ONCE, AT THE TOP.
+              
+              Everything on this tab is read-only for a party, and each panel knew it - `canState` and
+              `canRecord` are both false - but the tab never said so. A screen full of things you
+              cannot change, with nothing explaining why, reads as either broken or as a permission
+              you have somehow lost.
+              
+              And the reason matters more than the fact: a party stating their own yardstick would be
+              the person being read setting their own measure, which is the one comparison the report
+              exists to make. So the sentence gives the reason and names the way to disagree, because
+              there is one and it is not a form.
+            */}
+            <div style={{ background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '11px 13px', fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+              Nothing on this page is yours to change. What doing well looks like, and where this
+              stood at the start, are set by the person running the check-in - so that what you are
+              read against is not something you set yourself. You can see all of it, and if you
+              think any of it is wrong, say so in your check-in: that goes on the record too.
+            </div>
 
             {/**
               * THE YARDSTICK, READ-ONLY. `canState` is false: stating what doing well looks like is
@@ -899,7 +1004,7 @@ export function GroundParticipantPage() {
 
             <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, overflow: 'hidden' }}>
               <div style={{ padding: '13px 16px', borderBottom: '1px solid var(--gw-bg)' }}>
-                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Ground</div>
+                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Check-in</div>
                 <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{ground.label}</div>
               </div>
               <div style={{ padding: '13px 16px', borderBottom: '1px solid var(--gw-bg)' }}>
@@ -908,7 +1013,7 @@ export function GroundParticipantPage() {
               </div>
               <div style={{ padding: '13px 16px', borderBottom: '1px solid var(--gw-bg)' }}>
                 <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Your role</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{myParticipant?.roleAsDescribed ?? 'In this ground'}</div>
+                <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{myParticipant?.roleAsDescribed ?? 'In this check-in'}</div>
               </div>
               <div style={{ padding: '13px 16px', borderBottom: '1px solid var(--gw-bg)' }}>
                 <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Status</div>
@@ -952,7 +1057,7 @@ export function GroundParticipantPage() {
                   <div style={{ border: '1px solid var(--gw-green-b-soft)', borderRadius: 10, padding: '14px 16px', marginBottom: 12, background: 'var(--gw-green-bg)' }}>
                     <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-green-t)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 6 }}>Add one more free session</div>
                     <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6, marginBottom: 12 }}>
-                      Not ready to pay yet? Keep using Groundwork until you are confident it is delivering value. Add another free session and continue your Ground.
+                      Not ready to pay yet? Keep using Groundwork until you are confident it is delivering value. Add another free session and continue your Check-in.
                     </div>
                     <button
                       onClick={() => claimFreeExtensionMut.mutate()}
@@ -972,7 +1077,7 @@ export function GroundParticipantPage() {
                 <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
                   <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-navy)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 6 }}>Upgrade organisation</div>
                   <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6, marginBottom: 12 }}>
-                    Your team is getting value from Groundwork. Unlock unlimited Grounds and unlimited sessions for everyone in your organisation with one simple monthly subscription.
+                    Your team is getting value from Groundwork. Unlock unlimited check-ins and unlimited sessions for everyone in your organisation with one simple monthly subscription.
                   </div>
                   <button
                     onClick={() => createSubscriptionMut.mutate('STARTER')}
@@ -1042,7 +1147,7 @@ export function GroundParticipantPage() {
           <div style={{ background: 'white', borderRadius: 12, padding: 24, maxWidth: 380, width: '100%' }}>
             <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gw-dark)', marginBottom: 8 }}>Share your private report?</div>
             <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 6 }}>
-              Your private report will become visible to all other parties on this ground:
+              Your private report will become visible to all other parties on this check-in:
             </div>
             <ul style={{ margin: '0 0 14px', paddingLeft: 18 }}>
               {(ground?.participants ?? []).filter((p: any) => p.userId !== user?.id).map((p: any) => (

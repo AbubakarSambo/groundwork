@@ -88,23 +88,60 @@ describe('GW-BOARD-WRITE-01: only the initiator sets the frame', () => {
   });
 });
 
-describe('GW-BOARD-WRITE-02: no writes on a ground that has no board', () => {
-  it('the initiator cannot add a target to a PRIVATE ground (tripwire)', async () => {
+describe('GW-BOARD-WRITE-02: no writes to a section the board does not have', () => {
+  it('the initiator CAN add a target to a private check-in, now that it has a board', async () => {
+    /**
+     * REVERSED, and it is the point of the change rather than a casualty of it.
+     *
+     * This asserted that a private check-in refused a target, because a private check-in had no board to
+     * show one on. That was the defect: the situations most likely to be opened private are the ones
+     * that most need something to track against, and they were the ones denied it.
+     *
+     * The gate that remains is the SECTION - a check-in whose board has no objectives section still
+     * refuses one, which is asserted below with SNAPSHOT.
+     */
     const { service, objectiveCreate } = makeService({ mode: GroundMode.PRIVATE });
+    await service.createObjective('g1', 'lead', { name: 'x' });
+    expect(objectiveCreate).toHaveBeenCalled();
+  });
+
+  it('the initiator cannot add a target to a ground whose board has no objectives section', async () => {
+    /**
+     * SNAPSHOT now, and this example has moved twice - which is the point of writing down why.
+     *
+     * It was PULSE_CHECK, until a recurring check-in became the place a team states the number it is
+     * working to. It was then DRIFT, until sensing gained an objectives section, because a drift is
+     * also a situation where you agree what needs to happen and track it.
+     *
+     * SNAPSHOT is the honest example and should be the last one: it is one session with no objective
+     * by design, so its section list is empty and always will be. If a future change gives it a
+     * target, this test SHOULD fail - that would mean the one single-round situation in the product
+     * had quietly become a run.
+     *
+     * The rule itself has never changed: the gate is the SECTION, not the board. Sensing grounds
+     * render a board, so asking "does this ground have a board" would let a target be written onto a
+     * surface that never shows it.
+     */
+    const { service, objectiveCreate } = makeService({ scenario: GroundScenario.SNAPSHOT });
     await expect(service.createObjective('g1', 'lead', { name: 'x' }))
       .rejects.toBeInstanceOf(ForbiddenException);
     expect(objectiveCreate).not.toHaveBeenCalled();
   });
 
-  it('the initiator cannot add a target to a sensing-family ground even in SHARED mode', async () => {
+  it('but a recurring check-in CAN state a target, because its board shows one', async () => {
+    /** The other half, which is the whole point of moving PULSE_CHECK out of sensing. */
     const { service, objectiveCreate } = makeService({ scenario: GroundScenario.PULSE_CHECK });
-    await expect(service.createObjective('g1', 'lead', { name: 'x' }))
-      .rejects.toBeInstanceOf(ForbiddenException);
-    expect(objectiveCreate).not.toHaveBeenCalled();
+    await service.createObjective('g1', 'lead', { name: 'Reach 400k in new contracts' });
+    expect(objectiveCreate).toHaveBeenCalled();
   });
 
-  it('a party cannot toggle poll availability on a board-less ground', async () => {
-    const { service } = makeService({ mode: GroundMode.PRIVATE });
+  it('a party cannot toggle poll availability where the board has no poll', async () => {
+    /**
+     * The example moved from mode to section, for the same reason as the target above: private no longer
+     * means board-less. SNAPSHOT is the honest example - one round, so nothing to schedule, so no poll
+     * section and never one.
+     */
+    const { service } = makeService({ scenario: GroundScenario.SNAPSHOT });
     await expect(service.togglePollAvailability('g1', 'opt1', 'lead'))
       .rejects.toBeInstanceOf(ForbiddenException);
   });

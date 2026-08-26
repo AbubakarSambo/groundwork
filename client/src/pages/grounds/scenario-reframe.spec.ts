@@ -26,6 +26,12 @@ const ENUM_KEYS = [
    * product silently created the wrong kind of ground.
    */
   'OPEN_READ',
+  /**
+   * One honest read from everyone, once. Added because a person wanting a single temperature read
+   * had to open the recurring one and abandon it after a session - PULSE_CHECK's interview asks what
+   * has changed since last time, so it cannot be that.
+   */
+  'SNAPSHOT',
 ]
 
 describe('scenario reframe is display-only', () => {
@@ -42,23 +48,38 @@ describe('scenario reframe is display-only', () => {
 
   it('the three label mismatches stay fixed', () => {
     const byScenario = (s: string) => SCENARIOS.filter(c => c.scenario === s)
+    /**
+     * THESE TWO NO LONGER PIN A LITERAL, BECAUSE THE LITERALS THEY PINNED ARE GONE.
+     *
+     * This spec fixed a real mismatch in its day: DRIFT rendered as "New direction". It then froze
+     * the replacement wording, which made it the thing standing in the way of the later decision
+     * that all three surfaces name a situation once, from `scenario-catalog.ts`. It also pinned PIP
+     * to "Performance improvement plan", so the rule that the word "performance" stays out of copy
+     * the subject reads could not be applied here without a test going red.
+     *
+     * The label is now DERIVED from the catalog rather than written here, so the two cannot
+     * disagree - see every-situation-is-offered.spec.ts, which asserts that derivation and the
+     * absence of "performance". What survives here is what this spec was actually for: the old
+     * wrong label must not come back.
+     */
     expect(byScenario('DRIFT')[0].label).not.toBe('New direction')
-    expect(byScenario('DRIFT')[0].label).toBe("Something's off track")
-    expect(byScenario('PIP')[0].label).toBe('Performance improvement plan')
+    expect(byScenario('PIP')[0].label).not.toMatch(/performance/i)
     /**
      * REALIGN_TEAM NOW HAS EXACTLY ONE CARD, and that is the fix.
      *
      * It used to have two: its own honest label, plus "Describe your own situation" piggybacking on
      * it. That conflated the card somebody clicked with the scenario being created - so when the
-     * free-text router failed, the ground silently became a REALIGN_TEAM one, with that scenario's
+     * free-text router failed, the check-in silently became a REALIGN_TEAM one, with that scenario's
      * board, questions and end states, while the screen said the person was getting "a general
      * ground". A cohort of managers who never work together would have been asked to get a team back
      * on the same page.
      *
      * Describe-your-own now carries OPEN_READ, which exists precisely for "the shape is not known".
      */
+    // The COUNT is the fix, not the wording: exactly one card, and never the old "Other".
+    // The wording now comes from the catalog ("People see it differently").
     const realign = byScenario('REALIGN_TEAM')
-    expect(realign.map(c => c.label)).toEqual(['Get a team back on the same page'])
+    expect(realign).toHaveLength(1)
     expect(realign.map(c => c.label)).not.toContain('Other')
 
     const describeOwn = SCENARIOS.filter(c => c.cardKey === 'DESCRIBE_OWN')
@@ -66,12 +87,33 @@ describe('scenario reframe is display-only', () => {
     expect(describeOwn[0].scenario).toBe('OPEN_READ')
   })
 
-  it('the previously unsurfaced scenarios are now cards; CRISIS stays retired', () => {
+  it('every previously unsurfaced scenario is now a card, CRISIS_ALIGNMENT included', () => {
+    /**
+     * "CRISIS STAYS RETIRED" IS REVERSED, AND THIS RECORDS WHY, BECAUSE THE ORIGINAL GAVE NO REASON.
+     *
+     * Nothing in the engine treats it as retired. It has a prompt pack (CRISIS_PACK_COMBINED), a
+     * board family, its own end states, its own invite copy, a 60-day default duration and a
+     * willingness gate. It was also already reachable from outside: the routing map resolves
+     * `?scenario=a+big+decision` from the marketing site. So the only thing "retired" achieved was
+     * that a person already signed in could not choose a situation the product fully supports, and
+     * a person following a link could.
+     *
+     * THE ONE REASON THAT WOULD HAVE JUSTIFIED IT, CHECKED AND FOUND NOT TO HOLD. CRISIS_ALIGNMENT
+     * is one of three CONTRAINDICATED_SCENARIOS (grounds.service.ts) that are supposed to be
+     * screened for active legal proceedings, fear of retaliation, and a decision already taken. If
+     * the picker could not run that screen, adding the card would ship an unscreened conflict
+     * ground. But no client surface anywhere collects `contraindicationAnswers` - grepping the whole
+     * of client/src returns nothing - so the screen is skipped for DRIFT and RECOGNITION too, and
+     * both of those have had cards all along. Keeping this one hidden protected nobody.
+     *
+     * That gap is real and is not fixed here: it is a missing screen on three scenarios, not a
+     * missing card on one.
+     */
     const scenarios = SCENARIOS.map(c => c.scenario)
     expect(scenarios).toContain('NEW_MANAGER')
     expect(scenarios).toContain('WORKPLAN_BUDGET')
     expect(scenarios).toContain('RECOGNITION')
-    expect(scenarios).not.toContain('CRISIS_ALIGNMENT')
+    expect(scenarios).toContain('CRISIS_ALIGNMENT')
   })
 
   it('every scenario card carries recognizer sub-examples (describe-your-own may omit)', () => {

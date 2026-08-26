@@ -18,6 +18,20 @@ import type { ContextStrengthRead } from '@/lib/contextStrength'
  * Every "cannot" line names something you can add, so they are worth keeping - as
  * the answer to "what would make this stronger", not as the headline.
  */
+/**
+ * THE HONESTY LINE, HOISTED OUT SO IT CAN BE SHOWN WITHOUT THE REST.
+ *
+ * It used to render only inside this component, which is gated on CONTEXT_ENABLED - so it vanished
+ * in exactly the state where it is MOST true. With the flag off every document is private to whoever
+ * uploaded it, whatever its visibility column says, so a participant is definitely looking at less
+ * than the lead is and nothing on screen said so.
+ *
+ * G26's "visibly absent": a participant should know the lead holds context they cannot read, rather
+ * than believing they are looking at everything.
+ */
+export const LEAD_HOLDS_MORE =
+  'The lead may hold context for this check-in that is not shown here. That is by design, and it never includes anything you have said.'
+
 export function ContextStrength({ read, closedNote }: {
   read: ContextStrengthRead
   /**
@@ -30,7 +44,7 @@ export function ContextStrength({ read, closedNote }: {
   return (
     <div style={{ background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
       <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--gw-sub)', marginBottom: 8 }}>
-        What this ground can tell you
+        What this check-in can tell you
       </div>
 
       {read.can.length > 0 && (
@@ -55,8 +69,7 @@ export function ContextStrength({ read, closedNote }: {
 
       {closedNote && (
         <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--gw-border)' }}>
-          The lead may hold context for this ground that is not shown here. That is by
-          design, and it never includes anything you have said.
+          {LEAD_HOLDS_MORE}
         </div>
       )}
     </div>

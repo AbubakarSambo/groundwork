@@ -7,7 +7,7 @@ import { describe, it, expect } from 'vitest'
  *
  * "The board is the design system; the rest has not caught up." The board's pieces were
  * extracted into `components/gw/kit.tsx` - Zone, Sec, Card, Row, Pill, Stat - and the
- * grounds list, the ground page and the record tab now use them.
+ * grounds list, the check-in page and the record tab now use them.
  *
  * The thing that made five variants possible is not laziness, it is that hand-rolling a
  * section label is four lines and importing one is one, so the four lines keep winning.

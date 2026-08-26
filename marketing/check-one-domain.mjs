@@ -207,5 +207,47 @@ if (existsSync(home)) {
   console.log(`[one-palette] all ${styledPages} pages ship the design tokens, inlined or linked.`);
 }
 
+/**
+ * NO TYPOGRAPHIC DASHES OR CURLY QUOTES IN ANYTHING A READER SEES.
+ *
+ * A standing copy rule for this site: em dashes, en dashes and smart quotes are out. They arrive
+ * by accident rather than by decision - pasted from a doc, or produced by an editor that
+ * "improves" a hyphen - so a one-time sweep only holds until the next paste. This checks the
+ * BUILT pages, which is the copy that actually ships.
+ *
+ * Scoped to visible text: script, style and comments are stripped first, because a dash inside a
+ * code comment is not copy and failing the build over one would train people to ignore this.
+ */
+{
+  const BANNED = [
+    ['\u2014', 'em dash'],
+    ['\u2013', 'en dash'],
+    ['\u2018', 'left single quote'],
+    ['\u2019', 'right single quote'],
+    ['\u201C', 'left double quote'],
+    ['\u201D', 'right double quote'],
+  ];
+  let checked = 0;
+  for (const f of files.filter((x) => x.endsWith('index.html'))) {
+    const page = '/' + relative(DIST, f).replace(/index\.html$/, '').replace(/\/$/, '');
+    const visible = readFileSync(f, 'utf8')
+      .replace(/<script[\s\S]*?<\/script>/g, '')
+      .replace(/<style[\s\S]*?<\/style>/g, '')
+      .replace(/<!--[\s\S]*?-->/g, '')
+      .replace(/<[^>]+>/g, ' ');
+    for (const [ch, name] of BANNED) {
+      const n = visible.split(ch).length - 1;
+      if (n > 0) {
+        /** The surrounding words, so the fix does not need a hunt through the page. */
+        const at = visible.indexOf(ch);
+        const near = visible.slice(Math.max(0, at - 45), at + 45).replace(/\s+/g, ' ').trim();
+        fail(`${page || '/'} ships ${n} ${name}${n > 1 ? 's' : ''} in visible copy. Use a plain hyphen or a straight quote. Near: "${near}"`);
+      }
+    }
+    checked++;
+  }
+  console.log(`[plain-punctuation] all ${checked} pages ship without em dashes, en dashes or curly quotes.`);
+}
+
 console.log(`[one-domain] sitemap, canonicals and social tags all on ${SITE}.`);
 console.log(`[one-nav] all ${navsByPageCount} pages share one nav of ${navLinkCount} real links, and no page hides a copy of another.`);

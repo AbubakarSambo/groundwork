@@ -201,8 +201,80 @@ export function namesVisibleTo(
  * "The initiator" at the start of a sentence and "the initiator" mid-sentence,
  * and a label that only half-resolves reads worse than one that never does.
  */
-export function withNames(text: string, visible: Map<string, string>, allLabels?: Iterable<string>): string {
+/**
+ * The label belonging to the person reading, so the report can address them directly.
+ *
+ * `namesVisibleTo` already computes `isSelf` and then throws it away, mapping the reader's own
+ * label to their own name like anybody else's. So a person opened their private report and read
+ * "Hafsah Jumare described their role as building a new MVP" - about themselves, in the third
+ * person, with a pronoun that is not even theirs. Nothing was broken; the reader was simply never
+ * distinguished from the people being described to them.
+ */
+export function viewerLabelOf(
+  viewerParticipantId: string | null | undefined,
+  parties: LabelParty[],
+): string | null {
+  if (!viewerParticipantId) return null;
+  return labelsForParties(parties).get(viewerParticipantId) ?? null;
+}
+
+export function withNames(
+  text: string,
+  visible: Map<string, string>,
+  allLabels?: Iterable<string>,
+  opts?: { viewerLabel?: string | null },
+): string {
   if (!text) return text;
+
+  /**
+   * SECOND PERSON FOR THE READER, BEFORE ANY NAME GOES BACK.
+   *
+   * Runs first so the viewer's label is spent on "you" and cannot then be matched by the name
+   * loop below. Possessive before bare, or "the sales lead's account" becomes "you's account".
+   *
+   * THIS IS THE ONLY PLACE THIS CAN BE FIXED, which is worth stating because the obvious answer
+   * is wrong. "Tell the model to write in second person" cannot work: ONE report is generated in
+   * labels and then rendered per reader, each with their own name substitutions. At generation
+   * time there is no reader to address. So the grammar has to be handled here or not at all.
+   */
+  const viewerLabel = opts?.viewerLabel?.trim();
+  if (viewerLabel) {
+    const esc = viewerLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    text = text
+      .replace(new RegExp(`\\bthe ${esc}'s\\b`, 'gi'), 'your')
+      .replace(new RegExp(`\\b${esc}'s\\b`, 'gi'), 'your')
+      .replace(new RegExp(`\\bthe ${esc}\\b`, 'gi'), 'you')
+      .replace(new RegExp(`\\b${esc}\\b`, 'gi'), 'you')
+      /**
+       * AND THE PRONOUN THAT FOLLOWS, NARROWLY.
+       *
+       * The model writes about every party in the third person, so a label swapped for "you"
+       * leaves the pronoun behind: the live example was "Hafsah Jumare described their role",
+       * which becomes "you described their role" - fixing the name and keeping the wrongness.
+       *
+       * AN EXPLICIT VERB LIST, and it started as `\w+ed` which was not narrow at all - almost
+       * every past-tense verb ends in -ed, so the rule fired on nearly anything. A bite-check
+       * broadening it to any word changed no test result, which is how the overstatement showed up.
+       *
+       * These are verbs of ACCOUNTING - giving your version of something. After one of them,
+       * "their" can only be the speaker's own. After an ordinary verb it usually is not:
+       * "you emailed their manager" is about somebody else's manager and is already correct.
+       */
+      .replace(
+        /\byou (described|said|stated|gave|reported|characterised|characterized|framed|put|holds|held|has|have) their\b/gi,
+        (_m, verb) => `you ${verb} your`,
+      );
+
+    /**
+     * AND A SENTENCE STILL STARTS WITH A CAPITAL.
+     *
+     * "The sales lead described..." becomes "you described..." because the label was lowercase
+     * mid-phrase and the replacement inherits nothing about position. Found by a test asserting
+     * the whole sentence rather than just that the name was gone - checking only for the absence
+     * of "Hafsah" would have passed on a sentence beginning with a lowercase letter.
+     */
+    text = text.replace(/(^|[.!?]\s+|\n\s*)(you|your)\b/g, (_m, lead, word) => `${lead}${word[0].toUpperCase()}${word.slice(1)}`);
+  }
   let out = text;
   const labels = [...visible.keys()].sort((a, b) => b.length - a.length);
   for (const label of labels) {

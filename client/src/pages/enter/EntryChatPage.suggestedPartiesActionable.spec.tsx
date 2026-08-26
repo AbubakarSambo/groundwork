@@ -5,7 +5,7 @@ import { dirname, join } from 'node:path'
 
 /**
  * #1a: suggestedParties/mentionedPeople used to render as passive text with
- * no action. The viewer of this page is always the ground's future initiator
+ * no action. The viewer of this page is always the check-in's future initiator
  * (this page only ever runs pre-ground; whoever commits becomes initiatorId -
  * see entry.service.ts commitInner), so they get a real "Add them" affordance
  * that queues the person into the same inviteAdded contributor list the

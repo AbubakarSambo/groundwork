@@ -1,25 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsEnum, IsInt, Min, IsOptional, MaxLength, IsBoolean, ValidateNested } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsString, IsNotEmpty, IsEnum, IsInt, Min, IsOptional, MaxLength, IsBoolean } from 'class-validator';
 import { GroundScenario, GroundMoment, Cadence, GroundMode } from '@prisma/client';
 
-/** GW-69: contraindication screening answers for conflict-scenario grounds. */
-export class ContraindicationAnswersDto {
-  @ApiPropertyOptional({ description: 'Are there active legal proceedings related to this situation?' })
-  @IsOptional()
-  @IsBoolean()
-  legalProceedings?: boolean;
-
-  @ApiPropertyOptional({ description: 'Does anyone involved fear retaliation for participating?' })
-  @IsOptional()
-  @IsBoolean()
-  fearOfRetaliation?: boolean;
-
-  @ApiPropertyOptional({ description: 'Has a decision already been made and is this process performative?' })
-  @IsOptional()
-  @IsBoolean()
-  decisionAlreadyMade?: boolean;
-}
 
 export class CreateGroundDto {
   @ApiProperty({ example: 'New cofounder - Ada' })
@@ -88,13 +70,6 @@ export class CreateGroundDto {
   @IsInt()
   @Min(1)
   freeParticipantCap?: number;
-
-  /** GW-69: contraindication screening for DRIFT / RECOGNITION / CRISIS_ALIGNMENT. */
-  @ApiPropertyOptional({ type: ContraindicationAnswersDto })
-  @IsOptional()
-  @ValidateNested()
-  @Type(() => ContraindicationAnswersDto)
-  contraindicationAnswers?: ContraindicationAnswersDto;
 
   /** Optional contributor access code - grants a free ground when valid. */
   @ApiPropertyOptional({ example: 'COAMANA-2026', description: 'Contributor access code granting a free ground creation' })

@@ -26,7 +26,12 @@ function makeService(prismaOverrides: any) {
     checkIn: { findMany: jest.fn(async () => []) },
   };
   const prisma = { ...base, ...prismaOverrides };
-  return new ReportsService(prisma, {} as any, {} as any, {} as any, {} as any, MOCK_USAGE, {} as any);
+  /**
+   * `grounds` is the 7th constructor argument and was `{}` here. It is stubbed now because the released
+   * report names anyone who declined the round, which reads `getSessionProgress`. Returning null is the
+   * honest default for these fixtures: no round in progress, so nobody declined.
+   */
+  return new ReportsService(prisma, {} as any, {} as any, {} as any, {} as any, MOCK_USAGE, { getSessionProgress: jest.fn(async () => null) } as any);
 }
 
 const releasedReport = {

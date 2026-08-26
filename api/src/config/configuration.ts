@@ -53,7 +53,23 @@ export const appConfig = registerAs("app", () => ({
    * for anything that exists. The test that matters is the one that proves that,
    * not the one that proves the feature works.
    */
-  contextEnabled: process.env.CONTEXT_ENABLED === "true",
+  /**
+   * ON. Her decision: "context is always enabled."
+   *
+   * It shipped behind a flag while the shape of the page was still being decided, and the flag was
+   * never turned on - so the tab said Documents, every document stayed private to whoever uploaded it
+   * whatever its visibility column said, and the context chat was hidden. A large amount of built work
+   * sat dark, and the product could not do the thing the Context page exists for: let a lead share the
+   * brief so everybody's questions are about the real situation.
+   *
+   * SAFE TO FLIP RETROACTIVELY, and this is why: while it was off, `setVisibility` threw before doing
+   * anything, so no document anywhere could have been marked Open or Closed. Every row is Own. Turning
+   * it on reveals nothing that was previously hidden - it only lets people start choosing.
+   *
+   * The env var still overrides, so it can be turned off in an emergency without a deploy. Nothing
+   * sets it, and nothing should.
+   */
+  contextEnabled: process.env.CONTEXT_ENABLED !== "false",
   /**
    * G30-G33. Off is today's product: the specificity signal, unchanged. On, the
    * same measurement is said about the picture instead of about the person, and

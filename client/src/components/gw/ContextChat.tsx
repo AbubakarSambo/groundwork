@@ -81,7 +81,7 @@ export function ContextChat({ groundId }: { groundId: string }) {
         onClick={start}
         style={{ background: 'none', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '9px 14px', fontSize: 12.5, fontWeight: 600, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', marginBottom: 16 }}
       >
-        Work out what this ground is missing →
+        Work out what this check-in is missing →
       </button>
     )
   }
@@ -90,7 +90,7 @@ export function ContextChat({ groundId }: { groundId: string }) {
     <div style={{ background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '14px 16px', marginBottom: 16 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
         <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--gw-sub)' }}>
-          What this ground is missing
+          What this check-in is missing
         </div>
         <button
           onClick={() => setOpen(false)}
@@ -106,7 +106,7 @@ export function ContextChat({ groundId }: { groundId: string }) {
         Saying it in the chat itself would mean saying it every turn.
       */}
       <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.6, marginBottom: 12, paddingBottom: 10, borderBottom: '1px solid var(--gw-border)' }}>
-        This is about setting the ground up, not about anybody in it. Nothing here goes into a
+        This is about setting the check-in up, not about anybody in it. Nothing here goes into a
         report or gets compared with what anyone said, and nothing is saved until you say so.
       </div>
 

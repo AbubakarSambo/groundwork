@@ -7,16 +7,16 @@ import { useState, useRef, useEffect } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/auth'
-import { apiClient } from '@/api/client'
 import { groundsApi } from '@/api/grounds'
 import { useEntryStore } from '@/stores/entry'
 import { useFeedbackStore } from '@/stores/feedback'
+import { feedbackApi } from '@/api/feedback'
 import type { Ground } from '@/types'
 import { alignmentShort } from '@/lib/alignment'
 
 const NAV_ITEMS = [
   {
-    label: 'Grounds',
+    label: 'Check-ins',
     to: '/grounds',
     icon: (active: boolean) => (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -64,7 +64,15 @@ const NAV_ITEMS = [
     ),
   },
   {
-    label: 'Admin',
+    /**
+     * "ADMIN" MEANT TWO THINGS AND THIS WAS THE OTHER ONE. W-UX-3.
+     *
+     * The list page's header carries a pill saying what YOU are in this organisation - "Admin" or
+     * "Team member" - and this rail item, pointing at Groundwork's own back office, wore the
+     * identical word one inch away. Renaming the page's link and leaving this one would have moved
+     * the collision rather than removed it.
+     */
+    label: 'Platform ops',
     to: '/admin',
     // Groundwork's own back-office, NOT the org admin's area. The route is
     // wrapped in RequirePlatformAdmin, so gating this on `adminOnly` showed
@@ -171,14 +179,49 @@ function FeedbackWidget() {
     return false
   }
 
+  /**
+   * WHY THE SEND BUTTON IS GREY. W-UX-7.
+   *
+   * Three different conditions, one per tab, and none of them said so - the button just sat at 38%
+   * opacity. The "something went wrong" tab was the worst of them: it wants five characters and a
+   * person who typed "bug" was refused in silence, on the form whose whole purpose is telling us
+   * when something is wrong.
+   *
+   * Empty is not "invalid", it is "not started", so nothing is said until they have begun.
+   */
+  function whyNotValid(): string | null {
+    if (valid()) return null
+    if (tab === 'reaction') return 'Pick one to send.'
+    if (tab === 'build')    return 'Pick what you need built.'
+    if (tab === 'wrong')    return wrongText.trim().length === 0 ? null : 'A few more words, so we can find it.'
+    return null
+  }
+
   async function submit() {
+    /**
+     * THE SHAPE THE SERVER ACTUALLY ACCEPTS. W-UX-C.
+     *
+     * This used to send `tab: 'build'`, no `pill` at all, and the chosen option under `buildPick` -
+     * against a DTO that requires `tab` from a fixed set, requires `pill`, and has no idea what
+     * `buildPick` is. So every submission was rejected with a 400 and the table has never held a
+     * single row. Not one of the widget's option strings appeared in the server's list either: two
+     * vocabularies for one field, with no overlap.
+     *
+     * `pill` is WHAT THEY PICKED and `text` is WHAT THEY WROTE, which is what the DTO has always
+     * meant. The contact address goes into `text` rather than being dropped, because somebody who
+     * leaves one is asking to be replied to.
+     */
+    const pill =
+      tab === 'reaction' ? reaction
+      : tab === 'build'  ? buildPick
+      : 'Something went wrong'
+    const written = tab === 'build' ? buildDetail : tab === 'wrong' ? wrongText : ''
+    const text = [written.trim(), contactEmail.trim() ? `Contact: ${contactEmail.trim()}` : '']
+      .filter(Boolean).join('\n\n')
     const payload = {
-      tab,
-      reaction: tab === 'reaction' ? reaction : undefined,
-      buildPick: tab === 'build' ? buildPick : undefined,
-      buildDetail: tab === 'build' ? buildDetail : undefined,
-      wrongText: tab === 'wrong' ? wrongText : undefined,
-      contactEmail: contactEmail || undefined,
+      tab: tab === 'build' ? 'build_request' : tab === 'wrong' ? 'something_went_wrong' : 'reaction',
+      pill,
+      text: text || undefined,
     }
     /**
      * "SWALLOW - BEST EFFORT" IS HOW THIS HID FOR MONTHS.
@@ -195,7 +238,15 @@ function FeedbackWidget() {
      * from a static analysis rule.
      */
     try {
-      await apiClient.post('/feedback', payload)
+      /**
+       * Through `feedbackApi`, not a raw `apiClient.post`. W-UX-C.
+       *
+       * `feedbackApi.submit` posts to this exact route and was never called - so the one module that
+       * describes the shape of a submission was bypassed by the only thing that creates one, and the
+       * `list`/`updateStatus` beside it were orphaned in the same stroke. That is how every piece of
+       * feedback anybody sent came to be written and never read.
+       */
+      await feedbackApi.submit(payload)
     } catch {
       toast.error('That did not send. Your note is still here - try again, or email us if it keeps failing.')
       return
@@ -322,6 +373,9 @@ function FeedbackWidget() {
                     style={{ padding: '11px 16px', background: 'none', color: 'var(--gw-sub)', border: '1px solid var(--gw-border)', borderRadius: 6, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
                     Cancel
                   </button>
+                  {whyNotValid() && (
+                    <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', width: '100%', marginBottom: 6 }}>{whyNotValid()}</div>
+                  )}
                   <button onClick={submit} disabled={!valid()}
                     style={{ flex: 1, padding: 11, background: 'var(--gw-navy)', color: 'white', border: 'none', borderRadius: 6, fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: valid() ? 1 : 0.38 }}>
                     Send
@@ -349,9 +403,21 @@ function NavItem({ item, compact }: { item: typeof NAV_ITEMS[0]; compact?: boole
         to={item.to}
         style={{
           display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
-          padding: '6px 12px', borderRadius: 10, color: active ? '#93C5FD' : 'rgba(255,255,255,.45)',
+          padding: '6px 4px', borderRadius: 10, color: active ? '#93C5FD' : 'rgba(255,255,255,.45)',
           textDecoration: 'none', fontSize: 10, fontWeight: active ? 700 : 500,
-          background: active ? 'rgba(147,197,253,.1)' : 'transparent', flex: 1,
+          background: active ? 'rgba(147,197,253,.1)' : 'transparent', flex: 1, minWidth: 0,
+          /**
+           * BROKEN LABELS IN THE BOTTOM BAR. W-UX-A.
+           *
+           * Five items across 375px with 12px of side padding each left too little room, so the two
+           * longest snapped mid-word: "Check-" over "ins", "Platform" over "ops". The bar is 60px
+           * tall, so the second line was clipped as well as wrong.
+           *
+           * The padding was the slack. Trimmed to 4px and the label held on one line; `nowrap` with
+           * ellipsis is the backstop, so a longer name in future degrades to "Platform o..." rather
+           * than to a broken word.
+           */
+          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
         }}
       >
         {item.icon(active)}
@@ -547,7 +613,7 @@ export function AppSidebar() {
             }}
           >
             <span style={{ fontSize: 16, lineHeight: 1 }}>+</span>
-            {!collapsed && <span>New ground</span>}
+            {!collapsed && <span>What's going on?</span>}
           </button>
         </div>
 
@@ -587,7 +653,7 @@ export function AppSidebar() {
               </div>
             )}
             {!isEntryPage && grounds.length === 0 && (
-              <div style={{ fontSize: 12, color: 'rgba(255,255,255,.3)', padding: '8px 6px' }}>No grounds yet</div>
+              <div style={{ fontSize: 12, color: 'rgba(255,255,255,.3)', padding: '8px 6px' }}>Nothing in progress yet</div>
             )}
             {/*
               THE RAIL IS A CHANNEL LIST, so it is ordered by what needs you and it
@@ -858,7 +924,7 @@ export function AppSidebar() {
                 onClick={() => {
                   if (o.active || switchOrg.isPending) return
                   const asRole = o.role.toLowerCase()
-                  if (!window.confirm(`Switch to ${o.name}? You will see ${o.name}'s grounds instead of this organisation's, as a ${asRole}.`)) return
+                  if (!window.confirm(`Switch to ${o.name}? You will see ${o.name}'s check-ins instead of this organisation's, as a ${asRole}.`)) return
                   switchOrg.mutate(o.id)
                 }}
                 disabled={switchOrg.isPending}
@@ -999,7 +1065,26 @@ export function AppShell({ children }: { children: React.ReactNode }) {
    * stopped happening. The API sweep for this class did not cover the client.
    */
   const isEntryFlow = location.pathname === '/start'
-  const showSidebar = (isAuthenticated || isEntryFlow) && !CHROMELESS.includes(location.pathname)
+  /**
+   * TWO PRODUCTS ON ONE SCREEN. W-UX-8.
+   *
+   * `/admin` and `/admin/dashboard` are the Groundwork platform back office - our own operations
+   * console, for us, about every customer org. They were rendering INSIDE the customer rail, so the
+   * internal page sat wrapped in a nav offering "Check-ins", "People" and "Billing" for one
+   * particular organisation. The audit's line: "The customer menu wraps around your internal page."
+   *
+   * A PREFIX, not an exact path, because the back office has sub-pages and `CHROMELESS` matches the
+   * whole pathname - which is why `/admin/dashboard` would have slipped through a literal.
+   *
+   * Only platform staff can reach these at all (`RequirePlatformAdmin`), so nothing a customer sees
+   * changes. It is last on the list for exactly that reason.
+   */
+  const CHROMELESS_PREFIXES = ['/admin']
+  const isBackOffice = CHROMELESS_PREFIXES.some(
+    p => location.pathname === p || location.pathname.startsWith(`${p}/`),
+  )
+  const showSidebar =
+    (isAuthenticated || isEntryFlow) && !CHROMELESS.includes(location.pathname) && !isBackOffice
 
   if (!showSidebar) return <>{children}</>
 

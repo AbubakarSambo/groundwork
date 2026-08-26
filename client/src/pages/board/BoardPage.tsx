@@ -35,11 +35,19 @@ const dshort = (iso?: string | null) =>
 
 // ---------------------------------------------------------------- page
 
+/**
+ * Remembered, so the framing is read once rather than re-read on every visit. Expanded by default:
+ * somebody meeting this board for the first time has not seen it, and that is the case the panel
+ * exists for.
+ */
+const HOW_TO_READ_KEY = 'gw-board-how-to-read'
+
 export function BoardPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const qc = useQueryClient()
   const [variant, setVariant] = useState<CoverageVariant | undefined>(undefined)
+  const [howToRead, setHowToRead] = useState(() => localStorage.getItem(HOW_TO_READ_KEY) !== 'closed')
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['board', id, variant],
@@ -101,9 +109,9 @@ export function BoardPage() {
       <div style={{ maxWidth: 620, margin: '48px auto', padding: '0 20px', textAlign: 'center' }}>
         <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>This board could not be loaded.</div>
         <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 16 }}>
-          You may not be a party to this ground, or it may no longer exist.
+          You may not be a party to this check-in, or it may no longer exist.
         </div>
-        <button onClick={() => navigate('/grounds')} style={btn}>Back to grounds</button>
+        <button onClick={() => navigate('/grounds')} style={btn}>Back to check-ins</button>
       </div>
     )
   }
@@ -120,7 +128,7 @@ export function BoardPage() {
           <div style={{ fontSize: 14, lineHeight: 1.6, color: 'var(--gw-text)', marginBottom: 16 }}>{data.reason}</div>
           <div style={{ display: 'flex', gap: 8 }}>
             <Link to={`/grounds/${id}/report`} style={{ ...btn, textDecoration: 'none' }}>Read the report</Link>
-            <button onClick={() => navigate(`/grounds/${id}`)} style={btnGhost}>Back to the ground</button>
+            <button onClick={() => navigate(`/grounds/${id}`)} style={btnGhost}>Back to the check-in</button>
           </div>
         </div>
       </div>
@@ -129,6 +137,31 @@ export function BoardPage() {
 
   const b = data as BoardPresent
   const has = (s: string) => b.sections.includes(s as any)
+
+  /**
+   * A HEADING WITH NOTHING UNDER IT. W-UX-7.
+   *
+   * "A heading called 'Against the plan' with nothing under it - looks broken." And it was not one
+   * heading: every zone on this board tested only whether the SECTION exists, while the content
+   * under it also tested whether there is any DATA. So the moment a section was switched on but
+   * empty - which is every board on its first day - the heading appeared alone above a rule.
+   *
+   * `shown` is the one place a section's real condition lives, and both the zone and its content
+   * read it. A zone cannot render unless something under it will.
+   */
+  const shown = {
+    quickRead: has('quickRead') && !!b.quickRead,
+    startingState: has('startingState') && !!b.startingState,
+    decisions: has('decisions') && !!b.decisions?.length,
+    objectives: has('objectives') && !!b.objectives?.length,
+    divergence: has('divergence') && !!b.divergence,
+    whoOwnsWhat: has('whoOwnsWhat') && !!b.whoOwnsWhat,
+    dependencies: has('dependencies') && !!b.dependencies,
+    checkInGrid: has('checkInGrid') && !!b.checkInGrid,
+    contribution: has('contribution') && !!b.contribution,
+    coverage: has('coverage') && !!b.coverage,
+    patterns: has('patterns') && !!b.patterns,
+  }
   // Only the caller's own availability is theirs to toggle.
   const myIds = new Set(b.myParticipantId ? [b.myParticipantId] : [])
 
@@ -146,11 +179,19 @@ export function BoardPage() {
           was no way back to the ground.
         */}
         <div style={{ marginBottom: 12 }}>
+          {/*
+            AND IT SENT A LEAD TO SOMEBODY ELSE'S VIEW.
+            
+            This went to `/grounds/:id/p` for everybody. `/grounds/:id` already decides by role -
+            a lead gets the lead's page, a party gets theirs - so hard-coding the party path meant
+            the lead's own way back off the board landed them on the party view of their own
+            check-in, one tab bar away from where they started.
+          */}
           <button
-            onClick={() => navigate(`/grounds/${id}/p`)}
+            onClick={() => navigate(`/grounds/${id}`)}
             style={{ background: 'none', border: 'none', padding: 0, fontSize: 13, color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit' }}
           >
-            ← Back to the ground
+            ← Back to the check-in
           </button>
         </div>
 
@@ -214,27 +255,53 @@ export function BoardPage() {
           )}
         </header>
 
-        {/* how to read this board - the framing that keeps it a mirror, not a weapon */}
+        {/*
+          THE INSTRUCTIONS WERE BIGGER THAN THE THING THEY EXPLAINED. W-UX-7.
+          
+          Her audit note: "The 'how to read this board' box is bigger than the board." Seen on the
+          running page and it was true - four lines of dark panel above a board whose first section
+          had not been reached yet.
+          
+          NOT DELETED, and the wording is not touched. This framing is what keeps the board a mirror
+          rather than a weapon, and somebody meeting it for the first time should read it. What was
+          wrong is that it was read AT them again on every single visit.
+          
+          So: the load-bearing sentence stays on the page always; the rest opens on ask, and the
+          choice is remembered. A returning person gets the board they came for and the reminder
+          within one click.
+        */}
         <div style={{ background: '#20233E', color: 'white', borderRadius: 14, padding: '14px 18px', marginTop: 14 }}>
           <span style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.5px', color: '#8891BC', fontWeight: 700, display: 'block', marginBottom: 6 }}>
             How to read and use this board
           </span>
           <p style={{ fontSize: 12, lineHeight: 1.55, color: '#D6DAF0' }}>
             Built from each person's own account, given privately, on the record.{' '}
-            <b style={{ color: '#8BE0AE', fontWeight: 600 }}>It is not decided by who speaks the loudest or argues best.</b>{' '}
-            Use it as the basis of the conversation, not something to be talked down in the moment.
+            <b style={{ color: '#8BE0AE', fontWeight: 600 }}>It is not decided by who speaks the loudest or argues best.</b>
           </p>
-          <p style={{ fontSize: 12, lineHeight: 1.55, color: '#D6DAF0', marginTop: 7 }}>
-            If someone disagrees with what the record shows about them, they{' '}
-            <b style={{ color: '#8BE0AE', fontWeight: 600 }}>put it in their next check-in</b>, not debate the board until it gives way.
-            It shows the record, never a verdict. Each person is shown against their own role in its own terms, never on one shared scale.
-          </p>
+          {howToRead && (
+            <>
+              <p style={{ fontSize: 12, lineHeight: 1.55, color: '#D6DAF0', marginTop: 7 }}>
+                Use it as the basis of the conversation, not something to be talked down in the moment.
+              </p>
+              <p style={{ fontSize: 12, lineHeight: 1.55, color: '#D6DAF0', marginTop: 7 }}>
+                If someone disagrees with what the record shows about them, they{' '}
+                <b style={{ color: '#8BE0AE', fontWeight: 600 }}>put it in their next check-in</b>, not debate the board until it gives way.
+                It shows the record, never a verdict. Each person is shown against their own role in its own terms, never on one shared scale.
+              </p>
+            </>
+          )}
+          <button
+            onClick={() => setHowToRead(v => { localStorage.setItem(HOW_TO_READ_KEY, v ? 'closed' : 'open'); return !v })}
+            style={{ marginTop: 8, background: 'none', border: 'none', padding: 0, fontSize: 11.5, fontWeight: 700, color: '#8BE0AE', cursor: 'pointer', fontFamily: 'inherit' }}
+          >
+            {howToRead ? 'Show less' : 'How to use it →'}
+          </button>
         </div>
 
         {/* ---------------------------------------------- at a glance */}
-        {(has('quickRead') || has('decisions')) && <Zone label="At a glance" />}
+        {(shown.quickRead || shown.startingState || shown.decisions) && <Zone label="At a glance" />}
 
-        {has('quickRead') && b.quickRead && (
+        {shown.quickRead && b.quickRead && (
           <>
             <Sec title="The quick read" src="alignment and trust from the report" />
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: 10 }}>
@@ -257,9 +324,9 @@ export function BoardPage() {
             list since the board was built with nothing behind it - so a lead saw
             where the work had got to and not what it was meant to be for. It is
             the only block here that no check-in can revise. */}
-        {has('startingState') && b.startingState && (
+        {shown.startingState && b.startingState && (
           <>
-            <Sec title="What was agreed at the start" src="set when the ground was opened, before any check-in" />
+            <Sec title="What was agreed at the start" src="set when this was opened, before any check-in" />
             <Card>
               <Row first>
                 <div style={{ fontSize: 13.5, color: 'var(--gw-dark)', lineHeight: 1.55 }}>{b.startingState}</div>
@@ -268,7 +335,7 @@ export function BoardPage() {
           </>
         )}
 
-        {has('decisions') && b.decisions && b.decisions.length > 0 && (
+        {shown.decisions && b.decisions && (
           <>
             <Sec title="Decisions needed" src="from divergences and blockers" />
             <Card>
@@ -289,9 +356,9 @@ export function BoardPage() {
         )}
 
         {/* ---------------------------------------------- against the plan */}
-        {(has('objectives') || has('divergence')) && <Zone label="Against the plan" />}
+        {(shown.objectives || shown.divergence) && <Zone label="Against the plan" />}
 
-        {has('objectives') && b.objectives && b.objectives.length > 0 && (
+        {shown.objectives && b.objectives && (
           <>
             <Sec title="What we are aiming for" src="the lead sets these" />
             {b.objectivesPrompt && (
@@ -398,7 +465,7 @@ export function BoardPage() {
           </>
         )}
 
-        {has('divergence') && b.divergence && (
+        {shown.divergence && b.divergence && (
           <>
             <Sec title="Where accounts differ" src="cross-referenced" />
             <Card>
@@ -431,26 +498,38 @@ export function BoardPage() {
                   )}
                 </>
               )}
-              {/* The board shows the summary; the report holds the substance. */}
+              {/*
+                THE POINTER STAYS; THE LINK BACK DOES NOT. You came from there.
+                
+                The board is opened from the foot of the report now, so offering "Open your report →"
+                sends somebody back where they just were - and it was the third leg of a ring, board
+                pointing at report pointing at the report page. The sentence still says where the
+                substance is, which is the useful half.
+              */}
               <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', fontStyle: 'italic', padding: '10px 0', borderTop: '1px dashed var(--gw-border)', marginTop: 4 }}>
-                {b.divergence.pointer} <Link to={`/grounds/${id}/report`} style={{ color: 'var(--gw-navy)', fontWeight: 600 }}>Open your report →</Link>
+                {b.divergence.pointer}
               </div>
             </Card>
           </>
         )}
 
         {/* ---------------------------------------------- the work */}
-        {(has('whoOwnsWhat') || has('dependencies') || has('checkInGrid')) && <Zone label="The work" />}
+        {(shown.whoOwnsWhat || shown.dependencies || shown.checkInGrid) && <Zone label="The work" />}
 
-        {has('whoOwnsWhat') && b.whoOwnsWhat && (
+        {shown.whoOwnsWhat && b.whoOwnsWhat && (
           <>
             <Sec title="Who owns what" src="extracted from check-ins" />
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(320px,1fr))', gap: 14 }}>
               {b.whoOwnsWhat.map((p) => (
                 <Card key={p.participantId} pad={false}>
                   <div style={{ padding: '13px 15px 10px', borderBottom: '1px solid var(--gw-border)' }}>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-dark)' }}>{p.name}</div>
-                    {p.role && <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 1 }}>{p.role}</div>}
+                    {/*
+                      The server falls back from a missing name to the ROLE rather than the email
+                      address (W-UX-4), so the subtitle has to stop repeating it - otherwise a person
+                      with no account yet reads "Engineer" over "Engineer".
+                    */}
+                    <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-dark)' }}>{p.name ?? 'A teammate'}</div>
+                    {p.role && p.role !== p.name && <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 1 }}>{p.role}</div>}
                   </div>
                   <div style={{ padding: '2px 15px 10px' }}>
                     {p.items.length === 0 ? (
@@ -471,7 +550,7 @@ export function BoardPage() {
           </>
         )}
 
-        {has('dependencies') && b.dependencies && (
+        {shown.dependencies && b.dependencies && (
           <>
             <Sec title="Waiting on" src="handoffs between people" />
             {/*
@@ -490,7 +569,7 @@ export function BoardPage() {
                     <span style={{ color: 'var(--gw-sub)', fontSize: 12 }}>needs</span>
                     <Pill tone={d.status === 'CLEARED' ? 'good' : 'warn'}>{d.what}</Pill>
                     <span style={{ color: 'var(--gw-sub)', fontSize: 12 }}>from</span>
-                    <span style={{ fontWeight: 700, color: 'var(--gw-dark)', fontSize: 13 }}>{d.on ?? 'someone outside this ground'}</span>
+                    <span style={{ fontWeight: 700, color: 'var(--gw-dark)', fontSize: 13 }}>{d.on ?? 'someone outside this check-in'}</span>
                     <span style={{ marginLeft: 'auto' }}>
                       <Pill tone={d.status === 'BLOCKING' ? 'bad' : d.status === 'CLEARED' ? 'good' : 'warn'}>
                         {d.status === 'BLOCKING' ? 'Blocking' : d.status === 'CLEARED' ? 'Cleared' : 'Waiting'}
@@ -504,7 +583,10 @@ export function BoardPage() {
           </>
         )}
 
-        {has('checkInGrid') && b.checkInGrid && (
+        {shown.checkInGrid && b.checkInGrid && (() => {
+          /** Does any row have a role worth a column of its own? */
+          const anyRoleToShow = b.checkInGrid.rows.some((r) => (r.role && r.role !== r.name) || r.managingOnly)
+          return (
           <>
             <Sec title="Check-ins this phase" src="from sessions" />
             <Card>
@@ -512,7 +594,16 @@ export function BoardPage() {
                 <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 460 }}>
                   <thead>
                     <tr>
-                      {['Person', 'Role', ...b.checkInGrid.sessions.map((s) => `Session ${s}`)].map((h) => (
+                      {/*
+                        A COLUMN OF DASHES IS NOT A COLUMN. W-UX-P.
+                        
+                        Since the role stopped being repeated where it is already the person's label
+                        (W-UX-4), a board whose parties all show BY role renders "Role" as four
+                        dashes - a header, a divider and no information. Seen on the running board.
+                        
+                        Dropped when no row has anything to put in it, kept the moment one does.
+                      */}
+                      {['Person', ...(anyRoleToShow ? ['Role'] : []), ...b.checkInGrid.sessions.map((s) => `Session ${s}`)].map((h) => (
                         <th key={h} style={{ padding: '9px 12px', textAlign: 'left', fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.4px', color: 'var(--gw-muted)', fontWeight: 700, borderBottom: '1px solid var(--gw-border)' }}>{h}</th>
                       ))}
                     </tr>
@@ -520,8 +611,18 @@ export function BoardPage() {
                   <tbody>
                     {b.checkInGrid.rows.map((r) => (
                       <tr key={r.participantId}>
-                        <td style={td}><span style={{ fontWeight: 700, color: 'var(--gw-dark)' }}>{r.name}</span></td>
-                        <td style={{ ...td, color: 'var(--gw-sub)' }}>{r.role ?? (r.managingOnly ? 'Managing only' : '—')}</td>
+                        {/*
+                          Same reconciliation as the cards above (W-UX-4): when somebody has no
+                          account yet, the label falls back to their role, so printing the role again
+                          in the next column gave "Engineer | Engineer" on one row while the row above
+                          it read "Sahar Okonkwo | -".
+                        */}
+                        <td style={td}><span style={{ fontWeight: 700, color: 'var(--gw-dark)' }}>{r.name ?? 'A teammate'}</span></td>
+                        {anyRoleToShow && (
+                          <td style={{ ...td, color: 'var(--gw-sub)' }}>
+                            {r.role && r.role !== r.name ? r.role : r.managingOnly ? 'Managing only' : '—'}
+                          </td>
+                        )}
                         {b.checkInGrid!.sessions.map((s) => {
                           const v = r.cells[String(s)] ?? 'na'
                           return (
@@ -540,12 +641,13 @@ export function BoardPage() {
               </div>
             </Card>
           </>
-        )}
+          )
+        })()}
 
         {/* ---------------------------------------------- contribution and fairness */}
-        {(has('contribution') || has('coverage')) && <Zone label="Contribution and fairness" />}
+        {(shown.contribution || shown.coverage) && <Zone label="Contribution and fairness" />}
 
-        {has('contribution') && b.contribution && (
+        {shown.contribution && b.contribution && (
           <>
             <Sec title="Contribution against role" src="each role, own terms" />
             <Card>
@@ -608,7 +710,7 @@ export function BoardPage() {
           </>
         )}
 
-        {has('coverage') && b.coverage && (
+        {shown.coverage && b.coverage && (
           <>
             <Sec title="Where work is landing" src="whose work is landing where" />
             <Card>
@@ -725,9 +827,9 @@ export function BoardPage() {
         )}
 
         {/* ---------------------------------------------- the record over time */}
-        {has('patterns') && <Zone label="The record over time" />}
+        {shown.patterns && <Zone label="The record over time" />}
 
-        {has('patterns') && b.patterns && (
+        {shown.patterns && b.patterns && (
           <>
             <Sec title="Patterns this phase" src="work patterns only" />
             <Card>
@@ -834,9 +936,9 @@ export function BoardPage() {
         )}
 
         <div style={{ color: 'var(--gw-muted)', fontSize: 10.5, textAlign: 'center', marginTop: 28, lineHeight: 1.6 }}>
-          Groundwork board · confidential · generated from the ground.<br />
-          Everyone on this ground sees the same board. It regenerates as people check in each session.<br />
-          The mode is fixed at creation, so a private alignment ground can never be read this way.
+          Groundwork board · confidential · generated from the check-in.<br />
+          Everyone on this check-in sees the same board. It regenerates as people check in each session.<br />
+          The mode is fixed at creation, so a private alignment check-in can never be read this way.
         </div>
       </div>
     </div>

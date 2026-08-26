@@ -39,14 +39,14 @@ export class RemindService {
       where: { id: checkIn.groundId },
       select: { id: true, label: true },
     });
-    if (!ground) throw new NotFoundException('Ground not found');
+    if (!ground) throw new NotFoundException('Check-in not found');
 
     // Verify the requesting user is a party to this ground.
     const requesterLink = await this.prisma.groundParticipant.findFirst({
       where: { groundId: ground.id, userId: requestingUserId },
     });
     if (!requesterLink) {
-      throw new ForbiddenException('You are not a party to this ground');
+      throw new ForbiddenException('You are not a party to this check-in');
     }
 
     // Find all OTHER participants who have accepted their invite (userId set)

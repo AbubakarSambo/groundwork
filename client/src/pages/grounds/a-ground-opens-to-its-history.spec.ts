@@ -5,7 +5,7 @@ import { describe, it, expect } from 'vitest'
 /**
  * A GROUND OPENS TO ITS OWN HISTORY. W8-57.
  *
- * Hafsah's model: a ground is a channel you come back to and keep adding to, and a
+ * Hafsah's model: a check-in is a channel you come back to and keep adding to, and a
  * channel opens to what has been said with the place to type at the bottom.
  *
  * THIS FILE HAS BEEN REWRITTEN ONCE, AND THE REASON MATTERS. The first version

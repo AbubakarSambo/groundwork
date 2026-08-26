@@ -7,7 +7,7 @@ import { describe, it, expect } from 'vitest'
  *
  * `BillingPage` navigated to `/billing/payment`. That route does not exist -
  * `PaymentPage` is mounted at `/billing/checkout` - so "Add sessions", the control
- * for buying sessions on a ground, landed a paying customer on "There is nothing at
+ * for buying sessions on a check-in, landed a paying customer on "There is nothing at
  * this address", which tells them THEY typed something wrong.
  *
  * It was the only destination in the whole product that 404'd, and it was the one

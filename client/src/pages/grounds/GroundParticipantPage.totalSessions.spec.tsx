@@ -10,7 +10,7 @@ import { reportsApi } from '@/api/reports'
  * Bug 8 guard: the participant view derived the session total from a
  * hardcoded `?? 6` fallback, so a 90-day MONTHLY ground (really 3 sessions)
  * showed "Session 1 of 6". It now derives floor(timelineDays / cadenceDays)
- * from the ground's own timelineDays + cadence, matching the create wizard.
+ * from the check-in's own timelineDays + cadence, matching the create wizard.
  * Revert to `?? 6` -> a 90-day monthly ground shows "of 6" -> this bites.
  */
 
@@ -21,7 +21,7 @@ vi.mock('@/api/grounds', () => ({
   groundsApi: {
     get: vi.fn(),
     getMySpecificity: vi.fn(),
-    // The Chat view is what a ground opens to now, so these are on the page's
+    // The Chat view is what a check-in opens to now, so these are on the page's
     // load path. Without them the component throws and the failure reads as the
     // session count being wrong, which is not what broke.
     myTranscript: vi.fn(),
@@ -62,22 +62,30 @@ describe('BUG8: participant view derives session total from timeline + cadence',
     ;(groundsApi.myNotes as any).mockResolvedValue([])
   })
 
+  /**
+   * `getAllByText` because the state moved into the header. It used to be matched on the CTA button
+   * alone - "Check in for session 1 of 3" - and the header now says it too, which is where a state
+   * belongs: the button is an action and disappears between sessions, the header does not.
+   *
+   * BUG8's point is untouched: the total is DERIVED from timeline and cadence, not hardcoded, and
+   * the negative assertion below is what actually proves it.
+   */
   it('a 90-day MONTHLY ground shows "of 3", not "of 6"', async () => {
     ;(groundsApi.get as any).mockResolvedValue(groundWith(90, 'MONTHLY'))
     renderPage()
-    await waitFor(() => expect(screen.getByText(/Session 1 of 3/i)).toBeTruthy())
+    await waitFor(() => expect(screen.getAllByText(/Session 1 of 3/i).length).toBeGreaterThan(0))
     expect(screen.queryByText(/of 6/i)).toBeNull()
   })
 
   it('a 90-day FORTNIGHTLY ground shows "of 6" (derived, not hardcoded)', async () => {
     ;(groundsApi.get as any).mockResolvedValue(groundWith(90, 'FORTNIGHTLY'))
     renderPage()
-    await waitFor(() => expect(screen.getByText(/Session 1 of 6/i)).toBeTruthy())
+    await waitFor(() => expect(screen.getAllByText(/Session 1 of 6/i).length).toBeGreaterThan(0))
   })
 
   it('a 30-day WEEKLY ground shows "of 4"', async () => {
     ;(groundsApi.get as any).mockResolvedValue(groundWith(30, 'WEEKLY'))
     renderPage()
-    await waitFor(() => expect(screen.getByText(/Session 1 of 4/i)).toBeTruthy())
+    await waitFor(() => expect(screen.getAllByText(/Session 1 of 4/i).length).toBeGreaterThan(0))
   })
 })

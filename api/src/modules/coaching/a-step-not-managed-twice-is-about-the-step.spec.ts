@@ -184,3 +184,43 @@ describe('nothing here accumulates into a judgement', () => {
     expect(Object.keys(s.history[0]).sort()).toEqual(['givenAtSession', 'outcome', 'step']);
   });
 });
+
+describe('a step needs a session to be taken into', () => {
+  /**
+   * The difference between coaching and advice, stated at the top of one-step-at-a-time.ts, is the
+   * wait: offer one small thing, wait, ask what happened, pick the next from the answer. On the last
+   * check-in of a run there is no wait - nobody will ever ask how it went - and on a one-round read
+   * there was never a second session at all.
+   *
+   * NOTE ON SCOPE: nothing in production calls `coachingBlockFor` yet, which this file's own subject
+   * says plainly. This gate is therefore preventing a defect rather than fixing a live one, and it
+   * exists now because the run information is only at hand while the surface is being wired.
+   */
+  const OFFER = { move: 'offer' as const, step: 'Gets to the buyer', because: 'a reason' };
+
+  it('offers a step when another session follows', () => {
+    expect(coachingBlockFor(OFFER, { sessionNumber: 2, totalSessions: 6 })).toContain('One thing to try');
+  });
+
+  it('offers nothing in the final session, where there is no time to take it', () => {
+    expect(coachingBlockFor(OFFER, { sessionNumber: 6, totalSessions: 6 })).toBeNull();
+  });
+
+  it('and nothing at all on a one-round read', () => {
+    expect(coachingBlockFor(OFFER, { sessionNumber: 1, totalSessions: 1 })).toBeNull();
+  });
+
+  it('but still asks about a step already offered, even in the last session', () => {
+    /**
+     * Somebody given something to try is owed the question about it, and the final session is the last
+     * chance to ask. Suppressing this too would be the coaching equivalent of not turning up.
+     */
+    const block = coachingBlockFor({ move: 'ask about the last one', step: 'Gets to the buyer' }, { sessionNumber: 6, totalSessions: 6 });
+    expect(block).toContain("Last session's step");
+  });
+
+  it('and behaves exactly as before when the run is not known', () => {
+    // Every existing caller passes no run. None of them should change behaviour.
+    expect(coachingBlockFor(OFFER)).toContain('One thing to try');
+  });
+});

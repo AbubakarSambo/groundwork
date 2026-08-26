@@ -8,7 +8,7 @@ import { PageCrash } from './PageCrash'
  * A BROKEN PAGE IS NOT A WHITE SCREEN. W8-63.
  *
  * The `/feed` bug - one bad read handing React an object - blanked the WHOLE APP. Not the
- * feed: the rail, the ground, whatever was open. Then a search for `ErrorBoundary`,
+ * feed: the rail, the check-in, whatever was open. Then a search for `ErrorBoundary`,
  * `componentDidCatch` and `getDerivedStateFromError` across the entire client returned
  * nothing, so that was the behaviour for every render error in every page.
  *
@@ -35,7 +35,7 @@ describe('when a page throws while rendering', () => {
 
   it('with a way out that does not depend on the broken page working', () => {
     render(<PageCrash><Boom /></PageCrash>)
-    expect(screen.getByRole('button', { name: /Go to my grounds/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Go to my check-ins/ })).toBeTruthy()
     expect(screen.getByRole('button', { name: /reload this page/i })).toBeTruthy()
   })
 

@@ -9,7 +9,7 @@ import { dirname, join } from 'node:path'
  * never rendered anywhere on ReportPage - dead data with zero UI callers.
  * This locks that it is now surfaced, and that the action branches correctly
  * by role: the initiator (who can call groundsApi.addParticipant for real,
- * since the ground already exists here) gets a real add; a participant
+ * since the check-in already exists here) gets a real add; a participant
  * (who cannot add anyone themselves) gets the ParticipantRequest flow instead
  * - the previously-orphaned participantRequestsApi.create() finally has a
  * caller.

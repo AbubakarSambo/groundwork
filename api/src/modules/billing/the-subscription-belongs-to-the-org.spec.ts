@@ -45,20 +45,44 @@ describe('what /billing/status returns', () => {
 
   it('counts the people, against the plan\'s cap', () => {
     expect(GET_STATUS).toMatch(/people: \{ count: peopleCount, cap:/);
-    // Active users only: somebody removed from the organisation is not a seat.
-    expect(GET_STATUS).toMatch(/user\.count\(\{ where: \{ organizationId, isActive: true \} \}\)/);
-  });
-
-  it('and uses the caps already defined here rather than a second copy', () => {
     /**
-     * `PLAN_MEMBER_CAPS` exists on this service and in `client/src/api/billing.ts`. A third copy
-     * inside one method is how the three drift.
+     * Through the one shared definition, not a where clause typed out here. This assertion used to
+     * pin `{ organizationId, isActive: true }` literally, which is exactly how this count and the
+     * invite gate were free to mean different things: each had its own predicate and its own guard
+     * agreeing with it.
      */
-    expect(GET_STATUS).toContain('this.PLAN_MEMBER_CAPS[org.subscriptionPlan]');
+    expect(GET_STATUS).toMatch(/user\.count\(\{ where: \{ organizationId, \.\.\.SEAT_WHERE \} \}\)/);
   });
 
-  it('an unlimited or absent plan reports no cap rather than a made-up one', () => {
-    expect(GET_STATUS).toMatch(/org\.subscriptionPlan \? this\.PLAN_MEMBER_CAPS\[org\.subscriptionPlan\] : null/);
+  it('and reads the cap from the table rather than a map in the code', () => {
+    /**
+     * This used to assert `this.PLAN_MEMBER_CAPS[org.subscriptionPlan]`, a hardcoded map on this
+     * service - and there were three more copies, on the client, in the plan labels, and in a
+     * second client map. The caps are now `pricing_plans.memberCap`, edited in the same admin
+     * screen as the prices, and this pins that nothing here states a cap of its own.
+     */
+    expect(GET_STATUS).toContain('this.pricing.memberCapFor(org.subscriptionPlan)');
+    expect(GET_STATUS).not.toContain('PLAN_MEMBER_CAPS');
+  });
+
+  it('a free organisation reports its FREE limit, not "no cap"', () => {
+    /**
+     * The gap that let person number six in. A free account has a cap now, and reporting null for
+     * it showed no ceiling to the only people who have one.
+     */
+    expect(GET_STATUS).toContain('this.pricing.getFreeMemberLimit()');
+  });
+
+  it('and the cap it reports is the one the gate will apply', () => {
+    /**
+     * Same two sources, same order, in both places. This is the shape of the seat-count defect
+     * one level up: two readers of one number, each correct alone.
+     */
+    const gate = CODE.slice(CODE.indexOf('async canInviteMember('), CODE.indexOf('private async warnAboutTheMemberCap('));
+    for (const call of ['this.pricing.getFreeMemberLimit()', 'this.pricing.memberCapFor(']) {
+      expect(gate).toContain(call);
+      expect(GET_STATUS).toContain(call);
+    }
   });
 });
 

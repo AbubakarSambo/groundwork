@@ -43,8 +43,6 @@ function renderTopic(parties: { name: string; done: boolean; isSelf: boolean }[]
           nextOpensAt={null}
           onOpenSession={() => {}}
           openPending={false}
-          label="New hire"
-          sessionsDone={2}
           parties={parties}
         />
       </MemoryRouter>
@@ -52,7 +50,7 @@ function renderTopic(parties: { name: string; done: boolean; isSelf: boolean }[]
   )
 }
 
-describe('the roster on the ground', () => {
+describe('the roster on the check-in', () => {
   it('names the other parties and says who has checked in', async () => {
     renderTopic([
       { name: 'Hafsah', done: true, isSelf: false },
@@ -75,14 +73,20 @@ describe('the roster on the ground', () => {
     expect(screen.queryByText(/Abubakar/)).toBeNull()
   })
 
-  it('says nothing at all on a ground with one party', async () => {
+  it('says nothing at all on a check-in with one party', async () => {
     /**
      * A roster of one is a sentence about yourself. It is also what a reader sees when the
      * service has filtered the others out, and a heading over an empty list would advertise
      * that there is something they cannot see.
      */
     renderTopic([{ name: 'Hafsah', done: true, isSelf: true }])
-    await screen.findByText('New hire')
+    /**
+     * Waits on the card's own heading. It used to wait on the check-in's NAME, which this card no
+     * longer prints - the name, the scenario, the session count and the alignment read are all in
+     * the page header now, and a card that restates the header was the first thing somebody met on
+     * the tab where they were about to give their account.
+     */
+    await screen.findByText('About this check-in')
     expect(screen.queryByText(/Who is in this/)).toBeNull()
   })
 
@@ -91,7 +95,7 @@ describe('the roster on the ground', () => {
      * W14-5. With peer visibility off, the service filters the other parties out of the payload,
      * so this component gets a roster of one and used to render nothing at all. A participant
      * could not tell whether nobody else was here yet or whether they are not allowed to know -
-     * and the second is a fact about the ground they are in, not a detail.
+     * and the second is a fact about the check-in they are in, not a detail.
      */
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     render(
@@ -100,7 +104,6 @@ describe('the roster on the ground', () => {
           <GroundChat
             groundId="g1" openCheckInId={null} openSessionNumber={null} totalSessions={6}
             nextOpensAt={null} onOpenSession={() => {}} openPending={false}
-            label="New hire" sessionsDone={2}
             parties={[{ name: 'Abubakar', done: false, isSelf: true }]}
             peersHidden
           />
@@ -115,7 +118,13 @@ describe('the roster on the ground', () => {
   it('and a genuinely single-party ground still says nothing', async () => {
     // The distinction the flag exists for: one party is not the same as a hidden roster.
     renderTopic([{ name: 'Hafsah', done: true, isSelf: true }])
-    await screen.findByText('New hire')
+    /**
+     * Waits on the card's own heading. It used to wait on the check-in's NAME, which this card no
+     * longer prints - the name, the scenario, the session count and the alignment read are all in
+     * the page header now, and a card that restates the header was the first thing somebody met on
+     * the tab where they were about to give their account.
+     */
+    await screen.findByText('About this check-in')
     expect(screen.queryByText(/Who is in this/)).toBeNull()
   })
 
@@ -149,7 +158,7 @@ describe('the permission stays in the service', () => {
     expect(part).toMatch(/parties=\{\(ground\.participants \?\? \[\]\)/)
   })
 
-  it('and both pages pass the ground\'s peer rule, so an empty roster can explain itself', () => {
+  it('and both pages pass the check-in\'s peer rule, so an empty roster can explain itself', () => {
     /**
      * FOUND BY BITE-CHECK. Removing this wiring from the participant page left all 550 tests
      * green: the component's own behaviour was pinned and the fact that anything passes it was

@@ -40,14 +40,14 @@ export function ResolutionPanel({ groundId }: { groundId: string }) {
       setPicked(null)
       toast.success(
         state?.resolution?.closedAt
-          ? 'Everyone chose the same outcome. This ground is closed.'
-          : 'Your choice is recorded. The ground closes when everyone picks the same one.',
+          ? 'Everyone chose the same outcome. This check-in is closed.'
+          : 'Your choice is recorded. This closes when everyone picks the same one.',
       )
     },
     onError: () => toast.error('Could not record that. Please try again.'),
   })
 
-  const leadDecides = !!(data as any)?.leadDecides
+  const leadDecides = !!data?.leadDecides
   const viewerIsLead = !!(data as any)?.viewerIsLead
   /** Can the person looking at this actually choose? */
   const canChoose = !leadDecides || viewerIsLead
@@ -65,14 +65,14 @@ export function ResolutionPanel({ groundId }: { groundId: string }) {
   return (
     <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '16px 18px', marginBottom: 12 }}>
       <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: 'var(--gw-muted)', marginBottom: 8 }}>
-        {closed ? 'How this ground ended' : 'Bringing this ground to an end'}
+        {closed ? 'How this ended' : 'Bringing this to an end'}
       </div>
 
       {closed ? (
         <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--gw-green-t)' }}>
           {label(resolution!.endState)}
           <div style={{ fontSize: 12, fontWeight: 400, color: 'var(--gw-sub)', marginTop: 4 }}>
-            Everyone in this ground chose the same outcome. The record stays open to all parties.
+            Everyone in this check-in chose the same outcome. The record stays open to all parties.
           </div>
         </div>
       ) : (
@@ -84,13 +84,13 @@ export function ResolutionPanel({ groundId }: { groundId: string }) {
               longer asked to agree to his own exit. */}
           <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 12 }}>
             {!leadDecides ? (
-              <>Each person picks the outcome they think the record supports. The ground closes only when
+              <>Each person picks the outcome they think the record supports. The check-in closes only when
               everyone picks the same one, and nobody closes it alone.</>
             ) : viewerIsLead ? (
-              <>This one is yours to decide. Everyone in the ground can see the possible outcomes and
+              <>This one is yours to decide. Everyone in the check-in can see the possible outcomes and
               where things stand, and their accounts stay on the record whichever way you go.</>
             ) : (
-              <>These are the outcomes this ground can reach. Your lead decides which one it is. Your
+              <>These are the outcomes this check-in can reach. Your lead decides which one it is. Your
               account stays on the record either way, and you can still correct or add to it.</>
             )}
           </div>
@@ -142,7 +142,19 @@ export function ResolutionPanel({ groundId }: { groundId: string }) {
         </>
       )}
 
-      {totalActive > 0 && (
+      {/*
+        THE SAME FALSE TALLY, THIRD LOCATION. W-UX-P.
+        
+        This panel got the COPY right - it says "This one is yours to decide" on a lead-decides ground -
+        and then printed "0 of 3 people have answered" underneath, with all three listed "not yet". So
+        the sentence said one person decides and the list said three were being waited on, four inches
+        apart on the same card. Seen on the running Overview tab of a contract renewal.
+        
+        The report page had the identical fault and was fixed first; this is the copy of it. Where the
+        lead decides there is nothing to tally - one answer closes it - and the people in those rows
+        never had a say to withhold.
+      */}
+      {totalActive > 0 && !leadDecides && (
         <div style={{ marginTop: 14, borderTop: '1px solid var(--gw-bg)', paddingTop: 10 }}>
           <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 6 }}>
             {confirmedCount} of {totalActive} {totalActive === 1 ? 'person has' : 'people have'} answered

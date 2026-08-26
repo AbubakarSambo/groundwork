@@ -73,7 +73,7 @@ describe('it never invents one', () => {
   it('says so, in the prompt, with the reason', () => {
     // A guessed cadence sets up the wrong ground and nobody can tell.
     expect(EXTRACT).toMatch(/Never guess a cadence or a duration/);
-    expect(EXTRACT).toMatch(/a wrong number here silently sets up the wrong ground/);
+    expect(EXTRACT).toMatch(/a wrong number here silently sets up the wrong check-in/);
   });
 
   it('tells the model to omit rather than fill in', () => {

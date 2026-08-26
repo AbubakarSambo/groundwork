@@ -34,6 +34,7 @@ import { AdminModule } from './modules/admin/admin.module';
  * Found by the unwired-module rule, not by anybody noticing.
  */
 import { FeedbackModule } from './modules/feedback/feedback.module';
+import { CoachModule } from './modules/coach/coach.module';
 import { JwtAuthGuard, RolesGuard, GlobalExceptionFilter, TransformInterceptor } from './common';
 
 @Module({
@@ -58,6 +59,7 @@ import { JwtAuthGuard, RolesGuard, GlobalExceptionFilter, TransformInterceptor }
     BillingModule,
     IntelligenceModule,
     FeedbackModule,
+    CoachModule,
     DocumentsModule,
     EntryModule,
     AdminModule,

@@ -27,6 +27,23 @@ export interface ResolutionState {
   totalActive: number
   options: EndStateOption[]
   groundStatus: string
+  /**
+   * WHO CLOSES THIS ONE, AND THE FIELD THAT WAS MISSING FROM EVERY TYPE. W-UX-R.
+   *
+   * The server has sent this since `LEAD_DECIDES` was introduced. It was declared in NO client type,
+   * so `ResolutionPanel` reached it through `(data as any).leadDecides` - which works - and the report
+   * page, which had written its OWN third copy of this interface, did not know the field existed at
+   * all. So the report rendered the both-must-agree tally on every ground regardless.
+   *
+   * On a contract renewal that read "0 of 3 parties have confirmed an end state", with the contractor
+   * listed "Not yet" against their own renewal, as though the org were waiting on their agreement.
+   * The server closes that ground on the lead alone. The screen said otherwise, on the most-read page
+   * in the product.
+   *
+   * True on the six scenarios in `LEAD_DECIDES`: the lead decides and the other parties see what is
+   * coming without being asked to consent to it. False everywhere else, where nobody closes alone.
+   */
+  leadDecides: boolean
 }
 
 export const resolutionApi = {

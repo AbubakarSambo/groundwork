@@ -6,7 +6,7 @@ import { describe, it, expect } from 'vitest'
  * THE WAY TO CHECK IN IS ON THE PAGE YOU LAND ON. W8-76.
  *
  * Caught by the persona gate, not by me: suite_m failed with "the next-check-in affordance
- * EXISTS on the ground page (hard - absence is a failure, not a shrug)". It was right. I made
+ * EXISTS on the check-in page (hard - absence is a failure, not a shrug)". It was right. I made
  * Chat the landing tab on the lead's ground page and passed `openCheckInId={null}`, so a lead
  * who is also a party - the commonest kind, since setup offers "I am a party" - opened their
  * ground and had no way to start their own check-in.
@@ -31,7 +31,7 @@ const CHAT = readFileSync(join(__dirname, '../../components/gw/GroundChat.tsx'),
 const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
 describe('the lead who is a party can start their check-in', () => {
-  it('the ground page passes its own open check-in, not null', () => {
+  it('the check-in page passes its own open check-in, not null', () => {
     expect(strip(ADMIN)).toMatch(/openCheckInId=\{myOpenCheckIn && !myOpenOpensLater \? myOpenCheckIn\.id : null\}/)
   })
 
@@ -56,11 +56,11 @@ describe('the button says what the rest of the product says', () => {
 })
 
 describe('the handoff, and the payment path it protects', () => {
-  it('the ground page hands off rather than opening the session itself', () => {
+  it('the check-in page hands off rather than opening the session itself', () => {
     expect(strip(ADMIN)).toMatch(/navigate\(`\/grounds\/\$\{id\}\/p\?open=1`\)/)
   })
 
-  it('the ground page does not grow its own copy of the paywall', () => {
+  it('the check-in page does not grow its own copy of the paywall', () => {
     // The specific thing to never duplicate: the 403 branch that offers a free extension,
     // an access code, or a subscription.
     expect(strip(ADMIN)).not.toContain('freeExtensionAvailable')

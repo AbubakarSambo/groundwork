@@ -54,6 +54,23 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto): Promise<{ message: string; email: string }> {
+    /**
+     * THIS HONEYPOT GUARDS A DOOR NOBODY USES. W-UX-C. Not fixed - recorded, because the fix is a
+     * decision rather than a line.
+     *
+     * A honeypot catches a bot that fills a field a human cannot see. No client form has ever
+     * rendered `_hp`, so nothing has ever been caught. The obvious fix is to render it - except this
+     * endpoint (`/auth/register`) and `/auth/magic-link-register` are BOTH unreached by the client:
+     * sign-up goes through `/auth/entry-save`, which has no honeypot, no DTO and no field validation
+     * at all, only a throttle of 10/minute.
+     *
+     * So the protection sits on the paths nobody walks, and the live path has a rate limit and
+     * nothing else. Rendering `_hp` on a form that posts elsewhere would look like a fix and be one
+     * less than before.
+     *
+     * The silent-success return below is deliberate and correct either way: telling a bot it was
+     * detected teaches it to try again without the trap.
+     */
     if ((dto as any)._hp) {
       return { message: 'Registration successful. Please check your email to verify your account.', email: dto.email.toLowerCase() };
     }

@@ -9,8 +9,11 @@ export interface WhatsAppToggleState {
 
 export interface PricingPlanRow {
   plan: SubscriptionPlan
+  /** Null for a contact-sales plan. The panel shows "Contact us" and offers no price editor. */
+  amountCents: number | null
   label: string
-  amountCents: number
+  /** Null means unlimited. Editable here, because a cap only reachable by SQL is a cap that drifts. */
+  memberCap: number | null
   hasStripePrice: boolean
   updatedAt: string
 }
@@ -31,8 +34,26 @@ export const adminApi = {
   setFreeGroundLimit: (freeGroundLimit: number) =>
     apiClient.patch<{ freeGroundLimit: number }>('/admin/pricing/free-ground-limit', { freeGroundLimit }).then(r => r.data),
 
-  setPricing: (plan: SubscriptionPlan, amountCents: number) =>
-    apiClient.patch<PricingPlanRow[]>(`/admin/pricing/${plan}`, { amountCents }).then(r => r.data),
+  getFreeMemberLimit: () =>
+    apiClient.get<{ freeMemberLimit: number }>('/admin/pricing/free-member-limit').then(r => r.data),
+
+  setFreeMemberLimit: (freeMemberLimit: number) =>
+    apiClient.patch<{ freeMemberLimit: number }>('/admin/pricing/free-member-limit', { freeMemberLimit }).then(r => r.data),
+
+  /** Either field alone, or both. `memberCap: null` means unlimited, which is a value not an absence. */
+  setPlanLimits: (plan: SubscriptionPlan, body: { amountCents?: number; memberCap?: number | null }) =>
+    apiClient.patch<PricingPlanRow[]>(`/admin/pricing/${plan}`, body).then(r => r.data),
+
+  /**
+   * `setPricing` USED TO SIT HERE, AND IT WAS `setPlanLimits` WITH ONE FIELD. W-UX-C.
+   *
+   * Same verb, same route, a strict subset of the same body - so the price and the seat cap, two
+   * fields of one row, were written through two different functions. The cap already went through
+   * `setPlanLimits`; the price did not, for no reason but the order they were added.
+   *
+   * This is where "Scale advertised 1,000 people in three places" comes from, and the comment inside
+   * `setPlanLimits` already says a cap that drifts is what it exists to prevent.
+   */
 }
 
 export interface PricingSnapshot {

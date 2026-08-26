@@ -10,6 +10,11 @@ import { totalSessionsFor } from '../grounds/session-count';
  * them is exotic; all three were sitting in the first message of session one.
  */
 
+/**
+ * The asserted phrase lost the word "ground" when it left customer-facing copy. This subject is
+ * about the prompt offering the model a TRUE thing to say rather than only a prohibition, and that
+ * is unchanged - only the noun moved.
+ */
 describe('how many check-ins people are told they have', () => {
   /**
    * The engine opens with "this is the first of N check-ins". It was never given
@@ -102,7 +107,7 @@ describe('claiming to have changed something it cannot change', () => {
   it('gives it a true thing to say instead, rather than only a prohibition', () => {
     // A rule with no alternative gets worked around. This one has to leave the
     // person knowing where the change actually gets made.
-    expect(ENGINE_RULES).toMatch(/ground's settings so it holds everywhere/i);
+    expect(ENGINE_RULES).toMatch(/the settings so it holds everywhere/i);
   });
 
   it('still has the engine carry the correction through the conversation', () => {

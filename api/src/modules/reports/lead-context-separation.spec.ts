@@ -155,7 +155,7 @@ describe('lead-context corpus separation (ReportsService.synthesize)', () => {
 // 3. READ-BACK GATE
 // ---------------------------------------------------------------------------
 describe('lead-context read-back gate (GroundsService.get)', () => {
-  function makeGetService() {
+  function makeGetService(rows: any[] = [{ id: 'ln1', participantId: 'p2', text: 'private lead note about A', audience: 'LEAD_ONLY', createdAt: new Date() }]) {
     const groundRow: any = {
       id: 'g1', organizationId: 'org-1', initiatorId: 'init-1',
       createdAt: new Date(), timelineDays: 84, brief: 'b', groundAuditLog: null,
@@ -166,7 +166,15 @@ describe('lead-context read-back gate (GroundsService.get)', () => {
       ],
       checkIns: [], report: null, resolution: null, patternDetections: [],
     };
-    const leadFindMany = jest.fn(async () => [{ id: 'ln1', participantId: 'p2', text: 'private lead note about A', createdAt: new Date() }]);
+    /**
+     * ANSWERS THE QUESTION IT WAS ASKED. A mock returning the same row whatever the where clause says
+     * cannot tell a working audience filter from a missing one - it fails the first and passes the
+     * second, which is the wrong way round.
+     */
+    const leadFindMany = jest.fn(async (args: any) => {
+      const wanted = args?.where?.audience;
+      return rows.filter((r: any) => !wanted || r.audience === wanted);
+    });
     const prisma: any = {
     /**
      * `GroundBaseline` is read by `get()` and by the report now - the team's starting point, which had
@@ -200,11 +208,40 @@ describe('lead-context read-back gate (GroundsService.get)', () => {
     expect(res.leadContextNotes).toHaveLength(1);
   });
 
-  it('returns NO notes to a participant, and the note text never appears in their view', async () => {
+  /**
+   * THE GUARANTEE IS UNCHANGED; THE MECHANISM IS NOT.
+   *
+   * This used to assert `leadFindMany` was never called for a participant, because the only way a
+   * note reached anybody was the query running at all. Notes now carry an audience, so a participant
+   * DOES get a query - filtered, in the database, to the notes addressed to everyone.
+   *
+   * That is a stronger boundary than not querying, not a weaker one: the filter lives in the where
+   * clause rather than in a caller remembering to skip it. What must never change is the line below
+   * it - a private note's text does not appear in a participant's view.
+   *
+   * The mock has to answer the question it was ASKED for that to mean anything. One that returns the
+   * same row whatever the where clause says would fail this for a reason that has nothing to do with
+   * the product, and pass it for one too.
+   */
+  it('never lets a private note reach a participant, whatever query runs', async () => {
     const { service, leadFindMany } = makeGetService();
     const res: any = await service.get('g1', 'org-1', 'user-2');
+    expect(leadFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ audience: 'EVERYONE' }) }),
+    );
     expect(res.leadContextNotes).toEqual([]);
-    expect(leadFindMany).not.toHaveBeenCalled();
     expect(JSON.stringify(res)).not.toContain('private lead note about A');
+  });
+
+  /**
+   * The other half of the same rule, and the reason the audience column exists: a note the lead
+   * addressed to everyone must actually arrive.
+   */
+  it('does hand a participant a note addressed to everyone', async () => {
+    const { service } = makeGetService([
+      { id: 'n2', participantId: null, text: 'we are deciding whether to renew', audience: 'EVERYONE', createdAt: new Date() },
+    ]);
+    const res: any = await service.get('g1', 'org-1', 'user-2');
+    expect(JSON.stringify(res)).toContain('we are deciding whether to renew');
   });
 });

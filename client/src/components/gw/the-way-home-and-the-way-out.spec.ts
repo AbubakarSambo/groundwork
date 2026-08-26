@@ -5,7 +5,7 @@ import { describe, it, expect } from 'vitest'
 /**
  * THE LOGO GOES HOME, AND SIGNING OUT IS POSSIBLE FROM ANYWHERE.
  *
- * Her rules: "the groundwork logo and icon are meant to always take you back to the marketing page.
+ * Her rules: "the check-inwork logo and icon are meant to always take you back to the marketing page.
  * If you are signed-in it can show sign-out so you can stay signed-in on the same device for a while
  * without having to sign-in again."
  *

@@ -27,6 +27,12 @@ describe('GroundsService - participant serialization (GW-01)', () => {
      * one of these fixtures is actually in.
      */
     groundBaseline: { findFirst: jest.fn(async () => null) },
+    /**
+     * A non-lead's read now queries the notes too, filtered in the database to those addressed to
+     * everyone - so this delegate is reached where it previously was not. Empty: these suites are
+     * about participant serialisation and the org boundary, not about context notes.
+     */
+    leadContextNote: { findMany: jest.fn(async () => []) },
     /** Read by `get()` since per-person objectives were built. Empty is "nobody has stated one". */
     personObjective: { findMany: jest.fn(async () => []) },
       ground: {
@@ -63,6 +69,12 @@ describe('GroundsService - participant serialization (GW-01)', () => {
      * one of these fixtures is actually in.
      */
     groundBaseline: { findFirst: jest.fn(async () => null) },
+    /**
+     * A non-lead's read now queries the notes too, filtered in the database to those addressed to
+     * everyone - so this delegate is reached where it previously was not. Empty: these suites are
+     * about participant serialisation and the org boundary, not about context notes.
+     */
+    leadContextNote: { findMany: jest.fn(async () => []) },
     /** Read by `get()` since per-person objectives were built. Empty is "nobody has stated one". */
     personObjective: { findMany: jest.fn(async () => []) },
       ground: { findFirst: jest.fn(async (args: any) => ({ id: 'g1', organizationId: args.where.organizationId, participants: [], checkIns: [] })) },
@@ -159,6 +171,12 @@ describe('GroundsService.get - org boundary (GW-ORG-BOUNDARY)', () => {
       checkIn: { aggregate: jest.fn(async () => ({ _max: { sessionNumber: null } })) },
       /** Read by `get()` since the baseline was built. Null is "not stated", which these fixtures are. */
       groundBaseline: { findFirst: jest.fn(async () => null) },
+    /**
+     * A non-lead's read now queries the notes too, filtered in the database to those addressed to
+     * everyone - so this delegate is reached where it previously was not. Empty: these suites are
+     * about participant serialisation and the org boundary, not about context notes.
+     */
+    leadContextNote: { findMany: jest.fn(async () => []) },
       /** Read by `get()` since per-person objectives were built. Empty is "nobody has stated one". */
       personObjective: { findMany: jest.fn(async () => []) },
       groundDocument: { count: jest.fn(async () => 0) },

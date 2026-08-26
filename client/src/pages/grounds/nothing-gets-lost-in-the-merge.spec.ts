@@ -33,7 +33,7 @@ import { describe, it, expect } from 'vitest'
  */
 
 /**
- * The ground's surfaces. `GroundChat` is here because capabilities MOVED into it
+ * The check-in's surfaces. `GroundChat` is here because capabilities MOVED into it
  * when the card view was retired - the session summary and the correction that
  * starts from it. This spec went red on `conversationApi.artifact` the moment they
  * left `GroundParticipantPage`, which is the whole reason it exists: a capability
@@ -68,7 +68,7 @@ const OPERATIONS: Record<string, string[]> = {
   billing: ['claimFreeExtension(', 'createSubscription(', 'redeemContributorCode(', 'getContributorCodeShareCard('],
   /**
    * The two that exist nowhere else, and the reason the report cannot simply be
-   * dropped into the board: did this ground actually help, and can I take my
+   * dropped into the board: did this check-in actually help, and can I take my
    * record away with me.
    */
   'report only': ['outcomeFeedbackApi.mine(', 'outcomeFeedbackApi.submit(', 'conversationApi.download('],
@@ -77,7 +77,7 @@ const OPERATIONS: Record<string, string[]> = {
 
 const SRC = PAGES.map(p => readFileSync(join(__dirname, p), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')).join('\n')
 
-describe('nothing the ground pages can do gets lost in a merge', () => {
+describe('nothing the check-in pages can do gets lost in a merge', () => {
   for (const [group, calls] of Object.entries(OPERATIONS)) {
     describe(group, () => {
       for (const call of calls) {

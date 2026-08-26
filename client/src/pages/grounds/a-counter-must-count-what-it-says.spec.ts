@@ -9,7 +9,7 @@ import { join } from 'path'
  * labelled "Reports ready" and counted something else: reports waiting for THIS PERSON to open,
  * from which the initiator is deliberately exempt because they released it and can always read it.
  * Both halves were defensible alone. Together, on one screen, they told her nothing was ready while
- * the ground beneath printed its report's own summary.
+ * the check-in beneath printed its report's own summary.
  *
  * It is the same defect as "0 of 3 checked in" over a finished report, which this product already
  * fixed once: a counter whose label promises one thing and whose value measures another. A leader

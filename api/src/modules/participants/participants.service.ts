@@ -28,7 +28,7 @@ export class ParticipantsService {
       where: { id: participant.groundId },
       include: { initiator: { select: { firstName: true, lastName: true } } },
     });
-    if (!ground) throw new NotFoundException('Ground not found');
+    if (!ground) throw new NotFoundException('Check-in not found');
 
     return {
       groundLabel: ground.label,
@@ -48,7 +48,7 @@ export class ParticipantsService {
   async accept(token: string, names?: { firstName?: string; lastName?: string }, returningUserId?: string | null) {
     const participant = await this.loadByToken(token);
     const ground = await this.prisma.ground.findUnique({ where: { id: participant.groundId } });
-    if (!ground) throw new NotFoundException('Ground not found');
+    if (!ground) throw new NotFoundException('Check-in not found');
 
     // AN INVITE LINK IS SINGLE USE FOR SIGNING IN.
     //

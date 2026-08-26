@@ -61,9 +61,9 @@ describe('red is for late, not for your turn', () => {
   })
 })
 
-describe('somebody who is not a party to the ground', () => {
+describe('somebody who is not a party to the check-in', () => {
   it('is never told it is their turn', () => {
-    // An admin who runs a ground they are not in owes nobody a check-in, and a badge
+    // An admin who runs a check-in they are not in owes nobody a check-in, and a badge
     // that says otherwise makes them chase their own tail.
     const g = ground({ checkIns: [{ participantId: 'p-me', sessionNumber: 1, status: 'NOT_STARTED', availableFrom: days(30) }] })
     const read = railAttention(g, 'u-admin-not-in-it', NOW)
@@ -104,7 +104,7 @@ describe('the order of the rail', () => {
 })
 
 describe('closed grounds leaving the rail', () => {
-  it('stay for about three months, because a ground closes when it matters most', () => {
+  it('stay for about three months, because a check-in closes when it matters most', () => {
     // The report has just landed and the resolution has just been agreed. Removing
     // it that day hides the thing people are about to open.
     const g = ground({ closedAt: days(10) })

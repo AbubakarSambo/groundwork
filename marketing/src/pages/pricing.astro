@@ -3,7 +3,7 @@ import Nav from '../components/Nav.astro';
 import Layout from '../layouts/Layout.astro';
 const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
 ---
-<Layout title="Pricing · Groundwork" description="Start free with 10 Grounds, no card required. Subscribe as your team grows. Unlimited Grounds, sessions, and reports on every plan." canonicalPath="/pricing">
+<Layout title="Pricing · Groundwork" description="Start free with 10 check-ins for teams of 5 or fewer, no card required. Subscribe as your team grows. Unlimited sessions and reports on every plan." canonicalPath="/pricing">
   <style>
     *,*::before,*::after{box-sizing:border-box}
     body{margin:0;overflow-x:hidden}
@@ -20,11 +20,26 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
     .why-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;}
     .why-card{background:#fff;border:1px solid var(--gw-border);border-radius:10px;padding:18px 18px;}
     .faq-item{border-bottom:1px solid var(--gw-border);padding:18px 0;}
+    /* The DIY-vs-Guided compare. A grid rather than a table so the label can
+       sit above its two answers on a narrow screen instead of being squeezed
+       into a third of the width. */
+    .del-row{display:grid;grid-template-columns:1.1fr 1fr 1fr;gap:12px;padding:12px 0;border-top:1px solid var(--gw-border);}
+    .del-row:first-of-type{border-top:none;}
+    .del-lbl{font-size:12.5px;font-weight:700;color:var(--gw-text);}
+    .del-cell{font-size:12.5px;color:var(--gw-sub);line-height:1.6;}
+    .del-head{font-size:11px;letter-spacing:.06em;text-transform:uppercase;font-weight:700;color:var(--gw-muted);}
     .faq-item:last-child{border-bottom:none;}
     @media(max-width:620px){
       .gw-nav-links{display:none !important;}
       .plan-grid{grid-template-columns:1fr;}
       .why-grid{grid-template-columns:1fr;}
+      /* One column, and the column headings become inline labels on each cell
+         so "DIY" and "Guided" are still attached to what they describe. */
+      .del-row{grid-template-columns:1fr;gap:5px;}
+      .del-head-row{display:none;}
+      .del-cell::before{font-weight:700;color:var(--gw-text);}
+      .del-cell.diy::before{content:'DIY: ';}
+      .del-cell.guided::before{content:'Guided: ';}
     }
   </style>
 
@@ -37,7 +52,7 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
       <!-- Header -->
       <p style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--gw-navy);font-weight:700;margin-bottom:12px;">Pricing</p>
       <h1 style="font-size:34px;font-weight:800;color:var(--gw-text);line-height:1.2;margin-bottom:16px;">Simple, honest pricing.</h1>
-      <p style="font-size:16px;color:var(--gw-sub);line-height:1.7;margin-bottom:44px;max-width:520px;">Start free with 10 Grounds, no card required. Subscribe as your team grows. Unlimited Grounds, sessions, and reports on every plan.</p>
+      <p style="font-size:16px;color:var(--gw-sub);line-height:1.7;margin-bottom:44px;max-width:520px;">Start free with 10 check-ins for teams of 5 or fewer, no card required. Subscribe as your team grows. Unlimited sessions and reports on every plan.</p>
 
       <!-- Free tier -->
       <div style="background:var(--gw-paper);border:1px solid var(--gw-border);border-radius:12px;padding:24px 26px;margin-bottom:40px;display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap;">
@@ -46,9 +61,10 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
             <span style="font-size:15px;font-weight:700;color:var(--gw-text);">Free</span>
             <span style="font-size:11px;background:#E7F6EF;color:var(--gw-green-t);border:1px solid #BFE6D4;border-radius:6px;padding:2px 8px;font-weight:700;">Always</span>
           </div>
-          <p style="font-size:13.5px;color:var(--gw-sub);line-height:1.65;margin:0 0 12px;">Create up to 10 Grounds for free. No card required. Unlimited sessions and reports on every Ground.</p>
+          <p style="font-size:13.5px;color:var(--gw-sub);line-height:1.65;margin:0 0 12px;">Create up to 10 check-ins for free, for teams of 5 or fewer including you. No card required. Unlimited sessions and reports on every check-in.</p>
           <ul style="font-size:12.5px;color:var(--gw-sub);padding-left:18px;margin:0;line-height:1.9;">
-            <li>10 Grounds</li>
+            <li>10 check-ins</li>
+            <li>Teams of 5 or fewer</li>
             <li>Unlimited sessions</li>
             <li>Unlimited reports</li>
             <li>Admin dashboard</li>
@@ -57,7 +73,7 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
         <div style="text-align:right;flex-shrink:0;">
           <div style="font-size:30px;font-weight:800;color:var(--gw-text);">$0</div>
           <div style="font-size:12px;color:var(--gw-muted);">forever</div>
-          <a href={`${APP_URL}/auth?mode=signup`} style="display:inline-block;margin-top:12px;font-size:12px;font-weight:600;color:var(--gw-navy);border:1px solid var(--gw-blue-b);border-radius:7px;padding:6px 14px;text-decoration:none;">Get started free</a>
+          <a class="gw-tap" href={`${APP_URL}/auth?mode=signup`} style="display:inline-block;margin-top:12px;font-size:12px;font-weight:600;color:var(--gw-navy);border:1px solid var(--gw-blue-b);border-radius:7px;padding:6px 14px;text-decoration:none;">Get started free</a>
         </div>
       </div>
 
@@ -71,35 +87,35 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
           <div style="font-size:26px;font-weight:800;color:var(--gw-navy);margin-bottom:2px;">$25<span style="font-size:13px;font-weight:500;color:var(--gw-muted);">/mo</span></div>
           <div style="font-size:12px;color:var(--gw-muted);margin-bottom:12px;">Up to 5 people</div>
           <p style="font-size:12px;color:var(--gw-sub);line-height:1.6;flex-grow:1;margin-bottom:16px;">For small teams getting each person's own account on the record.</p>
-          <a href={`${APP_URL}/billing`} style="display:block;text-align:center;font-size:13px;font-weight:700;color:#fff;background:var(--gw-navy);border-radius:8px;padding:9px;text-decoration:none;">Subscribe</a>
+          <a class="gw-tap" href={`${APP_URL}/billing`} style="display:block;text-align:center;font-size:13px;font-weight:700;color:#fff;background:var(--gw-navy);border-radius:8px;padding:9px;text-decoration:none;">Subscribe</a>
         </div>
         <div class="plan-card">
           <div style="font-size:14px;font-weight:700;color:var(--gw-text);margin-bottom:4px;">Small Team</div>
-          <div style="font-size:26px;font-weight:800;color:var(--gw-navy);margin-bottom:2px;">$50<span style="font-size:13px;font-weight:500;color:var(--gw-muted);">/mo</span></div>
+          <div style="font-size:26px;font-weight:800;color:var(--gw-navy);margin-bottom:2px;">$90<span style="font-size:13px;font-weight:500;color:var(--gw-muted);">/mo</span></div>
           <div style="font-size:12px;color:var(--gw-muted);margin-bottom:12px;">Up to 20 people</div>
-          <p style="font-size:12px;color:var(--gw-sub);line-height:1.6;flex-grow:1;margin-bottom:16px;">For growing teams running multiple Grounds at once.</p>
-          <a href={`${APP_URL}/billing`} style="display:block;text-align:center;font-size:13px;font-weight:700;color:#fff;background:var(--gw-navy);border-radius:8px;padding:9px;text-decoration:none;">Subscribe</a>
+          <p style="font-size:12px;color:var(--gw-sub);line-height:1.6;flex-grow:1;margin-bottom:16px;">For growing teams running multiple check-ins at once.</p>
+          <a class="gw-tap" href={`${APP_URL}/billing`} style="display:block;text-align:center;font-size:13px;font-weight:700;color:#fff;background:var(--gw-navy);border-radius:8px;padding:9px;text-decoration:none;">Subscribe</a>
         </div>
         <div class="plan-card">
           <div style="font-size:14px;font-weight:700;color:var(--gw-text);margin-bottom:4px;">Growth</div>
-          <div style="font-size:26px;font-weight:800;color:var(--gw-navy);margin-bottom:2px;">$100<span style="font-size:13px;font-weight:500;color:var(--gw-muted);">/mo</span></div>
+          <div style="font-size:26px;font-weight:800;color:var(--gw-navy);margin-bottom:2px;">$400<span style="font-size:13px;font-weight:500;color:var(--gw-muted);">/mo</span></div>
           <div style="font-size:12px;color:var(--gw-muted);margin-bottom:12px;">Up to 100 people</div>
           <p style="font-size:12px;color:var(--gw-sub);line-height:1.6;flex-grow:1;margin-bottom:16px;">For organizations running Groundwork across departments or client groups.</p>
-          <a href={`${APP_URL}/billing`} style="display:block;text-align:center;font-size:13px;font-weight:700;color:#fff;background:var(--gw-navy);border-radius:8px;padding:9px;text-decoration:none;">Subscribe</a>
+          <a class="gw-tap" href={`${APP_URL}/billing`} style="display:block;text-align:center;font-size:13px;font-weight:700;color:#fff;background:var(--gw-navy);border-radius:8px;padding:9px;text-decoration:none;">Subscribe</a>
         </div>
         <div class="plan-card">
           <div style="font-size:14px;font-weight:700;color:var(--gw-text);margin-bottom:4px;">Business</div>
-          <div style="font-size:26px;font-weight:800;color:var(--gw-navy);margin-bottom:2px;">$200<span style="font-size:13px;font-weight:500;color:var(--gw-muted);">/mo</span></div>
+          <div style="font-size:26px;font-weight:800;color:var(--gw-navy);margin-bottom:2px;">$900<span style="font-size:13px;font-weight:500;color:var(--gw-muted);">/mo</span></div>
           <div style="font-size:12px;color:var(--gw-muted);margin-bottom:12px;">Up to 250 people</div>
-          <p style="font-size:12px;color:var(--gw-sub);line-height:1.6;flex-grow:1;margin-bottom:16px;">For larger organizations with multiple teams and Grounds in flight.</p>
-          <a href={`${APP_URL}/billing`} style="display:block;text-align:center;font-size:13px;font-weight:700;color:#fff;background:var(--gw-navy);border-radius:8px;padding:9px;text-decoration:none;">Subscribe</a>
+          <p style="font-size:12px;color:var(--gw-sub);line-height:1.6;flex-grow:1;margin-bottom:16px;">For larger organizations with multiple teams and check-ins in flight.</p>
+          <a class="gw-tap" href={`${APP_URL}/billing`} style="display:block;text-align:center;font-size:13px;font-weight:700;color:#fff;background:var(--gw-navy);border-radius:8px;padding:9px;text-decoration:none;">Subscribe</a>
         </div>
         <div class="plan-card">
           <div style="font-size:14px;font-weight:700;color:var(--gw-text);margin-bottom:4px;">Scale</div>
-          <div style="font-size:26px;font-weight:800;color:var(--gw-navy);margin-bottom:2px;">$400<span style="font-size:13px;font-weight:500;color:var(--gw-muted);">/mo</span></div>
-          <div style="font-size:12px;color:var(--gw-muted);margin-bottom:12px;">Up to 1,000 people</div>
-          <p style="font-size:12px;color:var(--gw-sub);line-height:1.6;flex-grow:1;margin-bottom:16px;">For organizations scaling Groundwork across a large workforce.</p>
-          <a href={`${APP_URL}/billing`} style="display:block;text-align:center;font-size:13px;font-weight:700;color:#fff;background:var(--gw-navy);border-radius:8px;padding:9px;text-decoration:none;">Subscribe</a>
+          <div style="font-size:26px;font-weight:800;color:var(--gw-navy);margin-bottom:2px;">$1,650<span style="font-size:13px;font-weight:500;color:var(--gw-muted);">/mo</span></div>
+          <div style="font-size:12px;color:var(--gw-muted);margin-bottom:12px;">Up to 500 people</div>
+          <p style="font-size:12px;color:var(--gw-sub);line-height:1.6;flex-grow:1;margin-bottom:16px;">For organizations running Groundwork across many teams at once.</p>
+          <a class="gw-tap" href={`${APP_URL}/billing`} style="display:block;text-align:center;font-size:13px;font-weight:700;color:#fff;background:var(--gw-navy);border-radius:8px;padding:9px;text-decoration:none;">Subscribe</a>
         </div>
       </div>
 
@@ -109,7 +125,71 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
           <div style="font-size:15px;font-weight:700;color:#fff;margin-bottom:6px;">Enterprise</div>
           <p style="font-size:13px;color:rgba(255,255,255,.6);line-height:1.6;margin:0;">For organizations with custom needs, volume pricing, or dedicated support.</p>
         </div>
-        <a href="mailto:hello@groundwork.so" style="font-size:13px;font-weight:700;color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:8px;padding:9px 20px;text-decoration:none;white-space:nowrap;">Contact us</a>
+        <a class="gw-tap" href="mailto:hello@myground.work" style="font-size:13px;font-weight:700;color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:8px;padding:9px 20px;text-decoration:none;white-space:nowrap;">Contact us</a>
+      </div>
+
+      <!-- Run it yourself, or run it with a coach. This sits after the plans
+           because it is a delivery choice on top of a subscription, not a plan
+           of its own - the subscription is still required either way. The two
+           coaching prices are a service, not a seeded tier, which is why the
+           pricing-parity guard has to know about them by name. -->
+      <h2 style="font-size:20px;font-weight:800;color:var(--gw-text);margin-bottom:8px;">Run it yourself, or run it with a coach</h2>
+      <p style="font-size:14px;color:var(--gw-sub);line-height:1.65;margin-bottom:22px;">Every plan above is the software. Most teams run it themselves. If you would rather have somebody design the check-ins with you and sit in the room when the report lands, that is the Guided option.</p>
+
+      <div style="background:#fff;border:1px solid var(--gw-border);border-radius:12px;padding:20px 22px;margin-bottom:20px;">
+        <div class="del-row del-head-row" style="padding-bottom:8px;">
+          <div class="del-head"></div>
+          <div class="del-head">DIY</div>
+          <div class="del-head">Guided</div>
+        </div>
+        <div class="del-row">
+          <div class="del-lbl">Setup and situation design</div>
+          <div class="del-cell diy">You, from templates</div>
+          <div class="del-cell guided">Built with you, situation by situation</div>
+        </div>
+        <div class="del-row">
+          <div class="del-lbl">When the report lands</div>
+          <div class="del-cell diy">You read it</div>
+          <div class="del-cell guided">Your coach walks the team through it</div>
+        </div>
+        <div class="del-row">
+          <div class="del-lbl">When something surfaces</div>
+          <div class="del-cell diy">You handle it</div>
+          <div class="del-cell guided">Your coach mediates, in scheduled sessions</div>
+        </div>
+        <div class="del-row">
+          <div class="del-lbl">Cost</div>
+          <div class="del-cell diy">Your subscription only</div>
+          <div class="del-cell guided">Your subscription, plus coaching below</div>
+        </div>
+      </div>
+
+      <div class="why-grid" style="margin-bottom:20px;">
+        <div class="why-card">
+          <div style="font-size:13px;font-weight:700;color:var(--gw-text);margin-bottom:6px;">Retained</div>
+          <p style="font-size:26px;font-weight:800;color:var(--gw-text);margin:0 0 2px;">$5,000</p>
+          <p style="font-size:12px;color:var(--gw-muted);margin:0 0 8px;">a year, for twelve sessions</p>
+          <p style="font-size:12.5px;color:var(--gw-sub);line-height:1.65;margin:0;">Twelve sessions for the price of ten. Every session is tied to a specific check-in objective or a specific issue, so it is never an open-ended conversation.</p>
+        </div>
+        <div class="why-card">
+          <div style="font-size:13px;font-weight:700;color:var(--gw-text);margin-bottom:6px;">By the hour</div>
+          <p style="font-size:26px;font-weight:800;color:var(--gw-text);margin:0 0 2px;">$500</p>
+          <p style="font-size:12px;color:var(--gw-muted);margin:0 0 8px;">an hour, no retainer</p>
+          <p style="font-size:12.5px;color:var(--gw-sub);line-height:1.65;margin:0;">If you would rather not retain anybody, book single sessions as you need them. Same coach, same preparation.</p>
+        </div>
+      </div>
+
+      <div style="background:var(--gw-blue-bg);border-left:3px solid var(--gw-navy);border-radius:0 8px 8px 0;padding:18px 20px;margin-bottom:24px;">
+        <p style="font-size:13px;font-weight:700;color:var(--gw-navy);margin:0 0 6px;">Book two sessions per issue, back to back</p>
+        <p style="font-size:13px;color:var(--gw-text);line-height:1.7;margin:0;">One session to understand the situation, the next to work through it. Split across weeks it turns into talking about the problem rather than dealing with it, which is why we will not mediate cold.</p>
+      </div>
+
+      <div style="background:var(--gw-paper);border:1px solid var(--gw-border);border-radius:12px;padding:20px 24px;margin-bottom:48px;">
+        <p style="font-size:14px;font-weight:700;color:var(--gw-text);margin:0 0 4px;">Your people coach is <a class="gw-tap-inline" href="https://www.linkedin.com/in/saharjamal/" target="_blank" rel="noopener noreferrer" style="color:var(--gw-navy);">Sahar Jamal</a></p>
+        <p style="font-size:12px;color:var(--gw-muted);margin:0 0 10px;">Certified growth coach, six years coaching clients, and team lead at Groundwork</p>
+        <p style="font-size:13px;color:var(--gw-sub);line-height:1.75;margin:0 0 10px;">Sahar coaches entrepreneurs, start-up teams and emerging leaders through exactly the conversations a report makes unavoidable: an expectation nobody said out loud, two people who thought they agreed, a role that quietly stopped being the job. Guided is her in the room with your team, not a summary emailed to you.</p>
+        <p style="font-size:13px;color:var(--gw-sub);line-height:1.75;margin:0 0 12px;">She has led people herself, as founder and CEO of Maziwa in Kenya and in brand management at Johnson &amp; Johnson and Reckitt Benckiser. ACC-level certificate from the International Coaching Federation, graduate of the Canada Coach Academy, MBA from Northwestern. The person who sits with your team is the person who leads the team building the product.</p>
+        <a class="gw-tap-inline" href="mailto:hello@myground.work?subject=Guided%20check-ins" style="font-size:13px;font-weight:700;color:var(--gw-navy);text-decoration:none;">Ask about Guided &#8594;</a>
       </div>
 
       <!-- Why we price this way -->
@@ -119,11 +199,11 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
       <div class="why-grid" style="margin-bottom:48px;">
         <div class="why-card">
           <div style="font-size:13px;font-weight:700;color:var(--gw-text);margin-bottom:6px;">Start free, no card required.</div>
-          <p style="font-size:12.5px;color:var(--gw-sub);line-height:1.65;margin:0;">10 Grounds is enough to know whether Groundwork works for your team. No credit card, no trial that expires, no pressure to upgrade before you have seen the value.</p>
+          <p style="font-size:12.5px;color:var(--gw-sub);line-height:1.65;margin:0;">10 check-ins on a team of 5 or fewer is enough to know whether Groundwork works for you. No credit card, no trial that expires, no pressure to upgrade before you have seen the value.</p>
         </div>
         <div class="why-card">
           <div style="font-size:13px;font-weight:700;color:var(--gw-text);margin-bottom:6px;">Pay for your team size, not your usage.</div>
-          <p style="font-size:12.5px;color:var(--gw-sub);line-height:1.65;margin:0;">Every person with a Groundwork account in your organization counts toward your plan. Unlimited Grounds, sessions, and reports at every tier. No counting clicks.</p>
+          <p style="font-size:12.5px;color:var(--gw-sub);line-height:1.65;margin:0;">Every person with a Groundwork account in your organization counts toward your plan. Unlimited check-ins, sessions, and reports at every tier. No counting clicks.</p>
         </div>
         <div class="why-card">
           <div style="font-size:13px;font-weight:700;color:var(--gw-text);margin-bottom:6px;">One price, no tiers per feature.</div>
@@ -142,22 +222,22 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
       <div style="margin-bottom:48px;">
         <div class="faq-item">
           <div style="font-size:14px;font-weight:700;color:var(--gw-text);margin-bottom:6px;">What counts as a "person" on my plan?</div>
-          <p style="font-size:13px;color:var(--gw-sub);line-height:1.65;margin:0;">Every person with a Groundwork account in your organization counts, whether they create Grounds or just participate in them. Guests with no account do not count.</p>
+          <p style="font-size:13px;color:var(--gw-sub);line-height:1.65;margin:0;">Every person with a Groundwork account in your organization counts, whether they create check-ins or just take part in them. Guests with no account do not count.</p>
         </div>
         <div class="faq-item">
           <div style="font-size:14px;font-weight:700;color:var(--gw-text);margin-bottom:6px;">Do I need a card to start?</div>
-          <p style="font-size:13px;color:var(--gw-sub);line-height:1.65;margin:0;">No. Your first 10 Grounds are free and require no payment details. You add a card only when you want to create more than 10.</p>
+          <p style="font-size:13px;color:var(--gw-sub);line-height:1.65;margin:0;">No. Your first 10 check-ins are free, for teams of 5 or fewer including you, and require no payment details. You add a card only when you want more check-ins or more people.</p>
         </div>
         <div class="faq-item">
           <div style="font-size:14px;font-weight:700;color:var(--gw-text);margin-bottom:6px;">What counts as a session?</div>
-          <p style="font-size:13px;color:var(--gw-sub);line-height:1.65;margin:0;">One session is one full round of check-ins across all participants on a Ground. Whether you have two people or twenty, it is one session. Sessions are unlimited on every plan.</p>
+          <p style="font-size:13px;color:var(--gw-sub);line-height:1.65;margin:0;">One session is one full round of answers from everyone in a check-in. Whether you have two people or twenty, it is one session. Sessions are unlimited on every plan.</p>
         </div>
         <div class="faq-item">
           <div style="font-size:14px;font-weight:700;color:var(--gw-text);margin-bottom:6px;">Can I cancel a subscription at any time?</div>
           <p style="font-size:13px;color:var(--gw-sub);line-height:1.65;margin:0;">Yes. Cancel from the billing page and your subscription ends at the close of the billing period. No penalties, no questions.</p>
         </div>
         <div class="faq-item">
-          <div style="font-size:14px;font-weight:700;color:var(--gw-text);margin-bottom:6px;">What happens to my Grounds and reports if I cancel?</div>
+          <div style="font-size:14px;font-weight:700;color:var(--gw-text);margin-bottom:6px;">What happens to my check-ins and reports if I cancel?</div>
           <p style="font-size:13px;color:var(--gw-sub);line-height:1.65;margin:0;">Nothing is deleted. Your reports and history stay on your account. You can read everything that happened. You can still run Grounds on the free plan (up to 10 total).</p>
         </div>
         <div class="faq-item">
@@ -173,7 +253,7 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
       </div>
 
       <div style="text-align:center;padding:36px 28px;">
-        <a class="gw-btn-solid" href={`${APP_URL}/start`} style="padding:11px 24px;font-size:14px;">Start your first Ground free</a>
+        <a class="gw-btn-solid" href={`${APP_URL}/start`} style="padding:11px 24px;font-size:14px;">Start a check-in for your team, free</a>
       </div>
 
     </main>

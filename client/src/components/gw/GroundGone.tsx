@@ -24,12 +24,12 @@ export function GroundGone() {
 
   return (
     <div style={{ maxWidth: 380, margin: '0 auto', padding: '56px 20px', textAlign: 'center' }}>
-      <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>This ground is not open to you</div>
+      <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>This check-in is not open to you</div>
       <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.7, marginBottom: 20 }}>
-        If you just switched organisation, this ground belongs to the other one - switch back and it
+        If you just switched organisation, this check-in belongs to the other one - switch back and it
         will be there. Otherwise it may have been closed, or you are no longer part of it.
       </div>
-      <button className="gw-btn" onClick={() => navigate('/')}>Go to my grounds</button>
+      <button className="gw-btn" onClick={() => navigate('/')}>Go to my check-ins</button>
     </div>
   )
 }

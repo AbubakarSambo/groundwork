@@ -56,14 +56,14 @@ describe('BUG6: free-tier billing page has no $5 / buy-a-session UI', () => {
   it('shows the real free-tier framing on a non-subscribed org', async () => {
     renderBilling()
     await waitFor(() => {
-      expect(screen.getByText(/Your first 10 Grounds are free/i)).toBeTruthy()
+      expect(screen.getByText(/Your first 10 check-ins are free/i)).toBeTruthy()
     })
   })
 
   it('does NOT render a "$5 per session" card or a "Buy a session" button', async () => {
     renderBilling()
     await waitFor(() => {
-      expect(screen.getByText(/Your first 10 Grounds are free/i)).toBeTruthy()
+      expect(screen.getByText(/Your first 10 check-ins are free/i)).toBeTruthy()
     })
     expect(screen.queryByText(/Buy a session/i)).toBeNull()
     expect(screen.queryByText(/per session/i)).toBeNull()

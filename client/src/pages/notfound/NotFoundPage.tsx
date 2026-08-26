@@ -48,7 +48,7 @@ export function NotFoundPage() {
           email they have already given.
         */}
         <Link to={isAuthenticated ? '/grounds' : '/start'} className="gw-btn" style={{ textDecoration: 'none', textAlign: 'center' }}>
-          {isAuthenticated ? 'Back to your grounds' : 'Start a Ground'}
+          {isAuthenticated ? 'Back to your check-ins' : 'Start a check-in'}
         </Link>
       </div>
     </div>

@@ -28,16 +28,16 @@ export class ParticipantRequestsController {
       where: { id: groundId },
       select: { initiatorId: true, participants: { select: { userId: true } } },
     });
-    if (!ground) throw new NotFoundException('Ground not found');
+    if (!ground) throw new NotFoundException('Check-in not found');
     const isParty = ground.initiatorId === userId || ground.participants.some((p) => p.userId === userId);
-    if (!isParty) throw new ForbiddenException('You are not a party to this ground');
+    if (!isParty) throw new ForbiddenException('You are not a party to this check-in');
     return ground;
   }
 
   /** Confirms the requesting user is the initiator (only the initiator manages requests). */
   private async assertIsInitiator(groundId: string, userId: string) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { initiatorId: true, organizationId: true } });
-    if (!ground) throw new NotFoundException('Ground not found');
+    if (!ground) throw new NotFoundException('Check-in not found');
     if (ground.initiatorId !== userId) throw new ForbiddenException('Only the initiator can manage participant requests');
     return ground;
   }
@@ -82,7 +82,7 @@ export class ParticipantRequestsController {
     const ground = await this.assertIsInitiator(groundId, req.user.id);
 
     const request = await this.prisma.participantRequest.findUnique({ where: { id: reqId } });
-    if (!request || request.groundId !== groundId) throw new NotFoundException('Participant request not found on this ground');
+    if (!request || request.groundId !== groundId) throw new NotFoundException('Participant request not found on this check-in');
 
     const updated = await this.prisma.participantRequest.update({
       where: { id: reqId },

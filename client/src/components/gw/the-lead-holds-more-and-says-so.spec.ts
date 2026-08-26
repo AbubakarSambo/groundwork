@@ -1,0 +1,45 @@
+import { describe, it, expect } from 'vitest'
+import { readFileSync } from 'fs'
+import { fileURLToPath } from 'url'
+import path from 'path'
+import { LEAD_HOLDS_MORE } from './ContextStrength'
+
+/**
+ * A PARTICIPANT IS TOLD THEY ARE NOT SEEING EVERYTHING.
+ *
+ * G26's "visibly absent": somebody should know the lead holds context they cannot read, rather than
+ * believing they are looking at all of it. The sentence existed and was rendered inside
+ * `ContextStrength`, which is gated on CONTEXT_ENABLED.
+ *
+ * SO IT VANISHED IN THE STATE WHERE IT IS MOST TRUE. With the flag off, `canSeeDocument` returns
+ * `isMine` and ignores the visibility column entirely - every document is private to whoever uploaded
+ * it. A participant is definitely looking at less than the lead is, and that was exactly when nothing
+ * on screen admitted it.
+ */
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const PARTY = readFileSync(path.join(__dirname, '../../pages/grounds/GroundParticipantPage.tsx'), 'utf8')
+  .replace(/\/\*[\s\S]*?\*\//g, '')
+  .replace(/^\s*\/\/.*$/gm, '')
+
+describe('the lead holds more, and it says so', () => {
+  it('the sentence says what is missing and what is not', () => {
+    expect(LEAD_HOLDS_MORE).toMatch(/may hold context/i)
+    /** The reassurance is load-bearing: a person must not read this as "my words are being kept". */
+    expect(LEAD_HOLDS_MORE).toMatch(/never includes anything you have said/i)
+  })
+
+  it('and it reaches a participant with the flag off', () => {
+    expect(PARTY).toMatch(/\{!contextEnabled && !isInitiator && \(/)
+    expect(PARTY).toContain('{LEAD_HOLDS_MORE}')
+  })
+
+  /** One sentence, one definition. Two copies of a promise drift, and this one is a promise. */
+  it('and is not a second copy of the words', () => {
+    expect(PARTY).not.toMatch(/The lead may hold context for this check-in that is not shown here\./)
+  })
+
+  /** A lead is not told they cannot see their own context. */
+  it('and is not shown to the lead', () => {
+    expect(PARTY).toMatch(/!isInitiator/)
+  })
+})
