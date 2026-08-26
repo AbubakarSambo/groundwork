@@ -917,7 +917,20 @@ export function GroundParticipantPage() {
         {/* SETTINGS TAB */}
         {tab === 'settings' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 4 }}>Settings</div>
+            {/*
+              WHAT IS TRUE ABOUT YOU FIRST, WHAT SOMEBODY ELSE SET SECOND.
+
+              This tab opened with a disclaimer and two empty panels that belong to the lead, so a
+              party's first sight of it was three statements about absence and permission before
+              anything that was actually about them. Counted on a real check-in: five sentences about
+              what is missing or not theirs, in a thousand characters.
+
+              Nothing is removed - the disclaimer is still the honest thing to say, and the panels
+              still show what the lead has set. They are ordered with `order` rather than moved,
+              because the parent is already a flex column and reordering the markup itself is how a
+              1,100-line page gets broken.
+            */}
+            <div style={{ order: 0, fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 4 }}>Settings</div>
             {/*
               SAID OUTRIGHT, ONCE, AT THE TOP.
               
@@ -931,7 +944,7 @@ export function GroundParticipantPage() {
               exists to make. So the sentence gives the reason and names the way to disagree, because
               there is one and it is not a form.
             */}
-            <div style={{ background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '11px 13px', fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+            <div style={{ order: 3, background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '11px 13px', fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
               Nothing on this page is yours to change. What doing well looks like, and where this
               stood at the start, are set by the person running the check-in - so that what you are
               read against is not something you set yourself. You can see all of it, and if you
@@ -946,15 +959,15 @@ export function GroundParticipantPage() {
               * But they see it. If it changed mid-ground, they see that too, with the reason. Somebody
               * being read against a standard they cannot see is the thing this product is against.
               */}
-            <BaselinePanel groundId={id!} canState={false} />
+            <div style={{ order: 4 }}><BaselinePanel groundId={id!} canState={false} /></div>
             {/**
               * WHERE THIS STOOD, under what doing well looks like, because the pair is the point: the
               * yardstick and the starting point together are what let a report say something moved.
               */}
-            <StartingPointPanel groundId={id!} canRecord={false} />
+            <div style={{ order: 5 }}><StartingPointPanel groundId={id!} canRecord={false} /></div>
 
             {/* Profile summary */}
-            <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '13px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ order: 1, background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '13px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
               <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--gw-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 16, fontWeight: 800, flexShrink: 0 }}>
                 {(user?.firstName?.[0] ?? '?').toUpperCase()}
               </div>
@@ -964,7 +977,7 @@ export function GroundParticipantPage() {
               </div>
             </div>
 
-            <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, overflow: 'hidden' }}>
+            <div style={{ order: 2, background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, overflow: 'hidden' }}>
               <div style={{ padding: '13px 16px', borderBottom: '1px solid var(--gw-bg)' }}>
                 <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Check-in</div>
                 <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{ground.label}</div>
@@ -975,7 +988,14 @@ export function GroundParticipantPage() {
               </div>
               <div style={{ padding: '13px 16px', borderBottom: '1px solid var(--gw-bg)' }}>
                 <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Your role</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{myParticipant?.roleAsDescribed ?? 'In this check-in'}</div>
+                {/*
+                  THE FALLBACK SAID NOTHING. Every other row here carries a value - the check-in's
+                  name, the scenario, ACTIVE, 0 of 8. This one fell back to "In this check-in",
+                  which reads as a caption for the label above it rather than an answer, so the row
+                  looked filled in while saying nothing at all. Only visible once the card moved to
+                  the top of the tab and became the first thing a party reads about themselves.
+                */}
+                <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{myParticipant?.roleAsDescribed || 'Not recorded'}</div>
               </div>
               <div style={{ padding: '13px 16px', borderBottom: '1px solid var(--gw-bg)' }}>
                 <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Status</div>
@@ -992,7 +1012,7 @@ export function GroundParticipantPage() {
               * same read as the one on the record tab, minus everything a person could act on, and
               * a page that grades you twice is not twice as honest.
               */}
-            <div style={{ background: 'var(--gw-clay-bg)', border: '1px solid #EDD0CB', borderRadius: 10, padding: '13px 16px' }}>
+            <div style={{ order: 6, background: 'var(--gw-clay-bg)', border: '1px solid #EDD0CB', borderRadius: 10, padding: '13px 16px' }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-clay)', marginBottom: 4 }}>Privacy reminder</div>
               <div style={{ fontSize: 12, color: '#7A4A44', lineHeight: 1.6 }}>
                 Your check-in answers are never visible to the other party. They are stored privately and only cross-referenced at the point of report generation. Neither party can read the other's raw account at any time.

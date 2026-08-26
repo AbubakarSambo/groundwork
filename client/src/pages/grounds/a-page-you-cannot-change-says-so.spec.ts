@@ -21,11 +21,26 @@ import path from 'path'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const PARTY = readFileSync(path.join(__dirname, 'GroundParticipantPage.tsx'), 'utf8')
 
-/** The tab's own region, so nothing elsewhere on the page can satisfy these. */
+/**
+ * The tab's own region, so nothing elsewhere on the page can satisfy these.
+ *
+ * WAS A FIXED 3,000 CHARACTERS, which is a length, not a region. Adding a comment inside the tab
+ * pushed the panels it checks past the end and the assertion failed on code that had not changed -
+ * the same trap as any other slice measured in characters. Bounded by the block's own braces now,
+ * so it grows with what it is guarding.
+ */
 const SETTINGS = (() => {
   const i = PARTY.indexOf("{tab === 'settings' && (")
   expect(i).toBeGreaterThan(-1)
-  return PARTY.slice(i, i + 3000)
+  let depth = 0
+  for (let j = i; j < PARTY.length; j++) {
+    if (PARTY[j] === '{') depth++
+    else if (PARTY[j] === '}') {
+      depth--
+      if (depth === 0) return PARTY.slice(i, j + 1)
+    }
+  }
+  throw new Error("the settings tab's block never closes")
 })()
 
 describe('a page you cannot change says so', () => {
