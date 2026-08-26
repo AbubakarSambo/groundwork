@@ -639,11 +639,21 @@ export function GroundAdminPage() {
    * So the phrase carries its own meaning. `caption` and `tone` are gone with the tile that read
    * them - a field nobody reads is a promise the shape does not keep.
    */
+  /**
+   * "READY" MEANT "A REPORT ROW EXISTS", WHICH IS NOT THE SAME THING.
+   *
+   * The API builds a forming picture as soon as anybody completes a session, so the row is there
+   * long before the round is. This strip therefore read "report ready, not released" beside its own
+   * "1 of 4 checked in", two facts in one line contradicting each other.
+   *
+   * Derived from `roundDone` - the same count the strip already prints - so the two cannot disagree.
+   */
+  const everyoneIn = roundDone >= (ground.participants ?? []).filter((p: any) => !p.managingOnly).length
   const reportState: string =
     (ground as any).report?.releasedAt
       ? 'report released'
       : (ground as any).report
-        ? 'report ready, not released'
+        ? (everyoneIn ? 'report ready, not released' : 'report forming')
         : 'no report yet'
   // contact-visibility toggle state (default: hidden). true = peers cannot see each other's email.
   /**
@@ -1691,12 +1701,46 @@ export function GroundAdminPage() {
             ) : report?.createdAt ? (
               <div>
                 <div style={{ background: 'var(--gw-bg)', border: '0.5px solid var(--gw-border)', borderRadius: 10, padding: 16, marginBottom: 14 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Report is ready</div>
-                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 14 }}>Everybody has completed their sessions. When you release the report, everybody sees it at the same moment - nobody reads it before anybody else. Billing activates on release.</div>
+                  {/*
+                    "EVERYBODY HAS COMPLETED THEIR SESSIONS" WAS SAID WHETHER OR NOT THEY HAD.
+
+                    This branch gated on `report?.createdAt` - a Report ROW EXISTING - and a row
+                    exists long before the round is done: the API creates a forming picture as soon
+                    as anybody finishes, marks it `forming: true`, and attaches `sessionProgress`
+                    saying how many are still out. A participant reading the same row is correctly
+                    told "a picture is forming, not everyone has checked in yet".
+
+                    So one row was read two ways: the party was told it was incomplete, and the lead
+                    was told everybody was done and offered a release - which reveals the picture to
+                    the whole team simultaneously and activates billing. Seen on a check-in whose own
+                    header said "1 of 4 checked in" two lines above this sentence.
+
+                    Releasing early stays possible, because a lead may genuinely want to close a
+                    round short. What it must not do is claim the round finished.
+                  */}
+                  {(report as any)?.forming ? (
+                    <>
+                      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>A picture is forming</div>
+                      <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 14 }}>
+                        {(report as any)?.sessionProgress
+                          ? `${(report as any).sessionProgress.completed} of ${(report as any).sessionProgress.total} have checked in for this round. `
+                          : 'Not everyone has checked in yet. '}
+                        You can release what there is now, and everybody will see it at the same moment. It will
+                        be missing whoever has not answered, and billing activates on release.
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Report is ready</div>
+                      <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 14 }}>Everybody has completed their sessions. When you release the report, everybody sees it at the same moment - nobody reads it before anybody else. Billing activates on release.</div>
+                    </>
+                  )}
                   {!showReleaseConfirm ? (
                     <button onClick={() => setShowReleaseConfirm(true)}
                       style={{ width: '100%', padding: 12, borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
-                      {isOrgAdmin && !isInitiator ? 'Release on the lead\'s behalf' : 'Release report to everybody'}
+                      {(report as any)?.forming
+                        ? 'Release it as it stands'
+                        : isOrgAdmin && !isInitiator ? 'Release on the lead\'s behalf' : 'Release report to everybody'}
                     </button>
                   ) : (
                     <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 8, padding: '14px 16px' }}>
