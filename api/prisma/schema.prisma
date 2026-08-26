@@ -1288,7 +1288,10 @@ model ContributorCode {
   isActive          Boolean  @default(true) @map("is_active")
   parentCodeId      String?  @map("parent_code_id")
   redeemedByUserId  String?  @map("redeemed_by_user_id")
-  expiresAt         DateTime @default(dbgenerated("NOW() + INTERVAL '90 days'")) @map("expires_at")
+  /// Written as Postgres itself stores it. The equivalent `NOW() + INTERVAL '90 days'` is the same
+  /// expression and the same behaviour, but Postgres normalises it on the way in, so `migrate diff`
+  /// reported the column as permanently changed and no amount of re-migrating would settle it.
+  expiresAt         DateTime @default(dbgenerated("(now() + '90 days'::interval)")) @map("expires_at")
   createdAt         DateTime @default(now()) @map("created_at")
 
   organization   Organization                @relation(fields: [organizationId], references: [id], onDelete: Cascade)
