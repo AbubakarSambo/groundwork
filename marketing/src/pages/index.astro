@@ -33,1858 +33,383 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
 })}</script>
 <style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   THE HOME PAGE, REBUILT.
+
+   The previous page grew a section at a time and ended up 8,176px tall with 54%
+   of that inside one report panel. Every part of it was defensible; nothing
+   ranked anything against anything else, so the good sentences - and this page
+   has several - were findable only by reading all of it.
+
+   This is the same argument in the same words, composed. What changed is order,
+   weight and how much of a report is shown at once. What did not change is the
+   palette: every colour is a --gw-* token, the same ones the product uses, so
+   the site and the app stay legibly the same product.
+
+   The previous version is in git if any of it is wanted back.
+   ══════════════════════════════════════════════════════════════════════════ */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-
-/* ── TOKENS ────────────────────────────────────────────────── */
-#s-land{
-  --c-navy:var(--gw-navy);
-  --c-navy-d:var(--gw-dark);
-  --c-teal:var(--gw-green-b);
-  --c-amber:var(--gw-amber-b);
-  --c-text:var(--gw-text);
-  --c-sub:var(--gw-sub);
-  --c-muted:var(--gw-muted);
-  --c-border:var(--gw-border);
-  --c-bg:var(--gw-bg);
-  --c-off:var(--gw-paper);
-  --c-white:#FFFFFF;
-  --font:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+:root{
+  /* A utility face for record metadata: "8 ACCOUNTS / CHECK-IN 3 OF 6" reads as a
+     record rather than as more prose, which is what the reports are. No webfont. */
+  --mono:ui-monospace,SFMono-Regular,'SF Mono',Menlo,monospace;
+  --font:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',sans-serif;
 }
+html{-webkit-text-size-adjust:100%}
+body{font-family:var(--font);background:var(--gw-paper);color:var(--gw-text);line-height:1.5;
+     -webkit-font-smoothing:antialiased}
+img{max-width:100%}
+h1,h2,h3{text-wrap:balance;font-weight:700;letter-spacing:-.02em}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--gw-navy);outline-offset:2px}
 
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;color:var(--gw-text);min-height:100vh;background:var(--gw-bg);margin:0}
+/* ── measure ───────────────────────────────────────────────────────────────
+   Running text stops at 660px because past about 75 characters the eye loses
+   its place coming back. Reports break out wider, because a report is a table
+   of accounts and not a paragraph. */
+.w{max-width:660px;margin:0 auto;padding:0 24px}
+.w-wide{max-width:940px;margin:0 auto;padding:0 24px}
+section{padding:72px 0}
+.band{background:var(--gw-paper-2);border-top:1px solid var(--gw-border);border-bottom:1px solid var(--gw-border)}
 
-/* ── ANIMATIONS ────────────────────────────────────────────── */
-@keyframes l-blink  {0%,100%{opacity:1}50%{opacity:0}}
-@keyframes l-pulse  {0%,100%{opacity:1}50%{opacity:.35}}
-@keyframes l-fadein {from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-@keyframes l-up     {from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+/* ── the one label style on the page ─────────────────────────────────────── */
+.lab{font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;
+     color:var(--gw-muted);margin:0 0 18px}
+.h2{font-size:31px;line-height:1.2;margin:0 0 14px}
+.lede{font-size:15.5px;line-height:1.65;color:var(--gw-sub);margin:0}
 
-/* ── NAV ───────────────────────────────────────────────────── */
-.l-nav{
-  position:sticky;top:0;z-index:100;
-  background:rgba(237,236,234,.96);backdrop-filter:blur(8px);
-  border-bottom:1px solid var(--c-border);
-  display:flex;align-items:center;justify-content:space-between;
-  padding:0 20px;height:56px;
-}
-.l-nav-logo{display:flex;align-items:center;gap:9px;cursor:pointer;flex-shrink:0}
-.l-nav-logo span{font-size:14px;font-weight:700;color:var(--c-navy);letter-spacing:-.02em}
-.l-nav-links{display:flex;align-items:center;gap:2px}
-.l-nav-link{
-  font-size:13px;font-weight:500;color:var(--c-sub);background:none;border:none;
-  cursor:pointer;padding:6px 11px;border-radius:6px;font-family:var(--font);
-  transition:all .15s;white-space:nowrap;
-}
-.l-nav-link:hover{background:var(--gw-paper-2);color:var(--c-text)}
-.l-nav-link.active{color:var(--c-navy);font-weight:600}
-.l-nav-ctas{display:flex;align-items:center;gap:8px;flex-shrink:0}
-.l-btn-ghost{
-  font-size:13px;font-weight:600;color:var(--c-navy);background:none;
-  border:1px solid var(--gw-blue-b);cursor:pointer;padding:7px 14px;border-radius:6px;
-  font-family:var(--font);white-space:nowrap;text-decoration:none;display:inline-block;
-}
-.l-btn-ghost:hover{background:var(--gw-blue-bg)}
-.l-btn-solid{
-  font-size:13px;font-weight:700;color:var(--c-white);background:var(--c-navy);
-  border:none;cursor:pointer;padding:7px 14px;border-radius:6px;
-  font-family:var(--font);white-space:nowrap;transition:background .15s;
-  text-decoration:none;display:inline-block;
-}
-.l-btn-solid:hover{background:#1557A0}
+/* ── hero ─────────────────────────────────────────────────────────────────
+   The dark ground is the one place the page raises its voice. Everything after
+   it is paper, so the eye has somewhere to land. */
+.hero{background:var(--gw-dark);color:#fff;padding:76px 0 84px}
+.hero .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+               color:var(--gw-amber-b);margin:0 0 18px}
+.hero h1{font-size:46px;line-height:1.08;letter-spacing:-.03em;margin:0 0 18px}
+.hero p{font-size:17px;line-height:1.6;color:rgba(255,255,255,.72);margin:0 0 32px;max-width:540px}
+.ctas{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.btn{display:inline-block;background:#fff;color:var(--gw-dark);font-size:14.5px;font-weight:700;
+     padding:13px 22px;border-radius:var(--gw-radius);text-decoration:none}
+.btn-nav{background:var(--gw-navy);color:#fff}
+.btn-2{display:inline-block;background:none;color:rgba(255,255,255,.82);font-size:14.5px;font-weight:600;
+       padding:13px 2px;text-decoration:underline;text-underline-offset:3px}
+.btn-2-dark{color:var(--gw-sub)}
+@media(max-width:720px){ .hero h1{font-size:33px} .h2{font-size:25px} }
 
-/* ── HERO ──────────────────────────────────────────────────── */
-.l-hero{
-  position:relative;overflow:hidden;background:var(--c-navy-d);
-  display:flex;align-items:center;
-  /* IT WAS A FULL-VIEWPORT HERO WITH HALF A VIEWPORT OF CONTENT IN IT.
-     min-height:calc(100svh - 56px) made it 844px tall on a 900px screen, holding
-     about 420px of anything, so a third of the first screen was empty navy and
-     the composition sat marooned in the top half of it.
+/* ── the three steps ──────────────────────────────────────────────────────
+   Hairlines rather than cards. Three cards would make three things of equal
+   weight; this is one sequence. */
+.steps{display:grid}
+.step{display:grid;grid-template-columns:26px 1fr;gap:14px;align-items:baseline;
+      padding:16px 0;border-top:1px solid var(--gw-border)}
+.step:last-child{border-bottom:1px solid var(--gw-border)}
+.step i{font-family:var(--mono);font-style:normal;font-size:12px;color:var(--gw-muted)}
+.step b{font-size:16px;display:block;margin-bottom:3px}
+.step span{font-size:14px;color:var(--gw-sub);line-height:1.6}
 
-     A full-height hero is a fine choice when the content fills it. This one does
-     not, and it is better for it: ending a little above the fold shows the top of
-     the next section, which is the report - the most convincing thing on the
-     site - and gives a reason to scroll rather than a wall to get past. */
-  min-height:520px;
-  padding:44px 20px;
-}
-.l-startwell{
-  display:flex;gap:12px;justify-content:flex-start;flex-wrap:wrap;
-  max-width:none;margin:30px 0 0;
-}
-.l-sw-step{
-  flex:1;min-width:210px;display:flex;gap:11px;text-align:left;
-  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);
-  border-radius:12px;padding:16px 18px;
-}
-.l-sw-n{
-  flex-shrink:0;width:22px;height:22px;border-radius:50%;
-  background:rgba(147,197,253,.16);color:#93C5FD;
-  font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;
-  margin-top:1px;
-}
-.l-sw-step p{font-size:13.5px;color:rgba(255,255,255,.78);line-height:1.5;margin:0}
+/* ── the scenario picker ──────────────────────────────────────────────────
+   Four situations, one report at a time. Kept from the previous page because
+   it answers "is this for me" better than any amount of prose, and because a
+   reader picks the one that is their problem. */
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 16px}
+.tab{font-family:var(--font);font-size:12.5px;font-weight:600;padding:7px 13px;border-radius:20px;
+     border:1px solid var(--gw-border);background:#fff;color:var(--gw-sub);cursor:pointer}
+.tab[aria-selected="true"]{background:var(--gw-navy);border-color:var(--gw-navy);color:#fff}
+.case{display:none}
+.case.on{display:block}
 
-/* THE HERO IS A COMPOSITION NOW, NOT A CENTRED PILE.
-   It was nine elements and eight of them were centred text: eyebrow, headline,
-   subhead, two problem lines, a reassurance, a label, three cards, two buttons.
-   Four consecutive prose blocks in three greys with no rank between them. That
-   cannot be fixed by adjusting the gaps, because there was no composition to
-   adjust - a centred column has only one axis.
+/* ── the report card ──────────────────────────────────────────────────────
+   Finding first, in amber, because the finding is the product. Then the four
+   states. Then the two accounts that disagree. Everything else folds: the depth
+   is one click away and does not have to be scrolled past to reach the close. */
+.rep{background:#fff;border:1px solid var(--gw-border);border-radius:12px;overflow:hidden}
+.rep-h{padding:15px 20px;border-bottom:1px solid var(--gw-border);display:flex;
+       justify-content:space-between;gap:14px;align-items:baseline;flex-wrap:wrap}
+.rep-h b{font-size:14px}
+.rep-h em{font-family:var(--mono);font-style:normal;font-size:11px;color:var(--gw-muted);
+          letter-spacing:.06em;text-transform:uppercase}
+.find{padding:22px 20px;background:var(--gw-amber-bg);border-bottom:1px solid var(--gw-border)}
+.find p{font-size:19px;line-height:1.38;font-weight:600;letter-spacing:-.012em;margin:0}
+.find small{display:block;margin-top:9px;font-size:12.5px;color:var(--gw-amber-t);line-height:1.6}
 
-   Left column carries the argument, right column carries what you do. The
-   vertical pile halves, the steps stop reading as a footnote under a wall of
-   text, and nothing is cut. Below 900px it collapses back to the single centred
-   stack, which is the right shape on a phone. */
-.l-hero-two{
-  display:grid;grid-template-columns:1fr;gap:0;align-items:start;
-  text-align:left;max-width:620px;margin:0;
-}
-/* THE TWO COLUMNS HAVE TO SHARE AN EDGE, or they are two things near each other
-   rather than one composition. They were vertically centred, so a 419px left
-   column and a 283px right column met at no line at all and the steps floated in
-   the middle of nothing. They start together now, and the steps are dropped by
-   the height of the eyebrow so they line up with the top of the headline rather
-   than with the label above it. */
+/* Four states, one grammar, same place every time. Not traffic lights: the
+   symbols describe an information state, never a person. */
+.qr{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--gw-border)}
+.qr>div{padding:15px 18px;border-right:1px solid var(--gw-border)}
+.qr>div:last-child{border-right:none}
+.qr .k{font-size:11.5px;font-weight:700;color:var(--gw-sub);margin-bottom:5px;display:flex;gap:6px;align-items:center}
+.qr .k s{font-family:var(--mono);text-decoration:none;color:var(--gw-muted)}
+.qr .v{font-size:21px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.qr .s{font-size:11.5px;color:var(--gw-muted);margin-top:3px;line-height:1.45}
+@media(max-width:620px){ .qr{grid-template-columns:1fr 1fr} }
 
-/* The problem lines are a different BEAT from the promise above them, and they
-   were reading as more of the same grey. A hairline gives them an edge without
-   adding a box to a screen that already has enough of them. */
-.l-hero-problem-block{border-left:2px solid rgba(147,197,253,.22);padding-left:16px;margin:0 0 26px}
-@media (max-width: 900px){
-  .l-hero-problem-block{border-left:none;padding-left:0;margin-left:auto;margin-right:auto}
-}
-.l-hero-two .l-hero-label{margin-bottom:14px}
-.l-hero-two .l-hero-btns{justify-content:flex-start}
-@media (max-width: 900px){
-  /* Left, not centred. The sections below the hero have always been left-aligned
-     on a phone, so a centred hero meant the page changed its mind about where
-     text starts within the first scroll. */
-  .l-hero-two .l-hero-btns{justify-content:flex-start}
-}
-/* Kept for the shape it names: a follower that has to close an odd row. There
-   are four followers now, so nothing uses it. */
-/* The lead's account beside everyone else's. Two columns is the whole point -
-   they are meant to be read against each other - so on a phone, where they
-   cannot be, they stack. */
-/* THE FOUR-UP THE PRODUCT ALREADY COMPUTES. quickRead in board.service.ts:
-   Aligned? / Moving? / Stuck? / Solid?, each with its own sub-line and tone. */
-.l-qr{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--gw-paper-2)}
-.l-qr div{background:#fff;padding:11px 14px}
-.l-qr .k{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--gw-muted);margin-bottom:4px}
-.l-qr .v{font-size:14px;font-weight:700;line-height:1.25;margin-bottom:2px}
-.l-qr .s{font-size:11px;color:var(--gw-muted);line-height:1.4}
-@media (max-width: 620px){ .l-qr{grid-template-columns:1fr 1fr} }
+.two{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--gw-border);
+     border-bottom:1px solid var(--gw-border)}
+.two>div{background:#fff;padding:18px 20px}
+.two q{display:block;font-size:14.5px;line-height:1.6;font-style:italic}
+.two cite{display:block;margin-top:9px;font-family:var(--mono);font-size:10.5px;font-style:normal;
+          letter-spacing:.08em;text-transform:uppercase;color:var(--gw-muted)}
+.two p{font-size:14.5px;line-height:1.6;margin:0}
+@media(max-width:620px){ .two{grid-template-columns:1fr} }
 
-/* What each person moved. A row of work, not a row of opinion. */
-.l-del{display:flex;gap:12px;align-items:flex-start;padding:11px 0;border-bottom:1px solid #F0EEE9}
-.l-del:last-child{border-bottom:none}
-.l-del .who{flex:0 0 108px;font-size:13px;font-weight:700;color:var(--gw-text);line-height:1.45}
-.l-del .did{flex:1;font-size:13.5px;color:var(--gw-sub);line-height:1.55}
-.l-del .ev{flex:0 0 auto;font-size:10.5px;font-weight:600;color:var(--gw-green-t);background:#E8F8F5;border-radius:20px;padding:3px 9px;white-space:nowrap}
-.l-del .ev-none{color:var(--gw-amber-t);background:#FBF1E0}
-@media (max-width: 620px){
-  .l-del{flex-wrap:wrap;gap:6px}
-  .l-del .who{flex:0 0 100%}
-  .l-del .did{flex:0 0 100%}
-}
-/* SCENARIOS SIDE BY SIDE, SCROLLED THROUGH.
-   One sample report answers "what does this look like" for the person whose
-   situation happens to match it, and leaves everybody else guessing. Stacking a
-   second doubled an already long page. So they sit in a row you scroll or swipe,
-   with tabs for anyone who would rather jump.
+.settle{padding:20px;background:var(--gw-blue-bg);border-bottom:1px solid var(--gw-border)}
+.settle .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;
+           color:var(--gw-navy);margin-bottom:6px}
+.settle p{font-size:15px;line-height:1.5;font-weight:600;color:var(--gw-dark);margin:0}
+.foot{padding:15px 20px;font-size:13px;color:var(--gw-sub);line-height:1.6}
 
-   Scroll-snap and overflow only - no carousel library, no autoplay, and it works
-   with a trackpad, a touchscreen, the tab key and a scrollbar. */
-/* align-items MATTERS HERE, and the default was wrong in a way that reads as a
-   broken page rather than a styling nit. A flex row stretches every child to the
-   tallest, so all four cases became 3213px - the height of the longest one - and
-   the shorter ones carried two thousand pixels of empty white underneath. You
-   scroll, and scroll, and nothing is there. That is what "I cannot get to the
-   other pages" actually was. */
-/* overflow-y:hidden IS THE FIX, AND overflow-x:auto IS WHY IT WAS NEEDED.
-   A box with overflow-x:auto and a visible y axis has its y coerced to auto by CSS -
-   so this strip was a VERTICAL scroll container, and with its height animated by the
-   script below it swallowed the wheel. Measured on the live site: six wheel ticks
-   asking for 1200px during the .25s height transition moved the page 0px, while the
-   document shrank 7490 -> 6118 underneath. "The vertical scroll acts funny."
-   hidden is a legal partner for auto and is not coerced, so the y axis stops being a
-   scroll container and the wheel goes to the page where it belongs. The script sizes
-   the strip to the active case, so there is nothing to clip. */
-.l-cases{display:flex;align-items:flex-start;gap:24px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scroll-behavior:smooth;padding:2px 2px 10px;margin:0 -2px;-webkit-overflow-scrolling:touch}
-.l-case{flex:0 0 100%;min-width:0;scroll-snap-align:start}
-/* A REPORT EXAMPLE MUST NOT BE THE WIDEST THING IN ITS OWN SECTION.
-   Measured at 1280: each .l-case ran 960px, wider than the 680px measure of the
-   argument it illustrates, so the report - the thing being quoted - read as the
-   page's structural spine. Capped narrower than the content column, and cropped
-   to its top with a fade, so it reads as a preview of a document rather than the
-   document. The crop is the card only; the tabs, headline and prose around it are
-   untouched. */
-/* Capped on the CARD, not on the flex item. Capping .l-case itself shrank the scroll
-   snap unit below the viewport, so the next scenario leaked in beside the one you were
-   reading - observed at 1280. The item keeps its full width; the document inside it does not. */
-/* NO CROP. A cropped preview with a fade was tried and withdrawn: the report is the most
-   convincing thing on the page and it has to be readable end to end. Only the width is
-   capped, so the document is no longer the widest element in its own section. */
-.l-case-doc{max-width:760px}
-/* ON A PHONE THE TABS ARE THE WHOLE NAVIGATION, AND THE STRIP GOES AWAY.
-   A horizontal scroll-snap container inside a vertically scrolling page competes for
-   the same downward drag on touch: a finger moving down over a report can be claimed
-   by the strip instead of the page, which is the hook felt when scrolling downwards.
-   A mouse wheel and a finger are not the same instrument, so this is a touch-width
-   decision rather than a global one - the swipe stays where a pointer is precise and
-   goes where it fights the page. Nothing is lost: the four tabs sit directly above
-   and already switch cases.
-   :where() keeps this at zero specificity so the script's inline height, which is
-   set on the strip, is not fighting a selector. */
-@media (max-width: 767px) {
-  .l-cases{display:block;overflow-x:visible;scroll-snap-type:none;height:auto !important}
-  .l-case{display:none}
-  .l-case.is-on{display:block}
-}
-.l-cases::-webkit-scrollbar{height:8px}
-.l-cases::-webkit-scrollbar-thumb{background:#D8D5CF;border-radius:7px}
-.l-case-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px}
-.l-case-tab{font-family:inherit;font-size:12.5px;font-weight:600;padding:7px 14px;border-radius:20px;border:1px solid var(--gw-border,var(--gw-border));background:#fff;color:var(--gw-sub);cursor:pointer}
-.l-case-tab[aria-selected="true"]{background:var(--gw-dark);border-color:var(--gw-dark);color:#fff}
-.l-told{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-@media (max-width: 620px){ .l-told{grid-template-columns:1fr} }
-.l-hero-inner{
-  max-width:1080px;margin:0 auto;width:100%;
-  display:block;
-}
-.l-hero-label{
-  font-size:10px;font-weight:600;color:rgba(147,197,253,.65);
-  text-transform:uppercase;letter-spacing:.14em;margin-bottom:20px;
-}
-.l-hero-h1{
-  font-size:32px;font-weight:700;line-height:1.08;letter-spacing:-.04em;
-  color:var(--c-white);margin:0 0 22px;min-height:104px;
-}
-.l-hero-sub{
-  font-size:14px;color:rgba(255,255,255,.52);line-height:1.5;
-  margin:0 0 10px;max-width:440px;
-}
-.l-hero-sub2{
-  font-size:12px;color:rgba(255,255,255,.26);line-height:1.5;
-  margin:0 0 40px;max-width:420px;
-}
-.l-hero-btns{display:flex;gap:10px;flex-wrap:wrap}
-.l-scn-chip{background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.18);color:rgba(255,255,255,0.88);font-family:var(--font);font-size:13px;font-weight:600;padding:8px 14px;border-radius:20px;cursor:pointer;transition:background .15s;text-decoration:none}
-.l-scn-chip:hover{background:rgba(255,255,255,0.18)}
-.l-hero-btn-p{
-  padding:13px 24px;border-radius:6px;background:var(--c-navy);color:var(--c-white);
-  font-size:14px;font-weight:700;border:none;cursor:pointer;font-family:var(--font);
-  transition:background .15s;text-decoration:none;display:inline-block;
-}
-.l-hero-btn-p:hover{background:#1557A0}
-.l-hero-btn-g{
-  padding:13px 24px;border-radius:6px;background:rgba(255,255,255,.07);
-  color:rgba(255,255,255,.8);font-size:14px;font-weight:600;
-  border:1px solid rgba(255,255,255,.12);cursor:pointer;font-family:var(--font);
-  transition:background .15s;text-decoration:none;display:inline-block;
-}
-.l-hero-btn-g:hover{background:rgba(255,255,255,.12)}
+/* ── the pause ────────────────────────────────────────────────────────────
+   One place on the page that stops and says nothing else. */
+.pause{padding:96px 0}
+.pause p{font-size:37px;line-height:1.16;letter-spacing:-.028em;font-weight:700;margin:0}
+.pause p+p{margin-top:12px;color:var(--gw-sub)}
+@media(max-width:720px){ .pause{padding:64px 0} .pause p{font-size:27px} }
 
-.l-learn-more{
-  font-size:12px;color:rgba(255,255,255,.4);margin:18px 0 0;cursor:pointer;
-}
-.l-learn-more:hover{color:rgba(255,255,255,.65)}
+/* ── privacy, drawn ───────────────────────────────────────────────────────
+   Two check-ins that never touch, and one picture below them. This was three
+   paragraphs, on the part of the page where a reader decides whether the whole
+   thing is safe to use. */
+.flow{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.node{background:#fff;border:1px solid var(--gw-border);border-radius:8px;padding:14px;text-align:center}
+.node b{display:block;font-size:13.5px}
+.node span{display:block;font-size:11.5px;color:var(--gw-muted);margin-top:3px}
+.down{text-align:center;font-size:15px;color:var(--gw-muted);margin:12px 0}
+.one{background:var(--gw-blue-bg);border:1px solid var(--gw-blue-b);border-radius:8px;padding:14px;text-align:center}
+.one b{display:block;font-size:13.5px;color:var(--gw-navy)}
+.one span{display:block;font-size:11.5px;color:var(--gw-sub);margin-top:3px}
+.nots{list-style:none;display:grid;gap:9px;margin:20px 0}
+.nots li{display:grid;grid-template-columns:16px 1fr;gap:9px;align-items:baseline;font-size:14.5px;line-height:1.5}
+.nots li i{font-style:normal;color:var(--gw-clay);font-weight:700}
+.callout{background:var(--gw-blue-bg);border:1px solid var(--gw-blue-b);border-left:3px solid var(--gw-navy);
+         border-radius:10px;padding:20px 22px;display:grid;gap:13px}
+.callout p{font-size:14px;color:var(--gw-dark);line-height:1.55;margin:0}
+@media(max-width:620px){ .flow{grid-template-columns:1fr} }
 
-/* Primary CTA attention cue: slow breathing glow + periodic sheen sweep */
-@keyframes l-cta-breathe{
-  0%,100%{ box-shadow:0 2px 6px rgba(12,68,124,.16); }
-  50%{ box-shadow:0 3px 9px rgba(12,68,124,.24); }
-}
-@keyframes l-cta-sheen{
-  0%,16%{ left:-70%; } 32%{ left:130%; } 100%{ left:130%; }
-}
-.l-cta-pulse{ position:relative; overflow:hidden; animation:l-cta-breathe 2.8s ease-in-out infinite; }
-.l-cta-pulse::after{
-  content:''; position:absolute; top:0; left:-70%; width:45%; height:100%;
-  background:linear-gradient(120deg, transparent, rgba(255,255,255,.4), transparent);
-  transform:skewX(-20deg); pointer-events:none;
-  animation:l-cta-sheen 5s ease-in-out infinite;
-}
-.l-cta-pulse:hover{ transform:translateY(-1px); animation-play-state:paused; }
-@media(prefers-reduced-motion:reduce){
-  .l-cta-pulse{ animation:none; }
-  .l-cta-pulse::after{ display:none; }
-}
+/* ── folds ────────────────────────────────────────────────────────────────── */
+details.more{border-bottom:1px solid var(--gw-border)}
+details.more>summary{cursor:pointer;list-style:revert;padding:13px 20px;font-size:12.5px;
+                     font-weight:700;color:var(--gw-navy)}
+details.more>summary::marker{color:var(--gw-muted)}
+.more-body{padding:0 20px 18px}
+.did{display:grid;grid-template-columns:70px 1fr;gap:12px;padding:9px 0;border-top:1px solid var(--gw-paper-2);
+     font-size:13.5px;line-height:1.55}
+.did b{font-weight:700;color:var(--gw-sub)}
 
-/* ── FEED PANEL ────────────────────────────────────────────── */
-.l-feed-panel{
-  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);
-  border-radius:10px;overflow:hidden;
-}
-.l-feed-hdr{
-  display:flex;align-items:center;justify-content:space-between;
-  padding:11px 14px;border-bottom:1px solid rgba(255,255,255,.07);
-  background:rgba(255,255,255,.03);
-}
-.l-mobile-checkin{display:none}
-.l-feed-dot{
-  width:7px;height:7px;border-radius:50%;background:var(--gw-green-b);
-  display:inline-block;animation:l-pulse 2s ease-in-out infinite;flex-shrink:0;
-}
-.l-feed-body{min-height:230px;display:flex;flex-direction:column;justify-content:flex-end}
-.l-feed-foot{
-  display:grid;grid-template-columns:1fr 1fr 1fr;
-  padding:10px 14px;border-top:1px solid rgba(255,255,255,.06);gap:4px;
-}
-.l-stat-val{font-size:14px;font-weight:700;color:var(--c-white);text-align:center;transition:color .4s}
-.l-stat-lbl{font-size:9px;color:rgba(255,255,255,.28);text-align:center;margin-top:2px;letter-spacing:.02em}
-.l-feed-item{
-  animation:l-fadein .4s ease forwards;
-  padding:8px 14px;border-bottom:1px solid rgba(255,255,255,.04);
-}
-.l-feed-item:last-child{border-bottom:none}
-
-/* ── NET BG ────────────────────────────────────────────────── */
-/* The decorative net has no viewBox, so its children are literal pixel
-   coordinates - the longest line ends at x=800. Below about 800px wide that
-   line sticks out past the viewport and the whole page scrolls sideways
-   (measured: scrollWidth 697 against clientWidth 637). Clipping it keeps the
-   decoration and stops it dragging the page. GW-008. */
-.l-net{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:.07;overflow:hidden}
-
-/* ── SECTIONS ──────────────────────────────────────────────── */
-.l-sec{width:100%}
-.l-wrap{max-width:1080px;margin:0 auto;padding:30px 20px}
-/* ONE COLUMN ORIGIN FOR THE WHOLE PAGE.
-   Everything on this page was already left-aligned. The problem was that it was
-   left-aligned to two different left edges: the hero ran in a 1000px container
-   and every section below it in a 720px one, both centred. Measured at a 1100px
-   window, the headline started at x=70 and every section heading below it at
-   x=210 - so the moment you scrolled past the hero the whole page jogged 140px
-   to the right, on every section, all the way down.
-
-   That is the weirdness. It is not something you can name while looking at it,
-   which is why it survived this long, and it is why nothing on the page felt
-   settled however the individual sections were arranged.
-
-   One container now. Running text stays capped at 600px by .l-prose, because a
-   1000px measure is unreadable; headings, panels and grids get the full width,
-   which the report panel in particular wanted. */
-.l-wrap-sm{max-width:1000px;margin:0 auto;padding:30px 20px}
-
-/* ONE MEASURE FOR EVERY PARAGRAPH OF ARGUMENT.
-   The prose ran the full 720px container at 15px, which is around 100
-   characters a line. Past about 75 the eye loses its place coming back for the
-   next line, which was most of why the argument sections felt heavy. Headings
-   keep the full width; only running text is capped. Not a word changes. */
-/* ONE WIDTH PER SECTION, WHICH THE REPORT SCENARIOS WERE THE ONLY EXCEPTION TO.
-   Measured at 1728 wide, inside a single report case:
-     tabs 960   headline 960   the report card 960
-     the private note 640      every paragraph 600
-   Four widths, all flush left, so the right edge stepped in three times and left a
-   ragged column with a field of empty space beside it. Every OTHER section on this
-   page already matches - the "What Groundwork does" section had heading 960 and prose
-   960 - so the reports were the odd ones out rather than the rule.
-   A 600px measure is good for reading and would be right if it were centred or set
-   against something. Flush left under a 960px heading and a 960px card it does not
-   read as a measure, it reads as a mistake. */
-.l-case .l-prose,
-.l-case > p{max-width:none}
-
-/* AND THE HEADING JOINS THE COLUMN IT INTRODUCES.
-   The rule above this one says "headings keep the full width; only running text is
-   capped", and that is what produced the thing Hafsah photographed: at 1728 wide,
-   "Every update you get has been through someone else first." runs to 960px while
-   every paragraph under it stops at 600, so the heading overhangs its own argument by
-   360px and the right third of the section is empty.
-   The 600px measure is right and stays - past about 75 characters the eye loses its
-   place coming back. What was wrong is that the heading was not part of the same
-   column. A heading and the paragraphs it introduces are one block of text, and
-   nothing else in this section is competing for that space.
-   Panels, grids and the report cards still get the full width, which is what they
-   wanted: .l-case un-caps below, because there a 960px heading sits over a 960px
-   report and belongs with it. */
-.l-sec-h2{max-width:680px}
-.l-prose{max-width:680px}
-/* The argument sections use two different treatments for the same kind of content:
-   some paragraphs carry .l-prose and some are plain inline-styled <p>. That is the
-   inconsistency underneath the ragged edge - the "What Groundwork does" section ran
-   its prose to the full 960 while the section above it stopped at 600, and my first
-   attempt at this capped only the headings, which made the 960 one WORSE by leaving
-   its prose wider than its own heading. One measure for running text, whatever class
-   it happens to carry. */
-.l-wrap-sm > p{max-width:680px}
-.l-case .l-sec-h2,
-.l-case .l-prose,
-.l-case > p{max-width:none}
-
-/* SECTION 3's OBJECT: three beats.
-   The three lines are the memorable part of "why leaders miss problems" and
-   they were the least visible thing in it, set as bold paragraphs inside a
-   column of grey ones. */
-.l-beats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:28px 0}
-
-/* WHAT GROUNDWORK DOES: six labels, scannable, deliberately unboxed.
-   The label is the heavier of the pair and the line under it recedes, so the eye can run down the
-   labels alone and take the section in without reading the detail. Type sizes and colours are
-   existing tokens; nothing new was added for this. */
-.l-does{display:grid;grid-template-columns:repeat(3,1fr);gap:22px 26px;margin:0 0 22px}
-.l-does dt{font-size:14px;font-weight:700;color:var(--gw-text);margin:0 0 3px}
-.l-does dd{font-size:13.5px;color:var(--gw-sub);line-height:1.5;margin:0}
-/* Widest breakpoint FIRST. Reversed, both match on a phone and the 900px rule wins the cascade,
-   which puts two columns on a 375px screen. */
-@media (max-width: 900px){ .l-does{grid-template-columns:1fr 1fr;gap:18px 20px} }
-@media (max-width: 560px){ .l-does{grid-template-columns:1fr;gap:16px} }
-.l-beat{background:#fff;border:1px solid var(--gw-border);border-left:3px solid #C9C5BE;border-radius:10px;padding:16px 18px;font-size:14px;font-weight:600;color:var(--gw-text);line-height:1.5}
-
-/* SECTION 5's OBJECT: two columns facing each other.
-   "What your team gets" and "What Groundwork is not" are a contrast, and
-   stacked vertically the reader never sees them together. */
-
-/* SECTION 6's OBJECT: a checklist.
-   Four things waiting for you when you get back. It is the most concrete
-   promise on the page and it was set as a bulleted paragraph. Deliberately
-   lighter than the report panel, which is the only document on this page. */
-.l-back{background:#fff;border:1px solid var(--gw-border);border-radius:10px;padding:6px 20px;margin:0 0 18px}
-.l-back-row{display:flex;gap:12px;align-items:flex-start;padding:13px 0;border-bottom:1px solid #F0EEE9;font-size:14px;color:var(--gw-text);line-height:1.55}
-.l-back-row:last-child{border-bottom:none}
-.l-back-tick{flex-shrink:0;width:18px;height:18px;border-radius:50%;background:#E8F8F5;color:var(--gw-green-t);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:1px}
-.l-sec-label{
-  font-size:10px;font-weight:600;color:var(--c-navy);
-  text-transform:uppercase;letter-spacing:.14em;margin-bottom:18px;opacity:.65;
-}
-.l-sec-h2{font-size:22px;font-weight:700;color:var(--c-text);letter-spacing:-.03em;line-height:1.15;margin-bottom:14px}
-.l-sec-p{font-size:14px;color:var(--c-sub);line-height:1.5;margin-bottom:40px;max-width:500px}
-
-/* ── PROBLEM ───────────────────────────────────────────────── */
-.l-prob-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;max-width:900px;margin:0 auto}
-.l-prob-card{
-  background:var(--c-white);border-radius:7px;border:1px solid var(--c-border);
-  padding:16px 14px 16px 18px;position:relative;overflow:hidden;
-}
-.l-prob-card::before{
-  content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--c-navy);
-}
-.l-prob-title{font-size:13px;font-weight:700;color:var(--c-text);margin-bottom:4px}
-.l-prob-desc{font-size:12px;color:var(--c-sub);line-height:1.55}
-
-/* ── MOMENTS ───────────────────────────────────────────────── */
-.l-mom-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
-.l-mom-card{
-  background:var(--c-white);border-radius:10px;border:1px solid var(--c-border);
-  padding:26px 22px;border-top-width:3px;
-}
-.l-mom-card.start{border-top-color:var(--c-navy)}
-.l-mom-card.recog{border-top-color:var(--c-amber)}
-.l-mom-card.align{border-top-color:var(--c-teal)}
-.l-mom-badge{
-  display:flex;align-items:center;gap:8px;margin-bottom:14px;
-}
-.l-mom-badge-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;animation:l-pulse 2.5s ease-in-out infinite}
-.l-mom-badge span{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em}
-.l-mom-h3{font-size:14px;font-weight:700;color:var(--c-text);margin-bottom:8px;letter-spacing:-.02em;line-height:1.3}
-.l-mom-desc{font-size:13px;color:var(--c-sub);line-height:1.5;margin-bottom:14px}
-.l-mom-item{display:flex;align-items:flex-start;gap:8px;font-size:12px;color:var(--c-sub);line-height:1.5;margin-bottom:5px}
-.l-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;margin-top:5px}
-.l-dot-navy{background:var(--c-navy)}
-.l-dot-amber{background:var(--c-amber)}
-.l-dot-teal{background:var(--c-teal)}
-
-/* ── DEMO ──────────────────────────────────────────────────── */
-.l-demo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px;max-width:900px}
-.l-demo-btn{
-  display:flex;align-items:flex-start;gap:11px;padding:13px;border-radius:7px;
-  background:var(--c-white);border:1px solid var(--c-border);cursor:pointer;
-  font-family:var(--font);text-align:left;transition:all .15s;text-decoration:none;
-}
-.l-demo-btn:hover{border-color:var(--gw-blue-b);background:var(--gw-blue-bg);transform:translateY(-1px)}
-.l-demo-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:3px}
-.l-demo-title{font-size:13px;font-weight:700;color:var(--c-text);margin-bottom:2px}
-.l-demo-desc{font-size:12px;color:var(--c-muted);line-height:1.4}
-
-/* ── TRUST ─────────────────────────────────────────────────── */
-.l-trust-grid{display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:center}
-.l-trust-item{display:flex;align-items:flex-start;gap:12px;padding:13px 0;border-bottom:1px solid var(--gw-paper-2)}
-.l-trust-item:last-child{border-bottom:none}
-.l-trust-dot{width:6px;height:6px;border-radius:50%;background:var(--c-navy);flex-shrink:0;margin-top:5px}
-.l-trust-strong{font-size:13px;font-weight:700;color:var(--c-text);display:block;margin-bottom:2px}
-.l-trust-p{font-size:12px;color:var(--c-sub);line-height:1.55;margin:0}
-
-/* ── PRICING ───────────────────────────────────────────────── */
-.l-price-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:32px}
-.l-price-card{border-radius:10px;padding:26px}
-.l-price-card.free{background:var(--c-off);border:1px solid var(--c-border)}
-.l-price-card.paid{background:var(--c-navy)}
-.l-price-tier{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px}
-.l-price-amt{font-size:26px;font-weight:700;margin-bottom:4px}
-.l-price-sub{font-size:13px;margin-bottom:22px}
-.l-price-item{display:flex;align-items:center;gap:7px;font-size:13px;margin-bottom:5px}
-
-/* ── STEPS ─────────────────────────────────────────────────── */
-.l-step{display:flex;gap:18px;padding:26px 0;border-bottom:1px solid var(--gw-paper-2);align-items:flex-start}
-.l-step:last-child{border-bottom:none}
-.l-step-num{
-  width:30px;height:30px;border-radius:50%;background:var(--c-navy);
-  color:var(--c-white);display:flex;align-items:center;justify-content:center;
-  font-size:12px;font-weight:700;flex-shrink:0;margin-top:1px;
-}
-.l-step-title{font-size:14px;font-weight:700;color:var(--c-text);margin-bottom:5px;letter-spacing:-.01em}
-.l-step-desc{font-size:13px;color:var(--c-sub);line-height:1.5}
-
-/* ── CTA ───────────────────────────────────────────────────── */
-.l-cta-sec{background:var(--c-navy-d);text-align:center;padding:80px 20px}
-.l-cta-h2{font-size:26px;font-weight:700;color:var(--c-white);letter-spacing:-.04em;line-height:1.1;margin-bottom:14px}
-.l-cta-p{font-size:14px;color:rgba(255,255,255,.4);margin-bottom:32px;font-style:italic}
-
-/* ── FOOTER ────────────────────────────────────────────────── */
-.l-footer{background:#091525;padding:36px 20px}
-.l-footer-inner{max-width:1080px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px}
-
-/* ── SCROLL FADE ───────────────────────────────────────────── */
-.l-fade{opacity:0;transform:translateY(18px);transition:opacity .5s ease,transform .5s ease}
-.l-fade.in{opacity:1;transform:translateY(0)}
-
-/* ══ TABLET (≤900px) ═══════════════════════════════════════════ */
-@media(max-width:900px){
-  .l-hero-inner{padding:44px 20px 40px}
-  .l-hero-h1{font-size:28px;min-height:auto}
-  .l-prob-grid{grid-template-columns:1fr 1fr;gap:12px}
-  .l-mom-grid{grid-template-columns:1fr}
-  .l-trust-grid{grid-template-columns:1fr;gap:32px}
-  .l-price-grid{grid-template-columns:1fr}
-  .l-wrap{padding:30px 20px}
-  .l-wrap-sm{padding:30px 20px}
-  .l-cta-h2{font-size:24px}
-  .l-footer-inner{justify-content:center;text-align:center}
-}
-
-/* ══ NARROW LAPTOP / TABLET (≤820px) ═══════════════════════════ */
-/* The nav is logo + page links + two CTAs on one row. Below about 820px that
-   row is wider than the viewport, so the page scrolled sideways and the
-   "Get started" button was clipped off the right edge - the first thing a
-   visitor on a small laptop or a tablet saw. The mobile rule already solves
-   this by dropping the page links, but it only applied at 620px, leaving a
-   200px band where the nav overflowed. Same fix, applied where it starts to
-   be needed. GW-008. */
-@media(max-width:820px){
-  .l-nav-links{display:none}
-}
-
-/* ══ MOBILE (≤620px) ═══════════════════════════════════════════ */
-@media(max-width:620px){
-  /* ══ TYPE AND TAP TARGETS, AUDITED ON A 390px PHONE ══
-     This block used to make the small things SMALLER on mobile, which is backwards:
-     a label that is 11px on a 1440px monitor viewed at arm's length is 9px on a phone
-     held closer but rendered on a much denser screen, in uppercase, with .14em of
-     letter-spacing. Measured across the live page, the labels came out at 9 and 10px
-     and the nav links at 15px TALL as tap targets.
-       9px  "Team check-in assistant", "Why leaders miss problems",
-            "What Groundwork does", "What a report looks like"
-      10px  "Start well", the stat captions
-      20px  the hero headline, on a page whose whole job is that sentence
-     Apple asks for 44px of tap target and Google for 48. A 27px button is a miss for
-     anybody with large hands or a moving train.
-     So: labels legible, headline the size of a headline, and every button and tab at
-     least 44px tall. Nothing else about the mobile layout is touched. */
-
-  /* Nav - keep both buttons, hide page links */
-  .l-nav{padding:0 14px;height:56px}
-  .l-nav-links{display:none}
-  .l-btn-ghost{font-size:13px;padding:11px 14px;min-height:44px;display:inline-flex;align-items:center}
-  .l-btn-solid{font-size:13px;padding:11px 14px;min-height:44px;display:inline-flex;align-items:center}
-
-  /* Hero - mobile */
-  .l-hero{padding:0}
-  .l-hero-inner{padding:28px 16px 24px}
-  .l-hero-label{font-size:11px;letter-spacing:.1em;margin-bottom:12px}
-  .l-hero-h1{font-size:24px !important;line-height:1.15;min-height:auto;margin-bottom:12px !important}
-  .l-hero-sub{font-size:14px;margin-bottom:8px;max-width:100%}
-  .l-hero-sub2{display:none}
-  /* hero subtext smaller on mobile */
-  .l-hero-inner p{font-size:14px !important;margin-bottom:16px !important}
-
-  /* Start-well steps stack to a single column on mobile */
-  .l-startwell{flex-direction:column;gap:10px;margin-bottom:20px}
-  .l-sw-step{min-width:0;width:100%;padding:14px 16px}
-
-  /* Functionality grid stacks on mobile */
-  .l-beats{grid-template-columns:1fr;gap:8px;margin:20px 0}
-  .l-beat{padding:13px 15px;font-size:14px}
-  .l-prose{max-width:none}
-
-  /* The scenario tabs are the only way to change report on a phone, since the
-     horizontal strip is off below 768px - so they have to be properly hittable. */
-  .l-case-tab{font-size:13px;padding:11px 15px;min-height:44px}
-  .l-stat-lbl{font-size:10.5px}
-
-  /* Primary CTAs - primary full width, sign in text link */
-  .l-hero-btns{flex-direction:column;gap:8px;margin-bottom:0}
-  .l-hero-btn-p{
-    width:100%;text-align:center;padding:13px 14px;
-    font-size:14px;border-radius:7px;
-  }
-  .l-hero-btn-g{
-    width:100%;text-align:center;padding:8px 14px;
-    font-size:13px;border-radius:7px;
-    background:transparent !important;border-color:rgba(255,255,255,0.15) !important;
-  }
-
-  /* Mobile check-in CTA - additional prominent button */
-  .l-mobile-checkin{
-    display:block !important;
-    width:100%;padding:16px 20px;margin-bottom:24px;
-    border-radius:7px;background:rgba(255,255,255,.1);
-    color:white;font-size:14px;font-weight:600;
-    border:1px solid rgba(255,255,255,.2);
-    cursor:pointer;font-family:var(--font);
-    text-align:center;
-  }
-
-  /* Feed panel on mobile - compact, card-like */
-  .l-feed-panel{
-    border-radius:10px 10px 0 0;
-    border-left:none;border-right:none;border-bottom:none;
-    margin:0 -16px;
-  }
-  .l-feed-body{min-height:180px}
-
-  /* Sections */
-  .l-wrap{padding:32px 16px}
-  .l-wrap-sm{padding:32px 16px}
-  /* Description section: left-align, smaller text on mobile */
-  .l-what-desc{font-size:13px !important;text-align:left !important;line-height:1.5 !important}
-  .l-what-list{text-align:left !important;font-size:12px !important}
-  .l-sec-h2{font-size:20px}
-  .l-sec-label{font-size:11px;letter-spacing:.1em}
-
-  /* Problem */
-  .l-prob-grid{grid-template-columns:1fr}
-
-  /* Demo */
-  .l-demo-grid{grid-template-columns:1fr}
-
-  /* Steps */
-  .l-step{padding:20px 0;gap:14px}
-  .l-step-title{font-size:14px}
-  .l-step-desc{font-size:13px}
-
-  /* Pricing */
-  .l-price-grid{grid-template-columns:1fr}
-
-  /* CTA */
-  .l-cta-sec{padding:56px 16px}
-  .l-cta-h2{font-size:22px}
-
-  /* Footer */
-  .l-footer{padding:28px 16px}
-  .l-footer-inner{flex-direction:column;align-items:center;text-align:center;gap:14px}
-  .l-footer-links{justify-content:center}
-}
-
-/* ══ SMALL MOBILE (≤380px) ═════════════════════════════════════ */
-@media(max-width:380px){
-  .l-hero-h1{font-size:22px}
-  .l-sec-h2{font-size:20px}
-  .l-cta-h2{font-size:20px}
-  .l-prob-grid{grid-template-columns:1fr}
-}
+/* ── close ────────────────────────────────────────────────────────────────── */
+.end{background:var(--gw-dark);color:#fff;padding:76px 0}
+.end h2{font-size:31px;line-height:1.2;margin:0 0 10px}
+.end p{color:rgba(255,255,255,.62);font-size:14.5px;margin:0 0 26px}
+.site-foot{padding:26px 0;border-top:1px solid var(--gw-border);font-size:12.5px;color:var(--gw-muted)}
+.site-foot a{margin-right:18px;text-decoration:none}
+@media(prefers-reduced-motion:no-preference){ .fade{opacity:0;transform:translateY(8px);transition:opacity .5s,transform .5s} .fade.in{opacity:1;transform:none} }
 </style>
 </head>
 <body>
+<Nav />
 
-<div id="s-land" style="background:var(--gw-bg);color:var(--gw-text)">
-
-<!-- ══ NAV ════════════════════════════════════════════════════════════════ -->
-<Nav current="/" />
-
-<!-- ══ PAGES ══════════════════════════════════════════════════════════════ -->
-
-<!-- HOME PAGE -->
-<div id="lp-home">
-
-  <!-- HERO -->
-  <div class="l-hero">
-    <svg class="l-net" xmlns="http://www.w3.org/2000/svg">
-      <defs><pattern id="lgrid" width="48" height="48" patternUnits="userSpaceOnUse">
-        <path d="M 48 0 L 0 0 0 48" fill="none" stroke="#93C5FD" stroke-width="0.4"/>
-      </pattern></defs>
-      <rect width="100%" height="100%" fill="url(#lgrid)" opacity="0.8"/>
-      <circle cx="140" cy="90"  r="2" fill="#93C5FD" opacity="0.4"/>
-      <circle cx="300" cy="60"  r="2" fill="#93C5FD" opacity="0.35"/>
-      <circle cx="480" cy="130" r="2" fill="var(--gw-green-b)" opacity="0.3"/>
-      <circle cx="640" cy="80"  r="2" fill="#93C5FD" opacity="0.25"/>
-      <circle cx="800" cy="140" r="2" fill="var(--gw-green-b)" opacity="0.2"/>
-      <line x1="140" y1="90" x2="300" y2="60" stroke="#93C5FD" stroke-width="0.5" opacity="0.15"/>
-      <line x1="300" y1="60" x2="480" y2="130" stroke="#93C5FD" stroke-width="0.5" opacity="0.13"/>
-      <line x1="480" y1="130" x2="640" y2="80" stroke="var(--gw-green-b)" stroke-width="0.5" opacity="0.12"/>
-      <line x1="640" y1="80" x2="800" y2="140" stroke="#93C5FD" stroke-width="0.5" opacity="0.1"/>
-    </svg>
-    <div class="l-hero-inner" style="max-width:1000px;margin:0 auto;width:100%;padding:36px 20px 34px">
-      <div class="l-hero-two">
-
-        <!-- LEFT: who we are, what we promise, and why it matters. -->
-        <div>
-          <!-- The eyebrow slot. It has held "Work alignment intelligence", which named a
-                 category rather than making a promise, and then "Know what's really
-                 happening", which made one. It now says plainly what the thing IS, at
-                 Hafsah's request: somebody who has never heard of Groundwork gets told,
-                 and the headline underneath is left to do the persuading. -->
-          <div class="l-hero-label">Team check-in assistant</div>
-          <h1 class="l-hero-h1" style="min-height:auto;line-height:1.12;letter-spacing:-.025em;margin:0 0 14px;font-size:28px">No bias. No influence. Just a clearer picture.</h1>
-
-          <div class="l-hero-problem-block l-hero-prose" style="max-width:460px">
-            <p class="l-hero-problem" style="font-size:14px;color:rgba(255,255,255,0.66);line-height:1.5;margin:0">Run independent, objective check-ins to build on solid ground, and see where work stands and how to move forward well.</p>
-            
-            
-          </div>
-          <!-- "Not by watching your team, but by finally hearing all of them."
-               was here and is deleted. It was written as the continuation of a
-               headline that no longer exists: under "Know what's really
-               happening." it completed the thought, and under "Keep your team
-               aligned and moving forward by finally hearing everyone." it
-               restates the end of a sentence three lines above it.
-
-               The anti-surveillance point it carried is made twice more further
-               down, in the callout and in "What Groundwork is not", so nothing is
-               lost by it going. -->
-
-          <div class="l-hero-btns" id="l-getstarted-wrap">
-            <a class="l-hero-btn-p l-cta-pulse" href={`${APP_URL}/start`} style="padding:14px 28px;font-size:14px">Start a check-in for your team</a>
-            {/*
-              THE HERO HAS THE SAME PROBLEM AS THE HEADER, so it gets the same answer. W15-2.
-              Fixing only the header leaves a signed-in reader looking at "Sign in" in the biggest
-              button on the page, which is the version they actually notice. Signed-out is the
-              default in the markup; the shared script swaps it.
-            */}
-            <a class="l-hero-btn-g" data-signed-in hidden href={`${APP_URL}/`} style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15)">Go to your check-ins</a>
-          </div>
-        </div>
-      </div>
-
-      <!-- START WELL SITS UNDER THE CALL TO ACTION, NOT BESIDE THE HEADLINE.
-           It was the right half of a two-column hero, which made the three steps compete with
-           the headline for the same first look and squeezed them into a 283px column where each
-           step wrapped to four lines. Below the button they get the full width, read as one row
-           of three, and follow the thing they explain rather than interrupting it. -->
-        <div class="l-startwell">
-          <div class="l-sw-step"><span class="l-sw-n">1</span><p>Create team check-ins by setting the context (a new hire starting, a new project, someone's work off track), objectives and expectations.</p></div>
-          <div class="l-sw-step"><span class="l-sw-n">2</span><p>Groundwork checks with everyone privately as the work progresses. Then it shows you where expectations and reality don't line up.</p></div>
-          <div class="l-sw-step"><span class="l-sw-n">3</span><p>Each check-in ends in a report and a decision: is the person well onboarded, is the project on track, what is blocking the work. Evidence to help you decide: keep going, step in, or let go/change course.</p></div>
-        </div>
+<!-- ═══ HERO ═══════════════════════════════════════════════════════════════
+     Three lines, each doing a different job: what it is, what it refuses, what
+     you get. The descriptor said "Team check-in assistant" until Hafsah called
+     it: an assistant belongs to somebody, and the line underneath promises no
+     bias and no influence. Those two fight. -->
+<header class="hero">
+  <div class="w">
+    <p class="eyebrow">Independent team check-ins</p>
+    <h1>No bias. No influence. Just a clearer picture.</h1>
+    <p>Run independent, conversational check-ins to build on solid ground, and see where work stands and how to move forward well.</p>
+    <div class="ctas">
+      <a class="btn" href={`${APP_URL}/start`}>Start a check-in for your team</a>
+      <a class="btn-2" href={`${APP_URL}/`}>Go to your check-ins</a>
     </div>
   </div>
+</header>
 
-
-    <!-- WHAT GROUNDWORK DOES, rebuilt rather than restored.
-         The first version was four bordered cards, a dark full-width panel and two long paragraphs,
-         and it was too heavy to read. Its copy is kept in docs/removed-marketing-copy.md and none of
-         it came back.
-         What is here instead is eleven labels with one line each, laid out to be scanned in about
-         ten seconds: the label carries the meaning and is the heavier of the two, the line under it
-         recedes. No boxes, because boxes are what made the old one heavy.
-         The privacy callout below was the one part of the old section that stayed, and it stays. -->
-    <div class="l-sec l-fade" style="background:var(--gw-paper);border-bottom:1px solid var(--gw-border)">
-      <div class="l-wrap-sm">
-      <p class="l-sec-label">What Groundwork does</p>
-      <h2 class="l-sec-h2" style="margin-bottom:16px">Groundwork is about the groundwork, not all the work.</h2>
-      <!-- WHAT THIS IS, AND WHAT IT IS NOT, BEFORE THE LIST OF WHAT IT SURFACES.
-           "It shows you what meetings miss." was the heading here and is deleted, not moved. It
-           made the same claim as the hero paragraph then above it ("Meetings only tell you part of
-           the story"), so the section opened by spending attention on something the reader had
-           already accepted - and then the line under it tried to be the thesis as well. Two
-           headlines in one slot, which is why it read as crowded. That hero paragraph has since
-           been retired too, for overlapping "Why leaders miss problems" the same way.
-           The scope line took the heading instead: it is the only claim here that a competitor
-           would not also make, and the refusal below it ("not an HR system") continues the same
-           thought rather than answering a question the heading never asked. -->
-      <p class="l-prose" style="font-size:14px;color:var(--gw-sub);line-height:1.5;margin-bottom:14px">It is not an HR system, employee monitoring tool, or permanent performance-management layer. In fact, we don't recommend using it that way.</p>
-      <p class="l-prose" style="font-size:14px;color:var(--gw-sub);line-height:1.5;margin-bottom:14px">Use Groundwork to cut through the noise at important moments: when you're setting a new target and need everyone clear on what it will take to get there; onboarding a new hire; starting a project or partnership; navigating a change; or when work isn't progressing, expectations have drifted, or something just feels off.</p>
-      <p class="l-prose" style="font-size:14px;color:var(--gw-text);line-height:1.5;margin-bottom:26px;font-weight:500">Groundwork privately checks in with the people involved, compares how each person understands what's happening and what they're actually delivering, and surfaces where expectations differ, work is getting stuck, or a conversation or decision is needed.</p>
-
-      <!-- A definition list, because that is what eleven term-and-line pairs are, and it makes a
-           screen reader announce each label with its own line rather than as loose text. -->
-      <dl class="l-does">
-        <div><dt>Cross-reference</dt><dd>every check-in lined up against the objectives</dd></div>
-        <div><dt>Quiet disagreement</dt><dd>where accounts diverge</dd></div>
-        <div><dt>Hidden contributors</dt><dd>who is actually carrying it</dd></div>
-        <div><dt>Effort vs outcome</dt><dd>hard work on the wrong thing</dd></div>
-        <div><dt>Clarity gaps</dt><dd>where things need more clarity</dd></div>
-        <div><dt>Across time</dt><dd>this week against six weeks ago</dd></div>
-      </dl>
-
-      <!-- The closing line sits BELOW the list rather than above it. In Hafsah's draft it ended the
-           block, but the paragraph before the list is the one that introduces the list ("surfaces
-           where expectations differ..."), so putting this between them would have separated the
-           sentence from the twelve things it is describing. -->
-      <p class="l-prose" style="font-size:15px;color:var(--gw-text);line-height:1.5;margin:0 0 22px;font-weight:600">Start well. Get unstuck. Then get on with the work.</p>
-
-  <!-- B11: ONE highlighted callout, and only one. The sentence that explains
-       WHY privacy produces value is the strongest trust-builder on the page, so
-       it gets its own frame rather than a buried line. Deliberately not stacked
-       with more reassurance: a wall of defensiveness loses the reader before
-       they understand the product. The fuller "what it is not" detail sits
-       lower, for the person who scrolls looking for it. -->
-      <div style="background:var(--gw-blue-bg);border:1px solid #C5D9EF;border-left:3px solid var(--gw-navy);border-radius:10px;padding:22px 24px">
-        <!-- "NEVER SHARES INDIVIDUAL ANSWERS" WAS NOT TRUE, and this was the
-             loudest place on the page saying it.
-
-             Checked against a real eight-session report for six people. Its
-             divergences carry direct quotes, with the session they came from:
-
-               Lead (Session 1): "Everybody knows their part. Ejiro has data,
-                                  Maureen has product, Eric has infrastructure."
-
-             Individual answers ARE shared. What is never shared is anybody's
-             account of somebody ELSE, and that is the promise people actually
-             need - it is the difference between a record and a report card. A
-             false claim standing next to the real one makes both read as
-             marketing, so the real one now stands on its own. -->
-        <p style="font-size:14px;color:var(--gw-dark);line-height:1.5;margin:0 0 14px;font-weight:500">What you say about your own work can appear, in your own words. What you say about anybody else never does, and the report never says who said what about whom. That is why people tell the truth in it, and why the reports are worth reading.</p>
-        <!-- VERIFIED BEFORE IT WENT ON A PUBLIC PAGE, line by line.
-             "no screen anywhere that shows one" - the transcript endpoint is
-             owner-only, and the platform-admin support view carries a documented
-             hard boundary that excludes ConversationTurn content, RecordEntry
-             content, every Report content field, LeadContextNote text and
-             document contents. Its test poisons the query with all of them to
-             prove none leaks.
-             "read and synthesized by a language model, not by a person" - true.
-             "they cannot request an individual's check-in" - true, there is no
-             such route.
-
-             ONE SENTENCE CHANGED, and it is worth saying why rather than doing it
-             quietly. "Your data is private, including from us" reads as an
-             absolute, and turns sit unencrypted in Postgres while transcripts go
-             to Google for processing - so anybody with database access can read
-             them and the sentence would not survive one technical question. The
-             version here says the same thing in the form that is checkable, and
-             it is your own stronger line: there is no screen, including ours.
-             G41 is the work that would make the absolute version true. -->
-        <p style="font-size:14px;color:var(--gw-dark);line-height:1.5;margin:0;font-weight:400">Nobody can speak for you. Your check-in is read and synthesized by a language model, not by a person: not by us, and not by whoever brought your team here. Leaders get the report. They cannot request an individual's check-in, and there is no screen anywhere that shows one, including ours.</p>
-      </div>
+<!-- ═══ HOW IT WORKS ══════════════════════════════════════════════════════
+     Hairlines, not cards. Three cards make three things of equal weight; this
+     is one sequence and reads as one. -->
+<section class="fade">
+  <div class="w">
+    <p class="lab">How it works</p>
+    <div class="steps">
+      <div class="step"><i>01</i><div><b>Groundwork asks each person separately.</b>
+        <span>A real conversation, not a form. It follows up, asks what would show it, and lets people say what they actually think. Nobody is describing anybody else.</span></div></div>
+      <div class="step"><i>02</i><div><b>It compares the accounts.</b>
+        <span>Where they stop matching, what moved since last time, and what nothing has evidence for.</span></div></div>
+      <div class="step"><i>03</i><div><b>Everyone gets the same picture.</b>
+        <span>One shared report, released to everybody at the same moment. It never says who said what about whom.</span></div></div>
     </div>
   </div>
-
-
-  <!-- THE SAMPLES SIT LATE ON PURPOSE, NOT DIRECTLY UNDER THE HERO.
-         They were under the hero on the argument that people believe an example faster than a
-         claim. True, and it put three dense reports in front of somebody who did not yet know
-         what the product was, so the thing they were an example OF had not been said yet.
-
-         Problem, mechanism, evidence. The mechanism used to be spelled out by a "What Groundwork
-         does" section immediately above; that section has been removed, and the three numbered
-         "Start well" steps in the hero now carry that job. The ordering argument still holds -
-         these panels come after the reader has been told what happens - which is why they were
-         not moved up when the section went. -->
-  <div class="l-sec l-fade" style="background:#fff;border-bottom:1px solid var(--gw-border)">
-    <div class="l-wrap-sm">
-      <p class="l-sec-label">What a report looks like</p>
-      <!-- TWO SITUATIONS, NOT ONE. A single sample answers "what does this look
-           like" only for the person whose situation happens to match it. -->
-      <div class="l-case-tabs" role="tablist" aria-label="Example reports">
-        <button class="l-case-tab" role="tab" aria-selected="true" data-case="0">A sales team</button>
-        <button class="l-case-tab" role="tab" aria-selected="false" data-case="1">Onboarding a new chief executive</button>
-        <button class="l-case-tab" role="tab" aria-selected="false" data-case="2">Onboarding a whole cohort</button>
-        <button class="l-case-tab" role="tab" aria-selected="false" data-case="3">A new hire in probation period</button>
-      </div>
-      <div style="font-size:11.5px;color:var(--gw-muted,var(--gw-muted));margin-bottom:14px">Pick a scenario, or scroll sideways.</div>
-
-      <div class="l-cases" id="l-cases">
-        <div class="l-case is-on">
-      <h2 class="l-sec-h2" style="margin-bottom:10px">Every pipeline review said the quarter was on track.</h2>
-      <p class="l-prose" style="font-size:14px;color:var(--gw-sub);line-height:1.5;margin-bottom:8px">Eight people on the same sales team gave their own account, separately. Here is what came back.</p>
-      <!-- THIS SAID "IT NEVER QUOTES ANYONE" AND THAT IS NOT TRUE.
-           Checked against a real eight-session report for six people, generated
-           the day this was written. Its divergences carry direct quotes with the
-           session they came from:
-
-             Lead (Session 1): "Everybody knows their part. Ejiro has data,
-                                Maureen has product, Eric has infrastructure."
-             Data (Session 4): "Maureen has been writing her own version of the
-                                appointment table."
-
-           The half of the sentence that IS true is the half that matters: it
-           never says who said what ABOUT anybody else. Your own words can appear;
-           somebody else's opinion of you cannot. Saying the first part wrongly
-           was worse than useless, because the promise people actually need is the
-           second one and a false claim next to it makes both look like marketing. -->
-      <p style="font-size:13.5px;color:var(--gw-sub);line-height:1.5;margin-bottom:22px">An extract from a shared report, as the person running it sees it. The people in it read this same shared picture. The private note under it is only ever their own. It quotes what people said about their own work, and it never says who said what about anybody else.</p>
-
-      <!-- A SALES TEAM, BECAUSE EVERYBODY HAS ONE AND EVERYBODY RECOGNISES IT.
-           The earlier version used a product launch. It was concrete but narrow:
-           you had to be shipping software for it to be your problem. Selling is
-           the thing every company is doing, and the failure it shows here is the
-           one every sales lead has lived through - seven people selling a
-           slightly different thing to a slightly different buyer, all of it
-           landing in one pipeline number that looks fine.
-
-           WHAT PEOPLE DID COMES FIRST, and for a sales team that means activity
-           and outcomes: meetings, proposals, pilots, a renewal, a close. Then the
-           small things that changed and are working, because that is how a team
-           actually gets better at selling and it is invisible in a CRM.
-
-           All four of these are things the product computes and the panel was not
-           showing: quickRead in board.service.ts, evidenceCount per person in
-           reads.ts, the alignment enum in entry.service.ts, and specificityLevel
-           on every check-in.
-
-           IT NAMES PEOPLE BECAUSE THE REAL REPORT DOES - namesVisibleTo is
-           `viewerIsLead || isSelf || isLead`. What is never shown, here or in the
-           product, is anything anybody said ABOUT somebody else. -->
-      <div class="l-case-doc" style="background:#fff;border:1px solid #D8D5CF;border-radius:12px;overflow:hidden">
-
-        <div style="background:var(--gw-dark);padding:9px 22px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12.5px;font-weight:700;color:#fff;letter-spacing:-.01em">New business, this quarter &middot; shared report</span>
-          <span style="font-size:11px;color:rgba(255,255,255,.55);letter-spacing:.04em">8 accounts &middot; check-in 3 of 6</span>
-        </div>
-
-        <div style="background:#FBF6F6;border-bottom:1px solid #EFE2E2;padding:11px 22px">
-          <p style="font-size:16.5px;font-weight:700;color:var(--gw-red-t);line-height:1.45;margin:0 0 4px;letter-spacing:-.01em">Nine of the twelve live deals are with somebody who cannot sign, at a tenth of the size the quarter was planned on.</p>
-          <p style="font-size:13px;color:#8A5C5C;line-height:1.45;margin:0">Surfaced at check-in 3 of 6. The next time it would have come up on its own is the end-of-quarter number, when the meeting count will still look healthy.</p>
-        </div>
-
-        <div class="l-qr">
-          <div><div class="k">Aligned?</div><div class="v" style="color:var(--gw-amber-t)">2 open</div><div class="s">differences between accounts</div></div>
-          <div><div class="k">Moving?</div><div class="v" style="color:var(--gw-green-t)">+14</div><div class="s">across targets this session</div></div>
-          <div><div class="k">Stuck?</div><div class="v" style="color:var(--gw-amber-t)">1 blocked</div><div class="s">waiting on someone else</div></div>
-          <div><div class="k">Solid?</div><div class="v" style="color:var(--gw-green-t)">good</div><div class="s">64% document-backed</div></div>
-        </div>
-
-        <div style="padding:14px 22px 4px">
-          <div style="font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--gw-muted);margin-bottom:4px">What moved in the last three weeks</div>
-          <div style="font-size:12.5px;color:var(--gw-muted);line-height:1.45;margin-bottom:7px">Each person's own account of their own work. Nobody is describing anybody else.</div>
-          <div class="l-del"><div class="who">Ada</div><div class="did">Closed Microdot Inc. First deal over a hundred thousand, and the reference call is booked.</div><span class="ev">2 documents</span></div>
-          <div class="l-del"><div class="who">Dan</div><div class="did">Eleven first meetings, four second meetings, two proposals out. Six of the eleven were with Halden, who has not put anyone in the room who can sign.</div><span class="ev">4 documents</span></div>
-          <div class="l-del"><div class="who">Rachel</div><div class="did">Six first meetings and three pilots agreed. All three start next month.</div><span class="ev">3 documents</span></div>
-          <div class="l-del"><div class="who">Naomi</div><div class="did">Renewed Vanta at a higher tier and lost nothing this quarter. Of the three weeks, most went on renewal paperwork, contract admin and tidying the CRM. Two customer conversations in total.</div><span class="ev">2 documents</span></div>
-          <div class="l-del"><div class="who">Tom</div><div class="did">Wrote the objection sheet the rest of the team is now using on calls.</div><span class="ev">3 documents</span></div>
-          <div class="l-del"><div class="who">Yusuf</div><div class="did">Nineteen first meetings. No second meetings yet.</div><span class="ev">1 document</span></div>
-          <div class="l-del"><div class="who">Kofi</div><div class="did">New CRM shipped in week two. Team is on it.</div><span class="ev ev-none">no evidence yet</span></div>
-          <div class="l-del"><div class="who">Ellie</div><div class="did">Nothing specific named yet across three check-ins.</div><span class="ev ev-none">no evidence yet</span></div>
-        </div>
-
-        <!-- THE ONE THING A SINGLE ACCOUNT CAN NEVER CATCH.
-             Somebody reports a thing as done. Everybody else is still working
-             around the fact that it is not. Neither side is lying and neither
-             side knows: Kofi shipped something and believes it is in use; the
-             reps are entering everything twice and assume that is the plan for
-             now. It stays invisible until two accounts of the same thing are put
-             next to each other, which is the entire mechanism of this product and
-             the clearest possible demonstration of it.
-
-             THE PRODUCT WILL NOT SAY WHO IS RIGHT, and neither does this panel.
-             It shows both accounts and names the conversation. That restraint is
-             the difference between a tool people tell the truth to and a tool
-             people learn to manage - and the moment it declared a winner here,
-             nobody would ever report anything as done again. -->
-        <div style="padding:10px 22px 4px">
-          <div style="font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--gw-muted);margin-bottom:7px">Two accounts of the same thing, side by side</div>
-          <div class="l-told" style="margin-bottom:7px">
-            <div style="background:#F3F6FA;border:1px solid #D6E3F2;border-radius:7px;padding:9px 15px">
-              <p style="font-size:14px;color:var(--gw-dark);line-height:1.45;margin:0 0 6px">"The new CRM went live in week two. The team is on it."</p>
-              <span style="display:inline-block;font-size:11px;font-weight:600;color:var(--gw-navy);background:#E1EBF7;border-radius:20px;padding:4px 10px">Kofi, sales operations</span>
-            </div>
-            <div style="background:#FBF6F6;border:1px solid #EFDDDD;border-radius:7px;padding:9px 15px">
-              <p style="font-size:14px;color:#5A2020;line-height:1.45;margin:0 0 6px">Still working in the old sheet and entering everything twice. Three of them describe it as the reason their admin has doubled.</p>
-              <span style="display:inline-block;font-size:11px;font-weight:600;color:var(--gw-red-t);background:#F7E3E3;border-radius:20px;padding:4px 10px">Dan, Rachel, Naomi and Yusuf</span>
-            </div>
-          </div>
-          <p style="font-size:13px;color:var(--gw-sub);line-height:1.45;margin:0 0 4px">Both accounts are on record and neither person knew about the other. Nothing here decides who is right, and the report will not: it is a conversation that was otherwise going to happen at the end of the quarter.</p>
-        </div>
-
-        <!-- CLOSE, SIZE AND MOVEMENT, AGAINST WHAT WAS ACTUALLY PLANNED.
-             The thing a chief executive recognises fastest, and the one a busy
-             pipeline hides best: the team IS moving, and it is moving somewhere
-             else. Meetings up, activity up, everybody working - into deals a
-             tenth of the size, with people who cannot sign.
-
-             Nothing here is about a person. It is the shape of the quarter set
-             against the shape that was agreed, which is a fact about the work and
-             something the whole team can act on.
-
-             AHEAD OF THE PRODUCT, and logged with G44. The engine holds the
-             targets, the movement against them and every account behind those
-             numbers; it does not yet lay the plan and the actual side by side
-             like this. It should. -->
-        <div style="padding:10px 22px 4px">
-          <div style="font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--gw-muted);margin-bottom:7px">Where the movement is, against where we said we were going</div>
-          <div class="l-told" style="margin-bottom:7px">
-            <div style="background:#F3F6FA;border:1px solid #D6E3F2;border-radius:7px;padding:9px 15px">
-              <p style="font-size:14px;color:var(--gw-dark);line-height:1.45;margin:0 0 6px">Operators running two hundred vehicles or more. Deals around sixty thousand. Two closed a quarter.</p>
-              <span style="display:inline-block;font-size:11px;font-weight:600;color:var(--gw-navy);background:#E1EBF7;border-radius:20px;padding:4px 10px">what we agreed in week one</span>
-            </div>
-            <div style="background:#FBF6F6;border:1px solid #EFDDDD;border-radius:7px;padding:9px 15px">
-              <p style="font-size:14px;color:#5A2020;line-height:1.45;margin:0 0 6px">Twelve deals live. Nine under ten thousand, all with IT managers. One with an operations lead. One closed.</p>
-              <span style="display:inline-block;font-size:11px;font-weight:600;color:var(--gw-red-t);background:#F7E3E3;border-radius:20px;padding:4px 10px">where the quarter actually is</span>
-            </div>
-          </div>
-          <p style="font-size:14px;color:var(--gw-text);font-weight:600;line-height:1.45;margin:0 0 4px">The team is moving. It is moving somewhere else.</p>
-        </div>
-
-        <!-- WHAT ONE PERSON COULD DO DIFFERENTLY DOES NOT BELONG IN A DOCUMENT
-             SEVEN COLLEAGUES READ.
-             This block used to carry "maybe worth a conversation" rows naming
-             individuals - Yusuf's nineteen meetings that went nowhere, Tom's two
-             quiet deals, Naomi's three weeks of admin - inside the SHARED report.
-             Every one of them was factual and every one of them would have been
-             humiliating, because the whole team reads this.
-
-             That was me collapsing three surfaces into one. The product keeps
-             them apart on purpose:
-
-               the shared report      everyone     what is happening to the WORK
-               the board              the lead     reads about people, with reasons
-               the post-report guide  you alone    what you might do differently
-
-             postReportGuide is keyed by participant id and returned only to that
-             participant - not to the other six, and not to the lead either. So
-             the concern rows come out of the shared panel entirely and appear
-             below it, outside the document, as the private thing they are.
-
-             WHAT STAYS SHARED IS WHAT IS GENEROUS. A small change somebody made
-             that is working is worth the whole team seeing, and it is the one
-             kind of personal detail that costs nobody anything to have read. -->
-        <div style="padding:10px 22px 4px">
-          <div style="font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--gw-muted);margin-bottom:4px">Small changes that are working</div>
-          <div style="font-size:12.5px;color:var(--gw-muted);line-height:1.45;margin-bottom:7px">Named by the person who made them, across three check-ins. Nothing here is a score and nobody is ranked against anybody else.</div>
-          <div class="l-del"><div class="who">Dan</div><div class="did">Started opening with the cost line instead of the feature list in week two. First meetings turning into second meetings went from one in five to one in three.</div><span class="ev">worth copying</span></div>
-          <div class="l-del"><div class="who">Rachel</div><div class="did">Stopped sending the deck before the call. Fewer people cancel.</div><span class="ev">worth copying</span></div>
-          <div class="l-del"><div class="who">Rachel</div><div class="did">Books the next meeting before leaving the first one. Six of six first meetings already have a second date.</div><span class="ev">worth copying</span></div>
-          <div class="l-del"><div class="who">Dan</div><div class="did">Writes every call up the same day. His is the only account where the numbers can be checked against something.</div><span class="ev">worth copying</span></div>
-          <div class="l-del"><div class="who">Ada</div><div class="did">Asks for the decision date on the first call. Microdot named a date in week two and held it.</div><span class="ev">worth copying</span></div>
-          <div class="l-del"><div class="who">Tom</div><div class="did">Wrote down the four objections that come up every time. Three people are using it.</div><span class="ev">worth copying</span></div>
-        </div>
-
-        <div style="padding:10px 22px 13px">
-
-          <div style="font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--gw-muted);margin-bottom:7px">Where the summary and the record differ</div>
-          <div class="l-told" style="margin-bottom:7px">
-            <div style="background:#F3F6FA;border:1px solid #D6E3F2;border-radius:7px;padding:9px 15px">
-              <p style="font-size:14px;color:var(--gw-dark);line-height:1.45;margin:0 0 6px">"Good quarter. Everyone is busy, the meeting numbers are up, and we are ahead on pipeline."</p>
-              <span style="display:inline-block;font-size:11px;font-weight:600;color:var(--gw-navy);background:#E1EBF7;border-radius:20px;padding:4px 10px">Ada's summary, week 6</span>
-            </div>
-            <div style="background:var(--gw-paper);border:1px solid var(--gw-paper-2);border-radius:7px;padding:9px 15px">
-              <p style="font-size:14px;color:var(--gw-text);line-height:1.45;margin:0 0 6px">Three different buyers, two different products, and one person's meetings are not moving at all.</p>
-              <span style="display:inline-block;font-size:11px;font-weight:600;color:var(--gw-sub);background:var(--gw-paper-2);border-radius:20px;padding:4px 10px">what the other seven accounts hold</span>
-            </div>
-          </div>
-          <p style="font-size:13px;color:var(--gw-sub);line-height:1.45;margin:0 0 17px">Nobody was wrong. Ada was reporting what had reached her.</p>
-
-          <div style="font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--gw-muted);margin-bottom:4px">Who we each think we are selling to</div>
-          <div style="font-size:17px;font-weight:700;color:var(--gw-text);margin-bottom:8px;letter-spacing:-.01em">The buyer, in each person's own words</div>
-          <div style="background:var(--gw-paper);border:1px solid var(--gw-paper-2);border-left:3px solid var(--gw-navy);border-radius:7px;padding:8px 15px;margin-bottom:5px">
-            <p style="font-size:14.5px;color:var(--gw-text);line-height:1.45;margin:0 0 6px">Heads of operations at logistics firms running two hundred vehicles or more. They hold the budget.</p>
-            <span style="display:inline-block;font-size:11px;font-weight:600;color:var(--gw-navy);background:#E7EFF8;border-radius:20px;padding:4px 10px">Ada</span>
-          </div>
-          <div style="background:var(--gw-paper);border:1px solid var(--gw-paper-2);border-left:3px solid var(--gw-muted);border-radius:7px;padding:8px 15px;margin-bottom:5px">
-            <p style="font-size:14.5px;color:var(--gw-text);line-height:1.45;margin:0 0 6px">Whoever takes the meeting. Mostly IT managers, because they answer.</p>
-            <span style="display:inline-block;font-size:11px;font-weight:600;color:var(--gw-sub);background:var(--gw-paper-2);border-radius:20px;padding:4px 10px">Dan and Yusuf</span>
-          </div>
-          <div style="background:var(--gw-paper);border:1px solid var(--gw-paper-2);border-left:3px solid var(--gw-amber-t);border-radius:7px;padding:8px 15px;margin-bottom:0">
-            <p style="font-size:14.5px;color:var(--gw-text);line-height:1.45;margin:0 0 6px">Finance leads, because the pitch that lands is the cost saving.</p>
-            <span style="display:inline-block;font-size:11px;font-weight:600;color:var(--gw-amber-t);background:#FBF1E0;border-radius:20px;padding:4px 10px">Rachel</span>
-          </div>
-
-          <div style="height:20px"></div>
-
-          <div style="font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--gw-muted);margin-bottom:4px">Waiting for an owner</div>
-          <div style="font-size:17px;font-weight:700;color:var(--gw-text);margin-bottom:8px;letter-spacing:-.01em">Turning a finished pilot into a paid contract</div>
-          <div style="background:var(--gw-paper);border:1px solid var(--gw-paper-2);border-left:3px solid var(--gw-muted);border-radius:7px;padding:8px 15px;margin-bottom:5px">
-            <p style="font-size:14.5px;color:var(--gw-text);line-height:1.45;margin:0 0 6px">Understood it to go back to the person who sold the pilot, and has not asked.</p>
-            <span style="display:inline-block;font-size:11px;font-weight:600;color:var(--gw-sub);background:var(--gw-paper-2);border-radius:20px;padding:4px 10px">Dan, Naomi and Yusuf</span>
-          </div>
-          <div style="background:var(--gw-paper);border:1px solid var(--gw-paper-2);border-left:3px solid var(--gw-navy);border-radius:7px;padding:8px 15px;margin-bottom:0">
-            <p style="font-size:14.5px;color:var(--gw-text);line-height:1.45;margin:0 0 6px">Has three pilots starting next month and no agreed step after them.</p>
-            <span style="display:inline-block;font-size:11px;font-weight:600;color:var(--gw-navy);background:#E7EFF8;border-radius:20px;padding:4px 10px">Rachel</span>
-          </div>
-
-          <p style="font-size:14px;color:var(--gw-text);font-weight:600;line-height:1.45;margin:10px 0 17px;padding-left:2px">It has come up three times and has not been given to anyone yet.</p>
-
-          <div style="background:var(--gw-blue-bg);border:1px solid #C9DDF3;border-radius:7px;padding:10px 16px">
-            <div style="font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--gw-navy);margin-bottom:5px">The one thing to settle first</div>
-            <p style="font-size:14.5px;color:var(--gw-dark);line-height:1.45;margin:0">Which buyer can actually sign, and who owns turning a finished pilot into a paid contract?</p>
-          </div>
-        </div>
-
-        <div style="border-top:1px solid var(--gw-paper-2);background:var(--gw-paper);padding:10px 22px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12.5px;color:var(--gw-sub);line-height:1.45;flex:1;min-width:220px">Everyone agrees on: the price list, the pilot length, and the number the team is aiming at.</span>
-          <span style="font-size:11.5px;font-weight:700;color:var(--gw-navy);background:#E7EFF8;border:1px solid #C9DDF3;border-radius:20px;padding:4px 12px;white-space:nowrap">Emerging &middot; 3 settled, 2 open</span>
-        </div>
-      </div>
-
-      <!-- THE PRIVATE HALF, OUTSIDE THE PANEL ON PURPOSE.
-           The boundary between what the team reads and what only you read is the
-           most important line in this product, and showing it is worth more than
-           any sentence claiming it.
-
-           SHAPED LIKE THE REAL THING. postReportGuide produces exactly three
-           fields - an opening line, a question to carry, and one thing somebody
-           else raised that is worth taking seriously - and its prompt forbids
-           naming or quoting anyone even here, in a document only one person ever
-           sees. So these say "the other view" and "someone else", the way the
-           product does. -->
-      <div style="margin:13px 0 0;background:var(--gw-paper);border:1px dashed #C9C5BE;border-radius:10px;padding:11px 18px">
-        <div style="font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--gw-muted);margin-bottom:7px">What only Yusuf sees</div>
-
-        <!-- SAY WHAT IT IS, NOT THAT IT IS SECRET.
-             The heading read "and one note that nobody else sees", which is a
-             claim about absence and says nothing about what the thing does. Two
-             people who matter were left guessing: a chief executive could not
-             tell that their whole team is quietly being coached one by one, and
-             a team member could not tell that the coaching is THEIRS rather than
-             a report about them. Both of those are the point, so both are said. -->
-        <p style="font-size:12.5px;color:var(--gw-sub);line-height:1.45;margin:0 0 8px">Everyone in the check-in gets one of these each time a report lands, drawn only from their own record. Nobody reads anybody else's, and neither does the person running it.</p>
-        <div style="margin-bottom:8px">
-          <div style="font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gw-navy);margin-bottom:4px">Something you could say</div>
-          <p style="font-size:14.5px;color:var(--gw-text);line-height:1.45;margin:0">"I am getting first meetings and they are not turning into second ones, and I do not think I have worked out yet what makes the difference."</p>
-        </div>
-        <div style="margin-bottom:8px">
-          <div style="font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gw-navy);margin-bottom:4px">Something to ask</div>
-          <p style="font-size:14.5px;color:var(--gw-text);line-height:1.45;margin:0">When one of these does move on, what happened in that meeting that is not happening in mine?</p>
-        </div>
-        <div style="margin-bottom:8px">
-          <div style="font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gw-navy);margin-bottom:4px">Something to take seriously</div>
-          <p style="font-size:14.5px;color:var(--gw-text);line-height:1.45;margin:0">Somebody else here is asking for the next date inside the first meeting rather than afterwards. Worth trying on the next one, even if it feels early.</p>
-        </div>
-
-        <p style="font-size:12.5px;color:var(--gw-sub);line-height:1.45;margin:0">Yusuf's own note, in his own copy of the report. The other seven do not see it. Neither does the person running the check-in.</p>
-      </div>
-      <p class="l-prose" style="font-size:14px;color:var(--gw-text);line-height:1.5;font-weight:600;margin:24px 0 0">Everyone was working hard, on their own version of the customer. Nobody on that team could have told you this, because no one of them could see it.</p>
-      <p class="l-prose" style="font-size:14px;color:var(--gw-sub);line-height:1.5;margin-top:16px">Nobody was withholding anything. Each person answered honestly about their own work. The gap only appears when the accounts are put side by side.</p>
-      <!-- Said plainly, because somebody whose manager forwarded them this page
-           is reading it to work out what it means for them. -->
-      <p class="l-prose" style="font-size:14px;color:var(--gw-sub);line-height:1.5;margin-top:16px">If you are one of the eight, this is your report too. Same report, same moment. It is how the thing that is working for you gets shared with everyone else, and how the thing you have been raising for three weeks finally gets a name against it.</p>
-        </div>
-
-        <!-- CASE TWO: A PERSON BEING ONBOARDED, AND WHAT CHANGED BETWEEN THEM.
-             The sales report is a team at a moment. This one is one person over
-             time, which is the other half of what this product does and the half
-             a probation period actually needs: where they started apart, where
-             it has already closed, and what is still read differently on day 62
-             of 90.
-
-             It is deliberately NOT a disaster. Most onboardings are going fine
-             with two live misunderstandings in them, and a page where every
-             sample is a catastrophe teaches people that the report only shows up
-             when something is wrong - which is exactly when they will stop
-             telling it the truth.
-
-             The realignment block is the one that could not exist without this
-             product. A gap that closed, with the session it closed in, from four
-             accounts none of which could see the others. And it is faithful:
-             Ground 2's real report carries exactly this in `agreements` - "a
-             period of confusion where two people built the same appointment
-             table was resolved, clarifying ownership".
-
-             Kaya Labs, the sites and the people are invented. -->
-        <div class="l-case">
-          <h2 class="l-sec-h2" style="margin-bottom:10px">Day 62 of a 90 day handover.</h2>
-          <p class="l-prose" style="font-size:14px;color:var(--gw-sub);line-height:1.5;margin-bottom:8px">A new chief executive at Kaya Labs, a franchise of eleven small HIV research sites. Her board chair, her lab network director and her funder lead each gave their own account, separately.</p>
-          <p style="font-size:13.5px;color:var(--gw-sub);line-height:1.5;margin-bottom:22px">An extract from a shared report, as the person running it sees it. The people in it read this same shared picture. The private note under it is only ever their own.</p>
-
-          <div class="l-case-doc" style="background:#fff;border:1px solid #D8D5CF;border-radius:12px;overflow:hidden">
-
-            <div style="background:var(--gw-dark);padding:9px 22px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
-              <span style="font-size:12.5px;font-weight:700;color:#fff;letter-spacing:-.01em">Nomsa, first 90 days &middot; shared report</span>
-              <span style="font-size:11px;color:rgba(255,255,255,.55);letter-spacing:.04em">4 accounts &middot; check-in 4 of 6</span>
-            </div>
-
-            <div style="background:#F2F9F6;border-bottom:1px solid #CFE7DC;padding:11px 22px">
-              <p style="font-size:16.5px;font-weight:700;color:var(--gw-green-t);line-height:1.45;margin:0 0 4px;letter-spacing:-.01em">Two of the three things you started apart on have closed. The third is about money and has not moved.</p>
-              <p style="font-size:13px;color:#3A7A60;line-height:1.45;margin:0">Both closed in the session after they surfaced. Neither was raised in a meeting first.</p>
-            </div>
-
-            <div class="l-qr">
-              <div><div class="k">Aligned?</div><div class="v" style="color:var(--gw-amber-t)">1 open</div><div class="s">down from three</div></div>
-              <div><div class="k">Moving?</div><div class="v" style="color:var(--gw-green-t)">+7</div><div class="s">across targets this session</div></div>
-              <div><div class="k">Stuck?</div><div class="v" style="color:var(--gw-green-t)">clear</div><div class="s">nothing hard-blocked</div></div>
-              <div><div class="k">Solid?</div><div class="v" style="color:var(--gw-green-t)">good</div><div class="s">83% document-backed</div></div>
-            </div>
-
-            <div style="padding:14px 22px 4px">
-              <div style="font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--gw-green-t);margin-bottom:4px">Where you have already realigned</div>
-              <div style="font-size:12.5px;color:var(--gw-muted);line-height:1.45;margin-bottom:8px">A gap that has closed, with the session it closed in.</div>
-
-              <div style="border:1px solid #CFE7DC;background:#F7FBF9;border-radius:7px;padding:10px 16px;margin-bottom:6px">
-                <div style="font-size:14px;font-weight:700;color:var(--gw-text);margin-bottom:6px">What running Kaya Labs well means</div>
-                <div class="l-told" style="margin-bottom:6px">
-                  <div style="background:#fff;border:1px solid var(--gw-paper-2);border-radius:7px;padding:8px 13px">
-                    <p style="font-size:13.5px;color:var(--gw-sub);line-height:1.45;margin:0 0 4px">Nomsa: eleven sites open by year one. Helen: sample integrity holding at every existing site.</p>
-                    <span style="display:inline-block;font-size:10.5px;font-weight:600;color:var(--gw-amber-t);background:#FBF1E0;border-radius:20px;padding:4px 9px">session 1, apart</span>
-                  </div>
-                  <div style="background:#fff;border:1px solid #CFE7DC;border-radius:7px;padding:8px 13px">
-                    <p style="font-size:13.5px;color:var(--gw-text);line-height:1.45;margin:0 0 4px">No new site until the four running sites hold integrity above 98 per cent for a full quarter. Both describe it that way now.</p>
-                    <span style="display:inline-block;font-size:10.5px;font-weight:600;color:var(--gw-green-t);background:#DFF1EA;border-radius:20px;padding:4px 9px">session 3, agreed</span>
-                  </div>
-                </div>
-              </div>
-
-              <div style="border:1px solid #CFE7DC;background:#F7FBF9;border-radius:7px;padding:10px 16px;margin-bottom:11px">
-                <div style="font-size:14px;font-weight:700;color:var(--gw-text);margin-bottom:6px">Who signs off capital for a new site</div>
-                <div class="l-told" style="margin-bottom:6px">
-                  <div style="background:#fff;border:1px solid var(--gw-paper-2);border-radius:7px;padding:8px 13px">
-                    <p style="font-size:13.5px;color:var(--gw-sub);line-height:1.45;margin:0 0 4px">Nomsa understood site capital to sit with her, and had begun costing two locations.</p>
-                    <span style="display:inline-block;font-size:10.5px;font-weight:600;color:var(--gw-amber-t);background:#FBF1E0;border-radius:20px;padding:4px 9px">session 2, apart</span>
-                  </div>
-                  <div style="background:#fff;border:1px solid #CFE7DC;border-radius:7px;padding:8px 13px">
-                    <p style="font-size:13.5px;color:var(--gw-text);line-height:1.45;margin:0 0 4px">It sits with the board. She kept the costings and they are now the paper the board will decide from.</p>
-                    <span style="display:inline-block;font-size:10.5px;font-weight:600;color:var(--gw-green-t);background:#DFF1EA;border-radius:20px;padding:4px 9px">session 3, agreed</span>
-                  </div>
-                </div>
-              </div>
-
-              <div style="font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--gw-muted);margin-bottom:4px">Still read differently</div>
-              <div style="font-size:17px;font-weight:700;color:var(--gw-text);margin-bottom:8px;letter-spacing:-.01em">What the funder is owed, and how often</div>
-              <div style="background:var(--gw-paper);border:1px solid var(--gw-paper-2);border-left:3px solid var(--gw-muted);border-radius:7px;padding:8px 15px;margin-bottom:5px">
-                <p style="font-size:14.5px;color:var(--gw-text);line-height:1.45;margin:0 0 6px">A monthly summary across the network is what the funder wants, and it has gone out every month.</p>
-                <span style="display:inline-block;font-size:11px;font-weight:600;color:var(--gw-sub);background:var(--gw-paper-2);border-radius:20px;padding:4px 10px">Nomsa</span>
-              </div>
-              <div style="background:var(--gw-paper);border:1px solid var(--gw-paper-2);border-left:3px solid var(--gw-amber-t);border-radius:7px;padding:8px 15px;margin-bottom:10px">
-                <p style="font-size:14.5px;color:var(--gw-text);line-height:1.45;margin:0 0 6px">The grant terms ask for per-site data every month, not a network summary. Two sites have filed nothing since March.</p>
-                <span style="display:inline-block;font-size:11px;font-weight:600;color:var(--gw-amber-t);background:#FBF1E0;border-radius:20px;padding:4px 10px">Sarah and Kwame</span>
-              </div>
-              <p style="font-size:13px;color:var(--gw-sub);line-height:1.45;margin:0 0 14px">Nobody was wrong. Nomsa was reporting against what she had been handed, and the grant terms were not in it.</p>
-
-              <div style="font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--gw-muted);margin-bottom:4px">What she has delivered, session by session</div>
-              <div style="font-size:12.5px;color:var(--gw-muted);line-height:1.45;margin-bottom:7px">Her own account of her own work, in her own words.</div>
-              <div class="l-del"><div class="who">Sessions 1&ndash;2</div><div class="did">Visited all four running sites. Found the integrity gap at the Bulawayo site herself and paused its intake.</div><span class="ev">3 documents</span></div>
-              <div class="l-del"><div class="who">Session 3</div><div class="did">Costed two candidate locations. Wrote the first network-wide protocol for sample handling.</div><span class="ev">4 documents</span></div>
-              <div class="l-del"><div class="who">Session 4</div><div class="did">Integrity at Bulawayo back above 98 per cent. Two lab leads recruited. Funder call taken alone for the first time.</div><span class="ev">2 documents</span></div>
-
-              <div style="background:var(--gw-blue-bg);border:1px solid #C9DDF3;border-radius:7px;padding:10px 16px;margin-top:13px">
-                <div style="font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--gw-navy);margin-bottom:5px">The one thing to settle first</div>
-                <p style="font-size:14.5px;color:var(--gw-dark);line-height:1.45;margin:0">What exactly does the grant require each month, per site rather than across the network, and who is accountable for the two sites that have filed nothing since March?</p>
-              </div>
-            </div>
-
-            <div style="border-top:1px solid var(--gw-paper-2);background:var(--gw-paper);padding:10px 22px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
-              <span style="font-size:12.5px;color:var(--gw-sub);line-height:1.45;flex:1;min-width:220px">Everyone agrees on: the integrity threshold, the order sites open in, and who runs the funder relationship.</span>
-              <span style="font-size:11.5px;font-weight:700;color:var(--gw-navy);background:#E7EFF8;border:1px solid #C9DDF3;border-radius:20px;padding:4px 12px;white-space:nowrap">Emerging &middot; 3 settled, 1 open</span>
-            </div>
-          </div>
-
-          <!-- THE PRIVATE HALF, OUTSIDE THE PANEL ON PURPOSE.
-               The boundary between what the team reads and what only you read is the
-               most important line in this product, and showing it is worth more than
-               any sentence claiming it.
-
-               SHAPED LIKE THE REAL THING. postReportGuide produces exactly three
-               fields - an opening line, a question to carry, and one thing somebody
-               else raised that is worth taking seriously - and its prompt forbids
-               naming or quoting anyone even here, in a document only one person ever
-               sees. So these say "the other view" and "someone else", the way the
-               product does. -->
-          <div style="margin:13px 0 0;background:var(--gw-paper);border:1px dashed #C9C5BE;border-radius:10px;padding:11px 18px">
-            <div style="font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--gw-muted);margin-bottom:7px">What only Nomsa sees</div>
-
-            <!-- SAY WHAT IT IS, NOT THAT IT IS SECRET.
-                 The heading read "and one note that nobody else sees", which is a
-                 claim about absence and says nothing about what the thing does. Two
-                 people who matter were left guessing: a chief executive could not
-                 tell that their whole team is quietly being coached one by one, and
-                 a team member could not tell that the coaching is THEIRS rather than
-                 a report about them. Both of those are the point, so both are said. -->
-            <p style="font-size:12.5px;color:var(--gw-sub);line-height:1.45;margin:0 0 8px">Everyone in the check-in gets one of these each time a report lands, drawn only from their own record. Nobody reads anybody else's, and neither does the person running it.</p>
-            <div style="margin-bottom:8px">
-              <div style="font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gw-navy);margin-bottom:4px">Something you could say</div>
-              <p style="font-size:14.5px;color:var(--gw-text);line-height:1.45;margin:0">"I have been sending a monthly summary across the network, and I am no longer sure that is what the grant actually asks for."</p>
-            </div>
-            <div style="margin-bottom:8px">
-              <div style="font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gw-navy);margin-bottom:4px">Something to ask</div>
-              <p style="font-size:14.5px;color:var(--gw-text);line-height:1.45;margin:0">What exactly is owed each month, site by site rather than across the network, and which parts of it am I not sending?</p>
-            </div>
-            <div style="margin-bottom:8px">
-              <div style="font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gw-navy);margin-bottom:4px">Something to take seriously</div>
-              <p style="font-size:14.5px;color:var(--gw-text);line-height:1.45;margin:0">Someone closer to the funding reads the terms as per-site. That is worth checking before the next filing rather than after it.</p>
-            </div>
-
-            <p style="font-size:12.5px;color:var(--gw-sub);line-height:1.45;margin:0">Nomsa's own note, in her own copy of the report. The board chair does not see it.</p>
-          </div>
-
-          <p class="l-prose" style="font-size:14px;color:var(--gw-text);line-height:1.5;font-weight:600;margin:24px 0 0">Two misunderstandings, both caught in the session after they appeared. On the old path the first one anybody hears about either is the review at day ninety.</p>
-          <p class="l-prose" style="font-size:14px;color:var(--gw-sub);line-height:1.5;margin-top:16px">Nobody was hiding anything and nobody was underperforming. A new chief executive was working from the handover she was given, and three people around her each held a piece of what was missing from it.</p>
-        </div>
-
-        <!-- CASE THREE: A COHORT, WHERE THE FINDING IS ABOUT THE ONBOARDING.
-             Fourteen people hired into the same role in the same month, working
-             in fourteen different districts. This is a different shape again,
-             and the product already knows it is: peopleWorkTogether is false on
-             a ground like this, and reads.ts says so out loud - "nobody else on
-             this ground sees this person's work, so there is no second account
-             to check any of this against."
-
-             THE COUNT IS THE FINDING HERE, AND THAT IS A REAL TENSION.
-             "Never count the accounts" is a rule this product enforces, because
-             on shared work "four of the six said X" turns a headcount into a
-             verdict. On a cohort it is the opposite: when the same wrong answer
-             appears in nine independent accounts of the same induction, the count
-             IS the diagnosis, and it points at the induction rather than at
-             anybody in it.
-
-             So this panel counts, deliberately, and says why. Logged in the fix
-             plan, because countsAccounts() does not yet know the difference and
-             would flag a correct cohort report as a violation.
-
-             The districts, the programme and the people are invented. -->
-        <div class="l-case">
-          <h2 class="l-sec-h2" style="margin-bottom:10px">Fourteen people started the same job in the same month.</h2>
-          <p class="l-prose" style="font-size:14px;color:var(--gw-sub);line-height:1.5;margin-bottom:8px">New field officers on a twelve week probation, one per district. They have never met each other. Each gave their own account, separately, to the one programme manager they all report to.</p>
-          <p style="font-size:13.5px;color:var(--gw-sub);line-height:1.5;margin-bottom:22px">An extract from a shared report, as the person running it sees it. On a cohort nobody reads anybody else: each person reads their own, and the lead reads the whole.</p>
-
-          <div class="l-case-doc" style="background:#fff;border:1px solid #D8D5CF;border-radius:12px;overflow:hidden">
-
-            <div style="background:var(--gw-dark);padding:9px 22px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
-              <span style="font-size:12.5px;font-weight:700;color:#fff;letter-spacing:-.01em">Field officer intake, week 5 &middot; shared report</span>
-              <span style="font-size:11px;color:rgba(255,255,255,.55);letter-spacing:.04em">14 accounts &middot; check-in 2 of 4</span>
-            </div>
-
-            <div style="background:#FBF6F6;border-bottom:1px solid #EFE2E2;padding:11px 22px">
-              <p style="font-size:16.5px;font-weight:700;color:var(--gw-red-t);line-height:1.45;margin:0 0 4px;letter-spacing:-.01em">Nine of the fourteen described the escalation rule the same wrong way. That is the induction, not the people.</p>
-              <p style="font-size:13px;color:#8A5C5C;line-height:1.45;margin:0">Fourteen accounts given separately, in fourteen districts, by people who have never met. One briefing produced all nine.</p>
-            </div>
-
-            <div class="l-qr">
-              <div><div class="k">Aligned?</div><div class="v" style="color:var(--gw-amber-t)">2 open</div><div class="s">differences between accounts</div></div>
-              <div><div class="k">Moving?</div><div class="v" style="color:var(--gw-green-t)">+11</div><div class="s">across targets this session</div></div>
-              <div><div class="k">Stuck?</div><div class="v" style="color:var(--gw-amber-t)">3 blocked</div><div class="s">all waiting on the same thing</div></div>
-              <div><div class="k">Solid?</div><div class="v" style="color:var(--gw-amber-t)">thin</div><div class="s">29% document-backed</div></div>
-            </div>
-
-            <div style="padding:14px 22px 4px">
-              <!-- The block that only a cohort produces. -->
-              <div style="font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--gw-muted);margin-bottom:4px">The same gap, in account after account</div>
-              <div style="font-size:12.5px;color:var(--gw-muted);line-height:1.45;margin-bottom:8px">Counted on purpose. On shared work a headcount is not evidence; across a cohort who have never spoken, it is the difference between one person misunderstanding and one briefing misteaching.</div>
-
-              <div style="background:var(--gw-paper);border:1px solid var(--gw-paper-2);border-left:3px solid var(--gw-red-t);border-radius:7px;padding:8px 15px;margin-bottom:5px">
-                <p style="font-size:14.5px;color:var(--gw-text);line-height:1.45;margin:0 0 6px">A stock-out goes in the weekly report. Nine accounts describe it that way. The policy is a phone call the same day, and three districts have been out of test kits for over a week.</p>
-                <span style="display:inline-block;font-size:11px;font-weight:600;color:var(--gw-red-t);background:#FBEBEB;border-radius:20px;padding:4px 10px">9 of 14 &middot; taught, not guessed</span>
-              </div>
-              <div style="background:var(--gw-paper);border:1px solid var(--gw-paper-2);border-left:3px solid var(--gw-amber-t);border-radius:7px;padding:8px 15px;margin-bottom:11px">
-                <p style="font-size:14.5px;color:var(--gw-text);line-height:1.45;margin:0 0 6px">Nobody can say who signs off a district budget variance. Eleven accounts name a different person or say they do not know.</p>
-                <span style="display:inline-block;font-size:11px;font-weight:600;color:var(--gw-amber-t);background:#FBF1E0;border-radius:20px;padding:4px 10px">11 of 14 &middot; never covered</span>
-              </div>
-
-              <!-- The limitation, stated rather than hidden. -->
-              <div style="background:var(--gw-paper);border:1px dashed #C9C5BE;border-radius:7px;padding:9px 16px;margin-bottom:13px">
-                <div style="font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--gw-sub);margin-bottom:4px">What this report cannot tell you</div>
-                <p style="font-size:13.5px;color:var(--gw-sub);line-height:1.45;margin:0">These fourteen work in fourteen districts and none of them sees anyone else's work. So nothing here is corroborated, and somebody who did the work but describes it flatly reads exactly like somebody who did not. Every line below is one account, not a confirmed one.</p>
-              </div>
-
-              <div style="font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--gw-muted);margin-bottom:4px">Where the fourteen are not alike</div>
-              <div style="font-size:12.5px;color:var(--gw-muted);line-height:1.45;margin-bottom:7px">Same start date, same briefing, same role.</div>
-              <div class="l-del"><div class="who">Tendai</div><div class="did">Ran the first community session in week three and has referral numbers for it. The only account in the fourteen that names a figure anybody could check.</div><span class="ev">5 documents</span></div>
-              <div class="l-del"><div class="who">Zainab</div><div class="did">Out of test kits since week two. Filed it in the weekly report as taught, and has heard nothing since.</div><span class="ev">2 documents</span></div>
-              <div class="l-del"><div class="who">Kwabena</div><div class="did">Covering two districts because the neighbouring officer has not started. Nobody has told him when that ends.</div><span class="ev">1 document</span></div>
-              <div class="l-del"><div class="who">Six others</div><div class="did">Describe the work in general terms across both check-ins, with nothing specific named yet.</div><span class="ev ev-none">no evidence yet</span></div>
-
-              <div style="background:var(--gw-blue-bg);border:1px solid #C9DDF3;border-radius:7px;padding:10px 16px;margin-top:13px">
-                <div style="font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--gw-navy);margin-bottom:5px">The one thing to settle first</div>
-                <p style="font-size:14.5px;color:var(--gw-dark);line-height:1.45;margin:0">What does a stock-out require, in one sentence every officer can repeat, and who do they call? The three districts out of kits are waiting on that answer, not on their own initiative.</p>
-              </div>
-            </div>
-
-            <div style="border-top:1px solid var(--gw-paper-2);background:var(--gw-paper);padding:10px 22px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
-              <span style="font-size:12.5px;color:var(--gw-sub);line-height:1.45;flex:1;min-width:220px">Everyone agrees on: the district boundaries, the weekly reporting day, and what the role is for.</span>
-              <span style="font-size:11.5px;font-weight:700;color:var(--gw-amber-t);background:#FBF1E0;border:1px solid #F0DFC0;border-radius:20px;padding:4px 12px;white-space:nowrap">Mixed &middot; 3 settled, 2 open</span>
-            </div>
-          </div>
-
-          <!-- THE PRIVATE HALF, OUTSIDE THE PANEL ON PURPOSE.
-               The boundary between what the team reads and what only you read is the
-               most important line in this product, and showing it is worth more than
-               any sentence claiming it.
-
-               SHAPED LIKE THE REAL THING. postReportGuide produces exactly three
-               fields - an opening line, a question to carry, and one thing somebody
-               else raised that is worth taking seriously - and its prompt forbids
-               naming or quoting anyone even here, in a document only one person ever
-               sees. So these say "the other view" and "someone else", the way the
-               product does. -->
-          <div style="margin:13px 0 0;background:var(--gw-paper);border:1px dashed #C9C5BE;border-radius:10px;padding:11px 18px">
-            <div style="font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--gw-muted);margin-bottom:7px">What only Zainab sees</div>
-
-            <!-- SAY WHAT IT IS, NOT THAT IT IS SECRET.
-                 The heading read "and one note that nobody else sees", which is a
-                 claim about absence and says nothing about what the thing does. Two
-                 people who matter were left guessing: a chief executive could not
-                 tell that their whole team is quietly being coached one by one, and
-                 a team member could not tell that the coaching is THEIRS rather than
-                 a report about them. Both of those are the point, so both are said. -->
-            <p style="font-size:12.5px;color:var(--gw-sub);line-height:1.45;margin:0 0 8px">Everyone in the check-in gets one of these each time a report lands, drawn only from their own record. Nobody reads anybody else's, and neither does the person running it.</p>
-            <div style="margin-bottom:8px">
-              <div style="font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gw-navy);margin-bottom:4px">Something you could say</div>
-              <p style="font-size:14.5px;color:var(--gw-text);line-height:1.45;margin:0">"I have had no test kits since week two. I filed it the way I was taught to, and I do not think the way I was taught is reaching anyone."</p>
-            </div>
-            <div style="margin-bottom:8px">
-              <div style="font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gw-navy);margin-bottom:4px">Something to ask</div>
-              <p style="font-size:14.5px;color:var(--gw-text);line-height:1.45;margin:0">When something runs out, what is supposed to happen the same day, and who actually hears about it?</p>
-            </div>
-            <div style="margin-bottom:8px">
-              <div style="font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gw-navy);margin-bottom:4px">Something to take seriously</div>
-              <p style="font-size:14.5px;color:var(--gw-text);line-height:1.45;margin:0">Others describe that rule the same way you do, so this is very unlikely to be something you got wrong on your own. Say it once more, out loud, to the person who can send kits.</p>
-            </div>
-
-            <p style="font-size:12.5px;color:var(--gw-sub);line-height:1.45;margin:0">Zainab's own note, in her own copy of the report. The other thirteen do not see it, and neither does the programme manager.</p>
-          </div>
-
-          <p class="l-prose" style="font-size:14px;color:var(--gw-text);line-height:1.5;font-weight:600;margin:24px 0 0">Nine people did not make the same mistake. One briefing did, fourteen times over, and only two of them had a way of finding that out.</p>
-          <p class="l-prose" style="font-size:14px;color:var(--gw-sub);line-height:1.5;margin-top:16px">The fix is an hour of rewriting an induction, and it arrives in week five instead of at the end of probation, when it would have arrived as fourteen separate performance conversations.</p>
-        </div>
-
-        <!-- CASE FOUR: A NEW HIRE, CHECKED AGAINST THEIR OWN ONBOARDING.
-             The other three ask what people think and what they delivered. This
-             one asks the question a probation actually turns on: is the work this
-             person is doing pointed at the thing they were hired to do?
-
-             Three things get set side by side, and none of them is an opinion:
-             what the onboarding told them to do, what the record says they did,
-             and what the ninety-day goal asks for. A new hire can be doing
-             exactly what they were told and still be nowhere near the goal, and
-             nothing in a normal review process shows that - it shows up as a
-             disappointing month three.
-
-             THIS ONE IS THE REAL FINDING FROM GROUND 1, reshaped and renamed. A
-             twelve-session run produced exactly this: a manager whose definition
-             of success was judgement, a hire measured on a ticket queue, and six
-             weeks of somebody performing well against the only number anybody had
-             given him. The report the engine wrote closed on it - "I was measured
-             on a queue and judged on judgement, and only one of those was said".
-
-             Names invented. The shape is not. -->
-        <div class="l-case">
-          <h2 class="l-sec-h2" style="margin-bottom:10px">Week seven of a ninety day probation.</h2>
-          <p class="l-prose" style="font-size:14px;color:var(--gw-sub);line-height:1.5;margin-bottom:8px">Tobi joined as a delivery lead and is seven weeks into a ninety day probation. His manager, a colleague who works alongside him, and Tobi each gave their own account, separately.</p>
-          <p style="font-size:13.5px;color:var(--gw-sub);line-height:1.5;margin-bottom:22px">An extract from a shared report, as the person running it sees it. The people in it read this same shared picture. The private note under it is only ever their own.</p>
-
-          <div class="l-case-doc" style="background:#fff;border:1px solid #D8D5CF;border-radius:12px;overflow:hidden">
-
-            <div style="background:var(--gw-dark);padding:9px 22px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
-              <span style="font-size:12.5px;font-weight:700;color:#fff;letter-spacing:-.01em">Tobi, first 90 days &middot; shared report</span>
-              <span style="font-size:11px;color:rgba(255,255,255,.55);letter-spacing:.04em">3 accounts &middot; check-in 7 of 12</span>
-            </div>
-
-            <div style="background:#FBF6F6;border-bottom:1px solid #EFE2E2;padding:11px 22px">
-              <p style="font-size:16.5px;font-weight:700;color:var(--gw-red-t);line-height:1.45;margin:0 0 4px;letter-spacing:-.01em">He is hitting the only target anybody gave him, and it is not the one he is being judged against.</p>
-              <p style="font-size:13px;color:#8A5C5C;line-height:1.45;margin:0">Week seven of twelve. Nothing in the record has pointed at the ninety-day goal yet, and nothing has told him to.</p>
-            </div>
-
-            <div class="l-qr">
-              <div><div class="k">Aligned?</div><div class="v" style="color:var(--gw-amber-t)">1 open</div><div class="s">differences between accounts</div></div>
-              <div><div class="k">Moving?</div><div class="v" style="color:var(--gw-green-t)">+18</div><div class="s">across targets this session</div></div>
-              <div><div class="k">Stuck?</div><div class="v" style="color:var(--gw-green-t)">clear</div><div class="s">nothing hard-blocked</div></div>
-              <div><div class="k">Solid?</div><div class="v" style="color:var(--gw-green-t)">good</div><div class="s">76% document-backed</div></div>
-            </div>
-
-            <div style="padding:14px 22px 4px">
-              <!-- The block this case exists for. -->
-              <div style="font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--gw-muted);margin-bottom:4px">What he was onboarded to do, and what he has been doing</div>
-              <div style="font-size:12.5px;color:var(--gw-muted);line-height:1.45;margin-bottom:8px">His onboarding plan on one side, seven sessions of his own account on the other.</div>
-
-              <div class="l-told" style="margin-bottom:6px">
-                <div style="background:#F3F6FA;border:1px solid #D6E3F2;border-radius:7px;padding:9px 15px">
-                  <p style="font-size:14px;color:var(--gw-dark);line-height:1.45;margin:0 0 6px">Clear the support queue each week. Shadow two accounts. No direct client contact before month two.</p>
-                  <span style="display:inline-block;font-size:11px;font-weight:600;color:var(--gw-navy);background:#E1EBF7;border-radius:20px;padding:4px 10px">the onboarding plan, week 1</span>
-                </div>
-                <div style="background:#F2F9F6;border:1px solid #CFE7DC;border-radius:7px;padding:9px 15px">
-                  <p style="font-size:14px;color:var(--gw-text);line-height:1.45;margin:0 0 6px">Queue cleared every week, 31 tickets in the busiest. Shadowed two accounts. No client contact. Nothing late.</p>
-                  <span style="display:inline-block;font-size:11px;font-weight:600;color:var(--gw-green-t);background:#DFF1EA;border-radius:20px;padding:4px 10px">what his account holds</span>
-                </div>
-              </div>
-              <p style="font-size:14px;color:var(--gw-green-t);font-weight:600;line-height:1.45;margin:0 0 7px;padding-left:2px">He has done exactly what the plan asked for, every week, and it is checkable.</p>
-              <!-- AND HE IS SENIOR, WHICH CHANGES WHAT "DID WHAT HE WAS TOLD" IS
-                   WORTH. At week one of a first job it is the whole answer. For
-                   somebody hired to lead delivery it is half of one: the plan was
-                   always going to run out before ninety days did, and noticing
-                   that is part of the job rather than an extra.
-
-                   Said as a fact about the record and pointed at BOTH of them.
-                   Nobody told him the plan stopped at week four, and he did not
-                   ask - and the second half only reads as fair because the first
-                   half is there. A report that named only his silence would be a
-                   performance note wearing a record's clothes. -->
-              <div style="background:#FBF8F2;border:1px solid #F0E3CC;border-left:3px solid var(--gw-amber-t);border-radius:7px;padding:8px 15px;margin-bottom:15px">
-                <p style="font-size:14px;color:#5A4110;line-height:1.45;margin:0 0 4px;font-weight:600">He was hired to lead delivery, and the plan ran out in week four.</p>
-                <p style="font-size:13.5px;color:#6B5A38;line-height:1.45;margin:0">Nothing in seven sessions has him asking what comes after the shadowing, proposing an account to take on, or naming something he needed to learn to get there. Nobody told him the plan ended either. At this level, noticing that the plan has run out is part of the work - and being given a plan that stops at week four is the other half of why it has not happened.</p>
-              </div>
-
-              <div style="font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--gw-muted);margin-bottom:4px">And what the ninety-day goal asks for</div>
-              <div style="font-size:12.5px;color:var(--gw-muted);line-height:1.45;margin-bottom:8px">Set at the start, by his manager, in her words.</div>
-
-              <div style="background:var(--gw-paper);border:1px solid var(--gw-paper-2);border-left:3px solid var(--gw-navy);border-radius:7px;padding:8px 15px;margin-bottom:5px">
-                <p style="font-size:14.5px;color:var(--gw-text);line-height:1.45;margin:0 0 6px">"By ninety days I want to hand him a messy client problem and not think about it again. Owning at least one relationship end to end."</p>
-                <span style="display:inline-block;font-size:11px;font-weight:600;color:var(--gw-navy);background:#E7EFF8;border-radius:20px;padding:4px 10px">Claire, week 1</span>
-              </div>
-              <div style="background:#FBF6F6;border:1px solid #EFDDDD;border-left:3px solid var(--gw-red-t);border-radius:7px;padding:8px 15px;margin-bottom:6px">
-                <p style="font-size:14.5px;color:#5A2020;line-height:1.45;margin:0 0 6px">Across seven sessions, nothing in his account is a client relationship, a decision he made alone, or a request he turned down. The plan he was given does not contain any of those either.</p>
-                <span style="display:inline-block;font-size:11px;font-weight:600;color:var(--gw-red-t);background:#F7E3E3;border-radius:20px;padding:4px 10px">what the record does not hold</span>
-              </div>
-              <p style="font-size:13px;color:var(--gw-sub);line-height:1.45;margin:0 0 15px">An empty list here means the record does not cover it. It does not mean he cannot do it, and it is not evidence that he would not.</p>
-
-              <!-- FIT FOR THE ROLE, AS THE PRODUCT ACTUALLY DOES IT.
-                   A probation turns on this and it is the easiest thing in the
-                   world to get wrong, so the product's own contribution read is
-                   built to refuse the obvious version: position is null, always.
-                   It never says meeting it or below it. What it produces is the
-                   remit as written, what the record supports against it, what the
-                   record does not reach, and the reason - and where a remit was
-                   never defined it shows no read at all, because "an undefined
-                   role is often the real problem, not the person".
-
-                   That refusal is the feature. A read against a written
-                   expectation is useful; the same read with a verdict stapled to
-                   it is a performance rating, and the moment this product
-                   produces one of those nobody tells it the truth again. -->
-              <div style="font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--gw-muted);margin-bottom:4px">Against what the role was defined as</div>
-              <div style="font-size:12.5px;color:var(--gw-muted);line-height:1.45;margin-bottom:8px">Read against the remit as written. No verdict, because a remit is not a scale.</div>
-
-              <div style="background:#fff;border:1px solid #D8D5CF;border-radius:7px;padding:10px 16px;margin-bottom:6px">
-                <div style="font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gw-sub);margin-bottom:4px">The remit, as written at the start</div>
-                <p style="font-size:14px;color:var(--gw-text);line-height:1.45;margin:0 0 8px">"Delivery lead. Owns client delivery end to end, including the relationship."</p>
-
-                <div style="font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gw-green-t);margin-bottom:4px">What the record supports</div>
-                <p style="font-size:14px;color:var(--gw-text);line-height:1.45;margin:0 0 8px">Delivery, without exception, for seven weeks. Nothing late, nothing escalated by anybody else, and every claim of it checkable against something.</p>
-
-                <div style="font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gw-amber-t);margin-bottom:4px">What the record does not reach</div>
-                <p style="font-size:14px;color:var(--gw-text);line-height:1.45;margin:0 0 8px">The relationship half of the remit. No client contact, no decision made alone, no request declined. His plan did not ask for any of it, and nobody has raised it with him.</p>
-
-                <div style="font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gw-navy);margin-bottom:4px">Why it reads that way</div>
-                <p style="font-size:14px;color:var(--gw-text);line-height:1.45;margin:0">Half the remit has been tested and half has not been reachable. That is a gap in what he has been given, not a read on what he can do - and until it is given, this ground cannot tell you either way.</p>
-              </div>
-              <p style="font-size:13px;color:var(--gw-sub);line-height:1.45;margin:0 0 15px">No position, no rating, no percentage. Where a remit was never written down this section shows nothing at all rather than guessing, because an undefined role is usually the real problem.</p>
-
-              <div style="font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--gw-muted);margin-bottom:4px">What we each mean by doing well</div>
-              <div style="background:var(--gw-paper);border:1px solid var(--gw-paper-2);border-left:3px solid var(--gw-navy);border-radius:7px;padding:8px 15px;margin-bottom:5px">
-                <p style="font-size:14.5px;color:var(--gw-text);line-height:1.45;margin:0 0 6px">Judgement. Whether a messy problem can be handed over and stay handed over.</p>
-                <span style="display:inline-block;font-size:11px;font-weight:600;color:var(--gw-navy);background:#E7EFF8;border-radius:20px;padding:4px 10px">Claire</span>
-              </div>
-              <div style="background:var(--gw-paper);border:1px solid var(--gw-paper-2);border-left:3px solid var(--gw-muted);border-radius:7px;padding:8px 15px;margin-bottom:5px">
-                <p style="font-size:14.5px;color:var(--gw-text);line-height:1.45;margin:0 0 6px">Clearing the queue each week and not being the reason anything is late. It is the only number anyone has named.</p>
-                <span style="display:inline-block;font-size:11px;font-weight:600;color:var(--gw-sub);background:var(--gw-paper-2);border-radius:20px;padding:4px 10px">Tobi</span>
-              </div>
-              <div style="background:var(--gw-paper);border:1px solid var(--gw-paper-2);border-left:3px solid var(--gw-amber-t);border-radius:7px;padding:8px 15px;margin-bottom:10px">
-                <p style="font-size:14.5px;color:var(--gw-text);line-height:1.45;margin:0 0 6px">Assumed client work came later, once he had proved he could deliver. Nobody has said otherwise in seven weeks.</p>
-                <span style="display:inline-block;font-size:11px;font-weight:600;color:var(--gw-amber-t);background:#FBF1E0;border-radius:20px;padding:4px 10px">Sophie, who works alongside him</span>
-              </div>
-
-              <div style="font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--gw-muted);margin-bottom:4px">What moved, session by session</div>
-              <div style="font-size:12.5px;color:var(--gw-muted);line-height:1.45;margin-bottom:7px">His own account of his own work.</div>
-              <div class="l-del"><div class="who">Weeks 1&ndash;3</div><div class="did">Queue cleared each week. 22 tickets closed in the first three, nothing past its date.</div><span class="ev">3 documents</span></div>
-              <div class="l-del"><div class="who">Weeks 4&ndash;5</div><div class="did">Shadowed the Brightwater account. Drafted the client summary and passed it to Claire rather than sending it, not being sure it was his to send.</div><span class="ev">2 documents</span></div>
-              <div class="l-del"><div class="who">Weeks 6&ndash;7</div><div class="did">31 tickets in week six, the highest yet. Sales asked for a same-day turnaround that was not realistic and he said he would check with Claire.</div><span class="ev">3 documents</span></div>
-
-              <div style="background:var(--gw-blue-bg);border:1px solid #C9DDF3;border-radius:7px;padding:10px 16px;margin-top:13px">
-                <div style="font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--gw-navy);margin-bottom:5px">The one thing to settle first</div>
-                <p style="font-size:14.5px;color:var(--gw-dark);line-height:1.45;margin:0">Which of the two is he being measured on for the rest of the ninety days, and what changes in his week if the answer is judgement rather than the queue?</p>
-              </div>
-            </div>
-
-            <div style="border-top:1px solid var(--gw-paper-2);background:var(--gw-paper);padding:10px 22px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
-              <span style="font-size:12.5px;color:var(--gw-sub);line-height:1.45;flex:1;min-width:220px">Everyone agrees on: the start date, the onboarding plan as written, and that nothing has been late.</span>
-              <span style="font-size:11.5px;font-weight:700;color:var(--gw-amber-t);background:#FBF1E0;border:1px solid #F0DFC0;border-radius:20px;padding:4px 12px;white-space:nowrap">Mixed &middot; 3 settled, 1 open</span>
-            </div>
-          </div>
-
-          <!-- THE PRIVATE HALF, OUTSIDE THE PANEL ON PURPOSE. Shaped like the
-               real postReportGuide: something you could say, something to ask,
-               something someone else raised worth taking seriously - and like the
-               real one, naming and quoting nobody. -->
-          <div style="margin:13px 0 0;background:var(--gw-paper);border:1px dashed #C9C5BE;border-radius:10px;padding:11px 18px">
-            <div style="font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--gw-muted);margin-bottom:7px">What only Tobi sees</div>
-            <p style="font-size:12.5px;color:var(--gw-sub);line-height:1.45;margin:0 0 8px">Everyone in the check-in gets one of these each time a report lands, drawn only from their own record. Nobody reads anybody else's, and neither does the person running it.</p>
-            <div style="margin-bottom:8px">
-              <div style="font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gw-navy);margin-bottom:4px">Something you could say</div>
-              <p style="font-size:14.5px;color:var(--gw-text);line-height:1.45;margin:0">"I have been working to the queue because it is the only target I was given, and I am not sure it is the one that matters to you."</p>
-            </div>
-            <div style="margin-bottom:8px">
-              <div style="font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gw-navy);margin-bottom:4px">Something to ask</div>
-              <p style="font-size:14.5px;color:var(--gw-text);line-height:1.45;margin:0">What would you want me deciding on my own by day ninety, and what is the first thing you would hand over to test it?</p>
-            </div>
-            <div style="margin-bottom:8px">
-              <div style="font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gw-navy);margin-bottom:4px">Something to take seriously</div>
-              <p style="font-size:14.5px;color:var(--gw-text);line-height:1.45;margin:0">The other view is that the queue is not what is being weighed. You have twice checked before saying no to something; asking for one of those to be yours to decide would be worth more than another good week on tickets. You were brought in to lead delivery, so proposing the next step yourself counts for more here than waiting to be handed it - and nobody is going to tell you that in week eight.</p>
-            </div>
-            <p style="font-size:12.5px;color:var(--gw-sub);line-height:1.45;margin:0">Tobi's own note, in his own copy. His manager does not see it.</p>
-          </div>
-
-          <p class="l-prose" style="font-size:14px;color:var(--gw-text);line-height:1.5;font-weight:600;margin:24px 0 0">Nothing he did was wrong against the target he was given, and at this level the target running out was his to raise too. Both halves are in the report. A month-three review shows neither, because by then it is a performance problem with a person attached.</p>
-          <p class="l-prose" style="font-size:14px;color:var(--gw-sub);line-height:1.5;margin-top:16px">Two people meant different things by doing well for seven weeks, and neither of them was hiding it. It was in both accounts from week one, on separate pages.</p>
-        </div>
-      </div>
-
-      <script is:inline>
-        (function () {
-          var row = document.getElementById('l-cases');
-          if (!row) return;
-          var tabs = Array.prototype.slice.call(document.querySelectorAll('.l-case-tab'));
-          var cases = Array.prototype.slice.call(row.children);
-          /* The tab does both, because the two layouts need different things: under
-             768px the strip is a plain block and is-on decides what shows; above it
-             the strip scrolls and is-on is inert. One handler, no width checks in JS
-             - the CSS decides which half matters. */
-          function markOn(i) {
-            cases.forEach(function (c, n) { c.classList.toggle('is-on', n === i); });
-          }
-          tabs.forEach(function (t, i) {
-            t.addEventListener('click', function () {
-              markOn(i);
-              row.scrollTo({ left: cases[i].offsetLeft - row.offsetLeft, behavior: 'smooth' });
-            });
-          });
-          markOn(0);
-          /**
-           * THE ROW'S HEIGHT HAS TO FOLLOW THE CASE YOU ARE LOOKING AT.
-           *
-           * A flex row is as tall as its tallest child whatever align-items says,
-           * and these four are 3213, 2030, 1819 and 2588 tall. So on any case but
-           * the longest there was up to fourteen hundred pixels of empty white
-           * underneath it - the "giant white space at the bottom of the reports".
-           *
-           * align-items:flex-start stopped the SHORT cases being stretched, which
-           * was a separate bug, and could never have fixed this one: the
-           * container is still sized by the tallest child either way.
-           *
-           * So the row is given the active case's height explicitly, and it is
-           * transitioned so switching does not jump. Re-measured on resize,
-           * because these blocks reflow hard between one and two columns.
-           */
-          function fitHeight() {
-            var nearest = 0, best = Infinity;
-            cases.forEach(function (c, i) {
-              var d = Math.abs(c.offsetLeft - row.offsetLeft - row.scrollLeft);
-              if (d < best) { best = d; nearest = i; }
-            });
-            tabs.forEach(function (t, i) { t.setAttribute('aria-selected', String(i === nearest)); });
-            /* Plus the horizontal scrollbar's own height. With overflow-y:hidden a
-               strip sized to the case exactly would clip the last few pixels of the
-               report behind the scrollbar. */
-            /* Only where the strip is actually a strip. Under 768px it is a block
-               with height:auto and one visible case, so an explicit height would put
-               the empty space straight back. */
-            if (window.matchMedia('(min-width: 768px)').matches) {
-              var scrollbar = row.offsetHeight - row.clientHeight;
-              row.style.height = (cases[nearest].getBoundingClientRect().height + scrollbar) + 'px';
-            } else {
-              row.style.height = '';
-            }
-            return nearest;
-          }
-
-          /* NO HEIGHT TRANSITION. It animated the page's total height for 250ms, and
-             a wheel inside that window did nothing at all - the layout was moving
-             under the browser while it tried to scroll. A switch that is instant has
-             no such window, and reads as a switch rather than a slide. */
-          // Images and fonts settle after first paint, so measure once more.
-          fitHeight();
-          window.addEventListener('load', fitHeight);
-          window.addEventListener('resize', fitHeight);
-
-          // The tabs follow the scroll rather than driving it, so dragging,
-          // swiping and clicking all end up saying the same thing.
-          row.addEventListener('scroll', fitHeight, { passive: true });
-        })();
-      </script>
+</section>
+
+<!-- ═══ WHAT A REPORT LOOKS LIKE ══════════════════════════════════════════
+     Four situations, one report at a time. A reader picks the one that is their
+     problem, which answers "is this for me" better than any amount of prose.
+
+     THE REPORT SHOWS ITS FINDING, ITS FOUR STATES AND THE ACCOUNTS THAT
+     DISAGREE. The rest folds. Measured on the previous page: one visible panel
+     ran 4,428px of an 8,176px page, so more than half of this site was one
+     example. That is not depth, it is homework. -->
+<section class="band fade">
+  <div class="w-wide">
+    <p class="lab">What a report looks like</p>
+    <div class="tabs" role="tablist" aria-label="Example reports"><button class="tab" role="tab" aria-selected="true" data-tab="0">A sales team</button><button class="tab" role="tab" aria-selected="false" data-tab="1">Onboarding a new chief</button><button class="tab" role="tab" aria-selected="false" data-tab="2">Onboarding a whole cohort</button><button class="tab" role="tab" aria-selected="false" data-tab="3">A new hire in probation</button></div>
+    <div id="cases">
+        <div class="case on" data-case="0" role="tabpanel">
+        <h2 class="h2">Every pipeline review said the quarter was on track.</h2>
+        <p class="lede" style="margin-bottom:24px">Eight people on the same sales team gave their own account, separately. Here is what came back.</p>
+        <div class="rep">
+        <div class="rep-h"><b>New business, this quarter &middot; shared report</b><em>8 accounts &middot; check-in 3 of 6</em></div>
+        <div class="find"><p>Nine of the twelve live deals are with somebody who cannot sign, at a tenth of the size the quarter was planned on.</p><small>Surfaced at check-in 3 of 6. The next time it would have come up on its own is the end-of-quarter number, when the meeting count will still look healthy.</small></div>
+        <div class="qr"><div><div class="k"><s>&#9680;</s>Aligned?</div><div class="v" style="color:var(--gw-amber-t)">2 open</div><div class="s">differences between accounts</div></div><div><div class="k"><s>&#8593;</s>Moving?</div><div class="v" style="color:var(--gw-green-t)">+14</div><div class="s">across targets this session</div></div><div><div class="k"><s>&#8214;</s>Stuck?</div><div class="v" style="color:var(--gw-amber-t)">1 blocked</div><div class="s">waiting on someone else</div></div><div><div class="k"><s>&#9673;</s>Solid?</div><div class="v" style="color:var(--gw-green-t)">good</div><div class="s">64% document-backed</div></div></div>
+        <details class="more"><summary>Show what each of the eight said they did</summary><div class="more-body"><p style="font-size:12.5px;color:var(--gw-muted);margin-bottom:4px">Each person's own account of their own work. Nobody is describing anybody else.</p><div class="did"><b>Ada</b><span>Closed Microdot Inc. First deal over a hundred thousand, and the reference call is booked.</span></div><div class="did"><b>Dan</b><span>Eleven first meetings, four second meetings, two proposals out. Six of the eleven were with Halden, who has not put anyone in the room who can sign.</span></div><div class="did"><b>Rachel</b><span>Six first meetings and three pilots agreed. All three start next month.</span></div><div class="did"><b>Naomi</b><span>Renewed Vanta at a higher tier and lost nothing this quarter. Most of three weeks went on renewal paperwork and contract admin. Two customer conversations in total.</span></div><div class="did"><b>Tom</b><span>Wrote the objection sheet the rest of the team is now using on calls.</span></div><div class="did"><b>Yusuf</b><span>Nineteen first meetings. No second meetings yet.</span></div><div class="did"><b>Kofi</b><span>New CRM shipped in week two. Team is on it.</span></div><div class="did"><b>Ellie</b><span>Nothing specific named yet across three check-ins.</span></div></div></details>
+        <div class="two"><div><q>The new CRM went live in week two. The team is on it.</q><cite>Kofi, sales operations</cite></div><div><p>Still working in the old sheet and entering everything twice. Three of them describe it as the reason their admin has doubled.</p><cite style="display:block;margin-top:9px;font-family:var(--mono);font-size:10.5px;font-style:normal;letter-spacing:.08em;text-transform:uppercase;color:var(--gw-muted)">Dan, Rachel, Naomi and Yusuf</cite></div></div>
+        <div class="foot" style="border-bottom:1px solid var(--gw-border)">Both accounts are on record and neither person knew about the other. Nothing here decides who is right, and the report will not: it is a conversation that was otherwise going to happen at the end of the quarter.</div>
+        <div class="settle"><div class="k">The one thing to settle first</div><p>Which buyer can actually sign, and who owns turning a finished pilot into a paid contract?</p></div>
+        <div class="foot">If you are one of the people in it, this is your report too. Same report, same moment.</div>
+        </div></div>
+        <div class="case" data-case="1" role="tabpanel">
+        <h2 class="h2">Day 62 of a 90 day handover.</h2>
+        <p class="lede" style="margin-bottom:24px">A new chief executive, the outgoing one, the board chair and a programme lead each gave their own account, separately.</p>
+        <div class="rep">
+        <div class="rep-h"><b>Nomsa, first 90 days &middot; shared report</b><em>4 accounts &middot; check-in 4 of 6</em></div>
+        <div class="find"><p>Two of the three things you started apart on have closed. The third is about money and has not moved.</p><small>Both closed in the session after they surfaced. Neither was raised in a meeting first.</small></div>
+        <div class="qr"><div><div class="k"><s>&#9680;</s>Aligned?</div><div class="v" style="color:var(--gw-amber-t)">1 open</div><div class="s">down from three</div></div><div><div class="k"><s>&#8593;</s>Moving?</div><div class="v" style="color:var(--gw-green-t)">+7</div><div class="s">across targets this session</div></div><div><div class="k"><s>&#8214;</s>Stuck?</div><div class="v" style="color:var(--gw-green-t)">clear</div><div class="s">nothing hard-blocked</div></div><div><div class="k"><s>&#9673;</s>Solid?</div><div class="v" style="color:var(--gw-green-t)">good</div><div class="s">83% document-backed</div></div></div>
+        <div class="settle"><div class="k">The one thing to settle first</div><p>What exactly does the grant require each month, per site rather than across the network, and who is accountable for the two sites that have filed nothing?</p></div>
+        <div class="foot">If you are one of the people in it, this is your report too. Same report, same moment.</div>
+        </div></div>
+        <div class="case" data-case="2" role="tabpanel">
+        <h2 class="h2">Fourteen people started the same job in the same month.</h2>
+        <p class="lede" style="margin-bottom:24px">Fourteen field officers in fourteen districts, who have never met, each gave their own account.</p>
+        <div class="rep">
+        <div class="rep-h"><b>Field officer intake, week 5 &middot; shared report</b><em>14 accounts &middot; check-in 2 of 4</em></div>
+        <div class="find"><p>Nine of the fourteen described the escalation rule the same wrong way. That is the induction, not the people.</p><small>Fourteen accounts given separately, in fourteen districts, by people who have never met. One briefing produced all nine.</small></div>
+        <div class="qr"><div><div class="k"><s>&#9680;</s>Aligned?</div><div class="v" style="color:var(--gw-amber-t)">2 open</div><div class="s">differences between accounts</div></div><div><div class="k"><s>&#8593;</s>Moving?</div><div class="v" style="color:var(--gw-green-t)">+11</div><div class="s">across targets this session</div></div><div><div class="k"><s>&#8214;</s>Stuck?</div><div class="v" style="color:var(--gw-amber-t)">3 blocked</div><div class="s">all waiting on the same thing</div></div><div><div class="k"><s>&#9673;</s>Solid?</div><div class="v" style="color:var(--gw-amber-t)">thin</div><div class="s">29% document-backed</div></div></div>
+        <div class="settle"><div class="k">The one thing to settle first</div><p>What does a stock-out require, in one sentence every officer can repeat, and who do they call? The three districts out of kits are waiting on that answer.</p></div>
+        <div class="foot">If you are one of the people in it, this is your report too. Same report, same moment.</div>
+        </div></div>
+        <div class="case" data-case="3" role="tabpanel">
+        <h2 class="h2">Week seven of a ninety day probation.</h2>
+        <p class="lede" style="margin-bottom:24px">Tobi joined as a delivery lead. His manager, a colleague who works alongside him, and Tobi each gave their own account, separately.</p>
+        <div class="rep">
+        <div class="rep-h"><b>Tobi, first 90 days &middot; shared report</b><em>3 accounts &middot; check-in 7 of 12</em></div>
+        <div class="find"><p>He is hitting the only target anybody gave him, and it is not the one he is being judged against.</p><small>Week seven of twelve. Nothing in the record has pointed at the ninety-day goal yet, and nothing has told him to.</small></div>
+        <div class="qr"><div><div class="k"><s>&#9680;</s>Aligned?</div><div class="v" style="color:var(--gw-amber-t)">1 open</div><div class="s">differences between accounts</div></div><div><div class="k"><s>&#8593;</s>Moving?</div><div class="v" style="color:var(--gw-green-t)">+18</div><div class="s">across targets this session</div></div><div><div class="k"><s>&#8214;</s>Stuck?</div><div class="v" style="color:var(--gw-green-t)">clear</div><div class="s">nothing hard-blocked</div></div><div><div class="k"><s>&#9673;</s>Solid?</div><div class="v" style="color:var(--gw-green-t)">good</div><div class="s">76% document-backed</div></div></div>
+        <div class="settle"><div class="k">The one thing to settle first</div><p>Which of the two is he being measured on for the rest of the ninety days, and what changes in his week if the answer is judgement rather than the queue?</p></div>
+        <div class="foot">If you are one of the people in it, this is your report too. Same report, same moment.</div>
+        </div></div>
+    </div>
+    <p style="font-size:12.5px;color:var(--gw-muted);margin-top:14px">An extract from a shared report, as the person running it sees it. The people in it read this same shared picture. It quotes what people said about their own work, and it never says who said what about whom.</p>
+  </div>
+</section>
+
+<!-- ═══ THE PAUSE ═════════════════════════════════════════════════════════
+     The page stops once. Everything above has been evidence; this is the
+     sentence the evidence was for, and it is the reason this is not
+     surveillance software. -->
+<section class="pause fade">
+  <div class="w">
+    <p>Nobody was hiding anything.</p>
+    <p>Nobody had the whole picture.</p>
+  </div>
+</section>
+
+<!-- ═══ WHY LEADERS MISS PROBLEMS ═════════════════════════════════════════
+     The argument the reports illustrate. Kept in full: it is 7% of the page and
+     it is the reason the product exists. -->
+<section class="band fade">
+  <div class="w">
+    <p class="lab">Why leaders miss problems</p>
+    <h2 class="h2">Every update you get has been through someone else first.</h2>
+    <p class="lede" style="margin-bottom:14px">As the company grows you stop seeing the work yourself. You rely on meetings, written updates, chat, and the managers between you and the people doing it. Each of those is someone's summary, and every summary leaves something out.</p>
+    <p class="lede" style="margin-bottom:14px">Some people dominate meetings. Some avoid conflict. Some do not feel safe challenging a decision. So the account you get is shaped by who is confident, who was in the room, and what they think you want to hear. Someone explains it brilliantly and delivers poorly. Someone else quietly does excellent work nobody records. Most people are simply trying to do a good job.</p>
+    <p class="lede">The result is not a shortage of information. It is that everyone believes they are talking about the same thing, and nobody has checked.</p>
+  </div>
+</section>
+
+<!-- ═══ IF YOU ARE THE ONE BEING CHECKED IN ON ════════════════════════════
+     The callout below answered "what will you do with what I say" and never
+     answered "why would I want this". Every word of it is defensive, correctly
+     so, and defence was all it was. The reason to want it is that being asked
+     separately is the fairest anybody has ever been asked: you do not have to
+     be in the room, quick on your feet, or first to your manager's door.
+
+     NOT "fairness improves team culture" - unprovable, the register every HR
+     product already occupies, and not how anything else here talks. The
+     mechanism is stated; the reader draws the conclusion. -->
+<section class="fade">
+  <div class="w">
+    <p class="lab">If you are the one being checked in on</p>
+    <h2 class="h2" style="font-size:25px">Everyone is asked the same way, at the same time.</h2>
+    <p class="lede" style="margin-bottom:14px">Your account carries the same weight whether or not you were in the room, and whether or not you got to anybody first.</p>
+    <p style="font-size:15.5px;line-height:1.6;color:var(--gw-text);font-weight:600;margin:0 0 26px">Fairness here is not a value on a wall. It is how the questions get asked, and a team that trusts how it is asked argues about the work instead of about who said what.</p>
+
+    <div class="flow">
+      <div class="node"><b>You</b><span>your own check-in</span></div>
+      <div class="node"><b>Them</b><span>their own check-in</span></div>
+    </div>
+    <div class="down">&#8595;</div>
+    <div class="one"><b>One shared picture</b><span>released to everybody at the same moment</span></div>
+
+    <p style="font-size:15px;font-weight:700;margin:26px 0 0">Your answers do not go sideways.</p>
+    <ul class="nots">
+      <li><i>&#215;</i>Not to your manager, in your words.</li>
+      <li><i>&#215;</i>Not to your colleagues.</li>
+      <li><i>&#215;</i>Not quoted as a finding about anybody.</li>
+    </ul>
+
+    <!-- VERIFIED LINE BY LINE BEFORE IT WENT ON A PUBLIC PAGE, and carried over
+         unchanged. "Never shares individual answers" was here once and was not
+         true: a real report's divergences carry direct quotes. What is never
+         shared is anybody's account of somebody ELSE, which is the promise
+         people actually need. Two of these sentences are pinned by a guard that
+         checks the site does not promise more than the product delivers. -->
+    <div class="callout">
+      <p>What you say about your own work can appear, in your own words. What you say about anybody else never does, and the report never says who said what about whom. That is why people tell the truth in it, and why the reports are worth reading.</p>
+      <p>Nobody can speak for you. Your check-in is read and synthesized by a language model, not by a person: not by us, and not by whoever brought your team here. Leaders get the report. They cannot request an individual's check-in, and there is no screen anywhere that shows one, including ours.</p>
     </div>
   </div>
+</section>
 
-  <!-- WORK IS CARRIED OUT BY PEOPLE -->
-
-
-  <!-- B10: mutual course-correction. Architecturally true, and checked before
-       writing: the board's read guard admits ANY party to the check-in, not only
-       the initiator, so every person sees the same picture. The contribution
-       card's `position` field is typed `null` - it cannot hold a score. Neither
-       the board nor the report ever reads a conversation turn, so raw answers
-       cannot reach a shared surface. The synthesis prompts carry an explicit
-       "never quote or name anyone". No model in the schema records presence,
-       last-active or any measure of time spent. -->
-  <!-- White, so it does not run into the cream section on either side of it.
-       Everything on this page alternates; this one had no background at all and
-       inherited the same value as the block above. -->
-
-  <!-- WHY LEADERS MISS PROBLEMS SITS HERE NOW, JUST BEFORE "COMING BACK".
-       It used to open the page, so a first-time visitor met the problem before they
-       had any idea what the product was. The page now says what Groundwork does,
-       shows four real reports, says who it is for - and only then explains the
-       mechanism that loses the information, immediately before the section about
-       walking back into it after two weeks away. The two belong together: one is
-       why the picture goes missing, the other is what it is like to have it. -->
-  <div class="l-sec l-fade" style="background:#fff;border-bottom:1px solid var(--gw-border)">
-    <div class="l-wrap-sm">
-      <!-- B2: concrete about the mechanism of not knowing, rather than a list
-           of personality types. The reader should recognise the process that
-           loses the information, not be told people are different. -->
-      <p class="l-sec-label">Why leaders miss problems</p>
-      <!-- IT PUT THE WORD "HIDING" IN THE READER'S HEAD IN ORDER TO DENY IT.
-           The old heading read "Nobody is hiding anything. The story just changes
-           on the way to you." It answered an accusation the reader had not made,
-           on a page whose whole argument is that this is not a surveillance tool,
-           and the second half was passive: nothing changed the story, it just
-           changed.
-
-           The section is about a mechanism - information degrades as it passes
-           through people - so the heading now states the mechanism. The idea is
-           NOT relocated elsewhere; it is gone. -->
-      <h2 class="l-sec-h2" style="margin-bottom:18px">Every update you get has been through someone else first.</h2>
-      <p class="l-prose" style="font-size:14px;color:var(--gw-sub);line-height:1.5;margin-bottom:16px">As the company grows you stop seeing the work yourself. You rely on meetings, written updates, chat, and the managers between you and the people doing it. Each of those is someone's summary, and every summary leaves something out.</p>
-      <!-- 6c: same words, more air. Now the section's one object rather than
-           three bold lines inside a column of grey ones - these are the part a
-           reader repeats afterwards, and they were the least visible thing on
-           screen. -->
-      <div class="l-beats">
-        <div class="l-beat">Some people dominate meetings.</div>
-        <div class="l-beat">Some avoid conflict.</div>
-        <div class="l-beat">Some do not feel safe challenging a decision.</div>
-      </div>
-      <p class="l-prose" style="font-size:14px;color:var(--gw-sub);line-height:1.5;margin-bottom:16px">So the account you get is shaped by who is confident, who was in the room, and what they think you want to hear. Someone explains it brilliantly and delivers poorly. Someone else quietly does excellent work nobody records. Most people are simply trying to do a good job.</p>
-      <!-- Given weight rather than being the fourth grey paragraph in a row.
-           The words are untouched; only the size and colour changed. -->
-      <p class="l-prose" style="font-size:14px;color:var(--gw-text);line-height:1.5;font-weight:600;margin:22px 0 16px">The result is not a shortage of information. It is that everyone believes they are talking about the same thing, and often they are not. By the time it surfaces, expectations have already moved and the work has already drifted.</p>
-      <p class="l-prose" style="font-size:14px;color:var(--gw-sub);line-height:1.5;margin:0">Groundwork gives managers and teams a better way to work through these moments.</p>
+<!-- ═══ CLOSE ════════════════════════════════════════════════════════════ -->
+<section class="end">
+  <div class="w">
+    <h2>Start with something that matters.</h2>
+    <p>Your first 10 check-ins are free, for teams of 5 or fewer. Each takes about ten minutes.</p>
+    <div class="ctas">
+      <a class="btn" href={`${APP_URL}/start`}>Start a check-in for your team</a>
+      <a class="btn-2" href="/how-it-works">See how it works</a>
     </div>
   </div>
+</section>
 
-  <!-- B6: every item below was checked against a real ground's output before
-       being listed. Divergences, the central question, who-owns-what,
-       dependencies and decisions all exist and were populated in a live
-       seven-person ground. Nothing here claims Groundwork chases anyone or acts
-       on your behalf - it tells you what is there when you look. -->
-  <div class="l-sec l-fade" style="background:#fff;border-bottom:1px solid var(--gw-border)">
-    <div class="l-wrap-sm">
-      <p class="l-sec-label">Coming back</p>
-      <h2 class="l-sec-h2" style="margin-bottom:18px">You leave for two weeks.</h2>
-      <p class="l-prose" style="font-size:14px;color:var(--gw-sub);line-height:1.5;margin-bottom:16px">Instead of asking ten people for updates and assembling the picture yourself, it is already there:</p>
-      <!-- The most concrete promise on the page, and it was set as a bulleted
-           paragraph. Lighter than the report panel on purpose: that is the only
-           document on this page and nothing else should compete with it. -->
-      <div class="l-back">
-        <div class="l-back-row"><span class="l-back-tick">&#10003;</span><span>where people have started to see it differently, and on what</span></div>
-        <div class="l-back-row"><span class="l-back-tick">&#10003;</span><span>who owns what, and who is waiting on someone else</span></div>
-        <div class="l-back-row"><span class="l-back-tick">&#10003;</span><span>the decisions that are sitting unmade</span></div>
-        <div class="l-back-row"><span class="l-back-tick">&#10003;</span><span>the one question worth asking before anything else</span></div>
-      </div>
-      <p class="l-prose" style="font-size:14px;color:var(--gw-sub);line-height:1.5;margin:0">You still run the conversations. Groundwork just means you start them knowing what happened.</p>
-    </div>
-  </div>
-
-  <div class="l-cta-sec l-fade">
-    <h2 class="l-cta-h2">A clear picture of<br>your most important work period.</h2>
-    <p class="l-cta-p">Your first 10 check-ins are free, for teams of 5 or fewer. Each takes about ten minutes.</p>
-    <a class="l-btn-solid" style="padding:15px 36px;font-size:14px" href={`${APP_URL}/start`}>Start a check-in for your team</a>
-    <p style="font-size:12px;color:rgba(255,255,255,.2);margin-top:14px">First 10 check-ins free. No card required.</p>
-  </div>
-
-</div><!-- /lp-home -->
-
-<!-- HOW IT WORKS -->
-</div>
-
-<!-- USE CASES -->
-
-<!-- PRICING -->
-
-<!-- ABOUT -->
-
-<!-- FOOTER -->
-<footer class="l-footer">
-  <div class="l-footer-inner">
-    <div style="display:flex;align-items:center;gap:9px">
-      <svg width="18" height="14" viewBox="0 0 22 17" fill="none">
-        <rect x="5"  y="0"  width="12" height="3" rx="1.5" fill="#93C5FD" opacity="0.4"/>
-        <rect x="2"  y="6"  width="18" height="3" rx="1.5" fill="#93C5FD" opacity="0.65"/>
-        <rect x="0"  y="12" width="22" height="3" rx="1.5" fill="#93C5FD"/>
-      </svg>
-      <span style="font-size:13px;font-weight:700;color:white">Groundwork</span>
-    </div>
-    <div class="l-footer-links" style="display:flex;gap:20px">
-      <a href="/how-it-works" style="font-size:12px;color:rgba(255,255,255,.38);text-decoration:none;font-family:var(--font)">How it works</a>
-      <a href="/use-cases" style="font-size:12px;color:rgba(255,255,255,.38);text-decoration:none;font-family:var(--font)">Use cases</a>
-      <a href="/pricing" style="font-size:12px;color:rgba(255,255,255,.38);text-decoration:none;font-family:var(--font)">Pricing</a>
-      <a href="/about" style="font-size:12px;color:rgba(255,255,255,.38);text-decoration:none;font-family:var(--font)">About</a>
-    </div>
-    <div style="font-size:11px;color:rgba(255,255,255,.22)">© 2026 Groundwork</div>
+<footer class="site-foot">
+  <div class="w-wide">
+    <a href="/how-it-works">How it works</a><a href="/use-cases">Use cases</a><a href="/pricing">Pricing</a><a href="/about">About</a>
+    <span style="float:right">&copy; 2026 Groundwork</span>
   </div>
 </footer>
 
-</div><!-- /s-land -->
-
 <script>
-(function(){
+  /* The scenario picker. One report visible; the tab sets which. */
+  var tabs = document.querySelectorAll('.tab');
+  var cases = document.querySelectorAll('.case');
+  tabs.forEach(function (t) {
+    t.addEventListener('click', function () {
+      tabs.forEach(function (x) { x.setAttribute('aria-selected', 'false'); });
+      t.setAttribute('aria-selected', 'true');
+      cases.forEach(function (c) { c.classList.toggle('on', c.dataset.case === t.dataset.tab); });
+    });
+  });
 
-/* lNav is gone with the four stubs it revealed. The nav links to the real pages
-   now, so changing page is a page load, and the URL, the title and the back
-   button all say what page you are on. */
-
-/* Typewriter - prototype uses id=lt / id=lc but hero has static h1; skip */
-
-/* Feed */
-var items = [
-  {t:'check-in',   c:'var(--gw-green-b)', h:'Kwame completed session 3',     s:'Cofounder ground · technical record building'},
-  {t:'confidence', c:'#93C5FD', h:'Ground confidence 3/5 to 4/5',  s:'Both parties active · cross-reference fired'},
-  {t:'new ground', c:'var(--gw-amber-b)', h:'Tarini opened a new ground',     s:'Head of Growth invited · starting mode'},
-  {t:'report',     c:'#93C5FD', h:'Report generating',              s:'Both parties completed session 4'},
-  {t:'signal',     c:'var(--gw-green-b)', h:'Specificity increasing',         s:'Pattern signal · 3 consecutive sessions'},
-  {t:'check-in',   c:'var(--gw-green-b)', h:'Amara submitted her check-in',   s:'Contribution confirmed by downstream team'},
-  {t:'resolved',   c:'var(--gw-amber-b)', h:'Ground closed',                  s:'Alignment confirmed · both parties'},
-  {t:'new ground', c:'var(--gw-amber-b)', h:'New check-in opened',              s:'Something new is starting · 2 parties'},
-  {t:'check-in',   c:'var(--gw-green-b)', h:'Priya completed session 2',      s:'Invisible contribution surfaced'},
-  {t:'record',     c:'#93C5FD', h:'Resolution record written',      s:'Belongs to both parties permanently'},
-  {t:'confidence', c:'#93C5FD', h:'Ground confidence: 5/5',         s:'Comprehensive evidence · full cross-reference'},
-  {t:'check-in',   c:'var(--gw-green-b)', h:'Ibrahim completed session 1',    s:'Cofounder ground · both accounts independent'},
-];
-var feed=document.getElementById('lf'),ecount=document.getElementById('lec');
-var shown=[],idx=0,total=0;
-function timeAgo(ms){var s=Math.floor(ms/1000);return s<60?s+'s ago':Math.floor(s/60)+'m ago';}
-function addItem(){
-  var it=items[idx%items.length];idx++;total++;
-  var ts=Date.now(),d=document.createElement('div');d.className='l-feed-item';
-  d.innerHTML='<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">'+
-    '<div style="display:flex;align-items:center;gap:6px">'+
-    '<span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:6px;background:'+it.c+'22;color:'+it.c+';text-transform:uppercase;letter-spacing:.04em">'+it.t+'</span>'+
-    '<span style="font-size:12px;font-weight:600;color:rgba(255,255,255,.85)">'+it.h+'</span></div>'+
-    '<span class="lts" data-ts="'+ts+'" style="font-size:10px;color:rgba(255,255,255,.22);flex-shrink:0;white-space:nowrap">just now</span></div>'+
-    '<div style="font-size:11px;color:rgba(255,255,255,.32);margin-top:2px">'+it.s+'</div>';
-  shown.push({el:d,ts:ts});
-  if(shown.length>4){
-    var old=shown.shift();
-    old.el.style.transition='opacity .3s';old.el.style.opacity='0';
-    setTimeout(function(){if(old.el.parentNode)old.el.parentNode.removeChild(old.el);},320);
+  /* Sections arrive as you reach them. Off entirely for anybody who has asked
+     for reduced motion - the CSS only sets the start state inside that query. */
+  if (window.matchMedia('(prefers-reduced-motion: no-preference)').matches && 'IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+    }, { rootMargin: '0px 0px -10% 0px' });
+    document.querySelectorAll('.fade').forEach(function (el) { io.observe(el); });
+  } else {
+    document.querySelectorAll('.fade').forEach(function (el) { el.classList.add('in'); });
   }
-  if(feed) feed.appendChild(d);
-  if(ecount) ecount.textContent=total+' events';
-}
-function updTimes(){if(feed) feed.querySelectorAll('.lts').forEach(function(e){e.textContent=timeAgo(Date.now()-parseInt(e.dataset.ts));});}
-if(feed){
-  for(var k=0;k<3;k++) addItem();
-  setInterval(addItem,3800);setInterval(updTimes,12000);
-}
-
-/* Stats */
-var v=[12,3,47];
-function flash(id,val,col){var e=document.getElementById(id);if(!e)return;e.textContent=val;e.style.color=col;setTimeout(function(){e.style.color='white';},700);}
-setInterval(function(){var r=Math.random();if(r<.45){v[2]++;flash('ls3',v[2],'var(--gw-green-b)');}else if(r<.7){v[0]++;flash('ls1',v[0],'#93C5FD');}else{v[1]++;flash('ls2',v[1],'var(--gw-amber-b)');}},9000);
-
-/* Cycling situations: fading paragraphs */
-var sits=[
-  "Clarity before commitment.",
-  "Turn assumptions into agreements.",
-  "See where people quietly disagree.",
-  "Better decisions start with better ground."
-];
-var sitEl=document.getElementById('l-sit-text');
-var sitIdx=0;
-function cycleSit(){
-  if(!sitEl) return;
-  sitEl.style.opacity='0';
-  setTimeout(function(){
-    sitIdx=(sitIdx+1)%sits.length;
-    sitEl.textContent=sits[sitIdx];
-    sitEl.style.opacity='1';
-  },650);
-}
-if(sitEl){ sitEl.textContent=sits[0]; setTimeout(function(){ sitEl.style.opacity='1'; },60); }
-setInterval(cycleSit,5600);
-
-/* Scroll fade */
-var obs=new IntersectionObserver(function(entries){entries.forEach(function(e){if(e.isIntersecting)e.target.classList.add('in');});},{threshold:0.1});
-document.querySelectorAll('.l-fade').forEach(function(el){obs.observe(el);});
-
-})();
 </script>
-
 </body>
 </html>
