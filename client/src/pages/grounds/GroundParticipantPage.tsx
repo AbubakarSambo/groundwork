@@ -1,7 +1,7 @@
 import { plannedSessionsFor } from '@/lib/sessionCount'
 import { useEffect, useRef, useState } from 'react'
 import { GroundGone } from '@/components/gw/GroundGone'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { whichSessionAreWeOn, hasDoneThisSession } from '@/lib/which-session-are-we-on'
 import { groundsApi } from '@/api/grounds'
@@ -33,11 +33,37 @@ import { ContextPage } from '@/components/gw/ContextPage'
 
 type Tab = 'checkin' | 'record' | 'report' | 'docs' | 'settings'
 
+/** The shared tab keys, and this page's own older names for the same tabs. Both directions. */
+const FROM_TAB_KEY: Record<string, Tab> = {
+  chat: 'checkin', report: 'report', record: 'record', context: 'docs', settings: 'settings',
+}
+const TO_TAB_KEY: Partial<Record<Tab, string>> = {
+  checkin: 'chat', report: 'report', record: 'record', docs: 'context', settings: 'settings',
+}
+
 export function GroundParticipantPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const qc = useQueryClient()
-  const [tab, setTab] = useState<Tab>('checkin')
+  /**
+   * THIS PAGE IGNORED ?tab= ALTOGETHER.
+   *
+   * The admin page read it; this one always opened on the conversation. So the same link behaved
+   * differently depending on who followed it, and nobody could send anybody "look at the Context
+   * tab" - which is a sentence people say constantly about a check-in.
+   *
+   * Keys are the shared ones from `ground-tabs.ts`, mapped to this page's own older names, and the
+   * URL is kept in step so a tab can be linked to and come back to.
+   */
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [tab, setTab] = useState<Tab>(() => FROM_TAB_KEY[searchParams.get('tab') ?? ''] ?? 'checkin')
+  const goTab = (t: Tab) => {
+    setTab(t)
+    const key = TO_TAB_KEY[t]
+    const next = new URLSearchParams(searchParams)
+    if (key) next.set('tab', key); else next.delete('tab')
+    setSearchParams(next, { replace: true })
+  }
   const [showPaywall, setShowPaywall] = useState(false)
   const [paywallFreeExtensionAvailable, setPaywallFreeExtensionAvailable] = useState(false)
   const [paywallCode, setPaywallCode] = useState('')
@@ -387,7 +413,7 @@ export function GroundParticipantPage() {
               Dead, and worse than dead - it was the only navigate() to the board left in the app, so
               it kept a "does anything link here?" check green while the board was unreachable.
             */
-            onPick={k => setTab(k as Tab)}
+            onPick={k => goTab(FROM_TAB_KEY[k] ?? 'checkin')}
           />
       </div>
 

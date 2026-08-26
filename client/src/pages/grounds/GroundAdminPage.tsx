@@ -72,6 +72,18 @@ const MOMENT_LABELS: Record<string, string> = {
  * list, and that is a genuinely different question from reading what was said.
  */
 type Tab = 'chat' | 'overview' | 'checkins' | 'docs' | 'report' | 'settings'
+
+/**
+ * The shared tab keys from `ground-tabs.ts`, and this page's own older names for the same tabs.
+ * Both directions, in one place, so the URL and the tab row cannot disagree about what `context`
+ * means.
+ */
+const FROM_TAB_KEY: Record<string, Tab> = {
+  chat: 'chat', report: 'report', record: 'checkins', context: 'docs', settings: 'settings',
+}
+const TO_TAB_KEY: Partial<Record<Tab, string>> = {
+  chat: 'chat', report: 'report', checkins: 'record', docs: 'context', settings: 'settings',
+}
 type ReportSession = 's1' | 's2' | 'closing'
 
 export function GroundAdminPage() {
@@ -94,12 +106,29 @@ export function GroundAdminPage() {
    * report rather than the conversation. Without this the redirect would be a worse experience than
    * the page it replaced: a link somebody has in their email would drop them somewhere else.
    */
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
+  /**
+   * ?tab= SPEAKS THE SHARED TAB NAMES, NOT THIS PAGE'S PRIVATE ONES.
+   *
+   * It accepted this page's internal keys - including `overview`, a tab that no longer exists - so
+   * `?tab=context` and `?tab=record`, the names the tab row itself uses and the only ones anybody
+   * could reasonably guess, both silently fell through to the check-in. The participant page did not
+   * read the parameter at all, so the same link behaved differently depending on who opened it.
+   *
+   * Same map the tab row uses below, so a link cannot mean one thing to the row and another here.
+   */
   const [tab, setTab] = useState<Tab>(() => {
-    const asked = searchParams.get('tab')
-    const known: Tab[] = ['chat', 'overview', 'checkins', 'docs', 'report', 'settings']
-    return (known as string[]).includes(asked ?? '') ? (asked as Tab) : 'chat'
+    const asked = searchParams.get('tab') ?? ''
+    return FROM_TAB_KEY[asked] ?? (['chat', 'checkins', 'docs', 'report', 'settings'].includes(asked) ? (asked as Tab) : 'chat')
   })
+  /** So a tab can be linked to and come back to. Replace, not push: tabs are not history. */
+  const goTab = (t: Tab) => {
+    setTab(t)
+    const key = TO_TAB_KEY[t]
+    const next = new URLSearchParams(searchParams)
+    if (key) next.set('tab', key); else next.delete('tab')
+    setSearchParams(next, { replace: true })
+  }
   const [reportSession, setReportSession] = useState<ReportSession>('s1')
   const [groundLabel, setGroundLabel] = useState('')
   const [timelineDaysDraft, setTimelineDaysDraft] = useState(90)
@@ -855,11 +884,7 @@ export function GroundAdminPage() {
           tabs={groundTabs({ contextEnabled})}
           active={({ chat: 'chat', report: 'report', checkins: 'record', docs: 'context', overview: 'overview', settings: 'settings' } as Record<string, string>)[tab] ?? 'chat'}
           onPick={k => {
-            const mine: Record<string, Tab> = {
-              chat: 'chat', report: 'report', record: 'checkins', context: 'docs',
-              overview: 'overview', settings: 'settings',
-            }
-            setTab(mine[k] ?? 'chat')
+            goTab(FROM_TAB_KEY[k] ?? 'chat')
           }}
         />
       </div>

@@ -50,7 +50,14 @@ describe('the chat is here at all', () => {
      * `?tab=report` - the page has to be able to open where a link asks. The DEFAULT is what this
      * protects, and it is still the chat.
      */
-    expect(CODE).toMatch(/return \(known as string\[\]\)\.includes\(asked \?\? ''\) \? \(asked as Tab\) : 'chat'/)
+    /*
+     * WAS PINNED TO THE EXACT LINE, which broke the day ?tab= was taught the shared tab keys
+     * rather than this page's private ones. The default is what this protects, so it now asserts
+     * the default: whatever the initialiser looks like, no `tab` in the URL lands on the chat.
+     */
+    const init = CODE.slice(CODE.indexOf('const [tab, setTab] = useState<Tab>'), CODE.indexOf('const goTab'))
+    expect(init).toMatch(/searchParams\.get\('tab'\)/)
+    expect(init).toMatch(/\?\? 'chat'|: 'chat'/)
     expect(groundTabs({ contextEnabled: true})[0].key).toBe('chat')
   })
 
