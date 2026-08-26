@@ -4,26 +4,47 @@ import { Public } from '../../common';
 import { PlatformAdminGuard } from '../../common/guards/platform-admin.guard';
 import { FeedbackService } from './feedback.service';
 
+/**
+ * THE VOCABULARY THE WIDGET ACTUALLY USES. W-UX-C.
+ *
+ * These two lists and the widget's own option arrays were two vocabularies for one field, and NOT
+ * ONE STRING OVERLAPPED. The widget sent `tab: 'build'` where this wanted `'build_request'`, sent
+ * its chosen option under a field name this does not have, and sent no `pill` at all - so every
+ * submission failed validation with a 400.
+ *
+ * That is why the table holds nothing. The floating Feedback button has been accepting what people
+ * wrote and dropping all of it, and an earlier fix had already removed the catch that hid the error,
+ * so a person doing it today gets a failure toast for their trouble.
+ *
+ * The client's wording is the wording people read, so it is what these lists now hold. Nothing was
+ * migrated because there was nothing to migrate: zero rows, checked before changing it.
+ *
+ * KEPT IN STEP BY A PARITY SPEC, not by care - `client/src/components/gw/the-feedback-form-and-the-
+ * server-agree.spec.ts` fails if these lists and the widget's arrays drift again. Same pattern as
+ * the pricing parity guards, for the same reason.
+ */
 const VALID_TABS = ['reaction', 'build_request', 'something_went_wrong'];
-const VALID_PILLS = [
-  'This is exactly what I needed.',
-  'This could work for me.',
-  'Interesting but not sure yet.',
-  'Not built for my situation.',
-  'Too much to take in.',
-  'I do not trust it yet.',
-  'This feels like it matters.',
-  'I would not use this.',
-  'Other.',
-  'Add a feature.',
-  'Change something that exists.',
-  'This works but needs to be simpler.',
-  'Build this for my specific situation.',
-  'It broke and I could not continue.',
-  'It lost something I wrote.',
-  'It did not do what I expected.',
-  'Something felt wrong but I cannot name it.',
+const REACTION_PILLS = [
+  'This clicked',
+  'I could see myself using this',
+  'Interesting but I am not sure',
+  'Not for me',
 ];
+const BUILD_PILLS = [
+  'Reminder / email nudge',
+  'Mobile app',
+  'Slack integration',
+  'Better reports',
+  'More templates',
+  'Team analytics',
+];
+/**
+ * The "something went wrong" tab has no options - it is a free-text box - so its submissions carry
+ * this as the pill and the account itself in `text`. A required field with one possible value is
+ * better than a nullable one nothing can explain.
+ */
+const WENT_WRONG_PILL = 'Something went wrong';
+const VALID_PILLS = [...REACTION_PILLS, ...BUILD_PILLS, WENT_WRONG_PILL];
 const VALID_STATUSES = ['new', 'reviewed', 'resolved'];
 
 class CreateFeedbackDto {

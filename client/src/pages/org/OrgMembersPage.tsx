@@ -70,7 +70,7 @@ export function OrgMembersPage() {
           onClick={() => navigate('/grounds')}
           style={{ background: 'none', border: 'none', padding: 0, fontSize: 13, color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit' }}
         >
-          ← Back to grounds
+          ← Back to check-ins
         </button>
       </div>
       <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--gw-navy)', marginBottom: 6, letterSpacing: '-.02em' }}>

@@ -27,7 +27,7 @@ describe('the commit runs before the password redirect', () => {
   it('commitFlow is awaited, not returned straight out of the flow', () => {
     /**
      * `return commitFlow(...)` was the shape that made the bug possible - nothing could run after
-     * it. Awaiting gives the password step somewhere to happen that is after the ground exists.
+     * it. Awaiting gives the password step somewhere to happen that is after the check-in exists.
      */
     expect(CODE).toMatch(/const outcome = await commitFlow\(payload, hadEntryIntent\)/)
   })
@@ -76,7 +76,7 @@ describe('the password step keeps hold of where the person was going', () => {
     expect(CODE).not.toMatch(/return passwordStep\(`\/grounds\/\$\{outcome\.groundId\}`\)/)
   })
 
-  it('and the way out of that screen spends the token, landing on the ground', () => {
+  it('and the way out of that screen spends the token, landing on the check-in', () => {
     expect(CODE).toMatch(/passwordSetupToken\s*\n?\s*\?\s*`\/set-password\?token=/)
     expect(CODE).toMatch(/next=\$\{encodeURIComponent\(`\/grounds\/\$\{nextGroundId\}`\)\}/)
   })

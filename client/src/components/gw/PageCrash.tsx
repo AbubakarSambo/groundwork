@@ -46,7 +46,7 @@ export class PageCrash extends Component<{ children: ReactNode }, { message: str
         </div>
 
         <button className="gw-btn" onClick={() => { window.location.href = '/' }}>
-          Go to my grounds
+          Go to my check-ins
         </button>
 
         <div style={{ marginTop: 14 }}>

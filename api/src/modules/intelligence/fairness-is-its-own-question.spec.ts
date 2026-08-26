@@ -23,8 +23,8 @@ import { join } from 'path';
  * look reasonable in isolation.
  */
 
-const SERVICE = readFileSync(join(__dirname, 'intelligence.service.ts'), 'utf8');
-const CONTROLLER = readFileSync(join(__dirname, 'intelligence.controller.ts'), 'utf8');
+const SERVICE = readFileSync(join(__dirname, 'intelligence.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+const CONTROLLER = readFileSync(join(__dirname, 'intelligence.controller.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
 /** The structured-survey write, so assertions cannot drift to the short route. */
 const STRUCTURED_WRITE = (() => {

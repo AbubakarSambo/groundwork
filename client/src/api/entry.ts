@@ -94,6 +94,19 @@ export const entryApi = {
     reply: string;
     extracted: {
       mode?: string; initial?: string; whoInvolved?: string; decision?: string;
+      /**
+       * WHAT THEY ALREADY SAID ABOUT THEIR OWN ROLE. The model asks this FIRST, before anything about
+       * the situation, and extracts it into a typed field. It was returned by the endpoint and absent
+       * from this type, so the client could not see it and asked the same question a second time with
+       * buttons - which reads, correctly, as not having been heard.
+       */
+      yourRole?: 'a_party' | 'setting_up_for_others' | 'someone_else_runs_it';
+      /**
+       * ONE ENTRY PER INDIVIDUAL. `whoInvolved` is a free string and any string satisfies it, so
+       * "My team" passed as an answer to who is involved and the per-person questions had no roster.
+       * This is the countable version, and it is what decides whether the lead is warned.
+       */
+      peopleNamed?: string[];
       goals?: string[]; brief?: string;
       // What they actually said about rhythm and length. Absent when they did
       // not say - never guessed. GW-017.
@@ -101,6 +114,11 @@ export const entryApi = {
       timelineDays?: number;
     };
     ready: boolean;
+    /**
+     * Party path only. Setup can finish without a roster - blocking would just produce another
+     * invented answer - but they are told, and they add the people afterwards.
+     */
+    needsPeople: boolean;
   }> =>
     apiClient.post('/entry/onboard', { messages }).then(r => r.data),
 

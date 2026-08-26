@@ -16,7 +16,7 @@ import { describe, it, expect } from 'vitest'
  * Checked as source order rather than by rendering, because what is pinned IS the order, and a
  * render test would need a whole report fixture to assert one thing about sequence.
  */
-const SRC = readFileSync(join(__dirname, 'ReportPage.tsx'), 'utf8')
+const SRC = readFileSync(join(__dirname, 'ReportPage.tsx'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
 /** Position of a section heading inside the shared-report card. */
 const at = (needle: string) => {
@@ -50,10 +50,18 @@ describe('the order of the shared report', () => {
     // Anchored on strings that exist: my first attempt sliced to '{ground.label,' which is
     // written with a newline between the brace and the name, so the slice was empty and the
     // test failed against a correct file.
-    const hero = SRC.slice(
-      SRC.indexOf("Where everyone's accounts agree or differ."),
-      SRC.indexOf('releasedDate ?'),
-    )
+    /**
+     * RE-ANCHORED, AND THE OLD ANCHORS WOULD NOW SLICE BACKWARDS. The report page was split so its
+     * body could render inside the Report tab, which put the chrome - and its `releasedDate` line -
+     * BEFORE the hero instead of after. `slice(1387, 976)` is the empty string, and an empty string
+     * fails this the same way a deleted hero would, for a completely different reason.
+     *
+     * Anchored forwards on two strings inside the hero itself, so the order of the file's regions
+     * cannot invert it again.
+     */
+    const heroStart = SRC.indexOf("Where everyone's accounts agree or differ.")
+    expect(heroStart).toBeGreaterThan(-1)
+    const hero = SRC.slice(heroStart, heroStart + 2200)
     expect(hero.length, 'the hero block moved - re-anchor this check').toBeGreaterThan(200)
     expect(hero).not.toContain('report.sharedPicture')
     expect(hero).toMatch(/still open/)

@@ -82,3 +82,60 @@
  */
 [data-signed-in][hidden],
 [data-signed-out][hidden] { display: none !important; }
+
+/* ──────────────────────────────────────────────────────────────────────────
+   TOUCH TARGETS ON A PHONE.
+
+   Measured at 375 with the browser, not guessed: the nav links were 29px tall,
+   the footer links 14px, and the wordmark 18px. A 14px-tall link is a link you
+   miss and then miss again, and it was every page's whole footer navigation.
+
+   Height only. Nothing here changes a font size, a colour or a layout, so the
+   pages look the same and the targets are reachable. The rules live here rather
+   than in each page because there are TWO footer implementations - .l-footer-links
+   on the home page and .gw-footer-btn on the other four, the latter defined
+   identically in four separate <style> blocks - and one more copy of this fix in
+   each of them is how the six drift apart.
+   ────────────────────────────────────────────────────────────────────────── */
+@media (max-width: 860px) {
+  /* The nav's own targets are fixed in Nav.astro, not here: its styles are
+     component-scoped, which outranks this file, so a padding set here silently
+     lost to the one in the component. Only the two footers are handled below. */
+  /*
+   * The pricing page's seven buttons are inline-styled `<a>` elements at padding:9px,
+   * so they measured 28 to 35px tall. Inline styles beat a stylesheet on padding, which
+   * is the one time !important is the honest tool rather than a shortcut: the alternative
+   * is editing seven style attributes and hoping the eighth one added later matches.
+   */
+  .gw-tap {
+    padding-top: 14px !important;
+    padding-bottom: 14px !important;
+  }
+  /* Used in page bodies too, not only in the nav, and the nav's own copy of this rule
+     is component-scoped so it cannot reach them. */
+  .gw-btn-solid,
+  .gw-btn-ghost { min-height: 44px; display: inline-flex; align-items: center; }
+
+  /*
+   * The About page's profile links are the NAME at the head of each bio, 17 to 18px tall.
+   * They are not buttons and they are not mid-sentence, so the fix is to grow the hit box
+   * without moving anything: vertical padding cancelled by an equal negative margin. The
+   * line keeps its position, the target roughly doubles. Horizontal is left alone so the
+   * " | Product strategy" beside each name does not shift.
+   */
+  .gw-tap-inline {
+    display: inline-block;
+    padding: 12px 0;
+    margin: -12px 0;
+  }
+
+  /* Both footers. `display` is set because padding on an inline element grows the
+     hit area but not the row, so the links would still sit 14px apart. */
+  .l-footer-links a,
+  .gw-footer-btn {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 2px;
+  }
+}

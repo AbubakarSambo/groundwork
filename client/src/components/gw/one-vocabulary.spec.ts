@@ -249,7 +249,7 @@ describe('the same solo report reads the same to everybody', () => {
 describe('one uppercase label, including on a dark ground', () => {
   it('Sec has the dark case, because three whites existed without it', () => {
     /**
-     * The ground pages held ten variants of this one label - 10px and 11px, .08em and .1em, and five
+     * The check-in pages held ten variants of this one label - 10px and 11px, .08em and .1em, and five
      * colours, three of them near-identical whites for a label inside a dark panel. The kit had no
      * answer for a label on a dark ground, so each panel invented its own. A component with no case
      * for something real is how the ninth copy gets written.

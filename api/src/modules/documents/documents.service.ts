@@ -415,9 +415,9 @@ export class DocumentsService {
 
   private async assertParticipant(groundId: string, userId: string) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId } });
-    if (!ground) throw new NotFoundException('Ground not found');
+    if (!ground) throw new NotFoundException('Check-in not found');
     const participant = await this.prisma.groundParticipant.findFirst({ where: { groundId, userId } });
-    if (!participant) throw new ForbiddenException('You are not a party to this ground');
+    if (!participant) throw new ForbiddenException('You are not a party to this check-in');
     return participant;
   }
 }

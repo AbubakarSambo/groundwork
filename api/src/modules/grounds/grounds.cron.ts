@@ -39,6 +39,74 @@ export class GroundsCron {
    * instant everywhere the app runs, not "3am wherever this process's clock
    * thinks it is."
    */
+  /**
+   * SEND THE INVITES THAT WERE HELD BACK UNTIL SOMEBODY'S FIRST DAY.
+   *
+   * A ground can be set up about a person before they begin - a hire starting next month, an advisor
+   * whose year has not opened, a manager taking over on the first. Agreeing what good looks like before
+   * anybody can be judged against it is the point of those grounds, and it is why they are opened early.
+   *
+   * What must not happen early is the invitation. An email asking somebody to account for their work
+   * cannot be recalled once it has been read, and it can arrive before they have signed a contract. So
+   * `addParticipant` leaves `invitedAt` null and sends nothing when the start date is ahead, and this
+   * sends it on the day.
+   *
+   * SIX AM, so it lands as the first thing on somebody's first morning rather than overnight.
+   */
+  @Cron('0 6 * * *', { timeZone: 'UTC' })
+  async inviteJoinersWhoStartToday() {
+    await this.prisma.withAdvisoryLock(CronLock.DEFERRED_INVITES, async () => {
+      const now = new Date();
+      const due = await this.prisma.groundParticipant.findMany({
+        where: {
+          /** The three conditions together. Started, never invited, and still has a live token. */
+          startsAt: { not: null, lte: now },
+          invitedAt: null,
+          inviteToken: { not: null },
+          /**
+           * NOT TERMINAL, rather than ACTIVE. This was `status: ACTIVE` and found nothing, which
+           * driving it exposed immediately: a ground whose people have not started is normally
+           * AWAITING_PARTIES, and that is the exact state this sweep exists to serve. Requiring ACTIVE
+           * meant the invite was held forever on precisely the grounds it was held for.
+           *
+           * What must be excluded is a ground that has finished. Inviting somebody into a resolved or
+           * stalled ground is worse than never inviting them.
+           */
+          ground: { status: { notIn: TERMINAL } },
+        },
+        select: {
+          id: true, email: true, inviteToken: true, groundId: true,
+          ground: { select: { label: true, initiator: { select: { firstName: true } } } },
+        },
+        take: 200,
+      });
+
+      for (const p of due) {
+        try {
+          await this.email.sendParticipantInvite(
+            p.email,
+            p.ground.initiator?.firstName ?? 'A founder',
+            p.ground.label,
+            p.inviteToken!,
+            undefined,
+            { kind: 'PARTICIPANT_INVITE', participantId: p.id, groundId: p.groundId },
+          );
+          /**
+           * Stamped only after the send succeeds, so a provider outage retries tomorrow rather than
+           * leaving somebody permanently uninvited to a ground that is already running.
+           */
+          await this.prisma.groundParticipant.update({
+            where: { id: p.id },
+            data: { invitedAt: new Date(), notifiedAt: new Date() },
+          });
+          this.logger.log(`Deferred invite sent for participant ${p.id}: their start date has arrived.`);
+        } catch (err) {
+          this.logger.error(`Deferred invite for participant ${p.id} did not send; it will be retried tomorrow. ${(err as Error).message}`);
+        }
+      }
+    });
+  }
+
   @Cron(CronExpression.EVERY_DAY_AT_3AM, { timeZone: 'UTC' })
   async stallOverdueGrounds() {
     await this.prisma.withAdvisoryLock(CronLock.STALL_GROUNDS, async () => {
@@ -345,13 +413,34 @@ export class GroundsCron {
       const lastContext = p.recordEntries[0]?.text;
       const checkInUrl = `${frontend}/checkin/${ci.id}`;
       try {
-        // WhatsApp when available (single Groundwork number, matched by phone) - email otherwise.
+        /**
+         * WHATSAPP IS IN ADDITION TO EMAIL, NOT INSTEAD OF IT. Her decision.
+         *
+         * This was `if (whatsapp) ... else email`, so the moment somebody added a phone number they
+         * STOPPED getting check-in emails. Nobody chose that: adding a number is opting IN to a second
+         * reminder, not opting out of the first, and the person who typed it in had no way to know it
+         * had silenced their inbox. It also put every reminder for that person behind one channel that
+         * is not even live yet - WhatsApp is key-gated and off - so on a production account with a
+         * number saved and the toggle later switched on, reminders would have quietly narrowed to a
+         * single dependency.
+         *
+         * EMAIL GOES FIRST AND IS AWAITED. It is the channel that works, and the one the
+         * `sessionReadyNotifiedAt` stamp is really promising. WhatsApp follows in its own try, so a
+         * failure there cannot lose the email, cannot leave the stamp unwritten, and cannot cause the
+         * next cron pass to email the same person twice.
+         */
+        await this.email.sendSessionReady(p.email, p.ground.label, checkInUrl, lastContext);
+
         if (p.user?.phoneNumber && (await this.whatsapp.isEnabled())) {
           const contextLine = lastContext ? `\n\nLast time: "${lastContext}"` : '';
-          await this.whatsapp.sendMessage(p.user.phoneNumber, `Your next check-in for ${p.ground.label} is open.${contextLine}\n${checkInUrl}`);
-        } else {
-          await this.email.sendSessionReady(p.email, p.ground.label, checkInUrl, lastContext);
+          try {
+            await this.whatsapp.sendMessage(p.user.phoneNumber, `Your next check-in for ${p.ground.label} is open.${contextLine}\n${checkInUrl}`);
+          } catch (waErr: any) {
+            // The email is already out. A second channel failing is worth knowing about, not retrying.
+            this.logger.warn(`WhatsApp session-ready failed for check-in ${ci.id}, email was sent: ${waErr.message}`);
+          }
         }
+
         await this.prisma.checkIn.update({ where: { id: ci.id }, data: { sessionReadyNotifiedAt: now } });
       } catch (err: any) {
         this.logger.error(`Session-ready notification failed for check-in ${ci.id}: ${err.message}`);

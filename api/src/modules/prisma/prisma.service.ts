@@ -110,4 +110,6 @@ export const CronLock = {
   SYNTHESIS_BACKSTOP: 920_005,
   AUTO_CLOSE_CHECK_INS: 920_006,
   SESSION_CLOSING_WARNINGS: 920_007,
+  /** Invites held back until the person's start date. See grounds.cron.ts inviteJoinersWhoStartToday. */
+  DEFERRED_INVITES: 920_008,
 } as const;

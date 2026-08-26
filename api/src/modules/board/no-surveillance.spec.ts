@@ -25,8 +25,8 @@ import { join } from 'path';
  * whether the product still deserves the sentence on the page.
  */
 
-const api = (p: string) => readFileSync(join(__dirname, '..', '..', '..', p), 'utf8');
-const schema = readFileSync(join(__dirname, '..', '..', '..', 'prisma', 'schema.prisma'), 'utf8');
+const api = (p: string) => readFileSync(join(__dirname, '..', '..', '..', p), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+const schema = readFileSync(join(__dirname, '..', '..', '..', 'prisma', 'schema.prisma'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
 /** A prisma model's body, so field checks cannot stray into another model. */
 function model(name: string): string {

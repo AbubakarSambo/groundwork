@@ -18,11 +18,11 @@ import { EntryChatPage } from './EntryChatPage'
  * guess a cadence - so the common path is that nobody says anything, a default
  * is applied, and the screen presents it as a settled choice.
  *
- * Seen live: a ground scripted as "90 days, weekly" came out fortnightly with
+ * Seen live: a check-in scripted as "90 days, weekly" came out fortnightly with
  * half the sessions, and the picker showed fortnightly selected as though that
  * had been asked for.
  *
- * The ground still gets the same default if they say nothing. What changes is
+ * The check-in still gets the same default if they say nothing. What changes is
  * that the screen stops claiming they chose it.
  */
 
@@ -35,7 +35,7 @@ vi.mock('@/api/auth', () => ({
 vi.mock('@/stores/auth', () => ({ useAuthStore: (sel: any) => sel({ user: null, isAuthenticated: false }) }))
 
 /**
- * The setup panel only appears once the ground has been saved, and `emailSent`
+ * The setup panel only appears once the check-in has been saved, and `emailSent`
  * is not restored from storage - so the save is driven for real rather than
  * seeded, which is closer to what the person does anyway.
  */
@@ -54,7 +54,7 @@ function seedSaved() {
 async function saveTheGround() {
   const emailBox = await screen.findByPlaceholderText(/your@email/i, {}, { timeout: 4000 })
   fireEvent.change(emailBox, { target: { value: 'sahar@x.test' } })
-  fireEvent.click(screen.getByRole('button', { name: /Save my ground/i }))
+  fireEvent.click(screen.getByRole('button', { name: /Save my check-in/i }))
 }
 
 function renderPage() {

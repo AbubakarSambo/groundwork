@@ -70,7 +70,7 @@ describe('the shared failed-link state', () => {
 describe('none of the arrival pages rolls its own', () => {
   for (const rel of ARRIVALS) {
     it(`${rel.split('/').pop()} uses the shared state`, () => {
-      const src = readFileSync(join(SRC, rel), 'utf8')
+      const src = readFileSync(join(SRC, rel), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
       expect(src).toContain('LinkProblem')
     })
   }
@@ -80,7 +80,7 @@ describe('none of the arrival pages rolls its own', () => {
     // control under it. Two of these existed, worded differently, doing the same
     // nothing.
     for (const rel of ARRIVALS) {
-      const src = readFileSync(join(SRC, rel), 'utf8')
+      const src = readFileSync(join(SRC, rel), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
       expect(src, `${rel} still has its own invalid-link card`).not.toMatch(/>Invalid (link|invite)</)
       expect(src, `${rel} still has its own invalid-link card`).not.toMatch(/>Link invalid</)
     }

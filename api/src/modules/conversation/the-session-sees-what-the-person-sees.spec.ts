@@ -14,7 +14,7 @@ import { join } from 'path';
  * Asserted against source because the alternative is standing up the whole
  * prompt pipeline to observe a `where` clause, and the clause is the fix.
  */
-const SRC = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8');
+const SRC = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
 describe('the documents that reach the session prompt', () => {
   it('are chosen by the same rule as the documents list', () => {

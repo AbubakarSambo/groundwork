@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { groundsApi } from '@/api/grounds'
 import { toast } from 'sonner'
 
@@ -22,7 +22,14 @@ import { toast } from 'sonner'
  */
 export function ContextChat({ groundId }: { groundId: string }) {
   const qc = useQueryClient()
-  const [open, setOpen] = useState(false)
+  /**
+   * OPEN ON THE PAGE. It was a button you had to find and press.
+   *
+   * This is where everything on the Context page is created and changed - there is no form for an
+   * expectation anywhere, by design - so putting the one way in behind a click made the rest of the
+   * page look read-only. A composer sitting there says what the page is for.
+   */
+  const [open, setOpen] = useState(true)
   const [history, setHistory] = useState<{ role: 'user' | 'assistant'; content: string }[]>([])
   const [text, setText] = useState('')
   const [done, setDone] = useState(false)
@@ -50,8 +57,45 @@ export function ContextChat({ groundId }: { groundId: string }) {
 
   function start() {
     setOpen(true)
-    if (history.length === 0) send.mutate([])
   }
+
+  /**
+   * IT OPENS BY SAYING WHAT IS MISSING, which is the only opening line worth having here.
+   *
+   * A composer with nothing above it asks the person to work out what to type. The first turn is the
+   * one that makes the page useful: it names the expectations with nothing checkable against them and
+   * the people who have not been told, which is exactly what somebody cannot see by reading the bands.
+   *
+   * A QUERY, NOT AN EFFECT THAT FIRES A MUTATION.
+   *
+   * My first version sent it from a useEffect guarded by a useRef. A ref is per instance, and React
+   * remounts a component in development to surface exactly this - so the guard was defeated by the
+   * thing it was written for, two requests went out, one never settled, and the panel sat on
+   * "Thinking…" underneath a reply that had already arrived.
+   *
+   * Fetching once is not a fact this component should be tracking by hand. React Query already
+   * dedupes by key and keeps the result, so asking for the opening turn as a QUERY makes the
+   * double-mount produce one request by construction. No flag to get wrong.
+   */
+  /**
+   * WHAT IS ON SCREEN. The opening turn, then everything said since.
+   *
+   * `history` holds only what has actually been exchanged, so the opening line has exactly one
+   * owner and cannot be duplicated into state.
+   */
+  const opening = useQuery({
+    queryKey: ['context-chat-opening', groundId],
+    queryFn: () => groundsApi.contextChat(groundId, []),
+    enabled: open && history.length === 0,
+    staleTime: Infinity,
+    gcTime: Infinity,
+    retry: false,
+  })
+
+  const turns =
+    history.length === 0 && opening.data
+      ? [{ role: 'assistant' as const, content: opening.data.reply }]
+      : history
 
   function submit() {
     const t = text.trim()
@@ -77,12 +121,34 @@ export function ContextChat({ groundId }: { groundId: string }) {
 
   if (!open) {
     return (
-      <button
-        onClick={start}
-        style={{ background: 'none', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '9px 14px', fontSize: 12.5, fontWeight: 600, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', marginBottom: 16 }}
-      >
-        Work out what this ground is missing →
-      </button>
+      /*
+        IT HAS TO LOOK LIKE A CONVERSATION, BECAUSE IT IS ONE.
+        
+        This was a single bordered line reading "Work out what this check-in is missing" between two
+        cards. Asked where the chat on this page was, I could not point at it either: nothing about it
+        said chat, said who it was for, or said what happens if you press it. It read like a link to a
+        help article.
+        
+        Named, with its purpose under it and a control that says what it does. The same card also
+        carries the promise the old line had nowhere to put - that nothing said here is anybody's
+        account - which is the sentence that makes a person willing to use it at all.
+      */
+      <div style={{ background: 'white', border: '1px solid var(--gw-blue-b)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
+        <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 3 }}>
+          The context chat
+        </div>
+        <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 11 }}>
+          Talk through what this check-in is for and what is expected of each person, and it fills in
+          this page as you go. It is about setting the check-in up, not about anybody in it: nothing
+          you say here is your account, and nothing is saved until you say so.
+        </div>
+        <button
+          onClick={start}
+          style={{ background: 'var(--gw-navy)', border: 'none', borderRadius: 7, padding: '9px 15px', fontSize: 13, fontWeight: 700, color: 'white', cursor: 'pointer', fontFamily: 'inherit' }}
+        >
+          Start the conversation
+        </button>
+      </div>
     )
   }
 
@@ -90,7 +156,7 @@ export function ContextChat({ groundId }: { groundId: string }) {
     <div style={{ background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '14px 16px', marginBottom: 16 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
         <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--gw-sub)' }}>
-          What this ground is missing
+          The context chat &middot; what this check-in is missing
         </div>
         <button
           onClick={() => setOpen(false)}
@@ -106,12 +172,17 @@ export function ContextChat({ groundId }: { groundId: string }) {
         Saying it in the chat itself would mean saying it every turn.
       */}
       <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.6, marginBottom: 12, paddingBottom: 10, borderBottom: '1px solid var(--gw-border)' }}>
-        This is about setting the ground up, not about anybody in it. Nothing here goes into a
-        report or gets compared with what anyone said, and nothing is saved until you say so.
+        About setting the check-in up, not about anybody in it. Nothing here reaches a report, and
+        nothing is saved until you say so.
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 360, overflowY: 'auto', marginBottom: 12 }}>
-        {history.map((m, i) => (
+        {/*
+          The opening turn belongs to the query, not to `history`. Copying it into state on arrival
+          would give the same sentence two owners, and they would disagree the first time anything
+          reset one of them.
+        */}
+        {turns.map((m, i) => (
           <div
             key={i}
             style={{
@@ -130,7 +201,7 @@ export function ContextChat({ groundId }: { groundId: string }) {
             {m.content}
           </div>
         ))}
-        {send.isPending && (
+        {(send.isPending || opening.isFetching) && (
           <div style={{ fontSize: 12.5, color: 'var(--gw-muted)', alignSelf: 'flex-start' }}>Thinking…</div>
         )}
       </div>
@@ -161,9 +232,12 @@ export function ContextChat({ groundId }: { groundId: string }) {
         </div>
       )}
 
-      {/* It is allowed to end. A setup conversation that will not stop teaches people
-          to skip setup. */}
-      {!done && (
+      {/*
+        It is allowed to end, and the opening turn can already be the end - a check-in with nothing
+        missing is told so and is not handed a box to type into. `done` starts false, so that has to
+        read the opening turn too rather than only the mutation's answer.
+      */}
+      {!(history.length === 0 && opening.data ? opening.data.done : done) && (
         <div style={{ display: 'flex', gap: 8 }}>
           <input
             value={text}

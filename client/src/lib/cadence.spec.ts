@@ -5,10 +5,10 @@ import { SCENARIOS } from '@/pages/grounds/CreateGroundPage'
 /**
  * One vocabulary, one creation flow.
  *
- * Two screens could open a ground and they disagreed with each other. One called
+ * Two screens could open a check-in and they disagreed with each other. One called
  * a value "Fortnightly" and the other "Every 2 weeks"; one offered seventeen
  * situations and a timeframe but could not name a lead; the other could name a
- * lead but offered five situations and never asked how long the ground runs - so
+ * lead but offered five situations and never asked how long the check-in runs - so
  * a three month onboarding created there silently became a thirty day one, and
  * stopped asking people to check in two thirds of the way through.
  */
@@ -48,7 +48,7 @@ describe('how many sessions a timeframe holds', () => {
     expect(sessionsFor(90, 'FORTNIGHTLY')).toBe(6)
   })
 
-  it('never says zero sessions, because a ground with no check-in reads as broken', () => {
+  it('never says zero sessions, because a check-in with no check-in reads as broken', () => {
     expect(sessionsFor(14, 'MONTHLY')).toBe(1)
   })
 
@@ -70,8 +70,20 @@ describe('the situations someone can pick from', () => {
   })
 
   it('keeps the recurring cohort card distinct, so the two do not read as the same thing', () => {
+    /**
+     * THE POINTER IS CHECKED AGAINST THE OTHER CARD'S REAL LABEL, not against a literal.
+     *
+     * This used to assert the recurring card said "Onboarding a group" - and it passed, while the
+     * card it was pointing at has been called "Onboarding several people at once" throughout. So the
+     * one card whose job is to send you to the right sibling named a card that does not exist, and
+     * the test that existed to keep them distinct was pinning the wrong name.
+     */
     const recurring = SCENARIOS.find((c) => c.cardKey === 'COHORT_CHECK')!
-    expect(recurring.desc).toMatch(/Onboarding a group/)
+    const onboarding = SCENARIOS.find((c) => c.cardKey === 'COHORT_ONBOARDING')!
+    expect(
+      recurring.desc,
+      `the recurring cohort card should send a group of new starters to "${onboarding.label}"`,
+    ).toContain(onboarding.label)
   })
 
   it('every card key is unique, so selection cannot be ambiguous', () => {

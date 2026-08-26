@@ -275,6 +275,12 @@ body {
 .gw-send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* ── HEADER ──────────────────────────────────────────────── */
+/* The app header is sticky at the top of the scroll container, so anything else
+   that sticks has to clear it. Measured, not guessed: 12px padding top and
+   bottom plus the row content plus the 1px rule comes to 55px. Named here so the
+   picker's jump bar and its scroll offsets cannot drift from it. */
+:root { --gw-hdr-h: 55px; }
+
 .gw-hdr {
   display: flex;
   align-items: center;
@@ -541,6 +547,85 @@ body {
   background: var(--gw-navy); border-color: var(--gw-navy);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='8' viewBox='0 0 10 8'%3E%3Cpath d='M1 4l3 3 5-6' stroke='white' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat; background-position: center;
+}
+
+/* ── THE SITUATION PICKER, GROUPED ───────────────────────
+   Twenty cards in one unbroken list is a wall, not a list: the recurring read
+   sat at position eleven with no heading above it and could not be found. These
+   are the six questions a person already has in their head when they arrive.
+   Everything here is layout - the card itself is still .cg-sit-card above. */
+.cg-jump {
+  /* NOT STICKY, AND THAT IS NOT A STYLE PREFERENCE.
+     The mockup this came from had a bar that followed you down the page. It cannot
+     here: the page scrolls on the WINDOW, but the content sits inside .gw-bd, which
+     carries overflow:auto. A sticky child sticks to its nearest scrolling ancestor's
+     scrollport, so this bar sticks to .gw-bd - and .gw-bd never scrolls (its
+     scrollHeight equals its clientHeight, it just grows). The result was a bar that
+     scrolled off with the content while claiming to be sticky, and at top:0 it also
+     rendered over the page title, since .gw-hdr sticks in the same strip.
+     Making it follow means either moving it into the app shell beside .gw-hdr, or
+     removing overflow:auto from .gw-bd, which is app-wide. Neither is worth it for a
+     jump bar: the grouping is what makes twenty cards findable, and the bar is a
+     shortcut to the groups. */
+  display: flex; gap: 8px;
+  padding: 10px 0 10px; margin-bottom: 4px;
+  background: var(--gw-bg); border-bottom: 1px solid var(--gw-border);
+  overflow-x: auto; scrollbar-width: thin;
+}
+.cg-jump a {
+  flex: 0 0 auto; font-size: 12px; font-weight: 600; text-decoration: none;
+  color: var(--gw-sub); background: white; border: 1px solid var(--gw-border);
+  padding: 5px 11px; border-radius: 100px; white-space: nowrap; transition: all .15s;
+}
+.cg-jump a:hover, .cg-jump a:focus-visible { color: var(--gw-navy); border-color: var(--gw-navy); background: var(--gw-blue-bg); }
+.cg-jump a b { color: var(--gw-muted); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* Clear both the header and the jump bar when a jump link lands, or the heading
+   you asked for arrives underneath the thing you clicked to get there. */
+/* Clears the app header when a jump link lands, or the heading you asked for
+   arrives underneath it. Only the header now, since the bar does not follow. */
+.cg-group { margin-top: 28px; scroll-margin-top: calc(var(--gw-hdr-h) + 12px); }
+.cg-group-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.cg-group-head h3 { font-size: 16px; font-weight: 800; margin: 0; letter-spacing: -.01em; color: var(--gw-text); }
+.cg-group-head span { font-size: 11px; font-weight: 700; color: var(--gw-muted); font-variant-numeric: tabular-nums; }
+.cg-group-q { font-size: 12.5px; color: var(--gw-sub); line-height: 1.55; margin: 4px 0 12px; max-width: 62ch; }
+.cg-group-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(275px, 1fr)); gap: 10px; }
+.cg-group-grid.one { grid-template-columns: 1fr; }
+
+/* The card face: title, then the one moment a person recognises themselves in.
+   The left rule replaces a heading - it says "this is an example" without a label. */
+.cg-sit-card { display: flex; flex-direction: column; gap: 8px; }
+.cg-moment {
+  font-size: 13px; color: var(--gw-text); font-style: italic; line-height: 1.5;
+  margin: 0; padding-left: 9px; border-left: 2px solid var(--gw-border);
+}
+.cg-sit-card.selected .cg-moment { border-left-color: var(--gw-navy); }
+
+/* Cadence, length and count. Three numbers a lead compares between two cards,
+   so they are a real grid with tabular numerals and not a sentence. */
+.cg-meta { display: flex; margin-top: auto; padding-top: 9px; border-top: 1px solid var(--gw-border); }
+.cg-meta > div { flex: 1; min-width: 0; }
+.cg-meta dt {
+  font-size: 9px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--gw-muted); margin: 0 0 1px; line-height: 1.3; min-height: 24px;
+}
+.cg-meta dd { font-size: 12px; font-weight: 600; color: var(--gw-text); margin: 0; font-variant-numeric: tabular-nums; }
+
+.cg-arc { margin: 6px 0 0; padding: 10px 11px; background: var(--gw-paper-2); border-radius: 6px; display: grid; gap: 8px; }
+.cg-arc dt { font-size: 9px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--gw-muted); margin-bottom: 1px; }
+.cg-arc dd { margin: 0; font-size: 12px; color: var(--gw-sub); line-height: 1.5; }
+.cg-arc .warn dt { color: var(--gw-amber-t); }
+.cg-more {
+  align-self: flex-start; background: none; border: none; padding: 2px 0; cursor: pointer;
+  font-family: inherit; font-size: 11.5px; font-weight: 600; color: var(--gw-navy);
+}
+.cg-more:focus-visible { outline: 2px solid var(--gw-navy); outline-offset: 2px; border-radius: 3px; }
+
+@media (max-width: 620px) {
+  .cg-group-grid { grid-template-columns: 1fr; }
+  .cg-meta { flex-wrap: wrap; gap: 8px; }
+  .cg-meta > div { flex: 0 0 30%; }
+  .cg-meta dt { min-height: 0; }
 }
 
 /* ── RESOLUTION CARDS (create ground step 4) ─────────────── */

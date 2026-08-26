@@ -11,8 +11,8 @@ import { entryApi } from '@/api/entry'
  * nothing to commit" - an invited participant or any existing user signing
  * in via a magic link would hit whatever failure commitInner() produced and,
  * for the COMMIT_IN_PROGRESS case (a concurrent commit that claimed the
- * draft and never produced a ground), fall into the generic commitError
- * branch and see the initiator-only "the ground wasn't saved - start
+ * draft and never produced a check-in), fall into the generic commitError
+ * branch and see the initiator-only "the check-in wasn't saved - start
  * again" copy. Nonsensical for someone who was never an initiator.
  *
  * Fix: COMMIT_IN_PROGRESS is now recognized alongside NO_ENTRY_SESSION and
@@ -57,7 +57,7 @@ describe('MagicVerifyPage - Bug A (wrong-flow routing)', () => {
 
     await waitFor(() => expect(mockedNavigate).toHaveBeenCalledWith('/grounds', { replace: true }))
     // Never the initiator-only error copy.
-    expect(screen.queryByText(/the ground wasn't saved/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/the check-in wasn't saved/i)).not.toBeInTheDocument()
     expect(screen.queryByText(/we couldn't find your session/i)).not.toBeInTheDocument()
   })
 
@@ -72,7 +72,7 @@ describe('MagicVerifyPage - Bug A (wrong-flow routing)', () => {
     renderPage('tok-initiator-race')
 
     await waitFor(() => expect(screen.getByText(/we couldn't find your session on this device/i)).toBeInTheDocument())
-    expect(screen.queryByText(/the ground wasn't saved/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/the check-in wasn't saved/i)).not.toBeInTheDocument()
   })
 
   it('NO_ENTRY_SESSION still behaves exactly as before (regression guard)', async () => {
@@ -96,7 +96,7 @@ describe('MagicVerifyPage - Bug A (wrong-flow routing)', () => {
 
     renderPage('tok-real-failure')
 
-    await waitFor(() => expect(screen.getByText(/the ground wasn't saved/i)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText(/the check-in wasn't saved/i)).toBeInTheDocument())
   })
 
   it('a genuine successful commit still works - the real initiator path is not regressed', async () => {
@@ -113,6 +113,6 @@ describe('MagicVerifyPage - Bug A (wrong-flow routing)', () => {
 
     renderPage('tok-success')
 
-    await waitFor(() => expect(screen.getByText(/your ground is set up/i)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText(/your check-in is set up/i)).toBeInTheDocument())
   })
 })

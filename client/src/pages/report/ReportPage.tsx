@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, Navigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { groundsApi } from '@/api/grounds'
@@ -9,21 +9,24 @@ import { outcomeFeedbackApi } from '@/api/feedback'
 import { apiClient } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
 import { alignmentLabel, alignmentShort } from '@/lib/alignment'
-import { participantLabel } from '@/lib/utils'
+import { personLabel, participantLabel } from '@/lib/utils'
 import { Sec } from '@/components/gw/kit'
 import { InferenceReviewPanel } from '@/components/InferenceReviewPanel'
 import { VennIcon } from '@/components/gw/VennIcon'
 import { participantRequestsApi } from '@/api/participantRequests'
+import type { ResolutionState } from '@/api/resolution'
+import { closedByLine, openStatusLine } from '@/lib/who-closes-this'
 
 type ViewTab = 'shared' | 'own'
 
-interface ResolutionStatus {
-  resolution: { id: string; endState: string; closedAt: string | null } | null
-  confirmations: { participantId: string; label: string; endState: string | null; confirmed: boolean }[]
-  confirmedCount: number
-  totalActive: number
-  groundStatus: string
-}
+/**
+ * A THIRD COPY OF THIS TYPE USED TO LIVE HERE, AND IT WAS MISSING THE FIELD THAT MATTERS. W-UX-R.
+ *
+ * Hand-written, without `leadDecides`, so this page could not respect who actually closes a ground -
+ * and rendered the both-must-agree tally on every scenario. `ResolutionState` from `@/api/resolution`
+ * is the one shape the endpoint returns.
+ */
+type ResolutionStatus = ResolutionState & { groundStatus: string }
 
 function ResolutionSection({ groundId, resolutionState }: { groundId: string; resolutionState?: string | null }) {
   const { data } = useQuery({
@@ -48,25 +51,36 @@ function ResolutionSection({ groundId, resolutionState }: { groundId: string; re
           {isClosed && data.resolution ? (
             <div style={{ background: 'var(--gw-green-bg)', borderRadius: 8, padding: '10px 12px' }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-green-t)' }}>Closed: {data.resolution.endState}</div>
-              <div style={{ fontSize: 12, color: 'var(--gw-green-t-soft)', marginTop: 2 }}>All {data.totalActive} parties confirmed the same end state.</div>
+              <div style={{ fontSize: 12, color: 'var(--gw-green-t-soft)', marginTop: 2 }}>{closedByLine(data)}</div>
             </div>
           ) : (
             <div>
-              <div style={{ fontSize: 13, marginBottom: 8 }}>{data.confirmedCount} of {data.totalActive} parties have confirmed an end state.</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {data.confirmations.map((c) => (
-                  <div key={c.participantId} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, padding: '6px 10px', background: 'var(--gw-paper-2)', borderRadius: 6 }}>
-                    <span>{c.label}</span>
-                    <span style={{ color: c.confirmed ? 'var(--gw-green-t)' : 'var(--gw-muted)', fontWeight: 600 }}>{c.confirmed ? c.endState : 'Not yet'}</span>
-                  </div>
-                ))}
-              </div>
+              <div style={{ fontSize: 13, marginBottom: 8 }}>{openStatusLine(data)}</div>
+              {/*
+                THE PER-PARTY TALLY BELONGS ONLY WHERE EVERY ANSWER IS ACTUALLY AWAITED.
+                
+                On a lead-decides ground it was actively misleading: a contractor sat in this list
+                marked "Not yet" against their own renewal, which reads as the org waiting on their
+                agreement for something the server closes on the lead alone. What the other parties
+                are owed here is to SEE the outcome coming, which the options above give them - not a
+                row implying a vote they do not have.
+              */}
+              {!data.leadDecides && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {data.confirmations.map((c) => (
+                    <div key={c.participantId} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, padding: '6px 10px', background: 'var(--gw-paper-2)', borderRadius: 6 }}>
+                      <span>{c.label}</span>
+                      <span style={{ color: c.confirmed ? 'var(--gw-green-t)' : 'var(--gw-muted)', fontWeight: 600 }}>{c.confirmed ? c.endState : 'Not yet'}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
       )}
       {!resolutionState && !data?.resolution && (
-        <div style={{ fontSize: 13, color: 'var(--gw-muted)' }}>No resolution state set for this ground yet.</div>
+        <div style={{ fontSize: 13, color: 'var(--gw-muted)' }}>No resolution state set yet.</div>
       )}
     </div>
   )
@@ -142,7 +156,7 @@ function OutcomeFeedbackSection({ groundId, closed }: { groundId: string; closed
   return (
     <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '16px 18px', marginBottom: 18 }}>
       <div style={{ fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 10 }}>
-        This ground has closed
+        This check-in has closed
       </div>
 
       {answered && (
@@ -376,7 +390,7 @@ function WhatTheGroundCanTellYou({ section, note, restedOn, startedAt }: {
   return (
     <div style={{ border: '1px solid var(--gw-border)', borderRadius: 11, padding: '15px 17px', marginBottom: 16, background: 'var(--gw-paper)' }}>
       <div style={{ fontSize: 10.5, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-sub)', fontWeight: 700, marginBottom: 10 }}>
-        What this ground can tell you
+        What this check-in can tell you
       </div>
       {rows.map((r, i) => (
         <div key={i} style={{ marginBottom: 12 }}>
@@ -597,7 +611,7 @@ function HiddenContributorsSection({
     <div style={{ marginTop: 16, background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 8, padding: '12px 14px' }}>
       <SecH>People who may be missing</SecH>
       <div style={{ fontSize: 12.5, color: '#4A5568', lineHeight: 1.55, marginBottom: 10 }}>
-        The record references people who are not themselves a party on this ground.
+        The record references people who are not themselves a party on this check-in.
       </div>
       {contributors.map((c, i) => {
         const key = `${i}-${c.label}`
@@ -666,8 +680,26 @@ function HiddenContributorsSection({
   )
 }
 
-export function ReportPage() {
-  const { id } = useParams<{ id: string }>()
+/**
+ * ONE REPORT, NOT TWO A CLICK APART.
+ *
+ * This was a whole page of its own, reached from a button on the Report tab that said "View the full
+ * shared report". So the product held two reports about the same check-in - a summary on the tab and
+ * the real thing on a page - with no way to know which one you had read, and the page carried its own
+ * dark header and its own back-link because it did not know it was part of a check-in.
+ *
+ * The content is unchanged. What changed is that it renders in the tab, and the standalone route
+ * redirects there, so there is one report and one way to reach it.
+ *
+ * `embedded` drops only the page chrome: the full-bleed wrapper, and the dark header whose job was to
+ * say which check-in you were looking at and offer a way back. Inside the tab, the page around it
+ * already says both.
+ */
+
+export function ReportBody({ groundId, embedded = false }: { groundId?: string; embedded?: boolean }) {
+  /** Embedded, the id comes from the page around it; standalone, from the route. */
+  const params = useParams<{ id: string }>()
+  const id = groundId ?? params.id
   const navigate = useNavigate()
   const user = useAuthStore(s => s.user)
   const [tab, setTab] = useState<ViewTab>('shared')
@@ -782,7 +814,7 @@ export function ReportPage() {
         */}
         <div style={{ fontSize: 13, color: 'var(--gw-muted)', maxWidth: 380, textAlign: 'center', lineHeight: 1.6 }}>
           The shared report appears once everybody has checked in. Your own record is on
-          your ground page in the meantime.
+          your check-in page in the meantime.
         </div>
         <button onClick={() => navigate(-1)} style={{ fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>Go back</button>
       </div>
@@ -800,6 +832,17 @@ export function ReportPage() {
     | { sessionNumber: number; total: number; completed: number; requestingUserIsMissing: boolean }
     | null
     | undefined
+  /**
+   * WHO DECLINED, SAID OUT LOUD. Her decision: "Round completes, report names the decline."
+   *
+   * A round with a decline in it now finishes and releases, which it never could before - so without
+   * this the report would go out presenting three accounts as though only three people were ever
+   * asked. Naming it is the difference between a record and an edited one.
+   *
+   * Labels come from the server, through the same `labelsForParties` map the rest of the report is
+   * written in, so a viewer who is not entitled to somebody's real name sees their role here too.
+   */
+  const declined = ((report as any).declined ?? []) as { participantId: string; label: string }[]
 
   const myParticipant = (ground.participants ?? []).find((p: any) => p.userId === user?.id)
   const isAdmin = myParticipant?.partyType === 'INITIATOR'
@@ -862,93 +905,29 @@ export function ReportPage() {
         ? 'You see this the same way.'
         : 'Where you see it differently is below, most important first.'
 
-  return (
-    <div style={PAGE_STYLE}>
-      {staleBanner && <div style={{ maxWidth: 1040, margin: '0 auto', padding: '14px 20px 0' }}>{staleBanner}</div>}
-
-      {/* HEADER */}
-      <header style={{ background: 'var(--gw-dark)', color: '#fff', padding: '40px 0 34px' }}>
-        <div style={{ maxWidth: 1040, margin: '0 auto', padding: '0 20px' }}>
-          <button
-            onClick={() => navigate(backUrl)}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,.55)', fontSize: 13, fontFamily: 'inherit', padding: 0, marginBottom: 22, display: 'block' }}
-          >
-            ← Back
-          </button>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-            <span style={{ background: 'white', borderRadius: 4, padding: '3px 4px', display: 'inline-flex' }}><VennIcon size={24} /></span>
-            {/*
-              THE HEADER SAID "Shared report" WHILE YOU WERE READING YOUR OWN.
-              The toggle below switches the body between two genuinely different
-              documents, and the eyebrow, the headline and the summary above it
-              never changed - so the page insisted it was the shared report on both
-              settings. Hafsah: "i dont know if its our shared report or my report".
-              Whichever one is on screen now says so, in all three places.
-            */}
-            <span style={{ fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--gw-green-b)', fontWeight: 700 }}>
-              {tab === 'own' ? 'Your report, private to you' : 'Shared report'}
-            </span>
-          </div>
-          <h1 style={{ fontSize: 30, lineHeight: 1.1, letterSpacing: '-.02em', margin: '0 0 12px', fontWeight: 800 }}>
-            {tab === 'own' ? 'What your own account holds.' : "Where everyone's accounts agree or differ."}
-          </h1>
-          {/*
-            THE HERO WAS STILL THE PROSE. W13-7, second half.
-
-            I reordered the card below so what is unresolved comes before the summary, updated
-            the legend to match, and the page still OPENED with the same paragraph - because this
-            block prints `sharedPicture` too. Half a fix, and the half a person sees first.
-
-            Found by opening the page rather than by the source-order test I had just written,
-            which is the rule this plan keeps re-learning.
-
-            The hero now says what the report holds: how many areas are open, how many agreed.
-            The paragraph is in the card, once, where the reorder put it.
-          */}
-          <p style={{ fontSize: 15, color: 'rgba(255,255,255,.72)', maxWidth: 640, margin: 0 }}>
-            {tab === 'own'
-              ? 'Only you can see this. It is built from what you said, and nobody else reads your words.'
-              : divergences.length + agreements.length > 0
-                ? `${divergences.length} ${divergences.length === 1 ? 'thing is' : 'things are'} still open. ${agreements.length} ${agreements.length === 1 ? 'is' : 'are'} agreed.`
-                : 'Everyone has checked in. This is what runs across their accounts.'}
-          </p>
-          <div style={{ marginTop: 20, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {[
-              ground.label,
-              adminHandle,
-              partParty ? partHandle : null,
-              releasedDate ? `Released ${releasedDate}` : 'Still forming',
-            ].filter(Boolean).map(pill => (
-              <span key={pill as string} style={{ fontSize: 12, background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.16)', borderRadius: 20, padding: '5px 12px', color: 'rgba(255,255,255,.9)' }}>
-                {pill}
-              </span>
-            ))}
-          </div>
-
-          {/* OWN / SHARED TOGGLE - always visible so it's clear these are two
-              distinct reports, not one merged document. */}
-          {solo && (
-            <div style={{ marginTop: 24, display: 'inline-flex', background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.16)', borderRadius: 10, padding: 3, gap: 2 }}>
-              {(['shared', 'own'] as ViewTab[]).map(t => (
-                <button
-                  key={t}
-                  onClick={() => setTab(t)}
-                  style={{
-                    fontSize: 13, fontWeight: 700, padding: '7px 16px', borderRadius: 7, border: 'none', cursor: 'pointer',
-                    background: tab === t ? '#fff' : 'transparent',
-                    color: tab === t ? 'var(--gw-dark)' : 'rgba(255,255,255,.75)',
-                  }}
-                >
-                  {t === 'shared' ? 'Shared report' : 'Your report'}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      </header>
-
+  const body = (
+    <>
       {/* FORMING BANNER - the picture updates as people check in; this isn't
           the final, mutually-revealed report yet. */}
+      {declined.length > 0 && (
+        <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderLeft: '3px solid var(--gw-amber-b)', borderRadius: 8, padding: '12px 14px', marginBottom: 14, fontSize: 13, lineHeight: 1.65, color: 'var(--gw-text)' }}>
+          <div style={{ fontWeight: 700, marginBottom: 4 }}>
+            {declined.length === 1
+              ? `${declined[0].label} declined to take part in this session.`
+              : `${declined.map(d => d.label).join(', ')} declined to take part in this session.`}
+          </div>
+          <div style={{ color: 'var(--gw-sub)' }}>
+            {/*
+              The second sentence is the load-bearing one. A reader who sees a name under "declined"
+              will otherwise fill the gap themselves, and the whole standing of this report is that it
+              does not do that either.
+            */}
+            What follows is built from the accounts that were given. It does not infer anything about
+            {declined.length === 1 ? ' the one that was not.' : ' the ones that were not.'}
+          </div>
+        </div>
+      )}
+
       {isForming && progress && (
         <div style={{ background: 'var(--gw-amber-bg)', borderBottom: '1px solid #F0DDB0' }}>
           <div style={{ maxWidth: 1040, margin: '0 auto', padding: '12px 20px', fontSize: 13, color: 'var(--gw-amber-t)' }}>
@@ -1027,7 +1006,7 @@ export function ReportPage() {
           {(!solo || tab === 'shared') && (
           <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, overflow: 'hidden' }}>
             <div style={{ padding: '13px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--gw-navy)', color: '#fff' }}>
-              <span style={{ fontSize: 13, fontWeight: 800 }}>Ground report</span>
+              <span style={{ fontSize: 13, fontWeight: 800 }}>Groundwork report</span>
               <span style={{ fontSize: 11, opacity: 0.82 }}>for {adminHandle}</span>
             </div>
             <div style={{ padding: '16px 18px 18px' }}>
@@ -1185,7 +1164,7 @@ export function ReportPage() {
                   where the parties choose together. */}
               {(report as any).finalSynthesis?.closingComplete && (
                 <div style={{ marginTop: 16, background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 8, padding: '12px 14px' }}>
-                  <SecH>The ground is closing</SecH>
+                  <SecH>This is closing</SecH>
                   <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6, marginBottom: 8 }}>
                     Every account is in. The choice now in front of you, together:
                   </div>
@@ -1208,7 +1187,7 @@ export function ReportPage() {
                   <SecH>For your review - record shape</SecH>
                   {((report as any).arcAdvisories as any[]).map(a => (
                     <div key={a.participantId} style={{ marginBottom: 8 }}>
-                      <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-red-t)' }}>{a.email ?? a.participantId}</div>
+                      <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-red-t)' }}>{personLabel(a)}</div>
                       <div style={{ fontSize: 12.5, color: '#5A2A2A', lineHeight: 1.55 }}>{a.note}</div>
                       {(a.features ?? []).map((f: string, i: number) => (
                         <div key={i} style={{ fontSize: 11.5, color: '#7A4B4B', lineHeight: 1.5, marginTop: 2 }}>· {f}</div>
@@ -1229,7 +1208,7 @@ export function ReportPage() {
                   {((report as any).updates as any[]).map((u, i) => (
                     <div key={i} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, padding: '4px 0' }}>
                       <div style={{ fontSize: 12.5, color: 'var(--gw-text)' }}>
-                        {u.email ?? 'A party'} updated their account
+                        {personLabel(u)} updated their account
                         {u.completedAt ? ` on ${new Date(u.completedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}` : ''}
                       </div>
                       {u.isPostSignOff && (
@@ -1284,7 +1263,7 @@ export function ReportPage() {
                 </div>}
 
                 <div style={{ fontSize: 12, color: 'var(--gw-sub)', background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '10px 12px', lineHeight: 1.55 }}>
-                  This record is yours. It is portable and permanent. You can add this ground to your Groundwork profile.
+                  This record is yours. It is portable and permanent. You can add this check-in to your Groundwork profile.
                   {/* The sentence above claims portability, so give them the file.
                       Completed sessions only - there is nothing settled to take
                       away from a session still in progress. */}
@@ -1356,7 +1335,7 @@ export function ReportPage() {
               : ''}
             {myLatestCompletedSession != null
               ? 'For anything else in your own account, revisit your last session below. It opens a short follow-up that corrects or adds to your record. Your original answers are kept as they were, and the update flows into the next report.'
-              : 'To correct something you said, reopen a session you have already finished on this ground.'}
+              : 'To correct something you said, reopen a session you have already finished here.'}
           </div>
           {myLatestCompletedSession != null && (
             <button
@@ -1370,9 +1349,108 @@ export function ReportPage() {
         </div>
 
         <div style={{ marginTop: 40, paddingTop: 24, borderTop: '1px solid var(--gw-border)', fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.6 }}>
-          This report is permanent. Everybody in this ground keeps their copy.
+          This report is permanent. Everybody in this check-in keeps their copy.
         </div>
       </div>
+    </>
+  )
+
+  /** In the tab, the surrounding page is the chrome. */
+  if (embedded) return <div>{staleBanner}{body}</div>
+
+  return (
+    <div style={PAGE_STYLE}>
+      {staleBanner && <div style={{ maxWidth: 1040, margin: '0 auto', padding: '14px 20px 0' }}>{staleBanner}</div>}
+      {/* HEADER */}
+      <header style={{ background: 'var(--gw-dark)', color: '#fff', padding: '40px 0 34px' }}>
+        <div style={{ maxWidth: 1040, margin: '0 auto', padding: '0 20px' }}>
+          <button
+            onClick={() => navigate(backUrl)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,.55)', fontSize: 13, fontFamily: 'inherit', padding: 0, marginBottom: 22, display: 'block' }}
+          >
+            ← Back
+          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+            <span style={{ background: 'white', borderRadius: 4, padding: '3px 4px', display: 'inline-flex' }}><VennIcon size={24} /></span>
+            {/*
+              THE HEADER SAID "Shared report" WHILE YOU WERE READING YOUR OWN.
+              The toggle below switches the body between two genuinely different
+              documents, and the eyebrow, the headline and the summary above it
+              never changed - so the page insisted it was the shared report on both
+              settings. Hafsah: "i dont know if its our shared report or my report".
+              Whichever one is on screen now says so, in all three places.
+            */}
+            <span style={{ fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--gw-green-b)', fontWeight: 700 }}>
+              {tab === 'own' ? 'Your report, private to you' : 'Shared report'}
+            </span>
+          </div>
+          <h1 style={{ fontSize: 30, lineHeight: 1.1, letterSpacing: '-.02em', margin: '0 0 12px', fontWeight: 800 }}>
+            {tab === 'own' ? 'What your own account holds.' : "Where everyone's accounts agree or differ."}
+          </h1>
+          {/*
+            THE HERO WAS STILL THE PROSE. W13-7, second half.
+
+            I reordered the card below so what is unresolved comes before the summary, updated
+            the legend to match, and the page still OPENED with the same paragraph - because this
+            block prints `sharedPicture` too. Half a fix, and the half a person sees first.
+
+            Found by opening the page rather than by the source-order test I had just written,
+            which is the rule this plan keeps re-learning.
+
+            The hero now says what the report holds: how many areas are open, how many agreed.
+            The paragraph is in the card, once, where the reorder put it.
+          */}
+          <p style={{ fontSize: 15, color: 'rgba(255,255,255,.72)', maxWidth: 640, margin: 0 }}>
+            {tab === 'own'
+              ? 'Only you can see this. It is built from what you said, and nobody else reads your words.'
+              : divergences.length + agreements.length > 0
+                ? `${divergences.length} ${divergences.length === 1 ? 'thing is' : 'things are'} still open. ${agreements.length} ${agreements.length === 1 ? 'is' : 'are'} agreed.`
+                : 'Everyone has checked in. This is what runs across their accounts.'}
+          </p>
+          <div style={{ marginTop: 20, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {[
+              ground.label,
+              adminHandle,
+              partParty ? partHandle : null,
+              releasedDate ? `Released ${releasedDate}` : 'Still forming',
+            ].filter(Boolean).map(pill => (
+              <span key={pill as string} style={{ fontSize: 12, background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.16)', borderRadius: 20, padding: '5px 12px', color: 'rgba(255,255,255,.9)' }}>
+                {pill}
+              </span>
+            ))}
+          </div>
+
+          {/* OWN / SHARED TOGGLE - always visible so it's clear these are two
+              distinct reports, not one merged document. */}
+          {solo && (
+            <div style={{ marginTop: 24, display: 'inline-flex', background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.16)', borderRadius: 10, padding: 3, gap: 2 }}>
+              {(['shared', 'own'] as ViewTab[]).map(t => (
+                <button
+                  key={t}
+                  onClick={() => setTab(t)}
+                  style={{
+                    fontSize: 13, fontWeight: 700, padding: '7px 16px', borderRadius: 7, border: 'none', cursor: 'pointer',
+                    background: tab === t ? '#fff' : 'transparent',
+                    color: tab === t ? 'var(--gw-dark)' : 'rgba(255,255,255,.75)',
+                  }}
+                >
+                  {t === 'shared' ? 'Shared report' : 'Your report'}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </header>
+      {body}
     </div>
   )
+}
+
+/**
+ * The old route. Kept as a redirect rather than deleted, because links to it exist in email and in
+ * people's history, and a dead link to somebody's report is worse than an extra hop.
+ */
+export function ReportPage() {
+  const { id } = useParams<{ id: string }>()
+  return <Navigate to={`/grounds/${id}?tab=report`} replace />
 }

@@ -27,9 +27,9 @@ import { join } from 'path'
  * components and neither is exported.
  */
 
-const HOME = readFileSync(join(__dirname, 'HomePage.tsx'), 'utf8')
-const CREATE = readFileSync(join(__dirname, '../grounds/CreateGroundPage.tsx'), 'utf8')
-const TYPES = readFileSync(join(__dirname, '../../types/index.ts'), 'utf8')
+const HOME = readFileSync(join(__dirname, 'HomePage.tsx'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+const CREATE = readFileSync(join(__dirname, '../grounds/CreateGroundPage.tsx'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+const TYPES = readFileSync(join(__dirname, '../../types/index.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
 /** The `param:` values in the home page's situation list. */
 const params = [...HOME.matchAll(/\{\s*param:\s*'((?:[^'\\]|\\.)*)'/g)].map((m) =>

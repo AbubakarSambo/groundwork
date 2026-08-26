@@ -1,4 +1,7 @@
-import { Controller, Get, Post, Query, Body, Logger, ForbiddenException } from '@nestjs/common';
+import { Controller, Get, Post, Query, Body, Logger, ForbiddenException, Req } from '@nestjs/common';
+import type { RawBodyRequest } from '@nestjs/common';
+import type { Request } from 'express';
+import { Throttle } from '@nestjs/throttler';
 import { Public } from '../../common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
@@ -39,7 +42,26 @@ export class WhatsAppController {
   }
 
   @Post()
-  async receive(@Body() body: any): Promise<{ received: true }> {
+  @Throttle({ default: { limit: 120, ttl: 60_000 } })
+  async receive(@Req() req: RawBodyRequest<Request>): Promise<{ received: true }> {
+    /**
+     * SIGNATURE FIRST, BEFORE A SINGLE FIELD OF THE BODY IS READ.
+     *
+     * Everything below derives identity from `message.from` and then writes to that person's
+     * private check-in as them, so the only safe place for this check is before any of it. Throws
+     * on a missing secret, missing header or mismatch - see `verifySignature` for why fail-closed
+     * is the right default here.
+     */
+    const raw = req.rawBody ?? Buffer.from(JSON.stringify(req.body ?? {}));
+    this.whatsapp.verifySignature(req.headers as Record<string, string | string[] | undefined>, raw);
+
+    /**
+     * AND NOT AT ALL WHEN THE CHANNEL IS OFF. The toggle and the credentials govern SENDING; this
+     * makes them govern receiving too, so an unconfigured deployment has no live inbound path.
+     */
+    if (!(await this.whatsapp.isEnabled())) return { received: true };
+
+    const body = req.body as any;
     try {
       const message = body?.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
       if (!message || message.type !== 'text') return { received: true };

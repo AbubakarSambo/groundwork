@@ -35,14 +35,16 @@ describe('which pages stand alone', () => {
      * This used to pin the whole expression, `isAuthenticated && !CHROMELESS.includes(...)`, and that
      * was too tight. It made a correct change fail: `/start` needs the rail WITHOUT being signed in,
      * because `AppSidebar` has a branch - commented "Entry ground shown when unauthenticated on
-     * /start" - that draws the ground somebody is building before they have an account. The auth
+     * /start" - that draws the check-in somebody is building before they have an account. The auth
      * condition made that branch unreachable, so the rail Hafsah remembered on a signed-out window
      * was real and had quietly stopped being drawn.
      *
      * What this file is actually for is the chromeless list, so that is what it asserts now: the rail
      * is gated on the list, and the list is exact.
      */
-    expect(CODE).toMatch(/const showSidebar = .*!CHROMELESS\.includes\(location\.pathname\)/)
+    /** `[\s\S]` rather than `.` - the expression is multi-line since W-UX-8 added the back-office
+     * prefix check beside the exact-path list. */
+    expect(CODE).toMatch(/const showSidebar =[\s\S]*?!CHROMELESS\.includes\(location\.pathname\)/)
   })
 
   it('and the entry flow is the one page that gets it without an account', () => {
@@ -75,5 +77,24 @@ describe('which pages stand alone', () => {
      */
     expect(CODE).toContain('CHROMELESS.includes(location.pathname)')
     expect(CODE).not.toMatch(/CHROMELESS\.some\([^)]*startsWith/)
+  })
+})
+
+/**
+ * AND THE BACK OFFICE IS NOT A CUSTOMER PAGE. W-UX-8.
+ *
+ * `/admin` is our own operations console - every customer org, for us. It was rendering inside the
+ * customer rail, so an internal page sat wrapped in a nav offering "Check-ins", "People" and
+ * "Billing" for one particular organisation. Two products on one screen.
+ */
+describe('the platform back office stands alone', () => {
+  it('is matched by prefix, so its sub-pages are covered too', () => {
+    /** An exact-path list is what let `/admin/dashboard` through while `/admin` was handled. */
+    expect(CODE).toMatch(/CHROMELESS_PREFIXES = \['\/admin'\]/)
+    expect(CODE).toMatch(/location\.pathname\.startsWith\(`\$\{p\}\/`\)/)
+  })
+
+  it('and the rail is gated on it', () => {
+    expect(CODE).toMatch(/const showSidebar =[\s\S]*?!isBackOffice/)
   })
 })

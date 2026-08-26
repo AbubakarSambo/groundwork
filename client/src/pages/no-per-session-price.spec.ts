@@ -13,7 +13,7 @@ import { join } from 'path'
  * The UI did not get the message. A "$5 per session" model that had been
  * dropped was still quoted in four places, and the worst of them told a
  * brand-new person "additional sessions are $5 each" at the moment they were
- * deciding whether to begin - for a ground that is free and uncapped. Two more
+ * deciding whether to begin - for a check-in that is free and uncapped. Two more
  * offered to sell people "insights" that were never locked, one of them to a
  * participant, about their own record.
  *

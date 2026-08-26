@@ -14,7 +14,7 @@ import { resolutionApi } from '@/api/resolution'
  *     0 of 2 people have answered
  *
  * He was being invited to select his own exit, and until he picked the same
- * option as his manager the ground could not close, so he also held a veto over
+ * option as his manager the check-in could not close, so he also held a veto over
  * an employment decision that was never his. Both directions wrong at once.
  *
  * What he keeps: the options, so nothing is decided behind his back; his own

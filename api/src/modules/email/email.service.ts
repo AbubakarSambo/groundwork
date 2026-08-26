@@ -81,6 +81,29 @@ export class EmailService {
 
   // --- Auth ---
 
+  /**
+   * SOMEBODY ASKED TO SPEAK TO A COACH. THE ONLY THING THEY WERE PROMISED IS THIS.
+   *
+   * So it says three things and stops: that it arrived, roughly when somebody will come back, and what
+   * it costs. The cost is repeated here even though the form showed it, because a person who learns
+   * the price only after chasing a reply has been wasted, and because the paid option must never read
+   * as the thing the product was really for.
+   */
+  async sendCoachRequestReceived(email: string, firstName: string): Promise<void> {
+    const name = firstName?.trim() ? firstName.trim().split(' ')[0] : 'there';
+    await this.sendEmail({
+      to: email,
+      subject: 'We have your request to speak to a coach',
+      html: `
+        <p>Hi ${name},</p>
+        <p>Thanks for asking. Sahar reads these herself and will come back to you within two working days.</p>
+        <p>So there are no surprises, coaching is $5,000 a year for twelve sessions, or $500 an hour with no retainer. We usually suggest two sessions per issue, back to back: one to understand it, the next to work through it.</p>
+        <p>Nothing has been created in Groundwork and nobody on your team has been contacted. If you would rather just get going, the software works on its own and most teams run it themselves.</p>
+        <p>Groundwork</p>
+      `,
+    });
+  }
+
   async sendVerificationEmail(email: string, firstName: string, token: string): Promise<void> {
     const url = `${this.frontendUrl}/verify-email?token=${token}`;
     await this.sendEmail({
@@ -135,7 +158,7 @@ export class EmailService {
       html: this.layout(
         `<p>Here is your Groundwork access code. It gives you ${sessionsGranted} session${sessionsGranted !== 1 ? 's' : ''} free of charge.</p>
          <p style="font-size:22px;font-weight:bold;letter-spacing:0.1em;background:#F5F3EF;border-radius:6px;padding:14px 20px;display:inline-block;">${code}</p>
-         <p>To use it: go to <a href="https://app.myground.work">app.myground.work</a>, create an account, set up a Ground, and enter this code when prompted. Your check-in stays private until the report is released.</p>
+         <p>To use it: go to <a href="https://app.myground.work">app.myground.work</a>, create an account, set up a check-in, and enter this code when prompted. Your check-in stays private until the report is released.</p>
          <p>Any questions, reply to this email.</p>
          <p style="color:#9B9590;font-size:12px;">The Groundwork team</p>`,
       ),
@@ -155,7 +178,7 @@ export class EmailService {
 
   // --- Ground / conversation lifecycle (see comms library, Part 3) ---
 
-  /** Participant added to a ground. They are NEVER added silently. */
+  /** Participant added to a check-in. They are NEVER added silently. */
   async sendParticipantInvite(email: string, founderName: string, groundLabel: string, token: string, note?: string, context?: DeliveryContext): Promise<{ devUrl?: string }> {
     const url = `${this.frontendUrl}/invite?token=${token}`;
     const noteHtml = note ? `<p style="border-left:3px solid #5DCAA5;padding:8px 14px;margin:20px 0;color:#4A4540;font-style:italic;">${note}</p>` : '';
@@ -175,7 +198,7 @@ export class EmailService {
     return { devUrl };
   }
 
-  /** Admin set up a ground and named someone to lead it. The lead decides when
+  /** Admin set up a check-in and named someone to lead it. The lead decides when
    * to confirm and begin - this is not a synchronized moment with the admin.
    * `url` is pre-resolved by the caller: a password-setup link for a brand new
    * user, or a direct link to the ground's confirm-lead screen for someone who
@@ -190,11 +213,11 @@ export class EmailService {
   async sendGroundApproved(email: string, firstName: string, groundLabel: string, url: string): Promise<void> {
     await this.sendEmail({
       to: email,
-      subject: `Your ground is approved: ${groundLabel}`,
+      subject: `Your check-in is approved: ${groundLabel}`,
       html: this.layout(
         `<p>Hi ${firstName},</p>
          <p>An admin in your organisation has approved <strong>${groundLabel}</strong>. You can invite the people involved now, and their check-ins can begin.</p>
-         <p><a href="${url}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Open the ground →</a></p>`,
+         <p><a href="${url}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Open the check-in →</a></p>`,
       ),
     });
   }
@@ -206,7 +229,7 @@ export class EmailService {
   async sendGroundDeclined(email: string, firstName: string, groundLabel: string, reason: string | null): Promise<void> {
     await this.sendEmail({
       to: email,
-      subject: `Your ground was not approved: ${groundLabel}`,
+      subject: `Your check-in was not approved: ${groundLabel}`,
       html: this.layout(
         `<p>Hi ${firstName},</p>
          <p>An admin in your organisation has not approved <strong>${groundLabel}</strong>, so it will not run and nobody has been invited to it.</p>
@@ -219,7 +242,7 @@ export class EmailService {
   async sendLeadInvite(email: string, adminName: string, groundLabel: string, url: string, context?: DeliveryContext): Promise<{ devUrl?: string }> {
     const devUrl = await this.sendEmail({
       to: email,
-      subject: `${adminName} asked you to lead a ground: ${groundLabel}`,
+      subject: `${adminName} asked you to lead a check-in: ${groundLabel}`,
       html: this.layout(
         `<p>Hi,</p>
          <p><strong>${adminName}</strong> set up <strong>${groundLabel}</strong> on Groundwork and named you to lead it.</p>
@@ -227,9 +250,9 @@ export class EmailService {
          <!--
            W8-6. The Context tab has document upload and context notes, and
            nothing anywhere told anybody it was there, so it went unused. One
-           sentence, in the email that gets opened before the ground does.
+           sentence, in the email that gets opened before the check-in does.
          -->
-         <p>The Context tab on the ground is where background goes - notes, and documents like a plan, a brief or a spreadsheet. What you upload is yours by default; mark it open to the ground and everybody works from it, and their check-ins will have read it too.</p>
+         <p>The Context tab on the check-in is where background goes - notes, and documents like a plan, a brief or a spreadsheet. What you upload is yours by default; mark it open to the check-in and everybody works from it, and their check-ins will have read it too.</p>
          <p><a href="${url}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Review and begin →</a></p>`,
       ),
     }, context ?? { kind: 'LEAD_INVITE' });
@@ -330,7 +353,7 @@ export class EmailService {
       html: this.layout(
         `<p>All accounts are in for <strong>${groundLabel}</strong> and the shared report has been generated.</p>
          <p>The report shows where accounts agree, where they differ, and what is still unresolved. Nobody's words are quoted - it draws on what was said without showing the raw text.</p>
-         <p>Open the ground to read and release the report to all parties.</p>
+         <p>Open the check-in to read and release the report to all parties.</p>
          <p><a href="${groundUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Read and release the report →</a></p>`,
       ),
     });
@@ -366,7 +389,7 @@ export class EmailService {
       html: this.layout(
         `<p><strong>${participantEmail}</strong> has completed their check-in on <strong>${groundLabel}</strong>. Their account is on record.</p>
          ${pendingNote}
-         <p><a href="${groundUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">View ground →</a></p>`,
+         <p><a href="${groundUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">View check-in →</a></p>`,
       ),
     });
   }
@@ -377,9 +400,9 @@ export class EmailService {
       to: email,
       subject: `"${groundLabel}" has stalled`,
       html: this.layout(
-        `<p>The ground <strong>${groundLabel}</strong> has reached the end of its timeline without a confirmed outcome.</p>
-         <p>Both records remain intact and accessible. If you want to continue, either party can reopen the conversation from the ground page.</p>
-         <p><a href="${groundUrl}">View ground</a></p>`,
+        `<p>The check-in <strong>${groundLabel}</strong> has reached the end of its timeline without a confirmed outcome.</p>
+         <p>Both records remain intact and accessible. If you want to continue, either party can reopen the conversation from the check-in page.</p>
+         <p><a href="${groundUrl}">View check-in</a></p>`,
       ),
     });
   }
@@ -392,7 +415,7 @@ export class EmailService {
       subject: 'A resolution has been proposed. Your confirmation is needed',
       html: this.layout(
         `<p><strong>${proposerLabel}</strong> has proposed the following outcome: <em>${endStateLabel}</em>.</p>
-         <p>The ground closes only when all active parties confirm the same outcome. Review the proposal and confirm, or counter-propose a different outcome.</p>
+         <p>The check-in closes only when all active parties confirm the same outcome. Review the proposal and confirm, or counter-propose a different outcome.</p>
          <p><a href="${groundUrl}">View and confirm</a></p>`,
       ),
     });
@@ -406,8 +429,8 @@ export class EmailService {
       subject: `"${groundLabel}" is now closed`,
       html: this.layout(
         `<p>All parties have confirmed. <strong>${groundLabel}</strong> has been closed with the agreed outcome: <em>${endStateLabel}</em>.</p>
-         <p>Your record is permanent and both parties retain access to everything that was on the ground.</p>
-         <p><a href="${groundUrl}">View the ground</a></p>`,
+         <p>Your record is permanent and both parties retain access to everything that was on the check-in.</p>
+         <p><a href="${groundUrl}">View the check-in</a></p>`,
       ),
     });
   }
@@ -419,7 +442,7 @@ export class EmailService {
       subject: `One question about "${groundLabel}"`,
       html: this.layout(
         `<p>Now that <strong>${groundLabel}</strong> has closed: did the process help you reach an outcome that felt fair and grounded in what was actually said?</p>
-         <p>Your answer takes 20 seconds and helps us make every future ground better.</p>
+         <p>Your answer takes 20 seconds and helps us make every future check-in better.</p>
          <p><a href="${feedbackUrl}">Share your view</a></p>`,
       ),
     });
@@ -437,14 +460,14 @@ export class EmailService {
       to: adminEmail,
       subject: 'Add a card to continue on Groundwork',
       html: this.layout(
-        `<p>A ground in your workspace (<strong>${orgName}</strong>) has used its free session.</p>
-         <p>Every ground on the free tier runs unlimited sessions and reports. Subscribe to open more than ten grounds - the record you have already built is safe and waiting either way.</p>
+        `<p>A check-in in your workspace (<strong>${orgName}</strong>) has used its free session.</p>
+         <p>Every check-in on the free tier runs unlimited sessions and reports. Subscribe to open more check-ins, or to add more people - the record you have already built is safe and waiting either way.</p>
          <p><a href="${billingUrl}">Add a card</a></p>`,
       ),
     });
   }
 
-  /** Nudge to the ground lead when a participant is blocked by billing. */
+  /** Nudge to the check-in lead when a participant is blocked by billing. */
   async sendParticipantBlockedNudge(adminEmail: string, groundLabel: string, participantEmail: string, groundUrl: string): Promise<void> {
     await this.sendEmail({
       to: adminEmail,
@@ -452,7 +475,7 @@ export class EmailService {
       html: this.layout(
         `<p><strong>${participantEmail}</strong> tried to check in on <strong>${groundLabel}</strong> but there are no sessions remaining.</p>
          <p>Resubscribe or apply an access code to unblock them. Their record and the report are safe in the meantime.</p>
-         <p><a href="${groundUrl}">Go to the ground</a></p>`,
+         <p><a href="${groundUrl}">Go to the check-in</a></p>`,
       ),
     });
   }
@@ -504,7 +527,7 @@ export class EmailService {
       subject: 'Your Groundwork organization subscription is active',
       html: this.layout(
         `<p>Thank you for supporting Groundwork.</p>
-         <p>Your organization is now on the <strong>${planLabel}</strong> plan. Unlimited Grounds and unlimited sessions are active for your team.</p>
+         <p>Your organization is now on the <strong>${planLabel}</strong> plan. Unlimited check-ins and unlimited sessions are active for your team.</p>
          <p>Your next billing date is ${renewal}. You can pause or cancel your subscription at any time from your billing page.</p>
          <p>Your payment helps us continue building a product that helps teams align, make better decisions, and solve problems together.</p>
          <p><a href="${this.frontendUrl}/billing">View your subscription</a></p>`,
@@ -520,7 +543,7 @@ export class EmailService {
       subject: 'Your Groundwork subscription has been cancelled',
       html: this.layout(
         `<p>Your <strong>${planLabel}</strong> subscription has been cancelled.</p>
-         <p>Your team keeps ten free grounds, each with unlimited sessions and reports. Every record and report you already have stays accessible.</p>
+         <p>Your team keeps ten free check-ins, each with unlimited sessions and reports. Every record and report you already have stays accessible.</p>
          <p>If you want to continue as a team, you can resubscribe or buy sessions at any time.</p>
          <p><a href="${this.frontendUrl}/billing">Go to billing</a></p>`,
       ),
@@ -567,21 +590,21 @@ export class EmailService {
       subject: `Free session added to ${groundLabel}`,
       html: this.layout(
         `<p>Your free session extension has been added to <strong>${groundLabel}</strong>.</p>
-         <p>Grounds on the free tier run unlimited sessions. Subscribe when your team needs more than ten grounds.</p>
-         <p><a href="${groundUrl}">Go to your ground</a></p>`,
+         <p>Check-ins on the free tier run unlimited sessions. Subscribe when your team needs more check-ins, or more people.</p>
+         <p><a href="${groundUrl}">Go to your check-in</a></p>`,
       ),
     });
   }
 
-  /** Sent when a ground's session balance reaches 1. */
+  /** Sent when a check-in's session balance reaches 1. */
   async sendApproachingSessionLimit(email: string, groundLabel: string, groundUrl: string): Promise<void> {
     await this.sendEmail({
       to: email,
       subject: `One session remaining on ${groundLabel}`,
       html: this.layout(
-        `<p>Your ground <strong>${groundLabel}</strong> has one session remaining.</p>
-         <p>Subscribe before your team's next check-in to keep this ground running.</p>
-         <p><a href="${groundUrl}">Go to your ground</a></p>`,
+        `<p>Your check-in <strong>${groundLabel}</strong> has one session remaining.</p>
+         <p>Subscribe before your team's next check-in to keep this check-in running.</p>
+         <p><a href="${groundUrl}">Go to your check-in</a></p>`,
       ),
     });
   }
@@ -613,8 +636,8 @@ export class EmailService {
       html: this.layout(
         `<p>Hi ${name},</p>
          <p>You have missed ${missedCount} check-in${missedCount !== 1 ? 's' : ''} in a row on <strong>${groundName}</strong>.</p>
-         <p>Your record is incomplete. The shared picture for this ground cannot reflect your side until you check in. Everything you write is private until both sides are in. It belongs to you, not to the org.</p>
-         <p>Sign in to Groundwork to add your version before the ground moves on without it.</p>`,
+         <p>Your record is incomplete. The shared picture for this check-in cannot reflect your side until you check in. Everything you write is private until both sides are in. It belongs to you, not to the org.</p>
+         <p>Sign in to Groundwork to add your version before the check-in moves on without it.</p>`,
       ),
     });
   }
@@ -661,7 +684,7 @@ export class EmailService {
   ): Promise<void> {
     const isCreateNudge = groundsCreated === 1 && daysRemaining === 14;
     const subject = isCreateNudge
-      ? `Your access code expires in ${daysRemaining} days - create another ground`
+      ? `Your access code expires in ${daysRemaining} days - create another check-in`
       : `Your access code expires in ${daysRemaining} day${daysRemaining !== 1 ? 's' : ''}`;
 
     const urgencyNote =
@@ -672,13 +695,13 @@ export class EmailService {
     const bodyHtml = isCreateNudge
       ? `<p>Hi ${firstName},</p>
          ${urgencyNote}
-         <p>You have used your contributor code (<strong>${code}</strong>) to create one ground so far. You still have time to create another ground with it before it expires.</p>
-         <p>Every ground you create is a record that belongs to the people involved - start another before the code runs out.</p>
-         <p><a href="${this.frontendUrl}/grounds/new">Create another ground</a></p>`
+         <p>You have used your contributor code (<strong>${code}</strong>) to create one check-in so far. You still have time to create another check-in with it before it expires.</p>
+         <p>Every check-in you create is a record that belongs to the people involved - start another before the code runs out.</p>
+         <p><a href="${this.frontendUrl}/check-ins/new">Create another check-in</a></p>`
       : `<p>Hi ${firstName},</p>
          ${urgencyNote}
-         <p>Your contributor code <strong>${code}</strong> has been used on ${groundsCreated} ground${groundsCreated !== 1 ? 's' : ''} so far.</p>
-         <p>Once it expires, the code can no longer be redeemed. Any grounds already created with it are unaffected - their records remain intact.</p>
+         <p>Your contributor code <strong>${code}</strong> has been used on ${groundsCreated} check-in${groundsCreated !== 1 ? 's' : ''} so far.</p>
+         <p>Once it expires, the code can no longer be redeemed. Any check-ins already created with it are unaffected - their records remain intact.</p>
          <p><a href="${this.frontendUrl}/billing">View your codes</a></p>`;
 
     await this.sendEmail({ to: email, subject, html: this.layout(bodyHtml) });
@@ -692,7 +715,7 @@ export class EmailService {
       html: this.layout(
         `<p>Hi ${name},</p>
          <p>Your Groundwork subscription for <strong>${orgName}</strong> is now active.</p>
-         <p>Ten grounds are free, each with unlimited sessions and reports. Your subscription lifts that cap - nobody is ever charged per session, and participants are never charged at all.</p>
+         <p>Ten check-ins are free, each with unlimited sessions and reports. Your subscription lifts that cap - nobody is ever charged per session, and participants are never charged at all.</p>
          <p>Your records are always yours, regardless of plan status.</p>`,
       ),
     });

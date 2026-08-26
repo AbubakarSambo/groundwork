@@ -6,7 +6,7 @@ import { join } from 'path'
  * PARTICIPANTS ARE NEVER CHARGED.
  *
  * Not a pricing preference - a product rule. A participant gives their account
- * and the organisation pays for the ground; the person answering the questions
+ * and the organisation pays for the check-in; the person answering the questions
  * is never the person at the till.
  *
  * Two leftovers from an abandoned model had crept onto their page:

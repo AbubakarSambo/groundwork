@@ -1,3 +1,15 @@
+/**
+ * READS COMMENTS ON PURPOSE - DO NOT ADD COMMENT-STRIPPING TO THIS FILE.
+ *
+ * Most source-assertion specs in this repo must strip comments before matching, because this
+ * codebase quotes code verbatim inside long explanatory comments and a guard that matches one is
+ * satisfied by prose while the code it protects is gone. Sixty-seven specs were changed for exactly
+ * that reason.
+ *
+ * This file is one of seven that are the OPPOSITE case: its job is to hold a comment to account -
+ * to fail when the prose starts describing behaviour the code no longer has. Stripping comments here
+ * removes the very thing under test.
+ */
 import { BadRequestException } from '@nestjs/common';
 import { GroundStatus } from '@prisma/client';
 import { readFileSync } from 'fs';

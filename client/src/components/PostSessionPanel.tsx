@@ -54,7 +54,7 @@ export function PostSessionPanel({ groundId, freeExtensionUsed, onDismiss }: Pro
               Add one more free session
             </div>
             <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6, marginBottom: 12 }}>
-              Not ready to pay yet? Keep using Groundwork until you are confident it is delivering value. Add another free session and continue your Ground.
+              Not ready to pay yet? Keep using Groundwork until you are confident it is delivering value. Add another free session and continue your Check-in.
             </div>
             <button
               onClick={() => claimFreeExtensionMut.mutate()}
@@ -76,7 +76,7 @@ export function PostSessionPanel({ groundId, freeExtensionUsed, onDismiss }: Pro
             Upgrade organisation
           </div>
           <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6, marginBottom: 12 }}>
-            Your team is getting value from Groundwork. Unlock unlimited Grounds and unlimited sessions for everyone in your organisation with one simple monthly subscription.
+            Your team is getting value from Groundwork. Unlock unlimited check-ins and unlimited sessions for everyone in your organisation with one simple monthly subscription.
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button

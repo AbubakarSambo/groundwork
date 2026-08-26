@@ -46,7 +46,7 @@ describe('what the page shows', () => {
     expect(CODE).toMatch(/loadMyData\.mutate\(\)/)
   })
 
-  it('counts what is held and names the grounds it came from', () => {
+  it('counts what is held and names the check-ins it came from', () => {
     expect(CODE).toMatch(/myData\.recordEntries\.length/)
     expect(CODE).toMatch(/myData\.checkIns\.length/)
     expect(CODE).toMatch(/myData\.grounds\.map/)
@@ -66,7 +66,7 @@ describe('what erase is described as doing', () => {
   it('and says the answers stay, because they do', () => {
     /**
      * THE PART THAT WOULD HAVE BEEN A LIE. `eraseAccount` anonymises the account and explicitly
-     * retains what was contributed to a ground, under the other party's claim on the shared
+     * retains what was contributed to a check-in, under the other party's claim on the shared
      * record. My first draft of this panel said it "removes your name and your answers".
      *
      * A privacy page that overstates what erasure does is worse than no privacy page: somebody

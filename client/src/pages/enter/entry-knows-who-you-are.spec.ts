@@ -37,15 +37,15 @@ describe('somebody who is already signed in', () => {
     expect(CODE).toMatch(/already signed in/)
   })
 
-  it('lands on the ground rather than back at a list', () => {
+  it('lands on the check-in rather than back at a list', () => {
     expect(CODE).toMatch(/navigate\(`\/grounds\/\$\{res\.groundId\}`, \{ replace: true \}\)/)
   })
 
-  it('and the rail is told the ground exists', () => {
+  it('and the rail is told the check-in exists', () => {
     /**
-     * GW-019: the grounds list is cached, and it is usually fetched before this commit creates the
+     * GW-019: the check-ins list is cached, and it is usually fetched before this commit creates the
      * first ground - so without this the rail said "No grounds yet" while the person was looking at
-     * the ground they had just made.
+     * the check-in they had just made.
      */
     expect(CODE).toMatch(/invalidateQueries\(\{ queryKey: \['grounds'\] \}\)/)
   })
@@ -59,6 +59,6 @@ describe('somebody who is already signed in', () => {
 describe('and somebody without an account still gets the email path', () => {
   it('the email box is still there for them', () => {
     expect(CODE).toMatch(/: !emailSent \? \(/)
-    expect(CODE).toMatch(/Save my ground →/)
+    expect(CODE).toMatch(/Save my check-in →/)
   })
 })

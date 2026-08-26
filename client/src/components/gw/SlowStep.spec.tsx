@@ -43,7 +43,7 @@ describe('the slow step', () => {
 })
 
 describe('both places that close a session use it', () => {
-  const read = (p: string) => readFileSync(join(__dirname, p), 'utf8')
+  const read = (p: string) => readFileSync(join(__dirname, p), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
   it('the signed-in finish, which used to say only Saving', () => {
     expect(read('../../pages/chat/ChatPage.tsx')).toContain('<SlowStep steps={CLOSING_STEPS}')

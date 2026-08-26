@@ -43,7 +43,18 @@ export interface CanCreateGroundResult {
   groundsUsed?: number
 }
 
-export const FREE_GROUND_LIMIT = 10
+/**
+ * The free limits are NOT constants here any more.
+ *
+ * `FREE_GROUND_LIMIT = 10` lived here while the API read the same number out of
+ * `platform_settings`, where a platform admin edits it. Five screens rendered this constant, so
+ * changing the limit in the admin panel changed what the API enforced and nothing the user read.
+ * Both limits now arrive on `GET /billing/pricing` as `free.groundLimit` and `free.memberLimit`.
+ *
+ * The defaults below are the pre-load fallback ONLY, the same treatment the prices already get,
+ * and they are pinned against the API's own defaults by a guard rather than typed twice.
+ */
+export const FALLBACK_FREE_LIMITS = { groundLimit: 10, memberLimit: 5 } as const
 
 export type SubscriptionPlan = 'STARTER' | 'SMALL_TEAM' | 'GROWTH' | 'BUSINESS' | 'SCALE' | 'ENTERPRISE'
 
@@ -70,10 +81,10 @@ export const PLAN_LABELS: Record<SubscriptionPlan, string> = {
  */
 export const FALLBACK_PLAN_PRICES_CENTS: Record<SubscriptionPlan, number | null> = {
   STARTER: 2500,
-  SMALL_TEAM: 5000,
-  GROWTH: 10000,
-  BUSINESS: 20000,
-  SCALE: 40000,
+  SMALL_TEAM: 9000,
+  GROWTH: 40000,
+  BUSINESS: 90000,
+  SCALE: 165000,
   ENTERPRISE: null,
 }
 
@@ -107,44 +118,59 @@ export const PLAN_PRICES: Record<SubscriptionPlan, string> = Object.fromEntries(
  * the source of truth for how it is DESCRIBED.
  */
 export const PLAN_FEATURES: Record<SubscriptionPlan, string[]> = {
-  STARTER: ['Unlimited Grounds', 'Unlimited sessions', 'Unlimited reports', 'Up to 5 people', 'Admin dashboard'],
-  SMALL_TEAM: ['Unlimited Grounds', 'Unlimited sessions', 'Unlimited reports', 'Up to 20 people', 'Admin dashboard'],
-  GROWTH: ['Unlimited Grounds', 'Unlimited sessions', 'Unlimited reports', 'Up to 100 people', 'Admin dashboard'],
-  BUSINESS: ['Unlimited Grounds', 'Unlimited sessions', 'Unlimited reports', 'Up to 250 people', 'Admin dashboard'],
-  SCALE: ['Unlimited Grounds', 'Unlimited sessions', 'Unlimited reports', 'Up to 1,000 people', 'Admin dashboard'],
-  ENTERPRISE: ['Unlimited Grounds', 'Unlimited sessions', 'Unlimited reports', 'Unlimited people', 'Dedicated account manager'],
+  STARTER: ['Unlimited check-ins', 'Unlimited sessions', 'Unlimited reports', 'Admin dashboard'],
+  SMALL_TEAM: ['Unlimited check-ins', 'Unlimited sessions', 'Unlimited reports', 'Admin dashboard'],
+  GROWTH: ['Unlimited check-ins', 'Unlimited sessions', 'Unlimited reports', 'Admin dashboard'],
+  BUSINESS: ['Unlimited check-ins', 'Unlimited sessions', 'Unlimited reports', 'Admin dashboard'],
+  SCALE: ['Unlimited check-ins', 'Unlimited sessions', 'Unlimited reports', 'Admin dashboard'],
+  ENTERPRISE: ['Unlimited check-ins', 'Unlimited sessions', 'Unlimited reports', 'Dedicated account manager'],
 }
 
-export const PLAN_MEMBER_CAPS: Record<SubscriptionPlan, string> = {
-  STARTER: 'Up to 5 people',
-  SMALL_TEAM: 'Up to 20 people',
-  GROWTH: 'Up to 100 people',
-  BUSINESS: 'Up to 250 people',
-  SCALE: 'Up to 1,000 people',
-  ENTERPRISE: 'Unlimited',
-}
-
-export const PLAN_MEMBER_LIMITS: Record<SubscriptionPlan, number | null> = {
-  STARTER: 5,
-  SMALL_TEAM: 20,
-  GROWTH: 100,
-  BUSINESS: 250,
-  SCALE: 1000,
-  ENTERPRISE: null,
+/**
+ * PLAN_MEMBER_CAPS and PLAN_MEMBER_LIMITS used to be here, hardcoded, alongside a third copy on
+ * the API and a fourth inside the plan labels. The caps are now `pricing_plans.memberCap`, and
+ * they arrive with the prices on `GET /billing/pricing`.
+ *
+ * There is deliberately no fallback for a cap. A price must never render blank, because a pricing
+ * page with no price is broken - but a seat count that is briefly absent is honest, and a stale
+ * fallback cap is exactly the bug this removes: "Up to 1,000 people" surviving a change to 500.
+ *
+ * `formatMemberCap` turns the live number into the words those maps used to hold.
+ */
+export function formatMemberCap(cap: number | null | undefined): string {
+  if (cap === null) return 'Unlimited'
+  if (cap === undefined) return ''
+  return `Up to ${cap.toLocaleString('en-US')} people`
 }
 
 export interface LivePricingRow {
   plan: SubscriptionPlan
   label: string
-  amountCents: number
+  /** Null for a contact-sales plan. Never render "$0" from this. */
+  amountCents: number | null
+  /** Null means unlimited. Undefined means it has not loaded yet. */
+  memberCap: number | null
   hasStripePrice: boolean
   updatedAt: string
 }
 
-/** "$25/mo" from cents. The one formatter: PLAN_PRICES below is built from it too. */
+export interface LivePricing {
+  plans: LivePricingRow[]
+  free: { groundLimit: number; memberLimit: number }
+}
+
+/**
+ * "$25/mo" and "$1,650/mo" from cents. The one formatter: PLAN_PRICES is built from it too.
+ *
+ * The thousands separator is not cosmetic. Scale went from $400 to $1,650, and this returned
+ * "$1650/mo" - the first four-figure price on any surface, so nothing had shown the gap before.
+ */
 export function formatMonthlyPrice(cents: number): string {
   const dollars = cents / 100
-  return `$${Number.isInteger(dollars) ? dollars : dollars.toFixed(2)}/mo`
+  const body = Number.isInteger(dollars)
+    ? dollars.toLocaleString('en-US')
+    : dollars.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  return `$${body}/mo`
 }
 
 export interface CodeShareCard {
@@ -162,7 +188,7 @@ export const billingApi = {
    * not a second source of truth: prefer this everywhere a real price is shown.
    */
   getPricing: () =>
-    apiClient.get<LivePricingRow[]>('/billing/pricing').then(r => r.data),
+    apiClient.get<LivePricing>('/billing/pricing').then(r => r.data),
 
   status: () =>
     apiClient.get<BillingStatus>('/billing/status').then(r => r.data),
@@ -191,8 +217,18 @@ export const billingApi = {
   applyContributorCode: (code: string) =>
     apiClient.post<{ ok: boolean; message: string }>('/billing/contributor-code', { code }).then(r => r.data),
 
-  purchaseSession: (groundId: string, quantity = 1) =>
-    apiClient.post<{ checkoutUrl: string }>('/billing/purchase-session', { groundId, quantity }).then(r => r.data),
+  /**
+   * `purchaseSession` USED TO SIT HERE, AND THE SERVER ALREADY SAYS IT IS DEAD. W-UX-C.
+   *
+   * Its own `@ApiOperation` reads: "LEGACY - per-session purchase. Sessions are not sold; no
+   * user-facing surface calls this. Retained only because live Stripe records may reference it."
+   *
+   * So the route is deliberately kept and the CLIENT method was just the leftover - and it was the
+   * thing the removed "Unlock insights" upsells used to call, which is how a per-session checkout
+   * came to be offered for a product that has no per-session billing.
+   *
+   * The server route stays, per the standing rule and its own stated reason.
+   */
 
   generateContributorCode: (sessionsGranted: number, note?: string) =>
     apiClient.post<{ code: string }>('/billing/contributor-codes', { sessionsGranted, note }).then(r => r.data),
@@ -214,6 +250,16 @@ export const billingApi = {
       params: accessCode ? { code: accessCode } : undefined,
     }).then(r => r.data),
 
-  getCodeShareCard: (codeId: string) =>
-    apiClient.get<CodeShareCard>(`/billing/contributor-codes/${codeId}/share-card`).then(r => r.data),
+  /**
+   * `getCodeShareCard` USED TO SIT HERE, AND IT WAS THE SAME FUNCTION TWICE. W-UX-C.
+   *
+   * It pointed at `/billing/code-share/:id`, a route that never existed, which #21 found. The fix
+   * then was to repoint it at the real share-card route - the one `getContributorCodeShareCard`
+   * fifteen lines above was already calling correctly - and to write a test locking BOTH functions
+   * to that route.
+   *
+   * So the outcome was two identical methods for one endpoint, held together by a guard. That is the
+   * shape this whole pass keeps finding: two places that must agree, each defensible alone. Nothing
+   * ever called this one, so it is gone and the guard now checks there is only one.
+   */
 }

@@ -13,10 +13,10 @@ import { describe, it, expect } from 'vitest'
  * This pins the rule generally: whatever a page navigates to after sign-in must
  * be a route that actually exists.
  */
-const read = (p: string) => readFileSync(join(__dirname, p), 'utf8')
+const read = (p: string) => readFileSync(join(__dirname, p), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
 describe('GW-AUTH-REDIRECT: post-sign-in destination must exist', () => {
-  const app = readFileSync(join(__dirname, '../../App.tsx'), 'utf8')
+  const app = readFileSync(join(__dirname, '../../App.tsx'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
   const definedPaths = new Set(
     [...app.matchAll(/<Route\s+path="([^"]+)"/g)].map((m) => m[1]),
   )

@@ -75,7 +75,7 @@ function stepContent(step: number, mode: string, ctx: Ctx): string {
     case 6:
       return `Each person you invite gets their own private link. They submit their account independently and cannot see what you or anyone else wrote. You cannot see what they wrote. When all accounts are in, everyone sees the report at the same time.\n\nNo one shapes another person's story. Type okay or proceed when you are ready.`
     case 7:
-      return `Here is what happens when someone you invite opens their link.\n\nThey will see your name and the name of this ground. They will be told that their account is completely private and that no one can see what they write until all parties have submitted and the report is released. They will go through their own short onboarding conversation before they answer any questions. They will be asked what they want the record to show from their side before the first question is asked.\n\nThey are not being ambushed. They are being given the same process you are going through right now. Type okay or proceed when you are ready.`
+      return `Here is what happens when someone you invite opens their link.\n\nThey will see your name and the name of this check-in. They will be told that their account is completely private and that no one can see what they write until all parties have submitted and the report is released. They will go through their own short onboarding conversation before they answer any questions. They will be asked what they want the record to show from their side before the first question is asked.\n\nThey are not being ambushed. They are being given the same process you are going through right now. Type okay or proceed when you are ready.`
     case 8:
       return `When all parties have submitted their accounts the report is generated. It shows where everyone agrees, where they differ, and what the gaps between the accounts actually are. Documents you attached are cross-referenced against what everyone said. Performance records, emails, and agreements are referenced where they are relevant.\n\nNo one decides who is right. The record shows all sides of the truth in the same place, checked against the evidence all parties provided.\n\nYou can use it to have a conversation that is grounded in something real. Take it into a performance review. Use it before a mediation. Show it to a lawyer or a board. Use it to reset a relationship before it breaks. Or just have it there so no one can rewrite history later.\n\nThe report belongs to all parties. Nothing leaves this system without all parties agreeing to it. Type okay or proceed when you are ready.`
     case 9:
@@ -85,7 +85,7 @@ function stepContent(step: number, mode: string, ctx: Ctx): string {
     case 11:
       return `How often should everyone check in?\n\nIf things are moving fast and the situation is changing week to week, every week. If you need regular check-ins but there is no immediate urgency, every two weeks. If this is a slow-moving situation or a long-term record, once a month. If the situation is unpredictable and you need flexibility, at key moments only.`
     case 12:
-      return `What do you need this ground to produce?`
+      return `What do you need this check-in to produce?`
     case 13: {
       const summary = ctx.timeframe === 'One session only'
         ? `Got it. You are building a one-session record.`

@@ -28,7 +28,7 @@ import { join } from 'path';
  * exactly the change most likely to cross it.
  */
 
-const src = (p: string) => readFileSync(join(__dirname, '..', '..', '..', p), 'utf8');
+const src = (p: string) => readFileSync(join(__dirname, '..', '..', '..', p), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 const SCHEMA = src('src/modules/reports/reports.service.ts');
 
 /**

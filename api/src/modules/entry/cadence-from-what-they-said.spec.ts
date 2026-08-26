@@ -1,3 +1,15 @@
+/**
+ * READS COMMENTS ON PURPOSE - DO NOT ADD COMMENT-STRIPPING TO THIS FILE.
+ *
+ * Most source-assertion specs in this repo must strip comments before matching, because this
+ * codebase quotes code verbatim inside long explanatory comments and a guard that matches one is
+ * satisfied by prose while the code it protects is gone. Sixty-seven specs were changed for exactly
+ * that reason.
+ *
+ * This file is one of seven that are the OPPOSITE case: its job is to hold a comment to account -
+ * to fail when the prose starts describing behaviour the code no longer has. Stripping comments here
+ * removes the very thing under test.
+ */
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
@@ -61,7 +73,7 @@ describe('it never invents one', () => {
   it('says so, in the prompt, with the reason', () => {
     // A guessed cadence sets up the wrong ground and nobody can tell.
     expect(EXTRACT).toMatch(/Never guess a cadence or a duration/);
-    expect(EXTRACT).toMatch(/a wrong number here silently sets up the wrong ground/);
+    expect(EXTRACT).toMatch(/a wrong number here silently sets up the wrong check-in/);
   });
 
   it('tells the model to omit rather than fill in', () => {

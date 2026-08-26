@@ -31,44 +31,101 @@ export interface GroundTab {
 }
 
 export interface TabContext {
-  /** Whoever runs the ground sees the lead's content behind the shared labels. */
-  isLead: boolean
+  /**
+   * `isLead` used to live here and decided one thing: whether Overview appeared. Overview is gone,
+   * so it decided nothing, and a field nobody reads is a promise this shape does not keep - the same
+   * reason a `caution` branch was removed from the situation cards rather than left in place.
+   *
+   * Every tab is now the same list for both roles. What differs is what is INSIDE them, which is the
+   * page's business and not this function's.
+   */
   /** `CONTEXT_ENABLED`. Off, the tab is documents and nothing else. */
   contextEnabled: boolean
-  /** The server decides whether this ground has a board; the client keeps no second copy. */
-  hasBoard: boolean
+  /**
+   * `hasBoard` used to live here and decided whether a Team board TAB appeared. The board is opened
+   * from Report now, so this function has no use for it and a field nobody reads is a promise the
+   * shape does not keep. The page that offers the board still asks the server the same question.
+   */
 }
 
 /**
  * The canonical list. Both views call this and render what comes back, so a tab cannot move on one
  * page without moving on the other.
  */
-export function groundTabs({ isLead, contextEnabled, hasBoard }: TabContext): GroundTab[] {
+export function groundTabs({ contextEnabled }: TabContext): GroundTab[] {
   const tabs: GroundTab[] = [
     /** The conversation. "Check-in" rather than "Chat" because that is what the product calls it everywhere else. */
     { key: 'chat', label: 'Check-in' },
     { key: 'report', label: 'Report' },
     /**
-     * One tab, two contents. A lead gets every party's sessions and where each has got to; a party
-     * gets their own record. "Record" is the word that is true of both, where "Sessions" was only
-     * true for the lead and "My record" only for a party.
+     * "REPORT" AND "RECORD", SIX PIXELS APART. W-UX-6.
+     *
+     * The audit's line: "Two tabs called Report and Record. Nobody can tell which is which." Both
+     * are nouns for a written thing about the same check-in, they differ by one letter in the middle,
+     * and they sat next to each other.
+     *
+     * NOT MERGED, because they do not hold the same thing: Report is the one synthesised document
+     * across every account, Record is the run of sessions behind it. Merging would lose the
+     * distinction the product is built on. So the fix is the NAME.
+     *
+     * "Sessions" is that name. It is already the product's word for the thing inside a check-in - a
+     * separate guard enforces that the two words stay distinct - and it is what this tab lists,
+     * whoever is looking: a lead sees every party's sessions and where each has got to, a party sees
+     * their own. It was rejected once for being "only true for the lead", which was true when a
+     * party's tab was called "My record"; both now list sessions, so it is true of both.
      */
-    { key: 'record', label: 'Record' },
+    { key: 'record', label: 'Sessions' },
     { key: 'context', label: contextEnabled ? 'Context' : 'Documents' },
   ]
-  if (hasBoard) tabs.push({ key: 'board', label: 'Team board' })
   /**
-   * The lead's read across the whole ground. It has no counterpart for a party - there is nothing to
-   * summarise across accounts that a party is allowed to see - so it is the one tab that appears for
-   * one role only, and it goes late rather than displacing anything shared.
+   * THE BOARD IS NOT A TAB, BECAUSE IT DOES NOT STAY ON THE PAGE.
+   *
+   * It sat in this row and navigated away - you left the check-in to look at part of the check-in, and
+   * landed on a full-screen surface with its own dark header and its own back-link, because it does
+   * not know it is a tab. Every other entry here changes what is below the row; this one changed the
+   * page.
+   *
+   * It is now opened from the foot of Report, which is where somebody is when they want it: the board
+   * is the shared picture you talk over once you have read what the accounts said.
+   *
+   * NOT RENDERED INSIDE A TAB. It is a wide, dense, dark canvas and squeezing it into the content
+   * column is what made it look broken. It keeps the whole window; only the way in moved.
    */
-  if (isLead) tabs.push({ key: 'overview', label: 'Overview' })
+  /**
+   * OVERVIEW IS GONE, AND NOTHING WENT WITH IT.
+   *
+   * It held five unrelated things whose only common property was having nowhere else to live: three
+   * stat tiles, the resolution decision, a billing line, a third copy of the brief, and a participants
+   * list duplicating Sessions. Nothing on it was wrong. Every part of it belonged somewhere else,
+   * which is what made it the one to remove.
+   *
+   * Where each part went:
+   *   the stats            -> the page header, which already carries the state
+   *   the resolution       -> the foot of Report, because deciding follows reading
+   *   the participants     -> Sessions, because who is in it and who has answered are one question
+   *   the brief            -> Check-in only, where it was already shown
+   *   the billing line     -> Billing, where the subscription lives
+   *   "session N is ready" -> dropped: the Check-in tab already opens with that exact offer
+   *
+   * The worst of it was the resolution decision - the single most consequential control in the
+   * product, sat on the tab least likely to be opened, between a stat row and a billing badge.
+   */
   /**
    * "Ground settings", not "Settings": `/settings` is the account, and one word for both meant a
    * person looking for their notification preferences opened a ground, and a person looking for this
    * left the ground entirely. W13-9.
    */
-  tabs.push({ key: 'settings', label: 'Ground settings' })
+  /**
+   * "SETUP", NOT "SETTINGS". Both artifacts call it Setup, and the reason is the left rail: /settings
+   * is the account's own, so one word for both sent people to the wrong page in both directions -
+   * somebody looking for their notification preferences opened a check-in, and somebody looking for
+   * this left the check-in entirely. "Check-in settings" fixed the collision by getting longer, which
+   * is a different fix from getting clearer.
+   *
+   * Setup is also what the tab now holds: how the check-in RUNS. No target is set here any more -
+   * expectations come out of the lead's own conversation and are published to Context.
+   */
+  tabs.push({ key: 'settings', label: 'Setup' })
   return tabs
 }
 

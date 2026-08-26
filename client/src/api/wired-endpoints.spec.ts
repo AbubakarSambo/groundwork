@@ -23,7 +23,7 @@ import { join } from 'path'
  * not silently revert is that something calls each of these.
  */
 
-const read = (p: string) => readFileSync(join(__dirname, '..', p), 'utf8')
+const read = (p: string) => readFileSync(join(__dirname, '..', p), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
 const GROUNDS_API = read('api/grounds.ts')
 const CONVERSATION_API = read('api/conversation.ts')
@@ -79,7 +79,7 @@ describe('the record the report page promises is portable', () => {
 
 describe("the caller's own check-in status", () => {
   it('is called, and cannot raise a toast on the normal 403', () => {
-    // A ground you can see but are not a party to answers 403 here. That is a
+    // A check-in you can see but are not a party to answers 403 here. That is a
     // state, not an error.
     expect(GROUNDS_API).toContain('/my-checkin-status')
     expect(GROUNDS_API).toMatch(/skipForbiddenToast: true/)
@@ -101,7 +101,7 @@ describe('did this feel fair - the only outcome signal there is', () => {
     expect(FEEDBACK_API).toContain('/outcome-feedback`')
   })
 
-  it('is asked only once the ground has closed', () => {
+  it('is asked only once the check-in has closed', () => {
     // Asking mid-ground asks someone to rate a conversation they are still in,
     // and implies the process has ended when it has not.
     expect(REPORT_PAGE).toMatch(/if \(!closed\) return null/)
@@ -127,7 +127,13 @@ describe('did this feel fair - the only outcome signal there is', () => {
 
 describe('what was agreed at the start', () => {
   it('the board renders the section it has always listed', () => {
-    expect(BOARD_PAGE).toMatch(/has\('startingState'\) && b\.startingState/)
+    /**
+     * The condition moved into `shown` (W-UX-7: a zone must not render a heading over nothing), so
+     * this asserts the section is still WIRED rather than pinning the shape of the expression that
+     * wires it. `shown.startingState` is defined as `has('startingState') && !!b.startingState`.
+     */
+    expect(BOARD_PAGE).toMatch(/startingState: has\('startingState'\) && !!b\.startingState/)
+    expect(BOARD_PAGE).toMatch(/shown\.startingState && b\.startingState/)
     expect(BOARD_PAGE).toMatch(/What was agreed at the start/)
   })
 })

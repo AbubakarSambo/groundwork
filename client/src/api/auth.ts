@@ -41,8 +41,16 @@ export const authApi = {
     orgName?: string; orgSlug?: string; companyStage?: string;
   }) => apiClient.patch<User>('/auth/me', body).then(r => r.data),
 
-  inviteUser: (body: { firstName: string; lastName: string; email: string }) =>
-    apiClient.post<User>('/users', body).then(r => r.data),
+  /**
+   * `inviteUser` USED TO SIT HERE - THE SECOND OF TWO WAYS TO ADD A COLLEAGUE. W-UX-C.
+   *
+   * It posted to `POST /users`, which CREATES the account directly from a name and an address. The
+   * one the product actually uses is `teamInvite` (`POST /auth/team-invite`), which emails a link and
+   * lets the person set up their own account - and that is the better of the two on consent grounds,
+   * not just on usage: nobody should have a Groundwork account made for them without being asked.
+   *
+   * Nothing has ever called this one. The server route stays.
+   */
 
   // draft = the server-side copy of the anonymous session (transcript +
   // commit metadata), written the moment the email is given so the commit no

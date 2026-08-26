@@ -20,7 +20,7 @@ import { join } from 'path'
  * the ORDER of three blocks and the absence of a fourth thing - neither of which
  * a DOM query distinguishes from any other page of text.
  */
-const SRC = readFileSync(join(__dirname, 'InvitePage.tsx'), 'utf8')
+const SRC = readFileSync(join(__dirname, 'InvitePage.tsx'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
 describe('the three questions, in the order somebody has them', () => {
   it('says why you, first', () => {

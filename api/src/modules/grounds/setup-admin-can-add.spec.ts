@@ -27,7 +27,7 @@ import { join } from 'path';
  * organisation's ground however the caller is related to it.
  */
 
-const SRC = readFileSync(join(__dirname, 'grounds.service.ts'), 'utf8');
+const SRC = readFileSync(join(__dirname, 'grounds.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
 /** The addParticipant guard, so assertions cannot drift to another method. */
 const GUARD = (() => {
@@ -54,7 +54,7 @@ describe('who may add a participant', () => {
   it('names both permitted roles in the error, so a refusal is diagnosable', () => {
     // "Only the initiator can add a participant" told an admin nothing about why
     // she, the creator, was being refused.
-    expect(GUARD).toMatch(/Only the lead or the admin who set this ground up/);
+    expect(GUARD).toMatch(/Only the lead or the admin who set this check-in up/);
   });
 
   it('keeps the organisation scope that does the real security work', () => {

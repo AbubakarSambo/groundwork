@@ -68,15 +68,66 @@ export async function sweepUnverifiedAccounts(
     // The org goes too, but only if this person was its only member and it
     // never held a ground. A shared org that happens to contain one stale
     // invite is somebody else's live workspace.
-    const [siblingUsers, orgGrounds] = await Promise.all([
-      prisma.user.count({ where: { organizationId: user.organizationId, id: { not: user.id } } }),
-      prisma.ground.count({ where: { organizationId: user.organizationId } }),
-    ]);
+    /**
+     * WRAPPED, BECAUSE THIS IS THE ONLY IRREVERSIBLE PATH IN THE CODEBASE.
+     *
+     * If any of these reads throws - a dropped connection, a timeout mid-sweep - the safe answer is
+     * "do not delete", not "carry on with what we managed to fetch". An unhandled rejection here
+     * would abort the whole nightly run, which is survivable; silently deleting an org because the
+     * billing count failed is not.
+     */
+    let siblingUsers = 1, orgGrounds = 1, orgBillingEvents = 1;
+    let org: { stripeCustomerId: string | null; subscriptionStatus: string | null; subscriptionStripeId: string | null; careFeeSubscriptionId: string | null } | null = null;
+    let orgChecksSucceeded = false;
+    try {
+      [siblingUsers, orgGrounds, orgBillingEvents, org] = await Promise.all([
+        prisma.user.count({ where: { organizationId: user.organizationId, id: { not: user.id } } }),
+        prisma.ground.count({ where: { organizationId: user.organizationId } }),
+      /**
+       * AND HAS THIS ORGANISATION EVER BEEN CHARGED, which this never asked.
+       *
+       * The predicate above checks six traces of a person and then the ground count, and consulted
+       * nothing financial. `BillingEvent.organization` is `onDelete: Cascade`, so deleting the org
+       * takes its whole charge ledger with it, and a locally held Stripe customer id is orphaned
+       * rather than cancelled. This is the only path in the codebase that destroys data
+       * irreversibly, and the one class of data it ignored is the one that cannot be rebuilt.
+       *
+       * The old safety argument was "a subscriber would have to be verified". That is an assumption
+       * the code does not enforce - signup provisions an ADMIN before email verification - so it is
+       * now checked rather than assumed.
+       */
+      prisma.billingEvent.count({ where: { organizationId: user.organizationId } }),
+      prisma.organization.findUnique({
+        where: { id: user.organizationId },
+        select: {
+          stripeCustomerId: true,
+          subscriptionStatus: true,
+          subscriptionStripeId: true,
+          careFeeSubscriptionId: true,
+        },
+      }),
+      ]);
+      orgChecksSucceeded = true;
+    } catch (err) {
+      /** Left as-is: the initialised values above are all non-zero, so nothing is deleted. */
+      orgChecksSucceeded = false;
+    }
+
+    /**
+     * Any financial trace at all disqualifies, including a CANCELLED subscription: the record of what
+     * somebody was once charged is exactly what you need when they query a charge months later.
+     */
+    const hasMoneyTrace =
+      orgBillingEvents > 0 ||
+      !!org?.stripeCustomerId ||
+      !!org?.subscriptionStatus ||
+      !!org?.subscriptionStripeId ||
+      !!org?.careFeeSubscriptionId;
 
     await prisma.user.delete({ where: { id: user.id } });
     result.usersDeleted += 1;
 
-    if (siblingUsers === 0 && orgGrounds === 0) {
+    if (orgChecksSucceeded && siblingUsers === 0 && orgGrounds === 0 && !hasMoneyTrace) {
       await prisma.organization.delete({ where: { id: user.organizationId } });
       result.orgsDeleted += 1;
     }

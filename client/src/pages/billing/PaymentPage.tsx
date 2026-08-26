@@ -56,7 +56,7 @@ export function PaymentPage() {
         </div>
 
         <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-dark)', marginBottom: 4 }}>
-          {ground?.isFreeGround ? 'This ground' : 'Add sessions to this ground'}
+          {ground?.isFreeGround ? 'This check-in' : 'Add sessions to this check-in'}
         </div>
         {groundName && (
           <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 20 }}>{groundName}</div>
@@ -68,7 +68,7 @@ export function PaymentPage() {
         ) : ground?.isFreeGround ? (
           <div style={{ background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b-soft)', borderRadius: 10, padding: '14px 16px' }}>
             <div style={{ fontSize: 13, color: 'var(--gw-green-t)', lineHeight: 1.6 }}>
-              <strong>This ground has unlimited free sessions.</strong> There is nothing to purchase here - just continue from the ground page.
+              <strong>This check-in has unlimited free sessions.</strong> There is nothing to purchase here - just continue from the check-in page.
             </div>
           </div>
         ) : (
@@ -80,8 +80,8 @@ export function PaymentPage() {
                 grants access and costs nobody anything. */}
             <div style={{ background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b-soft)', borderRadius: 10, padding: '12px 16px', marginBottom: 14 }}>
               <div style={{ fontSize: 13, color: 'var(--gw-green-t)', lineHeight: 1.6 }}>
-                <strong>Sessions are not charged for.</strong> Every ground on the free tier runs
-                unlimited sessions and reports; a subscription lifts the ten-ground cap.
+                <strong>Sessions are not charged for.</strong> Every check-in on the free tier runs
+                unlimited sessions and reports; a subscription lifts the ten check-in cap.
               </div>
             </div>
           </>

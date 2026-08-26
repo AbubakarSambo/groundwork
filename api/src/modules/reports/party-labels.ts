@@ -28,20 +28,48 @@ export function labelsForParties(parties: LabelParty[]): Map<string, string> {
   const labelById = new Map<string, string>();
   let participantIdx = 0;
 
-  // Count how many non-initiators share each role, so we can disambiguate
-  // same-role people (e.g. six "Field officer"s become "Field officer A/B/...").
+  /**
+   * Count how many parties share each role, so same-role people can be told apart
+   * (e.g. six "Field officer"s become "Field officer A/B/...").
+   *
+   * THE INITIATOR IS COUNTED HERE TOO, AND THAT IS THE FIX.
+   *
+   * This used to count non-initiators only, while the initiator's label was taken
+   * raw from their own role a few lines below with no disambiguation at all. So an
+   * initiator whose remit matched a participant's role - "Managing the contract" on
+   * both, entirely ordinary - produced the SAME label for two different people.
+   *
+   * That is not cosmetic. `own-reads-only.ts` keeps per-person rows by
+   * `row.label === viewerLabel`, so two parties sharing a label means the filter
+   * hands one of them the other's private quality read: the exact disclosure that
+   * file exists to prevent, arriving through the labelling rule rather than through
+   * the filter.
+   *
+   * Note the asymmetry that made it invisible: a label that DRIFTS fails safe,
+   * because an allow-list filter simply stops matching and the viewer loses their
+   * own row. A label that COLLIDES fails open. Only the second is a leak, which is
+   * why the invariant at the end of this function checks uniqueness rather than
+   * checking for names.
+   */
   const roleCounts = new Map<string, number>();
   for (const p of parties) {
-    if (p.partyType !== PartyType.INITIATOR) {
-      const role = p.roleAsDescribed?.trim();
-      if (role) roleCounts.set(role.toLowerCase(), (roleCounts.get(role.toLowerCase()) ?? 0) + 1);
-    }
+    const role = p.roleAsDescribed?.trim();
+    if (role) roleCounts.set(role.toLowerCase(), (roleCounts.get(role.toLowerCase()) ?? 0) + 1);
   }
 
   const roleSeen = new Map<string, number>();
   for (const p of parties) {
     if (p.partyType === PartyType.INITIATOR) {
-      labelById.set(p.id, p.roleAsDescribed?.trim() || 'the initiator');
+      const role = p.roleAsDescribed?.trim();
+      if (role && (roleCounts.get(role.toLowerCase()) ?? 0) > 1) {
+        /** Shared with somebody else, so it has to be distinguished like any other. */
+        const n = roleSeen.get(role.toLowerCase()) ?? 0;
+        roleSeen.set(role.toLowerCase(), n + 1);
+        labelById.set(p.id, `${role} ${String.fromCharCode(65 + n)}`);
+      } else {
+        /** Unshared roles keep their exact former label, so stored reports do not drift. */
+        labelById.set(p.id, role || 'the initiator');
+      }
     } else {
       const role = p.roleAsDescribed?.trim();
       if (role) {
@@ -57,6 +85,29 @@ export function labelsForParties(parties: LabelParty[]): Map<string, string> {
         labelById.set(p.id, `participant ${letter}`);
       }
     }
+  }
+
+  /**
+   * FAIL CLOSED ON A COLLISION RATHER THAN RETURNING ONE.
+   *
+   * Everything above is designed to make labels unique, and this asserts that it
+   * actually did. If two parties ever share a label again - a new party type, a new
+   * naming branch, a role containing the disambiguating suffix already - the read
+   * path must not silently serve one person another's rows. Throwing loses the
+   * report for that ground until it is fixed, which is the cheaper failure.
+   */
+  const seen = new Map<string, string>();
+  for (const [id, label] of labelById) {
+    const key = label.toLowerCase();
+    const prior = seen.get(key);
+    if (prior) {
+      throw new Error(
+        `Party label collision on this ground: "${label}" resolves to both ${prior} and ${id}. ` +
+          'Per-person report rows are filtered by label, so a shared label would disclose one ' +
+          "party's private read to another.",
+      );
+    }
+    seen.set(key, id);
   }
 
   return labelById;
@@ -150,8 +201,80 @@ export function namesVisibleTo(
  * "The initiator" at the start of a sentence and "the initiator" mid-sentence,
  * and a label that only half-resolves reads worse than one that never does.
  */
-export function withNames(text: string, visible: Map<string, string>, allLabels?: Iterable<string>): string {
+/**
+ * The label belonging to the person reading, so the report can address them directly.
+ *
+ * `namesVisibleTo` already computes `isSelf` and then throws it away, mapping the reader's own
+ * label to their own name like anybody else's. So a person opened their private report and read
+ * "Hafsah Jumare described their role as building a new MVP" - about themselves, in the third
+ * person, with a pronoun that is not even theirs. Nothing was broken; the reader was simply never
+ * distinguished from the people being described to them.
+ */
+export function viewerLabelOf(
+  viewerParticipantId: string | null | undefined,
+  parties: LabelParty[],
+): string | null {
+  if (!viewerParticipantId) return null;
+  return labelsForParties(parties).get(viewerParticipantId) ?? null;
+}
+
+export function withNames(
+  text: string,
+  visible: Map<string, string>,
+  allLabels?: Iterable<string>,
+  opts?: { viewerLabel?: string | null },
+): string {
   if (!text) return text;
+
+  /**
+   * SECOND PERSON FOR THE READER, BEFORE ANY NAME GOES BACK.
+   *
+   * Runs first so the viewer's label is spent on "you" and cannot then be matched by the name
+   * loop below. Possessive before bare, or "the sales lead's account" becomes "you's account".
+   *
+   * THIS IS THE ONLY PLACE THIS CAN BE FIXED, which is worth stating because the obvious answer
+   * is wrong. "Tell the model to write in second person" cannot work: ONE report is generated in
+   * labels and then rendered per reader, each with their own name substitutions. At generation
+   * time there is no reader to address. So the grammar has to be handled here or not at all.
+   */
+  const viewerLabel = opts?.viewerLabel?.trim();
+  if (viewerLabel) {
+    const esc = viewerLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    text = text
+      .replace(new RegExp(`\\bthe ${esc}'s\\b`, 'gi'), 'your')
+      .replace(new RegExp(`\\b${esc}'s\\b`, 'gi'), 'your')
+      .replace(new RegExp(`\\bthe ${esc}\\b`, 'gi'), 'you')
+      .replace(new RegExp(`\\b${esc}\\b`, 'gi'), 'you')
+      /**
+       * AND THE PRONOUN THAT FOLLOWS, NARROWLY.
+       *
+       * The model writes about every party in the third person, so a label swapped for "you"
+       * leaves the pronoun behind: the live example was "Hafsah Jumare described their role",
+       * which becomes "you described their role" - fixing the name and keeping the wrongness.
+       *
+       * AN EXPLICIT VERB LIST, and it started as `\w+ed` which was not narrow at all - almost
+       * every past-tense verb ends in -ed, so the rule fired on nearly anything. A bite-check
+       * broadening it to any word changed no test result, which is how the overstatement showed up.
+       *
+       * These are verbs of ACCOUNTING - giving your version of something. After one of them,
+       * "their" can only be the speaker's own. After an ordinary verb it usually is not:
+       * "you emailed their manager" is about somebody else's manager and is already correct.
+       */
+      .replace(
+        /\byou (described|said|stated|gave|reported|characterised|characterized|framed|put|holds|held|has|have) their\b/gi,
+        (_m, verb) => `you ${verb} your`,
+      );
+
+    /**
+     * AND A SENTENCE STILL STARTS WITH A CAPITAL.
+     *
+     * "The sales lead described..." becomes "you described..." because the label was lowercase
+     * mid-phrase and the replacement inherits nothing about position. Found by a test asserting
+     * the whole sentence rather than just that the name was gone - checking only for the absence
+     * of "Hafsah" would have passed on a sentence beginning with a lowercase letter.
+     */
+    text = text.replace(/(^|[.!?]\s+|\n\s*)(you|your)\b/g, (_m, lead, word) => `${lead}${word[0].toUpperCase()}${word.slice(1)}`);
+  }
   let out = text;
   const labels = [...visible.keys()].sort((a, b) => b.length - a.length);
   for (const label of labels) {

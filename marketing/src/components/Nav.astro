@@ -72,7 +72,7 @@ const LINKS = [
   </div>
   <div class="gw-nav-ctas" data-signed-in hidden>
     <a class="gw-btn-ghost" href={`${APP_URL}/signout`}>Sign out</a>
-    <a class="gw-btn-solid" href={`${APP_URL}/`}>Go to your grounds</a>
+    <a class="gw-btn-solid" href={`${APP_URL}/`}>Go to your check-ins</a>
   </div>
 </nav>
 
@@ -192,7 +192,27 @@ const LINKS = [
       flex-basis: 100%;
       flex-wrap: wrap;
       gap: 0 2px;
-      margin-left: -9px; /* the first link's own padding, so it lines up with the wordmark */
+      margin-left: -7px; /* the first link's own padding, so it lines up with the wordmark */
+    }
+
+    /*
+     * TOUCH TARGETS, MEASURED AT 375 RATHER THAN GUESSED.
+     *
+     * The links were 29px tall, the wordmark 18px, the buttons 31px. A 44px minimum on
+     * all of them pushed the five links onto a THIRD row and took the bar to 197px of an
+     * 812px screen, which trades one usability problem for a worse one. So the links get
+     * 40px and lose two pixels of padding, which fits all five on one row; the buttons and
+     * the wordmark, being the two things a first-time visitor reaches for, get the full 44.
+     */
+    .gw-nav-brand { min-height: 44px; }
+    .gw-btn-ghost,
+    .gw-btn-solid { min-height: 44px; display: inline-flex; align-items: center; }
+    .gw-nav-link {
+      min-height: 40px;
+      display: inline-flex;
+      align-items: center;
+      font-size: 12.5px;
+      padding: 0 7px;
     }
   }
 </style>

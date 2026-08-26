@@ -14,7 +14,7 @@ import { join } from 'path'
  * one instead of reading it. No new request, no API change.
  *
  * The second defect was in the same heading: `allActivated ? '· Both activated'`, hardcoded from
- * when a ground was always two people, sitting directly above a row of THREE cards that the same
+ * when a check-in was always two people, sitting directly above a row of THREE cards that the same
  * block had just rendered by counting them.
  */
 const SRC = readFileSync(join(__dirname, 'GroundAdminPage.tsx'), 'utf8')
@@ -40,12 +40,17 @@ describe('the reveal row names people', () => {
 
   it('using the helper this page already uses everywhere else', () => {
     /** Not a second naming rule. A lead should not read two different names for the same person. */
-    expect(CODE).toMatch(/import \{ participantLabel \} from '@\/lib\/utils'/)
+    /**
+     * Loosened from the exact import line to the identifier: `personLabel` now sits alongside it in
+     * the same statement (the lead's own view may fall back to an address; a party's view may not),
+     * and pinning the literal line would make adding a second helper look like removing this one.
+     */
+    expect(CODE).toMatch(/import \{[^}]*\bparticipantLabel\b[^}]*\} from '@\/lib\/utils'/)
   })
 })
 
 describe('the heading counts past two', () => {
-  it('does not say "Both" about a ground that may have more than two parties', () => {
+  it('does not say "Both" about a check-in that may have more than two parties', () => {
     expect(CODE).not.toMatch(/Both activated/)
   })
 
@@ -54,7 +59,7 @@ describe('the heading counts past two', () => {
   })
 
   it('while still distinguishing the waiting state', () => {
-    /** The control: the heading must keep saying which of the two states this ground is in. */
+    /** The control: the heading must keep saying which of the two states this check-in is in. */
     expect(CODE).toMatch(/activationStatus\.allActivated \? '· Everyone has revealed' : '· Waiting'/)
   })
 })

@@ -76,7 +76,7 @@ export function whatThisGroundCanTellYou(input: GroundContextInputs): ContextStr
     can.push('show where your accounts of the same work differ, and what each of you meant by it');
   } else {
     cannot.push(
-      'compare anything, because only one person is in this ground - a single account is a record, not a comparison',
+      'compare anything, because only one person is in this check-in - a single account is a record, not a comparison',
     );
   }
 
@@ -112,7 +112,7 @@ export function whatThisGroundCanTellYou(input: GroundContextInputs): ContextStr
     );
   } else {
     cannot.push(
-      'show anybody against their own objective, because the only goal here belongs to the ground rather than to a person',
+      'show anybody against their own objective, because the only goal here belongs to the check-in rather than to a person',
     );
   }
 
@@ -151,7 +151,7 @@ export function whatThisGroundCanTellYou(input: GroundContextInputs): ContextStr
 
   if (input.openDocumentCount === 0) {
     cannot.push(
-      'measure anything against a written standard, because no document has been shared with the ground',
+      'measure anything against a written standard, because no document has been shared with the check-in',
     );
   } else {
     can.push('measure what people describe against the documents you have all been given');

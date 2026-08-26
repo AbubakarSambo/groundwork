@@ -11,6 +11,33 @@ export function SettingsPage() {
   const navigate = useNavigate()
   const user = useAuthStore(s => s.user)
   const updateUser = useAuthStore(s => s.updateUser)
+  /**
+   * NOBODY COULD TELL US THEIR OWN NAME. W-UX-C.
+   *
+   * `authApi.updateProfile` has always existed and nothing in the product ever called it - one of
+   * the endpoints the audit found with no button. So the only names Groundwork ever held were the
+   * ones Google handed over at sign-in, or the ones an admin typed when inviting somebody.
+   *
+   * That is the ROOT of the complaint that started this whole pass: "Some people show as email
+   * addresses, others as names, in the same column." Three screens were showing addresses because
+   * for half the people there was genuinely no name to show, and no way to give one.
+   *
+   * Fixing the display without this would have been the more dishonest half of the job: the columns
+   * would agree, and half of them would still say "a teammate".
+   */
+  const [firstName, setFirstName] = useState(user?.firstName ?? '')
+  const [lastName, setLastName] = useState(user?.lastName ?? '')
+  const saveName = useMutation({
+    mutationFn: () => authApi.updateProfile({ firstName: firstName.trim(), lastName: lastName.trim() }),
+    onSuccess: u => {
+      updateUser({ firstName: u.firstName, lastName: u.lastName } as any)
+      toast.success('Your name is updated. This is what your team sees.')
+    },
+    onError: () => toast.error('Could not save your name. Try again.'),
+  })
+  const nameChanged =
+    firstName.trim() !== (user?.firstName ?? '') || lastName.trim() !== (user?.lastName ?? '')
+
   const [orgName, setOrgName] = useState(user?.organizationName ?? '')
   const renameOrgMut = useMutation({
     mutationFn: (name: string) => authApi.renameOrganization(name),
@@ -110,8 +137,46 @@ export function SettingsPage() {
         <section style={{ marginBottom: 32 }}>
           <Sec title="Profile" />
           <Card pad="block">
-            <div style={{ fontSize: 14, fontWeight: 600 }}>{user?.firstName} {user?.lastName}</div>
-            <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 2 }}>{user?.email}</div>
+            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Your name</div>
+            <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginBottom: 10, lineHeight: 1.5 }}>
+              This is what your team sees next to what you said, on the board and in every report.
+              Without it we can only show your email address.
+            </div>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+              <input
+                value={firstName}
+                onChange={e => setFirstName(e.target.value)}
+                placeholder="First name"
+                aria-label="First name"
+                style={{ flex: 1, minWidth: 0, padding: '9px 11px', borderRadius: 7, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit' }}
+              />
+              <input
+                value={lastName}
+                onChange={e => setLastName(e.target.value)}
+                placeholder="Last name"
+                aria-label="Last name"
+                style={{ flex: 1, minWidth: 0, padding: '9px 11px', borderRadius: 7, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit' }}
+              />
+              <button
+                onClick={() => saveName.mutate()}
+                disabled={!nameChanged || !firstName.trim() || saveName.isPending}
+                style={{
+                  padding: '9px 16px', borderRadius: 7, border: 'none', fontFamily: 'inherit', fontSize: 13, fontWeight: 700,
+                  background: nameChanged && firstName.trim() ? 'var(--gw-navy)' : 'var(--gw-border)',
+                  color: nameChanged && firstName.trim() ? 'white' : 'var(--gw-muted)',
+                  cursor: saveName.isPending ? 'wait' : 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
+                }}
+              >
+                {saveName.isPending ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+            {/* The one thing this button can refuse for, said out loud rather than left grey. */}
+            {nameChanged && !firstName.trim() && (
+              <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginBottom: 8 }}>
+                A first name is enough. A last name is optional.
+              </div>
+            )}
+            <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{user?.email}</div>
             <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 1 }}>{user?.organizationName} · {user?.role === 'ADMIN' ? 'Admin' : 'Team member'}</div>
           </Card>
         </section>
@@ -154,9 +219,9 @@ export function SettingsPage() {
           <Card pad={false}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px' }}>
               <div>
-                <div style={{ fontSize: 13, fontWeight: 600 }}>Ground invites and reminders</div>
+                <div style={{ fontSize: 13, fontWeight: 600 }}>Check-in invites and reminders</div>
                 <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 2, lineHeight: 1.5 }}>
-                  Emails when you are added to a ground or when a check-in is due.
+                  Emails when you are added to a check-in or when a check-in is due.
                 </div>
               </div>
               <button
@@ -205,7 +270,8 @@ export function SettingsPage() {
           <Card pad="block">
             <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Your WhatsApp number</div>
             <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginBottom: 10, lineHeight: 1.5 }}>
-              Add your number to get check-in links and reminders on WhatsApp instead of email. We match messages to your account by this number.
+              Add your number to get check-in links and reminders on WhatsApp as well as email. Your
+              emails keep coming either way. We match messages to your account by this number.
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <input
@@ -246,7 +312,7 @@ export function SettingsPage() {
               <>
                 <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>What Groundwork holds about you</div>
                 <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.55, marginBottom: 12 }}>
-                  Everything you have written, which grounds it came from, and nothing anybody else wrote.
+                  Everything you have written, which check-ins it came from, and nothing anybody else wrote.
                 </div>
                 <button
                   onClick={() => loadMyData.mutate()}
@@ -295,7 +361,7 @@ export function SettingsPage() {
                         * does not keep.
                         */}
                       Your name and email are removed everywhere and cannot be brought back. What you wrote
-                      into these grounds stays on the record, without your name on it, because the other
+                      into these check-ins stays on the record, without your name on it, because the other
                       people on them have their own account of the same events. Download a copy first if
                       you want one.
                     </div>
@@ -331,14 +397,14 @@ export function SettingsPage() {
               >
                 <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-red-t)' }}>Leave {user?.organizationName}</div>
                 <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 2 }}>
-                  Removes your access. Your past contributions stay on record for the grounds you were part of.
+                  Removes your access. Your past contributions stay on record for the check-ins you were part of.
                 </div>
               </button>
             ) : (
               <div style={{ padding: '14px 16px' }}>
                 <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Are you sure you want to leave?</div>
                 <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginBottom: 14, lineHeight: 1.5 }}>
-                  You will lose access to {user?.organizationName} immediately. Your contributions to existing grounds stay on record.
+                  You will lose access to {user?.organizationName} immediately. Your contributions to existing check-ins stay on record.
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button

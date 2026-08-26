@@ -116,7 +116,7 @@ export function InvitePage() {
           <div style={{ fontSize: 28, marginBottom: 12 }}>📬</div>
           <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>Check your email</div>
           <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-            You have already joined this ground, and this is a new device or browser.
+            You have already joined this check-in, and this is a new device or browser.
             We have sent a sign-in link to <strong>{emailedTo}</strong> so only you can pick up where you left off.
           </div>
         </div>
@@ -250,11 +250,11 @@ export function InvitePage() {
             </div>
             <div>
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 3 }}>We cannot show it to ourselves either</div>
-              <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.65, margin: 0 }}>When we look at a ground to help with something, we can see whether people checked in and never what they said. That is enforced in the code and tested, not a policy we are asking you to trust.</p>
+              <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.65, margin: 0 }}>When we look at a check-in to help with something, we can see whether people checked in and never what they said. That is enforced in the code and tested, not a policy we are asking you to trust.</p>
             </div>
             <div>
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 3 }}>Nothing here trains a model</div>
-              <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.65, margin: 0 }}>Your answers are used to build your ground's record and nothing else.</p>
+              <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.65, margin: 0 }}>Your answers are used to build this record and nothing else.</p>
             </div>
             <div>
               <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-sub)', marginBottom: 3 }}>And the part we are not going to dress up</div>

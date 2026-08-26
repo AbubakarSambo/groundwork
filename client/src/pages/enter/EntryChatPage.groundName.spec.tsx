@@ -7,7 +7,7 @@ import { useEntryStore } from '@/stores/entry'
 import { authApi } from '@/api/auth'
 
 /**
- * Ground-name guard: the ground name set on the setup screen (after email
+ * Ground-name guard: the check-in name set on the setup screen (after email
  * is sent) updated the server draft via PATCH but NOT the local commit body
  * (gw_commit_payload), and the server overlay lets a non-empty body field
  * override the fresher draft - so the stale body label "My first ground"

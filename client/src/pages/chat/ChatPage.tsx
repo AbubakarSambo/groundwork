@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, useLocation, useSearchParams } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
-import { conversationApi, streamMessage } from '@/api/conversation'
+import { conversationApi, streamMessage, type CheckInBrief } from '@/api/conversation'
 import { documentsApi, type DocumentAssessment } from '@/api/documents'
 import { useAuthStore } from '@/stores/auth'
 import { SessionReportCard } from '@/components/gw/SessionReportCard'
@@ -111,6 +111,7 @@ export function ChatPage() {
   const sessionNumber: number = (location.state as any)?.sessionNumber ?? 1
   const groundLabel: string   = (location.state as any)?.groundLabel ?? ''
   const [groundId, setGroundId] = useState<string | undefined>((location.state as any)?.groundId)
+  const [brief, setBrief] = useState<CheckInBrief | null>(null)
   const isInitiator: boolean  = (location.state as any)?.isInitiator ?? false
   const isFinalSession: boolean = (location.state as any)?.isFinal ?? false
 
@@ -130,6 +131,25 @@ export function ChatPage() {
   const [opened, setOpened]           = useState(false)
   const [done, setDone]               = useState(false)
   const [completed, setCompleted]     = useState(false)
+  /**
+   * DECLINING TO TAKE PART, WHICH THE PRODUCT PROMISED AND HAD NO BUTTON FOR.
+   *
+   * `POST /check-ins/:id/decline` has existed and worked the whole time - it sets the row to DECLINED.
+   * Nothing ever called it, so a product whose whole claim is that participation is voluntary offered
+   * no way to say no. Somebody who did not want to take part could only go silent, and going silent
+   * looks identical to being slow.
+   *
+   * IT WAS NOT SAFE TO WIRE UNTIL TODAY. `getSessionProgress` counted anyone with an account as still
+   * owing an answer and only cleared them on COMPLETED, so a declined party sat in
+   * `missingParticipantIds` for good - the round could never finish and the report never left
+   * "forming". A button here without that fix would have made permanently stuck check-ins.
+   *
+   * Her decisions: the round completes and the report names the decline; and a decline is FINAL for
+   * that session. Final is why this sits behind a confirm step that spells out the consequences
+   * rather than a button in the toolbar, where it would be one mis-tap from irreversible.
+   */
+  const [declined, setDeclined]       = useState(false)
+  const [confirmingDecline, setConfirmingDecline] = useState(false)
   const [confirmingFinish, setConfirmingFinish] = useState(false)
   const [openFailed, setOpenFailed]   = useState(false)
   const openedRef = useRef(false)
@@ -196,6 +216,7 @@ export function ChatPage() {
     onSuccess: res => {
       setMsgs([{ id: 'ai-open', role: 'AI', content: res.reply }])
       if (res.groundId && !groundId) setGroundId(res.groundId)
+      if (res.brief) setBrief(res.brief)
       setOpened(true)
       setOpenFailed(false)
     },
@@ -205,6 +226,12 @@ export function ChatPage() {
     },
   })
 
+
+  const decline = useMutation({
+    mutationFn: () => conversationApi.decline(checkInId!),
+    onSuccess: () => { setConfirmingDecline(false); setDone(true); setDeclined(true) },
+    onError: () => toast.error('Could not record that. Try again.'),
+  })
 
   const complete = useMutation({
     mutationFn: () => conversationApi.complete(checkInId!),
@@ -305,6 +332,8 @@ export function ChatPage() {
             setMsgs(t.turns.map(turn => ({ id: turn.id, role: turn.role, content: turn.content })))
             if (t.checkIn?.groundId && !groundId) setGroundId(t.checkIn.groundId)
             if (t.checkIn?.status === 'COMPLETED') { setDone(true); setCompleted(true) }
+            /** Reopening a session already declined must show the settled state, not the composer. */
+            if (t.checkIn?.status === 'DECLINED') { setDone(true); setDeclined(true) }
             setOpened(true)
             setOpenFailed(false)
             return
@@ -454,7 +483,7 @@ export function ChatPage() {
 
   function submitDocWithContext() {
     if (!pendingDoc) return
-    if (!groundId) { toast.error('Ground context missing. Please open this session from your ground page.'); return }
+    if (!groundId) { toast.error('Context missing. Please open this session from your check-in page.'); return }
     uploadDoc.mutate({ file: pendingDoc, ctx: docContext })
     setDocContextMode(false)
     setPendingDoc(null)
@@ -475,7 +504,7 @@ export function ChatPage() {
 
   const privacyLabel = isFinalSession
     ? `Closing session ${sessionNumber} · This is the last word on the record. Take the time to be thorough - what you document here is what the final report weighs.`
-    : `Session ${sessionNumber} · Your words are private until you both activate the report.`
+    : `Session ${sessionNumber} · Your words are private until everyone activates the report.`
 
   /**
    * WHAT HAPPENS TO WHAT YOU WRITE, BEFORE YOU ARE ASKED ANYTHING. (G40)
@@ -543,12 +572,12 @@ export function ChatPage() {
 
             <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '16px 18px', marginBottom: 12 }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 4 }}>We cannot show it to ourselves either</div>
-              <p style={{ fontSize: 13.5, color: 'var(--gw-sub)', lineHeight: 1.65, margin: 0 }}>When we look at a ground to help with something, we can see whether people checked in and never what they said. That is enforced in the code and tested, not a policy we are asking you to trust.</p>
+              <p style={{ fontSize: 13.5, color: 'var(--gw-sub)', lineHeight: 1.65, margin: 0 }}>When we look at a check-in to help with something, we can see whether people checked in and never what they said. That is enforced in the code and tested, not a policy we are asking you to trust.</p>
             </div>
 
             <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '16px 18px', marginBottom: 12 }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 4 }}>Nothing here trains a model</div>
-              <p style={{ fontSize: 13.5, color: 'var(--gw-sub)', lineHeight: 1.65, margin: 0 }}>Your answers are used to build your ground's record and nothing else.</p>
+              <p style={{ fontSize: 13.5, color: 'var(--gw-sub)', lineHeight: 1.65, margin: 0 }}>Your answers are used to build this record and nothing else.</p>
             </div>
 
             <div style={{ background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px', marginBottom: 18 }}>
@@ -631,6 +660,52 @@ export function ChatPage() {
         >
           {openSession.isPending && (
             <div style={{ fontSize: 13, color: 'var(--gw-muted)', textAlign: 'center', padding: 16 }}>Opening your session…</div>
+          )}
+
+          {/*
+            WHAT YOU ARE CHECKING IN ON, ON SCREEN WHILE YOU ANSWER.
+            
+            A participant arrives by invite link and was asked "what did you understand your role in
+            this to be" with nothing on screen: not the subject, not the objectives, not who set it
+            up. So people freestyled, and the report was built on that.
+            
+            `an-objective-nobody-has-seen.spec.ts` already states the rule this serves: "reading a
+            person against a target they have never seen is the definition of an unfair review, and
+            the fact that the product would be doing it silently makes it worse rather than better."
+            The objective carries a `seenBySubject` state for exactly this reason. Nothing was
+            showing it, so the state could never honestly become true.
+            
+            It stays visible rather than appearing once, because a target you saw at the top of a
+            ten-minute conversation is a target you are no longer looking at by the time it matters.
+            Only shared facts: the subject and the stated objectives, never another party's words.
+          */}
+          {brief && (brief.subject || brief.objectives.length > 0) && (
+            <div style={{ border: '1px solid var(--gw-border)', borderLeft: '3px solid var(--gw-navy)', borderRadius: 10, padding: '11px 13px', marginBottom: 4, background: 'white' }}>
+              <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--gw-muted)', marginBottom: 5 }}>
+                What this check-in is about
+              </div>
+              {brief.subject && (
+                <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--gw-text)', lineHeight: 1.45, marginBottom: brief.objectives.length ? 7 : 0 }}>
+                  {brief.subject}
+                </div>
+              )}
+              {brief.objectives.length > 0 && (
+                <>
+                  <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginBottom: 4 }}>
+                    {brief.objectives.length === 1 ? 'The objective on record:' : 'The objectives on record:'}
+                  </div>
+                  {brief.objectives.map((o, i) => (
+                    <div key={i} style={{ fontSize: 12.5, color: 'var(--gw-text)', lineHeight: 1.5, display: 'flex', gap: 6 }}>
+                      <span style={{ color: 'var(--gw-navy)', flexShrink: 0 }}>•</span>
+                      <span>{o.name}{o.target != null ? ` (${o.target.toLocaleString('en-US')})` : ''}</span>
+                    </div>
+                  ))}
+                </>
+              )}
+              <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 7, lineHeight: 1.45 }}>
+                Answer in your own words. You are not expected to agree with any of it.
+              </div>
+            </div>
           )}
           {priorRecordEntries.length > 0 && (
             <div style={{ border: '1px dashed var(--gw-border)', borderRadius: 10, padding: '10px 12px', marginBottom: 4, background: 'var(--gw-bg)' }}>
@@ -802,12 +877,81 @@ export function ChatPage() {
               </button>
             </div>
           )}
+          {declined && (
+            <div style={{ padding: '4px 0 16px' }}>
+              <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '16px 18px' }}>
+                <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 6 }}>You declined this session.</div>
+                <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65 }}>
+                  That is recorded. The report for this round will say you declined and will not guess at
+                  what you would have said. Nothing you write here counts towards it now.
+                  {' '}If there is another session, you can take part in that one.
+                </div>
+              </div>
+              <div style={{ textAlign: 'center', paddingTop: 10 }}>
+                <button onClick={() => navigate('/grounds')} style={{ fontSize: 13, color: 'var(--gw-sub)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit' }}>
+                  ← Back to check-ins
+                </button>
+              </div>
+            </div>
+          )}
+
+          {confirmingDecline && !declined && (
+            <div style={{ padding: '4px 0 16px' }}>
+              <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 10, padding: '16px 18px' }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 6 }}>
+                  Not taking part in this session?
+                </div>
+                {/*
+                  Everything that follows from it, before they do it. A final action whose consequences
+                  are discovered afterwards is a trap, however quiet the button was.
+                */}
+                <ul style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.7, margin: '0 0 12px', paddingLeft: 18 }}>
+                  <li>This cannot be undone for this session.</li>
+                  <li>The round finishes without your account, so nobody is left waiting on you.</li>
+                  <li>The report will say you declined. It will not guess at what you would have said.</li>
+                  <li>Nothing you have written here is shown to anyone.</li>
+                </ul>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <button
+                    onClick={() => decline.mutate()}
+                    disabled={decline.isPending}
+                    style={{ padding: '9px 16px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'inherit' }}
+                  >
+                    {decline.isPending ? 'Recording…' : 'Yes, I am not taking part'}
+                  </button>
+                  <button
+                    onClick={() => setConfirmingDecline(false)}
+                    style={{ padding: '9px 16px', borderRadius: 7, background: 'none', color: 'var(--gw-sub)', border: '1px solid var(--gw-border)', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit' }}
+                  >
+                    Keep going
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/*
+            The way to say no, kept quiet and kept present. Not in the toolbar beside Upload and Paste:
+            those are for contributing and this is the opposite, and a final action does not belong one
+            mis-tap from the things people press often.
+          */}
+          {!done && !completed && !declined && !confirmingDecline && opened && (
+            <div style={{ textAlign: 'center', padding: '2px 0 14px' }}>
+              <button
+                onClick={() => setConfirmingDecline(true)}
+                style={{ fontSize: 12, color: 'var(--gw-muted)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit' }}
+              >
+                I do not want to take part in this session
+              </button>
+            </div>
+          )}
+
           {completed && groundId && checkInId && (
             <div style={{ padding: '4px 0 16px' }}>
               <SessionReportCard checkInId={checkInId} groundId={groundId} sessionNumber={sessionNumber} isInitiator={isInitiator} />
               <div style={{ textAlign: 'center', paddingTop: 8 }}>
                 <button onClick={() => navigate('/grounds')} style={{ fontSize: 13, color: 'var(--gw-sub)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit' }}>
-                  ← Back to grounds
+                  ← Back to check-ins
                 </button>
               </div>
             </div>

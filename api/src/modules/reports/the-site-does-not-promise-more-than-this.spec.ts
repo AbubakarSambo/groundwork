@@ -27,7 +27,7 @@ import { PartyType } from '@prisma/client';
  */
 
 const HOME = path.join(__dirname, '../../../../marketing/src/pages/index.astro');
-const copy = () => fs.readFileSync(HOME, 'utf8');
+const copy = () => fs.readFileSync(HOME, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
 /** Prose only. A promise inside a source comment is a note, not a claim. */
 function visibleCopy(): string {
@@ -53,7 +53,16 @@ describe('what the page promises about who sees what', () => {
   });
 
   it('says the part that is true: everyone gets it at the same moment', () => {
-    expect(visibleCopy()).toMatch(/Everyone gets the report, at the same moment/i);
+    /**
+     * The claim, not one sentence's wording. It was the heading "Everyone gets the report, at the
+     * same moment." on a section Hafsah later removed, and it survives inside the report example:
+     * "If you are one of the eight, this is your report too. Same report, same moment."
+     *
+     * Pinned as either phrasing on purpose. What must not disappear is the PROMISE - a page that
+     * describes a private check-in and never says the report is shared simultaneously invites the
+     * reader to assume it is not. Which sentence carries it is a copy decision.
+     */
+    expect(visibleCopy()).toMatch(/Everyone gets the report, at the same moment|Same report, same moment/i);
   });
 });
 

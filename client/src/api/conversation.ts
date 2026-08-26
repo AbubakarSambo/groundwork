@@ -1,6 +1,15 @@
 import { apiClient } from './client'
 
-export interface OpenCheckInResponse { reply: string; groundId?: string }
+/**
+ * What this check-in is about, so the person answering is not guessing.
+ *
+ * Only the shared facts: the subject and the stated objectives. Never another party's words.
+ */
+export interface CheckInBrief {
+  subject: string | null
+  objectives: { name: string; target: number | null }[]
+}
+export interface OpenCheckInResponse { reply: string; groundId?: string; brief?: CheckInBrief | null }
 export interface SendMessageResponse { reply: string; sessionComplete?: boolean }
 export interface TranscriptTurn { id: string; role: 'AI' | 'PERSON'; content: string }
 export interface PriorRecordEntrySession { sessionNumber: number; entries: { type: string; text: string }[] }

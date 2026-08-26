@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Patch, Delete, Body, Param } from '@nestjs/common';
 import { IsBoolean, MinLength } from 'class-validator';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { IsOptional, IsInt, Min, IsEnum } from 'class-validator';
+import { IsOptional, IsInt, Min, IsEnum, IsIn } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { GroundsService } from './grounds.service';
 import { ConversationService } from '../conversation/conversation.service';
@@ -37,7 +37,26 @@ class UpdateTimelineDto {
   @IsOptional()
   label?: string;
 
-  @ApiPropertyOptional({ example: 12, description: 'Timeline length in weeks' })
+  /**
+   * DAYS, BECAUSE DAYS IS THE VALUE THE PRODUCT ACTUALLY READS.
+   *
+   * `timelineDays` is not-nullable on the ground and is what the stall cron computes its deadline from
+   * and what the engine divides by the cadence to plan sessions. `timelineWeeks` is a nullable second
+   * column, and it was all this endpoint wrote - so changing a ground's timeline logged a change,
+   * updated the screen, and moved neither its length nor its number of check-ins.
+   *
+   * Weeks stays accepted so nothing calling it breaks, and is converted on the way in. Every timeline
+   * the product offers is expressible in days; not every one is expressible in whole weeks, which is
+   * how a 45-day ground became a 42-day ground by being edited for an unrelated reason.
+   */
+  @ApiPropertyOptional({ example: 90, description: 'Timeline length in days' })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  timelineDays?: number;
+
+  /** @deprecated Send `timelineDays`. Converted on arrival, kept so existing callers keep working. */
+  @ApiPropertyOptional({ example: 12, description: 'Deprecated: timeline length in weeks' })
   @IsOptional()
   @IsInt()
   @Min(1)
@@ -63,6 +82,54 @@ class AddLeadContextDto {
   @IsString()
   @MaxLength(4000)
   text!: string;
+
+  /**
+   * WHO READS IT - and nothing about what it may be used for.
+   *
+   * EVERYONE is the lead's framing of the situation, addressed to the whole check-in. It is still the
+   * lead's words about a situation, so it is never quotable, never attributable and never a fact
+   * about anybody. Only the audience differs from a private note.
+   */
+  @ApiPropertyOptional({ description: "Who reads this note. LEAD_ONLY (the default) or EVERYONE - the lead's framing, read by the whole check-in and still never quoted." })
+  @IsOptional()
+  @IsIn(['LEAD_ONLY', 'EVERYONE'])
+  audience?: 'LEAD_ONLY' | 'EVERYONE';
+}
+
+/**
+ * SOMEBODY LOOKED AT THE TICKET, and this is the whole of what they can say: what it says NOW.
+ *
+ * Short on purpose. A long one would be somebody re-typing the ticket body here, and then the page
+ * and the tracker are two things that have to agree - the failure a reference exists to avoid.
+ */
+class LookedAtDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(300)
+  lastSeenState!: string;
+}
+
+/**
+ * WHAT THEY SAY THEY DELIVERED. Capped for the same reason a note is: this is a claim that reaches
+ * the next session as a question, and somebody writing an essay here is writing their account
+ * outside the session, where nothing tests it.
+ */
+class AddDeliveryDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(2000)
+  text!: string;
+
+  @ApiPropertyOptional({ description: 'Where the evidence is, in your words. A link, a document, a date.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  evidence?: string;
+
+  @ApiPropertyOptional({ description: 'Which of your own expectations this is offered against. Leave it out for work nobody asked for.' })
+  @IsOptional()
+  @IsString()
+  objectiveId?: string;
 }
 
 class AddNoteDto {
@@ -182,7 +249,7 @@ export class GroundsController {
   }
 
   @Post(':id/lead-context')
-  @ApiOperation({ summary: "Initiator-only: add a private context note for the AI, about a participant or the ground. Never shown to the person; never quoted as a claim." })
+  @ApiOperation({ summary: "Initiator-only: add a context note. LEAD_ONLY (default) is private to the lead and about a participant or the whole check-in; EVERYONE is the lead's framing, read by the whole check-in and about the whole check-in only. Neither is ever quoted as a claim." })
   async addLeadContext(@Param('id') id: string, @CurrentUser('id') userId: string, @Body() dto: AddLeadContextDto) {
     return this.grounds.addLeadContext(id, userId, dto);
   }
@@ -306,33 +373,28 @@ export class GroundsController {
   }
 
   /**
-   * WHAT EACH PERSON IS WORKING TOWARDS. Three writes, because the rule needs three states:
-   * a lead proposing, the person accepting what was proposed, and the person writing their own.
+   * THE THREE WRITES THAT SET A TARGET BY FORM ARE GONE: propose, state-my-own, and accept.
    *
-   * `mayBeReadAgainst` refuses a proposal nobody has seen, which is the reason accepting is a separate,
-   * deliberate act rather than a side effect of the page loading.
+   * They were the old model - a lead proposes, the person accepts it or writes their own - and the
+   * product does not work that way any more. An expectation is stated in the lead's own check-in,
+   * published to Context where everyone reads it, and changed only through the chat, where a change
+   * is probed and lands on the record with its reason.
+   *
+   * REMOVED RATHER THAN LEFT UNUSED. Her decision was that a party cannot rewrite or accept theirs;
+   * an endpoint that still does it is that decision held by nothing but the absence of a button, and
+   * this codebase has learned twice what happens to rules kept that way.
+   *
+   * `POST :id/my-expectation/shown` below is what survives, and it does the opposite job: it records
+   * that somebody has SEEN theirs, which is what stops anybody being read against words they have
+   * never laid eyes on.
    */
-  @Post(':id/objectives/:participantId')
-  @ApiOperation({ summary: "Propose what somebody is working towards (the lead's)" })
-  async proposeObjective(
-    @Param('id') id: string,
-    @Param('participantId') participantId: string,
-    @CurrentUser('id') userId: string,
-    @Body() dto: { text: string },
-  ) {
-    return this.grounds.proposeObjective(id, userId, participantId, dto?.text);
-  }
-
-  @Post(':id/my-objective')
-  @ApiOperation({ summary: 'State what you are working towards, in your own words' })
-  async stateMyObjective(@Param('id') id: string, @CurrentUser('id') userId: string, @Body() dto: { text: string }) {
-    return this.grounds.stateMyObjective(id, userId, dto?.text);
-  }
-
-  @Post(':id/my-objective/accept')
-  @ApiOperation({ summary: 'Accept what was proposed for you, as it stands' })
-  async acceptMyObjective(@Param('id') id: string, @CurrentUser('id') userId: string) {
-    return this.grounds.acceptMyObjective(id, userId);
+  @Post(':id/my-expectation/shown')
+  @ApiOperation({
+    summary:
+      'Record that this person has now been shown their own expectation. GW-EXP-2. Called by the Context view when it renders it - shown, never agreed, and nothing may be read against an expectation until it is.',
+  })
+  async markMyExpectationShown(@Param('id') id: string, @CurrentUser('id') userId: string) {
+    return this.grounds.markMyExpectationShown(id, userId);
   }
 
   /**
@@ -373,6 +435,35 @@ export class GroundsController {
   @ApiOperation({ summary: 'Delete one of your own notes' })
   async deleteMyNote(@Param('id') id: string, @Param('noteId') noteId: string, @CurrentUser('id') userId: string) {
     return this.grounds.deleteMyNote(id, userId, noteId);
+  }
+
+  @Patch(':id/expectations/:objectiveId/looked')
+  @ApiOperation({ summary: 'Say what the ticket behind this expectation says now. Re-stamps when anybody last looked.' })
+  async markExpectationLookedAt(
+    @Param('id') id: string,
+    @Param('objectiveId') objectiveId: string,
+    @CurrentUser('id') userId: string,
+    @Body() dto: LookedAtDto,
+  ) {
+    return this.grounds.markExpectationLookedAt(id, userId, objectiveId, dto.lastSeenState);
+  }
+
+  @Get(':id/my-deliveries')
+  @ApiOperation({ summary: 'What you have said you delivered on this check-in' })
+  async myDeliveries(@Param('id') id: string, @CurrentUser('id') userId: string) {
+    return this.grounds.getMyDeliveries(id, userId);
+  }
+
+  @Post(':id/my-deliveries')
+  @ApiOperation({ summary: 'Say what you delivered. It reaches your next session as something to be asked about, not as the record.' })
+  async addDelivery(@Param('id') id: string, @CurrentUser('id') userId: string, @Body() dto: AddDeliveryDto) {
+    return this.grounds.addDelivery(id, userId, dto);
+  }
+
+  @Delete(':id/my-deliveries/:deliveryId')
+  @ApiOperation({ summary: 'Take one back, while no session has raised it yet' })
+  async deleteMyDelivery(@Param('id') id: string, @Param('deliveryId') deliveryId: string, @CurrentUser('id') userId: string) {
+    return this.grounds.deleteMyDelivery(id, userId, deliveryId);
   }
 
   @Get(':id/my-transcript')

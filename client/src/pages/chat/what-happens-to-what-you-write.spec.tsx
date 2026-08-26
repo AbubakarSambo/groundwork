@@ -19,7 +19,7 @@ import { join } from 'path'
  * for weeks because nothing compared a sentence to the behaviour behind it, and
  * this is the same class of failure one page earlier.
  */
-const SRC = readFileSync(join(__dirname, 'ChatPage.tsx'), 'utf8')
+const SRC = readFileSync(join(__dirname, 'ChatPage.tsx'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
 /** The privacy screen, from its flag to the button that dismisses it. */
 const SCREEN = (() => {

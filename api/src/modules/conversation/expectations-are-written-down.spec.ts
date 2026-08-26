@@ -1,0 +1,193 @@
+import { ConversationService } from './conversation.service';
+import { PartyType, TurnRole } from '@prisma/client';
+
+/**
+ * THE INTERVIEW'S ANSWERS GET KEPT. GW-EXP-1b.
+ *
+ * Slice 1a gave the lead's session the per-person questions and proved in a live run that it asks them
+ * and then asks whether the person knows. This is the half that writes the answers down. Without it the
+ * conversation is good and `personObjective` stays at the zero rows it has held for the product's whole
+ * life, which is the state that started this whole piece of work.
+ *
+ * FOUR THINGS ARE LOAD-BEARING:
+ *  1. Initiator only. Expectations have one author.
+ *  2. A name that matches nobody is DROPPED. Lifted from `extractWorkMentions`, whose comment says
+ *     "unresolved name: dropped, never guessed" - an expectation on the wrong person is worse than a
+ *     missing one, because somebody gets measured against a thing that was never about them.
+ *  3. `awareness` is stored. A live session volunteers "your record now shows that gap clearly" to a
+ *     lead who has told nobody, and that sentence is a lie unless the gap is on the row.
+ *  4. `seenBySubject` is false on creation. It is the only thing stopping somebody being read against
+ *     an expectation they have never laid eyes on.
+ */
+function makeService(over: {
+  partyType?: PartyType;
+  extraction?: any;
+  participants?: any[];
+  prior?: { text: string } | null;
+} = {}) {
+  const upsert = jest.fn(async (a: any) => a);
+  const createMany: jest.Mock = jest.fn(async () => ({ count: 1 }));
+  const participants = over.participants ?? [
+    { id: 'lead', partyType: PartyType.INITIATOR, managingOnly: false, email: 'sahar@x.test', roleAsDescribed: null, user: { firstName: 'Sahar', lastName: 'Jamal' } },
+    { id: 'abu', partyType: PartyType.PARTICIPANT, managingOnly: false, email: 'abubakar@x.test', roleAsDescribed: 'New delivery lead', user: { firstName: 'Abubakar', lastName: null } },
+  ];
+  const prisma: any = {
+    ground: { findUnique: jest.fn(async () => ({ participants })) },
+    conversationTurn: { findMany: jest.fn(async () => [{ role: TurnRole.PERSON, content: 'I expect Abubakar to own the weekly call.' }]) },
+    /**
+     * `findUnique` reads the PRIOR text, so a changed expectation can reset `seenBySubject`. Returning
+     * `over.prior ?? null` lets a test say "there was already something there" and check the reset.
+     */
+    /**
+     * THE WRITE IS NO LONGER AN UPSERT ON ONE ROW PER PERSON.
+     *
+     * `person_objectives` was unique per person, so a lead stating a commitment AND a standing role
+     * expectation about the same person stored one and silently dropped the other. The service now
+     * looks for a row with the SAME PERSON AND SAME KIND - a revision - and creates a new row for a
+     * different kind, so both `create` and `update` are mocked here.
+     */
+    personObjective: {
+      findFirst: jest.fn(async () => over.prior ?? null),
+      create: upsert,
+      update: upsert,
+      findUnique: jest.fn(async () => over.prior ?? null),
+    },
+    groundObjective: { count: jest.fn(async () => 0), createMany },
+  };
+  const anthropic: any = {
+    extract: jest.fn(async () => over.extraction ?? {
+      groundAims: ['He owns delivery end to end in 90 days'],
+      expectations: [{ personName: 'Abubakar', expectation: 'Own the weekly delivery call by week four', awareness: 'NOT_TOLD', awarenessDetail: 'I assumed Hafsah covered it' }],
+    }),
+  };
+  const svc = new ConversationService(
+    prisma, {} as any, anthropic, {} as any, {} as any,
+    {} as any, {} as any, {} as any, {} as any, {} as any,
+  );
+  return { svc, prisma, upsert, createMany, anthropic };
+}
+
+describe('GW-EXP-1b: only the lead sets expectations', () => {
+  it('a participant’s session writes nothing, and does not even call the model', async () => {
+    const { svc, anthropic, upsert } = makeService({
+      participants: [{ id: 'abu', partyType: PartyType.PARTICIPANT, managingOnly: false, email: 'a@x.test', roleAsDescribed: null, user: null }],
+    });
+    await svc.extractExpectations('c1', 'abu', 'g1');
+    expect(anthropic.extract).not.toHaveBeenCalled();
+    expect(upsert).not.toHaveBeenCalled();
+  });
+});
+
+describe('GW-EXP-1b: what gets written', () => {
+  it('the expectation lands on the right person, in the lead’s words', async () => {
+    const { svc, upsert } = makeService();
+    await svc.extractExpectations('c1', 'lead', 'g1');
+    expect(upsert).toHaveBeenCalledTimes(1);
+    const arg = upsert.mock.calls[0][0] as any;
+    /** A create now carries the ids in `data`; there is no where/create pair any more. */
+    expect(arg.data.participantId).toBe('abu');
+    expect(arg.data.text).toBe('Own the weekly delivery call by week four');
+    expect(arg.data.authoredBy).toBe('lead');
+  });
+
+  it('awareness is stored, which is the point of the whole thing', async () => {
+    const { svc, upsert } = makeService();
+    await svc.extractExpectations('c1', 'lead', 'g1');
+    const arg = upsert.mock.calls[0][0] as any;
+    expect(arg.data.awareness).toBe('NOT_TOLD');
+    expect(arg.data.awarenessDetail).toBe('I assumed Hafsah covered it');
+  });
+
+  it('and the person has not seen it, so nothing may be read against it yet', async () => {
+    const { svc, upsert } = makeService();
+    await svc.extractExpectations('c1', 'lead', 'g1');
+    expect((upsert.mock.calls[0][0] as any).data.seenBySubject).toBe(false);
+  });
+
+  it('a junk awareness value falls back to NOT_ASKED rather than being stored raw', async () => {
+    const { svc, upsert } = makeService({
+      extraction: { groundAims: [], expectations: [{ personName: 'Abubakar', expectation: 'x', awareness: 'PROBABLY' }] },
+    });
+    await svc.extractExpectations('c1', 'lead', 'g1');
+    expect((upsert.mock.calls[0][0] as any).data.awareness).toBe('NOT_ASKED');
+  });
+
+  it('the check-in’s own aims fill the other empty table', async () => {
+    const { svc, createMany } = makeService();
+    await svc.extractExpectations('c1', 'lead', 'g1');
+    expect(createMany).toHaveBeenCalled();
+    expect((createMany.mock.calls[0][0] as any).data[0].name).toBe('He owns delivery end to end in 90 days');
+  });
+
+  it('but not a second time, so a lead restating the aim does not duplicate the list', async () => {
+    const { svc, prisma, createMany } = makeService();
+    prisma.groundObjective.count = jest.fn(async () => 2);
+    await svc.extractExpectations('c1', 'lead', 'g1');
+    expect(createMany).not.toHaveBeenCalled();
+  });
+});
+
+describe('GW-EXP-1b: a name that matches nobody is dropped, never guessed', () => {
+  it.each(['Dana', 'the delivery team', 'nobody'])('drops %p', async (name) => {
+    const { svc, upsert } = makeService({
+      extraction: { groundAims: [], expectations: [{ personName: name, expectation: 'something', awareness: 'TOLD' }] },
+    });
+    await svc.extractExpectations('c1', 'lead', 'g1');
+    expect(upsert).not.toHaveBeenCalled();
+  });
+
+  it('and matches on the role when somebody has no account yet', async () => {
+    /** An invited person with no name still has a role, and that is how the lead referred to them. */
+    const { svc, upsert } = makeService({
+      extraction: { groundAims: [], expectations: [{ personName: 'New delivery lead', expectation: 'own the call', awareness: 'TOLD' }] },
+    });
+    await svc.extractExpectations('c1', 'lead', 'g1');
+    expect(upsert).toHaveBeenCalledTimes(1);
+  });
+
+  it('and never writes an expectation about the lead themselves', async () => {
+    const { svc, upsert } = makeService({
+      extraction: { groundAims: [], expectations: [{ personName: 'Sahar Jamal', expectation: 'run it well', awareness: 'TOLD' }] },
+    });
+    await svc.extractExpectations('c1', 'lead', 'g1');
+    expect(upsert).not.toHaveBeenCalled();
+  });
+});
+
+
+/**
+ * A CHANGED EXPECTATION IS AN UNSEEN EXPECTATION. GW-EXP-4.
+ *
+ * A defect I shipped in the extraction and caught by reading `proposeObjective`, which has always
+ * reset the flag on a rewrite with the reasoning attached: "carrying the old seenBySubject: true
+ * forward would let a changed target be read against somebody who never saw the change."
+ *
+ * My upsert carried it forward. The consequence was quiet and live: a lead restating an expectation
+ * differently in a later session left the person marked as having seen words they never saw, and the
+ * gap probe then pressed them on it in their very next session. The single protection this design
+ * keeps from the old model, defeated by an update clause.
+ */
+describe('GW-EXP-4: changed words are unseen words', () => {
+  it('a different expectation resets seenBySubject', async () => {
+    const { svc, upsert } = makeService({ prior: { text: 'Something else entirely' } });
+    await svc.extractExpectations('c1', 'lead', 'g1');
+    expect((upsert.mock.calls[0][0] as any).data.seenBySubject).toBe(false);
+  });
+
+  it('but repeating the same expectation does not', async () => {
+    /**
+     * The other half, and it matters as much: resetting on every session would make an unchanged
+     * expectation permanently unseen, so nothing could ever be read against it and the gap probe
+     * would never fire.
+     */
+    const { svc, upsert } = makeService({ prior: { text: 'Own the weekly delivery call by week four' } });
+    await svc.extractExpectations('c1', 'lead', 'g1');
+    expect((upsert.mock.calls[0][0] as any).data.seenBySubject).toBeUndefined();
+  });
+
+  it('and a brand new expectation starts unseen anyway', async () => {
+    const { svc, upsert } = makeService({ prior: null });
+    await svc.extractExpectations('c1', 'lead', 'g1');
+    expect((upsert.mock.calls[0][0] as any).data.seenBySubject).toBe(false);
+  });
+});

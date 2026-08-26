@@ -139,7 +139,7 @@ function AdminCrossRef({ report, closed }: { report: Report; closed: boolean }) 
       {/* What we heard */}
       <div style={{ background: 'var(--gw-dark)', color: '#fff', borderRadius: 10, padding: '14px 16px', marginBottom: 14 }}>
         <div style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-green-b)', fontWeight: 700, marginBottom: 7 }}>
-          {closed ? 'What we heard across the ground' : 'What we heard from you'}
+          {closed ? 'What we heard across the check-in' : 'What we heard from you'}
         </div>
         <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: 'rgba(255,255,255,.93)' }}>{report.sharedPicture}</p>
       </div>
@@ -182,7 +182,7 @@ function AdminCrossRef({ report, closed }: { report: Report; closed: boolean }) 
 
       {/* Doc line */}
       {engagement?.documentBacked && (
-        <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', marginTop: 4 }}>Documents on record from this ground.</div>
+        <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', marginTop: 4 }}>Documents on record from this check-in.</div>
       )}
 
       {closed && (
@@ -245,7 +245,7 @@ function ParticipantCrossRef({ report, closed }: { report: Report; closed: boole
             </div>
           </div>
           <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-            Documented and portable. You can add this ground to your profile. It survives the relationship, and it is yours as much as the organisation's.
+            Documented and portable. You can add this check-in to your profile. It survives the relationship, and it is yours as much as the organisation's.
           </div>
         </>
       ) : (
@@ -279,8 +279,8 @@ function ParticipantCrossRef({ report, closed }: { report: Report; closed: boole
           </div>
           <div style={{ fontSize: 12, color: 'var(--gw-sub)', background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '10px 12px', lineHeight: 1.55 }}>
             {report.releasedAt
-              ? 'The full comparison is now open, and you both read the same report at the same moment.'
-              : 'You can still only see your own. The full comparison opens once you have both opened the report.'}
+              ? 'The full comparison is now open, and everyone reads the same report at the same moment.'
+              : 'You can still only see your own. The full comparison opens once everyone has opened the report.'}
           </div>
         </>
       )}

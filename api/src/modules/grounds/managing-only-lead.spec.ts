@@ -8,11 +8,14 @@ import { ForbiddenException, BadRequestException } from '@nestjs/common';
  *
  * Two things guarded here:
  *
- * (1) confirmLead: managingOnly=true must NOT create a check-in for the lead
- *     and must mark their participant row managingOnly - so nothing is ever
- *     asked of an account that will never exist. managingOnly=false (default,
- *     omitted) is UNCHANGED behaviour - a check-in is created exactly as
- *     before this feature existed.
+ * (1) SUPERSEDED BY GW-EXP-6, and the reason is worth keeping. This said managingOnly=true must
+ *     create NO check-in, which was right while a check-in could only mean "give your account".
+ *     It is what made the lead's expectation interview unreachable for anybody running a check-in
+ *     without taking part in it.
+ *
+ *     A managing-only lead now gets a SETUP conversation - `isSetup: true` - which asks what this is
+ *     aiming at and what they expect of each person, and is excluded from every session count.
+ *     Setting up is not testifying. managingOnly=false is unchanged.
  *
  * (2) isSessionReadyForReport - the CRITICAL one. A managing-only lead has
  *     userId set (they ARE a real user) but no check-in ever. If they were
@@ -48,12 +51,24 @@ function makeService(overrides: any = {}) {
 }
 
 describe('confirmLead: managing-only choice', () => {
-  it('managingOnly=true creates NO check-in for the lead and marks the participant managingOnly', async () => {
+  it('managingOnly=true gives the lead a SETUP conversation and marks the participant managingOnly', async () => {
     const { service, checkInCreate, groundParticipantUpdate } = makeService();
     const res = await service.confirmLead('g1', 'lead1', { managingOnly: true });
-    expect(checkInCreate).not.toHaveBeenCalled();
+    /**
+     * REVERSED, WITH THE REASON. GW-EXP-6. A managing-only lead used to get no check-in, so nothing
+     * ever asked them what this is aiming at or what they expect of each person - every expectation
+     * feature was dead on the grounds most likely to need it. They now get a SETUP conversation:
+     * same engine, not an account, and excluded from every session count.
+     *
+     * The rule this file is really for is the one below - the report must still release, and it does,
+     * because `isSessionReadyForReport` filters at the PARTICIPANT level on `managingOnly: false` and
+     * so never sees this row at all.
+     */
+    expect(checkInCreate).toHaveBeenCalled();
+    expect((checkInCreate.mock.calls[0][0] as any).data.isSetup).toBe(true);
     expect(groundParticipantUpdate).toHaveBeenCalledWith({ where: { id: 'p-lead' }, data: { managingOnly: true } });
-    expect(res.checkInId).toBeNull();
+    /** No longer null: there is a conversation to open, and the client needs its id to open it. */
+    expect(res.checkInId).toBeTruthy();
     expect(res.groundId).toBe('g1');
   });
 

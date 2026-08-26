@@ -15,7 +15,7 @@ import { EntryChatPage } from './EntryChatPage'
  * PREMISE CORRECTED after the eighteen-ground run (GW-006). This test used to
  * seed a session that was closed but NOT saved, and assert "Done" rendered
  * anyway. That is the bug: on an unsaved ground the panel showed three controls
- * at once - "Save my ground →", "Not now", and a primary-styled "Done" beneath
+ * at once - "Save my check-in →", "Not now", and a primary-styled "Done" beneath
  * them. Two dismiss the panel, one saves, and the dismiss carried the visual
  * weight of the finishing action. The obvious way to press "I have finished" was
  * the way to leave without saving.
@@ -59,12 +59,12 @@ function renderPage() {
 describe('CLOSE-LABEL: the save card\'s terminal action', () => {
   beforeEach(() => { localStorage.clear() })
 
-  it('offers no primary "Done" while the ground is still unsaved', async () => {
+  it('offers no primary "Done" while the check-in is still unsaved', async () => {
     // GW-006. The save form is on screen with its own "Not now"; a second,
     // primary-styled dismiss beside it is what made leaving look like finishing.
     seedLeadClosed()
     renderPage()
-    await waitFor(() => expect(screen.getByText(/Save my ground/i)).toBeTruthy())
+    await waitFor(() => expect(screen.getByText(/Save my check-in/i)).toBeTruthy())
     expect(screen.queryByRole('button', { name: 'Done' })).toBeNull()
     // The unsaved path keeps exactly one way out, and it is not styled as the
     // finishing action.
@@ -75,7 +75,7 @@ describe('CLOSE-LABEL: the save card\'s terminal action', () => {
     // The original guard, which still holds in both states.
     seedLeadClosed()
     renderPage()
-    await waitFor(() => expect(screen.getByText(/Save my ground/i)).toBeTruthy())
+    await waitFor(() => expect(screen.getByText(/Save my check-in/i)).toBeTruthy())
     expect(screen.queryByText(/Close \(you can reopen/i)).toBeNull()
   })
 })

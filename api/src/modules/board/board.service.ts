@@ -5,6 +5,7 @@ import {
   BoardFamily,
   BoardSection,
   boardRendersFor,
+  boardHasSection,
   familyFor,
   pickBoardSafeReportFields,
   sectionsFor,
@@ -80,7 +81,7 @@ export class BoardService {
         poll: { include: { options: { orderBy: { sortOrder: 'asc' } } } },
       },
     });
-    if (!ground) throw new NotFoundException('Ground not found');
+    if (!ground) throw new NotFoundException('Check-in not found');
 
     /**
      * "THERE IS NO BOARD" IS ANSWERED BEFORE "WHO ARE YOU", AND THAT ORDER IS THE FIX.
@@ -88,7 +89,7 @@ export class BoardService {
      * The authorisation throw used to sit here, above the mode gate. On a private ground - which has
      * no board at all, by design - an org admin who was not a party got "You are not a party to this
      * ground" and a red Access denied toast, while a PARTICIPANT on the same URL got the truth:
-     * "This is a private alignment ground... there is no shared board. Read your report instead."
+     * "This is a private check-in... there is no shared board. Read your report instead."
      *
      * So the person with the least authority was the one being told what was going on, and the
      * admin was shown a permission problem that did not exist - one tab after a banner reading "You
@@ -105,16 +106,25 @@ export class BoardService {
     // GATE 1: mode + family. A private ground, or a sensing-family scenario,
     // has no board at all - and says so, rather than returning an empty shell
     // that reads like a broken page.
-    if (!boardRendersFor(ground.scenario, ground.mode)) {
+    if (!boardRendersFor(ground.scenario)) {
       return {
         groundId,
         renders: false,
         mode: ground.mode,
         family: familyFor(ground.scenario),
+        /**
+         * BOTH OLD REASONS WERE ABOUT MODE, AND MODE NO LONGER DECIDES THIS.
+         *
+         * One said "this is a private check-in, so there is no shared board", the other said this kind
+         * of check-in does not use one. Every check-in has a board now, so neither can be true - and a
+         * refusal that gives a reason which cannot be true is worse than a plain one.
+         *
+         * What remains reachable is a family with no sections, which would be a check-in the product
+         * does not know how to lay out. That is a gap in the product, not a decision about the reader,
+         * so it says so.
+         */
         reason:
-          ground.mode !== GroundMode.SHARED
-            ? 'This is a private alignment ground. Accounts are never shown to other parties, so there is no shared board. Read your report instead.'
-            : 'This kind of ground does not use a shared board. Laying these accounts out for everyone to read would undo the candour that makes them worth having. Read the report instead.',
+          'There is no board for this check-in yet. Read the report instead - it has everything the accounts produced.',
       };
     }
 
@@ -131,14 +141,14 @@ export class BoardService {
     const isSetupAdmin = !!ground.createdByUserId && ground.createdByUserId === requestingUserId;
     const me = ground.participants.find((p) => p.userId === requestingUserId);
     if (!me && !isInitiator && !isSetupAdmin) {
-      throw new ForbiddenException('You are not a party to this ground');
+      throw new ForbiddenException('You are not a party to this check-in');
     }
 
     // Collapse duplicate handoffs before anything reads them, so existing
     // grounds get the same answer as new ones.
     (ground as any).dependencies = dedupeDependencies(ground.dependencies as any);
 
-    const sections = sectionsFor(ground.scenario, ground.mode);
+    const sections = sectionsFor(ground.scenario);
     const has = (s: BoardSection) => sections.includes(s);
     const family = familyFor(ground.scenario);
 
@@ -164,11 +174,28 @@ export class BoardService {
     });
     const maxSession = checkIns.reduce((m, c) => Math.max(m, c.sessionNumber), 1);
 
+    /**
+     * NAMES AND RAW EMAIL ADDRESSES IN THE SAME COLUMN. W-UX-4.
+     *
+     * Seen on the running board: "Sahar Okonkwo" beside "ejiro@meridianhealth.test",
+     * "hafeezah@meridianhealth.test" and four more, in one grid, so it read as two different kinds
+     * of person. Her audit note said exactly that about two screens; this was the third.
+     *
+     * The board falls back to the ROLE, not the address, and there are two reasons rather than one:
+     *
+     *  1. The board is read by every party, and a party's address can be hidden from the others. The
+     *     client's `participantLabel` refuses the email for this reason and this did not.
+     *  2. It is what this board is for. Its own framing panel says each person is shown "against
+     *     their own role in its own terms" - so when there is no name, the role IS the identity.
+     *
+     * `role` is already sent alongside `name` in the response, so the client suppresses the subtitle
+     * when the two would say the same word twice.
+     */
     const nameOf = (pid: string) => {
       const p = ground.participants.find((x) => x.id === pid);
       if (!p) return null;
       const n = [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim();
-      return n || p.email || null;
+      return n || p.roleAsDescribed?.trim() || null;
     };
 
     // GATE 2: whitelist. Only these report fields may cross to the board.
@@ -246,7 +273,7 @@ export class BoardService {
       // board is otherwise read-only, so the client should not offer controls it
       // would only be rejected for using.
       canEditFrame: isInitiator,
-      readOnlyNote: 'Generated from the ground. Only the meeting poll is editable.',
+      readOnlyNote: 'Generated from the check-in. Only the meeting poll is editable.',
       participants: ground.participants.map((p) => ({
         id: p.id,
         name: nameOf(p.id),
@@ -731,12 +758,21 @@ export class BoardService {
       where: { id: groundId },
       select: { id: true, scenario: true, mode: true, initiatorId: true },
     });
-    if (!ground) throw new NotFoundException('Ground not found');
-    if (!boardRendersFor(ground.scenario, ground.mode)) {
-      throw new ForbiddenException('This ground does not have a board');
+    if (!ground) throw new NotFoundException('Check-in not found');
+    /**
+     * GATED ON THE SECTION, NOT ON THE BOARD EXISTING.
+     *
+     * This asked "does this ground have a board", which was the same question while the only
+     * boardless families were the ones with no sections at all. Sensing boards now exist and
+     * deliberately have NO objectives section - a pulse or a drift has no target anybody stated,
+     * which is the whole reason its board is reduced. Asking the weaker question let an initiator
+     * write a target onto a board that will never show it.
+     */
+    if (!boardHasSection(ground.scenario, 'objectives')) {
+      throw new ForbiddenException('This check-in does not track targets');
     }
     if (ground.initiatorId !== requestingUserId) {
-      throw new ForbiddenException('Only the person who set this ground up can change what it is aiming for');
+      throw new ForbiddenException('Only the person who set this check-in up can change what it is aiming for');
     }
     return ground;
   }
@@ -834,12 +870,24 @@ export class BoardService {
       where: { id: groundId },
       select: { id: true, scenario: true, mode: true, initiatorId: true, participants: { select: { id: true, userId: true } } },
     });
-    if (!ground) throw new NotFoundException('Ground not found');
-    if (!boardRendersFor(ground.scenario, ground.mode)) {
-      throw new ForbiddenException('This ground does not have a board');
+    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!boardRendersFor(ground.scenario)) {
+      throw new ForbiddenException('This check-in does not have a board');
+    }
+    /**
+     * AND THE POLL SECTION SPECIFICALLY, which the board check above no longer implies.
+     *
+     * While a private check-in had no board at all, "has a board" happened to exclude everything without
+     * a poll. Every check-in has a board now, so a one-round read would have accepted a schedule it has
+     * no section to show and nothing to schedule - there is no second session to pick a time for.
+     *
+     * Same shape as the objectives gate above: write to the SECTION, not to the board.
+     */
+    if (!boardHasSection(ground.scenario, 'poll')) {
+      throw new ForbiddenException('This check-in does not schedule its own rounds');
     }
     const me = ground.participants.find((p) => p.userId === requestingUserId);
-    if (!me) throw new ForbiddenException('You are not a party to this ground');
+    if (!me) throw new ForbiddenException('You are not a party to this check-in');
 
     const option = await this.prisma.groundPollOption.findUnique({
       where: { id: optionId },

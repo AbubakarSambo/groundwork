@@ -18,7 +18,12 @@ const src = readFileSync(
 
 describe('GroundAdminPage: roster and shared-report label use participantLabel, not a raw email', () => {
   it('imports participantLabel', () => {
-    expect(src).toMatch(/import \{ participantLabel \} from '@\/lib\/utils'/)
+    /**
+     * Loosened from the exact import line to the identifier: `personLabel` now sits alongside it in
+     * the same statement (the lead's own view may fall back to an address; a party's view may not),
+     * and pinning the literal line would make adding a second helper look like removing this one.
+     */
+    expect(src).toMatch(/import \{[^}]*\bparticipantLabel\b[^}]*\} from '@\/lib\/utils'/)
   })
 
   it('the roster row name uses participantLabel(p), not the raw email', () => {

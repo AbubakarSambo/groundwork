@@ -48,52 +48,103 @@ describe('the rule the module was written for', () => {
   });
 });
 
-describe('the three writes that make those states possible', () => {
-  it('a lead proposes, and it starts unseen', () => {
-    const propose = CODE.slice(CODE.indexOf('async proposeObjective('), CODE.indexOf('async stateMyObjective('));
-    expect(propose).toMatch(/authoredBy: 'lead', seenBySubject: false/);
+/**
+ * THE WRITES MOVED; THE RULES DID NOT.
+ *
+ * There used to be three: a lead PROPOSES a target, the person ACCEPTS it, or the person writes their
+ * OWN. All three are gone - service methods and routes both - because the product no longer works that
+ * way. An expectation is stated in the lead's own check-in, extracted from what they actually said,
+ * published to Context where everyone reads it, and changed only through the chat.
+ *
+ * Her decision: "Participants should not be able to rewrite their targets or accept it. One person is
+ * doing this, we dont want chaos. But they can see it."
+ *
+ * TWO OF THE THREE OLD RULES SURVIVE INTACT and are the reason this block still exists. They are now
+ * enforced in `extractExpectations`, so that is where they are pinned. The third - a party authoring
+ * their own - is not a rule that moved, it is a capability that was removed, and there is a guard
+ * below asserting nothing writes one.
+ */
+describe('the rules the three writes used to carry', () => {
+  /**
+   * SLICED TO THE END OF THE FUNCTION, not to a fixed number of characters.
+   *
+   * This took the first 6,000 characters after the signature, and adding the objective primitive to
+   * the same function pushed `textChanged` past that window - so a guard protecting a real fairness
+   * rule failed because of a magic number, on code that was correct. An anchor that moves with the
+   * file cannot do that.
+   */
+  const EXTRACT = (() => {
+    const all = readFileSync(join(__dirname, '../conversation/conversation.service.ts'), 'utf8');
+    const from = all.indexOf('async extractExpectations(');
+    expect(from).toBeGreaterThan(-1);
+    const to = all.indexOf('\n  async ', from + 10);
+    expect(to).toBeGreaterThan(from);
+    return all.slice(from, to);
+  })();
+
+  it('a lead states one, and it starts unseen', () => {
+    expect(EXTRACT).toMatch(/authoredBy: 'lead'/);
+    expect(EXTRACT).toMatch(/seenBySubject: false/);
   });
 
-  it('and re-proposing makes it unseen AGAIN', () => {
+  it('and restating it in different words makes it unseen AGAIN', () => {
     /**
-     * THE ONE THAT WOULD HAVE BEEN A REAL UNFAIRNESS. If a lead rewrites the objective, the person has
-     * not read the new words. Carrying `seenBySubject: true` forward would let a changed target be read
-     * against somebody who never saw the change - exactly what `mayBeReadAgainst` exists to refuse.
+     * THE ONE THAT WOULD HAVE BEEN A REAL UNFAIRNESS, and I shipped it wrong once. If a lead rewrites
+     * an expectation, the person has not read the new words. Carrying `seenBySubject: true` forward
+     * would let changed words be read against somebody who never saw the change - which is exactly
+     * what the flag exists to refuse, and the gap probe would have pressed them on it next session.
+     *
+     * Only a CHANGE resets it: a lead repeating the same expectation is not new words.
      */
-    const propose = CODE.slice(CODE.indexOf('async proposeObjective('), CODE.indexOf('async stateMyObjective('));
-    expect(propose).toMatch(/update: \{ text: body, authoredBy: 'lead', seenBySubject: false \}/);
+    expect(EXTRACT).toMatch(/const textChanged = !!prior && prior\.text\.trim\(\) !== text/);
+    expect(EXTRACT).toMatch(/\.\.\.\(textChanged \? \{ seenBySubject: false \} : \{\}\)/);
   });
 
-  it('the person can write their own, which is seen by definition', () => {
-    const own = CODE.slice(CODE.indexOf('async stateMyObjective('), CODE.indexOf('async acceptMyObjective('));
-    expect(own).toMatch(/authoredBy: 'self', seenBySubject: true/);
-    /** Theirs to state, so it is keyed on their own participant link and takes no id from the client. */
-    expect(own).toMatch(/groundParticipant\.findFirst\(\{\s*where: \{ groundId, userId: requestingUserId \}/);
+  it('stating one is the lead\'s, and only from their own check-in', () => {
+    expect(EXTRACT).toMatch(/me\?\.partyType !== PartyType\.INITIATOR\) return/);
   });
 
-  it('and accepting is its own act, not a side effect of the page loading', () => {
-    /**
-     * "They were shown it" and "they accepted it" are different claims, and only one of them is fair to
-     * act on. So there is an endpoint for it and no read path sets the flag.
-     */
-    const accept = CODE.slice(CODE.indexOf('async acceptMyObjective('), CODE.indexOf('async acceptMyObjective(') + 1400);
-    expect(accept).toMatch(/data: \{ seenBySubject: true \}/);
-    expect(accept).toMatch(/There is nothing proposed for you yet/);
-    /**
-     * The read must never mark it seen. Asserted as "no write in the read path" rather than on the text
-     * `seenBySubject: true`, which also appears in the Prisma `select` - my first version failed against
-     * correct code for exactly that reason.
-     */
+  /**
+   * A name that cannot be resolved against THIS check-in's roster is dropped, never guessed - the
+   * equivalent of the old "a participant id from another ground must not be writable".
+   */
+  it('and only for somebody actually in this check-in', () => {
+    expect(EXTRACT).toMatch(/const target = resolve\(e\.personName\)/);
+    expect(EXTRACT).toMatch(/if \(!target\) continue/);
+  });
+
+  /**
+   * THE HALF OF "ACCEPTING" THAT SURVIVED, and it is the important half. "They were shown it" and
+   * "they accepted it" were different claims; only the first exists now, and it must still never be
+   * set by a page merely loading. The ground read does not write it - a dedicated call does, from the
+   * view that actually renders the words.
+   */
+  it('and no read path marks an expectation seen', () => {
     const get = CODE.slice(CODE.indexOf('const objectiveRows'), CODE.indexOf('const participantsWithCheckIns'));
+    expect(get.length).toBeGreaterThan(50);
     expect(get).not.toMatch(/personObjective\.(update|upsert|create)/);
     expect(get).toMatch(/personObjective\.findMany/);
   });
 
-  it('proposing for somebody is the lead\'s, and checked against this ground', () => {
-    const propose = CODE.slice(CODE.indexOf('async proposeObjective('), CODE.indexOf('async stateMyObjective('));
-    expect(propose).toMatch(/ground\.initiatorId !== requestingUserId && !isOrgAdmin/);
-    /** A participant id from another ground must not be writable. */
-    expect(propose).toMatch(/findFirst\(\{ where: \{ id: participantId, groundId \} \}\)/);
+  /**
+   * SEEN BY WHOM. Found by mutation: changing the update to `where: { groundId }` - which would mark
+   * every person's expectation seen the moment any one of them opened the page - compiled clean and
+   * no test noticed. That is the worst kind of hole in a fairness flag, because the damage is silent:
+   * three people become readable against words two of them never saw.
+   *
+   * The row is found from the CALLER'S OWN user link on this check-in, and no participant id is taken
+   * from the client.
+   */
+  it('marks only the caller\'s own expectation, not everybody\'s', () => {
+    const mark = CODE.slice(CODE.indexOf('async markMyExpectationShown('));
+    expect(mark.slice(0, 900)).toMatch(/where: \{ groundId, userId: requestingUserId \}/);
+    expect(mark.slice(0, 900)).toMatch(/participantId: me\.id/);
+  });
+
+  /** And the capability that was removed stays removed. */
+  it('nothing writes an expectation authored by the person it is about', () => {
+    expect(CODE).not.toMatch(/authoredBy: 'self'/);
+    expect(CODE).not.toMatch(/async (proposeObjective|stateMyObjective|acceptMyObjective)\(/);
   });
 });
 
@@ -115,12 +166,35 @@ describe('and the state travels with the text', () => {
     expect(CODE).toMatch(/\)\.filter\(o => mayBeReadAgainst\(\{/);
   });
 
-  it('and the panel says out loud when nothing may be read against it', () => {
-    const PANEL = readFileSync(
-      join(__dirname, '../../../../client/src/components/gw/ObjectivePanel.tsx'),
+  /**
+   * THE RULE OUTLIVED THE PANEL THAT STATED IT.
+   *
+   * This read `ObjectivePanel.tsx`, which is gone. That panel was the old model - the lead PROPOSES a
+   * target, the person ACCEPTS it or writes their own - and it contradicted the one the product runs
+   * on now: one person states an expectation, it is published where everyone reads it, and nobody
+   * agrees to anything by form.
+   *
+   * The rule itself did not change and matters more than ever: nothing is read against somebody who
+   * has not seen the thing. What changed is where it is enforced. It is no longer a sentence a panel
+   * prints - it is a branch in the interview's own instructions, keyed on `seenBySubject`, deciding
+   * whether the session presses on the gap at all.
+   */
+  it('and an unseen expectation is not pressed on in the session', () => {
+    const PROMPT = readFileSync(
+      join(__dirname, '../conversation/prompt-library.ts'),
       'utf8',
-    ).replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-    expect(PANEL).toMatch(/Nothing is read against this until/);
-    expect(PANEL).toMatch(/!objective\.mayBeReadAgainst &&/);
+    );
+    expect(PROMPT).toMatch(/seenBySubject/);
+    expect(PROMPT).toMatch(/THEY HAVE NOT SEEN IT/);
+    expect(PROMPT).toMatch(/read nothing against it this session/);
+  });
+
+  /** And the person can actually see it, which is what makes the flag mean anything. */
+  it('and the expectation is on screen for the person it is about', () => {
+    const PANEL = readFileSync(
+      join(__dirname, '../../../../client/src/components/gw/ExpectationsPanel.tsx'),
+      'utf8',
+    );
+    expect(PANEL).toMatch(/markMyExpectationShown/);
   });
 });

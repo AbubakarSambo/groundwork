@@ -18,12 +18,12 @@ import { GroundGone } from './GroundGone'
  * ground and that ground belongs to the one you just left. The person can see it exists;
  * they were reading it a second ago. "Not found" tells them the product lost it.
  */
-describe('the ground-not-open state', () => {
+describe('the check-in-not-open state', () => {
   const show = () => render(<MemoryRouter><GroundGone /></MemoryRouter>)
 
   it('has a way out', () => {
     show()
-    expect(screen.getByRole('button', { name: /Go to my grounds/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Go to my check-ins/ })).toBeTruthy()
   })
 
   it('names the org switch, because that is how people get here', () => {
@@ -40,7 +40,7 @@ describe('the ground-not-open state', () => {
   it('it does not enumerate which reason it was', () => {
     /**
      * Closed, removed, another organisation's link - they all lead to the same move, and
-     * saying which one would tell whoever holds a link whether a ground exists at that
+     * saying which one would tell whoever holds a link whether a check-in exists at that
      * id. Not something a stranger should be able to ask.
      */
     const body = document.body.textContent ?? ''
@@ -51,7 +51,7 @@ describe('the ground-not-open state', () => {
 describe('both ground pages use it', () => {
   for (const rel of ['pages/grounds/GroundAdminPage.tsx', 'pages/grounds/GroundParticipantPage.tsx']) {
     it(`${rel.split('/').pop()}`, () => {
-      const src = readFileSync(join(__dirname, '../..', rel), 'utf8')
+      const src = readFileSync(join(__dirname, '../..', rel), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
       expect(src).toContain('<GroundGone />')
       // And the old bare version is gone rather than sitting next to it - the
       // participant page had its own two hardcoded colours for it.

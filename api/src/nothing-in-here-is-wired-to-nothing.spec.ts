@@ -93,7 +93,7 @@ function walk(dir: string, out: string[] = []): string[] {
  */
 const allFiles = walk(SRC);
 const sources = new Map<string, string>();
-for (const f of allFiles) sources.set(f, readFileSync(f, 'utf8'));
+for (const f of allFiles) sources.set(f, readFileSync(f, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, ''));
 
 const files = allFiles.filter(
   (f) => basename(f) !== 'index.ts' && !f.includes('__fixtures__'),
