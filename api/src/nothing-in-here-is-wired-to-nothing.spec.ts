@@ -43,6 +43,20 @@ const SRC = join(__dirname);
  * anything.
  */
 const NOT_WIRED_ON_PURPOSE: Record<string, string> = {
+  /*
+   * The one thing here that is genuinely waiting rather than deliberately standalone, so it is
+   * written down rather than allowed to become normal.
+   *
+   * A Subject only ever arrives by a customer's system pushing one, and that push needs the machine
+   * auth and the public API surface that do not exist yet. There is no internal producer to wire it
+   * to - grounds do not create subjects - so a caller today would have to be an invented one, and
+   * inventing the public endpoint before its authentication exists is how the auth ends up shaped
+   * around the endpoint instead of the other way round.
+   *
+   * REMOVE THIS ENTRY when ingestion lands. If it is still here after that, the entity was built
+   * too early and this line is the evidence.
+   */
+  'subjects.service.ts': 'the org-scoped subject entity, waiting on the ingestion endpoint and machine auth that are the next phase - it has no internal producer by design',
   // Nest finds these by convention or by decorator rather than by import.
   'main.ts': 'the entrypoint - nothing imports it, it imports everything',
   // Duplicated deliberately into the client, and documented there.

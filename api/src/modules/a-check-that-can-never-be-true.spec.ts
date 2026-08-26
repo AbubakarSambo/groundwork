@@ -60,6 +60,14 @@ const CHECKED_AND_FINE = new Set([
   'modules/entry/entry.service.ts:email',           // the request body's email, before a user exists
   'modules/entry/entry.service.ts:userId',          // GroundParticipant.userId, which IS nullable
   'modules/conversation/conversation.service.ts:text', // a chat message, not a stored note
+  /*
+   * Both of these validate the INCOMING HTTP PAYLOAD from a customer's system, not a row read back.
+   * The column being non-nullable is what the check enforces rather than something it can lean on -
+   * a push arriving with no title is exactly the case, and trusting the schema there would mean
+   * trusting a stranger's request to have obeyed it.
+   */
+  'modules/subjects/subjects.service.ts:externalId',
+  'modules/subjects/subjects.service.ts:title',
 ]);
 
 function findHits() {

@@ -273,6 +273,7 @@ model Organization {
   contributorCodes ContributorCode[]
   styleProfiles    PersonStyleProfile[]
   memberships      OrganizationMembership[]
+  subjects         Subject[]
 
   @@map("organizations")
 }
@@ -1264,6 +1265,79 @@ model RoundCompletion {
   @@unique([groundId, roundNumber])
   @@index([groundId])
   @@map("round_completions")
+}
+
+/// WHAT KIND OF WORK AN IMPORTED SUBJECT IS.
+enum SubjectType {
+  OBJECTIVE
+  PROJECT
+  DECISION
+}
+
+/// A PIECE OF THE CUSTOMER'S OWN WORK, HELD AS A POINTER.
+///
+/// CAREFUL WITH THE WORD. In the rest of this schema "subject" means the PERSON an expectation is
+/// about - `PersonObjective.seenBySubject` is whether that person has seen it. Here it means a
+/// thing being worked on. The two are not related and the collision is deliberate rather than
+/// accidental: the API contract this serves is `/subjects`, and inventing a private synonym for the
+/// endpoint's own noun would be worse. Nothing existing is renamed.
+///
+/// POINTER, NOT COPY, which is the whole design and is not new here - `PersonObjective.trackedUrl`
+/// already does exactly this for a ticket, for exactly this reason. What is stored is the address,
+/// the wording AS OF THE LAST SYNC, and when we last looked. There is no parallel editable version,
+/// nothing is polled, and past a staleness window it renders as stale rather than as now. A second
+/// editable representation of the customer's objective would be the failure this product exists to
+/// end: two places that must agree, each defensible alone, nothing reconciling them.
+///
+/// ORG-SCOPED AND ADDITIVE. Grounds are untouched and keep working exactly as they do. This
+/// accumulates alongside them and nothing in the live product reads it yet.
+model Subject {
+  id             String      @id @default(uuid())
+  organizationId String      @map("organization_id")
+  /// The customer's own id for it. Unique per source system within an org - the same string may
+  /// legitimately mean different things in two different tools.
+  externalId     String      @map("external_id")
+  sourceSystem   String      @map("source_system")
+  type           SubjectType
+
+  /// The wording as of `syncedAt`. Never edited here; an edit is proposed back or not offered.
+  title   String  @db.Text
+  measure String? @db.Text
+  target  String? @db.Text
+
+  /// Held as the customer's own identifiers rather than resolved to rows, because the person may
+  /// not have been pushed yet and a subject must not fail to import for naming somebody unknown.
+  ownerExternalId        String? @map("owner_external_id")
+  contributorExternalIds Json?   @map("contributor_external_ids")
+  parentExternalId       String? @map("parent_external_id")
+
+  startDate DateTime? @map("start_date") @db.Date
+  dueDate   DateTime? @map("due_date") @db.Date
+  /// THE CUSTOMER'S OWN WORD, not an enum of ours. Their tool's states are theirs, and mapping
+  /// them onto ours at the boundary would be a translation nobody could audit later.
+  status    String?
+
+  /// 'imported' here, always. The value exists so that this and a `PersonObjective` written by a
+  /// lead or by the person themselves can never render identically: those two were said out loud
+  /// to somebody, and an imported one was assigned by a system that cannot say whether anyone has
+  /// seen it. Whether a given person HAS seen it is per-person and does not belong on this row.
+  authoredBy String @default("imported") @map("authored_by")
+
+  /// When their system last told us. Staleness is measured from here and nowhere else.
+  syncedAt        DateTime  @default(now()) @map("synced_at")
+  /// Soft delete. Their tool dropped it; the findings that referenced it stay readable.
+  sourceDeletedAt DateTime? @map("source_deleted_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  /// The upsert key from the API contract: (org, sourceSystem, externalId).
+  @@unique([organizationId, sourceSystem, externalId])
+  @@index([organizationId, type])
+  @@index([organizationId, syncedAt])
+  @@map("subjects")
 }
 
 model OrgIntelligence {
