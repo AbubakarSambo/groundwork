@@ -8,6 +8,7 @@ import { CredentialsService } from './credentials.service';
 import { IdempotencyService } from './idempotency.service';
 import { MachineTokenGuard } from './machine-token.guard';
 import { SubjectsService } from '../subjects/subjects.service';
+import { ScimService } from '../people/scim.service';
 
 @Module({
   imports: [
@@ -18,7 +19,7 @@ import { SubjectsService } from '../subjects/subjects.service';
     }),
   ],
   controllers: [PublicApiController, CredentialsController],
-  providers: [CredentialsService, IdempotencyService, MachineTokenGuard, SubjectsService],
+  providers: [CredentialsService, IdempotencyService, MachineTokenGuard, SubjectsService, ScimService],
   exports: [CredentialsService],
 })
 export class PublicApiModule {}

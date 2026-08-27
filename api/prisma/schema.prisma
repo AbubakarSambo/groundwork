@@ -275,6 +275,7 @@ model Organization {
   memberships      OrganizationMembership[]
   subjects         Subject[]
   apiCredentials   ApiCredential[]
+  people           Person[]
 
   @@map("organizations")
 }
@@ -1310,12 +1311,12 @@ model ApiCredential {
 /// import is a second import. The key is theirs, the window is 24 hours, and the stored response is
 /// replayed verbatim so a retry is indistinguishable from the original call.
 model IdempotencyRecord {
-  id             String   @id @default(uuid())
-  organizationId String   @map("organization_id")
-  key            String
+  id                 String   @id @default(uuid())
+  organizationId     String   @map("organization_id")
+  key                String
   /// Method and path, so the same key on a different call is a client error rather than a silent
   /// replay of an unrelated response.
-  endpoint       String
+  endpoint           String
   /// A HASH OF THE REQUEST BODY, and the field that makes this safe rather than dangerous.
   ///
   /// Without it, the same key arriving with a DIFFERENT payload replays the first response - so a
@@ -1323,14 +1324,73 @@ model IdempotencyRecord {
   /// subjects, gets five hundred cheerful 200s, and stores one. Their write is not refused, it is
   /// answered with somebody else's answer. Found by sending two different bodies under one key on
   /// the running server and watching the second come back as the first.
-  requestFingerprint String @map("request_fingerprint")
-  statusCode     Int      @map("status_code")
-  responseBody   Json     @map("response_body")
-  createdAt      DateTime @default(now()) @map("created_at")
+  requestFingerprint String   @map("request_fingerprint")
+  statusCode         Int      @map("status_code")
+  responseBody       Json     @map("response_body")
+  createdAt          DateTime @default(now()) @map("created_at")
 
   @@unique([organizationId, key, endpoint])
   @@index([createdAt])
   @@map("idempotency_records")
+}
+
+/// A PERSON IN THE CUSTOMER'S ORGANISATION, AS THEIR IDENTITY SYSTEM DESCRIBES THEM.
+///
+/// DELIBERATELY NOT A `User`. A User here is an account: it has a password hash, a verified email,
+/// a role, and a GLOBALLY unique email address. Provisioning into it would mean every person a
+/// customer's HRIS knows about gets an account they never asked for, and two customers employing
+/// the same contractor would collide on that unique email. It would also make deprovisioning a
+/// question about somebody's login rather than about their record.
+///
+/// So this is the roster, and `linkedUserId` is where the two meet if and when that person actually
+/// signs in. Additive: nothing about accounts, auth or grounds changes.
+///
+/// JOINER, MOVER, LEAVER are the three things this has to get right, and only the first is easy.
+/// A mover is a `managerExternalId` change and must not read as a new person. A leaver is
+/// `active: false` - SCIM's own deprovisioning signal - which stamps `deactivatedAt` and is what
+/// the retention and handover rules will hang off. Nothing is ever hard deleted, because the work
+/// history is the organisation's even when the person has gone.
+model Person {
+  id             String @id @default(uuid())
+  organizationId String @map("organization_id")
+  /// Their identity system's id for this person. The `externalId` every subject points at.
+  externalId     String @map("external_id")
+  sourceSystem   String @map("source_system")
+
+  /// SCIM's required handle. Usually an email or a directory login.
+  userName    String  @map("user_name")
+  displayName String? @map("display_name")
+  givenName   String? @map("given_name")
+  familyName  String? @map("family_name")
+  email       String?
+  title       String?
+  department  String?
+  /// Per-participant timezone, so cadence windows and nudge timing resolve where the person is
+  /// rather than where the server is.
+  timezone    String?
+
+  /// The reporting line. Held as their id rather than a foreign key, because a manager may be
+  /// pushed after their report and a roster must not refuse a person for naming someone not yet
+  /// sent. Resolved at read; unresolved is reported rather than hidden.
+  managerExternalId String? @map("manager_external_id")
+
+  /// SCIM's own signal, kept as it arrives. `deactivatedAt` is the moment it first became false.
+  active        Boolean   @default(true)
+  deactivatedAt DateTime? @map("deactivated_at")
+
+  /// Set if this person ever signs in to Groundwork. Null for most of a roster, and that is normal.
+  linkedUserId String? @map("linked_user_id")
+
+  syncedAt  DateTime @default(now()) @map("synced_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, sourceSystem, externalId])
+  @@index([organizationId, active])
+  @@index([organizationId, managerExternalId])
+  @@map("people")
 }
 
 /// WHAT KIND OF WORK AN IMPORTED SUBJECT IS.

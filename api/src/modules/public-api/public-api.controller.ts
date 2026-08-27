@@ -1,5 +1,5 @@
 import {
-  Controller, Post, Get, Delete, Body, Param, Query, Headers, Req,
+  Controller, Post, Get, Patch, Delete, Body, Param, Query, Headers, Req,
   UseGuards, UnauthorizedException, BadRequestException, HttpCode,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags, ApiExcludeEndpoint } from '@nestjs/swagger';
@@ -11,6 +11,8 @@ import { IdempotencyService } from './idempotency.service';
 import { resolveGrantedScopes } from './scopes';
 import { SubjectType } from '@prisma/client';
 import { Public } from '../../common/decorators/public.decorator';
+import { ScimService, ScimUser } from '../people/scim.service';
+import { resolveReferences } from '../people/an-unresolved-reference-is-a-fact';
 
 /** Short, because a leaked one should stop working before anybody has finished reading the log. */
 const TOKEN_TTL_SECONDS = 900;
@@ -47,6 +49,7 @@ export class PublicApiController {
     private readonly credentials: CredentialsService,
     private readonly subjects: SubjectsService,
     private readonly idempotency: IdempotencyService,
+    private readonly scim: ScimService,
   ) {}
 
   /**
@@ -121,7 +124,7 @@ export class PublicApiController {
     if (!sourceSystem) throw new BadRequestException('sourceSystem is required - an external id is only unique within one.');
     const row = await this.subjects.find(req.machine.organizationId, sourceSystem, externalId);
     if (!row) throw new BadRequestException('No such subject.');
-    return this.present(row);
+    return this.withPeople(req.machine.organizationId, row);
   }
 
   @Get('subjects')
@@ -148,6 +151,65 @@ export class PublicApiController {
   }
 
   /**
+   * SCIM 2.0. The path is theirs, not ours - an IdP is configured with a base URL and appends
+   * /Users itself, so the shape has to be exactly what the standard says.
+   */
+  @Post('scim/v2/Users')
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('graph:write')
+  @ApiOperation({ summary: 'Create or update a person. Upserts on externalId - a mover is not a new person.' })
+  async scimUpsert(@Req() req: { machine: MachineCaller }, @Body() dto: ScimUser) {
+    const { row, created } = await this.scim.upsert(req.machine.organizationId, req.machine.clientId, dto);
+    return this.presentPerson(row, created);
+  }
+
+  @Patch('scim/v2/Users/:externalId')
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('graph:write')
+  @ApiOperation({ summary: 'Patch a person. The deprovisioning op every IdP sends is active:false.' })
+  async scimPatch(@Req() req: { machine: MachineCaller }, @Param('externalId') externalId: string, @Body() body: any) {
+    return this.presentPerson(await this.scim.patch(req.machine.organizationId, req.machine.clientId, externalId, body));
+  }
+
+  @Get('scim/v2/Users/:externalId')
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('findings:read')
+  @ApiOperation({ summary: 'Read one person as we hold them' })
+  async scimGet(@Req() req: { machine: MachineCaller }, @Param('externalId') externalId: string) {
+    const row = await this.scim.find(req.machine.organizationId, req.machine.clientId, externalId);
+    if (!row) throw new BadRequestException('No such person.');
+    return this.presentPerson(row);
+  }
+
+  @Get('scim/v2/Users')
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('findings:read')
+  @ApiOperation({ summary: 'List people. Inactive are excluded unless asked for - they are kept, never deleted.' })
+  async scimList(@Req() req: { machine: MachineCaller }, @Query('includeInactive') includeInactive?: string) {
+    const rows = await this.scim.list(req.machine.organizationId, { includeInactive: includeInactive === 'true' });
+    return { totalResults: rows.length, Resources: rows.map((r) => this.presentPerson(r)) };
+  }
+
+  /** Allow-list, same reasoning as the subject serialiser below. */
+  private presentPerson(p: any, created?: boolean) {
+    return {
+      externalId: p.externalId,
+      userName: p.userName,
+      displayName: p.displayName,
+      name: { givenName: p.givenName, familyName: p.familyName },
+      email: p.email,
+      title: p.title,
+      department: p.department,
+      timezone: p.timezone,
+      managerExternalId: p.managerExternalId,
+      active: p.active,
+      deactivatedAt: p.deactivatedAt,
+      syncedAt: p.syncedAt,
+      ...(created === undefined ? {} : { created }),
+    };
+  }
+
+  /**
    * THE SERIALISER, AND IT IS AN ALLOW-LIST.
    *
    * A screen can omit a field by not drawing it; JSON cannot. So what leaves is named here rather
@@ -155,7 +217,7 @@ export class PublicApiController {
    * exactly how an internal id or a hash ends up in somebody else's logs. Nothing reaches a
    * customer that is not written on this line.
    */
-  private present(s: any) {
+  private present(s: any, refs?: ReturnType<typeof resolveReferences>) {
     return {
       externalId: s.externalId,
       sourceSystem: s.sourceSystem,
@@ -173,6 +235,22 @@ export class PublicApiController {
       syncedAt: s.syncedAt,
       sourceDeletedAt: s.sourceDeletedAt,
       freshness: s.freshness,
+      /*
+       * Present and empty rather than absent when everything resolved, so a client reads one shape
+       * either way. See an-unresolved-reference-is-a-fact.ts for why an id we cannot resolve is
+       * kept and reported rather than dropped.
+       */
+      ...(refs ? { owner: refs.owner, contributors: refs.contributors, unresolvedReferences: refs.unresolved } : {}),
     };
+  }
+
+  /** Resolve a subject's people, for the reads that show them. */
+  private async withPeople(organizationId: string, subject: any) {
+    const ids = [
+      subject.ownerExternalId,
+      ...(Array.isArray(subject.contributorExternalIds) ? subject.contributorExternalIds : []),
+    ].filter(Boolean);
+    const { found } = await this.scim.resolve(organizationId, ids);
+    return this.present(subject, resolveReferences(subject, found as any));
   }
 }
