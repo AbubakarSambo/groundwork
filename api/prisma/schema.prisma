@@ -274,6 +274,7 @@ model Organization {
   styleProfiles    PersonStyleProfile[]
   memberships      OrganizationMembership[]
   subjects         Subject[]
+  apiCredentials   ApiCredential[]
 
   @@map("organizations")
 }
@@ -1265,6 +1266,71 @@ model RoundCompletion {
   @@unique([groundId, roundNumber])
   @@index([groundId])
   @@map("round_completions")
+}
+
+/// ONE CREDENTIAL PAIR PER INTEGRATION, SO ONE CAN BE REVOKED WITHOUT KILLING THE OTHERS.
+///
+/// A customer connecting their OKR tool, their HRIS and a script somebody wrote gets three of
+/// these. Sharing one pair across all three means the day the script leaks, revoking it takes the
+/// HRIS down too - so the customer does not revoke, and a leaked credential stays live because
+/// turning it off costs too much.
+///
+/// THE SECRET IS NOT HERE. Only its hash is, exactly as with a password: this table is readable by
+/// anyone who can read the database, and a stored secret is a stored secret whatever it authorises.
+/// It is shown once at issue and never again, and the console offers rotation rather than recovery.
+model ApiCredential {
+  id               String    @id @default(uuid())
+  organizationId   String    @map("organization_id")
+  /// What this pair is for, in the customer's words. Shown in the console beside its last use, so
+  /// revoking is a decision somebody can actually make.
+  name             String
+  clientId         String    @unique @map("client_id")
+  clientSecretHash String    @map("client_secret_hash")
+  /// What it may do. Chosen at issue and never widened by a request - a token can only ever ask for
+  /// a subset of what its credential already holds.
+  scopes           String[]
+  /// Last authenticated use, for the console. Written on token issue rather than on every call:
+  /// the question it answers is "is this integration alive", and per-request writes would put a
+  /// write on the hot path of every read.
+  lastUsedAt       DateTime? @map("last_used_at")
+  revokedAt        DateTime? @map("revoked_at")
+  createdByUserId  String?   @map("created_by_user_id")
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("api_credentials")
+}
+
+/// A WRITE THAT ARRIVED TWICE MUST NOT HAPPEN TWICE.
+///
+/// Their system retries. A network timeout on our side looks identical to a refusal from theirs, so
+/// a well-behaved integration retries a push it cannot confirm - and without this, a retried bulk
+/// import is a second import. The key is theirs, the window is 24 hours, and the stored response is
+/// replayed verbatim so a retry is indistinguishable from the original call.
+model IdempotencyRecord {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  key            String
+  /// Method and path, so the same key on a different call is a client error rather than a silent
+  /// replay of an unrelated response.
+  endpoint       String
+  /// A HASH OF THE REQUEST BODY, and the field that makes this safe rather than dangerous.
+  ///
+  /// Without it, the same key arriving with a DIFFERENT payload replays the first response - so a
+  /// client generating one key per retry loop rather than per operation pushes five hundred
+  /// subjects, gets five hundred cheerful 200s, and stores one. Their write is not refused, it is
+  /// answered with somebody else's answer. Found by sending two different bodies under one key on
+  /// the running server and watching the second come back as the first.
+  requestFingerprint String @map("request_fingerprint")
+  statusCode     Int      @map("status_code")
+  responseBody   Json     @map("response_body")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@unique([organizationId, key, endpoint])
+  @@index([createdAt])
+  @@map("idempotency_records")
 }
 
 /// WHAT KIND OF WORK AN IMPORTED SUBJECT IS.

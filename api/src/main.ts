@@ -1,5 +1,5 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe, Logger } from '@nestjs/common';
+import { ValidationPipe, Logger, RequestMethod } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { Resend } from 'resend';
@@ -36,7 +36,20 @@ async function bootstrap() {
 
   const configService = app.get(ConfigService);
 
-  app.setGlobalPrefix('api/v1');
+  /**
+   * THE INTEGRATION API IS NOT UNDER THE INTERNAL VERSION, AND MUST NOT BE.
+   *
+   * Internal routes live at /api/v1 and are free to change shape whenever the product does. The
+   * integration surface at /api/org/v1 is a contract somebody else's server depends on, so it is
+   * excluded from this prefix rather than nested inside it - if it inherited /api/v1, then the day
+   * internal routes move to v2 the customer's integration either moves with them or is left behind
+   * on a version number that no longer means anything.
+   *
+   * The excluded controller therefore declares its full path itself. See public-api.controller.ts.
+   */
+  app.setGlobalPrefix('api/v1', {
+    exclude: [{ path: 'api/org/v1/(.*)', method: RequestMethod.ALL }],
+  });
 
   // CORS - allow configured origins (plus this project's Vercel previews) or all in development
   const allowedOrigins = configService.get<string>('app.corsOrigins');
