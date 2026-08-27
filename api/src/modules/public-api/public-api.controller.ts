@@ -12,6 +12,7 @@ import { resolveGrantedScopes } from './scopes';
 import { SubjectType } from '@prisma/client';
 import { Public } from '../../common/decorators/public.decorator';
 import { ScimService, ScimUser } from '../people/scim.service';
+import { BulkImportService } from '../subjects/bulk-import.service';
 import { resolveReferences } from '../people/an-unresolved-reference-is-a-fact';
 
 /** Short, because a leaked one should stop working before anybody has finished reading the log. */
@@ -50,6 +51,7 @@ export class PublicApiController {
     private readonly subjects: SubjectsService,
     private readonly idempotency: IdempotencyService,
     private readonly scim: ScimService,
+    private readonly bulk: BulkImportService,
   ) {}
 
   /**
@@ -110,6 +112,33 @@ export class PublicApiController {
         );
       },
     );
+  }
+
+  @Post('subjects/bulk')
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('subjects:write')
+  @ApiOperation({ summary: 'Import many subjects. Returns a jobId; bad rows are skipped and listed.' })
+  async bulkSubjects(
+    @Req() req: { machine: MachineCaller },
+    @Body() dto: { sourceSystem?: string; subjects?: SubjectPush[] },
+    @Headers('idempotency-key') idempotencyKey?: string,
+  ) {
+    if (!dto?.sourceSystem?.trim()) throw new BadRequestException('sourceSystem is required on the batch.');
+    return this.idempotency.run(
+      req.machine.organizationId,
+      idempotencyKey,
+      'POST /subjects/bulk',
+      dto,
+      () => this.bulk.start(req.machine.organizationId, dto.sourceSystem!.trim(), dto.subjects ?? []),
+    );
+  }
+
+  @Get('jobs/:jobId')
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('findings:read')
+  @ApiOperation({ summary: 'A job, its counts, and every row it could not take' })
+  async job(@Req() req: { machine: MachineCaller }, @Param('jobId') jobId: string) {
+    return this.bulk.status(req.machine.organizationId, jobId);
   }
 
   @Get('subjects/:externalId')

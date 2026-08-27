@@ -9,6 +9,7 @@ import { IdempotencyService } from './idempotency.service';
 import { MachineTokenGuard } from './machine-token.guard';
 import { SubjectsService } from '../subjects/subjects.service';
 import { ScimService } from '../people/scim.service';
+import { BulkImportService } from '../subjects/bulk-import.service';
 
 @Module({
   imports: [
@@ -19,7 +20,7 @@ import { ScimService } from '../people/scim.service';
     }),
   ],
   controllers: [PublicApiController, CredentialsController],
-  providers: [CredentialsService, IdempotencyService, MachineTokenGuard, SubjectsService, ScimService],
+  providers: [CredentialsService, IdempotencyService, MachineTokenGuard, SubjectsService, ScimService, BulkImportService],
   exports: [CredentialsService],
 })
 export class PublicApiModule {}

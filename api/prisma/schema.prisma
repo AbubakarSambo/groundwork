@@ -276,6 +276,8 @@ model Organization {
   subjects         Subject[]
   apiCredentials   ApiCredential[]
   people           Person[]
+  importJobs       ImportJob[]
+  quietPeriods     DetectionQuietPeriod[]
 
   @@map("organizations")
 }
@@ -1332,6 +1334,96 @@ model IdempotencyRecord {
   @@unique([organizationId, key, endpoint])
   @@index([createdAt])
   @@map("idempotency_records")
+}
+
+enum ImportJobState {
+  QUEUED
+  RUNNING
+  /// Finished. NOT the same as "everything worked" - see `failed`.
+  COMPLETED
+  /// The job itself died. Individual bad rows do not put a job here.
+  ABANDONED
+}
+
+/// A BULK IMPORT, AND WHAT IT COULD NOT TAKE.
+///
+/// The interesting half of this model is the failures, not the counts. A customer pushing four
+/// thousand objectives where row 2,847 is malformed must not be told "3,999 succeeded" and left to
+/// find the other one: a summary count is a report that something is wrong with no way to act on
+/// it, which is worse than a plain error because it looks like it was handled.
+///
+/// So the job SKIPS AND REPORTS rather than halting or rolling back. Halting means one bad row
+/// blocks the other 3,999 for however long it takes a human to notice. Rolling back means the same,
+/// plus the customer's whole sync has to be re-run for a typo. Skipping is the only option that
+/// leaves them with working data and a specific list of what to fix.
+model ImportJob {
+  id             String         @id @default(uuid())
+  organizationId String         @map("organization_id")
+  sourceSystem   String         @map("source_system")
+  kind           String
+  state          ImportJobState @default(QUEUED)
+
+  total     Int @default(0)
+  succeeded Int @default(0)
+  failed    Int @default(0)
+
+  /// Why the job as a whole died, if it did. Null when individual rows failed but the job ran.
+  error       String?   @db.Text
+  startedAt   DateTime? @map("started_at")
+  completedAt DateTime? @map("completed_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  failures     ImportJobFailure[]
+
+  @@index([organizationId, createdAt])
+  @@map("import_jobs")
+}
+
+/// ONE ROW THAT COULD NOT BE TAKEN, NAMED SPECIFICALLY ENOUGH TO FIX.
+///
+/// The position AND the external id, because either alone is not enough: a customer whose file has
+/// no ids yet cannot use the id, and one whose rows were reordered cannot use the position.
+model ImportJobFailure {
+  id         String  @id @default(uuid())
+  jobId      String  @map("job_id")
+  /// Zero-based position in the batch as it was sent.
+  index      Int
+  externalId String? @map("external_id")
+  /// The reason, in the words the customer would need to fix it - never a stack trace.
+  message    String  @db.Text
+
+  job ImportJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@map("import_job_failures")
+}
+
+/// DETECTION HOLDS ITS TONGUE WHILE A CUSTOMER'S DATA ARRIVES.
+///
+/// A first sync of several thousand objectives trips every detector at once. Day one of a
+/// deployment then looks like a wall of findings about work nobody has discussed yet, and the
+/// customer reasonably concludes the tool is broken.
+///
+/// STAMPED AT IMPORT TIME, WHICH IS THE WHOLE POINT. No detector exists yet to be suppressed. If
+/// this were computed when detectors arrive, the first customer's window would already be over -
+/// the import that should have started it happened months earlier and left no trace. Recording it
+/// now costs a row and is the only version that works later.
+model DetectionQuietPeriod {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  /// INITIAL_IMPORT for an org's first, BULK_IMPORT for any later one above the threshold.
+  reason         String
+  /// What triggered it, so an admin asking "why is it quiet" gets an answer rather than a date.
+  importJobId    String?  @map("import_job_id")
+  subjectCount   Int      @map("subject_count")
+  startedAt      DateTime @default(now()) @map("started_at")
+  endsAt         DateTime @map("ends_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, endsAt])
+  @@map("detection_quiet_periods")
 }
 
 /// A PERSON IN THE CUSTOMER'S ORGANISATION, AS THEIR IDENTITY SYSTEM DESCRIBES THEM.
