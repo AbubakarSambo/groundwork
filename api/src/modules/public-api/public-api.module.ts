@@ -11,6 +11,7 @@ import { MachineTokenGuard } from './machine-token.guard';
 import { SubjectsService } from '../subjects/subjects.service';
 import { ScimService } from '../people/scim.service';
 import { BulkImportService } from '../subjects/bulk-import.service';
+import { ImportsBootstrap } from '../subjects/imports.bootstrap';
 
 @Module({
   imports: [
@@ -21,7 +22,7 @@ import { BulkImportService } from '../subjects/bulk-import.service';
     }),
   ],
   controllers: [PublicApiController, CredentialsController, ImportsController],
-  providers: [CredentialsService, IdempotencyService, MachineTokenGuard, SubjectsService, ScimService, BulkImportService],
+  providers: [CredentialsService, IdempotencyService, MachineTokenGuard, SubjectsService, ScimService, BulkImportService, ImportsBootstrap],
   exports: [CredentialsService],
 })
 export class PublicApiModule {}

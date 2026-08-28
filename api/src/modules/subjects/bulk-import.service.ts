@@ -1,11 +1,25 @@
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { ImportJobState } from '@prisma/client';
+import { ImportJobState, Prisma } from '@prisma/client';
 import { SubjectsService, SubjectPush } from './subjects.service';
 import { quietPeriodFor, quietUntil } from './detection-holds-its-tongue';
 
 /** A ceiling, so one request cannot ask us to hold an unbounded array in memory. */
 export const MAX_BATCH = 5_000;
+
+/**
+ * WHAT A BATCH IS ALLOWED TO WEIGH, AND WHY IT IS HERE RATHER THAN IN main.ts.
+ *
+ * `MAX_BATCH` was a promise the server could not keep. Express defaults to a 100kb body, so a batch
+ * of three thousand plain objectives - 233kb, nothing exotic - was refused with "request entity too
+ * large" while the documented cap said five thousand. The count and the weight are two numbers that
+ * have to agree, and they disagreed by a factor of four.
+ *
+ * Kept beside MAX_BATCH so the next person to raise one sees the other. A rich subject with a
+ * measure, a target and a dozen contributors runs to about a kilobyte, so this is MAX_BATCH times
+ * roughly two kilobytes with room to spare.
+ */
+export const MAX_BATCH_BYTES = 10 * 1024 * 1024;
 
 /**
  * A BULK IMPORT SKIPS AND REPORTS. IT DOES NOT HALT AND IT DOES NOT ROLL BACK.
@@ -40,17 +54,25 @@ export class BulkImportService {
     }
 
     const job = await this.prisma.importJob.create({
-      data: { organizationId, sourceSystem, kind: 'subjects', total: rows.length, state: ImportJobState.QUEUED },
+      /* The rows are stored WITH the job, so the work no longer depends on this process surviving. */
+      data: {
+        organizationId, sourceSystem, kind: 'subjects',
+        total: rows.length, state: ImportJobState.QUEUED,
+        payload: rows as any,
+      },
     });
 
     /*
-     * IN-PROCESS, AND HONEST ABOUT IT.
+     * THE WORK RUNS IN THIS PROCESS AND NO LONGER DEPENDS ON IT.
      *
-     * There is no queue in this deployment, so the work runs in the background of this process
-     * after the response goes out. A restart mid-job abandons it - which is survivable ONLY because
-     * every row is an upsert on the customer's own key, so re-sending the whole batch is safe and
-     * is the documented recovery. A real queue belongs here before anybody imports at volume, and
-     * this comment is the marker for that rather than a claim it is already fine.
+     * There is still no external queue: the rows are processed here, in the background, after the
+     * response goes out. The difference is that the batch is now IN THE DATABASE, so a restart
+     * mid-import leaves a resumable job rather than a job stuck RUNNING with its rows gone. See
+     * `resumeAbandoned`, which runs on boot.
+     *
+     * A dedicated queue would still buy real things - work spread across instances, and a job that
+     * survives the whole deployment going away rather than just one process. This is the version
+     * that makes the data safe without either.
      */
     void this.run(job.id, organizationId, sourceSystem, rows).catch(async (err) => {
       this.logger.error(`Import job ${job.id} died: ${err.message}`);
@@ -63,16 +85,26 @@ export class BulkImportService {
     return { jobId: job.id, state: job.state, total: job.total };
   }
 
-  private async run(jobId: string, organizationId: string, sourceSystem: string, rows: SubjectPush[]) {
+  private async run(
+    jobId: string,
+    organizationId: string,
+    sourceSystem: string,
+    rows: SubjectPush[],
+    startAt = 0,
+  ) {
     await this.prisma.importJob.update({
       where: { id: jobId },
-      data: { state: ImportJobState.RUNNING, startedAt: new Date() },
+      data: { state: ImportJobState.RUNNING, startedAt: new Date(), heartbeatAt: new Date() },
     });
 
-    let succeeded = 0;
+    /* A resumed job keeps the count it had already earned rather than starting from zero. */
+    const prior = startAt > 0
+      ? await this.prisma.importJob.findUnique({ where: { id: jobId }, select: { succeeded: true } })
+      : null;
+    let succeeded = prior?.succeeded ?? 0;
     const failures: { index: number; externalId: string | null; message: string }[] = [];
 
-    for (let i = 0; i < rows.length; i++) {
+    for (let i = startAt; i < rows.length; i++) {
       const row = rows[i];
       try {
         /* The batch names its source system once; a row claiming a different one is taken as the
@@ -86,6 +118,18 @@ export class BulkImportService {
           externalId: row?.externalId ?? null,
           /* Their message, not a stack trace - this is read by somebody fixing a spreadsheet. */
           message: String(err?.response?.message ?? err?.message ?? 'Unknown error'),
+        });
+      }
+
+      /*
+       * The cursor moves in steps rather than per row. Per row would double the writes for no gain
+       * - a resumed job repeating a handful of upserts costs nothing, because every one of them is
+       * idempotent on the customer's own key.
+       */
+      if ((i + 1) % 50 === 0) {
+        await this.prisma.importJob.update({
+          where: { id: jobId },
+          data: { cursor: i + 1, succeeded, heartbeatAt: new Date() },
         });
       }
     }
@@ -102,7 +146,12 @@ export class BulkImportService {
         state: ImportJobState.COMPLETED,
         succeeded,
         failed: failures.length,
+        cursor: rows.length,
         completedAt: new Date(),
+        heartbeatAt: null,
+        /* Dropped once it can no longer be needed, so this table does not become an archive of
+           every batch anybody ever sent. */
+        payload: Prisma.DbNull,
       },
     });
 
@@ -126,6 +175,51 @@ export class BulkImportService {
       data: { organizationId, reason: quiet.reason, importJobId, subjectCount, endsAt: quiet.endsAt },
     });
     this.logger.log(`Detection quiet until ${quiet.endsAt.toISOString()} for org ${organizationId} (${quiet.reason}).`);
+  }
+
+  /**
+   * PICK UP WHAT A DEAD PROCESS LEFT BEHIND.
+   *
+   * Called on boot. A job left QUEUED or RUNNING with its rows still attached was interrupted - the
+   * only way to leave that state is to finish, and a finished job has no payload. So the test is
+   * simply "is there work here", not a timeout: a heartbeat older than N minutes would guess, and
+   * this does not have to.
+   *
+   * Safe to run while another instance is working, for the one reason that runs through all of
+   * this: every row is an upsert on the customer's own key, so the worst case is a few rows written
+   * twice with the same values. It is deliberately NOT a lock, because a lock would need releasing
+   * by the process that died.
+   */
+  async resumeAbandoned() {
+    const stranded = await this.prisma.importJob.findMany({
+      where: {
+        state: { in: [ImportJobState.QUEUED, ImportJobState.RUNNING] },
+        payload: { not: Prisma.DbNull },
+      },
+      select: { id: true, organizationId: true, sourceSystem: true, payload: true, cursor: true, total: true },
+    });
+    if (!stranded.length) return { resumed: 0 };
+
+    for (const j of stranded) {
+      const rows = (j.payload ?? []) as unknown as SubjectPush[];
+      if (!Array.isArray(rows) || !rows.length) {
+        /* A payload we cannot read is not something to retry forever. Marked, with the reason. */
+        await this.prisma.importJob.update({
+          where: { id: j.id },
+          data: { state: ImportJobState.ABANDONED, error: 'The stored batch could not be read on resume.', completedAt: new Date(), payload: Prisma.DbNull },
+        });
+        continue;
+      }
+      this.logger.log(`Resuming import ${j.id} at row ${j.cursor} of ${j.total}.`);
+      void this.run(j.id, j.organizationId, j.sourceSystem, rows, j.cursor).catch(async (err) => {
+        this.logger.error(`Resumed import ${j.id} died again: ${err.message}`);
+        await this.prisma.importJob.update({
+          where: { id: j.id },
+          data: { state: ImportJobState.ABANDONED, error: String(err.message ?? err), completedAt: new Date() },
+        }).catch(() => undefined);
+      });
+    }
+    return { resumed: stranded.length };
   }
 
   /**

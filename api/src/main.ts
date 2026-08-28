@@ -4,6 +4,8 @@ import { ConfigService } from '@nestjs/config';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { Resend } from 'resend';
 import { AppModule } from './app.module';
+import { json } from 'express';
+import { MAX_BATCH_BYTES } from './modules/subjects/bulk-import.service';
 
 /**
  * Refuse to boot in production with insecure defaults. These are trust- and
@@ -47,6 +49,16 @@ async function bootstrap() {
    *
    * The excluded controller therefore declares its full path itself. See public-api.controller.ts.
    */
+  /**
+   * THE BULK PATH GETS A BIGGER BODY, AND ONLY THE BULK PATH.
+   *
+   * Express defaults to 100kb, which refused a three-thousand-row import while `MAX_BATCH`
+   * advertised five thousand - a documented cap the server could not honour. Raising the limit
+   * everywhere would put a ten-megabyte surface on every endpoint including the unauthenticated
+   * ones, so it is scoped to the one route that needs it. See MAX_BATCH_BYTES for the arithmetic.
+   */
+  app.use('/api/org/v1/subjects/bulk', json({ limit: MAX_BATCH_BYTES }));
+
   app.setGlobalPrefix('api/v1', {
     exclude: [{ path: 'api/org/v1/(.*)', method: RequestMethod.ALL }],
   });

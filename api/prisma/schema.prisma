@@ -1437,6 +1437,21 @@ model ImportJob {
   succeeded Int @default(0)
   failed    Int @default(0)
 
+  /// THE ROWS THEMSELVES, so a restart does not lose them.
+  ///
+  /// The work used to run from the request body held in memory. A deploy mid-import left the job
+  /// RUNNING forever and the remaining rows gone - not failed, not retryable, GONE, because the
+  /// only copy was in a process that no longer existed, while the customer's system held a 200
+  /// saying the import had started.
+  ///
+  /// Null once the job finishes, because keeping every batch forever would make this table the
+  /// largest thing in the database for no reason after the fact.
+  payload     Json?
+  /// How many rows of `payload` have been attempted. Where a resumed job picks up.
+  cursor      Int       @default(0)
+  /// Touched on every batch of progress, so a job whose process died can be told from a slow one.
+  heartbeatAt DateTime? @map("heartbeat_at")
+
   /// Why the job as a whole died, if it did. Null when individual rows failed but the job ran.
   error       String?   @db.Text
   startedAt   DateTime? @map("started_at")
