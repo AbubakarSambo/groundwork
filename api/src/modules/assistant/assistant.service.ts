@@ -7,6 +7,7 @@ import { quietUntil } from '../subjects/detection-holds-its-tongue';
 import { AnthropicService } from '../conversation/anthropic.service';
 import { STYLE, STYLE_VERSION, safeToUse, composePrompt } from './the-model-words-it-and-nothing-more';
 import { hasSlipped, theOneToRaise } from './what-somebody-said-they-would-do';
+import { catchCommitment, resolveConfirmation, proposalSummary } from './something-said-in-passing';
 
 /**
  * THE LANES, AND EVERY ONE OF THEM WORKS WITH THE MODEL OFF.
@@ -36,6 +37,52 @@ export class AssistantService {
   ) {}
 
   async respond(organizationId: string, personId: string, message: string): Promise<Reply> {
+    const me = await this.prisma.person.findFirst({
+      where: { id: personId, organizationId },
+      select: { externalId: true },
+    });
+    const who = me?.externalId ?? null;
+
+    const reply = await this.answer(organizationId, personId, who, message);
+
+    /* Remembered after the answer, so a failure to record cannot cost somebody their reply. */
+    if (who) {
+      await this.remember(organizationId, who, message, reply).catch(() => undefined);
+    }
+    return reply;
+  }
+
+  /**
+   * THE SIX STAGES, IN THE ORDER THE CONFIRMATION HAS TO HAPPEN.
+   *
+   * A parked proposal is resolved BEFORE anything else is considered, because the person is
+   * answering a question we asked. Routing their "yes" as if it were a fresh question would lose it
+   * and leave the proposal parked, which is the state that must never persist.
+   */
+  private async answer(
+    organizationId: string,
+    personId: string,
+    who: string | null,
+    message: string,
+    /*
+     * RE-ENTRY IS BOUNDED BY A FLAG, NOT BY A DATABASE WRITE HAVING SUCCEEDED.
+     *
+     * The drop path answers the person's actual message by calling this again, and the only thing
+     * stopping that from looping was the proposal no longer being PARKED - true only if the update
+     * landed. A failed write would have meant an infinite loop inside a request. Found by a test
+     * whose fake returned the same parked row every time, which is what a database under a failed
+     * write would do.
+     */
+    afterDrop = false,
+  ): Promise<Reply> {
+    if (who && !afterDrop) {
+      const parked = await this.prisma.assistantProposal.findFirst({
+        where: { organizationId, personExternalId: who, state: 'PARKED' },
+        orderBy: { createdAt: 'desc' },
+      });
+      if (parked) return this.resolveParked(organizationId, personId, who, parked, message);
+    }
+
     const routed = route(message);
     switch (routed.lane) {
       case 'what_you_can_see':
@@ -47,6 +94,17 @@ export class AssistantService {
       case 'what_did_i_commit_to':
         return this.compose(await this.myCommitments(organizationId, personId));
       default: {
+        /*
+         * NOTHING TO ANSWER, BUT MAYBE SOMETHING TO NOTICE.
+         *
+         * A commitment said in passing lands here, because "I'll send it Wednesday" is not a
+         * question and no lane owns it. Offering to write it down is a better answer than a list of
+         * things it cannot do.
+         */
+        if (who) {
+          const proposal = await this.maybePropose(organizationId, who, message);
+          if (proposal) return proposal;
+        }
         /*
          * NOT COMPOSED, DELIBERATELY. There is nothing here to say better: it is a fixed sentence
          * and a list of buttons, and a model rewording it would only make the one reply a person
@@ -87,6 +145,129 @@ export class AssistantService {
       this.logger.warn(`Composition unavailable for lane ${reply.lane}: ${err?.message}`);
       return reply;
     }
+  }
+
+  /**
+   * PROPOSE. Never on the first turn, and never while another proposal is parked.
+   *
+   * The first-turn rule is not politeness. Offering to write something down within a second of a
+   * stranger opening a panel, before it has answered a single question, is the behaviour that makes
+   * somebody decide this thing is going to be a problem.
+   */
+  private async maybePropose(organizationId: string, who: string, message: string): Promise<Reply | null> {
+    const caught = catchCommitment(message);
+    if (!caught) return null;
+
+    const turns = await this.prisma.assistantTurn.count({
+      where: { organizationId, personExternalId: who, role: 'person' },
+    });
+    if (turns < 1) return null;
+
+    const proposal = await this.prisma.assistantProposal.create({
+      data: {
+        organizationId,
+        personExternalId: who,
+        kind: 'commitment',
+        summary: proposalSummary(caught),
+        payload: caught as any,
+      },
+    });
+    return {
+      lane: 'propose_commitment',
+      composedBy: 'rules',
+      blocks: [
+        text(proposal.summary),
+        { type: 'proposal', proposalId: proposal.id, summary: proposal.summary },
+      ],
+    };
+  }
+
+  /**
+   * CONFIRM, RE-VERIFY, DELEGATE, AUDIT, READ BACK.
+   *
+   * The re-verification matters more than it looks: between the offer and the yes, the person may
+   * have been deprovisioned, or their organisation disconnected. A parked action carries the
+   * authorisation it had when it was offered, and that is exactly what must not be trusted.
+   */
+  private async resolveParked(organizationId: string, personId: string, who: string, parked: any, message: string): Promise<Reply> {
+    const decision = resolveConfirmation(message);
+
+    if (decision === 'drop') {
+      /*
+       * THE DROP. Anything that is not a clear yes or no ends it, so a "yes" later in the
+       * conversation - meant for something else - can never fire this.
+       */
+      await this.prisma.assistantProposal.update({
+        where: { id: parked.id },
+        data: { state: 'DROPPED', resolvedAt: new Date() },
+      });
+      /*
+       * And their message is still answered, because they were talking about something. The real
+       * personId is carried through: the lanes look somebody up by it, and an empty one would have
+       * every lane answer "I cannot find you" immediately after a dropped proposal - which reads as
+       * the product breaking at the exact moment somebody changed the subject.
+       */
+      return this.answer(organizationId, personId, who, message, true);
+    }
+
+    if (decision === 'decline') {
+      await this.prisma.assistantProposal.update({
+        where: { id: parked.id },
+        data: { state: 'DECLINED', resolvedAt: new Date() },
+      });
+      return rules('confirm_commitment', text('Left it, then.'));
+    }
+
+    /* RE-VERIFY at execution: still a person here, still active. */
+    const person = await this.prisma.person.findFirst({
+      where: { organizationId, externalId: who, active: true },
+      select: { id: true },
+    });
+    if (!person) {
+      await this.prisma.assistantProposal.update({
+        where: { id: parked.id },
+        data: { state: 'DROPPED', resolvedAt: new Date() },
+      });
+      return rules('confirm_commitment', text('I could not write that down, because I can no longer see you in your organisation records.'));
+    }
+
+    const payload = parked.payload as { text: string; dueSaid: string | null };
+    const created = await this.prisma.commitment.create({
+      data: {
+        organizationId,
+        personExternalId: who,
+        text: payload.text,
+        dueSaid: payload.dueSaid,
+        /* Never inferred. They said words, not a date. */
+        dueAt: null,
+        source: 'assistant',
+      },
+    });
+
+    await this.prisma.assistantProposal.update({
+      where: { id: parked.id },
+      data: { state: 'ACCEPTED', resolvedAt: new Date(), createdCommitmentId: created.id },
+    });
+
+    /* READ BACK. Success is reported on what the database confirms, never on intent. */
+    const confirmed = await this.prisma.commitment.findUnique({ where: { id: created.id } });
+    if (!confirmed) return rules('confirm_commitment', text('I tried to note that and cannot see it on the record, so treat it as not written down.'));
+
+    return rules('confirm_commitment', text(`Noted: ${confirmed.text}. It will come back to you in your next check-in.`));
+  }
+
+  /** The running history, scoped to one person and never anybody else's turns. */
+  private async remember(organizationId: string, who: string, message: string, reply: Reply) {
+    const said = reply.blocks.find((b) => b.type === 'text') as { body?: string } | undefined;
+    await this.prisma.assistantTurn.createMany({
+      data: [
+        { organizationId, personExternalId: who, role: 'person', content: message },
+        {
+          organizationId, personExternalId: who, role: 'assistant',
+          content: said?.body ?? '', lane: reply.lane, composedBy: reply.composedBy,
+        },
+      ],
+    });
   }
 
   /**

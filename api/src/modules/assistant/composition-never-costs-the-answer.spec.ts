@@ -16,6 +16,9 @@ function svc(engineBehaviour: () => Promise<string>) {
     subject: { findMany: jest.fn(async () => [{ sourceSystem: 'their-tool', syncedAt: new Date(), sourceDeletedAt: null }]), count: jest.fn(async () => 1) },
     person: { count: jest.fn(async () => 2), findFirst: jest.fn(async () => ({ externalId: 'u-1' })), findMany: jest.fn(async () => []) },
     detectionQuietPeriod: { findMany: jest.fn(async () => []) },
+    /* The turn is remembered and a parked proposal is looked for, both now part of every reply. */
+    assistantProposal: { findFirst: jest.fn(async () => null), create: jest.fn(async (a: any) => ({ id: 'pr1', ...a.data })), update: jest.fn(async () => ({})) },
+    assistantTurn: { count: jest.fn(async () => 5), createMany: jest.fn(async () => ({ count: 2 })) },
   };
   const engine: any = { respond: jest.fn(engineBehaviour) };
   return { service: new AssistantService(prisma, engine), engine };

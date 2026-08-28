@@ -266,21 +266,23 @@ model Organization {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  users            User[]
-  grounds          Ground[]
-  billingEvents    BillingEvent[]
-  orgIntelligence  OrgIntelligence[]
-  contributorCodes ContributorCode[]
-  styleProfiles    PersonStyleProfile[]
-  memberships      OrganizationMembership[]
-  subjects         Subject[]
-  apiCredentials   ApiCredential[]
-  people           Person[]
-  importJobs       ImportJob[]
-  quietPeriods     DetectionQuietPeriod[]
-  webhookEndpoints WebhookEndpoint[]
-  embedConfig      EmbedConfig?
-  commitments      Commitment[]
+  users              User[]
+  grounds            Ground[]
+  billingEvents      BillingEvent[]
+  orgIntelligence    OrgIntelligence[]
+  contributorCodes   ContributorCode[]
+  styleProfiles      PersonStyleProfile[]
+  memberships        OrganizationMembership[]
+  subjects           Subject[]
+  apiCredentials     ApiCredential[]
+  people             Person[]
+  importJobs         ImportJob[]
+  quietPeriods       DetectionQuietPeriod[]
+  webhookEndpoints   WebhookEndpoint[]
+  embedConfig        EmbedConfig?
+  commitments        Commitment[]
+  assistantTurns     AssistantTurn[]
+  assistantProposals AssistantProposal[]
 
   @@map("organizations")
 }
@@ -1549,6 +1551,72 @@ model DetectionQuietPeriod {
 
   @@index([organizationId, endsAt])
   @@map("detection_quiet_periods")
+}
+
+/// EVERY TURN OF A PANEL CONVERSATION, KEPT.
+///
+/// Two reasons, and the second is the one that made it necessary now. It is the running history the
+/// assistant needs to pick up a thread later. And it is how "never propose on the first turn" is
+/// answerable at all - a stateless endpoint cannot know whether it has met somebody before, and
+/// proposing to write something down within a second of a stranger opening a panel is exactly the
+/// behaviour that makes people close it.
+///
+/// Scoped to one person. Never another participant's turns, ever.
+model AssistantTurn {
+  id               String   @id @default(uuid())
+  organizationId   String   @map("organization_id")
+  personExternalId String   @map("person_external_id")
+  /// 'person' or 'assistant'.
+  role             String
+  content          String   @db.Text
+  /// Which lane answered and which spoke, so a strange reply can be traced without keeping prompts.
+  lane             String?
+  composedBy       String?  @map("composed_by")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, personExternalId, createdAt])
+  @@map("assistant_turns")
+}
+
+enum ProposalState {
+  /// Echoed back, waiting for a plain yes.
+  PARKED
+  ACCEPTED
+  DECLINED
+  /// The conversation moved on. Not a refusal, and it can never fire afterwards.
+  DROPPED
+}
+
+/// AN ACTION THAT HAS BEEN OFFERED AND NOT YET TAKEN.
+///
+/// The assistant noticed something worth writing down and said so. Nothing has happened yet, and
+/// nothing happens without a plain yes.
+///
+/// THE DROP IS THE POINT. Anything other than a clear yes or no ends this - not just a "no". If a
+/// proposal could sit parked while the conversation moved on, a "yes" three turns later, meant for
+/// something else entirely, would fire it. A stale yes writing something somebody has forgotten
+/// being asked about is the exact failure that makes a confirm gate worse than no gate at all.
+model AssistantProposal {
+  id                  String        @id @default(uuid())
+  organizationId      String        @map("organization_id")
+  personExternalId    String        @map("person_external_id")
+  /// What kind of thing it would create. Only 'commitment' today.
+  kind                String
+  /// What was echoed back, word for word, so what they agreed to is what is on the record.
+  summary             String        @db.Text
+  payload             Json
+  state               ProposalState @default(PARKED)
+  createdAt           DateTime      @default(now()) @map("created_at")
+  resolvedAt          DateTime?     @map("resolved_at")
+  /// What it made, once it made something. The read-back: success is reported on this, not on intent.
+  createdCommitmentId String?       @map("created_commitment_id")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, personExternalId, state])
+  @@map("assistant_proposals")
 }
 
 enum CommitmentState {
