@@ -287,6 +287,7 @@ model Organization {
   knowledgeRetrievals KnowledgeRetrieval[]
   detectorResults     DetectorResult[]
   contributions       Contribution[]
+  recommendations     Recommendation[]
 
   @@map("organizations")
 }
@@ -1571,6 +1572,54 @@ model DetectionQuietPeriod {
 
   @@index([organizationId, endsAt])
   @@map("detection_quiet_periods")
+}
+
+enum RecommendationState {
+  PROPOSED
+  ACCEPTED
+  DECLINED
+  /// Overtaken. The gap closed on its own before anybody acted on it.
+  EXPIRED
+}
+
+/// WORK THIS OBJECTIVE NEEDS THAT NOBODY HAS PICKED UP.
+///
+/// The turn from a tool that observes work into one that generates it, and the line it must not
+/// cross is doing so silently. It PROPOSES; a person accepts; the acceptance is recorded. Nothing
+/// here creates work on somebody's behalf, and a recommendation nobody accepted is a suggestion
+/// that was made and declined rather than a task somebody now owes.
+///
+/// EVERY ONE CARRIES THE GAP IT CLOSES. A proposal a person cannot interrogate is one they either
+/// take on faith or ignore, and both are worse than not making it - so `rationale` holds what was
+/// observed, in the same shape a finding does, and `sourceDetectorIds` points at the findings it
+/// came from.
+model Recommendation {
+  id                String  @id @default(uuid())
+  organizationId    String  @map("organization_id")
+  /// 'todo' | 'objective_draft' | 'owner_needed' | 'dependency_record' | 'conversation_needed'.
+  kind              String
+  subjectExternalId String? @map("subject_external_id")
+  /// Who it is for, where it is for somebody in particular. Null for a gap that is nobody's yet -
+  /// which is most of the interesting ones.
+  personExternalId  String? @map("person_external_id")
+
+  /// What is being suggested, in a sentence somebody would say.
+  body              String   @db.Text
+  /// What was observed. Never a score, never a judgement - the same discipline as a finding.
+  rationale         Json
+  sourceDetectorIds String[] @map("source_detector_ids")
+
+  state                RecommendationState @default(PROPOSED)
+  proposedAt           DateTime            @default(now()) @map("proposed_at")
+  resolvedAt           DateTime?           @map("resolved_at")
+  /// Who accepted or declined it. A recommendation acted on has somebody's name against it.
+  resolvedByExternalId String?             @map("resolved_by_external_id")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, state])
+  @@index([organizationId, subjectExternalId])
+  @@map("recommendations")
 }
 
 /// HOW SOMEBODY COMES TO BE CARRYING A PIECE OF WORK.

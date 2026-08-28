@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Req, UseGuards, HttpCode } from '@nestjs/common';
+import { Controller, Get, Post, Param, Body, Req, UseGuards, HttpCode, BadRequestException } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Public } from '../../common/decorators/public.decorator';
 import { MachineTokenGuard, RequiresScope, MachineCaller } from '../public-api/machine-token.guard';
@@ -49,6 +49,64 @@ export class DetectorsController {
   @ApiOperation({ summary: 'Run the subject-scoped detectors now' })
   run(@Req() req: { machine: MachineCaller }) {
     return this.detectors.run(req.machine.organizationId);
+  }
+
+  @Get('recommendations')
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('proposals:read')
+  @ApiOperation({ summary: 'Work an objective needs that nobody has picked up. Proposed, never created.' })
+  async recommendations(@Req() req: { machine: MachineCaller }) {
+    const rows = await this.prisma.recommendation.findMany({
+      where: { organizationId: req.machine.organizationId, state: 'PROPOSED' },
+      orderBy: { proposedAt: 'desc' },
+      take: 100,
+    });
+    return {
+      recommendations: rows.map((r) => ({
+        id: r.id,
+        kind: r.kind,
+        subjectExternalId: r.subjectExternalId,
+        personExternalId: r.personExternalId,
+        body: r.body,
+        /* The gap it closes, so a proposal can be interrogated rather than taken on faith. */
+        rationale: r.rationale,
+        proposedAt: r.proposedAt,
+      })),
+    };
+  }
+
+  @Post('recommendations/:id/accept')
+  @HttpCode(200)
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('proposals:write')
+  @ApiOperation({ summary: 'Accept a recommendation. Records who and when.' })
+  accept(@Req() req: { machine: MachineCaller }, @Param('id') id: string, @Body() dto: { byExternalId?: string }) {
+    return this.resolve(req.machine.organizationId, id, 'ACCEPTED', dto?.byExternalId);
+  }
+
+  @Post('recommendations/:id/decline')
+  @HttpCode(200)
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('proposals:write')
+  @ApiOperation({ summary: 'Decline a recommendation. It is not proposed again.' })
+  decline(@Req() req: { machine: MachineCaller }, @Param('id') id: string, @Body() dto: { byExternalId?: string }) {
+    return this.resolve(req.machine.organizationId, id, 'DECLINED', dto?.byExternalId);
+  }
+
+  /**
+   * A DECISION HAS SOMEBODY'S NAME AGAINST IT.
+   *
+   * Not for blame - for the opposite. Six months later the question is who decided this objective
+   * did not need an owner, and "the system did" is the answer that makes people distrust every
+   * other suggestion it has made since.
+   */
+  private async resolve(organizationId: string, id: string, state: 'ACCEPTED' | 'DECLINED', by?: string) {
+    const { count } = await this.prisma.recommendation.updateMany({
+      where: { id, organizationId, state: 'PROPOSED' },
+      data: { state, resolvedAt: new Date(), resolvedByExternalId: by ?? null },
+    });
+    if (!count) throw new BadRequestException('No recommendation waiting under that id.');
+    return { id, state };
   }
 
   /**

@@ -7,6 +7,7 @@ import { findGoalDivergence, sayIt as sayDivergence } from './describing-the-sam
 import {
   ContributionRow, findUnrecognisedContributors, findNominalOnly, sayUnrecognised, sayNominal,
 } from './who-is-actually-carrying-it';
+import { SubjectFacts, whatIsMissing, unownedGaps } from './what-this-objective-is-missing';
 
 /**
  * RUNNING THE DETECTORS THAT NEED A SUBJECT AND A VIEW ACROSS GROUNDS.
@@ -301,6 +302,74 @@ export class DetectorsService {
     return n;
   }
 
+  /**
+   * WHAT EACH OBJECTIVE IS MISSING, PROPOSED AND NEVER CREATED.
+   *
+   * Nothing here makes work on somebody's behalf. A recommendation is a suggestion with the gap it
+   * closes attached, and a person accepting it is what turns it into anything - which is the same
+   * propose-confirm discipline as capturing a commitment, for the same reason: a system that
+   * quietly adds to people's plates is one they stop trusting and then stop reading.
+   */
+  private async recommend(organizationId: string, subjects: SubjectRef[]): Promise<number> {
+    if (!subjects.length) return 0;
+
+    const commitments = await this.prisma.commitment.findMany({
+      where: { organizationId, state: 'OPEN', subjectExternalId: { not: null } },
+      select: { personExternalId: true, subjectExternalId: true },
+    });
+    const findings = await this.prisma.detectorResult.findMany({
+      where: { organizationId, resolvedAt: null, subjectExternalId: { not: null } },
+      select: { id: true, key: true, subjectExternalId: true },
+    });
+
+    const facts: SubjectFacts[] = subjects.map((s) => ({
+      externalId: s.externalId,
+      title: s.title,
+      ownerExternalId: s.ownerExternalId,
+      contributorExternalIds: s.contributorExternalIds,
+      committedBy: commitments.filter((c) => c.subjectExternalId === s.externalId).map((c) => c.personExternalId),
+      findingKeys: findings.filter((f) => f.subjectExternalId === s.externalId).map((f) => f.key),
+      findingIds: findings.filter((f) => f.subjectExternalId === s.externalId).map((f) => f.id),
+    }));
+
+    /* `unowned_gap` as a finding, alongside the recommendation that says what to do about it. */
+    for (const gap of unownedGaps(facts)) {
+      await this.record(organizationId, 'unowned_gap', 'medium', null, gap.externalId, {
+        says: `${gap.title} has nobody named as its owner, so there is nobody to ask about it.`,
+      });
+    }
+
+    let n = 0;
+    for (const f of facts) {
+      for (const p of whatIsMissing(f)) {
+        /*
+         * One live proposal per gap. Re-proposing something somebody already declined would be the
+         * product asking again until it gets the answer it wants, which is how a suggestion becomes
+         * nagging.
+         */
+        const existing = await this.prisma.recommendation.findFirst({
+          where: {
+            organizationId, kind: p.kind, subjectExternalId: p.subjectExternalId,
+            state: { in: ['PROPOSED', 'ACCEPTED', 'DECLINED'] },
+          },
+        });
+        if (existing) continue;
+
+        await this.prisma.recommendation.create({
+          data: {
+            organizationId, kind: p.kind,
+            subjectExternalId: p.subjectExternalId,
+            personExternalId: p.personExternalId,
+            body: p.body, rationale: p.rationale as any,
+            sourceDetectorIds: p.sourceDetectorIds,
+          },
+        });
+        n += 1;
+      }
+    }
+    return n;
+  }
+
   /** One finding per person-and-subject, updated rather than repeated. */
   private async record(
     organizationId: string, key: string, severity: string,
@@ -402,8 +471,9 @@ export class DetectorsService {
     const unmentioned = await this.objectiveUnmentioned(organizationId, subjects, turns);
     const diverging = await this.goalDivergence(organizationId, subjects);
     const contribution = await this.contribution(organizationId, subjects, turns);
+    const proposed = await this.recommend(organizationId, subjects);
 
-    this.logger.log(`Org ${organizationId}: ${found.length} undeclared dependencies, ${unmentioned} unmentioned, ${diverging} diverging, ${contribution} contribution findings.`);
-    return { ran: true, found: found.length + unmentioned + diverging + contribution };
+    this.logger.log(`Org ${organizationId}: ${found.length} undeclared dependencies, ${unmentioned} unmentioned, ${diverging} diverging, ${contribution} contribution findings, ${proposed} recommendations.`);
+    return { ran: true, found: found.length + unmentioned + diverging + contribution, recommended: proposed };
   }
 }

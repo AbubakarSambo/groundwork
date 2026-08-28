@@ -135,6 +135,10 @@ describe('one vocabulary, two scopes', () => {
     /* Still named but unbuilt, and the list has to keep saying so. */
     expect(isImplemented('unrecognised_contributor')).toBe(true);
     /* Still named and unbuilt. The list has to keep saying so. */
-    expect(isImplemented('unowned_gap')).toBe(false);
+    expect(isImplemented('unowned_gap')).toBe(true);
+    /* Still named and unbuilt - these need a role model or an onboarding window, neither of which
+       exists, and the list has to keep saying so rather than quietly shortening. */
+    expect(isImplemented('unattached_work')).toBe(false);
+    expect(isImplemented('no_lead')).toBe(false);
   });
 });

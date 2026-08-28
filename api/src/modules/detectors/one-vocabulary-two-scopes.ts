@@ -85,7 +85,7 @@ export type NewDetector = (typeof GENUINELY_NEW)[number];
  * built yet" rather than silence.
  */
 export const IMPLEMENTED: NewDetector[] = ['undeclared_dependency', 'objective_unmentioned', 'goal_divergence',
-  'unrecognised_contributor', 'nominal_only',
+  'unrecognised_contributor', 'nominal_only', 'unowned_gap',
 ];
 
 export function isImplemented(key: string): boolean {
