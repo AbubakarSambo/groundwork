@@ -12,6 +12,8 @@ import { SubjectsService } from '../subjects/subjects.service';
 import { ScimService } from '../people/scim.service';
 import { BulkImportService } from '../subjects/bulk-import.service';
 import { ImportsBootstrap } from '../subjects/imports.bootstrap';
+import { EmbedService } from '../embed/embed.service';
+import { EmbedSetupController } from '../embed/embed-setup.controller';
 
 @Module({
   imports: [
@@ -21,8 +23,8 @@ import { ImportsBootstrap } from '../subjects/imports.bootstrap';
       useFactory: (config: ConfigService) => ({ secret: config.get<string>('jwt.secret') }),
     }),
   ],
-  controllers: [PublicApiController, CredentialsController, ImportsController],
-  providers: [CredentialsService, IdempotencyService, MachineTokenGuard, SubjectsService, ScimService, BulkImportService, ImportsBootstrap],
+  controllers: [PublicApiController, CredentialsController, ImportsController, EmbedSetupController],
+  providers: [CredentialsService, IdempotencyService, MachineTokenGuard, SubjectsService, ScimService, BulkImportService, ImportsBootstrap, EmbedService],
   exports: [CredentialsService],
 })
 export class PublicApiModule {}

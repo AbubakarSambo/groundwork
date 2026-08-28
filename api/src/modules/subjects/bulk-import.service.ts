@@ -3,23 +3,11 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ImportJobState, Prisma } from '@prisma/client';
 import { SubjectsService, SubjectPush } from './subjects.service';
 import { quietPeriodFor, quietUntil } from './detection-holds-its-tongue';
+import { MAX_BATCH } from './how-heavy-a-batch-may-be';
 
-/** A ceiling, so one request cannot ask us to hold an unbounded array in memory. */
-export const MAX_BATCH = 5_000;
-
-/**
- * WHAT A BATCH IS ALLOWED TO WEIGH, AND WHY IT IS HERE RATHER THAN IN main.ts.
- *
- * `MAX_BATCH` was a promise the server could not keep. Express defaults to a 100kb body, so a batch
- * of three thousand plain objectives - 233kb, nothing exotic - was refused with "request entity too
- * large" while the documented cap said five thousand. The count and the weight are two numbers that
- * have to agree, and they disagreed by a factor of four.
- *
- * Kept beside MAX_BATCH so the next person to raise one sees the other. A rich subject with a
- * measure, a target and a dozen contributors runs to about a kilobyte, so this is MAX_BATCH times
- * roughly two kilobytes with room to spare.
- */
-export const MAX_BATCH_BYTES = 10 * 1024 * 1024;
+/* The two limits live in their own leaf file - see how-heavy-a-batch-may-be.ts for why that
+   matters more than it looks. Re-exported so existing importers are unaffected. */
+export { MAX_BATCH, MAX_BATCH_BYTES } from './how-heavy-a-batch-may-be';
 
 /**
  * A BULK IMPORT SKIPS AND REPORTS. IT DOES NOT HALT AND IT DOES NOT ROLL BACK.

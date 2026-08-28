@@ -130,8 +130,7 @@ describe('the size limit and the row limit agree', () => {
     const MAIN = readFileSync(join(__dirname, '../../main.ts'), 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '')
       .replace(/^\s*\/\/.*$/gm, '');
-    expect(MAIN).toMatch(/json\(\{ limit: MAX_BATCH_BYTES \}\)/);
-    expect(MAIN).toMatch(/subjects\/bulk/);
+    expect(MAIN).toMatch(/useBodyParser\('json', \{ limit: MAX_BATCH_BYTES \}\)/);
   });
 
   it('leaves room for a rich row rather than a minimal one', () => {
@@ -139,10 +138,22 @@ describe('the size limit and the row limit agree', () => {
     expect(MAX_BATCH_BYTES / MAX_BATCH).toBeGreaterThan(1024);
   });
 
-  it('and the bigger body is scoped to the one route that needs it', () => {
-    /* Ten megabytes on every endpoint, including the unauthenticated ones, is a surface nobody
-       asked for. */
-    const MAIN = readFileSync(join(__dirname, '../../main.ts'), 'utf8');
-    expect(MAIN).not.toMatch(/app\.use\(json\(\{ limit/);
+  it('never mounts a body parser with app.use, which breaks every route', () => {
+    /*
+     * THIS GUARD FAILED ON ITS OWN FIX, WHICH IS THE POINT OF HAVING IT.
+     *
+     * The first version scoped a bigger limit to the bulk route with `app.use(path, json())`. That
+     * broke request body parsing for EVERY route - mounting a parser that way stops Nest
+     * registering its own - so logging in started failing with a validation error saying the email
+     * was empty. It typechecked, it booted cleanly, and no test here touches a real HTTP body.
+     * Found by trying to log in.
+     */
+    /* Comments stripped first: the prose above NAMES the bad pattern, and a scanner that counted
+       it would fail on the explanation of the fix. The same trap this repo has a guard for, in
+       reverse - see a-guard-that-a-comment-satisfies-is-not-a-guard.spec.ts. */
+    const MAIN = readFileSync(join(__dirname, '../../main.ts'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '');
+    expect(MAIN).not.toMatch(/app\.use\([^)]*json\(/);
   });
 });

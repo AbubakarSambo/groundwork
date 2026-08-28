@@ -13,6 +13,7 @@ import { SubjectType } from '@prisma/client';
 import { Public } from '../../common/decorators/public.decorator';
 import { ScimService, ScimUser } from '../people/scim.service';
 import { BulkImportService } from '../subjects/bulk-import.service';
+import { EmbedService } from '../embed/embed.service';
 import { resolveReferences } from '../people/an-unresolved-reference-is-a-fact';
 
 /** Short, because a leaked one should stop working before anybody has finished reading the log. */
@@ -52,6 +53,7 @@ export class PublicApiController {
     private readonly idempotency: IdempotencyService,
     private readonly scim: ScimService,
     private readonly bulk: BulkImportService,
+    private readonly embed: EmbedService,
   ) {}
 
   /**
@@ -177,6 +179,23 @@ export class PublicApiController {
   ) {
     if (!sourceSystem) throw new BadRequestException('sourceSystem is required.');
     return this.subjects.markSourceDeleted(req.machine.organizationId, sourceSystem, externalId);
+  }
+
+  /**
+   * THE HANDSHAKE THE WIDGET MAKES ON EVERY LOAD.
+   *
+   * Machine-authenticated like everything else here, so the organisation comes from the credential
+   * rather than from the body - a customer cannot ask us to check their token against somebody
+   * else's signing key.
+   */
+  @Post('embed/session')
+  @HttpCode(200)
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('chat:write')
+  @ApiOperation({ summary: 'Exchange a customer-signed identity token for a Groundwork panel session' })
+  async embedSession(@Req() req: { machine: MachineCaller }, @Body() dto: { token?: string }) {
+    if (!dto?.token) throw new BadRequestException('token is required.');
+    return this.embed.session(req.machine.organizationId, dto.token);
   }
 
   /**

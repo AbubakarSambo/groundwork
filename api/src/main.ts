@@ -4,8 +4,9 @@ import { ConfigService } from '@nestjs/config';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { Resend } from 'resend';
 import { AppModule } from './app.module';
-import { json } from 'express';
-import { MAX_BATCH_BYTES } from './modules/subjects/bulk-import.service';
+import { NestExpressApplication } from '@nestjs/platform-express';
+import type { Response as ExpressResponse } from 'express';
+import { MAX_BATCH_BYTES } from './modules/subjects/how-heavy-a-batch-may-be';
 
 /**
  * Refuse to boot in production with insecure defaults. These are trust- and
@@ -32,7 +33,8 @@ async function bootstrap() {
   const logger = new Logger('Bootstrap');
   assertProductionConfig(logger);
 
-  const app = await NestFactory.create(AppModule, {
+  /* Typed as the Express application so the body-parser limit below is reachable. */
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     rawBody: true, // For Stripe webhook signature verification
   });
 
@@ -50,14 +52,23 @@ async function bootstrap() {
    * The excluded controller therefore declares its full path itself. See public-api.controller.ts.
    */
   /**
-   * THE BULK PATH GETS A BIGGER BODY, AND ONLY THE BULK PATH.
+   * THE BODY LIMIT, RAISED FROM EXPRESS'S 100kb DEFAULT.
    *
-   * Express defaults to 100kb, which refused a three-thousand-row import while `MAX_BATCH`
-   * advertised five thousand - a documented cap the server could not honour. Raising the limit
-   * everywhere would put a ten-megabyte surface on every endpoint including the unauthenticated
-   * ones, so it is scoped to the one route that needs it. See MAX_BATCH_BYTES for the arithmetic.
+   * A bulk import of three thousand plain objectives is 233kb, so the default refused it while
+   * `MAX_BATCH` advertised five thousand - a cap the server would not honour.
+   *
+   * THE FIRST ATTEMPT SCOPED A BIGGER LIMIT TO THE BULK ROUTE ALONE, with `app.use(path, json())`,
+   * and that broke request body parsing for EVERY route: mounting a body parser this way stops Nest
+   * registering its own, so logging in began failing with a validation error saying the email was
+   * empty. It typechecked, it started cleanly, and nothing in the suite touches a real HTTP body.
+   * Found by trying to log in.
+   *
+   * So the limit is global, set through the supported API, and kept modest enough to be unremarkable
+   * on an unauthenticated endpoint - and MAX_BATCH is derived from it rather than asserted
+   * separately. See how-heavy-a-batch-may-be.ts.
    */
-  app.use('/api/org/v1/subjects/bulk', json({ limit: MAX_BATCH_BYTES }));
+  app.useBodyParser('json', { limit: MAX_BATCH_BYTES });
+
 
   app.setGlobalPrefix('api/v1', {
     exclude: [{ path: 'api/org/v1/(.*)', method: RequestMethod.ALL }],
@@ -106,7 +117,7 @@ async function bootstrap() {
   SwaggerModule.setup('api/docs', app, document);
 
   const httpAdapter = app.getHttpAdapter();
-  httpAdapter.get('/health', (_req, res) => res.status(200).send('ok'));
+  httpAdapter.get('/health', (_req: unknown, res: ExpressResponse) => res.status(200).send('ok'));
 
   // A health check that never touches the model cannot tell you the model is
   // unreachable. In a live run every AI call from the running process failed

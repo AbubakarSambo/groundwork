@@ -279,6 +279,7 @@ model Organization {
   importJobs       ImportJob[]
   quietPeriods     DetectionQuietPeriod[]
   webhookEndpoints WebhookEndpoint[]
+  embedConfig      EmbedConfig?
 
   @@map("organizations")
 }
@@ -1270,6 +1271,44 @@ model RoundCompletion {
   @@unique([groundId, roundNumber])
   @@index([groundId])
   @@map("round_completions")
+}
+
+/// HOW THE ASSISTANT APPEARS INSIDE A CUSTOMER'S OWN APPLICATION.
+///
+/// Their server mints a short-lived token for whoever is logged in; the widget exchanges it for a
+/// Groundwork session. Their login is the only login - there is no Groundwork password for an end
+/// user, and no second account for anybody.
+///
+/// THE SIGNING SECRET IS STORED, LIKE A WEBHOOK'S AND UNLIKE A CREDENTIAL'S, because it is used to
+/// VERIFY rather than compared against a hash of something arriving. Same reasoning, opposite
+/// direction: we hold it so we can check their signature.
+model EmbedConfig {
+  id             String @id @default(uuid())
+  organizationId String @unique @map("organization_id")
+
+  /// Shared secret their server signs identity tokens with. HS256, because every language they
+  /// might use has it built in and a key pair is a support burden for no gain at this size.
+  signingSecret String @map("signing_secret")
+
+  /// The domains the widget may be loaded from. This populates the frame-ancestors policy, so an
+  /// empty list means the panel renders nowhere - which is the safe direction for a setting
+  /// somebody has not finished filling in.
+  allowedDomains String[] @map("allowed_domains")
+
+  /// 'floating' or 'anchor'.
+  placement String @default("floating")
+
+  /// Departments whose people see NO launcher at all - not a disabled one, nothing. Matched against
+  /// the department SCIM sends. Named for what a customer configures rather than for a role model
+  /// that does not exist here yet.
+  outOfScopeDepartments String[] @default([]) @map("out_of_scope_departments")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("embed_configs")
 }
 
 /// ONE CREDENTIAL PAIR PER INTEGRATION, SO ONE CAN BE REVOKED WITHOUT KILLING THE OTHERS.
