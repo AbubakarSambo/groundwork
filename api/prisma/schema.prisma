@@ -278,6 +278,7 @@ model Organization {
   people           Person[]
   importJobs       ImportJob[]
   quietPeriods     DetectionQuietPeriod[]
+  webhookEndpoints WebhookEndpoint[]
 
   @@map("organizations")
 }
@@ -1334,6 +1335,75 @@ model IdempotencyRecord {
   @@unique([organizationId, key, endpoint])
   @@index([createdAt])
   @@map("idempotency_records")
+}
+
+/// WHERE A CUSTOMER WANTS TO BE TOLD, AND HOW THEY KNOW IT WAS US.
+///
+/// THE SECRET IS STORED, NOT HASHED, and that is a real difference from `ApiCredential`. A
+/// credential is verified - we compare what arrives against a hash and never need the original. A
+/// webhook secret is USED: every delivery is signed with it, so it has to be recoverable. It is
+/// therefore a genuine secret at rest in this table, which is why rotation exists, why the old
+/// secret keeps working for a grace window, and why this note is here rather than the difference
+/// being left for somebody to notice.
+model WebhookEndpoint {
+  id             String    @id @default(uuid())
+  organizationId String    @map("organization_id")
+  url            String
+  secret         String
+  /// The previous secret, still accepted for a grace window so rotation needs no downtime.
+  previousSecret String?   @map("previous_secret")
+  rotatedAt      DateTime? @map("rotated_at")
+  /// Which events this endpoint wants. Empty means none - never "all", because a customer who adds
+  /// an endpoint and forgets to choose should get silence rather than everything we ever emit.
+  events         String[]
+  active         Boolean   @default(true)
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  deliveries   WebhookDelivery[]
+
+  @@index([organizationId])
+  @@map("webhook_endpoints")
+}
+
+enum WebhookDeliveryStatus {
+  PENDING
+  DELIVERED
+  /// Attempt failed; it will be retried.
+  FAILED
+  /// Out of attempts. Kept, and visible - a dead letter nobody can see is a lost message.
+  DEAD
+}
+
+/// EVERY ATTEMPT, KEPT AND VISIBLE.
+///
+/// The delivery log is not diagnostics for us - it is the thing a customer opens when their system
+/// did not do what they expected, and the question is always the same: did you send it, and what
+/// did we say back. So the response code and body are recorded, including on success, and a dead
+/// letter stays in the table rather than being cleaned up.
+model WebhookDelivery {
+  id             String                @id @default(uuid())
+  organizationId String                @map("organization_id")
+  endpointId     String                @map("endpoint_id")
+  /// Stable across retries, so a receiver can dedupe. THE SAME id is replayed, deliberately.
+  eventId        String                @map("event_id")
+  eventType      String                @map("event_type")
+  payload        Json
+  status         WebhookDeliveryStatus @default(PENDING)
+  attempts       Int                   @default(0)
+  lastAttemptAt  DateTime?             @map("last_attempt_at")
+  /// When it is next due. Null once delivered or dead.
+  nextAttemptAt  DateTime?             @map("next_attempt_at")
+  responseCode   Int?                  @map("response_code")
+  /// Truncated. Somebody else's error page can be a megabyte of HTML.
+  responseBody   String?               @map("response_body") @db.Text
+  createdAt      DateTime              @default(now()) @map("created_at")
+
+  endpoint WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+
+  @@index([status, nextAttemptAt])
+  @@index([organizationId, createdAt])
+  @@map("webhook_deliveries")
 }
 
 enum ImportJobState {

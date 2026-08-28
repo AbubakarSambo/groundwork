@@ -12,6 +12,7 @@ import { AuthModule } from './modules/auth';
 import { UsersModule } from './modules/users';
 import { GroundsModule } from './modules/grounds';
 import { PublicApiModule } from './modules/public-api/public-api.module';
+import { WebhooksModule } from './modules/webhooks/webhooks.module';
 import { ParticipantsModule } from './modules/participants';
 import { ConversationModule } from './modules/conversation';
 import { ReportsModule } from './modules/reports';
@@ -51,6 +52,7 @@ import { JwtAuthGuard, RolesGuard, GlobalExceptionFilter, TransformInterceptor }
     UsersModule,
     GroundsModule,
     PublicApiModule,
+    WebhooksModule,
     ParticipantsModule,
     ConversationModule,
     WhatsAppModule,
