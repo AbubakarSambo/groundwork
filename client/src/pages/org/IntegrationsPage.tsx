@@ -67,6 +67,16 @@ export function IntegrationsPage() {
   const events = useQuery({ queryKey: ['integrations', 'events'], queryFn: integrationsApi.webhookEvents, enabled: isAdmin })
   const endpoints = useQuery({ queryKey: ['integrations', 'endpoints'], queryFn: integrationsApi.listEndpoints, enabled: isAdmin })
   const deliveries = useQuery({ queryKey: ['integrations', 'deliveries'], queryFn: () => integrationsApi.deliveries(), enabled: isAdmin })
+  const imports = useQuery({ queryKey: ['integrations', 'imports'], queryFn: integrationsApi.listImports, enabled: isAdmin })
+
+  /* Only the job somebody opened is fetched with its failures - see recentJobs for why the list
+     carries counts alone. */
+  const [openJob, setOpenJob] = useState<string | null>(null)
+  const jobDetail = useQuery({
+    queryKey: ['integrations', 'imports', openJob],
+    queryFn: () => integrationsApi.importDetail(openJob!),
+    enabled: !!openJob,
+  })
 
   const issue = useMutation({
     mutationFn: () => integrationsApi.issueCredential(credName, credScopes),
@@ -215,6 +225,94 @@ export function IntegrationsPage() {
           </div>
         </div>
       ))}
+
+      {/* ---------------------------------------------------------------- imports */}
+      {!!(imports.data?.jobs ?? []).length && (
+        <>
+          <div style={S.sec}>What your imports could not take</div>
+
+          {imports.data?.detectionQuietUntil && (
+            /*
+              THE ANSWER TO "WHY AM I SEEING NOTHING", said before they have to ask.
+              A new deployment that has just loaded a few thousand objectives is deliberately quiet,
+              and silence with no explanation is indistinguishable from a broken product.
+            */
+            <div style={{ ...S.card, background: 'var(--gw-bg)' }}>
+              <p style={S.body}>
+                Your import started a quiet period, so Groundwork will not raise findings until{' '}
+                <b>{new Date(imports.data.detectionQuietUntil).toLocaleDateString()}</b>. A first sync
+                trips every check at once about work nobody has discussed yet, which is noise rather
+                than news. Check-ins and reports carry on as normal.
+              </p>
+            </div>
+          )}
+
+          {(imports.data?.jobs ?? []).map(j => {
+            const open = openJob === j.id
+            return (
+              <div key={j.id} style={S.card}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 700 }}>
+                      <span style={S.mono}>{j.sourceSystem}</span>{' '}
+                      {j.failed > 0
+                        ? <Pill tone="warn">{j.failed} skipped</Pill>
+                        : j.state === 'ABANDONED' ? <Pill tone="bad">stopped</Pill> : <Pill tone="ok">all in</Pill>}
+                    </div>
+                    <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', marginTop: 3 }}>
+                      {j.succeeded} of {j.total} stored · {new Date(j.createdAt).toLocaleString()}
+                      {j.error ? ` · ${j.error}` : ''}
+                    </div>
+                  </div>
+                  {j.failed > 0 && (
+                    <button style={S.ghost} onClick={() => setOpenJob(open ? null : j.id)}>
+                      {open ? 'Hide' : `Show the ${j.failed} we skipped`}
+                    </button>
+                  )}
+                </div>
+
+                {open && (
+                  <div style={{ marginTop: 12, borderTop: '1px solid var(--gw-bg)', paddingTop: 10 }}>
+                    {jobDetail.isPending && <p style={S.body}>Loading…</p>}
+                    {/*
+                      EVERY ROW, NOT A SAMPLE. The position AND the id, because either alone is not
+                      enough: a file whose rows have no ids yet cannot use the id, and reordered
+                      rows cannot use the position. The message is the one they need to fix it.
+                    */}
+                    {(jobDetail.data?.failures ?? []).map(f => (
+                      <div key={`${f.index}`} style={{ padding: '8px 0', borderBottom: '1px solid var(--gw-bg)' }}>
+                        {/*
+                          THE SAME NUMBER THE API RETURNS, NOT A FRIENDLIER ONE.
+                          This was `f.index + 1` for about a minute, on the reasoning that a person
+                          counts from one. But the field is documented as zero-based, and the
+                          engineer who has to fix this reads the API - so a screen saying "row 148"
+                          about what the API calls 147 is two places that must agree, disagreeing,
+                          in the one place somebody is already confused. The id leads, because it is
+                          the handle that survives a reordered file.
+                        */}
+                        <div style={{ fontSize: 12.5, fontWeight: 600 }}>
+                          {f.externalId
+                            ? <span style={S.mono}>{f.externalId}</span>
+                            : <span style={{ color: 'var(--gw-muted)' }}>no id was sent</span>}
+                          <span style={{ ...S.mono, color: 'var(--gw-muted)', fontWeight: 400 }}> · index {f.index}</span>
+                        </div>
+                        <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginTop: 2 }}>{f.message}</div>
+                      </div>
+                    ))}
+                    {!!(jobDetail.data?.failures ?? []).length && (
+                      <p style={{ ...S.body, marginTop: 10, fontSize: 12.5 }}>
+                        Everything else in this batch was stored. Fix these and send them again -
+                        re-sending the whole batch is safe, because each row updates what is already
+                        there rather than adding a second copy.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </>
+      )}
 
       {/* ---------------------------------------------------------------- webhooks */}
       <div style={S.sec}>Where we tell you</div>

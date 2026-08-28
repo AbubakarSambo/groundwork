@@ -83,3 +83,43 @@ describe('the plain-language half comes first', () => {
     expect(SRC).toMatch(/nothing sends them/i)
   })
 })
+
+describe('a skipped row can be found and fixed', () => {
+  it('shows every failure rather than a count', () => {
+    /*
+     * The counts were already visible through the API and were never the problem. "3,999 succeeded"
+     * with no way to reach the other one is the failure this closes, and it was reachable only with
+     * a machine token until now - the same shape one layer out: the information existed and the
+     * person who needed it could not get at it.
+     */
+    expect(SRC).toMatch(/jobDetail\.data \?\? \[\]|\(jobDetail\.data\?\.failures \?\? \[\]\)\.map/)
+    expect(SRC).not.toMatch(/failures\.slice\(0,\s*\d/)
+  })
+
+  it('prints the index exactly as the API returns it', () => {
+    /*
+     * It was `f.index + 1` for a minute, on the reasoning that people count from one. The field is
+     * documented zero-based and the engineer fixing this reads the API, so a screen saying row 148
+     * about what the API calls 147 is two places that must agree, disagreeing, in the one place
+     * somebody is already confused.
+     */
+    expect(SRC).not.toMatch(/f\.index \+ 1/)
+    expect(SRC).toMatch(/index \{f\.index\}/)
+  })
+
+  it('still identifies a row when no id was sent', () => {
+    /* Which is why the index is stored beside the id rather than instead of it. */
+    expect(SRC).toMatch(/no id was sent/)
+  })
+
+  it('says the fix is safe to re-send, because it is', () => {
+    /* Every row is an upsert on the customer's own key. Without saying so, the honest thing for a
+       cautious admin to do is nothing. */
+    expect(SRC).toMatch(/re-sending the whole batch is safe/)
+  })
+
+  it('explains a quiet period rather than leaving the product silent', () => {
+    expect(SRC).toMatch(/detectionQuietUntil/)
+    expect(SRC).toMatch(/will not raise findings until/)
+  })
+})

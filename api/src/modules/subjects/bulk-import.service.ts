@@ -129,6 +129,32 @@ export class BulkImportService {
   }
 
   /**
+   * The org's recent imports, for the console.
+   *
+   * The counts only - the failure rows come from `status` when somebody opens one. A list that
+   * carried every failure of every job would be the whole import history in one response, and the
+   * screen that renders it only shows the counts until asked.
+   */
+  async recentJobs(organizationId: string, take = 20) {
+    const jobs = await this.prisma.importJob.findMany({
+      where: { organizationId },
+      orderBy: { createdAt: 'desc' },
+      take,
+      select: {
+        id: true, sourceSystem: true, kind: true, state: true,
+        total: true, succeeded: true, failed: true, error: true,
+        startedAt: true, completedAt: true, createdAt: true,
+      },
+    });
+    const periods = await this.prisma.detectionQuietPeriod.findMany({
+      where: { organizationId },
+      select: { endsAt: true, reason: true, subjectCount: true, startedAt: true },
+      orderBy: { startedAt: 'desc' },
+    });
+    return { jobs, detectionQuietUntil: quietUntil(periods, new Date()), quietPeriods: periods };
+  }
+
+  /**
    * The job, its counts, and EVERY row it could not take.
    *
    * Scoped by organisation, so a job id guessed or leaked from another tenant resolves to nothing

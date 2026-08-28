@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaModule } from '../prisma/prisma.module';
 import { PublicApiController } from './public-api.controller';
 import { CredentialsController } from './credentials.controller';
+import { ImportsController } from './imports.controller';
 import { CredentialsService } from './credentials.service';
 import { IdempotencyService } from './idempotency.service';
 import { MachineTokenGuard } from './machine-token.guard';
@@ -19,7 +20,7 @@ import { BulkImportService } from '../subjects/bulk-import.service';
       useFactory: (config: ConfigService) => ({ secret: config.get<string>('jwt.secret') }),
     }),
   ],
-  controllers: [PublicApiController, CredentialsController],
+  controllers: [PublicApiController, CredentialsController, ImportsController],
   providers: [CredentialsService, IdempotencyService, MachineTokenGuard, SubjectsService, ScimService, BulkImportService],
   exports: [CredentialsService],
 })

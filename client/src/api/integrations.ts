@@ -38,6 +38,33 @@ export interface WebhookDelivery {
   endpoint: { id: string; url: string }
 }
 
+export interface ImportJobSummary {
+  id: string
+  sourceSystem: string
+  kind: string
+  state: 'QUEUED' | 'RUNNING' | 'COMPLETED' | 'ABANDONED'
+  total: number
+  succeeded: number
+  failed: number
+  error: string | null
+  startedAt: string | null
+  completedAt: string | null
+  createdAt: string
+}
+
+export interface ImportFailure {
+  /** Zero-based position in the batch as it was sent. */
+  index: number
+  externalId: string | null
+  message: string
+}
+
+export interface ImportDetail extends Omit<ImportJobSummary, 'id' | 'kind'> {
+  jobId: string
+  failures: ImportFailure[]
+  detectionQuietUntil: string | null
+}
+
 export const integrationsApi = {
   // credentials
   listCredentials: () => apiClient.get<Credential[]>('/integrations/credentials').then(r => r.data),
@@ -45,6 +72,12 @@ export const integrationsApi = {
     apiClient.post<IssuedCredential>('/integrations/credentials', { name, scopes }).then(r => r.data),
   revokeCredential: (clientId: string) =>
     apiClient.delete<{ revoked: boolean }>(`/integrations/credentials/${clientId}`).then(r => r.data),
+
+  // imports
+  listImports: () =>
+    apiClient.get<{ jobs: ImportJobSummary[]; detectionQuietUntil: string | null }>('/integrations/imports').then(r => r.data),
+  importDetail: (jobId: string) =>
+    apiClient.get<ImportDetail>(`/integrations/imports/${jobId}`).then(r => r.data),
 
   // webhooks
   webhookEvents: () =>
