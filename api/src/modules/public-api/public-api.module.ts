@@ -20,6 +20,8 @@ import { KnowledgeService } from '../knowledge/knowledge.service';
 import { KnowledgeController } from '../knowledge/knowledge.controller';
 import { DetectorsController } from '../detectors/detectors.controller';
 import { CheckinsController } from '../detectors/checkins.controller';
+import { DraftsController } from '../drafts/drafts.controller';
+import { DraftsService } from '../drafts/drafts.service';
 import { DetectorsService } from '../detectors/detectors.service';
 import { EmbedSetupController } from '../embed/embed-setup.controller';
 import { EmbedAssetsController } from '../embed/embed-assets.controller';
@@ -32,8 +34,8 @@ import { EmbedAssetsController } from '../embed/embed-assets.controller';
       useFactory: (config: ConfigService) => ({ secret: config.get<string>('jwt.secret') }),
     }),
   ],
-  controllers: [PublicApiController, CredentialsController, ImportsController, EmbedSetupController, EmbedAssetsController, KnowledgeController, DetectorsController, CheckinsController],
-  providers: [CredentialsService, IdempotencyService, MachineTokenGuard, SubjectsService, ScimService, BulkImportService, ImportsBootstrap, EmbedService, EmbedSessionGuard, AssistantService, AnthropicService, KnowledgeService, DetectorsService],
+  controllers: [PublicApiController, CredentialsController, ImportsController, EmbedSetupController, EmbedAssetsController, KnowledgeController, DetectorsController, CheckinsController, DraftsController],
+  providers: [CredentialsService, IdempotencyService, MachineTokenGuard, SubjectsService, ScimService, BulkImportService, ImportsBootstrap, EmbedService, EmbedSessionGuard, AssistantService, AnthropicService, KnowledgeService, DetectorsService, DraftsService],
   exports: [CredentialsService],
 })
 export class PublicApiModule {}

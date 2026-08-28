@@ -288,6 +288,7 @@ model Organization {
   detectorResults     DetectorResult[]
   contributions       Contribution[]
   recommendations     Recommendation[]
+  objectiveDrafts     ObjectiveDraft[]
 
   @@map("organizations")
 }
@@ -1572,6 +1573,126 @@ model DetectionQuietPeriod {
 
   @@index([organizationId, endsAt])
   @@map("detection_quiet_periods")
+}
+
+enum DraftState {
+  DRAFTING
+  /// Colleagues have been pulled in and are answering in their own conversations.
+  GATHERING
+  /// Somebody disagrees on a field that matters. Cannot reach READY from here.
+  CONTESTED
+  READY
+  SEEDED
+  ABANDONED
+}
+
+/// AN OBJECTIVE BEING WRITTEN, BEFORE IT IS ONE.
+///
+/// Most objectives are written in a planning session with no memory of what happened last cycle.
+/// This has that memory - `groundedOnFindingIds` holds the findings it was built from, so "why is
+/// the target fourteen days" has an answer six months later instead of a shrug.
+///
+/// A record rather than a conversation, because a draft that lives only in a chat cannot be shown,
+/// resumed, or reasoned about - and the whole point is that several people write it without a
+/// meeting.
+model ObjectiveDraft {
+  id                      String  @id @default(uuid())
+  organizationId          String  @map("organization_id")
+  /// Who started it, as an identity id.
+  initiatorExternalId     String  @map("initiator_external_id")
+  /// The org objective this one hangs under, where it cascades from one.
+  parentSubjectExternalId String? @map("parent_subject_external_id")
+
+  workingTitle            String    @map("working_title")
+  proposedMeasure         String?   @map("proposed_measure")
+  proposedTarget          String?   @map("proposed_target")
+  proposedOwnerExternalId String?   @map("proposed_owner_external_id")
+  proposedDueDate         DateTime? @map("proposed_due_date")
+
+  /// The prior-cycle evidence this was built from. A draft carries its own reasons.
+  groundedOnFindingIds String[] @map("grounded_on_finding_ids")
+
+  state                   DraftState @default(DRAFTING)
+  createdAt               DateTime   @default(now()) @map("created_at")
+  updatedAt               DateTime   @updatedAt @map("updated_at")
+  seededSubjectExternalId String?    @map("seeded_subject_external_id")
+
+  organization  Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  participants  DraftParticipant[]
+  contributions DraftContribution[]
+  contentions   DraftContention[]
+
+  @@index([organizationId, state])
+  @@map("objective_drafts")
+}
+
+enum DraftParticipantState {
+  INVITED
+  RESPONDED
+  /// A first-class outcome. Declining is an answer, and recording it as silence would make somebody
+  /// who said no indistinguishable from somebody who never saw it.
+  DECLINED
+}
+
+model DraftParticipant {
+  id                  String                @id @default(uuid())
+  draftId             String                @map("draft_id")
+  personExternalId    String                @map("person_external_id")
+  invitedByExternalId String                @map("invited_by_external_id")
+  state               DraftParticipantState @default(INVITED)
+  invitedAt           DateTime              @default(now()) @map("invited_at")
+  respondedAt         DateTime?             @map("responded_at")
+
+  draft ObjectiveDraft @relation(fields: [draftId], references: [id], onDelete: Cascade)
+
+  @@unique([draftId, personExternalId])
+  @@map("draft_participants")
+}
+
+/// WHAT ONE PERSON SAID THE OBJECTIVE SHOULD BE.
+///
+/// Each contributor's own conversation is their own - they see the emerging draft and never each
+/// other's turns. This is the part of what they said that was ABOUT the draft, which is a different
+/// thing from a transcript and is the only part anybody else sees.
+model DraftContribution {
+  id               String   @id @default(uuid())
+  draftId          String   @map("draft_id")
+  personExternalId String   @map("person_external_id")
+  /// Which field they were speaking to: 'title' | 'measure' | 'target' | 'dueDate' | 'general'.
+  field            String
+  body             String   @db.Text
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  draft ObjectiveDraft @relation(fields: [draftId], references: [id], onDelete: Cascade)
+
+  @@index([draftId, field])
+  @@map("draft_contributions")
+}
+
+/// WHERE PEOPLE DO NOT AGREE, HELD OPEN RATHER THAN SETTLED.
+///
+/// THIS IS THE OUTPUT, NOT AN ERROR STATE. If the initiator proposes fourteen days and a
+/// contributor says that was never achievable, the draft carries the disagreement - it does not
+/// average them, and it does not let the initiator's version stand because they typed first.
+///
+/// Divergence detection at the moment it is worth most: before an objective is set, rather than
+/// three months into failing it.
+model DraftContention {
+  id         String    @id @default(uuid())
+  draftId    String    @map("draft_id")
+  field      String
+  /// Each position and who holds it. Visible to the people drafting, which is the point of it -
+  /// they are trying to agree, and cannot without knowing what the other one thinks.
+  positions  Json
+  openedAt   DateTime  @default(now()) @map("opened_at")
+  resolvedAt DateTime? @map("resolved_at")
+  /// What they settled on, once they settle.
+  resolution String?
+
+  draft ObjectiveDraft @relation(fields: [draftId], references: [id], onDelete: Cascade)
+
+  @@index([draftId, resolvedAt])
+  @@map("draft_contentions")
 }
 
 enum RecommendationState {
