@@ -4,6 +4,9 @@ import { findUndeclaredDependencies, SubjectRef, Mention, sayIt } from './nobody
 import { quietUntil } from '../subjects/detection-holds-its-tongue';
 import { STOPWORDS } from '../knowledge/knowledge.service';
 import { findGoalDivergence, sayIt as sayDivergence } from './describing-the-same-goal-differently';
+import {
+  ContributionRow, findUnrecognisedContributors, findNominalOnly, sayUnrecognised, sayNominal,
+} from './who-is-actually-carrying-it';
 
 /**
  * RUNNING THE DETECTORS THAT NEED A SUBJECT AND A VIEW ACROSS GROUNDS.
@@ -189,6 +192,134 @@ export class DetectorsService {
   }
 
   /**
+   * WHO IS ACTUALLY CARRYING THE WORK, AND THE TWO FINDINGS THAT FALL OUT OF IT.
+   *
+   * ASSIGNED comes from the imported graph. STATED is somebody describing the work in their own
+   * words. REFERENCED is somebody else describing them doing it - and that one is where the care
+   * is: what gets stored is HOW MANY DISTINCT OTHERS, never which, because which is attributed
+   * testimony and a count cannot be turned back into a quote.
+   *
+   * UNBLOCKING is not produced. There are no blockers in this product yet, so a contribution of
+   * that kind would be a row that can never exist - named in the enum because it is part of the
+   * contract, absent from the computation because it would be a lie.
+   */
+  private async contribution(
+    organizationId: string,
+    subjects: SubjectRef[],
+    turns: { personExternalId: string; content: string; createdAt: Date }[],
+  ): Promise<number> {
+    if (!subjects.length) return 0;
+    const people = await this.prisma.person.findMany({
+      where: { organizationId, active: true },
+      select: { externalId: true, displayName: true, userName: true },
+    });
+    if (!people.length) return 0;
+
+    const rows: ContributionRow[] = [];
+
+    /* ASSIGNED: what their tool says. */
+    for (const s of subjects) {
+      for (const p of [s.ownerExternalId, ...s.contributorExternalIds].filter(Boolean) as string[]) {
+        rows.push({ personExternalId: p, subjectExternalId: s.externalId, kind: 'ASSIGNED', weight: 1 });
+      }
+    }
+
+    const mentions = this.mentionsOf(subjects, turns);
+
+    /* STATED: they described the work themselves. */
+    const stated = new Map<string, number>();
+    for (const m of mentions) {
+      const k = `${m.personExternalId}::${m.subjectExternalId}`;
+      stated.set(k, (stated.get(k) ?? 0) + 1);
+    }
+    for (const [k, n] of stated) {
+      const [personExternalId, subjectExternalId] = k.split('::');
+      rows.push({ personExternalId, subjectExternalId, kind: 'STATED', weight: n });
+    }
+
+    /*
+     * REFERENCED: somebody ELSE described them doing it. A turn that names a person and a subject,
+     * written by anybody but that person.
+     *
+     * The set of speakers is built here and thrown away - only its SIZE is written. That is the
+     * whole of the privacy decision, and it is why this is a Set rather than a list.
+     */
+    const referencedBy = new Map<string, Set<string>>();
+    const named = people
+      .map((p) => ({ id: p.externalId, needle: (p.displayName ?? p.userName ?? '').toLowerCase().split(' ')[0] }))
+      .filter((p) => p.needle.length >= 3);
+
+    for (const t of turns) {
+      const flat = t.content.toLowerCase();
+      const subjectsHere = mentions.filter((m) => m.at.getTime() === t.createdAt.getTime() && m.personExternalId === t.personExternalId);
+      if (!subjectsHere.length) continue;
+      for (const person of named) {
+        if (person.id === t.personExternalId) continue;
+        if (!flat.includes(person.needle)) continue;
+        for (const m of subjectsHere) {
+          const k = `${person.id}::${m.subjectExternalId}`;
+          referencedBy.set(k, (referencedBy.get(k) ?? new Set()).add(t.personExternalId));
+        }
+      }
+    }
+    for (const [k, speakers] of referencedBy) {
+      const [personExternalId, subjectExternalId] = k.split('::');
+      /* The size, and nothing that could name them. */
+      rows.push({ personExternalId, subjectExternalId, kind: 'REFERENCED', weight: speakers.size });
+    }
+
+    for (const r of rows) {
+      await this.prisma.contribution.upsert({
+        where: {
+          organizationId_personExternalId_subjectExternalId_kind: {
+            organizationId, personExternalId: r.personExternalId,
+            subjectExternalId: r.subjectExternalId, kind: r.kind as any,
+          },
+        },
+        create: { organizationId, ...r, kind: r.kind as any },
+        update: { weight: r.weight, lastSeenAt: new Date() },
+      });
+    }
+
+    const nameOf = (id: string) => people.find((p) => p.externalId === id)?.displayName
+      ?? people.find((p) => p.externalId === id)?.userName ?? id;
+    const titleOf = (id: string) => subjects.find((s) => s.externalId === id)?.title ?? id;
+
+    let n = 0;
+    for (const u of findUnrecognisedContributors(rows)) {
+      n += await this.record(organizationId, 'unrecognised_contributor', 'medium', u.personExternalId, u.subjectExternalId, {
+        statedTimes: u.statedTimes, referencedBy: u.referencedBy,
+        says: sayUnrecognised(u, nameOf(u.personExternalId), titleOf(u.subjectExternalId)),
+      });
+    }
+    for (const nm of findNominalOnly(rows)) {
+      n += await this.record(organizationId, 'nominal_only', 'low', nm.personExternalId, null, {
+        subjectExternalIds: nm.subjectExternalIds,
+        says: sayNominal(nm, nameOf(nm.personExternalId), nm.subjectExternalIds.map(titleOf)),
+      });
+    }
+    return n;
+  }
+
+  /** One finding per person-and-subject, updated rather than repeated. */
+  private async record(
+    organizationId: string, key: string, severity: string,
+    personExternalId: string | null, subjectExternalId: string | null, evidence: any,
+  ): Promise<number> {
+    const existing = await this.prisma.detectorResult.findFirst({
+      where: { organizationId, key, resolvedAt: null, personExternalId, subjectExternalId },
+    });
+    if (existing) {
+      await this.prisma.detectorResult.update({ where: { id: existing.id }, data: { evidence, lastSeenAt: new Date() } });
+      return 0;
+    }
+    await this.prisma.detectorResult.create({
+      data: { organizationId, key, severity, personExternalId, subjectExternalId, evidence },
+    });
+    return 1;
+  }
+
+  /**
    * Run and record. Returns what it found so a caller can report it without a second query.
    *
    * HOLDS ITS TONGUE DURING A QUIET PERIOD, which is the whole reason that window is stamped at
@@ -270,8 +401,9 @@ export class DetectorsService {
     }
     const unmentioned = await this.objectiveUnmentioned(organizationId, subjects, turns);
     const diverging = await this.goalDivergence(organizationId, subjects);
+    const contribution = await this.contribution(organizationId, subjects, turns);
 
-    this.logger.log(`Org ${organizationId}: ${found.length} undeclared dependencies, ${unmentioned} unmentioned, ${diverging} diverging.`);
-    return { ran: true, found: found.length + unmentioned + diverging };
+    this.logger.log(`Org ${organizationId}: ${found.length} undeclared dependencies, ${unmentioned} unmentioned, ${diverging} diverging, ${contribution} contribution findings.`);
+    return { ran: true, found: found.length + unmentioned + diverging + contribution };
   }
 }

@@ -286,6 +286,7 @@ model Organization {
   knowledgeCards      KnowledgeCard[]
   knowledgeRetrievals KnowledgeRetrieval[]
   detectorResults     DetectorResult[]
+  contributions       Contribution[]
 
   @@map("organizations")
 }
@@ -1570,6 +1571,56 @@ model DetectionQuietPeriod {
 
   @@index([organizationId, endsAt])
   @@map("detection_quiet_periods")
+}
+
+/// HOW SOMEBODY COMES TO BE CARRYING A PIECE OF WORK.
+enum ContributionKind {
+  /// From the imported graph. What their tool says.
+  ASSIGNED
+  /// They described doing this work themselves.
+  STATED
+  /// Somebody else described them doing it.
+  REFERENCED
+  /// They cleared a blocker for somebody on it. Not produced yet - there are no blockers.
+  UNBLOCKING
+}
+
+/// WHO IS ACTUALLY CARRYING THE WORK, AS AGAINST WHO THE ORG CHART SAYS.
+///
+/// The two differ, and the difference is invisible to every tool in the customer's stack: theirs
+/// knows who is assigned, and only the conversations know who is doing it.
+///
+/// WHAT THIS DELIBERATELY DOES NOT HOLD is who said it. A REFERENCED contribution means somebody
+/// else described this person doing this work - and storing WHICH somebody would be attributed
+/// testimony sitting in a table, one careless serialiser away from leaving the boundary. The fact
+/// that matters is that other people describe them doing it; which colleague said so is not ours to
+/// keep, and a count cannot be turned back into a quote.
+///
+/// Not a ranking of people. Two findings come off this - somebody carrying load with no formal
+/// place, and somebody formally on work they are never mentioned in - and both are about how the
+/// WORK is distributed rather than about how hard anybody is trying.
+model Contribution {
+  id                String           @id @default(uuid())
+  organizationId    String           @map("organization_id")
+  personExternalId  String           @map("person_external_id")
+  subjectExternalId String           @map("subject_external_id")
+  kind              ContributionKind
+
+  /// How many times this was seen. For REFERENCED, how many DISTINCT other people described it -
+  /// one colleague saying it four times is one person's opinion, not four.
+  weight   Int   @default(1)
+  /// What was seen, in a shape that cannot be turned back into who said it.
+  evidence Json?
+
+  firstSeenAt DateTime @default(now()) @map("first_seen_at")
+  lastSeenAt  DateTime @default(now()) @map("last_seen_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, personExternalId, subjectExternalId, kind])
+  @@index([organizationId, subjectExternalId])
+  @@index([organizationId, personExternalId])
+  @@map("contributions")
 }
 
 /// A BEHAVIOUR SEEN, ACCUMULATED ACROSS GROUNDS AND AGAINST A SUBJECT.

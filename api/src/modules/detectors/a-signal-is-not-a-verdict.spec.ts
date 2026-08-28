@@ -133,6 +133,8 @@ describe('one vocabulary, two scopes', () => {
     expect(isImplemented('undeclared_dependency')).toBe(true);
     expect(isImplemented('goal_divergence')).toBe(true);
     /* Still named but unbuilt, and the list has to keep saying so. */
-    expect(isImplemented('unrecognised_contributor')).toBe(false);
+    expect(isImplemented('unrecognised_contributor')).toBe(true);
+    /* Still named and unbuilt. The list has to keep saying so. */
+    expect(isImplemented('unowned_gap')).toBe(false);
   });
 });

@@ -84,7 +84,9 @@ export type NewDetector = (typeof GENUINELY_NEW)[number];
  * that can fire. A customer asking why they have seen no `goal_divergence` deserves "it is not
  * built yet" rather than silence.
  */
-export const IMPLEMENTED: NewDetector[] = ['undeclared_dependency', 'objective_unmentioned', 'goal_divergence'];
+export const IMPLEMENTED: NewDetector[] = ['undeclared_dependency', 'objective_unmentioned', 'goal_divergence',
+  'unrecognised_contributor', 'nominal_only',
+];
 
 export function isImplemented(key: string): boolean {
   return (IMPLEMENTED as string[]).includes(key);
