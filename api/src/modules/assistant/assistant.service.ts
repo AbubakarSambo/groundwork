@@ -8,7 +8,9 @@ import { AnthropicService } from '../conversation/anthropic.service';
 import { STYLE, STYLE_VERSION, safeToUse, composePrompt } from './the-model-words-it-and-nothing-more';
 import { hasSlipped, theOneToRaise } from './what-somebody-said-they-would-do';
 import { catchCommitment, resolveConfirmation, proposalSummary } from './something-said-in-passing';
-import { KnowledgeService } from '../knowledge/knowledge.service';
+import { KnowledgeService, STOPWORDS } from '../knowledge/knowledge.service';
+import { howLongAgo, splitBySession } from './what-you-told-me-before';
+import { Prisma } from '@prisma/client';
 
 /**
  * THE LANES, AND EVERY ONE OF THEM WORKS WITH THE MODEL OFF.
@@ -95,6 +97,8 @@ export class AssistantService {
         return this.compose(await this.whoIs(organizationId, routed.subject ?? ''));
       case 'what_did_i_commit_to':
         return this.compose(await this.myCommitments(organizationId, personId));
+      case 'what_did_i_say':
+        return this.compose(await this.whatDidISay(organizationId, who, routed.subject ?? message));
       case 'how_we_work':
         /*
          * NOT COMPOSED, AND THIS WAS A REAL MISTAKE FOR ONE LIVE REPLY.
@@ -157,6 +161,77 @@ export class AssistantService {
       this.logger.warn(`Composition unavailable for lane ${reply.lane}: ${err?.message}`);
       return reply;
     }
+  }
+
+  /**
+   * WHAT THEY TOLD ME BEFORE - AND ONLY EVER WHAT THEY TOLD ME.
+   *
+   * THE SCOPE IS THE FEATURE. A recall that could reach another participant's turns would be the
+   * product quoting one colleague to another, which is the thing it exists to prevent - so the
+   * person is in the where clause, not in a filter applied afterwards, and there is a guard whose
+   * only job is to check that.
+   *
+   * Their own words come back verbatim with a plain "you said". Summarising somebody's own sentence
+   * back at them is both worse and riskier than quoting it.
+   */
+  private async whatDidISay(organizationId: string, who: string | null, topic: string): Promise<Reply> {
+    if (!who) return rules('what_did_i_say', text('I cannot look back without knowing who you are.'));
+    const q = topic.trim().replace(/[?.!]+$/, '');
+    if (q.length < 3) return rules('what_did_i_say', text('About what?'));
+
+    /*
+     * STOPWORDS REMOVED, AND FORGETTING THEM MADE THIS ABSURD.
+     *
+     * The first version filtered on length alone, so "the" was a search word - and since "the" is
+     * in almost every sentence anybody types, "did I mention the pricing model" came back with
+     * every turn the person had ever written. It looked like a memory and was a table scan with a
+     * confident sentence on top.
+     */
+    const words = q.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/)
+      .filter((w) => w.length >= 3 && !STOPWORDS.has(w));
+    /* Nothing meaningful left to search on is a real answer, not a reason to match everything. */
+    if (!words.length) return rules('what_did_i_say', text('About what, specifically?'));
+    const needles = words;
+
+    const hits = await this.prisma.$queryRaw<{ content: string; createdAt: Date; role: string }[]>(
+      Prisma.sql`
+        SELECT content, created_at AS "createdAt", role
+        FROM assistant_turns
+        WHERE organization_id = ${organizationId}
+          AND person_external_id = ${who}
+          AND role = 'person'
+          AND (
+            content % ${q}
+            OR EXISTS (
+              SELECT 1 FROM unnest(${needles}::text[]) AS w
+              WHERE regexp_replace(lower(content), '[^a-z0-9]', '', 'g') LIKE '%' || w || '%'
+            )
+          )
+        ORDER BY created_at DESC
+        LIMIT 4
+      `,
+    );
+
+    /*
+     * THEIR OWN QUESTIONS ARE NOT THINGS THEY TOLD ME.
+     *
+     * Every message a person types is stored, including "did I mention the vendor comparison" - so
+     * asking twice recalled the first asking, which is noise dressed as memory. A turn that is
+     * itself a question to the assistant is dropped, and the check is the router: if it routes to a
+     * lane, it was a question rather than an account of somebody's work.
+     */
+    const said = hits.filter((h) => route(h.content).lane === 'unplaced');
+
+    if (!said.length) {
+      return rules('what_did_i_say', text(`You have not mentioned ${q} to me before. That may just mean it was said somewhere I cannot see.`));
+    }
+
+    const now = new Date();
+    const { current, earlier } = splitBySession(said, now);
+    const lines: string[] = [];
+    for (const h of current) lines.push(`- Earlier just now: "${h.content}"`);
+    for (const h of earlier) lines.push(`- ${howLongAgo(h.createdAt, now)}: "${h.content}"`);
+    return rules('what_did_i_say', text(`You have mentioned ${q}:\n${lines.join('\n')}`));
   }
 
   /**

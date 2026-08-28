@@ -16,7 +16,7 @@ export interface CardInput {
  * Words that carry no meaning in a question and wreck a similarity score by being everywhere. Kept
  * deliberately short: a long stop-list starts removing words that matter in somebody's handbook.
  */
-const STOPWORDS = new Set(['the', 'and', 'for', 'our', 'you', 'your', 'how', 'what', 'does', 'with', 'this', 'that', 'are', 'can']);
+export const STOPWORDS = new Set(['the', 'and', 'for', 'our', 'you', 'your', 'how', 'what', 'does', 'with', 'this', 'that', 'are', 'can']);
 
 /** A card cap and a token budget, because a prompt that grows with a customer's handbook is a bill. */
 export const MAX_CARDS = 5;

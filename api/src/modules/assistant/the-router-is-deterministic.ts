@@ -16,6 +16,7 @@ export type Lane =
   | 'who_is'
   | 'what_did_i_commit_to'
   | 'how_we_work'
+  | 'what_did_i_say'
   | 'unplaced';
 
 export interface Routed {
@@ -48,6 +49,17 @@ const RULES = [
    * LAST OF THE MATCHERS, ON PURPOSE. "How do we..." is the broadest shape here and would otherwise
    * swallow questions the specific lanes own. Its own rules stay narrow for the same reason.
    */
+  rule('what_did_i_say', [
+    /*
+     * Above the commitment lane, because "what did I say about the vendor" is a question about the
+     * conversation and "what did I say I would do" is a question about commitments - and the second
+     * rule would take both if it went first.
+     */
+    /\bwhat\s+did\s+i\s+say\s+about\s+(.+)/i,
+    /\bdid\s+i\s+(?:mention|tell you about|say anything about)\s+(.+)/i,
+    /\bhave\s+we\s+(?:talked|spoken)\s+about\s+(.+)/i,
+    /\bremind\s+me\s+(?:what|about)\s+(.+)/i,
+  ]),
   rule('what_did_i_commit_to', [
     /* Ordered above `what_am_i_on` because "what did I commit to" contains "what did I" and the
        objectives rule would otherwise take it. */
