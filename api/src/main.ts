@@ -71,7 +71,14 @@ async function bootstrap() {
 
 
   app.setGlobalPrefix('api/v1', {
-    exclude: [{ path: 'api/org/v1/(.*)', method: RequestMethod.ALL }],
+    exclude: [
+      { path: 'api/org/v1/(.*)', method: RequestMethod.ALL },
+      /* The two files a customer's browser fetches. Their addresses go in a script tag on every
+         page of somebody else's application, so they are stable URLs rather than ones that move
+         with our internal version. */
+      { path: 'embed.js', method: RequestMethod.GET },
+      { path: 'embed/panel', method: RequestMethod.GET },
+    ],
   });
 
   // CORS - allow configured origins (plus this project's Vercel previews) or all in development
@@ -79,16 +86,37 @@ async function bootstrap() {
   const staticOrigins = allowedOrigins ? allowedOrigins.split(',') : [];
   const vercelPreviewPattern = /^https:\/\/groundwork-[a-z0-9-]+-collecta-s-projects\.vercel\.app$/;
 
-  app.enableCors({
-    origin: !allowedOrigins
-      ? true
-      : (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-          if (!origin || staticOrigins.includes(origin) || vercelPreviewPattern.test(origin)) {
-            return callback(null, true);
-          }
-          callback(new Error(`Origin ${origin} not allowed by CORS`));
-        },
-    credentials: true,
+  /**
+   * TWO SURFACES WITH OPPOSITE CORS NEEDS.
+   *
+   * Groundwork's own client is a known origin and carries credentials, so it gets an allow-list.
+   * The integration surface is called from EVERY CUSTOMER'S OWN DOMAIN by definition - a widget on
+   * their application, a panel in an iframe - and an allow-list cannot enumerate domains we have
+   * never been told about. The first version applied the app's list to both, so a customer's page
+   * got a 500 on the preflight; found by loading the widget from a page that was not ours.
+   *
+   * Opening those paths is not a weakening. CORS is not what protects them: every one is
+   * authenticated by a bearer token in a header, which a cross-origin page cannot obtain by being
+   * cross-origin. And `credentials: false` there is deliberate - a browser refuses to send cookies
+   * to a wildcard origin anyway, and these endpoints must never depend on one.
+   */
+  const INTEGRATION_PATHS = /^\/(api\/org\/v1\/|embed\.js|embed\/panel)/;
+
+  app.enableCors((req: { url?: string }, callback: (err: Error | null, options?: any) => void) => {
+    if (INTEGRATION_PATHS.test(req.url ?? '')) {
+      return callback(null, { origin: true, credentials: false });
+    }
+    callback(null, {
+      origin: !allowedOrigins
+        ? true
+        : (origin: string | undefined, cb: (err: Error | null, allow?: boolean) => void) => {
+            if (!origin || staticOrigins.includes(origin) || vercelPreviewPattern.test(origin)) {
+              return cb(null, true);
+            }
+            cb(new Error(`Origin ${origin} not allowed by CORS`));
+          },
+      credentials: true,
+    });
   });
 
   app.useGlobalPipes(

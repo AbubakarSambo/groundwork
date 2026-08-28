@@ -91,6 +91,28 @@ export function verifyEmbedToken(
 }
 
 /**
+ * WHICH ORGANISATION A TOKEN CLAIMS TO BE FOR, READ WITHOUT TRUSTING IT.
+ *
+ * The browser calling the handshake holds no credential of ours, so the token has to say which
+ * organisation it belongs to before we know which key to check it against. That is not a hole: the
+ * claim SELECTS the lock and only the right key opens it. Claiming to be another customer means
+ * being verified against that customer's secret, which the caller does not have.
+ *
+ * Named for what it does. `readOrgClaim` rather than `getOrg`, so nobody reaches for it thinking it
+ * has established anything.
+ */
+export function readOrgClaim(token: string): string | null {
+  const payload = (token ?? '').split('.')[1];
+  if (!payload) return null;
+  try {
+    const claims = JSON.parse(b64urlToBuf(payload).toString('utf8'));
+    return typeof claims?.org === 'string' && claims.org ? claims.org : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * WHERE THE PANEL IS ALLOWED TO BE FRAMED.
  *
  * An empty list produces `'none'` rather than `*`. A customer who has not finished the setup gets a

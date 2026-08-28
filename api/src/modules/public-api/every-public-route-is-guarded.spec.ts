@@ -19,8 +19,24 @@ const SRC = readFileSync(join(__dirname, 'public-api.controller.ts'), 'utf8')
   .replace(/\/\*[\s\S]*?\*\//g, '')
   .replace(/^\s*\/\/.*$/gm, '');
 
-/** Authenticates the caller rather than requiring a caller already authenticated. */
-const UNGUARDED_ON_PURPOSE = ["@Post('oauth/token')"];
+/**
+ * ROUTES THAT AUTHENTICATE THE CALLER RATHER THAN REQUIRING AN AUTHENTICATED ONE.
+ *
+ * Both are arguable and both were argued for. Every entry here is a route on the public internet
+ * with no guard, so the number is small enough that growing it should cost somebody a paragraph.
+ */
+const UNGUARDED_ON_PURPOSE = [
+  /* Where a credential becomes a token. Requiring a token would be circular. */
+  "@Post('oauth/token')",
+  /*
+   * Called by a BROWSER on a page in the customer's application, which holds no credential of ours
+   * and must not - a machine secret in a widget is a machine secret in developer tools. The
+   * identity token their server signed IS the authentication, and it is verified against the key of
+   * whichever organisation it claims: claiming somebody else's means being checked against their
+   * secret, which the caller does not have.
+   */
+  "@Post('embed/session')",
+];
 
 /**
  * ROUTES A PANEL CALLS RATHER THAN A MACHINE, AND THE DISTINCTION IS REAL.
@@ -34,7 +50,7 @@ const UNGUARDED_ON_PURPOSE = ["@Post('oauth/token')"];
  * This list exists so that difference is a decision somebody made rather than a route that quietly
  * missed its guard.
  */
-const PANEL_AUTHENTICATED = ["@Post('chat')"];
+const PANEL_AUTHENTICATED = ["@Post('chat')", "@Get('embed/opening')"];
 
 /** Every route decorator in the file, in source order, with what follows it up to the handler. */
 function routes() {
@@ -82,10 +98,10 @@ describe('every public route is guarded', () => {
     }
   });
 
-  it('the exception list stays at exactly one entry', () => {
-    /* Not a style rule. Every entry here is a route on the public internet with no authentication,
-       and the number is small enough that growing it should require arguing for it. */
-    expect(UNGUARDED_ON_PURPOSE).toHaveLength(1);
+  it('the unguarded list stays very short', () => {
+    /* Not a style rule. Every entry is a route on the public internet with no guard. It was one and
+       is now two; a third should be hard to add without somebody asking why. */
+    expect(UNGUARDED_ON_PURPOSE.length).toBeLessThanOrEqual(2);
   });
 
   it('nothing outside this controller is marked Public under the integration path', () => {

@@ -2,7 +2,7 @@ import { Injectable, Logger, UnauthorizedException, BadRequestException } from '
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import { randomBytes } from 'crypto';
-import { verifyEmbedToken, frameAncestors } from './their-login-is-the-only-login';
+import { verifyEmbedToken, frameAncestors, readOrgClaim } from './their-login-is-the-only-login';
 import { freshnessOf } from '../subjects/a-pointer-goes-stale';
 import { quietUntil } from '../subjects/detection-holds-its-tongue';
 
@@ -54,14 +54,27 @@ export class EmbedService {
   }
 
   /**
-   * THE HANDSHAKE.
+   * THE HANDSHAKE, CALLED BY A BROWSER.
    *
-   * `organizationId` comes from the machine token on the request, not from the body - so a customer
-   * cannot ask us to verify their token against another organisation's key.
+   * THIS TOOK A MACHINE TOKEN AND THAT WAS WRONG. A machine credential is the customer's server
+   * secret; putting it in a widget on every page of their application would hand it to anybody who
+   * opened developer tools. Only visible once there was a loader to write - curl holds a credential
+   * quite happily and never notices.
+   *
+   * So the endpoint is open, and the identity token IS the authentication. The organisation is read
+   * from the token's own claim and then used to look up the key the signature is checked against -
+   * which sounds circular and is not: claiming to be another organisation means being checked
+   * against THAT organisation's secret, which the caller does not have. An unsigned claim selects
+   * the lock; only the right key opens it.
    */
-  async session(organizationId: string, token: string) {
-    const config = await this.prisma.embedConfig.findUnique({ where: { organizationId } });
-    if (!config) throw new BadRequestException('The embed has not been set up for this organisation yet.');
+  async session(token: string) {
+    const claimedOrg = readOrgClaim(token);
+    if (!claimedOrg) throw new UnauthorizedException('That token does not name an organisation.');
+
+    const config = await this.prisma.embedConfig.findUnique({ where: { organizationId: claimedOrg } });
+    /* Same answer as a bad signature, so this cannot be used to find out which organisations exist. */
+    if (!config) throw new UnauthorizedException('That token was not accepted.');
+    const organizationId = claimedOrg;
 
     const verified = verifyEmbedToken(token, config.signingSecret, organizationId);
     if (!verified.ok) throw new UnauthorizedException(verified.reason);
@@ -92,9 +105,15 @@ export class EmbedService {
       sessionToken,
       expiresIn: SESSION_TTL_SECONDS,
       placement: config.placement,
-      person: { externalId: person.externalId, displayName: person.displayName ?? person.userName },
-      opening: await this.opening(organizationId, person),
-      freshness: await this.freshness(organizationId),
+      /* The panel's frame-ancestors policy is chosen by this; it grants nothing on its own. */
+      organizationId,
+      /*
+       * DELIBERATELY THIN. This response is read by the HOST page - the customer's own application
+       * - and it only needs to know whether to render and what to render it as. The person's name,
+       * their opening line and the state of their systems belong to the PANEL, which fetches them
+       * with the session token it was given. Handing them to the host would put somebody's name in
+       * a page they are merely visiting.
+       */
     };
   }
 
@@ -110,6 +129,23 @@ export class EmbedService {
    * reports do not exist yet - so this returns the honest best available and NOT a placeholder
    * pretending to be one. When those lanes land they slot in above the orientation line.
    */
+  /**
+   * What the panel needs to draw itself, for a caller that already holds a panel session.
+   *
+   * Split out from the handshake because the panel gets its token in a fragment and then asks for
+   * this - the handshake's own response goes to the HOST page, which must not be handed the
+   * person's name and their systems' state just for embedding a widget.
+   */
+  async openingFor(organizationId: string, personId: string) {
+    const person = await this.prisma.person.findFirst({ where: { id: personId, organizationId } });
+    if (!person) return { opening: null, freshness: [] };
+    return {
+      person: { externalId: person.externalId, displayName: person.displayName ?? person.userName },
+      opening: await this.opening(organizationId, person),
+      freshness: await this.freshness(organizationId),
+    };
+  }
+
   private async opening(organizationId: string, person: { id: string; displayName: string | null; userName: string }) {
     const quiet = quietUntil(
       await this.prisma.detectionQuietPeriod.findMany({ where: { organizationId }, select: { endsAt: true } }),

@@ -16,6 +16,7 @@ import { EmbedService } from '../embed/embed.service';
 import { EmbedSessionGuard } from '../embed/embed-session.guard';
 import { AssistantService } from '../assistant/assistant.service';
 import { EmbedSetupController } from '../embed/embed-setup.controller';
+import { EmbedAssetsController } from '../embed/embed-assets.controller';
 
 @Module({
   imports: [
@@ -25,7 +26,7 @@ import { EmbedSetupController } from '../embed/embed-setup.controller';
       useFactory: (config: ConfigService) => ({ secret: config.get<string>('jwt.secret') }),
     }),
   ],
-  controllers: [PublicApiController, CredentialsController, ImportsController, EmbedSetupController],
+  controllers: [PublicApiController, CredentialsController, ImportsController, EmbedSetupController, EmbedAssetsController],
   providers: [CredentialsService, IdempotencyService, MachineTokenGuard, SubjectsService, ScimService, BulkImportService, ImportsBootstrap, EmbedService, EmbedSessionGuard, AssistantService],
   exports: [CredentialsService],
 })

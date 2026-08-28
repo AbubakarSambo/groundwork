@@ -26,7 +26,16 @@ export interface ApiResponse<T> {
  * contract, and an envelope we add for our own convenience is a thing their parser has to be taught
  * about and we can never remove.
  */
-const PUBLISHED_CONTRACT = '/api/org/v1';
+/**
+ * EVERY SURFACE SOMEBODY ELSE CONSUMES, not just the JSON one.
+ *
+ * This was `/api/org/v1` alone, and `/embed.js` therefore came back as a JSON envelope with a
+ * JavaScript content type. Chrome refused it outright - ERR_BLOCKED_BY_ORB - so the widget never
+ * ran on a customer's page, and the loader's own "fail quietly" design meant there was nothing in
+ * the console to say why. Exactly the OAuth envelope bug again: an envelope added for our own
+ * convenience, breaking a contract somebody else parses.
+ */
+const PUBLISHED = [/^\/api\/org\/v1/, /^\/embed\.js/, /^\/embed\/panel/];
 
 @Injectable()
 export class TransformInterceptor<T>
@@ -37,7 +46,7 @@ export class TransformInterceptor<T>
     next: CallHandler,
   ): Observable<ApiResponse<T> | T> {
     const url: string = context.switchToHttp().getRequest()?.url ?? '';
-    if (url.startsWith(PUBLISHED_CONTRACT)) return next.handle();
+    if (PUBLISHED.some((p) => p.test(url))) return next.handle();
 
     return next.handle().pipe(
       map((data) => ({

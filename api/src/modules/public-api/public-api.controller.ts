@@ -187,18 +187,24 @@ export class PublicApiController {
   /**
    * THE HANDSHAKE THE WIDGET MAKES ON EVERY LOAD.
    *
-   * Machine-authenticated like everything else here, so the organisation comes from the credential
-   * rather than from the body - a customer cannot ask us to check their token against somebody
-   * else's signing key.
+   * UNGUARDED, and that is the correction rather than an omission. This is called by a browser on
+   * a page in the customer's application, which holds no credential of ours and must not - a
+   * machine secret in a widget is a machine secret in developer tools. The identity token their
+   * server signed IS the authentication. See EmbedService.session.
    */
   @Post('embed/session')
   @HttpCode(200)
-  @UseGuards(MachineTokenGuard)
-  @RequiresScope('chat:write')
   @ApiOperation({ summary: 'Exchange a customer-signed identity token for a Groundwork panel session' })
-  async embedSession(@Req() req: { machine: MachineCaller }, @Body() dto: { token?: string }) {
+  async embedSession(@Body() dto: { token?: string }) {
     if (!dto?.token) throw new BadRequestException('token is required.');
-    return this.embed.session(req.machine.organizationId, dto.token);
+    return this.embed.session(dto.token);
+  }
+
+  @Get('embed/opening')
+  @UseGuards(EmbedSessionGuard)
+  @ApiOperation({ summary: 'What the panel draws before anybody types' })
+  async embedOpening(@Req() req: { panel: PanelCaller }) {
+    return this.embed.openingFor(req.panel.organizationId, req.panel.personId);
   }
 
   /**
