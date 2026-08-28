@@ -15,11 +15,19 @@ export type Lane =
   | 'what_am_i_on'
   | 'who_is'
   | 'what_did_i_commit_to'
+  | 'how_we_work'
   | 'unplaced';
 
 export interface Routed {
   lane: Lane;
-  /** For `who_is`, the name or id being asked about. */
+  /**
+   * What the question is ABOUT, with the question words removed.
+   *
+   * For `who_is` it is the name. For `how_we_work` it is the topic, and there it is not a
+   * convenience: retrieval scores a phrase against a card, and "how do I swap" carries no meaning
+   * while dragging the score down. Searching the whole sentence failed to match "swap oncall" to a
+   * card titled "The on-call rota" - found by asking it.
+   */
   subject?: string;
 }
 
@@ -36,6 +44,10 @@ const RULES = [
     /\bwho\s+does\s+(.+?)\s+report\s+to\s*\??$/i,
     /\bwho\s+reports\s+to\s+(.+?)\s*\??$/i,
   ]),
+  /*
+   * LAST OF THE MATCHERS, ON PURPOSE. "How do we..." is the broadest shape here and would otherwise
+   * swallow questions the specific lanes own. Its own rules stay narrow for the same reason.
+   */
   rule('what_did_i_commit_to', [
     /* Ordered above `what_am_i_on` because "what did I commit to" contains "what did I" and the
        objectives rule would otherwise take it. */
@@ -56,6 +68,17 @@ const RULES = [
     /\bhow\s+current\b/i,
     /\bwhat\s+would\s+you\s+connect\b/i,
   ]),
+  /*
+   * LAST, ON PURPOSE. "How do we..." is the broadest shape here, and above the others it would
+   * swallow questions they own - "how do I get on with my objectives" is not a handbook question.
+   * Its own patterns stay narrow for the same reason.
+   */
+  rule('how_we_work', [
+    /\bhow\s+do\s+(?:we|i)\s+(.{3,})/i,
+    /\bwhat(?:'s| is)\s+(?:our|the)\s+(?:policy|process|rule)\b/i,
+    /\bwhere\s+do\s+i\s+(?:find|go|put)\b/i,
+    /\bam\s+i\s+allowed\s+to\b/i,
+  ]),
 ];
 
 export function route(input: string): Routed {
@@ -66,9 +89,9 @@ export function route(input: string): Routed {
     for (const p of r.patterns) {
       const m = p.exec(text);
       if (m) {
-        return r.lane === 'who_is'
-          ? { lane: 'who_is', subject: (m[1] ?? '').trim() }
-          : { lane: r.lane };
+        /* Group one is the topic wherever a pattern captures it; lanes that need no subject ignore it. */
+        const subject = (m[1] ?? '').trim().replace(/[?.!]+$/, '');
+        return subject ? { lane: r.lane, subject } : { lane: r.lane };
       }
     }
   }

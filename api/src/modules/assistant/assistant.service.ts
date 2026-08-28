@@ -8,6 +8,7 @@ import { AnthropicService } from '../conversation/anthropic.service';
 import { STYLE, STYLE_VERSION, safeToUse, composePrompt } from './the-model-words-it-and-nothing-more';
 import { hasSlipped, theOneToRaise } from './what-somebody-said-they-would-do';
 import { catchCommitment, resolveConfirmation, proposalSummary } from './something-said-in-passing';
+import { KnowledgeService } from '../knowledge/knowledge.service';
 
 /**
  * THE LANES, AND EVERY ONE OF THEM WORKS WITH THE MODEL OFF.
@@ -34,6 +35,7 @@ export class AssistantService {
      * rename here would touch the check-in engine, which is not what this change is about.
      */
     private readonly engine: AnthropicService,
+    private readonly knowledge: KnowledgeService,
   ) {}
 
   async respond(organizationId: string, personId: string, message: string): Promise<Reply> {
@@ -93,6 +95,16 @@ export class AssistantService {
         return this.compose(await this.whoIs(organizationId, routed.subject ?? ''));
       case 'what_did_i_commit_to':
         return this.compose(await this.myCommitments(organizationId, personId));
+      case 'how_we_work':
+        /*
+         * NOT COMPOSED, AND THIS WAS A REAL MISTAKE FOR ONE LIVE REPLY.
+         *
+         * The comment on `howWeWork` says a policy quoted is not a policy paraphrased, and then the
+         * answer went through the composer, which paraphrased it: "Anything under 100 pounds you
+         * can just claim" came back as "Claim anything under £100". Perfectly good English and
+         * nobody's actual policy. What is written down goes out as written.
+         */
+        return this.howWeWork(organizationId, who, routed.subject ?? message);
       default: {
         /*
          * NOTHING TO ANSWER, BUT MAYBE SOMETHING TO NOTICE.
@@ -145,6 +157,33 @@ export class AssistantService {
       this.logger.warn(`Composition unavailable for lane ${reply.lane}: ${err?.message}`);
       return reply;
     }
+  }
+
+  /**
+   * "HOW WE WORK HERE", ANSWERED FROM WHAT THE ORGANISATION HAS ACTUALLY DECIDED.
+   *
+   * Not a hand-written FAQ that drifts, and not the model's general knowledge about how companies
+   * usually do expenses. Their own cards or nothing - and nothing is a real answer here, because
+   * the alternative is an assistant confidently describing a policy this company does not have.
+   *
+   * The card body is quoted rather than summarised. A policy paraphrased is a policy changed, and
+   * somebody acting on the paraphrase has been told something nobody wrote.
+   */
+  private async howWeWork(organizationId: string, who: string | null, topic: string): Promise<Reply> {
+    if (!who) return rules('how_we_work', text('I cannot look that up without knowing who you are.'));
+
+    /* The topic, not the sentence: "how do I swap" scores against nothing and drags the rest down. */
+    const { cards, truncated } = await this.knowledge.retrieve(organizationId, who, topic);
+    if (!cards.length) {
+      return rules('how_we_work', text('Your organisation has not written anything down about that here. If it should have, whoever set Groundwork up can add it.'));
+    }
+
+    const parts = cards.map((c) => `${c.title}\n${c.body}`);
+    if (truncated) {
+      /* Said rather than hidden: somebody acting on a partial policy should know it was partial. */
+      parts.push('There is more written down about this than I have shown here.');
+    }
+    return rules('how_we_work', text(parts.join('\n\n')));
   }
 
   /**

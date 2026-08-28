@@ -16,6 +16,8 @@ import { EmbedService } from '../embed/embed.service';
 import { EmbedSessionGuard } from '../embed/embed-session.guard';
 import { AssistantService } from '../assistant/assistant.service';
 import { AnthropicService } from '../conversation/anthropic.service';
+import { KnowledgeService } from '../knowledge/knowledge.service';
+import { KnowledgeController } from '../knowledge/knowledge.controller';
 import { EmbedSetupController } from '../embed/embed-setup.controller';
 import { EmbedAssetsController } from '../embed/embed-assets.controller';
 
@@ -27,8 +29,8 @@ import { EmbedAssetsController } from '../embed/embed-assets.controller';
       useFactory: (config: ConfigService) => ({ secret: config.get<string>('jwt.secret') }),
     }),
   ],
-  controllers: [PublicApiController, CredentialsController, ImportsController, EmbedSetupController, EmbedAssetsController],
-  providers: [CredentialsService, IdempotencyService, MachineTokenGuard, SubjectsService, ScimService, BulkImportService, ImportsBootstrap, EmbedService, EmbedSessionGuard, AssistantService, AnthropicService],
+  controllers: [PublicApiController, CredentialsController, ImportsController, EmbedSetupController, EmbedAssetsController, KnowledgeController],
+  providers: [CredentialsService, IdempotencyService, MachineTokenGuard, SubjectsService, ScimService, BulkImportService, ImportsBootstrap, EmbedService, EmbedSessionGuard, AssistantService, AnthropicService, KnowledgeService],
   exports: [CredentialsService],
 })
 export class PublicApiModule {}

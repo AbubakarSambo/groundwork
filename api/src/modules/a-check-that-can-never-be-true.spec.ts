@@ -75,6 +75,13 @@ const CHECKED_AND_FINE = new Set([
    * something the write can lean on.
    */
   'modules/assistant/a-commitment-carries-past-the-ground.ts:personExternalId',
+  /*
+   * The same shape again: an incoming payload from a customer's system, validated before anything
+   * is written. The columns being non-nullable is what these checks ENFORCE, not something they can
+   * lean on - a push arriving with no key is exactly the case.
+   */
+  'modules/knowledge/knowledge.service.ts:key',
+  'modules/knowledge/knowledge.service.ts:title',
 ]);
 
 function findHits() {

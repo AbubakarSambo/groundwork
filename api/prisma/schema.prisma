@@ -266,23 +266,25 @@ model Organization {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  users              User[]
-  grounds            Ground[]
-  billingEvents      BillingEvent[]
-  orgIntelligence    OrgIntelligence[]
-  contributorCodes   ContributorCode[]
-  styleProfiles      PersonStyleProfile[]
-  memberships        OrganizationMembership[]
-  subjects           Subject[]
-  apiCredentials     ApiCredential[]
-  people             Person[]
-  importJobs         ImportJob[]
-  quietPeriods       DetectionQuietPeriod[]
-  webhookEndpoints   WebhookEndpoint[]
-  embedConfig        EmbedConfig?
-  commitments        Commitment[]
-  assistantTurns     AssistantTurn[]
-  assistantProposals AssistantProposal[]
+  users               User[]
+  grounds             Ground[]
+  billingEvents       BillingEvent[]
+  orgIntelligence     OrgIntelligence[]
+  contributorCodes    ContributorCode[]
+  styleProfiles       PersonStyleProfile[]
+  memberships         OrganizationMembership[]
+  subjects            Subject[]
+  apiCredentials      ApiCredential[]
+  people              Person[]
+  importJobs          ImportJob[]
+  quietPeriods        DetectionQuietPeriod[]
+  webhookEndpoints    WebhookEndpoint[]
+  embedConfig         EmbedConfig?
+  commitments         Commitment[]
+  assistantTurns      AssistantTurn[]
+  assistantProposals  AssistantProposal[]
+  knowledgeCards      KnowledgeCard[]
+  knowledgeRetrievals KnowledgeRetrieval[]
 
   @@map("organizations")
 }
@@ -1551,6 +1553,92 @@ model DetectionQuietPeriod {
 
   @@index([organizationId, endsAt])
   @@map("detection_quiet_periods")
+}
+
+/// WHAT KIND OF THING A KNOWLEDGE CARD HOLDS.
+///
+/// The customer's own configuration and working material, so "how we work here" can be asked
+/// instead of living in one person's head. A large part of what they are buying.
+enum KnowledgeKind {
+  OBJECTIVE
+  PRODUCT_MAP
+  ROLE_BRIEF
+  HANDBOOK
+  ONBOARDING_BRIEF
+  COMMITMENT_NORM
+  BENCHMARK
+  PLAYBOOK
+  DOCUMENT
+  DECISION_RECORD
+  RESOURCE
+}
+
+/// SOMETHING THE ORGANISATION HAS DECIDED, AS IT STOOD AT A POINT IN TIME.
+///
+/// VERSIONED BY SUPERSESSION, NEVER UPDATED IN PLACE. A finding from March has to be explainable by
+/// the handbook as it stood in March, and a card edited in place makes that impossible - the
+/// evidence changes underneath the conclusion and nobody can tell it happened. So a substantive
+/// change writes a NEW card and closes the old one's `effectiveTo`.
+///
+/// A typo is different and `PATCH` exists for it: fixing "recieve" does not create a new version of
+/// the truth, and forcing one would fracture the effective-date history for no gain.
+///
+/// `key` is the customer's own name for the thing and is stable across versions. `(org, key)` is
+/// therefore NOT unique - the whole history lives under one key, and exactly one row of it has a
+/// null `effectiveTo`.
+model KnowledgeCard {
+  id             String        @id @default(uuid())
+  organizationId String        @map("organization_id")
+  kind           KnowledgeKind
+  /// Stable across versions. Their name for it: "expenses", "on-call", "how we price".
+  key            String
+  title          String
+  body           String        @db.Text
+  /// Where it came from, in their words - a wiki url, a document name. Never fetched.
+  sourceRef      String?       @map("source_ref")
+
+  version        Int     @default(1)
+  /// The card that replaced this one. Set when superseded, so a chain can be walked either way.
+  supersededById String? @unique @map("superseded_by_id")
+
+  effectiveFrom DateTime  @default(now()) @map("effective_from")
+  /// Null on the current version, and exactly one version per key may have it null.
+  effectiveTo   DateTime? @map("effective_to")
+
+  /// Where a card arrived by API rather than being written in the console.
+  externalId   String?   @map("external_id")
+  sourceSystem String?   @map("source_system")
+  syncedAt     DateTime? @map("synced_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, kind])
+  @@index([organizationId, key, effectiveFrom])
+  @@map("knowledge_cards")
+}
+
+/// WHICH CARDS WENT INTO WHICH REPLY.
+///
+/// So an admin who thinks an answer is wrong can trace it to the card that produced it, rather than
+/// to a model that cannot be asked. Without this, "why did it say that" has no answer at all, and
+/// the honest response to a customer would be a shrug.
+model KnowledgeRetrieval {
+  id               String   @id @default(uuid())
+  organizationId   String   @map("organization_id")
+  personExternalId String   @map("person_external_id")
+  /// What was asked, so a bad retrieval can be reproduced.
+  query            String   @db.Text
+  /// The cards, in the order they were ranked, with their scores.
+  cards            Json
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt])
+  @@map("knowledge_retrievals")
 }
 
 /// EVERY TURN OF A PANEL CONVERSATION, KEPT.

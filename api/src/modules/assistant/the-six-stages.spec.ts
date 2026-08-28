@@ -44,8 +44,10 @@ function svc(opts: { turns?: number; parked?: any; person?: any } = {}) {
     subject: { findMany: jest.fn(async () => []), count: jest.fn(async () => 0) },
     detectionQuietPeriod: { findMany: jest.fn(async () => []) },
   };
+  /* Retrieval is only reached by the handbook lane; these suites do not use it. */
+  const knowledge: any = { retrieve: jest.fn(async () => ({ cards: [], truncated: false })) };
   const engine: any = { respond: jest.fn(async () => { throw new Error('model off for these tests'); }) };
-  return { service: new AssistantService(prisma, engine), prisma, proposals, commitments };
+  return { service: new AssistantService(prisma, engine, knowledge), prisma, proposals, commitments };
 }
 
 const PARKED = {
@@ -155,5 +157,62 @@ describe("a person history is their own", () => {
     const { service, prisma } = svc();
     prisma.assistantTurn.createMany = jest.fn(async () => { throw new Error('write failed'); });
     await expect(service.respond('org-a', 'p1', 'what can you see?')).resolves.toBeTruthy();
+  });
+});
+
+describe('a policy goes out as written', () => {
+  /*
+   * The handbook lane is deliberately NOT composed, and this exists because it briefly was. One
+   * live reply turned "Anything under 100 pounds you can just claim" into "Claim anything under
+   * £100" - perfectly good English and nobody's actual policy. Somebody acting on a paraphrase has
+   * been told something nobody wrote.
+   */
+  function withCard() {
+    const { service, prisma } = svc();
+    (service as any).knowledge = {
+      retrieve: jest.fn(async () => ({
+        cards: [{ id: 'k1', key: 'expenses', kind: 'HANDBOOK', title: 'Expenses', body: 'Anything under 100 pounds you can just claim.' }],
+        truncated: false,
+      })),
+    };
+    return { service, prisma };
+  }
+
+  it('quotes the card rather than rewording it', async () => {
+    const { service } = withCard();
+    const r = await service.respond('org-a', 'p1', 'how do we do expenses?');
+    expect(r.lane).toBe('how_we_work');
+    expect(r.composedBy).toBe('rules');
+    expect((r.blocks[0] as any).body).toContain('Anything under 100 pounds you can just claim.');
+  });
+
+  it('and never sends it to the model at all', async () => {
+    const { service, prisma } = withCard();
+    const engine = (service as any).engine;
+    await service.respond('org-a', 'p1', 'how do we do expenses?');
+    expect(engine.respond).not.toHaveBeenCalled();
+  });
+
+  it('searches the topic, not the whole question', async () => {
+    /* "how do I swap" scores against nothing and drags the rest down - it failed to match "swap
+       oncall" to a card titled "The on-call rota" until the question words were stripped. */
+    const { service } = withCard();
+    await service.respond('org-a', 'p1', 'how do we do expenses?');
+    const arg = ((service as any).knowledge.retrieve as jest.Mock).mock.calls[0][2];
+    /*
+     * The property is that the QUESTION WORDS are gone, not that the topic is one word. "how do we
+     * do expenses" leaves "do expenses", and retrieval's own word filter drops the two-letter "do"
+     * - which is why it matches in practice. Asserting the tidier "expenses" was asserting an
+     * implementation detail of the regex rather than the thing that matters.
+     */
+    expect(arg).not.toMatch(/how do|what is|where do/i);
+    expect(arg).toContain('expenses');
+  });
+
+  it('says nothing rather than inventing a policy the company does not have', async () => {
+    const { service } = svc();
+    (service as any).knowledge = { retrieve: jest.fn(async () => ({ cards: [], truncated: false })) };
+    const r = await service.respond('org-a', 'p1', 'how do we handle parental leave?');
+    expect((r.blocks[0] as any).body).toMatch(/has not written anything down/i);
   });
 });

@@ -20,8 +20,10 @@ function svc(engineBehaviour: () => Promise<string>) {
     assistantProposal: { findFirst: jest.fn(async () => null), create: jest.fn(async (a: any) => ({ id: 'pr1', ...a.data })), update: jest.fn(async () => ({})) },
     assistantTurn: { count: jest.fn(async () => 5), createMany: jest.fn(async () => ({ count: 2 })) },
   };
+  /* Retrieval is only reached by the handbook lane; these suites do not use it. */
+  const knowledge: any = { retrieve: jest.fn(async () => ({ cards: [], truncated: false })) };
   const engine: any = { respond: jest.fn(engineBehaviour) };
-  return { service: new AssistantService(prisma, engine), engine };
+  return { service: new AssistantService(prisma, engine, knowledge), engine };
 }
 
 const ask = (s: AssistantService) => s.respond('org-a', 'p1', 'what can you see?');
