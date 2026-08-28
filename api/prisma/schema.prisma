@@ -285,6 +285,7 @@ model Organization {
   assistantProposals  AssistantProposal[]
   knowledgeCards      KnowledgeCard[]
   knowledgeRetrievals KnowledgeRetrieval[]
+  detectorResults     DetectorResult[]
 
   @@map("organizations")
 }
@@ -1553,6 +1554,52 @@ model DetectionQuietPeriod {
 
   @@index([organizationId, endsAt])
   @@map("detection_quiet_periods")
+}
+
+/// A BEHAVIOUR SEEN, ACCUMULATED ACROSS GROUNDS AND AGAINST A SUBJECT.
+///
+/// ONE VOCABULARY, TWO SCOPES. `PatternDetection` stays exactly as it is and stays authoritative
+/// inside its ground - the thirty-eight codes, the three-period rule and the collusion confirmation
+/// are earned. This is the same code seen from org level, which is the only place a behaviour can
+/// be tied to a piece of the customer's own work or watched across more than one check-in.
+///
+/// Additive. Nothing in the live product reads this; grounds write it alongside what they already
+/// write, and if the org layer turns out to be the wrong shape, deleting it loses nothing.
+///
+/// NEVER A VERDICT. Same rule as the codes it carries: this is a reason to have a conversation, and
+/// what leaves the API is the evidence rather than a judgement about a person - see §12.8 and the
+/// serialiser that enforces it.
+model DetectorResult {
+  id                String  @id @default(uuid())
+  organizationId    String  @map("organization_id")
+  /// The identity system's id, so a finding survives somebody having no Groundwork account.
+  personExternalId  String? @map("person_external_id")
+  /// What it is about, where it is about a piece of work rather than a person.
+  subjectExternalId String? @map("subject_external_id")
+
+  /// An existing pattern code (D1, B9, R1...) or one of the genuinely new keys. One namespace.
+  key        String
+  severity   String @default("medium")
+  /// What was seen, in a shape a person could check. Never a score.
+  evidence   Json
+  /// How sure, where that can be said. Null where it cannot, rather than a made-up number.
+  confidence Float?
+
+  /// Which ground it was mirrored from, when it came from one. A pointer; the ground's own row
+  /// stays authoritative for the ground.
+  sourceGroundId           String? @map("source_ground_id")
+  sourcePatternDetectionId String? @unique @map("source_pattern_detection_id")
+
+  firstSeenAt DateTime  @default(now()) @map("first_seen_at")
+  lastSeenAt  DateTime  @default(now()) @map("last_seen_at")
+  resolvedAt  DateTime? @map("resolved_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, key, resolvedAt])
+  @@index([organizationId, subjectExternalId])
+  @@index([organizationId, personExternalId])
+  @@map("detector_results")
 }
 
 /// WHAT KIND OF THING A KNOWLEDGE CARD HOLDS.
