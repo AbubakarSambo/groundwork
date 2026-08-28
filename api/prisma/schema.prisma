@@ -540,6 +540,22 @@ model Ground {
   freeParticipantCap         Int      @default(5) @map("free_participant_cap")
   joinToken                  String?  @unique @map("join_token")
 
+  /// WHICH PIECE OF THE CUSTOMER'S OWN WORK THIS CHECK-IN IS ABOUT.
+  ///
+  /// Null for every ground made inside Groundwork, which is all of them today - a lead opening a
+  /// check-in is not choosing from an imported list. It is set when a customer's system SUMMONS one
+  /// against an objective, which is the only moment anybody has actually said which subject it is
+  /// for.
+  ///
+  /// This is the link the org-level detectors were missing. Without it there is no way to ask
+  /// whether two people describe the SAME objective differently, because there is no way to know
+  /// they were talking about the same one - and inferring it from titles would mean deciding what
+  /// somebody meant and then reporting a divergence based on the guess.
+  ///
+  /// An external id rather than a foreign key, for the same reason as everywhere else: the subject
+  /// may not have been pushed yet, and a check-in must not fail to open for naming one that has not.
+  subjectExternalId String? @map("subject_external_id")
+
   promptVersionId     String? @map("prompt_version_id")
   stripeScenarioSubId String? @map("stripe_scenario_sub_id")
 

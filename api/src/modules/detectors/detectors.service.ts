@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { findUndeclaredDependencies, SubjectRef, Mention, sayIt } from './nobody-wrote-the-dependency-down';
 import { quietUntil } from '../subjects/detection-holds-its-tongue';
 import { STOPWORDS } from '../knowledge/knowledge.service';
+import { findGoalDivergence, sayIt as sayDivergence } from './describing-the-same-goal-differently';
 
 /**
  * RUNNING THE DETECTORS THAT NEED A SUBJECT AND A VIEW ACROSS GROUNDS.
@@ -112,6 +113,82 @@ export class DetectorsService {
   }
 
   /**
+   * WHERE TWO PEOPLE ON ONE OBJECTIVE DESCRIBE IT AS DIFFERENT WORK.
+   *
+   * Only for grounds that were SUMMONED against a subject. A ground opened inside Groundwork has no
+   * subject and never will, and inferring one from a title would mean deciding what somebody meant
+   * and then reporting a divergence based on the guess - a finding about two named people, resting
+   * on an inference nobody made.
+   *
+   * The accounts compared are what each person said the work IS: their own stated expectations
+   * inside that check-in. Not how well they said it. There is no score for articulacy here and
+   * there must never be one.
+   */
+  private async goalDivergence(organizationId: string, subjects: SubjectRef[]): Promise<number> {
+    const grounds = await this.prisma.ground.findMany({
+      where: { organizationId, subjectExternalId: { not: null } },
+      select: { id: true, subjectExternalId: true },
+    });
+    if (!grounds.length) return 0;
+
+    /* Grouped by subject, because two grounds against one objective are two rounds of the same
+       conversation and the question is whether the PEOPLE agree, not whether the meetings did. */
+    const bySubject = new Map<string, string[]>();
+    for (const g of grounds) {
+      bySubject.set(g.subjectExternalId!, [...(bySubject.get(g.subjectExternalId!) ?? []), g.id]);
+    }
+
+    let n = 0;
+    for (const [subjectExternalId, groundIds] of bySubject) {
+      const rows = await this.prisma.personObjective.findMany({
+        where: { groundId: { in: groundIds } },
+        select: {
+          text: true, createdAt: true,
+          participant: { select: { email: true } },
+        },
+        orderBy: { createdAt: 'asc' },
+      });
+
+      /* Resolved to identity-system ids, because a finding about people has to name people the
+         customer's own systems know. Anybody unresolved is left out rather than guessed at. */
+      const accounts: { personExternalId: string; text: string }[] = [];
+      for (const r of rows) {
+        if (!r.participant?.email || !r.text) continue;
+        const person = await this.prisma.person.findFirst({
+          where: { organizationId, email: r.participant.email.toLowerCase() },
+          select: { externalId: true },
+        });
+        if (person) accounts.push({ personExternalId: person.externalId, text: r.text });
+      }
+
+      const title = subjects.find((s) => s.externalId === subjectExternalId)?.title ?? subjectExternalId;
+      for (const d of findGoalDivergence(subjectExternalId, accounts)) {
+        const existing = await this.prisma.detectorResult.findFirst({
+          where: {
+            organizationId, key: 'goal_divergence', resolvedAt: null,
+            subjectExternalId,
+            evidence: { path: ['between'], equals: d.between as any },
+          },
+        });
+        const evidence = { between: d.between, overlap: d.overlap, says: sayDivergence(d, title) } as any;
+        if (existing) {
+          await this.prisma.detectorResult.update({ where: { id: existing.id }, data: { evidence, lastSeenAt: new Date() } });
+        } else {
+          await this.prisma.detectorResult.create({
+            data: {
+              organizationId, subjectExternalId, key: 'goal_divergence',
+              /* The spec's own ordering: this is one of the two high-severity findings. */
+              severity: 'high', evidence,
+            },
+          });
+          n += 1;
+        }
+      }
+    }
+    return n;
+  }
+
+  /**
    * Run and record. Returns what it found so a caller can report it without a second query.
    *
    * HOLDS ITS TONGUE DURING A QUIET PERIOD, which is the whole reason that window is stamped at
@@ -192,8 +269,9 @@ export class DetectorsService {
       }
     }
     const unmentioned = await this.objectiveUnmentioned(organizationId, subjects, turns);
+    const diverging = await this.goalDivergence(organizationId, subjects);
 
-    this.logger.log(`Org ${organizationId}: ${found.length} undeclared dependencies, ${unmentioned} unmentioned objectives.`);
-    return { ran: true, found: found.length + unmentioned };
+    this.logger.log(`Org ${organizationId}: ${found.length} undeclared dependencies, ${unmentioned} unmentioned, ${diverging} diverging.`);
+    return { ran: true, found: found.length + unmentioned + diverging };
   }
 }
