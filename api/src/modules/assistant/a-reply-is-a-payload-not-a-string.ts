@@ -81,6 +81,8 @@ export interface Reply {
   composedBy: 'model' | 'rules';
   /** Which lane answered. Kept for the cost and path attribution the spec asks for. */
   lane: string;
+  /** Which wording rules produced it, when a model did. Absent on a rules-composed reply. */
+  styleVersion?: string;
 }
 
 export const text = (body: string): TextBlock => ({ type: 'text', body });

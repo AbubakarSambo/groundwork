@@ -4,6 +4,8 @@ import { route, whatICanDoWith } from './the-router-is-deterministic';
 import { Reply, rules, text, picker } from './a-reply-is-a-payload-not-a-string';
 import { freshnessOf } from '../subjects/a-pointer-goes-stale';
 import { quietUntil } from '../subjects/detection-holds-its-tongue';
+import { AnthropicService } from '../conversation/anthropic.service';
+import { STYLE, STYLE_VERSION, safeToUse, composePrompt } from './the-model-words-it-and-nothing-more';
 
 /**
  * THE LANES, AND EVERY ONE OF THEM WORKS WITH THE MODEL OFF.
@@ -23,21 +25,64 @@ import { quietUntil } from '../subjects/detection-holds-its-tongue';
 export class AssistantService {
   private readonly logger = new Logger(AssistantService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    /*
+     * Named for a provider it no longer uses - it speaks to Gemini - and left alone, because a
+     * rename here would touch the check-in engine, which is not what this change is about.
+     */
+    private readonly engine: AnthropicService,
+  ) {}
 
   async respond(organizationId: string, personId: string, message: string): Promise<Reply> {
     const routed = route(message);
     switch (routed.lane) {
       case 'what_you_can_see':
-        return this.whatICanSee(organizationId);
+        return this.compose(await this.whatICanSee(organizationId));
       case 'what_am_i_on':
-        return this.whatAmIOn(organizationId, personId);
+        return this.compose(await this.whatAmIOn(organizationId, personId));
       case 'who_is':
-        return this.whoIs(organizationId, routed.subject ?? '');
+        return this.compose(await this.whoIs(organizationId, routed.subject ?? ''));
       default: {
+        /*
+         * NOT COMPOSED, DELIBERATELY. There is nothing here to say better: it is a fixed sentence
+         * and a list of buttons, and a model rewording it would only make the one reply a person
+         * sees most often vary for no reason.
+         */
         const { line, options } = whatICanDoWith(message);
         return rules('unplaced', text(line), picker(options));
       }
+    }
+  }
+
+  /**
+   * THE ANSWER IS ALREADY CORRECT BEFORE THIS RUNS. This only changes how it sounds.
+   *
+   * One model call, and a failure of any kind - off, unreachable, slow, or a reply that fails the
+   * checks - ships the draft. The person gets the true answer either way; only the wording and the
+   * `composedBy` stamp differ, and the stamp is why that is honest rather than hidden.
+   */
+  private async compose(reply: Reply): Promise<Reply> {
+    const first = reply.blocks[0];
+    if (!first || first.type !== 'text') return reply;
+    const draft = first.body;
+
+    try {
+      const composed = await this.engine.respond(STYLE, [{ role: 'user', content: composePrompt(draft) }]);
+      if (!safeToUse(draft, composed)) {
+        this.logger.warn(`Composition refused for lane ${reply.lane}; shipping the draft.`);
+        return reply;
+      }
+      return {
+        ...reply,
+        blocks: [text(composed.trim()), ...reply.blocks.slice(1)],
+        composedBy: 'model',
+        styleVersion: STYLE_VERSION,
+      };
+    } catch (err: any) {
+      /* An outage must not cost somebody their answer. */
+      this.logger.warn(`Composition unavailable for lane ${reply.lane}: ${err?.message}`);
+      return reply;
     }
   }
 
