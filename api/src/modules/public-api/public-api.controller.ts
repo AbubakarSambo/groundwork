@@ -14,6 +14,8 @@ import { Public } from '../../common/decorators/public.decorator';
 import { ScimService, ScimUser } from '../people/scim.service';
 import { BulkImportService } from '../subjects/bulk-import.service';
 import { EmbedService } from '../embed/embed.service';
+import { EmbedSessionGuard, PanelCaller } from '../embed/embed-session.guard';
+import { AssistantService } from '../assistant/assistant.service';
 import { resolveReferences } from '../people/an-unresolved-reference-is-a-fact';
 
 /** Short, because a leaked one should stop working before anybody has finished reading the log. */
@@ -54,6 +56,7 @@ export class PublicApiController {
     private readonly scim: ScimService,
     private readonly bulk: BulkImportService,
     private readonly embed: EmbedService,
+    private readonly assistant: AssistantService,
   ) {}
 
   /**
@@ -196,6 +199,20 @@ export class PublicApiController {
   async embedSession(@Req() req: { machine: MachineCaller }, @Body() dto: { token?: string }) {
     if (!dto?.token) throw new BadRequestException('token is required.');
     return this.embed.session(req.machine.organizationId, dto.token);
+  }
+
+  /**
+   * ONE FRONT DOOR. No menu, no mode selection - the router reads intent and picks a lane.
+   *
+   * Guarded by the PANEL's session rather than a machine credential: every lane is scoped to the
+   * person asking, and a machine token carries an organisation and nobody in particular.
+   */
+  @Post('chat')
+  @HttpCode(200)
+  @UseGuards(EmbedSessionGuard)
+  @ApiOperation({ summary: 'Ask the assistant. Returns typed blocks, not a string.' })
+  async chat(@Req() req: { panel: PanelCaller }, @Body() dto: { message?: string }) {
+    return this.assistant.respond(req.panel.organizationId, req.panel.personId, dto?.message ?? '');
   }
 
   /**

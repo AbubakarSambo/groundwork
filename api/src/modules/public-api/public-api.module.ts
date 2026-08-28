@@ -13,6 +13,8 @@ import { ScimService } from '../people/scim.service';
 import { BulkImportService } from '../subjects/bulk-import.service';
 import { ImportsBootstrap } from '../subjects/imports.bootstrap';
 import { EmbedService } from '../embed/embed.service';
+import { EmbedSessionGuard } from '../embed/embed-session.guard';
+import { AssistantService } from '../assistant/assistant.service';
 import { EmbedSetupController } from '../embed/embed-setup.controller';
 
 @Module({
@@ -24,7 +26,7 @@ import { EmbedSetupController } from '../embed/embed-setup.controller';
     }),
   ],
   controllers: [PublicApiController, CredentialsController, ImportsController, EmbedSetupController],
-  providers: [CredentialsService, IdempotencyService, MachineTokenGuard, SubjectsService, ScimService, BulkImportService, ImportsBootstrap, EmbedService],
+  providers: [CredentialsService, IdempotencyService, MachineTokenGuard, SubjectsService, ScimService, BulkImportService, ImportsBootstrap, EmbedService, EmbedSessionGuard, AssistantService],
   exports: [CredentialsService],
 })
 export class PublicApiModule {}

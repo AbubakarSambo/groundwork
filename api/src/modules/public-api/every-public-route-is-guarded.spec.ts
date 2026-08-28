@@ -22,6 +22,20 @@ const SRC = readFileSync(join(__dirname, 'public-api.controller.ts'), 'utf8')
 /** Authenticates the caller rather than requiring a caller already authenticated. */
 const UNGUARDED_ON_PURPOSE = ["@Post('oauth/token')"];
 
+/**
+ * ROUTES A PANEL CALLS RATHER THAN A MACHINE, AND THE DISTINCTION IS REAL.
+ *
+ * `/chat` is reached by the embedded panel carrying a session for ONE NAMED PERSON, not by a
+ * customer's integration credential. Every lane behind it is scoped to the person asking, so a
+ * machine token - which names an organisation and nobody - must not reach it. Different guard,
+ * different reason, and a scope would be the wrong shape: scopes describe what an integration may
+ * do, and this is a person asking a question about themselves.
+ *
+ * This list exists so that difference is a decision somebody made rather than a route that quietly
+ * missed its guard.
+ */
+const PANEL_AUTHENTICATED = ["@Post('chat')"];
+
 /** Every route decorator in the file, in source order, with what follows it up to the handler. */
 function routes() {
   const out: { decorator: string; block: string }[] = [];
@@ -40,10 +54,19 @@ describe('every public route is guarded', () => {
     expect(routes().length).toBeGreaterThanOrEqual(4);
   });
 
-  it('carries MachineTokenGuard on every route but the token exchange', () => {
+  it('carries a guard on every route but the token exchange', () => {
     for (const r of routes()) {
       if (UNGUARDED_ON_PURPOSE.includes(r.decorator)) continue;
-      expect(r.block).toContain('@UseGuards(MachineTokenGuard)');
+      const guarded = r.block.includes('@UseGuards(MachineTokenGuard)') || r.block.includes('@UseGuards(EmbedSessionGuard)');
+      expect(guarded).toBe(true);
+    }
+  });
+
+  it('and a panel route is guarded as a panel route, deliberately', () => {
+    for (const r of routes()) {
+      if (!PANEL_AUTHENTICATED.includes(r.decorator)) continue;
+      expect(r.block).toContain('@UseGuards(EmbedSessionGuard)');
+      expect(r.block).not.toContain('MachineTokenGuard');
     }
   });
 
@@ -53,6 +76,8 @@ describe('every public route is guarded', () => {
        find out than a red test. */
     for (const r of routes()) {
       if (UNGUARDED_ON_PURPOSE.includes(r.decorator)) continue;
+      /* A panel route has no scope by design - see PANEL_AUTHENTICATED. */
+      if (PANEL_AUTHENTICATED.includes(r.decorator)) continue;
       expect(r.block).toMatch(/@RequiresScope\('[a-z]+:[a-z]+'\)/);
     }
   });
