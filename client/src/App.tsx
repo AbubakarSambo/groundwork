@@ -33,6 +33,7 @@ import { InvitePage } from '@/pages/invite/InvitePage'
 import { JoinPage } from '@/pages/join/JoinPage'
 import { PromptVersioningPage } from '@/pages/prompts/PromptVersioningPage'
 import { PromptTestPage } from '@/pages/prompts/PromptTestPage'
+import { IntegrationsPage } from '@/pages/org/IntegrationsPage'
 import { AdminPage } from '@/pages/admin/AdminPage'
 import { AdminDashboardPage } from '@/pages/admin/AdminDashboardPage'
 import { SettingsPage } from '@/pages/settings/SettingsPage'
@@ -177,6 +178,10 @@ export default function App() {
             <Route path="/prompts/test" element={<RequireAuth><PromptTestPage /></RequireAuth>} />
             <Route path="/settings" element={<RequireAuth><SettingsPage /></RequireAuth>} />
             <Route path="/org/members" element={<RequireAuth><OrgMembersPage /></RequireAuth>} />
+            {/* RequireAuth rather than RequirePlatformAdmin: this is a CUSTOMER's admin connecting
+                their own systems, not Groundwork staff. The page itself refuses a non-admin, and
+                every endpoint behind it is admin-gated on the server. */}
+            <Route path="/org/integrations" element={<RequireAuth><IntegrationsPage /></RequireAuth>} />
             <Route path="/admin" element={<RequirePlatformAdmin><AdminPage /></RequirePlatformAdmin>} />
             <Route path="/admin/dashboard" element={<RequirePlatformAdmin><AdminDashboardPage /></RequirePlatformAdmin>} />
 

@@ -70,6 +70,12 @@
    * the #EDD0CB border already sitting on it.
    */
   --gw-clay-bg: #F6E9DF;
+  /**
+   * The border that goes on a clay card. It was written as a raw #EDD0CB in one page and then in a
+   * second, which is the moment a colour stops being a one-off and starts being a shared decision
+   * nobody has named. Same value, so nothing renders differently.
+   */
+  --gw-clay-b: #EDD0CB;
   --gw-radius: 6px;
 
   /**

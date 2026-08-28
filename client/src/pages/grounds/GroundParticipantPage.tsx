@@ -1012,7 +1012,7 @@ export function GroundParticipantPage() {
               * same read as the one on the record tab, minus everything a person could act on, and
               * a page that grades you twice is not twice as honest.
               */}
-            <div style={{ order: 6, background: 'var(--gw-clay-bg)', border: '1px solid #EDD0CB', borderRadius: 10, padding: '13px 16px' }}>
+            <div style={{ order: 6, background: 'var(--gw-clay-bg)', border: '1px solid var(--gw-clay-b)', borderRadius: 10, padding: '13px 16px' }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-clay)', marginBottom: 4 }}>Privacy reminder</div>
               <div style={{ fontSize: 12, color: '#7A4A44', lineHeight: 1.6 }}>
                 Your check-in answers are never visible to the other party. They are stored privately and only cross-referenced at the point of report generation. Neither party can read the other's raw account at any time.

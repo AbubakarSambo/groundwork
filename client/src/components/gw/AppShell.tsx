@@ -52,6 +52,20 @@ const NAV_ITEMS = [
    * who leads each ground, is on the grounds card now.
    */
   {
+    /* A route with no door is a page nobody finds. This one is admin-only because every endpoint
+       behind it is, and a nav item that leads to a refusal is worse than no nav item. */
+    label: 'Connect',
+    to: '/org/integrations',
+    adminOnly: true,
+    icon: (active: boolean) => (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <path d="M7.5 12.5l5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        <path d="M11 4.5l1.5-1.5a3.5 3.5 0 015 5L16 9.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.12 : 0} />
+        <path d="M9 15.5L7.5 17a3.5 3.5 0 01-5-5L4 10.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
     label: 'Billing',
     to: '/billing',
     adminOnly: true,
@@ -147,7 +161,7 @@ export function navItemsFor(user: { role?: string; isPlatformAdmin?: boolean } |
 }
 
 /** The organisation's own pages, as opposed to the grounds inside it. */
-export const ORG_ROUTES = ['/org/members', '/billing', '/settings']
+export const ORG_ROUTES = ['/org/members', '/org/integrations', '/billing', '/settings']
 
 type FbTab = 'reaction' | 'build' | 'wrong'
 

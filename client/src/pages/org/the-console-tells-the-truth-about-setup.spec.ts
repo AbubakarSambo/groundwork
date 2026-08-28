@@ -1,0 +1,85 @@
+import { readFileSync } from 'fs'
+import { join } from 'path'
+import { describe, it, expect } from 'vitest'
+
+/**
+ * A SETUP STEP MUST TICK ON WHAT HAPPENED, NOT ON WHAT WAS ATTEMPTED.
+ *
+ * The whole point of a guided path is that an admin who has finished step three KNOWS the
+ * connection works. A step that ticks because a form was submitted teaches them to trust a green
+ * mark that means nothing, and they discover the truth later, in production, from a customer.
+ *
+ * So each step reads live state: a credential that exists, a credential that has actually been
+ * USED, an endpoint that exists, and a delivery that actually SUCCEEDED. `lastUsedAt` and
+ * `status === 'DELIVERED'` are the two that carry the weight - they are the difference between
+ * having a key and having used it, and between having an address and having reached it.
+ */
+const SRC = readFileSync(join(__dirname, 'IntegrationsPage.tsx'), 'utf8')
+  .replace(/\/\*[\s\S]*?\*\//g, '')
+  .replace(/^\s*\/\/.*$/gm, '')
+
+describe('the console tells the truth about setup', () => {
+  it('ticks "authenticated" on real use, not on a credential existing', () => {
+    expect(SRC).toMatch(/used:\s*\(creds\.data \?\? \[\]\)\.some\(c => c\.lastUsedAt\)/)
+  })
+
+  it('ticks "received one" on a successful delivery, not on an endpoint existing', () => {
+    expect(SRC).toMatch(/delivered:\s*\(deliveries\.data \?\? \[\]\)\.some\(d => d\.status === 'DELIVERED'\)/)
+  })
+
+  it('does not tick anything from a mutation having been called', () => {
+    /* `issue.isSuccess` and friends describe what the browser did, not what the server holds. */
+    expect(SRC).not.toMatch(/done=\{[^}]*\.isSuccess/)
+    expect(SRC).not.toMatch(/setupDone[\s\S]{0,200}isSuccess/)
+  })
+})
+
+describe('a secret is shown once and never fetched back', () => {
+  it('is held only in component state, from the issue response', () => {
+    expect(SRC).toMatch(/setFreshSecret\(\{ clientId: c\.clientId, clientSecret: c\.clientSecret \}\)/)
+  })
+
+  it('the page never asks for a secret', () => {
+    /* There is no endpoint that returns one, and this makes sure nobody adds a call for it. */
+    expect(SRC).not.toMatch(/getSecret|revealSecret|fetchSecret/)
+  })
+
+  it('says plainly that it will not be shown again', () => {
+    expect(SRC).toMatch(/not shown again/i)
+  })
+})
+
+describe('the plain-language half comes first', () => {
+  it('explains what happens before it asks for anything', () => {
+    /*
+     * The order is the feature. An operations lead should be able to read the top of this page and
+     * decide whether to involve their engineer, without meeting a scope checkbox first.
+     */
+    const plain = SRC.indexOf('What this does, in plain terms')
+    const credentials = SRC.indexOf('>Credentials<')
+    const setup = SRC.indexOf('Setting it up')
+    expect(plain).toBeGreaterThan(-1)
+    expect(setup).toBeGreaterThan(plain)
+    expect(credentials === -1 || credentials > plain).toBe(true)
+  })
+
+  it('names the four exclusions in the product, not only in a document', () => {
+    /* This page is what an admin sends to their own security reviewer. A policy PDF is a claim; a
+       live page showing the enforcement is evidence. */
+    for (const phrase of [
+      'how clearly a person writes',
+      'said about a colleague',
+      'measure of their contribution',
+      'recommended verdict about a person',
+    ]) {
+      expect(SRC).toContain(phrase)
+    }
+  })
+
+  it('says why an event in the contract is missing from the picker', () => {
+    /* An admin who has read the contract and cannot find blocker.raised should learn why here
+       rather than from a support thread. */
+    expect(SRC).toMatch(/notYetEmitted/)
+    expect(SRC).toMatch(/nothing sends them/i)
+  })
+})

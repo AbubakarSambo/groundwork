@@ -39,7 +39,7 @@ const labels = (u: any) => navItemsFor(u).map(i => i.label)
 describe('who sees what', () => {
   it('an admin sees the organisation\'s pages', () => {
     // Verified rendered: Grounds, then the org name, then People, Billing, Settings.
-    expect(labels(admin)).toEqual(['Check-ins', 'People', 'Billing', 'Settings'])
+    expect(labels(admin)).toEqual(['Check-ins', 'People', 'Connect', 'Billing', 'Settings'])
   })
 
   it('a team member sees the check-ins and their own settings, and nothing that would bounce them', () => {
@@ -80,7 +80,7 @@ describe('one gate, used by all three renderers', () => {
 
 describe('the group reads as a place', () => {
   it('the org routes are named in one list', () => {
-    expect(ORG_ROUTES).toEqual(['/org/members', '/billing', '/settings'])
+    expect(ORG_ROUTES).toEqual(['/org/members', '/org/integrations', '/billing', '/settings'])
   })
 
   it('the heading is the organisation\'s own name', () => {
