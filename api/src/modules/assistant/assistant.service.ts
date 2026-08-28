@@ -97,6 +97,8 @@ export class AssistantService {
         return this.compose(await this.whoIs(organizationId, routed.subject ?? ''));
       case 'what_did_i_commit_to':
         return this.compose(await this.myCommitments(organizationId, personId));
+      case 'how_am_i_doing':
+        return this.compose(await this.howAmIDoing(organizationId, who));
       case 'what_did_i_say':
         return this.compose(await this.whatDidISay(organizationId, who, routed.subject ?? message));
       case 'how_we_work':
@@ -161,6 +163,56 @@ export class AssistantService {
       this.logger.warn(`Composition unavailable for lane ${reply.lane}: ${err?.message}`);
       return reply;
     }
+  }
+
+  /**
+   * THE COACH THAT ALREADY EXISTS, ASKED FROM A DIFFERENT PLACE.
+   *
+   * There is no second coach here and there must not be. `CoachingState` has been written on every
+   * completed check-in for a long time, by a state machine with rules earned the hard way - one step
+   * at a time, never a list; a step that goes unmanaged twice changes rather than repeating; and
+   * nothing ever accumulates into a judgement. This lane READS that. Building a parallel coach for
+   * the panel would give somebody two answers about themselves from one product.
+   *
+   * The state is per PARTICIPANT, which is per ground. A person is usually in more than one, so the
+   * most recent step is the one that is live - an older ground's step is not wrong, it is finished.
+   *
+   * WHAT THIS DOES NOT DO is answer "how am I doing" with an assessment. The question gets a step,
+   * because a step is the only honest answer a machine can give to it, and the alternative is the
+   * verdict that coaching-can-never-justify-a-firing.spec.ts exists to prevent.
+   */
+  private async howAmIDoing(organizationId: string, who: string | null): Promise<Reply> {
+    if (!who) return rules('how_am_i_doing', text('I cannot look that up without knowing who you are.'));
+
+    const person = await this.prisma.person.findFirst({
+      where: { organizationId, externalId: who },
+      select: { email: true },
+    });
+    if (!person?.email) {
+      return rules('how_am_i_doing', text('I cannot match you to a check-in, so I have nothing to go on yet.'));
+    }
+
+    const state = await this.prisma.coachingState.findFirst({
+      where: { participant: { email: person.email, ground: { organizationId } } },
+      orderBy: { updatedAt: 'desc' },
+      select: { currentStep: true, staircase: true },
+    });
+
+    if (!state?.currentStep) {
+      /*
+       * No step is a real answer and a common one. The engine only offers one when the record has
+       * earned it, and saying "you are doing fine" instead would be inventing an assessment out of
+       * an absence - the exact thing this lane must not do.
+       */
+      return rules('how_am_i_doing', text(
+        'There is no step waiting for you. That is not a verdict either way - the coaching in your check-in only offers one when there is something specific worth doing, and right now there is not.',
+      ));
+    }
+
+    return rules('how_am_i_doing', text(
+      `One thing, from your last check-in: ${state.currentStep}\n\n`
+      + 'That is the whole of it. It is meant to be small enough to actually happen this week, and if it is not, saying so in your next check-in changes it rather than repeating it.',
+    ));
   }
 
   /**

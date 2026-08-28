@@ -17,6 +17,7 @@ export type Lane =
   | 'what_did_i_commit_to'
   | 'how_we_work'
   | 'what_did_i_say'
+  | 'how_am_i_doing'
   | 'unplaced';
 
 export interface Routed {
@@ -49,6 +50,17 @@ const RULES = [
    * LAST OF THE MATCHERS, ON PURPOSE. "How do we..." is the broadest shape here and would otherwise
    * swallow questions the specific lanes own. Its own rules stay narrow for the same reason.
    */
+  rule('how_am_i_doing', [
+    /*
+     * Above the recall lane, because "how am I doing" is not a question about what they said. Both
+     * shapes go here - the flat question and the stuck one - since the coach's answer to either is
+     * the same single step.
+     */
+    /\bhow\s+am\s+i\s+doing\b/i,
+    /\bi'?m\s+stuck\b/i,
+    /\bhow\s+do\s+i\s+get\s+better\b/i,
+    /\bwhat\s+should\s+i\s+(?:work on|focus on)\b/i,
+  ]),
   rule('what_did_i_say', [
     /*
      * Above the commitment lane, because "what did I say about the vendor" is a question about the
