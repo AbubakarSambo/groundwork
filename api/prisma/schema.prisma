@@ -280,6 +280,7 @@ model Organization {
   quietPeriods     DetectionQuietPeriod[]
   webhookEndpoints WebhookEndpoint[]
   embedConfig      EmbedConfig?
+  commitments      Commitment[]
 
   @@map("organizations")
 }
@@ -1550,6 +1551,61 @@ model DetectionQuietPeriod {
   @@map("detection_quiet_periods")
 }
 
+enum CommitmentState {
+  OPEN
+  KEPT
+  /// The date they gave has passed and nobody has said it is done.
+  SLIPPED
+  /// Withdrawn or overtaken. Not a failure, and counted as neither.
+  DROPPED
+}
+
+/// SOMETHING SOMEBODY SAID THEY WOULD DO, HELD ACROSS GROUNDS.
+///
+/// `PersonObjective` with kind COMMITMENT already holds this INSIDE a ground, and it stays exactly
+/// as it is - this accumulates alongside it, so a person's word carries from one check-in to the
+/// next instead of ending when the ground does. Nothing in the live product reads this yet.
+///
+/// A DATE AND THE WORDS ARE DIFFERENT THINGS, and the existing model is right about that: `dueSaid`
+/// is what they actually said, never parsed. "End of the quarter" is a real answer and turning it
+/// into the 30th is a guess wearing a fact's clothes. So `dueAt` is set ONLY when somebody gave a
+/// date, and everything that depends on time - slipping, following up - runs only on rows that have
+/// one. A commitment with words and no date is never reported as late, because we do not know.
+model Commitment {
+  id                String  @id @default(uuid())
+  organizationId    String  @map("organization_id")
+  /// The identity system's id, so this survives a person having no Groundwork account.
+  personExternalId  String  @map("person_external_id")
+  /// What it is against, when it is against anything.
+  subjectExternalId String? @map("subject_external_id")
+
+  text    String    @db.Text
+  /// Their words for the deadline. Always kept.
+  dueSaid String?   @map("due_said")
+  /// A date, ONLY where one was actually given. Null is the normal case and is not a gap.
+  dueAt   DateTime? @map("due_at")
+
+  state CommitmentState @default(OPEN)
+
+  /// Where it came from, so a commitment captured in passing can be told from one written down.
+  source                  String  @default("check_in")
+  /// The ground and row it was mirrored from, when it came from a check-in. A pointer, not a copy
+  /// of the truth: the ground's own record stays authoritative for the ground.
+  sourceGroundId          String? @map("source_ground_id")
+  sourcePersonObjectiveId String? @unique @map("source_person_objective_id")
+
+  statedAt         DateTime  @default(now()) @map("stated_at")
+  resolvedAt       DateTime? @map("resolved_at")
+  /// When somebody was last asked about it, so they are not asked twice in a day.
+  lastFollowedUpAt DateTime? @map("last_followed_up_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, personExternalId, state])
+  @@index([organizationId, state, dueAt])
+  @@map("commitments")
+}
+
 /// A PERSON IN THE CUSTOMER'S ORGANISATION, AS THEIR IDENTITY SYSTEM DESCRIBES THEM.
 ///
 /// DELIBERATELY NOT A `User`. A User here is an account: it has a password hash, a verified email,
@@ -1596,6 +1652,13 @@ model Person {
 
   /// Set if this person ever signs in to Groundwork. Null for most of a roster, and that is normal.
   linkedUserId String? @map("linked_user_id")
+
+  /// THE DAY THEY WERE LAST PROMPTED, and the whole of the once-a-day rule.
+  ///
+  /// A date rather than a timestamp on purpose: the rule is "not twice in a day", which is a
+  /// question about the calendar and not about elapsed hours. A timestamp would make somebody
+  /// nudged at 23:50 fair game at 00:05.
+  lastNudgedOn DateTime? @map("last_nudged_on") @db.Date
 
   syncedAt  DateTime @default(now()) @map("synced_at")
   createdAt DateTime @default(now()) @map("created_at")

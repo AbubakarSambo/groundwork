@@ -28,7 +28,7 @@ describe('composition never costs the answer', () => {
     const { service } = svc(async () => '1 objective and 2 people, from their-tool.');
     const r = await ask(service);
     expect(r.composedBy).toBe('model');
-    expect(r.styleVersion).toBe('v1');
+    expect(r.styleVersion).toBe('v2');
     expect((r.blocks[0] as any).body).toBe('1 objective and 2 people, from their-tool.');
   });
 

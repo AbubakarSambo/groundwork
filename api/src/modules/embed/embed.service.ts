@@ -5,6 +5,7 @@ import { randomBytes } from 'crypto';
 import { verifyEmbedToken, frameAncestors, readOrgClaim } from './their-login-is-the-only-login';
 import { freshnessOf } from '../subjects/a-pointer-goes-stale';
 import { quietUntil } from '../subjects/detection-holds-its-tongue';
+import { theOneToRaise, alreadyNudgedToday, slippedOpening } from '../assistant/what-somebody-said-they-would-do';
 
 /** Short, and refreshed silently by the widget. A panel open all day re-handshakes, it does not expire on somebody. */
 const SESSION_TTL_SECONDS = 900;
@@ -146,7 +147,29 @@ export class EmbedService {
     };
   }
 
-  private async opening(organizationId: string, person: { id: string; displayName: string | null; userName: string }) {
+  private async opening(organizationId: string, person: { id: string; displayName: string | null; userName: string; externalId?: string; lastNudgedOn?: Date | null }) {
+    /*
+     * THE HIGHEST-VALUE SPECIFIC THING, AND AT MOST ONE, AND NOT TWICE IN A DAY.
+     *
+     * A slipped commitment beats everything else here because it is the one thing the person
+     * already knows about and has not said. But it is also the one that turns a tool into something
+     * that chases people, so it is rate limited by the calendar rather than by elapsed hours, and
+     * asking marks the day whether or not they answer - the cost is in being asked.
+     */
+    const now = new Date();
+    if (person.externalId && !alreadyNudgedToday(person.lastNudgedOn, now)) {
+      const open = await this.prisma.commitment.findMany({
+        where: { organizationId, personExternalId: person.externalId, state: 'OPEN' },
+        select: { id: true, text: true, dueSaid: true, dueAt: true, state: true, lastFollowedUpAt: true },
+      });
+      const one = theOneToRaise(open as any, now);
+      if (one) {
+        await this.prisma.person.update({ where: { id: person.id }, data: { lastNudgedOn: now } });
+        await this.prisma.commitment.update({ where: { id: one.id }, data: { lastFollowedUpAt: now } });
+        return slippedOpening(one);
+      }
+    }
+
     const quiet = quietUntil(
       await this.prisma.detectionQuietPeriod.findMany({ where: { organizationId }, select: { endsAt: true } }),
       new Date(),

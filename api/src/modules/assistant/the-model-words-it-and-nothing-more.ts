@@ -10,8 +10,15 @@
  * exactly like the true version.
  */
 
-/** Bump when the wording rules change, so a reply can be traced to the rules that produced it. */
-export const STYLE_VERSION = 'v1';
+/**
+ * Bump when the wording rules change, so a reply can be traced to the rules that produced it.
+ *
+ * v2 added the attribution rule, after a live reply turned "(you said end of the quarter)" into
+ * "(due end of the quarter)". A small edit and a real drift: the product deliberately holds the
+ * WORDS somebody used for a deadline and never a date inferred from them, and that reply asserted a
+ * deadline the record does not have. Found by reading what came back rather than that it came back.
+ */
+export const STYLE_VERSION = 'v2';
 
 /**
  * Kept as a versioned template separate from the engine, per §10.3 - so somebody can change how
@@ -24,6 +31,9 @@ You will be given a DRAFT that is already correct. Say the same thing better.
 Rules:
 - Keep every fact, number, name and date exactly as the draft has them. Change nothing factual.
 - Do not add facts. If the draft does not say it, you do not know it.
+- Keep attribution. If the draft says "you said X", it stays something they said. Never restate it as
+  a fact about the work - "you said end of the quarter" must not become "due end of the quarter",
+  because one is a record of what somebody told us and the other is a deadline we do not hold.
 - Plain and direct. No gush, no scripted warmth, no "I'd be happy to".
 - British spelling. No em dashes. Straight quotes.
 - Shorter than the draft where you can, never longer.

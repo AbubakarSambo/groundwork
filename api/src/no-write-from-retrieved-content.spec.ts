@@ -55,11 +55,18 @@ function harness() {
       deleteMany: jest.fn(async () => ({ count: 0 })),
     },
     groundObjective: { createMany: jest.fn(async () => ({ count: 0 })), findMany: jest.fn(async () => []) },
+    /* A COMMITMENT is now mirrored into the org layer as well as written to the ground - see
+       a-commitment-carries-past-the-ground.ts. Additive, and the mirror is best-effort. */
+    commitment: { upsert: jest.fn(async (a: any) => a.create) },
     /*
      * `me` must be the INITIATOR or the extractor returns before writing anything - expectations
      * are only taken from the lead's own session. That is a real narrowing of this attack surface
      * and it is asserted below rather than left as a happy accident of the harness.
      */
+    groundParticipant: {
+      findUnique: jest.fn(async () => ({ email: 'naomi@northwind.test', ground: { organizationId: 'org1' } })),
+    },
+    person: { findFirst: jest.fn(async () => ({ externalId: 'u-naomi' })) },
     ground: {
       findUnique: jest.fn(async () => ({
         id: 'g1',

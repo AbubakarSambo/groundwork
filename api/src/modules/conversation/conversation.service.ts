@@ -11,6 +11,7 @@ import { ConversationContextService } from './context.service';
 import { VOCABULARY_RULE, COACHING_OBSERVATION_PROMPT, COACHING_OBSERVATION_SCHEMA, SESSION_CLOSE_MARKER, stripCloseMarker, buildIntakeBlock, RECORD_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_SCHEMA, WORK_MENTION_PROMPT, WORK_MENTION_SCHEMA, EXPECTATION_PROMPT, EXPECTATION_SCHEMA, ALIGNMENT_PROMPT, ALIGNMENT_SCHEMA, OBJECTION_PROMPT, OBJECTION_SCHEMA } from './prompt-library';
 import { GroundworkEvents, CheckInCompletedEvent } from '../../common';
 import { recordRoundCompletion } from '../grounds/round-completion';
+import { mirrorCommitment } from '../assistant/a-commitment-carries-past-the-ground';
 import { DocumentsService } from '../documents/documents.service';
 import { BillingService } from '../billing/billing.service';
 import { EmailService } from '../email/email.service';
@@ -2607,7 +2608,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
           },
         });
       } else {
-        await this.prisma.personObjective.create({
+        const created = await this.prisma.personObjective.create({
           data: {
             ...shared,
             groundId,
@@ -2620,6 +2621,37 @@ The ground will close toward one of these end states: ${endStates || 'the partie
             seenBySubject: false,
           },
         });
+
+        /*
+         * AND A COPY THAT OUTLIVES THIS GROUND, for the org layer.
+         *
+         * Additive: the row above stays authoritative for this ground and nothing here changes what
+         * a check-in does. The mirror is what lets somebody's word carry into the next one. Failing
+         * to mirror must never fail the check-in that was being written, so `mirrorCommitment`
+         * swallows its own errors and returns false.
+         */
+        if (kind === 'COMMITMENT') {
+          const person = await this.prisma.groundParticipant.findUnique({
+            where: { id: target },
+            select: { email: true, ground: { select: { organizationId: true } } },
+          });
+          const roster = person?.email
+            ? await this.prisma.person.findFirst({
+                where: { organizationId: person.ground.organizationId, email: person.email.toLowerCase() },
+                select: { externalId: true },
+              })
+            : null;
+          await mirrorCommitment(this.prisma, {
+            organizationId: person!.ground.organizationId,
+            groundId,
+            personObjectiveId: created.id,
+            personExternalId: roster?.externalId ?? null,
+            text,
+            dueSaid,
+            /* Only ever a date somebody actually gave. `dueSaid` is never parsed into one. */
+            dueAt: null,
+          });
+        }
       }
     }
 

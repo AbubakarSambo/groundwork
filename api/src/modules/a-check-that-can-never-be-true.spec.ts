@@ -68,6 +68,13 @@ const CHECKED_AND_FINE = new Set([
    */
   'modules/subjects/subjects.service.ts:externalId',
   'modules/subjects/subjects.service.ts:title',
+  /*
+   * An argument that may legitimately be null, checked BEFORE deciding whether to write. A ground
+   * participant with no identity-system id cannot be mirrored into the org layer, and the column
+   * being non-nullable is exactly why the check is there - it is what stops the write, not
+   * something the write can lean on.
+   */
+  'modules/assistant/a-commitment-carries-past-the-ground.ts:personExternalId',
 ]);
 
 function findHits() {

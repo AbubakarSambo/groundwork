@@ -37,8 +37,11 @@ function svc(opts: { config?: any; person?: any } = {}) {
           : { signingSecret: SECRET, outOfScopeDepartments: ['Legal'], placement: 'floating', ...opts.config },
       ),
     },
-    person: { findFirst: jest.fn(async () => opts.person ?? null) },
+    person: { findFirst: jest.fn(async () => opts.person ?? null), update: jest.fn(async () => ({})) },
     detectionQuietPeriod: { findMany: jest.fn(async () => []) },
+    /* The opening now checks for a slipped commitment before anything else, and marks the day when
+       it raises one. See what-somebody-said-they-would-do.ts. */
+    commitment: { findMany: jest.fn(async () => []), update: jest.fn(async () => ({})) },
     subject: { count: jest.fn(async () => 5), findMany: jest.fn(async () => []) },
   };
   const jwt: any = { signAsync: jest.fn(async () => 'session-token') };
@@ -146,5 +149,41 @@ describe('the panel never opens blank', () => {
     const s = svc({ person: inScope });
     (s as any).prisma.person.findFirst = jest.fn(async () => null);
     expect(await s.openingFor('org-a', 'p-someone-else')).toEqual({ opening: null, freshness: [] });
+  });
+});
+
+describe('the panel does not chase', () => {
+  /*
+   * THE RATE LIMIT WAS UNCOVERED AND I FOUND OUT BY DELETING IT - the suite stayed green, because
+   * every other test here has no slipped commitment to raise. A guard that only holds when the
+   * feature is inactive is not guarding the feature.
+   */
+  const slipped = [{ id: 'c1', text: 'send the comparison', dueSaid: 'Wednesday', dueAt: new Date(Date.now() - 86_400_000), state: 'OPEN', lastFollowedUpAt: null }];
+
+  function withSlipped(lastNudgedOn: Date | null) {
+    const s = svc({ person: { ...inScope, externalId: 'u-1', lastNudgedOn } });
+    (s as any).prisma.commitment.findMany = jest.fn(async () => slipped);
+    return s;
+  }
+
+  it('raises a slipped commitment on the first open of the day', async () => {
+    const r: any = await withSlipped(null).session(token('u-1'));
+    expect(r.visible).toBe(true);
+  });
+
+  it('and does not raise it again the same day', async () => {
+    const s = withSlipped(new Date());
+    const r: any = await s.openingFor('org-a', 'p1');
+    expect(r.opening.source).not.toBe('commitment_slipped');
+  });
+
+  it('marks the day when it asks, whether or not they answer', async () => {
+    /* The cost is in being asked, not in replying - so an unanswered nudge still spends the day. */
+    const s = withSlipped(null);
+    const update = jest.fn(async () => ({}));
+    (s as any).prisma.person.update = update;
+    (s as any).prisma.person.findFirst = jest.fn(async () => ({ ...inScope, externalId: 'u-1', lastNudgedOn: null }));
+    await s.openingFor('org-a', 'p1');
+    expect(update).toHaveBeenCalled();
   });
 });

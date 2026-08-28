@@ -6,6 +6,7 @@ import { freshnessOf } from '../subjects/a-pointer-goes-stale';
 import { quietUntil } from '../subjects/detection-holds-its-tongue';
 import { AnthropicService } from '../conversation/anthropic.service';
 import { STYLE, STYLE_VERSION, safeToUse, composePrompt } from './the-model-words-it-and-nothing-more';
+import { hasSlipped, theOneToRaise } from './what-somebody-said-they-would-do';
 
 /**
  * THE LANES, AND EVERY ONE OF THEM WORKS WITH THE MODEL OFF.
@@ -43,6 +44,8 @@ export class AssistantService {
         return this.compose(await this.whatAmIOn(organizationId, personId));
       case 'who_is':
         return this.compose(await this.whoIs(organizationId, routed.subject ?? ''));
+      case 'what_did_i_commit_to':
+        return this.compose(await this.myCommitments(organizationId, personId));
       default: {
         /*
          * NOT COMPOSED, DELIBERATELY. There is nothing here to say better: it is a fixed sentence
@@ -84,6 +87,40 @@ export class AssistantService {
       this.logger.warn(`Composition unavailable for lane ${reply.lane}: ${err?.message}`);
       return reply;
     }
+  }
+
+  /**
+   * WHAT THEY SAID THEY WOULD DO, AND WHICH OF IT IS LATE.
+   *
+   * Late is only ever said about a commitment that carried a real date. One with words and no date
+   * is listed as what it is - something they said - and never as something they have missed.
+   */
+  private async myCommitments(organizationId: string, personId: string): Promise<Reply> {
+    const me = await this.prisma.person.findFirst({
+      where: { id: personId, organizationId },
+      select: { externalId: true },
+    });
+    if (!me) return rules('what_did_i_commit_to', text('I cannot find you in what your organisation has sent us.'));
+
+    const open = await this.prisma.commitment.findMany({
+      where: { organizationId, personExternalId: me.externalId, state: 'OPEN' },
+      orderBy: [{ dueAt: 'asc' }, { statedAt: 'asc' }],
+    });
+    if (!open.length) {
+      return rules('what_did_i_commit_to', text('Nothing is open. Anything you say you will do in a check-in shows up here.'));
+    }
+
+    const now = new Date();
+    const line = (c: (typeof open)[number]) => {
+      const when = c.dueSaid ? ` (you said ${c.dueSaid})` : '';
+      return `- ${c.text}${when}${hasSlipped(c as any, now) ? ' - the date you gave has passed' : ''}`;
+    };
+    const late = open.filter((c) => hasSlipped(c as any, now));
+    const parts = [`${open.length} open:`, ...open.map(line)];
+    if (late.length) {
+      parts.push(`\n${late.length} of those ${late.length === 1 ? 'is' : 'are'} past the date you gave. That is worth saying out loud in your next check-in rather than letting it sit.`);
+    }
+    return rules('what_did_i_commit_to', text(parts.join('\n')));
   }
 
   private async whatICanSee(organizationId: string): Promise<Reply> {

@@ -14,6 +14,7 @@ export type Lane =
   | 'what_you_can_see'
   | 'what_am_i_on'
   | 'who_is'
+  | 'what_did_i_commit_to'
   | 'unplaced';
 
 export interface Routed {
@@ -34,6 +35,14 @@ const RULES = [
     /\bwho(?:'s| is)\s+(.+?)\s*\??$/i,
     /\bwho\s+does\s+(.+?)\s+report\s+to\s*\??$/i,
     /\bwho\s+reports\s+to\s+(.+?)\s*\??$/i,
+  ]),
+  rule('what_did_i_commit_to', [
+    /* Ordered above `what_am_i_on` because "what did I commit to" contains "what did I" and the
+       objectives rule would otherwise take it. */
+    /\bwhat\s+did\s+i\s+(?:commit|say|promise)\b/i,
+    /\bmy\s+commitments?\b/i,
+    /\bwhat\s+have\s+i\s+committed\b/i,
+    /\bwhat\s+did\s+i\s+agree\s+to\b/i,
   ]),
   rule('what_am_i_on', [
     /\bwhat\s+am\s+i\s+(?:on|working on|assigned)\b/i,
