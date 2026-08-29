@@ -2,7 +2,7 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import { MyOwnRecordService } from './my-own-record.service';
 
-const SRC = readFileSync(join(__dirname, 'my-own-record.service.ts'), 'utf8');
+const SRC = readFileSync(join(__dirname, 'my-own-record.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
 function svc(o: { person?: any; findings?: any[]; suggestions?: any[] } = {}) {
   const asked: any[] = [];

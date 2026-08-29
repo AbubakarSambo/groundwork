@@ -99,7 +99,7 @@ describe('only events that can fire are offered', () => {
      * does not exist.
      */
     const src = [
-      readFileSync(join(__dirname, 'webhooks.listener.ts'), 'utf8'),
+      readFileSync(join(__dirname, 'webhooks.listener.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, ''),
     ].join('\n');
     for (const event of SENDABLE_EVENTS) {
       expect(src).toContain(`'${event}'`);

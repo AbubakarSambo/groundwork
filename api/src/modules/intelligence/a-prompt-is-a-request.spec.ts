@@ -13,7 +13,7 @@ import { IntelligenceService } from './intelligence.service';
  *
  * So the flag would have been false the first time a name came through, with nothing checking it.
  */
-const SRC = readFileSync(join(__dirname, 'intelligence.service.ts'), 'utf8');
+const SRC = readFileSync(join(__dirname, 'intelligence.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
 describe('the anonymised flag is checked, not asserted', () => {
   it('drops a narrative that names somebody', () => {

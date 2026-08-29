@@ -32,7 +32,7 @@ describe('nothing here launches anything', () => {
      * The spec's own sentence: "detection is a proposal, never a launch". Keeping that true is a
      * property of what this file can reach, not of anybody remembering the rule later.
      */
-    const SRC = readFileSync(join(__dirname, 'a-conversation-the-record-suggests.ts'), 'utf8');
+    const SRC = readFileSync(join(__dirname, 'a-conversation-the-record-suggests.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
     /*
      * The rule is that it cannot reach a database, not that it cannot name a scenario. My first

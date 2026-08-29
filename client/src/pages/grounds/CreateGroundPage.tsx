@@ -56,6 +56,16 @@ export const SCENARIOS: ScenarioCard[] = [
       'You just hired a senior person and need what they own pinned down before day one.',
       'A new joiner and their manager each writing what success looks like in the first 90 days.',
     ] },
+  { cardKey: 'ROLE_HANDOVER', scenario: 'ROLE_HANDOVER', label: SCENARIO_LABELS.ROLE_HANDOVER, tag: 'Starting', tagBg: 'var(--gw-green-bg)', tagColor: 'var(--gw-green-t)',
+    desc: "Agree what is actually outstanding, what is fragile, and which relationships come with the role rather than the person. Each check-in then tests what has really transferred against that, so the gaps are named while the person who can close them is still here.",
+    moment: 'Someone is leaving a role in a month and their replacement starts next week.',
+    agreed: 'Both sides write down what is outstanding, what is fragile, and which relationships come with the role.',
+    tests: 'Each check-in tests what has actually transferred against that, so the gaps are named while the person who can close them is still here.',
+    examples: [
+      'Someone is leaving in four weeks and their replacement has already started.',
+      'A role is moving between two people and nobody has written down what the first one was carrying.',
+      'You want the incoming person to say what they would be guessing about, before they stop noticing.',
+    ] },
   { cardKey: 'NEW_PROJECT', scenario: 'NEW_PROJECT', label: SCENARIO_LABELS.NEW_PROJECT, tag: 'Starting', tagBg: 'var(--gw-green-bg)', tagColor: 'var(--gw-green-t)',
     desc: "Agree scope, who owns what, and what \"done\" means before anyone starts. The check-ins then test the work against that, so a quiet change of scope or a task nobody owns shows up while there is still time to act.",
     moment: 'You are kicking off a six-month build with four people on it.',
@@ -346,6 +356,8 @@ interface Participant {
 
 const SCENARIO_FROM_LABEL: Record<string, GroundScenario> = {
   'new hire':           'NEW_HIRE',
+  'handover':           'ROLE_HANDOVER',
+  'role handover':      'ROLE_HANDOVER',
   'new project':        'NEW_PROJECT',
   'new board member':   'NEW_ADVISOR',
   'new partner':        'NEW_COFOUNDER',

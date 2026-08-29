@@ -13,6 +13,9 @@ import { SITUATION_CARDS } from './EntryChatPage'
  * reframe. If any assertion here fails, a copy change has leaked into routing.
  */
 const PINNED_MESSAGES = [
+  /* Added with the ROLE_HANDOVER card. Pinned from the day it shipped, like the rest: what this
+     file protects is that a display reframe never quietly changes what gets SENT. */
+  'Somebody is handing a role over and I want the incoming person to have more than a list of tasks.',
   // retained cards - messages byte-identical to the originals (routing untouched)
   'I have a new hire starting and want to make sure we set clear expectations from the beginning.',
   'We are starting a new project and I want to get the team aligned on goals and roles from the beginning.',

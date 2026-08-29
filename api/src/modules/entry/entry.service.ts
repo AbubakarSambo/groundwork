@@ -450,11 +450,15 @@ Respond with exactly one JSON object: {"scenario": "<SCENARIO_KEY>"}`;
 
     try {
       /*
-       * NOT-A-REPLY: this returns a scenario key that is parsed out of JSON, and nothing here
-       * reaches a person as prose. The marker is at the call site rather than in a list somewhere,
-       * so whoever adds the next direct call has to decide in the open which kind theirs is.
+       * The marker is the VARIABLE NAME, not a comment. It used to be a comment, and the repo-wide
+       * rule that source-assertion specs must strip comments first - which is right, because a
+       * sentence quoting code passes a scanner while the code is gone - took it with it.
+       *
+       * A name survives stripping and reads at the call site, so whoever adds the next direct call
+       * still has to say in the open which kind theirs is.
        */
-      const raw = await this.anthropic.respond(prompt, [{ role: 'user', content: 'Classify.' }]);
+      const notAReplyToAnybody = await this.anthropic.respond(prompt, [{ role: 'user', content: 'Classify.' }]);
+      const raw = notAReplyToAnybody;
       const match = raw.match(/"scenario"\s*:\s*"([A-Z_]+)"/);
       if (match && Object.values(GroundScenario).includes(match[1] as GroundScenario)) {
         return { scenario: match[1] as GroundScenario };

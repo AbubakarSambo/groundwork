@@ -198,6 +198,7 @@ export function HomePage() {
                  * reachable from this list.
                  */
                 { param: 'new hire',               label: 'New hire starting',        desc: 'Get you and a new hire on the same page about the role and what early success looks like.' },
+                { param: 'role handover',          label: 'A role changing hands',    desc: 'Get what is outstanding, what is fragile, and who relies on the role written down while the person leaving is still here.' },
                 { param: 'new project',            label: 'New project',              desc: 'Line everyone up on scope, ownership, and what "done" means before the work starts.' },
                 { param: 'new advisor or board member', label: 'New advisor or board member', desc: 'Pin down what the advisor will actually contribute, on what terms.' },
                 { param: 'new partner or co-founder', label: 'A new partner or co-founder', desc: 'Put what each of you expects to build, own, and contribute in writing, before assumptions collide.' },

@@ -14,7 +14,7 @@ import { join } from 'path';
  * go through it, and adding one that does not fails here rather than in front of a stranger who
  * typed their company name.
  */
-const SRC = readFileSync(join(__dirname, 'entry.service.ts'), 'utf8');
+const SRC = readFileSync(join(__dirname, 'entry.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
 /** The one method allowed to speak to the model directly, because it is the guard. */
 const GUARD = 'private async guardedReply(';
@@ -31,12 +31,14 @@ describe('every reply that reaches a person goes through the guard', () => {
       /* The guard's own call. */
       if (i > guardLine && i < guardLine + 12) return;
       /*
-       * A call marked NOT-A-REPLY at its own call site: it returns structured fields that get
-       * parsed, never prose to a person, so there is nowhere for a mangled name to land. The marker
-       * lives in the code rather than in a list here, so whoever adds the next direct call has to
-       * say in the open which kind theirs is instead of quietly not matching a pattern.
+       * A call whose RESULT IS NAMED as not being a reply: it returns structured fields that get
+       * parsed, never prose to a person, so there is nowhere for a mangled name to land.
+       *
+       * The marker was a comment until the repo-wide rule stripped comments out of source assertions
+       * - correctly, since a sentence quoting code passes a scanner after the code has gone. A
+       * variable name survives that and reads better at the call site anyway.
        */
-      if (/NOT-A-REPLY/.test(lines.slice(Math.max(0, i - 8), i + 1).join(' '))) return;
+      if (/notAReplyToAnybody/.test(lines[i])) return;
       offenders.push(`line ${i + 1}: ${line.trim()}`);
     });
 

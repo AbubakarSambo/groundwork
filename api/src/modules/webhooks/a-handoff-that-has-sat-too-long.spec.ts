@@ -74,7 +74,7 @@ describe('the query itself excludes what has already been sent', () => {
      * stops the sweep loading every handoff ever escalated on every pass. Both, because the second
      * one degrades quietly and only in production.
      */
-    const src = readFileSync(join(__dirname, 'webhooks.cron.ts'), 'utf8');
+    const src = readFileSync(join(__dirname, 'webhooks.cron.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     expect(src).toMatch(/escalatedAt: null/);
   });
 });

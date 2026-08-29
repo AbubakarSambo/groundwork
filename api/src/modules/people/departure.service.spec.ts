@@ -3,7 +3,7 @@ import { join } from 'path';
 import { CommitmentState, DependencyStatus } from '@prisma/client';
 import { DepartureService } from './departure.service';
 
-const SRC = readFileSync(join(__dirname, 'departure.service.ts'), 'utf8');
+const SRC = readFileSync(join(__dirname, 'departure.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
 function svc(o: { findings?: any[]; person?: any } = {}) {
   const calls: any[] = [];

@@ -16,7 +16,7 @@ import { join } from 'path';
  * exists, it is correct, and its unit tests pass. Only the wiring was wrong, and wiring is what no
  * test of the guard itself can check.
  */
-const SRC = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8');
+const SRC = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
 /** Each path, from its signature to the next method, so a guard in one cannot vouch for the other. */
 function body(startsWith: string): string {

@@ -13,6 +13,7 @@ export interface User {
 }
 
 export type GroundScenario =
+  | 'ROLE_HANDOVER'
   | 'NEW_HIRE'
   | 'NEW_COFOUNDER'
   | 'NEW_ADVISOR'
