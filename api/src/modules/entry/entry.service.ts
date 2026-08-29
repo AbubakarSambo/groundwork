@@ -3,7 +3,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { GroundScenario, GroundMoment, TurnRole, CheckInStatus, PartyType, Cadence, TokenType } from '@prisma/client';
 import { splitMentions } from './a-client-is-not-a-colleague';
 import {
-  restoreTheirWords, namesWorthReporting, truncationsOfTheirWords, causalClaimNobodyMade, ASK_INSTEAD_OF_CONCLUDING,
+  restoreTheirWords, truncationsOfTheirWords, causalClaimNobodyMade, ASK_INSTEAD_OF_CONCLUDING,
 } from '../conversation/the-record-holds-what-was-said';
 import * as crypto from 'crypto';
 import * as bcrypt from 'bcrypt';
@@ -23,6 +23,7 @@ import { VOCABULARY_RULE } from '../conversation/prompt-library';
 import { forHumans, hadCloseMarker } from '../presentation/outbound';
 import { DEFAULT_FREE_MEMBER_LIMIT } from '../billing/pricing.service';
 import { recordRoundCompletion } from '../grounds/round-completion';
+import { screen, ASK_AGAIN } from '../conversation/nothing-invented-reaches-them';
 
 const SCENARIO_MAP: Record<string, GroundScenario> = {
   // Human-readable labels from legacy UI
@@ -780,7 +781,17 @@ STRICT RULES:
   private async guardedReply(system: string, messages: ChatTurn[]): Promise<string> {
     const reply = await this.anthropic.respond(system, messages);
     const personSaid = messages.filter((m) => m.role === 'user').map((m) => m.content ?? '');
-    const restored = restoreTheirWords(reply, personSaid);
+    /*
+     * NOTHING INVENTED REACHES A PERSON, on this path as on the check-in. A sentence naming somebody
+     * who does not exist is dropped rather than repaired, because there is nothing of theirs to put
+     * back - and this is the flow a stranger meets first, where an invented colleague is least
+     * explicable and most likely to be the last thing they read here.
+     */
+    const screened = screen(reply, personSaid);
+    if (screened.dropped.length) {
+      this.logger.warn(`Dropped ${screened.dropped.length} sentence(s) with an invented name on the entry path.`);
+    }
+    const restored = screened.text || ASK_AGAIN;
 
     // The causal upgrade cannot be repaired by substitution - there is no word of
     // theirs to put back, because the causation was invented whole. Logged, as on
@@ -794,13 +805,6 @@ STRICT RULES:
        theirs underneath to put back, and one of their own words quietly shortened. Reported rather
        than edited, on the same reasoning as the check-in path - the point is that the rate stops
        being unknowable. */
-    const stillInvented = namesWorthReporting(restored, personSaid);
-    if (stillInvented.length) {
-      this.logger.warn(
-        `Invented proper noun survived on the entry path: ${stillInvented.join(', ')}. `
-        + 'Nothing the person typed matches it, so it was not substituted.',
-      );
-    }
     const shortened = truncationsOfTheirWords(restored, personSaid);
     if (shortened.length) {
       this.logger.warn(`Shortened one of their own words on the entry path: ${shortened.join(', ')}.`);

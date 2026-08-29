@@ -6,7 +6,7 @@ import { Reply, rules, text, picker } from './a-reply-is-a-payload-not-a-string'
 import { freshnessOf } from '../subjects/a-pointer-goes-stale';
 import { quietUntil } from '../subjects/detection-holds-its-tongue';
 import { AnthropicService } from '../conversation/anthropic.service';
-import { STYLE, STYLE_VERSION, safeToUse, composePrompt } from './the-model-words-it-and-nothing-more';
+import { STYLE, STYLE_VERSION, safeToUse, composePrompt, roleNameIn } from './the-model-words-it-and-nothing-more';
 import { hasSlipped, theOneToRaise } from './what-somebody-said-they-would-do';
 import { catchCommitment, resolveConfirmation, proposalSummary } from './something-said-in-passing';
 import { BoardService } from '../board/board.service';
@@ -107,7 +107,11 @@ export class AssistantService {
       case 'what_did_i_commit_to':
         return this.compose(await this.myCommitments(organizationId, personId));
       case 'where_am_i_up_to':
-        return this.compose(await this.whereAmIUpTo(organizationId, who));
+        /*
+         * The role name has to survive. Losing it is what turned "what is my role" into a checklist
+         * with no answer in it, and the lane is the only thing that knows which word matters.
+         */
+        return this.whereAmIUpTo(organizationId, who).then((r) => this.compose(r, roleNameIn(r)));
       case 'what_is_stuck':
         return this.compose(await this.whatIsStuck(organizationId, who, message));
       case 'how_am_i_doing':
@@ -154,14 +158,14 @@ export class AssistantService {
    * checks - ships the draft. The person gets the true answer either way; only the wording and the
    * `composedBy` stamp differ, and the stamp is why that is honest rather than hidden.
    */
-  private async compose(reply: Reply): Promise<Reply> {
+  private async compose(reply: Reply, mustKeep: string[] = []): Promise<Reply> {
     const first = reply.blocks[0];
     if (!first || first.type !== 'text') return reply;
     const draft = first.body;
 
     try {
       const composed = await this.engine.respond(STYLE, [{ role: 'user', content: composePrompt(draft) }]);
-      if (!safeToUse(draft, composed)) {
+      if (!safeToUse(draft, composed, mustKeep)) {
         this.logger.warn(`Composition refused for lane ${reply.lane}; shipping the draft.`);
         return reply;
       }
@@ -784,4 +788,5 @@ export class AssistantService {
     ];
     return rules('who_is', text(bits.join(' ')));
   }
+
 }

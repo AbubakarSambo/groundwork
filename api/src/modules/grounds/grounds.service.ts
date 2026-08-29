@@ -23,9 +23,8 @@ import { proposalFrom, extractionToolFor, Heard, Proposal } from './what-the-con
 import { freeSeatLimitMessage } from '../billing/billing.service';
 import { isSubscribed } from '../../common/subscription';
 import { DEFAULT_FREE_MEMBER_LIMIT } from '../billing/pricing.service';
-import {
-  restoreTheirWords, namesWorthReporting, truncationsOfTheirWords,
-} from '../conversation/the-record-holds-what-was-said';
+import { truncationsOfTheirWords } from '../conversation/the-record-holds-what-was-said';
+import { screen, ASK_AGAIN } from '../conversation/nothing-invented-reaches-them';
 
 // Default timelines per scenario (Part 2 - timeline and cadence).
 export const DEFAULT_TIMELINE_DAYS: Record<GroundScenario, number> = {
@@ -1572,12 +1571,16 @@ export class GroundsService {
      * than everywhere the shape occurs.
      */
     const leadSaid = history.filter((h) => h.role === 'user').map((h) => h.content ?? '');
-    const reply = restoreTheirWords(raw, leadSaid);
-    for (const [what, found] of [
-      ['Invented proper noun survived', namesWorthReporting(reply, leadSaid)],
-      ['Shortened one of their own words', truncationsOfTheirWords(reply, leadSaid)],
-    ] as [string, string[]][]) {
-      if (found.length) this.logger.warn(`${what} in the context chat for ground ${ground.id}: ${found.join(', ')}.`);
+    const screened = screen(raw, leadSaid);
+    if (screened.dropped.length) {
+      this.logger.warn(
+        `Dropped ${screened.dropped.length} sentence(s) with an invented name in the context chat for ground ${ground.id}.`,
+      );
+    }
+    const reply = screened.text || ASK_AGAIN;
+    const shortened = truncationsOfTheirWords(reply, leadSaid);
+    if (shortened.length) {
+      this.logger.warn(`Shortened one of their own words in the context chat for ground ${ground.id}: ${shortened.join(', ')}.`);
     }
 
     /**

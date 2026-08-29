@@ -1,4 +1,4 @@
-import { safeToUse } from './the-model-words-it-and-nothing-more';
+import { safeToUse, roleNameIn } from './the-model-words-it-and-nothing-more';
 import { AssistantService } from './assistant.service';
 
 /**
@@ -141,5 +141,40 @@ describe('a colon does not open a sentence', () => {
      */
     const draft = 'Waiting on you: the onboarding rewrite - 2 days';
     expect(safeToUse(draft, 'Waiting on you: Alex Smith has the onboarding rewrite - 2 days')).toBe(false);
+  });
+});
+
+describe('a word the caller says must survive, survives', () => {
+  const draft = 'You are down as Engineer. Still to do: read the role brief.';
+
+  it('because dropping one deleted the answer to the question asked', () => {
+    /*
+     * Asked "what is my role", the draft's "Still to do for Engineer:" came back as "Your next
+     * steps:" - better English, and it deleted the answer. The invented-name rule could not see it,
+     * because it only refuses what the model ADDS.
+     */
+    expect(safeToUse(draft, 'Your role is Engineer. Still to do: read the role brief.', ['Engineer'])).toBe(true);
+    expect(safeToUse(draft, 'Your next steps: read the role brief.', ['Engineer'])).toBe(false);
+  });
+
+  it('and the caller names it, because shape alone cannot tell a name from a verb', () => {
+    /*
+     * I tried inferring it from capitalisation first, and it refused a good rewording of a draft
+     * whose list items began "Reduce onboarding..." - an ordinary verb at the start of a line looks
+     * exactly like a name. Guessing trades a fault on almost no replies for a fallback on many.
+     */
+    const listy = 'You own 2:\n- Reduce onboarding to under 11 days';
+    expect(safeToUse(listy, 'Reduce onboarding to under 11 days. You own 2.')).toBe(true);
+    expect(safeToUse(listy, 'You own 2 things, one of them onboarding, under 11 days.')).toBe(true);
+  });
+
+  it('and the onboarding lane pulls it out of its own draft', () => {
+    /*
+     * Read back OUT of the draft rather than passed in from elsewhere: a must-keep word that is not
+     * in the draft at all would refuse every composition of that lane forever.
+     */
+    expect(roleNameIn({ blocks: [{ type: 'text', body: draft }] })).toEqual(['Engineer']);
+    expect(roleNameIn({ blocks: [{ type: 'text', body: 'no role here' }] })).toEqual([]);
+    expect(roleNameIn({ blocks: [] })).toEqual([]);
   });
 });

@@ -43,21 +43,25 @@ describe('every reply that reaches a person goes through the guard', () => {
     expect(offenders).toEqual([]);
   });
 
-  it('and the guard puts their own word back before anything else reads the reply', () => {
-    const body = SRC.slice(SRC.indexOf(GUARD));
-    const restore = body.indexOf('restoreTheirWords(');
-    const causal = body.indexOf('causalClaimNobodyMade(');
-    expect(restore).toBeGreaterThan(-1);
+  it('and screens the reply before anything else reads it', () => {
     /*
-     * Order matters: both later checks reason about what the model said, so cleaning or reporting
-     * before the restoration would have them inspect a string the model did not produce.
+     * This used to assert `restoreTheirWords` ran first. It still does - inside `screen` - and the
+     * rule got stronger: a sentence naming somebody who does not exist is now DROPPED rather than
+     * logged and shown. Order still matters, because the later checks reason about what the model
+     * said and would otherwise inspect a string it did not produce.
      */
-    expect(restore).toBeLessThan(causal);
+    const body = SRC.slice(SRC.indexOf(GUARD));
+    expect(body.indexOf('screen(')).toBeGreaterThan(-1);
+    expect(body.indexOf('screen(')).toBeLessThan(body.indexOf('causalClaimNobodyMade('));
+    /* And nothing survives means asking again, not an empty reply. */
+    expect(body).toMatch(/ASK_AGAIN/);
   });
 
-  it('and reports the two it cannot repair', () => {
+  it('and reports the ones it does not drop', () => {
+    /* A shortened version of their own word and a causal claim they did not make are real faults and
+       neither is an invented person, so neither justifies deleting a sentence. */
     const body = SRC.slice(SRC.indexOf(GUARD));
-    expect(body).toMatch(/namesWorthReporting\(/);
     expect(body).toMatch(/truncationsOfTheirWords\(/);
+    expect(body).toMatch(/causalClaimNobodyMade\(/);
   });
 });

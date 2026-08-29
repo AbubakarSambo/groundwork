@@ -33,18 +33,22 @@ describe('both paths repair what the model invented', () => {
     ['the non-streaming path, which is its fallback', 'async sendMessage('],
   ];
 
-  it.each(paths)('%s puts the person\'s own word back', (_name, sig) => {
-    expect(body(sig)).toMatch(/restoreTheirWords\(/);
+  it.each(paths)('%s screens what it sends, rather than only reporting on it', (_name, sig) => {
+    /*
+     * This used to assert each path called `restoreTheirWords` and `namesWorthReporting` directly.
+     * Both still run - inside the screen - and the rule they enforce got stronger: a sentence with a
+     * name that cannot be repaired is now DROPPED rather than logged and shown. So the assertion
+     * moved to the guarantee rather than the mechanism, which is the thing that must not regress.
+     */
+    const b = body(sig);
+    expect(b).toMatch(/SentenceGate|screen\(/);
+    /* And the person is asked again rather than shown an empty bubble when nothing survives. */
+    expect(b).toMatch(/ASK_AGAIN/);
   });
 
-  it.each(paths)('%s records a name it could not repair', (_name, sig) => {
-    /*
-     * A name invented whole has nothing of theirs underneath, so substitution deliberately leaves
-     * it alone rather than picking a replacement. That reasoning holds. What did not hold is that
-     * nothing recorded it - so a fabricated colleague reached somebody with no trace it happened,
-     * and the rate stayed unknowable.
-     */
-    expect(body(sig)).toMatch(/namesWorthReporting\(/);
+  it.each(paths)('%s records what it dropped', (_name, sig) => {
+    /* The rate is what decides whether the other two faults ever become drops as well. */
+    expect(body(sig)).toMatch(/Dropped \$\{[a-zA-Z.]+\.length\} sentence/);
   });
 
   it.each(paths)('%s records a causal claim nobody made', (_name, sig) => {
@@ -53,20 +57,20 @@ describe('both paths repair what the model invented', () => {
 });
 
 describe('the streamed text and the repaired text are not confused', () => {
-  it('flushes the tail from what was actually streamed', () => {
+  it('stores exactly what the person saw', () => {
     /*
-     * The tail is the part of the ALREADY-STREAMED text that has not been sent yet, so it indexes
-     * into that. Slicing the repaired reply by the same offset would drop or duplicate characters
-     * any time a substitution changed the length - a corruption caused by the repair.
+     * `shown` is the concatenation of the deltas that actually left. Storing anything else - the raw
+     * text, or a second pass over it - means the record and the screen agree only by both arriving
+     * at the same answer twice, and they will eventually disagree.
+     *
+     * The old tail-slicing is gone with it: there is no unsent remainder to flush, because the gate
+     * decides what leaves and flushes its own.
      */
-    expect(SRC).toMatch(/const tail = streamedText\.slice\(/);
-  });
-
-  it('and persists the repaired one, because that is what every later session reads', () => {
     const stream = body('async *sendMessageStream(');
+    expect(stream).toMatch(/const reply = shown\.trim\(\) \|\| ASK_AGAIN/);
     const persist = stream.slice(stream.indexOf('conversationTurn.create'));
     expect(persist).toMatch(/content: reply/);
-    expect(persist).not.toMatch(/content: streamedText/);
+    expect(SRC).not.toMatch(/const tail = streamedText\.slice\(/);
   });
 });
 
@@ -130,5 +134,23 @@ describe('the two callers want different strictness, and mixing them broke resto
   it('and reporting still catches an invented name that is not the opener', () => {
     expect(namesWorthReporting('Did Alex Smith get back to you?', hers)).toContain('Alex Smith');
     expect(namesWorthReporting('The client name: Alex Smith.', hers)).toContain('Alex Smith');
+  });
+});
+
+describe('the end of the reply is not lost', () => {
+  it('the withheld tail reaches the gate before it flushes', () => {
+    /*
+     * The stream withholds the last SESSION_CLOSE_MARKER.length characters of every reply in case
+     * they turn out to be the close marker. Routing the deltas through the gate and deleting the old
+     * separate flush dropped those characters entirely - every reply ended mid-word.
+     *
+     * Found by reading the deltas of one real check-in, which ended "What is it," and stopped. No
+     * test of the gate could have caught it: the gate was right, it was never given the last piece.
+     */
+    const stream = body('async *sendMessageStream(');
+    const withheld = stream.indexOf('const withheld = forHumans(raw).slice(emitted)');
+    const flush = stream.indexOf('gate.flush()');
+    expect(withheld).toBeGreaterThan(-1);
+    expect(withheld).toBeLessThan(flush);
   });
 });

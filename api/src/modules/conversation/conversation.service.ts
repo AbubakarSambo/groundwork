@@ -35,6 +35,7 @@ import { observeStyle, mergeStyle, styleGuidance } from './person-style';
 import { readOutcome, isGenericStep } from './coaching-step';
 import { mayCoach } from './participation-timeline';
 import { restoreTheirWords, namesWorthReporting, truncationsOfTheirWords, causalClaimNobodyMade, ASK_INSTEAD_OF_CONCLUDING } from './the-record-holds-what-was-said';
+import { SentenceGate, screen, ASK_AGAIN } from './nothing-invented-reaches-them';
 
 /**
  * How many things in this text could actually be checked by someone later.
@@ -688,8 +689,18 @@ export class ConversationService {
         .filter((t) => t.role === TurnRole.PERSON)
         .map((t) => t.content ?? '')
         .concat(message);
-      const beforeRestore = stripped.text;
-      reply = restoreTheirWords(beforeRestore, personWords);
+      /*
+       * THE SAME RULE AS THE STREAM. Nothing invented reaches a person on either path, and the
+       * difference between them is only WHEN it can be caught - here the whole reply is in hand, so
+       * the screen runs once over all of it rather than sentence by sentence.
+       */
+      const screened = screen(stripped.text, personWords);
+      if (screened.dropped.length) {
+        this.logger.warn(
+          `Dropped ${screened.dropped.length} sentence(s) with an invented name on check-in ${checkIn.id}.`,
+        );
+      }
+      reply = screened.text || ASK_AGAIN;
 
       /*
        * AND THE ONES SUBSTITUTION CANNOT REACH ARE AT LEAST WRITTEN DOWN.
@@ -703,13 +714,6 @@ export class ConversationService {
        * This does not decide what to DO about it, which is a real question with costs on every
        * side. It makes the rate knowable, which is the precondition for deciding.
        */
-      const stillInvented = namesWorthReporting(reply, personWords);
-      if (stillInvented.length) {
-        this.logger.warn(
-          `Invented proper noun survived on check-in ${checkIn.id}: ${stillInvented.join(', ')}. `
-          + 'Nothing the person typed matches it, so it was not substituted.',
-        );
-      }
 
       // The other half of W2 cannot be repaired by substitution, because there
       // is no word of hers to put back - the causation was invented whole. It is
@@ -834,51 +838,80 @@ export class ConversationService {
       const history: ChatTurn[] = turns.map((t) => ({ role: t.role === TurnRole.AI ? 'assistant' : 'user', content: t.content }));
       // Hold back a tail the length of the marker so a marker split across two
       // deltas can never flash up in the person's chat before being stripped.
+      /*
+       * NOTHING UNCHECKED LEAVES. The marker hold-back was already here; this adds the screen.
+       *
+       * Until now a delta went to the screen the moment it arrived, so an invented name was read
+       * before anything inspected it, and the repair at the end could only correct what somebody
+       * had already seen. There is no way to un-send a delta - so the gate holds each sentence until
+       * it is finished, checks it, and emits only what survives.
+       *
+       * The cost is a sentence of latency instead of a word, paid on every reply rather than only
+       * the bad ones. That is the whole price of "nothing invented reaches a person".
+       */
+      const streamPersonWords = turns
+        .filter((t) => t.role === TurnRole.PERSON)
+        .map((t) => t.content ?? '')
+        .concat(message);
+      const gate = new SentenceGate(streamPersonWords);
       let emitted = 0;
+      let shown = '';
+
       for await (const delta of this.anthropic.respondStream(fullSystem, history)) {
         raw += delta;
         const safeUpTo = Math.max(0, raw.length - SESSION_CLOSE_MARKER.length);
         if (safeUpTo > emitted) {
           const chunk = raw.slice(emitted, safeUpTo);
           emitted = safeUpTo;
-          if (chunk) yield { type: 'delta', text: chunk };
+          const clean = gate.push(forHumans(chunk));
+          if (clean) { shown += clean; yield { type: 'delta', text: clean }; }
         }
       }
+      /*
+       * THE HELD-BACK TAIL, WHICH THE GATE NEVER SAW.
+       *
+       * The loop only ever pushes up to `raw.length - SESSION_CLOSE_MARKER.length`, so the last few
+       * characters of every reply are deliberately withheld until the end in case they turn out to
+       * be the close marker. The old code flushed those separately; replacing that with the gate
+       * dropped them entirely, and every reply ended mid-word - "What is it," and then nothing.
+       *
+       * Found by reading the deltas of one real check-in. It would never have shown up in a test of
+       * the gate, because the gate was right: it was never given the last piece.
+       */
+      const withheld = forHumans(raw).slice(emitted);
+      const fromWithheld = withheld ? gate.push(withheld) : '';
+      if (fromWithheld) { shown += fromWithheld; yield { type: 'delta', text: fromWithheld }; }
+
+      const tailFromGate = gate.flush();
+      if (tailFromGate) { shown += tailFromGate; yield { type: 'delta', text: tailFromGate }; }
       const strippedStream = { text: forHumans(raw), hadMarker: textHadCloseMarker(raw) };
-      /** houseStyle is inside forHumans now, so applying it again here would be a second pass. */
-      const streamedText = strippedStream.text;
-      if (!streamedText) throw new Error('AI returned an empty response');
+      if (!strippedStream.text) throw new Error('AI returned an empty response');
 
       /*
-       * THE GUARD THAT WAS DEAD IN THE PATH EVERYBODY USES.
+       * WHAT THEY SAW IS WHAT IS KEPT. `shown` is the concatenation of the deltas that actually
+       * left, so the stored turn and the screen agree by construction rather than by a second pass
+       * arriving at the same answer twice.
        *
-       * `restoreTheirWords` was written so nobody reads a company name they never typed, and it ran
-       * on `sendMessage` - which the chat does not call. ChatPage streams. So the repair existed,
-       * was tested, and had never run for a single real person; the non-streaming path it protected
-       * is only reached as a fallback after a stream has already failed.
-       *
-       * Streaming cannot repair a delta that has already left, and holding the whole reply back to
-       * inspect it would give up the reason for streaming. What it can do is fix the version that
-       * LASTS: the client already replaces the streamed text with `reply` on done, so the correction
-       * lands on screen, and the turn written to the database - the one every later session reads
-       * as history - is the repaired one rather than the raw one.
-       *
-       * What remains exposed is the seconds between a bad delta appearing and done arriving. That is
-       * inherent to streaming, and it is a great deal smaller than never repairing at all.
+       * Everything being dropped is rare and has to be handled rather than left to produce an empty
+       * bubble. The reply asks them to say it again: from their side nothing went wrong, and telling
+       * somebody the model hallucinated is alarming and useless to them.
        */
-      const streamPersonWords = turns
-        .filter((t) => t.role === TurnRole.PERSON)
-        .map((t) => t.content ?? '')
-        .concat(message);
-      const reply = restoreTheirWords(streamedText, streamPersonWords);
-
-      const streamInvented = namesWorthReporting(reply, streamPersonWords);
-      if (streamInvented.length) {
+      if (gate.dropped.length) {
         this.logger.warn(
-          `Invented proper noun survived on check-in ${checkIn.id}: ${streamInvented.join(', ')}. `
-          + 'Nothing the person typed matches it, so it was not substituted.',
+          `Dropped ${gate.dropped.length} sentence(s) with an invented name on check-in ${checkIn.id}.`,
         );
       }
+      const reply = shown.trim() || ASK_AGAIN;
+      if (!shown.trim()) yield { type: 'delta', text: ASK_AGAIN };
+
+      /*
+       * THE OTHER TWO CHECKS, WHICH REPORT RATHER THAN REMOVE.
+       *
+       * A shortened version of their own word and a causal claim they did not make are both real
+       * faults, and neither is an invention of a person - so neither justifies deleting a sentence
+       * somebody is waiting to read. They are written down; the rate is what decides whether they
+       * ever become drops too.
+       */
       const streamTruncated = truncationsOfTheirWords(reply, streamPersonWords);
       if (streamTruncated.length) {
         this.logger.warn(
@@ -891,12 +924,7 @@ export class ConversationService {
           `Causal claim nobody made on ${checkIn.id}: ${streamCausal.join(', ')}. ${ASK_INSTEAD_OF_CONCLUDING}`,
         );
       }
-      // Flush whatever is left after the held-back tail is cleaned.
-      /* The tail is what is still unsent of what was ALREADY STREAMED, so it indexes into the
-         streamed text. Slicing the repaired reply here would drop or duplicate characters whenever
-         a substitution changed the length. The repair reaches the screen through `done`. */
-      const tail = streamedText.slice(Math.min(emitted, streamedText.length));
-      if (tail) yield { type: 'delta', text: tail };
+
       await this.prisma.conversationTurn.create({ data: { checkInId: checkIn.id, role: TurnRole.AI, content: reply } });
       if (checkIn.status === CheckInStatus.NOT_STARTED) {
         await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { status: CheckInStatus.IN_PROGRESS, startedAt: new Date() } });

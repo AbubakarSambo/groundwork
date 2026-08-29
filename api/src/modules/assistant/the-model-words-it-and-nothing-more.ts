@@ -60,7 +60,7 @@ Rules:
  * A dropped fact is the harder one to catch by reading, because nothing looks wrong. There is no
  * cost to being strict here either: the fallback is the draft, which has the number in it.
  */
-export function safeToUse(draft: string, composed: string | null | undefined): boolean {
+export function safeToUse(draft: string, composed: string | null | undefined, mustKeep: string[] = []): boolean {
   const text = (composed ?? '').trim();
   if (!text) return false;
 
@@ -99,6 +99,24 @@ export function safeToUse(draft: string, composed: string | null | undefined): b
    * a gap, and the gap is bounded by the draft being the fallback rather than by anybody's care.
    */
   const draftWords = new Set(draft.toLowerCase().match(/[a-z][a-z'-]*/g) ?? []);
+
+  /*
+   * AND ANYTHING THE CALLER SAID MUST SURVIVE, WHICH THE CALLER NAMES.
+   *
+   * The mirror of the invented-name rule, and it was missing for the same reason the number rule was
+   * asymmetric: an invented name is obviously wrong, and a dropped one looks like good editing. It
+   * cost an answer once - asked "what is my role", the draft's "Still to do for Engineer:" came back
+   * as "Your next steps:", which is better English and deletes the answer.
+   *
+   * WHY THE CALLER NAMES IT rather than this working it out: I tried to infer "the name the draft is
+   * about" from capitalisation, and it immediately refused a good rewording of a draft whose list
+   * items began "Reduce onboarding..." - an ordinary verb at the start of a line is indistinguishable
+   * from a name to anything looking at shape alone. The lane knows what its answer is about; nothing
+   * here does. Guessing would trade a fault on almost no replies for a fallback on many.
+   */
+  for (const required of mustKeep) {
+    if (required && !text.includes(required)) return false;
+  }
   /* Not splitting on a colon: "the client name: Alex Smith" would put an invented name in first
      position, where the sentence-start exemption lets it through. The conversation guard was
      written with the colon in and its own test caught it there. */
@@ -116,4 +134,18 @@ export function safeToUse(draft: string, composed: string | null | undefined): b
 /** The draft handed over as data, fenced and labelled, never interleaved with the instructions. */
 export function composePrompt(draft: string): string {
   return `<draft>\n${draft}\n</draft>`;
+}
+
+/**
+ * The role name out of an onboarding reply, so the composer cannot drop it.
+ *
+ * Read back out of the draft rather than threaded through as a second argument, because the draft is
+ * the single thing the composer is given - and a "must keep" list built from anything else could
+ * name a word that is not in the draft at all, which would refuse every composition forever.
+ */
+export function roleNameIn(reply: { blocks: { type: string; body?: string }[] }): string[] {
+  const first = reply.blocks[0];
+  if (!first || first.type !== 'text' || !first.body) return [];
+  const m = first.body.match(/^You are down as (.+?)\./);
+  return m ? [m[1]] : [];
 }
