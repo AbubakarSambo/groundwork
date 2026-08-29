@@ -75,6 +75,46 @@ export function checkInCompletedPayload(args: {
   };
 }
 
+export interface BlockerPayload {
+  groundId: string;
+  /** Our id for the handoff, so a receiver can tie an escalation back to the raise. */
+  blockerId: string;
+  /** Only on an escalation. How long it had been open when it crossed the threshold. */
+  waitingDays?: number;
+  occurredAt: string;
+  permalink: string;
+}
+
+/**
+ * A BLOCKER EVENT CARRIES NEITHER WHAT NOR WHO.
+ *
+ * This one needs saying because the temptation is unusually strong: a webhook that said "Naomi is
+ * blocked on the pricing decision" would be the more useful alert, and it is the obvious thing to
+ * build. It is also the single worst payload in this product to let out. The `what` of a handoff is
+ * verbatim something a person said about their own work in a check-in, and the two participant ids
+ * name who is stuck and who is holding them up - so that message is an account of one named person
+ * failing another, landing in a gateway log, forwarded by an alerting rule, read by whoever has
+ * access to either. Nobody in that chain agreed to it.
+ *
+ * The duration goes because a number of days is not an account of anything, and it is the whole
+ * reason an escalation is worth sending at all.
+ */
+export function blockerPayload(args: {
+  groundId: string;
+  blockerId: string;
+  waitingDays?: number;
+  occurredAt: Date;
+  appUrl: string;
+}): BlockerPayload {
+  return {
+    groundId: args.groundId,
+    blockerId: args.blockerId,
+    ...(args.waitingDays === undefined ? {} : { waitingDays: args.waitingDays }),
+    occurredAt: args.occurredAt.toISOString(),
+    permalink: `${args.appUrl.replace(/\/$/, '')}/grounds/${args.groundId}`,
+  };
+}
+
 /**
  * The words a payload must never contain, checked in the spec that guards these builders. Kept here
  * beside the builders so the rule and the thing it governs are read together.

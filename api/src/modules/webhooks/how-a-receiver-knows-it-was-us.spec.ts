@@ -1,5 +1,7 @@
 import { sign, verify, nextAttemptAfter, newSecret, BACKOFF_SECONDS } from './how-a-receiver-knows-it-was-us';
-import { validateEvents, SENDABLE_EVENTS } from './events-we-can-actually-send';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import { validateEvents, SENDABLE_EVENTS, NOT_YET_EMITTED } from './events-we-can-actually-send';
 
 /**
  * THE SIGNATURE IS VERIFIED WITH THE CODE A CUSTOMER WOULD WRITE.
@@ -89,13 +91,36 @@ describe('only events that can fire are offered', () => {
     expect(validateEvents([...SENDABLE_EVENTS])).toEqual({ ok: true });
   });
 
+  it('and every event it does offer has something that emits it', () => {
+    /*
+     * The rule this file exists for, checked against the code rather than against a list somebody
+     * remembered to update. Both directions matter: an offered event nothing emits is a promise the
+     * product cannot keep, and an emitted event nobody may subscribe to is a feature that silently
+     * does not exist.
+     */
+    const src = [
+      readFileSync(join(__dirname, 'webhooks.listener.ts'), 'utf8'),
+    ].join('\n');
+    for (const event of SENDABLE_EVENTS) {
+      expect(src).toContain(`'${event}'`);
+    }
+    for (const event of NOT_YET_EMITTED) {
+      expect(src).not.toContain(`'${event}'`);
+    }
+  });
+
   it('refuses a subscription that could never deliver anything', () => {
     /*
-     * An admin who subscribes to blocker.raised, sees it accepted, and waits forever would conclude
-     * their endpoint was broken and spend a day proving it was not. A subscription that cannot fire
-     * is a promise the product cannot keep, made in the one place a customer builds against.
+     * An admin who subscribes to an event nothing emits, sees it accepted, and waits forever would
+     * conclude their endpoint was broken and spend a day proving it was not. A subscription that
+     * cannot fire is a promise the product cannot keep, made in the one place a customer builds
+     * against.
+     *
+     * This test used to name blocker.raised, and it failed the day that event started firing -
+     * which is the guard doing its job. The example moved to one that is still unemitted rather
+     * than the assertion being loosened, because the assertion is the point.
      */
-    const r = validateEvents(['blocker.raised']);
+    const r = validateEvents(['scenario.proposed']);
     expect(r.ok).toBe(false);
     expect((r as any).message).toMatch(/not emitted yet/i);
   });

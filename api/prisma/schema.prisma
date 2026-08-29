@@ -995,6 +995,11 @@ model GroundDependency {
   // consequence, not just a status.
   then              String?          @db.Text
   status            DependencyStatus @default(WAITING)
+  /// Stamped once, the first time this handoff crosses the waiting threshold and is escalated.
+  /// The column is what makes the sweep fire once rather than every night for as long as the
+  /// handoff stays open - a nightly repeat of the same alert is how a customer learns to filter
+  /// the channel, which costs them the alert that mattered.
+  escalatedAt       DateTime?        @map("escalated_at")
   sourceCheckInId   String?          @map("source_check_in_id")
   clearedAt         DateTime?        @map("cleared_at")
   createdAt         DateTime         @default(now()) @map("created_at")

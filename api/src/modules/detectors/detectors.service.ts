@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { DependencyStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { findUndeclaredDependencies, SubjectRef, Mention, sayIt } from './nobody-wrote-the-dependency-down';
+import { ClearedHandoff, unblockingCredits } from './somebody-else-says-you-unblocked-them';
 import { quietUntil } from '../subjects/detection-holds-its-tongue';
 import { STOPWORDS } from '../knowledge/knowledge.service';
 import { findGoalDivergence, sayIt as sayDivergence } from './describing-the-same-goal-differently';
@@ -200,9 +202,10 @@ export class DetectorsService {
    * is: what gets stored is HOW MANY DISTINCT OTHERS, never which, because which is attributed
    * testimony and a count cannot be turned back into a quote.
    *
-   * UNBLOCKING is not produced. There are no blockers in this product yet, so a contribution of
-   * that kind would be a row that can never exist - named in the enum because it is part of the
-   * contract, absent from the computation because it would be a lie.
+   * UNBLOCKING is the fourth, and it is the one nobody can claim for themselves: it exists only
+   * because the person who was WAITING stopped saying so. This comment used to say there are no
+   * blockers in this product - there were, and had been for a long time. The stale premise, not the
+   * missing machinery, is what kept the kind unproduced.
    */
   private async contribution(
     organizationId: string,
@@ -212,7 +215,7 @@ export class DetectorsService {
     if (!subjects.length) return 0;
     const people = await this.prisma.person.findMany({
       where: { organizationId, active: true },
-      select: { externalId: true, displayName: true, userName: true },
+      select: { externalId: true, displayName: true, userName: true, email: true },
     });
     if (!people.length) return 0;
 
@@ -263,6 +266,52 @@ export class DetectorsService {
         }
       }
     }
+    /*
+     * UNBLOCKING: a handoff somebody was waiting on is now cleared, and it was about this subject.
+     *
+     * Both sides resolve to a person rather than a participant, because the same human is a
+     * different participant row in every ground and the credit belongs to the human. A participant
+     * with no email cannot be resolved and is skipped - crediting the wrong person for unblocking
+     * somebody is worse than not crediting anyone.
+     */
+    const clearedRows = await this.prisma.groundDependency.findMany({
+      where: { status: DependencyStatus.CLEARED, ground: { organizationId } },
+      select: {
+        what: true,
+        fromParticipant: { select: { email: true } },
+        onParticipant: { select: { email: true } },
+      },
+    });
+    /*
+     * EMAIL FIRST, HANDLE SECOND, AND BOTH BECAUSE NEITHER IS RELIABLE ALONE.
+     *
+     * A participant carries an email; a Person carries an email that may be null and a `userName`
+     * that SCIM requires but which the schema is careful to call a directory handle - "usually an
+     * email or a directory login". Keying on `userName` alone silently loses everyone whose IdP
+     * hands us a login, and they would simply never be credited for unblocking anybody, with
+     * nothing anywhere saying why.
+     */
+    const byEmail = new Map<string, string>();
+    for (const person of people) {
+      for (const handle of [person.email, person.userName]) {
+        const k = handle?.toLowerCase();
+        if (k && !byEmail.has(k)) byEmail.set(k, person.externalId);
+      }
+    }
+    const cleared: ClearedHandoff[] = [];
+    for (const r of clearedRows) {
+      const from = byEmail.get(r.fromParticipant?.email?.toLowerCase() ?? '');
+      if (!from) continue;
+      cleared.push({
+        what: r.what,
+        fromPersonKey: from,
+        onPersonKey: byEmail.get(r.onParticipant?.email?.toLowerCase() ?? '') ?? null,
+      });
+    }
+    for (const c of unblockingCredits(cleared, subjects)) {
+      rows.push({ ...c, kind: 'UNBLOCKING' });
+    }
+
     for (const [k, speakers] of referencedBy) {
       const [personExternalId, subjectExternalId] = k.split('::');
       /* The size, and nothing that could name them. */

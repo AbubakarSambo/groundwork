@@ -1,6 +1,7 @@
 import { Injectable, Logger, ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { blockerHasSubstance } from '../board/reads';
 import { PrismaService } from '../prisma/prisma.service';
 import { forHumans, hadCloseMarker as textHadCloseMarker } from '../presentation/outbound';
 import { endStatesFor } from '../resolution/end-states';
@@ -9,7 +10,7 @@ import { PromptsService } from '../prompts';
 import { AnthropicService, ChatTurn, houseStyle } from './anthropic.service';
 import { ConversationContextService } from './context.service';
 import { VOCABULARY_RULE, COACHING_OBSERVATION_PROMPT, COACHING_OBSERVATION_SCHEMA, SESSION_CLOSE_MARKER, stripCloseMarker, buildIntakeBlock, RECORD_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_SCHEMA, WORK_MENTION_PROMPT, WORK_MENTION_SCHEMA, EXPECTATION_PROMPT, EXPECTATION_SCHEMA, ALIGNMENT_PROMPT, ALIGNMENT_SCHEMA, OBJECTION_PROMPT, OBJECTION_SCHEMA } from './prompt-library';
-import { GroundworkEvents, CheckInCompletedEvent } from '../../common';
+import { GroundworkEvents, CheckInCompletedEvent, BlockerEvent } from '../../common';
 import { recordRoundCompletion } from '../grounds/round-completion';
 import { mirrorCommitment } from '../assistant/a-commitment-carries-past-the-ground';
 import { DocumentsService } from '../documents/documents.service';
@@ -2967,6 +2968,24 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       });
       // So a second mention within the SAME extraction also dedupes.
       openForThisPerson.push(created);
+
+      /*
+       * ONLY A HANDOFF WITH SUBSTANCE BECOMES AN ALERT SOMEWHERE ELSE.
+       *
+       * The same bar the board uses, and reused rather than restated - it excludes the throwaway
+       * mention and refuses a handoff somebody has recorded against themselves. Without it the
+       * honest way to set off a customer's alerting is to say "still a bit stuck" once, and the
+       * person genuinely waiting is indistinguishable from them at the far end of a webhook.
+       *
+       * Emitting after the row is written, and never inside its transaction: a webhook is a
+       * courtesy and must not be able to roll back the record of what somebody said.
+       */
+      if (blockerHasSubstance({ ...created, fromParticipantId: participantId, createdAt: new Date() })) {
+        this.events.emit(GroundworkEvents.BLOCKER_RAISED, {
+          blockerId: created.id,
+          groundId,
+        } as BlockerEvent);
+      }
     }
   }
 

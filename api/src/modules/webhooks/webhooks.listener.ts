@@ -3,8 +3,8 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { WebhooksService } from './webhooks.service';
-import { GroundworkEvents, RoundCompletedEvent, CheckInCompletedEvent } from '../../common/events';
-import { roundCompletedPayload, checkInCompletedPayload } from './what-a-webhook-may-carry';
+import { GroundworkEvents, RoundCompletedEvent, CheckInCompletedEvent, BlockerEvent } from '../../common/events';
+import { roundCompletedPayload, checkInCompletedPayload, blockerPayload } from './what-a-webhook-may-carry';
 
 /**
  * WHERE `round.completed` FINALLY REACHES SOMEBODY.
@@ -84,4 +84,44 @@ export class WebhooksListener {
       this.logger.warn(`Could not queue checkin.completed for ${e.checkInId}: ${err.message}`);
     }
   }
+
+  @OnEvent(GroundworkEvents.BLOCKER_RAISED)
+  async onBlockerRaised(e: BlockerEvent) {
+    await this.sendBlocker('blocker.raised', e);
+  }
+
+  @OnEvent(GroundworkEvents.BLOCKER_ESCALATED)
+  async onBlockerEscalated(e: BlockerEvent) {
+    await this.sendBlocker('blocker.escalated', e);
+  }
+
+  /**
+   * Both blocker events differ only in their name and whether a duration is known, so they share
+   * one path. Keeping them apart would mean two chances for the payload rules to drift, and the
+   * payload rules are the whole reason this file is careful.
+   */
+  private async sendBlocker(event: 'blocker.raised' | 'blocker.escalated', e: BlockerEvent) {
+    try {
+      const ground = await this.prisma.ground.findUnique({
+        where: { id: e.groundId },
+        select: { organizationId: true },
+      });
+      if (!ground) return;
+
+      await this.webhooks.emit(
+        ground.organizationId,
+        event,
+        blockerPayload({
+          groundId: e.groundId,
+          blockerId: e.blockerId,
+          waitingDays: e.waitingDays,
+          occurredAt: new Date(),
+          appUrl: this.appUrl(),
+        }) as any,
+      );
+    } catch (err: any) {
+      this.logger.warn(`Could not queue ${event} for ${e.blockerId}: ${err.message}`);
+    }
+  }
+
 }
