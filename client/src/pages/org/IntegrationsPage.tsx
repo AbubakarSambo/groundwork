@@ -533,6 +533,35 @@ export function IntegrationsPage() {
        "title":"Ship the billing rewrite",
        "ownerExternalId":"priya@yourcompany.com"}'`}
         </pre>
+        {/*
+          * AND THE BULK PUSH, WHICH IS THE ONE A REAL INTEGRATION USES.
+          *
+          * Nobody sends five hundred objectives one at a time, and the page documented only the
+          * single push - so the first thing anybody does after following it is guess at the batch
+          * shape. It is NOT the single body in an array: `sourceSystem` moves to the batch, and a
+          * batch answers with a job id rather than the rows.
+          *
+          * I got this wrong myself while testing, by copying the single push into an array and
+          * putting sourceSystem on each row. It answers "sourceSystem is required on the batch."
+          */}
+        <p style={{ ...S.body, marginBottom: 10, fontSize: 12.5 }}>
+          Sending more than a handful? Post them together. The system is named once for the batch,
+          not on each row, and you get a job id back rather than the rows:
+        </p>
+        <pre style={{ ...S.mono, background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '12px 14px', overflowX: 'auto', fontSize: 12, lineHeight: 1.65, margin: '0 0 10px' }}>
+{`curl -X POST ${API_ORIGIN || 'https://api.myground.work'}/api/org/v1/subjects/bulk \\
+  -H 'authorization: Bearer $ACCESS_TOKEN' \\
+  -H 'content-type: application/json' \\
+  -d '{"sourceSystem":"your-okr-tool",
+       "subjects":[
+         {"externalId":"OKR-142","type":"objective","title":"Ship the billing rewrite"},
+         {"externalId":"OKR-143","type":"objective","title":"Cut onboarding to a week"}
+       ]}'`}
+        </pre>
+        <p style={{ ...S.body, marginBottom: 10, fontSize: 12.5 }}>
+          One bad row does not stop the rest. The others are stored, and what was skipped appears
+          above with the row and the reason, so you can fix those and send them again.
+        </p>
         <p style={{ ...S.body, marginBottom: 8, fontSize: 12.5 }}>
           The full reference is generated from the running code rather than written by hand, so it
           cannot drift from what the API actually does.
