@@ -2421,7 +2421,18 @@ model PersonObjective {
   ///
   /// Null on everything extracted from conversation, which is the overwhelming majority.
   sourceSystem         String?   @map("source_system")
-  externalId           String?   @map("external_id")
+  /// EMPTY, NOT NULL, and that is what makes several seeded objectives possible.
+  ///
+  /// A planning system holds six targets for one person in a quarter; the check-in engine must still
+  /// hold one, because `(groundId, participantId, kind)` is what stops the conversation writing two
+  /// contradictory expectations with nothing to say which holds.
+  ///
+  /// Adding a NULLABLE externalId to that key would have removed the guarantee silently - Postgres
+  /// treats NULLs as distinct, so two conversation rows would both insert. A partial index keeps
+  /// both and cannot be expressed in Prisma, and this repository already removed one of those for
+  /// exactly that reason. An empty string is the version that works: conversation rows all share it
+  /// and stay one-per-kind, seeded rows carry their own id and may be many.
+  externalId           String    @default("") @map("external_id")
   /// Who signed it off in THEIR system. Not a Groundwork approval.
   approvedByExternalId String?   @map("approved_by_external_id")
   effectiveFrom        DateTime? @map("effective_from")
@@ -2497,9 +2508,11 @@ model PersonObjective {
   // Restating the same kind for the same person is a REVISION and updates in place, which is what
   // keeps seenBySubject honest when the words change. A different kind is a different thing and
   // gets its own row.
-  @@unique([groundId, participantId, kind])
+  /// One per kind for the conversation, several for an integration - see `externalId`.
+  @@unique([groundId, participantId, kind, externalId])
   /// Upsert key for a seeded objective, so a customer pushing the same agreement twice updates it
-  /// rather than colliding with the constraint above and getting an error they cannot act on.
+  /// rather than colliding with the constraint above. `sourceSystem` is null for everything the
+  /// conversation writes, and Postgres treats NULLs as distinct - so those rows never collide here.
   @@unique([groundId, sourceSystem, externalId])
   @@index([groundId, participantId])
   @@map("person_objectives")

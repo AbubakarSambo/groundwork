@@ -276,29 +276,6 @@ export class GroundsByApiService {
         : null;
       const shape = normalise(item);
 
-      /*
-       * ONE OF EACH KIND PER PERSON, PER CHECK-IN. A product constraint, not a bug in this route:
-       * `@@unique([groundId, participantId, kind])` is what stops the check-in engine writing two
-       * competing expectations for one person.
-       *
-       * It bites an integration in a way it never bites the product, because a planning system
-       * genuinely holds several targets for one person. Raised as something a developer can act on -
-       * the raw constraint violation names three columns they have never heard of - and flagged as a
-       * real limitation rather than worked around, because loosening it would let the conversation
-       * write two contradictory expectations with nothing to say which held.
-       */
-      const clash = await this.prisma.personObjective.findFirst({
-        where: { groundId, participantId: participant.id, kind: shape.kind },
-        select: { externalId: true },
-      });
-      if (clash && clash.externalId !== item.externalId) {
-        throw new BadRequestException(
-          `${item.personExternalId} already has a ${shape.kind} on this check-in`
-          + `${clash.externalId ? ` ("${clash.externalId}")` : ''}. A person can hold one of each kind `
-          + 'per check-in, so send this as a different kind or put it on its own check-in.',
-        );
-      }
-
       const row = await this.prisma.personObjective.upsert({
         where: {
           groundId_sourceSystem_externalId: {

@@ -2627,6 +2627,11 @@ export interface PromptContext {
    * an unseen objective; until now the conversation could not honour the same rule.
    */
   personObjective?: { text: string; authoredBy: string; seenBySubject: boolean; authoredByThem: boolean; fromTheirSystem?: boolean } | null;
+  /**
+   * ALL of this person's objectives. `personObjective` stays for the single case and for callers
+   * that predate this; when both are given, this wins.
+   */
+  personObjectives?: NonNullable<PromptContext['personObjective']>[];
   sessionMode?: 'checkin' | 'recall';
   openerRole?: 'founder' | 'hr' | 'manager' | 'peer' | 'external';
   relationshipHistory?: 'new' | 'ongoing' | 'drifted' | 'prior_ground';
@@ -2864,6 +2869,81 @@ function cadenceLabel(cadence: PromptContext['cadence']): string {
   }
 }
 
+/**
+ * ONE OBJECTIVE, DESCRIBED WITH WHO SET IT AND WHETHER THE PERSON HAS SEEN IT.
+ *
+ * Pulled out of the intake block so that several can be rendered. Every clause here was already in
+ * that block and is unchanged; what changed is that it can now be called more than once.
+ */
+function describeObjective(o: NonNullable<PromptContext['personObjective']>): string {
+  const whoSetIt = o.authoredByThem
+    ? 'they wrote this themselves'
+    /*
+     * A THIRD ANSWER, because there are three and there were two. "Set by the person leading this"
+     * is right when a lead wrote it in the product and wrong for an agreement the organisation's own
+     * system already held - that is not one person's opinion, it is what everybody is working
+     * against, and describing it as an opinion invites the interview to treat it as negotiable.
+     *
+     * Still not beyond question: whether somebody may be pressed on it is decided by `seenBySubject`
+     * below, exactly as before. The source changes the wording, never whether it can be challenged.
+     */
+    : o.fromTheirSystem
+      ? "recorded as already agreed in the organisation's own system, not set here"
+      : 'set by the person leading this';
+
+  const howToUseIt = o.seenBySubject
+    /*
+     * SEEN, SO PRESS ON THE GAP. The half that was missing, and the reason the original question had
+     * no good answer: a to-do somebody forgets was never raised again. The gap between the stated
+     * expectation and what the person describes is the finding - not the shortfall.
+     */
+    ? 'they have seen it - PRESS ON THE GAP between this and what they actually describe doing. '
+      + 'That gap is the most useful thing this session can surface. '
+      + 'Ask about it plainly and without accusation, record what they say, '
+      + 'and never score them against it or compare them to anybody else'
+    /*
+     * NOT SEEN, so the fairness rule stands and nothing may be read against it. "Accept" is
+     * deliberately absent: one person states expectations, and a party neither agrees to nor
+     * rewrites theirs. What they get is a say, on the record.
+     */
+    /* Wrapped so that whole phrases survive the line breaks. The first version split "read nothing
+       against it this session" across a concatenation, and a guard asserting that exact sentence
+       stopped finding it - the instruction was intact, the assertion was not. */
+    : 'THEY HAVE NOT SEEN IT - show it to them, ask what they make of it, '
+      + 'and read nothing against it this session. '
+      + 'Never imply they agreed to it. If they disagree, that is worth recording and is not an obstacle';
+
+  return `${o.text} (${whoSetIt}; ${howToUseIt})`;
+}
+
+/**
+ * ALL OF THEM, NOT THE FIRST ONE.
+ *
+ * The engine took `personObjectives[0]` and showed that. A person holding a target AND a commitment
+ * AND a standing role expectation - which the data model has always allowed, and which a planning
+ * system produces by default - had everything after the first silently invisible to the interview.
+ * Nothing failed; the conversation simply never mentioned two thirds of what somebody was carrying.
+ *
+ * THEY ARE SEPARATE COMMITMENTS, NOT A CHECKLIST, and the instruction says so because the failure
+ * mode of a list is a march through it. Each is a different promise to a different person, each has
+ * its own answer to whether it was seen, and progress on one says nothing about another.
+ */
+function renderObjectives(objectives: NonNullable<PromptContext['personObjective']>[]): string[] {
+  if (!objectives.length) return ['MY_OBJECTIVE: none set for this person'];
+  if (objectives.length === 1) return [`MY_OBJECTIVE: ${describeObjective(objectives[0])}`];
+
+  return [
+    `MY_OBJECTIVES (${objectives.length}, all of them this person's):\n`
+    + objectives.map((o, i) => `${i + 1}. ${describeObjective(o)}`).join('\n'),
+    'THESE ARE SEPARATE COMMITMENTS, NOT A CHECKLIST. Do not march through them in order and do not '
+    + 'ask about all of them in one message. Each is its own promise, often to a different person, '
+    + 'and each has its own answer to whether they have seen it - so an instruction attached to one '
+    + 'does not carry to another. Progress on one says nothing about the others. Follow what the '
+    + 'person actually raises; where they leave one untouched across a whole session, that silence '
+    + 'is worth one plain question, not a reminder every time.',
+  ];
+}
+
 export function buildIntakeBlock(ctx: PromptContext): string {
   const situationType = situationTypeFromScenario(ctx.scenario);
   const relHistory = resolveRelationshipHistory(ctx.scenario, ctx.relationshipHistory);
@@ -2982,59 +3062,7 @@ export function buildIntakeBlock(ctx: PromptContext): string {
         + ' - take that seriously and record it. What you must not do is make them recite it back.',
       ]
       : []),
-    `MY_OBJECTIVE: ${
-      ctx.personObjective
-        ? `${ctx.personObjective.text} (${
-            ctx.personObjective.authoredByThem
-              ? 'they wrote this themselves'
-              /*
-               * A THIRD ANSWER, because there are three and there were two.
-               *
-               * "Set by the person leading this" is right when a lead wrote it in the product. It is
-               * wrong for an agreement the organisation's own system already held - that is not the
-               * lead's opinion, it is the thing everybody is working against, and reading it as one
-               * person's view invites the interview to treat it as negotiable when it is not.
-               *
-               * Still not beyond question. Whether somebody may be pressed on it is decided by
-               * `seenBySubject` below, exactly as before - the source changes how it is described,
-               * never whether it can be challenged.
-               */
-              : ctx.personObjective.fromTheirSystem
-                ? 'recorded as already agreed in the organisation\'s own system, not set here'
-                : 'set by the person leading this'
-          }; ${
-            ctx.personObjective.seenBySubject
-              /**
-               * GW-EXP-5. SEEN, SO PRESS ON THE GAP.
-               *
-               * This is the half that was missing and the reason the original question had no good
-               * answer: a to-do somebody forgets was never raised again. The instruction mirrors the
-               * one that has worked on check-in objectives for a long time - press on the GAP between
-               * the stated expectation and what the person actually describes - because the gap is the
-               * finding, not the shortfall.
-               */
-              ? 'they have seen it - PRESS ON THE GAP between this and what they actually describe doing. That gap is the most useful thing this session can surface. Ask about it plainly and without accusation, record what they say, and never score them against it or compare them to anybody else'
-              /*
-               * AND DO NOT ASK FOR SOMETHING YOU HAVE ALREADY BEEN TOLD.
-               *
-               * Found by driving it. The agreed target - six paying clients, approved, effective 1
-               * October - was in this block, and the interview still asked "is there a specific
-               * number of clients you are aiming for?". Having the fact in the prompt is not the
-               * same as being told not to ask for it, and asking somebody to supply a number their
-               * own company already recorded is the exact experience seeding exists to remove.
-               *
-               * The instruction is narrow on purpose: it forbids ASKING THEM TO STATE it, not
-               * discussing it. Whether it still holds is precisely what a check-in is for.
-               */
-              /**
-               * NOT SEEN, so the fairness rule stands and nothing may be read against it. Note that
-               * "accept" is gone: one person states expectations, and a party neither agrees to nor
-               * rewrites theirs. What they get is a say, on the record.
-               */
-              : 'THEY HAVE NOT SEEN IT - show it to them, ask what they make of it, and read nothing against it this session. Never imply they agreed to it. If they disagree, that is worth recording and is not an obstacle'
-          })`
-        : 'none set for this person'
-    }`,
+    ...renderObjectives(ctx.personObjectives ?? (ctx.personObjective ? [ctx.personObjective] : [])),
     `SESSION_MODE: ${sessionMode}`,
     `ADMIN_BRIEF: ${ctx.adminBrief ?? 'none provided'}`,
     // Ground-situation context for NON-initiator parties: the brief tells an

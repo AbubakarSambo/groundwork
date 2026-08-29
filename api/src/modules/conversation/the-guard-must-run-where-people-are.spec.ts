@@ -176,10 +176,13 @@ describe('a seeded agreement is described as agreed, not as the lead\'s opinion'
      * was never shown to the person is still not a stick to beat them with - which is the whole
      * reason an integration cannot set that flag on their behalf.
      */
-    /* The whole MY_OBJECTIVE expression, taken to the next template field rather than by a character
-       count that a comment can push past. */
-    const from = LIB.indexOf('`MY_OBJECTIVE:');
-    const block = LIB.slice(from, LIB.indexOf('`,', LIB.indexOf('seenBySubject', from)) + 2);
+    /*
+     * `describeObjective`, which is where this reasoning moved when the block learned to render
+     * several objectives instead of the first one. Sliced to the function rather than by a
+     * character count, so the next edit does not push the assertion off the end of what it reads.
+     */
+    const from = LIB.indexOf('function describeObjective(');
+    const block = LIB.slice(from, LIB.indexOf('function renderObjectives(', from));
     expect(block).toMatch(/seenBySubject/);
     expect(block).toMatch(/PRESS ON THE GAP/);
   });

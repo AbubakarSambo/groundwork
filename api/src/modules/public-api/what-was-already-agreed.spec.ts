@@ -77,3 +77,33 @@ describe('seeding informs, it never forecloses', () => {
     expect(SVC).toMatch(/is not on this check-in/);
   });
 });
+
+describe('a planning system holds several targets for one person', () => {
+  const SCHEMA = readFileSync(join(__dirname, '../../../prisma/schema.prisma'), 'utf8');
+  const MODEL = SCHEMA.slice(SCHEMA.indexOf('model PersonObjective'), SCHEMA.indexOf('\n}', SCHEMA.indexOf('model PersonObjective')));
+
+  it('so the key includes externalId, and externalId cannot be null', () => {
+    /*
+     * A NULLABLE externalId in the key would remove the guarantee silently: Postgres treats NULLs as
+     * distinct, every conversation-authored row has a null one, so two of them would both insert and
+     * the engine could hold two contradictory expectations with nothing to say which applied.
+     */
+    expect(MODEL).toMatch(/@@unique\(\[groundId, participantId, kind, externalId\]\)/);
+    expect(MODEL).toMatch(/externalId\s+String\s+@default\(""\)/);
+    expect(MODEL).not.toMatch(/externalId\s+String\?/);
+  });
+
+  it('and no partial index, which this repository already removed once', () => {
+    /*
+     * `WHERE source_system IS NULL` keeps both guarantees and cannot be expressed in Prisma, so
+     * schema and database could never agree - and 20260826180000 removed exactly such an index for
+     * exactly that reason. Reintroducing it turns the CI check that catches real drift permanently
+     * red, which costs more than it buys.
+     */
+    const MIGRATION = readFileSync(
+      join(__dirname, '../../../prisma/migrations/20260829390000_several_seeded_objectives/migration.sql'), 'utf8',
+    );
+    expect(MIGRATION).not.toMatch(/CREATE UNIQUE INDEX[\s\S]*?WHERE/);
+    expect(MIGRATION).toMatch(/SET NOT NULL/);
+  });
+});

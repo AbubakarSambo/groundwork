@@ -1225,6 +1225,18 @@ export class ConversationService {
        * existed on PersonObjective and neither reached the engine, so the interview could press
        * somebody on a standard they were reading for the first time.
        */
+      /*
+       * ALL OF THEM. `personObjective` stays as the first for anything still reading it, and
+       * `personObjectives` is what the block renders - a person holding a target and a commitment
+       * and a standing expectation had everything after the first invisible to the interview.
+       */
+      personObjectives: personObjectives.map((o: any) => ({
+        text: o.text,
+        authoredBy: o.authoredBy,
+        seenBySubject: o.seenBySubject,
+        authoredByThem: o.authoredBy === 'self',
+        fromTheirSystem: !!o.sourceSystem,
+      })),
       personObjective: personObjective
         ? {
             text: personObjective.text,
