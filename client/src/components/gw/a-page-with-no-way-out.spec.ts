@@ -1,5 +1,6 @@
 import { readFileSync, existsSync } from 'fs'
 import { join } from 'path'
+import { describe, it, expect } from 'vitest'
 
 /**
  * A PAGE THE PRODUCT SENDS YOU TO AND WILL NOT LET YOU LEAVE.
