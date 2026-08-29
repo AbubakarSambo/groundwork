@@ -30,6 +30,9 @@ import time
 from playwright.async_api import async_playwright
 
 from _runner import BASE_URL, Recorder, api, launch, mail_clear, new_page, provision_admin
+from _ui_strings import (  # UI copy the product owns - see the guard in
+    CREATE_PAGE_HEADING, INCLUDED_IN_PLAN,  # client/src/lib/the-persona-harness-and-the-ui-agree.spec.ts
+)
 
 rec = Recorder("suite_b")
 STAMP = str(int(time.time()))
@@ -57,7 +60,7 @@ async def main() -> int:
         await page.goto(f"{origin}/grounds/new")
         await page.wait_for_timeout(2500)
         await rec.step(page, "create flow loaded (authed)", "persona B")
-        on_create = await page.get_by_text("What is this ground for?").count()
+        on_create = await page.get_by_text(CREATE_PAGE_HEADING).count()
         rec.check("B1", on_create > 0, "authed create flow actually loaded (not a vacuous /auth sweep)",
                   f"url={page.url}", hard=True)
         # walk: pick a scenario -> moment -> billing interstitial -> timeline
@@ -85,7 +88,7 @@ async def main() -> int:
                     await page.wait_for_timeout(900)
                 except Exception:
                     break
-        included = await page.get_by_text("Included in your plan").count()
+        included = await page.get_by_text(INCLUDED_IN_PLAN).count()
         rec.check("B1", included >= 0, "swept create-flow steps for billing copy")  # informational marker
 
         # ---- B2: the 10-ground gate ----------------------------------------

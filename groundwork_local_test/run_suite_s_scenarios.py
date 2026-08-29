@@ -41,13 +41,21 @@ EMAIL = f"s.sweep+{STAMP}@example-test.invalid"
 #
 # There is no shared constant to point at - the labels live inline in the component -
 # so the only honest fix is to pin THIS page's copy and say which page that is.
+#
+# AND IT DRIFTED AGAIN, twice, between then and 29 August: "Board & leadership strategy" became
+# "Board or leadership strategy", and "Something's off track" was split in two - DRIFT is now "A
+# project is off track" and PIP is "Someone's work is off track". Neither crashed anything; the
+# check simply reported cards missing that were on screen under different words.
+#
+# These are now covered by client/src/lib/the-persona-harness-and-the-ui-agree.spec.ts, which reads
+# this list and fails on the client test run rather than in a browser twenty minutes later.
 # Eighteen, not seventeen: "Onboarding several people at once" was added and the
 # count in this comment was never updated either.
 CREATE_CARDS = [
     "New hire", "New project", "New advisor or board member", "A new partner or co-founder",
     "A new manager taking over", "Contract or renewal", "Raise, promotion, or recognition",
-    "Performance improvement plan", "Goals & planning", "Workplan & budget",
-    "A regular read on live work", "Something's off track", "Board & leadership strategy",
+    "Performance improvement plan", "Goals & planning", "A workplan and budget",
+    "A regular read on live work", "A project is off track", "Board or leadership strategy",
     "Many people in the same role", "Onboarding several people at once",
     "A shock just hit", "Get a team back on the same page", "Describe your own situation",
 ]

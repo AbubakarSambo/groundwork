@@ -40,6 +40,9 @@ from _runner import (
     complete_password_step,
     ground_reached,
 )
+from _ui_strings import (  # UI copy the product owns - see the guard in
+    GO_TO_YOUR_GROUND, INVITE_AND_FINISH, SAVE_MY_CHECKIN, SENT_A_LINK,  # client/src/lib/the-persona-harness-and-the-ui-agree.spec.ts
+)
 
 rec = Recorder("suite_m")
 STAMP = str(int(time.time()))
@@ -59,16 +62,16 @@ async def provision_ground(browser):
     await page.wait_for_timeout(2500)
     # the save modal exists in the DOM but is visibility:hidden until opened -
     # judge by VISIBILITY, not presence, and open it via the bar if needed
-    save_btn = page.get_by_text("Save my ground").first
+    save_btn = page.get_by_text(SAVE_MY_CHECKIN).first
     if not await save_btn.is_visible():
-        bar = page.get_by_text("Invite & finish")
+        bar = page.get_by_text(INVITE_AND_FINISH)
         if await bar.count():
             await bar.first.click()
             await page.wait_for_timeout(800)
     email_input = page.locator("input[placeholder*='your@email']:visible").first
     await email_input.fill(EMAIL)
-    await page.get_by_text("Save my ground").first.click()
-    await page.get_by_text("We sent a link to").wait_for(timeout=15000)
+    await page.get_by_text(SAVE_MY_CHECKIN).first.click()
+    await page.get_by_text(SENT_A_LINK).wait_for(timeout=15000)
     link = mail_link(EMAIL, match="verify-email")
     if not link:
         raise RuntimeError("no magic link for suite M initiator")
@@ -98,7 +101,7 @@ async def provision_ground(browser):
     )
     if not landed:
         raise RuntimeError("magic link reached neither the confirmation nor a ground - reportSummary commit likely 400'd")
-    go = page.get_by_text("Go to your ground")
+    go = page.get_by_text(GO_TO_YOUR_GROUND)
     await go.first.click()
     await page.wait_for_timeout(3000)
     # The password step sits on the way OUT of the confirmation, not before it - deliberately, so
