@@ -779,7 +779,7 @@ export function CreateGroundPage() {
                 the timeline and the people, and only then was told she could
                 not. The block was right; the timing made it feel like a trick. */}
             {canCreate.data && !canCreate.data.allowed && (
-              <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid #F0DFC0', borderRadius: 8, padding: '12px 14px', marginBottom: 14 }}>
+              <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-bd)', borderRadius: 8, padding: '12px 14px', marginBottom: 14 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 4 }}>
                   You have used all {freeLimit} of your free check-ins
                 </div>
