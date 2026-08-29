@@ -10,6 +10,10 @@ export const SCOPES = [
   'subjects:write',
   'knowledge:write',
   'checkins:write',
+  /* Opening a check-in from an integration. Separate from checkins:write, which only links an
+     existing one to an objective - the two are different powers and a customer should be able to
+     grant the smaller. */
+  'grounds:write',
   'findings:read',
   /*
    * Its own scope rather than folded into findings:read. A handover brief is the list of what is
@@ -18,6 +22,9 @@ export const SCOPES = [
    * is additive; the note above about renaming still holds.
    */
   'handovers:read',
+  /* A report is the synthesis of what several people independently said. Its own scope, so granting
+     an integration findings does not silently grant it everybody's account of the quarter. */
+  'reports:read',
   'proposals:read',
   'proposals:write',
   'chat:write',

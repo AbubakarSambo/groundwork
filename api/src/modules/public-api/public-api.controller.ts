@@ -1,7 +1,6 @@
 import {
   Controller, Post, Get, Patch, Delete, Body, Param, Query, Headers, Req,
-  UseGuards, UnauthorizedException, BadRequestException, HttpCode,
-} from '@nestjs/common';
+  UseGuards, UnauthorizedException, BadRequestException, HttpCode, ForbiddenException } from '@nestjs/common';
 import { ApiOperation, ApiTags, ApiExcludeEndpoint } from '@nestjs/swagger';
 import { JwtService } from '@nestjs/jwt';
 import { CredentialsService } from './credentials.service';
@@ -19,6 +18,9 @@ import { AssistantService } from '../assistant/assistant.service';
 import { HandoverService } from '../grounds/handover.service';
 import { OnboardingService } from '../grounds/onboarding.service';
 import { ScenariosService } from '../detectors/scenarios.service';
+import { mayUseTheApi, NOT_PAID } from './the-api-is-a-paid-thing';
+import { PrismaService } from '../prisma/prisma.service';
+import { GroundsByApiService } from './grounds-by-api.service';
 import { RoundDigestService } from '../email/round-digest.service';
 import { resolveReferences } from '../people/an-unresolved-reference-is-a-fact';
 
@@ -65,6 +67,8 @@ export class PublicApiController {
     private readonly onboarding: OnboardingService,
     private readonly scenarios: ScenariosService,
     private readonly digests: RoundDigestService,
+    private readonly prisma: PrismaService,
+    private readonly groundsByApi: GroundsByApiService,
   ) {}
 
   /**
@@ -86,6 +90,17 @@ export class PublicApiController {
     if (!granted.ok) {
       throw new BadRequestException(`This credential does not hold: ${granted.unheld.join(', ')}`);
     }
+
+    /*
+     * PAID ONLY, checked here rather than at credential issue - a subscription that lapses has to
+     * stop working, and a short-lived token means that happens within one token lifetime instead of
+     * waiting for somebody to remember to revoke.
+     */
+    const org = await this.prisma.organization.findUnique({
+      where: { id: cred.organizationId },
+      select: { subscriptionPlan: true, subscriptionStatus: true },
+    });
+    if (!mayUseTheApi(org)) throw new ForbiddenException(NOT_PAID);
 
     await this.credentials.stampUse(cred.id);
 
@@ -378,6 +393,44 @@ export class PublicApiController {
   ) {
     if (!dto?.participantExternalId) throw new BadRequestException('participantExternalId is required.');
     return this.digests.setPreferences(req.machine.organizationId, dto.participantExternalId, dto);
+  }
+
+  /**
+   * OPEN A GROUNDWORK FROM SOMEBODY ELSE'S PRODUCT.
+   *
+   * The front door that did not exist. `POST /checkins` reads as though it created one and does not
+   * - it links an existing ground to an objective - so an integration could push its whole
+   * organisation in and never start a conversation about any of it.
+   *
+   * What comes out is a ground with no API-ness about it: the same scenario pack, the same engine,
+   * the same report at the end, because nothing downstream asks how it was made.
+   */
+  @Post('grounds')
+  @HttpCode(201)
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('grounds:write')
+  @ApiOperation({ summary: 'Open a check-in. Same engine, same scenario setup, same report as one opened in the product.' })
+  async openGround(@Req() req: { machine: MachineCaller }, @Body() dto: any) {
+    return this.groundsByApi.open(req.machine.organizationId, dto);
+  }
+
+  /**
+   * THE REPORT, WHICH WAS GENERATED AND UNREACHABLE.
+   *
+   * Its own scope rather than folded into `findings:read`, for the same reason handovers got one: a
+   * report is a great deal more than a finding, and an integration granted the right to read
+   * findings must not silently receive everybody's synthesis as well.
+   */
+  @Get('grounds/:groundId/report')
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('reports:read')
+  @ApiOperation({ summary: 'The report for a completed round.' })
+  async getReport(
+    @Req() req: { machine: MachineCaller },
+    @Param('groundId') groundId: string,
+    @Query('as') asPersonExternalId: string,
+  ) {
+    return this.groundsByApi.report(req.machine.organizationId, groundId, asPersonExternalId);
   }
 
   /**
