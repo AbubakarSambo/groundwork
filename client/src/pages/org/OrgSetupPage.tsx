@@ -36,6 +36,7 @@ export function OrgSetupPage() {
   useEffect(() => {
     if (org?.email) navigate('/grounds', { replace: true })
   }, [org?.email, navigate])
+
   if (org?.email) return null
 
   return (
