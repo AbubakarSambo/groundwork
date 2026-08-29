@@ -434,6 +434,27 @@ export class PublicApiController {
   }
 
   /**
+   * SEED WHAT WAS ALREADY AGREED.
+   *
+   * So the interview opens with "your agreed target is six paying clients, how is that going"
+   * instead of "what do you think your target is". The principle is that Groundwork starts from the
+   * existing agreement rather than pretending none exists - and it still lets somebody say the
+   * agreement is wrong, was never shown to them, or has been overtaken.
+   */
+  @Post('grounds/:groundId/objectives')
+  @HttpCode(200)
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('grounds:write')
+  @ApiOperation({ summary: 'Seed already-agreed objectives, commitments and targets onto a check-in.' })
+  async seedObjectives(
+    @Req() req: { machine: MachineCaller },
+    @Param('groundId') groundId: string,
+    @Body() dto: { objectives: any[] },
+  ) {
+    return this.groundsByApi.seedObjectives(req.machine.organizationId, groundId, dto?.objectives);
+  }
+
+  /**
    * SCIM 2.0. The path is theirs, not ours - an IdP is configured with a base URL and appends
    * /Users itself, so the shape has to be exactly what the standard says.
    */

@@ -2398,6 +2398,21 @@ model PersonObjective {
   owedToParticipantId String?         @map("owed_to_participant_id")
   /// 'lead' or 'self'. Who wrote the CURRENT text.
   authoredBy          String          @map("authored_by")
+
+  /// WHERE THIS CAME FROM, when it did not come from the conversation.
+  ///
+  /// A seeded objective is one the customer's own system says was already agreed - "Sahar owns a
+  /// six-client Q4 target, approved by Hafsah, effective 1 October". Groundwork should start from
+  /// that rather than making somebody rediscover it, and it has to be able to tell an agreement
+  /// somebody else recorded from something said in a check-in. Once the text is written down those
+  /// two look identical without these columns.
+  ///
+  /// Null on everything extracted from conversation, which is the overwhelming majority.
+  sourceSystem         String?   @map("source_system")
+  externalId           String?   @map("external_id")
+  /// Who signed it off in THEIR system. Not a Groundwork approval.
+  approvedByExternalId String?   @map("approved_by_external_id")
+  effectiveFrom        DateTime? @map("effective_from")
   /// Whether the person it belongs to has seen the current text.
   /// WHERE THIS IS SETTLED, WHEN THE KIND IS REFERENCE.
   ///
@@ -2470,6 +2485,9 @@ model PersonObjective {
   // keeps seenBySubject honest when the words change. A different kind is a different thing and
   // gets its own row.
   @@unique([groundId, participantId, kind])
+  /// Upsert key for a seeded objective, so a customer pushing the same agreement twice updates it
+  /// rather than colliding with the constraint above and getting an error they cannot act on.
+  @@unique([groundId, sourceSystem, externalId])
   @@index([groundId, participantId])
   @@map("person_objectives")
 }

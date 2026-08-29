@@ -1166,6 +1166,8 @@ export class ConversationService {
             authoredBy: personObjective.authoredBy,
             seenBySubject: personObjective.seenBySubject,
             authoredByThem: personObjective.authoredBy === checkIn.participantId,
+            /* Seeded by an integration rather than written by anybody here. */
+            fromTheirSystem: !!(personObjective as any).sourceSystem,
           }
         : null,
       partyType: checkIn.participant.partyType,

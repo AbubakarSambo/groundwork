@@ -154,3 +154,33 @@ describe('the end of the reply is not lost', () => {
     expect(withheld).toBeLessThan(flush);
   });
 });
+
+describe('a seeded agreement is described as agreed, not as the lead\'s opinion', () => {
+  const LIB = readFileSync(join(__dirname, 'prompt-library.ts'), 'utf8');
+
+  it('there are three answers to "who set this", not two', () => {
+    /*
+     * "Set by the person leading this" is right when a lead wrote it in the product, and wrong for an
+     * agreement the organisation's own system already held. That is not one person's view - it is
+     * what everybody is working against - and describing it as an opinion invites the interview to
+     * treat it as negotiable when it is not.
+     */
+    expect(LIB).toMatch(/they wrote this themselves/);
+    expect(LIB).toMatch(/recorded as already agreed in the organisation/);
+    expect(LIB).toMatch(/set by the person leading this/);
+  });
+
+  it('and the source changes the wording, never whether it can be challenged', () => {
+    /*
+     * `seenBySubject` still decides whether somebody may be pressed on a gap. A seeded target that
+     * was never shown to the person is still not a stick to beat them with - which is the whole
+     * reason an integration cannot set that flag on their behalf.
+     */
+    /* The whole MY_OBJECTIVE expression, taken to the next template field rather than by a character
+       count that a comment can push past. */
+    const from = LIB.indexOf('`MY_OBJECTIVE:');
+    const block = LIB.slice(from, LIB.indexOf('`,', LIB.indexOf('seenBySubject', from)) + 2);
+    expect(block).toMatch(/seenBySubject/);
+    expect(block).toMatch(/PRESS ON THE GAP/);
+  });
+});

@@ -2626,7 +2626,7 @@ export interface PromptContext {
    * standard they were reading for the first time. The report already refuses to read anybody against
    * an unseen objective; until now the conversation could not honour the same rule.
    */
-  personObjective?: { text: string; authoredBy: string; seenBySubject: boolean; authoredByThem: boolean } | null;
+  personObjective?: { text: string; authoredBy: string; seenBySubject: boolean; authoredByThem: boolean; fromTheirSystem?: boolean } | null;
   sessionMode?: 'checkin' | 'recall';
   openerRole?: 'founder' | 'hr' | 'manager' | 'peer' | 'external';
   relationshipHistory?: 'new' | 'ongoing' | 'drifted' | 'prior_ground';
@@ -2972,10 +2972,36 @@ export function buildIntakeBlock(ctx: PromptContext): string {
             .join(' | ')}`,
         ]
       : []),
+    ...(ctx.personObjective?.fromTheirSystem
+      ? [
+        'ALREADY RECORDED, SO DO NOT ASK FOR IT: the objective below was agreed in this organisation'
+        + ' before the check-in and is stated in MY_OBJECTIVE. Never ask them to tell you what their'
+        + ' target, deadline or responsibility is - you have it. Ask how it is going, what is in the'
+        + ' way, and whether it still reflects what they are working against.'
+        + ' They may say it is wrong, was never agreed with them, or has been overtaken by something'
+        + ' - take that seriously and record it. What you must not do is make them recite it back.',
+      ]
+      : []),
     `MY_OBJECTIVE: ${
       ctx.personObjective
         ? `${ctx.personObjective.text} (${
-            ctx.personObjective.authoredByThem ? 'they wrote this themselves' : 'set by the person leading this'
+            ctx.personObjective.authoredByThem
+              ? 'they wrote this themselves'
+              /*
+               * A THIRD ANSWER, because there are three and there were two.
+               *
+               * "Set by the person leading this" is right when a lead wrote it in the product. It is
+               * wrong for an agreement the organisation's own system already held - that is not the
+               * lead's opinion, it is the thing everybody is working against, and reading it as one
+               * person's view invites the interview to treat it as negotiable when it is not.
+               *
+               * Still not beyond question. Whether somebody may be pressed on it is decided by
+               * `seenBySubject` below, exactly as before - the source changes how it is described,
+               * never whether it can be challenged.
+               */
+              : ctx.personObjective.fromTheirSystem
+                ? 'recorded as already agreed in the organisation\'s own system, not set here'
+                : 'set by the person leading this'
           }; ${
             ctx.personObjective.seenBySubject
               /**
@@ -2988,6 +3014,18 @@ export function buildIntakeBlock(ctx: PromptContext): string {
                * finding, not the shortfall.
                */
               ? 'they have seen it - PRESS ON THE GAP between this and what they actually describe doing. That gap is the most useful thing this session can surface. Ask about it plainly and without accusation, record what they say, and never score them against it or compare them to anybody else'
+              /*
+               * AND DO NOT ASK FOR SOMETHING YOU HAVE ALREADY BEEN TOLD.
+               *
+               * Found by driving it. The agreed target - six paying clients, approved, effective 1
+               * October - was in this block, and the interview still asked "is there a specific
+               * number of clients you are aiming for?". Having the fact in the prompt is not the
+               * same as being told not to ask for it, and asking somebody to supply a number their
+               * own company already recorded is the exact experience seeding exists to remove.
+               *
+               * The instruction is narrow on purpose: it forbids ASKING THEM TO STATE it, not
+               * discussing it. Whether it still holds is precisely what a check-in is for.
+               */
               /**
                * NOT SEEN, so the fairness rule stands and nothing may be read against it. Note that
                * "accept" is gone: one person states expectations, and a party neither agrees to nor

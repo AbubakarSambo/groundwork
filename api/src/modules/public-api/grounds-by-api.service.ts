@@ -2,6 +2,8 @@ import { Injectable, Logger, NotFoundException, BadRequestException, ForbiddenEx
 import { PrismaService } from '../prisma/prisma.service';
 import { GroundsService } from '../grounds/grounds.service';
 import { ReportsService } from '../reports/reports.service';
+import { ObjectiveKind } from '@prisma/client';
+import { SeedInput, normalise, missingOwedTo, NOT_A_KIND } from './what-was-already-agreed';
 
 /**
  * OPENING A GROUNDWORK FROM SOMEBODY ELSE'S PRODUCT.
@@ -160,6 +162,113 @@ export class GroundsByApiService {
     if (!ground) throw new NotFoundException('No such check-in.');
 
     return this.reports.get(groundId, user.id, organizationId);
+  }
+
+
+  /**
+   * SEED WHAT WAS ALREADY AGREED.
+   *
+   * Upserted on `(groundId, sourceSystem, externalId)` so a customer pushing the same agreement
+   * twice updates it rather than colliding with the one-per-kind constraint and getting an error
+   * they cannot act on.
+   *
+   * WHAT THIS DELIBERATELY DOES NOT DO is let an integration set `seenBySubject` to true for
+   * somebody. Whether a person has seen the standard they are held to is the hinge the whole
+   * fairness rule turns on - the engine refuses to press anybody on an unseen objective - and an
+   * integration asserting it on their behalf would quietly disarm that. A customer who has genuinely
+   * shown somebody their target can say so, and it is recorded as their claim.
+   */
+  async seedObjectives(organizationId: string, groundId: string, items: SeedInput[]) {
+    const ground = await this.prisma.ground.findFirst({
+      where: { id: groundId, organizationId },
+      select: { id: true },
+    });
+    if (!ground) throw new NotFoundException('No such check-in.');
+    if (!items?.length) throw new BadRequestException('Send at least one objective.');
+
+    const out: { externalId: string; id: string; kind: string | null }[] = [];
+    for (const item of items) {
+      if (!item.externalId) throw new BadRequestException('Each objective needs an externalId of its own.');
+      if (!item.text?.trim()) throw new BadRequestException(`Objective "${item.externalId}" has no text.`);
+      if (!(Object.values(ObjectiveKind) as string[]).includes(item.kind)) {
+        throw new BadRequestException(NOT_A_KIND);
+      }
+      if (missingOwedTo(item)) {
+        throw new BadRequestException(
+          `"${item.externalId}" is a COMMITMENT with no owedToPersonExternalId. A commitment is `
+          + 'something somebody else is waiting on; without who, it is a private to-do and the '
+          + 'handoff reasoning never sees it.',
+        );
+      }
+
+      const participant = await this.participantFor(groundId, organizationId, item.personExternalId);
+      const owedTo = item.owedToPersonExternalId
+        ? await this.participantFor(groundId, organizationId, item.owedToPersonExternalId)
+        : null;
+      const shape = normalise(item);
+
+      const row = await this.prisma.personObjective.upsert({
+        where: {
+          groundId_sourceSystem_externalId: {
+            groundId, sourceSystem: 'api', externalId: item.externalId,
+          },
+        },
+        create: {
+          groundId,
+          participantId: participant.id,
+          text: item.text.trim(),
+          ...shape,
+          dueSaid: item.dueSaid ?? null,
+          owedToParticipantId: owedTo?.id ?? null,
+          /*
+           * Not the acting user's id. `authoredBy` answers "who set this", and for a seeded
+           * agreement the honest answer is the customer's system - which is what makes the intake
+           * block able to say "your organisation records this" rather than "the lead said this".
+           */
+          authoredBy: 'lovedida',
+          sourceSystem: 'api',
+          externalId: item.externalId,
+          approvedByExternalId: item.approvedByExternalId ?? null,
+          effectiveFrom: item.effectiveFrom ? new Date(item.effectiveFrom) : null,
+          seenBySubject: item.seenBySubject === true,
+          trackedUrl: item.trackedUrl ?? null,
+        },
+        update: {
+          text: item.text.trim(),
+          ...shape,
+          dueSaid: item.dueSaid ?? null,
+          owedToParticipantId: owedTo?.id ?? null,
+          approvedByExternalId: item.approvedByExternalId ?? null,
+          effectiveFrom: item.effectiveFrom ? new Date(item.effectiveFrom) : null,
+          seenBySubject: item.seenBySubject === true,
+          trackedUrl: item.trackedUrl ?? null,
+        },
+        select: { id: true, kind: true },
+      });
+      out.push({ externalId: item.externalId, id: row.id, kind: String(row.kind) });
+    }
+
+    this.logger.log(`Seeded ${out.length} agreed objective(s) onto ground ${groundId}.`);
+    return { seeded: out };
+  }
+
+  /** A person on this ground, by their directory id. Both sides of a commitment must be on it. */
+  private async participantFor(groundId: string, organizationId: string, personExternalId: string) {
+    const person = await this.prisma.person.findFirst({
+      where: { organizationId, externalId: personExternalId },
+      select: { email: true },
+    });
+    if (!person?.email) throw new NotFoundException(`No person with externalId "${personExternalId}".`);
+    const participant = await this.prisma.groundParticipant.findFirst({
+      where: { groundId, email: person.email },
+      select: { id: true },
+    });
+    if (!participant) {
+      throw new BadRequestException(
+        `"${personExternalId}" is not on this check-in. Add them when you open it, or open one that includes them.`,
+      );
+    }
+    return participant;
   }
 
 }
