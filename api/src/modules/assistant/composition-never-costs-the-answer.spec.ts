@@ -130,3 +130,16 @@ describe('the composer cannot introduce a person the record never named', () => 
     expect(safeToUse(draft, 'There are 2 open commitments. You can see them below.')).toBe(true);
   });
 });
+
+describe('a colon does not open a sentence', () => {
+  it('so an invented name after one is still caught', () => {
+    /*
+     * The sentence-start exemption exists because English capitalises first words. A colon
+     * introduces a clause, not a sentence - and treating it as one puts "the client name: Alex
+     * Smith" in first position, which is the easiest place to hide the exact thing this refuses.
+     * The conversation-side guard had this same bug and its own test found it there.
+     */
+    const draft = 'Waiting on you: the onboarding rewrite - 2 days';
+    expect(safeToUse(draft, 'Waiting on you: Alex Smith has the onboarding rewrite - 2 days')).toBe(false);
+  });
+});

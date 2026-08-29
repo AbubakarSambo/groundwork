@@ -30,7 +30,14 @@
  * the read, not asked for in a prompt.
  */
 
-/** Words that are capitalised in normal prose and are nobody's name. */
+/**
+ * Words that are capitalised in normal prose and are nobody's name.
+ *
+ * Kept for the ones that appear MID-sentence - "..., I think", "..., The Hague" - where position
+ * cannot help. The sentence-opener case it used to carry is handled positionally now: a list of
+ * English words is a chore that is always one word out of date, and it was. Driving a check-in
+ * produced "Starting" reported as an invented name, because nobody had added it yet.
+ */
 const NOT_A_NAME = new Set([
   'I', 'You', 'We', 'They', 'It', 'The', 'A', 'An', 'And', 'But', 'So', 'That',
   'This', 'What', 'When', 'Where', 'Who', 'Why', 'How', 'Your', 'Yours', 'My',
@@ -50,28 +57,75 @@ const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
  */
 export function namesNobodySaid(reply: string, personSaid: string[]): string[] {
   const said = personSaid.map(norm).join(' ');
-  const found = reply.match(/\b[A-Z][a-zA-Z0-9]+(?:\s+[A-Z][a-zA-Z0-9]+)*\b/g) ?? [];
   const out: string[] = [];
 
-  for (const raw of found) {
-    // Strip leading sentence-openers so "Got it, Daisy" tests "Daisy".
-    const words = raw.split(/\s+/).filter((w) => !NOT_A_NAME.has(w));
-    if (!words.length) continue;
-    const candidate = words.join(' ');
-    const key = norm(candidate);
-    if (key.length < 4) continue;
-    if (said.includes(key)) continue;
-    // Any single word of it that the person did type makes it theirs, mangled at
-    // worst. "Microchip Solutions" against "microchipshit" is a partial match on
-    // the first word and is not an invention, it is a tidy-up - still wrong, but
-    // caught by the whole-phrase check below rather than reported twice.
-    if (words.some((w) => norm(w).length >= 4 && said.includes(norm(w)))) {
+  /*
+   * THE FIRST WORD OF A SENTENCE IS CAPITALISED BY GRAMMAR, NOT BY BEING A NAME.
+   *
+   * Handling that positionally rather than by listing English words is what stops this needing
+   * maintenance every time a model opens with a verb nobody thought of. It does leave one gap - an
+   * invented name in the first position is missed - and the same gap is documented in the
+   * assistant's composer check, for the same reason and with the same bound: what follows is a
+   * report, never a rewrite, so a miss costs a log line and not a wrong sentence.
+   */
+  /* A COLON IS NOT A SENTENCE BOUNDARY. Splitting on one made "the client name: Microchip
+     Solutions" look like a name in first position and the guard stopped catching the exact case it
+     was written for - which its own test noticed immediately. */
+  for (const sentence of reply.split(/(?<=[.!?\n])\s+/)) {
+    const found = sentence.match(/\b[A-Z][a-zA-Z0-9]+(?:\s+[A-Z][a-zA-Z0-9]+)*\b/g) ?? [];
+    for (const raw of found) {
+      const atSentenceStart = sentence.trimStart().startsWith(raw);
+      const words = raw.split(/\s+/)
+        .filter((w, i) => !(atSentenceStart && i === 0))
+        .filter((w) => !NOT_A_NAME.has(w));
+      if (!words.length) continue;
+      const candidate = words.join(' ');
+      const key = norm(candidate);
+      if (key.length < 4) continue;
+      if (said.includes(key)) continue;
+      // Any single word of it that the person did type makes it theirs, mangled at
+      // worst. "Microchip Solutions" against "microchipshit" is a partial match on
+      // the first word and is not an invention, it is a tidy-up - still wrong, but
+      // caught by the whole-phrase check below rather than reported twice.
       out.push(candidate);
-      continue;
     }
-    out.push(candidate);
   }
   return [...new Set(out)];
+}
+
+/**
+ * THE SAME TIDY-UP, LOWERCASED, WHICH WALKED PAST THE CHECK ABOVE.
+ *
+ * `namesNobodySaid` looks for capitalised words, because that is what a proper noun is. Driving a
+ * real check-in produced this: the person typed "microchipshit", and the reply came back as "the
+ * microchip account". That is precisely the mangling the guard was written for - its own comment
+ * uses that example - and it walked past, because the model wrote it in lower case.
+ *
+ * DETECTED, NOT SUBSTITUTED, and the difference is deliberate. Putting the longer word back would
+ * be right for "microchip" and wrong for a person who typed "development" and got a sentence
+ * containing "develop", where the substitution produces a grammatical error the model did not make.
+ * Truncation is easy to spot and hard to repair safely, so this reports and leaves the sentence
+ * alone, which at least makes the rate knowable.
+ */
+export function truncationsOfTheirWords(reply: string, personSaid: string[]): string[] {
+  const said = new Set(
+    (personSaid.join(' ').toLowerCase().match(/[a-z][a-z0-9'-]*/g) ?? []).filter((w) => w.length >= 8),
+  );
+  if (!said.size) return [];
+
+  const out = new Set<string>();
+  for (const word of reply.toLowerCase().match(/[a-z][a-z0-9'-]*/g) ?? []) {
+    if (word.length < 6) continue;
+    /* A word they actually typed is theirs, however much it looks like a shortening of another. */
+    if (said.has(word)) continue;
+    for (const theirs of said) {
+      if (theirs !== word && theirs.startsWith(word)) {
+        out.add(`${word} (they typed "${theirs}")`);
+        break;
+      }
+    }
+  }
+  return [...out];
 }
 
 /**

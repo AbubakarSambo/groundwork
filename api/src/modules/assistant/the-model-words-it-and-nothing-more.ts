@@ -99,7 +99,10 @@ export function safeToUse(draft: string, composed: string | null | undefined): b
    * a gap, and the gap is bounded by the draft being the fallback rather than by anybody's care.
    */
   const draftWords = new Set(draft.toLowerCase().match(/[a-z][a-z'-]*/g) ?? []);
-  const sentences = text.split(/(?<=[.:!?\n])\s+/);
+  /* Not splitting on a colon: "the client name: Alex Smith" would put an invented name in first
+     position, where the sentence-start exemption lets it through. The conversation guard was
+     written with the colon in and its own test caught it there. */
+  const sentences = text.split(/(?<=[.!?\n])\s+/);
   for (const sentence of sentences) {
     const words = sentence.match(/[A-Za-z][A-Za-z'-]*/g) ?? [];
     for (const w of words.slice(1)) {

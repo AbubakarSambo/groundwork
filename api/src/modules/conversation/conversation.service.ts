@@ -34,7 +34,7 @@ import { closeReadiness, askedToFinish } from './close-readiness';
 import { observeStyle, mergeStyle, styleGuidance } from './person-style';
 import { readOutcome, isGenericStep } from './coaching-step';
 import { mayCoach } from './participation-timeline';
-import { restoreTheirWords, causalClaimNobodyMade, ASK_INSTEAD_OF_CONCLUDING } from './the-record-holds-what-was-said';
+import { restoreTheirWords, namesNobodySaid, truncationsOfTheirWords, causalClaimNobodyMade, ASK_INSTEAD_OF_CONCLUDING } from './the-record-holds-what-was-said';
 
 /**
  * How many things in this text could actually be checked by someone later.
@@ -688,12 +688,39 @@ export class ConversationService {
         .filter((t) => t.role === TurnRole.PERSON)
         .map((t) => t.content ?? '')
         .concat(message);
-      reply = restoreTheirWords(stripped.text, personWords);
+      const beforeRestore = stripped.text;
+      reply = restoreTheirWords(beforeRestore, personWords);
+
+      /*
+       * AND THE ONES SUBSTITUTION CANNOT REACH ARE AT LEAST WRITTEN DOWN.
+       *
+       * A mangled name has one of hers underneath it and gets put back. A name invented WHOLE -
+       * "did Alex Smith get back to you" when there is no Alex Smith - has nothing underneath, so
+       * the rule above deliberately leaves the reply alone rather than picking a replacement. That
+       * reasoning holds. What did not hold is that nothing then recorded it, so a fabricated
+       * colleague reached somebody with no trace anywhere that it had happened.
+       *
+       * This does not decide what to DO about it, which is a real question with costs on every
+       * side. It makes the rate knowable, which is the precondition for deciding.
+       */
+      const stillInvented = namesNobodySaid(reply, personWords);
+      if (stillInvented.length) {
+        this.logger.warn(
+          `Invented proper noun survived on check-in ${checkIn.id}: ${stillInvented.join(', ')}. `
+          + 'Nothing the person typed matches it, so it was not substituted.',
+        );
+      }
 
       // The other half of W2 cannot be repaired by substitution, because there
       // is no word of hers to put back - the causation was invented whole. It is
       // logged rather than edited: silently deleting half a sentence would leave
       // prose that reads as though the engine lost its train of thought.
+      const truncated = truncationsOfTheirWords(reply, personWords);
+      if (truncated.length) {
+        this.logger.warn(
+          `Shortened one of their own words on check-in ${checkIn.id}: ${truncated.join(', ')}.`,
+        );
+      }
       const invented = causalClaimNobodyMade(reply, personWords);
       if (invented.length) {
         this.logger.warn(
@@ -819,10 +846,56 @@ export class ConversationService {
       }
       const strippedStream = { text: forHumans(raw), hadMarker: textHadCloseMarker(raw) };
       /** houseStyle is inside forHumans now, so applying it again here would be a second pass. */
-      const reply = strippedStream.text;
-      if (!reply) throw new Error('AI returned an empty response');
+      const streamedText = strippedStream.text;
+      if (!streamedText) throw new Error('AI returned an empty response');
+
+      /*
+       * THE GUARD THAT WAS DEAD IN THE PATH EVERYBODY USES.
+       *
+       * `restoreTheirWords` was written so nobody reads a company name they never typed, and it ran
+       * on `sendMessage` - which the chat does not call. ChatPage streams. So the repair existed,
+       * was tested, and had never run for a single real person; the non-streaming path it protected
+       * is only reached as a fallback after a stream has already failed.
+       *
+       * Streaming cannot repair a delta that has already left, and holding the whole reply back to
+       * inspect it would give up the reason for streaming. What it can do is fix the version that
+       * LASTS: the client already replaces the streamed text with `reply` on done, so the correction
+       * lands on screen, and the turn written to the database - the one every later session reads
+       * as history - is the repaired one rather than the raw one.
+       *
+       * What remains exposed is the seconds between a bad delta appearing and done arriving. That is
+       * inherent to streaming, and it is a great deal smaller than never repairing at all.
+       */
+      const streamPersonWords = turns
+        .filter((t) => t.role === TurnRole.PERSON)
+        .map((t) => t.content ?? '')
+        .concat(message);
+      const reply = restoreTheirWords(streamedText, streamPersonWords);
+
+      const streamInvented = namesNobodySaid(reply, streamPersonWords);
+      if (streamInvented.length) {
+        this.logger.warn(
+          `Invented proper noun survived on check-in ${checkIn.id}: ${streamInvented.join(', ')}. `
+          + 'Nothing the person typed matches it, so it was not substituted.',
+        );
+      }
+      const streamTruncated = truncationsOfTheirWords(reply, streamPersonWords);
+      if (streamTruncated.length) {
+        this.logger.warn(
+          `Shortened one of their own words on check-in ${checkIn.id}: ${streamTruncated.join(', ')}.`,
+        );
+      }
+      const streamCausal = causalClaimNobodyMade(reply, streamPersonWords);
+      if (streamCausal.length) {
+        this.logger.warn(
+          `Causal claim nobody made on ${checkIn.id}: ${streamCausal.join(', ')}. ${ASK_INSTEAD_OF_CONCLUDING}`,
+        );
+      }
       // Flush whatever is left after the held-back tail is cleaned.
-      const tail = reply.slice(Math.min(emitted, reply.length));
+      /* The tail is what is still unsent of what was ALREADY STREAMED, so it indexes into the
+         streamed text. Slicing the repaired reply here would drop or duplicate characters whenever
+         a substitution changed the length. The repair reaches the screen through `done`. */
+      const tail = streamedText.slice(Math.min(emitted, streamedText.length));
       if (tail) yield { type: 'delta', text: tail };
       await this.prisma.conversationTurn.create({ data: { checkInId: checkIn.id, role: TurnRole.AI, content: reply } });
       if (checkIn.status === CheckInStatus.NOT_STARTED) {
