@@ -2,7 +2,8 @@ import { Injectable, Logger, NotFoundException, BadRequestException, ForbiddenEx
 import { PrismaService } from '../prisma/prisma.service';
 import { GroundsService } from '../grounds/grounds.service';
 import { ReportsService } from '../reports/reports.service';
-import { ObjectiveKind } from '@prisma/client';
+import { ObjectiveKind, ProposedChangeState } from '@prisma/client';
+import { textAfter } from './six-is-still-the-target';
 import { SeedInput, normalise, missingOwedTo, NOT_A_KIND } from './what-was-already-agreed';
 
 /**
@@ -329,6 +330,105 @@ export class GroundsByApiService {
     const matched = out.filter((o) => o.matched).length;
     this.logger.log(`Evidence: ${matched}/${out.length} matched an objective on a check-in.`);
     return { received: out };
+  }
+
+
+  /**
+   * SOMEBODY ASKS FOR A CHANGE. NOTHING MOVES YET.
+   *
+   * Any earlier proposal about the same objective is superseded rather than left open - two live
+   * proposals about one number would put an approver in front of a question with two answers, and
+   * whichever they answered, the other would still be sitting there.
+   */
+  async proposeChange(
+    organizationId: string,
+    dto: { objectiveExternalId: string; proposedText: string; reason?: string;
+           proposedByExternalId: string; approverExternalId: string },
+  ) {
+    if (!dto?.objectiveExternalId) throw new BadRequestException('objectiveExternalId is required.');
+    if (!dto?.proposedText?.trim()) throw new BadRequestException('proposedText is required - say what is being asked for.');
+    if (!dto?.approverExternalId) {
+      throw new BadRequestException(
+        'approverExternalId is required. A change with nobody to approve it is not awaiting approval, it is just a note.',
+      );
+    }
+
+    const objective = await this.prisma.personObjective.findFirst({
+      where: { sourceSystem: 'api', externalId: dto.objectiveExternalId, ground: { organizationId } },
+      select: { id: true, text: true },
+    });
+    if (!objective) throw new NotFoundException(`No seeded objective with externalId "${dto.objectiveExternalId}".`);
+
+    await this.prisma.proposedChange.updateMany({
+      where: { personObjectiveId: objective.id, state: ProposedChangeState.AWAITING_APPROVAL },
+      data: { state: ProposedChangeState.SUPERSEDED, decidedAt: new Date() },
+    });
+
+    const row = await this.prisma.proposedChange.create({
+      data: {
+        organizationId,
+        personObjectiveId: objective.id,
+        proposedText: dto.proposedText.trim(),
+        reason: dto.reason?.trim() || null,
+        proposedByExternalId: dto.proposedByExternalId,
+        approverExternalId: dto.approverExternalId,
+      },
+    });
+    this.logger.log(`Change proposed to objective ${dto.objectiveExternalId}, awaiting ${dto.approverExternalId}.`);
+    /* The current agreement is returned alongside, so a caller displaying this cannot show one
+       without the other. */
+    return { proposal: row, stillAgreed: objective.text };
+  }
+
+  /**
+   * THE ANSWER, WHICHEVER SYSTEM IT CAME FROM.
+   *
+   * `decidedIn` records where, because an approval nobody can locate afterwards is not much of an
+   * approval - and the two models are genuinely different: one is a person clicking here, the other
+   * is the customer telling us what their own process concluded.
+   */
+  async resolveChange(
+    organizationId: string,
+    id: string,
+    dto: { approve: boolean; decidedByExternalId: string; decidedIn?: string; note?: string },
+  ) {
+    if (typeof dto?.approve !== 'boolean') throw new BadRequestException('approve must be true or false.');
+    if (!dto?.decidedByExternalId) throw new BadRequestException('decidedByExternalId is required - who decided.');
+
+    const row = await this.prisma.proposedChange.findFirst({
+      where: { id, organizationId },
+      include: { personObjective: { select: { id: true, text: true } } },
+    });
+    if (!row) throw new NotFoundException('No such proposed change.');
+    if (row.state !== ProposedChangeState.AWAITING_APPROVAL) {
+      throw new BadRequestException(`That change is already ${row.state.toLowerCase().replace(/_/g, ' ')}.`);
+    }
+
+    const state = dto.approve ? ProposedChangeState.APPROVED : ProposedChangeState.REJECTED;
+    const updated = await this.prisma.proposedChange.update({
+      where: { id: row.id },
+      data: {
+        state,
+        decidedByExternalId: dto.decidedByExternalId,
+        decidedIn: dto.decidedIn?.trim() || 'lovedida',
+        decidedAt: new Date(),
+        decisionNote: dto.note?.trim() || null,
+      },
+    });
+
+    /*
+     * THE ONE MOMENT THE AGREEMENT MOVES. Rejection changes nothing about the objective, which is the
+     * point: it was never suspended, so there is nothing to restore.
+     */
+    if (dto.approve) {
+      await this.prisma.personObjective.update({
+        where: { id: row.personObjectiveId },
+        data: { text: row.proposedText, approvedByExternalId: dto.decidedByExternalId },
+      });
+    }
+
+    this.logger.log(`Proposed change ${row.id} ${state.toLowerCase()} by ${dto.decidedByExternalId}.`);
+    return { change: updated, agreedNow: textAfter(state, row.personObjective.text, row.proposedText) };
   }
 
 }

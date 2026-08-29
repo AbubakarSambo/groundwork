@@ -83,6 +83,12 @@ const CHECKED_AND_FINE = new Set([
   'modules/public-api/grounds-by-api.service.ts:externalId',
   'modules/public-api/grounds-by-api.service.ts:text',
   /*
+   * `state` - a fourth of the same collision. The check is `!item.state` on the evidence payload
+   * from a customer's system, a `Record<string, string | number>` that arrives from the wire. It
+   * matched `ProposedChange.state`, an enum column this file also reads, because they share a name.
+   */
+  'modules/public-api/grounds-by-api.service.ts:state',
+  /*
    * An argument that may legitimately be null, checked BEFORE deciding whether to write. A ground
    * participant with no identity-system id cannot be mirrored into the org layer, and the column
    * being non-nullable is exactly why the check is there - it is what stops the write, not

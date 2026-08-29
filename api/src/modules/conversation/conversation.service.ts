@@ -37,6 +37,7 @@ import { mayCoach } from './participation-timeline';
 import { restoreTheirWords, namesWorthReporting, truncationsOfTheirWords, causalClaimNobodyMade, ASK_INSTEAD_OF_CONCLUDING } from './the-record-holds-what-was-said';
 import { SentenceGate, screen, ASK_AGAIN } from './nothing-invented-reaches-them';
 import { evidenceBlock } from '../public-api/what-the-numbers-show';
+import { describePending, PENDING_RULE } from '../public-api/six-is-still-the-target';
 
 /**
  * How many things in this text could actually be checked by someone later.
@@ -1186,6 +1187,31 @@ export class ConversationService {
       });
     const evidenceLines = evidenceBlock(evidenceItems, new Date());
 
+    /*
+     * A CHANGE ASKED FOR AND NOT YET AGREED.
+     *
+     * The requirement in one line: while six-to-four is awaiting approval, the interview must know
+     * six is still the target AND that four has been asked for - both, without either quietly
+     * becoming the other. Without this block the proposal exists in the record and the conversation
+     * carries on as though nothing had been asked.
+     */
+    const pendingRows = personObjectives.length
+      ? await this.prisma.proposedChange.findMany({
+        where: {
+          personObjectiveId: { in: personObjectives.map((o: any) => o.id) },
+          state: 'AWAITING_APPROVAL',
+        },
+        orderBy: { createdAt: 'desc' },
+      }).catch(() => [] as any[])
+      : [];
+    const pendingLines = pendingRows.length
+      ? [`${PENDING_RULE}\n${pendingRows.map((c: any) => describePending(
+        personObjectives.find((o: any) => o.id === c.personObjectiveId)?.text ?? '(the agreement)',
+        c,
+        new Date(),
+      )).join('\n\n')}`]
+      : [];
+
     const intakeBlock = buildIntakeBlock({
       scenario: ground.scenario,
       // A cohort at the START is an onboarding period whose end decides
@@ -1509,7 +1535,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
     /* Immediately after the intake block, because it is about the same objectives and the two read
        as one thing: what was agreed, and what is happening against it. */
-    return [systemPrompt, VOCABULARY_RULE, intakeBlock, ...evidenceLines, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock].filter(Boolean).join('\n\n');
+    return [systemPrompt, VOCABULARY_RULE, intakeBlock, ...pendingLines, ...evidenceLines, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock].filter(Boolean).join('\n\n');
   }
 
   /** The flag, read where it is used and failing to OFF. Same shape as the others. */

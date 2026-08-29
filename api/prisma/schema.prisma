@@ -293,6 +293,7 @@ model Organization {
   emailPreferences    EmailPreference[]
   retentionPolicy     RetentionPolicy?
   departureRecords    DepartureRecord[]
+  proposedChanges     ProposedChange[]
   detectorResults     DetectorResult[]
   roleAssignments     RoleAssignment[]
   onboardingTracks    OnboardingTrack[]
@@ -2426,6 +2427,7 @@ model PersonObjective {
   /// the same work - which is the same failure, arriving as a feature.
   ///
   /// Never polled and never synced. A sync would make it a copy again.
+  proposedChanges     ProposedChange[]
   trackedUrl          String?         @map("tracked_url")
   lastSeenState       String?         @map("last_seen_state")
   lastSeenAt          DateTime?       @map("last_seen_at")
@@ -3126,4 +3128,60 @@ model DepartureRecord {
   @@unique([organizationId, personExternalId, departedAt])
   @@index([organizationId, turnsDeletedAt])
   @@map("departure_records")
+}
+
+/// PROPOSED, AND NOT YET TRUE.
+enum ProposedChangeState {
+  AWAITING_APPROVAL
+  APPROVED
+  REJECTED
+  /// Overtaken by a later proposal about the same objective. Not a refusal.
+  SUPERSEDED
+  /// Withdrawn by whoever proposed it.
+  CANCELLED
+}
+
+/// SIX IS STILL THE TARGET WHILE FOUR IS BEING ASKED FOR.
+///
+/// Without this the two cannot coexist. Somebody says in a check-in that six should be four, it sits
+/// in a transcript, and a later summary may treat four as the number - which is a proposal becoming
+/// an agreement because nobody modelled the difference.
+///
+/// Deliberately NOT a general workflow engine. It holds one proposed change to one objective, who
+/// must approve it, and what happened. Approval itself may be done here or in the customer's own
+/// system; this records the outcome either way.
+model ProposedChange {
+  id             String @id @default(uuid())
+  organizationId String @map("organization_id")
+
+  /// The agreement being asked about. The current value stays on it, untouched.
+  personObjectiveId String @map("person_objective_id")
+
+  /// What is being asked for, in the same words somebody would use.
+  proposedText String  @db.Text @map("proposed_text")
+  /// Why. The reason is the part an approver actually needs, and the part most often lost.
+  reason       String? @db.Text
+
+  /// Who asked, and who must answer. Both by their identity system's id.
+  proposedByExternalId String  @map("proposed_by_external_id")
+  approverExternalId   String  @map("approver_external_id")
+
+  state      ProposedChangeState @default(AWAITING_APPROVAL)
+  /// Set on approval or rejection. Who actually decided, which may differ from who was asked.
+  decidedByExternalId String?  @map("decided_by_external_id")
+  /// Where it was decided: 'groundwork' or the customer's system name. An approval nobody can
+  /// locate afterwards is not much of an approval.
+  decidedIn  String?             @map("decided_in")
+  decidedAt  DateTime?           @map("decided_at")
+  decisionNote String?           @db.Text @map("decision_note")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization    Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  personObjective PersonObjective @relation(fields: [personObjectiveId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, state])
+  @@index([personObjectiveId, state])
+  @@map("proposed_changes")
 }

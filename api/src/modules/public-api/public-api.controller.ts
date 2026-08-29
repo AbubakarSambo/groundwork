@@ -471,6 +471,35 @@ export class PublicApiController {
   }
 
   /**
+   * ASK FOR A CHANGE TO AN AGREEMENT. NOTHING MOVES UNTIL SOMEBODY SAYS YES.
+   */
+  @Post('proposed-changes')
+  @HttpCode(201)
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('grounds:write')
+  @ApiOperation({ summary: 'Propose a change to a seeded agreement. The current one stays in force.' })
+  async proposeChange(@Req() req: { machine: MachineCaller }, @Body() dto: any) {
+    return this.groundsByApi.proposeChange(req.machine.organizationId, dto);
+  }
+
+  /**
+   * THE ANSWER, from whichever system made it.
+   *
+   * A machine token may carry this one, unlike accepting a suggested conversation - because here the
+   * decision was made by a named person in the customer's own approval process, and this is them
+   * telling us what it was. `decidedByExternalId` is required for exactly that reason: an approval
+   * with nobody's name on it is not an approval.
+   */
+  @Post('proposed-changes/:id/resolve')
+  @HttpCode(200)
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('grounds:write')
+  @ApiOperation({ summary: 'Record that a proposed change was approved or rejected.' })
+  async resolveChange(@Req() req: { machine: MachineCaller }, @Param('id') id: string, @Body() dto: any) {
+    return this.groundsByApi.resolveChange(req.machine.organizationId, id, dto);
+  }
+
+  /**
    * SCIM 2.0. The path is theirs, not ours - an IdP is configured with a base URL and appends
    * /Users itself, so the shape has to be exactly what the standard says.
    */
