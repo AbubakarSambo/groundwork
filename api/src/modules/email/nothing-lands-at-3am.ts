@@ -73,7 +73,15 @@ export function mayNotSend(args: {
   const hour = localHour(args.now, args.timezone);
   const before = p?.quietBeforeHour ?? DEFAULT_QUIET_BEFORE;
   const after = p?.quietAfterHour ?? DEFAULT_QUIET_AFTER;
-  if (hour < before || hour >= after) return 'quiet_hours';
+  /*
+   * SYMMETRIC WITH THE MORNING SIDE. `hour < before` already reads "don't send before this
+   * hour, but the hour itself is fine" - `quietBeforeHour: 8` sends starting at 8am. The
+   * evening side used `>=`, so `quietAfterHour: 23` (the fixture's own "no restriction, the
+   * whole day is fine" value) refused every mail sent during the 23:00 hour - a real send
+   * outside anybody's stated quiet hours, and a test that only failed when CI happened to run
+   * in that hour. `>` matches "don't send after this hour ends."
+   */
+  if (hour < before || hour > after) return 'quiet_hours';
 
   return null;
 }

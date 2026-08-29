@@ -52,8 +52,14 @@ describe('one mail per round', () => {
   });
 
   it('and refuses in their quiet hours', async () => {
+    /*
+     * An inverted window (before > after) is quiet at every hour of the day, whatever hour this
+     * suite happens to run in - `quietBeforeHour: quietAfterHour` (e.g. 23/23) used to do that only
+     * by relying on an off-by-one at the boundary itself, which made this pass or fail depending on
+     * the wall clock rather than on the preference being tested.
+     */
     const { service, sent } = svc({ prefs: { id: 'p1', unsubscribeToken: 'tok', roundDigest: true,
-      nudges: true, unsubscribedAt: null, quietBeforeHour: 23, quietAfterHour: 23 } });
+      nudges: true, unsubscribedAt: null, quietBeforeHour: 12, quietAfterHour: 11 } });
     await service.onRoundCompleted(round as any);
     expect(sent).toEqual([]);
   });
