@@ -37,7 +37,20 @@ type UserWithOrg = {
   role: string;
   organizationId: string;
   isPlatformAdmin: boolean;
-  organization: { name: string };
+  /*
+   * The whole organisation, not just its name. The client reads `organization.email` to decide
+   * whether an admin still has to set up their org, so a builder that could only see the name
+   * could only ever answer "not set up".
+   */
+  organization: {
+    id: string;
+    name: string;
+    slug: string;
+    careFeeStatus: unknown;
+    email: string | null;
+    companyStage: unknown;
+    subscriptionPlan: unknown;
+  };
 };
 
 @Injectable()
@@ -790,6 +803,31 @@ export class AuthService {
         organizationId: user.organizationId,
         organizationName: user.organization.name,
         isPlatformAdmin: user.isPlatformAdmin,
+        /**
+         * THE ORGANISATION ITSELF, WHICH SIGNING IN DID NOT RETURN.
+         *
+         * `GET /auth/me` and `PATCH /auth/me` both return this object; every sign-in returned only
+         * `organizationId` and `organizationName`. The client decides whether an admin still has to
+         * set their organisation up by reading `user.organization?.email` - which is undefined on a
+         * freshly signed-in user no matter what the organisation actually holds.
+         *
+         * So every ADMIN was sent to `/org/setup` on every sign-in, forever, including ones who had
+         * filled it in months earlier. That page is deliberately bare, which is the first half of
+         * why the menu was reported missing: you never reached a page that has one.
+         *
+         * The same five doors share this builder, so all five were wrong in the same way and one
+         * fix covers them. The shape matches `/auth/me` deliberately - two endpoints returning a
+         * different idea of the same user is what let this hide.
+         */
+        organization: {
+          id: user.organization.id,
+          name: user.organization.name,
+          slug: user.organization.slug,
+          careFeeStatus: user.organization.careFeeStatus,
+          email: user.organization.email,
+          companyStage: user.organization.companyStage,
+          subscriptionPlan: user.organization.subscriptionPlan,
+        },
       },
     };
   }

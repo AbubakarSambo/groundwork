@@ -71,6 +71,8 @@ describe('one primary action per screen', () => {
   })
 
   it('and the one action people actually came for is still the navy one', () => {
-    expect(CODE).toMatch(/background: 'var\(--gw-navy\)', color: 'white'[\s\S]{0,400}What's going on\?/)
+    /* Renamed from "What's going on?", which was the primary action in three places and said
+       nothing about what pressing it does. The pin follows the button, not the old words. */
+    expect(CODE).toMatch(/background: 'var\(--gw-navy\)', color: 'white'[\s\S]{0,400}Start a check-in/)
   })
 })

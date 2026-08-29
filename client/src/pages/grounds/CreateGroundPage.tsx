@@ -720,7 +720,7 @@ export function CreateGroundPage() {
         {/* The rail already says Groundwork two inches to the left. This said it again, so
               the page's own name is here instead - which is the thing a second line of
               chrome could usefully carry. W13-11. */}
-              <span className="gw-logo">What's going on?</span>
+              <span className="gw-logo">Start a check-in</span>
         <button className="gw-back" onClick={back}>← Back</button>
       </div>
 

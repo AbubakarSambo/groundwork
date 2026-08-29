@@ -133,10 +133,18 @@ export function IntegrationsPage() {
   return (
     <div style={S.page}>
       <h1 style={S.h1}>Connect your systems</h1>
+      {/*
+        * WHAT THE PAGE IS, BEFORE WHAT THE PRODUCT CAN DO.
+        *
+        * The lede described Groundwork's capabilities and never said what this page is, so the
+        * question somebody actually arrives with went unanswered: "does connect your system tell me
+        * if I am setting up my API for my org's dashboard plug-in?" Yes - and it took reading four
+        * cards and a numbered list to find that out.
+        */}
       <p style={S.lede}>
-        Groundwork can read the objectives and people you already track somewhere else, and tell your
-        systems when something happens here. You do not have to move anything. This page is where you
-        set that up and check it is working.
+        <strong>Yes - this is the API page.</strong> Get a key here, point your systems at Groundwork,
+        and send events back out. Your people and objectives come in from the tools you already use;
+        check-in results go back to them.
       </p>
 
       {/* THE PLAIN-LANGUAGE HALF, FIRST. An operations lead should be able to read this and decide

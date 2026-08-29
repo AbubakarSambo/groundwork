@@ -40,6 +40,17 @@ export class UserResponseDto {
   @ApiProperty()
   isPlatformAdmin: boolean;
 
+  /** The same organisation object `/auth/me` returns. See buildAuthResponse for why. */
+  @ApiProperty()
+  organization: {
+    id: string;
+    name: string;
+    slug: string;
+    careFeeStatus: unknown;
+    email: string | null;
+    companyStage: unknown;
+    subscriptionPlan: unknown;
+  };
 }
 
 export class AuthResponseDto {

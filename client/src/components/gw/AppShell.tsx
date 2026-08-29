@@ -627,7 +627,7 @@ export function AppSidebar() {
             }}
           >
             <span style={{ fontSize: 16, lineHeight: 1 }}>+</span>
-            {!collapsed && <span>What's going on?</span>}
+            {!collapsed && <span>Start a check-in</span>}
           </button>
         </div>
 
@@ -1048,6 +1048,23 @@ export function AppSidebar() {
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {
+  /**
+   * THE ROUTER'S LOCATION, NOT THE BROWSER'S. This is why the menu was never there.
+   *
+   * Every other component in this file calls `useLocation()`. This one used a bare `location`,
+   * which resolves to the DOM global - so the pathname was right but nothing subscribed AppShell to
+   * route changes, and it did not re-render when the route changed.
+   *
+   * What that does in practice: you land on /auth, which is deliberately bare, so the shell renders
+   * with no rail. You sign in. React Router changes the route without a page load, AppShell is
+   * never told, and it keeps rendering the decision it made on /auth. The rail is missing on every
+   * page from then on, at every width, until a hard refresh - which is exactly what was reported
+   * three times and answered three times with the wrong thing.
+   *
+   * It survived because every previous test of this read the source rather than mounting it, and
+   * the source is correct. Only a mount could tell.
+   */
+  const location = useLocation()
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
   /**
    * Signed-out visitors do not get the signed-in navigation.
