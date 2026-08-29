@@ -1,4 +1,5 @@
 import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import { daysRemaining, deadlineOf, clockStartsAt } from './when-the-clock-starts';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
@@ -1091,10 +1092,9 @@ export class GroundsService {
     // Computed display fields - derived here so the client never needs to repeat the logic.
     const alignment = alignmentRead((ground as any).report);
 
-    const daysLeft =
-      ground.timelineDays != null
-        ? Math.max(0, Math.round((ground.createdAt.getTime() + ground.timelineDays * 86_400_000 - Date.now()) / 86_400_000))
-        : null;
+    /* From the start date when there is one - see when-the-clock-starts.ts. This read createdAt, so
+       a check-in set up three weeks before the person arrives spent three weeks counting down. */
+    const daysLeft = daysRemaining(ground as any, new Date());
 
     // brief: prefer the ground's own opening brief; fall back to the released report summary
     const brief = (ground as any).brief ?? (ground.report?.releasedAt ? (ground.report as any).sharedPicture ?? null : null);

@@ -21,6 +21,11 @@ export function PricingPage() {
 
   const { user } = useAuthStore()
   const [subscribingPlan, setSubscribingPlan] = useState<SubscriptionPlan | null>(null)
+  /*
+   * Nothing on this page said which plan you are on. `subscriptionPlan` is null for everybody who
+   * has never paid, which is what "on the free tier" means.
+   */
+  const onFree = !user?.organization?.subscriptionPlan
 
   /** Live prices (Admin -> System -> Pricing) - PLAN_PRICES is only the pre-load fallback. */
   const { data: livePricing } = useQuery({
@@ -102,6 +107,26 @@ export function PricingPage() {
             <div style={{ textAlign: 'right' }}>
               <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--gw-navy)' }}>$0</div>
               <div style={{ fontSize: 12, color: 'var(--gw-sub)' }}>forever</div>
+              {/*
+                * A CARD WITH NO STATE AND NO BUTTON READS AS UNAVAILABLE.
+                *
+                * Every paid plan below has something to press and this one had nothing at all, so
+                * the free tier looked like the one option that could not be chosen. It cannot be
+                * chosen, because it is where everybody already is - which is a completely different
+                * thing and was nowhere on the screen. Reported by somebody signing up: "start for
+                * free is not selectable, you can only select from the other options".
+                */}
+              <div
+                style={{
+                  marginTop: 12, fontSize: 12, fontWeight: 700,
+                  color: onFree ? 'var(--gw-green-t)' : 'var(--gw-sub)',
+                  background: onFree ? 'var(--gw-green-bg)' : 'transparent',
+                  border: `1px solid ${onFree ? 'var(--gw-green-b)' : 'var(--gw-border)'}`,
+                  borderRadius: 7, padding: '6px 12px', display: 'inline-block',
+                }}
+              >
+                {onFree ? 'Your current plan' : 'Included with every plan'}
+              </div>
             </div>
           </div>
         </div>

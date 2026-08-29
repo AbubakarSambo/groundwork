@@ -30,8 +30,6 @@ const SRC = join(__dirname, '..')
  * decision, not a suppression - anything not here is a new orphan and fails.
  */
 const KNOWN: Record<string, string> = {
-  'billingApi.portal':
-    'Stripe Customer Portal - manage card, invoices, cancellation. A real missing button, blocked on Stripe being wired. Would error today.',
   'billingApi.applyContributorCode':
     'Org-level "activate billing without payment". With Stripe unwired this is the only way to put a customer on a paid footing, and it has no surface at either end. Awaiting her call on who gets codes and where it is entered.',
   'authApi.memberSignin':

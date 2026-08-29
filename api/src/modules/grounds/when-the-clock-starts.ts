@@ -1,0 +1,45 @@
+/**
+ * WHEN A CHECK-IN'S CLOCK STARTS, IN ONE PLACE.
+ *
+ * `Ground.startsAt` has existed since the create flow first collected it, and it gates when the
+ * first check-in becomes available. It does not gate the timeline: the deadline, the days
+ * remaining, and how far through the run a session believes it is were all computed from
+ * `createdAt`, in three separate expressions.
+ *
+ * So a lead setting up a 90 day onboarding three weeks before the person starts had 90 days that
+ * began the moment they pressed create. Three of those weeks ran against an empty check-in, the
+ * sessions told everybody they were further through than they were, and the stall cron measured
+ * lateness against a date nobody had agreed to.
+ *
+ * FALLING BACK TO `createdAt` IS THE OLD BEHAVIOUR EXACTLY, so a check-in with no start date
+ * behaves as it always has and nothing needed backfilling.
+ */
+export interface HasAClock {
+  createdAt: Date;
+  startsAt?: Date | null;
+  timelineDays?: number | null;
+}
+
+export const clockStartsAt = (g: HasAClock): Date => g.startsAt ?? g.createdAt;
+
+export function deadlineOf(g: HasAClock): Date | null {
+  if (!g.timelineDays || g.timelineDays <= 0) return null;
+  return new Date(clockStartsAt(g).getTime() + g.timelineDays * 86_400_000);
+}
+
+/**
+ * Whole days left, never negative.
+ *
+ * FLOOR RATHER THAN ROUND, and it is the opposite call from the one in the suggestions lane. There,
+ * rounding up stops somebody being told "0 days" on the last day something can be acted on. Here
+ * the number is a promise about how long is left, and rounding a day and a half up to two days
+ * means the product says two on the morning something is due tomorrow.
+ */
+export function daysRemaining(g: HasAClock, now: Date): number | null {
+  const end = deadlineOf(g);
+  if (!end) return null;
+  return Math.max(0, Math.floor((end.getTime() - now.getTime()) / 86_400_000));
+}
+
+/** True before the clock has started at all - a check-in set up for a date still to come. */
+export const notStartedYet = (g: HasAClock, now: Date): boolean => clockStartsAt(g).getTime() > now.getTime();
