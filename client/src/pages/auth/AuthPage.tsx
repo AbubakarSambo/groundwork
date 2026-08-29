@@ -374,19 +374,6 @@ export function AuthPage() {
             <div style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 14, lineHeight: 2 }}>
               <TextAction onClick={() => { setError(''); setView('forgot') }}>Forgot your password?</TextAction>
               <br />
-              <TextAction onClick={() => { setError(''); setView('link') }}>No password? Get a sign-in link instead</TextAction>
-              <br />
-              {/*
-                THE MISSING DOOR. "Get a sign-in link" was the only way through to
-                the view that also registers people, and it reads as sign-in. Anybody
-                without an account had nothing on this screen addressed to them.
-              */}
-              {/*
-                ONE DOOR EACH. Both of these used to open the same view: "no password"
-                read as a workaround and "create an account" as registration, and they
-                were the same form. Now the first is a sign-in aid and the second goes
-                to a page that is only about creating an account.
-              */}
               <TextAction strong onClick={() => { setError(''); setView('create') }}>New here? Create an account</TextAction>
             </div>
           </>
@@ -458,6 +445,25 @@ export function AuthPage() {
                 {createAccount.isPending ? 'Sending…' : 'Create my account →'}
               </button>
             </form>
+
+            {/* Same door as sign-in: an existing Google account signs in, a new one creates
+                a workspace automatically - findOrCreateGoogleUser decides which, not this button. */}
+            {methods?.google && (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '16px 0 12px' }}>
+                  <span style={{ flex: 1, height: 1, background: 'var(--gw-border)' }} />
+                  <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}>or</span>
+                  <span style={{ flex: 1, height: 1, background: 'var(--gw-border)' }} />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { window.location.href = `${API_ORIGIN}/api/v1/auth/google` }}
+                  style={{ width: '100%', padding: '10px 0', borderRadius: 7, background: 'white', color: 'var(--gw-text)', fontSize: 13, fontWeight: 600, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
+                >
+                  Continue with Google
+                </button>
+              </>
+            )}
 
             <div style={{ textAlign: 'center', marginTop: 16 }}>
               <TextAction onClick={() => { setError(''); setView('password') }}>Already have an account? Sign in</TextAction>
