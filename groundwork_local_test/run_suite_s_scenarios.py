@@ -52,7 +52,7 @@ EMAIL = f"s.sweep+{STAMP}@example-test.invalid"
 # Eighteen, not seventeen: "Onboarding several people at once" was added and the
 # count in this comment was never updated either.
 CREATE_CARDS = [
-    "New hire", "New project", "New advisor or board member", "A new partner or co-founder",
+    "New hire", "New project", "New advisor or board member", "A new co-founder or partner",
     "A new manager taking over", "Contract or renewal", "Raise, promotion, or recognition",
     "Performance improvement plan", "Goals & planning", "A workplan and budget",
     "A regular read on live work", "A project is off track", "Board or leadership strategy",

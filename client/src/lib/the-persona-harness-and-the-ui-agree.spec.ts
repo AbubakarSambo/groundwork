@@ -97,6 +97,15 @@ const RENDERED = sources(join(ROOT, 'client/src'))
   /* JSX splits text across lines and indents it. The browser collapses that whitespace, so this
      does too - otherwise a label that happens to wrap reads as missing. */
   .replace(/\s+/g, ' ')
+  /*
+   * LOWERCASED, BECAUSE THAT IS HOW THE HARNESS MATCHES.
+   *
+   * The suites use `get_by_text(card, exact=False)`, which Playwright resolves case-insensitively.
+   * A case-sensitive check here reports four labels missing that the browser finds happily -
+   * "Contract or renewal" against "A contract or renewal" - and I nearly rewrote four working
+   * strings on the strength of it. A guard has to model how the thing it guards actually matches.
+   */
+  .toLowerCase()
 
 /**
  * The eighteen create-picker labels `suite_s` pins, read from the suite rather than copied here.
@@ -122,6 +131,32 @@ function pinnedList(file: string, name: string): string[] {
 const CREATE_CARDS = pinnedList('run_suite_s_scenarios.py', 'CREATE_CARDS')
 const ENTRY_CARDS = pinnedList('run_suite_l_layout.py', 'ENTRY_CARDS')
 
+/**
+ * EACH LIST IS CHECKED AGAINST THE PAGE THAT RENDERS IT, NOT AGAINST THE WHOLE APP.
+ *
+ * The first version searched all of client/src, which passes a label that exists somewhere and not
+ * where the suite looks. "Many people in the same role" is on the home page and the create page and
+ * NOT on /start - so `suite_l` failed in the browser while the guard reported agreement. A
+ * deliberately stale label sailed through the bite that was meant to catch it.
+ *
+ * Scoped by hand rather than inferred: which component serves which route is knowledge this file
+ * cannot derive, and guessing it would put the guard back to searching too widely.
+ */
+function renderedBy(...files: string[]): string {
+  return files
+    .map(f => readFileSync(join(ROOT, 'client/src', f), 'utf8'))
+    .map(src => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, ''))
+    .join('\n')
+    .replace(/&amp;/g, '&')
+    .replace(/\s+/g, ' ')
+    .toLowerCase()
+}
+
+/** /start - the entry picker. */
+const START_PAGE = renderedBy('pages/enter/EntryChatPage.tsx', 'lib/scenario-catalog.ts')
+/** /grounds/new - the signed-in picker. */
+const CREATE_PAGE = renderedBy('pages/grounds/CreateGroundPage.tsx', 'lib/scenario-catalog.ts')
+
 describe('the persona harness and the UI agree', () => {
   it('reads a real list, so a rename cannot empty this file out', () => {
     /* Without this, a refactor of _ui_strings.py that breaks the parse makes PINNED empty and every
@@ -131,7 +166,7 @@ describe('the persona harness and the UI agree', () => {
   })
 
   it('every string the harness clicks or waits for still exists in the product', () => {
-    const missing = PINNED.filter(s => !RENDERED.includes(s.replace(/\s+/g, ' ')))
+    const missing = PINNED.filter(s => !RENDERED.includes(s.replace(/\s+/g, ' ').toLowerCase()))
     expect(missing, [
       'The persona harness waits for text the product no longer renders.',
       'In the browser this is a 30-second Playwright timeout, and every suite downstream of',
@@ -146,7 +181,11 @@ describe('the persona harness and the UI agree', () => {
   it('and every card label the suites pin is still somewhere in the product', () => {
     expect(CREATE_CARDS.length).toBeGreaterThanOrEqual(15)
     expect(ENTRY_CARDS.length).toBeGreaterThanOrEqual(10)
-    const missing = [...CREATE_CARDS, ...ENTRY_CARDS].filter(c => !RENDERED.includes(c.replace(/\s+/g, ' ')))
+    const norm = (c: string) => c.replace(/\s+/g, ' ').toLowerCase()
+    const missing = [
+      ...CREATE_CARDS.filter(c => !CREATE_PAGE.includes(norm(c))).map(c => `create picker: ${c}`),
+      ...ENTRY_CARDS.filter(c => !START_PAGE.includes(norm(c))).map(c => `/start picker: ${c}`),
+    ]
     expect(missing, [
       'run_suite_s_scenarios.py pins create-picker labels the product no longer renders.',
       'This does not crash the suite - it reports the cards as missing, which reads as a broken',
