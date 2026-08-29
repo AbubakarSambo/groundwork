@@ -54,6 +54,8 @@ export function IntegrationsPage() {
   const { user } = useAuthStore()
   const qc = useQueryClient()
   const isAdmin = user?.role === 'ADMIN'
+  /* Null for anybody who has never paid, which is what "on the free plan" means. */
+  const plan = user?.organization?.subscriptionPlan ?? null
 
   const [credName, setCredName] = useState('')
   const [credScopes, setCredScopes] = useState<string[]>(['subjects:write', 'findings:read'])
@@ -153,6 +155,36 @@ export function IntegrationsPage() {
         and send events back out. Your people and objectives come in from the tools you already use;
         check-in results go back to them.
       </p>
+
+      {/*
+        * WHAT THE PLAN ALLOWS, BEFORE ANY OF THE WORK.
+        *
+        * On the free plan you can read this whole page, issue a key, copy the secret and register a
+        * webhook - and the first thing that fails is the token exchange, in your engineer's
+        * terminal, with a 403. Everything up to that point behaves as though it worked.
+        *
+        * The gate sits on one route (`oauth/token`, see the-api-is-a-paid-thing.ts) and nothing
+        * else, so this is precise about which half is affected: sending data IN needs a plan, being
+        * TOLD about things does not. Saying "the API needs a plan" flatly would be simpler and
+        * would be wrong about webhooks, which work either way.
+        *
+        * Nothing is disabled. Somebody evaluating this should be able to set it all up first and
+        * subscribe when they are ready - the key they issue today starts working the day they do.
+        */}
+      {!plan && (
+        <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-bd)', borderRadius: 10, padding: '14px 16px', marginBottom: 20 }}>
+          <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 5 }}>
+            Sending data in needs a paid plan
+          </div>
+          <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+            You can set all of this up now. Issue a key, register where to be told, and it will be
+            waiting - the key starts working the moment you subscribe. Until then the token request
+            answers 403, and nothing else on this page is affected: we can already tell your systems
+            when something happens here.{' '}
+            <a href="/billing" style={{ color: 'var(--gw-navy)', fontWeight: 600 }}>See the plans →</a>
+          </div>
+        </div>
+      )}
 
       {/* THE PLAIN-LANGUAGE HALF, FIRST. An operations lead should be able to read this and decide
           whether to involve their engineer, without reading a single JSON payload. */}

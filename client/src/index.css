@@ -47,6 +47,10 @@
   --gw-amber-bg: #FDF3E3;
   --gw-amber-t: #8A5C1A;
   --gw-amber-b: #E8A94A;
+  /* The pale amber border on a notice. Was written as #F0DFC0 in two pages, which is how a colour
+     stops being a decision and becomes a coincidence - the one-vocabulary guard catches exactly
+     that. Named here so the two cannot drift, and so a third notice has something to reach for. */
+  --gw-amber-bd: #F0DFC0;
   --gw-red-bg: #FCEBEB;
   --gw-red-t: #791F1F;
   --gw-red-b: #F09595;
