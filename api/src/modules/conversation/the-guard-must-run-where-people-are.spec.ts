@@ -148,7 +148,7 @@ describe('the end of the reply is not lost', () => {
      * test of the gate could have caught it: the gate was right, it was never given the last piece.
      */
     const stream = body('async *sendMessageStream(');
-    const withheld = stream.indexOf('const withheld = forHumans(raw).slice(emitted)');
+    const withheld = stream.indexOf('const withheld = forHumans(raw).slice(cleanEmitted)');
     const flush = stream.indexOf('gate.flush()');
     expect(withheld).toBeGreaterThan(-1);
     expect(withheld).toBeLessThan(flush);
@@ -182,5 +182,24 @@ describe('a seeded agreement is described as agreed, not as the lead\'s opinion'
     const block = LIB.slice(from, LIB.indexOf('`,', LIB.indexOf('seenBySubject', from)) + 2);
     expect(block).toMatch(/seenBySubject/);
     expect(block).toMatch(/PRESS ON THE GAP/);
+  });
+});
+
+describe('words do not fuse across a delta boundary', () => {
+  it('the stream cleans the whole and takes what is new, never a chunk on its own', () => {
+    /*
+     * `forHumans` ends with `.trim()` - right for a finished reply, wrong for a fragment. A chunk
+     * ending "you're " lost its trailing space, the next began "focused", and a real check-in showed
+     * somebody "you'refocused". Invisible in a terminal; obvious in the stored turn.
+     */
+    const stream = body('async *sendMessageStream(');
+    expect(stream).toMatch(/const cleanedSoFar = forHumans\(raw\.slice\(0, safeUpTo\)\)/);
+    expect(stream).not.toMatch(/gate\.push\(forHumans\(chunk\)\)/);
+  });
+
+  it('and the withheld tail is measured in cleaned characters, not raw ones', () => {
+    /* Cleaning changes lengths, so a raw offset into cleaned text is off by however much was
+       stripped - which would drop or repeat the end of every reply. */
+    expect(body('async *sendMessageStream(')).toMatch(/forHumans\(raw\)\.slice\(cleanEmitted\)/);
   });
 });

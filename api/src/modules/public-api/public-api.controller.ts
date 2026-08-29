@@ -1,5 +1,5 @@
 import {
-  Controller, Post, Get, Patch, Delete, Body, Param, Query, Headers, Req,
+  Controller, Post, Get, Put, Patch, Delete, Body, Param, Query, Headers, Req,
   UseGuards, UnauthorizedException, BadRequestException, HttpCode, ForbiddenException } from '@nestjs/common';
 import { ApiOperation, ApiTags, ApiExcludeEndpoint } from '@nestjs/swagger';
 import { JwtService } from '@nestjs/jwt';
@@ -452,6 +452,22 @@ export class PublicApiController {
     @Body() dto: { objectives: any[] },
   ) {
     return this.groundsByApi.seedObjectives(req.machine.organizationId, groundId, dto?.objectives);
+  }
+
+  /**
+   * LIVE EVIDENCE. What the customer's own systems say is happening right now.
+   *
+   * The difference between a check-in and a form: without this the interview asks whether testing
+   * has started, and with it, what makes the three untested scenarios different from the fourteen
+   * that passed.
+   */
+  @Put('evidence')
+  @HttpCode(200)
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('graph:write')
+  @ApiOperation({ summary: 'Push current numbers against seeded objectives. Counts and short labels only.' })
+  async pushEvidence(@Req() req: { machine: MachineCaller }, @Body() dto: { evidence: any[] }) {
+    return this.groundsByApi.pushEvidence(req.machine.organizationId, dto?.evidence);
   }
 
   /**

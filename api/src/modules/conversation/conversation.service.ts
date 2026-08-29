@@ -36,6 +36,7 @@ import { readOutcome, isGenericStep } from './coaching-step';
 import { mayCoach } from './participation-timeline';
 import { restoreTheirWords, namesWorthReporting, truncationsOfTheirWords, causalClaimNobodyMade, ASK_INSTEAD_OF_CONCLUDING } from './the-record-holds-what-was-said';
 import { SentenceGate, screen, ASK_AGAIN } from './nothing-invented-reaches-them';
+import { evidenceBlock } from '../public-api/what-the-numbers-show';
 
 /**
  * How many things in this text could actually be checked by someone later.
@@ -855,15 +856,30 @@ export class ConversationService {
         .concat(message);
       const gate = new SentenceGate(streamPersonWords);
       let emitted = 0;
+      /** How much of the CLEANED text has gone. Cleaning changes lengths, so raw offsets do not fit. */
+      let cleanEmitted = 0;
       let shown = '';
 
       for await (const delta of this.anthropic.respondStream(fullSystem, history)) {
         raw += delta;
         const safeUpTo = Math.max(0, raw.length - SESSION_CLOSE_MARKER.length);
         if (safeUpTo > emitted) {
-          const chunk = raw.slice(emitted, safeUpTo);
+          /*
+           * CLEAN THE WHOLE, THEN TAKE WHAT IS NEW - never clean a chunk on its own.
+           *
+           * `forHumans` ends with `.trim()`, which is right for a finished reply and wrong for a
+           * fragment: a chunk ending "you're " lost its trailing space, the next began "focused",
+           * and the person read "you'refocused". Two of those reached a real check-in before anybody
+           * looked at a stored turn rather than at a terminal.
+           *
+           * Cleaning the accumulated text and slicing off the new suffix keeps the spaces, because
+           * they are interior to the string being trimmed rather than at its edge.
+           */
+          const cleanedSoFar = forHumans(raw.slice(0, safeUpTo));
+          const fresh = cleanedSoFar.slice(cleanEmitted);
+          cleanEmitted = cleanedSoFar.length;
           emitted = safeUpTo;
-          const clean = gate.push(forHumans(chunk));
+          const clean = gate.push(fresh);
           if (clean) { shown += clean; yield { type: 'delta', text: clean }; }
         }
       }
@@ -878,7 +894,7 @@ export class ConversationService {
        * Found by reading the deltas of one real check-in. It would never have shown up in a test of
        * the gate, because the gate was right: it was never given the last piece.
        */
-      const withheld = forHumans(raw).slice(emitted);
+      const withheld = forHumans(raw).slice(cleanEmitted);
       const fromWithheld = withheld ? gate.push(withheld) : '';
       if (fromWithheld) { shown += fromWithheld; yield { type: 'delta', text: fromWithheld }; }
 
@@ -1146,6 +1162,29 @@ export class ConversationService {
         if (prof) styleBlock = styleGuidance(prof, prof.groundsSeen);
       }
     } catch { /* never block a check-in over a nicety */ }
+
+    /*
+     * WHAT THEIR OWN SYSTEMS SAY IS HAPPENING, alongside what was agreed.
+     *
+     * Read from every objective this person holds, not only the first: somebody carrying a target and
+     * a commitment has two things with numbers against them, and showing one is how a check-in ends
+     * up asking about the wrong half of somebody's quarter.
+     */
+    const evidenceItems = personObjectives
+      .filter((o: any) => o.lastSeenState && o.lastSeenAt)
+      .map((o: any) => {
+        let state: Record<string, string | number> = {};
+        try {
+          const parsed = JSON.parse(o.lastSeenState);
+          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) state = parsed;
+        } catch {
+          /* `lastSeenState` predates this and held a plain string. An unparseable value is that
+             older shape, and showing it raw is better than dropping the only number anybody has. */
+          state = { state: String(o.lastSeenState).slice(0, 40) };
+        }
+        return { text: o.text as string, evidence: { objectiveExternalId: o.externalId ?? o.id, observedAt: o.lastSeenAt as Date, state } };
+      });
+    const evidenceLines = evidenceBlock(evidenceItems, new Date());
 
     const intakeBlock = buildIntakeBlock({
       scenario: ground.scenario,
@@ -1468,7 +1507,9 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      */
     const coachingBlock = await this.coachingBlock(checkIn.participantId, checkIn.sessionNumber);
 
-    return [systemPrompt, VOCABULARY_RULE, intakeBlock, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock].filter(Boolean).join('\n\n');
+    /* Immediately after the intake block, because it is about the same objectives and the two read
+       as one thing: what was agreed, and what is happening against it. */
+    return [systemPrompt, VOCABULARY_RULE, intakeBlock, ...evidenceLines, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock].filter(Boolean).join('\n\n');
   }
 
   /** The flag, read where it is used and failing to OFF. Same shape as the others. */

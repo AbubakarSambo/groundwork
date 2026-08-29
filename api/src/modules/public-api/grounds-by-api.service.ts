@@ -271,4 +271,64 @@ export class GroundsByApiService {
     return participant;
   }
 
+
+  /**
+   * PUSH WHAT THE CUSTOMER'S SYSTEMS SAY IS HAPPENING NOW.
+   *
+   * Stored on the objective it is about, in `lastSeenState` and `lastSeenAt` - columns that already
+   * existed for exactly this and were never read by anything. No new table: evidence with no
+   * objective to be about is a number nobody can act on, and keeping the two together means the
+   * check-in cannot show one without the other.
+   */
+  async pushEvidence(
+    organizationId: string,
+    items: { objectiveExternalId: string; observedAt?: string; state: Record<string, string | number> }[],
+  ) {
+    if (!items?.length) throw new BadRequestException('Send at least one piece of evidence.');
+    const out: { objectiveExternalId: string; matched: boolean }[] = [];
+
+    for (const item of items) {
+      if (!item.objectiveExternalId) throw new BadRequestException('Each item needs an objectiveExternalId.');
+      if (!item.state || typeof item.state !== 'object' || Array.isArray(item.state)) {
+        throw new BadRequestException('state must be an object of counts and short labels.');
+      }
+      for (const [k, v] of Object.entries(item.state)) {
+        if (typeof v === 'string' && v.length > 40) {
+          /*
+           * Short labels only. A long string here is somebody putting a note, a status update or a
+           * quote into a field that goes straight into an interview prompt - which is the one way
+           * this becomes a channel for the customer to tell the engine what to think.
+           */
+          throw new BadRequestException(`state.${k} is too long. Evidence is counts and short labels, not prose.`);
+        }
+      }
+
+      const objective = await this.prisma.personObjective.findFirst({
+        where: { sourceSystem: 'api', externalId: item.objectiveExternalId, ground: { organizationId } },
+        select: { id: true },
+      });
+      if (!objective) {
+        /* Reported rather than thrown: a nightly push covering the whole org will name objectives
+           that are not on any check-in, and failing the batch for that would be useless. */
+        out.push({ objectiveExternalId: item.objectiveExternalId, matched: false });
+        continue;
+      }
+
+      await this.prisma.personObjective.update({
+        where: { id: objective.id },
+        data: {
+          lastSeenState: JSON.stringify(item.state),
+          /* THEIR observation time, not ours. A batch sent on Monday about Friday's numbers is three
+             days old, and the freshness rule has to reflect that or it lies in the safe direction. */
+          lastSeenAt: item.observedAt ? new Date(item.observedAt) : new Date(),
+        },
+      });
+      out.push({ objectiveExternalId: item.objectiveExternalId, matched: true });
+    }
+
+    const matched = out.filter((o) => o.matched).length;
+    this.logger.log(`Evidence: ${matched}/${out.length} matched an objective on a check-in.`);
+    return { received: out };
+  }
+
 }
