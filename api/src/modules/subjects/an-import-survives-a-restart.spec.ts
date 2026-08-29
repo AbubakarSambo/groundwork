@@ -1,4 +1,4 @@
-import { BulkImportService, MAX_BATCH, MAX_BATCH_BYTES } from './bulk-import.service';
+import { BulkImportService, MAX_BATCH, MAX_BATCH_BYTES, HEARTBEAT_STALE_MS } from './bulk-import.service';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
@@ -27,6 +27,8 @@ function harness(opts: { jobs?: any[]; failAt?: number[] } = {}) {
       }),
       findUnique: jest.fn(async ({ where }: any) => jobs.find((j) => j.id === where.id) ?? null),
       findMany: jest.fn(async ({ where }: any) => {
+        /* After the claim, jobs are read back by the ids the claim returned. */
+        if (where?.id?.in) return jobs.filter((j) => where.id.in.includes(j.id));
         const states = where?.state?.in;
         return jobs.filter((j) => (!states || states.includes(j.state)) && (!where?.payload || j.payload != null));
       }),
@@ -35,6 +37,20 @@ function harness(opts: { jobs?: any[]; failAt?: number[] } = {}) {
     importJobFailure: { createMany: jest.fn(async () => ({ count: 0 })) },
     detectionQuietPeriod: { create: jest.fn(async () => ({})), findMany: jest.fn(async () => []) },
   };
+  /*
+   * THE CLAIM, MODELLED RATHER THAN STUBBED AWAY. `resumeAbandoned` now takes jobs with one
+   * conditional UPDATE and only reads back what it took, so a fake that returned every job would
+   * be testing a method that no longer exists. The conditions here are the ones in the SQL: still
+   * queued or running, a payload to read, and a heartbeat that is absent or stale.
+   */
+  prisma.$queryRaw = jest.fn(async () => {
+    const stale = Date.now() - HEARTBEAT_STALE_MS;
+    return jobs
+      .filter((j) => ['QUEUED', 'RUNNING'].includes(j.state) && j.payload != null)
+      .filter((j) => !j.heartbeatAt || new Date(j.heartbeatAt).getTime() < stale)
+      .map((j) => { j.heartbeatAt = new Date(); j.state = 'RUNNING'; return { id: j.id }; });
+  });
+
   const subjects: any = {
     push: jest.fn(async (_o: string, row: any) => {
       seen += 1;

@@ -25,6 +25,16 @@ export { MAX_BATCH, MAX_BATCH_BYTES } from './how-heavy-a-batch-may-be';
  * The third, and the list is the part that matters. "3,999 succeeded" with no way to find the other
  * one is worse than a plain error, because it looks like it was handled.
  */
+/**
+ * How long without a heartbeat before a job counts as abandoned.
+ *
+ * The heartbeat is written every fifty rows, so the gap between two of them is however long fifty
+ * upserts take against the customer's data. Generous on purpose: taking a job that is merely slow
+ * puts a second writer on it, which is the failure this exists to prevent, while waiting a few
+ * extra minutes to resume a genuinely dead one costs nothing anybody notices.
+ */
+export const HEARTBEAT_STALE_MS = 10 * 60_000;
+
 @Injectable()
 export class BulkImportService {
   private readonly logger = new Logger(BulkImportService.name);
@@ -178,16 +188,51 @@ export class BulkImportService {
    * twice with the same values. It is deliberately NOT a lock, because a lock would need releasing
    * by the process that died.
    */
-  async resumeAbandoned() {
+  /**
+   * A JOB SOMEBODY ELSE IS STILL RUNNING IS NOT AN ABANDONED JOB.
+   *
+   * `heartbeatAt` is written on every batch and its own comment says what it is for - "so a job
+   * whose process died can be told from a slow one". Nothing read it. This selected every job in
+   * QUEUED or RUNNING and started it, so an instance booting while another was half way through a
+   * ten thousand row import took that import over, and both ran it: two writers on one cursor, two
+   * sets of counters, and the same rows pushed twice. Idempotent upserts are what stopped this
+   * being visible as corruption, which is also why it could sit here unnoticed.
+   *
+   * THE CLAIM AND THE LIVENESS CHECK ARE THE SAME STATEMENT. A job is taken only if its heartbeat
+   * is stale or absent, and taking it stamps a fresh heartbeat, so a second instance running this
+   * at the same moment finds nothing to take. `FOR UPDATE SKIP LOCKED` settles the tie when two
+   * instances boot together, which is the normal case in a rolling deploy rather than a rare one.
+   */
+  async resumeAbandoned(now = new Date()) {
+    /*
+     * THE DATABASE'S CLOCK. `heartbeat_at` is `timestamp without time zone` holding UTC, because
+     * every write to it goes through Prisma - but a JS Date passed as a raw parameter is converted
+     * using the session timezone instead, three hours out on this machine. The first version of
+     * this compared a UTC heartbeat against a local-clock threshold and so declared a job that had
+     * been beating for one second to be ten minutes dead, and took it over while another instance
+     * was writing to it. Driving it is what showed that; the code reads correctly.
+     */
+    const claimed = await this.prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
+      UPDATE import_jobs
+         SET heartbeat_at = (now() AT TIME ZONE 'UTC'), state = 'RUNNING'
+       WHERE id IN (
+         SELECT id FROM import_jobs
+          WHERE state IN ('QUEUED', 'RUNNING')
+            AND payload IS NOT NULL
+            AND (heartbeat_at IS NULL
+                 OR heartbeat_at < (now() AT TIME ZONE 'UTC') - ${`${HEARTBEAT_STALE_MS} milliseconds`}::interval)
+          FOR UPDATE SKIP LOCKED
+       )
+      RETURNING id
+    `);
+    if (!claimed.length) return { resumed: 0 };
+
     const stranded = await this.prisma.importJob.findMany({
-      where: {
-        state: { in: [ImportJobState.QUEUED, ImportJobState.RUNNING] },
-        payload: { not: Prisma.DbNull },
-      },
+      where: { id: { in: claimed.map((c) => c.id) } },
       select: { id: true, organizationId: true, sourceSystem: true, payload: true, cursor: true, total: true },
     });
-    if (!stranded.length) return { resumed: 0 };
 
+    let resumed = 0;
     for (const j of stranded) {
       const rows = (j.payload ?? []) as unknown as SubjectPush[];
       if (!Array.isArray(rows) || !rows.length) {
@@ -198,6 +243,7 @@ export class BulkImportService {
         });
         continue;
       }
+      resumed++;
       this.logger.log(`Resuming import ${j.id} at row ${j.cursor} of ${j.total}.`);
       void this.run(j.id, j.organizationId, j.sourceSystem, rows, j.cursor).catch(async (err) => {
         this.logger.error(`Resumed import ${j.id} died again: ${err.message}`);
@@ -207,7 +253,8 @@ export class BulkImportService {
         }).catch(() => undefined);
       });
     }
-    return { resumed: stranded.length };
+    /* Counts what was actually started, not what was claimed - an unreadable payload is neither. */
+    return { resumed };
   }
 
   /**

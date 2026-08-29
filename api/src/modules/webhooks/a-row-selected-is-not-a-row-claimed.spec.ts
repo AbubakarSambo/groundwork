@@ -63,6 +63,29 @@ describe('a row selected is not a row claimed', () => {
     expect(prisma.webhookDelivery.findMany).not.toHaveBeenCalled();
   });
 
+  it('compares against the database clock, never a Date bound as a parameter', async () => {
+    /*
+     * MEASURED, NOT REASONED ABOUT. `next_attempt_at` is `timestamp without time zone`; Prisma
+     * writes UTC into it and a JS Date passed as a raw parameter is converted using the session
+     * timezone. Three hours apart on this machine:
+     *
+     *   js Date (UTC)            : 2026-08-29T18:09:23.686Z
+     *   same Date as a parameter : 2026-08-29T21:09:23.686
+     *   now() AT TIME ZONE 'UTC' : 2026-08-29T18:09:23.706
+     *
+     * The first version of the claim used the parameter, so it took every delivery scheduled up to
+     * three hours ahead and sent it early. Driven against Postgres: a delivery due in thirty
+     * minutes was sent immediately. It would have passed anywhere the server runs in UTC.
+     */
+    const { service, prisma } = svc([]);
+    await service.deliverDue(new Date());
+
+    const sql = JSON.stringify(prisma.$queryRaw.mock.calls[0][0]);
+    expect(sql).toContain("now() AT TIME ZONE 'UTC'");
+    /* The lease is an interval on that clock, not a timestamp this process worked out. */
+    expect(sql).toContain('interval');
+  });
+
   it('leases for longer than one attempt can take, so a live sweep never loses its rows', () => {
     /*
      * REQUEST_TIMEOUT_MS is the ceiling on a single send. A lease shorter than it would expire

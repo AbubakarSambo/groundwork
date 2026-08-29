@@ -161,15 +161,31 @@ export class WebhooksService {
    * of a mid-sweep death is a restart rather than the message.
    */
   async deliverDue(now = new Date(), limit = 50) {
-    const until = new Date(now.getTime() + LEASE_MS);
+    /*
+     * THE DATABASE'S CLOCK, NOT THIS PROCESS'S, AND NOT A JAVASCRIPT DATE AS A PARAMETER.
+     *
+     * `next_attempt_at` is `timestamp without time zone`, and the two writers disagree about what
+     * that means: Prisma writes UTC, while a JS Date passed as a raw parameter is converted using
+     * the session timezone. On a machine three hours off UTC the first version of this claimed
+     * every delivery scheduled up to three hours into the future and sent it early - measured, not
+     * reasoned about:
+     *
+     *   js Date (UTC)      : 2026-08-29T18:09:23.686Z
+     *   same Date as param : 2026-08-29T21:09:23.686
+     *   now() AT TIME ZONE 'UTC' : 2026-08-29T18:09:23.706
+     *
+     * It would have passed everywhere the servers run in UTC and failed on any deployment that does
+     * not. Using the database's clock also fixes a second thing that was wrong for a queue several
+     * instances share: a lease should not depend on whose pod's clock is fast.
+     */
     const claimed = await this.prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
       UPDATE webhook_deliveries
-         SET next_attempt_at = ${until}
+         SET next_attempt_at = (now() AT TIME ZONE 'UTC') + ${`${LEASE_MS} milliseconds`}::interval
        WHERE id IN (
          SELECT id FROM webhook_deliveries
           WHERE status IN ('PENDING', 'FAILED')
             AND next_attempt_at IS NOT NULL
-            AND next_attempt_at <= ${now}
+            AND next_attempt_at <= (now() AT TIME ZONE 'UTC')
           ORDER BY next_attempt_at ASC
           LIMIT ${limit}
           FOR UPDATE SKIP LOCKED
