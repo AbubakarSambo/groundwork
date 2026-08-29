@@ -37,6 +37,21 @@ describe('the example on the page has to run', () => {
     expect(push).toContain('"title"')
   })
 
+  it('shows the bulk shape, which is not the single one in an array', () => {
+    /*
+     * `sourceSystem` moves to the batch. Copying the single body into an array and leaving it on
+     * each row answers "sourceSystem is required on the batch" - measured, by doing exactly that.
+     * A real integration sends batches, and the page documented only the single push.
+     */
+    const bulk = PAGE.slice(PAGE.indexOf('/api/org/v1/subjects/bulk'))
+    expect(bulk).toContain('"sourceSystem":"your-okr-tool"')
+    expect(bulk).toContain('"subjects":[')
+    /* And the rows inside carry no sourceSystem of their own. */
+    const rows = bulk.slice(bulk.indexOf('"subjects":['), bulk.indexOf(']}'))
+    expect(rows).not.toContain('sourceSystem')
+    expect(rows).toContain('"type":"objective"')
+  })
+
   it('never prints a secret it cannot know', () => {
     /*
      * The client id can be the real one - it is on the credentials list. The secret is shown once
