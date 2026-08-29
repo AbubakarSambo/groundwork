@@ -287,6 +287,8 @@ model Organization {
   knowledgeRetrievals KnowledgeRetrieval[]
   detectorResults     DetectorResult[]
   roleAssignments     RoleAssignment[]
+  onboardingTracks    OnboardingTrack[]
+  onboardingStatuses  OnboardingStatus[]
   contributions       Contribution[]
   recommendations     Recommendation[]
   objectiveDrafts     ObjectiveDraft[]
@@ -2855,4 +2857,81 @@ model RoleAssignment {
   @@index([organizationId, personExternalId])
   @@index([organizationId, roleName, endedAt])
   @@map("role_assignments")
+}
+
+/// WHAT SOMEBODY NEW TO A ROLE HAS TO GET THROUGH, PER ROLE.
+///
+/// Keyed by role NAME rather than a role id, for the same reason `RoleAssignment` is - there is no
+/// role table, and a foreign key to a thing that does not exist is worse than a string that works.
+model OnboardingTrack {
+  id             String @id @default(uuid())
+  organizationId String @map("organization_id")
+  roleName       String @map("role_name")
+  name           String
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  gates        OnboardingGate[]
+
+  /// One track per role. Two would mean somebody joining had two answers about what they owe.
+  @@unique([organizationId, roleName])
+  @@map("onboarding_tracks")
+}
+
+/// One thing to get through. Configurable per role - account set up, brief read, first check-in.
+model OnboardingGate {
+  id          String  @id @default(uuid())
+  trackId     String  @map("track_id")
+  /// Stable across renames, because a status points at a gate and a rename must not orphan it.
+  key         String
+  name        String
+  description String? @db.Text
+  ordinal     Int
+  /// An optional gate is a suggestion. Only required ones hold the window open.
+  required    Boolean @default(true)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  track    OnboardingTrack    @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  statuses OnboardingStatus[]
+
+  @@unique([trackId, key])
+  @@index([trackId, ordinal])
+  @@map("onboarding_gates")
+}
+
+enum GateState {
+  PENDING
+  DONE
+  /// Deliberately let through - somebody who has done this before elsewhere. Counts as closed for
+  /// the window, and is kept distinct from DONE so "did they actually do it" stays answerable.
+  WAIVED
+}
+
+/// WHERE ONE PERSON HAS GOT TO ON ONE GATE.
+///
+/// The spec keys this to `participantId`. Participants are ground-scoped and this is not - somebody
+/// onboarding into a role has one set of gates whatever grounds they are in - so it keys on the
+/// person's external id like every other org-scoped record here.
+model OnboardingStatus {
+  id               String    @id @default(uuid())
+  organizationId   String    @map("organization_id")
+  personExternalId String    @map("person_external_id")
+  gateId           String    @map("gate_id")
+  state            GateState @default(PENDING)
+  completedAt      DateTime? @map("completed_at")
+  /// What was done, as a pointer rather than a copy - a document id, a check-in id. Never content.
+  evidenceRef      String?   @map("evidence_ref")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  gate         OnboardingGate @relation(fields: [gateId], references: [id], onDelete: Cascade)
+
+  @@unique([personExternalId, gateId])
+  @@index([organizationId, personExternalId])
+  @@map("onboarding_statuses")
 }

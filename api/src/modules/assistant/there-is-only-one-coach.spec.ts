@@ -115,3 +115,34 @@ describe('the waiting lane sits above the two lanes that would swallow it', () =
     expect(route('what am I waiting on').lane).toBe('what_is_stuck');
   });
 });
+
+describe('the onboarding lane answers what the role is, not only what is left', () => {
+  const UP_TO = SRC.slice(SRC.indexOf('private async whereAmIUpTo('), SRC.indexOf('private async whatIsStuck('));
+
+  it('names the role as its own sentence rather than only in a list header', () => {
+    /*
+     * Driving it: asked "what is my role", the draft's header "Still to do for Engineer:" came back
+     * from the composer as "Your next steps:" - correct English that deleted the answer to the
+     * question. `safeToUse` refuses a proper noun the model ADDS; it says nothing about one it
+     * drops, and a header is the easiest place to lose one.
+     */
+    expect(UP_TO).toMatch(/You are down as \$\{status\.roleName\}/);
+  });
+
+  it('and says what is LEFT rather than how far through they are', () => {
+    /* There is no version of "you are 40% onboarded" that helps somebody who wants to know which
+       thing to do next, and a progress bar about a person is a score with a friendlier shape. */
+    for (const word of ['percent', 'progress', 'complete', '/ total', 'score']) {
+      expect(UP_TO.toLowerCase()).not.toContain(word);
+    }
+  });
+
+  it('and routes a question about the role away from the coach and the handoffs', () => {
+    expect(route('what is left').lane).toBe('where_am_i_up_to');
+    expect(route('where am I up to').lane).toBe('where_am_i_up_to');
+    expect(route('what is my role').lane).toBe('where_am_i_up_to');
+    /* And the neighbours keep theirs. */
+    expect(route('what am I waiting on').lane).toBe('what_is_stuck');
+    expect(route("I'm stuck").lane).toBe('how_am_i_doing');
+  });
+});

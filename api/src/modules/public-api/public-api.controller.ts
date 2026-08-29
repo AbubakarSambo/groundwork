@@ -17,6 +17,7 @@ import { EmbedService } from '../embed/embed.service';
 import { EmbedSessionGuard, PanelCaller } from '../embed/embed-session.guard';
 import { AssistantService } from '../assistant/assistant.service';
 import { HandoverService } from '../grounds/handover.service';
+import { OnboardingService } from '../grounds/onboarding.service';
 import { resolveReferences } from '../people/an-unresolved-reference-is-a-fact';
 
 /** Short, because a leaked one should stop working before anybody has finished reading the log. */
@@ -59,6 +60,7 @@ export class PublicApiController {
     private readonly embed: EmbedService,
     private readonly assistant: AssistantService,
     private readonly handover: HandoverService,
+    private readonly onboarding: OnboardingService,
   ) {}
 
   /**
@@ -270,6 +272,46 @@ export class PublicApiController {
   @ApiOperation({ summary: 'The brief as it was built. Never regenerated - it describes a moment.' })
   async getHandover(@Req() req: { machine: MachineCaller }, @Param('roleAssignmentId') id: string) {
     return this.handover.get(req.machine.organizationId, id);
+  }
+
+  @Post('onboarding/tracks')
+  @HttpCode(200)
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('graph:write')
+  @ApiOperation({ summary: 'Define what somebody new to a role has to get through. Replaces the track.' })
+  async defineTrack(
+    @Req() req: { machine: MachineCaller },
+    @Body() dto: { roleName: string; name: string; gates: { key: string; name: string; description?: string; required?: boolean }[] },
+  ) {
+    return this.onboarding.defineTrack(req.machine.organizationId, dto?.roleName, dto?.name, dto?.gates);
+  }
+
+  @Get('onboarding/:personExternalId')
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('findings:read')
+  @ApiOperation({ summary: 'Where somebody has got to, and what is left.' })
+  async onboardingStatus(@Req() req: { machine: MachineCaller }, @Param('personExternalId') id: string) {
+    return this.onboarding.statusFor(req.machine.organizationId, id);
+  }
+
+  @Post('onboarding/:personExternalId/gates/:gateKey')
+  @HttpCode(200)
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('graph:write')
+  @ApiOperation({ summary: 'Mark a gate done, waived, or back to pending.' })
+  async markGate(
+    @Req() req: { machine: MachineCaller },
+    @Param('personExternalId') personExternalId: string,
+    @Param('gateKey') gateKey: string,
+    @Body() dto: { state?: string; evidenceRef?: string },
+  ) {
+    const state = (dto?.state ?? 'DONE').toUpperCase();
+    if (!['PENDING', 'DONE', 'WAIVED'].includes(state)) {
+      throw new BadRequestException('state must be PENDING, DONE or WAIVED.');
+    }
+    return this.onboarding.mark(
+      req.machine.organizationId, personExternalId, gateKey, state as any, dto?.evidenceRef,
+    );
   }
 
   /**

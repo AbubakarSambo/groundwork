@@ -19,6 +19,7 @@ export type Lane =
   | 'what_did_i_say'
   | 'how_am_i_doing'
   | 'what_is_stuck'
+  | 'where_am_i_up_to'
   | 'unplaced';
 
 export interface Routed {
@@ -42,6 +43,19 @@ const rule = (lane: Lane, patterns: RegExp[]) => ({ lane, patterns });
  * swallow it sits below.
  */
 const RULES = [
+  rule('where_am_i_up_to', [
+    /*
+     * Above the handoff and coaching lanes. "What am I meant to be doing" from somebody in their
+     * first fortnight is a question about their onboarding, not about a stuck handoff or a coaching
+     * step - and answering it with either would be answering a question they did not ask at the
+     * moment they are least able to tell.
+     */
+    /\bwhat(?:'?s| is| are)?\s+(?:still\s+)?(?:left|outstanding)\b/i,
+    /\bam\s+i\s+(?:set\s+up|onboarded|done\s+setting\s+up)\b/i,
+    /\bwhere\s+am\s+i\s+up\s+to\b/i,
+    /\bmy\s+onboarding\b/i,
+    /\bwhat\s+is\s+my\s+role\b/i,
+  ]),
   rule('what_is_stuck', [
     /*
      * ABOVE BOTH `who_is` AND THE COACHING LANE, and driving it is how that was found. "Who is

@@ -147,7 +147,10 @@ describe('an organisation with no imported objectives still hears about its peop
     };
     const prisma: any = new Proxy(mocked, { get: (t, k: string) => t[k] ?? empty });
     const { DetectorsService } = require('./detectors.service');
-    await new DetectorsService(prisma).run('org-a');
+    /* The real OnboardingService against the same fake prisma, rather than a stub: the exemption
+       rule is the point of this test and a stub would let it be wrong. */
+    const { OnboardingService } = require('../grounds/onboarding.service');
+    await new DetectorsService(prisma, new OnboardingService(prisma)).run('org-a');
     return created.map((c) => `${c.key}:${c.personExternalId}`).sort();
   };
 
@@ -204,7 +207,10 @@ describe('the onboarding window is when they started the ROLE, not when they joi
     };
     const prisma: any = new Proxy(mocked, { get: (t, k: string) => t[k] ?? empty });
     const { DetectorsService } = require('./detectors.service');
-    await new DetectorsService(prisma).run('org-a');
+    /* The real OnboardingService against the same fake prisma, rather than a stub: the exemption
+       rule is the point of this test and a stub would let it be wrong. */
+    const { OnboardingService } = require('../grounds/onboarding.service');
+    await new DetectorsService(prisma, new OnboardingService(prisma)).run('org-a');
 
     const keys = created.map((c) => `${c.key}:${c.personExternalId}`);
     expect(keys).not.toContain('no_checkin:mover');

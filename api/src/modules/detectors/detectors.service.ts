@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { CheckInStatus, DependencyStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { OnboardingService } from '../grounds/onboarding.service';
 import { findUndeclaredDependencies, SubjectRef, Mention, sayIt } from './nobody-wrote-the-dependency-down';
 import { ClearedHandoff, unblockingCredits } from './somebody-else-says-you-unblocked-them';
 import {
@@ -28,7 +29,10 @@ export const UNMENTIONED_DAYS = 60;
 export class DetectorsService {
   private readonly logger = new Logger(DetectorsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly onboarding: OnboardingService,
+  ) {}
 
   /**
    * WHICH SUBJECT SOMEBODY WAS TALKING ABOUT.
@@ -527,6 +531,19 @@ export class DetectorsService {
     for (const u of findNoLead(people)) {
       await write('no_lead', u.personExternalId, 'medium', sayNoLead(u));
     }
+    /*
+     * THE REASON THE SPEC ASKS FOR GATES AT ALL.
+     *
+     * §11.1: detectors like `no_checkin` must not fire against somebody still inside their
+     * onboarding window. Time in role was the blunt version - it says nothing about whether anybody
+     * has actually shown them what to do. Somebody three weeks in who has not been given a brief,
+     * an account or an introduction has not failed to check in; nobody has got to them yet.
+     *
+     * Treated as HAVING checked in rather than filtered out separately, so one rule decides who is
+     * exempt and there is no second place for the two to disagree.
+     */
+    for (const id of await this.onboarding.whoIsStillOnboarding(organizationId)) checkedIn.add(id);
+
     const withWindow = people.map((p) => ({
       ...p,
       createdAt: startedInRole.get(p.externalId) ?? p.createdAt,

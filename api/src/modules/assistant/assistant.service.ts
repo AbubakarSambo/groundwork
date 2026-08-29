@@ -10,6 +10,7 @@ import { STYLE, STYLE_VERSION, safeToUse, composePrompt } from './the-model-word
 import { hasSlipped, theOneToRaise } from './what-somebody-said-they-would-do';
 import { catchCommitment, resolveConfirmation, proposalSummary } from './something-said-in-passing';
 import { BoardService } from '../board/board.service';
+import { OnboardingService } from '../grounds/onboarding.service';
 import { ContributionKind } from '@prisma/client';
 import {
   Load, Waiting, theOneMove, theMirror, goingCold, bankedWins, sayTheMoves,
@@ -45,6 +46,7 @@ export class AssistantService {
     private readonly engine: AnthropicService,
     private readonly knowledge: KnowledgeService,
     private readonly board: BoardService,
+    private readonly onboarding: OnboardingService,
   ) {}
 
   async respond(organizationId: string, personId: string, message: string): Promise<Reply> {
@@ -104,6 +106,8 @@ export class AssistantService {
         return this.compose(await this.whoIs(organizationId, routed.subject ?? ''));
       case 'what_did_i_commit_to':
         return this.compose(await this.myCommitments(organizationId, personId));
+      case 'where_am_i_up_to':
+        return this.compose(await this.whereAmIUpTo(organizationId, who));
       case 'what_is_stuck':
         return this.compose(await this.whatIsStuck(organizationId, who, message));
       case 'how_am_i_doing':
@@ -172,6 +176,49 @@ export class AssistantService {
       this.logger.warn(`Composition unavailable for lane ${reply.lane}: ${err?.message}`);
       return reply;
     }
+  }
+
+  /**
+   * WHAT THIS ROLE IS, AND WHAT IS STILL OUTSTANDING.
+   *
+   * §11.1 asks for exactly this and says why: the chat answers from live status. Somebody in their
+   * first fortnight asking "what am I meant to be doing" is the person least able to go and find an
+   * admin console, and most likely to conclude the answer is nowhere.
+   *
+   * It says what is LEFT rather than how far through they are. A proportion is a progress bar about
+   * a person, and there is no version of "you are 40% onboarded" that helps somebody who wants to
+   * know which thing to do next.
+   */
+  private async whereAmIUpTo(organizationId: string, who: string | null): Promise<Reply> {
+    if (!who) return rules('where_am_i_up_to', text('I cannot look that up without knowing who you are.'));
+
+    const status = await this.onboarding.statusFor(organizationId, who);
+    if (!status.roleName) {
+      return rules('where_am_i_up_to', text(
+        'No role is recorded for you here, so there is nothing set up for you to work through.',
+      ));
+    }
+    if (!status.gates.length) {
+      return rules('where_am_i_up_to', text(
+        `You are down as ${status.roleName}. Nothing has been set up as a starting checklist for that role, `
+        + 'so there is nothing outstanding.',
+      ));
+    }
+    /*
+     * THE ROLE IS NAMED AS ITS OWN SENTENCE, NOT ONLY IN A LIST HEADER.
+     *
+     * §11.1 asks the chat to answer what this role IS as well as what is left, and driving it showed
+     * why that is two things. `sayWhatIsLeft` carried the role only in "Still to do for Engineer:",
+     * and the composer rewrote that header to "Your next steps:" - correct English, and it deleted
+     * the answer to the question actually asked. `safeToUse` refuses a proper noun the model ADDS;
+     * it says nothing about one it drops.
+     *
+     * A standalone sentence is harder to lose than a header, and if it is lost the check-in is one
+     * sentence poorer rather than unanswered.
+     */
+    return rules('where_am_i_up_to', text(
+      `You are down as ${status.roleName}.\n\n${status.says ?? ''}`,
+    ));
   }
 
   /**

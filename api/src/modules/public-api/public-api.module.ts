@@ -17,6 +17,7 @@ import { EmbedSessionGuard } from '../embed/embed-session.guard';
 import { AssistantService } from '../assistant/assistant.service';
 import { BoardService } from '../board/board.service';
 import { HandoverService } from '../grounds/handover.service';
+import { OnboardingService } from '../grounds/onboarding.service';
 import { AnthropicService } from '../conversation/anthropic.service';
 import { KnowledgeService } from '../knowledge/knowledge.service';
 import { KnowledgeController } from '../knowledge/knowledge.controller';
@@ -37,7 +38,7 @@ import { EmbedAssetsController } from '../embed/embed-assets.controller';
     }),
   ],
   controllers: [PublicApiController, CredentialsController, ImportsController, EmbedSetupController, EmbedAssetsController, KnowledgeController, DetectorsController, CheckinsController, DraftsController],
-  providers: [CredentialsService, IdempotencyService, MachineTokenGuard, SubjectsService, ScimService, BulkImportService, ImportsBootstrap, EmbedService, EmbedSessionGuard, AssistantService, BoardService, HandoverService, AnthropicService, KnowledgeService, DetectorsService, DraftsService],
+  providers: [CredentialsService, IdempotencyService, MachineTokenGuard, SubjectsService, ScimService, BulkImportService, ImportsBootstrap, EmbedService, EmbedSessionGuard, AssistantService, BoardService, HandoverService, OnboardingService, AnthropicService, KnowledgeService, DetectorsService, DraftsService],
   exports: [CredentialsService],
 })
 export class PublicApiModule {}
