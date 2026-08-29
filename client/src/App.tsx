@@ -38,10 +38,12 @@ import { AdminPage } from '@/pages/admin/AdminPage'
 import { AdminDashboardPage } from '@/pages/admin/AdminDashboardPage'
 import { SettingsPage } from '@/pages/settings/SettingsPage'
 import { OrgMembersPage } from '@/pages/org/OrgMembersPage'
+import { OrgSetupPage } from '@/pages/org/OrgSetupPage'
 import { NotFoundPage } from '@/pages/notfound/NotFoundPage'
 import { HelpModal, HelpButton } from '@/components/gw/HelpModal'
 import { AppShell } from '@/components/gw/AppShell'
 import type { JSX } from 'react'
+import type { User } from '@/types'
 
 // Shared so code outside the React tree can invalidate too - see lib/queryClient.
 const qc = queryClient
@@ -80,8 +82,30 @@ function RequirePlatformAdmin({ children }: { children: JSX.Element }) {
   return children
 }
 
+/** An org created before it has a contact email, growth stage, or plan can't run check-ins yet - only
+ * the admin who created it can fix that, so only ADMIN is gated here. */
+function isOrgSetupComplete(user: User | null | undefined) {
+  if (!user) return true // let RequireAuth handle the unauthenticated case
+  const org = user.organization
+  return !!(org?.email && org?.companyStage && org?.subscriptionPlan)
+}
+
+function RequireOrgSetup({ children }: { children: JSX.Element }) {
+  const isAuthenticated = useAuthStore(s => s.isAuthenticated)
+  const user = useAuthStore(s => s.user)
+  if (!isAuthenticated) {
+    const dest = window.location.pathname + window.location.search
+    return <Navigate to={`/auth?next=${encodeURIComponent(dest)}`} replace />
+  }
+  if (user?.role === 'ADMIN' && !isOrgSetupComplete(user)) {
+    return <Navigate to="/org/setup" replace />
+  }
+  return children
+}
+
 function RootRoute() {
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
+  const user = useAuthStore(s => s.user)
   if (!isAuthenticated) {
     /**
      * ONE ANSWER TO "WHERE IS HOME", SHARED WITH THE LOGO. W15-4.
@@ -104,6 +128,9 @@ function RootRoute() {
    * than leaving as an unlabelled fall-through, because the signed-out branch above returns early
    * and it is easy to read this as unreachable.
    */
+  if (user?.role === 'ADMIN' && !isOrgSetupComplete(user)) {
+    return <Navigate to="/org/setup" replace />
+  }
   return <GroundsListPage />
 }
 
@@ -144,11 +171,14 @@ export default function App() {
             <Route path="/invite" element={<InvitePage />} />
             <Route path="/join" element={<JoinPage />} />
 
-            {/* Post-auth setup */}
+            {/* Post-auth setup: an org admin whose org is missing contact email / stage / plan is
+                sent here by RequireOrgSetup before reaching anything else below. Plain RequireAuth,
+                not RequireOrgSetup, so this route itself can never redirect-loop. */}
+            <Route path="/org/setup" element={<RequireAuth><OrgSetupPage /></RequireAuth>} />
 
-            {/* Main app - require auth */}
-            <Route path="/grounds" element={<RequireAuth><GroundsListPage /></RequireAuth>} />
-            <Route path="/grounds/new" element={<RequireAuth><CreateGroundPage /></RequireAuth>} />
+            {/* Main app - require auth, and (for an ADMIN) a completed org setup */}
+            <Route path="/grounds" element={<RequireOrgSetup><GroundsListPage /></RequireOrgSetup>} />
+            <Route path="/grounds/new" element={<RequireOrgSetup><CreateGroundPage /></RequireOrgSetup>} />
             {/**
               * ONE URL, AND IT LANDS YOU ON YOUR OWN VIEW.
               *
@@ -156,10 +186,10 @@ export default function App() {
               * participant clicking their own ground was shown "This view is for whoever runs this
               * ground" with a button to go and find their real page. `GroundPage` decides first.
               */}
-            <Route path="/grounds/:id" element={<RequireAuth><GroundPage /></RequireAuth>} />
-            <Route path="/grounds/:id/p" element={<RequireAuth><GroundParticipantPage /></RequireAuth>} />
-            <Route path="/grounds/:id/report" element={<RequireAuth><ReportPage /></RequireAuth>} />
-            <Route path="/grounds/:id/board" element={<RequireAuth><BoardPage /></RequireAuth>} />
+            <Route path="/grounds/:id" element={<RequireOrgSetup><GroundPage /></RequireOrgSetup>} />
+            <Route path="/grounds/:id/p" element={<RequireOrgSetup><GroundParticipantPage /></RequireOrgSetup>} />
+            <Route path="/grounds/:id/report" element={<RequireOrgSetup><ReportPage /></RequireOrgSetup>} />
+            <Route path="/grounds/:id/board" element={<RequireOrgSetup><BoardPage /></RequireOrgSetup>} />
             {/*
               TWO ROUTES, ONE COMPONENT. /chat/:id and /checkin/:id both rendered
               ChatPage, so the same conversation had two addresses and the product
@@ -169,19 +199,21 @@ export default function App() {
               it exist in the wild and in old emails.
             */}
             <Route path="/chat/:checkInId" element={<ChatRedirect />} />
-            <Route path="/checkin/:checkInId" element={<RequireAuth><ChatPage /></RequireAuth>} />
+            <Route path="/checkin/:checkInId" element={<RequireOrgSetup><ChatPage /></RequireOrgSetup>} />
+            {/* Billing/pricing stay on plain RequireAuth (not RequireOrgSetup): completing org
+                setup routes an incomplete admin through exactly these pages to pick a plan. */}
             <Route path="/billing" element={<RequireAuth><BillingPage /></RequireAuth>} />
             <Route path="/pricing" element={<PricingPage />} />
             <Route path="/billing/checkout" element={<RequireAuth><PaymentPage /></RequireAuth>} />
             <Route path="/billing/callback" element={<RequireAuth><BillingCallbackPage /></RequireAuth>} />
-            <Route path="/prompts" element={<RequireAuth><PromptVersioningPage /></RequireAuth>} />
-            <Route path="/prompts/test" element={<RequireAuth><PromptTestPage /></RequireAuth>} />
-            <Route path="/settings" element={<RequireAuth><SettingsPage /></RequireAuth>} />
-            <Route path="/org/members" element={<RequireAuth><OrgMembersPage /></RequireAuth>} />
-            {/* RequireAuth rather than RequirePlatformAdmin: this is a CUSTOMER's admin connecting
+            <Route path="/prompts" element={<RequireOrgSetup><PromptVersioningPage /></RequireOrgSetup>} />
+            <Route path="/prompts/test" element={<RequireOrgSetup><PromptTestPage /></RequireOrgSetup>} />
+            <Route path="/settings" element={<RequireOrgSetup><SettingsPage /></RequireOrgSetup>} />
+            <Route path="/org/members" element={<RequireOrgSetup><OrgMembersPage /></RequireOrgSetup>} />
+            {/* RequireOrgSetup rather than RequirePlatformAdmin: this is a CUSTOMER's admin connecting
                 their own systems, not Groundwork staff. The page itself refuses a non-admin, and
                 every endpoint behind it is admin-gated on the server. */}
-            <Route path="/org/integrations" element={<RequireAuth><IntegrationsPage /></RequireAuth>} />
+            <Route path="/org/integrations" element={<RequireOrgSetup><IntegrationsPage /></RequireOrgSetup>} />
             <Route path="/admin" element={<RequirePlatformAdmin><AdminPage /></RequirePlatformAdmin>} />
             <Route path="/admin/dashboard" element={<RequirePlatformAdmin><AdminDashboardPage /></RequirePlatformAdmin>} />
 
