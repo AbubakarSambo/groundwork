@@ -1,13 +1,14 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
 import { authApi } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
+import { MARKETING_URL } from '@/lib/marketing'
 import { toast } from 'sonner'
 
 export function OrgSetupPage() {
   const navigate = useNavigate()
-  const { user, updateUser } = useAuthStore()
+  const { user, updateUser, logout } = useAuthStore()
   const org = user?.organization
 
   const [orgName, setOrgName] = useState(org?.name ?? user?.organizationName ?? '')
@@ -28,19 +29,45 @@ export function OrgSetupPage() {
     saveMut.mutate()
   }
 
-  if (org?.email) {
-    navigate('/grounds', { replace: true })
-    return null
-  }
+  /*
+   * NAVIGATING DURING RENDER IS A BUG, and this one was logging "Cannot update a component while
+   * rendering a different component" on every visit. An effect is where a redirect belongs.
+   */
+  useEffect(() => {
+    if (org?.email) navigate('/grounds', { replace: true })
+  }, [org?.email, navigate])
+  if (org?.email) return null
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 24px', background: 'var(--gw-bg)' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
+      {/*
+        * THE HEADER EVERY OTHER STANDALONE SCREEN HAS.
+        *
+        * `/org/setup` is in AppShell's CHROMELESS list, whose own comment says those pages are
+        * "written as a standalone screen with its own header and its own way back". This one had
+        * neither: no rail, no header, no back, no sign out. Nothing on the page went anywhere, and
+        * every signed-in route sends an admin here until it is filled in.
+        */}
+      <div style={{ background: 'var(--gw-navy)', padding: '20px 20px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+          <svg width="18" height="14" viewBox="0 0 22 17" fill="none">
+            <rect x="5" y="0" width="12" height="3" rx="1.5" fill="white" opacity="0.45" />
+            <rect x="2" y="6" width="18" height="3" rx="1.5" fill="white" opacity="0.72" />
+            <rect x="0" y="12" width="22" height="3" rx="1.5" fill="white" />
+          </svg>
+          <span style={{ fontSize: 15, fontWeight: 700, color: 'white', letterSpacing: '-.02em' }}>Groundwork</span>
+        </div>
+        <a href={MARKETING_URL} style={{ fontSize: 13, color: 'rgba(255,255,255,.55)', textDecoration: 'none' }}>Back</a>
+      </div>
+
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 24px' }}>
       <div style={{ width: '100%', maxWidth: 480 }}>
         <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--gw-navy)', marginBottom: 6, letterSpacing: '-.02em' }}>
           Set up your organization
         </h1>
         <p style={{ fontSize: 14, color: 'var(--gw-sub)', marginBottom: 28, lineHeight: 1.6 }}>
-          A few details before your team can start check-ins.
+          A few details before your team can start check-ins. Asked once, and you can change both later
+          in Settings.
         </p>
 
         <div style={{ background: 'var(--gw-card)', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '24px 22px' }}>
@@ -85,7 +112,27 @@ export function OrgSetupPage() {
           >
             {saveMut.isPending ? 'Saving…' : 'Continue'}
           </button>
+
+          {/*
+            * A WAY OUT OF A PAGE THAT HAS NONE. Reported: "this page doesn't have a back button".
+            *
+            * A back button is the wrong answer and would have made it worse: every signed-in route
+            * sends an admin without an organisation email straight back here, so Back would have
+            * been a loop with a different label on it. Signing out is the only exit that actually
+            * exits, and until now the page offered neither.
+            */}
+          <button
+            onClick={() => { logout(); navigate('/auth', { replace: true }) }}
+            style={{
+              display: 'block', margin: '14px auto 0', background: 'none', border: 'none',
+              color: 'var(--gw-sub)', fontSize: 12.5, fontFamily: 'inherit', cursor: 'pointer',
+              textDecoration: 'underline',
+            }}
+          >
+            Sign out instead
+          </button>
         </div>
+      </div>
       </div>
     </div>
   )
