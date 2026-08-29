@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { API_DOCS_URL } from '@/lib/where-the-api-lives'
+import { API_DOCS_URL, API_ORIGIN } from '@/lib/where-the-api-lives'
 import { integrationsApi } from '@/api/integrations'
 import { useAuthStore } from '@/stores/auth'
 import { toast } from 'sonner'
@@ -65,6 +65,12 @@ export function IntegrationsPage() {
   const [freshHookSecret, setFreshHookSecret] = useState<string | null>(null)
 
   const creds = useQuery({ queryKey: ['integrations', 'credentials'], queryFn: integrationsApi.listCredentials, enabled: isAdmin })
+  /*
+   * The example below uses a real client id when there is one, so it is a command that runs rather
+   * than a template to adapt. Revoked keys are skipped - pasting a dead id would be worse than a
+   * placeholder, because it fails in a way that looks like the API is broken.
+   */
+  const firstClientId = (creds.data ?? []).find(c => !c.revokedAt)?.clientId ?? null
   const events = useQuery({ queryKey: ['integrations', 'events'], queryFn: integrationsApi.webhookEvents, enabled: isAdmin })
   const endpoints = useQuery({ queryKey: ['integrations', 'endpoints'], queryFn: integrationsApi.listEndpoints, enabled: isAdmin })
   const deliveries = useQuery({ queryKey: ['integrations', 'deliveries'], queryFn: () => integrationsApi.deliveries(), enabled: isAdmin })
@@ -446,7 +452,48 @@ export function IntegrationsPage() {
 
       <div style={S.sec}>For your engineer</div>
       <div style={S.card}>
-        <p style={{ ...S.body, marginBottom: 8 }}>
+        {/*
+          * THE FIRST TWO REQUESTS, WRITTEN OUT.
+          *
+          * Step 2 above says "exchange the credential for a token, then push an objective or a
+          * person" and stops there. Somebody who has just pressed Issue has a key in their hand and
+          * no idea what to do with it, and the only way to find out was to read a generated
+          * reference and work out that it is two calls rather than one.
+          *
+          * The client id is the real one when a credential exists, so this is a command that runs
+          * rather than a template to adapt. The secret cannot be - it is shown once, at issue time,
+          * and is not stored anywhere we could read it back from.
+          *
+          * BOTH OF THESE WERE RUN AGAINST THE API BEFORE BEING PUT ON THE SCREEN, and the second one
+          * was wrong when it was written: it omitted `type`, which is required, and the push came
+          * back 400. An example that does not run is worse than no example - the person following it
+          * has no way to tell whether the API is broken or the instructions are.
+          */}
+        <p style={{ ...S.body, marginBottom: 10 }}>
+          Two requests. The first swaps your key for a token that lasts an hour; the second uses it.
+        </p>
+        <pre style={{ ...S.mono, background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '12px 14px', overflowX: 'auto', fontSize: 12, lineHeight: 1.65, margin: '0 0 10px' }}>
+{`curl -X POST ${API_ORIGIN || 'https://api.myground.work'}/api/org/v1/oauth/token \\
+  -H 'content-type: application/json' \\
+  -d '{"grant_type":"client_credentials",
+       "client_id":"${firstClientId ?? 'gwc_your_client_id'}",
+       "client_secret":"gws_the_secret_shown_when_you_issued_it"}'`}
+        </pre>
+        <p style={{ ...S.body, marginBottom: 10, fontSize: 12.5 }}>
+          That answers with <span style={S.mono}>access_token</span>. Send it as a bearer token on
+          everything after it - here is an objective arriving from your system:
+        </p>
+        <pre style={{ ...S.mono, background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '12px 14px', overflowX: 'auto', fontSize: 12, lineHeight: 1.65, margin: '0 0 12px' }}>
+{`curl -X POST ${API_ORIGIN || 'https://api.myground.work'}/api/org/v1/subjects \\
+  -H 'authorization: Bearer $ACCESS_TOKEN' \\
+  -H 'content-type: application/json' \\
+  -d '{"externalId":"OKR-142",
+       "sourceSystem":"your-okr-tool",
+       "type":"objective",
+       "title":"Ship the billing rewrite",
+       "ownerExternalId":"priya@yourcompany.com"}'`}
+        </pre>
+        <p style={{ ...S.body, marginBottom: 8, fontSize: 12.5 }}>
           The full reference is generated from the running code rather than written by hand, so it
           cannot drift from what the API actually does.
         </p>
