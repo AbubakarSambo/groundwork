@@ -4,6 +4,7 @@ import { Public } from '../../common/decorators/public.decorator';
 import { MachineTokenGuard, RequiresScope, MachineCaller } from '../public-api/machine-token.guard';
 import { PrismaService } from '../prisma/prisma.service';
 import { DetectorsService } from './detectors.service';
+import { RolesService, RoleInput, ActionInput } from './roles-and-their-action.service';
 import { ScenariosService } from './scenarios.service';
 import { IMPLEMENTED, GENUINELY_NEW } from './one-vocabulary-two-scopes';
 
@@ -23,7 +24,47 @@ export class DetectorsController {
     private readonly detectors: DetectorsService,
     private readonly scenarios: ScenariosService,
     private readonly prisma: PrismaService,
+    private readonly roles: RolesService,
   ) {}
+
+  /**
+   * A ROLE AND ITS ONE CONVERTING ACTION. §6.3.
+   *
+   * `graph:write` rather than a scope of its own: this is the same kind of fact as a person or a
+   * subject - what the customer's organisation is made of - and a new scope would mean every
+   * existing integration silently unable to send it until somebody reissued their credential.
+   */
+  @Post('roles')
+  @HttpCode(200)
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('graph:write')
+  @ApiOperation({ summary: 'Configure a role and the one action it turns on' })
+  putRole(@Req() req: { machine: MachineCaller }, @Body() dto: RoleInput) {
+    return this.roles.put(req.machine.organizationId, dto);
+  }
+
+  @Get('roles')
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('graph:read')
+  @ApiOperation({ summary: 'The roles configured for this organisation' })
+  listRoles(@Req() req: { machine: MachineCaller }) {
+    return this.roles.list(req.machine.organizationId);
+  }
+
+  /**
+   * THE ACTION HAPPENED. One occurrence, at a time, with somewhere to see it.
+   *
+   * This is what `neglected_primary` reads. Without it the detector has a role, a clock, and no way
+   * of knowing whether anything took place - so it would either never fire or fire at everybody.
+   */
+  @Post('primary-actions')
+  @HttpCode(200)
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('graph:write')
+  @ApiOperation({ summary: "Record that a role's primary action happened" })
+  recordAction(@Req() req: { machine: MachineCaller }, @Body() dto: ActionInput) {
+    return this.roles.record(req.machine.organizationId, dto);
+  }
 
   @Get('findings')
   @UseGuards(MachineTokenGuard)

@@ -289,6 +289,8 @@ model Organization {
   assistantProposals  AssistantProposal[]
   knowledgeCards      KnowledgeCard[]
   knowledgeRetrievals KnowledgeRetrieval[]
+  roles               Role[]
+  primaryActionEvents PrimaryActionEvent[]
   scenarioCandidates  ScenarioCandidate[]
   emailPreferences    EmailPreference[]
   retentionPolicy     RetentionPolicy?
@@ -1371,13 +1373,13 @@ model EmbedConfig {
 /// anyone who can read the database, and a stored secret is a stored secret whatever it authorises.
 /// It is shown once at issue and never again, and the console offers rotation rather than recovery.
 model ApiCredential {
-  id               String    @id @default(uuid())
-  organizationId   String    @map("organization_id")
+  id               String   @id @default(uuid())
+  organizationId   String   @map("organization_id")
   /// What this pair is for, in the customer's words. Shown in the console beside its last use, so
   /// revoking is a decision somebody can actually make.
   name             String
-  clientId         String    @unique @map("client_id")
-  clientSecretHash String    @map("client_secret_hash")
+  clientId         String   @unique @map("client_id")
+  clientSecretHash String   @map("client_secret_hash")
   /// What it may do. Chosen at issue and never widened by a request - a token can only ever ask for
   /// a subset of what its credential already holds.
   scopes           String[]
@@ -1391,14 +1393,14 @@ model ApiCredential {
   /// Empty means the whole organisation, which is what every existing credential means and what a
   /// single-team customer wants. A non-empty list is a fence: only these people's records, and only
   /// check-ins they are on.
-  boundToPersonExternalIds String[] @default([]) @map("bound_to_person_external_ids")
+  boundToPersonExternalIds String[]  @default([]) @map("bound_to_person_external_ids")
   /// Last authenticated use, for the console. Written on token issue rather than on every call:
   /// the question it answers is "is this integration alive", and per-request writes would put a
   /// write on the hot path of every read.
-  lastUsedAt       DateTime? @map("last_used_at")
-  revokedAt        DateTime? @map("revoked_at")
-  createdByUserId  String?   @map("created_by_user_id")
-  createdAt        DateTime  @default(now()) @map("created_at")
+  lastUsedAt               DateTime? @map("last_used_at")
+  revokedAt                DateTime? @map("revoked_at")
+  createdByUserId          String?   @map("created_by_user_id")
+  createdAt                DateTime  @default(now()) @map("created_at")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
@@ -2420,7 +2422,7 @@ model PersonObjective {
   /// two look identical without these columns.
   ///
   /// Null on everything extracted from conversation, which is the overwhelming majority.
-  sourceSystem         String?   @map("source_system")
+  sourceSystem         String?          @map("source_system")
   /// EMPTY, NOT NULL, and that is what makes several seeded objectives possible.
   ///
   /// A planning system holds six targets for one person in a quarter; the check-in engine must still
@@ -2432,10 +2434,10 @@ model PersonObjective {
   /// both and cannot be expressed in Prisma, and this repository already removed one of those for
   /// exactly that reason. An empty string is the version that works: conversation rows all share it
   /// and stay one-per-kind, seeded rows carry their own id and may be many.
-  externalId           String    @default("") @map("external_id")
+  externalId           String           @default("") @map("external_id")
   /// Who signed it off in THEIR system. Not a Groundwork approval.
-  approvedByExternalId String?   @map("approved_by_external_id")
-  effectiveFrom        DateTime? @map("effective_from")
+  approvedByExternalId String?          @map("approved_by_external_id")
+  effectiveFrom        DateTime?        @map("effective_from")
   /// Whether the person it belongs to has seen the current text.
   /// WHERE THIS IS SETTLED, WHEN THE KIND IS REFERENCE.
   ///
@@ -2449,10 +2451,10 @@ model PersonObjective {
   /// the same work - which is the same failure, arriving as a feature.
   ///
   /// Never polled and never synced. A sync would make it a copy again.
-  proposedChanges     ProposedChange[]
-  trackedUrl          String?         @map("tracked_url")
-  lastSeenState       String?         @map("last_seen_state")
-  lastSeenAt          DateTime?       @map("last_seen_at")
+  proposedChanges      ProposedChange[]
+  trackedUrl           String?          @map("tracked_url")
+  lastSeenState        String?          @map("last_seen_state")
+  lastSeenAt           DateTime?        @map("last_seen_at")
 
   seenBySubject Boolean @default(false) @map("seen_by_subject")
 
@@ -3133,7 +3135,7 @@ model DepartureRecord {
   personExternalId String @map("person_external_id")
 
   /// When they left, from the assignment. The clock the window is measured against.
-  departedAt DateTime @map("departed_at")
+  departedAt     DateTime  @map("departed_at")
   /// When the raw turns actually went. Null while the window is still open.
   turnsDeletedAt DateTime? @map("turns_deleted_at")
 
@@ -3182,22 +3184,22 @@ model ProposedChange {
   personObjectiveId String @map("person_objective_id")
 
   /// What is being asked for, in the same words somebody would use.
-  proposedText String  @db.Text @map("proposed_text")
+  proposedText String  @map("proposed_text") @db.Text
   /// Why. The reason is the part an approver actually needs, and the part most often lost.
   reason       String? @db.Text
 
   /// Who asked, and who must answer. Both by their identity system's id.
-  proposedByExternalId String  @map("proposed_by_external_id")
-  approverExternalId   String  @map("approver_external_id")
+  proposedByExternalId String @map("proposed_by_external_id")
+  approverExternalId   String @map("approver_external_id")
 
-  state      ProposedChangeState @default(AWAITING_APPROVAL)
+  state               ProposedChangeState @default(AWAITING_APPROVAL)
   /// Set on approval or rejection. Who actually decided, which may differ from who was asked.
-  decidedByExternalId String?  @map("decided_by_external_id")
+  decidedByExternalId String?             @map("decided_by_external_id")
   /// Where it was decided: 'groundwork' or the customer's system name. An approval nobody can
   /// locate afterwards is not much of an approval.
-  decidedIn  String?             @map("decided_in")
-  decidedAt  DateTime?           @map("decided_at")
-  decisionNote String?           @db.Text @map("decision_note")
+  decidedIn           String?             @map("decided_in")
+  decidedAt           DateTime?           @map("decided_at")
+  decisionNote        String?             @map("decision_note") @db.Text
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -3208,4 +3210,79 @@ model ProposedChange {
   @@index([organizationId, state])
   @@index([personObjectiveId, state])
   @@map("proposed_changes")
+}
+
+/// HOW OFTEN THE ROLE'S ONE CONVERTING ACTION IS MEANT TO HAPPEN.
+///
+/// Separate from `Cadence`, which is how often a check-in runs. They are different clocks with
+/// different meanings, and sharing an enum would mean adding QUARTERLY to check-in scheduling - a
+/// change to a screen nobody asked for, made by a detector.
+enum ActionCadence {
+  WEEKLY
+  FORTNIGHTLY
+  MONTHLY
+  QUARTERLY
+}
+
+/// A ROLE AS A RECORD, WHICH IS WHAT `neglected_primary` WAS WAITING FOR.
+///
+/// A role was only ever a name on an assignment, so the one detector in the spec that needs a role
+/// to carry something - its hardest, highest-value action and how often that action is due - could
+/// not be built. It is named in NEEDS_ROLES in one-vocabulary-two-scopes.ts for that reason.
+model Role {
+  id             String  @id @default(uuid())
+  organizationId String  @map("organization_id")
+  /// The customer's own word for it. Assignments name a role by this or by `name`.
+  key            String
+  name           String
+  description    String? @db.Text
+
+  /// §6.3. The one action the role turns on, and the clock it runs against. Both or neither: a key
+  /// with no cadence has no period to be judged in, and a cadence with no key names nothing.
+  primaryActionKey     String?        @map("primary_action_key")
+  /// What to call it in a sentence a person reads. Falls back to the key when absent.
+  primaryActionName    String?        @map("primary_action_name")
+  primaryActionCadence ActionCadence? @map("primary_action_cadence")
+
+  externalId   String?   @map("external_id")
+  sourceSystem String?   @map("source_system")
+  syncedAt     DateTime? @map("synced_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, key])
+  @@index([organizationId])
+  @@map("roles")
+}
+
+/// ONE OCCURRENCE OF A ROLE'S PRIMARY ACTION, PUSHED BY THE CUSTOMER'S OWN SYSTEMS.
+///
+/// The action happens in their world - a customer visit, a test run, a value presented - so this
+/// product cannot observe it and must be told. Kept as its own record rather than folded into
+/// `Contribution`, which is about a SUBJECT and answers a different question: contributions say who
+/// is carrying which piece of work, and this says whether a particular act happened at all.
+model PrimaryActionEvent {
+  id               String   @id @default(uuid())
+  organizationId   String   @map("organization_id")
+  personExternalId String   @map("person_external_id")
+  /// Matches `Role.primaryActionKey`. Not a foreign key: an event may arrive before the role is
+  /// configured, and dropping it then would lose a fact the customer has already told us.
+  actionKey        String   @map("action_key")
+  occurredAt       DateTime @map("occurred_at")
+  /// Where it can be seen in their system. What makes the finding checkable rather than asserted.
+  sourceRef        String?  @map("source_ref")
+  sourceSystem     String?  @map("source_system")
+  /// Their id for this occurrence, so the same event pushed twice is one event.
+  externalId       String?  @map("external_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, sourceSystem, externalId])
+  @@index([organizationId, personExternalId, actionKey, occurredAt])
+  @@map("primary_action_events")
 }

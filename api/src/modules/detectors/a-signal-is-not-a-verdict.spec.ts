@@ -153,13 +153,18 @@ describe('one vocabulary, two scopes', () => {
     expect(isImplemented('no_checkin')).toBe(true);
   });
 
-  it('and the ones still genuinely unbuilt keep saying so', () => {
+  it('and the one that was blocked on machinery says so no longer, because the machinery exists', () => {
     /*
-     * The list shortening is only honest while something still refuses to claim what is not there.
-     * `neglected_primary` needs a primary action and a cadence on a role, and roles do not exist
-     * here as records - so it is in neither list, and that is the state to preserve.
+     * This asserted the opposite until roles became records. `neglected_primary` needed a primary
+     * action and a cadence on a role, and a role was only ever a name on an assignment - so it sat
+     * in neither list, which was the honest state at the time and is not any more.
+     *
+     * What the test is really for survives the flip: a key claims to be implemented only when
+     * something actually detects it. NEEDS_ROLES is empty rather than deleted, so the next detector
+     * blocked on machinery has an honest place to sit.
      */
-    expect(isImplemented('neglected_primary')).toBe(false);
-    expect(IMPLEMENTED).not.toContain('neglected_primary');
+    expect(isImplemented('neglected_primary')).toBe(true);
+    expect(IMPLEMENTED).toContain('neglected_primary');
+    expect(NEEDS_ROLES).toHaveLength(0);
   });
 });

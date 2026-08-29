@@ -14,6 +14,7 @@ import {
   ContributionRow, findUnrecognisedContributors, findNominalOnly, sayUnrecognised, sayNominal,
 } from './who-is-actually-carrying-it';
 import { SubjectFacts, whatIsMissing, unownedGaps } from './what-this-objective-is-missing';
+import { findNeglectedPrimary, sayNeglectedPrimary, Cadence as ActionCadenceValue } from './the-one-action-that-converts';
 
 /**
  * RUNNING THE DETECTORS THAT NEED A SUBJECT AND A VIEW ACROSS GROUNDS.
@@ -530,6 +531,54 @@ export class DetectorsService {
     }
     for (const u of findNoLead(people)) {
       await write('no_lead', u.personExternalId, 'medium', sayNoLead(u));
+    }
+
+    /*
+     * THE ONE ACTION THE ROLE TURNS ON. §6.3, and the last detector in the spec that was blocked on
+     * machinery rather than on effort - it needed a role to be a record carrying an action and a
+     * clock, which nothing was until now.
+     *
+     * ACTIVE MEANS SEEN, and it is computed from the same material the rest of this method already
+     * holds rather than from a new query: somebody who has contributed or spoken is present, and
+     * somebody who has done neither is a case for `no_checkin` rather than for a coaching nudge
+     * about their hardest action.
+     */
+    const roles = await this.prisma.role.findMany({
+      where: { organizationId },
+      select: { key: true, name: true, primaryActionKey: true, primaryActionName: true, primaryActionCadence: true },
+    });
+    if (roles.some((r) => r.primaryActionKey && r.primaryActionCadence)) {
+      const openAssignments = await this.prisma.roleAssignment.findMany({
+        where: { organizationId, endedAt: null },
+        select: { personExternalId: true, roleName: true, startedAt: true },
+      });
+      const actionEvents = await this.prisma.primaryActionEvent.findMany({
+        where: { organizationId },
+        select: { personExternalId: true, actionKey: true, occurredAt: true },
+      });
+      /*
+       * Seen at all: they have spoken in a check-in, or they have completed one. Both sets are
+       * already computed above for the other detectors in this pass, so this adds no query and,
+       * more importantly, uses the same definition of "present" the neighbouring findings use.
+       */
+      const active = new Set<string>([...checkedIn, ...turns.map((t) => t.personExternalId)]);
+
+      for (const g of findNeglectedPrimary({
+        roles: roles.map((r: typeof roles[number]) => ({ ...r, primaryActionCadence: r.primaryActionCadence as ActionCadenceValue | null })),
+        assignments: openAssignments,
+        events: actionEvents,
+        activePeople: active,
+        now,
+      })) {
+        await write('neglected_primary', g.personExternalId, 'medium', sayNeglectedPrimary(g), {
+          role: g.roleName,
+          actionKey: g.actionKey,
+          cadence: g.cadence,
+          periodStartedAt: g.periodStartedAt.toISOString(),
+          lastDoneAt: g.lastDoneAt?.toISOString() ?? null,
+          daysIntoPeriod: g.daysIntoPeriod,
+        });
+      }
     }
     /*
      * THE REASON THE SPEC ASKS FOR GATES AT ALL.
