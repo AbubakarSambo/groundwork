@@ -13,10 +13,11 @@ import { toast } from 'sonner'
 import { Sec } from '@/components/gw/kit'
 import { scrollTo } from '@/lib/scroll-to'
 import { clearEntryHandover } from '@/pages/auth/entry-handover'
+import { API_ORIGIN } from '@/lib/where-the-api-lives'
 
 const STORAGE_KEY = 'gw_entry_session'
 /** Where the API lives, for the one place we hand the browser away (Google). */
-const API_ORIGIN = import.meta.env.VITE_API_URL ?? ''
+
 
 interface Turn { role: 'user' | 'assistant'; content: string }
 interface EntrySession {

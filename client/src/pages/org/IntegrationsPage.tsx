@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { API_DOCS_URL } from '@/lib/where-the-api-lives'
 import { integrationsApi } from '@/api/integrations'
 import { useAuthStore } from '@/stores/auth'
 import { toast } from 'sonner'
@@ -187,10 +188,22 @@ export function IntegrationsPage() {
             value={credName}
             onChange={e => setCredName(e.target.value)}
           />
-          <button style={S.btn} disabled={!credName.trim() || issue.isPending} onClick={() => issue.mutate()}>
-            {issue.isPending ? 'Issuing…' : 'Issue'}
+          <button style={{ ...S.btn, opacity: !credName.trim() || issue.isPending ? 0.5 : 1 }} disabled={!credName.trim() || issue.isPending} onClick={() => issue.mutate()}>
+            {issue.isPending ? 'Issuing…' : 'Issue a key'}
           </button>
         </div>
+        {/*
+          * A DISABLED BUTTON THAT DOES NOT SAY WHY IS A BROKEN BUTTON.
+          *
+          * "Issue" was disabled until a name was typed, at full opacity, with nothing saying so - so
+          * pressing it did nothing at all and there was no way to find out what it wanted. Same
+          * shape of fault as the org-setup form: a silent refusal reads as a dead product.
+          */}
+        {!credName.trim() && (
+          <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 8 }}>
+            Name it first, so you can tell your keys apart and turn one off later without breaking the others.
+          </div>
+        )}
         <div style={{ display: 'flex', gap: 14, marginTop: 10, flexWrap: 'wrap' }}>
           {SCOPES.map(s => (
             <label key={s} style={{ fontSize: 12, color: 'var(--gw-sub)', display: 'flex', gap: 6, alignItems: 'center' }}>
@@ -327,10 +340,16 @@ export function IntegrationsPage() {
       <div style={S.card}>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <input style={{ ...S.input, flex: '1 1 260px' }} placeholder="https://your-system.example.com/groundwork" value={hookUrl} onChange={e => setHookUrl(e.target.value)} />
-          <button style={S.btn} disabled={!hookUrl.trim() || register.isPending} onClick={() => register.mutate()}>
+          <button style={{ ...S.btn, opacity: !hookUrl.trim() || register.isPending ? 0.5 : 1 }} disabled={!hookUrl.trim() || register.isPending} onClick={() => register.mutate()}>
             {register.isPending ? 'Adding…' : 'Add'}
           </button>
         </div>
+        {/* Same silent refusal as the credential button had - dimmed and explained, not just dead. */}
+        {!hookUrl.trim() && (
+          <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 8 }}>
+            Paste the https address on your side that should receive these. We sign every message so you can prove it came from us.
+          </div>
+        )}
         <div style={{ display: 'flex', gap: 14, marginTop: 10, flexWrap: 'wrap' }}>
           {(events.data?.available ?? []).map(ev => (
             <label key={ev} style={{ fontSize: 12, color: 'var(--gw-sub)', display: 'flex', gap: 6, alignItems: 'center' }}>
@@ -431,7 +450,7 @@ export function IntegrationsPage() {
           The full reference is generated from the running code rather than written by hand, so it
           cannot drift from what the API actually does.
         </p>
-        <a href="/api/docs" target="_blank" rel="noreferrer" style={{ ...S.mono, color: 'var(--gw-navy)', fontWeight: 600 }}>Open the API reference →</a>
+        <a href={API_DOCS_URL} target="_blank" rel="noreferrer" style={{ ...S.mono, color: 'var(--gw-navy)', fontWeight: 600 }}>Open the API reference →</a>
       </div>
     </div>
   )
