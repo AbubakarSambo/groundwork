@@ -9,9 +9,10 @@ import { authApi } from '@/api/auth'
  * client: OAuth starts by handing the browser to Google, so it must be a real
  * page load. Empty in dev, where Vite proxies /api to the server.
  */
-const API_ORIGIN = import.meta.env.VITE_API_URL ?? ''
+
 import { useAuthStore } from '@/stores/auth'
 import { LinkSentPanel } from './LinkSentPanel'
+import { API_ORIGIN } from '@/lib/where-the-api-lives'
 
 
 
