@@ -73,6 +73,21 @@ const RENDERED = sources(join(ROOT, 'client/src'))
      does too - otherwise a label that happens to wrap reads as missing. */
   .replace(/\s+/g, ' ')
 
+/**
+ * The eighteen create-picker labels `suite_s` pins, read from the suite rather than copied here.
+ *
+ * A second list with the same problem, and it had drifted twice more: "Board & leadership strategy"
+ * became "Board or leadership strategy", and "Something's off track" was split into two scenarios.
+ * Neither crashed anything - the check reported cards missing that were on screen under different
+ * words, which is worse than a crash because it reads as a broken page.
+ */
+const CREATE_CARDS: string[] = (() => {
+  const src = readFileSync(join(ROOT, 'groundwork_local_test/run_suite_s_scenarios.py'), 'utf8')
+  const from = src.indexOf('CREATE_CARDS = [')
+  const block = src.slice(from, src.indexOf(']', from))
+  return [...block.matchAll(/"((?:[^"\\]|\\.)*)"/g)].map(m => m[1])
+})()
+
 describe('the persona harness and the UI agree', () => {
   it('reads a real list, so a rename cannot empty this file out', () => {
     /* Without this, a refactor of _ui_strings.py that breaks the parse makes PINNED empty and every
@@ -91,6 +106,17 @@ describe('the persona harness and the UI agree', () => {
       'Usually the harness is wrong and the product is right: copy improves, and that is not a',
       'regression. Update groundwork_local_test/_ui_strings.py, not the component - unless the',
       'rename was itself the accident, which the diff will tell you.',
+    ].join('\n')).toEqual([])
+  })
+
+  it('and every create-picker label it pins is still on the picker', () => {
+    expect(CREATE_CARDS.length).toBeGreaterThanOrEqual(15)
+    const missing = CREATE_CARDS.filter(c => !RENDERED.includes(c.replace(/\s+/g, ' ')))
+    expect(missing, [
+      'run_suite_s_scenarios.py pins create-picker labels the product no longer renders.',
+      'This does not crash the suite - it reports the cards as missing, which reads as a broken',
+      'page when the cards are on screen under different words.',
+      'Fix the list in the suite, not the component.',
     ].join('\n')).toEqual([])
   })
 
