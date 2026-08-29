@@ -3,6 +3,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { CommitmentState, DependencyStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { BoardService } from '../board/board.service';
+import { DepartureService } from '../people/departure.service';
 import { buildHandoverBrief, BriefInput, isEmpty } from './what-the-leaver-knew';
 import { GroundworkEvents, HandoverReadyEvent } from '../../common';
 
@@ -22,6 +23,7 @@ export class HandoverService {
     private readonly prisma: PrismaService,
     private readonly board: BoardService,
     private readonly events: EventEmitter2,
+    private readonly departures: DepartureService,
   ) {}
 
   /**
@@ -52,6 +54,9 @@ export class HandoverService {
        * three months describes an organisation that has moved on.
        */
       this.logger.log(`Assignment ${leaving.id} ended with no successor; no brief built.`);
+      /* Departure staging still runs. Nobody taking over does not make their open commitments any
+         less misleading to whoever finds them. */
+      await this.departures.onDeparture(organizationId, leaving.personExternalId, endedAt, leaving.roleName);
       return { ended: true, brief: null };
     }
 
@@ -77,6 +82,14 @@ export class HandoverService {
       organizationId,
       empty: isEmpty(brief),
     } as HandoverReadyEvent);
+
+    /*
+     * AFTER THE BRIEF, NEVER BEFORE. §13C.1 is explicit: if a successor is named, the handover brief
+     * generates before the turn ageing begins - otherwise the handover is built from data already
+     * gone. Stage one closes commitments and collapses attributions and deletes nothing, so it is
+     * safe here; stage two is on a clock and cannot run before the window closes anyway.
+     */
+    await this.departures.onDeparture(organizationId, leaving.personExternalId, endedAt, leaving.roleName);
 
     return { ended: true, brief, roleAssignmentId: successor.id };
   }

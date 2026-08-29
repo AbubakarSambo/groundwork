@@ -20,7 +20,7 @@ function svc(assignment: any) {
   };
   const board: any = { waitingAcrossTheOrg: async () => ({ waiting: [], waitedOn: [] }) };
   const events: any = { emit: (name: string, e: any) => state.events.push([name, e]) };
-  return { service: new HandoverService(prisma, board, events), state };
+  return { service: new HandoverService(prisma, board, events, { onDeparture: async () => ({}) } as any), state };
 }
 
 const assignment = (o: any = {}) => ({

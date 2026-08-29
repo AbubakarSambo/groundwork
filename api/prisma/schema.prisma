@@ -291,6 +291,8 @@ model Organization {
   knowledgeRetrievals KnowledgeRetrieval[]
   scenarioCandidates  ScenarioCandidate[]
   emailPreferences    EmailPreference[]
+  retentionPolicy     RetentionPolicy?
+  departureRecords    DepartureRecord[]
   detectorResults     DetectorResult[]
   roleAssignments     RoleAssignment[]
   onboardingTracks    OnboardingTrack[]
@@ -3033,4 +3035,58 @@ model EmailPreference {
 
   @@unique([organizationId, personExternalId])
   @@map("email_preferences")
+}
+
+/// HOW LONG RAW CONVERSATION IS KEPT AFTER SOMEBODY LEAVES.
+///
+/// §13C.1. A departed person's check-ins are the substrate for every finding about the objectives
+/// they touched, so a hard delete guts the record - and keeping their words indefinitely against
+/// somebody who has left is a real exposure. The window is the customer's to set, BOUNDED at both
+/// ends: a floor so it cannot be set to zero and break the product, and a ceiling so it cannot be
+/// set to forever and stop being a retention policy.
+model RetentionPolicy {
+  id             String @id @default(uuid())
+  organizationId String @unique @map("organization_id")
+
+  /// Days a departed person's raw turns are kept. Clamped in code, not only here.
+  turnRetentionDays Int @default(180) @map("turn_retention_days")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("retention_policies")
+}
+
+/// WHAT THE DEPARTURE JOB DID, KEPT AFTER THE THING IT DID IT TO IS GONE.
+///
+/// §13C.1: "deletion is a job with an audit record, not a cascade." The distinction is the whole
+/// point - a cascade leaves nothing behind saying it happened, so the first question a security
+/// review asks ("show me that you deleted it") has no answer. This row outlives the data.
+model DepartureRecord {
+  id               String @id @default(uuid())
+  organizationId   String @map("organization_id")
+  personExternalId String @map("person_external_id")
+
+  /// When they left, from the assignment. The clock the window is measured against.
+  departedAt DateTime @map("departed_at")
+  /// When the raw turns actually went. Null while the window is still open.
+  turnsDeletedAt DateTime? @map("turns_deleted_at")
+
+  /// Counts, never contents. What was closed, collapsed and deleted, so the job is auditable
+  /// without the audit itself becoming a copy of what was removed.
+  commitmentsClosed Int @default(0) @map("commitments_closed")
+  blockersClosed    Int @default(0) @map("blockers_closed")
+  findingsCollapsed Int @default(0) @map("findings_collapsed")
+  turnsDeleted      Int @default(0) @map("turns_deleted")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, personExternalId, departedAt])
+  @@index([organizationId, turnsDeletedAt])
+  @@map("departure_records")
 }
