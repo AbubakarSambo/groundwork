@@ -23,12 +23,17 @@ import { proposalFrom, extractionToolFor, Heard, Proposal } from './what-the-con
 import { freeSeatLimitMessage } from '../billing/billing.service';
 import { isSubscribed } from '../../common/subscription';
 import { DEFAULT_FREE_MEMBER_LIMIT } from '../billing/pricing.service';
+import { truncationsOfTheirWords } from '../conversation/the-record-holds-what-was-said';
+import { screen, ASK_AGAIN } from '../conversation/nothing-invented-reaches-them';
 
 // Default timelines per scenario (Part 2 - timeline and cadence).
 export const DEFAULT_TIMELINE_DAYS: Record<GroundScenario, number> = {
   /** Short on purpose: nobody has named the situation yet, so committing months to it is a guess. */
   OPEN_READ: 30,
   NEW_HIRE: 90,
+  /** Short, and deliberately shorter than onboarding. A handover that is still running in three
+      months is not a handover, it is the leaver still doing the job. */
+  ROLE_HANDOVER: 30,
   NEW_COFOUNDER: 90,
   NEW_ADVISOR: 365,
   NEW_PROJECT: 90,
@@ -97,6 +102,7 @@ export const DEFAULT_TIMELINE_DAYS: Record<GroundScenario, number> = {
 export const RECOMMENDED_MOMENT: Record<GroundScenario, GroundMoment> = {
   // Nothing has happened yet. The expectations are what is being set.
   NEW_HIRE: GroundMoment.STARTING,
+  ROLE_HANDOVER: GroundMoment.STARTING,
   NEW_PROJECT: GroundMoment.STARTING,
   NEW_COFOUNDER: GroundMoment.STARTING,
   NEW_MANAGER: GroundMoment.STARTING,
@@ -131,6 +137,8 @@ export const RECOMMENDED_MOMENT: Record<GroundScenario, GroundMoment> = {
 
 export const RECOMMENDED_CADENCE: Record<GroundScenario, Cadence> = {
   NEW_HIRE: Cadence.FORTNIGHTLY,
+  /** Weekly, because the window is 30 days and the leaver is walking out of it. */
+  ROLE_HANDOVER: Cadence.WEEKLY,
   NEW_PROJECT: Cadence.FORTNIGHTLY,
   NEW_COFOUNDER: Cadence.FORTNIGHTLY,
   NEW_MANAGER: Cadence.FORTNIGHTLY,
@@ -1547,12 +1555,33 @@ export class GroundsService {
     }
 
     const systemPrompt = contextChatPrompt(ground.label, ground.scenario, gaps);
-    const reply = await this.anthropic.respond(
+    const raw = await this.anthropic.respond(
       systemPrompt,
       history.length
         ? history.map((h) => ({ role: h.role === 'user' ? ('user' as const) : ('assistant' as const), content: h.content }))
         : [{ role: 'user' as const, content: 'Start.' }],
     );
+
+    /*
+     * THE SAME GUARD AS EVERY OTHER PLACE A MODEL TALKS TO A PERSON.
+     *
+     * This is prose, to the lead, built out of what the lead typed - which is the exact shape that
+     * turned "microchipshit" into "Microchip Solutions" on the entry path. The guard has now been
+     * missed in five separate flows, each time because it was added where the bug was found rather
+     * than everywhere the shape occurs.
+     */
+    const leadSaid = history.filter((h) => h.role === 'user').map((h) => h.content ?? '');
+    const screened = screen(raw, leadSaid);
+    if (screened.dropped.length) {
+      this.logger.warn(
+        `Dropped ${screened.dropped.length} sentence(s) with an invented name in the context chat for ground ${ground.id}.`,
+      );
+    }
+    const reply = screened.text || ASK_AGAIN;
+    const shortened = truncationsOfTheirWords(reply, leadSaid);
+    if (shortened.length) {
+      this.logger.warn(`Shortened one of their own words in the context chat for ground ${ground.id}: ${shortened.join(', ')}.`);
+    }
 
     /**
      * WHAT IT HEARD, AND WHAT IT PROPOSES DOING WITH IT. Stage 3.

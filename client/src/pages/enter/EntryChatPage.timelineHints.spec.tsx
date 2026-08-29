@@ -51,6 +51,9 @@ const EXPECTED: Record<string, string> = {
    * about - it is the only situation in the product that does not run.
    */
   'A pulse check': 'one check-in, no follow-up',
+  /* Short, and deliberately shorter than onboarding: a handover still running in three months is
+     not a handover, it is the leaver still doing the job. */
+  'A role changing hands': 'typically 30 days',
 }
 
 describe('situation card timeline hints', () => {

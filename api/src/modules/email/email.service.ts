@@ -720,4 +720,34 @@ export class EmailService {
       ),
     });
   }
+
+  /**
+   * A ROUND DIGEST, WHOSE BODY IS BUILT SOMEWHERE ELSE ON PURPOSE.
+   *
+   * Every other mail here composes its own HTML. This one takes the text already built by
+   * `digestBody`, because that function is what §13D.2 is enforced in - a headline, counts and a
+   * link, with nowhere to put a quote or a finding. Composing it here would put the shape back in a
+   * template, and a template is edited by whoever needs one more field in it.
+   */
+  async sendRoundDigest(email: string, subject: string, text: string): Promise<void> {
+    const html = text
+      .split('\n')
+      .map((line) => (line.trim() ? `<p>${escapeHtml(line)}</p>` : ''))
+      .join('');
+    await this.sendEmail({ to: email, subject, html });
+  }
+
+}
+
+/**
+ * The digest carries a ground label somebody typed, and it is going into HTML. Escaping it is not
+ * about an attacker - it is about a team whose project is called "Q3 <finance & ops>" getting a mail
+ * that renders as half a sentence.
+ */
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }

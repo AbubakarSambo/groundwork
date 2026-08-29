@@ -34,6 +34,7 @@ import type { SubscriptionPlan } from '@/api/billing'
  */
 export const SCENARIO_LABELS = {
   NEW_HIRE: 'A new hire starting',
+  ROLE_HANDOVER: 'A role changing hands',
   NEW_PROJECT: 'A new project starting',
   NEW_COFOUNDER: 'A new co-founder or partner',
   NEW_MANAGER: 'A new manager taking over',
@@ -174,6 +175,7 @@ export interface ScenarioFacts {
 
 export const SCENARIO_FACTS: Record<ScenarioKey, ScenarioFacts> = {
   NEW_HIRE:         { group: 'starting', cadence: 'Every 2 weeks', timelineDays: 90 },
+  ROLE_HANDOVER:    { group: 'starting', cadence: 'Weekly',        timelineDays: 30 },
   NEW_PROJECT:      { group: 'starting', cadence: 'Every 2 weeks', timelineDays: 90 },
   NEW_ADVISOR:      { group: 'starting', cadence: 'Monthly',       timelineDays: 365 },
   NEW_COFOUNDER:    { group: 'starting', cadence: 'Every 2 weeks', timelineDays: 90 },
@@ -223,6 +225,7 @@ export type MomentValue = 'STARTING' | 'RECOGNITION' | 'RESOLUTION'
 
 export const RECOMMENDED_MOMENT: Record<ScenarioKey, MomentValue> = {
   NEW_HIRE: 'STARTING',
+  ROLE_HANDOVER: 'STARTING',
   NEW_PROJECT: 'STARTING',
   NEW_COFOUNDER: 'STARTING',
   NEW_MANAGER: 'STARTING',

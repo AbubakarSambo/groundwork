@@ -68,6 +68,7 @@ const ENTRY_COVERS: Record<string, string[]> = {
   'A raise, promotion, or recognition': ['RECOGNITION'],
   'A contract or renewal': ['CONTRACT_RENEWAL'],
   'Something serious just happened': ['ACUTE_SHOCK'],
+  'A role changing hands': ['ROLE_HANDOVER'],
 }
 
 /** The admin picker's cardKeys, read from source so it cannot go stale. */

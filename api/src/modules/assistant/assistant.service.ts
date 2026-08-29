@@ -1,13 +1,20 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { DependencyStatus } from '@prisma/client';
 import { route, whatICanDoWith } from './the-router-is-deterministic';
 import { Reply, rules, text, picker } from './a-reply-is-a-payload-not-a-string';
 import { freshnessOf } from '../subjects/a-pointer-goes-stale';
 import { quietUntil } from '../subjects/detection-holds-its-tongue';
 import { AnthropicService } from '../conversation/anthropic.service';
-import { STYLE, STYLE_VERSION, safeToUse, composePrompt } from './the-model-words-it-and-nothing-more';
+import { STYLE, STYLE_VERSION, safeToUse, composePrompt, roleNameIn } from './the-model-words-it-and-nothing-more';
 import { hasSlipped, theOneToRaise } from './what-somebody-said-they-would-do';
 import { catchCommitment, resolveConfirmation, proposalSummary } from './something-said-in-passing';
+import { BoardService } from '../board/board.service';
+import { OnboardingService } from '../grounds/onboarding.service';
+import { ContributionKind } from '@prisma/client';
+import {
+  Load, Waiting, theOneMove, theMirror, goingCold, bankedWins, sayTheMoves,
+} from '../coaching/the-four-converting-moves';
 import { KnowledgeService, STOPWORDS } from '../knowledge/knowledge.service';
 import { howLongAgo, splitBySession } from './what-you-told-me-before';
 import { Prisma } from '@prisma/client';
@@ -38,6 +45,8 @@ export class AssistantService {
      */
     private readonly engine: AnthropicService,
     private readonly knowledge: KnowledgeService,
+    private readonly board: BoardService,
+    private readonly onboarding: OnboardingService,
   ) {}
 
   async respond(organizationId: string, personId: string, message: string): Promise<Reply> {
@@ -97,6 +106,16 @@ export class AssistantService {
         return this.compose(await this.whoIs(organizationId, routed.subject ?? ''));
       case 'what_did_i_commit_to':
         return this.compose(await this.myCommitments(organizationId, personId));
+      case 'where_am_i_up_to':
+        /*
+         * The role name has to survive. Losing it is what turned "what is my role" into a checklist
+         * with no answer in it, and the lane is the only thing that knows which word matters.
+         */
+        return this.whereAmIUpTo(organizationId, who).then((r) => this.compose(r, roleNameIn(r)));
+      case 'what_is_stuck':
+        return this.compose(await this.whatIsStuck(organizationId, who, message));
+      case 'how_am_i_doing':
+        return this.compose(await this.howAmIDoing(organizationId, who));
       case 'what_did_i_say':
         return this.compose(await this.whatDidISay(organizationId, who, routed.subject ?? message));
       case 'how_we_work':
@@ -139,14 +158,14 @@ export class AssistantService {
    * checks - ships the draft. The person gets the true answer either way; only the wording and the
    * `composedBy` stamp differ, and the stamp is why that is honest rather than hidden.
    */
-  private async compose(reply: Reply): Promise<Reply> {
+  private async compose(reply: Reply, mustKeep: string[] = []): Promise<Reply> {
     const first = reply.blocks[0];
     if (!first || first.type !== 'text') return reply;
     const draft = first.body;
 
     try {
       const composed = await this.engine.respond(STYLE, [{ role: 'user', content: composePrompt(draft) }]);
-      if (!safeToUse(draft, composed)) {
+      if (!safeToUse(draft, composed, mustKeep)) {
         this.logger.warn(`Composition refused for lane ${reply.lane}; shipping the draft.`);
         return reply;
       }
@@ -161,6 +180,235 @@ export class AssistantService {
       this.logger.warn(`Composition unavailable for lane ${reply.lane}: ${err?.message}`);
       return reply;
     }
+  }
+
+  /**
+   * WHAT THIS ROLE IS, AND WHAT IS STILL OUTSTANDING.
+   *
+   * §11.1 asks for exactly this and says why: the chat answers from live status. Somebody in their
+   * first fortnight asking "what am I meant to be doing" is the person least able to go and find an
+   * admin console, and most likely to conclude the answer is nowhere.
+   *
+   * It says what is LEFT rather than how far through they are. A proportion is a progress bar about
+   * a person, and there is no version of "you are 40% onboarded" that helps somebody who wants to
+   * know which thing to do next.
+   */
+  private async whereAmIUpTo(organizationId: string, who: string | null): Promise<Reply> {
+    if (!who) return rules('where_am_i_up_to', text('I cannot look that up without knowing who you are.'));
+
+    const status = await this.onboarding.statusFor(organizationId, who);
+    if (!status.roleName) {
+      return rules('where_am_i_up_to', text(
+        'No role is recorded for you here, so there is nothing set up for you to work through.',
+      ));
+    }
+    if (!status.gates.length) {
+      return rules('where_am_i_up_to', text(
+        `You are down as ${status.roleName}. Nothing has been set up as a starting checklist for that role, `
+        + 'so there is nothing outstanding.',
+      ));
+    }
+    /*
+     * THE ROLE IS NAMED AS ITS OWN SENTENCE, NOT ONLY IN A LIST HEADER.
+     *
+     * §11.1 asks the chat to answer what this role IS as well as what is left, and driving it showed
+     * why that is two things. `sayWhatIsLeft` carried the role only in "Still to do for Engineer:",
+     * and the composer rewrote that header to "Your next steps:" - correct English, and it deleted
+     * the answer to the question actually asked. `safeToUse` refuses a proper noun the model ADDS;
+     * it says nothing about one it drops.
+     *
+     * A standalone sentence is harder to lose than a header, and if it is lost the check-in is one
+     * sentence poorer rather than unanswered.
+     */
+    return rules('where_am_i_up_to', text(
+      `You are down as ${status.roleName}.\n\n${status.says ?? ''}`,
+    ));
+  }
+
+  /**
+   * WHAT IS WAITING, ACROSS EVERY GROUND, WITH HOW LONG.
+   *
+   * The handoff record has existed for a long time and the board reads it well - but only ever one
+   * ground at a time, which is the boundary the question does not respect. Somebody waiting three
+   * weeks on the same person appears as a mild note on three separate boards and as nothing anywhere.
+   *
+   * Two answers come out of the same read, and which one somebody gets depends on the question they
+   * asked. "What am I waiting on" is theirs to chase. "Who is waiting on me" is the one that usually
+   * lands as news, because the person holding things up is normally the last to know.
+   */
+  private async whatIsStuck(organizationId: string, who: string | null, question = ''): Promise<Reply> {
+    const { waiting, waitedOn } = await this.board.waitingAcrossTheOrg(organizationId);
+
+    const person = who
+      ? await this.prisma.person.findFirst({
+          where: { organizationId, externalId: who },
+          select: { email: true },
+        })
+      : null;
+    const key = person?.email?.toLowerCase() ?? null;
+
+    const mine = key ? waiting.filter((w) => w.fromPersonKey === key) : [];
+    const onMe = key ? (waitedOn.find((p) => p.personKey === key)?.waiting ?? []) : [];
+
+    if (!mine.length && !onMe.length) {
+      return rules('what_is_stuck', text(
+        key
+          ? 'Nothing is recorded as waiting on you, and you have not named anything you are waiting on.'
+          : 'I cannot match you to a check-in, so I cannot tell you what is waiting on you.',
+      ));
+    }
+
+    /*
+     * The days are stated rather than turned into a word. "Long overdue" is a judgement the record
+     * cannot support - it does not know what a reasonable wait is for any of these - and eleven days
+     * is a fact the reader can weigh for themselves.
+     */
+    /*
+     * THE DRAFT NAMES THE STATUS, BECAUSE A GAP IS WHAT THE MODEL FILLS.
+     *
+     * The first version left severity out and the composer supplied it - a WAITING handoff came back
+     * as "has been blocked for 2 days". That distinction is load-bearing here: the quick read counts
+     * only BLOCKING, and the decisions list promotes only BLOCKING, labelled as something nobody can
+     * move past. Instructing the composer not to embellish would not have helped, and cutting it off
+     * from the model would have traded a better sentence for a bug left in place. Stating the status
+     * leaves nothing to invent.
+     */
+    const line = (w: (typeof waiting)[number]) =>
+      `- ${w.what} (${w.groundLabel}) - ${w.status === DependencyStatus.BLOCKING ? 'hard blocker' : 'waiting'}, `
+      + `${w.waitingDays} ${w.waitingDays === 1 ? 'day' : 'days'}`;
+
+    /*
+     * ANSWER THE QUESTION THEY ASKED FIRST, EVEN WHEN THE ANSWER IS NOTHING.
+     *
+     * Driving this found it: asked "what am I waiting on", somebody with nothing of their own but
+     * one handoff sitting with them got back a list headed "Waiting on you". Both facts are true and
+     * the second is the more useful one, but leading with it silently answers a different question,
+     * and the reader has to work out that the swap happened. Saying so costs one line.
+     */
+    const askedAboutTheirOwn = /waiting on\b/i.test(question) && !/on me\b/i.test(question);
+
+    const parts: string[] = [];
+    if (askedAboutTheirOwn && !mine.length && onMe.length) {
+      parts.push('You have not named anything you are waiting on. What I do have is the other direction.');
+    }
+    if (onMe.length) {
+      parts.push(
+        `Waiting on you:\n${onMe.map(line).join('\n')}\n\n`
+        + 'That is from what other people said about their own work, not from anyone assigning it to you.',
+      );
+    }
+    if (mine.length) {
+      parts.push(`You said you are waiting on:\n${mine.map(line).join('\n')}`);
+    }
+    return rules('what_is_stuck', text(parts.join('\n\n')));
+  }
+
+  /**
+   * THE COACH THAT ALREADY EXISTS, ASKED FROM A DIFFERENT PLACE.
+   *
+   * There is no second coach here and there must not be. `CoachingState` has been written on every
+   * completed check-in for a long time, by a state machine with rules earned the hard way - one step
+   * at a time, never a list; a step that goes unmanaged twice changes rather than repeating; and
+   * nothing ever accumulates into a judgement. This lane READS that. Building a parallel coach for
+   * the panel would give somebody two answers about themselves from one product.
+   *
+   * The state is per PARTICIPANT, which is per ground. A person is usually in more than one, so the
+   * most recent step is the one that is live - an older ground's step is not wrong, it is finished.
+   *
+   * WHAT THIS DOES NOT DO is answer "how am I doing" with an assessment. The question gets a step,
+   * because a step is the only honest answer a machine can give to it, and the alternative is the
+   * verdict that coaching-can-never-justify-a-firing.spec.ts exists to prevent.
+   */
+  private async howAmIDoing(organizationId: string, who: string | null): Promise<Reply> {
+    if (!who) return rules('how_am_i_doing', text('I cannot look that up without knowing who you are.'));
+
+    const person = await this.prisma.person.findFirst({
+      where: { organizationId, externalId: who },
+      select: { email: true },
+    });
+    if (!person?.email) {
+      return rules('how_am_i_doing', text('I cannot match you to a check-in, so I have nothing to go on yet.'));
+    }
+
+    const state = await this.prisma.coachingState.findFirst({
+      where: { participant: { email: person.email, ground: { organizationId } } },
+      orderBy: { updatedAt: 'desc' },
+      select: { currentStep: true, staircase: true },
+    });
+
+    const moves = await this.theConvertingMoves(organizationId, who);
+
+    if (!state?.currentStep) {
+      /*
+       * No step is a real answer and a common one. The engine only offers one when the record has
+       * earned it, and saying "you are doing fine" instead would be inventing an assessment out of
+       * an absence - the exact thing this lane must not do.
+       */
+      return rules('how_am_i_doing', text(
+        'There is no step waiting for you. That is not a verdict either way - the coaching in your check-in only offers one when there is something specific worth doing, and right now there is not.'
+        + moves,
+      ));
+    }
+
+    return rules('how_am_i_doing', text(
+      `One thing, from your last check-in: ${state.currentStep}\n\n`
+      + 'That is the whole of it. It is meant to be small enough to actually happen this week, and if it is not, saying so in your next check-in changes it rather than repeating it.'
+      + moves,
+    ));
+  }
+
+  /**
+   * THE FOUR CONVERTING MOVES, UNDERNEATH THE STEP RATHER THAN INSTEAD OF IT.
+   *
+   * The check-in coach decides the step; nothing here overrides it. What these add is the context a
+   * step cannot carry on its own - what they finished since, how much of the load is actually theirs
+   * to move, and what has quietly stopped coming up.
+   *
+   * They live in the chat because that is where coaching lives in this product. A board of these
+   * numbers is a scoreboard about a person however carefully it is worded, and the numbers here are
+   * counts precisely so they cannot be ranked between people.
+   */
+  private async theConvertingMoves(organizationId: string, personExternalId: string): Promise<string> {
+    const since = new Date(Date.now() - 30 * 86_400_000);
+    const commitments = await this.prisma.commitment.findMany({
+      where: { organizationId, personExternalId },
+      select: { id: true, text: true, state: true, statedAt: true, dueAt: true, lastFollowedUpAt: true },
+    });
+    if (!commitments.length) return '';
+
+    const load: Load[] = commitments.map((c) => ({
+      id: c.id, text: c.text, state: c.state, statedAt: c.statedAt, dueAt: c.dueAt,
+      /*
+       * `lastFollowedUpAt` is the closest record of "last time this came up", and it is not the same
+       * thing - it is when the assistant raised it, not when they mentioned it. Using it means a
+       * commitment the assistant has nagged about looks warm. Named here rather than papered over;
+       * the honest fix is a mention timestamp, which does not exist yet.
+       */
+      lastMentionedAt: c.lastFollowedUpAt,
+    }));
+
+    const { waiting } = await this.board.waitingAcrossTheOrg(organizationId);
+    const person = await this.prisma.person.findFirst({
+      where: { organizationId, externalId: personExternalId }, select: { email: true },
+    });
+    const key = person?.email?.toLowerCase() ?? null;
+    const theirs: Waiting[] = key
+      ? waiting.filter((w) => w.fromPersonKey === key)
+        .map((w) => ({ what: w.what, status: w.status, onPersonKey: w.onPersonKey, waitingDays: w.waitingDays }))
+      : [];
+
+    const unblocked = await this.prisma.contribution.aggregate({
+      where: { organizationId, personExternalId, kind: ContributionKind.UNBLOCKING },
+      _sum: { weight: true },
+    });
+
+    const said = sayTheMoves({
+      move: theOneMove(load, theirs),
+      mirror: theMirror(load, theirs),
+      cold: goingCold(load, new Date()),
+      wins: bankedWins(load, unblocked._sum.weight ?? 0, since),
+    });
+    return said ? `\n\n${said}` : '';
   }
 
   /**
@@ -540,4 +788,5 @@ export class AssistantService {
     ];
     return rules('who_is', text(bits.join(' ')));
   }
+
 }

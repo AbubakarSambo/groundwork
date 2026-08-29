@@ -1,7 +1,6 @@
 import {
-  Controller, Post, Get, Patch, Delete, Body, Param, Query, Headers, Req,
-  UseGuards, UnauthorizedException, BadRequestException, HttpCode,
-} from '@nestjs/common';
+  Controller, Post, Get, Put, Patch, Delete, Body, Param, Query, Headers, Req,
+  UseGuards, UnauthorizedException, BadRequestException, HttpCode, ForbiddenException } from '@nestjs/common';
 import { ApiOperation, ApiTags, ApiExcludeEndpoint } from '@nestjs/swagger';
 import { JwtService } from '@nestjs/jwt';
 import { CredentialsService } from './credentials.service';
@@ -16,6 +15,13 @@ import { BulkImportService } from '../subjects/bulk-import.service';
 import { EmbedService } from '../embed/embed.service';
 import { EmbedSessionGuard, PanelCaller } from '../embed/embed-session.guard';
 import { AssistantService } from '../assistant/assistant.service';
+import { HandoverService } from '../grounds/handover.service';
+import { OnboardingService } from '../grounds/onboarding.service';
+import { ScenariosService } from '../detectors/scenarios.service';
+import { mayUseTheApi, NOT_PAID } from './the-api-is-a-paid-thing';
+import { PrismaService } from '../prisma/prisma.service';
+import { GroundsByApiService } from './grounds-by-api.service';
+import { RoundDigestService } from '../email/round-digest.service';
 import { resolveReferences } from '../people/an-unresolved-reference-is-a-fact';
 
 /** Short, because a leaked one should stop working before anybody has finished reading the log. */
@@ -57,6 +63,12 @@ export class PublicApiController {
     private readonly bulk: BulkImportService,
     private readonly embed: EmbedService,
     private readonly assistant: AssistantService,
+    private readonly handover: HandoverService,
+    private readonly onboarding: OnboardingService,
+    private readonly scenarios: ScenariosService,
+    private readonly digests: RoundDigestService,
+    private readonly prisma: PrismaService,
+    private readonly groundsByApi: GroundsByApiService,
   ) {}
 
   /**
@@ -79,10 +91,26 @@ export class PublicApiController {
       throw new BadRequestException(`This credential does not hold: ${granted.unheld.join(', ')}`);
     }
 
+    /*
+     * PAID ONLY, checked here rather than at credential issue - a subscription that lapses has to
+     * stop working, and a short-lived token means that happens within one token lifetime instead of
+     * waiting for somebody to remember to revoke.
+     */
+    const org = await this.prisma.organization.findUnique({
+      where: { id: cred.organizationId },
+      select: { subscriptionPlan: true, subscriptionStatus: true },
+    });
+    if (!mayUseTheApi(org)) throw new ForbiddenException(NOT_PAID);
+
     await this.credentials.stampUse(cred.id);
 
     const access_token = await this.jwt.signAsync(
-      { sub: cred.clientId, org: cred.organizationId, scopes: granted.scopes, typ: 'machine' },
+      {
+        sub: cred.clientId, org: cred.organizationId, scopes: granted.scopes, typ: 'machine',
+        /* The fence travels IN the token, so it cannot be stale relative to the scopes it came with
+           and a revoked-then-reissued credential cannot keep an old boundary. */
+        fence: cred.boundToPersonExternalIds ?? [],
+      },
       { expiresIn: TOKEN_TTL_SECONDS },
     );
     return { access_token, token_type: 'Bearer', expires_in: TOKEN_TTL_SECONDS, scope: granted.scopes.join(' ') };
@@ -219,6 +247,292 @@ export class PublicApiController {
   @ApiOperation({ summary: 'Ask the assistant. Returns typed blocks, not a string.' })
   async chat(@Req() req: { panel: PanelCaller }, @Body() dto: { message?: string }) {
     return this.assistant.respond(req.panel.organizationId, req.panel.personId, dto?.message ?? '');
+  }
+
+  /**
+   * A ROLE CHANGING HANDS.
+   *
+   * The brief is built the moment the assignment ends, because §13's ageing rule removes turn
+   * content after its window - a brief built later is built from data already gone. So this is a
+   * write that produces a record, not a request for one to be generated on read.
+   */
+  @Post('role-assignments')
+  @HttpCode(201)
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('graph:write')
+  @ApiOperation({ summary: 'Record who holds a role. Ending one with a successor builds their handover brief.' })
+  async createRoleAssignment(
+    @Req() req: { machine: MachineCaller },
+    @Body() dto: { personExternalId: string; roleName: string; startedAt?: string },
+  ) {
+    if (!dto?.personExternalId || !dto?.roleName) {
+      throw new BadRequestException('personExternalId and roleName are both required.');
+    }
+    return this.handover.startAssignment(
+      req.machine.organizationId, dto.personExternalId, dto.roleName,
+      dto.startedAt ? new Date(dto.startedAt) : undefined,
+    );
+  }
+
+  @Post('role-assignments/:id/end')
+  @HttpCode(200)
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('graph:write')
+  @ApiOperation({ summary: 'End an assignment. With a successor, the handover brief is built now.' })
+  async endRoleAssignment(
+    @Req() req: { machine: MachineCaller },
+    @Param('id') id: string,
+    @Body() dto: { successorPersonExternalId?: string; endedAt?: string },
+  ) {
+    return this.handover.endAssignment(req.machine.organizationId, id, {
+      successorPersonExternalId: dto?.successorPersonExternalId,
+      ...(dto?.endedAt ? { endedAt: new Date(dto.endedAt) } : {}),
+    });
+  }
+
+  @Get('handovers/:roleAssignmentId')
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('handovers:read')
+  @ApiOperation({ summary: 'The brief as it was built. Never regenerated - it describes a moment.' })
+  async getHandover(@Req() req: { machine: MachineCaller }, @Param('roleAssignmentId') id: string) {
+    return this.handover.get(req.machine.organizationId, id);
+  }
+
+  @Post('onboarding/tracks')
+  @HttpCode(200)
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('graph:write')
+  @ApiOperation({ summary: 'Define what somebody new to a role has to get through. Replaces the track.' })
+  async defineTrack(
+    @Req() req: { machine: MachineCaller },
+    @Body() dto: { roleName: string; name: string; gates: { key: string; name: string; description?: string; required?: boolean }[] },
+  ) {
+    return this.onboarding.defineTrack(req.machine.organizationId, dto?.roleName, dto?.name, dto?.gates);
+  }
+
+  @Get('onboarding/:personExternalId')
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('findings:read')
+  @ApiOperation({ summary: 'Where somebody has got to, and what is left.' })
+  async onboardingStatus(@Req() req: { machine: MachineCaller }, @Param('personExternalId') id: string) {
+    return this.onboarding.statusFor(req.machine.organizationId, id);
+  }
+
+  @Post('onboarding/:personExternalId/gates/:gateKey')
+  @HttpCode(200)
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('graph:write')
+  @ApiOperation({ summary: 'Mark a gate done, waived, or back to pending.' })
+  async markGate(
+    @Req() req: { machine: MachineCaller },
+    @Param('personExternalId') personExternalId: string,
+    @Param('gateKey') gateKey: string,
+    @Body() dto: { state?: string; evidenceRef?: string },
+  ) {
+    const state = (dto?.state ?? 'DONE').toUpperCase();
+    if (!['PENDING', 'DONE', 'WAIVED'].includes(state)) {
+      throw new BadRequestException('state must be PENDING, DONE or WAIVED.');
+    }
+    return this.onboarding.mark(
+      req.machine.organizationId, personExternalId, gateKey, state as any, dto?.evidenceRef,
+    );
+  }
+
+  @Get('suggestions')
+  @UseGuards(EmbedSessionGuard)
+  @ApiOperation({ summary: 'Conversations the record suggests, waiting on this person to decide.' })
+  async suggestions(@Req() req: { panel: PanelCaller }) {
+    return this.scenarios.pendingFor(req.panel.organizationId, req.panel.externalId);
+  }
+
+  /**
+   * A HUMAN SAYING YES OR NO. The only thing that turns a suggestion into a conversation.
+   *
+   * Guarded by the PANEL session rather than a machine credential, which is the whole point: a
+   * machine token carries an organisation and nobody in particular, and "a human opens it" cannot be
+   * satisfied by a server-to-server call.
+   */
+  @Post('suggestions/:id')
+  @HttpCode(200)
+  @UseGuards(EmbedSessionGuard)
+  @ApiOperation({ summary: 'Accept or decline a suggested conversation.' })
+  async decideSuggestion(
+    @Req() req: { panel: PanelCaller },
+    @Param('id') id: string,
+    @Body() dto: { accept?: boolean },
+  ) {
+    if (typeof dto?.accept !== 'boolean') {
+      throw new BadRequestException('accept must be true or false. There is no third answer.');
+    }
+    return this.scenarios.decide(req.panel.organizationId, id, req.panel.externalId, dto.accept);
+  }
+
+  @Get('email-preferences')
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('graph:write')
+  @ApiOperation({ summary: 'What somebody has chosen to receive by mail.' })
+  async getEmailPreferences(
+    @Req() req: { machine: MachineCaller },
+    @Query('participantExternalId') id: string,
+  ) {
+    if (!id) throw new BadRequestException('participantExternalId is required.');
+    const p = await this.digests.prefsFor(req.machine.organizationId, id);
+    /*
+     * The token never leaves. It is the whole of the authentication on a link that works without
+     * signing in, so handing it to an integration would let anybody holding a machine credential
+     * unsubscribe anybody - which is the one thing §13D.3 says an admin may not do.
+     */
+    const { unsubscribeToken, ...safe } = p;
+    return safe;
+  }
+
+  @Post('email-preferences')
+  @HttpCode(200)
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('graph:write')
+  @ApiOperation({ summary: 'Set what somebody receives by mail. Cannot re-subscribe somebody who opted out.' })
+  async setEmailPreferences(
+    @Req() req: { machine: MachineCaller },
+    @Body() dto: { participantExternalId: string; roundDigest?: boolean; nudges?: boolean;
+      quietBeforeHour?: number; quietAfterHour?: number },
+  ) {
+    if (!dto?.participantExternalId) throw new BadRequestException('participantExternalId is required.');
+    return this.digests.setPreferences(req.machine.organizationId, dto.participantExternalId, dto);
+  }
+
+  /**
+   * OPEN A GROUNDWORK FROM SOMEBODY ELSE'S PRODUCT.
+   *
+   * The front door that did not exist. `POST /checkins` reads as though it created one and does not
+   * - it links an existing ground to an objective - so an integration could push its whole
+   * organisation in and never start a conversation about any of it.
+   *
+   * What comes out is a ground with no API-ness about it: the same scenario pack, the same engine,
+   * the same report at the end, because nothing downstream asks how it was made.
+   */
+  @Post('grounds')
+  @HttpCode(201)
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('grounds:write')
+  @ApiOperation({ summary: 'Open a check-in. Same engine, same scenario setup, same report as one opened in the product.' })
+  async openGround(@Req() req: { machine: MachineCaller }, @Body() dto: any) {
+    return this.groundsByApi.open(req.machine.organizationId, dto, req.machine);
+  }
+
+  /**
+   * THE REPORT, WHICH WAS GENERATED AND UNREACHABLE.
+   *
+   * Its own scope rather than folded into `findings:read`, for the same reason handovers got one: a
+   * report is a great deal more than a finding, and an integration granted the right to read
+   * findings must not silently receive everybody's synthesis as well.
+   */
+  @Get('grounds/:groundId/report')
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('reports:read')
+  @ApiOperation({ summary: 'The report for a completed round.' })
+  async getReport(
+    @Req() req: { machine: MachineCaller },
+    @Param('groundId') groundId: string,
+    @Query('as') asPersonExternalId: string,
+  ) {
+    return this.groundsByApi.report(req.machine.organizationId, groundId, asPersonExternalId, req.machine);
+  }
+
+  /**
+   * SEED WHAT WAS ALREADY AGREED.
+   *
+   * So the interview opens with "your agreed target is six paying clients, how is that going"
+   * instead of "what do you think your target is". The principle is that Groundwork starts from the
+   * existing agreement rather than pretending none exists - and it still lets somebody say the
+   * agreement is wrong, was never shown to them, or has been overtaken.
+   */
+  @Post('grounds/:groundId/objectives')
+  @HttpCode(200)
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('grounds:write')
+  @ApiOperation({ summary: 'Seed already-agreed objectives, commitments and targets onto a check-in.' })
+  async seedObjectives(
+    @Req() req: { machine: MachineCaller },
+    @Param('groundId') groundId: string,
+    @Body() dto: { objectives: any[] },
+  ) {
+    return this.groundsByApi.seedObjectives(req.machine.organizationId, groundId, dto?.objectives);
+  }
+
+  /**
+   * LIVE EVIDENCE. What the customer's own systems say is happening right now.
+   *
+   * The difference between a check-in and a form: without this the interview asks whether testing
+   * has started, and with it, what makes the three untested scenarios different from the fourteen
+   * that passed.
+   */
+  @Put('evidence')
+  @HttpCode(200)
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('graph:write')
+  @ApiOperation({ summary: 'Push current numbers against seeded objectives. Counts and short labels only.' })
+  async pushEvidence(@Req() req: { machine: MachineCaller }, @Body() dto: { evidence: any[] }) {
+    return this.groundsByApi.pushEvidence(req.machine.organizationId, dto?.evidence);
+  }
+
+  /**
+   * ASK FOR A CHANGE TO AN AGREEMENT. NOTHING MOVES UNTIL SOMEBODY SAYS YES.
+   */
+  @Post('proposed-changes')
+  @HttpCode(201)
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('grounds:write')
+  @ApiOperation({ summary: 'Propose a change to a seeded agreement. The current one stays in force.' })
+  async proposeChange(@Req() req: { machine: MachineCaller }, @Body() dto: any) {
+    return this.groundsByApi.proposeChange(req.machine.organizationId, dto);
+  }
+
+  /**
+   * THE ANSWER, from whichever system made it.
+   *
+   * A machine token may carry this one, unlike accepting a suggested conversation - because here the
+   * decision was made by a named person in the customer's own approval process, and this is them
+   * telling us what it was. `decidedByExternalId` is required for exactly that reason: an approval
+   * with nobody's name on it is not an approval.
+   */
+  @Post('proposed-changes/:id/resolve')
+  @HttpCode(200)
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('grounds:write')
+  @ApiOperation({ summary: 'Record that a proposed change was approved or rejected.' })
+  async resolveChange(@Req() req: { machine: MachineCaller }, @Param('id') id: string, @Body() dto: any) {
+    return this.groundsByApi.resolveChange(req.machine.organizationId, id, dto);
+  }
+
+  /**
+   * WHAT NEEDS SOMEBODY, IN FOUR BUCKETS.
+   *
+   * So nobody has to read every check-in. Each item says where it came from - somebody proposed it,
+   * several people independently agreed it, Groundwork worked it out, or the customer's own evidence
+   * shows it - because those four are not the same and acting on one thinking it was another is how
+   * a feed loses its reader.
+   */
+  @Get('findings/structured')
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('findings:read')
+  @ApiOperation({ summary: 'Findings with provenance, bucketed by what they need from a human.' })
+  async structuredFindings(@Req() req: { machine: MachineCaller }) {
+    return this.groundsByApi.structuredFindings(req.machine.organizationId, req.machine);
+  }
+
+  /**
+   * SENSE-CHECK THE OBJECTIVES, INCLUDING THE ONES SET FROM ABOVE.
+   *
+   * Everything else here examines how work is going. This examines whether what is being asked for
+   * holds together - the individual targets against the shared one, a commitment nobody is waiting
+   * on, a standard nobody has shown the person it is about.
+   */
+  @Get('grounds/:groundId/sense-check')
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('findings:read')
+  @ApiOperation({ summary: 'Questions about the objectives themselves, before a quarter is spent on them.' })
+  async senseCheck(@Req() req: { machine: MachineCaller }, @Param('groundId') groundId: string) {
+    return this.groundsByApi.senseCheckGround(req.machine.organizationId, groundId, req.machine);
   }
 
   /**

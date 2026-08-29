@@ -75,6 +75,106 @@ export function checkInCompletedPayload(args: {
   };
 }
 
+export interface BlockerPayload {
+  groundId: string;
+  /** Our id for the handoff, so a receiver can tie an escalation back to the raise. */
+  blockerId: string;
+  /** Only on an escalation. How long it had been open when it crossed the threshold. */
+  waitingDays?: number;
+  occurredAt: string;
+  permalink: string;
+}
+
+/**
+ * A BLOCKER EVENT CARRIES NEITHER WHAT NOR WHO.
+ *
+ * This one needs saying because the temptation is unusually strong: a webhook that said "Naomi is
+ * blocked on the pricing decision" would be the more useful alert, and it is the obvious thing to
+ * build. It is also the single worst payload in this product to let out. The `what` of a handoff is
+ * verbatim something a person said about their own work in a check-in, and the two participant ids
+ * name who is stuck and who is holding them up - so that message is an account of one named person
+ * failing another, landing in a gateway log, forwarded by an alerting rule, read by whoever has
+ * access to either. Nobody in that chain agreed to it.
+ *
+ * The duration goes because a number of days is not an account of anything, and it is the whole
+ * reason an escalation is worth sending at all.
+ */
+export function blockerPayload(args: {
+  groundId: string;
+  blockerId: string;
+  waitingDays?: number;
+  occurredAt: Date;
+  appUrl: string;
+}): BlockerPayload {
+  return {
+    groundId: args.groundId,
+    blockerId: args.blockerId,
+    ...(args.waitingDays === undefined ? {} : { waitingDays: args.waitingDays }),
+    occurredAt: args.occurredAt.toISOString(),
+    permalink: `${args.appUrl.replace(/\/$/, '')}/grounds/${args.groundId}`,
+  };
+}
+
+export interface HandoverReadyPayload {
+  roleAssignmentId: string;
+  /** Whether the role had nothing outstanding - different from a brief that failed to build. */
+  empty: boolean;
+  occurredAt: string;
+  permalink: string;
+}
+
+/**
+ * THE ROLE NAME DOES NOT TRAVEL, AND NOR DOES ANYTHING IN THE BRIEF.
+ *
+ * "Head of Partnerships changed hands today" in somebody's gateway log is a fact about a person's
+ * employment leaving the boundary for no reason - the receiver knows their own org chart. And the
+ * brief itself is a list of what is outstanding on a specific desk, which is the last thing that
+ * should be forwarded by an alerting rule.
+ */
+export function handoverReadyPayload(args: {
+  roleAssignmentId: string;
+  empty: boolean;
+  occurredAt: Date;
+  appUrl: string;
+}): HandoverReadyPayload {
+  return {
+    roleAssignmentId: args.roleAssignmentId,
+    empty: args.empty,
+    occurredAt: args.occurredAt.toISOString(),
+    permalink: `${args.appUrl.replace(/\/$/, '')}/handovers/${args.roleAssignmentId}`,
+  };
+}
+
+export interface ScenarioProposedPayload {
+  candidateId: string;
+  scenario: string;
+  occurredAt: string;
+  permalink: string;
+}
+
+/**
+ * THE SCENARIO TRAVELS, THE PERSON AND THE EVIDENCE DO NOT.
+ *
+ * The kind of conversation is a category and carries nobody. Who it is about, and why, is the exact
+ * combination that must not leave: "a performance improvement conversation has been suggested about
+ * Naomi, because of these findings" is an accusation, in a gateway log, forwarded by an alerting
+ * rule, before a single human has even read it. The permalink is where that lives, behind the
+ * authorisation that governs it.
+ */
+export function scenarioProposedPayload(args: {
+  candidateId: string;
+  scenario: string;
+  occurredAt: Date;
+  appUrl: string;
+}): ScenarioProposedPayload {
+  return {
+    candidateId: args.candidateId,
+    scenario: args.scenario,
+    occurredAt: args.occurredAt.toISOString(),
+    permalink: `${args.appUrl.replace(/\/$/, '')}/suggestions/${args.candidateId}`,
+  };
+}
+
 /**
  * The words a payload must never contain, checked in the spec that guards these builders. Kept here
  * beside the builders so the rule and the thing it governs are read together.

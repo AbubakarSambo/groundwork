@@ -50,7 +50,18 @@ const UNGUARDED_ON_PURPOSE = [
  * This list exists so that difference is a decision somebody made rather than a route that quietly
  * missed its guard.
  */
-const PANEL_AUTHENTICATED = ["@Post('chat')", "@Get('embed/opening')"];
+const PANEL_AUTHENTICATED = [
+  "@Post('chat')",
+  "@Get('embed/opening')",
+  /*
+   * Deciding a suggested conversation is the one thing in this product that a machine must NOT be
+   * able to do. "Detection is a proposal, never a launch" is only true while the acceptance needs a
+   * person, and a machine token carries an organisation and nobody in particular - so a server-to-
+   * server call accepting a performance conversation would satisfy every check and none of the rule.
+   */
+  "@Get('suggestions')",
+  "@Post('suggestions/:id')",
+];
 
 /** Every route decorator in the file, in source order, with what follows it up to the handler. */
 function routes() {

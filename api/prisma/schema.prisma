@@ -53,6 +53,10 @@ enum GroundScenario {
   BOARD_STRATEGY
   COHORT_CHECK
   ACUTE_SHOCK // a jarring event just happened; build the shared picture before any decision
+  /// A role changing hands. The only scenario the spec names that this enum did not already have -
+  /// the rest were here, so detection proposes from the vocabulary that already exists rather than
+  /// a parallel set of its own.
+  ROLE_HANDOVER
   /// The honest default when a described situation matches no card.
   ///
   /// Before this, "Describe your own situation" carried REALIGN_TEAM in its card config, so a routing
@@ -285,7 +289,15 @@ model Organization {
   assistantProposals  AssistantProposal[]
   knowledgeCards      KnowledgeCard[]
   knowledgeRetrievals KnowledgeRetrieval[]
+  scenarioCandidates  ScenarioCandidate[]
+  emailPreferences    EmailPreference[]
+  retentionPolicy     RetentionPolicy?
+  departureRecords    DepartureRecord[]
+  proposedChanges     ProposedChange[]
   detectorResults     DetectorResult[]
+  roleAssignments     RoleAssignment[]
+  onboardingTracks    OnboardingTrack[]
+  onboardingStatuses  OnboardingStatus[]
   contributions       Contribution[]
   recommendations     Recommendation[]
   objectiveDrafts     ObjectiveDraft[]
@@ -602,6 +614,9 @@ model Ground {
 
   @@index([organizationId])
   @@index([status])
+  /// A ground SUMMONED against an imported objective. Declared here as well as created in SQL,
+  /// because an index Prisma does not know about is one the next generated migration drops.
+  @@index([organizationId, subjectExternalId])
   @@map("grounds")
 }
 
@@ -995,6 +1010,11 @@ model GroundDependency {
   // consequence, not just a status.
   then              String?          @db.Text
   status            DependencyStatus @default(WAITING)
+  /// Stamped once, the first time this handoff crosses the waiting threshold and is escalated.
+  /// The column is what makes the sweep fire once rather than every night for as long as the
+  /// handoff stays open - a nightly repeat of the same alert is how a customer learns to filter
+  /// the channel, which costs them the alert that mattered.
+  escalatedAt       DateTime?        @map("escalated_at")
   sourceCheckInId   String?          @map("source_check_in_id")
   clearedAt         DateTime?        @map("cleared_at")
   createdAt         DateTime         @default(now()) @map("created_at")
@@ -1005,6 +1025,10 @@ model GroundDependency {
   onParticipant   GroundParticipant? @relation("DependencyOn", fields: [onParticipantId], references: [id], onDelete: SetNull)
 
   @@index([groundId])
+  /// The escalation sweep asks for open handoffs not yet escalated, oldest first. Declared here as
+  /// well as created in SQL - an index Prisma does not know about is one the next generated
+  /// migration drops.
+  @@index([status, escalatedAt, createdAt])
   @@map("ground_dependencies")
 }
 
@@ -1357,6 +1381,17 @@ model ApiCredential {
   /// What it may do. Chosen at issue and never widened by a request - a token can only ever ask for
   /// a subset of what its credential already holds.
   scopes           String[]
+
+  /// WHOSE WORK THIS CREDENTIAL MAY SEE, when it should not see all of it.
+  ///
+  /// Scopes say what a token may DO. They said nothing about whom to, so a credential that could read
+  /// findings read every finding in the organisation - and a sales integration and an engineering one
+  /// were the same integration with different names.
+  ///
+  /// Empty means the whole organisation, which is what every existing credential means and what a
+  /// single-team customer wants. A non-empty list is a fence: only these people's records, and only
+  /// check-ins they are on.
+  boundToPersonExternalIds String[] @default([]) @map("bound_to_person_external_ids")
   /// Last authenticated use, for the console. Written on token issue rather than on every call:
   /// the question it answers is "is this integration alive", and per-request writes would put a
   /// write on the hot path of every read.
@@ -1901,6 +1936,15 @@ model KnowledgeCard {
 
   @@index([organizationId, kind])
   @@index([organizationId, key, effectiveFrom])
+  /// TRIGRAM, WHICH IS WHY THIS NEEDS SAYING TWICE.
+  ///
+  /// Retrieval matches a question against card titles and bodies with `pg_trgm` - a plain btree
+  /// index cannot serve that, and without these it is a sequential scan over every card in the
+  /// organisation. They lived only in SQL, so Prisma did not know they existed and the next
+  /// generated migration would have dropped them: the product would simply have got slower, with
+  /// nothing to point at.
+  @@index([title(ops: raw("gin_trgm_ops"))], type: Gin)
+  @@index([body(ops: raw("gin_trgm_ops"))], type: Gin)
   @@map("knowledge_cards")
 }
 
@@ -1949,6 +1993,9 @@ model AssistantTurn {
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([organizationId, personExternalId, createdAt])
+  /// Trigram, for recall over what somebody said. Same reason as the knowledge cards above: SQL-only
+  /// meant Prisma would have dropped it.
+  @@index([content(ops: raw("gin_trgm_ops"))], type: Gin)
   @@map("assistant_turns")
 }
 
@@ -2363,6 +2410,32 @@ model PersonObjective {
   owedToParticipantId String?         @map("owed_to_participant_id")
   /// 'lead' or 'self'. Who wrote the CURRENT text.
   authoredBy          String          @map("authored_by")
+
+  /// WHERE THIS CAME FROM, when it did not come from the conversation.
+  ///
+  /// A seeded objective is one the customer's own system says was already agreed - "Sahar owns a
+  /// six-client Q4 target, approved by Hafsah, effective 1 October". Groundwork should start from
+  /// that rather than making somebody rediscover it, and it has to be able to tell an agreement
+  /// somebody else recorded from something said in a check-in. Once the text is written down those
+  /// two look identical without these columns.
+  ///
+  /// Null on everything extracted from conversation, which is the overwhelming majority.
+  sourceSystem         String?   @map("source_system")
+  /// EMPTY, NOT NULL, and that is what makes several seeded objectives possible.
+  ///
+  /// A planning system holds six targets for one person in a quarter; the check-in engine must still
+  /// hold one, because `(groundId, participantId, kind)` is what stops the conversation writing two
+  /// contradictory expectations with nothing to say which holds.
+  ///
+  /// Adding a NULLABLE externalId to that key would have removed the guarantee silently - Postgres
+  /// treats NULLs as distinct, so two conversation rows would both insert. A partial index keeps
+  /// both and cannot be expressed in Prisma, and this repository already removed one of those for
+  /// exactly that reason. An empty string is the version that works: conversation rows all share it
+  /// and stay one-per-kind, seeded rows carry their own id and may be many.
+  externalId           String    @default("") @map("external_id")
+  /// Who signed it off in THEIR system. Not a Groundwork approval.
+  approvedByExternalId String?   @map("approved_by_external_id")
+  effectiveFrom        DateTime? @map("effective_from")
   /// Whether the person it belongs to has seen the current text.
   /// WHERE THIS IS SETTLED, WHEN THE KIND IS REFERENCE.
   ///
@@ -2376,6 +2449,7 @@ model PersonObjective {
   /// the same work - which is the same failure, arriving as a feature.
   ///
   /// Never polled and never synced. A sync would make it a copy again.
+  proposedChanges     ProposedChange[]
   trackedUrl          String?         @map("tracked_url")
   lastSeenState       String?         @map("last_seen_state")
   lastSeenAt          DateTime?       @map("last_seen_at")
@@ -2434,7 +2508,12 @@ model PersonObjective {
   // Restating the same kind for the same person is a REVISION and updates in place, which is what
   // keeps seenBySubject honest when the words change. A different kind is a different thing and
   // gets its own row.
-  @@unique([groundId, participantId, kind])
+  /// One per kind for the conversation, several for an integration - see `externalId`.
+  @@unique([groundId, participantId, kind, externalId])
+  /// Upsert key for a seeded objective, so a customer pushing the same agreement twice updates it
+  /// rather than colliding with the constraint above. `sourceSystem` is null for everything the
+  /// conversation writes, and Postgres treats NULLs as distinct - so those rows never collide here.
+  @@unique([groundId, sourceSystem, externalId])
   @@index([groundId, participantId])
   @@map("person_objectives")
 }
@@ -2803,4 +2882,330 @@ model OrganizationMembership {
   @@unique([userId, organizationId])
   @@index([userId])
   @@map("organization_memberships")
+}
+
+/// WHO HELD THIS ROLE, AND WHEN THEY STOPPED.
+///
+/// The spec keys this to a `role` record. There is no `role` table here - roles exist as a static
+/// library of functions and as free text on a participant - so this holds the NAME the organisation
+/// already uses, the same way `roleAsDescribed` does. Inventing half a role model to satisfy a
+/// foreign key would have been the worse of the two: a table nothing populates, joined to by a
+/// thing that works, is how a schema starts lying.
+///
+/// Two jobs, and the second is the one nobody asks for until it is too late. It is the trigger for
+/// a handover brief; and `startedAt` is the real onboarding window that `no_checkin` currently
+/// approximates with how long somebody has been in the directory.
+model RoleAssignment {
+  id               String @id @default(uuid())
+  organizationId   String @map("organization_id")
+  /// The person holding it, by their identity system's id - the same key every org-scoped record uses.
+  personExternalId String @map("person_external_id")
+  /// The role as the organisation names it. Free text on purpose - see the note above.
+  roleName         String @map("role_name")
+
+  startedAt DateTime  @default(now()) @map("started_at")
+  endedAt   DateTime? @map("ended_at")
+
+  /// The assignment this one takes over from. Set on the INCOMING assignment, so a handover is
+  /// something the successor has rather than something the leaver is owed - which is the right way
+  /// round, because the leaver has gone.
+  predecessorAssignmentId String? @unique @map("predecessor_assignment_id")
+
+  /// Stamped when the brief has been built, so it is built once. §13's ageing rule makes this
+  /// load-bearing: turn content ages out, and a brief built afterwards is built from data already
+  /// gone.
+  handoverReadyAt DateTime? @map("handover_ready_at")
+  /// The brief itself, generated at handover and then immutable - it describes a moment.
+  handoverBrief   Json?     @map("handover_brief")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  predecessor  RoleAssignment? @relation("Succession", fields: [predecessorAssignmentId], references: [id], onDelete: SetNull)
+  successor    RoleAssignment? @relation("Succession")
+
+  @@index([organizationId, personExternalId])
+  @@index([organizationId, roleName, endedAt])
+  @@map("role_assignments")
+}
+
+/// WHAT SOMEBODY NEW TO A ROLE HAS TO GET THROUGH, PER ROLE.
+///
+/// Keyed by role NAME rather than a role id, for the same reason `RoleAssignment` is - there is no
+/// role table, and a foreign key to a thing that does not exist is worse than a string that works.
+model OnboardingTrack {
+  id             String @id @default(uuid())
+  organizationId String @map("organization_id")
+  roleName       String @map("role_name")
+  name           String
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  gates        OnboardingGate[]
+
+  /// One track per role. Two would mean somebody joining had two answers about what they owe.
+  @@unique([organizationId, roleName])
+  @@map("onboarding_tracks")
+}
+
+/// One thing to get through. Configurable per role - account set up, brief read, first check-in.
+model OnboardingGate {
+  id          String  @id @default(uuid())
+  trackId     String  @map("track_id")
+  /// Stable across renames, because a status points at a gate and a rename must not orphan it.
+  key         String
+  name        String
+  description String? @db.Text
+  ordinal     Int
+  /// An optional gate is a suggestion. Only required ones hold the window open.
+  required    Boolean @default(true)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  track    OnboardingTrack    @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  statuses OnboardingStatus[]
+
+  @@unique([trackId, key])
+  @@index([trackId, ordinal])
+  @@map("onboarding_gates")
+}
+
+enum GateState {
+  PENDING
+  DONE
+  /// Deliberately let through - somebody who has done this before elsewhere. Counts as closed for
+  /// the window, and is kept distinct from DONE so "did they actually do it" stays answerable.
+  WAIVED
+}
+
+/// WHERE ONE PERSON HAS GOT TO ON ONE GATE.
+///
+/// The spec keys this to `participantId`. Participants are ground-scoped and this is not - somebody
+/// onboarding into a role has one set of gates whatever grounds they are in - so it keys on the
+/// person's external id like every other org-scoped record here.
+model OnboardingStatus {
+  id               String    @id @default(uuid())
+  organizationId   String    @map("organization_id")
+  personExternalId String    @map("person_external_id")
+  gateId           String    @map("gate_id")
+  state            GateState @default(PENDING)
+  completedAt      DateTime? @map("completed_at")
+  /// What was done, as a pointer rather than a copy - a document id, a check-in id. Never content.
+  evidenceRef      String?   @map("evidence_ref")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  gate         OnboardingGate @relation(fields: [gateId], references: [id], onDelete: Cascade)
+
+  @@unique([personExternalId, gateId])
+  @@index([organizationId, personExternalId])
+  @@map("onboarding_statuses")
+}
+
+/// PROPOSED, ACCEPTED, DECLINED, EXPIRED - and never "launched".
+enum ScenarioCandidateState {
+  PROPOSED
+  ACCEPTED
+  DECLINED
+  /// Nobody answered before the evidence went stale. Not a decline: it is asked again if the
+  /// situation is still there, because silence is not a no.
+  EXPIRED
+}
+
+/// A CONVERSATION THE RECORD SUGGESTS IS NEEDED. NOTHING MORE THAN THAT.
+///
+/// The spec's own sentence is the design: "detection is a proposal, never a launch", and it says
+/// where that matters most - a system that silently opens a performance improvement conversation
+/// because a detector crossed a line is a system nobody will let near their staff.
+///
+/// So this table holds a suggestion addressed to a named person, with the evidence that produced it
+/// and how sure it is. A ground is created when they say yes and not before, which is why there is
+/// no groundId here until there is.
+model ScenarioCandidate {
+  id             String         @id @default(uuid())
+  organizationId String         @map("organization_id")
+  scenario       GroundScenario
+
+  /// What it is about. Both nullable: a NEW_HIRE is about a person, a DRIFT is about a subject,
+  /// and REALIGN_TEAM is about a subject and several people at once.
+  subjectExternalId String? @map("subject_external_id")
+  personExternalId  String? @map("person_external_id")
+
+  /// Why, in the shape the detector produced it. Never anybody's words - see the payload rules.
+  evidence   Json
+  /// How sure, 0 to 1. Shown rather than thresholded away, so somebody can decline a weak one
+  /// knowing it was weak.
+  confidence Float
+
+  /// The appropriate authority: the subject owner, the lead, or the person themselves.
+  proposedToPersonExternalId String   @map("proposed_to_person_external_id")
+  proposedAt                 DateTime @default(now()) @map("proposed_at")
+
+  state      ScenarioCandidateState @default(PROPOSED)
+  resolvedAt DateTime?              @map("resolved_at")
+  /// After this, it stops asking. Silence is not consent and it is not refusal either.
+  expiresAt  DateTime               @map("expires_at")
+
+  /// Set when accepting created one. Null everywhere else, which is most of the time.
+  groundId String? @map("ground_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, state, expiresAt])
+  @@index([organizationId, scenario, subjectExternalId])
+  @@index([organizationId, proposedToPersonExternalId, state])
+  @@map("scenario_candidates")
+}
+
+/// WHAT SOMEBODY WANTS BY MAIL, AND THE ONE THING AN ADMIN CANNOT OVERRIDE.
+///
+/// §13D.3: per-participant and per-lead opt-out, honoured WITHOUT an admin override. That sentence
+/// is why this is a record keyed to the person rather than a setting on the organisation - a
+/// preference an admin can flip is not a preference, and the whole reason people answer honestly
+/// here is that the product does what it said it would.
+model EmailPreference {
+  id               String @id @default(uuid())
+  organizationId   String @map("organization_id")
+  personExternalId String @map("person_external_id")
+
+  /// One mail per round with the headline and a link. Never a mail per finding.
+  roundDigest Boolean @default(true) @map("round_digest")
+  /// A commitment they said they would do and have not. Shares the §12 budget with the panel.
+  nudges      Boolean @default(true)
+
+  /// Their local hours, so nothing lands at 3am. Null means the organisation default is used.
+  quietBeforeHour Int? @map("quiet_before_hour")
+  quietAfterHour  Int? @map("quiet_after_hour")
+
+  /// The link on every mail. Long, random, and it works without signing in - somebody who wants to
+  /// stop hearing from us must not have to remember a password to do it.
+  unsubscribeToken String    @unique @map("unsubscribe_token")
+  /// Set when they used it. Turns everything off at once and outranks the individual flags.
+  unsubscribedAt   DateTime? @map("unsubscribed_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, personExternalId])
+  @@map("email_preferences")
+}
+
+/// HOW LONG RAW CONVERSATION IS KEPT AFTER SOMEBODY LEAVES.
+///
+/// §13C.1. A departed person's check-ins are the substrate for every finding about the objectives
+/// they touched, so a hard delete guts the record - and keeping their words indefinitely against
+/// somebody who has left is a real exposure. The window is the customer's to set, BOUNDED at both
+/// ends: a floor so it cannot be set to zero and break the product, and a ceiling so it cannot be
+/// set to forever and stop being a retention policy.
+model RetentionPolicy {
+  id             String @id @default(uuid())
+  organizationId String @unique @map("organization_id")
+
+  /// Days a departed person's raw turns are kept. Clamped in code, not only here.
+  turnRetentionDays Int @default(180) @map("turn_retention_days")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("retention_policies")
+}
+
+/// WHAT THE DEPARTURE JOB DID, KEPT AFTER THE THING IT DID IT TO IS GONE.
+///
+/// §13C.1: "deletion is a job with an audit record, not a cascade." The distinction is the whole
+/// point - a cascade leaves nothing behind saying it happened, so the first question a security
+/// review asks ("show me that you deleted it") has no answer. This row outlives the data.
+model DepartureRecord {
+  id               String @id @default(uuid())
+  organizationId   String @map("organization_id")
+  personExternalId String @map("person_external_id")
+
+  /// When they left, from the assignment. The clock the window is measured against.
+  departedAt DateTime @map("departed_at")
+  /// When the raw turns actually went. Null while the window is still open.
+  turnsDeletedAt DateTime? @map("turns_deleted_at")
+
+  /// Counts, never contents. What was closed, collapsed and deleted, so the job is auditable
+  /// without the audit itself becoming a copy of what was removed.
+  commitmentsClosed Int @default(0) @map("commitments_closed")
+  blockersClosed    Int @default(0) @map("blockers_closed")
+  findingsCollapsed Int @default(0) @map("findings_collapsed")
+  turnsDeleted      Int @default(0) @map("turns_deleted")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, personExternalId, departedAt])
+  @@index([organizationId, turnsDeletedAt])
+  @@map("departure_records")
+}
+
+/// PROPOSED, AND NOT YET TRUE.
+enum ProposedChangeState {
+  AWAITING_APPROVAL
+  APPROVED
+  REJECTED
+  /// Overtaken by a later proposal about the same objective. Not a refusal.
+  SUPERSEDED
+  /// Withdrawn by whoever proposed it.
+  CANCELLED
+}
+
+/// SIX IS STILL THE TARGET WHILE FOUR IS BEING ASKED FOR.
+///
+/// Without this the two cannot coexist. Somebody says in a check-in that six should be four, it sits
+/// in a transcript, and a later summary may treat four as the number - which is a proposal becoming
+/// an agreement because nobody modelled the difference.
+///
+/// Deliberately NOT a general workflow engine. It holds one proposed change to one objective, who
+/// must approve it, and what happened. Approval itself may be done here or in the customer's own
+/// system; this records the outcome either way.
+model ProposedChange {
+  id             String @id @default(uuid())
+  organizationId String @map("organization_id")
+
+  /// The agreement being asked about. The current value stays on it, untouched.
+  personObjectiveId String @map("person_objective_id")
+
+  /// What is being asked for, in the same words somebody would use.
+  proposedText String  @db.Text @map("proposed_text")
+  /// Why. The reason is the part an approver actually needs, and the part most often lost.
+  reason       String? @db.Text
+
+  /// Who asked, and who must answer. Both by their identity system's id.
+  proposedByExternalId String  @map("proposed_by_external_id")
+  approverExternalId   String  @map("approver_external_id")
+
+  state      ProposedChangeState @default(AWAITING_APPROVAL)
+  /// Set on approval or rejection. Who actually decided, which may differ from who was asked.
+  decidedByExternalId String?  @map("decided_by_external_id")
+  /// Where it was decided: 'groundwork' or the customer's system name. An approval nobody can
+  /// locate afterwards is not much of an approval.
+  decidedIn  String?             @map("decided_in")
+  decidedAt  DateTime?           @map("decided_at")
+  decisionNote String?           @db.Text @map("decision_note")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization    Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  personObjective PersonObjective @relation(fields: [personObjectiveId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, state])
+  @@index([personObjectiveId, state])
+  @@map("proposed_changes")
 }

@@ -3,7 +3,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { GroundScenario, GroundMoment, TurnRole, CheckInStatus, PartyType, Cadence, TokenType } from '@prisma/client';
 import { splitMentions } from './a-client-is-not-a-colleague';
 import {
-  restoreTheirWords, causalClaimNobodyMade, ASK_INSTEAD_OF_CONCLUDING,
+  restoreTheirWords, truncationsOfTheirWords, causalClaimNobodyMade, ASK_INSTEAD_OF_CONCLUDING,
 } from '../conversation/the-record-holds-what-was-said';
 import * as crypto from 'crypto';
 import * as bcrypt from 'bcrypt';
@@ -23,6 +23,7 @@ import { VOCABULARY_RULE } from '../conversation/prompt-library';
 import { forHumans, hadCloseMarker } from '../presentation/outbound';
 import { DEFAULT_FREE_MEMBER_LIMIT } from '../billing/pricing.service';
 import { recordRoundCompletion } from '../grounds/round-completion';
+import { screen, ASK_AGAIN } from '../conversation/nothing-invented-reaches-them';
 
 const SCENARIO_MAP: Record<string, GroundScenario> = {
   // Human-readable labels from legacy UI
@@ -415,7 +416,9 @@ export class EntryService {
   }
 
   async faq(question: string): Promise<string> {
-    return forHumans(await this.anthropic.respond(FAQ_PROMPT, [{ role: 'user', content: question }]));
+    /* Prose, to a person, containing whatever they typed - so it needs the same guard as every
+       other reply. It was the fourth path found without one. */
+    return this.guardedReply(FAQ_PROMPT, [{ role: 'user', content: question }]);
   }
 
   async classifyIntent(description: string, mode?: string): Promise<{ scenario: GroundScenario }> {
@@ -446,7 +449,16 @@ Description: "${description.slice(0, 400)}"
 Respond with exactly one JSON object: {"scenario": "<SCENARIO_KEY>"}`;
 
     try {
-      const raw = await this.anthropic.respond(prompt, [{ role: 'user', content: 'Classify.' }]);
+      /*
+       * The marker is the VARIABLE NAME, not a comment. It used to be a comment, and the repo-wide
+       * rule that source-assertion specs must strip comments first - which is right, because a
+       * sentence quoting code passes a scanner while the code is gone - took it with it.
+       *
+       * A name survives stripping and reads at the call site, so whoever adds the next direct call
+       * still has to say in the open which kind theirs is.
+       */
+      const notAReplyToAnybody = await this.anthropic.respond(prompt, [{ role: 'user', content: 'Classify.' }]);
+      const raw = notAReplyToAnybody;
       const match = raw.match(/"scenario"\s*:\s*"([A-Z_]+)"/);
       if (match && Object.values(GroundScenario).includes(match[1] as GroundScenario)) {
         return { scenario: match[1] as GroundScenario };
@@ -585,8 +597,16 @@ Rules:
     /**
      * Through the boundary before anything else touches it. This reply reached the screen raw,
      * which is how `[[SESSION_COMPLETE]]` and `**Outreach:**` were photographed in a chat bubble.
+     *
+     * AND THROUGH `guardedReply`, WHICH IT WAS NOT.
+     *
+     * The comment on that helper says a new exit should be guarded by default and forgetting should
+     * be the unusual act. It says that because the word-restoration had already been fixed once and
+     * missed the entry path. It then missed this one: `chat()` was routed through the helper and
+     * `onboard()` was left calling the model directly - in the flow every single new person meets
+     * first, and the same flow the original "microchipshit" bug was found in.
      */
-    const reply = forHumans(await this.anthropic.respond(ONBOARD_SYSTEM, messages));
+    const reply = await this.guardedReply(ONBOARD_SYSTEM, messages);
 
     // Second lightweight call to extract structured fields
     const EXTRACT_SYSTEM = `You are extracting structured data from an onboarding conversation for Groundwork.
@@ -765,7 +785,17 @@ STRICT RULES:
   private async guardedReply(system: string, messages: ChatTurn[]): Promise<string> {
     const reply = await this.anthropic.respond(system, messages);
     const personSaid = messages.filter((m) => m.role === 'user').map((m) => m.content ?? '');
-    const restored = restoreTheirWords(reply, personSaid);
+    /*
+     * NOTHING INVENTED REACHES A PERSON, on this path as on the check-in. A sentence naming somebody
+     * who does not exist is dropped rather than repaired, because there is nothing of theirs to put
+     * back - and this is the flow a stranger meets first, where an invented colleague is least
+     * explicable and most likely to be the last thing they read here.
+     */
+    const screened = screen(reply, personSaid);
+    if (screened.dropped.length) {
+      this.logger.warn(`Dropped ${screened.dropped.length} sentence(s) with an invented name on the entry path.`);
+    }
+    const restored = screened.text || ASK_AGAIN;
 
     // The causal upgrade cannot be repaired by substitution - there is no word of
     // theirs to put back, because the causation was invented whole. Logged, as on
@@ -773,6 +803,15 @@ STRICT RULES:
     const invented = causalClaimNobodyMade(restored, personSaid);
     if (invented.length) {
       this.logger.warn(`Causal claim nobody made on the entry path: ${invented.join(', ')}. ${ASK_INSTEAD_OF_CONCLUDING}`);
+    }
+
+    /* The two the substitution above cannot reach: a name invented whole, which has nothing of
+       theirs underneath to put back, and one of their own words quietly shortened. Reported rather
+       than edited, on the same reasoning as the check-in path - the point is that the rate stops
+       being unknowable. */
+    const shortened = truncationsOfTheirWords(restored, personSaid);
+    if (shortened.length) {
+      this.logger.warn(`Shortened one of their own words on the entry path: ${shortened.join(', ')}.`);
     }
     /**
      * Last, after the word-restoration and the causal check, because both of those reason about

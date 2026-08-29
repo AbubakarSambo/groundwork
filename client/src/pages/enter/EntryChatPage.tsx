@@ -369,6 +369,18 @@ export const STATUS_DISPLAY: Record<'Unresolved' | 'Mixed' | 'Emerging' | 'Clear
 export const SITUATION_CARDS = [
   {
     group: 'starting',
+    scenario: 'ROLE_HANDOVER',
+    label: SCENARIO_LABELS.ROLE_HANDOVER,
+    detail: 'Get what is outstanding, what is fragile and who relies on the role written down while the person leaving is still here.',
+    message: 'Somebody is handing a role over and I want the incoming person to have more than a list of tasks.',
+    timelineHint: 'typically 30 days',
+    examples: [
+      'Someone is leaving in four weeks and their replacement has already started.',
+      'A role is moving between two people and nobody has written down what the first one was carrying.',
+    ],
+  },
+  {
+    group: 'starting',
     scenario: 'NEW_HIRE',
     label: SCENARIO_LABELS.NEW_HIRE,
     detail: 'Get you and a new hire meaning the same thing by "doing well", before anything drifts.',

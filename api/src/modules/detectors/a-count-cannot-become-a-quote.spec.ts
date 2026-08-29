@@ -4,6 +4,7 @@ import {
   findUnrecognisedContributors, findNominalOnly, sayUnrecognised, sayNominal,
   CARRYING_REFERENCED_BY, CARRYING_STATED_TIMES, NOMINAL_MINIMUM_SUBJECTS, ContributionRow,
 } from './who-is-actually-carrying-it';
+import { unblockingCredits } from './somebody-else-says-you-unblocked-them';
 
 /**
  * REFERENCED IS ONE PERSON'S WORDS ABOUT ANOTHER, AND THAT IS THE WHOLE CARE OF THIS.
@@ -43,14 +44,59 @@ describe('a count cannot become a quote', () => {
     expect(SERVICE).not.toMatch(/speakers\.join/);
   });
 
-  it('a contribution kind that cannot exist is not produced', () => {
+  it('and UNBLOCKING keeps the same rule, which is why it took a file of its own', () => {
     /*
-     * UNBLOCKING is in the enum because it is part of the contract and absent from the computation
-     * because there are no blockers - a row of that kind would be a lie with a timestamp. Same rule
-     * as only offering webhook events that can fire.
+     * This test used to assert UNBLOCKING was NOT produced, because the service said there are no
+     * blockers in this product. There were, and had been for a long time - the premise had gone
+     * stale and this test was holding it in place.
+     *
+     * What survives is the rule underneath, which never depended on that: unblocking three people
+     * stores a three. WHICH three is a list of who was stuck, attributed, and the same thing the
+     * REFERENCED rule refuses.
      */
     expect(SCHEMA).toContain('UNBLOCKING');
-    expect(SERVICE).not.toMatch(/kind: 'UNBLOCKING'/);
+    expect(SERVICE).toMatch(/kind: 'UNBLOCKING'/);
+    expect(CREDITS).toMatch(/weight: whoTheyUnblocked\.size/);
+    expect(CREDITS).not.toMatch(/\[\.\.\.whoTheyUnblocked\]|whoTheyUnblocked\.join/);
+  });
+});
+
+const CREDITS = readFileSync(join(__dirname, 'somebody-else-says-you-unblocked-them.ts'), 'utf8');
+
+describe('unblocking cannot be claimed for yourself', () => {
+  it('so clearing your own outstanding decision earns nothing', () => {
+    /*
+     * The kind's whole value is that the person credited said nothing - the credit exists because
+     * the person who was waiting stopped saying they were. Somebody recording their own outstanding
+     * decision and then recording it done would otherwise be paid twice for finishing their own
+     * work, and it is the easiest thing to trip accidentally.
+     */
+    const subject = { externalId: 's1', title: 'paying user pricing', ownerExternalId: null,
+      contributorExternalIds: [], parentExternalId: null };
+    const own = unblockingCredits(
+      [{ what: 'the paying user pricing decision', onPersonKey: 'ada', fromPersonKey: 'ada' }],
+      [subject],
+    );
+    expect(own).toEqual([]);
+
+    const real = unblockingCredits(
+      [
+        { what: 'the paying user pricing decision', onPersonKey: 'ada', fromPersonKey: 'lin' },
+        { what: 'paying user pricing again', onPersonKey: 'ada', fromPersonKey: 'tom' },
+        /* The same colleague twice is one person unblocked, not two. */
+        { what: 'paying user pricing once more', onPersonKey: 'ada', fromPersonKey: 'tom' },
+      ],
+      [subject],
+    );
+    expect(real).toEqual([{ personExternalId: 'ada', subjectExternalId: 's1', weight: 2 }]);
+  });
+
+  it('and a handoff that sat outside the organisation credits nobody', () => {
+    expect(unblockingCredits(
+      [{ what: 'the paying user pricing decision', onPersonKey: null, fromPersonKey: 'lin' }],
+      [{ externalId: 's1', title: 'paying user pricing', ownerExternalId: null,
+         contributorExternalIds: [], parentExternalId: null }],
+    )).toEqual([]);
   });
 });
 

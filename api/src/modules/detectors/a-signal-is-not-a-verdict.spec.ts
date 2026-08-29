@@ -124,21 +124,42 @@ describe('one vocabulary, two scopes', () => {
     for (const key of GENUINELY_NEW) expect(ALIASES[key]).toBeUndefined();
   });
 
-  it('what is BUILT is a shorter list than what is named', () => {
+  it('never claims a detector that is not in the vocabulary', () => {
     /*
-     * Same reasoning as only offering webhook events that can fire. A customer asking why they have
+     * Same reasoning as only offering webhook events that can fire: a customer asking why they have
      * seen no goal_divergence deserves "it is not built yet" rather than silence.
+     *
+     * This used to assert IMPLEMENTED was SHORTER than GENUINELY_NEW, which was true when written
+     * and stopped being true the moment the last three landed. The direction that always holds is
+     * that it is a SUBSET - nothing may be claimed as built that the vocabulary does not name, and
+     * a list that is briefly complete is not a failure.
      */
-    expect(IMPLEMENTED.length).toBeLessThan(GENUINELY_NEW.length);
+    for (const key of IMPLEMENTED) {
+      expect(GENUINELY_NEW).toContain(key);
+    }
     expect(isImplemented('undeclared_dependency')).toBe(true);
     expect(isImplemented('goal_divergence')).toBe(true);
-    /* Still named but unbuilt, and the list has to keep saying so. */
     expect(isImplemented('unrecognised_contributor')).toBe(true);
-    /* Still named and unbuilt. The list has to keep saying so. */
     expect(isImplemented('unowned_gap')).toBe(true);
-    /* Still named and unbuilt - these need a role model or an onboarding window, neither of which
-       exists, and the list has to keep saying so rather than quietly shortening. */
-    expect(isImplemented('unattached_work')).toBe(false);
-    expect(isImplemented('no_lead')).toBe(false);
+
+    /*
+     * These three used to be asserted as unbuilt, on a comment saying they needed a role model or an
+     * onboarding window. `no_lead` needed neither - it reads `managerExternalId`, which SCIM has
+     * written since the day it landed - and the other two needed less than claimed. The comment
+     * outlived its own reason, exactly as "there are no blockers in this product" did.
+     */
+    expect(isImplemented('unattached_work')).toBe(true);
+    expect(isImplemented('no_lead')).toBe(true);
+    expect(isImplemented('no_checkin')).toBe(true);
+  });
+
+  it('and the ones still genuinely unbuilt keep saying so', () => {
+    /*
+     * The list shortening is only honest while something still refuses to claim what is not there.
+     * `neglected_primary` needs a primary action and a cadence on a role, and roles do not exist
+     * here as records - so it is in neither list, and that is the state to preserve.
+     */
+    expect(isImplemented('neglected_primary')).toBe(false);
+    expect(IMPLEMENTED).not.toContain('neglected_primary');
   });
 });

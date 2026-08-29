@@ -24,6 +24,11 @@ import {
 } from './coverage';
 import { MIN_COACHING_CONFIDENCE, roleMapFor } from './role-maps';
 import { ReadInput, buildContribution, buildCoverage, dedupeDependencies } from './reads';
+import {
+  OrgDependency,
+  whatThePlaceIsWaitingOn,
+  whoIsBeingWaitedOn,
+} from './what-the-whole-place-is-waiting-on';
 import { PATTERN_NAME_BY_CODE } from '../patterns/pattern-library';
 import { forbiddenNames, namesAnyone, ForbiddenName } from '../reports/guide-sanitiser';
 
@@ -900,6 +905,56 @@ export class BoardService {
     await this.prisma.groundPollOption.update({ where: { id: optionId }, data: { whoIds } });
     return { optionId, available: !has, count: whoIds.length };
   }
+
+  /**
+   * WHAT THE WHOLE ORGANISATION IS WAITING ON.
+   *
+   * The per-ground board has read handoffs well for a long time; what it cannot see is that the same
+   * person has been waiting on the same thing for a month across three grounds. This gathers them,
+   * resolves each side to a person so the same human is one person everywhere, and hands them to the
+   * pure read. No rule about what counts lives here - that stays in the read where it can be checked.
+   *
+   * Participants are matched by email, which is the only identifier a participant row and a person
+   * reliably share. A participant with no email cannot be resolved and is left out rather than
+   * guessed at: attributing somebody's wait to the wrong person is worse than not showing it.
+   */
+  async waitingAcrossTheOrg(organizationId: string, now = new Date()) {
+    const rows = await this.prisma.groundDependency.findMany({
+      where: {
+        ground: { organizationId },
+        status: { in: [DependencyStatus.BLOCKING, DependencyStatus.WAITING] },
+      },
+      select: {
+        fromParticipantId: true, onParticipantId: true, onLabel: true, what: true,
+        status: true, createdAt: true, groundId: true,
+        ground: { select: { label: true } },
+        fromParticipant: { select: { email: true } },
+        onParticipant: { select: { email: true } },
+      },
+    });
+
+    const deps: OrgDependency[] = [];
+    for (const r of rows) {
+      const from = r.fromParticipant?.email?.toLowerCase();
+      if (!from) continue;
+      deps.push({
+        fromParticipantId: r.fromParticipantId,
+        onParticipantId: r.onParticipantId,
+        onLabel: r.onLabel,
+        what: r.what,
+        status: r.status,
+        createdAt: r.createdAt,
+        groundId: r.groundId,
+        groundLabel: r.ground?.label ?? '',
+        fromPersonKey: from,
+        onPersonKey: r.onParticipant?.email?.toLowerCase() ?? null,
+      });
+    }
+
+    const waiting = whatThePlaceIsWaitingOn(deps, now);
+    return { waiting, waitedOn: whoIsBeingWaitedOn(waiting) };
+  }
+
 }
 
 /**

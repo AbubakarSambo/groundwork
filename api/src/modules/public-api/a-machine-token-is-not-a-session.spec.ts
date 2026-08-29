@@ -34,7 +34,26 @@ describe('a machine token is not a session', () => {
        organisation it does not hold a credential for, because it never names one at all. */
     const { g, ctx, req } = guard({ sub: 'gwc_1', org: 'org-a', scopes: ['subjects:write'], typ: 'machine' }, 'subjects:write');
     await expect(g.canActivate(ctx)).resolves.toBe(true);
-    expect(req.machine).toEqual({ organizationId: 'org-a', clientId: 'gwc_1', scopes: ['subjects:write'] });
+    expect(req.machine).toEqual({
+      organizationId: 'org-a', clientId: 'gwc_1', scopes: ['subjects:write'],
+      /* A token with no fence means the whole organisation - which is what every credential issued
+         before fences existed means, and the only default that does not lock working integrations
+         out on deploy. */
+      boundToPersonExternalIds: [],
+    });
+  });
+
+  it('and carries the fence off the token, so a route added later is bounded without asking', async () => {
+    /*
+     * Carried on the caller rather than looked up per route. The other arrangement fails silently:
+     * a new endpoint that simply forgets to check, and reads everything.
+     */
+    const { g, ctx, req } = guard(
+      { sub: 'gwc_1', org: 'org-a', scopes: ['subjects:write'], typ: 'machine', fence: ['lv-sahar'] },
+      'subjects:write',
+    );
+    await expect(g.canActivate(ctx)).resolves.toBe(true);
+    expect(req.machine.boundToPersonExternalIds).toEqual(['lv-sahar']);
   });
 
   it('refuses a route that declares no scope, rather than letting it through', async () => {

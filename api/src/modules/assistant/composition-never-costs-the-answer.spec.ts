@@ -1,3 +1,4 @@
+import { safeToUse, roleNameIn } from './the-model-words-it-and-nothing-more';
 import { AssistantService } from './assistant.service';
 
 /**
@@ -23,18 +24,36 @@ function svc(engineBehaviour: () => Promise<string>) {
   /* Retrieval is only reached by the handbook lane; these suites do not use it. */
   const knowledge: any = { retrieve: jest.fn(async () => ({ cards: [], truncated: false })) };
   const engine: any = { respond: jest.fn(engineBehaviour) };
-  return { service: new AssistantService(prisma, engine, knowledge), engine };
+  return { service: new AssistantService(prisma, engine, knowledge, { waitingAcrossTheOrg: async () => ({ waiting: [], waitedOn: [] }) } as any, { statusFor: async () => ({ roleName: null, gates: [], left: [] }) } as any), engine };
 }
 
 const ask = (s: AssistantService) => s.respond('org-a', 'p1', 'what can you see?');
 
 describe('composition never costs the answer', () => {
   it('uses the model when it behaves, and says so', async () => {
-    const { service } = svc(async () => '1 objective and 2 people, from their-tool.');
+    /*
+     * The fixture used to drop the "last updated" date and still count as a good composition. It
+     * stopped counting when the check became symmetric, which was the check being right: freshness
+     * is the reason anybody asks this lane what it can see, and a fluent answer that loses it is
+     * worse than the blunt one that keeps it.
+     */
+    const { service } = svc(async () => 'From their-tool: 1 objective and 2 people, last updated 29 Aug 2026.');
     const r = await ask(service);
     expect(r.composedBy).toBe('model');
     expect(r.styleVersion).toBe('v2');
-    expect((r.blocks[0] as any).body).toBe('1 objective and 2 people, from their-tool.');
+    expect((r.blocks[0] as any).body).toBe('From their-tool: 1 objective and 2 people, last updated 29 Aug 2026.');
+  });
+
+  it('refuses a composition that quietly drops a number the record produced', async () => {
+    /*
+     * The rule was asymmetric by accident for a long time: an INVENTED number was refused, a DROPPED
+     * one went unnoticed. Both are the composer editing the record rather than wording it, and the
+     * dropped one is the harder to catch by reading, because nothing looks wrong.
+     */
+    const { service } = svc(async () => 'A couple of things from their-tool, updated recently.');
+    const r = await ask(service);
+    expect(r.composedBy).toBe('rules');
+    expect((r.blocks[0] as any).body).toMatch(/2 people/);
   });
 
   it('ships the draft when the model is unreachable', async () => {
@@ -81,5 +100,81 @@ describe('composition never costs the answer', () => {
     const r = await service.respond('org-a', 'p1', 'can you renegotiate my contract');
     expect(r.composedBy).toBe('rules');
     expect(engine.respond).not.toHaveBeenCalled();
+  });
+});
+
+describe('the composer cannot introduce a person the record never named', () => {
+  /*
+   * NOT HYPOTHETICAL. Driving the handoff lane returned "Onboarding rewrite (Renewal push), from
+   * Alex Smith - blocked for 2 days". There is no Alex Smith; the draft contained no name at all.
+   * The composer invented a person and attributed to them the holding-up of somebody else's work,
+   * in the one lane whose whole subject is who is waiting on whom - and every check passed, because
+   * it kept the number.
+   *
+   * It happened once in five identical requests. That is the worst frequency there is: never during
+   * testing, eventually in front of a customer.
+   */
+  it('refuses an invented name even when every number survives', () => {
+    const draft = 'Waiting on you:\n- the onboarding rewrite (Renewal push) - waiting, 2 days';
+    expect(safeToUse(draft, 'The onboarding rewrite (Renewal push), from Alex Smith - waiting, 2 days.')).toBe(false);
+  });
+
+  it('while a name the record did produce comes through', () => {
+    const draft = 'Naomi is waiting on the pricing decision - 2 days';
+    expect(safeToUse(draft, 'The pricing decision has Naomi waiting, 2 days now.')).toBe(true);
+  });
+
+  it('and ordinary sentences are not caught by it', () => {
+    const draft = 'You have 2 open commitments.';
+    expect(safeToUse(draft, 'You have 2 open commitments.')).toBe(true);
+    expect(safeToUse(draft, 'There are 2 open commitments. You can see them below.')).toBe(true);
+  });
+});
+
+describe('a colon does not open a sentence', () => {
+  it('so an invented name after one is still caught', () => {
+    /*
+     * The sentence-start exemption exists because English capitalises first words. A colon
+     * introduces a clause, not a sentence - and treating it as one puts "the client name: Alex
+     * Smith" in first position, which is the easiest place to hide the exact thing this refuses.
+     * The conversation-side guard had this same bug and its own test found it there.
+     */
+    const draft = 'Waiting on you: the onboarding rewrite - 2 days';
+    expect(safeToUse(draft, 'Waiting on you: Alex Smith has the onboarding rewrite - 2 days')).toBe(false);
+  });
+});
+
+describe('a word the caller says must survive, survives', () => {
+  const draft = 'You are down as Engineer. Still to do: read the role brief.';
+
+  it('because dropping one deleted the answer to the question asked', () => {
+    /*
+     * Asked "what is my role", the draft's "Still to do for Engineer:" came back as "Your next
+     * steps:" - better English, and it deleted the answer. The invented-name rule could not see it,
+     * because it only refuses what the model ADDS.
+     */
+    expect(safeToUse(draft, 'Your role is Engineer. Still to do: read the role brief.', ['Engineer'])).toBe(true);
+    expect(safeToUse(draft, 'Your next steps: read the role brief.', ['Engineer'])).toBe(false);
+  });
+
+  it('and the caller names it, because shape alone cannot tell a name from a verb', () => {
+    /*
+     * I tried inferring it from capitalisation first, and it refused a good rewording of a draft
+     * whose list items began "Reduce onboarding..." - an ordinary verb at the start of a line looks
+     * exactly like a name. Guessing trades a fault on almost no replies for a fallback on many.
+     */
+    const listy = 'You own 2:\n- Reduce onboarding to under 11 days';
+    expect(safeToUse(listy, 'Reduce onboarding to under 11 days. You own 2.')).toBe(true);
+    expect(safeToUse(listy, 'You own 2 things, one of them onboarding, under 11 days.')).toBe(true);
+  });
+
+  it('and the onboarding lane pulls it out of its own draft', () => {
+    /*
+     * Read back OUT of the draft rather than passed in from elsewhere: a must-keep word that is not
+     * in the draft at all would refuse every composition of that lane forever.
+     */
+    expect(roleNameIn({ blocks: [{ type: 'text', body: draft }] })).toEqual(['Engineer']);
+    expect(roleNameIn({ blocks: [{ type: 'text', body: 'no role here' }] })).toEqual([]);
+    expect(roleNameIn({ blocks: [] })).toEqual([]);
   });
 });

@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Patch, Delete, Body, Param, Query, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { UsersService } from './users.service';
+import { MyOwnRecordService } from '../people/my-own-record.service';
 import { CreateUserDto, UpdateUserDto } from './dto';
 import { IsString, IsNotEmpty, MaxLength, MinLength } from 'class-validator';
 import { CurrentUser, CurrentUserData, Roles, Role, PaginationDto } from '../../common';
@@ -17,7 +18,10 @@ class RenameOrganizationDto {
 @ApiBearerAuth()
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly myRecord: MyOwnRecordService,
+  ) {}
 
   @Patch('organization')
   @Roles(Role.ADMIN)
@@ -50,10 +54,24 @@ export class UsersController {
    * derivable from `GET /users` and a ground list, both properly scoped.
    */
 
+  /**
+   * EVERYTHING, WHICH IT WAS NOT.
+   *
+   * This export covered check-ins, record entries and grounds - all keyed through participants. Every
+   * org-scoped record built since is keyed to a person's external id instead, so commitments,
+   * contributions, findings, handoffs, onboarding and suggested conversations were all invisible to
+   * it. Somebody exercising a subject-access request would have received a real-looking document
+   * that omitted most of what the product knows about them, with nothing saying so - a wrong answer
+   * to a legal question, signed.
+   */
   @Get('me/export')
   @ApiOperation({ summary: 'Export all personal data for the current user (GDPR Article 15)' })
   async exportData(@CurrentUser('id') userId: string) {
-    return this.usersService.exportData(userId);
+    const [fromGrounds, fromOrg] = await Promise.all([
+      this.usersService.exportData(userId),
+      this.myRecord.orgScopedRecord(userId),
+    ]);
+    return { ...fromGrounds, organisationWide: fromOrg };
   }
 
   @Delete('me/data')

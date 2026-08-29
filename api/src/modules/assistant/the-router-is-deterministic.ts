@@ -17,6 +17,9 @@ export type Lane =
   | 'what_did_i_commit_to'
   | 'how_we_work'
   | 'what_did_i_say'
+  | 'how_am_i_doing'
+  | 'what_is_stuck'
+  | 'where_am_i_up_to'
   | 'unplaced';
 
 export interface Routed {
@@ -40,6 +43,35 @@ const rule = (lane: Lane, patterns: RegExp[]) => ({ lane, patterns });
  * swallow it sits below.
  */
 const RULES = [
+  rule('where_am_i_up_to', [
+    /*
+     * Above the handoff and coaching lanes. "What am I meant to be doing" from somebody in their
+     * first fortnight is a question about their onboarding, not about a stuck handoff or a coaching
+     * step - and answering it with either would be answering a question they did not ask at the
+     * moment they are least able to tell.
+     */
+    /\bwhat(?:'?s| is| are)?\s+(?:still\s+)?(?:left|outstanding)\b/i,
+    /\bam\s+i\s+(?:set\s+up|onboarded|done\s+setting\s+up)\b/i,
+    /\bwhere\s+am\s+i\s+up\s+to\b/i,
+    /\bmy\s+onboarding\b/i,
+    /\bwhat\s+is\s+my\s+role\b/i,
+  ]),
+  rule('what_is_stuck', [
+    /*
+     * ABOVE BOTH `who_is` AND THE COACHING LANE, and driving it is how that was found. "Who is
+     * waiting on me" begins with "who is", so the directory lane matched it first and answered a
+     * question about a handoff by looking somebody up. Unit tests did not catch it because each
+     * lane's own patterns were right - only the order between them was wrong, which is a thing
+     * only the assembled router can be asked about.
+     *
+     * It also sits above coaching, because "I'm stuck" and "what am I waiting on" want different
+     * answers - the first a step, the second a name and a number of days.
+     */
+    /\bwhat\s+(?:am\s+i|are\s+we)\s+waiting\s+on\b/i,
+    /\bwho\s+is\s+waiting\s+on\s+me\b/i,
+    /\bwhat'?s?\s+(?:blocked|stuck|held\s+up)\b/i,
+    /\bwhat\s+is\s+(?:blocked|stuck)\b/i,
+  ]),
   rule('who_is', [
     /\bwho(?:'s| is)\s+(.+?)\s*\??$/i,
     /\bwho\s+does\s+(.+?)\s+report\s+to\s*\??$/i,
@@ -49,6 +81,17 @@ const RULES = [
    * LAST OF THE MATCHERS, ON PURPOSE. "How do we..." is the broadest shape here and would otherwise
    * swallow questions the specific lanes own. Its own rules stay narrow for the same reason.
    */
+  rule('how_am_i_doing', [
+    /*
+     * Above the recall lane, because "how am I doing" is not a question about what they said. Both
+     * shapes go here - the flat question and the stuck one - since the coach's answer to either is
+     * the same single step.
+     */
+    /\bhow\s+am\s+i\s+doing\b/i,
+    /\bi'?m\s+stuck\b/i,
+    /\bhow\s+do\s+i\s+get\s+better\b/i,
+    /\bwhat\s+should\s+i\s+(?:work on|focus on)\b/i,
+  ]),
   rule('what_did_i_say', [
     /*
      * Above the commitment lane, because "what did I say about the vendor" is a question about the

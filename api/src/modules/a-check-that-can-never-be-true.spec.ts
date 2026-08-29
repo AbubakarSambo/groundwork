@@ -69,6 +69,26 @@ const CHECKED_AND_FINE = new Set([
   'modules/subjects/subjects.service.ts:externalId',
   'modules/subjects/subjects.service.ts:title',
   /*
+   * Three of the name-collision false positives this file's own header warns about, all in one
+   * service because it reads Person, User and PersonObjective together.
+   *
+   * `email`  - the check is `!person.email`, and `Person.email` IS nullable. It matched
+   *            `User.email`, which is not, because the same file also reads `prisma.user`.
+   * `externalId` and `text` - both are fields on the INCOMING request body from a customer's system,
+   *            validated before anything is written. The column being non-nullable is what the check
+   *            enforces, not something it can lean on: trusting the schema there would mean trusting
+   *            a stranger's request to have obeyed it.
+   */
+  'modules/public-api/grounds-by-api.service.ts:email',
+  'modules/public-api/grounds-by-api.service.ts:externalId',
+  'modules/public-api/grounds-by-api.service.ts:text',
+  /*
+   * `state` - a fourth of the same collision. The check is `!item.state` on the evidence payload
+   * from a customer's system, a `Record<string, string | number>` that arrives from the wire. It
+   * matched `ProposedChange.state`, an enum column this file also reads, because they share a name.
+   */
+  'modules/public-api/grounds-by-api.service.ts:state',
+  /*
    * An argument that may legitimately be null, checked BEFORE deciding whether to write. A ground
    * participant with no identity-system id cannot be mirrored into the org layer, and the column
    * being non-nullable is exactly why the check is there - it is what stops the write, not

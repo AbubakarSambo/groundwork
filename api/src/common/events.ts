@@ -13,6 +13,17 @@ export const GroundworkEvents = {
    */
   ROUND_COMPLETED: 'round.completed',
   GROUND_ACTIVATED: 'ground.activated',
+  /**
+   * A HANDOFF WAS NAMED FOR THE FIRST TIME. Only when it clears the board's substance bar, so a
+   * passing remark does not become an alert in somebody else's channel.
+   */
+  BLOCKER_RAISED: 'blocker.raised',
+  /** It has been open past the threshold. Fires once per handoff, guaranteed by a stamped column. */
+  BLOCKER_ESCALATED: 'blocker.escalated',
+  /** A role changed hands and the incoming holder has a brief waiting. */
+  HANDOVER_READY: 'handover.ready',
+  /** The record suggests a conversation. A human still has to say yes. */
+  SCENARIO_PROPOSED: 'scenario.proposed',
 } as const;
 
 export interface CheckInCompletedEvent {
@@ -31,4 +42,29 @@ export interface RoundCompletedEvent {
 
 export interface GroundActivatedEvent {
   groundId: string;
+}
+
+/**
+ * Carries ids and nothing else on purpose. What a handoff is about is verbatim something a person
+ * said, and who it sits between names two people - neither belongs in an event that a listener may
+ * forward outside the boundary. A listener that needs more can read it under authorisation.
+ */
+export interface ScenarioProposedEvent {
+  candidateId: string;
+  organizationId: string;
+  scenario: string;
+}
+
+export interface HandoverReadyEvent {
+  roleAssignmentId: string;
+  organizationId: string;
+  /** Whether the role genuinely had nothing outstanding - different from a brief that failed. */
+  empty: boolean;
+}
+
+export interface BlockerEvent {
+  blockerId: string;
+  groundId: string;
+  /** Only on an escalation. */
+  waitingDays?: number;
 }

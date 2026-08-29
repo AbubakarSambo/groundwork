@@ -4,6 +4,7 @@ import { Public } from '../../common/decorators/public.decorator';
 import { MachineTokenGuard, RequiresScope, MachineCaller } from '../public-api/machine-token.guard';
 import { PrismaService } from '../prisma/prisma.service';
 import { DetectorsService } from './detectors.service';
+import { ScenariosService } from './scenarios.service';
 import { IMPLEMENTED, GENUINELY_NEW } from './one-vocabulary-two-scopes';
 
 /**
@@ -20,6 +21,7 @@ import { IMPLEMENTED, GENUINELY_NEW } from './one-vocabulary-two-scopes';
 export class DetectorsController {
   constructor(
     private readonly detectors: DetectorsService,
+    private readonly scenarios: ScenariosService,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -46,9 +48,17 @@ export class DetectorsController {
   @HttpCode(200)
   @UseGuards(MachineTokenGuard)
   @RequiresScope('findings:read')
-  @ApiOperation({ summary: 'Run the subject-scoped detectors now' })
-  run(@Req() req: { machine: MachineCaller }) {
-    return this.detectors.run(req.machine.organizationId);
+  @ApiOperation({ summary: 'Run the detectors now, and propose any conversation they imply' })
+  async run(@Req() req: { machine: MachineCaller }) {
+    const found = await this.detectors.run(req.machine.organizationId);
+    /*
+     * PROPOSAL RUNS WHERE DETECTION DOES, because scenarios read detector output and there is no
+     * cron behind either - the customer triggers this. Leaving proposal on its own endpoint would
+     * mean the suggestions were always one cycle behind the findings they were built from, and an
+     * integration that called only this one would never see a suggestion at all.
+     */
+    const suggested = await this.scenarios.propose(req.machine.organizationId);
+    return { ...found, scenarios: suggested };
   }
 
   @Get('recommendations')

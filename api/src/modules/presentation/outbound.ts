@@ -163,6 +163,7 @@ export function forHumans(text: string | null | undefined): string {
   out = houseStyle(out);
   /** After houseStyle, so a replaced word still gets the house's quotes and spacing. */
   out = oneWordForTheThing(out);
+  out = withoutQuotedQuestions(out);
   /** Collapse whatever the removals left behind, without touching paragraph breaks. */
   return out.replace(/[ \t]{2,}/g, ' ').replace(/\n{3,}/g, '\n\n').replace(/[ \t]+\n/g, '\n').trim();
 }
@@ -170,4 +171,46 @@ export function forHumans(text: string | null | undefined): string {
 /** Did this text carry a close marker? Callers that branch on session end still need to know. */
 export function hadCloseMarker(text: string | null | undefined): boolean {
   return !!text && stripCloseMarker(text).hadMarker;
+}
+
+/**
+ * A QUESTION THE ENGINE IS ASKING IS NOT A QUOTATION.
+ *
+ * Every scenario pack writes its example questions in quotes - `"What do you want to get out of this
+ * role?"` - because that is how you show somebody a form of words. The model copies the punctuation
+ * along with the question, so replies arrive as:
+ *
+ *   The data shows two paying clients. "In your own words, what are you trying to achieve?"
+ *
+ * which reads as though it is quoting somebody. It is asking. Nobody said it.
+ *
+ * Found by driving a seeded check-in, and it is not new - it will have been in every reply whose
+ * scenario pack quotes its questions. Narrow on purpose: only a whole sentence wrapped end to end in
+ * straight or curly quotes, so a genuine quotation inside a sentence is untouched.
+ */
+export function withoutQuotedQuestions(text: string): string {
+  const unwrapped = text.replace(
+    /(^|[\n.!?]\s*)["\u201C]([^"\u201C\u201D\n]{8,})["\u201D](?=\s*($|[\n]))/g,
+    (_m, lead, inner) => `${lead}${inner}`,
+  );
+
+  /*
+   * AND THE MALFORMED CASE, WHICH IS THE COMMON ONE.
+   *
+   * Driving it produced this, verbatim:
+   *
+   *   ... for the quarter. "What are you focused on?"
+   *   "We can dig into those numbers. First, let's get your objectives down. "What are you focused on?"
+   *
+   * An opening quote that never closes, then another. The pair-matcher above cannot see it, because
+   * there is no pair. A reply whose quote marks do not balance is already broken punctuation, and
+   * removing them all reads better than leaving a dangling one halfway through a sentence.
+   *
+   * The cost is a genuine quotation losing its marks in a reply that was already malformed. That is
+   * the right way round: somebody's words shown without quotes still say what they said, while a
+   * stray quote makes the engine look like it is reporting speech nobody made.
+   */
+  const straight = (unwrapped.match(/"/g) ?? []).length;
+  if (straight % 2 === 1) return unwrapped.replace(/"/g, '');
+  return unwrapped;
 }

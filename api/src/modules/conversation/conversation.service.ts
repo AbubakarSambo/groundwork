@@ -1,6 +1,7 @@
 import { Injectable, Logger, ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { blockerHasSubstance } from '../board/reads';
 import { PrismaService } from '../prisma/prisma.service';
 import { forHumans, hadCloseMarker as textHadCloseMarker } from '../presentation/outbound';
 import { endStatesFor } from '../resolution/end-states';
@@ -9,7 +10,7 @@ import { PromptsService } from '../prompts';
 import { AnthropicService, ChatTurn, houseStyle } from './anthropic.service';
 import { ConversationContextService } from './context.service';
 import { VOCABULARY_RULE, COACHING_OBSERVATION_PROMPT, COACHING_OBSERVATION_SCHEMA, SESSION_CLOSE_MARKER, stripCloseMarker, buildIntakeBlock, RECORD_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_SCHEMA, WORK_MENTION_PROMPT, WORK_MENTION_SCHEMA, EXPECTATION_PROMPT, EXPECTATION_SCHEMA, ALIGNMENT_PROMPT, ALIGNMENT_SCHEMA, OBJECTION_PROMPT, OBJECTION_SCHEMA } from './prompt-library';
-import { GroundworkEvents, CheckInCompletedEvent } from '../../common';
+import { GroundworkEvents, CheckInCompletedEvent, BlockerEvent } from '../../common';
 import { recordRoundCompletion } from '../grounds/round-completion';
 import { mirrorCommitment } from '../assistant/a-commitment-carries-past-the-ground';
 import { DocumentsService } from '../documents/documents.service';
@@ -33,7 +34,10 @@ import { closeReadiness, askedToFinish } from './close-readiness';
 import { observeStyle, mergeStyle, styleGuidance } from './person-style';
 import { readOutcome, isGenericStep } from './coaching-step';
 import { mayCoach } from './participation-timeline';
-import { restoreTheirWords, causalClaimNobodyMade, ASK_INSTEAD_OF_CONCLUDING } from './the-record-holds-what-was-said';
+import { restoreTheirWords, namesWorthReporting, truncationsOfTheirWords, causalClaimNobodyMade, ASK_INSTEAD_OF_CONCLUDING } from './the-record-holds-what-was-said';
+import { SentenceGate, screen, ASK_AGAIN } from './nothing-invented-reaches-them';
+import { evidenceBlock } from '../public-api/what-the-numbers-show';
+import { describePending, PENDING_RULE } from '../public-api/six-is-still-the-target';
 
 /**
  * How many things in this text could actually be checked by someone later.
@@ -687,12 +691,42 @@ export class ConversationService {
         .filter((t) => t.role === TurnRole.PERSON)
         .map((t) => t.content ?? '')
         .concat(message);
-      reply = restoreTheirWords(stripped.text, personWords);
+      /*
+       * THE SAME RULE AS THE STREAM. Nothing invented reaches a person on either path, and the
+       * difference between them is only WHEN it can be caught - here the whole reply is in hand, so
+       * the screen runs once over all of it rather than sentence by sentence.
+       */
+      const screened = screen(stripped.text, personWords);
+      if (screened.dropped.length) {
+        this.logger.warn(
+          `Dropped ${screened.dropped.length} sentence(s) with an invented name on check-in ${checkIn.id}.`,
+        );
+      }
+      reply = screened.text || ASK_AGAIN;
+
+      /*
+       * AND THE ONES SUBSTITUTION CANNOT REACH ARE AT LEAST WRITTEN DOWN.
+       *
+       * A mangled name has one of hers underneath it and gets put back. A name invented WHOLE -
+       * "did Alex Smith get back to you" when there is no Alex Smith - has nothing underneath, so
+       * the rule above deliberately leaves the reply alone rather than picking a replacement. That
+       * reasoning holds. What did not hold is that nothing then recorded it, so a fabricated
+       * colleague reached somebody with no trace anywhere that it had happened.
+       *
+       * This does not decide what to DO about it, which is a real question with costs on every
+       * side. It makes the rate knowable, which is the precondition for deciding.
+       */
 
       // The other half of W2 cannot be repaired by substitution, because there
       // is no word of hers to put back - the causation was invented whole. It is
       // logged rather than edited: silently deleting half a sentence would leave
       // prose that reads as though the engine lost its train of thought.
+      const truncated = truncationsOfTheirWords(reply, personWords);
+      if (truncated.length) {
+        this.logger.warn(
+          `Shortened one of their own words on check-in ${checkIn.id}: ${truncated.join(', ')}.`,
+        );
+      }
       const invented = causalClaimNobodyMade(reply, personWords);
       if (invented.length) {
         this.logger.warn(
@@ -806,23 +840,108 @@ export class ConversationService {
       const history: ChatTurn[] = turns.map((t) => ({ role: t.role === TurnRole.AI ? 'assistant' : 'user', content: t.content }));
       // Hold back a tail the length of the marker so a marker split across two
       // deltas can never flash up in the person's chat before being stripped.
+      /*
+       * NOTHING UNCHECKED LEAVES. The marker hold-back was already here; this adds the screen.
+       *
+       * Until now a delta went to the screen the moment it arrived, so an invented name was read
+       * before anything inspected it, and the repair at the end could only correct what somebody
+       * had already seen. There is no way to un-send a delta - so the gate holds each sentence until
+       * it is finished, checks it, and emits only what survives.
+       *
+       * The cost is a sentence of latency instead of a word, paid on every reply rather than only
+       * the bad ones. That is the whole price of "nothing invented reaches a person".
+       */
+      const streamPersonWords = turns
+        .filter((t) => t.role === TurnRole.PERSON)
+        .map((t) => t.content ?? '')
+        .concat(message);
+      const gate = new SentenceGate(streamPersonWords);
       let emitted = 0;
+      /** How much of the CLEANED text has gone. Cleaning changes lengths, so raw offsets do not fit. */
+      let cleanEmitted = 0;
+      let shown = '';
+
       for await (const delta of this.anthropic.respondStream(fullSystem, history)) {
         raw += delta;
         const safeUpTo = Math.max(0, raw.length - SESSION_CLOSE_MARKER.length);
         if (safeUpTo > emitted) {
-          const chunk = raw.slice(emitted, safeUpTo);
+          /*
+           * CLEAN THE WHOLE, THEN TAKE WHAT IS NEW - never clean a chunk on its own.
+           *
+           * `forHumans` ends with `.trim()`, which is right for a finished reply and wrong for a
+           * fragment: a chunk ending "you're " lost its trailing space, the next began "focused",
+           * and the person read "you'refocused". Two of those reached a real check-in before anybody
+           * looked at a stored turn rather than at a terminal.
+           *
+           * Cleaning the accumulated text and slicing off the new suffix keeps the spaces, because
+           * they are interior to the string being trimmed rather than at its edge.
+           */
+          const cleanedSoFar = forHumans(raw.slice(0, safeUpTo));
+          const fresh = cleanedSoFar.slice(cleanEmitted);
+          cleanEmitted = cleanedSoFar.length;
           emitted = safeUpTo;
-          if (chunk) yield { type: 'delta', text: chunk };
+          const clean = gate.push(fresh);
+          if (clean) { shown += clean; yield { type: 'delta', text: clean }; }
         }
       }
+      /*
+       * THE HELD-BACK TAIL, WHICH THE GATE NEVER SAW.
+       *
+       * The loop only ever pushes up to `raw.length - SESSION_CLOSE_MARKER.length`, so the last few
+       * characters of every reply are deliberately withheld until the end in case they turn out to
+       * be the close marker. The old code flushed those separately; replacing that with the gate
+       * dropped them entirely, and every reply ended mid-word - "What is it," and then nothing.
+       *
+       * Found by reading the deltas of one real check-in. It would never have shown up in a test of
+       * the gate, because the gate was right: it was never given the last piece.
+       */
+      const withheld = forHumans(raw).slice(cleanEmitted);
+      const fromWithheld = withheld ? gate.push(withheld) : '';
+      if (fromWithheld) { shown += fromWithheld; yield { type: 'delta', text: fromWithheld }; }
+
+      const tailFromGate = gate.flush();
+      if (tailFromGate) { shown += tailFromGate; yield { type: 'delta', text: tailFromGate }; }
       const strippedStream = { text: forHumans(raw), hadMarker: textHadCloseMarker(raw) };
-      /** houseStyle is inside forHumans now, so applying it again here would be a second pass. */
-      const reply = strippedStream.text;
-      if (!reply) throw new Error('AI returned an empty response');
-      // Flush whatever is left after the held-back tail is cleaned.
-      const tail = reply.slice(Math.min(emitted, reply.length));
-      if (tail) yield { type: 'delta', text: tail };
+      if (!strippedStream.text) throw new Error('AI returned an empty response');
+
+      /*
+       * WHAT THEY SAW IS WHAT IS KEPT. `shown` is the concatenation of the deltas that actually
+       * left, so the stored turn and the screen agree by construction rather than by a second pass
+       * arriving at the same answer twice.
+       *
+       * Everything being dropped is rare and has to be handled rather than left to produce an empty
+       * bubble. The reply asks them to say it again: from their side nothing went wrong, and telling
+       * somebody the model hallucinated is alarming and useless to them.
+       */
+      if (gate.dropped.length) {
+        this.logger.warn(
+          `Dropped ${gate.dropped.length} sentence(s) with an invented name on check-in ${checkIn.id}.`,
+        );
+      }
+      const reply = shown.trim() || ASK_AGAIN;
+      if (!shown.trim()) yield { type: 'delta', text: ASK_AGAIN };
+
+      /*
+       * THE OTHER TWO CHECKS, WHICH REPORT RATHER THAN REMOVE.
+       *
+       * A shortened version of their own word and a causal claim they did not make are both real
+       * faults, and neither is an invention of a person - so neither justifies deleting a sentence
+       * somebody is waiting to read. They are written down; the rate is what decides whether they
+       * ever become drops too.
+       */
+      const streamTruncated = truncationsOfTheirWords(reply, streamPersonWords);
+      if (streamTruncated.length) {
+        this.logger.warn(
+          `Shortened one of their own words on check-in ${checkIn.id}: ${streamTruncated.join(', ')}.`,
+        );
+      }
+      const streamCausal = causalClaimNobodyMade(reply, streamPersonWords);
+      if (streamCausal.length) {
+        this.logger.warn(
+          `Causal claim nobody made on ${checkIn.id}: ${streamCausal.join(', ')}. ${ASK_INSTEAD_OF_CONCLUDING}`,
+        );
+      }
+
       await this.prisma.conversationTurn.create({ data: { checkInId: checkIn.id, role: TurnRole.AI, content: reply } });
       if (checkIn.status === CheckInStatus.NOT_STARTED) {
         await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { status: CheckInStatus.IN_PROGRESS, startedAt: new Date() } });
@@ -1045,6 +1164,54 @@ export class ConversationService {
       }
     } catch { /* never block a check-in over a nicety */ }
 
+    /*
+     * WHAT THEIR OWN SYSTEMS SAY IS HAPPENING, alongside what was agreed.
+     *
+     * Read from every objective this person holds, not only the first: somebody carrying a target and
+     * a commitment has two things with numbers against them, and showing one is how a check-in ends
+     * up asking about the wrong half of somebody's quarter.
+     */
+    const evidenceItems = personObjectives
+      .filter((o: any) => o.lastSeenState && o.lastSeenAt)
+      .map((o: any) => {
+        let state: Record<string, string | number> = {};
+        try {
+          const parsed = JSON.parse(o.lastSeenState);
+          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) state = parsed;
+        } catch {
+          /* `lastSeenState` predates this and held a plain string. An unparseable value is that
+             older shape, and showing it raw is better than dropping the only number anybody has. */
+          state = { state: String(o.lastSeenState).slice(0, 40) };
+        }
+        return { text: o.text as string, evidence: { objectiveExternalId: o.externalId ?? o.id, observedAt: o.lastSeenAt as Date, state } };
+      });
+    const evidenceLines = evidenceBlock(evidenceItems, new Date());
+
+    /*
+     * A CHANGE ASKED FOR AND NOT YET AGREED.
+     *
+     * The requirement in one line: while six-to-four is awaiting approval, the interview must know
+     * six is still the target AND that four has been asked for - both, without either quietly
+     * becoming the other. Without this block the proposal exists in the record and the conversation
+     * carries on as though nothing had been asked.
+     */
+    const pendingRows = personObjectives.length
+      ? await this.prisma.proposedChange.findMany({
+        where: {
+          personObjectiveId: { in: personObjectives.map((o: any) => o.id) },
+          state: 'AWAITING_APPROVAL',
+        },
+        orderBy: { createdAt: 'desc' },
+      }).catch(() => [] as any[])
+      : [];
+    const pendingLines = pendingRows.length
+      ? [`${PENDING_RULE}\n${pendingRows.map((c: any) => describePending(
+        personObjectives.find((o: any) => o.id === c.personObjectiveId)?.text ?? '(the agreement)',
+        c,
+        new Date(),
+      )).join('\n\n')}`]
+      : [];
+
     const intakeBlock = buildIntakeBlock({
       scenario: ground.scenario,
       // A cohort at the START is an onboarding period whose end decides
@@ -1058,12 +1225,31 @@ export class ConversationService {
        * existed on PersonObjective and neither reached the engine, so the interview could press
        * somebody on a standard they were reading for the first time.
        */
+      /*
+       * ALL OF THEM. `personObjective` stays as the first for anything still reading it, and
+       * `personObjectives` is what the block renders - a person holding a target and a commitment
+       * and a standing expectation had everything after the first invisible to the interview.
+       */
+      personObjectives: personObjectives.map((o: any) => ({
+        text: o.text,
+        authoredBy: o.authoredBy,
+        seenBySubject: o.seenBySubject,
+        authoredByThem: o.authoredBy === 'self',
+        fromTheirSystem: !!o.sourceSystem,
+      })),
       personObjective: personObjective
         ? {
             text: personObjective.text,
             authoredBy: personObjective.authoredBy,
             seenBySubject: personObjective.seenBySubject,
-            authoredByThem: personObjective.authoredBy === checkIn.participantId,
+            /*
+             * `authoredBy` holds 'self' or 'lead', never a participant id - so comparing it to one
+             * was false for every objective ever written, and the interview told everybody their own
+             * objective had been set for them. Found while routing sense-check questions by author.
+             */
+            authoredByThem: personObjective.authoredBy === 'self',
+            /* Seeded by an integration rather than written by anybody here. */
+            fromTheirSystem: !!(personObjective as any).sourceSystem,
           }
         : null,
       partyType: checkIn.participant.partyType,
@@ -1364,7 +1550,9 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      */
     const coachingBlock = await this.coachingBlock(checkIn.participantId, checkIn.sessionNumber);
 
-    return [systemPrompt, VOCABULARY_RULE, intakeBlock, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock].filter(Boolean).join('\n\n');
+    /* Immediately after the intake block, because it is about the same objectives and the two read
+       as one thing: what was agreed, and what is happening against it. */
+    return [systemPrompt, VOCABULARY_RULE, intakeBlock, ...pendingLines, ...evidenceLines, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock].filter(Boolean).join('\n\n');
   }
 
   /** The flag, read where it is used and failing to OFF. Same shape as the others. */
@@ -2967,6 +3155,24 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       });
       // So a second mention within the SAME extraction also dedupes.
       openForThisPerson.push(created);
+
+      /*
+       * ONLY A HANDOFF WITH SUBSTANCE BECOMES AN ALERT SOMEWHERE ELSE.
+       *
+       * The same bar the board uses, and reused rather than restated - it excludes the throwaway
+       * mention and refuses a handoff somebody has recorded against themselves. Without it the
+       * honest way to set off a customer's alerting is to say "still a bit stuck" once, and the
+       * person genuinely waiting is indistinguishable from them at the far end of a webhook.
+       *
+       * Emitting after the row is written, and never inside its transaction: a webhook is a
+       * courtesy and must not be able to roll back the record of what somebody said.
+       */
+      if (blockerHasSubstance({ ...created, fromParticipantId: participantId, createdAt: new Date() })) {
+        this.events.emit(GroundworkEvents.BLOCKER_RAISED, {
+          blockerId: created.id,
+          groundId,
+        } as BlockerEvent);
+      }
     }
   }
 

@@ -1,6 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { CheckInStatus, DependencyStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { OnboardingService } from '../grounds/onboarding.service';
 import { findUndeclaredDependencies, SubjectRef, Mention, sayIt } from './nobody-wrote-the-dependency-down';
+import { ClearedHandoff, unblockingCredits } from './somebody-else-says-you-unblocked-them';
+import {
+  Turn, findUnattachedWork, findNoLead, findNoCheckIn, sayUnattached, sayNoLead, sayNoCheckIn,
+} from './the-three-that-were-not-built';
 import { quietUntil } from '../subjects/detection-holds-its-tongue';
 import { STOPWORDS } from '../knowledge/knowledge.service';
 import { findGoalDivergence, sayIt as sayDivergence } from './describing-the-same-goal-differently';
@@ -23,7 +29,10 @@ export const UNMENTIONED_DAYS = 60;
 export class DetectorsService {
   private readonly logger = new Logger(DetectorsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly onboarding: OnboardingService,
+  ) {}
 
   /**
    * WHICH SUBJECT SOMEBODY WAS TALKING ABOUT.
@@ -200,9 +209,10 @@ export class DetectorsService {
    * is: what gets stored is HOW MANY DISTINCT OTHERS, never which, because which is attributed
    * testimony and a count cannot be turned back into a quote.
    *
-   * UNBLOCKING is not produced. There are no blockers in this product yet, so a contribution of
-   * that kind would be a row that can never exist - named in the enum because it is part of the
-   * contract, absent from the computation because it would be a lie.
+   * UNBLOCKING is the fourth, and it is the one nobody can claim for themselves: it exists only
+   * because the person who was WAITING stopped saying so. This comment used to say there are no
+   * blockers in this product - there were, and had been for a long time. The stale premise, not the
+   * missing machinery, is what kept the kind unproduced.
    */
   private async contribution(
     organizationId: string,
@@ -212,7 +222,7 @@ export class DetectorsService {
     if (!subjects.length) return 0;
     const people = await this.prisma.person.findMany({
       where: { organizationId, active: true },
-      select: { externalId: true, displayName: true, userName: true },
+      select: { externalId: true, displayName: true, userName: true, email: true },
     });
     if (!people.length) return 0;
 
@@ -263,6 +273,52 @@ export class DetectorsService {
         }
       }
     }
+    /*
+     * UNBLOCKING: a handoff somebody was waiting on is now cleared, and it was about this subject.
+     *
+     * Both sides resolve to a person rather than a participant, because the same human is a
+     * different participant row in every ground and the credit belongs to the human. A participant
+     * with no email cannot be resolved and is skipped - crediting the wrong person for unblocking
+     * somebody is worse than not crediting anyone.
+     */
+    const clearedRows = await this.prisma.groundDependency.findMany({
+      where: { status: DependencyStatus.CLEARED, ground: { organizationId } },
+      select: {
+        what: true,
+        fromParticipant: { select: { email: true } },
+        onParticipant: { select: { email: true } },
+      },
+    });
+    /*
+     * EMAIL FIRST, HANDLE SECOND, AND BOTH BECAUSE NEITHER IS RELIABLE ALONE.
+     *
+     * A participant carries an email; a Person carries an email that may be null and a `userName`
+     * that SCIM requires but which the schema is careful to call a directory handle - "usually an
+     * email or a directory login". Keying on `userName` alone silently loses everyone whose IdP
+     * hands us a login, and they would simply never be credited for unblocking anybody, with
+     * nothing anywhere saying why.
+     */
+    const byEmail = new Map<string, string>();
+    for (const person of people) {
+      for (const handle of [person.email, person.userName]) {
+        const k = handle?.toLowerCase();
+        if (k && !byEmail.has(k)) byEmail.set(k, person.externalId);
+      }
+    }
+    const cleared: ClearedHandoff[] = [];
+    for (const r of clearedRows) {
+      const from = byEmail.get(r.fromParticipant?.email?.toLowerCase() ?? '');
+      if (!from) continue;
+      cleared.push({
+        what: r.what,
+        fromPersonKey: from,
+        onPersonKey: byEmail.get(r.onParticipant?.email?.toLowerCase() ?? '') ?? null,
+      });
+    }
+    for (const c of unblockingCredits(cleared, subjects)) {
+      rows.push({ ...c, kind: 'UNBLOCKING' });
+    }
+
     for (const [k, speakers] of referencedBy) {
       const [personExternalId, subjectExternalId] = k.split('::');
       /* The size, and nothing that could name them. */
@@ -396,6 +452,108 @@ export class DetectorsService {
    * objectives, no conversations, nothing linked - and a wall of dependency findings on day one is
    * how a customer decides the tool is broken.
    */
+
+  /**
+   * THE THREE THAT READ THE DIRECTORY RATHER THAN THE CONVERSATIONS.
+   *
+   * `unattached_work` needs both; the other two need only `Person`, which is why they could have
+   * been built the day SCIM landed. They were reported as blocked on role benchmarks and an
+   * onboarding window, and neither was true of `no_lead`.
+   *
+   * All three are keyed on the person with no subject, because none of them is about a piece of
+   * work - they are about somebody having no manager, no account of themselves, or work attached
+   * to nothing at all.
+   */
+  private async aboutPeople(organizationId: string, subjects: SubjectRef[], turns: Turn[]): Promise<number> {
+    const people = await this.prisma.person.findMany({
+      where: { organizationId },
+      select: { externalId: true, managerExternalId: true, active: true, createdAt: true, email: true },
+    });
+    if (!people.length) return 0;
+
+    /*
+     * Who has ever given their own account, matched by email - the only identifier a participant
+     * row and a Person reliably share. Somebody unmatchable is treated as HAVING checked in rather
+     * than as having not: the failure of a join must never become an accusation about a person.
+     */
+    const emails = new Set(
+      (await this.prisma.groundParticipant.findMany({
+        where: { ground: { organizationId }, checkIns: { some: { status: CheckInStatus.COMPLETED } } },
+        select: { email: true },
+      })).map((p) => p.email?.toLowerCase()).filter(Boolean) as string[],
+    );
+    const checkedIn = new Set(
+      people.filter((p) => !p.email || emails.has(p.email.toLowerCase())).map((p) => p.externalId),
+    );
+
+    /*
+     * THE REAL ONBOARDING WINDOW, NOW THAT ONE EXISTS.
+     *
+     * `no_checkin` used how long somebody had been in the DIRECTORY, which was a stand-in named as
+     * such: it says nothing about when they started the job. Somebody moved into a new role after
+     * three years at the company was, by that measure, three years overdue on their first day in it.
+     *
+     * `RoleAssignment.startedAt` is the real thing. Falls back to the directory date where no
+     * assignment exists, because most organisations will not populate this on day one and the
+     * weaker test is better than none.
+     */
+    const assignments = await this.prisma.roleAssignment.findMany({
+      where: { organizationId, endedAt: null },
+      select: { personExternalId: true, startedAt: true },
+      orderBy: { startedAt: 'desc' },
+    });
+    const startedInRole = new Map<string, Date>();
+    for (const a of assignments) {
+      if (!startedInRole.has(a.personExternalId)) startedInRole.set(a.personExternalId, a.startedAt);
+    }
+
+    const now = new Date();
+    let n = 0;
+
+    const write = async (key: string, personExternalId: string, severity: string, says: string, extra: any = {}) => {
+      const existing = await this.prisma.detectorResult.findFirst({
+        where: { organizationId, key, personExternalId, resolvedAt: null },
+      });
+      const evidence = { says, ...extra } as any;
+      if (existing) {
+        await this.prisma.detectorResult.update({ where: { id: existing.id }, data: { evidence, lastSeenAt: now } });
+      } else {
+        await this.prisma.detectorResult.create({
+          data: { organizationId, personExternalId, key, severity, evidence, firstSeenAt: now, lastSeenAt: now },
+        });
+      }
+      n += 1;
+    };
+
+    for (const u of findUnattachedWork(subjects, turns)) {
+      await write('unattached_work', u.personExternalId, 'medium', sayUnattached(u), { mentions: u.mentions });
+    }
+    for (const u of findNoLead(people)) {
+      await write('no_lead', u.personExternalId, 'medium', sayNoLead(u));
+    }
+    /*
+     * THE REASON THE SPEC ASKS FOR GATES AT ALL.
+     *
+     * §11.1: detectors like `no_checkin` must not fire against somebody still inside their
+     * onboarding window. Time in role was the blunt version - it says nothing about whether anybody
+     * has actually shown them what to do. Somebody three weeks in who has not been given a brief,
+     * an account or an introduction has not failed to check in; nobody has got to them yet.
+     *
+     * Treated as HAVING checked in rather than filtered out separately, so one rule decides who is
+     * exempt and there is no second place for the two to disagree.
+     */
+    for (const id of await this.onboarding.whoIsStillOnboarding(organizationId)) checkedIn.add(id);
+
+    const withWindow = people.map((p) => ({
+      ...p,
+      createdAt: startedInRole.get(p.externalId) ?? p.createdAt,
+    }));
+    for (const u of findNoCheckIn(withWindow, checkedIn, now)) {
+      await write('no_checkin', u.personExternalId, 'low', sayNoCheckIn(u), { knownForDays: u.knownForDays });
+    }
+    return n;
+  }
+
   async run(organizationId: string) {
     const quiet = quietUntil(
       await this.prisma.detectionQuietPeriod.findMany({ where: { organizationId }, select: { endsAt: true } }),
@@ -417,14 +575,27 @@ export class DetectorsService {
       contributorExternalIds: Array.isArray(r.contributorExternalIds) ? (r.contributorExternalIds as string[]) : [],
       parentExternalId: r.parentExternalId,
     }));
-    if (!subjects.length) return { ran: true, found: 0 };
-
     const turns = await this.prisma.assistantTurn.findMany({
       where: { organizationId, role: 'person' },
       select: { personExternalId: true, content: true, createdAt: true },
       orderBy: { createdAt: 'desc' },
       take: 2_000,
     });
+
+    /*
+     * TWO OF THE PEOPLE DETECTORS DO NOT NEED A SINGLE SUBJECT, so they run before the early exit
+     * rather than after it. `no_lead` and `no_checkin` read the directory; an organisation that has
+     * connected its identity provider but not yet imported any objectives is exactly the one that
+     * most wants to hear its reporting lines are broken, and it would have heard nothing.
+     *
+     * This early return used to sit above everything, which is the same shape as the bug found in
+     * `findNoLead` an hour earlier: a guard clause for one thing quietly gating another.
+     */
+    const aboutPeople = await this.aboutPeople(organizationId, subjects, turns);
+    if (!subjects.length) {
+      this.logger.log(`Org ${organizationId}: no subjects imported; ${aboutPeople} people findings.`);
+      return { ran: true, found: aboutPeople };
+    }
 
     const found = findUndeclaredDependencies(subjects, this.mentionsOf(subjects, turns));
     const titleOf = (id: string) => subjects.find((s) => s.externalId === id)?.title ?? id;
@@ -473,7 +644,7 @@ export class DetectorsService {
     const contribution = await this.contribution(organizationId, subjects, turns);
     const proposed = await this.recommend(organizationId, subjects);
 
-    this.logger.log(`Org ${organizationId}: ${found.length} undeclared dependencies, ${unmentioned} unmentioned, ${diverging} diverging, ${contribution} contribution findings, ${proposed} recommendations.`);
-    return { ran: true, found: found.length + unmentioned + diverging + contribution, recommended: proposed };
+    this.logger.log(`Org ${organizationId}: ${found.length} undeclared dependencies, ${unmentioned} unmentioned, ${diverging} diverging, ${contribution} contribution findings, ${aboutPeople} about people, ${proposed} recommendations.`);
+    return { ran: true, found: found.length + unmentioned + diverging + contribution + aboutPeople, recommended: proposed };
   }
 }
