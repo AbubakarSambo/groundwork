@@ -397,10 +397,21 @@ const SCENARIO_FROM_LABEL: Record<string, GroundScenario> = {
   'describe your own situation': 'REALIGN_TEAM',
 }
 
-function scenarioFromParam(param: string | null): GroundScenario | null {
+/**
+ * The stored value is accepted as well as the picker label, and that is what lets the assistant
+ * link here. A suggestion carries a `GroundScenario`, not the words on a card - and translating it
+ * to a label on the API side would mean a second copy of the map above, kept in step by hand.
+ * Accepting the value directly leaves one map, in the place that owns the wording.
+ */
+export function scenarioFromParam(param: string | null): GroundScenario | null {
   if (!param) return null
+  const stored = param.trim().toUpperCase().replace(/[\s+-]+/g, '_')
+  if (SCENARIO_VALUES.has(stored)) return stored as GroundScenario
   return SCENARIO_FROM_LABEL[param.toLowerCase().replace(/\+/g, ' ')] ?? null
 }
+
+/** Every value the picker can produce. Derived from the map, so it cannot fall behind it. */
+const SCENARIO_VALUES = new Set<string>(Object.values(SCENARIO_FROM_LABEL))
 
 // Step numbering: 1=scenario, 1.5=billing (stored as step=2 internally), 2=timeframe (step=3), 3=participants (step=4), 4=resolution (step=5), 5=brief (step=6)
 // We use integer steps internally: 1,2,3,4,5,6

@@ -47,7 +47,7 @@ function svc(opts: { turns?: number; parked?: any; person?: any } = {}) {
   /* Retrieval is only reached by the handbook lane; these suites do not use it. */
   const knowledge: any = { retrieve: jest.fn(async () => ({ cards: [], truncated: false })) };
   const engine: any = { respond: jest.fn(async () => { throw new Error('model off for these tests'); }) };
-  return { service: new AssistantService(prisma, engine, knowledge, { waitingAcrossTheOrg: async () => ({ waiting: [], waitedOn: [] }) } as any, { statusFor: async () => ({ roleName: null, gates: [], left: [] }) } as any), prisma, proposals, commitments };
+  return { service: new AssistantService(prisma, engine, knowledge, { waitingAcrossTheOrg: async () => ({ waiting: [], waitedOn: [] }) } as any, { statusFor: async () => ({ roleName: null, gates: [], left: [] }) } as any, { pendingFor: async () => [], decide: async () => { throw new Error('no suggestions in these tests'); } } as any), prisma, proposals, commitments };
 }
 
 const PARKED = {

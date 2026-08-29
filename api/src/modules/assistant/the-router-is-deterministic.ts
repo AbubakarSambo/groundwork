@@ -20,6 +20,7 @@ export type Lane =
   | 'how_am_i_doing'
   | 'what_is_stuck'
   | 'where_am_i_up_to'
+  | 'what_should_we_talk_about'
   | 'unplaced';
 
 export interface Routed {
@@ -55,6 +56,24 @@ const RULES = [
     /\bwhere\s+am\s+i\s+up\s+to\b/i,
     /\bmy\s+onboarding\b/i,
     /\bwhat\s+is\s+my\s+role\b/i,
+  ]),
+  rule('what_should_we_talk_about', [
+    /*
+     * ABOVE `what_is_stuck` AND `how_am_i_doing`, and the reason is the overlap rather than the
+     * wording. "What should I be doing about my team" reads to the coaching lane as a request for a
+     * step and to this one as a request for the pending suggestions, and the suggestions are the
+     * better answer: they are addressed to this person by name, they expire, and the coaching step
+     * will still be there tomorrow.
+     *
+     * Narrow on purpose. It owns the shapes that ask what is waiting to be decided, and nothing
+     * that merely mentions a conversation - "how do I run a check-in" is a handbook question.
+     */
+    /\bwhat\s+(?:should|do)\s+we\s+(?:talk|speak)\s+about\b/i,
+    /\b(?:any|my|what)\s+suggestions?\b/i,
+    /\bwhat\s+(?:conversations?|check-?ins?)\s+(?:should|do)\s+i\b/i,
+    /\bwhat\s+(?:is|are)\s+(?:waiting|pending)\s+(?:for|on)\s+(?:my\s+)?(?:decision|answer|me\s+to\s+decide)\b/i,
+    /\bwhat\s+(?:do\s+)?you\s+(?:suggest|recommend)\b/i,
+    /\bwhat\s+needs\s+(?:my\s+)?deciding\b/i,
   ]),
   rule('what_is_stuck', [
     /*
