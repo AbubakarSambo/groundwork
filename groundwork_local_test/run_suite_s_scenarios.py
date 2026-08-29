@@ -51,13 +51,22 @@ EMAIL = f"s.sweep+{STAMP}@example-test.invalid"
 # this list and fails on the client test run rather than in a browser twenty minutes later.
 # Eighteen, not seventeen: "Onboarding several people at once" was added and the
 # count in this comment was never updated either.
+# The picker's labels, exactly as SCENARIO_LABELS in client/src/lib/scenario-catalog.ts holds them.
+#
+# EXACTLY, because the check below matches exactly and the previous list did not. It pinned "New
+# hire" where the product renders "A new hire starting" - and the client guard passed it, because
+# that guard lowercases and asks whether the label appears anywhere in the source, and "new hire"
+# is a substring of "a new hire starting". So the suite failed in the browser while the guard
+# reported agreement, which is the same shape of hole the guard was written to close. It now
+# requires a complete label rather than a fragment of one.
 CREATE_CARDS = [
-    "New hire", "New project", "New advisor or board member", "A new partner or co-founder",
-    "A new manager taking over", "Contract or renewal", "Raise, promotion, or recognition",
-    "Performance improvement plan", "Goals & planning", "A workplan and budget",
-    "A regular read on live work", "A project is off track", "Board or leadership strategy",
-    "Many people in the same role", "Onboarding several people at once",
-    "A shock just hit", "Get a team back on the same page", "Describe your own situation",
+    "A new hire starting", "A role changing hands", "A new project starting",
+    "A new advisor or board member", "A new co-founder or partner", "A new manager taking over",
+    "A contract or renewal", "A raise, promotion, or recognition", "Someone's work is off track",
+    "Setting shared goals", "A workplan and budget", "A regular read on live work",
+    "A project is off track", "A big decision", "Board or leadership strategy",
+    "Several people in the same role", "A pulse check", "Onboarding several people at once",
+    "Something serious just happened", "People see it differently", "Describe your own situation",
 ]
 
 VALID_ENUMS = {
@@ -112,9 +121,9 @@ async def main() -> int:
         await page.wait_for_timeout(2500)
         body = await page.inner_text("body")
         missing = [c for c in CREATE_CARDS if c not in body]
-        rec.check("S1", not missing, "all 18 create-picker cards render with exact labels",
+        rec.check("S1", not missing, f"all {len(CREATE_CARDS)} create-picker cards render with exact labels",
                   f"missing: {missing}" if missing else "", hard=True, url=page.url)
-        await rec.step(page, "17-card picker", "persona S")
+        await rec.step(page, "the situation picker", "persona S")
         await browser.close()
 
         # ---- S2: classify-intent routes every scenario ----------------------

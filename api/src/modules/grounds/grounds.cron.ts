@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { deadlineOf } from './when-the-clock-starts';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -113,13 +114,15 @@ export class GroundsCron {
     await this.prisma.withAdvisoryLock(CronLock.STALL_GROUNDS, async () => {
       const candidates = await this.prisma.ground.findMany({
         where: { status: { notIn: TERMINAL } },
-        select: { id: true, createdAt: true, timelineDays: true },
+        select: { id: true, createdAt: true, startsAt: true, timelineDays: true },
       });
 
       const staleIds = candidates
         .filter((g) => {
-          const deadline = new Date(g.createdAt.getTime() + g.timelineDays * 24 * 60 * 60 * 1000);
-          return deadline < new Date();
+          /* The deadline runs from the start date when one was set, not from when the check-in was
+             made. This measured lateness against a date nobody had agreed to. */
+          const deadline = deadlineOf(g);
+          return deadline !== null && deadline < new Date();
         })
         .map((g) => g.id);
 

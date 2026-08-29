@@ -1,3 +1,4 @@
+import { AdminFirstRun } from './an-admin-lands-on-a-check-in-list'
 import { plannedSessionsFor } from '@/lib/sessionCount'
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -456,6 +457,9 @@ export function GroundsListPage() {
             {isLoading && <div style={{ fontSize: 13, color: 'var(--gw-muted)', textAlign: 'center', padding: 24 }}>Loading…</div>}
 
             {!isLoading && grounds.length === 0 && (
+              <>
+              {/* An org admin's own job, on the screen they actually land on. See the file. */}
+              <AdminFirstRun />
               <div style={{ textAlign: 'center', padding: '48px 20px' }}>
                 <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', gap: 10, marginBottom: 24, height: 44 }}>
                   <div style={{ width: 10, height: 32, borderRadius: 5, background: 'var(--gw-border)', opacity: .5 }} />
@@ -466,6 +470,7 @@ export function GroundsListPage() {
                 <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, maxWidth: 280, margin: '0 auto 24px' }}>Open a check-in for a new hire, a cofounder conversation, or a team that needs alignment.</div>
                 <button onClick={() => navigate('/grounds/new')} style={{ padding: '13px 28px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Open your first check-in</button>
               </div>
+              </>
             )}
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

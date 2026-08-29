@@ -1,6 +1,18 @@
+import { chunk, chunkKey, chunkTitle } from './a-document-is-not-a-card';
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { KnowledgeKind, Prisma } from '@prisma/client';
+
+export interface DocumentInput {
+  /** The document's stable id in the customer's system. Chunk keys are derived from it. */
+  key: string;
+  title: string;
+  /** Plain text. Turning a file into text is the caller's job - see a-document-is-not-a-card.ts. */
+  text: string;
+  kind?: string;
+  sourceRef?: string | null;
+  sourceSystem?: string | null;
+}
 
 export interface CardInput {
   kind: string;
@@ -173,6 +185,62 @@ export class KnowledgeService {
         OR: [{ effectiveTo: null }, { effectiveTo: { gt: when } }],
       },
     });
+  }
+
+  /**
+   * A WHOLE DOCUMENT, SPLIT INTO CARDS THE REST OF THIS SERVICE ALREADY UNDERSTANDS.
+   *
+   * Every chunk goes through `put`, which is the point. Supersession, the version number, the
+   * effective-from history, the no-op path when nothing changed - none of it is reimplemented here,
+   * so a document behaves exactly like a hand-written card because it IS one.
+   *
+   * THE ORPHANS ARE THE PART THAT WOULD HAVE BEEN MISSED. A handbook re-uploaded after a section is
+   * deleted produces fewer chunks than last time, and the chunks beyond the new count are never
+   * written again - so they stay current, stay retrievable, and answer questions from a section the
+   * customer removed. `put` cannot see this: it is given one card and knows nothing about how many
+   * there should be. Retiring what the new version no longer has is the only place that can.
+   *
+   * ONE TRANSACTION PER CHUNK RATHER THAN ONE FOR THE DOCUMENT, because `put` owns its own. A
+   * document that fails half way leaves the first chunks updated and the rest on their old version,
+   * which is visible and fixable by uploading again - a single long transaction over a forty-page
+   * handbook would hold locks on the whole table while the model-facing read path queries it.
+   */
+  async ingestDocument(organizationId: string, input: DocumentInput) {
+    const key = (input.key ?? '').trim();
+    const title = (input.title ?? '').trim();
+    if (!key) throw new BadRequestException('key is required - it is what makes this a new version of a document rather than a new document.');
+    if (!title) throw new BadRequestException('title is required.');
+    if (!(input.text ?? '').trim()) throw new BadRequestException('text is required. This takes text, not a file.');
+
+    const pieces = chunk(title, input.text);
+    if (!pieces.length) throw new BadRequestException('That document has no text in it.');
+
+    const written: string[] = [];
+    for (const c of pieces) {
+      await this.put(organizationId, {
+        kind: input.kind ?? 'handbook',
+        key: chunkKey(key, c.index),
+        title: chunkTitle(title, c),
+        body: c.body,
+        sourceRef: input.sourceRef ?? null,
+        sourceSystem: input.sourceSystem ?? null,
+      });
+      written.push(chunkKey(key, c.index));
+    }
+
+    /* Anything still current under this document's key that this version did not write. */
+    const stale = await this.prisma.knowledgeCard.findMany({
+      where: {
+        organizationId,
+        effectiveTo: null,
+        key: { startsWith: `${key}#` },
+        NOT: { key: { in: written } },
+      },
+      select: { key: true },
+    });
+    for (const s of stale) await this.retire(organizationId, s.key);
+
+    return { key, chunks: written.length, retired: stale.length };
   }
 
   /**

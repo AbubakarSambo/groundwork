@@ -137,6 +137,19 @@ export function BillingPage() {
     onError: () => toast.error('Could not change plan. Try again.'),
   })
 
+  /**
+   * Stripe's Customer Portal: invoices, receipts, the card on file, and cancellation, on their
+   * screens rather than rebuilt on ours. The endpoint and the client call both already existed.
+   */
+  const portalMut = useMutation({
+    mutationFn: () => billingApi.portal(),
+    onSuccess: (res) => {
+      if (res?.portalUrl) window.location.assign(res.portalUrl)
+      else toast.error('Could not open the billing portal. Try again in a moment.')
+    },
+    onError: () => toast.error('Could not open the billing portal. Try again in a moment.'),
+  })
+
   const cancelSubscriptionMut = useMutation({
     mutationFn: () => billingApi.cancelSubscription(),
     onSuccess: () => {
@@ -309,6 +322,25 @@ export function BillingPage() {
                   {pauseSubscriptionMut.isPending ? 'Pausing...' : 'Pause subscription'}
                 </button>
               )}
+              {/*
+                * INVOICES EXISTED AND WERE UNREACHABLE.
+                *
+                * Stripe issues an invoice for every payment and the API has had a Customer Portal
+                * endpoint all along - `billing.controller.ts`, "manage card, invoices,
+                * cancellation" - with a client function to call it. Nothing ever called it. Asked
+                * by somebody signing up: "do I get an invoice when I pay?" The answer was yes, and
+                * there was no way to see one.
+                *
+                * The portal is Stripe's own screen, so it opens in the same tab by assignment
+                * rather than through the router - it is not a route in this app.
+                */}
+              <button
+                onClick={() => portalMut.mutate()}
+                disabled={portalMut.isPending}
+                style={{ padding: '8px 14px', borderRadius: 7, background: 'none', color: 'var(--gw-navy)', fontSize: 12, fontWeight: 600, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit', opacity: portalMut.isPending ? 0.7 : 1 }}
+              >
+                {portalMut.isPending ? 'Opening...' : 'Invoices and payment method'}
+              </button>
               <button
                 onClick={() => {
                   if (window.confirm('Cancel your subscription? Your team will move to per-session billing.')) {

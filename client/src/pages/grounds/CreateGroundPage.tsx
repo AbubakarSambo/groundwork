@@ -397,10 +397,35 @@ const SCENARIO_FROM_LABEL: Record<string, GroundScenario> = {
   'describe your own situation': 'REALIGN_TEAM',
 }
 
-function scenarioFromParam(param: string | null): GroundScenario | null {
+/**
+ * The stored value is accepted as well as the picker label, and that is what lets the assistant
+ * link here. A suggestion carries a `GroundScenario`, not the words on a card - and translating it
+ * to a label on the API side would mean a second copy of the map above, kept in step by hand.
+ * Accepting the value directly leaves one map, in the place that owns the wording.
+ */
+export /**
+ * The run in dates rather than in a duration.
+ *
+ * "6 check-ins over 90 days" is true and does not answer what somebody is actually asking, which is
+ * when the first one happens and when this is finished. Both are already known on this screen.
+ */
+function runDates(startsOn: string, timelineDays: number): string {
+  const start = startsOn ? new Date(`${startsOn}T09:00:00`) : new Date()
+  const end = new Date(start.getTime() + timelineDays * 86_400_000)
+  const fmt = (d: Date) => d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
+  /* "starting today to 27 Nov" was the first wording and reads as a mistake out loud. */
+  return startsOn ? `from ${fmt(start)} to ${fmt(end)}` : `starting today, ending ${fmt(end)}`
+}
+
+export function scenarioFromParam(param: string | null): GroundScenario | null {
   if (!param) return null
+  const stored = param.trim().toUpperCase().replace(/[\s+-]+/g, '_')
+  if (SCENARIO_VALUES.has(stored)) return stored as GroundScenario
   return SCENARIO_FROM_LABEL[param.toLowerCase().replace(/\+/g, ' ')] ?? null
 }
+
+/** Every value the picker can produce. Derived from the map, so it cannot fall behind it. */
+const SCENARIO_VALUES = new Set<string>(Object.values(SCENARIO_FROM_LABEL))
 
 // Step numbering: 1=scenario, 1.5=billing (stored as step=2 internally), 2=timeframe (step=3), 3=participants (step=4), 4=resolution (step=5), 5=brief (step=6)
 // We use integer steps internally: 1,2,3,4,5,6
@@ -464,6 +489,15 @@ export function CreateGroundPage() {
    * shock ran for 90 days; a year-long advisory ran for 90 days.
    */
   const [timelineDays, setTimelineDays] = useState(90)
+  /*
+   * WHEN THE CHECK-IN STARTS, WHICH IS NOT ALWAYS TODAY.
+   *
+   * `Ground.startsAt` has existed all along - the server stores it and gates the first check-in on
+   * it - and nothing in this flow ever set it. So a lead setting up a 90 day onboarding three weeks
+   * before somebody's first day had a 90 day clock that started the moment they pressed create.
+   * Empty means today, which is what every existing check-in has always done.
+   */
+  const [startsOn, setStartsOn] = useState('')
   /** Which card has its "how it runs" open. One at a time, so the grid does not jump around. */
   const [openArc, setOpenArc] = useState<string | null>(null)
   /** The twenty-first card. Its own state because it creates nothing and shares no step with the rest. */
@@ -602,6 +636,7 @@ export function CreateGroundPage() {
           moment: moment!,
           timelineDays,
           cadence,
+          ...(startsOn ? { startsAt: new Date(`${startsOn}T09:00:00`).toISOString() } : {}),
           brief: (brief.trim() || ownDescription.trim()) || undefined,
         /**
          * Sent at CREATE now, not only afterwards. The follow-up confirmLead call below still runs
@@ -622,6 +657,7 @@ export function CreateGroundPage() {
         moment: moment!,
         timelineDays,
         cadence,
+        ...(startsOn ? { startsAt: new Date(`${startsOn}T09:00:00`).toISOString() } : {}),
         brief: (brief.trim() || ownDescription.trim()) || undefined,
         ...(appliedAccessCode ? { accessCode: appliedAccessCode } : {}),
       } as Parameters<typeof groundsApi.create>[0] & { accessCode?: string })
@@ -1270,6 +1306,34 @@ export function CreateGroundPage() {
                 <span style={{ fontSize: 13, color: 'var(--gw-sub)' }}>days</span>
               </div>
             </div>
+            {/* WHEN IT STARTS. The most common real case is setting a check-in up before the
+                person it is about arrives, and until now the clock started anyway. */}
+            <div className="gw-fld">
+              <label className="gw-label" htmlFor="gw-starts">When does this start?</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <input
+                  id="gw-starts"
+                  className="gw-in"
+                  type="date"
+                  value={startsOn}
+                  min={new Date().toISOString().slice(0, 10)}
+                  onChange={e => setStartsOn(e.target.value)}
+                  style={{ maxWidth: 190 }}
+                />
+                {startsOn && (
+                  <button
+                    type="button"
+                    onClick={() => setStartsOn('')}
+                    style={{ fontSize: 12, color: 'var(--gw-sub)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+                  >
+                    Start today instead
+                  </button>
+                )}
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 5, lineHeight: 1.55 }}>
+                Leave it empty to start today. Set a date and nothing opens, and no time is counted, until then - useful when somebody has not joined yet.
+              </div>
+            </div>
             <div className="gw-fld">
               <label className="gw-label" htmlFor="gw-cadence">Recommended cadence</label>
               <select id="gw-cadence" className="gw-select" value={cadence} onChange={e => setCadence(e.target.value as GroundCadence)}>
@@ -1277,7 +1341,12 @@ export function CreateGroundPage() {
               </select>
             </div>
             <div className="gw-box gw-box-blue" style={{ marginBottom: 24 }}>
-              <div style={{ fontWeight: 600, marginBottom: 4 }}>{sessionTotal} {sessionTotal === 1 ? 'check-in' : 'check-ins'} over {timelineDays} {timelineDays === 1 ? 'day' : 'days'}</div>
+              {/* THE DATES, NOT JUST THE DURATION. "6 check-ins over 90 days" does not answer the
+                  question a person actually has, which is when the first one happens and when this
+                  is over. Both are known here and neither was shown. */}
+              <div style={{ fontWeight: 600, marginBottom: 4 }}>
+                {sessionTotal} {sessionTotal === 1 ? 'check-in' : 'check-ins'} over {timelineDays} {timelineDays === 1 ? 'day' : 'days'}, {runDates(startsOn, timelineDays)}
+              </div>
               <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
                 Both are set from the situation you picked, and you can change either one now. Every check-in produces a report for each person. Afterwards the person leading this check-in can still change the timeframe or the cadence at any time.
               </div>

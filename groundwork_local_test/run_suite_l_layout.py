@@ -36,23 +36,23 @@ EMAIL = f"l.layout+{STAMP}@example-test.invalid"
 # only after signing up, which is backwards: the person with no account has no
 # other way in.
 ENTRY_CARDS = [
-    "New hire starting",
-    "New project",
+    "A new hire starting",
+    "A new project starting",
     "A new co-founder or partner",
-    "New advisor or board member",
+    "A new advisor or board member",
     "Onboarding several people at once",
     "Setting shared goals",
     "A big decision",
-    "Workplan and budget",
-    "Board and leadership strategy",
+    "A workplan and budget",
+    "Board or leadership strategy",
     "A regular read on live work",
-    "Many people in the same role",
-    "Raise, promotion, or recognition",
-    "Contract or renewal",
+    "Several people in the same role",
+    "A raise, promotion, or recognition",
+    "A contract or renewal",
     "Someone's work is off track",
     "A project is off track",
     "People see it differently",
-    "A shock just hit",
+    "Something serious just happened",
 ]
 # The catch-all card's label, as /entry actually renders it.
 #
@@ -199,7 +199,7 @@ async def main() -> int:
             rec.check(f"L/{label}", ok, f"/grounds/new zero horizontal overflow @ {label}", detail, hard=True)
 
             # step 1: pick a card, then the Continue must be inside the viewport
-            card = page.get_by_text("New project", exact=True)
+            card = page.get_by_text("A new project starting", exact=True)
             if await card.count():
                 await card.first.click()
                 await page.wait_for_timeout(400)

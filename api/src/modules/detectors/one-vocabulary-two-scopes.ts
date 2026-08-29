@@ -72,6 +72,12 @@ export const GENUINELY_NEW = [
   /* Structural rather than behavioural, and about the roster rather than the record. */
   'no_lead',
   'no_checkin',
+  /*
+   * The one that needed a role to be a record before it could exist at all. It is new in the same
+   * sense as the rest - the spec names it and nothing before this detected it - so it belongs in
+   * the vocabulary rather than in a list of exceptions.
+   */
+  'neglected_primary',
 ] as const;
 
 export type NewDetector = (typeof GENUINELY_NEW)[number];
@@ -92,6 +98,11 @@ export const IMPLEMENTED: NewDetector[] = ['undeclared_dependency', 'objective_u
    * SCIM has written since the day it landed. A blocker nobody rechecks outlives its cause.
    */
   'unattached_work', 'no_lead', 'no_checkin',
+  /*
+   * Built once roles became records. It was the last one blocked on something that genuinely did
+   * not exist - see the note on NEEDS_ROLES below, which is now history rather than a caveat.
+   */
+  'neglected_primary',
 ];
 
 export function isImplemented(key: string): boolean {
@@ -109,11 +120,15 @@ export const SPEC_KEYS = [
 ] as const;
 
 /**
- * `neglected_primary` is deliberately in NEITHER list.
+ * WHAT `neglected_primary` WAS WAITING FOR, KEPT BECAUSE THE REASON IS WORTH READING.
  *
- * It needs `primaryActionKey` and a cadence on a role, and roles do not exist here as records yet.
- * Aliasing it onto an existing code would be wrong - nothing here detects "skipping the one action
- * that converts" - and listing it as new-and-unbuilt alongside things that only need a subject
- * would hide that it needs a whole role model first. It is named here so the omission is a decision.
+ * It needed `primaryActionKey` and a cadence on a role, and a role was only ever a name on an
+ * assignment. Aliasing it onto an existing code would have been wrong - nothing detected "skipping
+ * the one action that converts" - and listing it as new-and-unbuilt beside things that only needed
+ * a subject would have hidden that it needed a whole role model first. So it was named here, as a
+ * decision rather than an omission, until the `Role` and `PrimaryActionEvent` records existed.
+ *
+ * The list is empty now. It stays, so the next detector that is blocked on machinery has somewhere
+ * honest to sit rather than being quietly dropped from the vocabulary.
  */
-export const NEEDS_ROLES = ['neglected_primary'] as const;
+export const NEEDS_ROLES = [] as const;

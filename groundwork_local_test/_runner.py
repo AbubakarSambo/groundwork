@@ -26,6 +26,18 @@ import urllib.request
 from datetime import datetime
 from pathlib import Path
 
+# THE SHARED HELPERS WERE OUTSIDE THE PINNED DISCIPLINE, WHICH IS WHY THE RENAME WENT UNNOTICED HERE.
+# The suites import their UI copy from `_ui_strings` and a client guard holds every entry in that
+# list to text the product still renders. This file typed its own, so `ground_reached` sat waiting
+# for "Your ground is set up" for three days after the words changed, and every suite that
+# provisions a check-in reported the check-in as never created.
+from _ui_strings import (
+    ONE_LAST_STEP,
+    ORG_SETUP_HEADING,
+    ORG_SETUP_NAME_PLACEHOLDER,
+    ORG_SETUP_EMAIL_PLACEHOLDER,
+)
+
 ROOT = Path(__file__).parent
 BASE_URL = os.environ.get("BASE_URL", "http://127.0.0.1:5173")
 API_BASE = os.environ.get("API_BASE", "http://127.0.0.1:3000/api/v1")
@@ -249,7 +261,7 @@ async def new_page(rec: "Recorder", ctx, persona: str = ""):
 async def complete_password_step(page, password: str = "PersonaPass123!") -> bool:
     """Set a password if the app is asking for one, and report whether it did.
 
-    Verification now lands on "One last step" for a brand-new account, because signup promises a
+    Verification now lands on ONE_LAST_STEP for a brand-new account, because signup promises a
     password and until recently never asked for one. Every persona journey that arrives by magic
     link therefore meets this screen, and a harness that does not fill it in is not testing the
     product a person uses - it stalls on step two of three.
@@ -259,7 +271,7 @@ async def complete_password_step(page, password: str = "PersonaPass123!") -> boo
     magic link for the same account).
     """
     try:
-        await page.get_by_text("One last step").wait_for(timeout=6000)
+        await page.get_by_text(ONE_LAST_STEP).wait_for(timeout=6000)
     except Exception:
         return False
     boxes = page.locator('input[type="password"]:visible')
@@ -271,6 +283,40 @@ async def complete_password_step(page, password: str = "PersonaPass123!") -> boo
     await page.wait_for_timeout(3500)
     return True
 
+
+
+async def complete_org_setup(page, contact_email: str = "persona-org@example.com") -> bool:
+    """Fill in the organisation details if the app is asking for them, and report whether it did.
+
+    An ADMIN whose organisation has no contact email is sent to `/org/setup` by `RequireOrgSetup`,
+    and every route in the product redirects there until it is filled in. Sign-up creates the
+    organisation automatically with a name derived from the email domain and no contact address, so
+    a brand-new admin arriving by magic link meets this screen on the way to their first check-in.
+
+    THIS IS A REAL STEP, NOT A HARNESS WORKAROUND. Skipping it by writing the field straight into
+    the database would test a product nobody uses. The suites failed with "this is not a ground:
+    /org/setup", which read like the check-in never being created and was actually the harness
+    stopping at a gate a person walks through.
+
+    Tolerant like `complete_password_step`: returns False when the screen is absent, so the same
+    call is safe on every path, including an admin whose organisation is already set up.
+    """
+    try:
+        await page.get_by_text(ORG_SETUP_HEADING).wait_for(timeout=6000)
+    except Exception:
+        return False
+    # The name is pre-filled from the email domain at sign-up; only the contact address is missing.
+    # Filled by placeholder rather than by label, because the labels here are plain text next to the
+    # input rather than bound to it, and a `get_by_label` would match nothing.
+    email_box = page.locator(f'input[placeholder="{ORG_SETUP_EMAIL_PLACEHOLDER}"]:visible')
+    if await email_box.count():
+        await email_box.first.fill(contact_email)
+    name_box = page.locator(f'input[placeholder="{ORG_SETUP_NAME_PLACEHOLDER}"]:visible')
+    if await name_box.count() and not (await name_box.first.input_value()).strip():
+        await name_box.first.fill("Persona Test Org")
+    await page.get_by_role("button", name=re.compile("Continue", re.I)).first.click()
+    await page.wait_for_timeout(3000)
+    return True
 
 
 async def ground_reached(page, timeout_ms: int = 25000) -> bool:
@@ -294,7 +340,13 @@ async def ground_reached(page, timeout_ms: int = 25000) -> bool:
         await page.wait_for_function(
             """() => {
                  const t = document.body ? document.body.innerText : '';
-                 if (/Your ground is set up|Go to your ground/i.test(t)) return true;
+                 // Renamed 2026-08-26 - "ground" became "check-in" on both. The old spellings
+                 // lived here inside a JS regex inside a Python string, which is why no search
+                 // for get_by_text() found them and why provision_ground kept failing after the
+                 // button itself was fixed. Only the live copy is accepted: carrying the dead
+                 // spelling alongside is how it went stale unnoticed the first time. A client
+                 // guard now reads these alternatives and checks each against what renders.
+                 if (/Your check-in is set up|Go to your check-in/i.test(t)) return true;
                  return /^\\/grounds\\/[^/]+/.test(location.pathname) && /My check-ins|Opened for/i.test(t);
                }""",
             timeout=timeout_ms,
@@ -324,6 +376,10 @@ async def provision_admin(browser, email: str, viewport=None) -> tuple[object, s
     page = await ctx.new_page()
     await page.goto(link)
     await complete_password_step(page)
+    # And the organisation gate right after it. Both are steps a real admin walks through on the way
+    # to their first check-in, and both are here rather than in each suite so that a suite which
+    # only wants an authed admin does not have to know the shape of sign-up to get one.
+    await complete_org_setup(page)
     token = None
     for _ in range(30):
         token = await page.evaluate("() => localStorage.getItem('token')")

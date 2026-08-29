@@ -1,3 +1,4 @@
+import { alreadyEstablished } from './setup-already-asked-this';
 import { GroundScenario, PartyType, GroundMoment } from '@prisma/client';
 import { ALIGNMENT_FEED_ONLY_CODES } from '../patterns/pattern-library';
 import { whereInTheRun } from './where-in-the-run';
@@ -1835,7 +1836,12 @@ const STARTING_VALIDATION = `VALIDATION (deliver ONLY if the person is uncertain
 const STARTING_OPENING = `CONVERSATION PATHWAY (cover these across multiple exchanges, one at a time; never ask more than one in a single message; the third is the most important - it forces a concrete definition rather than a feeling):
 "What is starting and who is involved?"
 "What does success look like for you - your version, not the brief."
-"What would have to exist for you to know this is working?"`;
+"What would have to exist for you to know this is working?"
+
+SKIP THE FIRST ONE WHEN IT IS ALREADY ANSWERED. If the ALREADY ESTABLISHED block above says what
+this is about and who is in it, do not ask it - open on the second question instead. Asking a
+person to describe a situation they chose from a list two screens ago is the clearest possible
+signal that nothing they do here is being read.`;
 
 const STARTING_FOLLOWUP = `FOLLOW-UP IF VAGUE (the unstated reliance is almost always where the gap is):
 "One more thing before we go further - is there anything you are relying on them to cover that you have not explicitly agreed yet?"`;
@@ -2960,6 +2966,25 @@ export function buildIntakeBlock(ctx: PromptContext): string {
     '',
     `GROUND: ${ctx.groundLabel}`,
     `SITUATION_TYPE: ${situationType}`,
+    /*
+     * WHAT SETUP ALREADY SETTLED, AND THE INSTRUCTION NOT TO ASK FOR IT AGAIN.
+     *
+     * High in the block on purpose: it changes which question opens the conversation, and an
+     * instruction about the first message is worth nothing below three screens of context.
+     *
+     * The facts themselves were always here - GROUND, OTHER_PARTIES, ROLE, the admin brief. What
+     * was missing was any rule about them, so the model read them and asked for them anyway.
+     */
+    ...(() => {
+      const block = alreadyEstablished({
+        scenario: ctx.scenario,
+        groundLabel: ctx.groundLabel,
+        otherParties: ctx.otherParties,
+        roleAsDescribed: ctx.roleAsDescribed,
+        adminBrief: ctx.adminBrief ?? null,
+      });
+      return block ? ['', block] : [];
+    })(),
     `RELATIONSHIP_HISTORY: ${relHistory}`,
     `RELATIONSHIP_TYPE: ${relType}`,
     `OPENER_ROLE: ${openerRole}`,

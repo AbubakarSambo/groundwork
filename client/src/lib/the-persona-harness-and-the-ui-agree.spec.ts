@@ -97,6 +97,15 @@ const RENDERED = sources(join(ROOT, 'client/src'))
   /* JSX splits text across lines and indents it. The browser collapses that whitespace, so this
      does too - otherwise a label that happens to wrap reads as missing. */
   .replace(/\s+/g, ' ')
+  /*
+   * LOWERCASED, BECAUSE THAT IS HOW THE HARNESS MATCHES.
+   *
+   * The suites use `get_by_text(card, exact=False)`, which Playwright resolves case-insensitively.
+   * A case-sensitive check here reports four labels missing that the browser finds happily -
+   * "Contract or renewal" against "A contract or renewal" - and I nearly rewrote four working
+   * strings on the strength of it. A guard has to model how the thing it guards actually matches.
+   */
+  .toLowerCase()
 
 /**
  * The eighteen create-picker labels `suite_s` pins, read from the suite rather than copied here.
@@ -122,6 +131,32 @@ function pinnedList(file: string, name: string): string[] {
 const CREATE_CARDS = pinnedList('run_suite_s_scenarios.py', 'CREATE_CARDS')
 const ENTRY_CARDS = pinnedList('run_suite_l_layout.py', 'ENTRY_CARDS')
 
+/**
+ * EACH LIST IS CHECKED AGAINST THE PAGE THAT RENDERS IT, NOT AGAINST THE WHOLE APP.
+ *
+ * The first version searched all of client/src, which passes a label that exists somewhere and not
+ * where the suite looks. "Many people in the same role" is on the home page and the create page and
+ * NOT on /start - so `suite_l` failed in the browser while the guard reported agreement. A
+ * deliberately stale label sailed through the bite that was meant to catch it.
+ *
+ * Scoped by hand rather than inferred: which component serves which route is knowledge this file
+ * cannot derive, and guessing it would put the guard back to searching too widely.
+ */
+function renderedBy(...files: string[]): string {
+  return files
+    .map(f => readFileSync(join(ROOT, 'client/src', f), 'utf8'))
+    .map(src => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, ''))
+    .join('\n')
+    .replace(/&amp;/g, '&')
+    .replace(/\s+/g, ' ')
+    .toLowerCase()
+}
+
+/** /start - the entry picker. */
+const START_PAGE = renderedBy('pages/enter/EntryChatPage.tsx', 'lib/scenario-catalog.ts')
+/** /grounds/new - the signed-in picker. */
+const CREATE_PAGE = renderedBy('pages/grounds/CreateGroundPage.tsx', 'lib/scenario-catalog.ts')
+
 describe('the persona harness and the UI agree', () => {
   it('reads a real list, so a rename cannot empty this file out', () => {
     /* Without this, a refactor of _ui_strings.py that breaks the parse makes PINNED empty and every
@@ -131,7 +166,7 @@ describe('the persona harness and the UI agree', () => {
   })
 
   it('every string the harness clicks or waits for still exists in the product', () => {
-    const missing = PINNED.filter(s => !RENDERED.includes(s.replace(/\s+/g, ' ')))
+    const missing = PINNED.filter(s => !RENDERED.includes(s.replace(/\s+/g, ' ').toLowerCase()))
     expect(missing, [
       'The persona harness waits for text the product no longer renders.',
       'In the browser this is a 30-second Playwright timeout, and every suite downstream of',
@@ -146,7 +181,41 @@ describe('the persona harness and the UI agree', () => {
   it('and every card label the suites pin is still somewhere in the product', () => {
     expect(CREATE_CARDS.length).toBeGreaterThanOrEqual(15)
     expect(ENTRY_CARDS.length).toBeGreaterThanOrEqual(10)
-    const missing = [...CREATE_CARDS, ...ENTRY_CARDS].filter(c => !RENDERED.includes(c.replace(/\s+/g, ' ')))
+    /*
+     * A WHOLE LABEL, NOT A FRAGMENT OF ONE, and this is the hole that let the suite fail while this
+     * file agreed. The check was "does this text appear anywhere in the source", lowercased - so
+     * `suite_s` pinning "New hire" passed against a product that renders "A new hire starting",
+     * because one contains the other. Playwright matches the whole label, so the suite reported all
+     * eighteen cards missing while the guard reported agreement.
+     *
+     * A label now has to appear as a complete string: a quoted literal, or the entire text of a JSX
+     * node. Both are how a card label is actually written, and neither matches half of a longer one.
+     */
+    const norm = (c: string) => c.replace(/\s+/g, ' ').toLowerCase()
+    const wholeLabels = (src: string): Set<string> => {
+      const out = new Set<string>()
+      for (const m of src.matchAll(/'([^'\n]{3,80})'|"([^"\n]{3,80})"|`([^`\n$]{3,80})`/g)) {
+        /*
+         * A KEY IS NOT A LABEL. `SCENARIO_FROM_LABEL` maps old picker wording to enum values, so
+         * 'new hire' is a quoted literal in the create page and is never rendered anywhere. It made
+         * a stale pin pass the tightened check on the first attempt - caught by breaking the guard
+         * on purpose and finding it still green, which is the only reason it is not still there.
+         * What follows the closing quote is what tells them apart.
+         */
+        const after = src.slice(m.index! + m[0].length).match(/^\s*(.)/)
+        if (after?.[1] === ':') continue
+        out.add(norm(m[1] ?? m[2] ?? m[3]))
+      }
+      /* JSX text nodes: >Describe your own situation< */
+      for (const m of src.matchAll(/>([^<>{}\n]{3,80})</g)) out.add(norm(m[1]))
+      return out
+    }
+    const createLabels = wholeLabels(CREATE_PAGE)
+    const startLabels = wholeLabels(START_PAGE)
+    const missing = [
+      ...CREATE_CARDS.filter(c => !createLabels.has(norm(c))).map(c => `create picker: ${c}`),
+      ...ENTRY_CARDS.filter(c => !startLabels.has(norm(c))).map(c => `/start picker: ${c}`),
+    ]
     expect(missing, [
       'run_suite_s_scenarios.py pins create-picker labels the product no longer renders.',
       'This does not crash the suite - it reports the cards as missing, which reads as a broken',
@@ -155,13 +224,65 @@ describe('the persona harness and the UI agree', () => {
     ].join('\n')).toEqual([])
   })
 
+  it('and what ground_reached() waits for is text the product still renders', () => {
+    /*
+     * This one is here because it is what actually broke. `_runner.py` decides the magic link
+     * worked by waiting for the confirmation copy - but it does it inside a JS regex inside a
+     * Python string, so it is not a get_by_text() call, it is not in a pinned list, and no
+     * search for either found it. The strings went stale at the rename and every suite that
+     * provisions a ground failed with "magic link reached neither the confirmation nor a
+     * ground", which reads as the ground never being created.
+     *
+     * So: pull the alternatives straight out of that regex and hold each to the same rule as
+     * the pinned lists. Regex alternation is expanded, since the fix accepts both spellings.
+     */
+    const runner = readFileSync(join(ROOT, 'groundwork_local_test', '_runner.py'), 'utf8')
+    const line = runner.split('\n').find(l => l.includes('is set up') && l.includes('test(t)'))
+    expect(line, '_runner.py no longer has the ground_reached() confirmation check').toBeTruthy()
+
+    const source = /\/([^/]+)\/i\.test\(t\)/.exec(line as string)?.[1]
+    expect(source, 'could not read the regex out of ground_reached()').toBeTruthy()
+
+    /* Expand `(a|b)` groups into every spelling. A loop, not recursion: an unbalanced paren
+       would leave a recursive version replacing nothing and calling itself forever. */
+    const expand = (pattern: string): string[] => {
+      let out = [pattern]
+      for (let guard = 0; guard < 8; guard++) {
+        const m = /\(([^()]*)\)/.exec(out[0])
+        if (!m) break
+        out = out.flatMap(one => {
+          const hit = /\(([^()]*)\)/.exec(one)
+          if (!hit) return [one]
+          return hit[1].split('|').map(o => one.slice(0, hit.index) + o + one.slice(hit.index + hit[0].length))
+        })
+      }
+      return out
+    }
+
+    const confirmation = renderedBy('pages/auth/MagicVerifyPage.tsx', 'pages/grounds/GroundPage.tsx')
+    /* Groups first, then top-level alternation - splitting on `|` first cuts groups in half. */
+    const stale = expand(source as string)
+      .flatMap(alt => alt.split('|'))
+      .filter(alt => !confirmation.includes(alt.replace(/\s+/g, ' ').toLowerCase()))
+    expect(stale, [
+      'ground_reached() waits for copy the product no longer renders, so every suite that',
+      'provisions a ground will fail as though the ground was never created.',
+      'Fix the regex in _runner.py, not the component.',
+    ].join('\n')).toEqual([])
+  })
+
   it('and the suites use the shared constants rather than typing the text again', () => {
     /*
      * The guard is only worth having if the strings it checks are the strings the suites use. A
      * suite with its own inline copy is outside it, which is exactly how this broke.
      */
+    /*
+     * `_runner.py` IS IN THIS LIST, and leaving it out is what let the whole failure happen. It
+     * holds the shared provisioning helpers every suite calls, it typed its own copy of the UI
+     * text, and so it sat outside the one check that would have caught the rename.
+     */
     const suites = readdirSync(join(ROOT, 'groundwork_local_test'))
-      .filter(f => f.startsWith('run_suite_') && f.endsWith('.py'))
+      .filter(f => f.endsWith('.py') && (f.startsWith('run_suite_') || f === '_runner.py'))
     const offenders: string[] = []
     for (const f of suites) {
       const src = readFileSync(join(ROOT, 'groundwork_local_test', f), 'utf8')

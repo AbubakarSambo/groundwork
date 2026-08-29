@@ -1,6 +1,6 @@
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { WebhookDeliveryStatus } from '@prisma/client';
+import { WebhookDeliveryStatus, Prisma } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { newSecret, sign, nextAttemptAfter, SIGNATURE_HEADER, TIMESTAMP_HEADER, EVENT_ID_HEADER } from './how-a-receiver-knows-it-was-us';
 import { validateEvents, SENDABLE_EVENTS } from './events-we-can-actually-send';
@@ -8,6 +8,15 @@ import { validateEvents, SENDABLE_EVENTS } from './events-we-can-actually-send';
 /** Somebody else's error page can be a megabyte of HTML. */
 const MAX_RESPONSE_CHARS = 2_000;
 const REQUEST_TIMEOUT_MS = 10_000;
+
+/**
+ * How long a claimed delivery is held before another sweep may take it.
+ *
+ * Longer than any single attempt can take - REQUEST_TIMEOUT_MS is the ceiling on one send - so a
+ * lease never expires under a sweep that is still working. Short enough that a pod killed mid-send
+ * does not leave its deliveries sitting for an hour.
+ */
+export const LEASE_MS = 5 * 60_000;
 
 @Injectable()
 export class WebhooksService {
@@ -127,16 +136,75 @@ export class WebhooksService {
   }
 
   /** Everything currently due. Called by the cron, and by replay for one row. */
+  /**
+   * SELECTING A ROW IS NOT CLAIMING IT, AND THE DIFFERENCE IS A DUPLICATE AT THE CUSTOMER.
+   *
+   * This read the due rows and only wrote to them after the HTTP call returned. The cron's own
+   * comment says why that matters - "a duplicate for a receiver that does not dedupe" - and the
+   * guard it relies on is a boolean field on one process. Two API instances, or one instance
+   * restarted mid-sweep, both select the same rows and both send. The webhook is signed and carries
+   * the same event id each time, so a careful receiver survives it; a receiver that books a meeting
+   * on the event does it twice.
+   *
+   * THE CLAIM IS THE LEASE. `nextAttemptAt` is pushed forward before anything is sent, in one
+   * statement, so a concurrent sweep sees a row that is not due and skips it. `FOR UPDATE SKIP
+   * LOCKED` is what makes two sweeps starting at the same instant take different rows rather than
+   * one of them waiting for the other's lock and then finding nothing to do.
+   *
+   * A PROCESS THAT DIES MID-FLIGHT LOSES NOTHING. The lease expires and the row is due again - no
+   * in-flight status to get stuck in, and no migration to add one.
+   *
+   * THE LEASE DOES NOT BURN AN ATTEMPT, deliberately. `attempts` counts what the receiver did with
+   * a delivery, and a deploy restarting a pod is not the receiver failing. The cost is that a
+   * message which somehow kills the process is retried until its attempts run out through some
+   * other path - accepted, because the send is already inside a try/catch and the realistic cause
+   * of a mid-sweep death is a restart rather than the message.
+   */
   async deliverDue(now = new Date(), limit = 50) {
+    /*
+     * THE DATABASE'S CLOCK, NOT THIS PROCESS'S, AND NOT A JAVASCRIPT DATE AS A PARAMETER.
+     *
+     * `next_attempt_at` is `timestamp without time zone`, and the two writers disagree about what
+     * that means: Prisma writes UTC, while a JS Date passed as a raw parameter is converted using
+     * the session timezone. On a machine three hours off UTC the first version of this claimed
+     * every delivery scheduled up to three hours into the future and sent it early - measured, not
+     * reasoned about:
+     *
+     *   js Date (UTC)      : 2026-08-29T18:09:23.686Z
+     *   same Date as param : 2026-08-29T21:09:23.686
+     *   now() AT TIME ZONE 'UTC' : 2026-08-29T18:09:23.706
+     *
+     * It would have passed everywhere the servers run in UTC and failed on any deployment that does
+     * not. Using the database's clock also fixes a second thing that was wrong for a queue several
+     * instances share: a lease should not depend on whose pod's clock is fast.
+     */
+    const claimed = await this.prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
+      UPDATE webhook_deliveries
+         SET next_attempt_at = (now() AT TIME ZONE 'UTC') + ${`${LEASE_MS} milliseconds`}::interval
+       WHERE id IN (
+         SELECT id FROM webhook_deliveries
+          WHERE status IN ('PENDING', 'FAILED')
+            AND next_attempt_at IS NOT NULL
+            AND next_attempt_at <= (now() AT TIME ZONE 'UTC')
+          ORDER BY next_attempt_at ASC
+          LIMIT ${limit}
+          FOR UPDATE SKIP LOCKED
+       )
+      RETURNING id
+    `);
+    if (!claimed.length) return { attempted: 0, delivered: 0 };
+
+    /*
+     * Read back through Prisma rather than returning every column from the raw statement: the
+     * endpoint and its secret are needed to sign, and a hand-written join here would be a second
+     * place that decides what a delivery is made of.
+     */
     const due = await this.prisma.webhookDelivery.findMany({
-      where: {
-        status: { in: [WebhookDeliveryStatus.PENDING, WebhookDeliveryStatus.FAILED] },
-        nextAttemptAt: { lte: now },
-      },
+      where: { id: { in: claimed.map((c) => c.id) } },
       include: { endpoint: true },
-      orderBy: { nextAttemptAt: 'asc' },
-      take: limit,
+      orderBy: { createdAt: 'asc' },
     });
+
     let delivered = 0;
     for (const d of due) {
       if (await this.attempt(d)) delivered++;

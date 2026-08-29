@@ -69,6 +69,12 @@ const CHECKED_AND_FINE = new Set([
   'modules/subjects/subjects.service.ts:externalId',
   'modules/subjects/subjects.service.ts:title',
   /*
+   * Same shape again: `occurredAt` is non-nullable on the row and entirely absent from a push that
+   * forgot it. Defaulting a missing one to now would date every backfilled event to the day it was
+   * uploaded, which is the whole reason the check refuses instead.
+   */
+  'modules/detectors/roles-and-their-action.service.ts:occurredAt',
+  /*
    * Three of the name-collision false positives this file's own header warns about, all in one
    * service because it reads Person, User and PersonObjective together.
    *
