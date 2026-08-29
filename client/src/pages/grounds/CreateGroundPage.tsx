@@ -975,8 +975,16 @@ export function CreateGroundPage() {
               })}
             </div>
 
-            {/* THE TWENTY-FIRST CARD. Outside the radiogroup on purpose: it is not a situation, it
-                creates nothing, and it must not be selectable as one. */}
+            {/* THE COACH CARD. Outside the radiogroup on purpose: it is not a situation, it
+                creates nothing, and it must not be selectable as one.
+
+                LAST ON THE PAGE, WHICH IS NOT THE SAME AS BEING THE LAST RESORT. It used to read
+                "Not sure this is the right tool yet" and sat directly under "Not sure yet", so the
+                order and the words agreed on the wrong thing: that a coach is what you fall back on
+                when you cannot name your situation. It is the opposite - somebody who knows exactly
+                what they are dealing with and wants a person alongside while they run it. The words
+                say that now, and it stays at the end because it is the one card that creates
+                nothing, not because it ranks last. */}
             <section className="cg-group" id="cg-coach">
               <div className="cg-group-head"><h3>{COACH_CARD.heading}</h3></div>
               <p className="cg-group-q">{COACH_CARD.question}</p>

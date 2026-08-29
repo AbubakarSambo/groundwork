@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import { render, screen, waitFor } from '@testing-library/react'
+import { MemoryRouter, Routes, Route, useNavigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AppShell } from './AppShell'
 import { useAuthStore } from '@/stores/auth'
@@ -74,12 +74,14 @@ describe('the menu has to be on the screen', () => {
  */
 describe('and it appears when you move, not only when you arrive', () => {
   it('shows the menu after signing in and going to the check-ins', async () => {
-    const { AppShell } = await import('./AppShell')
-    const { MemoryRouter, Routes, Route, useNavigate } = await import('react-router-dom')
-    const { QueryClient, QueryClientProvider } = await import('@tanstack/react-query')
-    const { render, screen } = await import('@testing-library/react')
-    const { useAuthStore } = await import('@/stores/auth')
-
+    /*
+     * THE STORE FROM THE TOP OF THIS FILE, NOT A DYNAMIC RE-IMPORT.
+     *
+     * `await import('@/stores/auth')` can resolve to a different module instance from the one
+     * AppShell closed over, so `setState` wrote to a store the component was not reading and the
+     * shell rendered signed-out. It passed most runs and failed about one in three - which is the
+     * worst kind of test, because the next red is assumed to be noise.
+     */
     useAuthStore.setState({ user: ADMIN, token: 't', isAuthenticated: true } as any)
 
     function GoToGrounds() {
@@ -109,6 +111,13 @@ describe('and it appears when you move, not only when you arrive', () => {
     expect(container.querySelector('.gw-sidebar-desktop')).toBeNull()
     screen.getByText('go').click()
     await screen.findByText('check-ins')
-    expect(container.querySelector('.gw-sidebar-desktop')).not.toBeNull()
+
+    /*
+     * WAITED FOR, NOT ASSERTED ONCE. The route content and the shell's own re-render are not
+     * guaranteed to land in the same commit, so a bare expect here passed alone and failed in the
+     * full suite - a flake, and a flake in the test guarding the bug it was written for is worse
+     * than no test, because the next person to see it red will assume it is noise.
+     */
+    await waitFor(() => expect(container.querySelector('.gw-sidebar-desktop')).not.toBeNull())
   })
 })

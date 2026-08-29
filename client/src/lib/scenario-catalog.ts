@@ -126,12 +126,24 @@ export const SCENARIO_GROUPS = [
 
 export type ScenarioGroupKey = (typeof SCENARIO_GROUPS)[number]['key']
 /**
- * THE TWENTY-FIRST CARD, WHICH IS NOT A SITUATION.
+ * THE COACH CARD, WHICH IS A CHOICE RATHER THAN A LAST RESORT.
  *
- * It sits in its own group at the end, below "not sure yet", because it is the honest last resort for
- * somebody the twenty cannot help: told to set this up, looking at a wall of situations, with no idea
- * which one their problem is. Picking one at random gives them the wrong interview; leaving gives them
- * nothing.
+ * It read "Not sure this is the right tool yet" over "None of the above is your situation, or you
+ * would rather somebody walked you through it first" - which sells coaching to the confused. That
+ * is the wrong audience and the wrong idea of the product. Her words:
+ *
+ *   "a coach is not about being unsure but people who want guided use and mentoring of their team
+ *    towards the right choices even with groundwork doing this some want a human touch."
+ *
+ * So the person this is for is not lost. They are often the most deliberate person on the screen:
+ * they know what they are dealing with, they intend to run it themselves, and they want somebody
+ * experienced alongside while they do. Framing that as "not sure" tells exactly the wrong person
+ * this is for them, and tells the right person it is not.
+ *
+ * WHAT DID NOT CHANGE, AND WHY. The price stays on the card and the sentence saying the software
+ * works without it stays too. Reframing this as a positive choice makes it more tempting, not less,
+ * and a card that becomes more attractive while going quiet about what it costs is a card that
+ * sells something. Nothing is created, nobody is contacted, and it says so.
  *
  * It is NOT in SCENARIO_GROUPS above and NOT in SCENARIO_FACTS below, deliberately. Every guard in this
  * codebase asserts that a group contains situations and a situation has a scenario, a cadence and a
@@ -140,10 +152,10 @@ export type ScenarioGroupKey = (typeof SCENARIO_GROUPS)[number]['key']
  */
 export const COACH_CARD = {
   key: 'ASK_A_COACH',
-  heading: 'Not sure this is the right tool yet',
-  question: 'None of the above is your situation, or you would rather somebody walked you through it first.',
+  heading: 'Work with a coach alongside this',
+  question: 'You want somebody experienced helping you steer your team through it, not just the software.',
   label: 'Ask to speak to a coach',
-  moment: 'You have been asked to set this up and you are not sure where to start.',
+  moment: 'You know what you are dealing with. You want a person in it with you.',
   whatHappens: 'Nothing is created and nobody on your team is contacted. You tell us what you are dealing with, we email you back, and a coach picks it up from there.',
   cost: 'Coaching is $5,000 a year for twelve sessions, or $500 an hour with no retainer. The software works without it, and most teams run it themselves.',
 } as const
