@@ -54,7 +54,7 @@ EMAIL = f"s.sweep+{STAMP}@example-test.invalid"
 CREATE_CARDS = [
     "New hire", "New project", "New advisor or board member", "A new partner or co-founder",
     "A new manager taking over", "Contract or renewal", "Raise, promotion, or recognition",
-    "Performance improvement plan", "Goals & planning", "Workplan & budget",
+    "Performance improvement plan", "Goals & planning", "A workplan and budget",
     "A regular read on live work", "A project is off track", "Board or leadership strategy",
     "Many people in the same role", "Onboarding several people at once",
     "A shock just hit", "Get a team back on the same page", "Describe your own situation",

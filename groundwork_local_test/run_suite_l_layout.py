@@ -38,7 +38,7 @@ EMAIL = f"l.layout+{STAMP}@example-test.invalid"
 ENTRY_CARDS = [
     "New hire starting",
     "New project",
-    "A new partner, cofounder, or manager",
+    "A new co-founder or partner",
     "New advisor or board member",
     "Onboarding several people at once",
     "Setting shared goals",
@@ -51,7 +51,7 @@ ENTRY_CARDS = [
     "Contract or renewal",
     "Someone's work is off track",
     "A project is off track",
-    "You and someone see it differently",
+    "People see it differently",
     "A shock just hit",
 ]
 # The catch-all card's label, as /entry actually renders it.

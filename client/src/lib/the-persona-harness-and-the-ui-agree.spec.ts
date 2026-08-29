@@ -77,6 +77,19 @@ function sources(dir: string, out: string[] = []): string[] {
  */
 const RENDERED = sources(join(ROOT, 'client/src'))
   .map(f => readFileSync(f, 'utf8'))
+  /*
+   * COMMENTS STRIPPED FIRST, and this file is the reason to say it loudly.
+   *
+   * The first version matched raw source, so `"Your ground is set up"` passed - it survives in a
+   * comment at MagicVerifyPage.tsx:286 describing the OLD copy, while the component renders "Your
+   * check-in is set up." twenty-six lines below. The guard reported agreement between a harness
+   * waiting for text nobody renders and a comment about text nobody renders.
+   *
+   * This repository has a whole spec about that class - a-guard-that-a-comment-satisfies-is-not-a-
+   * guard.spec.ts - and it scans api/src only, so it never saw this one. A guard checking rendered
+   * copy must read what renders.
+   */
+  .map(src => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, ''))
   .join('\n')
   .replace(/&amp;/g, '&')
   .replace(/&nbsp;/g, ' ')
@@ -93,12 +106,21 @@ const RENDERED = sources(join(ROOT, 'client/src'))
  * Neither crashed anything - the check reported cards missing that were on screen under different
  * words, which is worse than a crash because it reads as a broken page.
  */
-const CREATE_CARDS: string[] = (() => {
-  const src = readFileSync(join(ROOT, 'groundwork_local_test/run_suite_s_scenarios.py'), 'utf8')
-  const from = src.indexOf('CREATE_CARDS = [')
+function pinnedList(file: string, name: string): string[] {
+  const src = readFileSync(join(ROOT, 'groundwork_local_test', file), 'utf8')
+  const from = src.indexOf(`${name} = [`)
+  if (from === -1) throw new Error(`${name} is gone from ${file} - this guard is reading nothing`)
   const block = src.slice(from, src.indexOf(']', from))
   return [...block.matchAll(/"((?:[^"\\]|\\.)*)"/g)].map(m => m[1])
-})()
+}
+
+/**
+ * THREE LISTS, NOT ONE. Each suite pinned its own copy of the product's card labels, and each drifted
+ * separately: the create picker in suite_s, the /start picker in suite_l. Guarding only the first
+ * would have left the second to rot exactly as it had been rotting.
+ */
+const CREATE_CARDS = pinnedList('run_suite_s_scenarios.py', 'CREATE_CARDS')
+const ENTRY_CARDS = pinnedList('run_suite_l_layout.py', 'ENTRY_CARDS')
 
 describe('the persona harness and the UI agree', () => {
   it('reads a real list, so a rename cannot empty this file out', () => {
@@ -121,9 +143,10 @@ describe('the persona harness and the UI agree', () => {
     ].join('\n')).toEqual([])
   })
 
-  it('and every create-picker label it pins is still on the picker', () => {
+  it('and every card label the suites pin is still somewhere in the product', () => {
     expect(CREATE_CARDS.length).toBeGreaterThanOrEqual(15)
-    const missing = CREATE_CARDS.filter(c => !RENDERED.includes(c.replace(/\s+/g, ' ')))
+    expect(ENTRY_CARDS.length).toBeGreaterThanOrEqual(10)
+    const missing = [...CREATE_CARDS, ...ENTRY_CARDS].filter(c => !RENDERED.includes(c.replace(/\s+/g, ' ')))
     expect(missing, [
       'run_suite_s_scenarios.py pins create-picker labels the product no longer renders.',
       'This does not crash the suite - it reports the cards as missing, which reads as a broken',

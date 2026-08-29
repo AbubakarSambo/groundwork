@@ -25,16 +25,17 @@ accident, which the diff will tell you.
 SAVE_MY_CHECKIN = "Save my check-in"
 INVITE_AND_FINISH = "Invite & finish"
 SENT_A_LINK = "We sent a link to"
-GROUND_IS_SET_UP = "Your ground is set up"
+GROUND_IS_SET_UP = "Your check-in is set up"
 NO_SESSION_ON_DEVICE = "We couldn't find your session on this device"
 
 # Create flow, /grounds/new. The heading is the harness's proof the page rendered at all - a
 # sentinel, so if it drifts every check after it reports something misleading rather than nothing.
 CREATE_PAGE_HEADING = "What is this about?"
 
-# Post-verification
+# Post-verification. "ground" became "check-in" across these too - the same rename as the save
+# button, three days later, and equally unnoticed because the harness times out rather than fails.
 ONE_LAST_STEP = "One last step"
-GO_TO_YOUR_GROUND = "Go to your ground"
+GO_TO_YOUR_GROUND = "Go to your check-in"
 WAITING_TO_SEND = "Waiting to send"
 INCLUDED_IN_PLAN = "Included in your plan"
 
