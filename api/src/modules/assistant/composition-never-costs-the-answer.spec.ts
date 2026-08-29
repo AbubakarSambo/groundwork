@@ -37,11 +37,20 @@ describe('composition never costs the answer', () => {
      * is the reason anybody asks this lane what it can see, and a fluent answer that loses it is
      * worse than the blunt one that keeps it.
      */
-    const { service } = svc(async () => 'From their-tool: 1 objective and 2 people, last updated 29 Aug 2026.');
+    /*
+     * THE DATE IS BUILT FROM TODAY, NOT TYPED IN. This read "29 Aug 2026", and the composer's
+     * safety check compares every date in a model's reply against the draft it was given - so at
+     * midnight on the 29th the fixture started describing a day that was not the one the draft
+     * mentioned, the reply was correctly rejected as invented, and a passing test began failing
+     * for a reason that had nothing to do with the code.
+     */
+    const today = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    const reply = `From their-tool: 1 objective and 2 people, last updated ${today}.`;
+    const { service } = svc(async () => reply);
     const r = await ask(service);
     expect(r.composedBy).toBe('model');
     expect(r.styleVersion).toBe('v2');
-    expect((r.blocks[0] as any).body).toBe('From their-tool: 1 objective and 2 people, last updated 29 Aug 2026.');
+    expect((r.blocks[0] as any).body).toBe(reply);
   });
 
   it('refuses a composition that quietly drops a number the record produced', async () => {

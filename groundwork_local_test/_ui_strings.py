@@ -36,7 +36,9 @@ NO_SESSION_ON_DEVICE = "We couldn't find your session on this device"
 # at the end of a six step wizard, and was being used to prove that step 1 had loaded. It never
 # had. The guard could not catch it either - the string does exist in the component, just not on
 # the screen the harness was looking at.
-CREATE_STEP_ONE = "First: where do you sit in this?"
+# Reworded from "First: where do you sit in this?" - that asked where somebody sits, when the thing
+# being decided is who writes the objective and who checks in against it.
+CREATE_STEP_ONE = "Who is this check-in for?"
 CREATE_PAGE_HEADING = "What is this about?"
 
 # Post-verification. "ground" became "check-in" across these too - the same rename as the save

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { MemoryRouter, Routes, Route, useNavigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AppShell } from './AppShell'
@@ -33,11 +33,19 @@ function shell(path: string) {
   )
 }
 
+/*
+ * SIGNED IN BEFORE EVERY TEST IN THIS FILE, not just the first block.
+ *
+ * A `beforeEach` inside one describe does not run for the next one, so the signed-out test left the
+ * store empty and the navigation test below it rendered a shell for somebody who was not signed in.
+ * It failed about one run in three, which reads as flakiness and is really ordering.
+ */
+beforeEach(() => {
+  vi.restoreAllMocks()
+  useAuthStore.setState({ user: ADMIN, token: 't', isAuthenticated: true } as any)
+})
+
 describe('the menu has to be on the screen', () => {
-  beforeEach(() => {
-    vi.restoreAllMocks()
-    useAuthStore.setState({ user: ADMIN, token: 't', isAuthenticated: true } as any)
-  })
 
   it('an admin on their check-ins can see the menu', () => {
     const { container } = shell('/grounds')
@@ -109,7 +117,10 @@ describe('and it appears when you move, not only when you arrive', () => {
     )
 
     expect(container.querySelector('.gw-sidebar-desktop')).toBeNull()
-    screen.getByText('go').click()
+    /* fireEvent, not a raw .click(). A raw DOM click happens outside React's act(), so the state
+       update it causes may not be flushed before the assertion runs - which is the remaining one-run-
+       in-five failure after the ordering fix, and is a property of the test rather than the product. */
+    fireEvent.click(screen.getByText('go'))
     await screen.findByText('check-ins')
 
     /*

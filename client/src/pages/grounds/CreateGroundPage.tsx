@@ -803,14 +803,30 @@ export function CreateGroundPage() {
                 It also matters most for the commonest case: somebody told to set this up has no
                 situation of their own, and "someone else runs this" was three steps out of reach. */}
             <div role="radiogroup" aria-label="Where do you sit in this check-in?" style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: '12px 14px', marginBottom: 16, background: 'white' }}>
-              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 3 }}>First: where do you sit in this?</div>
+              {/*
+                * WHO IS THIS FOR, ANSWERED IN TERMS OF WHO WRITES THE OBJECTIVE AND WHO CHECKS IN.
+                *
+                * It asked "where do you sit in this?" and offered "I am part of this too" against
+                * "I am setting it up for others", which describes a seating plan. The thing being
+                * decided is concrete and this hid it: who sets the context and the objective, and
+                * who then checks in against it. Her words, and they are better than what was here:
+                *
+                *   "i'll setup the context and objective and me and other checkin against it,
+                *    i'll setup the context and others checkin against it,
+                *    someone else is setting up the context, i am just setting the checkin and
+                *    inviting them to run it"
+                *
+                * The same three now read the same way in the entry chat - see ONBOARD_SYSTEM in
+                * entry.service.ts, which asks this in conversation rather than as radio buttons.
+                */}
+              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 3 }}>Who is this check-in for?</div>
               <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 9, lineHeight: 1.5 }}>
-                This decides what everything after it is asking you for. If you are part of this, the next questions are about your own situation. If you are setting it up for other people, they are about theirs. You can change it later.
+                This decides who writes the objective and who is asked to check in against it. Everything after it is asking you for one or the other. You can change it later.
               </div>
               {[
-                { v: true, label: 'I am part of this too', sub: 'You check in like everyone else, and your account is read alongside theirs.', other: false },
-                { v: false, label: 'I am setting it up for others', sub: 'You organise and read the results. Nothing asks you to check in, and nothing measures you.', other: false },
-                { v: false, label: 'Someone else runs this', sub: 'You set it up and hand it over. They lead it, check in themselves, and see the results.', other: true },
+                { v: true, label: 'I set the context and objective, and I check in too', sub: 'You write what this is about and what good looks like. You check in against it alongside everyone else.', other: false },
+                { v: false, label: 'I set the context and objective, others check in', sub: 'You write what this is about and what good looks like. They check in against it. Nothing asks you to check in, and nothing measures you.', other: false },
+                { v: false, label: 'Someone else sets the context', sub: 'You are setting the check-in up and inviting them. They write what it is about, check in themselves, and see the results.', other: true },
               ].map((o) => (
                 <div
                   key={o.label}

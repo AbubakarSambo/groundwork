@@ -40,12 +40,17 @@ describe('the way in', () => {
   });
 
   it('names all three answers, because the third one is the useful one for an admin', () => {
-    // "Somebody else is going to run it" is the honest path for a bystander with no detail, and it was
-    // reachable only by reading to the end of a different question.
-    expect(SRC).toMatch(/are you part of this too/i);
-    expect(SRC).toMatch(/setting it up for other\s+people/i);
+    // The third answer is the honest path for somebody told to set this up who has no situation of
+    // their own, and it was once reachable only by reading to the end of a different question.
+    //
+    // The three are worded in terms of who writes the objective and who is measured against it,
+    // rather than "are you part of this", which asked where somebody sits rather than what is being
+    // decided. The setup screen asks it the same way; these three pins are what stop the two
+    // drifting apart again.
+    expect(SRC).toMatch(/you set the context and objective, and you check in against it too/i);
+    expect(SRC).toMatch(/other people check in against it/i);
     // Whitespace-tolerant: the prompt is wrapped prose, so a phrase can straddle a line break.
-    expect(SRC).toMatch(/somebody else going\s+to run it/i);
+    expect(SRC).toMatch(/somebody else sets the context/i);
   });
 
   it('captures it as a field rather than reading it out of prose', () => {
