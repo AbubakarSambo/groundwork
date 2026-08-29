@@ -165,6 +165,17 @@ const RULES = [
    */
   rule('how_we_work', [
     /\bhow\s+do\s+(?:we|i)\s+(.{3,})/i,
+    /*
+     * "What do I do if I am locked out" reached no lane at all, and the handbook had a section
+     * headed exactly that. Found by uploading a real handbook and asking it the questions the
+     * handbook answers, which is a different exercise from reading the patterns.
+     *
+     * Safe this low: the lanes that own the near neighbours all sit above it - "I'm stuck" is
+     * coaching, "what am I waiting on" is the handoff lane - so what reaches here is a question
+     * about a situation rather than about this person's own work.
+     */
+    /\bwhat\s+(?:do|should)\s+i\s+do\s+(?:if|when|about)\s+(.{3,})/i,
+    /\bwho\s+do\s+i\s+(?:ask|tell|contact)\s+(?:about\s+)?(.{3,})/i,
     /\bwhat(?:'s| is)\s+(?:our|the)\s+(?:policy|process|rule)\b/i,
     /\bwhere\s+do\s+i\s+(?:find|go|put)\b/i,
     /\bam\s+i\s+allowed\s+to\b/i,

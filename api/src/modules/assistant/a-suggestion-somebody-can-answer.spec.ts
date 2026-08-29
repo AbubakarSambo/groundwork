@@ -172,6 +172,16 @@ describe('a suggestion somebody can answer', () => {
     expect(route('how am I doing').lane).toBe('how_am_i_doing');
     expect(route('how do I run a check-in').lane).toBe('how_we_work');
     expect(route('my objectives').lane).toBe('what_am_i_on');
+
+    /*
+     * Found by uploading a real handbook and asking it the questions the handbook answers: the
+     * document had a section headed LOCKED OUT and this reached no lane at all.
+     */
+    expect(route('what do I do if I am locked out').lane).toBe('how_we_work');
+    expect(route('who do I ask about leave').lane).toBe('how_we_work');
+    /* Still owned by the lanes above it. */
+    expect(route("i'm stuck").lane).toBe('how_am_i_doing');
+    expect(route('what am I waiting on').lane).toBe('what_is_stuck');
   });
 
   it('counts the last day as a day, because rounding it away is what makes somebody miss it', () => {
