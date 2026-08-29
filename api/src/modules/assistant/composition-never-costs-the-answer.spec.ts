@@ -1,3 +1,4 @@
+import { safeToUse } from './the-model-words-it-and-nothing-more';
 import { AssistantService } from './assistant.service';
 
 /**
@@ -30,11 +31,29 @@ const ask = (s: AssistantService) => s.respond('org-a', 'p1', 'what can you see?
 
 describe('composition never costs the answer', () => {
   it('uses the model when it behaves, and says so', async () => {
-    const { service } = svc(async () => '1 objective and 2 people, from their-tool.');
+    /*
+     * The fixture used to drop the "last updated" date and still count as a good composition. It
+     * stopped counting when the check became symmetric, which was the check being right: freshness
+     * is the reason anybody asks this lane what it can see, and a fluent answer that loses it is
+     * worse than the blunt one that keeps it.
+     */
+    const { service } = svc(async () => 'From their-tool: 1 objective and 2 people, last updated 29 Aug 2026.');
     const r = await ask(service);
     expect(r.composedBy).toBe('model');
     expect(r.styleVersion).toBe('v2');
-    expect((r.blocks[0] as any).body).toBe('1 objective and 2 people, from their-tool.');
+    expect((r.blocks[0] as any).body).toBe('From their-tool: 1 objective and 2 people, last updated 29 Aug 2026.');
+  });
+
+  it('refuses a composition that quietly drops a number the record produced', async () => {
+    /*
+     * The rule was asymmetric by accident for a long time: an INVENTED number was refused, a DROPPED
+     * one went unnoticed. Both are the composer editing the record rather than wording it, and the
+     * dropped one is the harder to catch by reading, because nothing looks wrong.
+     */
+    const { service } = svc(async () => 'A couple of things from their-tool, updated recently.');
+    const r = await ask(service);
+    expect(r.composedBy).toBe('rules');
+    expect((r.blocks[0] as any).body).toMatch(/2 people/);
   });
 
   it('ships the draft when the model is unreachable', async () => {
@@ -81,5 +100,33 @@ describe('composition never costs the answer', () => {
     const r = await service.respond('org-a', 'p1', 'can you renegotiate my contract');
     expect(r.composedBy).toBe('rules');
     expect(engine.respond).not.toHaveBeenCalled();
+  });
+});
+
+describe('the composer cannot introduce a person the record never named', () => {
+  /*
+   * NOT HYPOTHETICAL. Driving the handoff lane returned "Onboarding rewrite (Renewal push), from
+   * Alex Smith - blocked for 2 days". There is no Alex Smith; the draft contained no name at all.
+   * The composer invented a person and attributed to them the holding-up of somebody else's work,
+   * in the one lane whose whole subject is who is waiting on whom - and every check passed, because
+   * it kept the number.
+   *
+   * It happened once in five identical requests. That is the worst frequency there is: never during
+   * testing, eventually in front of a customer.
+   */
+  it('refuses an invented name even when every number survives', () => {
+    const draft = 'Waiting on you:\n- the onboarding rewrite (Renewal push) - waiting, 2 days';
+    expect(safeToUse(draft, 'The onboarding rewrite (Renewal push), from Alex Smith - waiting, 2 days.')).toBe(false);
+  });
+
+  it('while a name the record did produce comes through', () => {
+    const draft = 'Naomi is waiting on the pricing decision - 2 days';
+    expect(safeToUse(draft, 'The pricing decision has Naomi waiting, 2 days now.')).toBe(true);
+  });
+
+  it('and ordinary sentences are not caught by it', () => {
+    const draft = 'You have 2 open commitments.';
+    expect(safeToUse(draft, 'You have 2 open commitments.')).toBe(true);
+    expect(safeToUse(draft, 'There are 2 open commitments. You can see them below.')).toBe(true);
   });
 });

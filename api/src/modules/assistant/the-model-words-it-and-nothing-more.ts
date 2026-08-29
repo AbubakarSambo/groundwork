@@ -48,6 +48,17 @@ Rules:
  * right one. So every digit-run in the composed text has to appear in the draft. It is a blunt
  * check and it is the one that matters: the model may reorder and reword freely, and the moment it
  * produces a number the record did not, we ship the record's own words.
+ *
+ * AND THE OTHER DIRECTION, WHICH THIS MISSED FOR LONGER THAN IT SHOULD HAVE.
+ *
+ * The rule was asymmetric by accident, not by design: a number the model INVENTED was refused, a
+ * number it DROPPED went unnoticed. Both are the composer editing the record rather than wording it.
+ * Driving the handoff lane found it - a draft reading "the onboarding rewrite - waiting, 2 days"
+ * came back as "waiting on you for the onboarding rewrite", which is true, fluent, and quietly
+ * missing the only part that made the answer worth asking for.
+ *
+ * A dropped fact is the harder one to catch by reading, because nothing looks wrong. There is no
+ * cost to being strict here either: the fallback is the draft, which has the number in it.
  */
 export function safeToUse(draft: string, composed: string | null | undefined): boolean {
   const text = (composed ?? '').trim();
@@ -58,8 +69,43 @@ export function safeToUse(draft: string, composed: string | null | undefined): b
   if (/^(sure|certainly|of course|here'?s|i'?d be happy)/i.test(text)) return false;
 
   const inDraft = new Set((draft.match(/\d+/g) ?? []));
-  for (const n of text.match(/\d+/g) ?? []) {
+  const inText = new Set((text.match(/\d+/g) ?? []));
+
+  /* Invented: a number the record never produced. */
+  for (const n of inText) {
     if (!inDraft.has(n)) return false;
+  }
+  /* Dropped: a number the record produced and the sentence quietly lost. */
+  for (const n of inDraft) {
+    if (!inText.has(n)) return false;
+  }
+
+  /*
+   * AND NO PROPER NOUN THE RECORD DID NOT PRODUCE. This one is not hypothetical.
+   *
+   * Driving the handoff lane returned "Onboarding rewrite (Renewal push), from Alex Smith - blocked
+   * for 2 days". There is no Alex Smith. The draft contained no name at all. The composer invented a
+   * person and attributed to them the holding-up of somebody else's work, in the one lane whose
+   * entire subject is who is waiting on whom - and it passed every check here, because it kept the
+   * number. It happened once in five identical requests, which is the worst frequency: never in a
+   * demo, eventually in front of somebody.
+   *
+   * A capitalised word mid-sentence is a name, a product, a team or a place. Every one of those that
+   * belongs in the answer is already in the draft, because the draft is the record. One that is not
+   * came from the model, and there is no such thing as a harmless invented name in a product whose
+   * subject is what people said about each other.
+   *
+   * Sentence-initial words are exempt because English capitalises them regardless - which does leave
+   * a gap, and the gap is bounded by the draft being the fallback rather than by anybody's care.
+   */
+  const draftWords = new Set(draft.toLowerCase().match(/[a-z][a-z'-]*/g) ?? []);
+  const sentences = text.split(/(?<=[.:!?\n])\s+/);
+  for (const sentence of sentences) {
+    const words = sentence.match(/[A-Za-z][A-Za-z'-]*/g) ?? [];
+    for (const w of words.slice(1)) {
+      if (!/^[A-Z][a-z]/.test(w)) continue;
+      if (!draftWords.has(w.toLowerCase())) return false;
+    }
   }
   return true;
 }
