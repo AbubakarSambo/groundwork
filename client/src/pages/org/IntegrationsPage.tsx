@@ -94,7 +94,7 @@ export function IntegrationsPage() {
       setCredName('')
       qc.invalidateQueries({ queryKey: ['integrations', 'credentials'] })
     },
-    onError: (e: any) => toast.error(e?.message ?? 'Could not issue that credential.'),
+    onError: (e: any) => toast.error(e?.message ?? 'Could not issue that key.'),
   })
   const revoke = useMutation({
     mutationFn: integrationsApi.revokeCredential,
@@ -131,7 +131,9 @@ export function IntegrationsPage() {
   }
 
   const setupDone = {
-    credential: (creds.data ?? []).some(c => !c.revokedAt),
+    /* Named `key` like the screen. A field called `credential` behind a button called "key" is the
+       same drift, one layer down, and it is where the second name came from in the first place. */
+    key: (creds.data ?? []).some(c => !c.revokedAt),
     /* "Something arrived" is a stronger signal than "a credential exists" - it is the difference
        between having a key and having used it. */
     used: (creds.data ?? []).some(c => c.lastUsedAt),
@@ -210,14 +212,20 @@ export function IntegrationsPage() {
           attempted. An admin who has finished step three should KNOW the connection works. */}
       <div style={S.sec}>Setting it up</div>
       <div style={S.card}>
-        <Step done={setupDone.credential} n={1} title="Issue a credential" body="One per system you connect, so you can turn one off later without breaking the others." />
-        <Step done={setupDone.used} n={2} title="Your system authenticates and sends something" body="Exchange the credential for a token, then push an objective or a person. This ticks when we have actually seen it used." />
+        <Step done={setupDone.key} n={1} title="Issue a key" body="One per system you connect, so you can turn one off later without breaking the others." />
+        <Step done={setupDone.used} n={2} title="Your system authenticates and sends something" body="Swap the key for a token, then push an objective or a person. This ticks when we have actually seen it used." />
         <Step done={setupDone.webhook} n={3} title="Register where to be told" body="An https address of yours. We sign every message so you can prove it came from us." />
         <Step done={setupDone.delivered} n={4} title="Receive one" body="This ticks the first time we deliver successfully. Until then the log below shows every attempt and what your server said back." last />
       </div>
 
       {/* ---------------------------------------------------------------- credentials */}
-      <div style={S.sec}>Credentials</div>
+      {/*
+        * ONE WORD FOR IT. The button said "key", this heading said "Credentials", and step one said
+        * "credential" - three names on one screen for the thing somebody came here to get. "Key" is
+        * what it gets called by the person asking for it. The API's own field names stay as they
+        * are: `clientId` and `clientSecret` are what an engineer will type.
+        */}
+      <div style={S.sec}>Keys</div>
       <div style={S.card}>
         <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', flexWrap: 'wrap' }}>
           <input
